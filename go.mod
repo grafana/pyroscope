@@ -47,7 +47,7 @@ require (
 	github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1
-	github.com/pyroscope-io/jfr-parser v0.1.0
+	github.com/pyroscope-io/jfr-parser v0.4.0
 	github.com/rlmcpherson/s3gof3r v0.5.0
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.8.1

@@ -10,10 +10,10 @@ import {
   selectComparisonState,
   fetchComparisonSide,
   fetchTagValues,
+  selectQueries,
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
-import Footer from '@webapp/components/Footer';
 import InstructionText from '@webapp/components/InstructionText';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
@@ -25,8 +25,10 @@ import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const { leftQuery, rightQuery, leftFrom, rightFrom, leftUntil, rightUntil } =
-    useAppSelector(selectContinuousState);
+  const { leftFrom, rightFrom, leftUntil, rightUntil } = useAppSelector(
+    selectContinuousState
+  );
+  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
@@ -52,7 +54,7 @@ function ComparisonApp() {
     useExportToFlamegraphDotCom(rightSide);
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar
@@ -82,7 +84,7 @@ function ComparisonApp() {
         >
           <Box className={styles.comparisonPane}>
             <TagsBar
-              query={leftQuery || ''}
+              query={leftQuery}
               tags={leftTags}
               onSetQuery={(q) => {
                 dispatch(actions.setLeftQuery(q));
@@ -127,7 +129,7 @@ function ComparisonApp() {
 
           <Box className={styles.comparisonPane}>
             <TagsBar
-              query={rightQuery || ''}
+              query={rightQuery}
               tags={rightTags}
               onSetQuery={(q) => {
                 dispatch(actions.setRightQuery(q));
@@ -171,7 +173,6 @@ function ComparisonApp() {
           </Box>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

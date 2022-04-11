@@ -19,38 +19,132 @@ func (m *mockIngester) Enqueue(_ context.Context, p *storage.PutInput) {
 }
 
 var _ = Describe("pprof parsing", func() {
-	It("parses data correctly", func() {
-		p, err := readPprofFixture("testdata/cpu.pb.gz")
-		Expect(err).ToNot(HaveOccurred())
+	Context("Go", func() {
+		It("can parse CPU profiles", func() {
+			p, err := readPprofFixture("testdata/cpu.pb.gz")
+			Expect(err).ToNot(HaveOccurred())
 
-		ingester := new(mockIngester)
-		spyName := "spy-name"
-		now := time.Now()
-		start := now
-		end := now.Add(10 * time.Second)
-		labels := map[string]string{
-			"__name__": "app",
-			"foo":      "bar",
-		}
+			ingester := new(mockIngester)
+			spyName := "spy-name"
+			now := time.Now()
+			start := now
+			end := now.Add(10 * time.Second)
+			labels := map[string]string{
+				"__name__": "app",
+				"foo":      "bar",
+			}
 
-		w := NewProfileWriter(ingester, labels, tree.DefaultSampleTypeMapping)
-		err = w.WriteProfile(context.TODO(), start, end, spyName, p)
-		Expect(err).ToNot(HaveOccurred())
+			w := NewProfileWriter(ingester, ProfileWriterConfig{
+				SampleTypes: tree.DefaultSampleTypeMapping,
+				Labels:      labels,
+				SpyName:     spyName,
+			})
 
-		Expect(ingester.actual).To(HaveLen(1))
-		input := ingester.actual[0]
-		Expect(input.SpyName).To(Equal(spyName))
-		Expect(input.StartTime).To(Equal(start))
-		Expect(input.EndTime).To(Equal(end))
-		Expect(input.SampleRate).To(Equal(uint32(100)))
-		Expect(input.Val.Samples()).To(Equal(uint64(47)))
-		Expect(input.Key.Normalized()).To(Equal("app.cpu{foo=bar}"))
-		Expect(input.Val.String()).To(ContainSubstring("runtime.main;main.main;main.slowFunction;main.work 1"))
+			err = w.WriteProfile(context.Background(), start, end, p)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(ingester.actual).To(HaveLen(1))
+			input := ingester.actual[0]
+			Expect(input.SpyName).To(Equal(spyName))
+			Expect(input.StartTime).To(Equal(start))
+			Expect(input.EndTime).To(Equal(end))
+			Expect(input.SampleRate).To(Equal(uint32(100)))
+			Expect(input.Val.Samples()).To(Equal(uint64(47)))
+			Expect(input.Key.Normalized()).To(Equal("app.cpu{foo=bar}"))
+			Expect(input.Val.String()).To(ContainSubstring("runtime.main;main.main;main.slowFunction;main.work 1"))
+		})
+	})
+
+	Context("JS", func() {
+		It("can parses CPU profile", func() {
+			p, err := readPprofFixture("testdata/cpu-js.pb.gz")
+			Expect(err).ToNot(HaveOccurred())
+
+			ingester := new(mockIngester)
+			spyName := "spy-name"
+			now := time.Now()
+			start := now
+			end := now.Add(10 * time.Second)
+			labels := map[string]string{
+				"__name__": "app",
+				"foo":      "bar",
+			}
+
+			w := NewProfileWriter(ingester, ProfileWriterConfig{
+				SampleTypes: tree.DefaultSampleTypeMapping,
+				Labels:      labels,
+				SpyName:     spyName,
+			})
+
+			err = w.WriteProfile(context.Background(), start, end, p)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(ingester.actual).To(HaveLen(1))
+			input := ingester.actual[0]
+			Expect(input.SpyName).To(Equal(spyName))
+			Expect(input.StartTime).To(Equal(start))
+			Expect(input.EndTime).To(Equal(end))
+			Expect(input.SampleRate).To(Equal(uint32(1000)))
+			Expect(input.Val.Samples()).To(Equal(uint64(8849)))
+			Expect(input.Key.Normalized()).To(Equal("app.cpu{foo=bar}"))
+			Expect(input.Val.String()).To(ContainSubstring("pressInit;next;process_params;(anonymous);trim_prefix;handle 1"))
+		})
+
+		It("can parse heap profiles", func() {
+			p, err := readPprofFixture("testdata/heap-js.pprof")
+			Expect(err).ToNot(HaveOccurred())
+
+			ingester := new(mockIngester)
+			spyName := "spy-name"
+			now := time.Now()
+			start := now
+			end := now.Add(10 * time.Second)
+			labels := map[string]string{
+				"__name__": "app",
+				"foo":      "bar",
+			}
+
+			// We intentionally mark these sample types as non-cumulative
+			// to make writer flush the trees to the ingester.
+			Expect(tree.DefaultSampleTypeMapping["objects"].Cumulative).To(BeTrue())
+			Expect(tree.DefaultSampleTypeMapping["space"].Cumulative).To(BeTrue())
+			tree.DefaultSampleTypeMapping["objects"].Cumulative = false
+			tree.DefaultSampleTypeMapping["space"].Cumulative = false
+
+			w := NewProfileWriter(ingester, ProfileWriterConfig{
+				SampleTypes: tree.DefaultSampleTypeMapping,
+				Labels:      labels,
+				SpyName:     spyName,
+			})
+
+			err = w.WriteProfile(context.Background(), start, end, p)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ingester.actual).To(HaveLen(2))
+			sort.Slice(ingester.actual, func(i, j int) bool {
+				return ingester.actual[i].Key.Normalized() < ingester.actual[j].Key.Normalized()
+			})
+
+			input := ingester.actual[0]
+			Expect(input.SpyName).To(Equal(spyName))
+			Expect(input.StartTime).To(Equal(start))
+			Expect(input.EndTime).To(Equal(end))
+			Expect(input.Val.Samples()).To(Equal(uint64(66148)))
+			Expect(input.Key.Normalized()).To(Equal("app.objects{foo=bar}"))
+			Expect(input.Val.String()).To(ContainSubstring("parserOnHeadersComplete;parserOnIncoming 2428"))
+
+			input = ingester.actual[1]
+			Expect(input.SpyName).To(Equal(spyName))
+			Expect(input.StartTime).To(Equal(start))
+			Expect(input.EndTime).To(Equal(end))
+			Expect(input.Val.Samples()).To(Equal(uint64(6388384)))
+			Expect(input.Key.Normalized()).To(Equal("app.space{foo=bar}"))
+			Expect(input.Val.String()).To(ContainSubstring("parserOnHeadersComplete;parserOnIncoming 524448"))
+		})
 	})
 })
 
 var _ = Describe("pprof profile_id multiplexing", func() {
-	It("parses data correctly", func() {
+	It("can parse profiles labeled with profile_id correctly", func() {
 		p, err := readPprofFixture("testdata/cpu-mux.pb.gz")
 		Expect(err).ToNot(HaveOccurred())
 
@@ -64,8 +158,13 @@ var _ = Describe("pprof profile_id multiplexing", func() {
 			"foo":      "bar",
 		}
 
-		w := NewProfileWriter(ingester, labels, tree.DefaultSampleTypeMapping)
-		err = w.WriteProfile(context.TODO(), start, end, spyName, p)
+		w := NewProfileWriter(ingester, ProfileWriterConfig{
+			SampleTypes: tree.DefaultSampleTypeMapping,
+			Labels:      labels,
+			SpyName:     spyName,
+		})
+
+		err = w.WriteProfile(context.Background(), start, end, p)
 		Expect(err).ToNot(HaveOccurred())
 
 		var actualTotal uint64
@@ -101,18 +200,22 @@ var _ = Describe("custom pprof parsing", func() {
 			"foo":      "bar",
 		}
 
-		w := NewProfileWriter(ingester, labels, map[string]*tree.SampleTypeConfig{
-			"objects": {
-				Units:       "objects",
-				Aggregation: "avg",
+		w := NewProfileWriter(ingester, ProfileWriterConfig{
+			SampleTypes: map[string]*tree.SampleTypeConfig{
+				"objects": {
+					Units:       "objects",
+					Aggregation: "average",
+				},
+				"space": {
+					Units:       "bytes",
+					Aggregation: "average",
+				},
 			},
-			"space": {
-				Units:       "bytes",
-				Aggregation: "avg",
-			},
+			Labels:  labels,
+			SpyName: spyName,
 		})
 
-		err = w.WriteProfile(context.TODO(), start, end, spyName, p)
+		err = w.WriteProfile(context.TODO(), start, end, p)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ingester.actual).To(HaveLen(2))
 		sort.Slice(ingester.actual, func(i, j int) bool {

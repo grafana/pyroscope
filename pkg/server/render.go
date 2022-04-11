@@ -96,9 +96,11 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WriteInternalServerError(rh.log, w, err, "failed to retrieve data")
 		return
 	}
-	// TODO: handle properly
 	if out == nil {
-		out = &storage.GetOutput{Tree: tree.New()}
+		out = &storage.GetOutput{
+			Tree:     tree.New(),
+			Timeline: segment.GenerateTimeline(p.gi.StartTime, p.gi.EndTime),
+		}
 	}
 
 	switch p.format {

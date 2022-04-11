@@ -269,3 +269,40 @@ func (t *Tree) Bytes(d *dict.Dict, maxNodes int) ([]byte, error) {
 func FromBytes(d *dict.Dict, p []byte) (*Tree, error) {
 	return Deserialize(d, bytes.NewReader(p))
 }
+
+func (t *Tree) SerializeNoDictNoLimit(w io.Writer) error {
+	t.RLock()
+	defer t.RUnlock()
+
+	nodes := []*treeNode{t.root}
+	j := 0
+
+	for len(nodes) > 0 {
+		j++
+		tn := nodes[0]
+		nodes = nodes[1:]
+
+		_, err := varint.Write(w, uint64(len(tn.Name)))
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(tn.Name)
+		if err != nil {
+			return err
+		}
+
+		val := tn.Self
+		_, err = varint.Write(w, val)
+		if err != nil {
+			return err
+		}
+		cnl := uint64(0)
+		cnl = uint64(len(tn.ChildrenNodes))
+		nodes = append(tn.ChildrenNodes, nodes...)
+		_, err = varint.Write(w, cnl)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

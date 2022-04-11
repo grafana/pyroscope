@@ -2,13 +2,12 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import { appNameToQuery, queryToAppName } from '@webapp/util/query';
 import {
   actions,
-  selectContinuousState,
   selectAppNames,
   selectAppNamesState,
   reloadAppNames,
+  selectQueries,
 } from '@webapp/redux/reducers/continuous';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import Button from '@webapp/ui/Button';
@@ -18,23 +17,23 @@ import Dropdown, {
   FocusableItem,
   MenuGroup,
 } from '@webapp/ui/Dropdown';
+import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import styles from './NameSelector.module.scss';
 
 interface NameSelectorProps {
   /** allows to overwrite what to happen when a name is selected, by default it dispatches 'actions.setQuery' */
-  onSelectedName?: (name: string) => void;
+  onSelectedName?: (name: Query) => void;
 }
 function NameSelector({ onSelectedName }: NameSelectorProps) {
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
   const dispatch = useAppDispatch();
-  const { query } = useAppSelector(selectContinuousState);
+  const { query } = useAppSelector(selectQueries);
 
   const [filter, setFilter] = useState('');
 
   const selectAppName = (name: string) => {
-    const query = appNameToQuery(name);
-
+    const query = queryFromAppName(name);
     if (onSelectedName) {
       onSelectedName(query);
     } else {

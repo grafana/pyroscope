@@ -11,7 +11,6 @@ import { Profile } from '@pyroscope/models';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
-import Footer from '@webapp/components/Footer';
 import {
   fetchAdhocProfiles,
   fetchAdhocProfileDiff,
@@ -53,7 +52,7 @@ function AdhocDiff() {
   }, [dispatch, leftShared.profile, rightShared.profile]);
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <div
           className="comparison-container"
@@ -113,7 +112,6 @@ function AdhocDiff() {
           )}
         </Box>
       </div>
-      <Footer />
     </div>
   );
 }

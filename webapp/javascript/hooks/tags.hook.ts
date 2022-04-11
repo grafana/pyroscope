@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { selectAppTags, fetchTags } from '@webapp/redux/reducers/continuous';
+import { Query } from '@webapp/models/query';
 
 // useTags handle loading tags when query changes
 export default function useTags({
   leftQuery,
   rightQuery,
 }: {
-  leftQuery?: string;
-  rightQuery?: string;
+  leftQuery?: Query;
+  rightQuery?: Query;
 }) {
   const dispatch = useAppDispatch();
   const leftTags = useAppSelector(selectAppTags(leftQuery));

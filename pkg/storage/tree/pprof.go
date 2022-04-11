@@ -5,14 +5,37 @@ import (
 )
 
 type SampleTypeConfig struct {
-	Units       string `json:"units,omitempty"`
-	DisplayName string `json:"display-name,omitempty"`
-	Aggregation string `json:"aggregation,omitempty"`
-	Cumulative  bool   `json:"cumulative,omitempty"`
-	Sampled     bool   `json:"sampled,omitempty"`
+	Units       string `json:"units,omitempty" yaml:"units,omitempty"`
+	DisplayName string `json:"display-name,omitempty" yaml:"display-name,omitempty"`
+	Aggregation string `json:"aggregation,omitempty" yaml:"aggregation,omitempty"`
+	Cumulative  bool   `json:"cumulative,omitempty" yaml:"cumulative,omitempty"`
+	Sampled     bool   `json:"sampled,omitempty" yaml:"sampled,omitempty"`
 }
 
+// DefaultSampleTypeMapping contains default settings for every
+// supported pprof sample type. These settings are required to build
+// a proper storage.PutInput payload.
+//
+// TODO(kolesnikovae): We should find a way to eliminate collisions.
+//
+//  For example, both Go 'block' and 'mutex' profiles have
+//  'contentions' and 'delay' sample types - this means we can't
+//  override display name of the profile types and they would
+//  be indistinguishable for the server.
+//
+//  The keys should have the following structure:
+//  	{origin}.{profile_type}.{sample_type}
+//
+//  Example names (can be a reserved label, e.g __type__):
+//    * go.cpu.samples
+//    * go.block.delay
+//    * go.mutex.delay
+//    * nodejs.heap.objects
+//
+// Another problem is that in pull mode we don't have spy-name,
+// therefore we should solve this problem first.
 var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
+	// Sample types specific to Go.
 	"samples": {
 		DisplayName: "cpu",
 		Units:       "samples",
@@ -20,7 +43,7 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 	},
 	"inuse_objects": {
 		Units:       "objects",
-		Aggregation: "avg",
+		Aggregation: "average",
 	},
 	"alloc_objects": {
 		Units:      "objects",
@@ -28,12 +51,14 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 	},
 	"inuse_space": {
 		Units:       "bytes",
-		Aggregation: "avg",
+		Aggregation: "average",
 	},
 	"alloc_space": {
 		Units:      "bytes",
 		Cumulative: true,
 	},
+
+	// Sample types specific to pprof-nodejs.
 	"sample": {
 		DisplayName: "cpu",
 		Units:       "samples",
