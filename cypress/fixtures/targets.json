@@ -1,0 +1,25 @@
+[
+  {
+    "job": "testing",
+    "url": "http://nodejs:3000/debug/pprof/profile?seconds=10",
+    "discoveredLabels": {
+      "__address__": "nodejs:3000",
+      "__name__": "nodejs",
+      "__scheme__": "http",
+      "__scrape_interval__": "10s",
+      "__scrape_timeout__": "15s",
+      "env": "dev",
+      "job": "testing"
+    },
+    "labels": {
+      "__name__": "nodejs",
+      "env": "dev",
+      "instance": "nodejs:3000",
+      "job": "testing"
+    },
+    "health": "up",
+    "lastScrape": "2022-04-08T12:27:08.090385573Z",
+    "lastError": "",
+    "lastScrapeDuration": "65.224655ms"
+  }
+]
