@@ -106,6 +106,11 @@ export default function Tooltip(props: TooltipProps) {
         return;
       }
 
+      if (!('total' in data)) {
+        onMouseOut();
+        return;
+      }
+
       // set the content
       switch (data.format) {
         case 'single': {
