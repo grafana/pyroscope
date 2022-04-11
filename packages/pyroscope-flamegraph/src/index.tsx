@@ -1,7 +1,5 @@
-/* eslint-disable react/react-in-jsx-scope */
-/* eslint-disable react/jsx-props-no-spreading */
-
 import Flamegraph from './FlameGraph/FlameGraphComponent/Flamegraph';
 import { FlamegraphRenderer } from './FlamegraphRenderer';
+import { DefaultPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 
-export { FlamegraphRenderer, Flamegraph };
+export { Flamegraph, DefaultPalette, FlamegraphRenderer };
