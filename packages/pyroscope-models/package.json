@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "type-check": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'noop'",
     "watch": "yarn run build --watch --preserveWatchOutput"
   },
   "peerDependencies": {

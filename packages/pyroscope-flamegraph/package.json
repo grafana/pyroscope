@@ -18,6 +18,7 @@
     "build:types": "tsc -p tsconfig.json",
     "build:types:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ./ --cache --fix",
     "dev": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts --watch",
     "watch": "run-p build:types:watch dev"
   },
