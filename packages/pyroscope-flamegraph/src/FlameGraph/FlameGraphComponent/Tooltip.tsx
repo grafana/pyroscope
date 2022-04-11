@@ -109,9 +109,6 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (data.format) {
         case 'single': {
-          if (!data.total) {
-            break;
-          }
           const d = formatSingle(formatter, data.total, sampleRate, numTicks);
 
           setContent({
