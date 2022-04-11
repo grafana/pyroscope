@@ -135,13 +135,8 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 	if err != nil {
 		return nil, err
 	}
-	s.exemplars = &exemplars{
-		db:      pdb,
-		dicts:   s.dicts,
-		config:  s.config,
-		metrics: s.metrics,
-	}
 
+	s.initExemplarsStorage(pdb)
 	s.labels = labels.New(s.main.DB)
 
 	if err = s.migrate(); err != nil {
@@ -199,6 +194,19 @@ func (s *Storage) CacheStats() map[string]uint64 {
 		}
 	}
 	return m
+}
+
+func (s *Storage) withContext(fn func(context.Context)) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-s.stop:
+			cancel()
+		}
+	}()
+	fn(ctx)
 }
 
 // goDB runs f for all DBs concurrently.
@@ -275,7 +283,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		// s.dimensions.WriteBack()
 		// s.segments.WriteBack()
 		// GC does not really release OS memory, so relying on MemStats.Alloc
-		// causes cache to evict vast majority of items. debug.FreeOSMemory()
+		// causes cache to evict the vast majority of items. debug.FreeOSMemory()
 		// could be used instead, but this can be even more expensive.
 		runtime.GC()
 	}
@@ -301,22 +309,12 @@ func (s *Storage) updateMetricsTask() {
 }
 
 func (s *Storage) retentionTask() {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe))
-	defer timer.ObserveDuration()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-s.stop:
-			cancel()
+	s.withContext(func(ctx context.Context) {
+		rp := s.retentionPolicy()
+		if !rp.LowerTimeBoundary().IsZero() {
+			s.enforceRetentionPolicy(ctx, rp)
 		}
-	}()
-
-	if err := s.EnforceRetentionPolicy(ctx); err != nil {
-		s.logger.WithError(err).Error("retention task failed")
-	}
+	})
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {

@@ -3,10 +3,10 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -14,37 +14,23 @@ import (
 
 const defaultBatchSize = 1 << 10 // 1K items
 
-func (s *Storage) EnforceRetentionPolicy(ctx context.Context) error {
-	err := s.enforceRetentionPolicy(ctx, s.retentionPolicy())
+func (s *Storage) enforceRetentionPolicy(ctx context.Context, rp *segment.RetentionPolicy) {
+	observer := prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe)
+	timer := prometheus.NewTimer(observer)
+	defer timer.ObserveDuration()
+
+	s.logger.Debug("enforcing retention policy")
+	err := s.iterateOverAllSegments(func(k *segment.Key) error {
+		return s.deleteSegmentData(ctx, k, rp)
+	})
+
 	switch {
 	case err == nil:
 	case errors.Is(ctx.Err(), context.Canceled):
 		s.logger.Warn("enforcing retention policy canceled")
 	default:
-		return err
+		s.logger.WithError(err).Error("failed to enforce retention policy")
 	}
-	return nil
-}
-
-func (s *Storage) enforceRetentionPolicy(ctx context.Context, rp *segment.RetentionPolicy) error {
-	if !rp.AbsoluteTime.IsZero() {
-		s.logger.Info("enforcing retention policy")
-		err := s.iterateOverAllSegments(func(k *segment.Key) error {
-			return s.deleteSegmentData(ctx, k, rp)
-		})
-		if err != nil {
-			return fmt.Errorf("failed to enforce retention policy: %w", err)
-		}
-	}
-
-	if !rp.ExemplarsRetentionTime.IsZero() {
-		s.logger.Info("enforcing exemplars retention policy")
-		if err := s.exemplars.truncateBefore(ctx, rp.ExemplarsRetentionTime); err != nil {
-			return fmt.Errorf("failed to enforce exemplars retention policy: %w", err)
-		}
-	}
-
-	return nil
 }
 
 func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *segment.RetentionPolicy) error {

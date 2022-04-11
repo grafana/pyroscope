@@ -5,15 +5,16 @@ package storage
 
 import (
 	"context"
+	"math/big"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -42,14 +43,14 @@ var _ = Describe("MergeProfiles", func() {
 					StartTime: st,
 					EndTime:   et,
 					Key:       k1,
-					Val:       tree,
+					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
 				Expect(s.Put(context.TODO(), &PutInput{
 					StartTime: st,
 					EndTime:   et,
 					Key:       k1,
-					Val:       tree,
+					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
 				k2, _ := segment.ParseKey("app.cpu{profile_id=b}")
@@ -57,9 +58,10 @@ var _ = Describe("MergeProfiles", func() {
 					StartTime: st,
 					EndTime:   et,
 					Key:       k2,
-					Val:       tree,
+					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
+				s.exemplars.flushBatchQueue()
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
 					AppName:  "app.cpu",
 					Profiles: []string{"a"},
@@ -67,6 +69,14 @@ var _ = Describe("MergeProfiles", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(6)))
+
+				o, err = s.MergeProfiles(context.Background(), MergeProfilesInput{
+					AppName:  "app.cpu",
+					Profiles: []string{"b"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o.Tree).ToNot(BeNil())
+				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
 
 				o, err = s.MergeProfiles(context.Background(), MergeProfilesInput{
 					AppName:  "app.cpu",
@@ -115,8 +125,9 @@ var _ = Describe("Profiles retention policy", func() {
 					Val:       tree,
 				})).ToNot(HaveOccurred())
 
+				s.exemplars.flushBatchQueue()
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
-				Expect(s.enforceRetentionPolicy(context.Background(), rp)).ToNot(HaveOccurred())
+				s.exemplars.enforceRetentionPolicy(context.Background(), rp)
 
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
 					AppName:  "app.cpu",
