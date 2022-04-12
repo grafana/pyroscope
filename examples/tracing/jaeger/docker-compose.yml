@@ -11,14 +11,17 @@ services:
   pyroscope:
     image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope-dev:main}'
     environment:
+      - PYROSCOPE_CONFIG=/pyroscope.yaml
       - PYROSCOPE_LOG_LEVEL=debug
     ports:
       - '4040:4040'
+    volumes:
+      - ./pyroscope.yaml:/pyroscope.yaml
     command:
       - 'server'
 
   grafana:
-    image: grafana/grafana:8.1.1
+    image: pyroscope/grafana:dev
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini

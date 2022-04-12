@@ -10,7 +10,6 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
-import Footer from '@webapp/components/Footer';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 
@@ -89,7 +88,7 @@ function ContinuousSingleView() {
   };
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <Toolbar />
         <TimelineChartWrapper
@@ -100,7 +99,6 @@ function ContinuousSingleView() {
         />
         <Box>{flamegraphRenderer}</Box>
       </div>
-      <Footer />
     </div>
   );
 }

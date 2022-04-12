@@ -4,7 +4,7 @@ import ReactNotification, {
   ReactNotificationOptions,
   DismissOptions,
 } from 'react-notifications-component';
-import 'react-notifications-component/dist/theme.css';
+import 'react-notifications-component/dist/scss/notification.scss';
 
 export default function Notifications() {
   return <ReactNotification />;
@@ -36,17 +36,16 @@ function Message({
 }) {
   return (
     <div>
-      {message}
-      <br />
-      <br />
-      <small>
-        {additionalInfo && 'Additional info:'}
+      {message && <p>{message}</p>}
+      {additionalInfo && <h4>Additional Info:</h4>}
 
-        {additionalInfo &&
-          additionalInfo.map((a) => {
-            return <div>{a}</div>;
+      {additionalInfo && (
+        <ul>
+          {additionalInfo.map((a) => {
+            return <li>{a}</li>;
           })}
-      </small>
+        </ul>
+      )}
     </div>
   );
 }

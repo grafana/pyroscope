@@ -1,3 +1,25 @@
+# [0.14.0](https://github.com/pyroscope-io/pyroscope/compare/v0.13.0...v0.14.0) (2022-04-08)
+
+
+### Bug Fixes
+
+* flaky pprof test ([#990](https://github.com/pyroscope-io/pyroscope/issues/990)) ([044ee75](https://github.com/pyroscope-io/pyroscope/commit/044ee751479145e5d3dca2531df365f13733ac5c))
+* **flamegraph:** clicking on anywhere on a row selects that row ([#969](https://github.com/pyroscope-io/pyroscope/issues/969)) ([ee84788](https://github.com/pyroscope-io/pyroscope/commit/ee8478812743e1381818e769706df83506ed6f53))
+* **flamegraph:** only show diff options when in diff mode ([#972](https://github.com/pyroscope-io/pyroscope/issues/972)) ([625d4de](https://github.com/pyroscope-io/pyroscope/commit/625d4de340bc576f72b42f9db26605d02bc86c51))
+* **pprof:** calculate sample rate based on the profile units ([#992](https://github.com/pyroscope-io/pyroscope/issues/992)) ([c458556](https://github.com/pyroscope-io/pyroscope/commit/c45855676a4f5d1f98ce1e0d1217755b0417f9c9))
+* **pull-mode:** aggregation is always sum ([#1001](https://github.com/pyroscope-io/pyroscope/issues/1001)) ([b11d044](https://github.com/pyroscope-io/pyroscope/commit/b11d04447b072d82e7a12684c96650b67407fa99))
+* **server:** always returns timeline even if there's not data ([#1012](https://github.com/pyroscope-io/pyroscope/issues/1012)) ([0ecfe03](https://github.com/pyroscope-io/pyroscope/commit/0ecfe0352a8338e9e7d841879cbf7742e6329ed1))
+
+
+### Features
+
+* **ingestion:** add support for memory allocation events in JFR. ([#961](https://github.com/pyroscope-io/pyroscope/issues/961)) ([312cd8c](https://github.com/pyroscope-io/pyroscope/commit/312cd8ca62cbaeefbaba7845439c8e63b6ecc7ca))
+* **jfr:** Split wall events into both CPU and Wall profile types. ([#1002](https://github.com/pyroscope-io/pyroscope/issues/1002)) ([06dabcf](https://github.com/pyroscope-io/pyroscope/commit/06dabcfa51718e0d7bbda0dc62472652f2f6aed9))
+* separate retention policy for exemplars ([#971](https://github.com/pyroscope-io/pyroscope/issues/971)) ([06d14cf](https://github.com/pyroscope-io/pyroscope/commit/06d14cf7d3a073fe454ed0e7c3e5c55bc2ca4e9d))
+* **webapp:** diff arbitrary apps ([#967](https://github.com/pyroscope-io/pyroscope/issues/967)) ([f7e66f1](https://github.com/pyroscope-io/pyroscope/commit/f7e66f1082bb5e1ae2851b0f37f56f46ed43e5e1))
+
+
+
 # [0.13.0](https://github.com/pyroscope-io/pyroscope/compare/v0.12.0...v0.13.0) (2022-03-22)
 
 

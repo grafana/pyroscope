@@ -43,7 +43,7 @@ function signOut() {
   });
 }
 
-export function Sidebar2() {
+export function SidebarComponent() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const currentUser = useAppSelector(selectCurrentUser);
   const dispatch = useAppDispatch();
@@ -198,7 +198,7 @@ export function Sidebar2() {
             </MenuItem>
           )}
           <MenuItem icon={<Icon icon={faInfoCircle} />}>
-            Status
+            Scrape Targets
             <NavLink to={{ pathname: '/service-discovery', search }} exact />
           </MenuItem>
           <MenuItem icon={<Icon icon={faFileAlt} />}>
@@ -251,4 +251,4 @@ export function Sidebar2() {
   );
 }
 
-export default withCurrentUser(Sidebar2);
+export default withCurrentUser(SidebarComponent);
