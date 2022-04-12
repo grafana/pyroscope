@@ -254,9 +254,6 @@
     "node": ">=14.17.0"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --cache --fix"
-    ],
     "*.{js,jsx,ts,tsx,json,yml,yaml,eslintrc,prettierrc,css,scss}": "prettier --write"
   },
   "resolutions": {
