@@ -5,7 +5,7 @@ import path from 'path';
 export function getStyleLoaders() {
   return [
     {
-      test: /\.s?css$/,
+      test: /\.(css|scss)$/,
       use: [
         MiniCssExtractPlugin.loader,
         {
