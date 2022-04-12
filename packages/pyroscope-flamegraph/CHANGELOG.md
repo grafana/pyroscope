@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.2.6...@pyroscope/flamegraph@0.2.7) (2022-04-12)
+
+
+### Bug Fixes
+
+* **flamegraph:** inject its styles via css only ([#1023](https://github.com/pyroscope-io/pyroscope/issues/1023)) ([c20a137](https://github.com/pyroscope-io/pyroscope/commit/c20a137a56141f944967c8e229c16c773ec4a607))
+
+
+
+
+
 ## [0.2.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.2.5...@pyroscope/flamegraph@0.2.6) (2022-04-11)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

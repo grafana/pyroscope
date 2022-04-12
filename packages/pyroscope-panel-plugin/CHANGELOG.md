@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.16](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.2.15...@pyroscope/panel-plugin@1.2.16) (2022-04-12)
+
+
+### Bug Fixes
+
+* **flamegraph:** inject its styles via css only ([#1023](https://github.com/pyroscope-io/pyroscope/issues/1023)) ([c20a137](https://github.com/pyroscope-io/pyroscope/commit/c20a137a56141f944967c8e229c16c773ec4a607))
+
+
+
+
+
 ## [1.2.15](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.2.14...@pyroscope/panel-plugin@1.2.15) (2022-04-11)
 
 **Note:** Version bump only for package @pyroscope/panel-plugin
