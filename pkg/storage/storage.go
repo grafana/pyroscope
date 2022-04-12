@@ -101,9 +101,12 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
 			gcSizeDiff: bytesize.GB,
+			// TODO(kolesnikovae): Implement dynamic throttling.
 			// in-memory queue params.
-			queueLen:     100,
-			queueWorkers: runtime.NumCPU(),
+			queueLen: 10 << 10, // 10K
+			// Setting multiple workers does not make sense
+			// because of the storage.Put mutex.
+			queueWorkers: 1, // runtime.NumCPU(),
 		},
 
 		hc:      hc,

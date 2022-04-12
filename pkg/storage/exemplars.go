@@ -23,11 +23,9 @@ import (
 const (
 	exemplarDataPrefix      prefix = "v:"
 	exemplarTimestampPrefix prefix = "t:"
-
-	exemplarsFormatV1 byte = 1
+	exemplarsFormatV1       byte   = 1
 
 	exemplarBatches       = 5
-	exemplarsBatchSize    = 10 << 20 // 10MB
 	exemplarsPerBatch     = 10 << 10 // 10K
 	exemplarBatchDuration = time.Second * 5
 )
