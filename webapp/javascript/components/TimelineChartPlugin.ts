@@ -176,12 +176,6 @@ import { format } from 'date-fns';
     };
 
     function bindEvents(plot, eventHolder) {
-      const opts = plot.getOptions();
-      // if selection disabled we don't bind any events for the canvas and don't show the tooltip
-      if (opts.selection.disabled) {
-        return;
-      }
-
       plot.getPlaceholder().bind('plothover', onPlotHover);
       plot.getPlaceholder().bind('plotselected', onSelected);
 

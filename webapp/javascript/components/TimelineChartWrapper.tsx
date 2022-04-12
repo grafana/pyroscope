@@ -229,7 +229,9 @@ class TimelineChartWrapper extends React.Component<
 
     return (
       <TimelineChart
-        onSelect={this.props.onSelect}
+        onSelect={(from: string, until: string) =>
+          !selectionDisabled ? this.props.onSelect(from, until) : null
+        }
         className={clsx(styles.wrapper, {
           [styles.selection_disabled]: selectionDisabled,
         })}
