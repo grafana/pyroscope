@@ -54,7 +54,7 @@ const generateTable = (flamebearer) => {
       const key = ff.getBarName(level, j);
       const name = names[key];
       hash[name] = hash[name] || { name: name || '<empty>' };
-      generateCell(ff, hash[name], level, j, fns[name]);
+      generateCell(ff, hash[name], level, j, !fns[name]);
       fns[name] = true;
     }
   }
