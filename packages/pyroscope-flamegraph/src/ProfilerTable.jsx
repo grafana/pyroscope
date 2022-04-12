@@ -14,24 +14,23 @@ import { fitIntoTableCell } from './fitMode/fitMode';
 import styles from './ProfilerTable.module.scss';
 
 const zero = (v) => v || 0;
-
-function generateCellSingle(ff, cell, level, j) {
+function generateCellSingle(ff, cell, level, j, addTotal) {
   const c = cell;
   c.self = zero(c.self) + ff.getBarSelf(level, j);
-  c.total = zero(c.total) + ff.getBarTotal(level, j);
+  c.total = zero(c.total) + addTotal ? ff.getBarTotal(level, j) : 0;
   return c;
 }
 
-function generateCellDouble(ff, cell, level, j) {
+function generateCellDouble(ff, cell, level, j, addTotal) {
   const c = cell;
   c.self = zero(c.self) + ff.getBarSelf(level, j);
   c.total = zero(c.total) + ff.getBarTotal(level, j);
   c.selfLeft = zero(c.selfLeft) + ff.getBarSelfLeft(level, j);
   c.selfRght = zero(c.selfRght) + ff.getBarSelfRght(level, j);
   c.selfDiff = zero(c.selfDiff) + ff.getBarSelfDiff(level, j);
-  c.totalLeft = zero(c.totalLeft) + ff.getBarTotalLeft(level, j);
-  c.totalRght = zero(c.totalRght) + ff.getBarTotalRght(level, j);
-  c.totalDiff = zero(c.totalDiff) + ff.getBarTotalDiff(level, j);
+  c.totalLeft = zero(c.totalLeft) + addTotal ? ff.getBarTotalLeft(level, j) : 0;
+  c.totalRght = zero(c.totalRght) + addTotal ? ff.getBarTotalRght(level, j) : 0;
+  c.totalDiff = zero(c.totalDiff) + addTotal ? ff.getBarTotalDiff(level, j) : 0;
   return c;
 }
 
@@ -50,11 +49,13 @@ const generateTable = (flamebearer) => {
   // eslint-disable-next-line no-plusplus
   for (let i = 0; i < levels.length; i++) {
     const level = levels[i];
+    const fns = {};
     for (let j = 0; j < level.length; j += ff.jStep) {
       const key = ff.getBarName(level, j);
       const name = names[key];
       hash[name] = hash[name] || { name: name || '<empty>' };
-      generateCell(ff, hash[name], level, j);
+      generateCell(ff, hash[name], level, j, fns[name]);
+      fns[name] = true;
     }
   }
   return Object.values(hash);
