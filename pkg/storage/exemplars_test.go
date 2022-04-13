@@ -61,7 +61,7 @@ var _ = Describe("MergeProfiles", func() {
 					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
-				s.exemplars.flushBatchQueue()
+				flushExemplars(s.exemplars)
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
 					AppName:  "app.cpu",
 					Profiles: []string{"a"},
@@ -125,7 +125,7 @@ var _ = Describe("Profiles retention policy", func() {
 					Val:       tree,
 				})).ToNot(HaveOccurred())
 
-				s.exemplars.flushBatchQueue()
+				flushExemplars(s.exemplars)
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				s.exemplars.enforceRetentionPolicy(context.Background(), rp)
 
@@ -147,3 +147,23 @@ var _ = Describe("Profiles retention policy", func() {
 		})
 	})
 })
+
+func flushExemplars(e *exemplars) {
+	e.flush(e.currentBatch)
+	n := len(e.batches)
+	var i int
+	for {
+		if i == n {
+			return
+		}
+		select {
+		default:
+			return
+		case b, ok := <-e.batches:
+			if ok {
+				e.flush(b)
+				i++
+			}
+		}
+	}
+}
