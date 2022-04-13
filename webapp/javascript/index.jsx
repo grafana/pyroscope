@@ -2,7 +2,7 @@ import ReactDOM from 'react-dom';
 import React, { useEffect } from 'react';
 
 import { Provider, useDispatch } from 'react-redux';
-import { Router, Switch, Route } from 'react-router-dom';
+import { Router, Switch, Route, useLocation } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
@@ -28,7 +28,7 @@ import '@pyroscope/flamegraph/dist/index.css';
 import SignInPage from './pages/IntroPages/SignIn';
 import SignUpPage from './pages/IntroPages/SignUp';
 import NotFound from './pages/IntroPages/NotFound';
-
+import { PAGES } from './pages/constants';
 import history from './util/history';
 
 let showFps = false;
@@ -46,41 +46,41 @@ function App() {
       <Sidebar />
       <div className="pyroscope-app">
         <Switch>
-          <Route exact path="/login">
+          <Route exact path={PAGES.LOGIN}>
             <SignInPage />
           </Route>
-          <Route exact path="/signup">
+          <Route exact path={PAGES.SIGNUP}>
             <SignUpPage />
           </Route>
-          <Route exact path="/">
+          <Route exact path={PAGES.CONTINOUS_SINGLE_VIEW}>
             <Continuous>
               <ContinuousSingleView />
             </Continuous>
           </Route>
-          <Route path="/comparison">
+          <Route path={PAGES.COMPARISON_VIEW}>
             <Continuous>
               <ContinuousComparisonView />
             </Continuous>
           </Route>
-          <Route path="/comparison-diff">
+          <Route path={PAGES.COMPARISON_DIFF_VIEW}>
             <Continuous>
               <ContinuousDiffView />
             </Continuous>
           </Route>
-          <Route path="/settings">
+          <Route path={PAGES.SETTINGS}>
             <Settings />
           </Route>
-          <Route path="/service-discovery">
+          <Route path={PAGES.SERVICE_DISCOVERY}>
             <ServiceDiscoveryApp />
           </Route>
           {isAdhocUIEnabled && [
-            <Route path="/adhoc-single">
+            <Route path={PAGES.ADHOC_SINGLE}>
               <AdhocSingle />
             </Route>,
-            <Route path="/adhoc-comparison">
+            <Route path={PAGES.ADHOC_COMPARISON}>
               <AdhocComparison />
             </Route>,
-            <Route path="/adhoc-comparison-diff">
+            <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
               <AdhocDiff />
             </Route>,
           ]}

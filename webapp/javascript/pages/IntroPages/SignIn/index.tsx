@@ -105,38 +105,30 @@ function SignInPage() {
         </button>
         <Divider />
         <div className={cx(buttonStyles.buttonContainer)}>
-          {isGitlabEnabled ||
-            isGithubEnabled ||
-            (isGoogleEnabled && (
-              <>
-                {isGoogleEnabled && (
-                  <a
-                    href="./auth/google/login"
-                    className={cx(styles.button, buttonStyles.buttonGoogle)}
-                  >
-                    <GoogleIcon /> Sign in with Google
-                  </a>
-                )}
-
-                {isGithubEnabled && (
-                  <a
-                    href="./auth/github/login"
-                    className={cx(styles.button, buttonStyles.buttonGithub)}
-                  >
-                    <Icon icon={faGithub} /> Sign in with GitHub
-                  </a>
-                )}
-
-                {isGitlabEnabled && (
-                  <a
-                    href="./auth/gitlab/login"
-                    className={cx(styles.button, buttonStyles.buttonGitlab)}
-                  >
-                    <GitlabIcon /> Sign in with GitLab
-                  </a>
-                )}
-              </>
-            ))}
+          {isGoogleEnabled && (
+            <a
+              href="./auth/google/login"
+              className={cx(styles.button, buttonStyles.buttonGoogle)}
+            >
+              <GoogleIcon /> Sign in with Google
+            </a>
+          )}
+          {isGithubEnabled && (
+            <a
+              href="./auth/github/login"
+              className={cx(styles.button, buttonStyles.buttonGithub)}
+            >
+              <Icon icon={faGithub} /> Sign in with GitHub
+            </a>
+          )}
+          {isGitlabEnabled && (
+            <a
+              href="./auth/gitlab/login"
+              className={cx(styles.button, buttonStyles.buttonGitlab)}
+            >
+              <GitlabIcon /> Sign in with GitLab
+            </a>
+          )}
 
           <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
             Sign up

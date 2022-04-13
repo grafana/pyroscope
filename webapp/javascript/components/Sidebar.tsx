@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -35,11 +35,12 @@ import {
   selectCurrentUser,
 } from '@webapp/redux/reducers/user';
 import styles from './Sidebar.module.css';
+import { PAGES } from '../pages/constants';
 
 function signOut() {
   // By visiting /logout we're clearing jwtCookie
   fetch('/logout').then((d) => {
-    (window as Window).location = '/login';
+    (window as Window).location = PAGES.LOGIN;
   });
 }
 
@@ -56,18 +57,35 @@ export function SidebarComponent() {
   // the component doesn't seem to support setting up an active item
   // so we must set it up manually
   // https://github.com/azouaoui-med/react-pro-sidebar/issues/84
-  const isRouteActive = function (route: string) {
-    console.log(route);
+  const isRouteActive = (route: string) => {
     if (
-      route === '/' ||
-      route === '/comparison' ||
-      route === '/adhoc-comparison'
+      route === PAGES.CONTINOUS_SINGLE_VIEW ||
+      route === PAGES.COMPARISON_VIEW ||
+      route === PAGES.ADHOC_COMPARISON
     ) {
       return pathname === route;
     }
 
     return pathname.startsWith(route);
   };
+
+  const isSidebarVisible = useMemo(
+    () =>
+      (
+        [
+          PAGES.CONTINOUS_SINGLE_VIEW,
+          PAGES.COMPARISON_VIEW,
+          PAGES.ADHOC_COMPARISON,
+          PAGES.COMPARISON_DIFF_VIEW,
+          PAGES.SETTINGS,
+          PAGES.SERVICE_DISCOVERY,
+          PAGES.ADHOC_SINGLE,
+          PAGES.ADHOC_COMPARISON,
+          PAGES.ADHOC_COMPARISON_DIFF,
+        ] as string[]
+      ).includes(pathname),
+    [pathname]
+  );
 
   React.useLayoutEffect(() => {
     dispatch(recalculateSidebar());
@@ -76,14 +94,14 @@ export function SidebarComponent() {
   // TODO
   // simplify this
   const isContinuousActive =
-    isRouteActive('/') ||
-    isRouteActive('/comparison') ||
-    isRouteActive('/comparison-diff');
+    isRouteActive(PAGES.CONTINOUS_SINGLE_VIEW) ||
+    isRouteActive(PAGES.COMPARISON_VIEW) ||
+    isRouteActive(PAGES.COMPARISON_DIFF_VIEW);
   const isAdhocActive =
-    isRouteActive('/adhoc-single') ||
-    isRouteActive('/adhoc-comparison') ||
-    isRouteActive('/adhoc-comparison-diff');
-  const isSettingsActive = isRouteActive('/settings');
+    isRouteActive(PAGES.ADHOC_SINGLE) ||
+    isRouteActive(PAGES.ADHOC_COMPARISON) ||
+    isRouteActive(PAGES.ADHOC_COMPARISON_DIFF);
+  const isSettingsActive = isRouteActive(PAGES.SETTINGS);
 
   const adhoc = (
     <SubMenu
@@ -100,27 +118,27 @@ export function SidebarComponent() {
       )}
       <MenuItem
         data-testid="sidebar-adhoc-single"
-        active={isRouteActive('/adhoc-single')}
+        active={isRouteActive(PAGES.ADHOC_SINGLE)}
         icon={<Icon icon={faWindowMaximize} />}
       >
         Single View
-        <NavLink to={{ pathname: '/adhoc-single', search }} exact />
+        <NavLink to={{ pathname: PAGES.ADHOC_SINGLE, search }} exact />
       </MenuItem>
       <MenuItem
         data-testid="sidebar-adhoc-comparison"
-        active={isRouteActive('/adhoc-comparison')}
+        active={isRouteActive(PAGES.ADHOC_COMPARISON)}
         icon={<Icon icon={faColumns} />}
       >
         Comparison View
-        <NavLink to={{ pathname: '/adhoc-comparison', search }} exact />
+        <NavLink to={{ pathname: PAGES.ADHOC_COMPARISON, search }} exact />
       </MenuItem>
       <MenuItem
         data-testid="sidebar-adhoc-comparison-diff"
-        active={isRouteActive('/adhoc-comparison-diff')}
+        active={isRouteActive(PAGES.ADHOC_COMPARISON_DIFF)}
         icon={<Icon icon={faChartBar} />}
       >
         Diff View
-        <NavLink to={{ pathname: '/adhoc-comparison-diff', search }} exact />
+        <NavLink to={{ pathname: PAGES.ADHOC_COMPARISON_DIFF, search }} exact />
       </MenuItem>
     </SubMenu>
   );
@@ -130,7 +148,7 @@ export function SidebarComponent() {
     dispatch(action());
   };
 
-  return (
+  return isSidebarVisible ? (
     <Sidebar collapsed={collapsed}>
       <SidebarHeader>
         <div className={styles.logo}>
@@ -156,32 +174,35 @@ export function SidebarComponent() {
             )}
             <MenuItem
               data-testid="sidebar-continuous-single"
-              active={isRouteActive('/')}
+              active={isRouteActive(PAGES.CONTINOUS_SINGLE_VIEW)}
               icon={<Icon icon={faWindowMaximize} />}
             >
               Single View
               <NavLink
                 activeClassName="active-route"
                 data-testid="sidebar-root"
-                to={{ pathname: '/', search }}
+                to={{ pathname: PAGES.CONTINOUS_SINGLE_VIEW, search }}
                 exact
               />
             </MenuItem>
             <MenuItem
               data-testid="sidebar-continuous-comparison"
-              active={isRouteActive('/comparison')}
+              active={isRouteActive(PAGES.COMPARISON_VIEW)}
               icon={<Icon icon={faColumns} />}
             >
               Comparison View
-              <NavLink to={{ pathname: '/comparison', search }} exact />
+              <NavLink to={{ pathname: PAGES.COMPARISON_VIEW, search }} exact />
             </MenuItem>
             <MenuItem
               data-testid="sidebar-continuous-diff"
-              active={isRouteActive('/comparison-diff')}
+              active={isRouteActive(PAGES.COMPARISON_DIFF_VIEW)}
               icon={<Icon icon={faChartBar} />}
             >
               Diff View
-              <NavLink to={{ pathname: '/comparison-diff', search }} exact />
+              <NavLink
+                to={{ pathname: PAGES.COMPARISON_DIFF_VIEW, search }}
+                exact
+              />
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
@@ -196,12 +217,12 @@ export function SidebarComponent() {
               icon={<Icon icon={faCog} />}
             >
               Settings
-              <NavLink to={{ pathname: '/settings', search }} exact />
+              <NavLink to={{ pathname: PAGES.SETTINGS, search }} exact />
             </MenuItem>
           )}
           <MenuItem icon={<Icon icon={faInfoCircle} />}>
             Status
-            <NavLink to={{ pathname: '/service-discovery', search }} exact />
+            <NavLink to={{ pathname: PAGES.SERVICE_DISCOVERY, search }} exact />
           </MenuItem>
           <MenuItem icon={<Icon icon={faFileAlt} />}>
             <a
@@ -250,7 +271,7 @@ export function SidebarComponent() {
         </Menu>
       </SidebarFooter>
     </Sidebar>
-  );
+  ) : null;
 }
 
 export default SidebarComponent;
