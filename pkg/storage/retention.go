@@ -76,7 +76,6 @@ func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *seg
 	}
 
 	var removed int
-	batchSize := defaultBatchSize
 	batch := s.trees.NewWriteBatch()
 	defer func() {
 		batch.Cancel()
@@ -94,7 +93,7 @@ func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *seg
 		}
 		// It is not possible to make size estimation without reading
 		// the item. Therefore, the call does not report reclaimed space.
-		if removed++; removed%batchSize == 0 {
+		if removed++; removed%defaultBatchSize == 0 {
 			if err = batch.Flush(); err != nil {
 				return err
 			}
@@ -110,7 +109,7 @@ func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *seg
 	// Flush remaining items, if any: it's important to make sure
 	// all trees were removed before deleting segment nodes - see
 	// note on a potential inconsistency above.
-	if removed%batchSize != 0 {
+	if removed%defaultBatchSize != 0 {
 		if err = batch.Flush(); err != nil {
 			return err
 		}

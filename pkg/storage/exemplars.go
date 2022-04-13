@@ -68,7 +68,7 @@ func (e *exemplars) newExemplarsBatch() *exemplarsBatch {
 		metrics: e.metrics,
 		config:  e.config,
 		dicts:   e.dicts,
-		entries: make(map[string]*exemplarsBatchEntry),
+		entries: make(map[string]*exemplarsBatchEntry, exemplarsPerBatch),
 	}
 }
 
@@ -120,12 +120,7 @@ func (s *Storage) initExemplarsStorage(db *db) {
 				}
 
 			case <-retentionTicker.C:
-				rp := s.retentionPolicy()
-				if !rp.ExemplarsRetentionTime.IsZero() {
-					s.withContext(func(ctx context.Context) {
-						e.enforceRetentionPolicy(ctx, rp)
-					})
-				}
+				s.exemplarsRetentionTask()
 			}
 		}
 	}()
@@ -179,10 +174,24 @@ func exemplarKeyToTimestampKey(k []byte, t int64) ([]byte, bool) {
 
 func (e *exemplars) flushCurrentBatch() {
 	e.mu.Lock()
+	entries := len(e.currentBatch.entries)
+	if entries == 0 {
+		e.mu.Unlock()
+		return
+	}
+	// To ensure writes to the current batch will be rejected,
+	// we also mark is as 'done': any insert calls that may
+	// occur after unlocking the mutex will end up with error
+	// causing caller to retry.
 	b := e.currentBatch
+	b.done = true
 	e.currentBatch = e.newExemplarsBatch()
 	e.mu.Unlock()
-	e.batches <- b
+	select {
+	case e.batches <- b:
+	default:
+		e.metrics.discardedTotal.Add(float64(entries))
+	}
 }
 
 func (e *exemplars) flushBatchQueue() {
@@ -278,11 +287,17 @@ func (e *exemplars) valueReader(d *dict.Dict, fn func(*tree.Tree) error) func(va
 
 func (e *exemplars) truncateBefore(ctx context.Context, before time.Time) (err error) {
 	for more := true; more; {
-		if err = ctx.Err(); err != nil {
-			return err
-		}
-		if more, err = e.truncateN(before, defaultBatchSize); err != nil {
-			return err
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case batch, ok := <-e.batches:
+			if ok {
+				e.flush(batch)
+			}
+		default:
+			if more, err = e.truncateN(before, defaultBatchSize); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

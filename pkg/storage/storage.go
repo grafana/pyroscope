@@ -103,7 +103,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			gcSizeDiff: bytesize.GB,
 			// TODO(kolesnikovae): Implement dynamic throttling.
 			// in-memory queue params.
-			queueLen: 10 << 10, // 10K
+			queueLen: 100,
 			// Setting multiple workers does not make sense
 			// because of the storage.Put mutex.
 			queueWorkers: 1, // runtime.NumCPU(),
@@ -312,12 +312,21 @@ func (s *Storage) updateMetricsTask() {
 }
 
 func (s *Storage) retentionTask() {
-	s.withContext(func(ctx context.Context) {
-		rp := s.retentionPolicy()
-		if !rp.LowerTimeBoundary().IsZero() {
+	rp := s.retentionPolicy()
+	if !rp.LowerTimeBoundary().IsZero() {
+		s.withContext(func(ctx context.Context) {
 			s.enforceRetentionPolicy(ctx, rp)
-		}
-	})
+		})
+	}
+}
+
+func (s *Storage) exemplarsRetentionTask() {
+	rp := s.retentionPolicy()
+	if !rp.ExemplarsRetentionTime.IsZero() {
+		s.withContext(func(ctx context.Context) {
+			s.exemplars.enforceRetentionPolicy(ctx, rp)
+		})
+	}
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {

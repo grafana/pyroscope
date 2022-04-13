@@ -36,6 +36,10 @@ func (s *Storage) Put(_ context.Context, pi *PutInput) error {
 	}
 
 	s.putTotal.Inc()
+	if id, ok := pi.Key.ProfileID(); ok {
+		return s.exemplars.insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
+	}
+
 	s.logger.WithFields(logrus.Fields{
 		"startTime":       pi.StartTime.String(),
 		"endTime":         pi.EndTime.String(),
@@ -44,10 +48,6 @@ func (s *Storage) Put(_ context.Context, pi *PutInput) error {
 		"units":           pi.Units,
 		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
-
-	if id, ok := pi.Key.ProfileID(); ok {
-		return s.exemplars.insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
-	}
 
 	for k, v := range pi.Key.Labels() {
 		s.labels.Put(k, v)
