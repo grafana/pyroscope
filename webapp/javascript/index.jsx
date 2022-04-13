@@ -20,7 +20,7 @@ import Sidebar from './components/Sidebar';
 import AdhocSingle from './pages/AdhocSingle';
 import AdhocComparison from './pages/AdhocComparison';
 import AdhocDiff from './pages/AdhocDiff';
-import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
+import ServiceDiscoveryApp from './pages/ServiceDiscovery';
 import ServerNotifications from './components/ServerNotifications';
 // since this style is practically all pages
 import '@pyroscope/flamegraph/dist/index.css';

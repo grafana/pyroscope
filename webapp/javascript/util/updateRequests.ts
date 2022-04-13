@@ -47,7 +47,7 @@ export function buildDiffRenderURL(state: {
   maxNodes: string;
   query: string;
 }) {
-  let { from, until, leftFrom, leftUntil, rightFrom, rightUntil } = state;
+  const { from, until, leftFrom, leftUntil, rightFrom, rightUntil } = state;
   const urlStr = buildRenderURL(state, from, until);
   const url = new URL(urlStr, location.href);
 

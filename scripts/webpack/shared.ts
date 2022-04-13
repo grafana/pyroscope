@@ -5,12 +5,7 @@ import path from 'path';
 export function getStyleLoaders() {
   return [
     {
-      test: /\.css$/,
-      // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
-      use: ['style-loader', 'css-loader'],
-    },
-    {
-      test: /\.scss$/,
+      test: /\.(css|scss)$/,
       use: [
         MiniCssExtractPlugin.loader,
         {
