@@ -1,5 +1,5 @@
 import { Profile } from '@pyroscope/models';
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@webapp/models/appNames';
 import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import { fetchAppNames } from '@webapp/services/appNames';
@@ -13,6 +13,7 @@ import { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
+import { createAsyncThunk } from '../async-thunk';
 
 type SingleView =
   | { type: 'pristine'; profile?: Profile }

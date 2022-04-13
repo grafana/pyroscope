@@ -42,18 +42,7 @@ const reducer = combineReducers({
 export const logErrorMiddleware: Middleware = () => (next) => (action) => {
   next(action);
   if (action?.error) {
-    // since redux-toolkit serializes errors
-    // we should deserialize them back
-    // https://github.com/reduxjs/redux-toolkit/blob/db0d7dc20939b62f8c59631cc030575b78642296/packages/toolkit/src/createAsyncThunk.ts#L94
-    try {
-      const deserialized = deserializeError(action.error);
-      console.error(deserialized);
-
-      // TODO: report error to server?
-    } catch (e) {
-      // we failed to deserialize it, which means it may not be a valid Error object
-      console.error(action.error);
-    }
+    console.error(action.error);
   }
 };
 
@@ -62,6 +51,8 @@ const store = configureStore({
   middleware: (getDefaultMiddleware) => [
     ...getDefaultMiddleware({
       serializableCheck: {
+        ignoredActionPaths: ['error'],
+
         // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
         // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
