@@ -1,8 +1,9 @@
 import { Target } from '@webapp/models/targets';
 import { fetchTargets } from '@webapp/services/serviceDiscovery';
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 import { addNotification } from './notifications';
 import type { RootState } from '../store';
+import { createAsyncThunk } from '../async-thunk';
 
 export const loadTargets = createAsyncThunk(
   'serviceDiscovery/loadTargets',

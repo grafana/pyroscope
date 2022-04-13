@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { Users, type User } from '@webapp/models/users';
+import { createSlice } from '@reduxjs/toolkit';
+import { type User } from '@webapp/models/users';
 import { connect } from 'react-redux';
 
 import {
@@ -10,6 +10,7 @@ import {
 } from '@webapp/services/users';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
+import { createAsyncThunk } from '../async-thunk';
 
 interface UserRootState {
   type: 'loading' | 'loaded' | 'failed';
@@ -23,7 +24,7 @@ const initialState: UserRootState = {
 };
 
 export const loadCurrentUser = createAsyncThunk(
-  'newRoot/loadCurrentUser',
+  'users/loadCurrentUser',
   async (_, thunkAPI) => {
     const res = await loadCurrentUserAPI();
     if (res.isOk) {

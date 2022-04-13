@@ -120,7 +120,7 @@ export async function request(
       // Usually it's a feedback on user's actions like form validation
       if ('errors' in data && Array.isArray(data.errors)) {
         return Result.err(
-          new RequestNotOkWithErrorsList(response.status, data.errors)
+          new RequestNotOkWithErrorsList(String(response.status), data.errors)
         );
       }
 
