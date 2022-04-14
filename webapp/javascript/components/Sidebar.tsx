@@ -30,10 +30,6 @@ import { useLocation, NavLink } from 'react-router-dom';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
-import {
-  withCurrentUser,
-  selectCurrentUser,
-} from '@webapp/redux/reducers/user';
 import styles from './Sidebar.module.css';
 import { PAGES } from '../pages/constants';
 
@@ -46,7 +42,6 @@ function signOut() {
 
 export function SidebarComponent() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
-  const currentUser = useAppSelector(selectCurrentUser);
   const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
@@ -83,7 +78,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON,
           PAGES.ADHOC_COMPARISON_DIFF,
         ] as string[]
-      ).includes(pathname),
+      ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
   );
 
