@@ -32,7 +32,12 @@ export const loadCurrentUser = createAsyncThunk(
     }
 
     // Suppress 401 error on login screen
-    if ('code' in res.error && window?.location?.pathname === PAGES.LOGIN) {
+    // TODO(petethepig): we need a better way of handling this exception
+    if (
+      'code' in res.error &&
+      (window?.location?.pathname === PAGES.LOGIN ||
+        window?.location?.pathname === PAGES.SIGNUP)
+    ) {
       return Promise.reject(res.error);
     }
 

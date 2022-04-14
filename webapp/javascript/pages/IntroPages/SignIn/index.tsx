@@ -13,6 +13,7 @@ import {
   isGithubEnabled,
   isGitlabEnabled,
   isGoogleEnabled,
+  isInternalAuthEnabled,
   isSignupEnabled,
 } from '@webapp/util/features';
 import { PAGES } from '@webapp/pages/constants';
@@ -63,41 +64,72 @@ function SignInPage() {
         <div className={styles.formHeader}>
           <div className={styles.logo} />
           <h1>Welcome to Pyroscope</h1>
-          <h3>Log in to continue</h3>
+          {isInternalAuthEnabled ||
+          isGoogleEnabled ||
+          isGithubEnabled ||
+          isGitlabEnabled ? (
+            <h3>Log in to continue</h3>
+          ) : (
+            <>
+              <p>
+                No authentication methods are enabled. To learn more, please
+                refer to{' '}
+                <a
+                  className={styles.link}
+                  href="https://pyroscope.io/docs/auth-overview/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  documentation
+                </a>
+                .
+              </p>
+            </>
+          )}
         </div>
-        <div>
-          <StatusMessage type="error" message={form.errors?.join(', ')} />
-          <InputField
-            id="username"
-            type="text"
-            name="username"
-            label="Username"
-            placeholder="Username"
-            className={inputStyles.inputGroup}
-            value={form.username}
-            onChange={handleFormChange}
-            required
-          />
-          <InputField
-            id="password"
-            type="password"
-            name="password"
-            label="Password"
-            placeholder="Password"
-            className={inputStyles.inputGroup}
-            value={form.password}
-            onChange={handleFormChange}
-            required
-          />
-        </div>
-        <button
-          className={cx(styles.button, 'sign-in-button')}
-          data-testid="sign-in-button"
-          type="submit"
-        >
-          Log in
-        </button>
-        <Divider />
+        {isInternalAuthEnabled ? (
+          <>
+            <div>
+              <StatusMessage type="error" message={form.errors?.join(', ')} />
+              <InputField
+                id="username"
+                type="text"
+                name="username"
+                label="Username"
+                placeholder="Username"
+                className={inputStyles.inputGroup}
+                value={form.username}
+                onChange={handleFormChange}
+                required
+              />
+              <InputField
+                id="password"
+                type="password"
+                name="password"
+                label="Password"
+                placeholder="Password"
+                className={inputStyles.inputGroup}
+                value={form.password}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+            <button
+              className={cx(styles.button, 'sign-in-button')}
+              data-testid="sign-in-button"
+              type="submit"
+            >
+              Log in
+            </button>
+          </>
+        ) : null}
+        {isInternalAuthEnabled &&
+        (isGoogleEnabled ||
+          isGithubEnabled ||
+          isGitlabEnabled ||
+          isSignupEnabled) ? (
+          <Divider />
+        ) : null}
         <div className={cx(buttonStyles.buttonContainer)}>
           {isGoogleEnabled && (
             <a

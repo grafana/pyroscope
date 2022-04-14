@@ -8,6 +8,7 @@ import { signUp, logIn } from '@webapp/services/users';
 import { loadCurrentUser } from '@webapp/redux/reducers/user';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
 import inputStyles from '../InputGroup.module.css';
+import { isSignupEnabled } from '@webapp/util/features';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
 import { PAGES } from '../../constants';
@@ -56,54 +57,76 @@ function SignUpPage() {
         <div className={styles.formHeader}>
           <div className={styles.logo} />
           <h1>Welcome to Pyroscope</h1>
-          <h3>Sign up</h3>
+          {isSignupEnabled ? (
+            <h3>Sign up</h3>
+          ) : (
+            <>
+              <p>
+                Sing up functionality in not enabled. To learn more, please
+                refer to{' '}
+                <a
+                  className={styles.link}
+                  href="https://pyroscope.io/docs/auth-internal/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  documentation
+                </a>
+                .
+              </p>
+            </>
+          )}
         </div>
-        <div>
-          <StatusMessage type="error" message={form.errors?.join(', ')} />
-          <InputField
-            type="text"
-            name="username"
-            label="Username"
-            placeholder="Username"
-            className={inputStyles.inputGroup}
-            value={form.username}
-            onChange={handleFormChange}
-            required
-          />
-          <InputField
-            type="email"
-            name="email"
-            label="Email"
-            placeholder="Email"
-            className={inputStyles.inputGroup}
-            value={form.email}
-            onChange={handleFormChange}
-            required
-          />
-          <InputField
-            type="text"
-            name="fullName"
-            label="Full Name"
-            placeholder="Full Name"
-            className={inputStyles.inputGroup}
-            value={form.fullName}
-            onChange={handleFormChange}
-            required
-          />
-          <InputField
-            type="password"
-            name="password"
-            label="Password"
-            placeholder="Password"
-            className={inputStyles.inputGroup}
-            value={form.password}
-            onChange={handleFormChange}
-            required
-          />
-        </div>
-        <button className={styles.button} type="submit">
-          Sign up
-        </button>
+        {isSignupEnabled ? (
+          <>
+            <div>
+              <StatusMessage type="error" message={form.errors?.join(', ')} />
+              <InputField
+                type="text"
+                name="username"
+                label="Username"
+                placeholder="Username"
+                className={inputStyles.inputGroup}
+                value={form.username}
+                onChange={handleFormChange}
+                required
+              />
+              <InputField
+                type="email"
+                name="email"
+                label="Email"
+                placeholder="Email"
+                className={inputStyles.inputGroup}
+                value={form.email}
+                onChange={handleFormChange}
+                required
+              />
+              <InputField
+                type="text"
+                name="fullName"
+                label="Full Name"
+                placeholder="Full Name"
+                className={inputStyles.inputGroup}
+                value={form.fullName}
+                onChange={handleFormChange}
+                required
+              />
+              <InputField
+                type="password"
+                name="password"
+                label="Password"
+                placeholder="Password"
+                className={inputStyles.inputGroup}
+                value={form.password}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+            <button className={styles.button} type="submit">
+              Sign up
+            </button>
+          </>
+        ) : null}
         <Divider />
 
         <Link to={PAGES.LOGIN} className={cx(styles.button, styles.buttonDark)}>

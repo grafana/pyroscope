@@ -118,3 +118,7 @@
 .buttonDark:hover {
   background-color: var(--ps-c-gray-light-3);
 }
+
+.link {
+  color: #007bff;
+}

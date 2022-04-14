@@ -6,6 +6,7 @@ interface Features {
   googleEnabled?: boolean;
   gitlabEnabled?: boolean;
   githubEnabled?: boolean;
+  internalAuthEnabled?: boolean;
   signupEnabled?: boolean;
 }
 
@@ -36,6 +37,10 @@ export const isGitlabEnabled = hasFeatures(window)
 
 export const isGithubEnabled = hasFeatures(window)
   ? window.features.githubEnabled
+  : true;
+
+export const isInternalAuthEnabled = hasFeatures(window)
+  ? window.features.internalAuthEnabled
   : true;
 
 export const isSignupEnabled = hasFeatures(window)
