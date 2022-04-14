@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.11...@pyroscope/webapp@1.5.0) (2022-04-14)
+
+
+### Features
+
+* **webapp:** add modal for custom export name ([#965](https://github.com/pyroscope-io/pyroscope/issues/965)) ([422ea82](https://github.com/pyroscope-io/pyroscope/commit/422ea82fd20a64eda44ae62821f67a89c129a594))
+
+
+
+
+
 ## [1.4.11](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.10...@pyroscope/webapp@1.4.11) (2022-04-14)
 
 **Note:** Version bump only for package @pyroscope/webapp
