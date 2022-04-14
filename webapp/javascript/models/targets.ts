@@ -17,7 +17,3 @@ export const targetsModel = z.array(targetModel);
 
 export type Target = z.infer<typeof targetModel>;
 export type Health = z.infer<typeof healthModel>;
-
-export function parse(a: unknown): Result<Target[], ZodError> {
-  return modelToResult(targetsModel, a);
-}

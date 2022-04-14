@@ -10,7 +10,3 @@ export type Tags = z.infer<typeof TagsSchema>;
 
 export const TagsValuesSchema = z.array(z.string());
 export type TagsValues = z.infer<typeof TagsValuesSchema>;
-
-export function parse(a: unknown): Result<Tags, ZodError> {
-  return modelToResult(TagsSchema, a);
-}
