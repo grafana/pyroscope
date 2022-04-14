@@ -120,7 +120,7 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (d *db, er
 		})
 	}
 
-	s.periodicTask(s.badgerGCTaskInterval, func() {
+	s.maintenanceTask(s.badgerGCTaskInterval, func() {
 		diff := calculateDBSize(badgerPath) - d.lastGC
 		if d.lastGC == 0 || s.gcSizeDiff == 0 || diff > s.gcSizeDiff {
 			d.runGC(0.7)
