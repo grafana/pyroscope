@@ -15,6 +15,7 @@ import {
   isGithubEnabled,
   isGitlabEnabled,
   isGoogleEnabled,
+  isSignupEnabled,
 } from '@webapp/util/features';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
@@ -130,9 +131,11 @@ function SignInPage() {
             </a>
           )}
 
-          <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
-            Sign up
-          </Link>
+          {isSignupEnabled && (
+            <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
+              Sign up
+            </Link>
+          )}
         </div>
       </form>
     </div>
