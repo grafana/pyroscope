@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import cx from 'classnames';
 import Icon from '@webapp/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
-import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import { useAppDispatch } from '@webapp/redux/hooks';
 import { logIn } from '@webapp/services/users';
-import {
-  loadCurrentUser,
-  selectCurrentUser,
-} from '@webapp/redux/reducers/user';
+import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
+import { loadCurrentUser } from '@webapp/redux/reducers/user';
 import {
   isGithubEnabled,
   isGitlabEnabled,
   isGoogleEnabled,
   isSignupEnabled,
 } from '@webapp/util/features';
+import { PAGES } from '@webapp/pages/constants';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
@@ -24,9 +23,7 @@ import styles from '../IntroPages.module.css';
 import buttonStyles from './buttons.module.css';
 
 function SignInPage() {
-  const history = useHistory();
   const dispatch = useAppDispatch();
-  const currentUser = useAppSelector(selectCurrentUser);
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -58,11 +55,7 @@ function SignInPage() {
     }
   }
 
-  useEffect(() => {
-    if (currentUser) {
-      history.push('/');
-    }
-  }, [currentUser]);
+  useNavigateUserIntroPages();
 
   return (
     <div className={styles.loginWrapper}>
@@ -132,7 +125,10 @@ function SignInPage() {
           )}
 
           {isSignupEnabled && (
-            <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
+            <Link
+              to={PAGES.SIGNUP}
+              className={cx(styles.button, styles.buttonDark)}
+            >
               Sign up
             </Link>
           )}

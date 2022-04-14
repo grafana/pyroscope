@@ -1,22 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import cx from 'classnames';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
-import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import { useAppDispatch } from '@webapp/redux/hooks';
 import { signUp, logIn } from '@webapp/services/users';
-import {
-  loadCurrentUser,
-  selectCurrentUser,
-} from '@webapp/redux/reducers/user';
+import { loadCurrentUser } from '@webapp/redux/reducers/user';
+import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
 import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
+import { PAGES } from '../../constants';
 
 function SignUpPage() {
-  const history = useHistory();
   const dispatch = useAppDispatch();
-  const currentUser = useAppSelector(selectCurrentUser);
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -51,12 +48,7 @@ function SignUpPage() {
     }
   }
 
-  // redirect when current user gets or is already set
-  useEffect(() => {
-    if (currentUser) {
-      history.push('/');
-    }
-  }, [currentUser]);
+  useNavigateUserIntroPages();
 
   return (
     <div className={styles.loginWrapper}>
@@ -114,7 +106,7 @@ function SignUpPage() {
         </button>
         <Divider />
 
-        <Link to="/login" className={cx(styles.button, styles.buttonDark)}>
+        <Link to={PAGES.LOGIN} className={cx(styles.button, styles.buttonDark)}>
           Go back to main page
         </Link>
       </form>
