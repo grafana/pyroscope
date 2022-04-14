@@ -1,13 +1,12 @@
 import ReactDOM from 'react-dom';
-import React, { useEffect } from 'react';
+import React from 'react';
 
-import { Provider, useDispatch } from 'react-redux';
-import { Router, Switch, Route, useLocation } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
-import { loadCurrentUser } from '@webapp/redux/reducers/user';
 import Footer from '@webapp/components/Footer';
 import store, { persistor } from './redux/store';
 
@@ -68,7 +67,9 @@ function App() {
             </Continuous>
           </Route>
           <Route path={PAGES.SETTINGS}>
-            <Settings />
+            <Continuous>
+              <Settings />
+            </Continuous>
           </Route>
           <Route path={PAGES.SERVICE_DISCOVERY}>
             <ServiceDiscoveryApp />

@@ -2,7 +2,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { type User } from '@webapp/models/users';
 import { connect, useSelector } from 'react-redux';
-
+import { PAGES } from '@webapp/pages/constants';
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
@@ -32,7 +32,7 @@ export const loadCurrentUser = createAsyncThunk(
     }
 
     // Suppress 401 error on login screen
-    if ('code' in res.error && window?.location?.pathname === '/login') {
+    if ('code' in res.error && window?.location?.pathname === PAGES.LOGIN) {
       return Promise.reject(res.error);
     }
 
