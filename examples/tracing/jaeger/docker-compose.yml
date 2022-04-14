@@ -64,3 +64,10 @@ services:
       - eu-west-1
       - us-west-1
       - us-east-1
+
+  jaeger-ui:
+    build:
+      context: ''
+      dockerfile: jaeger-ui/Dockerfile
+    ports:
+      - '4000:3000'

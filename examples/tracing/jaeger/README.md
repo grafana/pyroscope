@@ -54,7 +54,15 @@ and Navigate to the **Explore** page and query a trace:
 
 ![image](https://user-images.githubusercontent.com/12090599/153309817-0ed575fb-9219-4e11-8f11-63d89d0efde4.png)
 
-### 3. Access profiling data via Pyroscope UI.
+
+### 3. Access traces via Jaeger UI.
+
+The newly collected data should be available for querying. Open [Jaeger UI](http://localhost:4000) and query a trace:
+
+![image](https://user-images.githubusercontent.com/23323466/162067415-07737db7-9978-4f2b-a99a-bc9b7a0faa66.png)
+
+
+### 4. Access profiling data via Pyroscope UI.
 
 Now let's filter out spans with the `pyroscope.profile.id` attribute. It's also important to note
 that only **root** spans have profiles: in our case these are `OrderVehicle` and `CarHandler`:
