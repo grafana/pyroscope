@@ -6,6 +6,7 @@ interface Features {
   googleEnabled?: boolean;
   gitlabEnabled?: boolean;
   githubEnabled?: boolean;
+  signupEnabled?: boolean;
 }
 
 function hasFeatures(
@@ -35,4 +36,8 @@ export const isGitlabEnabled = hasFeatures(window)
 
 export const isGithubEnabled = hasFeatures(window)
   ? window.features.githubEnabled
+  : true;
+
+export const isSignupEnabled = hasFeatures(window)
+  ? window.features.signupEnabled
   : true;

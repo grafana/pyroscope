@@ -18,6 +18,7 @@ type Flags struct {
 	GoogleEnabled bool `json:"googleEnabled"`
 	GitlabEnabled bool `json:"gitlabEnabled"`
 	GithubEnabled bool `json:"githubEnabled"`
+	SignupEnabled bool `json:"signupEnabled"`
 }
 
 type IndexHandlerConfig struct {
@@ -43,6 +44,7 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 			GoogleEnabled: ctrl.config.Auth.Google.Enabled,
 			GitlabEnabled: ctrl.config.Auth.Gitlab.Enabled,
 			GithubEnabled: ctrl.config.Auth.Github.Enabled,
+			SignupEnabled: ctrl.config.Auth.Internal.SignupEnabled,
 		},
 		IsAuthRequired: ctrl.isAuthRequired(),
 		BaseURL:        ctrl.config.BaseURL,
