@@ -1,14 +1,13 @@
 import { Result } from '@webapp/util/fp';
 import {
   Users,
-  parse,
   type User,
   userModel,
   passwordEncode,
 } from '@webapp/models/users';
 import type { ZodError } from 'zod';
 import { modelToResult } from '@webapp/models/utils';
-import { request } from './base';
+import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 
 export interface FetchUsersError {
@@ -21,7 +20,7 @@ export async function fetchUsers(): Promise<
   const response = await request('/api/users');
 
   if (response.isOk) {
-    return parse(response.value);
+    return parseResponse(response, userModel);
   }
 
   return Result.err<Users, RequestError>(response.error);
