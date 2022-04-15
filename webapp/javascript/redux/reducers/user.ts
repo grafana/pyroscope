@@ -1,8 +1,8 @@
 /* eslint-disable prettier/prettier */
 import { createSlice } from '@reduxjs/toolkit';
 import { type User } from '@webapp/models/users';
-import { connect } from 'react-redux';
-
+import { connect, useSelector } from 'react-redux';
+import { PAGES } from '@webapp/pages/constants';
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
@@ -30,10 +30,15 @@ export const loadCurrentUser = createAsyncThunk(
     if (res.isOk) {
       return Promise.resolve(res.value);
     }
-    // By using 404 we assume that auth on server is disabled
-    // TODO: Fix that
-    if ('code' in res.error && res.error.code === 404) {
-      return Promise.resolve({ id: 0, role: 'anonymous' });
+
+    // Suppress 401 error on login screen
+    // TODO(petethepig): we need a better way of handling this exception
+    if (
+      'code' in res.error &&
+      (window?.location?.pathname?.endsWith(PAGES.LOGIN) ||
+        window?.location?.pathname?.endsWith(PAGES.SIGNUP))
+    ) {
+      return Promise.reject(res.error);
     }
 
     thunkAPI.dispatch(
@@ -118,10 +123,12 @@ export const withCurrentUser = (component: ShamefulAny) =>
   connect((state: RootState) => ({
     currentUser: selectCurrentUser(state),
   }))(function ConditionalRender(props: { currentUser: User }) {
-    if (props.currentUser) {
+    if (props.currentUser || !(window as ShamefulAny).isAuthRequired) {
       return component(props);
     }
     return null;
   } as ShamefulAny);
+
+export const useCurrentUser = () => useSelector(selectCurrentUser);
 
 export default userSlice.reducer;

@@ -1,4 +1,4 @@
-name: Cypress Tests
+name: Cypress Auth Tests
 
 on:
   push:
@@ -39,8 +39,8 @@ jobs:
         with:
           build: make e2e-build
           wait-on: http://localhost:4040
-          start: make server
-          config-file: cypress/cypress.json
+          start: make server -- --auth.internal.enabled --auth.internal.signup-enabled
+          config-file: cypress/integration/auth/cypress.json
         env:
           # keep the server quiet
           PYROSCOPE_LOG_LEVEL: error

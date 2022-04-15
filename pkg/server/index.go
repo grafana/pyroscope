@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -15,7 +14,12 @@ import (
 )
 
 type Flags struct {
-	EnableAdhocUI bool `json:"enableAdhocUI"`
+	EnableAdhocUI       bool `json:"enableAdhocUI"`
+	GoogleEnabled       bool `json:"googleEnabled"`
+	GitlabEnabled       bool `json:"gitlabEnabled"`
+	GithubEnabled       bool `json:"githubEnabled"`
+	InternalAuthEnabled bool `json:"internalAuthEnabled"`
+	SignupEnabled       bool `json:"signupEnabled"`
 }
 
 type IndexHandlerConfig struct {
@@ -37,7 +41,12 @@ type IndexHandler struct {
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	cfg := &IndexHandlerConfig{
 		Flags: Flags{
-			EnableAdhocUI: !ctrl.config.NoAdhocUI,
+			EnableAdhocUI:       !ctrl.config.NoAdhocUI,
+			GoogleEnabled:       ctrl.config.Auth.Google.Enabled,
+			GitlabEnabled:       ctrl.config.Auth.Gitlab.Enabled,
+			GithubEnabled:       ctrl.config.Auth.Github.Enabled,
+			InternalAuthEnabled: ctrl.config.Auth.Internal.Enabled,
+			SignupEnabled:       ctrl.config.Auth.Internal.SignupEnabled,
 		},
 		IsAuthRequired: ctrl.isAuthRequired(),
 		BaseURL:        ctrl.config.BaseURL,
@@ -61,28 +70,7 @@ func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileS
 
 func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ih.stats.StatsInc("index")
-	path := r.URL.Path
-	if path == "/" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/comparison" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/comparison-diff" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/adhoc-single" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/adhoc-comparison" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/adhoc-comparison-diff" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/settings" {
-		ih.renderIndexPage(w, r)
-	} else if strings.HasPrefix(path, "/settings") {
-		ih.renderIndexPage(w, r)
-	} else if path == "/service-discovery" {
-		ih.renderIndexPage(w, r)
-	} else {
-		ih.fs.ServeHTTP(w, r)
-	}
+	ih.renderIndexPage(w, r)
 }
 
 func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, _ *http.Request) {
