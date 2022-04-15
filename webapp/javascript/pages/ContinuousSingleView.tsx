@@ -96,6 +96,7 @@ function ContinuousSingleView() {
           id="timeline-chart-single"
           timelineA={getTimeline()}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
+          selectionType="single"
         />
         <Box>{flamegraphRenderer}</Box>
       </div>

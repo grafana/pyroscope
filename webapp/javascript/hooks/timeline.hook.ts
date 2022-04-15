@@ -11,6 +11,8 @@ import Color from 'color';
 export const leftColor = Color('rgb(200, 102, 204)');
 // Blue
 export const rightColor = Color('rgb(19, 152, 246)');
+// Greyish
+export const selectionColor = Color('rgb(189, 195, 199)');
 
 export default function useTimelines() {
   const dispatch = useAppDispatch();

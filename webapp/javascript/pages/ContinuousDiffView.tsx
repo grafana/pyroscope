@@ -13,6 +13,7 @@ import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook
 import useTimelines, {
   leftColor,
   rightColor,
+  selectionColor,
 } from '@webapp/hooks/timeline.hook';
 import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
@@ -104,6 +105,7 @@ function ComparisonDiffApp() {
             left: { from: leftFrom, to: leftUntil, color: leftColor },
             right: { from: rightFrom, to: rightUntil, color: rightColor },
           }}
+          selectionType="double"
         />
         <Box>
           <div className="diff-instructions-wrapper">
@@ -128,8 +130,13 @@ function ComparisonDiffApp() {
                   dispatch(actions.setLeft({ from, until }));
                 }}
                 markings={{
-                  left: { from: leftFrom, to: leftUntil, color: leftColor },
+                  left: {
+                    from: leftFrom,
+                    to: leftUntil,
+                    color: selectionColor,
+                  },
                 }}
+                selectionType="single"
               />
             </div>
             <div className="diff-instructions-wrapper-side">
@@ -153,8 +160,13 @@ function ComparisonDiffApp() {
                   dispatch(actions.setRight({ from, until }));
                 }}
                 markings={{
-                  right: { from: rightFrom, to: rightUntil, color: rightColor },
+                  right: {
+                    from: rightFrom,
+                    to: rightUntil,
+                    color: selectionColor,
+                  },
                 }}
+                selectionType="single"
               />
             </div>
           </div>

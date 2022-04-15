@@ -37,6 +37,8 @@ type TimelineChartWrapperProps = {
     left?: Marking;
     right?: Marking;
   };
+  /** selection looks different depending on it's type: single or double */
+  selectionType: 'single' | 'double';
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -61,6 +63,7 @@ class TimelineChartWrapper extends React.Component<
       },
       selection: {
         mode: 'x',
+        selectionType: props.selectionType,
       },
       crosshair: {
         mode: 'x',
@@ -140,7 +143,7 @@ class TimelineChartWrapper extends React.Component<
       const to = new Date(formatAsOBject(m.to)).getTime();
 
       // We make the sides thicker to indicate the boundary
-      const boundary = { lineWidth: 3, color: m.color.rgb() };
+      const boundary = { lineWidth: 1, color: m.color.rgb() };
 
       return [
         {

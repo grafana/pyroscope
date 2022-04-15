@@ -14,13 +14,16 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
-import InstructionText from '@webapp/components/InstructionText';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
-import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
+import useTimelines, {
+  leftColor,
+  rightColor,
+  selectionColor,
+} from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 
 function ComparisonApp() {
@@ -77,6 +80,7 @@ function ComparisonApp() {
             left: { from: leftFrom, to: leftUntil, color: leftColor },
             right: { from: rightFrom, to: rightUntil, color: rightColor },
           }}
+          selectionType="double"
         />
         <div
           className="comparison-container"
@@ -111,18 +115,22 @@ function ComparisonApp() {
                 )
               }
             >
-              <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
                 key="timeline-chart-left"
                 id="timeline-chart-left"
                 data-testid="timeline-left"
                 timelineA={leftTimeline}
                 markings={{
-                  left: { from: leftFrom, to: leftUntil, color: leftColor },
+                  left: {
+                    from: leftFrom,
+                    to: leftUntil,
+                    color: selectionColor,
+                  },
                 }}
                 onSelect={(from, until) => {
                   dispatch(actions.setLeft({ from, until }));
                 }}
+                selectionType="single"
               />
             </FlamegraphRenderer>
           </Box>
@@ -156,18 +164,22 @@ function ComparisonApp() {
                 )
               }
             >
-              <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper
                 key="timeline-chart-right"
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 timelineA={rightTimeline}
                 markings={{
-                  right: { from: rightFrom, to: rightUntil, color: rightColor },
+                  right: {
+                    from: rightFrom,
+                    to: rightUntil,
+                    color: selectionColor,
+                  },
                 }}
                 onSelect={(from, until) => {
                   dispatch(actions.setRight({ from, until }));
                 }}
+                selectionType="single"
               />
             </FlamegraphRenderer>
           </Box>
