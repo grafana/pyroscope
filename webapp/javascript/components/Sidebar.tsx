@@ -32,12 +32,11 @@ import Icon from '@webapp/ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
 import styles from './Sidebar.module.css';
 import { PAGES } from '../pages/constants';
+import { mountURL } from '../services/base';
 
 function signOut() {
   // By visiting /logout we're clearing jwtCookie
-  fetch('/logout').then((d) => {
-    (window as Window).location = PAGES.LOGIN;
-  });
+  window.location.href = mountURL('/logout');
 }
 
 export function SidebarComponent() {

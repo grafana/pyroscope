@@ -35,8 +35,8 @@ export const loadCurrentUser = createAsyncThunk(
     // TODO(petethepig): we need a better way of handling this exception
     if (
       'code' in res.error &&
-      (window?.location?.pathname === PAGES.LOGIN ||
-        window?.location?.pathname === PAGES.SIGNUP)
+      (window?.location?.pathname?.endsWith(PAGES.LOGIN) ||
+        window?.location?.pathname?.endsWith(PAGES.SIGNUP))
     ) {
       return Promise.reject(res.error);
     }

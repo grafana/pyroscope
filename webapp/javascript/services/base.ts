@@ -51,7 +51,7 @@ function join(base: string, path: string): string {
   return `${base}/${path}`;
 }
 
-function mountURL(req: RequestInfo): string {
+export function mountURL(req: RequestInfo): string {
   const baseName = basename();
 
   if (baseName) {
