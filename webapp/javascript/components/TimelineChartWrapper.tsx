@@ -37,7 +37,7 @@ type TimelineChartWrapperProps = {
     left?: Marking;
     right?: Marking;
   };
-  /** selection looks different depending on it's type: single or double */
+  /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
 };
 
