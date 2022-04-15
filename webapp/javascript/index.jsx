@@ -74,17 +74,22 @@ function App() {
           <Route path={PAGES.SERVICE_DISCOVERY}>
             <ServiceDiscoveryApp />
           </Route>
-          {isAdhocUIEnabled && [
-            <Route path={PAGES.ADHOC_SINGLE}>
-              <AdhocSingle />
-            </Route>,
-            <Route path={PAGES.ADHOC_COMPARISON}>
-              <AdhocComparison />
-            </Route>,
-            <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
-              <AdhocDiff />
-            </Route>,
-          ]}
+          {isAdhocUIEnabled && (
+            <>
+              <Route path={PAGES.ADHOC_SINGLE}>
+                <AdhocSingle />
+              </Route>
+              ,
+              <Route path={PAGES.ADHOC_COMPARISON}>
+                <AdhocComparison />
+              </Route>
+              ,
+              <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
+                <AdhocDiff />
+              </Route>
+              ,
+            </>
+          )}
           <Route path="*" exact>
             <NotFound />
           </Route>

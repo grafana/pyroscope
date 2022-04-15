@@ -45,16 +45,22 @@ export type RequestError =
   | RequestIncompleteError
   | ResponseOkNotInJSONFormat;
 
+function join(base: string, path: string): string {
+  path = path.replace(/^\/+/, '');
+  base = base.replace(/\/+$/, '');
+  return `${base}/${path}`;
+}
+
 function mountURL(req: RequestInfo): string {
   const baseName = basename();
 
   if (baseName) {
     if (typeof req === 'string') {
-      return new URL(`${baseName}/${req}`, window.location.href).href;
+      return new URL(join(baseName, req), window.location.href).href;
     }
 
     // req is an object
-    return new URL(`${baseName}/${req.url}`, window.location.href).href;
+    return new URL(join(baseName, req.url), window.location.href).href;
   }
 
   // no basename
