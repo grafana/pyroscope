@@ -42,7 +42,7 @@ function Message({
       {additionalInfo && (
         <ul>
           {additionalInfo.map((a, i) => {
-            return <li key={i}>{a}</li>;
+            return <li key={a}>{a}</li>;
           })}
         </ul>
       )}
