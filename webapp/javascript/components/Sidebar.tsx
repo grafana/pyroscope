@@ -29,6 +29,7 @@ import {
 import { useLocation, NavLink } from 'react-router-dom';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
+import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
 import styles from './Sidebar.module.css';
 import { PAGES } from '../pages/constants';
@@ -147,7 +148,11 @@ export function SidebarComponent() {
       <SidebarHeader>
         <div className={styles.logo}>
           <div className="logo-main" />
-          <span className={`${collapsed ? styles.logoTextCollapsed : ''}`}>
+          <span
+            className={clsx(styles.logoText, {
+              [styles.logoTextCollapsed]: collapsed,
+            })}
+          >
             Pyroscope
           </span>
         </div>
