@@ -2,7 +2,11 @@
 import { Units } from '@pyroscope/models';
 
 export function numberWithCommas(x: number): string {
-  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  try {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  } catch (e) {
+    return '';
+  }
 }
 
 export function formatPercent(ratio: number) {
