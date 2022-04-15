@@ -322,9 +322,6 @@ describe('basic test', () => {
       cy.wait(500);
 
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
-
-      cy.wait(100);
-
       cy.findByTestId('flamegraph-highlight').should('be.visible');
     });
   });
