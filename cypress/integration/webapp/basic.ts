@@ -321,6 +321,8 @@ describe('basic test', () => {
 
       cy.findByTestId('flamegraph-highlight').should('not.be.visible');
 
+      cy.wait(500);
+
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-highlight').should('be.visible');
     });
