@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	// revive:disable:blank-imports register discoverer
+	"github.com/pyroscope-io/pyroscope/pkg/baseurl"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
@@ -204,6 +205,9 @@ func (svc *serverService) Start() error {
 		})
 	}
 
+	if svc.config.BaseURLBindAddr != "" {
+		go baseurl.Start(svc.config)
+	}
 	go svc.debugReporter.Start()
 	if svc.analyticsService != nil {
 		go svc.analyticsService.Start()

@@ -7,7 +7,7 @@ https://prismjs.com/download.html#themes=prism-funky&languages=promql */
 (function (Prism) {
   // PromQL Aggregation Operators
   // (https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)
-  var aggregations = [
+  const aggregations = [
     'sum',
     'min',
     'max',
@@ -24,7 +24,7 @@ https://prismjs.com/download.html#themes=prism-funky&languages=promql */
 
   // PromQL vector matching + the by and without clauses
   // (https://prometheus.io/docs/prometheus/latest/querying/operators/#vector-matching)
-  var vectorMatching = [
+  const vectorMatching = [
     'on',
     'ignoring',
     'group_right',
@@ -35,9 +35,9 @@ https://prismjs.com/download.html#themes=prism-funky&languages=promql */
 
   // PromQL offset modifier
   // (https://prometheus.io/docs/prometheus/latest/querying/basics/#offset-modifier)
-  var offsetModifier = ['offset'];
+  const offsetModifier = ['offset'];
 
-  var keywords = aggregations.concat(vectorMatching, offsetModifier);
+  const keywords = aggregations.concat(vectorMatching, offsetModifier);
 
   Prism.languages.promql = {
     comment: {
@@ -46,9 +46,7 @@ https://prismjs.com/download.html#themes=prism-funky&languages=promql */
     },
     'vector-match': {
       // Match the comma-separated label lists inside vector matching:
-      pattern: new RegExp(
-        '((?:' + vectorMatching.join('|') + ')\\s*)\\([^)]*\\)'
-      ),
+      pattern: new RegExp(`((?:${vectorMatching.join('|')})\\s*)\\([^)]*\\)`),
       lookbehind: true,
       inside: {
         'label-key': {
@@ -95,7 +93,7 @@ https://prismjs.com/download.html#themes=prism-funky&languages=promql */
         },
       },
     ],
-    keyword: new RegExp('\\b(?:' + keywords.join('|') + ')\\b', 'i'),
+    keyword: new RegExp(`\\b(?:${keywords.join('|')})\\b`, 'i'),
     function: /\b[a-z_]\w*(?=\s*\()/i,
     number:
       /[-+]?(?:(?:\b\d+(?:\.\d+)?|\B\.\d+)(?:e[-+]?\d+)?\b|\b(?:0x[0-9a-f]+|nan|inf)\b)/i,

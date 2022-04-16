@@ -13,7 +13,7 @@ import {
   selectAPIKeys,
   deleteAPIKey,
 } from '@webapp/redux/reducers/settings';
-import confirmDelete from '@webapp/components/ConfirmDelete';
+import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
 import styles from '../SettingsTable.module.css';
 
 const ApiKeys = () => {

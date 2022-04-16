@@ -103,9 +103,10 @@ type Server struct {
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" yaml:"log-level" mapstructure:"log-level"`
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error" yaml:"badger-log-level" mapstructure:"badger-log-level"`
 
-	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" yaml:"storage-path" mapstructure:"storage-path"`
-	APIBindAddr string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" yaml:"api-bind-addr" mapstructure:"api-bind-addr"`
-	BaseURL     string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" yaml:"base-url" mapstructure:"base-url"`
+	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" yaml:"storage-path" mapstructure:"storage-path"`
+	APIBindAddr     string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" yaml:"api-bind-addr" mapstructure:"api-bind-addr"`
+	BaseURL         string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" yaml:"base-url" mapstructure:"base-url"`
+	BaseURLBindAddr string `def:"" deprecated:"true" desc:"server for debugging base url" yaml:"base-url-bind-addr" mapstructure:"base-url-bind-addr"`
 
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" yaml:"cache-evict-threshold" mapstructure:"cache-evict-threshold"`
 	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run" yaml:"cache-evict-volume" mapstructure:"cache-evict-volume"`

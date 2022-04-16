@@ -1,6 +1,7 @@
 :root {
   --ps-c-black: #000000;
-  --ps-c-black-lighter: #00000054;
+  --ps-c-black-light-1: #00000099;
+  --ps-c-black-light-2: #00000054;
   --ps-c-gray-dark-2: #141414;
   --ps-c-gray-dark-1: #1b1b1b;
   --ps-c-gray: #212124;
@@ -11,7 +12,8 @@
   --ps-c-white-dark-3: #ffffff08;
   --ps-c-white-dark-2: #ffffff54;
   --ps-c-white-dark-1: #ffffffa8;
-  --ps-c-white: #ffffffff;
+  --ps-c-white: #e6e6e6;
+  --ps-c-blue-dark-1: #1d49a1;
   --ps-c-blue-dark: #216ba5;
   --ps-c-blue: #0074d9;
   --ps-c-blue-light-1: #0d8eff;
@@ -22,4 +24,10 @@
   --ps-c-red-error: #8a1722;
   --ps-c-red-danger: #dc3545;
   --ps-c-red-light: #dc3545;
+  --ps-c-orange-light-1: #e84d3c;
+  --ps-c-orange-light-2: #fc6d26;
+  --ps-c-orange-dark-2: #fc5c0d;
+  --ps-c-orange-dark-1: #e53825;
+  --ps-c-intro-bg-1: #3dc1d3cc;
+  --ps-c-intro-bg-2: #d1283980;
 }

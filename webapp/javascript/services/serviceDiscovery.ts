@@ -1,7 +1,7 @@
 import { Result } from '@webapp/util/fp';
-import { Target, parse } from '@webapp/models/targets';
+import { Target, targetsModel } from '@webapp/models/targets';
 import type { ZodError } from 'zod';
-import { request } from './base';
+import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 
 /* eslint-disable import/prefer-default-export */
@@ -11,7 +11,7 @@ export async function fetchTargets(): Promise<
   const response = await request('targets');
 
   if (response.isOk) {
-    return parse(response.value);
+    return parseResponse(response, targetsModel);
   }
 
   return Result.err<Target[], RequestError>(response.error);

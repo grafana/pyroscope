@@ -9,7 +9,8 @@ import { faLock } from '@fortawesome/free-solid-svg-icons/faLock';
 import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
 import { faUserAlt } from '@fortawesome/free-solid-svg-icons/faUserAlt';
 import cx from 'classnames';
-import { withCurrentUser } from '@webapp/redux/reducers/user';
+import { useAppSelector } from '@webapp/redux/hooks';
+import { selectCurrentUser } from '@webapp/redux/reducers/user';
 import { User } from '@webapp/models/users';
 import { faWrench } from '@fortawesome/free-solid-svg-icons/faWrench';
 import Preferences from './Preferences';
@@ -22,9 +23,10 @@ import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
 import CurrentConfig from '../../pages/CurrentConfig';
 
-function Settings(props: ShamefulAny) {
+function Settings() {
   const { path, url } = useRouteMatch();
-  const { currentUser } = props;
+  const currentUser = useAppSelector(selectCurrentUser);
+
   const isAdmin = (user: User) => user && user.role === 'Admin';
   const isExternal = (user: User) => user && user.isExternal;
   return (
@@ -39,6 +41,7 @@ function Settings(props: ShamefulAny) {
               className={(isActive) =>
                 cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })
               }
+              data-testid="settings-profiletab"
             >
               <Icon icon={faSlidersH} /> Profile
             </NavLink>
@@ -54,6 +57,7 @@ function Settings(props: ShamefulAny) {
                       [styles.navLinkActive]: isActive,
                     })
                   }
+                  data-testid="settings-changepasswordtab"
                 >
                   <Icon icon={faLock} /> Change Password
                 </NavLink>
@@ -71,6 +75,7 @@ function Settings(props: ShamefulAny) {
                       [styles.navLinkActive]: isActive,
                     })
                   }
+                  data-testid="settings-userstab"
                 >
                   <Icon icon={faUserAlt} /> Users
                 </NavLink>
@@ -84,6 +89,7 @@ function Settings(props: ShamefulAny) {
                       [styles.navLinkActive]: isActive,
                     })
                   }
+                  data-testid="settings-apikeystab"
                 >
                   <Icon icon={faKey} /> API keys
                 </NavLink>
@@ -136,4 +142,4 @@ function Settings(props: ShamefulAny) {
   );
 }
 
-export default withCurrentUser(Settings);
+export default Settings;

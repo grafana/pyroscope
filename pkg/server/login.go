@@ -22,7 +22,7 @@ import (
 func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		ctrl.loginGet(w, r)
+		ctrl.indexHandler()(w, r)
 	case http.MethodPost:
 		ctrl.loginPost(w, r)
 	default:
@@ -82,7 +82,7 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		ctrl.signupGet(w, r)
+		ctrl.indexHandler()(w, r)
 	case http.MethodPost:
 		ctrl.signupPost(w, r)
 	default:
@@ -255,6 +255,10 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 			"BaseURL": ctrl.config.BaseURL,
 		})
 	}
+}
+
+func (ctrl *Controller) notfoundHandler() http.HandlerFunc {
+	return ctrl.indexHandler()
 }
 
 func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {

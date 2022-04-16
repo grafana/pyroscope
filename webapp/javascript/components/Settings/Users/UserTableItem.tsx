@@ -11,7 +11,7 @@ import cx from 'classnames';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import { reloadUsers, changeUserRole } from '@webapp/redux/reducers/settings';
 import { useAppDispatch } from '@webapp/redux/hooks';
-import confirmDelete from '@webapp/components/ConfirmDelete';
+import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
 import { type User } from '@webapp/models/users';
 import styles from './UserTableItem.module.css';
 
