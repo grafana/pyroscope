@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+
+	"gopkg.in/yaml.v2"
 )
 
 type configResponse struct {
@@ -9,9 +11,9 @@ type configResponse struct {
 }
 
 func (ctrl *Controller) configHandler(w http.ResponseWriter, _ *http.Request) {
-	configBytes, err := ctrl.config.MarshalYAML()
+	configBytes, err := yaml.Marshal(ctrl.config)
 	if err != nil {
-		WriteJSONEncodeError(ctrl.log, w, err)
+		WriteInternalServerError(ctrl.log, w, err, "failed to serialize configurtion")
 		return
 	}
 	resp := configResponse{

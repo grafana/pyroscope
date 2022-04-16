@@ -236,8 +236,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/adhoc-comparison-diff", ih},
 		{"/settings", ih},
 		{"/settings/{page}", ih},
-		{"/settings/{page}/{subpage}", ih},
-		{"/config", ctrl.indexHandler()}},
+		{"/settings/{page}/{subpage}", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.loginRedirect))
 

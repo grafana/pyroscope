@@ -182,7 +182,7 @@ type Auth struct {
 
 	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" yaml:"cookie-same-site" mapstructure:"cookie-same-site"`
 	CookieSecure             bool          `json:"-" deprecated:"true" def:"false" desc:"specifies Secure attribute for JWT token cookie" yaml:"cookie-secure" mapstructure:"cookie-secure"`
-	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" yaml:"jwt-secret" mapstructure:"jwt-secret"`
+	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" yaml:"-" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." yaml:"login-maximum-lifetime-days" mapstructure:"login-maximum-lifetime-days"`
 }
 
@@ -202,7 +202,7 @@ type AdminUser struct {
 	Create   bool   `json:"-" deprecated:"true" def:"true" desc:"" yaml:"create" mapstructure:"create"`
 	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" yaml:"name" mapstructure:"name"`
 	Email    string `json:"-" deprecated:"true" def:"admin@localhost.local" desc:"" yaml:"email" mapstructure:"email"`
-	Password string `json:"-" deprecated:"true" def:"admin" desc:"" yaml:"password" mapstructure:"password"`
+	Password string `json:"-" deprecated:"true" def:"admin" desc:"" yaml:"-" mapstructure:"password"`
 }
 
 type CORSConfig struct {
@@ -218,7 +218,7 @@ type GoogleOauth struct {
 	// TODO: remove deprecated: true when we enable these back
 	Enabled        bool     `json:"-" deprecated:"true" def:"false" desc:"enables Google Oauth" yaml:"enabled" mapstructure:"enabled"`
 	ClientID       string   `json:"-" deprecated:"true" def:"" desc:"client ID generated for Google API" yaml:"client-id" mapstructure:"client-id"`
-	ClientSecret   string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for Google API" yaml:"client-secret" mapstructure:"client-secret"`
+	ClientSecret   string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for Google API" yaml:"-" mapstructure:"client-secret"`
 	RedirectURL    string   `json:"-" deprecated:"true" def:"" desc:"url that google will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/google/callback>" yaml:"redirect-url" mapstructure:"redirect-url"`
 	AuthURL        string   `json:"-" deprecated:"true" def:"https://accounts.google.com/o/oauth2/auth" desc:"auth url for Google API (usually present in credentials.json file)" yaml:"auth-url" mapstructure:"auth-url"`
 	TokenURL       string   `json:"-" deprecated:"true" def:"https://accounts.google.com/o/oauth2/token" desc:"token url for Google API (usually present in credentials.json file)" yaml:"token-url" mapstructure:"token-url"`
@@ -229,7 +229,7 @@ type GitlabOauth struct {
 	Enabled bool `json:"-" deprecated:"true" def:"false" desc:"enables Gitlab Oauth" yaml:"enabled" mapstructure:"enabled"`
 	// TODO: I changed this to ClientID to fit others, but in Gitlab docs it's Application ID so it might get someone confused?
 	ClientID      string   `json:"-" deprecated:"true" def:"" desc:"client ID generated for GitLab API" yaml:"client-id" mapstructure:"client-id"`
-	ClientSecret  string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for GitLab API" yaml:"client-secret" mapstructure:"client-secret"`
+	ClientSecret  string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for GitLab API" yaml:"-" mapstructure:"client-secret"`
 	RedirectURL   string   `json:"-" deprecated:"true" def:"" desc:"url that gitlab will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/gitlab/callback>" yaml:"redirect-url" mapstructure:"redirect-url"`
 	AuthURL       string   `json:"-" deprecated:"true" def:"https://gitlab.com/oauth/authorize" desc:"auth url for GitLab API (keep default for cloud, usually https://gitlab.mycompany.com/oauth/authorize for on-premise)" yaml:"auth-url" mapstructure:"auth-url"`
 	TokenURL      string   `json:"-" deprecated:"true" def:"https://gitlab.com/oauth/token" desc:"token url for GitLab API (keep default for cloud, usually https://gitlab.mycompany.com/oauth/token for on-premise)" yaml:"token-url" mapstructure:"token-url"`
@@ -240,7 +240,7 @@ type GitlabOauth struct {
 type GithubOauth struct {
 	Enabled              bool     `json:"-" deprecated:"true" def:"false" desc:"enables Github Oauth" yaml:"enabled" mapstructure:"enabled"`
 	ClientID             string   `json:"-" deprecated:"true" def:"" desc:"client ID generated for Github API" yaml:"client-id" mapstructure:"client-id"`
-	ClientSecret         string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for Github API" yaml:"client-secret" mapstructure:"client-secret"`
+	ClientSecret         string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for Github API" yaml:"-" mapstructure:"client-secret"`
 	RedirectURL          string   `json:"-" deprecated:"true" def:"" desc:"url that Github will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/github/callback>" yaml:"redirect-url" mapstructure:"redirect-url"`
 	AuthURL              string   `json:"-" deprecated:"true" def:"https://github.com/login/oauth/authorize" desc:"auth url for Github API" yaml:"auth-url" mapstructure:"auth-url"`
 	TokenURL             string   `json:"-" deprecated:"true" def:"https://github.com/login/oauth/access_token" desc:"token url for Github API" yaml:"token-url" mapstructure:"token-url"`

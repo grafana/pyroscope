@@ -67,7 +67,7 @@ var _ = Describe("server", func() {
 				}()
 				Eventually(done, 2).Should(BeClosed())
 			})
-			It("should mask secrets", func() {
+			It("should not expose secrets", func() {
 				done := make(chan interface{})
 				go func() {
 					defer GinkgoRecover()
@@ -78,7 +78,6 @@ var _ = Describe("server", func() {
 					(*cfg).Server.Auth.Google.ClientSecret = fakeSecret
 					(*cfg).Server.Auth.JWTSecret = fakeSecret
 					(*cfg).Server.Auth.Internal.AdminUser.Password = fakeSecret
-					const sensitive = "<sensitive>"
 
 					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
@@ -103,21 +102,7 @@ var _ = Describe("server", func() {
 
 					b, err := io.ReadAll(res.Body)
 					Expect(err).ToNot(HaveOccurred())
-
-					resp := configResponse{}
-					err = json.Unmarshal(b, &resp)
-
-					Expect(err).ToNot(HaveOccurred())
-
-					config := config.Server{}
-					err = yaml.Unmarshal([]byte(resp.Yaml), &config)
-
-					Expect(err).ToNot(HaveOccurred())
-					Expect(config.Auth.Github.ClientSecret).To(Equal(sensitive))
-					Expect(config.Auth.Gitlab.ClientSecret).To(Equal(sensitive))
-					Expect(config.Auth.Google.ClientSecret).To(Equal(sensitive))
-					Expect(config.Auth.JWTSecret).To(Equal(sensitive))
-					Expect(config.Auth.Internal.AdminUser.Password).To(Equal(sensitive))
+					Expect(string(b)).NotTo(ContainSubstring(fakeSecret))
 
 					close(done)
 				}()
