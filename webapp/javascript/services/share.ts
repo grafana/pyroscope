@@ -4,10 +4,10 @@ import type { ZodError } from 'zod';
 import { Profile } from '@pyroscope/models';
 import {
   FlamegraphDotComResponse,
-  parse,
+  flamegraphDotComResponseScheme,
 } from '@webapp/models/flamegraphDotComResponse';
 import type { RequestError } from './base';
-import { request } from './base';
+import { request, parseResponse } from './base';
 
 interface shareWithFlamegraphDotcomProps {
   flamebearer: Profile;
@@ -32,7 +32,7 @@ export async function shareWithFlamegraphDotcom({
   });
 
   if (response.isOk) {
-    return parse(response.value);
+    return parseResponse(response, flamegraphDotComResponseScheme);
   }
 
   return Result.err<FlamegraphDotComResponse, RequestError>(response.error);
