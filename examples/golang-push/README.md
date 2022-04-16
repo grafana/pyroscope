@@ -147,9 +147,6 @@ Pyroscope doesn’t just profile your performance data alone, it allows you to s
 To share your flamegraph, click the hamburger menu and select flamegraph.com: 
 ![Export dropdown](https://user-images.githubusercontent.com/29557702/163255942-2ebf6637-acdc-4282-8769-45e3c954b033.png)
 
-## Embed Flamegraphs into your application!
-Guess you didn’t know about that! With Pyroscope, you can embed your flamegraphs into your web pages! All you need to do is append `/iframe` to the shared flamegraph url and you’re good to go. How cool is that? 
-
 ### Summary
 We would love for you to try out this example and see what ways you can adapt this to your golang application. While this example focused on CPU debugging, Golang also provides memory profiling as well. Continuous profiling has become an increasingly popular tool for the monitoring and debugging of performance issues (arguably the fourth pillar of observability). 
 
