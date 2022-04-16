@@ -10,6 +10,6 @@ import { request, parseResponse, RequestError } from './base';
 export async function fetchCurrentConfig(): Promise<
   Result<CurrentConfig, RequestError | ZodError>
 > {
-  const response = await request('status/config');
+  const response = await request('/status/config');
   return parseResponse(response, CurrentConfigSchema);
 }

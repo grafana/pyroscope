@@ -11,6 +11,7 @@ import { faUserAlt } from '@fortawesome/free-solid-svg-icons/faUserAlt';
 import cx from 'classnames';
 import { withCurrentUser } from '@webapp/redux/reducers/user';
 import { User } from '@webapp/models/users';
+import { faWrench } from '@fortawesome/free-solid-svg-icons/faWrench';
 import Preferences from './Preferences';
 import Security from './Security';
 import Users from './Users';
@@ -19,6 +20,7 @@ import ApiKeys from './APIKeys';
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
+import CurrentConfig from '../../pages/CurrentConfig';
 
 function Settings(props: ShamefulAny) {
   const { path, url } = useRouteMatch();
@@ -88,6 +90,19 @@ function Settings(props: ShamefulAny) {
               </li>
             </>
           ) : null}
+          <li>
+            <NavLink
+              to={`${url}/config`}
+              className={(isActive) =>
+                cx({
+                  [styles.navLink]: true,
+                  [styles.navLinkActive]: isActive,
+                })
+              }
+            >
+              <Icon icon={faWrench} /> Configuration
+            </NavLink>
+          </li>
         </ul>
       </nav>
       <div className="main-wrapper">
@@ -110,6 +125,9 @@ function Settings(props: ShamefulAny) {
             </Route>
             <Route exact path={`${path}/api-keys/add`}>
               <APIKeyAddForm />
+            </Route>
+            <Route exact path={`${path}/config`}>
+              <CurrentConfig />
             </Route>
           </Switch>
         </Box>

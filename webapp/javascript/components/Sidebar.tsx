@@ -5,7 +5,6 @@ import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
 import { faCog } from '@fortawesome/free-solid-svg-icons/faCog';
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
-import { faWrench } from '@fortawesome/free-solid-svg-icons/faWrench';
 import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
@@ -198,10 +197,6 @@ export function SidebarComponent() {
               <NavLink to={{ pathname: '/settings', search }} exact />
             </MenuItem>
           )}
-          <MenuItem icon={<Icon icon={faWrench} />}>
-            Configuration
-            <NavLink to={{ pathname: '/config' }} exact />
-          </MenuItem>
           <MenuItem icon={<Icon icon={faInfoCircle} />}>
             Status
             <NavLink to={{ pathname: '/service-discovery', search }} exact />
