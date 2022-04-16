@@ -12,7 +12,6 @@ import (
 
 var _ = Describe("config", func() {
 	It("Should have equal or omitted mapstructure and yaml tags", func() {
-		Expect("a").To(Equal("a"))
 		s := config.Server{}
 		IterateStructTags(s, func(st reflect.StructTag) {
 			ms := st.Get("mapstructure")
