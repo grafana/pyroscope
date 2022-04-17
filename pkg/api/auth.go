@@ -22,7 +22,7 @@ type AuthService interface {
 }
 
 // AuthMiddleware authenticates requests.
-func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, authService AuthService, h httputils.Helper) func(next http.Handler) http.Handler {
+func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, authService AuthService, h httputils.Utils) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {

@@ -19,7 +19,7 @@ func (ctrl *Controller) exportHandler() http.HandlerFunc {
 	return NewExportHandler(ctrl.log, ctrl.httpUtils)
 }
 
-func NewExportHandler(log *logrus.Logger, httpUtils httputils.Helper) http.HandlerFunc {
+func NewExportHandler(log *logrus.Logger, httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := http.Post("https://flamegraph.com/api/upload/v1", "application/json", r.Body)
 		if err != nil {

@@ -61,7 +61,7 @@ type Controller struct {
 	metricsMdw middleware.Middleware
 	dir        http.FileSystem
 
-	httpUtils httputils.Helper
+	httpUtils httputils.Utils
 
 	statsMutex sync.Mutex
 	stats      map[string]int
@@ -139,7 +139,7 @@ func New(c Config) (*Controller, error) {
 		notifier:  c.Notifier,
 		stats:     make(map[string]int),
 		appStats:  mustNewHLL(),
-		httpUtils: httputils.NewDefaultErrorHandler(c.Logger),
+		httpUtils: httputils.NewDefaultHelper(c.Logger),
 
 		exportedMetrics: c.ExportedMetricsRegistry,
 		metricsMdw: middleware.New(middleware.Config{
@@ -207,7 +207,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	if ctrl.config.Auth.Ingestion.Enabled {
 		ingestRouter.Use(
 			ctrl.ingestionAuthMiddleware(),
-			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultErrorHandler(ctrl.log)).RequireOneOf(
+			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
 				authz.Role(model.AdminRole),
 				authz.Role(model.AgentRole),
 			))

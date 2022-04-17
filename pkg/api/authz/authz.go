@@ -11,13 +11,13 @@ import (
 
 type Authorizer struct {
 	logger    logrus.FieldLogger
-	httpUtils httputils.Helper
+	httpUtils httputils.Utils
 }
 
-func NewAuthorizer(logger logrus.FieldLogger, httpUtils httputils.Helper) Authorizer {
+func NewAuthorizer(logger logrus.FieldLogger, httpUtils httputils.Utils) Authorizer {
 	return Authorizer{
 		logger:    logger,
-		httpUtils: httputils.NewDefaultErrorHandler(logger),
+		httpUtils: httputils.NewDefaultHelper(logger),
 	}
 }
 

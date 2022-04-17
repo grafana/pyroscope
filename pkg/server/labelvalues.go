@@ -13,7 +13,7 @@ func (ctrl *Controller) labelValuesHandler() http.HandlerFunc {
 	return NewLabelValuesHandler(ctrl.log, ctrl.storage, ctrl.httpUtils)
 }
 
-func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter, httpUtils httputils.Helper) http.HandlerFunc {
+func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter, httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		labelName := r.URL.Query().Get("label")

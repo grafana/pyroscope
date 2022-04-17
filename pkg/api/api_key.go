@@ -22,10 +22,10 @@ type APIKeyService interface {
 type APIKeyHandler struct {
 	logger        logrus.FieldLogger
 	apiKeyService APIKeyService
-	httpUtils     httputils.Helper
+	httpUtils     httputils.Utils
 }
 
-func NewAPIKeyHandler(logger logrus.FieldLogger, apiKeyService APIKeyService, httpUtils httputils.Helper) APIKeyHandler {
+func NewAPIKeyHandler(logger logrus.FieldLogger, apiKeyService APIKeyService, httpUtils httputils.Utils) APIKeyHandler {
 	return APIKeyHandler{
 		logger:        logger,
 		apiKeyService: apiKeyService,

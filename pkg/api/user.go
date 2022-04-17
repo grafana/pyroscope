@@ -25,10 +25,10 @@ type UserService interface {
 type UserHandler struct {
 	logger      logrus.FieldLogger
 	userService UserService
-	httpUtils   httputils.Helper
+	httpUtils   httputils.Utils
 }
 
-func NewUserHandler(logger logrus.FieldLogger, userService UserService, httpUtils httputils.Helper) UserHandler {
+func NewUserHandler(logger logrus.FieldLogger, userService UserService, httpUtils httputils.Utils) UserHandler {
 	return UserHandler{
 		logger:      logger,
 		userService: userService,

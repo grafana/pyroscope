@@ -56,14 +56,14 @@ type RenderHandler struct {
 	dir             http.FileSystem
 	stats           StatsReceiver
 	maxNodesDefault int
-	httpUtils       httputils.Helper
+	httpUtils       httputils.Utils
 }
 
 func (ctrl *Controller) renderHandler() http.HandlerFunc {
 	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
 }
 
-func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Helper) *RenderHandler {
+func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *RenderHandler {
 	return &RenderHandler{
 		log:             l,
 		storage:         s,

@@ -25,7 +25,7 @@ type ingestHandler struct {
 	log       *logrus.Logger
 	parser    Parser
 	onSuccess func(pi *parser.PutInput)
-	httpUtils httputils.Helper
+	httpUtils httputils.Utils
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
@@ -37,7 +37,7 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 	}, ctrl.httpUtils)
 }
 
-func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.PutInput), httpUtils httputils.Helper) http.Handler {
+func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.PutInput), httpUtils httputils.Utils) http.Handler {
 	return ingestHandler{
 		log:       log,
 		parser:    p,

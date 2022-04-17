@@ -7,7 +7,7 @@ import (
 )
 
 // TODO(petethepig): this interface is pretty large, we can probably simplify it
-type Helper interface {
+type Utils interface {
 	// these methods were originally extracted from api package
 	MustJSON(w http.ResponseWriter, v interface{})
 	HandleError(w http.ResponseWriter, r *http.Request, err error)

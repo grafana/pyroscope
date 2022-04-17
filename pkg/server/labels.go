@@ -13,7 +13,7 @@ func (ctrl *Controller) labelsHandler() http.HandlerFunc {
 	return NewLabelsHandler(ctrl.log, ctrl.storage, ctrl.httpUtils).ServeHTTP
 }
 
-func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter, httpUtils httputils.Helper) http.HandlerFunc {
+func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter, httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := r.URL.Query().Get("query")

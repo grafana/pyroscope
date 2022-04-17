@@ -37,7 +37,7 @@ type IndexHandler struct {
 	stats     StatsReceiver
 	notifier  Notifier
 	cfg       *IndexHandlerConfig
-	httpUtils httputils.Helper
+	httpUtils httputils.Utils
 }
 
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
@@ -57,7 +57,7 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 }
 
 //revive:disable:argument-limit TODO: we will refactor this later
-func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileSystem, stats StatsReceiver, notifier Notifier, cfg *IndexHandlerConfig, httpUtils httputils.Helper) http.Handler {
+func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileSystem, stats StatsReceiver, notifier Notifier, cfg *IndexHandlerConfig, httpUtils httputils.Utils) http.Handler {
 	fs := http.FileServer(dir)
 	return &IndexHandler{
 		log:       log,

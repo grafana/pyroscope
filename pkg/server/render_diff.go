@@ -98,10 +98,10 @@ type RenderDiffHandler struct {
 	dir             http.FileSystem
 	stats           StatsReceiver
 	maxNodesDefault int
-	httpUtils       httputils.Helper
+	httpUtils       httputils.Utils
 }
 
-func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Helper) *RenderDiffHandler {
+func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *RenderDiffHandler {
 	return &RenderDiffHandler{
 		log:             l,
 		storage:         s,
