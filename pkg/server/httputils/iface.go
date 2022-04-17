@@ -11,7 +11,6 @@ type Helper interface {
 	// these methods were originally extracted from api package
 	MustJSON(w http.ResponseWriter, v interface{})
 	HandleError(w http.ResponseWriter, r *http.Request, logger logrus.FieldLogger, err error)
-	Error(w http.ResponseWriter, logger logrus.FieldLogger, err error)
 	IdFromRequest(r *http.Request) (uint, error)
 	Logger(r *http.Request, logger logrus.FieldLogger) logrus.FieldLogger
 
