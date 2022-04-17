@@ -77,12 +77,12 @@ func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, s
 func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var p renderParams
 	if err := rh.renderParametersFromRequest(r, &p); err != nil {
-		rh.httpUtils.WriteInvalidParameterError(rh.log, w, err)
+		rh.httpUtils.WriteInvalidParameterError(w, err)
 		return
 	}
 
 	if err := expectFormats(p.format); err != nil {
-		rh.httpUtils.WriteInvalidParameterError(rh.log, w, errUnknownFormat)
+		rh.httpUtils.WriteInvalidParameterError(w, errUnknownFormat)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%v %v", appName, p.gi.StartTime.UTC().Format(time.RFC3339))
 	rh.stats.StatsInc("render")
 	if err != nil {
-		rh.httpUtils.WriteInternalServerError(rh.log, w, err, "failed to retrieve data")
+		rh.httpUtils.WriteInternalServerError(w, err, "failed to retrieve data")
 		return
 	}
 	if out == nil {
@@ -110,7 +110,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "json":
 		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
 		res := rh.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
-		rh.httpUtils.WriteResponseJSON(rh.log, w, res)
+		rh.httpUtils.WriteResponseJSON(w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
 			Unit:      out.Units,
@@ -118,18 +118,18 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		out, err := proto.Marshal(pprof)
 		if err == nil {
-			rh.httpUtils.WriteResponseFile(rh.log, w, fmt.Sprintf("%v.pprof", filename), out)
+			rh.httpUtils.WriteResponseFile(w, fmt.Sprintf("%v.pprof", filename), out)
 		} else {
-			rh.httpUtils.WriteInternalServerError(rh.log, w, err, "failed to serialize data")
+			rh.httpUtils.WriteInternalServerError(w, err, "failed to serialize data")
 		}
 	case "collapsed":
 		collapsed := out.Tree.Collapsed()
-		rh.httpUtils.WriteResponseFile(rh.log, w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
+		rh.httpUtils.WriteResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
 		res := flamebearer.NewProfile(filename, out, p.maxNodes)
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&res, rh.dir, w); err != nil {
-			rh.httpUtils.WriteJSONEncodeError(rh.log, w, err)
+			rh.httpUtils.WriteJSONEncodeError(w, err)
 			return
 		}
 	}

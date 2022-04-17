@@ -10,16 +10,16 @@ import (
 type Helper interface {
 	// these methods were originally extracted from api package
 	MustJSON(w http.ResponseWriter, v interface{})
-	HandleError(w http.ResponseWriter, r *http.Request, logger logrus.FieldLogger, err error)
+	HandleError(w http.ResponseWriter, r *http.Request, err error)
 	IdFromRequest(r *http.Request) (uint, error)
-	Logger(r *http.Request, logger logrus.FieldLogger) logrus.FieldLogger
+	Logger(r *http.Request) logrus.FieldLogger
 
 	// these methods were originally extracted from server package
-	WriteResponseJSON(logger logrus.FieldLogger, w http.ResponseWriter, res interface{})
-	WriteResponseFile(logger logrus.FieldLogger, w http.ResponseWriter, filename string, content []byte)
-	WriteInvalidMethodError(logger logrus.FieldLogger, w http.ResponseWriter)
-	WriteInvalidParameterError(logger logrus.FieldLogger, w http.ResponseWriter, err error)
-	WriteInternalServerError(logger logrus.FieldLogger, w http.ResponseWriter, err error, msg string)
-	WriteJSONEncodeError(logger logrus.FieldLogger, w http.ResponseWriter, err error)
-	WriteError(logger logrus.FieldLogger, w http.ResponseWriter, code int, err error, msg string)
+	WriteResponseJSON(w http.ResponseWriter, res interface{})
+	WriteResponseFile(w http.ResponseWriter, filename string, content []byte)
+	WriteInvalidMethodError(w http.ResponseWriter)
+	WriteInvalidParameterError(w http.ResponseWriter, err error)
+	WriteInternalServerError(w http.ResponseWriter, err error, msg string)
+	WriteJSONEncodeError(w http.ResponseWriter, err error)
+	WriteError(w http.ResponseWriter, code int, err error, msg string)
 }

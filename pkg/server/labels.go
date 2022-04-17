@@ -33,7 +33,7 @@ func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter, httpUtils http
 
 		b, err := json.Marshal(keys)
 		if err != nil {
-			httpUtils.WriteJSONEncodeError(log, w, err)
+			httpUtils.WriteJSONEncodeError(w, err)
 			return
 		}
 		_, _ = w.Write(b)

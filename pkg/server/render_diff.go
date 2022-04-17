@@ -119,11 +119,11 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		if err := rh.parseDiffQueryParams(r, &params); err != nil {
-			rh.httpUtils.WriteInvalidParameterError(rh.log, w, err)
+			rh.httpUtils.WriteInvalidParameterError(w, err)
 			return
 		}
 	default:
-		rh.httpUtils.WriteInvalidMethodError(rh.log, w)
+		rh.httpUtils.WriteInvalidMethodError(w)
 		return
 	}
 
@@ -131,19 +131,19 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: do this concurrently
 	leftOut, err := rh.loadTree(ctx, &params.Left, params.Left.StartTime, params.Left.EndTime)
 	if err != nil {
-		rh.httpUtils.WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
+		rh.httpUtils.WriteInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
 		return
 	}
 
 	rightOut, err := rh.loadTree(ctx, &params.Right, params.Right.StartTime, params.Right.EndTime)
 	if err != nil {
-		rh.httpUtils.WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
+		rh.httpUtils.WriteInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
 		return
 	}
 
 	combined, err := flamebearer.NewCombinedProfile("diff", leftOut, rightOut, params.MaxNodes)
 	if err != nil {
-		rh.httpUtils.WriteInvalidParameterError(rh.log, w, err)
+		rh.httpUtils.WriteInvalidParameterError(w, err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "html":
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, rh.dir, w); err != nil {
-			rh.httpUtils.WriteJSONEncodeError(rh.log, w, err)
+			rh.httpUtils.WriteJSONEncodeError(w, err)
 			return
 		}
 
@@ -160,7 +160,7 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	default:
 		res := RenderDiffResponse{&combined}
-		rh.httpUtils.WriteResponseJSON(rh.log, w, res)
+		rh.httpUtils.WriteResponseJSON(w, res)
 	}
 }
 

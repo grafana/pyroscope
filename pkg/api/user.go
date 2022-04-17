@@ -96,7 +96,7 @@ func userFromModel(u model.User) user {
 func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req createUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
+		h.httpUtils.HandleError(w, r, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.CreateUserParams{
@@ -108,7 +108,7 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := h.userService.CreateUser(r.Context(), params)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -118,12 +118,12 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	id, err := h.httpUtils.IdFromRequest(r)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	u, err := h.userService.FindUserByID(r.Context(), id)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	h.httpUtils.MustJSON(w, userFromModel(u))
@@ -132,7 +132,7 @@ func (h UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	u, err := h.userService.GetAllUsers(r.Context())
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	users := make([]user, len(u))
@@ -145,7 +145,7 @@ func (h UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id, err := h.httpUtils.IdFromRequest(r)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	h.updateUser(w, r, id)
@@ -154,7 +154,7 @@ func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint) {
 	var req updateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
+		h.httpUtils.HandleError(w, r, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{
@@ -164,7 +164,7 @@ func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint)
 	}
 	u, err := h.userService.UpdateUserByID(r.Context(), id, params)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	h.httpUtils.MustJSON(w, userFromModel(u))
@@ -173,21 +173,21 @@ func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint)
 func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 	id, err := h.httpUtils.IdFromRequest(r)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		h.httpUtils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
 		return
 	}
 	var req resetUserPasswordRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
+		h.httpUtils.HandleError(w, r, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{Password: model.String(string(req.Password))}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -196,21 +196,21 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
 	id, err := h.httpUtils.IdFromRequest(r)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		h.httpUtils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserRoleRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
+		h.httpUtils.HandleError(w, r, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{Role: &req.Role}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -227,16 +227,16 @@ func (h UserHandler) EnableUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, disabled bool) {
 	id, err := h.httpUtils.IdFromRequest(r)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		h.httpUtils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
 		return
 	}
 	params := model.UpdateUserParams{IsDisabled: &disabled}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -245,11 +245,11 @@ func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, dis
 func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id, err := h.httpUtils.IdFromRequest(r)
 	if err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	if err = h.userService.DeleteUserByID(r.Context(), id); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -258,7 +258,7 @@ func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
 	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		h.httpUtils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
 		return
 	}
 	h.httpUtils.MustJSON(w, userFromModel(u))
@@ -267,7 +267,7 @@ func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request
 func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
 	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		h.httpUtils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
 		return
 	}
 	h.updateUser(w, r, u.ID)
@@ -276,12 +276,12 @@ func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Requ
 func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *http.Request) {
 	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		h.httpUtils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
+		h.httpUtils.HandleError(w, r, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserPasswordParams{
@@ -289,7 +289,7 @@ func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *h
 		NewPassword: string(req.NewPassword),
 	}
 	if err := h.userService.UpdateUserPasswordByID(r.Context(), u.ID, params); err != nil {
-		h.httpUtils.HandleError(w, r, h.logger, err)
+		h.httpUtils.HandleError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

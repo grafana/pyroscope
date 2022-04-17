@@ -28,7 +28,7 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {
 				k, err := authService.APIKeyFromToken(r.Context(), token)
 				if err != nil {
-					h.HandleError(w, r, log, model.AuthenticationError{Err: err})
+					h.HandleError(w, r, model.AuthenticationError{Err: err})
 					return
 				}
 				next.ServeHTTP(w, r.WithContext(model.WithAPIKey(r.Context(), k)))
@@ -39,24 +39,24 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 				var u model.User
 				if u, err = authService.UserFromJWTToken(r.Context(), c.Value); err != nil {
 					if loginRedirect != nil {
-						h.Logger(r, log).WithError(err).Debug("failed to authenticate jwt cookie")
+						h.Logger(r).WithError(err).Debug("failed to authenticate jwt cookie")
 						loginRedirect(w, r)
 						return
 					}
-					h.HandleError(w, r, log, model.AuthenticationError{Err: err})
+					h.HandleError(w, r, model.AuthenticationError{Err: err})
 					return
 				}
 				next.ServeHTTP(w, r.WithContext(model.WithUser(r.Context(), u)))
 				return
 			}
 
-			h.Logger(r, log).Debug("unauthenticated request")
+			h.Logger(r).Debug("unauthenticated request")
 			if loginRedirect != nil {
 				loginRedirect(w, r)
 				return
 			}
 
-			h.HandleError(w, r, log, model.ErrCredentialsInvalid)
+			h.HandleError(w, r, model.ErrCredentialsInvalid)
 		})
 	}
 }

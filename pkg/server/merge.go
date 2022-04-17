@@ -39,16 +39,16 @@ func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, st
 func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req mergeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		mh.httpUtils.WriteInvalidParameterError(mh.log, w, err)
+		mh.httpUtils.WriteInvalidParameterError(w, err)
 		return
 	}
 
 	if req.AppName == "" {
-		mh.httpUtils.WriteInvalidParameterError(mh.log, w, fmt.Errorf("application name required"))
+		mh.httpUtils.WriteInvalidParameterError(w, fmt.Errorf("application name required"))
 		return
 	}
 	if len(req.Profiles) == 0 {
-		mh.httpUtils.WriteInvalidParameterError(mh.log, w, fmt.Errorf("at least one profile ID must be specified"))
+		mh.httpUtils.WriteInvalidParameterError(w, fmt.Errorf("at least one profile ID must be specified"))
 		return
 	}
 	maxNodes := mh.maxNodesDefault
@@ -61,7 +61,7 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Profiles: req.Profiles,
 	})
 	if err != nil {
-		mh.httpUtils.WriteInternalServerError(mh.log, w, err, "failed to retrieve data")
+		mh.httpUtils.WriteInternalServerError(w, err, "failed to retrieve data")
 		return
 	}
 
@@ -88,5 +88,5 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mh.stats.StatsInc("merge")
-	mh.httpUtils.WriteResponseJSON(mh.log, w, resp)
+	mh.httpUtils.WriteResponseJSON(w, resp)
 }

@@ -23,7 +23,7 @@ func NewExportHandler(log *logrus.Logger, httpUtils httputils.Helper) http.Handl
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := http.Post("https://flamegraph.com/api/upload/v1", "application/json", r.Body)
 		if err != nil {
-			httpUtils.WriteError(log, w, 500, err, fmt.Sprintf("could not upload profile: %v", err))
+			httpUtils.WriteError(w, 500, err, fmt.Sprintf("could not upload profile: %v", err))
 			return
 		}
 		defer resp.Body.Close()

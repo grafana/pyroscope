@@ -20,7 +20,7 @@ func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter, http
 		query := r.URL.Query().Get("query")
 
 		if labelName == "" {
-			httpUtils.WriteInvalidParameterError(log, w, errLabelIsRequired)
+			httpUtils.WriteInvalidParameterError(w, errLabelIsRequired)
 			return
 		}
 
@@ -39,7 +39,7 @@ func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter, http
 
 		b, err := json.Marshal(values)
 		if err != nil {
-			httpUtils.WriteJSONEncodeError(log, w, err)
+			httpUtils.WriteJSONEncodeError(w, err)
 			return
 		}
 		_, _ = w.Write(b)

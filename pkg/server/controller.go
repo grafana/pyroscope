@@ -139,7 +139,7 @@ func New(c Config) (*Controller, error) {
 		notifier:  c.Notifier,
 		stats:     make(map[string]int),
 		appStats:  mustNewHLL(),
-		httpUtils: httputils.NewDefaultErrorHandler(),
+		httpUtils: httputils.NewDefaultErrorHandler(c.Logger),
 
 		exportedMetrics: c.ExportedMetricsRegistry,
 		metricsMdw: middleware.New(middleware.Config{
@@ -207,7 +207,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	if ctrl.config.Auth.Ingestion.Enabled {
 		ingestRouter.Use(
 			ctrl.ingestionAuthMiddleware(),
-			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultErrorHandler()).RequireOneOf(
+			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultErrorHandler(ctrl.log)).RequireOneOf(
 				authz.Role(model.AdminRole),
 				authz.Role(model.AgentRole),
 			))
@@ -319,7 +319,7 @@ func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Requ
 			})
 		}
 	}
-	ctrl.httpUtils.WriteResponseJSON(ctrl.log, w, resp)
+	ctrl.httpUtils.WriteResponseJSON(w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {
