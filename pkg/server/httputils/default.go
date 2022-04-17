@@ -116,10 +116,7 @@ func (d *DefaultImpl) ErrorCode(w http.ResponseWriter, rLogger logrus.FieldLogge
 }
 
 var (
-	errParamIDRequired = model.ValidationError{Err: errors.New("id parameter is required")}
-)
-
-var (
+	ErrParamIDRequired        = model.ValidationError{Err: errors.New("id parameter is required")}
 	ErrRequestBodyRequired    = model.ValidationError{Err: errors.New("request body required")}
 	ErrRequestBodyJSONInvalid = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
 )
@@ -142,7 +139,7 @@ func listFormatFunc(es []error) string {
 func (d *DefaultImpl) IdFromRequest(r *http.Request) (uint, error) {
 	v, ok := mux.Vars(r)["id"]
 	if !ok {
-		return 0, errParamIDRequired
+		return 0, ErrParamIDRequired
 	}
 	id, err := strconv.ParseUint(v, 10, 0)
 	if err != nil {

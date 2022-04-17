@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO(petethepig): this interface is pretty large, we can probably simplify it
+// TODO(petethepig): this interface is pretty large, we can probably simplify it, some methods do pretty similar things
 type Utils interface {
 	// these methods were originally extracted from api package
 	MustJSON(w http.ResponseWriter, v interface{})
