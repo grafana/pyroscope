@@ -39,10 +39,10 @@ func (d *DefaultErrorHandler) HandleError(w http.ResponseWriter, r *http.Request
 }
 
 func (d *DefaultErrorHandler) Error(w http.ResponseWriter, logger logrus.FieldLogger, err error) {
-	d.ErrorCode(w, logger, err, -1)
+	d.errorCode(w, logger, err, -1)
 }
 
-// ErrorCode replies to the request with the specified error message
+// errorCode replies to the request with the specified error message
 // as JSON-encoded body and writes corresponding message to the log.
 //
 // If HTTP code is less than or equal zero, it will be deduced based on
@@ -54,7 +54,7 @@ func (d *DefaultErrorHandler) Error(w http.ResponseWriter, logger logrus.FieldLo
 //
 // It does not end the HTTP request; the caller should ensure no further
 // writes are done to w.
-func (d *DefaultErrorHandler) ErrorCode(w http.ResponseWriter, logger logrus.FieldLogger, err error, code int) {
+func (d *DefaultErrorHandler) errorCode(w http.ResponseWriter, logger logrus.FieldLogger, err error, code int) {
 	switch {
 	case err == nil:
 		return
