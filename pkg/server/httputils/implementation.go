@@ -179,3 +179,49 @@ func (d *DefaultErrorHandler) Logger(r *http.Request, logger logrus.FieldLogger)
 	}
 	return logger.WithFields(fields)
 }
+
+func (d *DefaultErrorHandler) WriteResponseJSON(log *logrus.Logger, w http.ResponseWriter, res interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		d.WriteJSONEncodeError(log, w, err)
+	}
+}
+
+func (d *DefaultErrorHandler) WriteResponseFile(_ *logrus.Logger, w http.ResponseWriter, filename string, content []byte) {
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Write(content)
+	w.(http.Flusher).Flush()
+}
+
+func (d *DefaultErrorHandler) WriteInvalidMethodError(log *logrus.Logger, w http.ResponseWriter) {
+	d.WriteErrorMessage(log, w, http.StatusMethodNotAllowed, "method not allowed")
+}
+
+func (d *DefaultErrorHandler) WriteInvalidParameterError(log *logrus.Logger, w http.ResponseWriter, err error) {
+	d.WriteError(log, w, http.StatusBadRequest, err, "invalid parameter")
+}
+
+func (d *DefaultErrorHandler) WriteInternalServerError(log *logrus.Logger, w http.ResponseWriter, err error, msg string) {
+	d.WriteError(log, w, http.StatusInternalServerError, err, msg)
+}
+
+func (d *DefaultErrorHandler) WriteJSONEncodeError(log *logrus.Logger, w http.ResponseWriter, err error) {
+	d.WriteInternalServerError(log, w, err, "encoding response body")
+}
+
+func (d *DefaultErrorHandler) WriteError(log *logrus.Logger, w http.ResponseWriter, code int, err error, msg string) {
+	log.WithError(err).Error(msg)
+	d.writeMessage(w, code, "%s: %q", msg, err)
+}
+
+func (d *DefaultErrorHandler) WriteErrorMessage(log *logrus.Logger, w http.ResponseWriter, code int, msg string) {
+	log.Error(msg)
+	d.writeMessage(w, code, msg)
+}
+
+func (d *DefaultErrorHandler) writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
+	w.WriteHeader(code)
+	_, _ = fmt.Fprintf(w, format, args...)
+	_, _ = fmt.Fprintln(w)
+}

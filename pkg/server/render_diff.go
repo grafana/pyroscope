@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
@@ -88,7 +89,7 @@ func (rh *RenderDiffHandler) parseDiffQueryParams(r *http.Request, p *diffParams
 }
 
 func (ctrl *Controller) renderDiffHandler() http.HandlerFunc {
-	return NewRenderDiffHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender).ServeHTTP
+	return NewRenderDiffHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
 }
 
 type RenderDiffHandler struct {
@@ -97,15 +98,17 @@ type RenderDiffHandler struct {
 	dir             http.FileSystem
 	stats           StatsReceiver
 	maxNodesDefault int
+	httpUtils       httputils.Helper
 }
 
-func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int) *RenderDiffHandler {
+func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Helper) *RenderDiffHandler {
 	return &RenderDiffHandler{
 		log:             l,
 		storage:         s,
 		dir:             dir,
 		stats:           stats,
 		maxNodesDefault: maxNodesDefault,
+		httpUtils:       httpUtils,
 	}
 }
 
@@ -116,11 +119,11 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		if err := rh.parseDiffQueryParams(r, &params); err != nil {
-			WriteInvalidParameterError(rh.log, w, err)
+			rh.httpUtils.WriteInvalidParameterError(rh.log, w, err)
 			return
 		}
 	default:
-		WriteInvalidMethodError(rh.log, w)
+		rh.httpUtils.WriteInvalidMethodError(rh.log, w)
 		return
 	}
 
@@ -128,19 +131,19 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: do this concurrently
 	leftOut, err := rh.loadTree(ctx, &params.Left, params.Left.StartTime, params.Left.EndTime)
 	if err != nil {
-		WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
+		rh.httpUtils.WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
 		return
 	}
 
 	rightOut, err := rh.loadTree(ctx, &params.Right, params.Right.StartTime, params.Right.EndTime)
 	if err != nil {
-		WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
+		rh.httpUtils.WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
 		return
 	}
 
 	combined, err := flamebearer.NewCombinedProfile("diff", leftOut, rightOut, params.MaxNodes)
 	if err != nil {
-		WriteInvalidParameterError(rh.log, w, err)
+		rh.httpUtils.WriteInvalidParameterError(rh.log, w, err)
 		return
 	}
 
@@ -148,7 +151,7 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "html":
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, rh.dir, w); err != nil {
-			WriteJSONEncodeError(rh.log, w, err)
+			rh.httpUtils.WriteJSONEncodeError(rh.log, w, err)
 			return
 		}
 
@@ -157,7 +160,7 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	default:
 		res := RenderDiffResponse{&combined}
-		WriteResponseJSON(rh.log, w, res)
+		rh.httpUtils.WriteResponseJSON(rh.log, w, res)
 	}
 }
 

@@ -319,7 +319,7 @@ func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Requ
 			})
 		}
 	}
-	WriteResponseJSON(ctrl.log, w, resp)
+	ctrl.httpUtils.WriteResponseJSON(ctrl.log, w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {

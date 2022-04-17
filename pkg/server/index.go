@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
@@ -29,13 +30,14 @@ type IndexHandlerConfig struct {
 }
 
 type IndexHandler struct {
-	log      *logrus.Logger
-	storage  storage.AppNameGetter
-	dir      http.FileSystem
-	fs       http.Handler
-	stats    StatsReceiver
-	notifier Notifier
-	cfg      *IndexHandlerConfig
+	log       *logrus.Logger
+	storage   storage.AppNameGetter
+	dir       http.FileSystem
+	fs        http.Handler
+	stats     StatsReceiver
+	notifier  Notifier
+	cfg       *IndexHandlerConfig
+	httpUtils httputils.Helper
 }
 
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
@@ -51,20 +53,21 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		IsAuthRequired: ctrl.isAuthRequired(),
 		BaseURL:        ctrl.config.BaseURL,
 	}
-	return NewIndexHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.notifier, cfg).ServeHTTP
+	return NewIndexHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.notifier, cfg, ctrl.httpUtils).ServeHTTP
 }
 
 //revive:disable:argument-limit TODO: we will refactor this later
-func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileSystem, stats StatsReceiver, notifier Notifier, cfg *IndexHandlerConfig) http.Handler {
+func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileSystem, stats StatsReceiver, notifier Notifier, cfg *IndexHandlerConfig, httpUtils httputils.Helper) http.Handler {
 	fs := http.FileServer(dir)
 	return &IndexHandler{
-		log:      log,
-		storage:  s,
-		dir:      dir,
-		fs:       fs,
-		stats:    stats,
-		notifier: notifier,
-		cfg:      cfg,
+		log:       log,
+		storage:   s,
+		dir:       dir,
+		fs:        fs,
+		stats:     stats,
+		notifier:  notifier,
+		cfg:       cfg,
+		httpUtils: httpUtils,
 	}
 }
 
@@ -76,13 +79,13 @@ func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, _ *http.Request) {
 	tmpl, err := getTemplate(ih.dir, "/index.html")
 	if err != nil {
-		WriteInternalServerError(ih.log, w, err, "could not render index page")
+		ih.httpUtils.WriteInternalServerError(ih.log, w, err, "could not render index page")
 		return
 	}
 
 	var b []byte
 	if err != nil {
-		WriteJSONEncodeError(ih.log, w, err)
+		ih.httpUtils.WriteJSONEncodeError(ih.log, w, err)
 		return
 	}
 
@@ -101,7 +104,7 @@ func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	// Since we may probably want to rename these flags when exposing to the frontend
 	b, err = json.Marshal(ih.cfg.Flags)
 	if err != nil {
-		WriteJSONEncodeError(ih.log, w, err)
+		ih.httpUtils.WriteJSONEncodeError(ih.log, w, err)
 		return
 	}
 	featuresStr := string(b)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
@@ -24,6 +25,7 @@ type ingestHandler struct {
 	log       *logrus.Logger
 	parser    Parser
 	onSuccess func(pi *parser.PutInput)
+	httpUtils httputils.Helper
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
@@ -32,21 +34,22 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.SpyName)
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
-	})
+	}, ctrl.httpUtils)
 }
 
-func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.PutInput)) http.Handler {
+func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.PutInput), httpUtils httputils.Helper) http.Handler {
 	return ingestHandler{
 		log:       log,
 		parser:    p,
 		onSuccess: onSuccess,
+		httpUtils: httpUtils,
 	}
 }
 
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pi, err := h.ingestParamsFromRequest(r)
 	if err != nil {
-		WriteError(h.log, w, http.StatusBadRequest, err, "invalid parameter")
+		h.httpUtils.WriteError(h.log, w, http.StatusBadRequest, err, "invalid parameter")
 		return
 	}
 
@@ -55,12 +58,12 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err, ingestErr := h.parser.Put(r.Context(), pi)
 
 	if err != nil {
-		WriteError(h.log, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
+		h.httpUtils.WriteError(h.log, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 		return
 	}
 
 	if ingestErr != nil {
-		WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while ingesting data")
+		h.httpUtils.WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while ingesting data")
 		return
 	}
 

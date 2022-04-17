@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -55,31 +56,33 @@ type RenderHandler struct {
 	dir             http.FileSystem
 	stats           StatsReceiver
 	maxNodesDefault int
+	httpUtils       httputils.Helper
 }
 
 func (ctrl *Controller) renderHandler() http.HandlerFunc {
-	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender).ServeHTTP
+	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
 }
 
-func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int) *RenderHandler {
+func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Helper) *RenderHandler {
 	return &RenderHandler{
 		log:             l,
 		storage:         s,
 		dir:             dir,
 		stats:           stats,
 		maxNodesDefault: maxNodesDefault,
+		httpUtils:       httpUtils,
 	}
 }
 
 func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var p renderParams
 	if err := rh.renderParametersFromRequest(r, &p); err != nil {
-		WriteInvalidParameterError(rh.log, w, err)
+		rh.httpUtils.WriteInvalidParameterError(rh.log, w, err)
 		return
 	}
 
 	if err := expectFormats(p.format); err != nil {
-		WriteInvalidParameterError(rh.log, w, errUnknownFormat)
+		rh.httpUtils.WriteInvalidParameterError(rh.log, w, errUnknownFormat)
 		return
 	}
 
@@ -93,7 +96,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%v %v", appName, p.gi.StartTime.UTC().Format(time.RFC3339))
 	rh.stats.StatsInc("render")
 	if err != nil {
-		WriteInternalServerError(rh.log, w, err, "failed to retrieve data")
+		rh.httpUtils.WriteInternalServerError(rh.log, w, err, "failed to retrieve data")
 		return
 	}
 	if out == nil {
@@ -107,7 +110,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "json":
 		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
 		res := rh.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
-		WriteResponseJSON(rh.log, w, res)
+		rh.httpUtils.WriteResponseJSON(rh.log, w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
 			Unit:      out.Units,
@@ -115,18 +118,18 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		out, err := proto.Marshal(pprof)
 		if err == nil {
-			WriteResponseFile(rh.log, w, fmt.Sprintf("%v.pprof", filename), out)
+			rh.httpUtils.WriteResponseFile(rh.log, w, fmt.Sprintf("%v.pprof", filename), out)
 		} else {
-			WriteInternalServerError(rh.log, w, err, "failed to serialize data")
+			rh.httpUtils.WriteInternalServerError(rh.log, w, err, "failed to serialize data")
 		}
 	case "collapsed":
 		collapsed := out.Tree.Collapsed()
-		WriteResponseFile(rh.log, w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
+		rh.httpUtils.WriteResponseFile(rh.log, w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
 		res := flamebearer.NewProfile(filename, out, p.maxNodes)
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&res, rh.dir, w); err != nil {
-			WriteJSONEncodeError(rh.log, w, err)
+			rh.httpUtils.WriteJSONEncodeError(rh.log, w, err)
 			return
 		}
 	}

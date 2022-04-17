@@ -27,7 +27,7 @@ func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		ctrl.loginPost(w, r)
 	default:
-		WriteInvalidMethodError(ctrl.log, w)
+		ctrl.httpUtils.WriteInvalidMethodError(ctrl.log, w)
 	}
 }
 
@@ -87,7 +87,7 @@ func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		ctrl.signupPost(w, r)
 	default:
-		WriteInvalidMethodError(ctrl.log, w)
+		ctrl.httpUtils.WriteInvalidMethodError(ctrl.log, w)
 	}
 }
 
@@ -204,7 +204,7 @@ func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.invalidateCookie(w, api.JWTCookieName)
 		ctrl.loginRedirect(w, r)
 	default:
-		WriteInvalidMethodError(ctrl.log, w)
+		ctrl.httpUtils.WriteInvalidMethodError(ctrl.log, w)
 	}
 }
 
@@ -235,7 +235,7 @@ func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := getTemplate(ctrl.dir, "/redirect.html")
 		if err != nil {
-			WriteInternalServerError(ctrl.log, w, err, "could not render redirect page")
+			ctrl.httpUtils.WriteInternalServerError(ctrl.log, w, err, "could not render redirect page")
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
@@ -249,7 +249,7 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := getTemplate(ctrl.dir, "/forbidden.html")
 		if err != nil {
-			WriteInternalServerError(ctrl.log, w, err, "could not render forbidden page")
+			ctrl.httpUtils.WriteInternalServerError(ctrl.log, w, err, "could not render forbidden page")
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
@@ -332,7 +332,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		ctrl.createCookie(w, api.JWTCookieName, token)
 		tmpl, err := getTemplate(ctrl.dir, "/welcome.html")
 		if err != nil {
-			WriteInternalServerError(ctrl.log, w, err, "could not render welcome page")
+			ctrl.httpUtils.WriteInternalServerError(ctrl.log, w, err, "could not render welcome page")
 			return
 		}
 
