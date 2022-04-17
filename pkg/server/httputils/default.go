@@ -15,10 +15,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type DefaultErrorHandler struct {
+type defaultErrorHandler struct {
 }
 
-func (d *DefaultErrorHandler) MustJSON(w http.ResponseWriter, v interface{}) {
+func NewDefaultErrorHandler() *defaultErrorHandler {
+	return &defaultErrorHandler{}
+}
+
+func (d *defaultErrorHandler) MustJSON(w http.ResponseWriter, v interface{}) {
 	resp, err := json.Marshal(v)
 	if err != nil {
 		panic(err)
@@ -34,11 +38,11 @@ func (d *DefaultErrorHandler) MustJSON(w http.ResponseWriter, v interface{}) {
 // Any error of a type not defined in this package or pkg/model, will be
 // treated as an internal server error causing response code 500. Such
 // errors are not sent but only logged with error log level.
-func (d *DefaultErrorHandler) HandleError(w http.ResponseWriter, r *http.Request, logger logrus.FieldLogger, err error) {
+func (d *defaultErrorHandler) HandleError(w http.ResponseWriter, r *http.Request, logger logrus.FieldLogger, err error) {
 	d.Error(w, d.Logger(r, logger), err)
 }
 
-func (d *DefaultErrorHandler) Error(w http.ResponseWriter, logger logrus.FieldLogger, err error) {
+func (d *defaultErrorHandler) Error(w http.ResponseWriter, logger logrus.FieldLogger, err error) {
 	d.errorCode(w, logger, err, -1)
 }
 
@@ -54,7 +58,7 @@ func (d *DefaultErrorHandler) Error(w http.ResponseWriter, logger logrus.FieldLo
 //
 // It does not end the HTTP request; the caller should ensure no further
 // writes are done to w.
-func (d *DefaultErrorHandler) errorCode(w http.ResponseWriter, logger logrus.FieldLogger, err error, code int) {
+func (d *defaultErrorHandler) errorCode(w http.ResponseWriter, logger logrus.FieldLogger, err error, code int) {
 	switch {
 	case err == nil:
 		return
@@ -148,7 +152,7 @@ func listFormatFunc(es []error) string {
 	return strings.Join(points, "; ")
 }
 
-func (d *DefaultErrorHandler) IdFromRequest(r *http.Request) (uint, error) {
+func (d *defaultErrorHandler) IdFromRequest(r *http.Request) (uint, error) {
 	v, ok := mux.Vars(r)["id"]
 	if !ok {
 		return 0, errParamIDRequired
@@ -162,7 +166,7 @@ func (d *DefaultErrorHandler) IdFromRequest(r *http.Request) (uint, error) {
 
 // Logger creates a new logger scoped to the request
 // and enriches it with the known fields.
-func (d *DefaultErrorHandler) Logger(r *http.Request, logger logrus.FieldLogger) logrus.FieldLogger {
+func (d *defaultErrorHandler) Logger(r *http.Request, logger logrus.FieldLogger) logrus.FieldLogger {
 	fields := logrus.Fields{
 		"url":    r.URL.String(),
 		"method": r.Method,
@@ -180,47 +184,47 @@ func (d *DefaultErrorHandler) Logger(r *http.Request, logger logrus.FieldLogger)
 	return logger.WithFields(fields)
 }
 
-func (d *DefaultErrorHandler) WriteResponseJSON(log logrus.FieldLogger, w http.ResponseWriter, res interface{}) {
+func (d *defaultErrorHandler) WriteResponseJSON(log logrus.FieldLogger, w http.ResponseWriter, res interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		d.WriteJSONEncodeError(log, w, err)
 	}
 }
 
-func (d *DefaultErrorHandler) WriteResponseFile(_ logrus.FieldLogger, w http.ResponseWriter, filename string, content []byte) {
+func (d *defaultErrorHandler) WriteResponseFile(_ logrus.FieldLogger, w http.ResponseWriter, filename string, content []byte) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(content)
 	w.(http.Flusher).Flush()
 }
 
-func (d *DefaultErrorHandler) WriteInvalidMethodError(log logrus.FieldLogger, w http.ResponseWriter) {
+func (d *defaultErrorHandler) WriteInvalidMethodError(log logrus.FieldLogger, w http.ResponseWriter) {
 	d.writeErrorMessage(log, w, http.StatusMethodNotAllowed, "method not allowed")
 }
 
-func (d *DefaultErrorHandler) WriteInvalidParameterError(log logrus.FieldLogger, w http.ResponseWriter, err error) {
+func (d *defaultErrorHandler) WriteInvalidParameterError(log logrus.FieldLogger, w http.ResponseWriter, err error) {
 	d.WriteError(log, w, http.StatusBadRequest, err, "invalid parameter")
 }
 
-func (d *DefaultErrorHandler) WriteInternalServerError(log logrus.FieldLogger, w http.ResponseWriter, err error, msg string) {
+func (d *defaultErrorHandler) WriteInternalServerError(log logrus.FieldLogger, w http.ResponseWriter, err error, msg string) {
 	d.WriteError(log, w, http.StatusInternalServerError, err, msg)
 }
 
-func (d *DefaultErrorHandler) WriteJSONEncodeError(log logrus.FieldLogger, w http.ResponseWriter, err error) {
+func (d *defaultErrorHandler) WriteJSONEncodeError(log logrus.FieldLogger, w http.ResponseWriter, err error) {
 	d.WriteInternalServerError(log, w, err, "encoding response body")
 }
 
-func (d *DefaultErrorHandler) WriteError(log logrus.FieldLogger, w http.ResponseWriter, code int, err error, msg string) {
+func (d *defaultErrorHandler) WriteError(log logrus.FieldLogger, w http.ResponseWriter, code int, err error, msg string) {
 	log.WithError(err).Error(msg)
 	d.writeMessage(w, code, "%s: %q", msg, err)
 }
 
-func (d *DefaultErrorHandler) writeErrorMessage(log logrus.FieldLogger, w http.ResponseWriter, code int, msg string) {
+func (d *defaultErrorHandler) writeErrorMessage(log logrus.FieldLogger, w http.ResponseWriter, code int, msg string) {
 	log.Error(msg)
 	d.writeMessage(w, code, msg)
 }
 
-func (d *DefaultErrorHandler) writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
+func (d *defaultErrorHandler) writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
 	w.WriteHeader(code)
 	_, _ = fmt.Fprintf(w, format, args...)
 	_, _ = fmt.Fprintln(w)

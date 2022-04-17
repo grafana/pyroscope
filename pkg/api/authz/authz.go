@@ -17,7 +17,7 @@ type Authorizer struct {
 func NewAuthorizer(logger logrus.FieldLogger, httpUtils httputils.Helper) Authorizer {
 	return Authorizer{
 		logger:    logger,
-		httpUtils: &httputils.DefaultErrorHandler{},
+		httpUtils: httputils.NewDefaultErrorHandler(),
 	}
 }
 

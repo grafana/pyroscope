@@ -37,8 +37,8 @@ func (r *Router) RegisterHandlers() {
 }
 
 func (r *Router) RegisterUserHandlers() {
-	h := api.NewUserHandler(r.Logger, r.UserService, &httputils.DefaultErrorHandler{})
-	authorizer := authz.NewAuthorizer(r.Services.Logger, &httputils.DefaultErrorHandler{})
+	h := api.NewUserHandler(r.Logger, r.UserService, httputils.NewDefaultErrorHandler())
+	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultErrorHandler())
 
 	x := r.PathPrefix("/users").Subrouter()
 	x.Use(authorizer.RequireAdminRole())
@@ -63,8 +63,8 @@ func (r *Router) RegisterUserHandlers() {
 }
 
 func (r *Router) RegisterAPIKeyHandlers() {
-	h := api.NewAPIKeyHandler(r.Logger, r.APIKeyService, &httputils.DefaultErrorHandler{})
-	authorizer := authz.NewAuthorizer(r.Services.Logger, &httputils.DefaultErrorHandler{})
+	h := api.NewAPIKeyHandler(r.Logger, r.APIKeyService, httputils.NewDefaultErrorHandler())
+	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultErrorHandler())
 
 	x := r.PathPrefix("/keys").Subrouter()
 	x.Use(authorizer.RequireAdminRole())
