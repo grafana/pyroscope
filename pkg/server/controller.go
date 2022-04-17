@@ -298,7 +298,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	return r, nil
 }
 
-func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Request) {
+func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, r *http.Request) {
 	targets := ctrl.scrapeManager.TargetsActive()
 	resp := []TargetsResponse{}
 	for k, v := range targets {
@@ -319,7 +319,7 @@ func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Requ
 			})
 		}
 	}
-	ctrl.httpUtils.WriteResponseJSON(w, resp)
+	ctrl.httpUtils.WriteResponseJSON(r, w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {

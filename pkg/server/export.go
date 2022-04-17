@@ -22,7 +22,7 @@ func NewExportHandler(httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := http.Post("https://flamegraph.com/api/upload/v1", "application/json", r.Body)
 		if err != nil {
-			httpUtils.WriteError(w, 500, err, fmt.Sprintf("could not upload profile: %v", err))
+			httpUtils.WriteError(r, w, 500, err, fmt.Sprintf("could not upload profile: %v", err))
 			return
 		}
 		defer resp.Body.Close()

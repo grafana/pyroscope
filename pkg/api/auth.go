@@ -26,7 +26,7 @@ func AuthMiddleware(loginRedirect http.HandlerFunc, authService AuthService, h h
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {
 				k, err := authService.APIKeyFromToken(r.Context(), token)
 				if err != nil {
-					h.HandleError(w, r, model.AuthenticationError{Err: err})
+					h.HandleError(r, w, model.AuthenticationError{Err: err})
 					return
 				}
 				next.ServeHTTP(w, r.WithContext(model.WithAPIKey(r.Context(), k)))
@@ -41,7 +41,7 @@ func AuthMiddleware(loginRedirect http.HandlerFunc, authService AuthService, h h
 						loginRedirect(w, r)
 						return
 					}
-					h.HandleError(w, r, model.AuthenticationError{Err: err})
+					h.HandleError(r, w, model.AuthenticationError{Err: err})
 					return
 				}
 				next.ServeHTTP(w, r.WithContext(model.WithUser(r.Context(), u)))
@@ -54,7 +54,7 @@ func AuthMiddleware(loginRedirect http.HandlerFunc, authService AuthService, h h
 				return
 			}
 
-			h.HandleError(w, r, model.ErrCredentialsInvalid)
+			h.HandleError(r, w, model.ErrCredentialsInvalid)
 		})
 	}
 }

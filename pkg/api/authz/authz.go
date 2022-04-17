@@ -34,7 +34,7 @@ func (a Authorizer) Require(funcs ...func(r *http.Request) bool) func(next http.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			for _, fn := range funcs {
 				if !fn(r) {
-					a.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
+					a.httpUtils.HandleError(r, w, model.ErrPermissionDenied)
 					return
 				}
 			}
@@ -52,7 +52,7 @@ func (a Authorizer) RequireOneOf(funcs ...func(r *http.Request) bool) func(next 
 					return
 				}
 			}
-			a.httpUtils.HandleError(w, r, model.ErrPermissionDenied)
+			a.httpUtils.HandleError(r, w, model.ErrPermissionDenied)
 		})
 	}
 }

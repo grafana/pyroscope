@@ -25,7 +25,7 @@ func NewDefaultHelper(logger logrus.FieldLogger) *DefaultImpl {
 	}
 }
 
-func (*DefaultImpl) MustJSON(w http.ResponseWriter, v interface{}) {
+func (*DefaultImpl) MustJSON(_ *http.Request, w http.ResponseWriter, v interface{}) {
 	resp, err := json.Marshal(v)
 	if err != nil {
 		panic(err)
@@ -41,12 +41,12 @@ func (*DefaultImpl) MustJSON(w http.ResponseWriter, v interface{}) {
 // Any error of a type not defined in this package or pkg/model, will be
 // treated as an internal server error causing response code 500. Such
 // errors are not sent but only logged with error log level.
-func (d *DefaultImpl) HandleError(w http.ResponseWriter, r *http.Request, err error) {
-	d.error(w, d.Logger(r), err)
+func (d *DefaultImpl) HandleError(r *http.Request, w http.ResponseWriter, err error) {
+	d.error(r, w, d.Logger(r), err)
 }
 
-func (d *DefaultImpl) error(w http.ResponseWriter, rLogger logrus.FieldLogger, err error) {
-	d.ErrorCode(w, rLogger, err, -1)
+func (d *DefaultImpl) error(r *http.Request, w http.ResponseWriter, rLogger logrus.FieldLogger, err error) {
+	d.ErrorCode(r, w, rLogger, err, -1)
 }
 
 // ErrorCode replies to the request with the specified error message
@@ -61,7 +61,7 @@ func (d *DefaultImpl) error(w http.ResponseWriter, rLogger logrus.FieldLogger, e
 //
 // It does not end the HTTP request; the caller should ensure no further
 // writes are done to w.
-func (d *DefaultImpl) ErrorCode(w http.ResponseWriter, rLogger logrus.FieldLogger, err error, code int) {
+func (d *DefaultImpl) ErrorCode(r *http.Request, w http.ResponseWriter, rLogger logrus.FieldLogger, err error, code int) {
 	switch {
 	case err == nil:
 		return
@@ -112,7 +112,7 @@ func (d *DefaultImpl) ErrorCode(w http.ResponseWriter, rLogger logrus.FieldLogge
 		rLogger.Debug(msg)
 	}
 
-	d.MustJSON(w, e)
+	d.MustJSON(r, w, e)
 }
 
 var (
@@ -168,47 +168,47 @@ func (d *DefaultImpl) Logger(r *http.Request) logrus.FieldLogger {
 	return d.logger.WithFields(fields)
 }
 
-func (d *DefaultImpl) WriteResponseJSON(w http.ResponseWriter, res interface{}) {
+func (d *DefaultImpl) WriteResponseJSON(r *http.Request, w http.ResponseWriter, res interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		d.WriteJSONEncodeError(w, err)
+		d.WriteJSONEncodeError(r, w, err)
 	}
 }
 
-func (*DefaultImpl) WriteResponseFile(w http.ResponseWriter, filename string, content []byte) {
+func (*DefaultImpl) WriteResponseFile(_ *http.Request, w http.ResponseWriter, filename string, content []byte) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(content)
 	w.(http.Flusher).Flush()
 }
 
-func (d *DefaultImpl) WriteInvalidMethodError(w http.ResponseWriter) {
-	d.writeErrorMessage(w, http.StatusMethodNotAllowed, "method not allowed")
+func (d *DefaultImpl) WriteInvalidMethodError(r *http.Request, w http.ResponseWriter) {
+	d.writeErrorMessage(r, w, http.StatusMethodNotAllowed, "method not allowed")
 }
 
-func (d *DefaultImpl) WriteInvalidParameterError(w http.ResponseWriter, err error) {
-	d.WriteError(w, http.StatusBadRequest, err, "invalid parameter")
+func (d *DefaultImpl) WriteInvalidParameterError(r *http.Request, w http.ResponseWriter, err error) {
+	d.WriteError(r, w, http.StatusBadRequest, err, "invalid parameter")
 }
 
-func (d *DefaultImpl) WriteInternalServerError(w http.ResponseWriter, err error, msg string) {
-	d.WriteError(w, http.StatusInternalServerError, err, msg)
+func (d *DefaultImpl) WriteInternalServerError(r *http.Request, w http.ResponseWriter, err error, msg string) {
+	d.WriteError(r, w, http.StatusInternalServerError, err, msg)
 }
 
-func (d *DefaultImpl) WriteJSONEncodeError(w http.ResponseWriter, err error) {
-	d.WriteInternalServerError(w, err, "encoding response body")
+func (d *DefaultImpl) WriteJSONEncodeError(r *http.Request, w http.ResponseWriter, err error) {
+	d.WriteInternalServerError(r, w, err, "encoding response body")
 }
 
-func (d *DefaultImpl) WriteError(w http.ResponseWriter, code int, err error, msg string) {
+func (d *DefaultImpl) WriteError(r *http.Request, w http.ResponseWriter, code int, err error, msg string) {
 	d.logger.WithError(err).Error(msg)
-	d.writeMessage(w, code, "%s: %q", msg, err)
+	d.writeMessage(r, w, code, "%s: %q", msg, err)
 }
 
-func (d *DefaultImpl) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
+func (d *DefaultImpl) writeErrorMessage(r *http.Request, w http.ResponseWriter, code int, msg string) {
 	d.logger.Error(msg)
-	d.writeMessage(w, code, msg)
+	d.writeMessage(r, w, code, msg)
 }
 
-func (*DefaultImpl) writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
+func (*DefaultImpl) writeMessage(_ *http.Request, w http.ResponseWriter, code int, format string, args ...interface{}) {
 	w.WriteHeader(code)
 	_, _ = fmt.Fprintf(w, format, args...)
 	_, _ = fmt.Fprintln(w)

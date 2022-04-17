@@ -49,7 +49,7 @@ func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.Pu
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pi, err := h.ingestParamsFromRequest(r)
 	if err != nil {
-		h.httpUtils.WriteError(w, http.StatusBadRequest, err, "invalid parameter")
+		h.httpUtils.WriteError(r, w, http.StatusBadRequest, err, "invalid parameter")
 		return
 	}
 
@@ -58,12 +58,12 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err, ingestErr := h.parser.Put(r.Context(), pi)
 
 	if err != nil {
-		h.httpUtils.WriteError(w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
+		h.httpUtils.WriteError(r, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 		return
 	}
 
 	if ingestErr != nil {
-		h.httpUtils.WriteError(w, http.StatusInternalServerError, err, "error happened while ingesting data")
+		h.httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "error happened while ingesting data")
 		return
 	}
 

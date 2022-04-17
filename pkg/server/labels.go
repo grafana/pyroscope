@@ -32,7 +32,7 @@ func NewLabelsHandler(s storage.LabelsGetter, httpUtils httputils.Utils) http.Ha
 
 		b, err := json.Marshal(keys)
 		if err != nil {
-			httpUtils.WriteJSONEncodeError(w, err)
+			httpUtils.WriteJSONEncodeError(r, w, err)
 			return
 		}
 		_, _ = w.Write(b)

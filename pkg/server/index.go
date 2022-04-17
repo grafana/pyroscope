@@ -84,16 +84,16 @@ func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ih.renderIndexPage(w, r)
 }
 
-func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, _ *http.Request) {
+func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := getTemplate(ih.dir, "/index.html")
 	if err != nil {
-		ih.httpUtils.WriteInternalServerError(w, err, "could not render index page")
+		ih.httpUtils.WriteInternalServerError(r, w, err, "could not render index page")
 		return
 	}
 
 	var b []byte
 	if err != nil {
-		ih.httpUtils.WriteJSONEncodeError(w, err)
+		ih.httpUtils.WriteJSONEncodeError(r, w, err)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	// Since we may probably want to rename these flags when exposing to the frontend
 	b, err = json.Marshal(ih.cfg.Flags)
 	if err != nil {
-		ih.httpUtils.WriteJSONEncodeError(w, err)
+		ih.httpUtils.WriteJSONEncodeError(r, w, err)
 		return
 	}
 	featuresStr := string(b)

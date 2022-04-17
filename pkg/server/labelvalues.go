@@ -19,7 +19,7 @@ func NewLabelValuesHandler(s storage.LabelValuesGetter, httpUtils httputils.Util
 		query := r.URL.Query().Get("query")
 
 		if labelName == "" {
-			httpUtils.WriteInvalidParameterError(w, errLabelIsRequired)
+			httpUtils.WriteInvalidParameterError(r, w, errLabelIsRequired)
 			return
 		}
 
@@ -38,7 +38,7 @@ func NewLabelValuesHandler(s storage.LabelValuesGetter, httpUtils httputils.Util
 
 		b, err := json.Marshal(values)
 		if err != nil {
-			httpUtils.WriteJSONEncodeError(w, err)
+			httpUtils.WriteJSONEncodeError(r, w, err)
 			return
 		}
 		_, _ = w.Write(b)
