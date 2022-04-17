@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/sirupsen/logrus"
 )
 
 type Payload struct {
@@ -16,10 +15,10 @@ type Payload struct {
 }
 
 func (ctrl *Controller) exportHandler() http.HandlerFunc {
-	return NewExportHandler(ctrl.log, ctrl.httpUtils)
+	return NewExportHandler(ctrl.httpUtils)
 }
 
-func NewExportHandler(log *logrus.Logger, httpUtils httputils.Utils) http.HandlerFunc {
+func NewExportHandler(httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := http.Post("https://flamegraph.com/api/upload/v1", "application/json", r.Body)
 		if err != nil {

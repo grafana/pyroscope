@@ -119,7 +119,7 @@ func (h APIKeyHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h APIKeyHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
-	id, err := h.httpUtils.IdFromRequest(r)
+	id, err := h.httpUtils.IDFromRequest(r)
 	if err != nil {
 		h.httpUtils.HandleError(w, r, err)
 		return

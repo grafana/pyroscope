@@ -25,7 +25,7 @@ func NewDefaultHelper(logger logrus.FieldLogger) *DefaultImpl {
 	}
 }
 
-func (d *DefaultImpl) MustJSON(w http.ResponseWriter, v interface{}) {
+func (*DefaultImpl) MustJSON(w http.ResponseWriter, v interface{}) {
 	resp, err := json.Marshal(v)
 	if err != nil {
 		panic(err)
@@ -136,7 +136,7 @@ func listFormatFunc(es []error) string {
 	return strings.Join(points, "; ")
 }
 
-func (d *DefaultImpl) IdFromRequest(r *http.Request) (uint, error) {
+func (*DefaultImpl) IDFromRequest(r *http.Request) (uint, error) {
 	v, ok := mux.Vars(r)["id"]
 	if !ok {
 		return 0, ErrParamIDRequired
@@ -175,7 +175,7 @@ func (d *DefaultImpl) WriteResponseJSON(w http.ResponseWriter, res interface{}) 
 	}
 }
 
-func (d *DefaultImpl) WriteResponseFile(w http.ResponseWriter, filename string, content []byte) {
+func (*DefaultImpl) WriteResponseFile(w http.ResponseWriter, filename string, content []byte) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(content)
@@ -208,7 +208,7 @@ func (d *DefaultImpl) writeErrorMessage(w http.ResponseWriter, code int, msg str
 	d.writeMessage(w, code, msg)
 }
 
-func (d *DefaultImpl) writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
+func (*DefaultImpl) writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
 	w.WriteHeader(code)
 	_, _ = fmt.Fprintf(w, format, args...)
 	_, _ = fmt.Fprintln(w)

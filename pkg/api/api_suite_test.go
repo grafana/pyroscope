@@ -65,7 +65,7 @@ func newTestRouter(rcp requestContextProvider, services router.Services) *router
 		services)
 
 	if services.AuthService != nil {
-		r.Use(api.AuthMiddleware(services.Logger, redirect, r.AuthService, httputils.NewDefaultHelper(services.Logger)))
+		r.Use(api.AuthMiddleware(redirect, r.AuthService, httputils.NewDefaultHelper(services.Logger)))
 	}
 
 	r.Use(func(next http.Handler) http.Handler {

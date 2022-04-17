@@ -63,6 +63,7 @@ func (ctrl *Controller) renderHandler() http.HandlerFunc {
 	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
 }
 
+//revive:disable:argument-limit TODO(petethepig): we will refactor this later
 func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *RenderHandler {
 	return &RenderHandler{
 		log:             l,

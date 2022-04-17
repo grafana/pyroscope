@@ -491,7 +491,7 @@ func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
 
 func (ctrl *Controller) authMiddleware(redirect http.HandlerFunc) mux.MiddlewareFunc {
 	if ctrl.isAuthRequired() {
-		return api.AuthMiddleware(ctrl.log, redirect, ctrl.authService, ctrl.httpUtils)
+		return api.AuthMiddleware(redirect, ctrl.authService, ctrl.httpUtils)
 	}
 	return func(next http.Handler) http.Handler {
 		return next
@@ -505,7 +505,7 @@ func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
 			TTL:  ctrl.config.Auth.Ingestion.CacheTTL,
 		}
 		as := service.NewCachingAuthService(ctrl.authService, asConfig)
-		return api.AuthMiddleware(ctrl.log, nil, as, ctrl.httpUtils)
+		return api.AuthMiddleware(nil, as, ctrl.httpUtils)
 	}
 	return func(next http.Handler) http.Handler {
 		return next

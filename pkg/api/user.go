@@ -116,7 +116,7 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	id, err := h.httpUtils.IdFromRequest(r)
+	id, err := h.httpUtils.IDFromRequest(r)
 	if err != nil {
 		h.httpUtils.HandleError(w, r, err)
 		return
@@ -143,7 +143,7 @@ func (h UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	id, err := h.httpUtils.IdFromRequest(r)
+	id, err := h.httpUtils.IDFromRequest(r)
 	if err != nil {
 		h.httpUtils.HandleError(w, r, err)
 		return
@@ -171,7 +171,7 @@ func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint)
 }
 
 func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
-	id, err := h.httpUtils.IdFromRequest(r)
+	id, err := h.httpUtils.IDFromRequest(r)
 	if err != nil {
 		h.httpUtils.HandleError(w, r, err)
 		return
@@ -194,7 +194,7 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
-	id, err := h.httpUtils.IdFromRequest(r)
+	id, err := h.httpUtils.IDFromRequest(r)
 	if err != nil {
 		h.httpUtils.HandleError(w, r, err)
 		return
@@ -225,7 +225,7 @@ func (h UserHandler) EnableUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, disabled bool) {
-	id, err := h.httpUtils.IdFromRequest(r)
+	id, err := h.httpUtils.IDFromRequest(r)
 	if err != nil {
 		h.httpUtils.HandleError(w, r, err)
 		return
@@ -243,7 +243,7 @@ func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, dis
 }
 
 func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	id, err := h.httpUtils.IdFromRequest(r)
+	id, err := h.httpUtils.IDFromRequest(r)
 	if err != nil {
 		h.httpUtils.HandleError(w, r, err)
 		return

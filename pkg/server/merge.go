@@ -25,6 +25,7 @@ func (ctrl *Controller) mergeHandler() http.HandlerFunc {
 	return NewMergeHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
 }
 
+//revive:disable:argument-limit TODO(petethepig): we will refactor this later
 func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *MergeHandler {
 	return &MergeHandler{
 		log:             l,

@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 )
@@ -22,7 +20,7 @@ type AuthService interface {
 }
 
 // AuthMiddleware authenticates requests.
-func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, authService AuthService, h httputils.Utils) func(next http.Handler) http.Handler {
+func AuthMiddleware(loginRedirect http.HandlerFunc, authService AuthService, h httputils.Utils) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {

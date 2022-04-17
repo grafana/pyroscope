@@ -11,7 +11,7 @@ type Utils interface {
 	// these methods were originally extracted from api package
 	MustJSON(w http.ResponseWriter, v interface{})
 	HandleError(w http.ResponseWriter, r *http.Request, err error)
-	IdFromRequest(r *http.Request) (uint, error)
+	IDFromRequest(r *http.Request) (uint, error)
 	Logger(r *http.Request) logrus.FieldLogger
 
 	// these methods were originally extracted from server package

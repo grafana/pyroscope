@@ -101,6 +101,7 @@ type RenderDiffHandler struct {
 	httpUtils       httputils.Utils
 }
 
+//revive:disable:argument-limit TODO(petethepig): we will refactor this later
 func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *RenderDiffHandler {
 	return &RenderDiffHandler{
 		log:             l,
