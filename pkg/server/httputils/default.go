@@ -39,10 +39,10 @@ func (d *defaultErrorHandler) MustJSON(w http.ResponseWriter, v interface{}) {
 // treated as an internal server error causing response code 500. Such
 // errors are not sent but only logged with error log level.
 func (d *defaultErrorHandler) HandleError(w http.ResponseWriter, r *http.Request, logger logrus.FieldLogger, err error) {
-	d.Error(w, d.Logger(r, logger), err)
+	d.error(w, d.Logger(r, logger), err)
 }
 
-func (d *defaultErrorHandler) Error(w http.ResponseWriter, logger logrus.FieldLogger, err error) {
+func (d *defaultErrorHandler) error(w http.ResponseWriter, logger logrus.FieldLogger, err error) {
 	d.errorCode(w, logger, err, -1)
 }
 
