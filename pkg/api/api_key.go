@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,12 +22,14 @@ type APIKeyService interface {
 type APIKeyHandler struct {
 	logger        logrus.FieldLogger
 	apiKeyService APIKeyService
+	httputils     httputils.Helper
 }
 
-func NewAPIKeyHandler(logger logrus.FieldLogger, apiKeyService APIKeyService) APIKeyHandler {
+func NewAPIKeyHandler(logger logrus.FieldLogger, apiKeyService APIKeyService, httputils httputils.Helper) APIKeyHandler {
 	return APIKeyHandler{
 		logger:        logger,
 		apiKeyService: apiKeyService,
+		httputils:     httputils,
 	}
 }
 
@@ -80,7 +83,7 @@ func generatedAPIKeyFromModel(m model.APIKey) generatedAPIKey {
 func (h APIKeyHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	var req createAPIKeyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		HandleError(w, r, h.logger, JSONError{Err: err})
+		h.httputils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.CreateAPIKeyParams{
@@ -93,36 +96,36 @@ func (h APIKeyHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 	ak, secret, err := h.apiKeyService.CreateAPIKey(r.Context(), params)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	k := generatedAPIKeyFromModel(ak)
 	k.Key = secret
 	w.WriteHeader(http.StatusCreated)
-	MustJSON(w, k)
+	h.httputils.MustJSON(w, k)
 }
 
 func (h APIKeyHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	u, err := h.apiKeyService.GetAllAPIKeys(r.Context())
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	apiKeys := make([]apiKey, len(u))
 	for i := range u {
 		apiKeys[i] = apiKeyFromModel(u[i])
 	}
-	MustJSON(w, apiKeys)
+	h.httputils.MustJSON(w, apiKeys)
 }
 
 func (h APIKeyHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
-	id, err := idFromRequest(r)
+	id, err := h.httputils.IdFromRequest(r)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	if err = h.apiKeyService.DeleteAPIKeyByID(r.Context(), id); err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

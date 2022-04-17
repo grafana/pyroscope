@@ -27,7 +27,7 @@ func NewExportHandler(log *logrus.Logger) http.HandlerFunc {
 		}
 		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		io.Copy(w, resp.Body)
 	}
 }

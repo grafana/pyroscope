@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,12 +25,14 @@ type UserService interface {
 type UserHandler struct {
 	logger      logrus.FieldLogger
 	userService UserService
+	httputils   httputils.Helper
 }
 
-func NewUserHandler(logger logrus.FieldLogger, userService UserService) UserHandler {
+func NewUserHandler(logger logrus.FieldLogger, userService UserService, httputils httputils.Helper) UserHandler {
 	return UserHandler{
 		logger:      logger,
 		userService: userService,
+		httputils:   httputils,
 	}
 }
 
@@ -93,7 +96,7 @@ func userFromModel(u model.User) user {
 func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req createUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		HandleError(w, r, h.logger, JSONError{Err: err})
+		h.httputils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.CreateUserParams{
@@ -105,44 +108,44 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := h.userService.CreateUser(r.Context(), params)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	MustJSON(w, userFromModel(u))
+	h.httputils.MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	id, err := idFromRequest(r)
+	id, err := h.httputils.IdFromRequest(r)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	u, err := h.userService.FindUserByID(r.Context(), id)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
-	MustJSON(w, userFromModel(u))
+	h.httputils.MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	u, err := h.userService.GetAllUsers(r.Context())
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	users := make([]user, len(u))
 	for i := range u {
 		users[i] = userFromModel(u[i])
 	}
-	MustJSON(w, users)
+	h.httputils.MustJSON(w, users)
 }
 
 func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	id, err := idFromRequest(r)
+	id, err := h.httputils.IdFromRequest(r)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	h.updateUser(w, r, id)
@@ -151,7 +154,7 @@ func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint) {
 	var req updateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		HandleError(w, r, h.logger, JSONError{Err: err})
+		h.httputils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{
@@ -161,53 +164,53 @@ func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint)
 	}
 	u, err := h.userService.UpdateUserByID(r.Context(), id, params)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
-	MustJSON(w, userFromModel(u))
+	h.httputils.MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
-	id, err := idFromRequest(r)
+	id, err := h.httputils.IdFromRequest(r)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httputils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	var req resetUserPasswordRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		HandleError(w, r, h.logger, JSONError{Err: err})
+		h.httputils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{Password: model.String(string(req.Password))}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
-	id, err := idFromRequest(r)
+	id, err := h.httputils.IdFromRequest(r)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httputils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserRoleRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		HandleError(w, r, h.logger, JSONError{Err: err})
+		h.httputils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{Role: &req.Role}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -222,31 +225,31 @@ func (h UserHandler) EnableUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, disabled bool) {
-	id, err := idFromRequest(r)
+	id, err := h.httputils.IdFromRequest(r)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httputils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	params := model.UpdateUserParams{IsDisabled: &disabled}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	id, err := idFromRequest(r)
+	id, err := h.httputils.IdFromRequest(r)
 	if err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	if err = h.userService.DeleteUserByID(r.Context(), id); err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -255,16 +258,16 @@ func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
 	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httputils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
-	MustJSON(w, userFromModel(u))
+	h.httputils.MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
 	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httputils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	h.updateUser(w, r, u.ID)
@@ -273,12 +276,12 @@ func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Requ
 func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *http.Request) {
 	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		HandleError(w, r, h.logger, model.ErrPermissionDenied)
+		h.httputils.HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		HandleError(w, r, h.logger, JSONError{Err: err})
+		h.httputils.HandleError(w, r, h.logger, httputils.JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserPasswordParams{
@@ -286,7 +289,7 @@ func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *h
 		NewPassword: string(req.NewPassword),
 	}
 	if err := h.userService.UpdateUserPasswordByID(r.Context(), u.ID, params); err != nil {
-		HandleError(w, r, h.logger, err)
+		h.httputils.HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

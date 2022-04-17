@@ -9,6 +9,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 )
 
 // TODO(kolesnikovae): This part should be moved from
@@ -37,7 +38,7 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := getTemplate(ctrl.dir, "/login.html")
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
@@ -62,17 +63,17 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 	var req loginCredentials
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ctrl.log.WithError(err).Error("failed to parse user credentials")
-		api.HandleError(w, r, ctrl.log, api.JSONError{Err: err})
+		ctrl.httpUtils.HandleError(w, r, ctrl.log, httputils.JSONError{Err: err})
 		return
 	}
 	u, err := ctrl.authService.AuthenticateUser(r.Context(), req.Username, string(req.Password))
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	token, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserJWTToken(u.Name, u.Role))
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	ctrl.createCookie(w, api.JWTCookieName, token)
@@ -97,7 +98,7 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := getTemplate(ctrl.dir, "/signup.html")
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
@@ -123,7 +124,7 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 	}
 	var req signupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	_, err := ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
@@ -133,7 +134,7 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		Password: string(req.Password),
 		Role:     ctrl.config.Auth.SignupDefaultRole,
 	})
-	api.HandleError(w, r, ctrl.log, err)
+	ctrl.httpUtils.HandleError(w, r, ctrl.log, err)
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
