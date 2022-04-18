@@ -25,6 +25,7 @@ body {
 
   background-color: var(--ps-c-gray-dark-1);
   color: var(--ps-c-white);
+  -webkit-font-smoothing: antialiased;
 }
 
 pre,
@@ -292,7 +293,7 @@ $pane-width: 6px;
 
     span {
       // mix-blend-mode: exclusion;
-      text-shadow: 0 0 2px var(--ps-c-black-lighter);
+      text-shadow: 0 0 2px var(--ps-c-black-light-2);
     }
 
     &:first-child {

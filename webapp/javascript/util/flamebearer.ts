@@ -1,5 +1,5 @@
 function deltaDiffWrapper(format: 'single' | 'double', levels: number[][]) {
-  let mutable_levels = [...levels];
+  const mutable_levels = [...levels];
 
   function deltaDiff(levels: number[][], start: number, step: number) {
     for (const level of levels) {

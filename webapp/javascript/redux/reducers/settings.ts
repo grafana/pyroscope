@@ -1,8 +1,4 @@
-import {
-  createSlice,
-  createAsyncThunk,
-  combineReducers,
-} from '@reduxjs/toolkit';
+import { createSlice, combineReducers } from '@reduxjs/toolkit';
 import { Users, type User } from '@webapp/models/users';
 import { APIKey, APIKeys } from '@webapp/models/apikeys';
 
@@ -21,6 +17,7 @@ import {
 } from '@webapp/services/apiKeys';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
+import { createAsyncThunk } from '../async-thunk';
 
 type UsersState = {
   type: 'pristine' | 'loading' | 'loaded' | 'failed';

@@ -1,13 +1,12 @@
 import ReactDOM from 'react-dom';
-import React, { useEffect } from 'react';
+import React from 'react';
 
-import { Provider, useDispatch } from 'react-redux';
+import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
-import { loadCurrentUser } from '@webapp/redux/reducers/user';
 import Footer from '@webapp/components/Footer';
 import store, { persistor } from './redux/store';
 
@@ -20,13 +19,15 @@ import Sidebar from './components/Sidebar';
 import AdhocSingle from './pages/AdhocSingle';
 import AdhocComparison from './pages/AdhocComparison';
 import AdhocDiff from './pages/AdhocDiff';
-import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
+import ServiceDiscoveryApp from './pages/ServiceDiscovery';
 import ServerNotifications from './components/ServerNotifications';
 // since this style is practically all pages
 import '@pyroscope/flamegraph/dist/index.css';
-// global css variables
-// import './variables.css';
 
+import SignInPage from './pages/IntroPages/SignIn';
+import SignUpPage from './pages/IntroPages/SignUp';
+import NotFound from './pages/IntroPages/NotFound';
+import { PAGES } from './pages/constants';
 import history from './util/history';
 
 let showFps = false;
@@ -39,51 +40,58 @@ try {
 }
 
 function App() {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    dispatch(loadCurrentUser());
-  }, [dispatch]);
-
   return (
     <div className="app">
       <Sidebar />
       <div className="pyroscope-app">
         <Switch>
-          <Route exact path="/">
+          <Route exact path={PAGES.LOGIN}>
+            <SignInPage />
+          </Route>
+          <Route exact path={PAGES.SIGNUP}>
+            <SignUpPage />
+          </Route>
+          <Route exact path={PAGES.CONTINOUS_SINGLE_VIEW}>
             <Continuous>
               <ContinuousSingleView />
             </Continuous>
           </Route>
-          <Route path="/comparison">
+          <Route path={PAGES.COMPARISON_VIEW}>
             <Continuous>
               <ContinuousComparisonView />
             </Continuous>
           </Route>
-          <Route path="/comparison-diff">
+          <Route path={PAGES.COMPARISON_DIFF_VIEW}>
             <Continuous>
               <ContinuousDiffView />
             </Continuous>
           </Route>
-          <Route path="/settings">
-            <Settings />
+          <Route path={PAGES.SETTINGS}>
+            <Continuous>
+              <Settings />
+            </Continuous>
           </Route>
-          <Route path="/service-discovery">
+          <Route path={PAGES.SERVICE_DISCOVERY}>
             <ServiceDiscoveryApp />
           </Route>
           {isAdhocUIEnabled && (
-            <>
-              <Route path="/adhoc-single">
-                <AdhocSingle />
-              </Route>
-              <Route path="/adhoc-comparison">
-                <AdhocComparison />
-              </Route>
-              <Route path="/adhoc-comparison-diff">
-                <AdhocDiff />
-              </Route>
-            </>
+            <Route path={PAGES.ADHOC_SINGLE}>
+              <AdhocSingle />
+            </Route>
           )}
+          {isAdhocUIEnabled && (
+            <Route path={PAGES.ADHOC_COMPARISON}>
+              <AdhocComparison />
+            </Route>
+          )}
+          {isAdhocUIEnabled && (
+            <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
+              <AdhocDiff />
+            </Route>
+          )}
+          <Route path="*" exact>
+            <NotFound />
+          </Route>
         </Switch>
         <Footer />
       </div>

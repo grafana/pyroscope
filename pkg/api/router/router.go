@@ -8,6 +8,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 )
 
 type Router struct {
@@ -36,8 +37,8 @@ func (r *Router) RegisterHandlers() {
 }
 
 func (r *Router) RegisterUserHandlers() {
-	h := api.NewUserHandler(r.Logger, r.UserService)
-	authorizer := authz.NewAuthorizer(r.Services.Logger)
+	h := api.NewUserHandler(r.Logger, r.UserService, httputils.NewDefaultHelper(r.Logger))
+	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/users").Subrouter()
 	x.Use(authorizer.RequireAdminRole())
@@ -62,8 +63,8 @@ func (r *Router) RegisterUserHandlers() {
 }
 
 func (r *Router) RegisterAPIKeyHandlers() {
-	h := api.NewAPIKeyHandler(r.Logger, r.APIKeyService)
-	authorizer := authz.NewAuthorizer(r.Services.Logger)
+	h := api.NewAPIKeyHandler(r.Logger, r.APIKeyService, httputils.NewDefaultHelper(r.Logger))
+	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/keys").Subrouter()
 	x.Use(authorizer.RequireAdminRole())
