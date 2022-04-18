@@ -336,7 +336,7 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 	}
 	return segment.NewRetentionPolicy().
 		SetAbsolutePeriod(s.config.retention).
-		SetExemplarsRetentionPeriod(s.config.retentionExemplars).
+		SetExemplarsRetentionPeriod(exemplarsRetention).
 		SetLevels(
 			s.config.retentionLevels.Zero,
 			s.config.retentionLevels.One,

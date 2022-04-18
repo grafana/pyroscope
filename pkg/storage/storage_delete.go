@@ -19,14 +19,9 @@ func (s *Storage) Delete(_ context.Context, di *DeleteInput) error {
 
 func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 	sk := k.SegmentKey()
-
-	// Drop trees from disk.
-	if err := s.trees.DropPrefix(treePrefix.key(sk)); err != nil {
+	if err := s.trees.DiscardPrefix(sk); err != nil {
 		return err
 	}
-	// Discarding cached items is necessary because otherwise
-	// those would be written back to disk on eviction.
-	s.trees.DiscardPrefix(sk)
 	for key, value := range k.Labels() {
 		d, ok := s.lookupDimensionKV(key, value)
 		if !ok {
