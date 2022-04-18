@@ -288,14 +288,11 @@ class FlameGraphRenderer extends React.Component<
   }
 
   updateFlamebearerData() {
-    console.log('Updating flamebearer');
     const flamebearer = mountFlamebearer(this.props);
-    console.log('Setting State');
     this.setState({ flamebearer });
   }
 
   render = () => {
-    console.log('Rendering...');
     // This is necessary because the order switches depending on single vs comparison view
     const tablePane = (
       <div

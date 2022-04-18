@@ -289,6 +289,8 @@ describe('basic test', () => {
 
       // This test has a race condition, since it does not wait for the canvas to be rendered
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+      cy.get('div.spinner-container.loaded');
+
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
