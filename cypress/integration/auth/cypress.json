@@ -1,7 +1,8 @@
 {
   "video": false,
   "baseUrl": "http://localhost:4040",
-  "integrationFolder": "cypress/integration/webapp",
+  "integrationFolder": "cypress/integration/auth",
+  "testFiles": "*.ts",
   "retries": {
     "runMode": 5
   }

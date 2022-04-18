@@ -80,6 +80,45 @@ export async function loadCurrentUser(): Promise<
   return Result.err<User, RequestError>(response.error);
 }
 
+export async function logIn({
+  username,
+  password,
+}: {
+  username: string;
+  password: string;
+}): Promise<Result<unknown, RequestError | ZodError>> {
+  const response = await request(`/login`, {
+    method: 'POST',
+    body: JSON.stringify({ username, password: passwordEncode(password) }),
+  });
+  if (response.isOk) {
+    return Result.ok(true);
+  }
+
+  return Result.err<boolean, RequestError>(response.error);
+}
+
+export async function signUp(data: {
+  username: string;
+  password: string;
+  fullName: string;
+  email: string;
+}): Promise<Result<unknown, RequestError | ZodError>> {
+  const response = await request(`/signup`, {
+    method: 'POST',
+    body: JSON.stringify({
+      ...data,
+      name: data.username,
+      password: passwordEncode(data.password),
+    }),
+  });
+  if (response.isOk) {
+    return Result.ok(true);
+  }
+
+  return Result.err<boolean, RequestError>(response.error);
+}
+
 export async function changeMyPassword(
   oldPassword: string,
   newPassword: string
