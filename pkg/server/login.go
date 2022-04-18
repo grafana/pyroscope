@@ -9,6 +9,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 )
 
 // TODO(kolesnikovae): This part should be moved from
@@ -26,7 +27,7 @@ func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		ctrl.loginPost(w, r)
 	default:
-		WriteInvalidMethodError(ctrl.log, w)
+		ctrl.httpUtils.WriteInvalidMethodError(r, w)
 	}
 }
 
@@ -37,7 +38,7 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := getTemplate(ctrl.dir, "/login.html")
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(r, w, err)
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
@@ -62,17 +63,17 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 	var req loginCredentials
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ctrl.log.WithError(err).Error("failed to parse user credentials")
-		api.HandleError(w, r, ctrl.log, api.JSONError{Err: err})
+		ctrl.httpUtils.HandleError(r, w, httputils.JSONError{Err: err})
 		return
 	}
 	u, err := ctrl.authService.AuthenticateUser(r.Context(), req.Username, string(req.Password))
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(r, w, err)
 		return
 	}
 	token, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserJWTToken(u.Name, u.Role))
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(r, w, err)
 		return
 	}
 	ctrl.createCookie(w, api.JWTCookieName, token)
@@ -86,7 +87,7 @@ func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		ctrl.signupPost(w, r)
 	default:
-		WriteInvalidMethodError(ctrl.log, w)
+		ctrl.httpUtils.WriteInvalidMethodError(r, w)
 	}
 }
 
@@ -97,7 +98,7 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := getTemplate(ctrl.dir, "/signup.html")
 	if err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(r, w, err)
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
@@ -123,7 +124,7 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 	}
 	var req signupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.HandleError(w, r, ctrl.log, err)
+		ctrl.httpUtils.HandleError(r, w, err)
 		return
 	}
 	_, err := ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
@@ -133,7 +134,7 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		Password: string(req.Password),
 		Role:     ctrl.config.Auth.SignupDefaultRole,
 	})
-	api.HandleError(w, r, ctrl.log, err)
+	ctrl.httpUtils.HandleError(r, w, err)
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
@@ -203,7 +204,7 @@ func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.invalidateCookie(w, api.JWTCookieName)
 		ctrl.loginRedirect(w, r)
 	default:
-		WriteInvalidMethodError(ctrl.log, w)
+		ctrl.httpUtils.WriteInvalidMethodError(r, w)
 	}
 }
 
@@ -234,7 +235,7 @@ func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := getTemplate(ctrl.dir, "/redirect.html")
 		if err != nil {
-			WriteInternalServerError(ctrl.log, w, err, "could not render redirect page")
+			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render redirect page")
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
@@ -248,7 +249,7 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := getTemplate(ctrl.dir, "/forbidden.html")
 		if err != nil {
-			WriteInternalServerError(ctrl.log, w, err, "could not render forbidden page")
+			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render forbidden page")
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
@@ -331,7 +332,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		ctrl.createCookie(w, api.JWTCookieName, token)
 		tmpl, err := getTemplate(ctrl.dir, "/welcome.html")
 		if err != nil {
-			WriteInternalServerError(ctrl.log, w, err, "could not render welcome page")
+			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render welcome page")
 			return
 		}
 

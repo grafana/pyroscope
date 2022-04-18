@@ -5,13 +5,21 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 )
 
-type Authorizer struct{ logger logrus.FieldLogger }
+type Authorizer struct {
+	logger    logrus.FieldLogger
+	httpUtils httputils.Utils
+}
 
-func NewAuthorizer(logger logrus.FieldLogger) Authorizer { return Authorizer{logger} }
+func NewAuthorizer(logger logrus.FieldLogger, httpUtils httputils.Utils) Authorizer {
+	return Authorizer{
+		logger:    logger,
+		httpUtils: httputils.NewDefaultHelper(logger),
+	}
+}
 
 func (a Authorizer) RequireAdminRole() func(next http.Handler) http.Handler {
 	return a.Require(Role(model.AdminRole))
@@ -26,7 +34,7 @@ func (a Authorizer) Require(funcs ...func(r *http.Request) bool) func(next http.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			for _, fn := range funcs {
 				if !fn(r) {
-					api.HandleError(w, r, a.logger, model.ErrPermissionDenied)
+					a.httpUtils.HandleError(r, w, model.ErrPermissionDenied)
 					return
 				}
 			}
@@ -44,7 +52,7 @@ func (a Authorizer) RequireOneOf(funcs ...func(r *http.Request) bool) func(next 
 					return
 				}
 			}
-			api.HandleError(w, r, a.logger, model.ErrPermissionDenied)
+			a.httpUtils.HandleError(r, w, model.ErrPermissionDenied)
 		})
 	}
 }

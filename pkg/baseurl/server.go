@@ -37,7 +37,7 @@ func newProxy(targetHost string) (http.Handler, error) {
 
 	f := func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, target.Path) {
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(fmt.Sprintf("Please visit pyroscope at %s", target.Path)))
 			return
 		}
