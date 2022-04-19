@@ -3,6 +3,82 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.6.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.5.0...@pyroscope/webapp@1.6.0) (2022-04-15)
+
+
+### Features
+
+* move login to react ([#1031](https://github.com/pyroscope-io/pyroscope/issues/1031)) ([1cb6f9a](https://github.com/pyroscope-io/pyroscope/commit/1cb6f9a08d825acf643b5ef8b51cecab338b1314)), closes [#985](https://github.com/pyroscope-io/pyroscope/issues/985) [#991](https://github.com/pyroscope-io/pyroscope/issues/991)
+
+
+
+
+
+# [1.5.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.11...@pyroscope/webapp@1.5.0) (2022-04-14)
+
+
+### Features
+
+* **webapp:** add modal for custom export name ([#965](https://github.com/pyroscope-io/pyroscope/issues/965)) ([422ea82](https://github.com/pyroscope-io/pyroscope/commit/422ea82fd20a64eda44ae62821f67a89c129a594))
+
+
+
+
+
+## [1.4.11](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.10...@pyroscope/webapp@1.4.11) (2022-04-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.4.10](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.9...@pyroscope/webapp@1.4.10) (2022-04-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.4.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.8...@pyroscope/webapp@1.4.9) (2022-04-12)
+
+
+### Bug Fixes
+
+* **flamegraph:** inject its styles via css only ([#1023](https://github.com/pyroscope-io/pyroscope/issues/1023)) ([c20a137](https://github.com/pyroscope-io/pyroscope/commit/c20a137a56141f944967c8e229c16c773ec4a607))
+
+
+
+
+
+## [1.4.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.7...@pyroscope/webapp@1.4.8) (2022-04-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.4.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.6...@pyroscope/webapp@1.4.7) (2022-04-11)
+
+
+### Bug Fixes
+
+* **webapp:** service-discovery ([#1016](https://github.com/pyroscope-io/pyroscope/issues/1016)) ([2da460e](https://github.com/pyroscope-io/pyroscope/commit/2da460e57437193138110b73e49a4209b04d9984))
+
+
+
+
+
+## [1.4.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.5...@pyroscope/webapp@1.4.6) (2022-04-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.4.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.4...@pyroscope/webapp@1.4.5) (2022-04-11)
 
 **Note:** Version bump only for package @pyroscope/webapp

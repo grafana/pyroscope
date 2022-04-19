@@ -32,6 +32,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -59,6 +60,8 @@ type Controller struct {
 	notifier   Notifier
 	metricsMdw middleware.Middleware
 	dir        http.FileSystem
+
+	httpUtils httputils.Utils
 
 	statsMutex sync.Mutex
 	stats      map[string]int
@@ -129,13 +132,14 @@ func New(c Config) (*Controller, error) {
 	}
 
 	ctrl := Controller{
-		config:   c.Configuration,
-		log:      c.Logger,
-		storage:  c.Storage,
-		exporter: c.MetricsExporter,
-		notifier: c.Notifier,
-		stats:    make(map[string]int),
-		appStats: mustNewHLL(),
+		config:    c.Configuration,
+		log:       c.Logger,
+		storage:   c.Storage,
+		exporter:  c.MetricsExporter,
+		notifier:  c.Notifier,
+		stats:     make(map[string]int),
+		appStats:  mustNewHLL(),
+		httpUtils: httputils.NewDefaultHelper(c.Logger),
 
 		exportedMetrics: c.ExportedMetricsRegistry,
 		metricsMdw: middleware.New(middleware.Config{
@@ -203,7 +207,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	if ctrl.config.Auth.Ingestion.Enabled {
 		ingestRouter.Use(
 			ctrl.ingestionAuthMiddleware(),
-			authz.NewAuthorizer(ctrl.log).RequireOneOf(
+			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
 				authz.Role(model.AdminRole),
 				authz.Role(model.AgentRole),
 			))
@@ -289,10 +293,12 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/healthz", ctrl.healthz},
 	})
 
+	r.NotFoundHandler = ctrl.notfoundHandler()
+
 	return r, nil
 }
 
-func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Request) {
+func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, r *http.Request) {
 	targets := ctrl.scrapeManager.TargetsActive()
 	resp := []TargetsResponse{}
 	for k, v := range targets {
@@ -313,7 +319,7 @@ func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Requ
 			})
 		}
 	}
-	WriteResponseJSON(ctrl.log, w, resp)
+	ctrl.httpUtils.WriteResponseJSON(r, w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -485,7 +491,7 @@ func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
 
 func (ctrl *Controller) authMiddleware(redirect http.HandlerFunc) mux.MiddlewareFunc {
 	if ctrl.isAuthRequired() {
-		return api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)
+		return api.AuthMiddleware(redirect, ctrl.authService, ctrl.httpUtils)
 	}
 	return func(next http.Handler) http.Handler {
 		return next
@@ -499,7 +505,7 @@ func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
 			TTL:  ctrl.config.Auth.Ingestion.CacheTTL,
 		}
 		as := service.NewCachingAuthService(ctrl.authService, asConfig)
-		return api.AuthMiddleware(ctrl.log, nil, as)
+		return api.AuthMiddleware(nil, as, ctrl.httpUtils)
 	}
 	return func(next http.Handler) http.Handler {
 		return next

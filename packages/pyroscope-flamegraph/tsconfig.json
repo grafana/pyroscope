@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["./src/index.tsx", "../../lib"],
+  "include": ["./src", "../../lib"],
+  "exclude": ["src/**/*.spec.tsx", "src/**/*.spec.ts"],
   "baseUrl": ".",
   "compilerOptions": {
     "resolveJsonModule": false,

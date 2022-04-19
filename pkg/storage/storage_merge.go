@@ -17,7 +17,7 @@ type MergeProfilesOutput struct {
 
 func (s *Storage) MergeProfiles(ctx context.Context, mi MergeProfilesInput) (o MergeProfilesOutput, err error) {
 	o.Tree = tree.New()
-	return o, s.profiles.fetch(ctx, mi.AppName, mi.Profiles, func(t *tree.Tree) error {
+	return o, s.exemplars.fetch(ctx, mi.AppName, mi.Profiles, func(t *tree.Tree) error {
 		o.Tree.Merge(t)
 		return nil
 	})

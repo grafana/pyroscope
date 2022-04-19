@@ -45,7 +45,7 @@ jobs:
 
       - name: Run Lint
         # Use use --quiet so that it only report errors
-        run: yarn lint --quiet
+        run: yarn lint:quiet
       - name: Run Format check
         run: yarn format:check
 

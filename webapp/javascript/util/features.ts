@@ -3,6 +3,11 @@
 // something more sofisticated than simply booleans
 interface Features {
   enableAdhocUI?: boolean;
+  googleEnabled?: boolean;
+  gitlabEnabled?: boolean;
+  githubEnabled?: boolean;
+  internalAuthEnabled?: boolean;
+  signupEnabled?: boolean;
 }
 
 function hasFeatures(
@@ -20,4 +25,24 @@ function hasFeatures(
 // Features
 export const isAdhocUIEnabled = hasFeatures(window)
   ? window.features.enableAdhocUI
+  : true;
+
+export const isGoogleEnabled = hasFeatures(window)
+  ? window.features.googleEnabled
+  : true;
+
+export const isGitlabEnabled = hasFeatures(window)
+  ? window.features.gitlabEnabled
+  : true;
+
+export const isGithubEnabled = hasFeatures(window)
+  ? window.features.githubEnabled
+  : true;
+
+export const isInternalAuthEnabled = hasFeatures(window)
+  ? window.features.internalAuthEnabled
+  : true;
+
+export const isSignupEnabled = hasFeatures(window)
+  ? window.features.signupEnabled
   : true;

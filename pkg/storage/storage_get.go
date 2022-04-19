@@ -82,9 +82,10 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 				SpyName:    "gospy",
 				Units:      "samples",
 				SampleRate: 100,
+				Timeline:   segment.GenerateTimeline(gi.StartTime, gi.EndTime),
 				Tree:       tree.New(),
 			}
-			err := s.profiles.fetch(ctx, gi.Query.AppName, ids, func(t *tree.Tree) error {
+			err := s.exemplars.fetch(ctx, gi.Query.AppName, ids, func(t *tree.Tree) error {
 				o.Tree.Merge(t)
 				return nil
 			})

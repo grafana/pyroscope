@@ -14,10 +14,11 @@ type putInputWithCtx struct {
 func (s *Storage) Enqueue(ctx context.Context, input *PutInput) {
 	select {
 	case s.queue <- &putInputWithCtx{input, ctx}:
+		return
 	case <-s.stop:
 	default:
-		s.logger.WithField("key", input.Key).Error("storage queue is full, dropping a profile")
 	}
+	s.discardedTotal.Inc()
 }
 
 func (s *Storage) startQueueWorkers() {
@@ -31,9 +32,11 @@ func (s *Storage) runQueueWorker() {
 	defer s.queueWorkersWG.Done()
 	for {
 		select {
-		case input := <-s.queue:
-			if err := s.safePut(input.ctx, input.pi); err != nil {
-				s.logger.WithField("key", input.pi.Key).WithError(err).Error("error happened while ingesting data")
+		case input, ok := <-s.queue:
+			if ok {
+				if err := s.safePut(input.ctx, input.pi); err != nil {
+					s.logger.WithField("key", input.pi.Key.Normalized()).WithError(err).Error("error happened while ingesting data")
+				}
 			}
 		case <-s.stop:
 			return

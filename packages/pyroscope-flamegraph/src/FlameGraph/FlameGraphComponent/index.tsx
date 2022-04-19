@@ -200,7 +200,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   ]);
 
   const renderCanvas = () => {
-    if (canvasRef && flamegraph && canvasRef.current && flamegraph.current) {
+    if (canvasRef && canvasRef.current && flamegraph && flamegraph.current) {
       canvasRef?.current?.setAttribute('data-state', 'rendering');
       flamegraph?.current?.render();
       canvasRef?.current?.setAttribute('data-state', 'rendered');
