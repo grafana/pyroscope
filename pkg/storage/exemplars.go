@@ -304,9 +304,6 @@ func (e *exemplars) truncateBefore(ctx context.Context, before time.Time) (err e
 }
 
 func (e *exemplars) truncateN(before time.Time, count int) (bool, error) {
-	if err := e.db.Flatten(2); err != nil {
-		return false, err
-	}
 	beforeTs := before.UnixNano()
 	keys := make([][]byte, 0, 2*count)
 	err := e.db.View(func(txn *badger.Txn) error {
