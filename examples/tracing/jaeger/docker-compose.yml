@@ -7,6 +7,10 @@ services:
       - '6831:6831/udp'
       - '16686:16686'
       - '14268:14268'
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   pyroscope:
     image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope-dev:main}'
@@ -19,6 +23,10 @@ services:
       - ./pyroscope.yaml:/pyroscope.yaml
     command:
       - 'server'
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   grafana:
     image: pyroscope/grafana:dev
@@ -29,6 +37,10 @@ services:
       - 'GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel'
     ports:
       - '3000:3000'
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   us-east-1:
     env_file:
@@ -37,6 +49,10 @@ services:
       - REGION=us-east-1
     build:
       context: ''
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   us-west-1:
     env_file:
@@ -45,6 +61,10 @@ services:
       - REGION=us-west-1
     build:
       context: ''
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   eu-west-1:
     env_file:
@@ -53,6 +73,10 @@ services:
       - REGION=eu-west-1
     build:
       context: ''
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   load-generator:
     env_file:
@@ -64,6 +88,10 @@ services:
       - eu-west-1
       - us-west-1
       - us-east-1
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   jaeger-ui:
     build:
@@ -71,3 +99,12 @@ services:
       dockerfile: jaeger-ui/Dockerfile
     ports:
       - '4000:3000'
+
+  loki:
+    image: 'grafana/loki:2.5.0'
+    ports:
+      - '3100:3100'
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
