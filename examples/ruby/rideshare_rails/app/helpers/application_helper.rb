@@ -1,4 +1,4 @@
-# require "pyroscope"
+require "pyroscope"
 
 module ApplicationHelper
   def mutex_lock(n)
@@ -27,7 +27,7 @@ module ApplicationHelper
   end
 
   def find_nearest_vehicle(n, vehicle)
-    # Pyroscope.tag_wrapper({ "vehicle" => vehicle }) do
+    Pyroscope.tag_wrapper({ "vehicle" => vehicle }) do
       i = 0
       start_time = Time.new
       while Time.new - start_time < n do
@@ -35,7 +35,7 @@ module ApplicationHelper
       end
 
       check_driver_availability(n) if vehicle == "car"
-    # end
+    end
   end
 
 end

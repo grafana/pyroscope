@@ -13,7 +13,7 @@ require "action_controller/railtie"
 require "action_view/railtie"
 # require "action_cable/engine"
 require "rails/test_unit/railtie"
-# require "pyroscope"
+require "pyroscope"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -35,14 +35,14 @@ module RideshareRails
     # Don't generate system test files.
     config.generators.system_tests = nil
     config.action_controller.include_all_helpers = true
+    config.active_record.sqlite3_production_warning=false
 
-
-    # Pyroscope.configure do |config|
-    #   config.app_name = "ride-sharing-app"
-    #   config.server_address = "http://pyroscope:4040"
-    #   config.tags = {
-    #     "region": ENV["REGION"] || "us-east-1",
-    #   }
-    # end
+    Pyroscope.configure do |config|
+      config.app_name = "ride-sharing-app"
+      config.server_address = "http://pyroscope:4040"
+      config.tags = {
+        "region": ENV["REGION"] || "us-east-1",
+      }
+    end
   end
 end
