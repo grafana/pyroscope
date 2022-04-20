@@ -13,7 +13,7 @@ services:
         loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   pyroscope:
-    image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope-dev:main}'
+    image: 'pyroscope/pyroscope:latest'
     environment:
       - PYROSCOPE_CONFIG=/pyroscope.yaml
       - PYROSCOPE_LOG_LEVEL=debug
