@@ -35,7 +35,7 @@ function generateCellDouble(ff, cell, level, j, addTotal) {
 }
 
 // generates a table from data in flamebearer format
-const generateTable = (flamebearer) => {
+export const generateTable = (flamebearer) => {
   const table = [];
   if (!flamebearer) {
     return table;
