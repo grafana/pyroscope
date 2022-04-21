@@ -7,7 +7,11 @@ import {
   selectApplicationName,
 } from '@webapp/redux/reducers/continuous';
 import { queryFromAppName } from '@webapp/models/query';
-import { loadCurrentUser } from '@webapp/redux/reducers/user';
+import {
+  loadCurrentUser,
+  selectCurrentUser,
+} from '@webapp/redux/reducers/user';
+import { useHistory, useLocation } from 'react-router-dom';
 
 export default function Continuous({
   children,
@@ -17,10 +21,17 @@ export default function Continuous({
   const dispatch = useAppDispatch();
   const appNames = useAppSelector(selectAppNames);
   const selectedAppName = useAppSelector(selectApplicationName);
+  const currentUser = useAppSelector(selectCurrentUser);
+  const history = useHistory();
+  const location = useLocation();
 
   useEffect(() => {
     if ((window as ShamefulAny).isAuthRequired) {
-      dispatch(loadCurrentUser());
+      dispatch(loadCurrentUser()).then((e: ShamefulAny): void => {
+        if (!e.isOk && e?.error?.code === 401) {
+          history.push('/login', { redir: location });
+        }
+      });
     }
   }, [dispatch]);
 
@@ -40,5 +51,5 @@ export default function Continuous({
     loadAppNames();
   }, [dispatch, appNames, selectedAppName]);
 
-  return children;
+  return currentUser ? children : null;
 }

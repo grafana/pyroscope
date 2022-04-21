@@ -13,7 +13,7 @@ describe('oauth with mock enabled', () => {
     cy.waitForFlamegraphToRender();
     // cy.get('.spinner-container.loading').should('be.visible');
     // cy.get('.spinner-container.loading').should('exist');
-    cy.get('.spinner-container.loaded').should('exist');
+    cy.get('.spinner-container').should('exist');
     cy.intercept('/api/user');
     cy.get('li.pro-menu-item').contains('Sign out').click({ force: true });
     cy.url().should('contain', '/login');

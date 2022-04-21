@@ -242,7 +242,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/settings/{page}", ih},
 		{"/settings/{page}/{subpage}", ih}},
 		ctrl.drainMiddleware,
-		ctrl.authMiddleware(ctrl.loginRedirect))
+		ctrl.authMiddleware(ctrl.indexHandler()))
 
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, []route{
@@ -293,7 +293,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/healthz", ctrl.healthz},
 	})
 
-	r.NotFoundHandler = ctrl.notfoundHandler()
+	r.NotFoundHandler = ih
 
 	return r, nil
 }
