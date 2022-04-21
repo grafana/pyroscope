@@ -47,7 +47,9 @@ function SignInPage() {
 
       const res = await logIn({ username, password });
       if (res.isOk) {
-        history.replace(location?.state?.redir || PAGES.CONTINOUS_SINGLE_VIEW);
+        history.replace(
+          (location.state as ShamefulAny).redir || PAGES.CONTINOUS_SINGLE_VIEW
+        );
         return;
       }
 
@@ -58,7 +60,7 @@ function SignInPage() {
   }
 
   useNavigateUserIntroPages();
-  const hasTLS = location.protocol === 'https:';
+  const hasTLS = window.location.protocol === 'https:';
 
   return (
     <div className={styles.loginWrapper}>
@@ -136,7 +138,7 @@ function SignInPage() {
           {isGoogleEnabled && (
             <a
               id="google-link"
-              href={'./auth/google/login' + (hasTLS ? '?tls=true' : '')}
+              href={`./auth/google/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGoogle)}
             >
               <GoogleIcon /> Sign in with Google
@@ -145,7 +147,7 @@ function SignInPage() {
           {isGithubEnabled && (
             <a
               id="github-link"
-              href={'./auth/github/login' + (hasTLS ? '?tls=true' : '')}
+              href={`./auth/github/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGithub)}
             >
               <Icon icon={faGithub} /> Sign in with GitHub
@@ -154,7 +156,7 @@ function SignInPage() {
           {isGitlabEnabled && (
             <a
               id="gitlab-link"
-              href={'./auth/gitlab/login' + (hasTLS ? '?tls=true' : '')}
+              href={`./auth/gitlab/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGitlab)}
             >
               <GitlabIcon /> Sign in with GitLab
