@@ -1,0 +1,14 @@
+---
+version: '3.9'
+services:
+  pyroscope:
+    image: 'pyroscope/pyroscope:0.15.1'
+    environment:
+      - 'PYROSCOPE_LOG_LEVEL=debug'
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+  app:
+    build: .
+    privileged: true
