@@ -41,7 +41,7 @@ jobs:
           wait-on: http://localhost:4040
           start: |
             node ./scripts/oauth-mock/oauth-mock.js
-            make server SERVERPARAMS="--config=scripts/oauth-mock/pyroscope-config.yml"
+            make server SERVERPARAMS=--config=scripts/oauth-mock/pyroscope-config.yml
           config-file: cypress/integration/auth/cypress.json
         env:
           # keep the server quiet
