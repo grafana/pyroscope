@@ -24,9 +24,10 @@ export default function Continuous({
   const currentUser = useAppSelector(selectCurrentUser);
   const history = useHistory();
   const location = useLocation();
+  const { isAuthRequired } = window as ShamefulAny;
 
   useEffect(() => {
-    if ((window as ShamefulAny).isAuthRequired) {
+    if (isAuthRequired) {
       dispatch(loadCurrentUser()).then((e: ShamefulAny): void => {
         if (!e.isOk && e?.error?.code === 401) {
           history.push('/login', { redir: location });
@@ -56,5 +57,5 @@ export default function Continuous({
     loadAppNames();
   }, [dispatch, appNames, selectedAppName]);
 
-  return currentUser ? children : null;
+  return !isAuthRequired || currentUser ? children : null;
 }
