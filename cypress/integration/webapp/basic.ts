@@ -287,6 +287,8 @@ describe('basic test', () => {
       cy.wait('@render');
       cy.wait('@render');
 
+      cy.waitForFlamegraphToRender();
+
       // This test has a race condition, since it does not wait for the canvas to be rendered
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
@@ -318,6 +320,8 @@ describe('basic test', () => {
       cy.wait('@render');
 
       cy.findByTestId('flamegraph-highlight').should('not.be.visible');
+
+      cy.wait(500);
 
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-highlight').should('be.visible');

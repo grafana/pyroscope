@@ -5,10 +5,10 @@ import (
 	"net/http"
 )
 
-func (ctrl *Controller) configHandler(w http.ResponseWriter, _ *http.Request) {
+func (ctrl *Controller) configHandler(w http.ResponseWriter, r *http.Request) {
 	configBytes, err := json.MarshalIndent(ctrl.config, "", "  ")
 	if err != nil {
-		WriteJSONEncodeError(ctrl.log, w, err)
+		ctrl.httpUtils.WriteJSONEncodeError(r, w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

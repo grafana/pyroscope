@@ -1,3 +1,38 @@
+## [0.15.1](https://github.com/pyroscope-io/pyroscope/compare/v0.15.0...v0.15.1) (2022-04-19)
+
+
+### Bug Fixes
+
+* delete data in batches instead of using badgerDB drop prefix ([#1035](https://github.com/pyroscope-io/pyroscope/issues/1035)) ([10e7006](https://github.com/pyroscope-io/pyroscope/commit/10e7006d8fe84a3c13e90fdc3edffbde481f6c7e))
+
+
+### Features
+
+* move login to react ([#1031](https://github.com/pyroscope-io/pyroscope/issues/1031)) ([1cb6f9a](https://github.com/pyroscope-io/pyroscope/commit/1cb6f9a08d825acf643b5ef8b51cecab338b1314)), closes [#985](https://github.com/pyroscope-io/pyroscope/issues/985) [#991](https://github.com/pyroscope-io/pyroscope/issues/991)
+* **webapp:** add modal for custom export name ([#965](https://github.com/pyroscope-io/pyroscope/issues/965)) ([422ea82](https://github.com/pyroscope-io/pyroscope/commit/422ea82fd20a64eda44ae62821f67a89c129a594))
+
+
+
+# [0.15.0](https://github.com/pyroscope-io/pyroscope/compare/v0.14.0...v0.15.0) (2022-04-14)
+
+
+### Bug Fixes
+
+* **flamegraph:** inject its styles via css only ([#1023](https://github.com/pyroscope-io/pyroscope/issues/1023)) ([c20a137](https://github.com/pyroscope-io/pyroscope/commit/c20a137a56141f944967c8e229c16c773ec4a607))
+* **webapp:** service-discovery ([#1016](https://github.com/pyroscope-io/pyroscope/issues/1016)) ([2da460e](https://github.com/pyroscope-io/pyroscope/commit/2da460e57437193138110b73e49a4209b04d9984))
+
+
+### Features
+
+* add lock profiling support in jfr parser. ([#1015](https://github.com/pyroscope-io/pyroscope/issues/1015)) ([10baacd](https://github.com/pyroscope-io/pyroscope/commit/10baacd24439c30c1bbf5412045eb01aa3abbeea))
+
+
+### Performance Improvements
+
+* **retention:** improve performance of exemplars removal ([#1018](https://github.com/pyroscope-io/pyroscope/issues/1018)) ([8e7e596](https://github.com/pyroscope-io/pyroscope/commit/8e7e5962eb6479a7bb216d6dc93a022d29b49008)), closes [#962](https://github.com/pyroscope-io/pyroscope/issues/962)
+
+
+
 # [0.14.0](https://github.com/pyroscope-io/pyroscope/compare/v0.13.0...v0.14.0) (2022-04-08)
 
 

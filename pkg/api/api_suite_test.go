@@ -15,6 +15,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 )
 
 func TestAPI(t *testing.T) {
@@ -64,7 +65,7 @@ func newTestRouter(rcp requestContextProvider, services router.Services) *router
 		services)
 
 	if services.AuthService != nil {
-		r.Use(api.AuthMiddleware(services.Logger, redirect, r.AuthService))
+		r.Use(api.AuthMiddleware(redirect, r.AuthService, httputils.NewDefaultHelper(services.Logger)))
 	}
 
 	r.Use(func(next http.Handler) http.Handler {

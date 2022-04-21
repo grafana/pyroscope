@@ -36,14 +36,14 @@
   background: var(--ps-c-blue);
 }
 
-h1 {
+.settingsWrapper h1 {
   margin: 20px 30px;
 }
 
-h2 {
+.settingsWrapper h2 {
   margin-top: 0;
 }
 
-h4 {
+.settingsWrapper h4 {
   margin: 5px 0;
 }

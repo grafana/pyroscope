@@ -21163,6 +21163,11 @@ trough@^1.0.0:
   resolved "https://registry.yarnpkg.com/true-myth/-/true-myth-5.1.2.tgz#58a425b0aefe57eed279ac2d1b65e567153ea9b0"
   integrity sha512-4A8CVJiDt35EhS2U4DYoU1Kg8nMdqpC4sIc4ktan/nE3T2u5kLd7fJ1ZSQTn5xO/A41IB7DLF8R8xL6l0MPgsQ==
 
+"true-myth@~5.2.0":
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/true-myth/-/true-myth-5.2.0.tgz#f434d4ca314922568260d742f7bed613b5ae3652"
+  integrity sha512-M8P2uox5tdgwevD4uihkHEfLJkHhX16Nec25bS4YIr7n5MeJzv1X1GRfuCVL8akb/XkfyZtr9BHJTDvOtDhIJw==
+
 ts-custom-error@^3.2.0:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/ts-custom-error/-/ts-custom-error-3.2.0.tgz#ff8f80a3812bab9dc448536312da52dce1b720fb"

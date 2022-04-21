@@ -3,6 +3,7 @@ package storage
 // revive:disable:max-public-structs complex package
 
 import (
+	"context"
 	"errors"
 	"runtime"
 	"sync"
@@ -36,12 +37,17 @@ type Storage struct {
 	trees      *db
 	main       *db
 	labels     *labels.Labels
-	profiles   *profiles
+	exemplars  *exemplars
 
 	hc *health.Controller
 
-	tasksWG sync.WaitGroup
-	stop    chan struct{}
+	// Maintenance tasks are executed exclusively to avoid competition:
+	// extensive writing during GC is harmful and deteriorates the
+	// overall performance. Same for write back, eviction, and retention
+	// tasks.
+	tasksMutex sync.Mutex
+	tasksWG    sync.WaitGroup
+	stop       chan struct{}
 
 	queueWorkersWG sync.WaitGroup
 	queue          chan *putInputWithCtx
@@ -95,9 +101,12 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
 			gcSizeDiff: bytesize.GB,
+			// TODO(kolesnikovae): Implement dynamic throttling.
 			// in-memory queue params.
-			queueLen:     100,
-			queueWorkers: runtime.NumCPU(),
+			queueLen: 100,
+			// Setting multiple workers does not make sense
+			// because of the storage.Put mutex.
+			queueWorkers: 1, // runtime.NumCPU(),
 		},
 
 		hc:      hc,
@@ -125,16 +134,12 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		return nil, err
 	}
 
-	pdb, err := s.newBadger("profiles", profileDataPrefix, nil)
+	pdb, err := s.newBadger("profiles", exemplarDataPrefix, nil)
 	if err != nil {
 		return nil, err
 	}
-	s.profiles = &profiles{
-		db:     pdb,
-		dicts:  s.dicts,
-		config: s.config,
-	}
 
+	s.initExemplarsStorage(pdb)
 	s.labels = labels.New(s.main.DB)
 
 	if err = s.migrate(); err != nil {
@@ -152,7 +157,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		}
 
 		s.periodicTask(s.evictionTaskInterval, s.evictionTask(memTotal))
-		s.periodicTask(s.retentionTaskInterval, s.retentionTask)
+		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
 		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
 	}
 
@@ -194,6 +199,19 @@ func (s *Storage) CacheStats() map[string]uint64 {
 	return m
 }
 
+func (s *Storage) withContext(fn func(context.Context)) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-s.stop:
+			cancel()
+		}
+	}()
+	fn(ctx)
+}
+
 // goDB runs f for all DBs concurrently.
 func (s *Storage) goDB(f func(*db)) {
 	dbs := s.databases()
@@ -206,6 +224,15 @@ func (s *Storage) goDB(f func(*db)) {
 		}(d)
 	}
 	wg.Wait()
+}
+
+// maintenanceTask periodically runs f exclusively.
+func (s *Storage) maintenanceTask(interval time.Duration, f func()) {
+	s.periodicTask(interval, func() {
+		s.tasksMutex.Lock()
+		defer s.tasksMutex.Unlock()
+		f()
+	})
 }
 
 func (s *Storage) periodicTask(interval time.Duration, f func()) {
@@ -259,7 +286,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		// s.dimensions.WriteBack()
 		// s.segments.WriteBack()
 		// GC does not really release OS memory, so relying on MemStats.Alloc
-		// causes cache to evict vast majority of items. debug.FreeOSMemory()
+		// causes cache to evict the vast majority of items. debug.FreeOSMemory()
 		// could be used instead, but this can be even more expensive.
 		runtime.GC()
 	}
@@ -285,17 +312,31 @@ func (s *Storage) updateMetricsTask() {
 }
 
 func (s *Storage) retentionTask() {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe))
-	defer timer.ObserveDuration()
-	if err := s.EnforceRetentionPolicy(s.retentionPolicy()); err != nil {
-		s.logger.WithError(err).Error("failed to enforce retention policy")
+	rp := s.retentionPolicy()
+	if !rp.LowerTimeBoundary().IsZero() {
+		s.withContext(func(ctx context.Context) {
+			s.enforceRetentionPolicy(ctx, rp)
+		})
+	}
+}
+
+func (s *Storage) exemplarsRetentionTask() {
+	rp := s.retentionPolicy()
+	if !rp.ExemplarsRetentionTime.IsZero() {
+		s.withContext(func(ctx context.Context) {
+			s.exemplars.enforceRetentionPolicy(ctx, rp)
+		})
 	}
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
+	exemplarsRetention := s.config.retentionExemplars
+	if exemplarsRetention == 0 {
+		exemplarsRetention = s.config.retention
+	}
 	return segment.NewRetentionPolicy().
 		SetAbsolutePeriod(s.config.retention).
-		SetExemplarsRetentionPeriod(s.config.retentionExemplars).
+		SetExemplarsRetentionPeriod(exemplarsRetention).
 		SetLevels(
 			s.config.retentionLevels.Zero,
 			s.config.retentionLevels.One,
@@ -309,6 +350,6 @@ func (s *Storage) databases() []*db {
 		s.segments,
 		s.dicts,
 		s.trees,
-		s.profiles.db,
+		s.exemplars.db,
 	}
 }

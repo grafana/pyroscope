@@ -4,22 +4,22 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/sirupsen/logrus"
 )
 
 func (ctrl *Controller) labelValuesHandler() http.HandlerFunc {
-	return NewLabelValuesHandler(ctrl.log, ctrl.storage)
+	return NewLabelValuesHandler(ctrl.storage, ctrl.httpUtils)
 }
 
-func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter) http.HandlerFunc {
+func NewLabelValuesHandler(s storage.LabelValuesGetter, httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		labelName := r.URL.Query().Get("label")
 		query := r.URL.Query().Get("query")
 
 		if labelName == "" {
-			WriteInvalidParameterError(log, w, errLabelIsRequired)
+			httpUtils.WriteInvalidParameterError(r, w, errLabelIsRequired)
 			return
 		}
 
@@ -38,7 +38,7 @@ func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter) http
 
 		b, err := json.Marshal(values)
 		if err != nil {
-			WriteJSONEncodeError(log, w, err)
+			httpUtils.WriteJSONEncodeError(r, w, err)
 			return
 		}
 		_, _ = w.Write(b)

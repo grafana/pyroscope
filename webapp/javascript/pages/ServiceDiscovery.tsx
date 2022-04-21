@@ -56,7 +56,7 @@ const ServiceDiscoveryApp = () => {
             {'No pull-mode targets configured. See '}
             <a
               className={styles.link}
-              href="https://pyroscope.io/docs/pull-mode/"
+              href="https://pyroscope.io/docs/golang-pull-mode/"
               target="_blank"
               rel="noreferrer"
             >

@@ -85,7 +85,12 @@ function UserAddForm() {
           onChange={handleFormChange}
         />
         <div>
-          <Button icon={faCheck} type="submit" kind="secondary">
+          <Button
+            icon={faCheck}
+            type="submit"
+            data-testid="settings-useradd"
+            kind="secondary"
+          >
             Add user
           </Button>
         </div>

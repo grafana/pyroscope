@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.3.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.2.7...@pyroscope/flamegraph@0.3.0) (2022-04-15)
+
+
+### Features
+
+* move login to react ([#1031](https://github.com/pyroscope-io/pyroscope/issues/1031)) ([1cb6f9a](https://github.com/pyroscope-io/pyroscope/commit/1cb6f9a08d825acf643b5ef8b51cecab338b1314)), closes [#985](https://github.com/pyroscope-io/pyroscope/issues/985) [#991](https://github.com/pyroscope-io/pyroscope/issues/991)
+
+
+
+
+
 ## [0.2.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.2.6...@pyroscope/flamegraph@0.2.7) (2022-04-12)
 
 
