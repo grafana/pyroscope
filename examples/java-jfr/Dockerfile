@@ -8,9 +8,8 @@ RUN cd pyroscope-java && \
     ./gradlew shadowJar && \
     cp agent/build/libs/pyroscope.jar ../pyroscope.jar
 
-COPY Main.java run.sh ./
+COPY Main.java ./
 
 RUN javac Main.java
 
-CMD ["/bin/bash", "run.sh"]
-
+CMD [ "java", "-javaagent:pyroscope.jar", "Main"]
