@@ -38,12 +38,17 @@ export default function Continuous({
   useEffect(() => {
     async function loadAppNames() {
       if (appNames.length <= 0) {
-        // Load application names
-        const names = await dispatch(reloadAppNames()).unwrap();
+        // TODO(shaleynikov): split this into two components
+        try {
+          // Load application names
+          const names = await dispatch(reloadAppNames()).unwrap();
 
-        // Pick the first one if there's nothing selected
-        if (!selectedAppName && names.length > 0) {
-          dispatch(setQuery(queryFromAppName(names[0])));
+          // Pick the first one if there's nothing selected
+          if (!selectedAppName && names.length > 0) {
+            dispatch(setQuery(queryFromAppName(names[0])));
+          }
+        } catch (e) {
+          console.error(e);
         }
       }
     }
