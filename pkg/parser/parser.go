@@ -70,6 +70,8 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 	}
 }
 
+var i int
+
 // Put takes parser.PutInput, turns it into storage.PutIntput and enqueues it for a write
 func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) {
 	pi := &storage.PutInput{
@@ -82,6 +84,16 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		AggregationType: in.AggregationType,
 	}
 	cb := p.createParseCallback(pi)
+
+	// for tests:
+	// b, _ := io.ReadAll(in.Body)
+	// f, _ := os.Create("./pkg/server/testdata/jfr-" + strconv.Itoa(i) + ".bin.gz")
+	// i++
+	// w := gzip.NewWriter(f)
+	// w.Write(b)
+	// w.Close()
+	// in.Body = bytes.NewReader(b)
+
 	switch {
 	case in.Format == "trie", in.ContentType == "binary/octet-stream+trie":
 		tmpBuf := p.bufferPool.Get()

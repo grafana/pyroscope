@@ -1,0 +1,2 @@
+.no_Java_frame 1
+jdk/internal/misc/InnocuousThread.run;java/lang/Thread.run;sun/net/www/http/KeepAliveCache.run 1

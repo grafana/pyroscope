@@ -2,13 +2,12 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'pyroscope/pyroscope:0.15.1'
-    environment:
-      - 'PYROSCOPE_LOG_LEVEL=debug'
+    image: 'pyroscope/pyroscope:latest'
     ports:
       - '4040:4040'
     command:
       - 'server'
+      - '-no-self-profiling'
   app:
     build: .
     privileged: true
