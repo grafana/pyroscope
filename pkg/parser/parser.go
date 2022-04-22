@@ -13,6 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
@@ -37,8 +38,8 @@ type PutInput struct {
 	Key             *segment.Key
 	SpyName         string
 	SampleRate      uint32
-	Units           string
-	AggregationType string
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 }
 
 type Parser struct {

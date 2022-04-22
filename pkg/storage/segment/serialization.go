@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/util/serialization"
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
@@ -14,18 +15,18 @@ import (
 // serialization format version. it's not very useful right now, but it will be in the future
 const currentVersion = 3
 
-func (s *Segment) populateFromMetadata(metadata map[string]interface{}) {
-	if v, ok := metadata["sampleRate"]; ok {
+func (s *Segment) populateFromMetadata(data map[string]interface{}) {
+	if v, ok := data["sampleRate"]; ok {
 		s.sampleRate = uint32(v.(float64))
 	}
-	if v, ok := metadata["spyName"]; ok {
+	if v, ok := data["spyName"]; ok {
 		s.spyName = v.(string)
 	}
-	if v, ok := metadata["units"]; ok {
-		s.units = v.(string)
+	if v, ok := data["units"]; ok {
+		s.units = v.(metadata.Units)
 	}
-	if v, ok := metadata["aggregationType"]; ok {
-		s.aggregationType = v.(string)
+	if v, ok := data["aggregationType"]; ok {
+		s.aggregationType = v.(metadata.AggregationType)
 	}
 }
 

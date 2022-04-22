@@ -10,6 +10,8 @@ import (
 	"runtime/trace"
 	"sync"
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
 type streeNode struct {
@@ -227,8 +229,8 @@ type Segment struct {
 
 	spyName         string
 	sampleRate      uint32
-	units           string
-	aggregationType string
+	units           metadata.Units
+	aggregationType metadata.AggregationType
 
 	watermarks
 }
@@ -409,7 +411,7 @@ func (s *Segment) WalkNodesToDelete(t *RetentionPolicy, cb func(depth int, t tim
 }
 
 // TODO: this should be refactored
-func (s *Segment) SetMetadata(spyName string, sampleRate uint32, units, aggregationType string) {
+func (s *Segment) SetMetadata(spyName string, sampleRate uint32, units metadata.Units, aggregationType metadata.AggregationType) {
 	s.spyName = spyName
 	s.sampleRate = sampleRate
 	s.units = units
@@ -424,11 +426,11 @@ func (s *Segment) SampleRate() uint32 {
 	return s.sampleRate
 }
 
-func (s *Segment) Units() string {
+func (s *Segment) Units() metadata.Units {
 	return s.units
 }
 
-func (s *Segment) AggregationType() string {
+func (s *Segment) AggregationType() metadata.AggregationType {
 	return s.aggregationType
 }
 

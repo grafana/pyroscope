@@ -9,6 +9,7 @@ import (
 	"github.com/pyroscope-io/jfr-parser/parser"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -93,8 +94,8 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		labels["__name__"] = prefix + "." + profile
 		pi.Key = segment.NewKey(labels)
 		pi.Val = cpu
-		pi.Units = "samples"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.SamplesUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}
@@ -103,8 +104,8 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		labels["__name__"] = prefix + "." + event
 		pi.Key = segment.NewKey(labels)
 		pi.Val = wall
-		pi.Units = "samples"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.SamplesUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}
@@ -113,32 +114,32 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		labels["__name__"] = prefix + ".alloc_in_new_tlab_objects"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = inTLABObjects
-		pi.Units = "objects"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.ObjectsUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}
 		labels["__name__"] = prefix + ".alloc_in_new_tlab_bytes"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = inTLABObjects
-		pi.Units = "bytes"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.BytesUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}
 		labels["__name__"] = prefix + ".alloc_outside_tlab_objects"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = inTLABObjects
-		pi.Units = "objects"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.ObjectsUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}
 		labels["__name__"] = prefix + ".alloc_outside_tlab_bytes"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = inTLABObjects
-		pi.Units = "bytes"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.BytesUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}
@@ -147,16 +148,16 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		labels["__name__"] = prefix + ".lock_samples"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = lockSamples
-		pi.Units = "samples"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.LockSamplesUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}
 		labels["__name__"] = prefix + ".lock_nanoseconds"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = lockDuration
-		pi.Units = "nanoseconds"
-		pi.AggregationType = "sum"
+		pi.Units = metadata.LockNanosecondsUnits
+		pi.AggregationType = metadata.SumAggregationType
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
 		}

@@ -2,14 +2,16 @@ package tree
 
 import (
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
 type SampleTypeConfig struct {
-	Units       string `json:"units,omitempty" yaml:"units,omitempty"`
-	DisplayName string `json:"display-name,omitempty" yaml:"display-name,omitempty"`
-	Aggregation string `json:"aggregation,omitempty" yaml:"aggregation,omitempty"`
-	Cumulative  bool   `json:"cumulative,omitempty" yaml:"cumulative,omitempty"`
-	Sampled     bool   `json:"sampled,omitempty" yaml:"sampled,omitempty"`
+	Units       metadata.Units           `json:"units,omitempty" yaml:"units,omitempty"`
+	DisplayName string                   `json:"display-name,omitempty" yaml:"display-name,omitempty"`
+	Aggregation metadata.AggregationType `json:"aggregation,omitempty" yaml:"aggregation,omitempty"`
+	Cumulative  bool                     `json:"cumulative,omitempty" yaml:"cumulative,omitempty"`
+	Sampled     bool                     `json:"sampled,omitempty" yaml:"sampled,omitempty"`
 }
 
 // DefaultSampleTypeMapping contains default settings for every

@@ -12,6 +12,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
@@ -38,7 +39,7 @@ func PprofToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Flamebe
 	// TODO(abeaumont): Support multiple sample types
 	for _, stype := range p.SampleTypes() {
 		sampleRate := uint32(100)
-		units := "samples"
+		units := metadata.SamplesUnits
 		if c, ok := tree.DefaultSampleTypeMapping[stype]; ok {
 			units = c.Units
 			if c.Sampled && p.Period > 0 {

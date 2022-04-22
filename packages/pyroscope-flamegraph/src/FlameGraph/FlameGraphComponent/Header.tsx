@@ -23,6 +23,8 @@ export default function Header(props: HeaderProps) {
     objects: 'amount of objects in RAM per function',
     bytes: 'amount of RAM per function',
     samples: 'CPU time per function',
+    lock_nanoseconds: 'amount of time spent in locks per function',
+    lock_samples: 'number of lock attempts per function',
     '': '',
   };
 
