@@ -104,7 +104,7 @@ func (t *Target) offset(interval time.Duration) time.Duration {
 
 func (t *Target) SpyName() string {
 	for _, l := range t.discoveredLabels {
-		if l.Name == model.SpyNameLabel {
+		if l.Name == model.SpyNameLabel && l.Value != "" {
 			return l.Value
 		}
 	}
