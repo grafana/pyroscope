@@ -42,6 +42,8 @@ const (
 	HealthUnknown TargetHealth = "unknown"
 	HealthGood    TargetHealth = "up"
 	HealthBad     TargetHealth = "down"
+
+	spyName = "scrape"
 )
 
 // Target refers to a singular HTTP or HTTPS endpoint.
@@ -98,6 +100,15 @@ func (t *Target) offset(interval time.Duration) time.Duration {
 		next -= int64(interval)
 	}
 	return time.Duration(next)
+}
+
+func (t *Target) SpyName() string {
+	for _, l := range t.discoveredLabels {
+		if l.Name == model.SpyNameLabel {
+			return l.Value
+		}
+	}
+	return spyName
 }
 
 // Labels returns a copy of the set of all public labels of the target.
