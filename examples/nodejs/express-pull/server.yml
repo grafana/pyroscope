@@ -1,0 +1,12 @@
+---
+log-level: debug
+scrape-configs:
+  - job-name: testing
+    enabled-profiles: [cpu]
+    static-configs:
+      - application: rideshare
+        spy-name: nodespy
+        targets:
+          - localhost:3000
+        labels:
+          env: dev

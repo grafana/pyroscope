@@ -50,6 +50,12 @@ func DefaultConfig() *Config {
 						Units:       "samples",
 						Sampled:     true,
 					},
+					// NodeJS Spy
+					"sample": {
+						DisplayName: "cpu",
+						Units:       "samples",
+						Sampled:     true,
+					},
 				},
 			},
 			"mem": {
@@ -69,6 +75,16 @@ func DefaultConfig() *Config {
 						Aggregation: "average",
 					},
 					"alloc_space": {
+						Units:      "bytes",
+						Cumulative: true,
+					},
+
+					// NodeJS Spy
+					"objects": {
+						Units:      "objects",
+						Cumulative: true,
+					},
+					"space": {
 						Units:      "bytes",
 						Cumulative: true,
 					},
