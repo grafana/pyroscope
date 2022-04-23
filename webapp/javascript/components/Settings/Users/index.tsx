@@ -30,9 +30,6 @@ function Users() {
   useEffect(() => {
     dispatch(reloadUsers());
   }, []);
-
-  if (!currentUser) return null;
-
   const displayUsers =
     (users &&
       users.filter(

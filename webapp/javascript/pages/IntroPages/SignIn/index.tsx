@@ -16,6 +16,7 @@ import {
   isSignupEnabled,
 } from '@webapp/util/features';
 import { PAGES } from '@webapp/pages/constants';
+import { Location } from 'react-router';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
@@ -48,7 +49,7 @@ function SignInPage() {
       const res = await logIn({ username, password });
       if (res.isOk) {
         history.replace(
-          (location.state as ShamefulAny).redir || PAGES.CONTINOUS_SINGLE_VIEW
+          (location.state as any)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
         );
         return;
       }
