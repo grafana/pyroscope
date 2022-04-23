@@ -48,9 +48,12 @@ function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
         <div
           className={classNames('spinner-container', {
             visible: isLoadingData,
+            loaded: !isLoadingData,
           })}
         >
-          <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+          {isLoadingData && (
+            <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+          )}
         </div>
         &nbsp;
         <RefreshButton />

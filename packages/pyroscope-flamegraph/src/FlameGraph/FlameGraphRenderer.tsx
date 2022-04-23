@@ -289,7 +289,6 @@ class FlameGraphRenderer extends React.Component<
 
   updateFlamebearerData() {
     const flamebearer = mountFlamebearer(this.props);
-
     this.setState({ flamebearer });
   }
 
