@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -80,7 +81,7 @@ type FlamebearerMetadataV1 struct {
 	// Sample rate at which the profiler was operating.
 	SampleRate uint32 `json:"sampleRate"`
 	// The unit of measurement for the profiled data.
-	Units string `json:"units"`
+	Units metadata.Units `json:"units"`
 	// A name that identifies the profile.
 	Name string `json:"name"`
 }

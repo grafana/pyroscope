@@ -11,6 +11,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -27,7 +28,7 @@ type GetOutput struct {
 	Timeline   *segment.Timeline
 	SpyName    string
 	SampleRate uint32
-	Units      string
+	Units      metadata.Units
 }
 
 const (

@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -20,8 +21,8 @@ type PutInput struct {
 	Val             *tree.Tree
 	SpyName         string
 	SampleRate      uint32
-	Units           string
-	AggregationType string
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 }
 
 func (s *Storage) Put(_ context.Context, pi *PutInput) error {

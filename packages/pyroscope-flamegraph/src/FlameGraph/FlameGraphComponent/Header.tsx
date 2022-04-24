@@ -20,9 +20,11 @@ export default function Header(props: HeaderProps) {
   const { format, units, ExportData = <></>, palette, setPalette } = props;
 
   const unitsToFlamegraphTitle = {
-    objects: 'amount of objects in RAM per function',
+    objects: 'number of objects in RAM per function',
     bytes: 'amount of RAM per function',
     samples: 'CPU time per function',
+    lock_nanoseconds: 'time spent waiting on locks per function',
+    lock_samples: 'number of contended locks per function',
     '': '',
   };
 

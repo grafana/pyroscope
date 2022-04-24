@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -80,7 +81,8 @@ func (w *ProfileWriter) WriteProfile(ctx context.Context, startTime, endTime tim
 		if sampleTypeConfig.Units != "" {
 			pi.Units = sampleTypeConfig.Units
 		} else {
-			pi.Units = p.StringTable[vt.Unit]
+			// TODO(petethepig): this conversion is questionable
+			pi.Units = metadata.Units(p.StringTable[vt.Unit])
 		}
 		pi.Key = w.buildName(sampleType, p.ResolveLabels(l))
 		w.ingester.Enqueue(ctx, &pi)
