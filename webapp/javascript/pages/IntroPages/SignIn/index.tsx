@@ -16,7 +16,6 @@ import {
   isSignupEnabled,
 } from '@webapp/util/features';
 import { PAGES } from '@webapp/pages/constants';
-import { Location } from 'react-router';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
