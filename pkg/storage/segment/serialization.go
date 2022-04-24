@@ -23,10 +23,10 @@ func (s *Segment) populateFromMetadata(data map[string]interface{}) {
 		s.spyName = v.(string)
 	}
 	if v, ok := data["units"]; ok {
-		s.units = v.(metadata.Units)
+		s.units = metadata.Units(v.(string))
 	}
 	if v, ok := data["aggregationType"]; ok {
-		s.aggregationType = v.(metadata.AggregationType)
+		s.aggregationType = metadata.AggregationType(v.(string))
 	}
 }
 
