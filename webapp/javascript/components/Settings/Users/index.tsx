@@ -106,6 +106,7 @@ function Users() {
       </div>
       <table
         className={[userStyles.usersTable, tableStyles.settingsTable].join(' ')}
+        data-testId="users-table"
       >
         <thead>
           <tr>

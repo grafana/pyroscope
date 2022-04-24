@@ -38,6 +38,16 @@ describe('Settings page', () => {
 
     cy.url().should('contain', '/settings/users');
 
+    // One user should be displayed
+    cy.findByTestId('users-table')
+      .get('tbody')
+      .get('tr')
+      .should('have.length', 2);
+    cy.findByTestId('users-table')
+      .get('tbody')
+      .get('tr')
+      .should('contain.text', 'admin@localhost');
+
     cy.findByTestId('settings-adduser').click();
     cy.url().should('contain', '/settings/users/add');
 
@@ -48,6 +58,16 @@ describe('Settings page', () => {
     cy.findByTestId('settings-useradd').click();
 
     cy.url().should('contain', '/settings/users');
+
+    // Two users should be displayed
+    cy.findByTestId('users-table')
+      .get('tbody')
+      .get('tr')
+      .should('have.length', 2);
+    cy.findByTestId('users-table')
+      .get('tbody')
+      .get('tr:nth-child(2)')
+      .should('contain.text', 'user@domain.com');
 
     cy.visit('/logout');
     cy.visit('/login');
