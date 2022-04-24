@@ -15,17 +15,17 @@ import (
 // serialization format version. it's not very useful right now, but it will be in the future
 const currentVersion = 3
 
-func (s *Segment) populateFromMetadata(data map[string]interface{}) {
-	if v, ok := data["sampleRate"]; ok {
+func (s *Segment) populateFromMetadata(mdata map[string]interface{}) {
+	if v, ok := mdata["sampleRate"]; ok {
 		s.sampleRate = uint32(v.(float64))
 	}
-	if v, ok := data["spyName"]; ok {
+	if v, ok := mdata["spyName"]; ok {
 		s.spyName = v.(string)
 	}
-	if v, ok := data["units"]; ok {
+	if v, ok := mdata["units"]; ok {
 		s.units = metadata.Units(v.(string))
 	}
-	if v, ok := data["aggregationType"]; ok {
+	if v, ok := mdata["aggregationType"]; ok {
 		s.aggregationType = metadata.AggregationType(v.(string))
 	}
 }

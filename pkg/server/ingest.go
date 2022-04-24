@@ -114,7 +114,7 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInpu
 
 	if sn := q.Get("spyName"); sn != "" {
 		// TODO: error handling
-		pi.SpyName = string(sn)
+		pi.SpyName = sn
 	} else {
 		pi.SpyName = "unknown"
 	}
