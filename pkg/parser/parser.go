@@ -71,8 +71,6 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 	}
 }
 
-var i int
-
 // Put takes parser.PutInput, turns it into storage.PutIntput and enqueues it for a write
 func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) {
 	pi := &storage.PutInput{
