@@ -38,6 +38,8 @@ function Users() {
       )) ||
     [];
 
+  if (!currentUser) return null;
+
   const handleDisableUser = (user: User) => {
     if (user.isDisabled) {
       dispatch(enableUser(user))
