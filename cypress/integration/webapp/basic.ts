@@ -147,13 +147,13 @@ describe('basic test', () => {
 
         // sort by total desc
         sortColumn(columns.total.index);
-        getCellContent(first, columns.total).should('eq', '5.16 seconds');
-        getCellContent(last, columns.total).should('eq', '0.50 seconds');
+        getCellContent(first, columns.total).should('eq', '5.08 seconds');
+        getCellContent(last, columns.total).should('eq', '0.08 seconds');
 
         // sort by total asc
         sortColumn(columns.total.index);
-        getCellContent(first, columns.total).should('eq', '0.50 seconds');
-        getCellContent(last, columns.total).should('eq', '5.16 seconds');
+        getCellContent(first, columns.total).should('eq', '0.08 seconds');
+        getCellContent(last, columns.total).should('eq', '5.08 seconds');
       });
   });
 
