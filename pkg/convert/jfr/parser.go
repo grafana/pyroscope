@@ -96,7 +96,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		pi.Val = cpu
 		pi.Units = metadata.SamplesUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
 	}
@@ -106,7 +106,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		pi.Val = wall
 		pi.Units = metadata.SamplesUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
 	}
@@ -116,49 +116,49 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		pi.Val = inTLABObjects
 		pi.Units = metadata.ObjectsUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
 		labels["__name__"] = prefix + ".alloc_in_new_tlab_bytes"
 		pi.Key = segment.NewKey(labels)
-		pi.Val = inTLABObjects
+		pi.Val = inTLABBytes
 		pi.Units = metadata.BytesUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
 		labels["__name__"] = prefix + ".alloc_outside_tlab_objects"
 		pi.Key = segment.NewKey(labels)
-		pi.Val = inTLABObjects
+		pi.Val = outTLABObjects
 		pi.Units = metadata.ObjectsUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
 		labels["__name__"] = prefix + ".alloc_outside_tlab_bytes"
 		pi.Key = segment.NewKey(labels)
-		pi.Val = inTLABObjects
+		pi.Val = outTLABBytes
 		pi.Units = metadata.BytesUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
 	}
 	if lock != "" {
-		labels["__name__"] = prefix + ".lock_samples"
+		labels["__name__"] = prefix + ".lock_count"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = lockSamples
 		pi.Units = metadata.LockSamplesUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
-		labels["__name__"] = prefix + ".lock_nanoseconds"
+		labels["__name__"] = prefix + ".lock_duration"
 		pi.Key = segment.NewKey(labels)
 		pi.Val = lockDuration
 		pi.Units = metadata.LockNanosecondsUnits
 		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); err != nil {
+		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
 		}
 	}

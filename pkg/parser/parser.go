@@ -86,7 +86,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 	}
 	cb := p.createParseCallback(pi)
 
-	// for tests:
+	// for tests (ingest_test.go):
 	// b, _ := io.ReadAll(in.Body)
 	// f, _ := os.Create("./pkg/server/testdata/jfr-" + strconv.Itoa(i) + ".bin.gz")
 	// i++

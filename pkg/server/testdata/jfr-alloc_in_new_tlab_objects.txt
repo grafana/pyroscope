@@ -1,2 +1,2 @@
 .no_Java_frame 1
-jdk/internal/misc/InnocuousThread.run;java/lang/Thread.run;sun/net/www/http/KeepAliveCache.run 1
+java/lang/Thread.run;io/pyroscope/javaagent/Uploader.run;io/pyroscope/javaagent/Uploader.uploadSnapshot;java/net/HttpURLConnection.getResponseCode;sun/net/www/protocol/http/HttpURLConnection.getInputStream;sun/net/www/protocol/http/HttpURLConnection.getInputStream0;sun/net/www/http/HttpClient.parseHTTP;java/io/BufferedInputStream.<init>;java/io/BufferedInputStream.<init> 1

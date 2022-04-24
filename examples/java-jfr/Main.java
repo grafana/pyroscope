@@ -18,7 +18,7 @@ class MyRunnable implements Runnable {
         while (true) {
             this.lock.lock();
             try {
-                fib(20);
+                fib(40);
             } finally {
                 this.lock.unlock();
             }
@@ -41,7 +41,7 @@ class Main {
         while (true) {
             l.lock();
             try {
-                fib(20);
+                fib(40);
             } finally {
                 l.unlock();
             }

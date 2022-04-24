@@ -1,2 +1,1 @@
-.no_Java_frame 1
-jdk/internal/misc/InnocuousThread.run;java/lang/Thread.run;sun/net/www/http/KeepAliveCache.run 1
+java/lang/Thread.run;io/pyroscope/javaagent/Uploader.run;io/pyroscope/javaagent/Uploader.uploadSnapshot;io/pyroscope/javaagent/Uploader.sendRequest;java/io/FilterOutputStream.write;java/io/DataOutputStream.write;sun/net/www/http/PosterOutputStream.write;java/io/ByteArrayOutputStream.write;java/io/ByteArrayOutputStream.ensureCapacity;java/util/Arrays.copyOf 1

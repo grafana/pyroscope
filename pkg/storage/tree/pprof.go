@@ -90,7 +90,7 @@ type PprofMetadata struct {
 	Duration  time.Duration
 }
 
-func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
+func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 	t.RLock()
 	defer t.RUnlock()
 
@@ -103,9 +103,9 @@ func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
 		},
 	}
 
-	p.profile.SampleType = []*ValueType{{Type: p.newString(metadata.Type), Unit: p.newString(metadata.Unit)}}
-	p.profile.TimeNanos = metadata.StartTime.UnixNano()
-	p.profile.DurationNanos = metadata.Duration.Nanoseconds()
+	p.profile.SampleType = []*ValueType{{Type: p.newString(mdata.Type), Unit: p.newString(mdata.Unit)}}
+	p.profile.TimeNanos = mdata.StartTime.UnixNano()
+	p.profile.DurationNanos = mdata.Duration.Nanoseconds()
 	t.IterateStacks(func(name string, self uint64, stack []string) {
 		value := []int64{int64(self)}
 		loc := []uint64{}

@@ -102,12 +102,12 @@ func Deserialize(r io.Reader) (*Segment, error) {
 		return nil, err
 	}
 
-	metadata, err := serialization.ReadMetadata(br)
+	mdata, err := serialization.ReadMetadata(br)
 	if err != nil {
 		return nil, err
 	}
 
-	s.populateFromMetadata(metadata)
+	s.populateFromMetadata(mdata)
 
 	parents := []*streeNode{nil}
 	for len(parents) > 0 {
