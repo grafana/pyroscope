@@ -27,6 +27,22 @@ func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string)
 	if vehicle == "car" {
 		checkDriverAvailability(ctx, searchRadius)
 	}
+
+	if vehicle == "bike" && time.Now().Minute()%10 == 0 {	
+		checkBikeAvailability(ctx, searchRadius)
+	}
+}
+
+func checkBikeAvailability(ctx context.Context, n int64) {
+	ctx, span := otel.GetTracerProvider().Tracer("").Start(ctx, "CheckBikeAvailability")
+	defer span.End()
+
+	region := os.Getenv("REGION")
+	logger := log.Logger(ctx).WithField("region", region)
+	logger.Info("checking for bike availability")
+
+	burnCPU(n * 3)
+	logger.Info("bike found")
 }
 
 func checkDriverAvailability(ctx context.Context, n int64) {
