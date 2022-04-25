@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.18](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.2.17...@pyroscope/panel-plugin@1.2.18) (2022-04-25)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
 ## [1.2.17](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.2.16...@pyroscope/panel-plugin@1.2.17) (2022-04-15)
 
 **Note:** Version bump only for package @pyroscope/panel-plugin
