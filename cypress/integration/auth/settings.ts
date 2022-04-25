@@ -73,4 +73,38 @@ describe('Settings page', () => {
 
     cy.visit('/logout');
   });
+
+  it.only('should be able to change password', () => {
+    cy.visit('/login');
+
+    cy.get('input#username').focus().type('user');
+    cy.get('input#password').focus().type('user');
+    cy.findByTestId('sign-in-button').click();
+
+    cy.findByTestId('sidebar-settings').click();
+    cy.url().should('contain', '/settings');
+
+    cy.findByText('Change Password').click();
+    cy.url().should('contain', '/settings/security');
+
+    cy.get('input[name="oldPassword"]').focus().type('user');
+    cy.get('input[name="password"]').focus().type('pass');
+    cy.get('input[name="passwordAgain"]').focus().type('pass');
+
+    cy.get('button').findByText('Save').click();
+
+    cy.findByText('Password has been successfully changed').should(
+      'be.visible'
+    );
+
+    cy.visit('/logout');
+    cy.visit('/login');
+
+    cy.get('input#username').focus().type('user');
+    cy.get('input#password').focus().type('pass');
+    cy.findByTestId('sign-in-button').click();
+
+    cy.findByTestId('sidebar-settings').click();
+    cy.url().should('contain', '/settings');
+  });
 });
