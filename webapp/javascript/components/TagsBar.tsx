@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import Button from '@webapp/ui/Button';
 import 'react-dom';
 import { useWindowWidth } from '@react-hook/window-size';
@@ -117,7 +117,8 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
     });
   }, [query, windowWidth, onSubmit]);
 
-  const onChange = (e: any) => {
+  const onChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    if (!e?.target) return;
     const previousRows = e.target.rows;
     e.target.rows = 1;
 
