@@ -138,14 +138,25 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
     setTextAreaRows(currentRows);
   };
 
+  const onFormSubmit = (
+    e:
+      | React.FormEvent<HTMLFormElement>
+      | React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    e.preventDefault();
+    onSubmit(query);
+  };
+
+  const handleTextareaKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if ((e.keyCode === 10 || e.keyCode === 13) && e.ctrlKey) {
+      onFormSubmit(e);
+    }
+  };
+
   return (
-    <form
-      className="tags-query"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(query);
-      }}
-    >
+    <form className="tags-query" onSubmit={onFormSubmit}>
       <pre className="tags-highlighted language-promql" aria-hidden="true">
         <code
           className="language-promql"
@@ -163,6 +174,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
         spellCheck="false"
         onChange={onChange}
         rows={textAreaRows}
+        onKeyDown={handleTextareaKeyDown}
       />
       <Button
         type="submit"
