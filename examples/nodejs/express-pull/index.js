@@ -1,5 +1,5 @@
 /* eslint-disable */
-const PyroscopePull = require('@pyroscope/nodejs/pull');
+const { expressMiddleware } = require('@pyroscope/nodejs');
 
 const port = process.env['PORT'] || 3000;
 
@@ -33,8 +33,7 @@ function scooterSearchHandler() {
   return genericSearchHandler(0.25);
 }
 
-const PyroscopeMiddleware = PyroscopePull.default.express();
-app.use(PyroscopeMiddleware);
+app.use(expressMiddleware());
 
 app.get('/bike', function bikeSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);
