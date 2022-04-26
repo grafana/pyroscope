@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '@webapp/ui/Button';
 import 'react-dom';
+import { useWindowWidth } from '@react-hook/window-size';
 import { TagsState } from '@webapp/redux/reducers/continuous';
 import Dropdown, {
   SubMenu,
@@ -8,9 +9,12 @@ import Dropdown, {
   FocusableItem,
   MenuGroup,
 } from '@webapp/ui/Dropdown';
+import TextareaAutosize from 'react-textarea-autosize';
 import { Prism } from '@webapp/util/prism';
 import { Query, brandQuery } from '@webapp/models/query';
 import styles from './TagsBar.module.css';
+
+const textareaLineHeight = 27;
 
 interface TagsBarProps {
   onSetQuery: (q: Query) => void;
@@ -87,8 +91,12 @@ interface QueryInputProps {
 }
 
 function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
+  const windowWidth = useWindowWidth();
   const [query, setQuery] = useState(initialQuery);
+  const [textAreaRows, setTextAreaRows] = useState(1);
   const codeRef = useRef<HTMLElement>(null);
+  const textareaRef = useRef<any>(null);
+  const [textAreaSize, setTextAreaSize] = useState({ width: 0, height: 0 });
 
   // If query updated upstream, most likely the application changed
   // So we prefer to use it
@@ -101,6 +109,33 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
       Prism.highlightElement(codeRef.current);
     }
   }, [query]);
+
+  useEffect(() => {
+    setTextAreaSize({
+      width: textareaRef?.current?.['offsetWidth'] || 0,
+      height: textareaRef?.current?.['offsetHeight'] || 0,
+    });
+  }, [query, windowWidth, onSubmit]);
+
+  const onChange = (e: any) => {
+    const previousRows = e.target.rows;
+    e.target.rows = 1;
+
+    const currentRows = Math.floor(e.target.scrollHeight / textareaLineHeight);
+
+    if (currentRows === previousRows) {
+      e.target.rows = currentRows;
+    }
+
+    if (currentRows >= textAreaRows) {
+      e.target.rows = textAreaRows;
+      e.target.scrollTop = e.target.scrollHeight;
+    }
+
+    setQuery(brandQuery(e.target.value));
+
+    setTextAreaRows(currentRows);
+  };
 
   return (
     <form
@@ -115,15 +150,18 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
           className="language-promql"
           id="highlighting-content"
           ref={codeRef}
+          style={textAreaSize}
         >
           {query}
         </code>
       </pre>
-      <input
+      <TextareaAutosize
         className="tags-input"
-        type="text"
+        ref={textareaRef}
         value={query}
-        onChange={(e) => setQuery(brandQuery(e.target.value))}
+        spellCheck="false"
+        onChange={onChange}
+        rows={textAreaRows}
       />
       <Button
         type="submit"
