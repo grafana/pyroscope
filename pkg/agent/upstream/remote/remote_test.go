@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 	"github.com/sirupsen/logrus"
@@ -61,7 +62,7 @@ var _ = Describe("remote.Remote", func() {
 						EndTime:    testing.SimpleTime(10),
 						SpyName:    "debugspy",
 						SampleRate: 100,
-						Units:      "samples",
+						Units:      metadata.SamplesUnits,
 						Trie:       t,
 					})
 				}

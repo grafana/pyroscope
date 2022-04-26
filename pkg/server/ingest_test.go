@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/klauspost/compress/gzip"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
@@ -31,6 +33,16 @@ func readTestdataFile(name string) string {
 	f, err := ioutil.ReadFile(name)
 	Expect(err).ToNot(HaveOccurred())
 	return string(f)
+}
+
+func jfrFromFile(name string) *bytes.Buffer {
+	b, err := ioutil.ReadFile(name)
+	Expect(err).ToNot(HaveOccurred())
+	b2, err := gzip.NewReader(bytes.NewBuffer(b))
+	Expect(err).ToNot(HaveOccurred())
+	b3, err := io.ReadAll(b2)
+	Expect(err).ToNot(HaveOccurred())
+	return bytes.NewBuffer(b3)
 }
 
 func pprofFormFromFile(name string, cfg map[string]*tree.SampleTypeConfig) (*multipart.Writer, *bytes.Buffer) {
@@ -63,6 +75,7 @@ var _ = Describe("server", func() {
 		Describe("/ingest", func() {
 			var buf *bytes.Buffer
 			var format string
+			// var typeName string
 			var contentType string
 			var name string
 			var sleepDur time.Duration
@@ -139,6 +152,10 @@ var _ = Describe("server", func() {
 						Expect(gOut).ToNot(BeNil())
 						Expect(err).ToNot(HaveOccurred())
 						Expect(gOut.Tree).ToNot(BeNil())
+						// Useful for debugging
+						// fmt.Println("sk ", sk)
+						// fmt.Println(gOut.Tree.String())
+						// ioutil.WriteFile("/home/dmitry/pyroscope/pkg/server/testdata/jfr-"+typeName+".txt", []byte(gOut.Tree.String()), 0644)
 						Expect(gOut.Tree.String()).To(Equal(expectedTree))
 
 						close(done)
@@ -216,6 +233,40 @@ var _ = Describe("server", func() {
 				})
 
 				ItCorrectlyParsesIncomingData()
+			})
+
+			Context("jfr", func() {
+				BeforeEach(func() {
+					format = ""
+					sleepDur = 100 * time.Millisecond
+					name = "test.app{foo=bar,baz=qux}"
+					buf = jfrFromFile("./testdata/jfr.bin.gz")
+					format = "jfr"
+				})
+
+				types := []string{
+					"cpu",
+					"alloc_in_new_tlab_objects",
+					"alloc_in_new_tlab_bytes",
+					"alloc_outside_tlab_objects",
+					"alloc_outside_tlab_bytes",
+					"lock_count",
+					"lock_duration",
+				}
+
+				for _, t := range types {
+					func(t string) {
+						Context(t, func() {
+							BeforeEach(func() {
+								// typeName = t
+								expectedKey = "test.app." + t + "{foo=bar,baz=qux}"
+								expectedTree = readTestdataFile("./testdata/jfr-" + t + ".txt")
+							})
+
+							ItCorrectlyParsesIncomingData()
+						})
+					}(t)
+				}
 			})
 
 			Context("pprof", func() {

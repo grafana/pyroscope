@@ -35,7 +35,9 @@ There are number of limitations:
 ### 1. Run the docker-compose file
 
 ```
-# docker-compose up --build
+# You will need to add loki plugin as well for this example
+docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+docker-compose up --build
 ```
 
 Optionally, for debugging purposes, you can specify `DEBUG_TRACER` variable to make the sample app

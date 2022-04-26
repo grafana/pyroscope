@@ -73,7 +73,7 @@ func (mgr *Manager) canonise(t *config.Target) error {
 		t.SampleRate = types.DefaultSampleRate
 	}
 	if t.ApplicationName == "" {
-		t.ApplicationName = t.SpyName + "." + names.GetRandomName(generateSeed(t.ServiceName, t.SpyName))
+		t.ApplicationName = string(t.SpyName) + "." + names.GetRandomName(generateSeed(t.ServiceName, t.SpyName))
 		logger := mgr.logger.WithField("spy-name", t.SpyName)
 		if t.ServiceName != "" {
 			logger = logger.WithField("service-name", t.ServiceName)

@@ -114,7 +114,8 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rh.httpUtils.WriteResponseJSON(r, w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
-			Unit:      out.Units,
+			// TODO(petethepig): not sure if this conversion is right
+			Unit:      string(out.Units),
 			StartTime: p.gi.StartTime,
 		})
 		out, err := proto.Marshal(pprof)

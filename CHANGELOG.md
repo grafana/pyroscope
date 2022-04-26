@@ -1,3 +1,14 @@
+## [0.15.2](https://github.com/pyroscope-io/pyroscope/compare/v0.15.1...v0.15.2) (2022-04-24)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix table contrast ([#1053](https://github.com/pyroscope-io/pyroscope/issues/1053)) ([6246f21](https://github.com/pyroscope-io/pyroscope/commit/6246f211967d073febdca8fb578bb805b96597cd))
+* **jfr:** fixes a parser regression introduced in 1.15.0 ([#1050](https://github.com/pyroscope-io/pyroscope/issues/1050)) ([946468d](https://github.com/pyroscope-io/pyroscope/commit/946468dbf42ff4450edc94762812ddb4a5f3482d))
+* remove force compation ([#1036](https://github.com/pyroscope-io/pyroscope/issues/1036)) ([d1b1547](https://github.com/pyroscope-io/pyroscope/commit/d1b1547edbc61537537add4f614c4ada67a83335))
+
+
+
 ## [0.15.1](https://github.com/pyroscope-io/pyroscope/compare/v0.15.0...v0.15.1) (2022-04-19)
 
 

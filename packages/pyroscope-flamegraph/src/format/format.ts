@@ -22,6 +22,10 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
       return new ObjectsFormatter(max);
     case 'bytes':
       return new BytesFormatter(max);
+    case 'lock_nanoseconds':
+      return new NanosecondsFormatter(max);
+    case 'lock_samples':
+      return new ObjectsFormatter(max);
     default:
       console.warn(`Unsupported unit: '${unit}'. Defaulting to 'samples'`);
       return new DurationFormatter(max / sampleRate);
@@ -65,6 +69,57 @@ class DurationFormatter {
 
   format(samples: number, sampleRate: number) {
     const n = samples / sampleRate / this.divider;
+    let nStr = n.toFixed(2);
+
+    if (n >= 0 && n < 0.01) {
+      nStr = '< 0.01';
+    } else if (n <= 0 && n > -0.01) {
+      nStr = '< 0.01';
+    }
+
+    return `${nStr} ${this.suffix}${n === 1 ? '' : 's'}`;
+  }
+}
+
+// this is a class and not a function because we can save some time by
+//   precalculating divider and suffix and not doing it on each iteration
+class NanosecondsFormatter {
+  divider = 1;
+  multiplier = 1;
+
+  suffix: string = 'second';
+
+  durations: [number, string][] = [
+    [60, 'minute'],
+    [60, 'hour'],
+    [24, 'day'],
+    [30, 'month'],
+    [12, 'year'],
+  ];
+
+  constructor(maxDur: number) {
+    maxDur /= 1000000000;
+    // eslint-disable-next-line no-plusplus
+    for (let i = 0; i < this.durations.length; i++) {
+      const level = this.durations[i];
+      if (!level) {
+        console.warn('Could not calculate level');
+        break;
+      }
+
+      if (maxDur >= level[0]) {
+        this.divider *= level[0];
+        maxDur /= level[0];
+        // eslint-disable-next-line prefer-destructuring
+        this.suffix = level[1];
+      } else {
+        break;
+      }
+    }
+  }
+
+  format(samples: number, sampleRate: number) {
+    const n = samples / 1000000000 / this.divider;
     let nStr = n.toFixed(2);
 
     if (n >= 0 && n < 0.01) {
