@@ -258,10 +258,6 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) notfoundHandler() http.HandlerFunc {
-	return ctrl.indexHandler()
-}
-
 func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {
 	if err != nil {
 		ctrl.log.WithError(err).Error(msg)
