@@ -80,7 +80,9 @@ func (w *externalWriter) write(name string, out *storage.GetOutput) error {
 	switch w.format {
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
-			Unit:      out.Units,
+			// TODO(petethepig): check if this conversion always makes sense
+			//   e.g are these units defined in pprof somewhere?
+			Unit:      string(out.Units),
 			StartTime: w.now,
 		})
 		out, err := proto.Marshal(pprof)

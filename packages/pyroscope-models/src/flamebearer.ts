@@ -20,7 +20,13 @@ export type Flamebearer = {
    * Sample Rate, used in text information
    */
   sampleRate: number;
-  units: 'samples' | 'objects' | 'bytes' | '';
+  units:
+    | 'samples'
+    | 'objects'
+    | 'bytes'
+    | 'lock_samples'
+    | 'lock_nanoseconds'
+    | '';
   spyName:
     | 'dotneyspy'
     | 'ebpfspy'

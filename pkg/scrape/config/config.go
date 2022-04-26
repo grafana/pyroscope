@@ -26,6 +26,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	profile "github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
@@ -47,7 +48,7 @@ func DefaultConfig() *Config {
 				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"samples": {
 						DisplayName: "cpu",
-						Units:       "samples",
+						Units:       metadata.SamplesUnits,
 						Sampled:     true,
 					},
 					// NodeJS Spy
@@ -63,19 +64,19 @@ func DefaultConfig() *Config {
 				Params: nil, // url.Values{"gc": []string{"1"}},
 				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"inuse_objects": {
-						Units:       "objects",
-						Aggregation: "average",
+						Units:       metadata.ObjectsUnits,
+						Aggregation: metadata.AverageAggregationType,
 					},
 					"alloc_objects": {
-						Units:      "objects",
+						Units:      metadata.ObjectsUnits,
 						Cumulative: true,
 					},
 					"inuse_space": {
-						Units:       "bytes",
-						Aggregation: "average",
+						Units:       metadata.BytesUnits,
+						Aggregation: metadata.AverageAggregationType,
 					},
 					"alloc_space": {
-						Units:      "bytes",
+						Units:      metadata.BytesUnits,
 						Cumulative: true,
 					},
 

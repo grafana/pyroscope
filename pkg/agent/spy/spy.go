@@ -3,6 +3,8 @@ package spy
 
 import (
 	"fmt"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
 type Spy interface {
@@ -32,23 +34,23 @@ func (t ProfileType) IsCumulative() bool {
 	return t == ProfileAllocObjects || t == ProfileAllocSpace
 }
 
-func (t ProfileType) Units() string {
+func (t ProfileType) Units() metadata.Units {
 	if t == ProfileInuseObjects || t == ProfileAllocObjects {
-		return "objects"
+		return metadata.ObjectsUnits
 	}
 	if t == ProfileInuseSpace || t == ProfileAllocSpace {
-		return "bytes"
+		return metadata.BytesUnits
 	}
 
-	return "samples"
+	return metadata.SamplesUnits
 }
 
-func (t ProfileType) AggregationType() string {
+func (t ProfileType) AggregationType() metadata.AggregationType {
 	if t == ProfileInuseObjects || t == ProfileInuseSpace {
-		return "average"
+		return metadata.AverageAggregationType
 	}
 
-	return "sum"
+	return metadata.SumAggregationType
 }
 
 // TODO: this interface is not the best as different spies have different arguments

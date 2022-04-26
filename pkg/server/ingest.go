@@ -13,6 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
@@ -119,15 +120,17 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInpu
 	}
 
 	if u := q.Get("units"); u != "" {
-		pi.Units = u
+		// TODO(petethepig): add validation for these?
+		pi.Units = metadata.Units(u)
 	} else {
-		pi.Units = "samples"
+		pi.Units = metadata.SamplesUnits
 	}
 
 	if at := q.Get("aggregationType"); at != "" {
-		pi.AggregationType = at
+		// TODO(petethepig): add validation for these?
+		pi.AggregationType = metadata.AggregationType(at)
 	} else {
-		pi.AggregationType = "sum"
+		pi.AggregationType = metadata.SumAggregationType
 	}
 
 	return &pi, nil
