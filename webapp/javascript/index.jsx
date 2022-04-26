@@ -87,17 +87,23 @@ function App() {
           </Route>
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_SINGLE}>
-              <AdhocSingle />
+              <Protected>
+                <AdhocSingle />
+              </Protected>
             </Route>
           )}
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_COMPARISON}>
-              <AdhocComparison />
+              <Protected>
+                <AdhocComparison />
+              </Protected>
             </Route>
           )}
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
-              <AdhocDiff />
+              <Protected>
+                <AdhocDiff />
+              </Protected>
             </Route>
           )}
           <Route path="*" exact>
