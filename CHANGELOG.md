@@ -1,3 +1,12 @@
+## [0.15.3](https://github.com/pyroscope-io/pyroscope/compare/v0.15.2...v0.15.3) (2022-04-27)
+
+
+### Features
+
+* rails example added ([#1041](https://github.com/pyroscope-io/pyroscope/issues/1041)) ([a722a6e](https://github.com/pyroscope-io/pyroscope/commit/a722a6e93fdd1895179a0e1481c5d25a3c0dd5a5))
+
+
+
 ## [0.15.2](https://github.com/pyroscope-io/pyroscope/compare/v0.15.1...v0.15.2) (2022-04-24)
 
 
