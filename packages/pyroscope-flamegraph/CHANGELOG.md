@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.3.1...@pyroscope/flamegraph@0.4.0) (2022-04-27)
+
+
+### Features
+
+* rails example added ([#1041](https://github.com/pyroscope-io/pyroscope/issues/1041)) ([a722a6e](https://github.com/pyroscope-io/pyroscope/commit/a722a6e93fdd1895179a0e1481c5d25a3c0dd5a5))
+
+
+
+
+
 ## [0.3.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.3.0...@pyroscope/flamegraph@0.3.1) (2022-04-25)
 
 
