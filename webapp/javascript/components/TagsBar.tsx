@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '@webapp/ui/Button';
 import 'react-dom';
+import { useWindowWidth } from '@react-hook/window-size';
 import { TagsState } from '@webapp/redux/reducers/continuous';
 import Dropdown, {
   SubMenu,
@@ -8,6 +9,7 @@ import Dropdown, {
   FocusableItem,
   MenuGroup,
 } from '@webapp/ui/Dropdown';
+import TextareaAutosize from 'react-textarea-autosize';
 import { Prism } from '@webapp/util/prism';
 import { Query, brandQuery } from '@webapp/models/query';
 import styles from './TagsBar.module.css';
@@ -87,8 +89,11 @@ interface QueryInputProps {
 }
 
 function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
+  const windowWidth = useWindowWidth();
   const [query, setQuery] = useState(initialQuery);
   const codeRef = useRef<HTMLElement>(null);
+  const textareaRef = useRef<any>(null);
+  const [textAreaSize, setTextAreaSize] = useState({ width: 0, height: 0 });
 
   // If query updated upstream, most likely the application changed
   // So we prefer to use it
@@ -102,28 +107,49 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
     }
   }, [query]);
 
+  useEffect(() => {
+    setTextAreaSize({
+      width: textareaRef?.current?.['offsetWidth'] || 0,
+      height: textareaRef?.current?.['offsetHeight'] || 0,
+    });
+  }, [query, windowWidth, onSubmit]);
+
+  const onFormSubmit = (
+    e:
+      | React.FormEvent<HTMLFormElement>
+      | React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    e.preventDefault();
+    onSubmit(query);
+  };
+
+  const handleTextareaKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if ((e.keyCode === 10 || e.keyCode === 13) && e.ctrlKey) {
+      onFormSubmit(e);
+    }
+  };
+
   return (
-    <form
-      className="tags-query"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(query);
-      }}
-    >
+    <form className="tags-query" onSubmit={onFormSubmit}>
       <pre className="tags-highlighted language-promql" aria-hidden="true">
         <code
           className="language-promql"
           id="highlighting-content"
           ref={codeRef}
+          style={textAreaSize}
         >
           {query}
         </code>
       </pre>
-      <input
+      <TextareaAutosize
         className="tags-input"
-        type="text"
+        ref={textareaRef}
         value={query}
+        spellCheck="false"
         onChange={(e) => setQuery(brandQuery(e.target.value))}
+        onKeyDown={handleTextareaKeyDown}
       />
       <Button
         type="submit"

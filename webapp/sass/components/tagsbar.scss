@@ -4,13 +4,14 @@
 
 .tags-bar {
   display: flex;
-
+  align-items: flex-start;
   padding: 5px 0 15px;
 
   .tags-query {
     flex-grow: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    position: relative;
   }
   .tags-app-name {
     position: relative;
@@ -31,10 +32,21 @@
     border-right: none;
     caret-color: var(--ps-c-white);
     color: var(--ps-c-gray-light-3);
-    // color: red;
-    letter-spacing: 0;
-    font-family: arial;
+    letter-spacing: 0px;
+    font-family: monospace;
     font-size: 16px;
+    border: 1px solid #4d4d4d;
+    padding: 0.25em 0.375em;
+    resize: none;
+    word-break: break-all;
+    box-sizing: border-box;
+    line-height: 27px;
+    white-space: break-spaces;
+    overflow: hidden;
+
+    &:focus {
+      outline: none;
+    }
   }
   .tags-query-execute {
     flex-grow: 1;
@@ -56,22 +68,31 @@
   .tags-highlighted {
     height: 0;
     width: 0;
-    margin-top: -17px;
-    margin-right: -7px;
     z-index: 1;
-    margin-left: 5px;
     pointer-events: none;
     overflow: inherit;
     background: none;
     padding: 0;
+    position: absolute;
+    margin: 0;
+    top: 0;
+
     code {
       font-size: 16px;
-      font-family: arial;
+      font-family: monospace;
       background: none;
-      border: none;
+      border: 1px solid transparent;
       box-shadow: none;
-      padding: 0;
+      padding: 0.25em 0.375em;
       margin: 0;
+      line-height: 27px;
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      word-break: break-all;
+      white-space: break-spaces;
+      letter-spacing: 0px;
+      border-right: none;
     }
   }
 
