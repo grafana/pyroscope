@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Button from '@webapp/ui/Button';
 import 'react-dom';
 import { useWindowWidth } from '@react-hook/window-size';
@@ -13,8 +13,6 @@ import TextareaAutosize from 'react-textarea-autosize';
 import { Prism } from '@webapp/util/prism';
 import { Query, brandQuery } from '@webapp/models/query';
 import styles from './TagsBar.module.css';
-
-const textareaLineHeight = 27;
 
 interface TagsBarProps {
   onSetQuery: (q: Query) => void;
@@ -93,7 +91,6 @@ interface QueryInputProps {
 function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
   const windowWidth = useWindowWidth();
   const [query, setQuery] = useState(initialQuery);
-  const [textAreaRows, setTextAreaRows] = useState(1);
   const codeRef = useRef<HTMLElement>(null);
   const textareaRef = useRef<any>(null);
   const [textAreaSize, setTextAreaSize] = useState({ width: 0, height: 0 });
@@ -116,27 +113,6 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
       height: textareaRef?.current?.['offsetHeight'] || 0,
     });
   }, [query, windowWidth, onSubmit]);
-
-  const onChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    if (!e?.target) return;
-    const previousRows = e.target.rows;
-    e.target.rows = 1;
-
-    const currentRows = Math.floor(e.target.scrollHeight / textareaLineHeight);
-
-    if (currentRows === previousRows) {
-      e.target.rows = currentRows;
-    }
-
-    if (currentRows >= textAreaRows) {
-      e.target.rows = textAreaRows;
-      e.target.scrollTop = e.target.scrollHeight;
-    }
-
-    setQuery(brandQuery(e.target.value));
-
-    setTextAreaRows(currentRows);
-  };
 
   const onFormSubmit = (
     e:
@@ -172,8 +148,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
         ref={textareaRef}
         value={query}
         spellCheck="false"
-        onChange={onChange}
-        rows={textAreaRows}
+        onChange={(e) => setQuery(brandQuery(e.target.value))}
         onKeyDown={handleTextareaKeyDown}
       />
       <Button
