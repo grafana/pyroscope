@@ -1,3 +1,17 @@
+## [0.15.4](https://github.com/pyroscope-io/pyroscope/compare/v0.15.3...v0.15.4) (2022-04-27)
+
+
+### Bug Fixes
+
+* **webapp:** tag selector overflow ([#1055](https://github.com/pyroscope-io/pyroscope/issues/1055)) ([f7c7917](https://github.com/pyroscope-io/pyroscope/commit/f7c79179c323b95b8966a12729e1091e4a57dc0f))
+
+
+### Reverts
+
+* Revert "fix(flamegraph): fix table contrast (#1053)" (#1063) ([a4dd7f6](https://github.com/pyroscope-io/pyroscope/commit/a4dd7f6417b9c37134c9a63143a1d1f8ccb2ee3d)), closes [#1053](https://github.com/pyroscope-io/pyroscope/issues/1053) [#1063](https://github.com/pyroscope-io/pyroscope/issues/1063)
+
+
+
 ## [0.15.3](https://github.com/pyroscope-io/pyroscope/compare/v0.15.2...v0.15.3) (2022-04-27)
 
 
