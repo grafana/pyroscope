@@ -200,11 +200,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   ]);
 
   const renderCanvas = () => {
-    if (canvasRef && canvasRef.current && flamegraph && flamegraph.current) {
-      canvasRef?.current?.setAttribute('data-state', 'rendering');
-      flamegraph?.current?.render();
-      canvasRef?.current?.setAttribute('data-state', 'rendered');
-    }
+    canvasRef?.current?.setAttribute('data-state', 'rendering');
+    flamegraph?.current?.render();
+    canvasRef?.current?.setAttribute('data-state', 'rendered');
   };
 
   const dataUnavailable =
