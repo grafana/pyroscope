@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import cx from 'classnames';
 import Icon from '@webapp/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
-import { useAppDispatch } from '@webapp/redux/hooks';
 import { logIn } from '@webapp/services/users';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
 import {
@@ -25,37 +24,31 @@ import buttonStyles from './buttons.module.css';
 function SignInPage() {
   const history = useHistory();
   const location = useLocation();
-  const dispatch = useAppDispatch();
-  const [form, setForm] = useState({
-    username: '',
-    password: '',
-    errors: [],
-  });
+  const [form, setForm] = useState({ errors: [] });
 
-  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name } = event.target;
-    const { value } = event.target;
-    setForm({ ...form, [name]: value });
-  };
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      const { username, password } = {
-        ...form,
-      };
+      if (usernameRef && passwordRef) {
+        const username = usernameRef.current?.value;
+        const password = passwordRef.current?.value;
 
-      const res = await logIn({ username, password });
-      if (res.isOk) {
-        history.replace(
-          (location.state as any)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
-        );
-        return;
+        if (username && password) {
+          const res = await logIn({ username, password });
+          if (res.isOk) {
+            history.replace(
+              (location.state as any)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
+            );
+            return;
+          }
+          throw res.error;
+        }
       }
-
-      throw res.error;
     } catch (e: any) {
-      setForm({ ...form, errors: e.errors || [e.message] });
+      setForm({ errors: e.errors || [e.message] });
     }
   }
 
@@ -102,8 +95,7 @@ function SignInPage() {
                 label="Username"
                 placeholder="Username"
                 className={inputStyles.inputGroup}
-                value={form.username}
-                onChange={handleFormChange}
+                ref={usernameRef}
                 required
               />
               <InputField
@@ -113,8 +105,7 @@ function SignInPage() {
                 label="Password"
                 placeholder="Password"
                 className={inputStyles.inputGroup}
-                value={form.password}
-                onChange={handleFormChange}
+                ref={passwordRef}
                 required
               />
             </div>
