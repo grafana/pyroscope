@@ -2,7 +2,7 @@
 log-level: debug
 scrape-configs:
   - job-name: testing
-    enabled-profiles: [cpu]
+    enabled-profiles: [cpu, mem]
     static-configs:
       - application: rideshare
         spy-name: nodespy
