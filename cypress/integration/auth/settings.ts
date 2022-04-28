@@ -38,6 +38,12 @@ describe('Settings page', () => {
 
     cy.url().should('contain', '/settings/users');
 
+    // Two users should be displayed
+    cy.findByTestId('users-table').get('tbody>tr').should('have.length', 2);
+    cy.findByTestId('users-table')
+      .get('tbody > tr:nth-child(1)')
+      .should('contain.text', 'admin@localhost');
+
     cy.findByTestId('settings-adduser').click();
     cy.url().should('contain', '/settings/users/add');
 
@@ -48,6 +54,12 @@ describe('Settings page', () => {
     cy.findByTestId('settings-useradd').click();
 
     cy.url().should('contain', '/settings/users');
+
+    // Two users should be displayed
+    cy.findByTestId('users-table').get('tbody>tr').should('have.length', 3);
+    cy.findByTestId('users-table')
+      .get('tbody>tr:nth-child(3)')
+      .should('contain.text', 'user@domain.com');
 
     cy.visit('/logout');
     cy.visit('/login');
@@ -60,5 +72,39 @@ describe('Settings page', () => {
     cy.url().should('contain', '/?query=');
 
     cy.visit('/logout');
+  });
+
+  it.only('should be able to change password', () => {
+    cy.visit('/login');
+
+    cy.get('input#username').focus().type('user');
+    cy.get('input#password').focus().type('user');
+    cy.findByTestId('sign-in-button').click();
+
+    cy.findByTestId('sidebar-settings').click();
+    cy.url().should('contain', '/settings');
+
+    cy.findByText('Change Password').click();
+    cy.url().should('contain', '/settings/security');
+
+    cy.get('input[name="oldPassword"]').focus().type('user');
+    cy.get('input[name="password"]').focus().type('pass');
+    cy.get('input[name="passwordAgain"]').focus().type('pass');
+
+    cy.get('button').findByText('Save').click();
+
+    cy.findByText('Password has been successfully changed').should(
+      'be.visible'
+    );
+
+    cy.visit('/logout');
+    cy.visit('/login');
+
+    cy.get('input#username').focus().type('user');
+    cy.get('input#password').focus().type('pass');
+    cy.findByTestId('sign-in-button').click();
+
+    cy.findByTestId('sidebar-settings').click();
+    cy.url().should('contain', '/settings');
   });
 });

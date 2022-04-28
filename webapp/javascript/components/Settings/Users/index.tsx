@@ -30,9 +30,6 @@ function Users() {
   useEffect(() => {
     dispatch(reloadUsers());
   }, []);
-
-  if (!currentUser) return null;
-
   const displayUsers =
     (users &&
       users.filter(
@@ -40,6 +37,8 @@ function Users() {
           JSON.stringify(x).toLowerCase().indexOf(search.toLowerCase()) !== -1
       )) ||
     [];
+
+  if (!currentUser) return null;
 
   const handleDisableUser = (user: User) => {
     if (user.isDisabled) {
@@ -107,6 +106,7 @@ function Users() {
       </div>
       <table
         className={[userStyles.usersTable, tableStyles.settingsTable].join(' ')}
+        data-testId="users-table"
       >
         <thead>
           <tr>

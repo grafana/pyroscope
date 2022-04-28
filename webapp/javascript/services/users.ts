@@ -3,6 +3,7 @@ import {
   Users,
   type User,
   userModel,
+  usersModel,
   passwordEncode,
 } from '@webapp/models/users';
 import type { ZodError } from 'zod';
@@ -20,7 +21,7 @@ export async function fetchUsers(): Promise<
   const response = await request('/api/users');
 
   if (response.isOk) {
-    return parseResponse(response, userModel);
+    return parseResponse(response, usersModel);
   }
 
   return Result.err<Users, RequestError>(response.error);
