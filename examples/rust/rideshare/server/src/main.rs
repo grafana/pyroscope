@@ -53,9 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Bike Route
     let bike = warp::path("bike").map(move || {
-        add("vehicule".to_string(), "bike".to_string());
+        add("vehicle".to_string(), "bike".to_string());
         order_bike(1);
-        remove("vehicule".to_string(), "bike".to_string());
+        remove("vehicle".to_string(), "bike".to_string());
+
         "Bike ordered"
     });
 
@@ -65,9 +66,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Scooter Route
     let scooter = warp::path("scooter").map(move || {
-        add("vehicule".to_string(), "scooter".to_string());
+        add("vehicle".to_string(), "scooter".to_string());
         order_scooter(2);
-        remove("vehicule".to_string(), "scooter".to_string());
+        remove("vehicle".to_string(), "scooter".to_string());
 
         "Scooter ordered"
     });
@@ -78,9 +79,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Car Route
     let car = warp::path("car").map(move || {
-        add("vehicule".to_string(), "car".to_string());
+        add("vehicle".to_string(), "car".to_string());
         order_car(3);
-        remove("vehicule".to_string(), "car".to_string());
+        remove("vehicle".to_string(), "car".to_string());
 
         "Car ordered"
     });
