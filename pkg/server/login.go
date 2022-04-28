@@ -245,19 +245,6 @@ func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := getTemplate(ctrl.dir, "/forbidden.html")
-		if err != nil {
-			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render forbidden page")
-			return
-		}
-		mustExecute(tmpl, w, map[string]interface{}{
-			"BaseURL": ctrl.config.BaseURL,
-		})
-	}
-}
-
 func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {
 	if err != nil {
 		ctrl.log.WithError(err).Error(msg)
@@ -326,15 +313,6 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		// delete state cookie and add jwt cookie
 		ctrl.invalidateCookie(w, stateCookieName)
 		ctrl.createCookie(w, api.JWTCookieName, token)
-		tmpl, err := getTemplate(ctrl.dir, "/welcome.html")
-		if err != nil {
-			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render welcome page")
-			return
-		}
-
-		mustExecute(tmpl, w, map[string]interface{}{
-			"Name":    u.Name,
-			"BaseURL": ctrl.config.BaseURL,
-		})
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
 	}
 }

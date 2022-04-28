@@ -223,7 +223,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	assetsHandler := r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP
 	ctrl.addRoutes(r, append(insecureRoutes, []route{
-		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", assetsHandler}}...),
 		ctrl.drainMiddleware)
 

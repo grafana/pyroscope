@@ -12,7 +12,7 @@ function ForbiddenPage() {
           <div className={styles.logo} />
           <h1>Authentication error</h1>
         </div>
-        <Link to="/signin" className={cx(styles.button, styles.buttonDark)}>
+        <Link to="/login" className={cx(styles.button, styles.buttonDark)}>
           Go back to login page
         </Link>
       </div>
