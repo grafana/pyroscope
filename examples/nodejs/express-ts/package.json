@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@pyroscope/nodejs": "github:pyroscope-io/pyroscope-nodejs",
+    "@pyroscope/nodejs": "^0.1.x",
     "@types/node-fetch": "^2.6.1",
     "axios": "^0.26.1",
     "express": "^4.17.3",

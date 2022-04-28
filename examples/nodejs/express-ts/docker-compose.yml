@@ -9,5 +9,3 @@ services:
       - 'server'
   app:
     build: .
-    cap_add:
-      - SYS_PTRACE
