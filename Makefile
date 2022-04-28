@@ -3,8 +3,6 @@ GOBUILD=go build -trimpath
 ARCH ?= $(shell uname -m)
 OS ?= $(shell uname)
 
-SERVERTARGETS ?= dev server
-SERVERPARAMS ?=$(filter-out $(SERVERTARGETS), $(MAKECMDGOALS))
 
 # if you change the name of this variable please change it in generate-git-info.sh file
 PHPSPY_VERSION ?= be3abd72e8e2dd5dd4e61008fcd702f90c6eb238

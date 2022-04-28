@@ -39,7 +39,9 @@ jobs:
         with:
           build: make e2e-build
           wait-on: http://localhost:4040
-          start: make server -- --auth.internal.enabled --auth.internal.signup-enabled
+          start: |
+            node ./scripts/oauth-mock/oauth-mock.js
+            make server SERVERPARAMS=--config=scripts/oauth-mock/pyroscope-config.yml
           config-file: cypress/integration/auth/cypress.json
         env:
           # keep the server quiet

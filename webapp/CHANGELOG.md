@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.6.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.6.4...@pyroscope/webapp@1.6.5) (2022-04-27)
+
+
+### Bug Fixes
+
+* **webapp:** tag selector overflow ([#1055](https://github.com/pyroscope-io/pyroscope/issues/1055)) ([f7c7917](https://github.com/pyroscope-io/pyroscope/commit/f7c79179c323b95b8966a12729e1091e4a57dc0f))
+
+
+### Reverts
+
+* Revert "fix(flamegraph): fix table contrast (#1053)" (#1063) ([a4dd7f6](https://github.com/pyroscope-io/pyroscope/commit/a4dd7f6417b9c37134c9a63143a1d1f8ccb2ee3d)), closes [#1053](https://github.com/pyroscope-io/pyroscope/issues/1053) [#1063](https://github.com/pyroscope-io/pyroscope/issues/1063)
+
+
+
+
+
+## [1.6.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.6.3...@pyroscope/webapp@1.6.4) (2022-04-27)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.6.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.6.2...@pyroscope/webapp@1.6.3) (2022-04-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.6.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.6.1...@pyroscope/webapp@1.6.2) (2022-04-25)
 
 **Note:** Version bump only for package @pyroscope/webapp

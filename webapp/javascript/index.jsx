@@ -21,6 +21,7 @@ import AdhocComparison from './pages/AdhocComparison';
 import AdhocDiff from './pages/AdhocDiff';
 import ServiceDiscoveryApp from './pages/ServiceDiscovery';
 import ServerNotifications from './components/ServerNotifications';
+import Protected from './components/Protected';
 // since this style is practically all pages
 import '@pyroscope/flamegraph/dist/index.css';
 
@@ -52,41 +53,57 @@ function App() {
             <SignUpPage />
           </Route>
           <Route exact path={PAGES.CONTINOUS_SINGLE_VIEW}>
-            <Continuous>
-              <ContinuousSingleView />
-            </Continuous>
+            <Protected>
+              <Continuous>
+                <ContinuousSingleView />
+              </Continuous>
+            </Protected>
           </Route>
           <Route path={PAGES.COMPARISON_VIEW}>
-            <Continuous>
-              <ContinuousComparisonView />
-            </Continuous>
+            <Protected>
+              <Continuous>
+                <ContinuousComparisonView />
+              </Continuous>
+            </Protected>
           </Route>
           <Route path={PAGES.COMPARISON_DIFF_VIEW}>
-            <Continuous>
-              <ContinuousDiffView />
-            </Continuous>
+            <Protected>
+              <Continuous>
+                <ContinuousDiffView />
+              </Continuous>
+            </Protected>
           </Route>
           <Route path={PAGES.SETTINGS}>
-            <Continuous>
-              <Settings />
-            </Continuous>
+            <Protected>
+              <Continuous>
+                <Settings />
+              </Continuous>
+            </Protected>
           </Route>
           <Route path={PAGES.SERVICE_DISCOVERY}>
-            <ServiceDiscoveryApp />
+            <Protected>
+              <ServiceDiscoveryApp />
+            </Protected>
           </Route>
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_SINGLE}>
-              <AdhocSingle />
+              <Protected>
+                <AdhocSingle />
+              </Protected>
             </Route>
           )}
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_COMPARISON}>
-              <AdhocComparison />
+              <Protected>
+                <AdhocComparison />
+              </Protected>
             </Route>
           )}
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
-              <AdhocDiff />
+              <Protected>
+                <AdhocDiff />
+              </Protected>
             </Route>
           )}
           <Route path="*" exact>
