@@ -134,7 +134,7 @@ function SignInPage() {
         <div className={cx(buttonStyles.buttonContainer)}>
           {isGoogleEnabled && (
             <a
-              href={'./auth/google/login' + (hasTLS ? '?tls=true' : '')}
+              href={`./auth/google/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGoogle)}
             >
               <GoogleIcon /> Sign in with Google
@@ -142,7 +142,7 @@ function SignInPage() {
           )}
           {isGithubEnabled && (
             <a
-              href={'./auth/github/login' + (hasTLS ? '?tls=true' : '')}
+              href={`./auth/github/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGithub)}
             >
               <Icon icon={faGithub} /> Sign in with GitHub
@@ -150,7 +150,7 @@ function SignInPage() {
           )}
           {isGitlabEnabled && (
             <a
-              href={'./auth/gitlab/login' + (hasTLS ? '?tls=true' : '')}
+              href={`./auth/gitlab/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGitlab)}
             >
               <GitlabIcon /> Sign in with GitLab
