@@ -1,4 +1,4 @@
-import React, { InputHTMLAttributes, forwardRef, ForwardedRef } from 'react';
+import React, { InputHTMLAttributes } from 'react';
 
 import styles from './InputField.module.css';
 
@@ -8,16 +8,13 @@ interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 /* eslint-disable react/jsx-props-no-spreading */
-function InputField(
-  { label, className, ...rest }: IInputFieldProps,
-  ref?: ForwardedRef<HTMLInputElement>
-) {
+function InputField({ label, className, ...rest }: IInputFieldProps) {
   return (
     <div className={`${className || ''} ${styles.inputWrapper}`}>
       <h4>{label}</h4>
-      <input {...rest} ref={ref} />
+      <input {...rest} />
     </div>
   );
 }
 
-export default forwardRef(InputField);
+export default InputField;

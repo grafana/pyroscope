@@ -26,26 +26,23 @@ function SignInPage() {
   const location = useLocation();
   const [form, setForm] = useState({ errors: [] });
 
-  const usernameRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    try {
-      if (usernameRef && passwordRef) {
-        const username = usernameRef.current?.value;
-        const password = passwordRef.current?.value;
 
-        if (username && password) {
-          const res = await logIn({ username, password });
-          if (res.isOk) {
-            history.replace(
-              (location.state as any)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
-            );
-            return;
-          }
-          throw res.error;
+    try {
+      const form = new FormData(event.currentTarget);
+      const username = form.get('username')?.toString();
+      const password = form.get('password')?.toString();
+
+      if (username && password) {
+        const res = await logIn({ username, password });
+        if (res.isOk) {
+          history.replace(
+            (location.state as any)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
+          );
+          return;
         }
+        throw res.error;
       }
     } catch (e: any) {
       setForm({ errors: e.errors || [e.message] });
@@ -95,7 +92,6 @@ function SignInPage() {
                 label="Username"
                 placeholder="Username"
                 className={inputStyles.inputGroup}
-                ref={usernameRef}
                 required
               />
               <InputField
@@ -105,7 +101,6 @@ function SignInPage() {
                 label="Password"
                 placeholder="Password"
                 className={inputStyles.inputGroup}
-                ref={passwordRef}
                 required
               />
             </div>
