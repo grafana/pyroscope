@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, ChangeEvent } from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -25,7 +25,9 @@ import {
   collapseSidebar,
   uncollapseSidebar,
   recalculateSidebar,
+  ColorMode,
 } from '@webapp/redux/reducers/ui';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import { useLocation, NavLink } from 'react-router-dom';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
@@ -42,6 +44,7 @@ function signOut() {
 
 export function SidebarComponent() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
+  const { changeColorMode, colorMode } = useColorMode();
   const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
@@ -269,6 +272,15 @@ export function SidebarComponent() {
           </MenuItem>
         </Menu>
       </SidebarFooter>
+      <select
+        value={colorMode}
+        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+          changeColorMode(e.target.value as ColorMode)
+        }
+      >
+        <option value={ColorMode.Dark}>dark</option>
+        <option value={ColorMode.Light}>light</option>
+      </select>
     </Sidebar>
   ) : null;
 }

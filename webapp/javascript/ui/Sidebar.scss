@@ -1,9 +1,9 @@
 // Unfortunately the lib uses SASS directly
 // So we can't use css modules
-$sidebar-bg-color: #212124;
+$sidebar-bg-color: var(--ps-c-gray);
 $submenu-bg-color: transparent;
 $sidebar-color: rgba(255, 255, 255, 0.66);
-$submenu-bg-color-collapsed: #212124;
+$submenu-bg-color-collapsed: var(--ps-c-gray);
 $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
 
