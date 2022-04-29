@@ -15,7 +15,7 @@ interface HeaderProps {
   //  ExportData: React.ElementType | null;
   //  ExportData?: JSX.Element;
   ExportData?: React.ReactNode;
-  titleHidden?: boolean;
+  toolbarVisible?: boolean;
 }
 export default function Header(props: HeaderProps) {
   const {
@@ -24,7 +24,7 @@ export default function Header(props: HeaderProps) {
     ExportData = <></>,
     palette,
     setPalette,
-    titleHidden,
+    toolbarVisible,
   } = props;
 
   const unitsToFlamegraphTitle = {
@@ -70,7 +70,7 @@ export default function Header(props: HeaderProps) {
     }
   };
 
-  const title = titleHidden ? null : getTitle();
+  const title = toolbarVisible ? getTitle() : null;
 
   return (
     <div className={styles.flamegraphHeader}>

@@ -35,7 +35,7 @@ interface FlamegraphProps {
   ['data-testid']?: string;
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
-  titleHidden?: boolean;
+  toolbarVisible?: boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -52,7 +52,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     fitMode,
     highlightQuery,
     zoom,
-    titleHidden,
+    toolbarVisible,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
@@ -243,7 +243,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         ExportData={ExportData}
         palette={palette}
         setPalette={setPalette}
-        titleHidden={titleHidden}
+        toolbarVisible={toolbarVisible}
       />
 
       {dataUnavailable ? (
