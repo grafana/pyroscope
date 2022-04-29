@@ -18,7 +18,14 @@ interface HeaderProps {
   titleHidden?: boolean;
 }
 export default function Header(props: HeaderProps) {
-  const { format, units, ExportData = <></>, palette, setPalette } = props;
+  const {
+    format,
+    units,
+    ExportData = <></>,
+    palette,
+    setPalette,
+    titleHidden,
+  } = props;
 
   const unitsToFlamegraphTitle = {
     objects: 'number of objects in RAM per function',
@@ -63,7 +70,7 @@ export default function Header(props: HeaderProps) {
     }
   };
 
-  const title = props.titleHidden ? null : getTitle();
+  const title = titleHidden ? null : getTitle();
 
   return (
     <div className={styles.flamegraphHeader}>
