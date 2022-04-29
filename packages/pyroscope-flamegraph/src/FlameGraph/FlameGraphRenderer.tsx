@@ -81,6 +81,8 @@ interface FlamegraphRendererProps {
   renderLogo?: boolean;
 
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
+  /** in case you want to hide title over the Flamegraph */
+  flamegraphTitleHidden?: boolean;
 }
 
 interface FlamegraphRendererState {
@@ -353,6 +355,7 @@ class FlameGraphRenderer extends React.Component<
           onReset={this.onReset}
           isDirty={this.isDirty}
           palette={this.state.palette}
+          titleHidden={this.props.flamegraphTitleHidden}
           setPalette={(p) =>
             this.setState({
               palette: p,

@@ -15,6 +15,7 @@ interface HeaderProps {
   //  ExportData: React.ElementType | null;
   //  ExportData?: JSX.Element;
   ExportData?: React.ReactNode;
+  titleHidden?: boolean;
 }
 export default function Header(props: HeaderProps) {
   const { format, units, ExportData = <></>, palette, setPalette } = props;
@@ -62,7 +63,7 @@ export default function Header(props: HeaderProps) {
     }
   };
 
-  const title = getTitle();
+  const title = props.titleHidden ? null : getTitle();
 
   return (
     <div className={styles.flamegraphHeader}>

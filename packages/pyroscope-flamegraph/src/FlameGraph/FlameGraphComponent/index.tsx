@@ -35,6 +35,7 @@ interface FlamegraphProps {
   ['data-testid']?: string;
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
+  titleHidden?: boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -235,6 +236,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         ExportData={ExportData}
         palette={palette}
         setPalette={setPalette}
+        titleHidden={props.titleHidden}
       />
 
       {dataUnavailable ? (
