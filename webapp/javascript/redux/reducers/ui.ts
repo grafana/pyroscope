@@ -36,17 +36,12 @@ type SidebarState =
 
 export interface UiState {
   sidebar: SidebarState;
-  colorMode: ColorMode;
-}
-
-export enum ColorMode {
-  Dark = 'dark',
-  Light = 'light',
+  colorMode: 'dark' | 'light';
 }
 
 const initialState: UiState = {
   sidebar: { state: 'pristine', collapsed: window.innerWidth < 1200 },
-  colorMode: ColorMode.Dark,
+  colorMode: 'dark',
 };
 
 export const uiSlice = createSlice({
@@ -64,7 +59,7 @@ export const uiSlice = createSlice({
     uncollapseSidebar: (state) => {
       state.sidebar = { state: 'userInteracted', collapsed: false };
     },
-    setColorMode: (state, action: PayloadAction<ColorMode>) => {
+    setColorMode: (state, action: PayloadAction<'dark' | 'light'>) => {
       state.colorMode = action.payload;
     },
   },

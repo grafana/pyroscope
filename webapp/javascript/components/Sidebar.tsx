@@ -25,7 +25,6 @@ import {
   collapseSidebar,
   uncollapseSidebar,
   recalculateSidebar,
-  ColorMode,
 } from '@webapp/redux/reducers/ui';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { useLocation, NavLink } from 'react-router-dom';
@@ -275,11 +274,11 @@ export function SidebarComponent() {
       <select
         value={colorMode}
         onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-          changeColorMode(e.target.value as ColorMode)
+          changeColorMode(e.target?.value as 'light' | 'dark')
         }
       >
-        <option value={ColorMode.Dark}>dark</option>
-        <option value={ColorMode.Light}>light</option>
+        <option value="dark">dark</option>
+        <option value="light">light</option>
       </select>
     </Sidebar>
   ) : null;

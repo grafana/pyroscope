@@ -1,10 +1,6 @@
 import { useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import {
-  setColorMode,
-  selectAppColorMode,
-  ColorMode,
-} from '@webapp/redux/reducers/ui';
+import { setColorMode, selectAppColorMode } from '@webapp/redux/reducers/ui';
 
 const useColorMode = () => {
   const dispatch = useAppDispatch();
@@ -19,7 +15,7 @@ const useColorMode = () => {
 
   return {
     colorMode,
-    changeColorMode: (newColorMode: ColorMode) =>
+    changeColorMode: (newColorMode: 'light' | 'dark') =>
       dispatch(setColorMode(newColorMode)),
   };
 };
