@@ -368,3 +368,6 @@ func (s *Storage) DictsInternals() (*badger.DB, *cache.Cache) {
 func (s *Storage) TreesInternals() (*badger.DB, *cache.Cache) {
 	return s.trees.DB, s.trees.Cache
 }
+func (s *Storage) MainInternals() (*badger.DB, *cache.Cache) {
+	return s.main.DB, s.main.Cache
+}
