@@ -401,9 +401,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.116"
+version = "0.2.124"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "565dbd88872dbe4cc8a46e527f26483c1d1f7afa6b884a3bd6cd893d4f98da74"
+checksum = "21a41fed9d98f27ab1c6d161da622a4fa35e8a54a8adc24bbf3ddd0ef70b0e50"
 
 [[package]]
 name = "lock_api"
@@ -638,9 +638,9 @@ checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
 
 [[package]]
 name = "pprof"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c090facb9ab04a4fb15fe27f8861059f195dd0847e6f1042016244e129eddeb2"
+checksum = "f2324292407eab69d4ace0eed1524fe612ac37c98aa22b0d868355b17fada530"
 dependencies = [
  "backtrace",
  "cfg-if",
@@ -667,9 +667,9 @@ dependencies = [
 
 [[package]]
 name = "pyroscope"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4bf36e83d50a9847ba3ebe3efe97b17e0a22b6b868e1eb61106a0918cab40ad"
+checksum = "3cb6be348ffb74013dcfa7a35503dc36cd1558980b8ce3324615985c2df668cb"
 dependencies = [
  "libc",
  "log",
@@ -679,9 +679,9 @@ dependencies = [
 
 [[package]]
 name = "pyroscope_pprofrs"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b6940026d563eb9c370da0f9f90a3be784c9bd88c009ed5e87f10600df5c5ee"
+checksum = "a917a45576ca93d5516eee7920bfc2437e23e3cbffe70d6973b18c801f59003d"
 dependencies = [
  "pprof",
  "pyroscope",
