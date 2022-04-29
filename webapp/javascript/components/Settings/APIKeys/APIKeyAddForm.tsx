@@ -13,43 +13,42 @@ import { addNotification } from '@webapp/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
 // Extend the API key, but add form validation errors and ttlSeconds
-export interface APIKeyAddProps extends APIKey {
+
+declare type Role = 'ReadOnly' | 'Admin';
+export interface APIKeyAddProps extends Omit<APIKey, 'createdAt' | 'id'> {
   errors?: string[];
   ttlSeconds?: number;
 }
 
 function APIKeyAddForm() {
-  //  const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
-  const [form, setForm] = useState<ShamefulAny>({
+  const [form, setForm] = useState<APIKeyAddProps>({
     errors: [],
     name: '',
     role: 'ReadOnly',
     ttlSeconds: 360000,
   });
-  const [key, setKey] = useState(undefined);
+  const [key, setKey] = useState<string | undefined>();
   const dispatch = useAppDispatch();
 
-  const handleFormChange = (event: ShamefulAny) => {
-    const { name } = event.target;
-    const { value } = event.target;
-    setForm({ ...form, [name]: value });
-  };
-
-  const handleRoleChange = (value: ShamefulAny) => {
+  const handleRoleChange = (value: Role) => {
     setForm({ ...form, role: value });
   };
 
-  const handleFormSubmit = (event: ShamefulAny) => {
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = event.target as typeof event.target & {
+      name: { value: string };
+      ttlSeconds: { value: string };
+    };
     const data = {
-      name: form.name,
+      name: formData.name.value,
       role: form.role,
-      ttlSeconds: Number(form.ttlSeconds),
+      ttlSeconds: Number(formData.ttlSeconds.value),
     };
     dispatch(createAPIKey(data))
       .unwrap()
       .then(
-        (k: ShamefulAny) => {
+        (k: APIKey): void => {
           setKey(k.key);
         },
         (e) => {
@@ -96,8 +95,6 @@ function APIKeyAddForm() {
               id="keyName"
               type="text"
               name="name"
-              value={form.name}
-              onChange={handleFormChange}
               required
             />
             <div>
@@ -116,8 +113,6 @@ function APIKeyAddForm() {
               label="Valid for (seconds):"
               id="keyTTL"
               name="ttlSeconds"
-              value={form.ttlSeconds}
-              onChange={handleFormChange}
             />
             <div>
               <Button icon={faCheck} type="submit" kind="secondary">

@@ -12,29 +12,36 @@ import InputField from '@webapp/ui/InputField';
 function Preferences(props: ShamefulAny) {
   const { currentUser } = props;
   const dispatch = useAppDispatch();
+  const [errors, setErrors] = useState<string | undefined>();
 
-  const [form, setForm] = useState(currentUser);
-  const handleFormSubmit = (evt: ShamefulAny) => {
+  const handleFormSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
-
-    dispatch(editMe(form))
+    setErrors(undefined);
+    const formData = evt.target as typeof evt.target & {
+      name: { value: string };
+      email: { value: string };
+      fullName: { value: string };
+    };
+    const data = {
+      name: formData.name.value,
+      email: formData.email.value,
+      fullName: formData.fullName.value,
+    };
+    dispatch(editMe(data))
       .unwrap()
-      .then(() => {
-        dispatch(
-          addNotification({
-            type: 'success',
-            title: 'Success',
-            message: 'User has been successfully edited',
-          })
-        );
-      });
+      .then(
+        () => {
+          dispatch(
+            addNotification({
+              type: 'success',
+              title: 'Success',
+              message: 'User has been successfully edited',
+            })
+          );
+        },
+        (e) => setErrors(e.error)
+      );
     return false;
-  };
-
-  const handleFormChange = (event: ShamefulAny) => {
-    const { name } = event.target;
-    const { value } = event.target;
-    setForm({ ...form, [name]: value });
   };
 
   const isEditDisabled = !!(currentUser && currentUser.isExternal);
@@ -44,32 +51,29 @@ function Preferences(props: ShamefulAny) {
     <>
       <h2>Edit profile</h2>
       <form onSubmit={handleFormSubmit}>
-        <StatusMessage type="error" message={form.errors} />
+        <StatusMessage type="error" message={errors || ''} />
         <InputField
           label="Username"
           type="text"
           placeholder="username"
-          value={form?.name}
+          value={currentUser.name}
           name="name"
           required
           disabled={isEditDisabled}
-          onChange={handleFormChange}
         />
         <InputField
           label="Full Name"
           type="text"
           placeholder="Full Name"
           name="fullName"
-          value={form?.fullName}
-          onChange={handleFormChange}
+          value={currentUser.fullName}
         />
         <InputField
           label="Email"
           type="text"
           placeholder="email"
-          value={form?.email}
+          value={currentUser.email}
           name="email"
-          onChange={handleFormChange}
         />
         <Button type="submit" kind="secondary">
           Save

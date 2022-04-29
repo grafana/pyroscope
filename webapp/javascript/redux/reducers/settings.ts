@@ -191,7 +191,7 @@ export const createAPIKey = createAsyncThunk(
     const res = await createAPIKeyAPI(data);
 
     if (res.isOk) {
-      return Promise.resolve(res.value);
+      return Promise.resolve(res.value[0]);
     }
 
     thunkAPI.dispatch(

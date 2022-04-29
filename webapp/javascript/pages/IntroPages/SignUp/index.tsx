@@ -16,25 +16,22 @@ import { PAGES } from '../../constants';
 function SignUpPage() {
   const dispatch = useAppDispatch();
   const [form, setForm] = useState({
-    username: '',
-    password: '',
-    fullName: '',
-    email: '',
     errors: [],
   });
-
-  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name } = event.target;
-    const { value } = event.target;
-    setForm({ ...form, [name]: value });
-  };
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      const { username, password, fullName, email } = {
-        ...form,
+      const formData = event.target as typeof event.target & {
+        username: { value: string };
+        password: { value: string };
+        fullName: { value: string };
+        email: { value: string };
       };
+      const username = formData.username.value;
+      const password = formData.password.value;
+      const fullName = formData.fullName.value;
+      const email = formData.email.value;
 
       const res = await signUp({ username, password, fullName, email });
       if (res.isOk) {
@@ -87,8 +84,6 @@ function SignUpPage() {
                 label="Username"
                 placeholder="Username"
                 className={inputStyles.inputGroup}
-                value={form.username}
-                onChange={handleFormChange}
                 required
               />
               <InputField
@@ -97,8 +92,6 @@ function SignUpPage() {
                 label="Email"
                 placeholder="Email"
                 className={inputStyles.inputGroup}
-                value={form.email}
-                onChange={handleFormChange}
                 required
               />
               <InputField
@@ -107,8 +100,6 @@ function SignUpPage() {
                 label="Full Name"
                 placeholder="Full Name"
                 className={inputStyles.inputGroup}
-                value={form.fullName}
-                onChange={handleFormChange}
                 required
               />
               <InputField
@@ -117,8 +108,6 @@ function SignUpPage() {
                 label="Password"
                 placeholder="Password"
                 className={inputStyles.inputGroup}
-                value={form.password}
-                onChange={handleFormChange}
                 required
               />
             </div>

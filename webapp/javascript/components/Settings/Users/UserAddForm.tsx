@@ -11,33 +11,30 @@ import { passwordEncode, type User } from '@webapp/models/users';
 export type UserAddProps = User & { password?: string };
 
 function UserAddForm() {
-  //  const [form, setForm]: [UserAddProps, (value: ShamefulAny) => void] =
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    fullName: '',
-    password: '',
-  });
   const dispatch = useAppDispatch();
   const history = useHistory();
 
-  const handleFormChange = (event: ShamefulAny) => {
-    const { name } = event.target;
-    const { value } = event.target;
-    setForm({ ...form, [name]: value });
-  };
-
   const handleFormSubmit = (e: ShamefulAny) => {
     e.preventDefault();
-    if (!form.password) {
+    const formData = e.target as typeof e.target & {
+      name: { value: string };
+      password: { value: string };
+      email: { value: string };
+      fullName: { value: string };
+    };
+
+    const data = {
+      name: formData.name.value,
+      email: formData.email.value,
+      fullName: formData.fullName.value,
+      role: 'ReadOnly',
+      password: passwordEncode(formData.password.value),
+    };
+
+    if (!data.password) {
       return;
     }
 
-    const data = {
-      ...form,
-      role: 'ReadOnly',
-      password: passwordEncode(form.password),
-    };
     dispatch(createUser(data as ShamefulAny as User))
       .unwrap()
       .then(() => {
@@ -56,33 +53,14 @@ function UserAddForm() {
     <>
       <h2>Add User</h2>
       <form onSubmit={handleFormSubmit}>
-        <InputField
-          label="Name"
-          id="userAddName"
-          name="name"
-          value={form.name}
-          onChange={handleFormChange}
-        />
-        <InputField
-          label="Email"
-          id="userAddEmail"
-          name="email"
-          value={form.email}
-          onChange={handleFormChange}
-        />
-        <InputField
-          label="Full name"
-          id="userAddFullName"
-          name="fullName"
-          value={form.fullName}
-          onChange={handleFormChange}
-        />
+        <InputField label="Name" id="userAddName" name="name" />
+        <InputField label="Email" id="userAddEmail" name="email" />
+        <InputField label="Full name" id="userAddFullName" name="fullName" />
         <InputField
           label="Password"
           id="userAddPassword"
           name="password"
           type="password"
-          onChange={handleFormChange}
         />
         <div>
           <Button
