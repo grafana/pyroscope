@@ -81,6 +81,7 @@ interface FlamegraphRendererProps {
   renderLogo?: boolean;
 
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
+  colorMode?: 'light' | 'dark';
 }
 
 interface FlamegraphRendererState {
