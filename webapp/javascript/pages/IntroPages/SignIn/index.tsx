@@ -91,6 +91,7 @@ function SignInPage() {
                 name="username"
                 label="Username"
                 placeholder="Username"
+                autoComplete="username"
                 className={inputStyles.inputGroup}
                 required
               />
@@ -99,6 +100,7 @@ function SignInPage() {
                 type="password"
                 name="password"
                 label="Password"
+                autoComplete="current-password"
                 placeholder="Password"
                 className={inputStyles.inputGroup}
                 required

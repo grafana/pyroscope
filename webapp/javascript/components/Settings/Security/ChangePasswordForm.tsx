@@ -64,6 +64,7 @@ function ChangePasswordForm(props: ShamefulAny) {
             type="password"
             placeholder="Password"
             name="oldPassword"
+            autoComplete="current-password"
             required
             onChange={handleChange}
           />
@@ -72,6 +73,7 @@ function ChangePasswordForm(props: ShamefulAny) {
             type="password"
             placeholder="New password"
             name="password"
+            autoComplete="new-password"
             required
             onChange={handleChange}
           />
@@ -79,6 +81,7 @@ function ChangePasswordForm(props: ShamefulAny) {
             label="Confirm new password"
             type="password"
             placeholder="New password"
+            autoComplete="new-password"
             name="passwordAgain"
             required
             onChange={handleChange}

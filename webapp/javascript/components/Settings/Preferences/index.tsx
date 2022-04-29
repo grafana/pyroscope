@@ -56,9 +56,10 @@ function Preferences(props: ShamefulAny) {
           label="Username"
           type="text"
           placeholder="username"
-          value={currentUser.name}
+          defaultValue={currentUser.name}
           name="name"
           required
+          autoComplete="username"
           disabled={isEditDisabled}
         />
         <InputField
@@ -66,13 +67,14 @@ function Preferences(props: ShamefulAny) {
           type="text"
           placeholder="Full Name"
           name="fullName"
-          value={currentUser.fullName}
+          defaultValue={currentUser.fullName}
         />
         <InputField
           label="Email"
           type="text"
           placeholder="email"
-          value={currentUser.email}
+          defaultValue={currentUser.email}
+          autoComplete="email"
           name="email"
         />
         <Button type="submit" kind="secondary">
