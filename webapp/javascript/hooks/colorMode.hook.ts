@@ -12,8 +12,9 @@ const useColorMode = () => {
 
   useEffect(() => {
     // sync color mode from redux with DOM body attr
-    // TODO: check if body has been already updated before setting new value
-    document.body.dataset.theme = colorMode;
+    if (document.body.dataset.theme !== colorMode) {
+      document.body.dataset.theme = colorMode;
+    }
   }, [colorMode]);
 
   return {
