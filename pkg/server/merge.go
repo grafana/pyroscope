@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
@@ -17,35 +18,38 @@ type MergeHandler struct {
 	dir             http.FileSystem
 	stats           StatsReceiver
 	maxNodesDefault int
+	httpUtils       httputils.Utils
 }
 
 func (ctrl *Controller) mergeHandler() http.HandlerFunc {
-	return NewMergeHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender).ServeHTTP
+	return NewMergeHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
 }
 
-func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int) *MergeHandler {
+//revive:disable:argument-limit TODO(petethepig): we will refactor this later
+func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *MergeHandler {
 	return &MergeHandler{
 		log:             l,
 		storage:         s,
 		dir:             dir,
 		stats:           stats,
 		maxNodesDefault: maxNodesDefault,
+		httpUtils:       httpUtils,
 	}
 }
 
 func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req mergeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteInvalidParameterError(mh.log, w, err)
+		mh.httpUtils.WriteInvalidParameterError(r, w, err)
 		return
 	}
 
 	if req.AppName == "" {
-		WriteInvalidParameterError(mh.log, w, fmt.Errorf("application name required"))
+		mh.httpUtils.WriteInvalidParameterError(r, w, fmt.Errorf("application name required"))
 		return
 	}
 	if len(req.Profiles) == 0 {
-		WriteInvalidParameterError(mh.log, w, fmt.Errorf("at least one profile ID must be specified"))
+		mh.httpUtils.WriteInvalidParameterError(r, w, fmt.Errorf("at least one profile ID must be specified"))
 		return
 	}
 	maxNodes := mh.maxNodesDefault
@@ -58,7 +62,7 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Profiles: req.Profiles,
 	})
 	if err != nil {
-		WriteInternalServerError(mh.log, w, err, "failed to retrieve data")
+		mh.httpUtils.WriteInternalServerError(r, w, err, "failed to retrieve data")
 		return
 	}
 
@@ -85,5 +89,5 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mh.stats.StatsInc("merge")
-	WriteResponseJSON(mh.log, w, resp)
+	mh.httpUtils.WriteResponseJSON(r, w, resp)
 }

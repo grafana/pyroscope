@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use chrono::prelude::*;
 use pyroscope::PyroscopeAgent;
-use pyroscope_pprofrs::{Pprof, PprofConfig};
+use pyroscope_pprofrs::{pprof_backend, PprofConfig};
 use warp::Filter;
 
 // Vehicule enum
@@ -25,19 +27,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get Region from environment variable.
     let region = std::env::var("REGION").unwrap_or_else(|_| "us-east-1".to_string());
 
-    // Configure Backend
-    let pprof_config = PprofConfig::new().sample_rate(100);
-    let pprof_backend = Pprof::new(pprof_config);
-
     // Configure Pyroscope client.
-    let mut agent = PyroscopeAgent::builder(server_address, "ride-sharing-rust".to_owned())
-        .backend(pprof_backend)
+    let agent = PyroscopeAgent::builder(server_address, "ride-sharing-rust".to_owned())
+        .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
         .tags(vec![("region", &region)])
         .build()
         .unwrap();
 
     // Start the Pyroscope client.
-    agent.start()?;
+    let agent_running = agent.start()?;
 
     // Root Route
     let root = warp::path::end().map(|| {
@@ -49,21 +47,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         vars
     });
 
+    let (add_tag, remove_tag) = agent_running.tag_wrapper();
+    let add = Arc::new(add_tag);
+    let remove = Arc::new(remove_tag);
+
     // Bike Route
-    let bike = warp::path("bike").map(|| {
+    let bike = warp::path("bike").map(move || {
+        add("vehicle".to_string(), "bike".to_string());
         order_bike(1);
+        remove("vehicle".to_string(), "bike".to_string());
+
         "Bike ordered"
     });
 
+    let (add_tag, remove_tag) = agent_running.tag_wrapper();
+    let add = Arc::new(add_tag);
+    let remove = Arc::new(remove_tag);
+
     // Scooter Route
-    let scooter = warp::path("scooter").map(|| {
+    let scooter = warp::path("scooter").map(move || {
+        add("vehicle".to_string(), "scooter".to_string());
         order_scooter(2);
+        remove("vehicle".to_string(), "scooter".to_string());
+
         "Scooter ordered"
     });
 
+    let (add_tag, remove_tag) = agent_running.tag_wrapper();
+    let add = Arc::new(add_tag);
+    let remove = Arc::new(remove_tag);
+
     // Car Route
-    let car = warp::path("car").map(|| {
+    let car = warp::path("car").map(move || {
+        add("vehicle".to_string(), "car".to_string());
         order_car(3);
+        remove("vehicle".to_string(), "car".to_string());
+
         "Car ordered"
     });
 
@@ -74,7 +93,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     warp::serve(routes).run(([0, 0, 0, 0], 5000)).await;
 
     // Stop the Pyroscope client.
-    agent.stop()?;
+    let agent_ready = agent_running.stop()?;
+
+    // Shutdown PyroscopeAgent
+    agent_ready.shutdown();
 
     Ok(())
 }

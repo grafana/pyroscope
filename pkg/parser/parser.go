@@ -13,6 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
@@ -37,8 +38,8 @@ type PutInput struct {
 	Key             *segment.Key
 	SpyName         string
 	SampleRate      uint32
-	Units           string
-	AggregationType string
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 }
 
 type Parser struct {
@@ -82,6 +83,16 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		AggregationType: in.AggregationType,
 	}
 	cb := p.createParseCallback(pi)
+
+	// for tests (ingest_test.go):
+	// b, _ := io.ReadAll(in.Body)
+	// f, _ := os.Create("./pkg/server/testdata/jfr-" + strconv.Itoa(i) + ".bin.gz")
+	// i++
+	// w := gzip.NewWriter(f)
+	// w.Write(b)
+	// w.Close()
+	// in.Body = bytes.NewReader(b)
+
 	switch {
 	case in.Format == "trie", in.ContentType == "binary/octet-stream+trie":
 		tmpBuf := p.bufferPool.Get()

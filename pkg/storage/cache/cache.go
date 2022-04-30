@@ -166,8 +166,45 @@ func (cache *Cache) Discard(key string) {
 // In both cache and database
 func (cache *Cache) DiscardPrefix(prefix string) error {
 	cache.lfu.DeletePrefix(prefix)
+	return dropPrefix(cache.db, []byte(cache.prefix+prefix))
+}
 
-	return cache.db.DropPrefix([]byte(cache.prefix + prefix))
+const defaultBatchSize = 1 << 10 // 1K items
+
+func dropPrefix(db *badger.DB, p []byte) error {
+	var err error
+	for more := true; more; {
+		if more, err = dropPrefixBatch(db, p, defaultBatchSize); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func dropPrefixBatch(db *badger.DB, p []byte, n int) (bool, error) {
+	keys := make([][]byte, 0, n)
+	err := db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.IteratorOptions{Prefix: p})
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			if len(keys) == cap(keys) {
+				return nil
+			}
+			keys = append(keys, it.Item().KeyCopy(nil))
+		}
+		return nil
+	})
+	if err != nil || len(keys) == 0 {
+		return false, err
+	}
+	batch := db.NewWriteBatch()
+	defer batch.Cancel()
+	for i := range keys {
+		if err = batch.Delete(keys[i]); err != nil {
+			return false, err
+		}
+	}
+	return true, batch.Flush()
 }
 
 func (cache *Cache) GetOrCreate(key string) (interface{}, error) {

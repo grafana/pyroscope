@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -17,7 +18,7 @@ var (
 	maxNodes      = 1024
 	spyName       = "spy-name"
 	sampleRate    = uint32(10)
-	units         = "units"
+	units         = metadata.Units("units")
 )
 
 var _ = Describe("FlamebearerProfile", func() {

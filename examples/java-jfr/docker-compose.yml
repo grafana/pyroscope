@@ -1,0 +1,19 @@
+---
+version: '3.9'
+services:
+  pyroscope:
+    image: 'pyroscope/pyroscope:latest'
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+      - '-no-self-profiling'
+  app:
+    build: .
+    privileged: true
+    environment:
+      - 'PYROSCOPE_APPLICATION_NAME=fibonacci-java-lock-push'
+      - 'PYROSCOPE_PROFILER_EVENT=lock'
+      - 'PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040'
+      - 'PYROSCOPE_FORMAT=jfr'
+      - 'PYROSCOPE_PROFILER_LOCK=0'

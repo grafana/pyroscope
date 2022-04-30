@@ -16,6 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
@@ -34,7 +35,7 @@ func newPush(_ *config.Adhoc, args []string, st *storage.Storage, logger *logrus
 	p := parser.New(logger, st, e)
 	return push{
 		args:    args,
-		handler: server.NewIngestHandler(logger, p, func(_ *parser.PutInput) {}),
+		handler: server.NewIngestHandler(logger, p, func(_ *parser.PutInput) {}, httputils.NewDefaultHelper(logger)),
 		logger:  logger,
 	}, nil
 }

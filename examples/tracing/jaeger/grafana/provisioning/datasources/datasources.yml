@@ -16,3 +16,15 @@ datasources:
     uid: pyroscope
     jsonData:
       path: http://pyroscope:4040
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      derivedFields:
+        - name: 'traceID'
+          matcherRegex: "trace_id=(\\w+)"
+          url: '$${__value.raw}'
+          datasourceUid: jaeger

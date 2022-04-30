@@ -48,7 +48,7 @@ func NewController(
 func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, _ *http.Request) {
 	appNames := ctrl.adminService.GetApps()
 
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	ctrl.writeResponseJSON(w, appNames)
 }
 
@@ -75,7 +75,7 @@ func (ctrl *Controller) HandleDeleteApp(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 }
 
 type UpdateUserRequest struct {

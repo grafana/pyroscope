@@ -4,8 +4,9 @@ RUN apk add --no-cache git
 
 WORKDIR /opt/jaeger-ui
 
-RUN git clone https://github.com/pyroscope-io/jaeger-ui.git /opt/jaeger-ui
-RUN git checkout 5fe059aafd9f7c6c2c249d49bd5ad4eecb7ef881
+# RUN git clone https://github.com/pyroscope-io/jaeger-ui.git /opt/jaeger-ui && git checkout 0b4bdd6a488c0d73265578f1dcb006affb76d4bd
+RUN git clone https://github.com/pyroscope-io/jaeger-ui.git /opt/jaeger-ui && git checkout 11733cf166622281ac89e3485ca836a72c689fbd
+
 
 RUN yarn install || true
 ENV HOST=0.0.0.0

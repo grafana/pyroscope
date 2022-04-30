@@ -1,3 +1,52 @@
+## [0.15.4](https://github.com/pyroscope-io/pyroscope/compare/v0.15.3...v0.15.4) (2022-04-27)
+
+
+### Bug Fixes
+
+* **webapp:** tag selector overflow ([#1055](https://github.com/pyroscope-io/pyroscope/issues/1055)) ([f7c7917](https://github.com/pyroscope-io/pyroscope/commit/f7c79179c323b95b8966a12729e1091e4a57dc0f))
+
+
+### Reverts
+
+* Revert "fix(flamegraph): fix table contrast (#1053)" (#1063) ([a4dd7f6](https://github.com/pyroscope-io/pyroscope/commit/a4dd7f6417b9c37134c9a63143a1d1f8ccb2ee3d)), closes [#1053](https://github.com/pyroscope-io/pyroscope/issues/1053) [#1063](https://github.com/pyroscope-io/pyroscope/issues/1063)
+
+
+
+## [0.15.3](https://github.com/pyroscope-io/pyroscope/compare/v0.15.2...v0.15.3) (2022-04-27)
+
+
+### Features
+
+* rails example added ([#1041](https://github.com/pyroscope-io/pyroscope/issues/1041)) ([a722a6e](https://github.com/pyroscope-io/pyroscope/commit/a722a6e93fdd1895179a0e1481c5d25a3c0dd5a5))
+
+
+
+## [0.15.2](https://github.com/pyroscope-io/pyroscope/compare/v0.15.1...v0.15.2) (2022-04-24)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix table contrast ([#1053](https://github.com/pyroscope-io/pyroscope/issues/1053)) ([6246f21](https://github.com/pyroscope-io/pyroscope/commit/6246f211967d073febdca8fb578bb805b96597cd))
+* **jfr:** fixes a parser regression introduced in 1.15.0 ([#1050](https://github.com/pyroscope-io/pyroscope/issues/1050)) ([946468d](https://github.com/pyroscope-io/pyroscope/commit/946468dbf42ff4450edc94762812ddb4a5f3482d))
+* remove force compation ([#1036](https://github.com/pyroscope-io/pyroscope/issues/1036)) ([d1b1547](https://github.com/pyroscope-io/pyroscope/commit/d1b1547edbc61537537add4f614c4ada67a83335))
+
+
+
+## [0.15.1](https://github.com/pyroscope-io/pyroscope/compare/v0.15.0...v0.15.1) (2022-04-19)
+
+
+### Bug Fixes
+
+* delete data in batches instead of using badgerDB drop prefix ([#1035](https://github.com/pyroscope-io/pyroscope/issues/1035)) ([10e7006](https://github.com/pyroscope-io/pyroscope/commit/10e7006d8fe84a3c13e90fdc3edffbde481f6c7e))
+
+
+### Features
+
+* move login to react ([#1031](https://github.com/pyroscope-io/pyroscope/issues/1031)) ([1cb6f9a](https://github.com/pyroscope-io/pyroscope/commit/1cb6f9a08d825acf643b5ef8b51cecab338b1314)), closes [#985](https://github.com/pyroscope-io/pyroscope/issues/985) [#991](https://github.com/pyroscope-io/pyroscope/issues/991)
+* **webapp:** add modal for custom export name ([#965](https://github.com/pyroscope-io/pyroscope/issues/965)) ([422ea82](https://github.com/pyroscope-io/pyroscope/commit/422ea82fd20a64eda44ae62821f67a89c129a594))
+
+
+
 # [0.15.0](https://github.com/pyroscope-io/pyroscope/compare/v0.14.0...v0.15.0) (2022-04-14)
 
 

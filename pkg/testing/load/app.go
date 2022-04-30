@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
@@ -11,18 +12,18 @@ type App struct {
 	Name            string
 	SpyName         string
 	SampleRate      uint32
-	Units           string
-	AggregationType string
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 
 	tags  *TagsGenerator
 	trees *TreeGenerator
 }
 
 type AppConfig struct {
-	SpyName         string `yaml:"spyName"`
-	SampleRate      uint32 `yaml:"sampleRate"`
-	Units           string `yaml:"units"`
-	AggregationType string `yaml:"aggregationType"`
+	SpyName         string                   `yaml:"spyName"`
+	SampleRate      uint32                   `yaml:"sampleRate"`
+	Units           metadata.Units           `yaml:"units"`
+	AggregationType metadata.AggregationType `yaml:"aggregationType"`
 
 	Tags       []Tag `yaml:"tags"`
 	Trees      int   `yaml:"trees"`

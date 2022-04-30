@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "name": "pyroscope-oss",
   "private": true,
-  "version": "0.15.0",
+  "version": "0.15.4",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -230,6 +230,7 @@
     "react-svg-loader": "^3.0.3",
     "react-svg-spinner": "^1.0.4",
     "react-tabs": "^3.2.3",
+    "react-textarea-autosize": "8.3.0",
     "redux": "^4.0.5",
     "redux-devtools-extension": "^2.13.8",
     "redux-localstorage": "^0.4.1",

@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/sirupsen/logrus"
 )
 
 func (ctrl *Controller) labelsHandler() http.HandlerFunc {
-	return NewLabelsHandler(ctrl.log, ctrl.storage).ServeHTTP
+	return NewLabelsHandler(ctrl.storage, ctrl.httpUtils).ServeHTTP
 }
 
-func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter) http.HandlerFunc {
+func NewLabelsHandler(s storage.LabelsGetter, httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := r.URL.Query().Get("query")
@@ -32,7 +32,7 @@ func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter) http.HandlerFu
 
 		b, err := json.Marshal(keys)
 		if err != nil {
-			WriteJSONEncodeError(log, w, err)
+			httpUtils.WriteJSONEncodeError(r, w, err)
 			return
 		}
 		_, _ = w.Write(b)
