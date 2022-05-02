@@ -35,6 +35,7 @@ interface FlamegraphProps {
   ['data-testid']?: string;
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
+  toolbarVisible?: boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -45,7 +46,14 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     Maybe<{ top: number; left: number; width: number }>
   >(Maybe.nothing());
 
-  const { flamebearer, focusedNode, fitMode, highlightQuery, zoom } = props;
+  const {
+    flamebearer,
+    focusedNode,
+    fitMode,
+    highlightQuery,
+    zoom,
+    toolbarVisible,
+  } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
@@ -235,6 +243,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         ExportData={ExportData}
         palette={palette}
         setPalette={setPalette}
+        toolbarVisible={toolbarVisible}
       />
 
       {dataUnavailable ? (

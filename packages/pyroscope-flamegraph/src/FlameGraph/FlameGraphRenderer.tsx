@@ -336,6 +336,8 @@ class FlameGraphRenderer extends React.Component<
     //      this.props.viewSide
     //    );
 
+    const toolbarVisible = this.shouldShowToolbar();
+
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
@@ -352,6 +354,7 @@ class FlameGraphRenderer extends React.Component<
           onReset={this.onReset}
           isDirty={this.isDirty}
           palette={this.state.palette}
+          toolbarVisible={toolbarVisible}
           setPalette={(p) =>
             this.setState({
               palette: p,
@@ -365,7 +368,7 @@ class FlameGraphRenderer extends React.Component<
     return (
       <div>
         <div>
-          {this.shouldShowToolbar() && (
+          {toolbarVisible && (
             <Toolbar
               renderLogo={this.props.renderLogo || false}
               disableChangingDisplay={!!this.props.onlyDisplay}
