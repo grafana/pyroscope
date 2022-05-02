@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.6.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.5.0...@pyroscope/flamegraph@0.6.0) (2022-05-02)
+
+
+### Features
+
+* **flamegraph:** User should be able to adjust title visibility over the Flamegraph ([#1073](https://github.com/pyroscope-io/pyroscope/issues/1073)) ([bd74aae](https://github.com/pyroscope-io/pyroscope/commit/bd74aae448f3d30398484d589675ea168d816a70))
+
+
+
+
+
 # [0.5.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.4.0...@pyroscope/flamegraph@0.5.0) (2022-05-02)
 
 
