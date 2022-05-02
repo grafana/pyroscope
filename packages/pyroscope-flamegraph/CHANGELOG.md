@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.5.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.4.0...@pyroscope/flamegraph@0.5.0) (2022-05-02)
+
+
+### Features
+
+* nodejs push & pull mode ([#1060](https://github.com/pyroscope-io/pyroscope/issues/1060)) ([4317103](https://github.com/pyroscope-io/pyroscope/commit/4317103354b5712c561e4cead7f6906c21a3005c))
+
+
+
+
+
 # [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.3.1...@pyroscope/flamegraph@0.4.0) (2022-04-27)
 
 
