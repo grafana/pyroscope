@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@pyroscope/nodejs": "github:pyroscope-io/pyroscope-nodejs",
     "express": "^4.17.3",
