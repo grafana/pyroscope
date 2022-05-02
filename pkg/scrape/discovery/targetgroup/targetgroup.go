@@ -38,13 +38,16 @@ func (tg Group) String() string {
 	return tg.Source
 }
 
+type targetGroup struct {
+	AppName string         `yaml:"application" json:"application"`
+	SpyName string         `yaml:"spy-name" json:"spy-name"`
+	Targets []string       `yaml:"targets" json:"targets"`
+	Labels  model.LabelSet `yaml:"labels" json:"labels"`
+}
+
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (tg *Group) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	g := struct {
-		AppName string         `yaml:"application"`
-		Targets []string       `yaml:"targets"`
-		Labels  model.LabelSet `yaml:"labels"`
-	}{}
+	var g targetGroup
 	if err := unmarshal(&g); err != nil {
 		return err
 	}
@@ -54,8 +57,9 @@ func (tg *Group) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	tg.Targets = make([]model.LabelSet, 0, len(g.Targets))
 	for _, t := range g.Targets {
 		tg.Targets = append(tg.Targets, model.LabelSet{
-			model.AddressLabel:    model.LabelValue(t),
-			model.MetricNameLabel: model.LabelValue(g.AppName),
+			model.AddressLabel: model.LabelValue(t),
+			model.AppNameLabel: model.LabelValue(g.AppName),
+			model.SpyNameLabel: model.LabelValue(g.SpyName),
 		})
 	}
 	tg.Labels = g.Labels
@@ -64,12 +68,7 @@ func (tg *Group) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (tg *Group) UnmarshalJSON(b []byte) error {
-	g := struct {
-		AppName string         `json:"application"`
-		Targets []string       `json:"targets"`
-		Labels  model.LabelSet `json:"labels"`
-	}{}
-
+	var g targetGroup
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&g); err != nil {
@@ -81,8 +80,9 @@ func (tg *Group) UnmarshalJSON(b []byte) error {
 	tg.Targets = make([]model.LabelSet, 0, len(g.Targets))
 	for _, t := range g.Targets {
 		tg.Targets = append(tg.Targets, model.LabelSet{
-			model.AddressLabel:    model.LabelValue(t),
-			model.MetricNameLabel: model.LabelValue(g.AppName),
+			model.AddressLabel: model.LabelValue(t),
+			model.AppNameLabel: model.LabelValue(g.AppName),
+			model.SpyNameLabel: model.LabelValue(g.SpyName),
 		})
 	}
 	tg.Labels = g.Labels

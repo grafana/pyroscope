@@ -1,0 +1,29 @@
+version: '3.9'
+services:
+  us-east-1:
+    environment:
+      - REGION=us-east-1
+    build:
+      context: .
+
+  us-west-1:
+    environment:
+      - REGION=us-west-1
+    build:
+      context: .
+
+  eu-west-1:
+    environment:
+      - REGION=eu-west-1
+    build:
+      context: .
+
+  pyroscope:
+    container_name: pyroscope
+    image: pyroscope/pyroscope
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'

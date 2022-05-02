@@ -91,6 +91,8 @@ function spyToRegex(spyName: string) {
       return /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/;
     case 'rbspy':
       return /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/;
+    case 'nodespy':
+      return /^(\.\/node_modules\/)?(?<packageName>[^/]*)(?<filename>.*\.?(jsx?|tsx?)?):(?<functionName>.*):(?<line_info>.*)$/;
     case 'pyroscope-rs':
       return /^(?<packageName>[^::]+)/;
 

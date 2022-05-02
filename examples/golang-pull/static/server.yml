@@ -5,6 +5,7 @@ scrape-configs:
     enabled-profiles: [cpu, mem]
     static-configs:
       - application: hotrod
+        spy-name: gospy
         targets:
           - hotrod:6060
         labels:

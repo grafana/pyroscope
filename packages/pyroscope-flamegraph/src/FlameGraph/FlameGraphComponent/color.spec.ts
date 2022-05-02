@@ -256,4 +256,21 @@ describe('getPackageNameFromStackTrace', () => {
       });
     });
   });
+
+  describe('nodejs spy', () => {
+    describe.each([
+      ['total', 'total'],
+      ['./node_modules/node-fetch/lib/index.js:fetch:1493', 'node-fetch'],
+      [
+        './node_modules/@pyroscope-node/dist/pull/index.js:sampleFunction:1827',
+        '@pyroscope-node',
+      ],
+      ['node:net:Socket:320', 'node:net'],
+      [':(idle):0', ''],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('nodespy', a)).toBe(expected);
+      });
+    });
+  });
 });

@@ -1,11 +1,12 @@
 ---
+log-level: debug
 scrape-configs:
-  - job-name: mattermost
+  - job-name: testing
     enabled-profiles: [cpu, mem]
     static-configs:
-      - application: mattermost
-        spy-name: gospy
+      - application: rideshare
+        spy-name: nodespy
         targets:
-          - mattermost:8067
+          - localhost:3000
         labels:
           env: dev
