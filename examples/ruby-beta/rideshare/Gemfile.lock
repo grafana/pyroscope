@@ -27,7 +27,7 @@ PLATFORMS
 DEPENDENCIES
   sinatra (~> 2.1)
   thin (~> 1.8)
-  pyroscope_beta (= 0.1.2)
+  pyroscope_beta (= 0.1.3)
 
 BUNDLED WITH
    2.2.22
