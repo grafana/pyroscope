@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import cx from 'classnames';
 import useResizeObserver from '@react-hook/resize-observer';
-import { ColorBlindPalette, DefaultPalette } from './colorPalette';
+import {
+  ColorBlindPalette,
+  DefaultPalette,
+  DefaultLightPalette,
+  ColorBlindLightPalette,
+  FlamegraphPalette,
+} from './colorPalette';
 import DiffLegend from './DiffLegend';
 import CheckIcon from './CheckIcon';
 // Until we migrate ui to its own package this should do it
@@ -12,13 +18,26 @@ import dropdownStyles from '@webapp/ui/Dropdown.module.scss';
 
 import styles from './DiffLegendPaletteDropdown.module.css';
 
-const paletteList = [DefaultPalette, ColorBlindPalette];
+interface DiffLegendPaletteDropdownProps {
+  palette: FlamegraphPalette;
+  onChange: (p: FlamegraphPalette) => void;
+  colorMode?: 'light' | 'dark';
+}
 
-// TODO type this
-export const DiffLegendPaletteDropdown = (props: any) => {
-  const { palette = DefaultPalette, onChange } = props;
+export const DiffLegendPaletteDropdown = (
+  props: DiffLegendPaletteDropdownProps
+) => {
+  const { palette = DefaultPalette, onChange, colorMode } = props;
   const legendRef = React.useRef<HTMLDivElement>(null);
   const showMode = useSizeMode(legendRef);
+
+  const paletteList = useMemo(
+    () =>
+      colorMode === 'light'
+        ? [DefaultLightPalette, ColorBlindLightPalette]
+        : [DefaultPalette, ColorBlindPalette],
+    [colorMode]
+  );
 
   return (
     <>

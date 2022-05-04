@@ -9,6 +9,7 @@ export interface FlamegraphPalette {
 
   colors: Color[];
 }
+const defaultAngle = 180;
 
 export const DefaultPalette: FlamegraphPalette = {
   name: 'Default',
@@ -48,6 +49,14 @@ export const DefaultPalette: FlamegraphPalette = {
   ],
 };
 
+export const DefaultLightPalette: FlamegraphPalette = {
+  name: 'Default Light',
+  goodColor: Color(DefaultPalette.goodColor).rotate(defaultAngle),
+  badColor: Color(DefaultPalette.badColor).rotate(defaultAngle),
+  neutralColor: Color(DefaultPalette.neutralColor).rotate(defaultAngle),
+  colors: DefaultPalette.colors.map((c) => Color(c).rotate(defaultAngle)),
+};
+
 export const ColorBlindPalette: FlamegraphPalette = {
   ...DefaultPalette,
 
@@ -55,4 +64,12 @@ export const ColorBlindPalette: FlamegraphPalette = {
   goodColor: Color.rgb(26, 133, 255),
   neutralColor: Color.rgb(148, 142, 142),
   badColor: Color.rgb(220, 50, 32),
+};
+
+export const ColorBlindLightPalette: FlamegraphPalette = {
+  name: 'Color Blind Light',
+  goodColor: Color(ColorBlindPalette.goodColor).rotate(defaultAngle),
+  badColor: Color(ColorBlindPalette.badColor).rotate(defaultAngle),
+  neutralColor: Color(ColorBlindPalette.neutralColor).rotate(defaultAngle),
+  colors: ColorBlindPalette.colors.map((c) => Color(c).rotate(defaultAngle)),
 };
