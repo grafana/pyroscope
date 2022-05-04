@@ -15,9 +15,17 @@ interface HeaderProps {
   //  ExportData: React.ElementType | null;
   //  ExportData?: JSX.Element;
   ExportData?: React.ReactNode;
+  toolbarVisible?: boolean;
 }
 export default function Header(props: HeaderProps) {
-  const { format, units, ExportData = <></>, palette, setPalette } = props;
+  const {
+    format,
+    units,
+    ExportData = <></>,
+    palette,
+    setPalette,
+    toolbarVisible,
+  } = props;
 
   const unitsToFlamegraphTitle = {
     objects: 'number of objects in RAM per function',
@@ -62,7 +70,7 @@ export default function Header(props: HeaderProps) {
     }
   };
 
-  const title = getTitle();
+  const title = toolbarVisible ? getTitle() : null;
 
   return (
     <div className={styles.flamegraphHeader}>

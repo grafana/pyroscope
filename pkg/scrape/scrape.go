@@ -41,8 +41,6 @@ var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
 
 var errBodySizeLimit = errors.New("body size limit exceeded")
 
-const spyName = "scrape"
-
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
 	ingester Ingester
@@ -201,7 +199,7 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
 				SampleTypes: tgt.profile.SampleTypes,
 				Labels:      tgt.Labels().Map(),
-				SpyName:     spyName,
+				SpyName:     tgt.SpyName(),
 			}),
 		}
 		n := sp.newScrapeLoop(s, interval, timeout)
@@ -287,7 +285,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
 				SampleTypes: t.profile.SampleTypes,
 				Labels:      t.Labels().Map(),
-				SpyName:     spyName,
+				SpyName:     t.SpyName(),
 			}),
 		}
 

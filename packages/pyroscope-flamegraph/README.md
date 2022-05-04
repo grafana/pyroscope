@@ -43,9 +43,9 @@ const SimpleTree = {
 export const Flamegraph = () => {
   return (
     <FlamegraphRenderer
-      flamebearer={SimpleTree}
-      display="flamegraph"
-      viewType="single"
+      profile={SimpleTree}
+      onlyDisplay="flamegraph"
+      showToolbar={false}
     />
   );
 };

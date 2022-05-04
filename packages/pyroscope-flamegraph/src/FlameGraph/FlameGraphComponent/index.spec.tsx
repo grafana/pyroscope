@@ -230,6 +230,7 @@ describe('FlamegraphComponent', () => {
           ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
+          toolbarVisible
         />
       );
 
@@ -255,6 +256,7 @@ describe('FlamegraphComponent', () => {
           ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
+          toolbarVisible
         />
       );
 

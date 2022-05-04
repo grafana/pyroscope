@@ -14,6 +14,7 @@ spec:
       annotations:
         pyroscope.io/scrape: 'true'
         pyroscope.io/application-name: 'hotrod'
+        pyroscope.io/spy-name: 'gospy'
         pyroscope.io/profile-cpu-enabled: 'true'
         pyroscope.io/profile-mem-enabled: 'true'
         pyroscope.io/port: '6060'

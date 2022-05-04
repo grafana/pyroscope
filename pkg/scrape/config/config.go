@@ -51,6 +51,12 @@ func DefaultConfig() *Config {
 						Units:       metadata.SamplesUnits,
 						Sampled:     true,
 					},
+					// NodeJS Spy
+					"sample": {
+						DisplayName: "cpu",
+						Units:       "samples",
+						Sampled:     true,
+					},
 				},
 			},
 			"mem": {
@@ -71,6 +77,16 @@ func DefaultConfig() *Config {
 					},
 					"alloc_space": {
 						Units:      metadata.BytesUnits,
+						Cumulative: true,
+					},
+
+					// NodeJS Spy
+					"objects": {
+						Units:      "objects",
+						Cumulative: true,
+					},
+					"space": {
+						Units:      "bytes",
 						Cumulative: true,
 					},
 				},

@@ -51,6 +51,7 @@ func TestHTTPValidRefresh(t *testing.T) {
 				{
 					model.AppNameLabel: model.LabelValue("test"),
 					model.AddressLabel: model.LabelValue("127.0.0.1:9090"),
+					model.SpyNameLabel: model.LabelValue(""),
 				},
 			},
 			Labels: model.LabelSet{
@@ -195,6 +196,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AppNameLabel: model.LabelValue("test"),
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -210,6 +212,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AppNameLabel: model.LabelValue("test"),
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -223,7 +226,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AppNameLabel: model.LabelValue("test1"),
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
-							},
+								model.SpyNameLabel: model.LabelValue("")},
 						},
 						Labels: model.LabelSet{
 							model.LabelName("k"):          model.LabelValue("2"),
@@ -247,6 +250,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AppNameLabel: model.LabelValue("test1"),
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -260,6 +264,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AppNameLabel: model.LabelValue("test2"),
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -275,6 +280,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AppNameLabel: model.LabelValue("test1"),
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -306,6 +312,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
 								model.AppNameLabel: "test1",
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -319,6 +326,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
 								model.AppNameLabel: "test2",
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -332,6 +340,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
 								model.AppNameLabel: "test3",
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -347,6 +356,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AppNameLabel: "test1",
 								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -372,6 +382,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AddressLabel: model.LabelValue("127.0.0.2"),
 								model.AppNameLabel: "testv",
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{
@@ -385,6 +396,7 @@ func TestSourceDisappeared(t *testing.T) {
 							{
 								model.AddressLabel: model.LabelValue("127.0.0.3"),
 								model.AppNameLabel: "testvv",
+								model.SpyNameLabel: model.LabelValue(""),
 							},
 						},
 						Labels: model.LabelSet{

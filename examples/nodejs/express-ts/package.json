@@ -1,0 +1,26 @@
+{
+  "name": "rideshare-app-express",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@pyroscope/nodejs": "^0.1.x",
+    "@types/node-fetch": "^2.6.1",
+    "axios": "^0.26.1",
+    "express": "^4.17.3",
+    "morgan": "^1.10.0",
+    "node-fetch": "^3.2.3",
+    "pprof": "^3.2.0",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/morgan": "^1.9.3"
+  }
+}

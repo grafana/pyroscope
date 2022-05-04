@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.7.0...@pyroscope/webapp@1.7.1) (2022-05-02)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.7.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.6.5...@pyroscope/webapp@1.7.0) (2022-05-02)
+
+
+### Features
+
+* nodejs push & pull mode ([#1060](https://github.com/pyroscope-io/pyroscope/issues/1060)) ([4317103](https://github.com/pyroscope-io/pyroscope/commit/4317103354b5712c561e4cead7f6906c21a3005c))
+
+
+
+
+
 ## [1.6.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.6.4...@pyroscope/webapp@1.6.5) (2022-04-27)
 
 
