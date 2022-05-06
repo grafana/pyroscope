@@ -9,10 +9,13 @@
   --ps-c-gray-light-2: #272727;
   --ps-c-gray-light-3: #4d4d4d;
   --ps-c-gray-light-4: #aaaaaa;
+  --ps-c-gray-light-5: #414141;
+  --ps-c-gray-light-6: #222222;
   --ps-c-white-dark-3: #ffffff08;
   --ps-c-white-dark-2: #ffffff54;
   --ps-c-white-dark-1: #ffffffa8;
   --ps-c-white: #e6e6e6;
+  --ps-c-init-white: #ffffff;
   --ps-c-blue-dark-1: #1d49a1;
   --ps-c-blue-dark: #216ba5;
   --ps-c-blue: #0074d9;
@@ -21,6 +24,7 @@
   --ps-c-green: #2ecc40;
   --ps-c-green-light-1: #54d964;
   --ps-c-green-success: #28a745;
+  --ps-c-green-disabled: #7ee289;
   --ps-c-red-error: #8a1722;
   --ps-c-red-danger: #dc3545;
   --ps-c-red-light: #dc3545;
@@ -43,10 +47,13 @@
   --ps-c-gray-light-2: #d8d8d8;
   --ps-c-gray-light-3: #b2b2b2;
   --ps-c-gray-light-4: #555555;
+  --ps-c-gray-light-5: #bebebe;
+  --ps-c-gray-light-6: #dddddd;
   --ps-c-white-dark-3: #ffffff08;
   --ps-c-white-dark-2: #ffffff54;
   --ps-c-white-dark-1: #ffffffa8;
   --ps-c-white: #191919;
+  --ps-c-init-white: #000000;
   --ps-c-blue-dark-1: #e2b65e;
   --ps-c-blue-dark: #de945a;
   --ps-c-blue: #ff8b26;
@@ -55,6 +62,7 @@
   --ps-c-green: #d133bf;
   --ps-c-green-light-1: #ab269b;
   --ps-c-green-success: #d758ba;
+  --ps-c-green-disabled: #811d76;
   --ps-c-red-error: #75e8dd;
   --ps-c-red-danger: #23caba;
   --ps-c-red-light: #23caba;

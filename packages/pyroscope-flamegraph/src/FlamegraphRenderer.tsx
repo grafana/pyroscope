@@ -1,5 +1,6 @@
 import React from 'react';
 import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
+import '../../../webapp/sass/flamegraph.scss';
 
 const overrideProps = {
   //  showPyroscopeLogo: !process.env.PYROSCOPE_HIDE_LOGO as any, // this is injected by webpack
