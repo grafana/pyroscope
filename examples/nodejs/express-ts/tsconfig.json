@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "esnext",
-    "module": "ESNext",
+    "target": "es5",
+    "module": "esnext",
     "moduleResolution": "node",
     "rootDir": ".",
     "outDir": "build",
@@ -11,14 +11,15 @@
     "importHelpers": true,
     "alwaysStrict": true,
     "sourceMap": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitAny": false,
     "noImplicitThis": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "skipLibCheck": true
   },
   "include": ["**/*.ts"]
 }

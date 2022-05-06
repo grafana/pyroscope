@@ -1,7 +1,7 @@
 /* eslint-disable */
-import fetch from 'node-fetch';
 import express from 'express';
 import morgan from 'morgan';
+import fetch from 'axios';
 
 import Pyroscope from '@pyroscope/nodejs';
 
@@ -47,7 +47,9 @@ setInterval(() => {
   fetch(`http://localhost:${port}/scooter`);
 }, 1000);
 
-Pyroscope.init();
+Pyroscope.init({ name: 'nodejs', autoStart: false });
+Pyroscope.startHeapProfiling();
+Pyroscope.startCpuProfiling();
 
 app.listen(port, () => {
   console.log(

@@ -35,6 +35,8 @@ function scooterSearchHandler() {
   return genericSearchHandler(0.25);
 }
 
+Pyroscope.init({ autoStart: false });
+Pyroscope.startHeapCollecting();
 app.use(expressMiddleware());
 
 app.get('/bike', function bikeSearchHandler(req, res) {
