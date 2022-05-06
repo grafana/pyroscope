@@ -82,12 +82,14 @@ func DefaultConfig() *Config {
 
 					// NodeJS Spy
 					"objects": {
-						Units:      "objects",
-						Cumulative: true,
+						Units:       "objects",
+						Aggregation: metadata.AverageAggregationType,
+						Cumulative:  false,
 					},
 					"space": {
-						Units:      "bytes",
-						Cumulative: true,
+						Units:       "bytes",
+						Aggregation: metadata.AverageAggregationType,
+						Cumulative:  false,
 					},
 				},
 			},

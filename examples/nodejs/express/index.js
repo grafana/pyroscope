@@ -34,11 +34,11 @@ function scooterSearchHandler() {
 }
 
 Pyroscope.init({
-  autoStart: false,
-  server: 'http://pyroscope:4040',
+  autoStart: true,
+  name: 'nodejs',
+  server: process.env['PYROSCOPE_SERVER'] || 'http://pyroscope:4040',
   tags: { region },
 });
-Pyroscope.startCpuProfiling();
 
 app.get('/bike', function bikeSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);

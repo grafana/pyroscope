@@ -67,12 +67,14 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 		Sampled:     true,
 	},
 	"objects": {
-		Units:      "objects",
-		Cumulative: true,
+		Units:       "objects",
+		Aggregation: "average",
+		Cumulative:  false,
 	},
 	"space": {
-		Units:      "bytes",
-		Cumulative: true,
+		Units:       "bytes",
+		Aggregation: "average",
+		Cumulative:  false,
 	},
 }
 
