@@ -3,8 +3,9 @@ FROM node:latest
 WORKDIR /app
 
 COPY *.json .
-RUN yarn 
 COPY *.ts .
-COPY profiler.js .
-
 RUN yarn 
+RUN yarn build
+ENV DEBUG=pyroscope
+CMD ["yarn", "run", "run"] 
+

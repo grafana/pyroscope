@@ -47,7 +47,11 @@ setInterval(() => {
   fetch(`http://localhost:${port}/scooter`);
 }, 1000);
 
-Pyroscope.init({ name: 'nodejs', autoStart: false });
+Pyroscope.init({
+  name: 'nodejs',
+  server: 'http://pyroscope:4040',
+  autoStart: false,
+});
 Pyroscope.startHeapProfiling();
 Pyroscope.startCpuProfiling();
 
