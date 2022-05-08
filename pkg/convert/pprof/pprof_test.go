@@ -104,10 +104,8 @@ var _ = Describe("pprof parsing", func() {
 				"foo":      "bar",
 			}
 
-			// We intentionally mark these sample types as non-cumulative
-			// to make writer flush the trees to the ingester.
-			Expect(tree.DefaultSampleTypeMapping["objects"].Cumulative).To(BeTrue())
-			Expect(tree.DefaultSampleTypeMapping["space"].Cumulative).To(BeTrue())
+			Expect(tree.DefaultSampleTypeMapping["objects"].Cumulative).To(BeFalse())
+			Expect(tree.DefaultSampleTypeMapping["space"].Cumulative).To(BeFalse())
 			tree.DefaultSampleTypeMapping["objects"].Cumulative = false
 			tree.DefaultSampleTypeMapping["space"].Cumulative = false
 
