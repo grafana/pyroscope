@@ -14,6 +14,7 @@
 // limitations under the License.
 
 package aws // revive:disable-line:import-shadowing package name is not referenced
+
 import (
 	"context"
 	"fmt"
@@ -82,12 +83,20 @@ type EC2Filter struct {
 type EC2SDConfig struct {
 	Endpoint        string        `yaml:"endpoint"`
 	Region          string        `yaml:"region"`
+<<<<<<< HEAD
 	AccessKey       string        `yaml:"access-key,omitempty"`
 	SecretKey       string        `yaml:"secret-key,omitempty"`
 	Profile         string        `yaml:"profile,omitempty"`
 	RoleARN         string        `yaml:"role-arn,omitempty"`
 	Application     string        `yaml:"application,omitempty"`
 	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
+=======
+	AccessKey       string        `yaml:"access_key,omitempty"`
+	SecretKey       string        `yaml:"secret_key,omitempty"`
+	Profile         string        `yaml:"profile,omitempty"`
+	RoleARN         string        `yaml:"role_arn,omitempty"`
+	RefreshInterval time.Duration `yaml:"refresh_interval,omitempty"`
+>>>>>>> 113d1371 (register ec2 sd config)
 	Port            int           `yaml:"port"`
 	Filters         []*EC2Filter  `yaml:"filters"`
 }
@@ -157,7 +166,11 @@ func NewEC2Discovery(conf *EC2SDConfig, logger logrus.FieldLogger) *EC2Discovery
 	return d
 }
 
+<<<<<<< HEAD
 func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
+=======
+func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
+>>>>>>> 113d1371 (register ec2 sd config)
 	if d.ec2 != nil {
 		return d.ec2, nil
 	}
@@ -166,17 +179,26 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 	if d.cfg.AccessKey == "" && d.cfg.SecretKey == "" {
 		creds = nil
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 113d1371 (register ec2 sd config)
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
 			Endpoint:    &d.cfg.Endpoint,
 			Region:      &d.cfg.Region,
 			Credentials: creds,
 		},
+<<<<<<< HEAD
 		SharedConfigState: session.SharedConfigEnable,
 		Profile:           d.cfg.Profile,
 	})
 	fmt.Printf("region %s, profile %s", d.cfg.Region, d.cfg.Profile)
 
+=======
+		Profile: d.cfg.Profile,
+	})
+>>>>>>> 113d1371 (register ec2 sd config)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create aws session")
 	}
@@ -225,7 +247,11 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 	// Prometheus requires a reload if AWS adds a new AZ to the region.
 	if d.azToAZID == nil {
 		if err := d.refreshAZIDs(ctx); err != nil {
+<<<<<<< HEAD
 			d.logger.WithError(err).Debug("Unable to describe availability zones")
+=======
+			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
+>>>>>>> 113d1371 (register ec2 sd config)
 		}
 	}
 
@@ -239,7 +265,10 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 
 				labels := model.LabelSet{
 					ec2LabelInstanceID: model.LabelValue(*inst.InstanceId),
+<<<<<<< HEAD
 					model.AppNameLabel: model.LabelValue(d.cfg.Application),
+=======
+>>>>>>> 113d1371 (register ec2 sd config)
 				}
 
 				if r.OwnerId != nil {
