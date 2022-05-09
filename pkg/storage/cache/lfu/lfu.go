@@ -138,6 +138,17 @@ func (c *Cache) WriteBack() (persisted, evicted int) {
 	return c.writeBack()
 }
 
+func (c *Cache) Iterate(fn func(k string, v interface{}) error) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	for k, entry := range c.values {
+		if err := fn(k, entry.value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 //revive:disable-next-line:confusing-naming methods are different
 func (c *Cache) evict(count int) int {
 	// No lock here so it can be called
