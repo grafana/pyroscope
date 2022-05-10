@@ -7,11 +7,9 @@ const region = process.env['REGION'] || 'default';
 
 const express = require('express');
 const morgan = require('morgan');
-const fetch = require('node-fetch');
 
 const app = express();
 app.use(morgan('dev'));
-
 app.get('/', (req, res) => {
   res.send('Available routes are: /bike, /car, /scooter');
 });
@@ -34,29 +32,19 @@ function scooterSearchHandler() {
 }
 
 Pyroscope.init({
-  autoStart: true,
-  name: 'nodejs',
-  server: process.env['PYROSCOPE_SERVER'] || 'http://pyroscope:4040',
+  appName: 'nodejs',
+  serverAddress: process.env['PYROSCOPE_SERVER'] || 'http://pyroscope:4040',
   tags: { region },
 });
+
+Pyroscope.startCpuProfiling();
+Pyroscope.startHeapProfiling();
 
 app.get('/bike', function bikeSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);
 });
 app.get('/car', carSearchHandler());
 app.get('/scooter', scooterSearchHandler());
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/car`);
-}, 1800);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/bike`);
-}, 5000);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/scooter`);
-}, 1000);
 
 app.listen(port, () => {
   console.log(

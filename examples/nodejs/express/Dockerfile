@@ -2,7 +2,7 @@ FROM node:latest
 
 WORKDIR /app
 
-COPY *.json .
+COPY package.json .
 RUN npm install
 COPY index.js .
 

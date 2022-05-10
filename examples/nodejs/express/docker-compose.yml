@@ -27,3 +27,8 @@ services:
       - '4040:4040'
     command:
       - 'server'
+
+  load-generator:
+    build:
+      context: ../
+      dockerfile: Dockerfile.load-generator
