@@ -59,23 +59,6 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 		Units:      "bytes",
 		Cumulative: true,
 	},
-
-	// Sample types specific to pprof-nodejs.
-	"sample": {
-		DisplayName: "cpu",
-		Units:       "samples",
-		Sampled:     true,
-	},
-	"objects": {
-		Units:       "objects",
-		Aggregation: "average",
-		Cumulative:  false,
-	},
-	"space": {
-		Units:       "bytes",
-		Aggregation: "average",
-		Cumulative:  false,
-	},
 }
 
 type pprof struct {
