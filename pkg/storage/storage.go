@@ -9,10 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -352,4 +354,20 @@ func (s *Storage) databases() []*db {
 		s.trees,
 		s.exemplars.db,
 	}
+}
+
+func (s *Storage) SegmentsInternals() (*badger.DB, *cache.Cache) {
+	return s.segments.DB, s.segments.Cache
+}
+func (s *Storage) DimensionsInternals() (*badger.DB, *cache.Cache) {
+	return s.dimensions.DB, s.dimensions.Cache
+}
+func (s *Storage) DictsInternals() (*badger.DB, *cache.Cache) {
+	return s.dicts.DB, s.dicts.Cache
+}
+func (s *Storage) TreesInternals() (*badger.DB, *cache.Cache) {
+	return s.trees.DB, s.trees.Cache
+}
+func (s *Storage) MainInternals() (*badger.DB, *cache.Cache) {
+	return s.main.DB, s.main.Cache
 }
