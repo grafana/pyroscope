@@ -8,7 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "allowJs": true,
     "checkJs": true,
-    "importHelpers": true,
+    "importHelpers": false,
     "alwaysStrict": true,
     "sourceMap": true,
     "esModuleInterop": true,
