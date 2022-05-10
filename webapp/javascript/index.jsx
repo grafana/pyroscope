@@ -27,6 +27,7 @@ import '@pyroscope/flamegraph/dist/index.css';
 
 import SignInPage from './pages/IntroPages/SignIn';
 import SignUpPage from './pages/IntroPages/SignUp';
+import Forbidden from './pages/IntroPages/Forbidden';
 import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
@@ -106,6 +107,10 @@ function App() {
               </Protected>
             </Route>
           )}
+          <Route path={PAGES.FORBIDDEN}>
+            <Forbidden />
+          </Route>
+
           <Route path="*" exact>
             <NotFound />
           </Route>

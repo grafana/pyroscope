@@ -223,7 +223,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	assetsHandler := r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP
 	ctrl.addRoutes(r, append(insecureRoutes, []route{
-		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", assetsHandler}}...),
 		ctrl.drainMiddleware)
 
@@ -240,7 +239,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/adhoc-comparison-diff", ih},
 		{"/settings", ih},
 		{"/settings/{page}", ih},
-		{"/settings/{page}/{subpage}", ih}},
+		{"/settings/{page}/{subpage}", ih},
+		{"/forbidden", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
@@ -293,7 +293,11 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/healthz", ctrl.healthz},
 	})
 
-	r.NotFoundHandler = ih
+	// Respond with 404 for all other routes.
+	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		ih(w, r)
+	})
 
 	return r, nil
 }

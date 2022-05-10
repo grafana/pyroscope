@@ -1,6 +1,6 @@
 describe('misc pages', () => {
   it('should correctly display 404 page', () => {
-    cy.visit('/404');
+    cy.visit('/404', { failOnStatusCode: false });
     cy.get('h1').should('contain', 'This page does not exist');
   });
 
