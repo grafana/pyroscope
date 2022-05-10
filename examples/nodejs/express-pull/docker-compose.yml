@@ -29,3 +29,8 @@ services:
       - 'server'
     volumes:
       - ./server.yml:/etc/pyroscope/server.yml
+
+  load-generator:
+    build:
+      context: ../
+      dockerfile: Dockerfile.load-generator

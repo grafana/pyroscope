@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "module": "esnext",
+    "target": "es6",
+    "module": "commonjs",
     "moduleResolution": "node",
     "rootDir": ".",
     "outDir": "build",
@@ -11,6 +11,7 @@
     "importHelpers": true,
     "alwaysStrict": true,
     "sourceMap": true,
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": false,

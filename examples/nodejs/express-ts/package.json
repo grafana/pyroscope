@@ -2,7 +2,6 @@
   "name": "rideshare-app-express",
   "version": "1.0.0",
   "description": "",
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -11,7 +10,7 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@pyroscope/nodejs": "^0.1.x",
+    "@pyroscope/nodejs": "^0.2.x",
     "axios": "^0.26.1",
     "express": "^4.17.3",
     "morgan": "^1.10.0",

@@ -1,7 +1,6 @@
 /* eslint-disable */
 import express from 'express';
 import morgan from 'morgan';
-import fetch from 'axios';
 
 import Pyroscope from '@pyroscope/nodejs';
 
@@ -35,22 +34,10 @@ app.get('/scooter', function scooterSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);
 });
 
-setInterval(() => {
-  fetch(`http://localhost:${port}/car`);
-}, 1800);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/bike`);
-}, 633);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/scooter`);
-}, 1000);
-
 Pyroscope.init({
-  name: 'nodejs',
-  server: 'http://pyroscope:4040',
-  autoStart: false,
+  appName: 'nodejs',
+  serverAddress: 'http://pyroscope:4040',
+  sourceMapPath: ['.'],
 });
 Pyroscope.startHeapProfiling();
 Pyroscope.startCpuProfiling();
