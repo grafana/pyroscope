@@ -4,6 +4,7 @@ package parser
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -102,8 +103,10 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		err = convert.ParseTreeNoDict(in.Body, cb)
 	case in.Format == "lines":
 		err = convert.ParseIndividualLines(in.Body, cb)
+	case in.Format == "jfr" && strings.Contains(in.ContentType, "multipart/form-data"):
+		err = parseJFRMultipart(ctx, in, err, p, pi)
 	case in.Format == "jfr":
-		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi)
+		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi, &jfr.Tags{})
 	case in.Format == "pprof":
 		err = writePprofFromBody(ctx, p.storage, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
@@ -122,6 +125,33 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		pErr = p.storage.Put(ctx, pi)
 	}
 	return err, pErr
+}
+
+func parseJFRMultipart(ctx context.Context, in *PutInput, err error, p *Parser, pi *storage.PutInput) error {
+	reader := multipart.NewReader(in.Body, in.MultipartBoundary)
+	contextsPart, err := reader.NextPart()
+	if err != nil {
+		return err
+	}
+	if contextsPart.FormName() != "tags" {
+		return fmt.Errorf("expected tags field, got %s", contextsPart.FormName())
+	}
+	tags := jfr.Tags{}
+	decoder := json.NewDecoder(contextsPart)
+	err = decoder.Decode(&tags)
+	if err != nil {
+		return err
+	}
+
+	jfrPart, err := reader.NextPart()
+	if err != nil {
+		return err
+	}
+	if jfrPart.FormName() != "jfr" {
+		return fmt.Errorf("expected jfr field, got %s", jfrPart.FormName())
+	}
+	err = jfr.ParseJFR(ctx, jfrPart, p.storage, pi, &tags)
+	return err
 }
 
 func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) error {
