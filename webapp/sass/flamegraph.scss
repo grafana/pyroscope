@@ -1,0 +1,18 @@
+@use 'sass:math';
+@use 'variables' as *;
+@use 'mixins/outline' as *;
+
+@import '~sanitize.css';
+@import '~sanitize.css/forms.css';
+@import '~sanitize.css/typography.css';
+@import './variables.css';
+
+.flamegraph-root {
+  @import 'common';
+
+  background-color: var(--ps-c-gray-dark-1);
+  color: var(--ps-c-white);
+  -webkit-font-smoothing: antialiased;
+  font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
+    Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
