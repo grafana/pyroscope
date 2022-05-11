@@ -6,6 +6,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 func (ctrl *Controller) labelsHandler() http.HandlerFunc {
@@ -15,14 +16,17 @@ func (ctrl *Controller) labelsHandler() http.HandlerFunc {
 func NewLabelsHandler(s storage.LabelsGetter, httpUtils httputils.Utils) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		query := r.URL.Query().Get("query")
+		v := r.URL.Query()
+
+		in := storage.GetLabelKeysByQueryInput{
+			StartTime: attime.Parse(v.Get("from")),
+			EndTime:   attime.Parse(v.Get("until")),
+			Query:     v.Get("query"),
+		}
 
 		keys := make([]string, 0)
-		if query != "" {
-			s.GetKeysByQuery(ctx, query, func(k string) bool {
-				keys = append(keys, k)
-				return true
-			})
+		if in.Query != "" {
+			s.GetKeysByQuery(ctx, in)
 		} else {
 			s.GetKeys(ctx, func(k string) bool {
 				keys = append(keys, k)
