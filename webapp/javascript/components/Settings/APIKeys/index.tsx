@@ -22,7 +22,10 @@ const ApiKeys = () => {
   const history = useHistory();
 
   useEffect(() => {
-    dispatch(reloadApiKeys());
+    const reload = dispatch(reloadApiKeys());
+    return () => {
+      reload.abort();
+    };
   }, []);
 
   const onDelete = (key: ShamefulAny) => {

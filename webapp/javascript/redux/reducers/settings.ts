@@ -1,7 +1,6 @@
 import { createSlice, combineReducers } from '@reduxjs/toolkit';
 import { Users, type User } from '@webapp/models/users';
 import { APIKey, APIKeys } from '@webapp/models/apikeys';
-
 import {
   fetchUsers,
   createUser as createUserAPI,
@@ -15,9 +14,11 @@ import {
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
 } from '@webapp/services/apiKeys';
+import { isAbortError } from '../../util/abort';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
+import { RequestIncompleteError } from '@webapp/services/base';
 
 type UsersState = {
   type: 'pristine' | 'loading' | 'loaded' | 'failed';
@@ -34,15 +35,29 @@ type ApiKeysState = {
   data?: APIKeys;
 };
 const apiKeysInitialState: ApiKeysState = { type: 'pristine', data: undefined };
+let reloadApiKeysAbortController: AbortController | undefined;
 
 export const reloadApiKeys = createAsyncThunk(
   'newRoot/reloadAPIKeys',
   async (_, thunkAPI) => {
-    const res = await fetchAPIKeys();
+    if (reloadApiKeysAbortController) {
+      reloadApiKeysAbortController.abort();
+    }
+    reloadApiKeysAbortController = new AbortController();
+
+    thunkAPI.signal = reloadApiKeysAbortController.signal;
+
+    const res = await fetchAPIKeys(reloadApiKeysAbortController);
+
     if (res.isOk) {
       return Promise.resolve(res.value);
     }
 
+    if (res.isErr && res.error instanceof RequestIncompleteError) {
+      return Promise.reject(res);
+    }
+
+    console.log(res);
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',

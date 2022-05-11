@@ -8,10 +8,12 @@ export interface FetchAPIKeysError {
   message?: string;
 }
 
-export async function fetchAPIKeys(): Promise<
-  Result<APIKeys, RequestError | ZodError>
-> {
-  const response = await request('/api/keys');
+export async function fetchAPIKeys(
+  abortController: AbortController
+): Promise<Result<APIKeys, RequestError | ZodError>> {
+  const response = await request('/api/keys', {
+    signal: abortController.signal,
+  });
   return parseResponse<APIKeys>(response, apiKeysSchema);
 }
 
