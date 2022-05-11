@@ -1,6 +1,5 @@
 // Variables were intentionally scoped
 // So that we can later refactor into a common variables.scss
-$btn-secondary-color: #0074d9; // azul
 $btn-danger-color: #dc3545; // red*
 
 $border-color: var(--ps-c-gray-light-3);
@@ -59,18 +58,18 @@ $border-radius: 4px;
 }
 
 .secondary {
-  background-color: $btn-secondary-color;
-  border-left-color: $btn-secondary-color;
-  border-right-color: $btn-secondary-color;
-  border-top-color: $btn-secondary-color;
-  border-bottom-color: $btn-secondary-color;
+  background-color: var(--ps-c-blue);
+  border-left-color: var(--ps-c-blue);
+  border-right-color: var(--ps-c-blue);
+  border-top-color: var(--ps-c-blue);
+  border-bottom-color: var(--ps-c-blue);
 
   &:hover {
-    background-color: lighten($btn-secondary-color, 10%);
+    background-color: var(--ps-c-blue-light-1);
   }
   &:disabled {
-    border-color: lighten($btn-secondary-color, 20%);
-    background-color: lighten($btn-secondary-color, 20%);
+    border-color: var(--ps-c-blue-light-3);
+    background-color: var(--ps-c-blue-light-3);
     pointer-events: none;
   }
 }

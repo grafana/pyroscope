@@ -87,7 +87,7 @@
     &:hover,
     &.active {
       color: var(--ps-c-white);
-      background: $btn-hover-color;
+      background: var(--ps-c-gray-light-7);
     }
 
     &:hover {

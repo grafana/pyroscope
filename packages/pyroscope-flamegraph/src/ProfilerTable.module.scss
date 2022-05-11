@@ -1,9 +1,7 @@
-$btn-hover-color: #3b3b3b;
-
 .rowSelected {
   cursor: pointer;
-  background: #54d964 !important;
-  color: black;
+  background: var(--ps-c-green-light-1) !important;
+  color: var(--ps-c-black);
 }
 
 // TODO this uses the same ui as FileList, maybe we should refactor into a table component?
@@ -11,8 +9,8 @@ $btn-hover-color: #3b3b3b;
   tbody tr:not(.rowSelected) {
     &:hover {
       cursor: pointer;
-      color: rgba(255, 255, 255, 1);
-      background: $btn-hover-color;
+      color: var(--ps-c-init-white);
+      background: var(--ps-c-gray-light-7);
     }
   }
 }

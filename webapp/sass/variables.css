@@ -11,6 +11,8 @@
   --ps-c-gray-light-4: #aaaaaa;
   --ps-c-gray-light-5: #414141;
   --ps-c-gray-light-6: #222222;
+  --ps-c-gray-light-7: #3b3b3b;
+  --ps-c-gray-light-8: #d8d8d8;
   --ps-c-white-dark-3: #ffffff08;
   --ps-c-white-dark-2: #ffffff54;
   --ps-c-white-dark-1: #ffffffa8;
@@ -21,6 +23,7 @@
   --ps-c-blue: #0074d9;
   --ps-c-blue-light-1: #0d8eff;
   --ps-c-blue-light-2: #1398f6;
+  --ps-c-blue-light-3: #40a6ff;
   --ps-c-green: #2ecc40;
   --ps-c-green-light-1: #54d964;
   --ps-c-green-success: #28a745;
@@ -32,14 +35,15 @@
   --ps-c-orange-light-2: #fc6d26;
   --ps-c-orange-dark-2: #fc5c0d;
   --ps-c-orange-dark-1: #e53825;
+  --ps-c-orange-dark-3: #df8b53;
   --ps-c-intro-bg-1: #3dc1d3cc;
   --ps-c-intro-bg-2: #d1283980;
 }
 
 [data-theme='light'] {
   --ps-c-black: #ffffff;
-  --ps-c-black-light-1: #ffffff;
-  --ps-c-black-light-2: #ffffff;
+  --ps-c-black-light-1: #ffffff99;
+  --ps-c-black-light-2: #ffffff54;
   --ps-c-gray-dark-2: #ebebeb;
   --ps-c-gray-dark-1: #e4e4e4;
   --ps-c-gray: #dededb;
@@ -49,9 +53,11 @@
   --ps-c-gray-light-4: #555555;
   --ps-c-gray-light-5: #bebebe;
   --ps-c-gray-light-6: #dddddd;
-  --ps-c-white-dark-3: #ffffff08;
-  --ps-c-white-dark-2: #ffffff54;
-  --ps-c-white-dark-1: #ffffffa8;
+  --ps-c-gray-light-7: #c4c4c4;
+  --ps-c-gray-light-8: #272727;
+  --ps-c-white-dark-3: #00000008;
+  --ps-c-white-dark-2: #00000054;
+  --ps-c-white-dark-1: #000000a8;
   --ps-c-white: #191919;
   --ps-c-init-white: #000000;
   --ps-c-blue-dark-1: #e2b65e;
@@ -59,6 +65,7 @@
   --ps-c-blue: #ff8b26;
   --ps-c-blue-light-1: #f27100;
   --ps-c-blue-light-2: #ec6709;
+  --ps-c-blue-light-3: #bf5900;
   --ps-c-green: #d133bf;
   --ps-c-green-light-1: #ab269b;
   --ps-c-green-success: #d758ba;
@@ -70,6 +77,7 @@
   --ps-c-orange-light-2: #0392d9;
   --ps-c-orange-dark-2: #03a3f2;
   --ps-c-orange-dark-1: #1ac7da;
-  --ps-c-intro-bg-1: #3dc1d3cc;
-  --ps-c-intro-bg-2: #d1283980;
+  --ps-c-orange-dark-3: #2074ac;
+  --ps-c-intro-bg-1: #c23e2ccc;
+  --ps-c-intro-bg-2: #2ed7c680;
 }

@@ -2,7 +2,7 @@
 // So we can't use css modules
 $sidebar-bg-color: var(--ps-c-gray);
 $submenu-bg-color: transparent;
-$sidebar-color: rgba(255, 255, 255, 0.66);
+$sidebar-color: var(--ps-c-white-dark-1);
 $submenu-bg-color-collapsed: var(--ps-c-gray);
 $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
@@ -116,6 +116,12 @@ $sidebar-collapsed-width: 54px !default;
 // this will probably break multiple nested items (> 2 levels)
 .pro-sidebar .pro-menu .pro-menu-item.pro-sub-menu .pro-inner-list-item {
   padding-left: 0;
+}
+.pro-sidebar .pro-menu .pro-menu-item.active,
+.pro-sidebar .pro-menu .pro-menu-item.open,
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:focus,
+.pro-sidebar .pro-menu .pro-menu-item {
+  color: var(--ps-c-gray-light-8);
 }
 .pro-sidebar
   .pro-menu

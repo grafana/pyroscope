@@ -3,19 +3,19 @@
 @import '@szhsin/react-menu/dist/index.css';
 
 .dropdownMenu {
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.33);
+  box-shadow: 0 2px 5px var(--ps-c-black-light-2);
   padding: 0.25rem 0;
-  background-color: $btn-color !important;
-  color: $white !important;
+  background-color: var(--ps-c-gray-light-2) !important;
+  color: var(--ps-c-init-white) !important;
 
   & ul[class*='rc-menu'] {
-    background-color: $btn-color;
-    color: $white !important;
+    background-color: var(--ps-c-gray-light-2);
+    color: var(--ps-c-init-white) !important;
   }
 
   & li[class*='hover'],
   div[class*='hover'] {
-    background-color: $btn-hover-color;
+    background-color: var(--ps-c-gray-light-7); //$btn-hover-color;
   }
 
   [class*='rc-menu--open']:empty {
@@ -23,8 +23,8 @@
   }
 
   [class*='rc-menu__item active'] {
-    background-color: $btn-hover-color;
-    color: rgb(223, 139, 83);
+    background-color: var(--ps-c-gray-light-7); //$btn-hover-color;
+    color: var(--ps-c-orange-dark-3);
   }
 
   [class*='rc-menu__item--focusable'] {
@@ -44,8 +44,8 @@
   display: inline-block;
   position: relative;
   border-radius: 4px;
-  background-color: $btn-color;
-  border: 1px solid $btn-border-color;
+  background-color: var(--ps-c-gray-light-2);
+  border: 1px solid var(--ps-c-gray-light-3);
   margin-right: 5px;
   padding-right: 20px;
   &::after {
