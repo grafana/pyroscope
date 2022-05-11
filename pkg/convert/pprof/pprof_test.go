@@ -57,11 +57,11 @@ var _ = Describe("pprof parsing", func() {
 
 	Context("JS", func() {
 		It("can parses CPU profile", func() {
-			p, err := readPprofFixture("testdata/cpu-js.pb.gz")
+			p, err := readPprofFixture("testdata/nodejs-wall.pb.gz")
 			Expect(err).ToNot(HaveOccurred())
 
 			ingester := new(mockIngester)
-			spyName := "spy-name"
+			spyName := "nodespy"
 			now := time.Now()
 			start := now
 			end := now.Add(10 * time.Second)
@@ -84,18 +84,18 @@ var _ = Describe("pprof parsing", func() {
 			Expect(input.SpyName).To(Equal(spyName))
 			Expect(input.StartTime).To(Equal(start))
 			Expect(input.EndTime).To(Equal(end))
-			Expect(input.SampleRate).To(Equal(uint32(1000)))
-			Expect(input.Val.Samples()).To(Equal(uint64(8849)))
+			Expect(input.SampleRate).To(Equal(uint32(100)))
+			Expect(input.Val.Samples()).To(Equal(uint64(898)))
 			Expect(input.Key.Normalized()).To(Equal("app.cpu{foo=bar}"))
-			Expect(input.Val.String()).To(ContainSubstring("pressInit;next;process_params;(anonymous);trim_prefix;handle 1"))
+			Expect(input.Val.String()).To(ContainSubstring("node:_http_server:resOnFinish:819;node:_http_server:detachSocket:252 1"))
 		})
 
 		It("can parse heap profiles", func() {
-			p, err := readPprofFixture("testdata/heap-js.pprof")
+			p, err := readPprofFixture("testdata/nodejs-heap.pb.gz")
 			Expect(err).ToNot(HaveOccurred())
 
 			ingester := new(mockIngester)
-			spyName := "spy-name"
+			spyName := "nodespy"
 			now := time.Now()
 			start := now
 			end := now.Add(10 * time.Second)
@@ -104,12 +104,10 @@ var _ = Describe("pprof parsing", func() {
 				"foo":      "bar",
 			}
 
-			// We intentionally mark these sample types as non-cumulative
-			// to make writer flush the trees to the ingester.
-			Expect(tree.DefaultSampleTypeMapping["objects"].Cumulative).To(BeTrue())
-			Expect(tree.DefaultSampleTypeMapping["space"].Cumulative).To(BeTrue())
-			tree.DefaultSampleTypeMapping["objects"].Cumulative = false
-			tree.DefaultSampleTypeMapping["space"].Cumulative = false
+			Expect(tree.DefaultSampleTypeMapping["inuse_objects"].Cumulative).To(BeFalse())
+			Expect(tree.DefaultSampleTypeMapping["inuse_space"].Cumulative).To(BeFalse())
+			tree.DefaultSampleTypeMapping["inuse_objects"].Cumulative = false
+			tree.DefaultSampleTypeMapping["inuse_space"].Cumulative = false
 
 			w := NewProfileWriter(ingester, ProfileWriterConfig{
 				SampleTypes: tree.DefaultSampleTypeMapping,
@@ -128,17 +126,17 @@ var _ = Describe("pprof parsing", func() {
 			Expect(input.SpyName).To(Equal(spyName))
 			Expect(input.StartTime).To(Equal(start))
 			Expect(input.EndTime).To(Equal(end))
-			Expect(input.Val.Samples()).To(Equal(uint64(66148)))
-			Expect(input.Key.Normalized()).To(Equal("app.objects{foo=bar}"))
-			Expect(input.Val.String()).To(ContainSubstring("parserOnHeadersComplete;parserOnIncoming 2428"))
+			Expect(input.Val.Samples()).To(Equal(uint64(100498)))
+			Expect(input.Key.Normalized()).To(Equal("app.inuse_objects{foo=bar}"))
+			Expect(input.Val.String()).To(ContainSubstring("node:internal/streams/readable:readableAddChunk:236 138"))
 
 			input = ingester.actual[1]
 			Expect(input.SpyName).To(Equal(spyName))
 			Expect(input.StartTime).To(Equal(start))
 			Expect(input.EndTime).To(Equal(end))
-			Expect(input.Val.Samples()).To(Equal(uint64(6388384)))
-			Expect(input.Key.Normalized()).To(Equal("app.space{foo=bar}"))
-			Expect(input.Val.String()).To(ContainSubstring("parserOnHeadersComplete;parserOnIncoming 524448"))
+			Expect(input.Val.Samples()).To(Equal(uint64(8357762)))
+			Expect(input.Key.Normalized()).To(Equal("app.inuse_space{foo=bar}"))
+			Expect(input.Val.String()).To(ContainSubstring("node:internal/net:isIPv6:35;:test:0 555360"))
 		})
 	})
 })
