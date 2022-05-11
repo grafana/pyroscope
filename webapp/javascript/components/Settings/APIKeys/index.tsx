@@ -7,6 +7,8 @@ import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 import { useHistory } from 'react-router-dom';
 
+import debounce from 'lodash.debounce';
+
 import { formatDistance, formatRelative } from 'date-fns/fp';
 import {
   reloadApiKeys,
@@ -28,6 +30,11 @@ const ApiKeys = () => {
     };
   }, []);
 
+  const handleReload = () => {
+    dispatch(reloadApiKeys());
+  };
+  const handleReloadDebounced = debounce(handleReload, 250);
+
   const onDelete = (key: ShamefulAny) => {
     dispatch(deleteAPIKey(key))
       .unwrap()
@@ -45,6 +52,12 @@ const ApiKeys = () => {
   const now = new Date();
   return (
     <>
+      <button className={styles.button} onClick={() => handleReload()}>
+        Reload
+      </button>
+      <button className={styles.button} onClick={() => handleReloadDebounced()}>
+        Reload Debounced
+      </button>
       <h2>API keys</h2>
       <div>
         <Button
