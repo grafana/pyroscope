@@ -25,9 +25,7 @@ const ApiKeys = () => {
 
   useEffect(() => {
     const reload = dispatch(reloadApiKeys());
-    return () => {
-      reload.abort();
-    };
+    return reload.abort;
   }, []);
 
   const handleReload = () => {

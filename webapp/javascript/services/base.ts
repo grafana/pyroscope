@@ -15,6 +15,12 @@ export class RequestNotOkError extends CustomError {
   }
 }
 
+export class RequestAbortedError extends CustomError {
+  public constructor(public description: string) {
+    super(`Request was aborted by user. Description: '${description}'`);
+  }
+}
+
 // RequestError refers to when the request is not completed
 // For example CORS errors or timeouts
 // or simply the address is wrong
@@ -96,6 +102,10 @@ export async function request(
     let message = '';
     if (e instanceof Error) {
       message = e.message;
+    }
+
+    if (e instanceof Error && e.name === 'AbortError') {
+      return Result.err(new RequestAbortedError(message));
     }
 
     return Result.err(new RequestIncompleteError(message));

@@ -17,7 +17,7 @@ import {
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
-import { RequestIncompleteError } from '@webapp/services/base';
+import { RequestAbortedError } from '@webapp/services/base';
 
 type UsersState = {
   type: 'pristine' | 'loading' | 'loaded' | 'failed';
@@ -52,8 +52,8 @@ export const reloadApiKeys = createAsyncThunk(
       return Promise.resolve(res.value);
     }
 
-    if (res.isErr && res.error instanceof RequestIncompleteError) {
-      return Promise.reject(res);
+    if (res.isErr && res.error instanceof RequestAbortedError) {
+      return Promise.reject(res.error);
     }
 
     thunkAPI.dispatch(
