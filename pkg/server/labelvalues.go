@@ -32,7 +32,12 @@ func NewLabelValuesHandler(s storage.LabelValuesGetter, httpUtils httputils.Util
 
 		values := make([]string, 0)
 		if in.Query != "" {
-			s.GetValuesByQuery(ctx, in)
+			output, err := s.GetValuesByQuery(ctx, in)
+			if err != nil {
+				httpUtils.WriteInvalidParameterError(r, w, err)
+				return
+			}
+			values = append(values, output.Values...)
 		} else {
 			s.GetValues(ctx, in.Label, func(v string) bool {
 				values = append(values, v)

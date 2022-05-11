@@ -26,7 +26,12 @@ func NewLabelsHandler(s storage.LabelsGetter, httpUtils httputils.Utils) http.Ha
 
 		keys := make([]string, 0)
 		if in.Query != "" {
-			s.GetKeysByQuery(ctx, in)
+			output, err := s.GetKeysByQuery(ctx, in)
+			if err != nil {
+				httpUtils.WriteInvalidParameterError(r, w, err)
+				return
+			}
+			keys = append(keys, output.Keys...)
 		} else {
 			s.GetKeys(ctx, func(k string) bool {
 				keys = append(keys, k)
