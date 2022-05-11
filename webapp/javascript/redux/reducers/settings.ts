@@ -14,7 +14,6 @@ import {
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
 } from '@webapp/services/apiKeys';
-import { isAbortError } from '../../util/abort';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
@@ -57,7 +56,6 @@ export const reloadApiKeys = createAsyncThunk(
       return Promise.reject(res);
     }
 
-    console.log(res);
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
