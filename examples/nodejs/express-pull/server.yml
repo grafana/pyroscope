@@ -7,6 +7,8 @@ scrape-configs:
       - application: rideshare
         spy-name: nodespy
         targets:
-          - localhost:3000
+          - us-east-1:3000
+          - us-west-1:3000
+          - eu-west-1:3000
         labels:
           env: dev
