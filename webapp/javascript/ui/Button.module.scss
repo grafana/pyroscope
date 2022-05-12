@@ -21,6 +21,12 @@ $dark-text: #222;
   border: $border;
   border-radius: $border-radius;
 
+  &[type='button'],
+  &[type='reset'],
+  &[type='submit'] {
+    -webkit-appearance: button;
+  }
+
   /* when we have an icon only button */
   //min-width: 48px;
 }

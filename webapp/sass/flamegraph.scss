@@ -1,21 +1,26 @@
 @use 'sass:math';
 @use 'variables' as *;
 
-@import '~sanitize.css';
 @import './variables.css';
 
 .flamegraph-root {
   @import 'common';
+
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  canvas {
+    display: inline-block;
+  }
 
   button,
   select {
     color: inherit;
     font: inherit;
     padding: 0.25em 0.375em;
-  }
-
-  ::-ms-expand {
-    display: none;
   }
 
   background-color: var(--ps-c-gray-dark-1);
