@@ -7,12 +7,12 @@ import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
-import { DebounceInput } from 'react-debounce-input';
 import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Button from '@webapp/ui/Button';
+import Input from '@webapp/ui/Input';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 
@@ -294,8 +294,8 @@ function HighlightSearch({
   highlightQuery: ProfileHeaderProps['highlightQuery'];
 }) {
   return (
-    <DebounceInput
-      data-testid="flamegraph-search"
+    <Input
+      testId="flamegraph-search"
       className={`${styles.search} ${
         showMode === 'small' ? styles['search-small'] : ''
       }`}

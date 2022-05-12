@@ -50,13 +50,6 @@ select {
   }
 }
 
-input {
-  @include outline;
-  display: inline-block;
-  position: relative;
-  border-radius: 4px;
-}
-
 .flamegraph-table {
   width: 100%;
   font-size: 14px;
