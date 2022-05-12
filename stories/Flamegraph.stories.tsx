@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer, Box } from '@pyroscope/flamegraph';
 import PyroscopeServerCPU from '../cypress/fixtures/pyroscope.server.cpu.json';
 import SimpleGolangCPU from '../cypress/fixtures/simple-golang-app-cpu.json';
 import Button from '@ui/Button';
@@ -38,20 +38,25 @@ const SimpleTree = {
 
 export const WithToolbar = () => {
   return (
-    <FlamegraphRenderer
-      flamebearer={SimpleTree}
-      display="flamegraph"
-      viewType="single"
-    />
+    <Box>
+      <FlamegraphRenderer flamebearer={SimpleTree} />
+    </Box>
   );
 };
 
 export const WithoutToolbar = () => {
   return (
+    <Box>
+      <FlamegraphRenderer flamebearer={SimpleTree} showToolbar={false} />
+    </Box>
+  );
+};
+
+export const JustFlamegraph = () => {
+  return (
     <FlamegraphRenderer
       flamebearer={SimpleTree}
-      viewType="single"
-      display="flamegraph"
+      onlyDisplay="flamegraph"
       showToolbar={false}
     />
   );
@@ -60,12 +65,13 @@ export const WithoutToolbar = () => {
 // In this case having the toolbar doesn't make much sense?
 export const TableViewWithoutToolbar = () => {
   return (
-    <FlamegraphRenderer
-      flamebearer={SimpleTree}
-      viewType="single"
-      display="table"
-      showToolbar={false}
-    />
+    <Box>
+      <FlamegraphRenderer
+        flamebearer={SimpleTree}
+        onlyDisplay="table"
+        showToolbar={false}
+      />
+    </Box>
   );
 };
 
@@ -79,12 +85,9 @@ export const WithRenderData = () => {
       <Button onClick={() => setProfile(PyroscopeServerCPU)}>
         Complex Tree
       </Button>
-      <FlamegraphRenderer
-        profile={profile}
-        viewType="single"
-        display="flamegraph"
-        showToolbar={false}
-      />
+      <Box>
+        <FlamegraphRenderer profile={profile} showToolbar={false} />
+      </Box>
     </>
   );
 };
