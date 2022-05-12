@@ -12,7 +12,9 @@ import useResizeObserver from '@react-hook/resize-observer';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Button from '@webapp/ui/Button';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import Input from '@webapp/ui/Input';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import Select from '@webapp/ui/Select';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
