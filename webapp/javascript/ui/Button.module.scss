@@ -45,7 +45,7 @@ $dark-text: #222;
 }
 
 .primary {
-  color: $dark-text;
+  color: $dark-text !important;
   background-color: $btn-primary-color;
   border-left-color: $btn-primary-color;
   border-right-color: $btn-primary-color;

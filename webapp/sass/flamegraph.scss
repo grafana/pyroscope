@@ -1,14 +1,22 @@
 @use 'sass:math';
 @use 'variables' as *;
-@use 'mixins/outline' as *;
 
 @import '~sanitize.css';
-@import '~sanitize.css/forms.css';
-@import '~sanitize.css/typography.css';
 @import './variables.css';
 
 .flamegraph-root {
   @import 'common';
+
+  button,
+  select {
+    color: inherit;
+    font: inherit;
+    padding: 0.25em 0.375em;
+  }
+
+  ::-ms-expand {
+    display: none;
+  }
 
   background-color: var(--ps-c-gray-dark-1);
   color: var(--ps-c-white);

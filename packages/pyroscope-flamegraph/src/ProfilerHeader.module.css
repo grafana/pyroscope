@@ -16,9 +16,10 @@
 
 .search {
   background: rgba(255, 255, 255, 0.8);
-  color: #333;
+  color: #333 !important;
   transition: background-color ease-out 0.1s;
   margin-right: 8px;
+  font: inherit;
 }
 .search:focus {
   background: rgba(255, 255, 255, 1);
