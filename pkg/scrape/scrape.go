@@ -34,6 +34,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -43,8 +44,8 @@ var errBodySizeLimit = errors.New("body size limit exceeded")
 
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
-	ingester Ingester
-	logger   logrus.FieldLogger
+	putter storage.Putter
+	logger logrus.FieldLogger
 
 	// Global metrics shared by all pools.
 	metrics *metrics
@@ -67,7 +68,7 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *config.Config, ingester Ingester, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, putter storage.Putter, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
 	m.pools.Inc()
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
@@ -80,7 +81,7 @@ func newScrapePool(cfg *config.Config, ingester Ingester, logger logrus.FieldLog
 		ctx:           ctx,
 		cancel:        cancel,
 		logger:        logger,
-		ingester:      ingester,
+		putter:        putter,
 		config:        cfg,
 		client:        client,
 		activeTargets: make(map[uint64]*Target),
@@ -99,7 +100,7 @@ func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop 
 	x := scrapeLoop{
 		scraper:     s,
 		logger:      sp.logger,
-		ingester:    sp.ingester,
+		putter:      sp.putter,
 		poolMetrics: sp.poolMetrics,
 		stopped:     make(chan struct{}),
 		delta:       d,
@@ -196,7 +197,7 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
 			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, sp.activeTargets[fp].profile.Path),
-			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
+			pprofWriter: pprof.NewProfileWriter(sp.putter, pprof.ProfileWriterConfig{
 				SampleTypes: tgt.profile.SampleTypes,
 				Labels:      tgt.Labels().Map(),
 				SpyName:     tgt.SpyName(),
@@ -282,7 +283,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
 			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.profile.Path),
-			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
+			pprofWriter: pprof.NewProfileWriter(sp.putter, pprof.ProfileWriterConfig{
 				SampleTypes: t.profile.SampleTypes,
 				Labels:      t.Labels().Map(),
 				SpyName:     t.SpyName(),
@@ -320,9 +321,9 @@ func (sp *scrapePool) sync(targets []*Target) {
 }
 
 type scrapeLoop struct {
-	scraper  *scraper
-	logger   logrus.FieldLogger
-	ingester Ingester
+	scraper *scraper
+	logger  logrus.FieldLogger
+	putter  storage.Putter
 
 	poolMetrics *poolMetrics
 

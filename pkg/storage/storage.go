@@ -50,11 +50,7 @@ type Storage struct {
 	tasksMutex sync.Mutex
 	tasksWG    sync.WaitGroup
 	stop       chan struct{}
-
-	queueWorkersWG sync.WaitGroup
-	queue          chan *putInputWithCtx
-
-	putMutex sync.Mutex
+	putMutex   sync.Mutex
 }
 
 type storageOptions struct {
@@ -65,8 +61,6 @@ type storageOptions struct {
 	retentionTaskInterval     time.Duration
 	cacheTTL                  time.Duration
 	gcSizeDiff                bytesize.ByteSize
-	queueLen                  int
-	queueWorkers              int
 }
 
 // MetricsExporter exports values of particular stack traces sample from profiling
@@ -103,12 +97,6 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
 			gcSizeDiff: bytesize.GB,
-			// TODO(kolesnikovae): Implement dynamic throttling.
-			// in-memory queue params.
-			queueLen: 100,
-			// Setting multiple workers does not make sense
-			// because of the storage.Put mutex.
-			queueWorkers: 1, // runtime.NumCPU(),
 		},
 
 		hc:      hc,
@@ -116,8 +104,6 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),
 	}
-
-	s.queue = make(chan *putInputWithCtx, s.queueLen)
 
 	var err error
 	if s.main, err = s.newBadger("main", "", nil); err != nil {
@@ -149,7 +135,6 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 	}
 
 	s.periodicTask(s.writeBackTaskInterval, s.writeBackTask)
-	s.startQueueWorkers()
 
 	if !s.config.inMemory {
 		// TODO(kolesnikovae): Allow failure and skip evictionTask?
@@ -169,7 +154,6 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 func (s *Storage) Close() error {
 	// Stop all periodic and maintenance tasks.
 	close(s.stop)
-	s.queueWorkersWG.Wait()
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")

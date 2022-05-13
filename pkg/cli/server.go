@@ -46,6 +46,7 @@ type serverService struct {
 	logger               *logrus.Logger
 	controller           *server.Controller
 	storage              *storage.Storage
+	ingestionQueue       *storage.IngestionQueue
 	directUpstream       *direct.Direct
 	directScrapeUpstream *direct.Direct
 	analyticsService     *analytics.Service
@@ -61,6 +62,11 @@ type serverService struct {
 	done    chan struct{}
 	group   *errgroup.Group
 }
+
+const (
+	ingestionQueueWorkers = 1
+	ingestionQueueSize    = 100
+)
 
 func newServerService(c *config.Server) (*serverService, error) {
 	logLevel, err := logrus.ParseLevel(c.LogLevel)
@@ -136,9 +142,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
+	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
+		ingestionQueueWorkers,
+		ingestionQueueSize)
+
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
-	svc.directUpstream = direct.New(svc.storage, metricsExporter)
-	svc.directScrapeUpstream = direct.New(svc.storage, metricsExporter)
+	svc.directUpstream = direct.New(svc.ingestionQueue, metricsExporter)
+	svc.directScrapeUpstream = direct.New(svc.ingestionQueue, metricsExporter)
 
 	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
@@ -155,12 +165,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		svc.storage,
+		svc.ingestionQueue,
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:   svc.config,
 		Storage:         svc.storage,
+		Putter:          svc.ingestionQueue,
 		MetricsExporter: metricsExporter,
 		Notifier:        svc.healthController,
 		Adhoc: adhocserver.New(
@@ -285,6 +296,8 @@ func (svc *serverService) stop() {
 	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
 	svc.directScrapeUpstream.Stop()
+	svc.logger.Debug("stopping ingestion queue")
+	svc.ingestionQueue.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")

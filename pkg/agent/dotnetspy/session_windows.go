@@ -1,3 +1,4 @@
+//go:build dotnetspy
 // +build dotnetspy
 
 package dotnetspy

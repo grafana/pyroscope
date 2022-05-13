@@ -16,14 +16,14 @@ import (
 const upstreamThreads = 1
 
 type Direct struct {
-	storage  *storage.Storage
+	storage  storage.Putter
 	exporter storage.MetricsExporter
 	queue    chan *upstream.UploadJob
 	stop     chan struct{}
 	wg       sync.WaitGroup
 }
 
-func New(s *storage.Storage, e storage.MetricsExporter) *Direct {
+func New(s storage.Putter, e storage.MetricsExporter) *Direct {
 	return &Direct{
 		storage:  s,
 		exporter: e,

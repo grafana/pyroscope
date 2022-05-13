@@ -1,0 +1,85 @@
+package storage
+
+import (
+	"context"
+	"fmt"
+	"runtime/debug"
+	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/sirupsen/logrus"
+)
+
+type IngestionQueue struct {
+	logger logrus.FieldLogger
+	putter Putter
+
+	wg    sync.WaitGroup
+	queue chan *PutInput
+	stop  chan struct{}
+
+	discardedTotal prometheus.Counter
+}
+
+func NewIngestionQueue(logger logrus.FieldLogger, putter Putter, r prometheus.Registerer, queueWorkers, queueSize int) *IngestionQueue {
+	q := IngestionQueue{
+		logger: logger,
+		putter: putter,
+		queue:  make(chan *PutInput, queueSize),
+		stop:   make(chan struct{}),
+
+		discardedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_ingestion_queue_discarded_total",
+			Help: "number of ingestion requests discarded",
+		}),
+	}
+
+	q.wg.Add(queueWorkers)
+	for i := 0; i < queueWorkers; i++ {
+		go q.runQueueWorker()
+	}
+
+	return &q
+}
+
+func (s *IngestionQueue) Stop() {
+	close(s.stop)
+	s.wg.Wait()
+}
+
+func (s *IngestionQueue) Put(ctx context.Context, input *PutInput) error {
+	select {
+	case s.queue <- input:
+	case <-ctx.Done():
+	case <-s.stop:
+	default:
+	}
+	s.discardedTotal.Inc()
+	return nil
+}
+
+func (s *IngestionQueue) runQueueWorker() {
+	defer s.wg.Done()
+	for {
+		select {
+		case input, ok := <-s.queue:
+			if ok {
+				if err := s.safePut(input); err != nil {
+					s.logger.WithField("key", input.Key.Normalized()).WithError(err).Error("error happened while ingesting data")
+				}
+			}
+		case <-s.stop:
+			return
+		}
+	}
+}
+
+func (s *IngestionQueue) safePut(input *PutInput) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
+		}
+	}()
+	return s.putter.Put(context.TODO(), input)
+}

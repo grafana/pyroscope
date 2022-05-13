@@ -1,3 +1,4 @@
+//go:build !rbspy
 // +build !rbspy
 
 package rbspy

@@ -11,12 +11,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-type Ingester interface {
-	Enqueue(context.Context, *storage.PutInput)
-}
-
 type ProfileWriter struct {
-	ingester    Ingester
+	putter      storage.Putter
 	spyName     string
 	labels      map[string]string
 	sampleTypes map[string]*tree.SampleTypeConfig
@@ -30,9 +26,9 @@ type ProfileWriterConfig struct {
 	SampleTypes map[string]*tree.SampleTypeConfig
 }
 
-func NewProfileWriter(ingester Ingester, config ProfileWriterConfig) *ProfileWriter {
+func NewProfileWriter(putter storage.Putter, config ProfileWriterConfig) *ProfileWriter {
 	w := ProfileWriter{
-		ingester:    ingester,
+		putter:      putter,
 		spyName:     config.SpyName,
 		labels:      config.Labels,
 		sampleTypes: config.SampleTypes,
@@ -85,8 +81,8 @@ func (w *ProfileWriter) WriteProfile(ctx context.Context, startTime, endTime tim
 			pi.Units = metadata.Units(p.StringTable[vt.Unit])
 		}
 		pi.Key = w.buildName(sampleType, p.ResolveLabels(l))
-		w.ingester.Enqueue(ctx, &pi)
-		return sampleTypeConfig.Cumulative, nil
+		err = w.putter.Put(ctx, &pi)
+		return sampleTypeConfig.Cumulative, err
 	})
 }
 

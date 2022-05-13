@@ -12,10 +12,6 @@ type Getter interface {
 	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
 }
 
-type Enqueuer interface {
-	Enqueue(ctx context.Context, input *PutInput)
-}
-
 type Merger interface {
 	MergeProfiles(ctx context.Context, mi MergeProfilesInput) (o MergeProfilesOutput, err error)
 }
@@ -38,8 +34,6 @@ type AppNameGetter interface {
 // type Backend interface {
 // 	Put(ctx context.Context, pi *PutInput) error
 // 	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
-
-// 	Enqueue(ctx context.Context, input *PutInput)
 
 // 	GetAppNames(ctx context.Context, ) []string
 // 	GetKeys(ctx context.Context, cb func(string) bool)

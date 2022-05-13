@@ -1,3 +1,4 @@
+//go:build !pyspy
 // +build !pyspy
 
 package pyspy

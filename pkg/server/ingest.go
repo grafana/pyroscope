@@ -30,7 +30,7 @@ type ingestHandler struct {
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
-	p := parser.New(ctrl.log, ctrl.storage, ctrl.exporter)
+	p := parser.New(ctrl.log, ctrl.putter, ctrl.exporter)
 	return NewIngestHandler(ctrl.log, p, func(pi *parser.PutInput) {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.SpyName)

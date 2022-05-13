@@ -14,8 +14,9 @@ import (
 
 type mockIngester struct{ actual []*storage.PutInput }
 
-func (m *mockIngester) Enqueue(_ context.Context, p *storage.PutInput) {
+func (m *mockIngester) Put(_ context.Context, p *storage.PutInput) error {
 	m.actual = append(m.actual, p)
+	return nil
 }
 
 var _ = Describe("pprof parsing", func() {

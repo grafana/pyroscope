@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/valyala/bytebufferpool"
+
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
@@ -17,14 +20,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
-	"github.com/sirupsen/logrus"
-	"github.com/valyala/bytebufferpool"
 )
-
-type ParserStorage interface {
-	storage.Putter
-	storage.Enqueuer
-}
 
 type PutInput struct {
 	Format            string
@@ -44,12 +40,12 @@ type PutInput struct {
 
 type Parser struct {
 	log        *logrus.Logger
-	storage    ParserStorage
+	storage    storage.Putter
 	exporter   storage.MetricsExporter
 	bufferPool *bytebufferpool.Pool
 }
 
-func New(log *logrus.Logger, s ParserStorage, exporter storage.MetricsExporter) *Parser {
+func New(log *logrus.Logger, s storage.Putter, exporter storage.MetricsExporter) *Parser {
 	return &Parser{
 		log:        log,
 		storage:    s,
@@ -124,7 +120,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 	return err, pErr
 }
 
-func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) error {
+func writePprofFromBody(ctx context.Context, s storage.Putter, pi *PutInput) error {
 	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
 		SampleTypes: tree.DefaultSampleTypeMapping,
 		Labels:      pi.Key.Labels(),
@@ -134,7 +130,8 @@ func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) erro
 		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
 	})
 }
-func writePprofFromForm(ctx context.Context, s ParserStorage, pi *PutInput) error {
+
+func writePprofFromForm(ctx context.Context, s storage.Putter, pi *PutInput) error {
 	// maxMemory 32MB
 	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
 	if err != nil {
