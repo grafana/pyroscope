@@ -618,8 +618,8 @@ github.com/pyroscope-io/dotnetdiag v1.2.1 h1:3XEMrfFJnZ87BiEhozyQKmCUAuMd/Spq7KC
 github.com/pyroscope-io/dotnetdiag v1.2.1/go.mod h1:eFUEHCp4eD1TgcXMlJihC+R4MrqGf7nTRdWxNADbDHA=
 github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1 h1:T1fDdt3E3UpaGZ7tRF2IYrUFwNyuPlIWGeCOjfINp1s=
 github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1/go.mod h1:PbX5bxlj/WxyKIEAxYgNMNWUpXP4rt9GqtjfvTf8m+I=
-github.com/pyroscope-io/jfr-parser v0.4.1 h1:lYFQHIQC3YkjlQhqf5fsObyW7sxAjc6NsFodOMNg9js=
-github.com/pyroscope-io/jfr-parser v0.4.1/go.mod h1:ZMcbJjfDkOwElEK8CvUJbpetztRWRXszCmf5WU0erV8=
+github.com/pyroscope-io/jfr-parser v0.5.0 h1:ikmZZA6K2qbvvGOIXbU2EosMbTRTgoihyJC9eSZonjI=
+github.com/pyroscope-io/jfr-parser v0.5.0/go.mod h1:ZMcbJjfDkOwElEK8CvUJbpetztRWRXszCmf5WU0erV8=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1 h1:0v9lBNgdmVtpyyk9PP/DfpJlOHkXriu5YgNlrhQw5YE=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1/go.mod h1:tSw34BaGZ0iF+oVKDOjq1/LuxGifgW7shaJ6+dBYFXg=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
