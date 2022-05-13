@@ -168,7 +168,7 @@ tt {
     border-radius: 0;
     border-left: none;
     &:first-child {
-      border-left: 1px solid $btn-border-color;
+      border-left: 1px solid var(--ps-c-gray-light-3);
       border-radius: 4px 0 0 4px;
     }
     &:last-child {
