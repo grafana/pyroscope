@@ -55,6 +55,8 @@ func (s *IngestionQueue) Put(ctx context.Context, input *PutInput) error {
 	case s.queue <- input:
 		// Once input is queued, context cancellation is ignored.
 		return nil
+	default:
+		// Drop data if the queue is full.
 	}
 	s.discardedTotal.Inc()
 	return nil
