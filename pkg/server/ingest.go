@@ -13,13 +13,14 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type Parser interface {
-	Put(context.Context, *parser.PutInput) (error, error)
+	Put(context.Context, *parser.PutInput) error
 }
 
 type ingestHandler struct {
@@ -54,21 +55,15 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// this method returns two errors to distinguish between parsing and ingestion errors
-	// TODO(petethepig): maybe there's a more idiomatic way to do this?
-	err, ingestErr := h.parser.Put(r.Context(), pi)
-
-	if err != nil {
-		h.httpUtils.WriteError(r, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
-		return
-	}
-
-	if ingestErr != nil {
+	err = h.parser.Put(r.Context(), pi)
+	switch {
+	case err == nil:
+		h.onSuccess(pi)
+	case storage.IsIngestionError(err):
 		h.httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "error happened while ingesting data")
-		return
+	default:
+		h.httpUtils.WriteError(r, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 	}
-
-	h.onSuccess(pi)
 }
 
 func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInput, error) {

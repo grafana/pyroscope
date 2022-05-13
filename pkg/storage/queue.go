@@ -50,10 +50,11 @@ func (s *IngestionQueue) Stop() {
 
 func (s *IngestionQueue) Put(ctx context.Context, input *PutInput) error {
 	select {
-	case s.queue <- input:
 	case <-ctx.Done():
 	case <-s.stop:
-	default:
+	case s.queue <- input:
+		// Once input is queued, context cancellation is ignored.
+		return nil
 	}
 	s.discardedTotal.Inc()
 	return nil
@@ -81,5 +82,6 @@ func (s *IngestionQueue) safePut(input *PutInput) (err error) {
 			err = fmt.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
 		}
 	}()
+	// TODO(kolesnikovae): It's better to derive a context that is cancelled on Stop.
 	return s.putter.Put(context.TODO(), input)
 }

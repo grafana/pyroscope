@@ -40,7 +40,7 @@ type PutInput struct {
 
 type Parser struct {
 	log        *logrus.Logger
-	storage    storage.Putter
+	putter     storage.Putter
 	exporter   storage.MetricsExporter
 	bufferPool *bytebufferpool.Pool
 }
@@ -48,7 +48,7 @@ type Parser struct {
 func New(log *logrus.Logger, s storage.Putter, exporter storage.MetricsExporter) *Parser {
 	return &Parser{
 		log:        log,
-		storage:    s,
+		putter:     s,
 		exporter:   exporter,
 		bufferPool: &bytebufferpool.Pool{},
 	}
@@ -67,8 +67,8 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 	}
 }
 
-// Put takes parser.PutInput, turns it into storage.PutIntput and enqueues it for a write
-func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) {
+// Put takes parser.PutInput, turns it into storage.PutIntput and passes it to Putter.
+func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	pi := &storage.PutInput{
 		StartTime:       in.StartTime,
 		EndTime:         in.EndTime,
@@ -78,17 +78,9 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		Units:           in.Units,
 		AggregationType: in.AggregationType,
 	}
+
 	cb := p.createParseCallback(pi)
-
-	// for tests (ingest_test.go):
-	// b, _ := io.ReadAll(in.Body)
-	// f, _ := os.Create("./pkg/server/testdata/jfr-" + strconv.Itoa(i) + ".bin.gz")
-	// i++
-	// w := gzip.NewWriter(f)
-	// w.Write(b)
-	// w.Close()
-	// in.Body = bytes.NewReader(b)
-
+	var err error
 	switch {
 	case in.Format == "trie", in.ContentType == "binary/octet-stream+trie":
 		tmpBuf := p.bufferPool.Get()
@@ -99,25 +91,30 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 	case in.Format == "lines":
 		err = convert.ParseIndividualLines(in.Body, cb)
 	case in.Format == "jfr":
-		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi)
+		err = jfr.ParseJFR(ctx, in.Body, p.putter, pi)
 	case in.Format == "pprof":
-		err = writePprofFromBody(ctx, p.storage, in)
+		err = writePprofFromBody(ctx, p.putter, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
-		err = writePprofFromForm(ctx, p.storage, in)
+		err = writePprofFromForm(ctx, p.putter, in)
 	default:
 		err = convert.ParseGroups(in.Body, cb)
 	}
 
 	if err != nil {
-		return err, pErr
+		return err
 	}
 
 	// with some formats we write directly to storage (e.g look at "multipart/form-data" above)
 	// TODO(petethepig): this is unintuitive and error prone, need to refactor at some point
-	if pi.Val != nil {
-		pErr = p.storage.Put(ctx, pi)
+	if pi.Val == nil {
+		return nil
 	}
-	return err, pErr
+
+	if err = p.putter.Put(ctx, pi); err != nil {
+		return storage.IngestionError{Err: err}
+	}
+
+	return nil
 }
 
 func writePprofFromBody(ctx context.Context, s storage.Putter, pi *PutInput) error {
