@@ -23,8 +23,8 @@ body {
   font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
     Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 
-  background-color: var(--ps-c-gray-dark-1);
-  color: var(--ps-c-white);
+  background-color: var(--ps-neutral-6);
+  color: var(--ps-neutral-20);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -180,7 +180,7 @@ $pane-width: 6px;
 }
 
 .right-instructions-text {
-  color: var(--ps-c-blue-light-2);
+  color: var(--ps-accent-1-5);
   font-size: 12px;
 }
 
@@ -225,7 +225,7 @@ $pane-width: 6px;
     // flex-grow: 1;
   }
   a {
-    color: var(--ps-c-white);
+    color: var(--ps-neutral-20);
     text-decoration: none;
     &:hover span {
       text-decoration: underline;
@@ -304,12 +304,12 @@ body,
     padding-left: 12px;
     padding-right: 12px;
     &.active {
-      background-color: var(--ps-c-green);
+      background-color: var(--ps-accent-2-1);
       color: #222;
-      border-left-color: var(--ps-c-green);
-      border-right-color: var(--ps-c-green);
-      border-top-color: var(--ps-c-green);
-      border-bottom-color: var(--ps-c-green);
+      border-left-color: var(--ps-accent-2-1);
+      border-right-color: var(--ps-accent-2-1);
+      border-top-color: var(--ps-accent-2-1);
+      border-bottom-color: var(--ps-accent-2-1);
     }
   }
 

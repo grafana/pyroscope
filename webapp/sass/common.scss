@@ -9,7 +9,7 @@ tt {
   border-radius: 3px;
   border: 1px solidver(--ps-gray-light-4);
   padding: 2px 4px;
-  background-color: var(--ps-c-white-dark-2);
+  background-color: var(--ps-neutral-18);
 }
 
 .navbar {
@@ -47,8 +47,8 @@ tt {
     text-align: right;
     padding: 0px 10px;
 
-    border-left: 1px solid var(--ps-c-gray-light-1);
-    border-bottom: 1px solid var(--ps-c-gray-light-1);
+    border-left: 1px solid var(--ps-neutral-8);
+    border-bottom: 1px solid var(--ps-neutral-8);
     width: 150px;
     min-width: 150px;
     max-width: 150px;
@@ -61,23 +61,23 @@ tt {
     .sort-arrow {
       display: inline-block;
       border: 5px solid transparent;
-      border-top-color: var(--ps-c-white-dark-2);
+      border-top-color: var(--ps-neutral-18);
       top: 3px;
       position: relative;
       margin-left: 7px;
       &.asc {
         border-top-color: transparent;
-        border-bottom-color: var(--ps-c-white);
+        border-bottom-color: var(--ps-neutral-20);
         top: -2px;
       }
       &.desc {
-        border-top-color: var(--ps-c-white);
+        border-top-color: var(--ps-neutral-20);
         top: 3px;
       }
     }
 
     span {
-      text-shadow: 0 0 2px var(--ps-c-black-light-2);
+      text-shadow: 0 0 2px var(--ps-neutral-4);
     }
 
     &:first-child {
@@ -110,7 +110,7 @@ tt {
   }
   tr th,
   tr:nth-child(2n) td {
-    background: var(--ps-c-white-dark-3);
+    background: var(--ps-neutral-17);
   }
 
   td {
@@ -150,11 +150,11 @@ tt {
 .footer {
   .navbar-link {
     a {
-      color: var(--ps-c-white);
+      color: var(--ps-neutral-20);
       text-decoration: none;
       font-weight: 500;
       &:hover {
-        color: var(--ps-c-white);
+        color: var(--ps-neutral-20);
         cursor: pointer;
       }
     }
@@ -168,7 +168,7 @@ tt {
     border-radius: 0;
     border-left: none;
     &:first-child {
-      border-left: 1px solid var(--ps-c-gray-light-3);
+      border-left: 1px solid var(--ps-neutral-10);
       border-radius: 4px 0 0 4px;
     }
     &:last-child {

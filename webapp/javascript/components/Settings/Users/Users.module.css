@@ -18,7 +18,7 @@
 
 .usersTableEmptyMessage {
   text-align: center;
-  color: var(--ps-c-white-dark-1);
+  color: var(--ps-neutral-19);
 }
 
 .actionContainer {

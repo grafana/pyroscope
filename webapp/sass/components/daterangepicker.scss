@@ -22,15 +22,15 @@
   }
 
   .drp-dropdown {
-    background-color: var(--ps-c-gray);
+    background-color: var(--ps-neutral-7);
     display: none;
     position: absolute;
     top: 45px;
     right: 0px;
     width: 400px;
     padding: 20px 20px 20px 20px;
-    border: 1px solid var(--ps-c-gray-light-3);
-    box-shadow: 0 5px 20px var(--ps-c-black);
+    border: 1px solid var(--ps-neutral-10);
+    box-shadow: 0 5px 20px var(--ps-neutral-1);
     border-radius: 4px;
 
     // 2 so that it's above the '.tags-bar .tags-highlighted' element
@@ -76,7 +76,7 @@
     padding: 2px 0;
     // compensates for the negative margin in .drp-presets
     padding-left: 20px;
-    color: var(--ps-c-white-dark-1);
+    color: var(--ps-neutral-19);
 
     // give some room between the text and the icon
     // https://web.dev/learn/css/logical-properties/#solving-the-icon-issue
@@ -86,8 +86,8 @@
 
     &:hover,
     &.active {
-      color: var(--ps-c-white);
-      background: var(--ps-c-gray-light-7);
+      color: var(--ps-neutral-20);
+      background: var(--ps-neutral-14);
     }
 
     &:hover {
@@ -127,23 +127,23 @@
 
 // range picker custom styles
 .react-datepicker__day--in-range {
-  background-color: var(--ps-c-blue-dark) !important;
-  color: var(--ps-c-white) !important;
+  background-color: var(--ps-accent-1-2) !important;
+  color: var(--ps-neutral-20) !important;
 }
 .react-datepicker__day--in-selecting-range {
   background: none;
-  color: var(--ps-c-black);
+  color: var(--ps-neutral-1);
 }
 .react-datepicker__day--in-range:hover {
-  background-color: var(--ps-c-blue-dark);
-  color: var(--ps-c-white);
+  background-color: var(--ps-accent-1-2);
+  color: var(--ps-neutral-20);
 }
 
 .react-datepicker__day--disabled {
   background-color: transparent;
-  color: var(--ps-c-gray-light-4);
+  color: var(--ps-neutral-11);
 }
 
 .react-datepicker__day--in-selecting-range:hover {
-  color: var(--ps-c-white);
+  color: var(--ps-neutral-20);
 }

@@ -16,11 +16,11 @@
   padding: 10px 5px;
   text-decoration: none;
   position: relative;
-  color: var(--ps-c-white-dark-1);
+  color: var(--ps-neutral-19);
 }
 
 .navLinkActive {
-  color: var(--ps-c-white);
+  color: var(--ps-neutral-20);
 }
 
 /*Active link underline*/
@@ -33,7 +33,7 @@
   height: 4px;
   bottom: 6px;
   border-radius: 2px;
-  background: var(--ps-c-blue);
+  background: var(--ps-accent-1-3);
 }
 
 .settingsWrapper h1 {

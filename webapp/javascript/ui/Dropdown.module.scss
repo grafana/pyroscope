@@ -1,19 +1,19 @@
 @import '@szhsin/react-menu/dist/index.css';
 
 .dropdownMenu {
-  box-shadow: 0 2px 5px var(--ps-c-black-light-2);
+  box-shadow: 0 2px 5px var(--ps-neutral-4);
   padding: 0.25rem 0;
-  background-color: var(--ps-c-gray-light-2) !important;
-  color: var(--ps-c-init-white) !important;
+  background-color: var(--ps-neutral-9) !important;
+  color: var(--ps-neutral-2) !important;
 
   & ul[class*='rc-menu'] {
-    background-color: var(--ps-c-gray-light-2);
-    color: var(--ps-c-init-white) !important;
+    background-color: var(--ps-neutral-9);
+    color: var(--ps-neutral-2) !important;
   }
 
   & li[class*='hover'],
   div[class*='hover'] {
-    background-color: var(--ps-c-gray-light-7);
+    background-color: var(--ps-neutral-14);
   }
 
   [class*='rc-menu--open']:empty {
@@ -21,8 +21,8 @@
   }
 
   [class*='rc-menu__item active'] {
-    background-color: var(--ps-c-gray-light-7);
-    color: var(--ps-c-orange-dark-3);
+    background-color: var(--ps-neutral-14);
+    color: var(--ps-accent-3-9);
   }
 
   [class*='rc-menu__item--focusable'] {
@@ -42,8 +42,8 @@
   display: inline-block;
   position: relative;
   border-radius: 4px;
-  background-color: var(--ps-c-gray-light-2);
-  border: 1px solid var(--ps-c-gray-light-3);
+  background-color: var(--ps-neutral-9);
+  border: 1px solid var(--ps-neutral-10);
   margin-right: 5px;
   padding-right: 20px;
   &::after {

@@ -1,9 +1,9 @@
 // Unfortunately the lib uses SASS directly
 // So we can't use css modules
-$sidebar-bg-color: var(--ps-c-gray);
+$sidebar-bg-color: var(--ps-neutral-7);
 $submenu-bg-color: transparent;
-$sidebar-color: var(--ps-c-white-dark-1);
-$submenu-bg-color-collapsed: var(--ps-c-gray);
+$sidebar-color: var(--ps-neutral-19);
+$submenu-bg-color-collapsed: var(--ps-neutral-7);
 $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
 
@@ -36,8 +36,8 @@ $sidebar-collapsed-width: 54px !default;
 // when collapsed, highlight since there's nothing visible
 .pro-sidebar.collapsed .pro-menu-item.active,
 .pro-sidebar.collapsed .pro-sub-menu.pro-menu-item:hover {
-  background: var(--ps-c-gray-light-1);
-  color: var(--ps-c-white);
+  background: var(--ps-neutral-8);
+  color: var(--ps-neutral-20);
 }
 
 // for some reason it was inheriting a different background
@@ -121,7 +121,7 @@ $sidebar-collapsed-width: 54px !default;
 .pro-sidebar .pro-menu .pro-menu-item.open,
 .pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:focus,
 .pro-sidebar .pro-menu .pro-menu-item {
-  color: var(--ps-c-gray-light-8);
+  color: var(--ps-neutral-15);
 }
 .pro-sidebar
   .pro-menu

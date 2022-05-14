@@ -1,9 +1,9 @@
 .popup {
-  background-color: var(--ps-c-gray);
+  background-color: var(--ps-neutral-7);
 }
 
 .popup label {
-  color: var(--ps-c-white);
+  color: var(--ps-neutral-20);
 }
 
 .popup button.button:focus {
@@ -11,25 +11,25 @@
 }
 
 .title {
-  color: var(--ps-c-white);
+  color: var(--ps-neutral-20);
 }
 
 .input {
   outline: none;
-  color: var(--ps-c-white);
-  background-color: var(--ps-c-gray-light-2);
-  border: 1px solid var(--ps-c-gray-light-3);
+  color: var(--ps-neutral-20);
+  background-color: var(--ps-neutral-9);
+  border: 1px solid var(--ps-neutral-10);
   border-radius: 4px;
 }
 
 .input:focus {
   outline: none;
   box-shadow: none;
-  border: 1px solid var(--ps-c-gray-light-3);
+  border: 1px solid var(--ps-neutral-10);
 }
 
 .validationMessage {
-  color: var(--ps-c-white);
+  color: var(--ps-neutral-20);
   font-weight: bold;
-  background-color: var(--ps-c-red-error);
+  background-color: var(--ps-accent-3-1);
 }
