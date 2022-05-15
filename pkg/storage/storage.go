@@ -88,7 +88,6 @@ type SampleObserver interface {
 }
 
 func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller) (*Storage, error) {
-
 	s := &Storage{
 		config: c,
 		storageOptions: &storageOptions{
