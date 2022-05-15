@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,6 +20,8 @@ type Config struct {
 	retention             time.Duration
 	retentionExemplars    time.Duration
 	retentionLevels       config.RetentionLevels
+
+	NewBadger func(name string, p Prefix, codec cache.Codec) (BadgerDBWithCache, error)
 }
 
 // NewConfig returns a new storage config from a server config

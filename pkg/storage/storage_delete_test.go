@@ -41,7 +41,7 @@ var _ = Describe("storage package", func() {
 			Expect(err).ToNot(HaveOccurred())
 			segmentKeyStr := segmentKey.SegmentKey()
 			Expect(segmentKeyStr).To(Equal(appname + "{}"))
-			_, ok := s.segments.Cache.Lookup(segmentKeyStr)
+			_, ok := s.segments.Lookup(segmentKeyStr)
 
 			if presence {
 				Expect(ok).To(BeTrue())
@@ -65,7 +65,7 @@ var _ = Describe("storage package", func() {
 			key, err := segment.ParseKey(appname)
 			Expect(err).ToNot(HaveOccurred())
 			treeKeyName := key.TreeKey(depth, st)
-			t, ok := s.trees.Cache.Lookup(treeKeyName)
+			t, ok := s.trees.Lookup(treeKeyName)
 			if presence {
 				Expect(ok).To(BeTrue())
 			} else {
@@ -76,7 +76,7 @@ var _ = Describe("storage package", func() {
 		}
 
 		checkDictsPresence := func(appname string, presence bool) interface{} {
-			d, ok := s.dicts.Cache.Lookup(appname)
+			d, ok := s.dicts.Lookup(appname)
 			if presence {
 				Expect(ok).To(BeTrue())
 			} else {
@@ -135,20 +135,20 @@ var _ = Describe("storage package", func() {
 				/*  S a n i t y   C h e c k s  */
 				/*******************************/
 				// Dimensions
-				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(1)))
+				Expect(s.dimensions.Size()).To(Equal(uint64(1)))
 				checkDimensionsPresence(appname, true)
 
 				// Trees
-				Expect(s.trees.Cache.Size()).To(Equal(uint64(1)))
+				Expect(s.trees.Size()).To(Equal(uint64(1)))
 				checkTreesPresence(appname, st, 0, true)
 
 				// Segments
-				Expect(s.segments.Cache.Size()).To(Equal(uint64(1)))
+				Expect(s.segments.Size()).To(Equal(uint64(1)))
 				checkSegmentsPresence(appname, true)
 
 				// Dicts
 				// I manually inserted a dictionary so it should be fine?
-				Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
+				Expect(s.dicts.Size()).To(Equal(uint64(1)))
 				checkDictsPresence(appname, true)
 
 				// Labels
@@ -162,19 +162,19 @@ var _ = Describe("storage package", func() {
 
 				// Trees
 				// should've been deleted from CACHE
-				Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.trees.Size()).To(Equal(uint64(0)))
 				checkTreesPresence(appname, st, 0, false)
 
 				// Dimensions
-				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.dimensions.Size()).To(Equal(uint64(0)))
 				checkDimensionsPresence(appname, false)
 
 				// Dicts
-				Expect(s.dicts.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.dicts.Size()).To(Equal(uint64(0)))
 				checkDictsPresence(appname, false)
 
 				// Segments
-				Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.segments.Size()).To(Equal(uint64(0)))
 				checkSegmentsPresence(appname, false)
 
 				// Labels
@@ -223,21 +223,21 @@ var _ = Describe("storage package", func() {
 				/*******************************/
 
 				By("checking dimensions were created")
-				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(4)))
+				Expect(s.dimensions.Size()).To(Equal(uint64(4)))
 				checkDimensionsPresence(appname, true)
 
 				By("checking trees were created")
-				Expect(s.trees.Cache.Size()).To(Equal(uint64(3)))
+				Expect(s.trees.Size()).To(Equal(uint64(3)))
 				checkTreesPresence(appname, st, 0, true)
 
 				By("checking segments were created")
-				Expect(s.segments.Cache.Size()).To(Equal(uint64(3)))
+				Expect(s.segments.Size()).To(Equal(uint64(3)))
 				checkSegmentsPresence(appname, true)
 
 				By("checking dicts were created")
 				// Dicts
 				// I manually inserted a dictionary so it should be fine?
-				Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
+				Expect(s.dicts.Size()).To(Equal(uint64(1)))
 				checkDictsPresence(appname, true)
 
 				// Labels
@@ -253,22 +253,22 @@ var _ = Describe("storage package", func() {
 				By("checking trees were deleted")
 				// Trees
 				// should've been deleted from CACHE
-				Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.trees.Size()).To(Equal(uint64(0)))
 				checkTreesPresence(appname, st, 0, false)
 
 				// Dimensions
 				By("checking dimensions were deleted")
-				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.dimensions.Size()).To(Equal(uint64(0)))
 				checkDimensionsPresence(appname, false)
 
 				// Dicts
 				By("checking dicts were deleted")
-				Expect(s.dicts.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.dicts.Size()).To(Equal(uint64(0)))
 				checkDictsPresence(appname, false)
 
 				// Segments
 				By("checking segments were deleted")
-				Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
+				Expect(s.segments.Size()).To(Equal(uint64(0)))
 				checkSegmentsPresence(appname, false)
 
 				// Labels
@@ -325,22 +325,22 @@ var _ = Describe("storage package", func() {
 				/*  S a n i t y   C h e c k s  */
 				/*******************************/
 				By("checking dimensions were created")
-				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(5)))
+				Expect(s.dimensions.Size()).To(Equal(uint64(5)))
 				checkDimensionsPresence(app1name, true)
 				checkDimensionsPresence(app2name, true)
 
 				By("checking trees were created")
-				Expect(s.trees.Cache.Size()).To(Equal(uint64(6)))
+				Expect(s.trees.Size()).To(Equal(uint64(6)))
 				checkTreesPresence(app1name, st, 0, true)
 				checkTreesPresence(app2name, st, 0, true)
 
 				By("checking segments were created")
-				Expect(s.segments.Cache.Size()).To(Equal(uint64(6)))
+				Expect(s.segments.Size()).To(Equal(uint64(6)))
 				checkSegmentsPresence(app1name, true)
 				checkSegmentsPresence(app2name, true)
 
 				By("checking dicts were created")
-				Expect(s.dicts.Cache.Size()).To(Equal(uint64(2)))
+				Expect(s.dicts.Size()).To(Equal(uint64(2)))
 				checkDictsPresence(app1name, true)
 				checkDictsPresence(app2name, true)
 
@@ -356,13 +356,13 @@ var _ = Describe("storage package", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("checking trees were deleted")
-				Expect(s.trees.Cache.Size()).To(Equal(uint64(3)))
+				Expect(s.trees.Size()).To(Equal(uint64(3)))
 				checkTreesPresence(app1name, st, 0, false)
 				checkTreesPresence(app2name, st, 0, true)
 
 				// Dimensions
 				By("checking dimensions were deleted")
-				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(4)))
+				Expect(s.dimensions.Size()).To(Equal(uint64(4)))
 
 				// Dimensions that refer to app2 are still intact
 				v, ok := s.dimensions.Lookup("__name__:myapp2.cpu")
@@ -393,12 +393,12 @@ var _ = Describe("storage package", func() {
 				}))
 
 				By("checking dicts were deleted")
-				Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
+				Expect(s.dicts.Size()).To(Equal(uint64(1)))
 				checkDictsPresence(app1name, false)
 				checkDictsPresence(app2name, true)
 
 				By("checking segments were deleted")
-				Expect(s.segments.Cache.Size()).To(Equal(uint64(3)))
+				Expect(s.segments.Size()).To(Equal(uint64(3)))
 				checkSegmentsPresence(app1name, false)
 				checkSegmentsPresence(app2name, true)
 
@@ -450,19 +450,19 @@ var _ = Describe("storage package", func() {
 			/*******************************/
 			sanityChecks := func() {
 				By("checking dimensions were created")
-				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(4)))
+				Expect(s.dimensions.Size()).To(Equal(uint64(4)))
 				checkDimensionsPresence(appname, true)
 
 				By("checking trees were created")
-				Expect(s.trees.Cache.Size()).To(Equal(uint64(3)))
+				Expect(s.trees.Size()).To(Equal(uint64(3)))
 				checkTreesPresence(appname, st, 0, true)
 
 				By("checking segments were created")
-				Expect(s.segments.Cache.Size()).To(Equal(uint64(3)))
+				Expect(s.segments.Size()).To(Equal(uint64(3)))
 				checkSegmentsPresence(appname, true)
 
 				By("checking dicts were created")
-				Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
+				Expect(s.dicts.Size()).To(Equal(uint64(1)))
 				checkDictsPresence(appname, true)
 
 				checkLabelsPresence(appname, true)
