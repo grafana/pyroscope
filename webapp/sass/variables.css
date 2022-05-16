@@ -43,6 +43,8 @@
   --ps-accent-3-8: #e53825;
   --ps-accent-3-9: #df8b53;
   --ps-accent-3-10: #d1283980;
+
+  --ps-immutable-1: #e6e6e6;
 }
 
 [data-theme='light'],
@@ -67,28 +69,4 @@
   --ps-neutral-18: #00000054;
   --ps-neutral-19: #000000a8;
   --ps-neutral-20: #191919;
-
-  --ps-accent-1-1: #e2b65e;
-  --ps-accent-1-2: #de945a;
-  --ps-accent-1-3: #ff8b26;
-  --ps-accent-1-4: #f27100;
-  --ps-accent-1-5: #ec6709;
-  --ps-accent-1-6: #bf5900;
-  --ps-accent-1-7: #c23e2ccc;
-
-  --ps-accent-2-1: #d133bf;
-  --ps-accent-2-2: #ab269b;
-  --ps-accent-2-3: #d758ba;
-  --ps-accent-2-4: #811d76;
-
-  --ps-accent-3-1: #75e8dd;
-  --ps-accent-3-2: #23caba;
-  --ps-accent-3-3: #1b9f92;
-  --ps-accent-3-4: #14736a;
-  --ps-accent-3-5: #17b2c3;
-  --ps-accent-3-6: #0392d9;
-  --ps-accent-3-7: #03a3f2;
-  --ps-accent-3-8: #1ac7da;
-  --ps-accent-3-9: #2074ac;
-  --ps-accent-3-10: #2ed7c680;
 }

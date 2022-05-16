@@ -43,3 +43,9 @@
 .buttonGoogle:hover {
   background-color: var(--ps-accent-3-8);
 }
+
+.buttonGithub,
+.buttonGoogle,
+.buttonGitlab {
+  color: var(--ps-immutable-1);
+}
