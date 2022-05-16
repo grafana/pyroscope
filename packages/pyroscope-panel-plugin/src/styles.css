@@ -4,7 +4,3 @@
   overflow-y: auto;
   overflow-x: hidden;
 }
-
-.flamegraph-root {
-  background: transparent !important;
-}
