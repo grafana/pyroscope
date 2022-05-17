@@ -271,7 +271,7 @@ export function SidebarComponent() {
           </MenuItem>
         </Menu>
       </SidebarFooter>
-      <select
+      {/* <select
         value={colorMode}
         onChange={(e: ChangeEvent<HTMLSelectElement>) =>
           changeColorMode(e.target?.value as 'light' | 'dark')
@@ -279,7 +279,7 @@ export function SidebarComponent() {
       >
         <option value="dark">dark</option>
         <option value="light">light</option>
-      </select>
+      </select> */}
     </Sidebar>
   ) : null;
 }
