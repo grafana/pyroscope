@@ -16,7 +16,6 @@ interface HeaderProps {
   //  ExportData?: JSX.Element;
   ExportData?: React.ReactNode;
   toolbarVisible?: boolean;
-  colorMode?: 'light' | 'dark';
 }
 export default function Header(props: HeaderProps) {
   const {
@@ -26,7 +25,6 @@ export default function Header(props: HeaderProps) {
     palette,
     setPalette,
     toolbarVisible,
-    colorMode,
   } = props;
 
   const unitsToFlamegraphTitle = {
@@ -62,7 +60,6 @@ export default function Header(props: HeaderProps) {
             <DiffLegendPaletteDropdown
               palette={palette}
               onChange={setPalette}
-              colorMode={colorMode}
             />
           </>
         );

@@ -1,11 +1,9 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import cx from 'classnames';
 import useResizeObserver from '@react-hook/resize-observer';
 import {
   ColorBlindPalette,
   DefaultPalette,
-  DefaultLightPalette,
-  ColorBlindLightPalette,
   FlamegraphPalette,
 } from './colorPalette';
 import DiffLegend from './DiffLegend';
@@ -18,26 +16,19 @@ import dropdownStyles from '@webapp/ui/Dropdown.module.scss';
 
 import styles from './DiffLegendPaletteDropdown.module.css';
 
+const paletteList = [DefaultPalette, ColorBlindPalette];
+
 interface DiffLegendPaletteDropdownProps {
   palette: FlamegraphPalette;
   onChange: (p: FlamegraphPalette) => void;
-  colorMode?: 'light' | 'dark';
 }
 
 export const DiffLegendPaletteDropdown = (
   props: DiffLegendPaletteDropdownProps
 ) => {
-  const { palette = DefaultPalette, onChange, colorMode } = props;
+  const { palette = DefaultPalette, onChange } = props;
   const legendRef = React.useRef<HTMLDivElement>(null);
   const showMode = useSizeMode(legendRef);
-
-  const paletteList = useMemo(
-    () =>
-      colorMode === 'light'
-        ? [DefaultLightPalette, ColorBlindLightPalette]
-        : [DefaultPalette, ColorBlindPalette],
-    [colorMode]
-  );
 
   return (
     <>

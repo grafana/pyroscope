@@ -36,7 +36,6 @@ interface FlamegraphProps {
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
   toolbarVisible?: boolean;
-  colorMode?: 'light' | 'dark';
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -59,7 +58,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
   const { 'data-testid': dataTestId } = props;
-  const { palette, setPalette, colorMode } = props;
+  const { palette, setPalette } = props;
 
   // debounce rendering canvas
   // used for situations like resizing
@@ -245,7 +244,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         palette={palette}
         setPalette={setPalette}
         toolbarVisible={toolbarVisible}
-        colorMode={colorMode}
       />
 
       {dataUnavailable ? (

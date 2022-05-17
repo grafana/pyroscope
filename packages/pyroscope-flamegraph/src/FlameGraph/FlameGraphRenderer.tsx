@@ -14,11 +14,7 @@ import Graph from './FlameGraphComponent';
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
-import {
-  DefaultPalette,
-  DefaultLightPalette,
-  FlamegraphPalette,
-} from './FlameGraphComponent/colorPalette';
+import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
@@ -139,8 +135,7 @@ class FlameGraphRenderer extends React.Component<
       flamegraphConfigs: this.initialFlamegraphState,
 
       // TODO make this come from the redux store?
-      palette:
-        this.props.colorMode === 'light' ? DefaultLightPalette : DefaultPalette,
+      palette: DefaultPalette,
     };
   }
 
@@ -163,19 +158,7 @@ class FlameGraphRenderer extends React.Component<
     if (prevState.flamegraphConfigs !== this.state.flamegraphConfigs) {
       this.updateFlamegraphDirtiness();
     }
-
-    if (prevProps.colorMode !== this.props.colorMode) {
-      this.updatePalette(
-        this.props.colorMode === 'light' ? DefaultLightPalette : DefaultPalette
-      );
-    }
   }
-
-  updatePalette = (palette: FlamegraphPalette) => {
-    this.setState({
-      palette,
-    });
-  };
 
   handleSearchChange = (e: string) => {
     this.setState({
@@ -371,8 +354,11 @@ class FlameGraphRenderer extends React.Component<
           isDirty={this.isDirty}
           palette={this.state.palette}
           toolbarVisible={toolbarVisible}
-          colorMode={this.props.colorMode}
-          setPalette={this.updatePalette}
+          setPalette={(p) =>
+            this.setState({
+              palette: p,
+            })
+          }
         />
       ) : null;
 
