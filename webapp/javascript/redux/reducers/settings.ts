@@ -14,10 +14,10 @@ import {
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
 } from '@webapp/services/apiKeys';
+import { RequestAbortedError } from '@webapp/services/base';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
-import { RequestAbortedError } from '@webapp/services/base';
 
 type UsersState = {
   type: 'pristine' | 'loading' | 'loaded' | 'failed';
@@ -34,60 +34,46 @@ type ApiKeysState = {
   data?: APIKeys;
 };
 const apiKeysInitialState: ApiKeysState = { type: 'pristine', data: undefined };
-let reloadApiKeysAbortController: AbortController | undefined;
 
-export const reloadApiKeys = createAsyncThunk(
-  'newRoot/reloadAPIKeys',
-  async (_, thunkAPI) => {
-    if (reloadApiKeysAbortController) {
-      reloadApiKeysAbortController.abort();
-    }
-    reloadApiKeysAbortController = new AbortController();
+const loadEntities =
+  <T>(name: string) =>
+  (fn: (a: AbortController) => PromiseLike<any>) => {
+    let abortController: AbortController | undefined;
+    return createAsyncThunk<T, void>(
+      `newRoot/load${name}`,
+      async (_: ShamefulAny, thunkAPI) => {
+        if (abortController) {
+          abortController.abort();
+        }
 
-    thunkAPI.signal = reloadApiKeysAbortController.signal;
+        abortController = new AbortController();
 
-    const res = await fetchAPIKeys(reloadApiKeysAbortController);
+        thunkAPI.signal = abortController.signal;
 
-    if (res.isOk) {
-      return Promise.resolve(res.value);
-    }
+        const res = await fn(abortController);
 
-    if (res.isErr && res.error instanceof RequestAbortedError) {
-      return Promise.reject(res.error);
-    }
+        if (res.isOk) {
+          return Promise.resolve(res.value);
+        }
 
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to load api keys',
-        message: res.error.message,
-      })
+        if (res.isErr && res.error instanceof RequestAbortedError) {
+          return Promise.reject(res.error);
+        }
+
+        thunkAPI.dispatch(
+          addNotification({
+            type: 'danger',
+            title: `Failed to load ${name}`,
+            message: res.error.message,
+          })
+        );
+
+        return Promise.reject(res.error);
+      }
     );
-
-    return Promise.reject(res.error);
-  }
-);
-
-export const reloadUsers = createAsyncThunk(
-  'newRoot/reloadUsers',
-  async (_, thunkAPI) => {
-    const res = await fetchUsers();
-
-    if (res.isOk) {
-      return Promise.resolve(res.value);
-    }
-
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to load users',
-        message: res.error.message,
-      })
-    );
-
-    return Promise.reject(res.error);
-  }
-);
+  };
+export const reloadApiKeys = loadEntities('APIKeys')(fetchAPIKeys);
+export const reloadUsers = loadEntities('Users')(fetchUsers);
 
 export const enableUser = createAsyncThunk(
   'newRoot/enableUser',

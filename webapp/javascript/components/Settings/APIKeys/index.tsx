@@ -50,10 +50,10 @@ const ApiKeys = () => {
   const now = new Date();
   return (
     <>
-      <button className={styles.button} onClick={() => handleReload()}>
+      <button type="button" onClick={() => handleReload()}>
         Reload
       </button>
-      <button className={styles.button} onClick={() => handleReloadDebounced()}>
+      <button type="button" onClick={() => handleReloadDebounced()}>
         Reload Debounced
       </button>
       <h2>API keys</h2>

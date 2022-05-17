@@ -28,7 +28,8 @@ function Users() {
   const [search, setSearchField] = useState('');
 
   useEffect(() => {
-    dispatch(reloadUsers());
+    const reload = dispatch(reloadUsers());
+    return reload.abort;
   }, []);
   const displayUsers =
     (users &&

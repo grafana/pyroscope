@@ -15,10 +15,12 @@ export interface FetchUsersError {
   message?: string;
 }
 
-export async function fetchUsers(): Promise<
-  Result<Users, RequestError | ZodError>
-> {
-  const response = await request('/api/users');
+export async function fetchUsers(
+  abortController: AbortController
+): Promise<Result<Users, RequestError | ZodError>> {
+  const response = await request('/api/users', {
+    signal: abortController.signal,
+  });
 
   if (response.isOk) {
     return parseResponse(response, usersModel);

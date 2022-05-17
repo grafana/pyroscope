@@ -11,6 +11,7 @@ import {
 } from '@webapp/services/render';
 import { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
+import { RequestAbortedError } from '@webapp/services/base';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
@@ -144,16 +145,29 @@ const initialState: ContinuousState = {
     },
   },
 };
+
+let fetchAbortController: AbortController | undefined;
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
   null,
   { state: { continuous: ContinuousState } }
 >('continuous/singleView', async (_, thunkAPI) => {
+  if (fetchAbortController) {
+    fetchAbortController.abort();
+  }
+
+  fetchAbortController = new AbortController();
+  thunkAPI.signal = fetchAbortController.signal;
+
   const state = thunkAPI.getState();
-  const res = await renderSingle(state.continuous);
+  const res = await renderSingle(state.continuous, fetchAbortController);
 
   if (res.isOk) {
     return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -172,23 +186,36 @@ export const fetchSideTimelines = createAsyncThunk<
   null,
   { state: { continuous: ContinuousState } }
 >('continuous/fetchSideTimelines', async (_, thunkAPI) => {
+  if (fetchAbortController) {
+    fetchAbortController.abort();
+  }
+
+  fetchAbortController = new AbortController();
+  thunkAPI.signal = fetchAbortController.signal;
+
   const state = thunkAPI.getState();
 
   const res = await Promise.all([
-    await renderSingle({
-      query: state.continuous.leftQuery || '',
-      from: state.continuous.from,
-      until: state.continuous.until,
-      maxNodes: state.continuous.maxNodes,
-      refreshToken: state.continuous.refreshToken,
-    }),
-    await renderSingle({
-      query: state.continuous.rightQuery || '',
-      from: state.continuous.from,
-      until: state.continuous.until,
-      maxNodes: state.continuous.maxNodes,
-      refreshToken: state.continuous.refreshToken,
-    }),
+    await renderSingle(
+      {
+        query: state.continuous.leftQuery || '',
+        from: state.continuous.from,
+        until: state.continuous.until,
+        maxNodes: state.continuous.maxNodes,
+        refreshToken: state.continuous.refreshToken,
+      },
+      fetchAbortController
+    ),
+    await renderSingle(
+      {
+        query: state.continuous.rightQuery || '',
+        from: state.continuous.from,
+        until: state.continuous.until,
+        maxNodes: state.continuous.maxNodes,
+        refreshToken: state.continuous.refreshToken,
+      },
+      fetchAbortController
+    ),
   ]);
 
   if (res[0].isOk && res[1].isOk) {
@@ -196,6 +223,11 @@ export const fetchSideTimelines = createAsyncThunk<
       left: res[0].value.timeline,
       right: res[1].value.timeline,
     });
+  }
+
+  // Seems we may only check for 1 error as soon as we have same signal
+  if (res[0].isErr && res[0].error instanceof RequestAbortedError) {
+    return Promise.reject(res.filter((a) => a.isErr).map((a) => a.error));
   }
 
   thunkAPI.dispatch(
@@ -275,14 +307,28 @@ export const fetchDiffView = createAsyncThunk<
   },
   { state: { continuous: ContinuousState } }
 >('continuous/diffView', async (params, thunkAPI) => {
+  if (fetchAbortController) {
+    fetchAbortController.abort();
+  }
+
+  fetchAbortController = new AbortController();
+  thunkAPI.signal = fetchAbortController.signal;
+
   const state = thunkAPI.getState();
-  const res = await renderDiff({
-    ...params,
-    maxNodes: state.continuous.maxNodes,
-  });
+  const res = await renderDiff(
+    {
+      ...params,
+      maxNodes: state.continuous.maxNodes,
+    },
+    fetchAbortController
+  );
 
   if (res.isOk) {
     return Promise.resolve({ profile: res.value });
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -365,15 +411,24 @@ export const fetchTagValues = createAsyncThunk(
     return Promise.reject(res.error);
   }
 );
-
+let reloadAppNamesAbortController: AbortController | undefined;
 export const reloadAppNames = createAsyncThunk(
   'names/reloadAppNames',
   async (_, thunkAPI) => {
-    // TODO, retries?
+    if (reloadAppNamesAbortController) {
+      reloadAppNamesAbortController.abort();
+    }
+
+    reloadAppNamesAbortController = new AbortController();
+    thunkAPI.signal = reloadAppNamesAbortController.signal;
     const res = await fetchAppNames();
 
     if (res.isOk) {
       return Promise.resolve(res.value);
+    }
+
+    if (res.isErr && res.error instanceof RequestAbortedError) {
+      return Promise.reject(res.error);
     }
 
     thunkAPI.dispatch(
