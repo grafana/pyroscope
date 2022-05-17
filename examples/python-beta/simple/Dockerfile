@@ -13,12 +13,9 @@ COPY requirements.txt ./requirements.txt
 
 # pip 22 is required
 RUN python -m pip install --upgrade pip
-# install rust toolchain
-RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y 
-ENV PATH=$PATH:/root/.cargo/bin
+
 # install libunwind, docker requires switching to root user
 RUN apt-get update 
-RUN apt-get install -y libunwind8-dev libssl-dev
 
 RUN pip install -r requirements.txt
 
