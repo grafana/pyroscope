@@ -236,7 +236,7 @@ export const usersSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(reloadUsers.fulfilled, (state, action) => {
-      return { type: 'loaded', data: action.payload };
+      return { type: 'loaded', data: action.payload as User[] };
     });
 
     builder.addCase(reloadUsers.pending, (state) => {
@@ -254,7 +254,7 @@ export const apiKeysSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(reloadApiKeys.fulfilled, (_, action) => {
-      return { type: 'loaded', data: action.payload };
+      return { type: 'loaded', data: action.payload as APIKey[] };
     });
     builder.addCase(reloadApiKeys.pending, (state) => {
       return { type: 'loading', data: state.data };

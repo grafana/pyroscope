@@ -45,7 +45,7 @@ function ComparisonDiffApp() {
 
   useEffect(() => {
     if (rightQuery && leftQuery) {
-      dispatch(
+      const fetch = dispatch(
         fetchDiffView({
           leftQuery,
           leftFrom,
@@ -56,6 +56,7 @@ function ComparisonDiffApp() {
           rightUntil,
         })
       );
+      return fetch.abort;
     }
   }, [
     leftFrom,

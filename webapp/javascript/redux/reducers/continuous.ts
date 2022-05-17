@@ -180,18 +180,18 @@ export const fetchSingleView = createAsyncThunk<
 
   return Promise.reject(res.error);
 });
-
+let sideTimelinesFetchAbortController: AbortController | undefined;
 export const fetchSideTimelines = createAsyncThunk<
   { left: Timeline; right: Timeline },
   null,
   { state: { continuous: ContinuousState } }
 >('continuous/fetchSideTimelines', async (_, thunkAPI) => {
-  if (fetchAbortController) {
-    fetchAbortController.abort();
+  if (sideTimelinesFetchAbortController) {
+    sideTimelinesFetchAbortController.abort();
   }
 
-  fetchAbortController = new AbortController();
-  thunkAPI.signal = fetchAbortController.signal;
+  sideTimelinesFetchAbortController = new AbortController();
+  thunkAPI.signal = sideTimelinesFetchAbortController.signal;
 
   const state = thunkAPI.getState();
 
@@ -204,7 +204,7 @@ export const fetchSideTimelines = createAsyncThunk<
         maxNodes: state.continuous.maxNodes,
         refreshToken: state.continuous.refreshToken,
       },
-      fetchAbortController
+      sideTimelinesFetchAbortController
     ),
     await renderSingle(
       {
@@ -214,7 +214,7 @@ export const fetchSideTimelines = createAsyncThunk<
         maxNodes: state.continuous.maxNodes,
         refreshToken: state.continuous.refreshToken,
       },
-      fetchAbortController
+      sideTimelinesFetchAbortController
     ),
   ]);
 
@@ -421,7 +421,7 @@ export const reloadAppNames = createAsyncThunk(
 
     reloadAppNamesAbortController = new AbortController();
     thunkAPI.signal = reloadAppNamesAbortController.signal;
-    const res = await fetchAppNames();
+    const res = await fetchAppNames(reloadAppNamesAbortController);
 
     if (res.isOk) {
       return Promise.resolve(res.value);

@@ -15,10 +15,12 @@ function isValidAppName(appName: string) {
   return appName.trim().length > 0;
 }
 
-export async function fetchAppNames(): Promise<
-  Result<AppNames, RequestError | ZodError>
-> {
-  const response = await request('/label-values?label=__name__');
+export async function fetchAppNames(
+  abortController: AbortController
+): Promise<Result<AppNames, RequestError | ZodError>> {
+  const response = await request('/label-values?label=__name__', {
+    signal: abortController.signal,
+  });
 
   if (response.isOk) {
     return parseResponse<AppNames>(response, appNamesModel).map((values) =>
