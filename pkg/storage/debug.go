@@ -20,7 +20,7 @@ func (s *Storage) DebugExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	n := mux.Vars(r)["db"]
-	var d *db
+	var d BadgerDBWithCache
 	switch n {
 	case "segments":
 		d = s.segments
@@ -44,7 +44,7 @@ func (s *Storage) DebugExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	err := d.DB.View(func(txn *badger.Txn) error {
+	err := d.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(k[0]))
 		if err != nil {
 			return err

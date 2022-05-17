@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.6.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.1...@pyroscope/flamegraph@0.6.2) (2022-05-12)
+
+
+### Bug Fixes
+
+* **flamegraph:** don't ship react-dom ([#1102](https://github.com/pyroscope-io/pyroscope/issues/1102)) ([c80240c](https://github.com/pyroscope-io/pyroscope/commit/c80240cbfda4d0573baf05b9c48d5b658791bffd))
+
+
+
+
+
 ## [0.6.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.0...@pyroscope/flamegraph@0.6.1) (2022-05-09)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
