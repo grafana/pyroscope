@@ -106,7 +106,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 	case in.Format == "jfr" && strings.Contains(in.ContentType, "multipart/form-data"):
 		err = parseJFRMultipart(ctx, in, err, p, pi)
 	case in.Format == "jfr":
-		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi, &jfr.Tags{})
+		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi, &jfr.Labels{})
 	case in.Format == "pprof":
 		err = writePprofFromBody(ctx, p.storage, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
@@ -133,12 +133,12 @@ func parseJFRMultipart(ctx context.Context, in *PutInput, err error, p *Parser, 
 	if err != nil {
 		return err
 	}
-	if contextsPart.FormName() != "tags" {
-		return fmt.Errorf("expected tags field, got %s", contextsPart.FormName())
+	if contextsPart.FormName() != "labels" {
+		return fmt.Errorf("expected labels field, got %s", contextsPart.FormName())
 	}
-	tags := jfr.Tags{}
+	labels := jfr.Labels{}
 	decoder := json.NewDecoder(contextsPart)
-	err = decoder.Decode(&tags)
+	err = decoder.Decode(&labels)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func parseJFRMultipart(ctx context.Context, in *PutInput, err error, p *Parser, 
 	if jfrPart.FormName() != "jfr" {
 		return fmt.Errorf("expected jfr field, got %s", jfrPart.FormName())
 	}
-	err = jfr.ParseJFR(ctx, jfrPart, p.storage, pi, &tags)
+	err = jfr.ParseJFR(ctx, jfrPart, p.storage, pi, &labels)
 	return err
 }
 

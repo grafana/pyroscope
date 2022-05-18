@@ -14,41 +14,42 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-type Tags struct {
+type Labels struct {
 	Contexts map[int64]map[int64]int64 `json:"contexts"`
 	Strings  map[int64]string          `json:"strings"`
 }
 
-func ParseJFR(ctx context.Context, r io.Reader, s storage.Putter, pi *storage.PutInput, tags *Tags) (err error) {
+func ParseJFR(ctx context.Context, r io.Reader, s storage.Putter, pi *storage.PutInput, labels *Labels) (err error) {
 	chunks, err := parser.Parse(r)
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)
 	}
 	for _, c := range chunks {
-		if pErr := parse(ctx, c, s, pi, tags); pErr != nil {
+		if pErr := parse(ctx, c, s, pi, labels); pErr != nil {
 			err = multierror.Append(err, pErr)
 		}
 	}
 	pi.Val = nil
 	return err
 }
-func resolveTags(contextId int64, tags *Tags) map[string]string {
+
+func resolveLabels(contextId int64, labels *Labels) map[string]string {
 	res := make(map[string]string)
 	if contextId == 0 {
 		return res
 	}
 	var ctx map[int64]int64
 	var ok bool
-	if ctx, ok = tags.Contexts[contextId]; !ok {
+	if ctx, ok = labels.Contexts[contextId]; !ok {
 		return nil
 	}
 	for k, v := range ctx {
 		var ks string
 		var vs string
-		if ks, ok = tags.Strings[k]; !ok {
+		if ks, ok = labels.Strings[k]; !ok {
 			continue
 		}
-		if vs, ok = tags.Strings[v]; !ok {
+		if vs, ok = labels.Strings[v]; !ok {
 			continue
 		}
 		res[ks] = vs
@@ -56,7 +57,7 @@ func resolveTags(contextId int64, tags *Tags) map[string]string {
 	return res
 }
 
-func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.PutInput, tags *Tags) (err error) {
+func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.PutInput, labels *Labels) (err error) {
 	var event, alloc, lock string
 	for _, e := range c.Events {
 		switch e.(type) {
@@ -75,7 +76,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 	contextIdToEvents := groupEventsByContextId(c.Events)
 	prefix := pi.Key.Labels()["__name__"]
 	for contextId, events := range contextIdToEvents {
-		labels := resolveTags(contextId, tags)
+		labels := resolveLabels(contextId, labels)
 		for k, v := range pi.Key.Labels() {
 			labels[k] = v
 		}
@@ -211,24 +212,19 @@ func groupEventsByContextId(events []parser.Parseable) map[int64][]parser.Parsea
 		switch e.(type) {
 		case *parser.ExecutionSample:
 			es := e.(*parser.ExecutionSample)
-			contextId := es.ContextId
-			res[contextId] = append(res[contextId], e)
+			res[es.ContextId] = append(res[es.ContextId], e)
 		case *parser.ObjectAllocationInNewTLAB:
 			oa := e.(*parser.ObjectAllocationInNewTLAB)
-			contextId := oa.ContextId
-			res[contextId] = append(res[contextId], e)
+			res[oa.ContextId] = append(res[oa.ContextId], e)
 		case *parser.ObjectAllocationOutsideTLAB:
 			oa := e.(*parser.ObjectAllocationOutsideTLAB)
-			contextId := oa.ContextId
-			res[contextId] = append(res[contextId], e)
+			res[oa.ContextId] = append(res[oa.ContextId], e)
 		case *parser.JavaMonitorEnter:
 			jme := e.(*parser.JavaMonitorEnter)
-			contextId := jme.ContextId
-			res[contextId] = append(res[contextId], e)
+			res[jme.ContextId] = append(res[jme.ContextId], e)
 		case *parser.ThreadPark:
 			tp := e.(*parser.ThreadPark)
-			contextId := tp.ContextId
-			res[contextId] = append(res[contextId], e)
+			res[tp.ContextId] = append(res[tp.ContextId], e)
 		}
 	}
 	return res
