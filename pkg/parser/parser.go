@@ -128,29 +128,27 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 }
 
 func parseJFRMultipart(ctx context.Context, in *PutInput, err error, p *Parser, pi *storage.PutInput) error {
-	reader := multipart.NewReader(in.Body, in.MultipartBoundary)
-	contextsPart, err := reader.NextPart()
+	// maxMemory 32MB
+	form, err := multipart.NewReader(in.Body, in.MultipartBoundary).ReadForm(32 << 20)
+	labelsField, err := formField(form, "labels")
 	if err != nil {
 		return err
 	}
-	if contextsPart.FormName() != "labels" {
-		return fmt.Errorf("expected labels field, got %s", contextsPart.FormName())
+	jfrField, err := formField(form, "jfr")
+	if err != nil {
+		return err
+	}
+	if jfrField == nil {
+		return fmt.Errorf("jfr field is required")
 	}
 	labels := jfr.Labels{}
-	decoder := json.NewDecoder(contextsPart)
-	err = decoder.Decode(&labels)
-	if err != nil {
-		return err
+	if labelsField != nil {
+		err = json.NewDecoder(labelsField).Decode(&labels)
+		if err != nil {
+			return err
+		}
 	}
-
-	jfrPart, err := reader.NextPart()
-	if err != nil {
-		return err
-	}
-	if jfrPart.FormName() != "jfr" {
-		return fmt.Errorf("expected jfr field, got %s", jfrPart.FormName())
-	}
-	err = jfr.ParseJFR(ctx, jfrPart, p.storage, pi, &labels)
+	err = jfr.ParseJFR(ctx, jfrField, p.storage, pi, &labels)
 	return err
 }
 
