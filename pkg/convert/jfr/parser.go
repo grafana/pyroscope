@@ -33,14 +33,14 @@ func ParseJFR(ctx context.Context, r io.Reader, s storage.Putter, pi *storage.Pu
 	return err
 }
 
-func resolveLabels(contextId int64, labels *Labels) map[string]string {
+func resolveLabels(contextID int64, labels *Labels) map[string]string {
 	res := make(map[string]string)
-	if contextId == 0 {
+	if contextID == 0 {
 		return res
 	}
 	var ctx map[int64]int64
 	var ok bool
-	if ctx, ok = labels.Contexts[contextId]; !ok {
+	if ctx, ok = labels.Contexts[contextID]; !ok {
 		return nil
 	}
 	for k, v := range ctx {
@@ -60,23 +60,21 @@ func resolveLabels(contextId int64, labels *Labels) map[string]string {
 func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.PutInput, labels *Labels) (err error) {
 	var event, alloc, lock string
 	for _, e := range c.Events {
-		switch e.(type) {
-		case *parser.ActiveSetting:
-			as := e.(*parser.ActiveSetting)
+		if as, ok := e.(*parser.ActiveSetting); ok {
 			switch as.Name {
 			case "event":
-				event = as.Value // this can be passed from the agent as upload param
+				event = as.Value
 			case "alloc":
-				alloc = as.Value // this can be passed from the agent as upload param
+				alloc = as.Value
 			case "lock":
-				lock = as.Value // this can be passed from the agent as upload param
+				lock = as.Value
 			}
 		}
 	}
-	contextIdToEvents := groupEventsByContextId(c.Events)
+	contextIDToEvents := groupEventsByContextID(c.Events)
 	prefix := pi.Key.Labels()["__name__"]
-	for contextId, events := range contextIdToEvents {
-		labels := resolveLabels(contextId, labels)
+	for contextID, events := range contextIDToEvents {
+		labels := resolveLabels(contextID, labels)
 		for k, v := range pi.Key.Labels() {
 			labels[k] = v
 		}
@@ -206,7 +204,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 	return err
 }
 
-func groupEventsByContextId(events []parser.Parseable) map[int64][]parser.Parseable {
+func groupEventsByContextID(events []parser.Parseable) map[int64][]parser.Parseable {
 	res := make(map[int64][]parser.Parseable)
 	for _, e := range events {
 		switch e.(type) {
