@@ -10,7 +10,7 @@ datasources:
     url: http://jaeger:16686
 
   - name: Pyroscope
-    type: pyroscope-datasource
+    type: ppaspa-datasource
     access: proxy
     orgId: 1
     uid: pyroscope
