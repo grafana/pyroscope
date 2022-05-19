@@ -58,6 +58,7 @@ function ComparisonDiffApp() {
       );
       return fetch.abort;
     }
+    return () => null;
   }, [
     leftFrom,
     leftUntil,
@@ -67,6 +68,7 @@ function ComparisonDiffApp() {
     rightQuery,
     refreshToken,
     maxNodes,
+    dispatch,
   ]);
 
   const exportData = diffView.profile && (

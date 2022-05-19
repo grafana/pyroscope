@@ -27,7 +27,8 @@ function ContinuousSingleView() {
       const fetch = dispatch(fetchSingleView(null));
       return fetch.abort;
     }
-  }, [from, until, query, refreshToken, maxNodes]);
+    return () => null;
+  }, [from, until, query, refreshToken, maxNodes, dispatch]);
 
   const getRaw = () => {
     switch (singleView.type) {
