@@ -100,7 +100,7 @@ services:
     ports:
       - '4000:3000'
 
-  loki2:
+  loki:
     image: 'grafana/loki:2.5.0'
     ports:
       - '3100:3100'
