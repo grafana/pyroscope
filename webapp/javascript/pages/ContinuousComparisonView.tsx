@@ -18,6 +18,7 @@ import InstructionText from '@webapp/components/InstructionText';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
@@ -29,7 +30,7 @@ function ComparisonApp() {
     selectContinuousState
   );
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
-
+  const { offset } = useTimeZone();
   usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -52,6 +53,7 @@ function ComparisonApp() {
   const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftSide);
   const exportToFlamegraphDotComRightFn =
     useExportToFlamegraphDotCom(rightSide);
+  const timezone = offset === 0 ? 'utc' : 'browser';
 
   return (
     <div>
@@ -77,6 +79,7 @@ function ComparisonApp() {
             left: { from: leftFrom, to: leftUntil, color: leftColor },
             right: { from: rightFrom, to: rightUntil, color: rightColor },
           }}
+          timezone={timezone}
         />
         <div
           className="comparison-container"
@@ -123,6 +126,7 @@ function ComparisonApp() {
                 onSelect={(from, until) => {
                   dispatch(actions.setLeft({ from, until }));
                 }}
+                timezone={timezone}
               />
             </FlamegraphRenderer>
           </Box>
@@ -168,6 +172,7 @@ function ComparisonApp() {
                 onSelect={(from, until) => {
                   dispatch(actions.setRight({ from, until }));
                 }}
+                timezone={timezone}
               />
             </FlamegraphRenderer>
           </Box>

@@ -14,6 +14,7 @@ import useTimelines, {
   leftColor,
   rightColor,
 } from '@webapp/hooks/timeline.hook';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
@@ -42,6 +43,9 @@ function ComparisonDiffApp() {
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
     diffView.profile
   );
+
+  const { offset } = useTimeZone();
+  const timezone = offset === 0 ? 'utc' : 'browser';
 
   useEffect(() => {
     if (rightQuery && leftQuery) {
@@ -104,6 +108,7 @@ function ComparisonDiffApp() {
             left: { from: leftFrom, to: leftUntil, color: leftColor },
             right: { from: rightFrom, to: rightUntil, color: rightColor },
           }}
+          timezone={timezone}
         />
         <Box>
           <div className="diff-instructions-wrapper">
@@ -130,6 +135,7 @@ function ComparisonDiffApp() {
                 markings={{
                   left: { from: leftFrom, to: leftUntil, color: leftColor },
                 }}
+                timezone={timezone}
               />
             </div>
             <div className="diff-instructions-wrapper-side">
@@ -155,6 +161,7 @@ function ComparisonDiffApp() {
                 markings={{
                   right: { from: rightFrom, to: rightUntil, color: rightColor },
                 }}
+                timezone={timezone}
               />
             </div>
           </div>

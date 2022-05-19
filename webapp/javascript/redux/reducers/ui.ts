@@ -36,10 +36,16 @@ type SidebarState =
 
 export interface UiState {
   sidebar: SidebarState;
+  time: {
+    offset: null | number;
+  };
 }
 
 const initialState: UiState = {
   sidebar: { state: 'pristine', collapsed: window.innerWidth < 1200 },
+  time: {
+    offset: null,
+  },
   //  sidebar: { state: 'pristine' },
 };
 
@@ -58,6 +64,9 @@ export const uiSlice = createSlice({
     uncollapseSidebar: (state) => {
       state.sidebar = { state: 'userInteracted', collapsed: false };
     },
+    changeTimeZoneOffset: (state, action) => {
+      state.time.offset = action.payload;
+    },
   },
 });
 
@@ -67,7 +76,16 @@ export const selectSidebarCollapsed = createSelector(selectUiState, (state) => {
   return state.sidebar.collapsed;
 });
 
-export const { collapseSidebar, uncollapseSidebar, recalculateSidebar } =
-  uiSlice.actions;
+export const selectTimezoneOffset = createSelector(
+  selectUiState,
+  (state) => state.time.offset
+);
+
+export const {
+  collapseSidebar,
+  uncollapseSidebar,
+  recalculateSidebar,
+  changeTimeZoneOffset,
+} = uiSlice.actions;
 
 export default uiSlice.reducer;

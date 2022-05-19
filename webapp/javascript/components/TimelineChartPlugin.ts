@@ -1,11 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { format } from 'date-fns';
+import { getUTCdate } from '@webapp/util/formatDate';
 
 (function ($) {
   const options = {}; // no options
 
   function init(plot) {
+    const plotOptions = plot.getOptions();
+
     this.selecting = false;
     this.tooltipY = 0;
     this.selectingFrom = {
@@ -30,7 +33,10 @@ import { format } from 'date-fns';
       }
 
       try {
-        const d = new Date(date);
+        const d = getUTCdate(
+          new Date(date),
+          plotOptions.xaxis.timezone === 'utc'
+        );
 
         const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
 

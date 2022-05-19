@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { isAfter, isSameSecond } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import Button from '@webapp/ui/Button';
-import { formatAsOBject } from '@webapp/util/formatDate';
+import { formatAsOBject, getUTCdate } from '@webapp/util/formatDate';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
 
 interface CustomDatePickerProps {
   from: string;
@@ -10,6 +11,11 @@ interface CustomDatePickerProps {
   onSubmit: (from: string, until: string) => void;
 }
 function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
+  const {
+    options: timeZoneOptions,
+    changeTimeZoneOffset,
+    offset,
+  } = useTimeZone();
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),
@@ -41,8 +47,8 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
     });
   }, [from, until]);
 
-  const selectFromAsDate = selectedDate.from;
-  const selectUntilAsDate = selectedDate.until;
+  const selectFromAsDate = getUTCdate(selectedDate.from, offset === 0);
+  const selectUntilAsDate = getUTCdate(selectedDate.until, offset === 0);
 
   return (
     <div className="drp-custom">
@@ -86,6 +92,22 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
       <Button type="submit" kind="primary" onClick={() => updateDateRange()}>
         Apply range
       </Button>
+
+      <div style={{ marginTop: 10 }}>
+        <label htmlFor="select-timezone">Time Zone: </label>
+        <select
+          onChange={(e) => changeTimeZoneOffset(Number(e.target.value))}
+          id="select-timezone"
+          value={String(offset)}
+          disabled={timeZoneOptions.every((o) => o.value === 0)}
+        >
+          {timeZoneOptions.map((o) => (
+            <option key={o.key} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

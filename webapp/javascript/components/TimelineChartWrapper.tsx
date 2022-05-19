@@ -37,6 +37,8 @@ type TimelineChartWrapperProps = {
     left?: Marking;
     right?: Marking;
   };
+
+  timezone?: 'browser' | 'utc';
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -168,7 +170,7 @@ class TimelineChartWrapper extends React.Component<
 
   render = () => {
     const { flotOptions } = this.state;
-    const { id, timelineA } = this.props;
+    const { id, timelineA, timezone } = this.props;
     // TODO deep copy
     let timelineB = this.props.timelineB
       ? JSON.parse(JSON.stringify(this.props.timelineB))
@@ -182,6 +184,7 @@ class TimelineChartWrapper extends React.Component<
         // both sides making it look more centers
         autoscaleMargin:
           timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
+        timezone: timezone || 'browser',
       },
     };
 

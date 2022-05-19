@@ -40,7 +40,7 @@ export function convertPresetsToDate(from: string) {
   return { _from, number, _multiplier };
 }
 
-export function readableRange(from: string, until: string) {
+export function readableRange(from: string, until: string, isUTC?: boolean) {
   const dateFormat = 'yyyy-MM-dd hh:mm a';
   if (/^now-/.test(from) && until === 'now') {
     const { number, _multiplier } = convertPresetsToDate(from);
@@ -49,8 +49,11 @@ export function readableRange(from: string, until: string) {
     return `Last ${number} ${multiplier}`;
   }
 
-  const d1 = new Date(Math.round(parseInt(from, 10) * 1000));
-  const d2 = new Date(Math.round(parseInt(until, 10) * 1000));
+  const d1 = getUTCdate(new Date(Math.round(parseInt(from, 10) * 1000)), isUTC);
+  const d2 = getUTCdate(
+    new Date(Math.round(parseInt(until, 10) * 1000)),
+    isUTC
+  );
   return `${format(d1, dateFormat)} - ${format(d2, dateFormat)}`;
 }
 
@@ -86,3 +89,6 @@ export function formatAsOBject(value: string) {
 
   return new Date(parseInt(value, 10) * 1000);
 }
+
+export const getUTCdate = (date: Date, UTC?: boolean): Date =>
+  !UTC ? date : new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000);
