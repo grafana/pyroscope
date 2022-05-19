@@ -1,5 +1,4 @@
 /* eslint-disable */
-import fetch from 'node-fetch';
 import express from 'express';
 import morgan from 'morgan';
 
@@ -35,19 +34,13 @@ app.get('/scooter', function scooterSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);
 });
 
-setInterval(() => {
-  fetch(`http://localhost:${port}/car`);
-}, 1800);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/bike`);
-}, 633);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/scooter`);
-}, 1000);
-
-Pyroscope.init();
+Pyroscope.init({
+  appName: 'nodejs',
+  serverAddress: 'http://pyroscope:4040',
+  sourceMapPath: ['.'],
+});
+Pyroscope.startHeapProfiling();
+Pyroscope.startCpuProfiling();
 
 app.listen(port, () => {
   console.log(

@@ -123,6 +123,12 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 	})
 }
 
+func (cache *Cache) Sync() error {
+	return cache.lfu.Iterate(func(k string, v interface{}) error {
+		return cache.saveToDisk(k, v)
+	})
+}
+
 func (cache *Cache) Flush() {
 	cache.flushOnce.Do(func() {
 		// Make sure there is no pending items.
