@@ -50,6 +50,20 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
   const selectFromAsDate = getUTCdate(selectedDate.from, offset === 0);
   const selectUntilAsDate = getUTCdate(selectedDate.until, offset === 0);
 
+  const onDateChange = (date: Date | null, area: 'from' | 'until') => {
+    if (date) {
+      setSelectedDate({
+        ...selectedDate,
+        [area]:
+          offset === 0
+            ? new Date(
+                date.getTime() + date.getTimezoneOffset() * 60 * 1000 * -1
+              )
+            : date,
+      });
+    }
+  };
+
   return (
     <div className="drp-custom">
       <h4>Custom Date Range</h4>
@@ -58,11 +72,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
         <DatePicker
           id="datepicker-from"
           selected={selectFromAsDate}
-          onChange={(date) => {
-            if (date) {
-              setSelectedDate({ ...selectedDate, from: date });
-            }
-          }}
+          onChange={(date) => onDateChange(date, 'from')}
           selectsStart
           showTimeSelect
           startDate={selectFromAsDate}
@@ -74,11 +84,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
         <DatePicker
           id="datepicker-until"
           selected={selectUntilAsDate}
-          onChange={(date) => {
-            if (date) {
-              setSelectedDate({ ...selectedDate, until: date });
-            }
-          }}
+          onChange={(date) => onDateChange(date, 'until')}
           selectsEnd
           showTimeSelect
           startDate={selectFromAsDate}
