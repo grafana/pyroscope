@@ -12,7 +12,7 @@ describe('pages', () => {
     cy.findByTestId('timeline-single');
   });
 
-  it.only('loads /comparison correctly', () => {
+  it('loads /comparison correctly', () => {
     cy.intercept('**/render*from=1633024298&until=1633024302*', {
       fixture: 'simple-golang-app-cpu.json',
       times: 1,

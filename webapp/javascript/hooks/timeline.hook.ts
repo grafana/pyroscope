@@ -27,8 +27,8 @@ export default function useTimelines() {
 
   // Only reload timelines when an item that affects a timeline has changed
   useEffect(() => {
-    fetchSideTimelines(null);
-  }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
+    dispatch(fetchSideTimelines(null));
+  }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery, dispatch]);
 
   const leftTimeline = {
     color: leftColor.rgb().toString(),
