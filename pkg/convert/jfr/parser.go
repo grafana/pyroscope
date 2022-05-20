@@ -41,7 +41,7 @@ func resolveLabels(contextID int64, labels *Labels) map[string]string {
 	var ctx map[int64]int64
 	var ok bool
 	if ctx, ok = labels.Contexts[contextID]; !ok {
-		return nil
+		return res
 	}
 	for k, v := range ctx {
 		var ks string
