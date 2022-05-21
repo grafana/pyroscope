@@ -1,0 +1,8 @@
+{
+  "contexts": { "1": { "1": 2 }, "2": { "1": 3 } },
+  "strings": {
+    "1": "thread_name",
+    "2": "pool-2-thread-1",
+    "3": "pool-2-thread-2"
+  }
+}
