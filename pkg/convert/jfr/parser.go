@@ -57,6 +57,7 @@ func resolveLabels(contextID int64, labels *Labels) map[string]string {
 	return res
 }
 
+// revive:disable-next-line:cognitive-complexity
 func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.PutInput, labels *Labels) (err error) {
 	var event, alloc, lock string
 	for _, e := range c.Events {
