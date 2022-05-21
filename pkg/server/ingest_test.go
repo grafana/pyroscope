@@ -51,7 +51,7 @@ func jfrFormFromFiles(jfr, labels string) (*multipart.Writer, *bytes.Buffer) {
 	jfrGzipReader, err := gzip.NewReader(bytes.NewBuffer(jfrGzip))
 	Expect(err).ToNot(HaveOccurred())
 	jfrBytes, err := ioutil.ReadAll(jfrGzipReader)
-	labelsJsonBytes, err := ioutil.ReadFile(labels)
+	labelsJSONBytes, err := ioutil.ReadFile(labels)
 	Expect(err).ToNot(HaveOccurred())
 	bw := &bytes.Buffer{}
 	w := multipart.NewWriter(bw)
@@ -61,7 +61,7 @@ func jfrFormFromFiles(jfr, labels string) (*multipart.Writer, *bytes.Buffer) {
 	Expect(err).ToNot(HaveOccurred())
 	lw, err := w.CreateFormFile("labels", "labels")
 	Expect(err).ToNot(HaveOccurred())
-	_, err = lw.Write(labelsJsonBytes)
+	_, err = lw.Write(labelsJSONBytes)
 	Expect(err).ToNot(HaveOccurred())
 	err = w.Close()
 	Expect(err).ToNot(HaveOccurred())
