@@ -79,7 +79,11 @@ function DateRangePicker() {
   return (
     <div className={opened ? 'drp-container opened' : 'drp-container'}>
       <OutsideClickHandler onOutsideClick={hideDropdown}>
-        <Button icon={faClock} onClick={toggleDropdown}>
+        <Button
+          data-testid="time-dropdown-button"
+          icon={faClock}
+          onClick={toggleDropdown}
+        >
           {dateToLabel(from, until, offset === 0)}
         </Button>
         <div className="drp-dropdown">
