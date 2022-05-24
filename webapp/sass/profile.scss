@@ -460,6 +460,7 @@ body,
 
 .main-wrapper {
   flex: 1 0 auto;
+  min-width: 890px;
 }
 // stretch all main-wrapper children by default
 // so that we don't have to define it for every single page

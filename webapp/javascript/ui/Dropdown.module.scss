@@ -41,7 +41,8 @@
 
 .dropdownMenuButton {
   outline: none;
-  display: inline-block;
+  display: flex;
+  flex-shrink: 0;
   position: relative;
   border-radius: 4px;
   background-color: $btn-color;
