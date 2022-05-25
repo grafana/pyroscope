@@ -72,7 +72,7 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 }
 
 // Put takes parser.PutInput, turns it into storage.PutIntput and enqueues it for a write
-func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) {
+func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, ingestErr error) {
 	pi := &storage.PutInput{
 		StartTime:       in.StartTime,
 		EndTime:         in.EndTime,
@@ -82,17 +82,11 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		Units:           in.Units,
 		AggregationType: in.AggregationType,
 	}
+
+	// with some formats we write directly to storage (e.g look at "multipart/form-data" above)
+	// TODO(petethepig): this is unintuitive and error prone, need to refactor at some point
+
 	cb := p.createParseCallback(pi)
-
-	// for tests (ingest_test.go):
-	// b, _ := io.ReadAll(in.Body)
-	// f, _ := os.Create("./pkg/server/testdata/jfr-" + strconv.Itoa(i) + ".bin.gz")
-	// i++
-	// w := gzip.NewWriter(f)
-	// w.Write(b)
-	// w.Close()
-	// in.Body = bytes.NewReader(b)
-
 	switch {
 	case in.Format == "trie", in.ContentType == "binary/octet-stream+trie":
 		tmpBuf := p.bufferPool.Get()
@@ -103,25 +97,20 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 	case in.Format == "lines":
 		err = convert.ParseIndividualLines(in.Body, cb)
 	case in.Format == "jfr":
-		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi)
+		return jfr.ParseJFR(ctx, in.Body, p.storage, pi), nil
 	case in.Format == "pprof":
-		err = writePprofFromBody(ctx, p.storage, in)
+		return writePprofFromBody(ctx, p.storage, in), nil
 	case strings.Contains(in.ContentType, "multipart/form-data"):
-		err = writePprofFromForm(ctx, p.storage, in)
+		return writePprofFromForm(ctx, p.storage, in), nil
 	default:
 		err = convert.ParseGroups(in.Body, cb)
 	}
 
 	if err != nil {
-		return err, pErr
+		return err, nil
 	}
 
-	// with some formats we write directly to storage (e.g look at "multipart/form-data" above)
-	// TODO(petethepig): this is unintuitive and error prone, need to refactor at some point
-	if pi.Val != nil {
-		pErr = p.storage.Put(ctx, pi)
-	}
-	return err, pErr
+	return nil, p.storage.Put(ctx, pi)
 }
 
 func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) error {
