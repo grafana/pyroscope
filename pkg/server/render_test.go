@@ -35,6 +35,7 @@ var _ = Describe("server", func() {
 			c, _ := New(Config{
 				Configuration:           &(*cfg).Server,
 				Storage:                 s,
+				Putter:                  s,
 				MetricsExporter:         e,
 				Logger:                  logrus.New(),
 				MetricsRegisterer:       prometheus.NewRegistry(),
@@ -104,6 +105,7 @@ var _ = Describe("render merge test", func() {
 			c, _ := New(Config{
 				Configuration:           &(*cfg).Server,
 				Storage:                 s,
+				Putter:                  s,
 				MetricsExporter:         e,
 				Logger:                  logrus.New(),
 				MetricsRegisterer:       prometheus.NewRegistry(),

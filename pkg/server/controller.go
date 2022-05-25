@@ -54,6 +54,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
+	putter     storage.Putter
 	log        *logrus.Logger
 	httpServer *http.Server
 	db         *gorm.DB
@@ -86,7 +87,9 @@ type Controller struct {
 type Config struct {
 	Configuration *config.Server
 	*logrus.Logger
+	// TODO: Ideally, Storage should be decomposed.
 	*storage.Storage
+	storage.Putter
 	*gorm.DB
 	Notifier
 
@@ -112,6 +115,7 @@ type Notifier interface {
 	// TODO(kolesnikovae): we should poll for notifications (or subscribe).
 	NotificationText() string
 }
+
 type TargetsResponse struct {
 	Job                string              `json:"job"`
 	TargetURL          string              `json:"url"`
@@ -135,6 +139,7 @@ func New(c Config) (*Controller, error) {
 		config:    c.Configuration,
 		log:       c.Logger,
 		storage:   c.Storage,
+		putter:    c.Putter,
 		exporter:  c.MetricsExporter,
 		notifier:  c.Notifier,
 		stats:     make(map[string]int),

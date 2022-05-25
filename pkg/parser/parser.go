@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/valyala/bytebufferpool"
+
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
@@ -17,14 +20,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
-	"github.com/sirupsen/logrus"
-	"github.com/valyala/bytebufferpool"
 )
-
-type ParserStorage interface {
-	storage.Putter
-	storage.Enqueuer
-}
 
 type PutInput struct {
 	Format            string
@@ -44,15 +40,15 @@ type PutInput struct {
 
 type Parser struct {
 	log        *logrus.Logger
-	storage    ParserStorage
+	putter     storage.Putter
 	exporter   storage.MetricsExporter
 	bufferPool *bytebufferpool.Pool
 }
 
-func New(log *logrus.Logger, s ParserStorage, exporter storage.MetricsExporter) *Parser {
+func New(log *logrus.Logger, s storage.Putter, exporter storage.MetricsExporter) *Parser {
 	return &Parser{
 		log:        log,
-		storage:    s,
+		putter:     s,
 		exporter:   exporter,
 		bufferPool: &bytebufferpool.Pool{},
 	}
@@ -71,8 +67,8 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 	}
 }
 
-// Put takes parser.PutInput, turns it into storage.PutIntput and enqueues it for a write
-func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, ingestErr error) {
+// Put takes parser.PutInput, turns it into storage.PutIntput and passes it to Putter.
+func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	pi := &storage.PutInput{
 		StartTime:       in.StartTime,
 		EndTime:         in.EndTime,
@@ -83,10 +79,9 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, ingestErr er
 		AggregationType: in.AggregationType,
 	}
 
-	// with some formats we write directly to storage (e.g look at "multipart/form-data" above)
-	// TODO(petethepig): this is unintuitive and error prone, need to refactor at some point
-
 	cb := p.createParseCallback(pi)
+	var err error
+
 	switch {
 	case in.Format == "trie", in.ContentType == "binary/octet-stream+trie":
 		tmpBuf := p.bufferPool.Get()
@@ -96,24 +91,29 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, ingestErr er
 		err = convert.ParseTreeNoDict(in.Body, cb)
 	case in.Format == "lines":
 		err = convert.ParseIndividualLines(in.Body, cb)
+	// with some formats we write directly to storage, hence the early return
 	case in.Format == "jfr":
-		return jfr.ParseJFR(ctx, in.Body, p.storage, pi), nil
+		return jfr.ParseJFR(ctx, in.Body, p.putter, pi)
 	case in.Format == "pprof":
-		return writePprofFromBody(ctx, p.storage, in), nil
+		return writePprofFromBody(ctx, p.putter, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
-		return writePprofFromForm(ctx, p.storage, in), nil
+		return writePprofFromForm(ctx, p.putter, in)
 	default:
 		err = convert.ParseGroups(in.Body, cb)
 	}
 
 	if err != nil {
-		return err, nil
+		return err
 	}
 
-	return nil, p.storage.Put(ctx, pi)
+	if err = p.putter.Put(ctx, pi); err != nil {
+		return storage.IngestionError{Err: err}
+	}
+
+	return nil
 }
 
-func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) error {
+func writePprofFromBody(ctx context.Context, s storage.Putter, pi *PutInput) error {
 	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
 		SampleTypes: tree.DefaultSampleTypeMapping,
 		Labels:      pi.Key.Labels(),
@@ -123,7 +123,8 @@ func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) erro
 		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
 	})
 }
-func writePprofFromForm(ctx context.Context, s ParserStorage, pi *PutInput) error {
+
+func writePprofFromForm(ctx context.Context, s storage.Putter, pi *PutInput) error {
 	// maxMemory 32MB
 	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
 	if err != nil {
