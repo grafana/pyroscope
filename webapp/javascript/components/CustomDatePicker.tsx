@@ -4,6 +4,9 @@ import DatePicker from 'react-datepicker';
 import Button from '@webapp/ui/Button';
 import { formatAsOBject, getUTCdate } from '@webapp/util/formatDate';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import Select from '@webapp/ui/Select';
+
+import styles from './CustomDatePicker.module.scss';
 
 interface CustomDatePickerProps {
   from: string;
@@ -77,6 +80,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           showTimeSelect
           startDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
+          className={styles.datepicker}
         />
       </div>
       <div className="until">
@@ -91,6 +95,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           endDate={selectUntilAsDate}
           minDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
+          className={styles.datepicker}
         />
       </div>
       {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}
@@ -101,7 +106,8 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
 
       <div style={{ marginTop: 10 }}>
         <label htmlFor="select-timezone">Time Zone: </label>
-        <select
+        <Select
+          ariaLabel="select-timezone"
           onChange={(e) => changeTimeZoneOffset(Number(e.target.value))}
           id="select-timezone"
           value={String(offset)}
@@ -112,7 +118,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
               {o.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
     </div>
   );
