@@ -1,5 +1,5 @@
 /* eslint-disable prefer-template */
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   changeTimeZoneOffset,
@@ -17,15 +17,21 @@ export default function useTimeZone() {
     }
   }, []);
 
+  const browserTimeLabel = useMemo(() => {
+    const absOffset = Math.abs(offset);
+
+    return `Browser Time (UTC${offset < 0 ? '+' : '-'}${
+      ('00' + Math.floor(absOffset / 60)).slice(-2) +
+      ':' +
+      ('00' + (absOffset % 60)).slice(-2)
+    })`;
+  }, [offset]);
+
   return {
     offset: selectedOffset,
     options: [
       {
-        label: `Browser Time (UTC${offset < 0 ? '+' : '-'}${
-          ('00' + Math.floor(Math.abs(offset) / 60)).slice(-2) +
-          ':' +
-          ('00' + (Math.abs(offset) % 60)).slice(-2)
-        })`,
+        label: browserTimeLabel,
         value: offset,
         key: 'local',
       },
