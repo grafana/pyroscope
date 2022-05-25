@@ -91,24 +91,19 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 		err = convert.ParseTreeNoDict(in.Body, cb)
 	case in.Format == "lines":
 		err = convert.ParseIndividualLines(in.Body, cb)
+	// with some formats we write directly to storage, hence the early return
 	case in.Format == "jfr":
-		err = jfr.ParseJFR(ctx, in.Body, p.putter, pi)
+		return jfr.ParseJFR(ctx, in.Body, p.putter, pi)
 	case in.Format == "pprof":
-		err = writePprofFromBody(ctx, p.putter, in)
+		return writePprofFromBody(ctx, p.putter, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
-		err = writePprofFromForm(ctx, p.putter, in)
+		return writePprofFromForm(ctx, p.putter, in)
 	default:
 		err = convert.ParseGroups(in.Body, cb)
 	}
 
 	if err != nil {
 		return err
-	}
-
-	// with some formats we write directly to storage (e.g look at "multipart/form-data" above)
-	// TODO(petethepig): this is unintuitive and error prone, need to refactor at some point
-	if pi.Val == nil {
-		return nil
 	}
 
 	if err = p.putter.Put(ctx, pi); err != nil {
