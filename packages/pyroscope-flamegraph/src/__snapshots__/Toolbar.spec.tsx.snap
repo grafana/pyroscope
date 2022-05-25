@@ -10,7 +10,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
       class="navbar"
     >
       <input
-        class="search "
+        class="input search "
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
@@ -22,7 +22,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
       />
       <select
         aria-label="fit-mode"
-        class="fit-mode-select"
+        class="select fit-mode-select"
       >
         <option
           disabled=""
@@ -168,7 +168,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       class="navbar"
     >
       <input
-        class="search search-small"
+        class="input search search-small"
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
@@ -180,7 +180,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       />
       <select
         aria-label="fit-mode"
-        class="fit-mode-select"
+        class="select fit-mode-select"
       >
         <option
           disabled=""
@@ -249,6 +249,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       >
         <select
           aria-label="view"
+          class="select "
           name="view"
         >
           <option

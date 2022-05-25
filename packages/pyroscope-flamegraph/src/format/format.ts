@@ -85,6 +85,7 @@ class DurationFormatter {
 //   precalculating divider and suffix and not doing it on each iteration
 class NanosecondsFormatter {
   divider = 1;
+
   multiplier = 1;
 
   suffix: string = 'second';

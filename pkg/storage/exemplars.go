@@ -21,8 +21,8 @@ import (
 // TODO(kolesnikovae): decouple from Storage.
 
 const (
-	exemplarDataPrefix      prefix = "v:"
-	exemplarTimestampPrefix prefix = "t:"
+	exemplarDataPrefix      Prefix = "v:"
+	exemplarTimestampPrefix Prefix = "t:"
 	exemplarsFormatV1       byte   = 1
 
 	exemplarBatches       = 5
@@ -34,8 +34,8 @@ type exemplars struct {
 	logger  *logrus.Logger
 	config  *Config
 	metrics *metrics
-	db      *db
-	dicts   *db
+	db      BadgerDBWithCache
+	dicts   BadgerDBWithCache
 
 	once         sync.Once
 	mu           sync.Mutex
@@ -52,7 +52,7 @@ type exemplarsBatch struct {
 
 	config  *Config
 	metrics *metrics
-	dicts   *db
+	dicts   BadgerDBWithCache
 }
 
 type exemplarsBatchEntry struct {
@@ -72,7 +72,7 @@ func (e *exemplars) newExemplarsBatch() *exemplarsBatch {
 	}
 }
 
-func (s *Storage) initExemplarsStorage(db *db) {
+func (s *Storage) initExemplarsStorage(db BadgerDBWithCache) {
 	e := exemplars{
 		logger:  s.logger,
 		config:  s.config,

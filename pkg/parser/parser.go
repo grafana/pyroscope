@@ -81,6 +81,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 
 	cb := p.createParseCallback(pi)
 	var err error
+
 	switch {
 	case in.Format == "trie", in.ContentType == "binary/octet-stream+trie":
 		tmpBuf := p.bufferPool.Get()
