@@ -38,7 +38,7 @@ type TimelineChartWrapperProps = {
     right?: Marking;
   };
 
-  timezone?: 'browser' | 'utc';
+  timezone: 'browser' | 'utc';
 };
 
 class TimelineChartWrapper extends React.Component<
