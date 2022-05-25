@@ -7,12 +7,15 @@ import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
-import { DebounceInput } from 'react-debounce-input';
 import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Button from '@webapp/ui/Button';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Input from '@webapp/ui/Input';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Select from '@webapp/ui/Select';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 
@@ -294,8 +297,8 @@ function HighlightSearch({
   highlightQuery: ProfileHeaderProps['highlightQuery'];
 }) {
   return (
-    <DebounceInput
-      data-testid="flamegraph-search"
+    <Input
+      testId="flamegraph-search"
       className={`${styles.search} ${
         showMode === 'small' ? styles['search-small'] : ''
       }`}
@@ -388,8 +391,8 @@ function FitMode({
   }
 
   return (
-    <select
-      aria-label="fit-mode"
+    <Select
+      ariaLabel="fit-mode"
       className={styles['fit-mode-select']}
       value={fitMode}
       onChange={(event) => updateFitMode(event.target.value as typeof fitMode)}
@@ -397,7 +400,7 @@ function FitMode({
       <option disabled>{texts.header}</option>
       <option value={HeadMode}>{texts.head}</option>
       <option value={TailMode}>{texts.tail}</option>
-    </select>
+    </Select>
   );
 }
 
@@ -414,10 +417,10 @@ function DiffView({
     return null;
   }
 
-  const Select = (
-    <select
+  const ShowModeSelect = (
+    <Select
       name="viewDiff"
-      aria-label="view-diff"
+      ariaLabel="view-diff"
       value={viewDiff}
       onChange={(e) => {
         updateViewDiff(e.target.value as typeof viewDiff);
@@ -426,7 +429,7 @@ function DiffView({
       <option value="self">Self</option>
       <option value="total">Total</option>
       <option value="diff">Diff</option>
-    </select>
+    </Select>
   );
 
   const kindByState = (name: string) => {
@@ -468,7 +471,7 @@ function DiffView({
   const decideWhatToShow = () => {
     switch (showMode) {
       case 'small': {
-        return Select;
+        return ShowModeSelect;
       }
       case 'large': {
         return Buttons;
@@ -496,9 +499,9 @@ function ViewSection({
   updateView: ProfileHeaderProps['updateView'];
   view: ProfileHeaderProps['view'];
 }) {
-  const Select = (
-    <select
-      aria-label="view"
+  const ViewSelect = (
+    <Select
+      ariaLabel="view"
       name="view"
       value={view}
       onChange={(e) => {
@@ -508,7 +511,7 @@ function ViewSection({
       <option value="table">Table</option>
       <option value="both">Both</option>
       <option value="flamegraph">Flame</option>
-    </select>
+    </Select>
   );
 
   const kindByState = (name: ViewTypes) => {
@@ -550,7 +553,7 @@ function ViewSection({
   const decideWhatToShow = () => {
     switch (showMode) {
       case 'small': {
-        return Select;
+        return ViewSelect;
       }
       case 'large': {
         return Buttons;
