@@ -2,6 +2,7 @@
   max-width: 510px;
   min-width: 292px;
   width: inherit;
+  padding-right: 20px !important;
 }
 
 .dropdownWrapper {
