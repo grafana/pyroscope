@@ -91,13 +91,18 @@ var _ = Describe("server", func() {
 					done := make(chan interface{})
 					go func() {
 						defer GinkgoRecover()
-						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+
+						reg := prometheus.NewRegistry()
+
+						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), reg, new(health.Controller))
+						queue := storage.NewIngestionQueue(logrus.StandardLogger(), s, reg, 4, 4)
+
 						Expect(err).ToNot(HaveOccurred())
 						e, _ := exporter.NewExporter(nil, nil)
 						c, _ := New(Config{
 							Configuration:           &(*cfg).Server,
 							Storage:                 s,
-							Putter:                  s,
+							Putter:                  queue,
 							MetricsExporter:         e,
 							Logger:                  logrus.New(),
 							MetricsRegisterer:       prometheus.NewRegistry(),
@@ -145,6 +150,7 @@ var _ = Describe("server", func() {
 							expectedKey = name
 						}
 						sk, _ := segment.ParseKey(expectedKey)
+						time.Sleep(10 * time.Millisecond)
 						time.Sleep(sleepDur)
 						gOut, err := s.Get(context.TODO(), &storage.GetInput{
 							StartTime: st,

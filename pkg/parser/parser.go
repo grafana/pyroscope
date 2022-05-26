@@ -93,7 +93,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 		err = convert.ParseIndividualLines(in.Body, cb)
 	// with some formats we write directly to storage, hence the early return
 	case in.Format == "jfr":
-		return jfr.ParseJFR(ctx, in.Body, p.putter, pi)
+		return jfr.ParseJFR(ctx, p.putter, in.Body, pi)
 	case in.Format == "pprof":
 		return writePprofFromBody(ctx, p.putter, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
