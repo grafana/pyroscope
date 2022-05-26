@@ -36,6 +36,8 @@ import { getUTCdate } from '@webapp/util/formatDate';
         const d = getUTCdate(
           new Date(date),
           plotOptions.xaxis.timezone === 'utc'
+            ? 0
+            : new Date().getTimezoneOffset()
         );
 
         const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;

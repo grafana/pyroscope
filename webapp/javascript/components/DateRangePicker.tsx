@@ -44,14 +44,14 @@ function findPreset(from: string, until = 'now') {
     .find((a) => from === a.from);
 }
 
-function dateToLabel(from: string, until: string, isUTC?: boolean) {
+function dateToLabel(from: string, until: string, offsetInMinutes: number) {
   const preset = findPreset(from, until);
 
   if (preset) {
     return preset.label;
   }
 
-  return readableRange(from, until, isUTC);
+  return readableRange(from, until, offsetInMinutes);
 }
 
 function DateRangePicker() {
@@ -73,7 +73,7 @@ function DateRangePicker() {
   };
 
   const isPresetSelected = (preset: typeof defaultPresets[0][0]) => {
-    return preset.label === dateToLabel(from, until);
+    return preset.label === dateToLabel(from, until, offset);
   };
 
   return (
@@ -84,7 +84,7 @@ function DateRangePicker() {
           icon={faClock}
           onClick={toggleDropdown}
         >
-          {dateToLabel(from, until, offset === 0)}
+          {dateToLabel(from, until, offset)}
         </Button>
         <div className="drp-dropdown">
           <div className="drp-quick-presets">

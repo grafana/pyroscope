@@ -28,7 +28,7 @@ export default function useTimeZone() {
   }, [offset]);
 
   return {
-    offset: selectedOffset,
+    offset: typeof selectedOffset !== 'number' ? offset : selectedOffset,
     options: [
       {
         label: browserTimeLabel,
@@ -41,6 +41,7 @@ export default function useTimeZone() {
         key: 'utc',
       },
     ],
-    changeTimeZoneOffset: (value: any) => dispatch(changeTimeZoneOffset(value)),
+    changeTimeZoneOffset: (value: number) =>
+      dispatch(changeTimeZoneOffset(value)),
   };
 }

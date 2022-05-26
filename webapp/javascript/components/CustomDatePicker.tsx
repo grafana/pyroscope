@@ -50,8 +50,8 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
     });
   }, [from, until]);
 
-  const selectFromAsDate = getUTCdate(selectedDate.from, offset === 0);
-  const selectUntilAsDate = getUTCdate(selectedDate.until, offset === 0);
+  const selectFromAsDate = getUTCdate(selectedDate.from, offset);
+  const selectUntilAsDate = getUTCdate(selectedDate.until, offset);
 
   const onDateChange = (date: Date | null, area: 'from' | 'until') => {
     if (date) {
