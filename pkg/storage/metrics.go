@@ -8,9 +8,8 @@ import (
 )
 
 type metrics struct {
-	putTotal       prometheus.Counter
-	getTotal       prometheus.Counter
-	discardedTotal prometheus.Counter
+	putTotal prometheus.Counter
+	getTotal prometheus.Counter
 
 	retentionTaskDuration prometheus.Summary
 	evictionTaskDuration  prometheus.Summary
@@ -31,6 +30,7 @@ type metrics struct {
 	exemplarsWriteBytes            prometheus.Summary
 	exemplarsReadBytes             prometheus.Summary
 	exemplarsRemovedTotal          prometheus.Counter
+	exemplarsDiscardedTotal        prometheus.Counter
 	exemplarsRetentionTaskDuration prometheus.Summary
 }
 
@@ -44,10 +44,6 @@ func newMetrics(r prometheus.Registerer) *metrics {
 		getTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_reads_total",
 			Help: "number of calls to storage.Get",
-		}),
-		discardedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_storage_discarded_total",
-			Help: "number of calls to storage.Enqueue that were rejected",
 		}),
 
 		retentionTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
@@ -123,6 +119,10 @@ func newMetrics(r prometheus.Registerer) *metrics {
 		exemplarsRemovedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_exemplars_removed_total",
 			Help: "number of exemplars removed from storage based on the retention policy",
+		}),
+		exemplarsDiscardedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_storage_exemplars_discarded_total",
+			Help: "number of exemplars discarded",
 		}),
 		exemplarsRetentionTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
 			Name:       "pyroscope_storage_exemplars_retention_task_duration_seconds",

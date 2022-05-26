@@ -26,27 +26,29 @@ type db struct {
 	gcCount prometheus.Counter
 }
 
-type prefix string
+type Prefix string
 
 const (
-	segmentPrefix    prefix = "s:"
-	treePrefix       prefix = "t:"
-	dictionaryPrefix prefix = "d:"
-	dimensionPrefix  prefix = "i:"
+	segmentPrefix    Prefix = "s:"
+	treePrefix       Prefix = "t:"
+	dictionaryPrefix Prefix = "d:"
+	dimensionPrefix  Prefix = "i:"
 )
 
-func (p prefix) String() string      { return string(p) }
-func (p prefix) bytes() []byte       { return []byte(p) }
-func (p prefix) key(k string) []byte { return []byte(string(p) + k) }
+func (p Prefix) String() string      { return string(p) }
+func (p Prefix) bytes() []byte       { return []byte(p) }
+func (p Prefix) key(k string) []byte { return []byte(string(p) + k) }
 
-func (p prefix) trim(k []byte) ([]byte, bool) {
+func (p Prefix) trim(k []byte) ([]byte, bool) {
 	if len(k) > len(p) {
 		return k[len(p):], true
 	}
 	return nil, false
 }
 
-func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (d *db, err error) {
+func (s *Storage) newBadger(name string, p Prefix, codec cache.Codec) (BadgerDBWithCache, error) {
+	var d *db
+	var err error
 	logger := logrus.New()
 	logger.SetLevel(s.config.badgerLogLevel)
 
@@ -132,7 +134,7 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (d *db, er
 	return d, nil
 }
 
-func (d *db) close() {
+func (d *db) Close() {
 	if d.Cache != nil {
 		d.Cache.Flush()
 	}
@@ -141,10 +143,25 @@ func (d *db) close() {
 	}
 }
 
-func (d *db) size() bytesize.ByteSize {
+func (d *db) Size() bytesize.ByteSize {
 	// The value is updated once per minute.
 	lsm, vlog := d.DB.Size()
 	return bytesize.ByteSize(lsm + vlog)
+}
+
+func (d *db) CacheSize() uint64 {
+	return d.Cache.Size()
+}
+
+func (d *db) Name() string {
+	return d.name
+}
+
+func (d *db) DBInstance() *badger.DB {
+	return d.DB
+}
+func (d *db) CacheInstance() *cache.Cache {
+	return d.Cache
 }
 
 func (d *db) runGC(discardRatio float64) (reclaimed bool) {

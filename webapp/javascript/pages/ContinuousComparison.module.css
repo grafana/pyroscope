@@ -1,6 +1,6 @@
 .comparisonPane {
   flex: 1;
-  width: 50%;
+  width: calc(50% - 15px);
 
   margin: 0 15px;
 }
