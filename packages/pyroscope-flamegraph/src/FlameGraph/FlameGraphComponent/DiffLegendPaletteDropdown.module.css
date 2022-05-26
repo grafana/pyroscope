@@ -31,6 +31,7 @@
 
 .dropdownItem svg {
   margin-left: 1em;
+  fill: var(--ps-c-white-2);
 }
 
 .row {
