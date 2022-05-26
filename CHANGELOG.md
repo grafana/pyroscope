@@ -1,3 +1,12 @@
+## [0.17.1](https://github.com/pyroscope-io/pyroscope/compare/v0.17.0...v0.17.1) (2022-05-26)
+
+
+### Bug Fixes
+
+* jfr ingestion issue in 0.17.0 ([#1112](https://github.com/pyroscope-io/pyroscope/issues/1112)) ([0f93772](https://github.com/pyroscope-io/pyroscope/commit/0f93772554817544125c79194a996a4ef61d4d44))
+
+
+
 # [0.17.0](https://github.com/pyroscope-io/pyroscope/compare/v0.16.0...v0.17.0) (2022-05-26)
 
 
