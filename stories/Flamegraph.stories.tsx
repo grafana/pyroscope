@@ -38,12 +38,18 @@ const SimpleTree = {
 };
 
 const Template: ComponentStory<typeof Button> = (args) => (
-  <FlamegraphRenderer
-    flamebearer={SimpleTree}
-    display="flamegraph"
-    viewType="single"
-    colorMode={args['Light Color Mode'] ? 'light' : 'dark'}
-  />
+  <div
+    style={{
+      backgroundColor: `${args['Light Color Mode'] ? '#e4e4e4' : '#1b1b1b'}`,
+    }}
+  >
+    <FlamegraphRenderer
+      flamebearer={SimpleTree}
+      display="flamegraph"
+      viewType="single"
+      colorMode={args['Light Color Mode'] ? 'light' : 'dark'}
+    />
+  </div>
 );
 
 export const ColorMode = Template.bind({});
