@@ -38,7 +38,7 @@
   background-image: radial-gradient(
     farthest-corner at 0% 0%,
     var(--ps-neutral-4) 0%,
-    var(--ps-c-black)
+    var(--ps-neutral-1)
   );
 
   animation: fadeout 2s ease 0s 1 normal forwards;
