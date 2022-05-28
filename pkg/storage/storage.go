@@ -9,10 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -31,11 +33,11 @@ type Storage struct {
 	logger *logrus.Logger
 	*metrics
 
-	segments   *db
-	dimensions *db
-	dicts      *db
-	trees      *db
-	main       *db
+	segments   BadgerDBWithCache
+	dimensions BadgerDBWithCache
+	dicts      BadgerDBWithCache
+	trees      BadgerDBWithCache
+	main       BadgerDBWithCache
 	labels     *labels.Labels
 	exemplars  *exemplars
 
@@ -48,11 +50,7 @@ type Storage struct {
 	tasksMutex sync.Mutex
 	tasksWG    sync.WaitGroup
 	stop       chan struct{}
-
-	queueWorkersWG sync.WaitGroup
-	queue          chan *putInputWithCtx
-
-	putMutex sync.Mutex
+	putMutex   sync.Mutex
 }
 
 type storageOptions struct {
@@ -63,8 +61,6 @@ type storageOptions struct {
 	retentionTaskInterval     time.Duration
 	cacheTTL                  time.Duration
 	gcSizeDiff                bytesize.ByteSize
-	queueLen                  int
-	queueWorkers              int
 }
 
 // MetricsExporter exports values of particular stack traces sample from profiling
@@ -101,12 +97,6 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
 			gcSizeDiff: bytesize.GB,
-			// TODO(kolesnikovae): Implement dynamic throttling.
-			// in-memory queue params.
-			queueLen: 100,
-			// Setting multiple workers does not make sense
-			// because of the storage.Put mutex.
-			queueWorkers: 1, // runtime.NumCPU(),
 		},
 
 		hc:      hc,
@@ -115,39 +105,40 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		stop:    make(chan struct{}),
 	}
 
-	s.queue = make(chan *putInputWithCtx, s.queueLen)
+	if c.NewBadger == nil {
+		c.NewBadger = s.newBadger
+	}
 
 	var err error
-	if s.main, err = s.newBadger("main", "", nil); err != nil {
+	if s.main, err = c.NewBadger("main", "", nil); err != nil {
 		return nil, err
 	}
-	if s.dicts, err = s.newBadger("dicts", dictionaryPrefix, dictionaryCodec{}); err != nil {
+	if s.dicts, err = c.NewBadger("dicts", dictionaryPrefix, dictionaryCodec{}); err != nil {
 		return nil, err
 	}
-	if s.dimensions, err = s.newBadger("dimensions", dimensionPrefix, dimensionCodec{}); err != nil {
+	if s.dimensions, err = c.NewBadger("dimensions", dimensionPrefix, dimensionCodec{}); err != nil {
 		return nil, err
 	}
-	if s.segments, err = s.newBadger("segments", segmentPrefix, segmentCodec{}); err != nil {
+	if s.segments, err = c.NewBadger("segments", segmentPrefix, segmentCodec{}); err != nil {
 		return nil, err
 	}
-	if s.trees, err = s.newBadger("trees", treePrefix, treeCodec{s}); err != nil {
+	if s.trees, err = c.NewBadger("trees", treePrefix, treeCodec{s}); err != nil {
 		return nil, err
 	}
 
-	pdb, err := s.newBadger("profiles", exemplarDataPrefix, nil)
+	pdb, err := c.NewBadger("profiles", exemplarDataPrefix, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	s.initExemplarsStorage(pdb)
-	s.labels = labels.New(s.main.DB)
+	s.labels = labels.New(s.main.DBInstance())
 
 	if err = s.migrate(); err != nil {
 		return nil, err
 	}
 
 	s.periodicTask(s.writeBackTaskInterval, s.writeBackTask)
-	s.startQueueWorkers()
 
 	if !s.config.inMemory {
 		// TODO(kolesnikovae): Allow failure and skip evictionTask?
@@ -167,24 +158,23 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 func (s *Storage) Close() error {
 	// Stop all periodic and maintenance tasks.
 	close(s.stop)
-	s.queueWorkersWG.Wait()
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")
 	// Dictionaries DB has to close last because trees and profiles DBs depend on it.
-	s.goDB(func(d *db) {
+	s.goDB(func(d BadgerDBWithCache) {
 		if d != s.dicts {
-			d.close()
+			d.Close()
 		}
 	})
-	s.dicts.close()
+	s.dicts.Close()
 	return nil
 }
 
 func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 	m := make(map[string]bytesize.ByteSize)
 	for _, d := range s.databases() {
-		m[d.name] = d.size()
+		m[d.Name()] = d.Size()
 	}
 	return m
 }
@@ -192,8 +182,8 @@ func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 func (s *Storage) CacheStats() map[string]uint64 {
 	m := make(map[string]uint64)
 	for _, d := range s.databases() {
-		if d.Cache != nil {
-			m[d.name] = d.Cache.Size()
+		if d.CacheInstance() != nil {
+			m[d.Name()] = d.CacheSize()
 		}
 	}
 	return m
@@ -213,12 +203,12 @@ func (s *Storage) withContext(fn func(context.Context)) {
 }
 
 // goDB runs f for all DBs concurrently.
-func (s *Storage) goDB(f func(*db)) {
+func (s *Storage) goDB(f func(BadgerDBWithCache)) {
 	dbs := s.databases()
 	wg := new(sync.WaitGroup)
 	wg.Add(len(dbs))
 	for _, d := range dbs {
-		go func(db *db) {
+		go func(db BadgerDBWithCache) {
 			defer wg.Done()
 			f(db)
 		}(d)
@@ -296,7 +286,7 @@ func (s *Storage) writeBackTask() {
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.writeBackTaskDuration.Observe))
 	defer timer.ObserveDuration()
 	for _, d := range s.databases() {
-		if d.Cache != nil {
+		if d.CacheInstance() != nil {
 			d.WriteBack()
 		}
 	}
@@ -304,9 +294,9 @@ func (s *Storage) writeBackTask() {
 
 func (s *Storage) updateMetricsTask() {
 	for _, d := range s.databases() {
-		s.metrics.dbSize.WithLabelValues(d.name).Set(float64(d.size()))
-		if d.Cache != nil {
-			s.metrics.cacheSize.WithLabelValues(d.name).Set(float64(d.Cache.Size()))
+		s.metrics.dbSize.WithLabelValues(d.Name()).Set(float64(d.Size()))
+		if d.CacheInstance() != nil {
+			s.metrics.cacheSize.WithLabelValues(d.Name()).Set(float64(d.CacheSize()))
 		}
 	}
 }
@@ -343,8 +333,8 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 			s.config.retentionLevels.Two)
 }
 
-func (s *Storage) databases() []*db {
-	return []*db{
+func (s *Storage) databases() []BadgerDBWithCache {
+	return []BadgerDBWithCache{
 		s.main,
 		s.dimensions,
 		s.segments,
@@ -352,4 +342,20 @@ func (s *Storage) databases() []*db {
 		s.trees,
 		s.exemplars.db,
 	}
+}
+
+func (s *Storage) SegmentsInternals() (*badger.DB, *cache.Cache) {
+	return s.segments.DBInstance(), s.segments.CacheInstance()
+}
+func (s *Storage) DimensionsInternals() (*badger.DB, *cache.Cache) {
+	return s.dimensions.DBInstance(), s.dimensions.CacheInstance()
+}
+func (s *Storage) DictsInternals() (*badger.DB, *cache.Cache) {
+	return s.dicts.DBInstance(), s.dicts.CacheInstance()
+}
+func (s *Storage) TreesInternals() (*badger.DB, *cache.Cache) {
+	return s.trees.DBInstance(), s.trees.CacheInstance()
+}
+func (s *Storage) MainInternals() (*badger.DB, *cache.Cache) {
+	return s.main.DBInstance(), s.main.CacheInstance()
 }

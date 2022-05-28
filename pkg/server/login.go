@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
@@ -29,26 +30,6 @@ func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		ctrl.httpUtils.WriteInvalidMethodError(r, w)
 	}
-}
-
-func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.isLoginFormEnabled(r) {
-		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-	tmpl, err := getTemplate(ctrl.dir, "/login.html")
-	if err != nil {
-		ctrl.httpUtils.HandleError(r, w, err)
-		return
-	}
-	mustExecute(tmpl, w, map[string]interface{}{
-		"BasicAuthEnabled":       ctrl.config.Auth.Internal.Enabled,
-		"BasicAuthSignupEnabled": ctrl.config.Auth.Internal.SignupEnabled,
-		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
-		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
-		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
-		"BaseURL":                ctrl.config.BaseURL,
-	})
 }
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
@@ -89,26 +70,6 @@ func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		ctrl.httpUtils.WriteInvalidMethodError(r, w)
 	}
-}
-
-func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.isSignupAllowed(r) {
-		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-	tmpl, err := getTemplate(ctrl.dir, "/signup.html")
-	if err != nil {
-		ctrl.httpUtils.HandleError(r, w, err)
-		return
-	}
-	mustExecute(tmpl, w, map[string]interface{}{
-		"BasicAuthEnabled":       ctrl.config.Auth.Internal.Enabled,
-		"BasicAuthSignupEnabled": ctrl.config.Auth.Internal.SignupEnabled,
-		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
-		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
-		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
-		"BaseURL":                ctrl.config.BaseURL,
-	})
 }
 
 func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
@@ -233,28 +194,17 @@ func (ctrl *Controller) oauthLoginHandler(oh oauthHandler) http.HandlerFunc {
 // this is done so that the state cookie would be send back from browser
 func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := getTemplate(ctrl.dir, "/redirect.html")
-		if err != nil {
-			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render redirect page")
-			return
+		// Well I know that's kinda kludge, but here is rationale:
+		// We need to know if the url uses https or not
+		// Previous way of doing this was to use the html template and detect the protocol
+		// This way doesn't require any templates, but rely on referer header
+		// The other way around would be to include the protocol in the baseURL
+		hasTLS := "false"
+		if strings.HasPrefix(r.Header.Get("Referer"), "https:") {
+			hasTLS = "true"
 		}
-		mustExecute(tmpl, w, map[string]interface{}{
-			"RedirectPath": redirectPath + "?" + r.URL.RawQuery,
-			"BaseURL":      ctrl.config.BaseURL,
-		})
-	}
-}
 
-func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := getTemplate(ctrl.dir, "/forbidden.html")
-		if err != nil {
-			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render forbidden page")
-			return
-		}
-		mustExecute(tmpl, w, map[string]interface{}{
-			"BaseURL": ctrl.config.BaseURL,
-		})
+		ctrl.redirectPreservingBaseURL(w, r, redirectPath+"?"+r.URL.RawQuery+"&tls="+hasTLS, http.StatusPermanentRedirect)
 	}
 }
 
@@ -326,15 +276,6 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		// delete state cookie and add jwt cookie
 		ctrl.invalidateCookie(w, stateCookieName)
 		ctrl.createCookie(w, api.JWTCookieName, token)
-		tmpl, err := getTemplate(ctrl.dir, "/welcome.html")
-		if err != nil {
-			ctrl.httpUtils.WriteInternalServerError(r, w, err, "could not render welcome page")
-			return
-		}
-
-		mustExecute(tmpl, w, map[string]interface{}{
-			"Name":    u.Name,
-			"BaseURL": ctrl.config.BaseURL,
-		})
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusPermanentRedirect)
 	}
 }

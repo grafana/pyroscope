@@ -24,7 +24,7 @@ export async function renderSingle(
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
   // TODO
-  const response = await request(`${url}}&format=json`);
+  const response = await request(`${url}&format=json`);
 
   if (response.isErr) {
     return Result.err<RenderOutput, RequestError>(response.error);

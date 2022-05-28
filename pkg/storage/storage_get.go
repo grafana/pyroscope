@@ -24,11 +24,13 @@ type GetInput struct {
 }
 
 type GetOutput struct {
-	Tree       *tree.Tree
-	Timeline   *segment.Timeline
-	SpyName    string
-	SampleRate uint32
-	Units      metadata.Units
+	Tree            *tree.Tree
+	Timeline        *segment.Timeline
+	SpyName         string
+	SampleRate      uint32
+	Count           uint64
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 }
 
 const (
@@ -154,11 +156,13 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	}
 
 	return &GetOutput{
-		Tree:       resultTrie,
-		Timeline:   timeline,
-		SpyName:    lastSegment.SpyName(),
-		SampleRate: lastSegment.SampleRate(),
-		Units:      lastSegment.Units(),
+		Tree:            resultTrie,
+		Timeline:        timeline,
+		SpyName:         lastSegment.SpyName(),
+		SampleRate:      lastSegment.SampleRate(),
+		Count:           writesTotal,
+		Units:           lastSegment.Units(),
+		AggregationType: lastSegment.AggregationType(),
 	}, nil
 }
 

@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.6.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.3...@pyroscope/flamegraph@0.6.4) (2022-05-26)
+
+
+### Bug Fixes
+
+* flamegraph palette selector button styles ([#1113](https://github.com/pyroscope-io/pyroscope/issues/1113)) ([d7a7b11](https://github.com/pyroscope-io/pyroscope/commit/d7a7b117c13beb9528e730bec1353efe72767f83))
+
+
+
+
+
+## [0.6.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.2...@pyroscope/flamegraph@0.6.3) (2022-05-25)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.6.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.1...@pyroscope/flamegraph@0.6.2) (2022-05-12)
+
+
+### Bug Fixes
+
+* **flamegraph:** don't ship react-dom ([#1102](https://github.com/pyroscope-io/pyroscope/issues/1102)) ([c80240c](https://github.com/pyroscope-io/pyroscope/commit/c80240cbfda4d0573baf05b9c48d5b658791bffd))
+
+
+
+
+
+## [0.6.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.0...@pyroscope/flamegraph@0.6.1) (2022-05-09)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 # [0.6.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.5.0...@pyroscope/flamegraph@0.6.0) (2022-05-02)
 
 

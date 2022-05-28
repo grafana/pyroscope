@@ -2,9 +2,11 @@ FROM node:latest
 
 WORKDIR /app
 
-COPY *.json .
+COPY package.json .
+COPY tsconfig.json .
 RUN yarn 
 COPY *.ts .
-COPY profiler.js .
+RUN yarn build
+ENV DEBUG=pyroscope
+CMD ["yarn", "run", "run"] 
 
-RUN yarn 

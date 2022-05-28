@@ -1,3 +1,46 @@
+## [0.17.1](https://github.com/pyroscope-io/pyroscope/compare/v0.17.0...v0.17.1) (2022-05-26)
+
+
+### Bug Fixes
+
+* jfr ingestion issue in 0.17.0 ([#1112](https://github.com/pyroscope-io/pyroscope/issues/1112)) ([0f93772](https://github.com/pyroscope-io/pyroscope/commit/0f93772554817544125c79194a996a4ef61d4d44))
+
+
+
+# [0.17.0](https://github.com/pyroscope-io/pyroscope/compare/v0.16.0...v0.17.0) (2022-05-26)
+
+
+### Bug Fixes
+
+* **flamegraph:** don't ship react-dom ([#1102](https://github.com/pyroscope-io/pyroscope/issues/1102)) ([c80240c](https://github.com/pyroscope-io/pyroscope/commit/c80240cbfda4d0573baf05b9c48d5b658791bffd))
+* issue where apps show up without profile type ([#1110](https://github.com/pyroscope-io/pyroscope/issues/1110)) ([4a1ffb1](https://github.com/pyroscope-io/pyroscope/commit/4a1ffb1f102a4c2d5a54013052acf96c3aef498f))
+* **webapp:** Add minimum width for "select tag" dropdown [#1065](https://github.com/pyroscope-io/pyroscope/issues/1065) ([#1109](https://github.com/pyroscope-io/pyroscope/issues/1109)) ([ab47ad5](https://github.com/pyroscope-io/pyroscope/commit/ab47ad52047b03fc3df42126cc178dd733d6471b))
+
+
+### Performance Improvements
+
+* speeds up jfr parsing by updating jfr parser version ([#1111](https://github.com/pyroscope-io/pyroscope/issues/1111)) ([e31d65c](https://github.com/pyroscope-io/pyroscope/commit/e31d65caaf6e02dbc519e5fcdf1601e4341b8527))
+
+
+
+# [0.16.0](https://github.com/pyroscope-io/pyroscope/compare/v0.15.4...v0.16.0) (2022-05-12)
+
+
+### Bug Fixes
+
+* adding master key ([6ae1e18](https://github.com/pyroscope-io/pyroscope/commit/6ae1e1813863b9822c00adc5115bb230f12f1c0b))
+* updates otelpyroscope in the jaeger example ([#1064](https://github.com/pyroscope-io/pyroscope/issues/1064)) ([d2af864](https://github.com/pyroscope-io/pyroscope/commit/d2af864c456d70ed785485eba37738d4c7c68501))
+
+
+### Features
+
+* **flamegraph:** User should be able to adjust title visibility over the Flamegraph ([#1073](https://github.com/pyroscope-io/pyroscope/issues/1073)) ([bd74aae](https://github.com/pyroscope-io/pyroscope/commit/bd74aae448f3d30398484d589675ea168d816a70))
+* **frontend:** allow copying notification message ([#1086](https://github.com/pyroscope-io/pyroscope/issues/1086)) ([d30b787](https://github.com/pyroscope-io/pyroscope/commit/d30b78773ad58ec0aceadf40e3ba25900bc4971b))
+* **integrations:** nodejs support ([#1089](https://github.com/pyroscope-io/pyroscope/issues/1089)) ([c4b4164](https://github.com/pyroscope-io/pyroscope/commit/c4b41645fa9e44f4c41b909b4671e2bae6d36f55))
+* nodejs push & pull mode ([#1060](https://github.com/pyroscope-io/pyroscope/issues/1060)) ([4317103](https://github.com/pyroscope-io/pyroscope/commit/4317103354b5712c561e4cead7f6906c21a3005c))
+
+
+
 ## [0.15.4](https://github.com/pyroscope-io/pyroscope/compare/v0.15.3...v0.15.4) (2022-04-27)
 
 

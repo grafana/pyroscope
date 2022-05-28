@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strconv"
 	"time"
 
@@ -108,17 +109,23 @@ var _ = Describe("server", func() {
 
 			// this is an example of Shared Example pattern
 			//   see https://onsi.github.io/ginkgo/#shared-example-patterns
-			ItCorrectlyParsesIncomingData := func() {
+			ItCorrectlyParsesIncomingData := func(expectedAppNames []string) {
 				It("correctly parses incoming data", func() {
 					done := make(chan interface{})
 					go func() {
 						defer GinkgoRecover()
-						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+
+						reg := prometheus.NewRegistry()
+
+						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), reg, new(health.Controller))
+						queue := storage.NewIngestionQueue(logrus.StandardLogger(), s, reg, 4, 4)
+
 						Expect(err).ToNot(HaveOccurred())
 						e, _ := exporter.NewExporter(nil, nil)
 						c, _ := New(Config{
 							Configuration:           &(*cfg).Server,
 							Storage:                 s,
+							Putter:                  queue,
 							MetricsExporter:         e,
 							Logger:                  logrus.New(),
 							MetricsRegisterer:       prometheus.NewRegistry(),
@@ -166,6 +173,7 @@ var _ = Describe("server", func() {
 							expectedKey = name
 						}
 						sk, _ := segment.ParseKey(expectedKey)
+						time.Sleep(10 * time.Millisecond)
 						time.Sleep(sleepDur)
 						gOut, err := s.Get(context.TODO(), &storage.GetInput{
 							StartTime: st,
@@ -175,6 +183,12 @@ var _ = Describe("server", func() {
 						Expect(gOut).ToNot(BeNil())
 						Expect(err).ToNot(HaveOccurred())
 						Expect(gOut.Tree).ToNot(BeNil())
+
+						// Checks if only the expected app names were inserted
+						// Since we are comparing slices, let's sort them to have a deterministic order
+						sort.Strings(expectedAppNames)
+						Expect(s.GetAppNames(context.TODO())).To(Equal(expectedAppNames))
+
 						// Useful for debugging
 						// fmt.Println("sk ", sk)
 						// fmt.Println(gOut.Tree.String())
@@ -194,7 +208,7 @@ var _ = Describe("server", func() {
 					contentType = ""
 				})
 
-				ItCorrectlyParsesIncomingData()
+				ItCorrectlyParsesIncomingData([]string{`test.app`})
 			})
 
 			Context("lines format", func() {
@@ -204,7 +218,7 @@ var _ = Describe("server", func() {
 					contentType = ""
 				})
 
-				ItCorrectlyParsesIncomingData()
+				ItCorrectlyParsesIncomingData([]string{`test.app`})
 			})
 
 			Context("trie format", func() {
@@ -214,7 +228,7 @@ var _ = Describe("server", func() {
 					contentType = ""
 				})
 
-				ItCorrectlyParsesIncomingData()
+				ItCorrectlyParsesIncomingData([]string{`test.app`})
 			})
 
 			Context("tree format", func() {
@@ -224,7 +238,7 @@ var _ = Describe("server", func() {
 					contentType = ""
 				})
 
-				ItCorrectlyParsesIncomingData()
+				ItCorrectlyParsesIncomingData([]string{`test.app`})
 			})
 
 			Context("trie format", func() {
@@ -234,7 +248,7 @@ var _ = Describe("server", func() {
 					contentType = "binary/octet-stream+trie"
 				})
 
-				ItCorrectlyParsesIncomingData()
+				ItCorrectlyParsesIncomingData([]string{`test.app`})
 			})
 
 			Context("tree format", func() {
@@ -244,7 +258,7 @@ var _ = Describe("server", func() {
 					contentType = "binary/octet-stream+tree"
 				})
 
-				ItCorrectlyParsesIncomingData()
+				ItCorrectlyParsesIncomingData([]string{`test.app`})
 			})
 
 			Context("name with tags", func() {
@@ -255,13 +269,18 @@ var _ = Describe("server", func() {
 					name = "test.app{foo=bar,baz=qux}"
 				})
 
-				ItCorrectlyParsesIncomingData()
+				ItCorrectlyParsesIncomingData([]string{`test.app`})
 			})
+
 			Context("jfr", func() {
 				BeforeEach(func() {
+					format = ""
 					sleepDur = 100 * time.Millisecond
+					name = "test.app{foo=bar,baz=qux}"
+					buf = jfrFromFile("./testdata/jfr/no_labels/jfr.bin.gz")
 					format = "jfr"
 				})
+
 				types := []string{
 					"cpu",
 					"alloc_in_new_tlab_objects",
@@ -271,45 +290,28 @@ var _ = Describe("server", func() {
 					"lock_count",
 					"lock_duration",
 				}
-				Context("jfr without labels", func() {
-					BeforeEach(func() {
-						name = "test.app{foo=bar,baz=qux}"
-						buf = jfrFromFile("./testdata/jfr/no_labels/jfr.bin.gz")
-					})
-					for _, t := range types {
-						func(t string) {
-							Context(t, func() {
-								BeforeEach(func() {
-									// typeName = t
-									expectedKey = "test.app." + t + "{foo=bar,baz=qux}"
-									expectedTree = readTestdataFile("./testdata/jfr/no_labels/jfr-" + t + ".txt")
-								})
-								ItCorrectlyParsesIncomingData()
-							})
-						}(t)
-					}
-				})
-				Context("jfr with labels", func() {
-					BeforeEach(func() {
-						name = "test.app{foo=bar,baz=qux,thread_name=pool-2-thread-1}"
-						var w *multipart.Writer
-						w, buf = jfrFormFromFiles("./testdata/jfr/with_labels/jfr.bin.gz", "./testdata/jfr/with_labels/labels.json")
-						contentType = w.FormDataContentType()
-					})
 
-					for _, t := range types {
-						func(t string) {
-							Context(t, func() {
-								BeforeEach(func() {
-									// typeName = t
-									expectedKey = "test.app." + t + "{foo=bar,baz=qux,thread_name=pool-2-thread-1}"
-									expectedTree = readTestdataFile("./testdata/jfr/with_labels/jfr-" + t + ".txt")
-								})
-								ItCorrectlyParsesIncomingData()
+				for _, t := range types {
+					func(t string) {
+						Context(t, func() {
+							BeforeEach(func() {
+								// typeName = t
+								expectedKey = "test.app." + t + "{foo=bar,baz=qux}"
+								expectedTree = readTestdataFile("./testdata/jfr/no_labels/jfr-" + t + ".txt")
 							})
-						}(t)
-					}
-				})
+
+							ItCorrectlyParsesIncomingData([]string{
+								"test.app.cpu",
+								"test.app.alloc_in_new_tlab_objects",
+								"test.app.alloc_in_new_tlab_bytes",
+								"test.app.alloc_outside_tlab_objects",
+								"test.app.alloc_outside_tlab_bytes",
+								"test.app.lock_count",
+								"test.app.lock_duration",
+							})
+						})
+					}(t)
+				}
 			})
 
 			Context("pprof", func() {
@@ -328,7 +330,7 @@ var _ = Describe("server", func() {
 						contentType = w.FormDataContentType()
 					})
 
-					ItCorrectlyParsesIncomingData()
+					ItCorrectlyParsesIncomingData([]string{`test.app.cpu`})
 				})
 
 				Context("pprof format instead of content Type", func() { // this is described in docs
@@ -336,7 +338,7 @@ var _ = Describe("server", func() {
 						format = "pprof"
 						buf = bytes.NewBuffer([]byte(readTestdataFile("../convert/testdata/cpu.pprof")))
 					})
-					ItCorrectlyParsesIncomingData()
+					ItCorrectlyParsesIncomingData([]string{`test.app.cpu`})
 				})
 
 				Context("custom sample type config", func() { // this is also described in docs
@@ -352,7 +354,7 @@ var _ = Describe("server", func() {
 						expectedKey = "test.app.customName{foo=bar,baz=qux}"
 					})
 
-					ItCorrectlyParsesIncomingData()
+					ItCorrectlyParsesIncomingData([]string{`test.app.customName`})
 				})
 			})
 		})

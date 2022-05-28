@@ -1,5 +1,7 @@
 /* eslint-disable */
-const { expressMiddleware } = require('@pyroscope/nodejs');
+const Pyroscope = require('@pyroscope/nodejs');
+
+const { expressMiddleware } = Pyroscope;
 
 const port = process.env['PORT'] || 3000;
 
@@ -7,7 +9,6 @@ const region = process.env['REGION'] || 'default';
 
 const express = require('express');
 const morgan = require('morgan');
-const fetch = require('node-fetch');
 
 const app = express();
 app.use(morgan('dev'));
@@ -33,6 +34,8 @@ function scooterSearchHandler() {
   return genericSearchHandler(0.25);
 }
 
+Pyroscope.init({ tags: { region } });
+
 app.use(expressMiddleware());
 
 app.get('/bike', function bikeSearchHandler(req, res) {
@@ -40,18 +43,6 @@ app.get('/bike', function bikeSearchHandler(req, res) {
 });
 app.get('/car', carSearchHandler());
 app.get('/scooter', scooterSearchHandler());
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/car`);
-}, 1800);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/bike`);
-}, 5000);
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/scooter`);
-}, 1000);
 
 app.listen(port, () => {
   console.log(

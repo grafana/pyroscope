@@ -3,6 +3,84 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.8.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.7...@pyroscope/webapp@1.8.8) (2022-05-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.8.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.6...@pyroscope/webapp@1.8.7) (2022-05-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.8.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.5...@pyroscope/webapp@1.8.6) (2022-05-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.8.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.4...@pyroscope/webapp@1.8.5) (2022-05-25)
+
+
+### Bug Fixes
+
+* **webapp:** Add minimum width for "select tag" dropdown [#1065](https://github.com/pyroscope-io/pyroscope/issues/1065) ([#1109](https://github.com/pyroscope-io/pyroscope/issues/1109)) ([ab47ad5](https://github.com/pyroscope-io/pyroscope/commit/ab47ad52047b03fc3df42126cc178dd733d6471b))
+
+
+
+
+
+## [1.8.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.3...@pyroscope/webapp@1.8.4) (2022-05-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.8.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.2...@pyroscope/webapp@1.8.3) (2022-05-10)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.8.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.1...@pyroscope/webapp@1.8.2) (2022-05-09)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.8.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.0...@pyroscope/webapp@1.8.1) (2022-05-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.8.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.7.1...@pyroscope/webapp@1.8.0) (2022-05-05)
+
+
+### Features
+
+* **frontend:** allow copying notification message ([#1086](https://github.com/pyroscope-io/pyroscope/issues/1086)) ([d30b787](https://github.com/pyroscope-io/pyroscope/commit/d30b78773ad58ec0aceadf40e3ba25900bc4971b))
+
+
+
+
+
 ## [1.7.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.7.0...@pyroscope/webapp@1.7.1) (2022-05-02)
 
 **Note:** Version bump only for package @pyroscope/webapp

@@ -54,6 +54,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
+	putter     storage.Putter
 	log        *logrus.Logger
 	httpServer *http.Server
 	db         *gorm.DB
@@ -86,7 +87,9 @@ type Controller struct {
 type Config struct {
 	Configuration *config.Server
 	*logrus.Logger
+	// TODO: Ideally, Storage should be decomposed.
 	*storage.Storage
+	storage.Putter
 	*gorm.DB
 	Notifier
 
@@ -112,6 +115,7 @@ type Notifier interface {
 	// TODO(kolesnikovae): we should poll for notifications (or subscribe).
 	NotificationText() string
 }
+
 type TargetsResponse struct {
 	Job                string              `json:"job"`
 	TargetURL          string              `json:"url"`
@@ -135,6 +139,7 @@ func New(c Config) (*Controller, error) {
 		config:    c.Configuration,
 		log:       c.Logger,
 		storage:   c.Storage,
+		putter:    c.Putter,
 		exporter:  c.MetricsExporter,
 		notifier:  c.Notifier,
 		stats:     make(map[string]int),
@@ -223,7 +228,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	assetsHandler := r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP
 	ctrl.addRoutes(r, append(insecureRoutes, []route{
-		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", assetsHandler}}...),
 		ctrl.drainMiddleware)
 
@@ -240,7 +244,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/adhoc-comparison-diff", ih},
 		{"/settings", ih},
 		{"/settings/{page}", ih},
-		{"/settings/{page}/{subpage}", ih}},
+		{"/settings/{page}/{subpage}", ih},
+		{"/forbidden", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
@@ -293,7 +298,11 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/healthz", ctrl.healthz},
 	})
 
-	r.NotFoundHandler = ih
+	// Respond with 404 for all other routes.
+	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		ih(w, r)
+	})
 
 	return r, nil
 }

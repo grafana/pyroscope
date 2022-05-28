@@ -67,20 +67,18 @@ interface Node {
 
 interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
+  profile?: Profile;
   onlyDisplay?: ViewTypes;
+  showToolbar?: boolean;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
-
-  showToolbar?: boolean;
+  showPyroscopeLogo?: boolean;
+  renderLogo?: boolean;
+  ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
 
   /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
-  profile?: Profile;
-  showPyroscopeLogo?: boolean;
-  renderLogo?: boolean;
-
-  ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
 }
 
 interface FlamegraphRendererState {
@@ -366,7 +364,7 @@ class FlameGraphRenderer extends React.Component<
     const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
 
     return (
-      <div>
+      <div className="flamegraph-root">
         <div>
           {toolbarVisible && (
             <Toolbar

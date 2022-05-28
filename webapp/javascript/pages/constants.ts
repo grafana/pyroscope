@@ -9,6 +9,7 @@ export enum PAGES {
   ADHOC_SINGLE = '/adhoc-single',
   ADHOC_COMPARISON = '/adhoc-comparison',
   ADHOC_COMPARISON_DIFF = '/adhoc-comparison-diff',
+  FORBIDDEN = '/forbidden',
 }
 
 export default {

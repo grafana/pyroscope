@@ -1,3 +1,4 @@
+//go:build dotnetspy && !windows
 // +build dotnetspy,!windows
 
 package dotnetspy

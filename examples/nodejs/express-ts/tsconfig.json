@@ -1,24 +1,26 @@
 {
   "compilerOptions": {
-    "target": "esnext",
-    "module": "ESNext",
+    "target": "es6",
+    "module": "commonjs",
     "moduleResolution": "node",
     "rootDir": ".",
     "outDir": "build",
     "allowSyntheticDefaultImports": true,
     "allowJs": true,
     "checkJs": true,
-    "importHelpers": true,
+    "importHelpers": false,
     "alwaysStrict": true,
     "sourceMap": true,
-    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitAny": false,
     "noImplicitThis": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "skipLibCheck": true
   },
   "include": ["**/*.ts"]
 }
