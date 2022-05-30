@@ -27,6 +27,7 @@ func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage
 	return err
 }
 
+// revive:disable-next-line:cognitive-complexity necessary complexity
 func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
 	var event, alloc, lock string
 	for _, e := range c.Events {
