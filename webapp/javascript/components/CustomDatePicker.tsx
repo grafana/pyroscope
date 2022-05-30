@@ -4,6 +4,8 @@ import DatePicker from 'react-datepicker';
 import Button from '@webapp/ui/Button';
 import { formatAsOBject } from '@webapp/util/formatDate';
 
+import styles from './CustomDatePicker.module.scss';
+
 interface CustomDatePickerProps {
   from: string;
   until: string;
@@ -61,6 +63,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           showTimeSelect
           startDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
+          className={styles.datepicker}
         />
       </div>
       <div className="until">
@@ -79,6 +82,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           endDate={selectUntilAsDate}
           minDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
+          className={styles.datepicker}
         />
       </div>
       {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}

@@ -18,7 +18,7 @@
 }
 
 .settingsTable tbody {
-  color: var(--ps-c-white-dark-1);
+  color: var(--ps-neutral-19);
 }
 
 .settingsTable button {
@@ -26,5 +26,5 @@
 }
 
 .settingsTable tbody tr:nth-child(odd) {
-  background-color: var(--ps-c-white-dark-3);
+  background-color: var(--ps-neutral-17);
 }

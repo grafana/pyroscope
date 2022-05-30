@@ -1,4 +1,4 @@
-import { createSlice, createSelector } from '@reduxjs/toolkit';
+import { createSlice, createSelector, PayloadAction } from '@reduxjs/toolkit';
 import { createMigrate } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { PersistedState } from 'redux-persist/lib/types';
@@ -36,11 +36,12 @@ type SidebarState =
 
 export interface UiState {
   sidebar: SidebarState;
+  colorMode: 'dark' | 'light';
 }
 
 const initialState: UiState = {
   sidebar: { state: 'pristine', collapsed: window.innerWidth < 1200 },
-  //  sidebar: { state: 'pristine' },
+  colorMode: 'dark',
 };
 
 export const uiSlice = createSlice({
@@ -58,6 +59,9 @@ export const uiSlice = createSlice({
     uncollapseSidebar: (state) => {
       state.sidebar = { state: 'userInteracted', collapsed: false };
     },
+    setColorMode: (state, action: PayloadAction<'dark' | 'light'>) => {
+      state.colorMode = action.payload;
+    },
   },
 });
 
@@ -67,7 +71,16 @@ export const selectSidebarCollapsed = createSelector(selectUiState, (state) => {
   return state.sidebar.collapsed;
 });
 
-export const { collapseSidebar, uncollapseSidebar, recalculateSidebar } =
-  uiSlice.actions;
+export const selectAppColorMode = createSelector(
+  selectUiState,
+  (state) => state.colorMode
+);
+
+export const {
+  collapseSidebar,
+  uncollapseSidebar,
+  recalculateSidebar,
+  setColorMode,
+} = uiSlice.actions;
 
 export default uiSlice.reducer;

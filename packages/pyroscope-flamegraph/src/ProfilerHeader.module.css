@@ -38,7 +38,8 @@
 }
 
 .headerLogo {
-  display: inline-block;
+  display: flex;
+  align-items: center;
   text-decoration: none;
   color: #fff;
   font-size: 1.2em;
