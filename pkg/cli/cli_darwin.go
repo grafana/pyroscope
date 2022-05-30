@@ -16,6 +16,8 @@ func defaultAgentLogFilePath() string { return "" }
 // on mac pyroscope is usually installed via homebrew. homebrew installs under a prefix
 //   this is logic to figure out what prefix it is
 func getInstallPrefix() string {
+	return "/Users/korniltsev/trash/pyroscope"
+
 	if runtime.GOOS != "darwin" {
 		return ""
 	}

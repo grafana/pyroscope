@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -96,7 +98,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	case in.Format == "jfr" && strings.Contains(in.ContentType, "multipart/form-data"):
 		return parseJFRMultipart(ctx, p.putter, in, pi)
 	case in.Format == "jfr":
-		return jfr.ParseJFR(ctx, p.putter, in.Body, pi, &jfr.JFRLabels{})
+		return jfr.ParseJFR(ctx, p.putter, in.Body, pi, &jfr.LabelsSnapshot{})
 	case in.Format == "pprof":
 		return writePprofFromBody(ctx, p.putter, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
@@ -130,14 +132,18 @@ func parseJFRMultipart(ctx context.Context, s storage.Putter, in *PutInput, pi *
 	if jfrField == nil {
 		return fmt.Errorf("jfr field is required")
 	}
-	labels := jfr.JFRLabels{}
+	labels := &jfr.LabelsSnapshot{}
 	if labelsField != nil {
-		err = json.NewDecoder(labelsField).Decode(&labels)
+		protoLabels, err := ioutil.ReadAll(labelsField)
+		if err != nil {
+			return err
+		}
+		err = proto.Unmarshal(protoLabels, labels)
 		if err != nil {
 			return err
 		}
 	}
-	err = jfr.ParseJFR(ctx, s, jfrField, pi, &labels)
+	err = jfr.ParseJFR(ctx, s, jfrField, pi, labels)
 	return err
 }
 

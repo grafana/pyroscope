@@ -317,7 +317,7 @@ var _ = Describe("server", func() {
 					BeforeEach(func() {
 						name = "test.app{foo=bar,baz=qux}"
 						var w *multipart.Writer
-						w, buf = jfrFormFromFiles("./testdata/jfr/with_labels/jfr.bin.gz", "./testdata/jfr/with_labels/labels.json")
+						w, buf = jfrFormFromFiles("./testdata/jfr/with_labels/jfr.bin.gz", "./testdata/jfr/with_labels/labels.proto.bin")
 						contentType = w.FormDataContentType()
 					})
 					for _, t := range types {

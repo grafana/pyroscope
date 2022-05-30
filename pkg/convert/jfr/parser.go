@@ -14,12 +14,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-type JFRLabels struct {
-	Contexts map[int64]map[int64]int64 `json:"contexts"`
-	Strings  map[int64]string          `json:"strings"`
-}
-
-func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *JFRLabels) (err error) {
+func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
 	chunks, err := parser.Parse(body)
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)
@@ -32,7 +27,7 @@ func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage
 	return err
 }
 
-func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *storage.PutInput, jfrLabels *JFRLabels) (err error) {
+func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
 	var event, alloc, lock string
 	for _, e := range c.Events {
 		if as, ok := e.(*parser.ActiveSetting); ok {
@@ -145,17 +140,17 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 	return err
 }
 
-func resolveLabels(contextID int64, labels *JFRLabels) map[string]string {
+func resolveLabels(contextID int64, labels *LabelsSnapshot) map[string]string {
 	res := make(map[string]string)
 	if contextID == 0 {
 		return res
 	}
-	var ctx map[int64]int64
+	var ctx *Context
 	var ok bool
 	if ctx, ok = labels.Contexts[contextID]; !ok {
 		return res
 	}
-	for k, v := range ctx {
+	for k, v := range ctx.Labels {
 		var ks string
 		var vs string
 		if ks, ok = labels.Strings[k]; !ok {
