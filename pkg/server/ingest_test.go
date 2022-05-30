@@ -274,13 +274,9 @@ var _ = Describe("server", func() {
 
 			Context("jfr", func() {
 				BeforeEach(func() {
-					format = ""
 					sleepDur = 100 * time.Millisecond
-					name = "test.app{foo=bar,baz=qux}"
-					buf = jfrFromFile("./testdata/jfr/no_labels/jfr.bin.gz")
 					format = "jfr"
 				})
-
 				types := []string{
 					"cpu",
 					"alloc_in_new_tlab_objects",
@@ -290,28 +286,53 @@ var _ = Describe("server", func() {
 					"lock_count",
 					"lock_duration",
 				}
-
-				for _, t := range types {
-					func(t string) {
-						Context(t, func() {
-							BeforeEach(func() {
-								// typeName = t
-								expectedKey = "test.app." + t + "{foo=bar,baz=qux}"
-								expectedTree = readTestdataFile("./testdata/jfr/no_labels/jfr-" + t + ".txt")
-							})
-
-							ItCorrectlyParsesIncomingData([]string{
-								"test.app.cpu",
-								"test.app.alloc_in_new_tlab_objects",
-								"test.app.alloc_in_new_tlab_bytes",
-								"test.app.alloc_outside_tlab_objects",
-								"test.app.alloc_outside_tlab_bytes",
-								"test.app.lock_count",
-								"test.app.lock_duration",
-							})
-						})
-					}(t)
+				jfrAppNames := []string{
+					"test.app.cpu",
+					"test.app.alloc_in_new_tlab_objects",
+					"test.app.alloc_in_new_tlab_bytes",
+					"test.app.alloc_outside_tlab_objects",
+					"test.app.alloc_outside_tlab_bytes",
+					"test.app.lock_count",
+					"test.app.lock_duration",
 				}
+				Context("no labels", func() {
+					BeforeEach(func() {
+						name = "test.app{foo=bar,baz=qux}"
+						buf = jfrFromFile("./testdata/jfr/no_labels/jfr.bin.gz")
+					})
+					for _, t := range types {
+						func(t string) {
+							Context(t, func() {
+								BeforeEach(func() {
+									//typeName = t
+									expectedKey = "test.app." + t + "{foo=bar,baz=qux}"
+									expectedTree = readTestdataFile("./testdata/jfr/no_labels/jfr-" + t + ".txt")
+								})
+								ItCorrectlyParsesIncomingData(jfrAppNames)
+							})
+						}(t)
+					}
+				})
+				Context("with labels", func() {
+					BeforeEach(func() {
+						name = "test.app{foo=bar,baz=qux}"
+						var w *multipart.Writer
+						w, buf = jfrFormFromFiles("./testdata/jfr/with_labels/jfr.bin.gz", "./testdata/jfr/with_labels/labels.json")
+						contentType = w.FormDataContentType()
+					})
+					for _, t := range types {
+						func(t string) {
+							Context(t, func() {
+								BeforeEach(func() {
+									// typeName = t
+									expectedKey = "test.app." + t + "{foo=bar,baz=qux,thread_name=mockLoad-0}"
+									expectedTree = readTestdataFile("./testdata/jfr/with_labels/jfr-" + t + ".txt")
+								})
+								ItCorrectlyParsesIncomingData(jfrAppNames)
+							})
+						}(t)
+					}
+				})
 			})
 
 			Context("pprof", func() {
