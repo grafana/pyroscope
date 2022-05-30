@@ -31,6 +31,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
@@ -218,7 +219,11 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			))
 	}
 
-	ingestRouter.Methods(http.MethodPost).Handler(ctrl.ingestHandler())
+	ingestHandler := ctrl.ingestHandler()
+	if ctrl.config.RemoteWrite.Enabled {
+		ingestHandler = remotewrite.NewTrafficShadower(ctrl.log, ingestHandler, ctrl.config.RemoteWrite)
+	}
+	ingestRouter.Methods(http.MethodPost).Handler(ingestHandler)
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()

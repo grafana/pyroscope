@@ -155,6 +155,8 @@ type Server struct {
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 
 	NoSelfProfiling bool `def:"false" desc:"disable profiling of pyroscope itself" mapstructure:"no-self-profiling"`
+
+	RemoteWrite RemoteWrite `yaml:"remote-write" mapstructure:"remote-write"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule
@@ -352,4 +354,10 @@ type AdminStorageCleanup struct {
 type Database struct {
 	Type string `def:"sqlite3" desc:"" mapstructure:"type"`
 	URL  string `def:"" desc:"" mapstructure:"url"`
+}
+
+type RemoteWrite struct {
+	Enabled   bool   `def:"false" desc:"whether to enable remote write or not"`
+	Address   string `def:"" desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
+	AuthToken string `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 }
