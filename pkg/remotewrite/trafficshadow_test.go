@@ -30,7 +30,7 @@ var _ = Describe("TrafficShadower", func() {
 	var payload []byte
 	var endpoint string
 	var wg sync.WaitGroup
-	var authToken string
+	var cfg config.RemoteWriteCfg
 
 	BeforeEach(func() {
 		logger = logrus.New()
@@ -42,7 +42,9 @@ var _ = Describe("TrafficShadower", func() {
 		localHandler = noopHandler
 		payload = []byte("")
 		endpoint = ""
-		authToken = ""
+
+		cfg.Address = ""
+		cfg.AuthToken = ""
 	})
 
 	run := func() {
@@ -58,10 +60,8 @@ var _ = Describe("TrafficShadower", func() {
 			}),
 		)
 
-		handler := remotewrite.NewTrafficShadower(logger, originalHandler, config.RemoteWriteCfg{
-			Address:   remoteServer.URL,
-			AuthToken: authToken,
-		})
+		cfg.Address = remoteServer.URL
+		handler := remotewrite.NewTrafficShadower(logger, originalHandler, cfg)
 
 		request, _ := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(payload))
 		response := httptest.NewRecorder()
@@ -99,22 +99,26 @@ var _ = Describe("TrafficShadower", func() {
 		run()
 	})
 
-	Context("When authKey is present", func() {
-		It("sends AuthKey to remote server", func() {
-			authToken = "MY_KEY"
+	When("authKey is present", func() {
+		BeforeEach(func() {
+			cfg.AuthToken = "MY_KEY"
+		})
 
+		It("sends AuthKey to remote server", func() {
 			remoteHandler = func(w http.ResponseWriter, r *http.Request) {
-				Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + authToken))
+				Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + cfg.AuthToken))
 			}
 
 			run()
 		})
 	})
 
-	Context("When authKey is not present", func() {
-		It("doesnt send to remote server", func() {
-			authToken = ""
+	When("authKey is not present", func() {
+		BeforeEach(func() {
+			cfg.AuthToken = ""
+		})
 
+		It("doesnt send to remote server", func() {
 			remoteHandler = func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Header.Get("Authorization")).To(Equal(""))
 			}
