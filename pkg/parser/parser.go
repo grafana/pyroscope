@@ -3,14 +3,11 @@ package parser
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"io"
-	"mime/multipart"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
@@ -23,10 +20,10 @@ import (
 )
 
 type PutInput struct {
-	Format            string
-	ContentType       string
-	Body              io.Reader
-	MultipartBoundary string
+	Format           Format
+	Profile          io.Reader
+	PreviousProfile  io.Reader
+	SampleTypeConfig map[string]*tree.SampleTypeConfig
 
 	// these parameters are the same as the ones in storage.PutInput
 	StartTime       time.Time
@@ -38,19 +35,28 @@ type PutInput struct {
 	AggregationType metadata.AggregationType
 }
 
+type Format string
+
+const (
+	Pprof  Format = "pprof"
+	JFR    Format = "jfr"
+	Trie   Format = "trie"
+	Tree   Format = "tree"
+	Lines  Format = "lines"
+	Groups Format = "groups"
+)
+
 type Parser struct {
-	log        *logrus.Logger
-	putter     storage.Putter
-	exporter   storage.MetricsExporter
-	bufferPool *bytebufferpool.Pool
+	log      *logrus.Logger
+	putter   storage.Putter
+	exporter storage.MetricsExporter
 }
 
 func New(log *logrus.Logger, s storage.Putter, exporter storage.MetricsExporter) *Parser {
 	return &Parser{
-		log:        log,
-		putter:     s,
-		exporter:   exporter,
-		bufferPool: &bytebufferpool.Pool{},
+		log:      log,
+		putter:   s,
+		exporter: exporter,
 	}
 }
 
@@ -68,6 +74,7 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 }
 
 // Put takes parser.PutInput, turns it into storage.PutIntput and passes it to Putter.
+// TODO(kolesnikovae): Should we split it into more specific methods (e.g PutPprof, PutTrie, etc)?
 func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	pi := &storage.PutInput{
 		StartTime:       in.StartTime,
@@ -81,25 +88,24 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 
 	cb := p.createParseCallback(pi)
 	var err error
-
-	switch {
-	case in.Format == "trie", in.ContentType == "binary/octet-stream+trie":
-		tmpBuf := p.bufferPool.Get()
-		defer p.bufferPool.Put(tmpBuf)
-		err = transporttrie.IterateRaw(in.Body, tmpBuf.B, cb)
-	case in.Format == "tree", in.ContentType == "binary/octet-stream+tree":
-		err = convert.ParseTreeNoDict(in.Body, cb)
-	case in.Format == "lines":
-		err = convert.ParseIndividualLines(in.Body, cb)
-	// with some formats we write directly to storage, hence the early return
-	case in.Format == "jfr":
-		return jfr.ParseJFR(ctx, p.putter, in.Body, pi)
-	case in.Format == "pprof":
-		return writePprofFromBody(ctx, p.putter, in)
-	case strings.Contains(in.ContentType, "multipart/form-data"):
-		return writePprofFromForm(ctx, p.putter, in)
+	switch in.Format {
 	default:
-		err = convert.ParseGroups(in.Body, cb)
+		return fmt.Errorf("unknown format %q", in.Format)
+
+	// with some formats we write directly to storage, hence the early return
+	case JFR:
+		return jfr.ParseJFR(ctx, p.putter, in.Profile, pi)
+	case Pprof:
+		return writePprof(ctx, p.putter, in)
+
+	case Trie:
+		err = transporttrie.IterateRaw(in.Profile, make([]byte, 256), cb)
+	case Tree:
+		err = convert.ParseTreeNoDict(in.Profile, cb)
+	case Lines:
+		err = convert.ParseIndividualLines(in.Profile, cb)
+	case Groups:
+		err = convert.ParseGroups(in.Profile, cb)
 	}
 
 	if err != nil {
@@ -113,83 +119,22 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	return nil
 }
 
-func writePprofFromBody(ctx context.Context, s storage.Putter, pi *PutInput) error {
+func writePprof(ctx context.Context, s storage.Putter, pi *PutInput) error {
 	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
-		SampleTypes: tree.DefaultSampleTypeMapping,
+		SampleTypes: pi.SampleTypeConfig,
 		Labels:      pi.Key.Labels(),
 		SpyName:     pi.SpyName,
 	})
-	return pprof.DecodePool(pi.Body, func(p *tree.Profile) error {
+
+	if pi.PreviousProfile != nil {
+		if err := pprof.DecodePool(pi.PreviousProfile, func(p *tree.Profile) error {
+			return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
+		}); err != nil {
+			return err
+		}
+	}
+
+	return pprof.DecodePool(pi.Profile, func(p *tree.Profile) error {
 		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
 	})
-}
-
-func writePprofFromForm(ctx context.Context, s storage.Putter, pi *PutInput) error {
-	// maxMemory 32MB
-	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
-	if err != nil {
-		return err
-	}
-
-	sampleTypesConfig, err := parseSampleTypesConfig(form)
-	if err != nil {
-		return err
-	}
-	if sampleTypesConfig == nil {
-		sampleTypesConfig = tree.DefaultSampleTypeMapping
-	}
-
-	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
-		SampleTypes: sampleTypesConfig,
-		Labels:      pi.Key.Labels(),
-		SpyName:     pi.SpyName,
-	})
-	if err = writePprofFromFormField(ctx, form, w, pi, "prev_profile"); err != nil {
-		return err
-	}
-	return writePprofFromFormField(ctx, form, w, pi, "profile")
-}
-
-func writePprofFromFormField(ctx context.Context, form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
-	r, err := formField(form, name)
-	if err != nil {
-		return err
-	}
-	if r == nil {
-		return nil
-	}
-	return pprof.DecodePool(r, func(p *tree.Profile) error {
-		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
-	})
-}
-
-func formField(form *multipart.Form, name string) (io.Reader, error) {
-	files, ok := form.File[name]
-	if !ok || len(files) == 0 {
-		return nil, nil
-	}
-	f, err := files[0].Open()
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
-}
-
-func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
-	r, err := formField(form, "sample_type_config")
-	if err != nil {
-		return nil, err
-	}
-	if r == nil {
-		return nil, nil
-	}
-
-	d := json.NewDecoder(r)
-
-	var config map[string]*tree.SampleTypeConfig
-	err = d.Decode(&config)
-	if err != nil {
-		return nil, err
-	}
-	return config, nil
 }

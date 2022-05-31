@@ -1,11 +1,16 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -16,6 +21,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
@@ -73,10 +79,33 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInpu
 		err error
 	)
 
-	pi.Format = q.Get("format")
-	pi.ContentType = r.Header.Get("Content-Type")
-	pi.Body = r.Body
-	pi.MultipartBoundary = boundaryFromRequest(r)
+	format := q.Get("format")
+	contentType := r.Header.Get("Content-Type")
+	switch {
+	default:
+		pi.Format = parser.Groups
+	case format == "trie", contentType == "binary/octet-stream+trie":
+		pi.Format = parser.Trie
+	case format == "tree", contentType == "binary/octet-stream+tree":
+		pi.Format = parser.Tree
+	case format == "lines":
+		pi.Format = parser.Lines
+	case format == "jfr":
+		pi.Format = parser.JFR
+	case format == "pprof":
+		pi.Format = parser.Pprof
+	case strings.Contains(contentType, "multipart/form-data"):
+		pi.Format = parser.Pprof
+		if err = loadPprofFromForm(&pi, r); err != nil {
+			return nil, err
+		}
+	}
+
+	if pi.Profile == nil {
+		if err = loadProfileFromBody(&pi, r); err != nil {
+			return nil, err
+		}
+	}
 
 	pi.Key, err = segment.ParseKey(q.Get("name"))
 	if err != nil {
@@ -131,18 +160,77 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInpu
 	return &pi, nil
 }
 
-func boundaryFromRequest(r *http.Request) string {
-	v := r.Header.Get("Content-Type")
-	if v == "" {
-		return ""
+func loadProfileFromBody(pi *parser.PutInput, r *http.Request) error {
+	bufferSize := int64(64 << 10) // Defaults to 64K body size
+	if r.ContentLength > 0 {
+		bufferSize = r.ContentLength
 	}
-	d, params, err := mime.ParseMediaType(v)
-	if err != nil || !(d == "multipart/form-data") {
-		return ""
+	buf := bytes.NewBuffer(make([]byte, bufferSize))
+	if _, err := io.Copy(buf, r.Body); err != nil {
+		return err
+	}
+	pi.Profile = buf
+	return nil
+}
+
+func loadPprofFromForm(pi *parser.PutInput, r *http.Request) error {
+	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		return err
 	}
 	boundary, ok := params["boundary"]
 	if !ok {
-		return ""
+		return fmt.Errorf("malformed multipart content type header")
 	}
-	return boundary
+	// maxMemory 32MB.
+	// TODO(kolesnikovae): If the limit is exceeded, parts will be written
+	//  to disk. It may be better to limit the request body size to be sure
+	//  that they loaded into memory entirely.
+	form, err := multipart.NewReader(r.Body, boundary).ReadForm(32 << 20)
+	if err != nil {
+		return err
+	}
+
+	pi.Profile, err = formField(form, "profile")
+	if err != nil {
+		return err
+	}
+	pi.PreviousProfile, err = formField(form, "prev_profile")
+	if err != nil {
+		return err
+	}
+	pi.SampleTypeConfig, err = parseSampleTypesConfig(form)
+	if err != nil {
+		return err
+	}
+	if pi.SampleTypeConfig == nil {
+		pi.SampleTypeConfig = tree.DefaultSampleTypeMapping
+	}
+
+	return nil
+}
+
+func formField(form *multipart.Form, name string) (io.ReadCloser, error) {
+	files, ok := form.File[name]
+	if !ok || len(files) == 0 {
+		return nil, nil
+	}
+	f, err := files[0].Open()
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
+	r, err := formField(form, "sample_type_config")
+	if err != nil || r == nil {
+		return nil, err
+	}
+	d := json.NewDecoder(r)
+	var config map[string]*tree.SampleTypeConfig
+	if err = d.Decode(&config); err != nil {
+		return nil, err
+	}
+	return config, nil
 }
