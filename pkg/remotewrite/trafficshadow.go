@@ -30,7 +30,7 @@ func NewTrafficShadower(logger *logrus.Logger, handler http.Handler, config conf
 func (t TrafficShadower) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r2, err := t.cloneRequest(r)
 	if err != nil {
-		logrus.Errorf("Failed to clone request", err)
+		logrus.Error("Failed to clone request", err)
 		return
 	}
 
