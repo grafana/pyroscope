@@ -17,11 +17,11 @@ type TrafficShadower struct {
 	config  config.RemoteWrite
 }
 
-func NewTrafficShadower(logger *logrus.Logger, handler http.Handler, config config.RemoteWrite) *TrafficShadower {
+func NewTrafficShadower(logger *logrus.Logger, handler http.Handler, cfg config.RemoteWrite) *TrafficShadower {
 	return &TrafficShadower{
 		log:     logger,
 		handler: handler,
-		config:  config,
+		config:  cfg,
 	}
 }
 
@@ -42,7 +42,7 @@ func (t TrafficShadower) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.sendToOriginal(w, r)
 }
 
-func (t TrafficShadower) cloneRequest(r *http.Request) (*http.Request, error) {
+func (TrafficShadower) cloneRequest(r *http.Request) (*http.Request, error) {
 	// clones the request
 	r2 := r.Clone(r.Context())
 
@@ -59,17 +59,17 @@ func (t TrafficShadower) cloneRequest(r *http.Request) (*http.Request, error) {
 	return r2, nil
 }
 
-func (t TrafficShadower) sendToRemote(w http.ResponseWriter, r *http.Request) {
+func (t TrafficShadower) sendToRemote(_ http.ResponseWriter, r *http.Request) {
 	host := t.config.Address
 	token := t.config.AuthToken
 
-	url, _ := url.Parse(host)
+	u, _ := url.Parse(host)
 
 	r.RequestURI = ""
-	r.URL.Host = url.Host
-	r.URL.Scheme = url.Scheme
+	r.URL.Host = u.Host
+	r.URL.Scheme = u.Scheme
 	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
-	r.Host = url.Host
+	r.Host = u.Host
 
 	if token != "" {
 		r.Header.Set("Authorization", "Bearer "+token)
