@@ -71,8 +71,9 @@ func (t TrafficShadower) sendToRemote(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
 	r.Host = url.Host
 
-	// TODO: only add a token if it exists
-	r.Header.Set("Authorization", "Bearer "+token)
+	if token != "" {
+		r.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	client := &http.Client{
 		// TODO(eh-am): make timeout configurable

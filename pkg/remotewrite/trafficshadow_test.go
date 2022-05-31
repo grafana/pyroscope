@@ -30,25 +30,38 @@ var _ = Describe("TrafficShadower", func() {
 	var payload []byte
 	var endpoint string
 	var wg sync.WaitGroup
+	var authToken string
 
 	BeforeEach(func() {
 		logger = logrus.New()
 		logger.SetOutput(ioutil.Discard)
 
-		remoteHandler = nil
-		localHandler = nil
-		payload = nil
+		noopHandler := func(w http.ResponseWriter, r *http.Request) {}
+
+		remoteHandler = noopHandler
+		localHandler = noopHandler
+		payload = []byte("")
 		endpoint = ""
+		authToken = ""
 	})
 
 	run := func() {
-		originalHandler := mockHandler{handler: localHandler}
-		remoteServer := httptest.NewServer(http.HandlerFunc(remoteHandler))
+		originalHandler := mockHandler{handler: func(w http.ResponseWriter, r *http.Request) {
+			localHandler(w, r)
+			wg.Done()
+		}}
+
+		remoteServer := httptest.NewServer(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				remoteHandler(w, r)
+				wg.Done()
+			}),
+		)
 
 		handler := remotewrite.NewTrafficShadower(logger, originalHandler, config.RemoteWrite{
 			Enabled:   true,
 			Address:   remoteServer.URL,
-			AuthToken: "",
+			AuthToken: authToken,
 		})
 
 		request, _ := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(payload))
@@ -61,14 +74,11 @@ var _ = Describe("TrafficShadower", func() {
 
 	It("sends same payload to both remote server and local handler", func() {
 		payload = []byte("test")
-		endpoint = "/?test=123"
 
 		assertRequest := func(w http.ResponseWriter, r *http.Request) {
 			body, err := ioutil.ReadAll(r.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(body).To(Equal(payload))
-
-			wg.Done()
 		}
 
 		remoteHandler = assertRequest
@@ -78,13 +88,10 @@ var _ = Describe("TrafficShadower", func() {
 	})
 
 	It("sends same query params to both remote server and local handler", func() {
-		payload = []byte("")
 		endpoint = "/?test=123"
 
 		assertRequest := func(w http.ResponseWriter, r *http.Request) {
 			Expect(r.URL.Query().Get("test")).To(Equal("123"))
-
-			wg.Done()
 		}
 
 		remoteHandler = assertRequest
@@ -93,7 +100,27 @@ var _ = Describe("TrafficShadower", func() {
 		run()
 	})
 
-	//	It("sends AuthKey to remote server", func() {
-	//
-	//	})
+	Context("When authKey is present", func() {
+		It("sends AuthKey to remote server", func() {
+			authToken = "MY_KEY"
+
+			remoteHandler = func(w http.ResponseWriter, r *http.Request) {
+				Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + authToken))
+			}
+
+			run()
+		})
+	})
+
+	Context("When authKey is not present", func() {
+		It("doesnt send to remote server", func() {
+			authToken = ""
+
+			remoteHandler = func(w http.ResponseWriter, r *http.Request) {
+				Expect(r.Header.Get("Authorization")).To(Equal(""))
+			}
+
+			run()
+		})
+	})
 })
