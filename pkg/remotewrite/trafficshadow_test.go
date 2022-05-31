@@ -58,8 +58,7 @@ var _ = Describe("TrafficShadower", func() {
 			}),
 		)
 
-		handler := remotewrite.NewTrafficShadower(logger, originalHandler, config.RemoteWrite{
-			Enabled:   true,
+		handler := remotewrite.NewTrafficShadower(logger, originalHandler, config.RemoteWriteCfg{
 			Address:   remoteServer.URL,
 			AuthToken: authToken,
 		})

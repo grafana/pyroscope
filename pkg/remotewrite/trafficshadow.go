@@ -14,10 +14,10 @@ import (
 type TrafficShadower struct {
 	log     *logrus.Logger
 	handler http.Handler
-	config  config.RemoteWrite
+	config  config.RemoteWriteCfg
 }
 
-func NewTrafficShadower(logger *logrus.Logger, handler http.Handler, cfg config.RemoteWrite) *TrafficShadower {
+func NewTrafficShadower(logger *logrus.Logger, handler http.Handler, cfg config.RemoteWriteCfg) *TrafficShadower {
 	return &TrafficShadower{
 		log:     logger,
 		handler: handler,

@@ -357,7 +357,11 @@ type Database struct {
 }
 
 type RemoteWrite struct {
-	Enabled   bool   `def:"false" desc:"whether to enable remote write or not"`
+	Enabled bool `def:"false" desc:"whether to enable remote write or not"`
+	RemoteWriteCfg
+}
+
+type RemoteWriteCfg struct {
 	Address   string `def:"" desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
 	AuthToken string `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 }
