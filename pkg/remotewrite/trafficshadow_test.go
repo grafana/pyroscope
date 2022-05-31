@@ -30,7 +30,7 @@ var _ = Describe("TrafficShadower", func() {
 	var payload []byte
 	var endpoint string
 	var wg sync.WaitGroup
-	var cfg config.RemoteWriteCfg
+	var cfg config.RemoteWrite
 
 	BeforeEach(func() {
 		logger = logrus.New()
@@ -75,6 +75,7 @@ var _ = Describe("TrafficShadower", func() {
 		payload = []byte("test")
 
 		assertRequest := func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
 			body, err := ioutil.ReadAll(r.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(body).To(Equal(payload))
@@ -86,10 +87,11 @@ var _ = Describe("TrafficShadower", func() {
 		run()
 	})
 
-	It("sends same query params to both remote server and local handler", func() {
+	FIt("sends same query params to both remote server and local handler", func() {
 		endpoint = "/?test=123"
 
 		assertRequest := func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
 			Expect(r.URL.Query().Get("test")).To(Equal("123"))
 		}
 
@@ -106,6 +108,7 @@ var _ = Describe("TrafficShadower", func() {
 
 		It("sends AuthKey to remote server", func() {
 			remoteHandler = func(w http.ResponseWriter, r *http.Request) {
+				defer GinkgoRecover()
 				Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + cfg.AuthToken))
 			}
 
@@ -120,9 +123,30 @@ var _ = Describe("TrafficShadower", func() {
 
 		It("doesnt send to remote server", func() {
 			remoteHandler = func(w http.ResponseWriter, r *http.Request) {
+				defer GinkgoRecover()
 				Expect(r.Header.Get("Authorization")).To(Equal(""))
 			}
 
+			run()
+		})
+	})
+
+	FWhen("when remote labels are added", func() {
+		BeforeEach(func() {
+			endpoint = "/?name=myapp"
+			cfg.Tags = map[string]string{
+				"my":      "tag",
+				"nuestra": "tag",
+			}
+		})
+
+		It("enhances the remote request with the labels", func() {
+			assertRequest := func(w http.ResponseWriter, r *http.Request) {
+				defer GinkgoRecover()
+				Expect(r.URL.Query().Get("name")).To(Equal(`myapp{my=tag,nuestra=tag}`))
+			}
+
+			remoteHandler = assertRequest
 			run()
 		})
 	})
