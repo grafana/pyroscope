@@ -87,7 +87,7 @@ var _ = Describe("TrafficShadower", func() {
 		run()
 	})
 
-	FIt("sends same query params to both remote server and local handler", func() {
+	It("sends same query params to both remote server and local handler", func() {
 		endpoint = "/?test=123"
 
 		assertRequest := func(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +131,7 @@ var _ = Describe("TrafficShadower", func() {
 		})
 	})
 
-	FWhen("when remote labels are added", func() {
+	When("when remote labels are added", func() {
 		BeforeEach(func() {
 			endpoint = "/?name=myapp"
 			cfg.Tags = map[string]string{
