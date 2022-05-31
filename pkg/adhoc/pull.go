@@ -10,8 +10,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
@@ -24,12 +22,11 @@ import (
 )
 
 type pull struct {
-	c        chan os.Signal
-	cmd      *goexec.Cmd
-	logger   *logrus.Logger
-	manager  *scrape.Manager
-	upstream upstream.Upstream
-	targets  map[string][]*targetgroup.Group
+	c       chan os.Signal
+	cmd     *goexec.Cmd
+	logger  *logrus.Logger
+	manager *scrape.Manager
+	targets map[string][]*targetgroup.Group
 }
 
 func newPull(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logrus.Logger) (runner, error) {
@@ -52,7 +49,6 @@ func newPull(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logr
 		return nil, err
 	}
 
-	u := direct.New(st, e)
 	p := parser.New(logger, st, e)
 	m := scrape.NewManager(logger, p, defaultMetricsRegistry)
 	scrapeCfg := &(*scrapeconfig.DefaultConfig())
@@ -79,12 +75,11 @@ func newPull(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logr
 	}
 
 	return &pull{
-		c:        c,
-		cmd:      cmd,
-		logger:   logger,
-		manager:  m,
-		upstream: u,
-		targets:  targets,
+		c:       c,
+		cmd:     cmd,
+		logger:  logger,
+		manager: m,
+		targets: targets,
 	}, nil
 }
 
@@ -98,9 +93,6 @@ func (p *pull) Run() error {
 			close(p.c)
 		}()
 	}
-
-	p.upstream.Start()
-	defer p.upstream.Stop()
 
 	done := make(chan error)
 	c := make(chan map[string][]*targetgroup.Group)

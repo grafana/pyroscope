@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/client/pyroscope"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
@@ -19,9 +21,6 @@ import (
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
-	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
@@ -43,21 +42,20 @@ type Server struct {
 }
 
 type serverService struct {
-	config               *config.Server
-	logger               *logrus.Logger
-	controller           *server.Controller
-	storage              *storage.Storage
-	ingestionQueue       *storage.IngestionQueue
-	directUpstream       *direct.Direct
-	directScrapeUpstream *direct.Direct
-	analyticsService     *analytics.Service
-	selfProfiling        *agent.ProfileSession
-	debugReporter        *debug.Reporter
-	healthController     *health.Controller
-	adminServer          *admin.Server
-	discoveryManager     *discovery.Manager
-	scrapeManager        *scrape.Manager
-	database             *sqlstore.SQLStore
+	config           *config.Server
+	logger           *logrus.Logger
+	controller       *server.Controller
+	storage          *storage.Storage
+	ingestionQueue   *storage.IngestionQueue
+	directUpstream   *direct.Direct
+	analyticsService *analytics.Service
+	selfProfiling    *pyroscope.Session
+	debugReporter    *debug.Reporter
+	healthController *health.Controller
+	adminServer      *admin.Server
+	discoveryManager *discovery.Manager
+	scrapeManager    *scrape.Manager
+	database         *sqlstore.SQLStore
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -99,6 +97,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
+
+	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 
 	if svc.config.Auth.JWTSecret == "" {
 		if svc.config.Auth.JWTSecret, err = svc.storage.JWT(); err != nil {
@@ -147,16 +147,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 		ingestionQueueWorkers,
 		ingestionQueueSize)
 
-	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
-	svc.directUpstream = direct.New(svc.ingestionQueue, metricsExporter)
-	svc.directScrapeUpstream = direct.New(svc.ingestionQueue, metricsExporter)
-
+	ingestionParser := parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+	svc.directUpstream = direct.New(svc.logger, ingestionParser)
 	if !svc.config.NoSelfProfiling {
-		svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
+		svc.selfProfiling, _ = pyroscope.NewSession(pyroscope.SessionConfig{
 			Upstream:       svc.directUpstream,
 			AppName:        "pyroscope.server",
-			ProfilingTypes: types.DefaultProfileTypes,
-			SpyName:        types.GoSpy,
+			ProfilingTypes: pyroscope.DefaultProfileTypes,
 			SampleRate:     100,
 			UploadRate:     10 * time.Second,
 			Logger:         logger,
@@ -166,13 +163,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		parser.New(svc.logger, svc.ingestionQueue, metricsExporter),
+		ingestionParser,
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration: svc.config,
 		Storage:       svc.storage,
-		Parser:        parser.New(svc.logger, svc.ingestionQueue, metricsExporter),
+		Parser:        ingestionParser,
 		Notifier:      svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,
@@ -225,9 +222,6 @@ func (svc *serverService) Start() error {
 	}
 
 	svc.healthController.Start()
-	svc.directUpstream.Start()
-	svc.directScrapeUpstream.Start()
-
 	if !svc.config.NoSelfProfiling {
 		if err := svc.selfProfiling.Start(); err != nil {
 			svc.logger.WithError(err).Error("failed to start self-profiling")
@@ -293,9 +287,6 @@ func (svc *serverService) stop() {
 		svc.selfProfiling.Stop()
 	}
 
-	svc.logger.Debug("stopping upstream")
-	svc.directUpstream.Stop()
-	svc.directScrapeUpstream.Stop()
 	svc.logger.Debug("stopping ingestion queue")
 	svc.ingestionQueue.Stop()
 	svc.logger.Debug("stopping storage")
