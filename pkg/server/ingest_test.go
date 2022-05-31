@@ -24,6 +24,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -102,8 +103,7 @@ var _ = Describe("server", func() {
 						c, _ := New(Config{
 							Configuration:           &(*cfg).Server,
 							Storage:                 s,
-							Putter:                  queue,
-							MetricsExporter:         e,
+							Parser:                  parser.New(logrus.StandardLogger(), queue, e),
 							Logger:                  logrus.New(),
 							MetricsRegisterer:       prometheus.NewRegistry(),
 							ExportedMetricsRegistry: prometheus.NewRegistry(),

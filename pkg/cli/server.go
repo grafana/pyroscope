@@ -26,6 +26,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
@@ -165,15 +166,14 @@ func newServerService(c *config.Server) (*serverService, error) {
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		svc.ingestionQueue,
+		parser.New(svc.logger, svc.ingestionQueue, metricsExporter),
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
-		Configuration:   svc.config,
-		Storage:         svc.storage,
-		Putter:          svc.ingestionQueue,
-		MetricsExporter: metricsExporter,
-		Notifier:        svc.healthController,
+		Configuration: svc.config,
+		Storage:       svc.storage,
+		Parser:        parser.New(svc.logger, svc.ingestionQueue, metricsExporter),
+		Notifier:      svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,
 			svc.config.AdhocDataPath,

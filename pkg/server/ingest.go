@@ -37,8 +37,7 @@ type ingestHandler struct {
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
-	p := parser.New(ctrl.log, ctrl.putter, ctrl.exporter)
-	return NewIngestHandler(ctrl.log, p, func(pi *parser.PutInput) {
+	return NewIngestHandler(ctrl.log, ctrl.parser, func(pi *parser.PutInput) {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.SpyName)
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
@@ -165,7 +164,7 @@ func loadProfileFromBody(pi *parser.PutInput, r *http.Request) error {
 	if r.ContentLength > 0 {
 		bufferSize = r.ContentLength
 	}
-	buf := bytes.NewBuffer(make([]byte, bufferSize))
+	buf := bytes.NewBuffer(make([]byte, 0, bufferSize))
 	if _, err := io.Copy(buf, r.Body); err != nil {
 		return err
 	}

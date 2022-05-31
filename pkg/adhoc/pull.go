@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
@@ -52,7 +53,8 @@ func newPull(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logr
 	}
 
 	u := direct.New(st, e)
-	m := scrape.NewManager(logger, st, defaultMetricsRegistry)
+	p := parser.New(logger, st, e)
+	m := scrape.NewManager(logger, p, defaultMetricsRegistry)
 	scrapeCfg := &(*scrapeconfig.DefaultConfig())
 	scrapeCfg.JobName = "adhoc"
 	scrapeCfg.EnabledProfiles = []string{"cpu", "mem"}

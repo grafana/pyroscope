@@ -99,7 +99,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 		return writePprof(ctx, p.putter, in)
 
 	case Trie:
-		err = transporttrie.IterateRaw(in.Profile, make([]byte, 256), cb)
+		err = transporttrie.IterateRaw(in.Profile, make([]byte, 0, 256), cb)
 	case Tree:
 		err = convert.ParseTreeNoDict(in.Profile, cb)
 	case Lines:
@@ -120,6 +120,10 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 }
 
 func writePprof(ctx context.Context, s storage.Putter, pi *PutInput) error {
+	if len(pi.SampleTypeConfig) == 0 {
+		pi.SampleTypeConfig = tree.DefaultSampleTypeMapping
+	}
+
 	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
 		SampleTypes: pi.SampleTypeConfig,
 		Labels:      pi.Key.Labels(),
