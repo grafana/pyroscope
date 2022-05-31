@@ -1,19 +1,16 @@
-.PHONY: build
+.PHONY: build clean go/deps go/bin go/deps go/lint
+
 build: go/bin
 
-.PHONY: clean
 clean:
 	rm -rf bin
 
-.PHONY: go/deps
 go/deps:
 	go mod tidy
 
-.PHONY: go/bin
-go/bin: go/deps
+go/bin:
 	mkdir -p ./bin
 	go build -o bin/ ./cmd/fire
 
-.PHONY: go/lint
 go/lint:
 	golangci-lint run
