@@ -38,5 +38,4 @@ public class RideShareController {
         }
         return sb.toString();
     }
-
 }
