@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/client/pyroscope"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct/v2"
+	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
@@ -148,6 +149,12 @@ func newServerService(c *config.Server) (*serverService, error) {
 		ingestionQueueSize)
 
 	ingestionParser := parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+
+	if svc.config.RemoteWrite.Enabled {
+		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
+		_ = remotewrite.NewParalellizer(svc.logger, ingestionParser, remoteWriter)
+	}
+
 	svc.directUpstream = direct.New(svc.logger, ingestionParser)
 	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling, _ = pyroscope.NewSession(pyroscope.SessionConfig{

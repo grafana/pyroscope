@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/sirupsen/logrus"
@@ -13,17 +14,11 @@ import (
 
 type Client struct {
 	log    *logrus.Logger
-	config RemoteWriteConfig
+	config config.RemoteWrite
 	client *http.Client
 }
 
-type RemoteWriteConfig struct {
-	Address   string            `def:"" desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
-	AuthToken string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	Tags      map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
-}
-
-func NewClient(logger *logrus.Logger, config RemoteWriteConfig) *Client {
+func NewClient(logger *logrus.Logger, config config.RemoteWrite) *Client {
 	client := &http.Client{
 		// TODO(eh-am): make timeout configurable
 		Timeout: time.Second * 5,
@@ -36,27 +31,30 @@ func NewClient(logger *logrus.Logger, config RemoteWriteConfig) *Client {
 	}
 }
 
-func (r *Client) Put(ctx context.Context, put parser.PutInput) {
+func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 	req, err := r.putInputToRequest(put)
 	if err != nil {
 		r.log.Error("Error writing putInputToRequest", err)
-		return
+		return err
 	}
 
 	r.log.Debugf("Making request to %s", req.URL.String())
 	res, err := r.client.Do(req)
 	if err != nil {
 		r.log.Error("Failed to write to remote. Dropping it", err)
-		return
+		return err
 	}
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
 		// TODO(eh-am): print the error message if there's any?
 		r.log.Errorf("Request to remote failed with statusCode: '%d'", res.StatusCode)
+		return err
 	}
+
+	return nil
 }
 
-func (r *Client) putInputToRequest(pi parser.PutInput) (*http.Request, error) {
+func (r *Client) putInputToRequest(pi *parser.PutInput) (*http.Request, error) {
 	// TODO(eh-am): copy put.Profile?
 	req, err := http.NewRequest("POST", r.config.Address, pi.Profile)
 	if err != nil {

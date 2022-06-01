@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
@@ -22,7 +23,7 @@ var _ = Describe("TrafficShadower", func() {
 	var logger *logrus.Logger
 	var remoteHandler http.HandlerFunc
 	var wg sync.WaitGroup
-	var cfg remotewrite.RemoteWriteConfig
+	var cfg config.RemoteWrite
 	var pi parser.PutInput
 
 	BeforeEach(func() {
@@ -65,7 +66,7 @@ var _ = Describe("TrafficShadower", func() {
 			AggregationType: metadata.SumAggregationType,
 		}
 
-		assertRequest := func(w http.ResponseWriter, r *http.Request) {
+		remoteHandler = func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
 
 			Expect(r.URL.Query().Get("name")).To(Equal("myapp{}"))
@@ -76,8 +77,6 @@ var _ = Describe("TrafficShadower", func() {
 			Expect(r.URL.Query().Get("units")).To(Equal("samples"))
 			Expect(r.URL.Query().Get("aggregationType")).To(Equal("sum"))
 		}
-
-		remoteHandler = assertRequest
 
 		run()
 	})
