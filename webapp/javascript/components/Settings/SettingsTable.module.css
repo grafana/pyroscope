@@ -26,5 +26,5 @@
 }
 
 .settingsTable tbody tr:nth-child(odd) {
-  background-color: var(--ps-neutral-7);
+  background-color: var(--ps-neutral-9);
 }
