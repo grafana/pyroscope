@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
@@ -64,13 +65,12 @@ func (r *Client) putInputToRequest(pi parser.PutInput) (*http.Request, error) {
 
 	params := req.URL.Query()
 	params.Set("name", pi.Key.Normalized())
-	//	params.Set("from", put.StartTime)
-	//	params.Set("until", nil)
-	//	params.Set("format", nil)
-	//	params.Set("sampleRate", nil)
-	//	params.Set("spyName", nil)
-	//	params.Set("units", nil)
-	//	params.Set("aggregationType", nil)
+	params.Set("from", strconv.FormatInt(pi.StartTime.Unix(), 10))
+	params.Set("until", strconv.FormatInt(pi.EndTime.Unix(), 10))
+	params.Set("sampleRate", strconv.FormatUint(uint64(pi.SampleRate), 10))
+	params.Set("spyName", pi.SpyName)
+	params.Set("units", pi.Units.String())
+	params.Set("aggregationType", pi.AggregationType.String())
 
 	req.URL.RawQuery = params.Encode()
 

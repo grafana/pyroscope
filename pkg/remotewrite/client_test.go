@@ -12,7 +12,9 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
 )
 
@@ -54,12 +56,25 @@ var _ = Describe("TrafficShadower", func() {
 			Key: segment.NewKey(map[string]string{
 				"__name__": "myapp",
 			}),
+
+			StartTime:       attime.Parse("1654110240"),
+			EndTime:         attime.Parse("1654110250"),
+			SampleRate:      100,
+			SpyName:         "gospy",
+			Units:           metadata.SamplesUnits,
+			AggregationType: metadata.SumAggregationType,
 		}
 
 		assertRequest := func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
 
 			Expect(r.URL.Query().Get("name")).To(Equal("myapp{}"))
+			Expect(r.URL.Query().Get("from")).To(Equal("1654110240"))
+			Expect(r.URL.Query().Get("until")).To(Equal("1654110250"))
+			Expect(r.URL.Query().Get("sampleRate")).To(Equal("100"))
+			Expect(r.URL.Query().Get("spyName")).To(Equal("gospy"))
+			Expect(r.URL.Query().Get("units")).To(Equal("samples"))
+			Expect(r.URL.Query().Get("aggregationType")).To(Equal("sum"))
 		}
 
 		remoteHandler = assertRequest
