@@ -49,24 +49,24 @@
 
 [data-theme='light'],
 [data-flamegraph-color-mode='light'] {
-  --ps-neutral-1: #ffffff;
-  --ps-neutral-2: #000000;
-  --ps-neutral-3: #ffffff99;
-  --ps-neutral-4: #ffffff54;
-  --ps-neutral-5: #ebebeb;
-  --ps-neutral-6: #e4e4e4;
-  --ps-neutral-7: #dededb;
-  --ps-neutral-8: #cccccc;
-  --ps-neutral-9: #d8d8d8;
-  --ps-neutral-10: #b2b2b2;
-  --ps-neutral-11: #555555;
-  --ps-neutral-12: #bebebe;
-  --ps-neutral-13: #dddddd;
-  --ps-neutral-14: #c4c4c4;
-  --ps-neutral-15: #272727;
-  --ps-neutral-16: #0000004c;
-  --ps-neutral-17: #00000008;
-  --ps-neutral-18: #00000054;
-  --ps-neutral-19: #000000a8;
-  --ps-neutral-20: #191919;
+  --ps-light-neutral-1: #ffffff;
+  --ps-light-neutral-2: #000000;
+  --ps-light-neutral-3: #ffffff99;
+  --ps-light-neutral-4: #ffffff54;
+  --ps-light-neutral-5: #ebebeb;
+  --ps-light-neutral-6: #e4e4e4;
+  --ps-light-neutral-7: #dededb;
+  --ps-light-neutral-8: #cccccc;
+  --ps-light-neutral-9: #d8d8d8;
+  --ps-light-neutral-10: #b2b2b2;
+  --ps-light-neutral-11: #555555;
+  --ps-light-neutral-12: #bebebe;
+  --ps-light-neutral-13: #dddddd;
+  --ps-light-neutral-14: #c4c4c4;
+  --ps-light-neutral-15: #272727;
+  --ps-light-neutral-16: #0000004c;
+  --ps-light-neutral-17: #00000008;
+  --ps-light-neutral-18: #00000054;
+  --ps-light-neutral-19: #000000a8;
+  --ps-light-neutral-20: #191919;
 }
