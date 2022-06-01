@@ -325,7 +325,7 @@ var _ = Describe("server", func() {
 							Context(t, func() {
 								BeforeEach(func() {
 									// typeName = t
-									expectedKey = "test.app." + t + "{foo=bar,baz=qux,thread_name=mockLoad-0}"
+									expectedKey = "test.app." + t + "{foo=bar,baz=qux,thread_name=pool-2-thread-8}"
 									expectedTree = readTestdataFile("./testdata/jfr/with_labels/jfr-" + t + ".txt")
 								})
 								ItCorrectlyParsesIncomingData(jfrAppNames)
