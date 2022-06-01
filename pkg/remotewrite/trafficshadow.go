@@ -16,13 +16,20 @@ type TrafficShadower struct {
 	log     *logrus.Logger
 	handler http.Handler
 	config  config.RemoteWrite
+	client  *http.Client
 }
 
 func NewTrafficShadower(logger *logrus.Logger, handler http.Handler, cfg config.RemoteWrite) *TrafficShadower {
+	client := &http.Client{
+		// TODO(eh-am): make timeout configurable
+		Timeout: time.Second * 5,
+	}
+
 	return &TrafficShadower{
 		log:     logger,
 		handler: handler,
 		config:  cfg,
+		client:  client,
 	}
 }
 
@@ -79,13 +86,8 @@ func (t TrafficShadower) sendToRemote(_ http.ResponseWriter, r *http.Request) {
 		r.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	client := &http.Client{
-		// TODO(eh-am): make timeout configurable
-		Timeout: time.Second * 5,
-	}
-
 	t.log.Debugf("Making request to %s", r.URL.String())
-	res, err := client.Do(r)
+	res, err := t.client.Do(r)
 	if err != nil {
 		t.log.Error("Failed to shadow request. Dropping it", err)
 		return
