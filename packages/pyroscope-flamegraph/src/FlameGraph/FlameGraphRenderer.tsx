@@ -20,6 +20,7 @@ import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
+import { SharedQueryHookProps } from '@webapp/hooks/flamegraphSharedQuery.hook';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
@@ -80,6 +81,7 @@ interface FlamegraphRendererProps {
 
   /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
+  sharedQuery?: SharedQueryHookProps & { id: string };
 }
 
 interface FlamegraphRendererState {
@@ -372,6 +374,7 @@ class FlameGraphRenderer extends React.Component<
         <div>
           {toolbarVisible && (
             <Toolbar
+              sharedQuery={this.props.sharedQuery}
               renderLogo={this.props.renderLogo || false}
               disableChangingDisplay={!!this.props.onlyDisplay}
               flamegraphType={this.state.flamebearer.format}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -18,6 +18,8 @@ import Input from '@webapp/ui/Input';
 import Select from '@webapp/ui/Select';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
+import usePreviousProps from '@webapp/hooks/previousProps.hook';
+import { SharedQueryHookProps } from '@webapp/hooks/flamegraphSharedQuery.hook';
 
 import styles from './ProfilerHeader.module.css';
 
@@ -79,6 +81,7 @@ interface ProfileHeaderProps {
    */
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
+  sharedQuery?: SharedQueryHookProps & { id: string };
 }
 
 // TODO: move this to assets pipeline. for now just embedding it here because this is less likely to break
@@ -195,6 +198,7 @@ const Toolbar = React.memo(
     onFocusOnSubtree,
     flamegraphType,
     disableChangingDisplay = false,
+    sharedQuery,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -207,6 +211,7 @@ const Toolbar = React.memo(
             showMode={showMode}
             onHighlightChange={handleSearchChange}
             highlightQuery={highlightQuery}
+            sharedQuery={sharedQuery}
           />
           {flamegraphType === 'double' && (
             <DiffView
@@ -291,27 +296,84 @@ function HighlightSearch({
   onHighlightChange,
   showMode,
   highlightQuery,
+  sharedQuery,
 }: {
   showMode: ReturnType<typeof useSizeMode>;
   onHighlightChange: ProfileHeaderProps['handleSearchChange'];
   highlightQuery: ProfileHeaderProps['highlightQuery'];
+  sharedQuery: ProfileHeaderProps['sharedQuery'];
 }) {
+  const prevProps = usePreviousProps(sharedQuery);
+
+  const onQueryChange = (e) => {
+    onHighlightChange(e.target.value);
+
+    if (sharedQuery && sharedQuery.syncEnabled) {
+      sharedQuery.onQueryChange(e.target.value);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof sharedQuery?.query === 'string') {
+      if (sharedQuery.syncEnabled) {
+        onHighlightChange(sharedQuery.query);
+      }
+
+      if (
+        !sharedQuery.syncEnabled &&
+        prevProps?.syncEnabled &&
+        prevProps?.syncEnabled !== sharedQuery?.id
+      ) {
+        onHighlightChange('');
+      }
+    }
+  }, [sharedQuery?.query, sharedQuery?.syncEnabled]);
+
+  const onToggleSync = () => {
+    const newValue = sharedQuery?.syncEnabled ? false : sharedQuery?.id;
+    sharedQuery?.toggleSync(newValue as string | false);
+
+    if (newValue) {
+      sharedQuery?.onQueryChange(highlightQuery);
+    } else {
+      onHighlightChange(highlightQuery);
+      sharedQuery?.onQueryChange('');
+    }
+  };
+
+  const inputValue = useMemo(
+    () =>
+      sharedQuery && sharedQuery.syncEnabled
+        ? sharedQuery.query || ''
+        : highlightQuery,
+    [sharedQuery, highlightQuery]
+  );
+
   return (
-    <Input
-      testId="flamegraph-search"
-      className={`${styles.search} ${
-        showMode === 'small' ? styles['search-small'] : ''
-      }`}
-      type="search"
-      name="flamegraph-search"
-      placeholder="Search…"
-      minLength={2}
-      debounceTimeout={100}
-      onChange={(e) => {
-        onHighlightChange(e.target.value);
-      }}
-      value={highlightQuery}
-    />
+    <div>
+      <Input
+        testId="flamegraph-search"
+        className={`${styles.search} ${
+          showMode === 'small' ? styles['search-small'] : ''
+        }`}
+        type="search"
+        name="flamegraph-search"
+        placeholder="Search…"
+        minLength={2}
+        debounceTimeout={100}
+        onChange={onQueryChange}
+        value={inputValue}
+      />
+      {sharedQuery ? (
+        <input
+          checked={!!sharedQuery.syncEnabled}
+          onChange={onToggleSync}
+          type="checkbox"
+          id="scales"
+          name="scales"
+        />
+      ) : null}
+    </div>
   );
 }
 
