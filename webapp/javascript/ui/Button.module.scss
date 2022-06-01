@@ -57,19 +57,19 @@ $border-radius: 4px;
 }
 
 .secondary {
-  background-color: var(--ps-accent-1-3);
-  border-left-color: var(--ps-accent-1-3);
-  border-right-color: var(--ps-accent-1-3);
-  border-top-color: var(--ps-accent-1-3);
-  border-bottom-color: var(--ps-accent-1-3);
+  background-color: var(--ps-accent-1-4);
+  border-left-color: var(--ps-accent-1-4);
+  border-right-color: var(--ps-accent-1-4);
+  border-top-color: var(--ps-accent-1-4);
+  border-bottom-color: var(--ps-accent-1-4);
   color: var(--ps-immutable-1);
 
   &:hover {
     background-color: var(--ps-accent-1-4);
   }
   &:disabled {
-    border-color: var(--ps-accent-1-6);
-    background-color: var(--ps-accent-1-6);
+    border-color: var(--ps-accent-1-4);
+    background-color: var(--ps-accent-1-4);
     pointer-events: none;
   }
 }

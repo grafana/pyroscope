@@ -127,7 +127,7 @@
 
 // range picker custom styles
 .react-datepicker__day--in-range {
-  background-color: var(--ps-accent-1-2) !important;
+  background-color: var(--ps-accent-1-4) !important;
   color: var(--ps-neutral-20) !important;
 }
 .react-datepicker__day--in-selecting-range {
@@ -135,7 +135,7 @@
   color: var(--ps-neutral-1);
 }
 .react-datepicker__day--in-range:hover {
-  background-color: var(--ps-accent-1-2);
+  background-color: var(--ps-accent-1-4);
   color: var(--ps-neutral-20);
 }
 

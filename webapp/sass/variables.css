@@ -6,12 +6,8 @@
   --ps-neutral-11: #aaaaaa;
   --ps-neutral-20: #e6e6e6;
 
-  --ps-accent-1-1: #1d49a1;
-  --ps-accent-1-2: #216ba5;
-  --ps-accent-1-3: #0074d9;
+  --ps-accent-1-1: #1d49a1; /* hover */
   --ps-accent-1-4: #0d8eff;
-  --ps-accent-1-5: #1398f6;
-  --ps-accent-1-6: #40a6ff;
   --ps-accent-1-7: #3dc1d3cc;
 
   --ps-accent-2-1: #2ecc40;
