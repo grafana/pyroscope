@@ -13,7 +13,7 @@
 
   & li[class*='hover'],
   div[class*='hover'] {
-    background-color: var(--ps-neutral-14);
+    background-color: var(--ps-neutral-10);
   }
 
   [class*='rc-menu--open']:empty {
@@ -21,7 +21,7 @@
   }
 
   [class*='rc-menu__item active'] {
-    background-color: var(--ps-neutral-14);
+    background-color: var(--ps-neutral-10);
     color: var(--ps-accent-3-9);
   }
 
