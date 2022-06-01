@@ -48,7 +48,7 @@ var _ = Describe("TrafficShadower", func() {
 		client := remotewrite.NewClient(logger, cfg)
 
 		wg.Add(1)
-		client.Put(context.TODO(), pi)
+		client.Put(context.TODO(), &pi)
 		wg.Wait()
 	}
 

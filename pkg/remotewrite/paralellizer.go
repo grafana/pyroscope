@@ -40,5 +40,4 @@ func (p *Paralellizer) Put(ctx context.Context, pi *parser.PutInput) {
 		// swallow the error
 		p.log.Error("Failed to parallelize put", err)
 	}
-
 }

@@ -18,7 +18,7 @@ type Client struct {
 	client *http.Client
 }
 
-func NewClient(logger *logrus.Logger, config config.RemoteWrite) *Client {
+func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
 	client := &http.Client{
 		// TODO(eh-am): make timeout configurable
 		Timeout: time.Second * 5,
@@ -26,7 +26,7 @@ func NewClient(logger *logrus.Logger, config config.RemoteWrite) *Client {
 
 	return &Client{
 		log:    logger,
-		config: config,
+		config: cfg,
 		client: client,
 	}
 }
@@ -37,6 +37,8 @@ func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 		r.log.Error("Error writing putInputToRequest", err)
 		return err
 	}
+
+	req = req.WithContext(ctx)
 
 	r.log.Debugf("Making request to %s", req.URL.String())
 	res, err := r.client.Do(req)
