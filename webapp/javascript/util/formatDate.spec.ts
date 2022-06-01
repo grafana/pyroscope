@@ -23,7 +23,9 @@ describe('FormatDate', () => {
     test.each(cases)(
       'readableRange(%s, %s) should be %s',
       (from, until, expected) => {
-        expect(readableRange(from, until)).toBe(expected);
+        expect(readableRange(from, until, new Date().getTimezoneOffset())).toBe(
+          expected
+        );
       }
     );
   });
