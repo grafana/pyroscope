@@ -31,7 +31,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
-	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
@@ -54,7 +53,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
-	parser     *parser.Parser
+	parser     Parser
 	log        *logrus.Logger
 	httpServer *http.Server
 	db         *gorm.DB
@@ -88,7 +87,7 @@ type Config struct {
 	*logrus.Logger
 	// TODO(kolesnikovae): Ideally, Storage should be decomposed.
 	*storage.Storage
-	*parser.Parser
+	Parser
 	*gorm.DB
 	Notifier
 
