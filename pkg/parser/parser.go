@@ -138,9 +138,11 @@ func parseJFRMultipart(ctx context.Context, s storage.Putter, in *PutInput, pi *
 		if err != nil {
 			return err
 		}
-		err = proto.Unmarshal(protoLabels, labels)
-		if err != nil {
-			return err
+		if len(protoLabels) > 0 {
+			err = proto.Unmarshal(protoLabels, labels)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	err = jfr.ParseJFR(ctx, s, jfrField, pi, labels)
