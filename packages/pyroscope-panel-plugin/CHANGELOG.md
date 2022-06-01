@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.2.25...@pyroscope/panel-plugin@1.3.0) (2022-05-30)
+
+
+### Features
+
+* Color mode ([#1103](https://github.com/pyroscope-io/pyroscope/issues/1103)) ([8855859](https://github.com/pyroscope-io/pyroscope/commit/885585958012775f0d51ea82208d641d10215574))
+
+
+
+
+
+## [1.2.25](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.2.24...@pyroscope/panel-plugin@1.2.25) (2022-05-26)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
 ## [1.2.24](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.2.23...@pyroscope/panel-plugin@1.2.24) (2022-05-25)
 
 **Note:** Version bump only for package @pyroscope/panel-plugin

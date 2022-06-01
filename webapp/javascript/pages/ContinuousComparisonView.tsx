@@ -19,6 +19,7 @@ import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
@@ -31,6 +32,7 @@ function ComparisonApp() {
   );
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
   const { offset } = useTimeZone();
+  const { colorMode } = useColorMode();
   usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -100,6 +102,7 @@ function ComparisonApp() {
               panesOrientation="vertical"
               profile={leftSide}
               data-testid="flamegraph-renderer-left"
+              colorMode={colorMode}
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 leftSide && (
@@ -146,6 +149,7 @@ function ComparisonApp() {
               profile={rightSide}
               data-testid="flamegraph-renderer-right"
               panesOrientation="vertical"
+              colorMode={colorMode}
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 rightSide && (

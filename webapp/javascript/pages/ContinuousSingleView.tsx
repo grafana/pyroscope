@@ -8,6 +8,7 @@ import {
   fetchSingleView,
   setDateRange,
 } from '@webapp/redux/reducers/continuous';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
@@ -17,6 +18,7 @@ import useTimeZone from '@webapp/hooks/timeZone.hook';
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
   const { offset } = useTimeZone();
+  const { colorMode } = useColorMode();
 
   const { from, until, query, refreshToken, maxNodes } = useAppSelector(
     (state) => state.continuous
@@ -51,6 +53,7 @@ function ContinuousSingleView() {
         return (
           <FlamegraphRenderer
             profile={singleView.profile}
+            colorMode={colorMode}
             ExportData={
               <ExportData
                 flamebearer={singleView.profile}

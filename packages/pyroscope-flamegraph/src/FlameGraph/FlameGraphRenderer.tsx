@@ -76,6 +76,7 @@ interface FlamegraphRendererProps {
   showPyroscopeLogo?: boolean;
   renderLogo?: boolean;
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
+  colorMode?: 'light' | 'dark';
 
   /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
@@ -364,7 +365,10 @@ class FlameGraphRenderer extends React.Component<
     const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
 
     return (
-      <div className="flamegraph-root">
+      <div
+        className="flamegraph-root"
+        data-flamegraph-color-mode={this.props.colorMode || 'dark'}
+      >
         <div>
           {toolbarVisible && (
             <Toolbar

@@ -1,4 +1,4 @@
-import { createSlice, createSelector } from '@reduxjs/toolkit';
+import { createSlice, createSelector, PayloadAction } from '@reduxjs/toolkit';
 import { createMigrate } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { PersistedState } from 'redux-persist/lib/types';
@@ -39,6 +39,7 @@ export interface UiState {
   time: {
     offset: null | number;
   };
+  colorMode: 'dark' | 'light';
 }
 
 const initialState: UiState = {
@@ -47,6 +48,7 @@ const initialState: UiState = {
     offset: null,
   },
   //  sidebar: { state: 'pristine' },
+  colorMode: 'dark',
 };
 
 export const uiSlice = createSlice({
@@ -67,6 +69,9 @@ export const uiSlice = createSlice({
     changeTimeZoneOffset: (state, action) => {
       state.time.offset = action.payload;
     },
+    setColorMode: (state, action: PayloadAction<'dark' | 'light'>) => {
+      state.colorMode = action.payload;
+    },
   },
 });
 
@@ -81,11 +86,17 @@ export const selectTimezoneOffset = createSelector(
   (state) => state.time.offset
 );
 
+export const selectAppColorMode = createSelector(
+  selectUiState,
+  (state) => state.colorMode
+);
+
 export const {
   collapseSidebar,
   uncollapseSidebar,
   recalculateSidebar,
   changeTimeZoneOffset,
+  setColorMode,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

@@ -190,7 +190,7 @@ func (e *exemplars) flushCurrentBatch() {
 	select {
 	case e.batches <- b:
 	default:
-		e.metrics.discardedTotal.Add(float64(entries))
+		e.metrics.exemplarsDiscardedTotal.Add(float64(entries))
 	}
 }
 

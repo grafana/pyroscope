@@ -3,6 +3,7 @@ import { FlamegraphRenderer, Box } from '@pyroscope/flamegraph';
 import PyroscopeServerCPU from '../cypress/fixtures/pyroscope.server.cpu.json';
 import SimpleGolangCPU from '../cypress/fixtures/simple-golang-app-cpu.json';
 import Button from '@ui/Button';
+import { ComponentStory } from '@storybook/react';
 
 export default {
   title: '@pyroscope/flamegraph',
@@ -34,6 +35,27 @@ const SimpleTree = {
   fitMode: 'HEAD',
 
   spyName: 'gospy',
+};
+
+const Template: ComponentStory<typeof Button> = (args) => (
+  <div
+    style={{
+      backgroundColor: `${args['Light Color Mode'] ? '#e4e4e4' : '#1b1b1b'}`,
+    }}
+  >
+    <FlamegraphRenderer
+      flamebearer={SimpleTree}
+      display="flamegraph"
+      viewType="single"
+      colorMode={args['Light Color Mode'] ? 'light' : 'dark'}
+    />
+  </div>
+);
+
+export const ColorMode = Template.bind({});
+
+ColorMode.args = {
+  ['Light Color Mode']: false,
 };
 
 export const WithToolbar = () => {

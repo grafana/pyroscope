@@ -2,6 +2,7 @@
   max-width: 510px;
   min-width: 292px;
   width: inherit;
+  padding-right: 20px !important;
 }
 
 .dropdownWrapper {
@@ -30,6 +31,7 @@
 
 .dropdownItem svg {
   margin-left: 1em;
+  fill: var(--ps-neutral-2);
 }
 
 .row {

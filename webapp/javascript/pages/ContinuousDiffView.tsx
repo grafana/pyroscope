@@ -15,6 +15,7 @@ import useTimelines, {
   rightColor,
 } from '@webapp/hooks/timeline.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
@@ -25,6 +26,7 @@ import ExportData from '@webapp/components/ExportData';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
+  const { colorMode } = useColorMode();
   const {
     diffView,
     refreshToken,
@@ -168,6 +170,7 @@ function ComparisonDiffApp() {
           <FlamegraphRenderer
             profile={diffView.profile}
             ExportData={exportData}
+            colorMode={colorMode}
           />
         </Box>
       </div>

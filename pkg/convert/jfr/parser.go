@@ -14,8 +14,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-func ParseJFR(ctx context.Context, r io.Reader, s storage.Putter, pi *storage.PutInput) (err error) {
-	chunks, err := parser.Parse(r)
+func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput) (err error) {
+	chunks, err := parser.Parse(body)
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)
 	}
@@ -24,11 +24,10 @@ func ParseJFR(ctx context.Context, r io.Reader, s storage.Putter, pi *storage.Pu
 			err = multierror.Append(err, pErr)
 		}
 	}
-	pi.Val = nil
 	return err
 }
 
-func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.PutInput) (err error) {
+func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *storage.PutInput) (err error) {
 	var event, alloc, lock string
 	cpu := tree.New()
 	wall := tree.New()
@@ -84,83 +83,50 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 			}
 		}
 	}
-	labels := pi.Key.Labels()
-	prefix := labels["__name__"]
+
+	labelsOriginal := piOriginal.Key.Labels()
+	prefix := labelsOriginal["__name__"]
+
+	cb := func(n string, t *tree.Tree, u metadata.Units) {
+		labels := map[string]string{}
+		for k, v := range labelsOriginal {
+			labels[k] = v
+		}
+		labels["__name__"] = prefix + "." + n
+		pi := &storage.PutInput{
+			StartTime:       piOriginal.StartTime,
+			EndTime:         piOriginal.EndTime,
+			Key:             segment.NewKey(labels),
+			Val:             t,
+			SpyName:         piOriginal.SpyName,
+			SampleRate:      piOriginal.SampleRate,
+			Units:           u,
+			AggregationType: metadata.SumAggregationType,
+		}
+		if putErr := s.Put(ctx, pi); putErr != nil {
+			err = multierror.Append(err, putErr)
+		}
+	}
+
 	if event == "cpu" || event == "itimer" || event == "wall" {
 		profile := event
 		if event == "wall" {
 			profile = "cpu"
 		}
-		labels["__name__"] = prefix + "." + profile
-		pi.Key = segment.NewKey(labels)
-		pi.Val = cpu
-		pi.Units = metadata.SamplesUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
+		cb(profile, cpu, metadata.SamplesUnits)
 	}
 	if event == "wall" {
-		labels["__name__"] = prefix + "." + event
-		pi.Key = segment.NewKey(labels)
-		pi.Val = wall
-		pi.Units = metadata.SamplesUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
+		cb(event, wall, metadata.SamplesUnits)
 	}
 	if alloc != "" {
-		labels["__name__"] = prefix + ".alloc_in_new_tlab_objects"
-		pi.Key = segment.NewKey(labels)
-		pi.Val = inTLABObjects
-		pi.Units = metadata.ObjectsUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
-		labels["__name__"] = prefix + ".alloc_in_new_tlab_bytes"
-		pi.Key = segment.NewKey(labels)
-		pi.Val = inTLABBytes
-		pi.Units = metadata.BytesUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
-		labels["__name__"] = prefix + ".alloc_outside_tlab_objects"
-		pi.Key = segment.NewKey(labels)
-		pi.Val = outTLABObjects
-		pi.Units = metadata.ObjectsUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
-		labels["__name__"] = prefix + ".alloc_outside_tlab_bytes"
-		pi.Key = segment.NewKey(labels)
-		pi.Val = outTLABBytes
-		pi.Units = metadata.BytesUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
+		cb("alloc_in_new_tlab_objects", inTLABObjects, metadata.ObjectsUnits)
+		cb("alloc_in_new_tlab_bytes", inTLABBytes, metadata.BytesUnits)
+		cb("alloc_outside_tlab_objects", outTLABObjects, metadata.ObjectsUnits)
+		cb("alloc_outside_tlab_bytes", outTLABBytes, metadata.BytesUnits)
 	}
 	if lock != "" {
-		labels["__name__"] = prefix + ".lock_count"
-		pi.Key = segment.NewKey(labels)
-		pi.Val = lockSamples
-		pi.Units = metadata.LockSamplesUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
-		labels["__name__"] = prefix + ".lock_duration"
-		pi.Key = segment.NewKey(labels)
-		pi.Val = lockDuration
-		pi.Units = metadata.LockNanosecondsUnits
-		pi.AggregationType = metadata.SumAggregationType
-		if putErr := s.Put(ctx, pi); putErr != nil {
-			err = multierror.Append(err, putErr)
-		}
+		cb("lock_count", lockSamples, metadata.LockSamplesUnits)
+		cb("lock_duration", lockDuration, metadata.LockNanosecondsUnits)
 	}
 	return err
 }

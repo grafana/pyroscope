@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.9.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.8...@pyroscope/webapp@1.9.0) (2022-05-30)
+
+
+### Bug Fixes
+
+* flamegraph palette selector checkmark styles ([#1114](https://github.com/pyroscope-io/pyroscope/issues/1114)) ([755893f](https://github.com/pyroscope-io/pyroscope/commit/755893f23a04c1031a858c39e8729a5074eaf67b))
+
+
+### Features
+
+* Color mode ([#1103](https://github.com/pyroscope-io/pyroscope/issues/1103)) ([8855859](https://github.com/pyroscope-io/pyroscope/commit/885585958012775f0d51ea82208d641d10215574))
+
+
+
+
+
+## [1.8.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.7...@pyroscope/webapp@1.8.8) (2022-05-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.8.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.6...@pyroscope/webapp@1.8.7) (2022-05-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.8.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.5...@pyroscope/webapp@1.8.6) (2022-05-25)
 
 **Note:** Version bump only for package @pyroscope/webapp

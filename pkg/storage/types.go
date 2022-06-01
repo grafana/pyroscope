@@ -4,7 +4,7 @@ package storage
 
 import (
 	"context"
-
+	"errors"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -18,10 +18,6 @@ type Putter interface {
 
 type Getter interface {
 	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
-}
-
-type Enqueuer interface {
-	Enqueue(ctx context.Context, input *PutInput)
 }
 
 type Merger interface {
@@ -63,12 +59,24 @@ type AppNameGetter interface {
 	GetAppNames(ctx context.Context) []string
 }
 
+type IngestionError struct{ Err error }
+
+func (e IngestionError) Error() string { return e.Err.Error() }
+
+func (e IngestionError) Unwrap() error { return e.Err }
+
+func IsIngestionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var v IngestionError
+	return errors.As(err, &v)
+}
+
 // Other functions from storage.Storage:
 // type Backend interface {
 // 	Put(ctx context.Context, pi *PutInput) error
 // 	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
-
-// 	Enqueue(ctx context.Context, input *PutInput)
 
 // 	GetAppNames(ctx context.Context, ) []string
 // 	GetKeys(ctx context.Context, cb func(string) bool)

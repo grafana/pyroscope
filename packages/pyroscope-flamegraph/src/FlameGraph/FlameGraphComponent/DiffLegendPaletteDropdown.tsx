@@ -1,7 +1,11 @@
 import React from 'react';
 import cx from 'classnames';
 import useResizeObserver from '@react-hook/resize-observer';
-import { ColorBlindPalette, DefaultPalette } from './colorPalette';
+import {
+  ColorBlindPalette,
+  DefaultPalette,
+  FlamegraphPalette,
+} from './colorPalette';
 import DiffLegend from './DiffLegend';
 import CheckIcon from './CheckIcon';
 // Until we migrate ui to its own package this should do it
@@ -14,8 +18,14 @@ import styles from './DiffLegendPaletteDropdown.module.css';
 
 const paletteList = [DefaultPalette, ColorBlindPalette];
 
-// TODO type this
-export const DiffLegendPaletteDropdown = (props: any) => {
+interface DiffLegendPaletteDropdownProps {
+  palette: FlamegraphPalette;
+  onChange: (p: FlamegraphPalette) => void;
+}
+
+export const DiffLegendPaletteDropdown = (
+  props: DiffLegendPaletteDropdownProps
+) => {
   const { palette = DefaultPalette, onChange } = props;
   const legendRef = React.useRef<HTMLDivElement>(null);
   const showMode = useSizeMode(legendRef);
