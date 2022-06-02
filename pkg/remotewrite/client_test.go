@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -18,6 +19,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
 )
+
+// TODO(eh-am): clean up these bunch of putInput
 
 var _ = Describe("TrafficShadower", func() {
 	var logger *logrus.Logger
@@ -69,6 +72,7 @@ var _ = Describe("TrafficShadower", func() {
 				SpyName:         "gospy",
 				Units:           metadata.SamplesUnits,
 				AggregationType: metadata.SumAggregationType,
+				Profile:         strings.NewReader(""),
 			}
 
 			remoteHandler = func(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +88,37 @@ var _ = Describe("TrafficShadower", func() {
 			}
 
 			run()
+		})
+
+		When("auth is configured", func() {
+			BeforeEach(func() {
+				cfg.AuthToken = "myauthtoken"
+			})
+
+			It("sets the Authorization header", func() {
+				pi = parser.PutInput{
+					Key: segment.NewKey(map[string]string{
+						"__name__": "myapp",
+						"my":       "tag",
+					}),
+
+					StartTime:       attime.Parse("1654110240"),
+					EndTime:         attime.Parse("1654110250"),
+					SampleRate:      100,
+					SpyName:         "gospy",
+					Units:           metadata.SamplesUnits,
+					AggregationType: metadata.SumAggregationType,
+					Profile:         strings.NewReader(""),
+				}
+
+				remoteHandler = func(w http.ResponseWriter, r *http.Request) {
+					defer GinkgoRecover()
+
+					Expect(r.Header.Get("Authorization")).To(Equal("Bearer myauthtoken"))
+				}
+
+				run()
+			})
 		})
 
 		When("tags are configured", func() {
@@ -107,6 +142,7 @@ var _ = Describe("TrafficShadower", func() {
 					SpyName:         "gospy",
 					Units:           metadata.SamplesUnits,
 					AggregationType: metadata.SumAggregationType,
+					Profile:         strings.NewReader(""),
 				}
 
 				remoteHandler = func(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +172,12 @@ var _ = Describe("TrafficShadower", func() {
 				client := remotewrite.NewClient(logger, config.RemoteWrite{
 					Address: "%%",
 				})
-				pi := parser.PutInput{}
+				pi := parser.PutInput{
+					Key: segment.NewKey(map[string]string{
+						"__name__": "myapp",
+					}),
+					Profile: strings.NewReader(""),
+				}
 
 				err := client.Put(context.TODO(), &pi)
 				Expect(err).To(MatchError(remotewrite.ErrConvertPutInputToRequest))
@@ -159,6 +200,7 @@ var _ = Describe("TrafficShadower", func() {
 					SpyName:         "gospy",
 					Units:           metadata.SamplesUnits,
 					AggregationType: metadata.SumAggregationType,
+					Profile:         strings.NewReader(""),
 				}
 
 				err := client.Put(context.TODO(), &pi)
@@ -188,6 +230,7 @@ var _ = Describe("TrafficShadower", func() {
 					SpyName:         "gospy",
 					Units:           metadata.SamplesUnits,
 					AggregationType: metadata.SumAggregationType,
+					Profile:         strings.NewReader(""),
 				}
 
 				err := client.Put(context.TODO(), &pi)
