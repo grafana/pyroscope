@@ -2,14 +2,22 @@ package remotewrite
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	ErrConvertPutInputToRequest = errors.New("failed to convert putInput into a http.Request")
+	ErrMakingRequest            = errors.New("failed to make request")
+	ErrNotOkResponse            = errors.New("response not ok")
 )
 
 type Client struct {
@@ -34,8 +42,7 @@ func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
 func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 	req, err := r.putInputToRequest(put)
 	if err != nil {
-		r.log.Error("Error writing putInputToRequest", err)
-		return err
+		return multierror.Append(err, ErrConvertPutInputToRequest)
 	}
 
 	req = req.WithContext(ctx)
@@ -43,14 +50,11 @@ func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 	r.log.Debugf("Making request to %s", req.URL.String())
 	res, err := r.client.Do(req)
 	if err != nil {
-		r.log.Error("Failed to write to remote. Dropping it", err)
-		return err
+		return multierror.Append(err, ErrMakingRequest)
 	}
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
-		// TODO(eh-am): print the error message if there's any?
-		r.log.Errorf("Request to remote failed with statusCode: '%d'", res.StatusCode)
-		return err
+		return ErrNotOkResponse
 	}
 
 	return nil
