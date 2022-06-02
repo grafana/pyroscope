@@ -1,7 +1,7 @@
 package org.example.rideshare;
 
-import io.pyroscope.labels.Labels;
 import io.pyroscope.labels.LabelsSet;
+import io.pyroscope.labels.Pyroscope;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -29,7 +29,7 @@ public class OrderService {
 
 
     private synchronized void findNearestVehicle(int searchRadius, String vehicle) {
-        Labels.run(new LabelsSet("vehicle", vehicle), () -> {
+        Pyroscope.LabelsWrapper.run(new LabelsSet("vehicle", vehicle), () -> {
             AtomicLong i = new AtomicLong();
             Instant end = Instant.now()
                     .plus(OP_DURATION.multipliedBy(searchRadius));
