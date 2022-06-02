@@ -38,6 +38,7 @@ var _ = Describe("TrafficShadower", func() {
 
 			cfg.Address = ""
 			cfg.AuthToken = ""
+			cfg.Tags = make(map[string]string)
 		})
 
 		run := func() {
@@ -83,6 +84,49 @@ var _ = Describe("TrafficShadower", func() {
 			}
 
 			run()
+		})
+
+		When("tags are configured", func() {
+			BeforeEach(func() {
+				cfg.Tags = make(map[string]string)
+
+				cfg.Tags["minha"] = "tag"
+				cfg.Tags["nuestra"] = "etiqueta"
+			})
+
+			It("enhances the app name with tags", func() {
+				pi = parser.PutInput{
+					Key: segment.NewKey(map[string]string{
+						"__name__": "myapp",
+						"my":       "tag",
+					}),
+
+					StartTime:       attime.Parse("1654110240"),
+					EndTime:         attime.Parse("1654110250"),
+					SampleRate:      100,
+					SpyName:         "gospy",
+					Units:           metadata.SamplesUnits,
+					AggregationType: metadata.SumAggregationType,
+				}
+
+				remoteHandler = func(w http.ResponseWriter, r *http.Request) {
+					defer GinkgoRecover()
+
+					key, err := segment.ParseKey(r.URL.Query().Get("name"))
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(key).To(Equal(
+						segment.NewKey(map[string]string{
+							"__name__": "myapp",
+							"my":       "tag",
+							"minha":    "tag",
+							"nuestra":  "etiqueta",
+						}),
+					))
+				}
+
+				run()
+			})
 		})
 	})
 

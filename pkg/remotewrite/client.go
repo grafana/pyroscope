@@ -67,6 +67,8 @@ func (r *Client) putInputToRequest(pi *parser.PutInput) (*http.Request, error) {
 		return nil, err
 	}
 
+	r.enhanceWithTags(pi.Key)
+
 	params := req.URL.Query()
 	params.Set("name", pi.Key.Normalized())
 	params.Set("from", strconv.FormatInt(pi.StartTime.Unix(), 10))
