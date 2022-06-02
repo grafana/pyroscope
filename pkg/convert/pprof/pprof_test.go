@@ -35,13 +35,14 @@ var _ = Describe("pprof parsing", func() {
 				"foo":      "bar",
 			}
 
-			w := NewProfileWriter(ingester, ProfileWriterConfig{
+			w := NewParser(ParserConfig{
+				Putter:      ingester,
 				SampleTypes: tree.DefaultSampleTypeMapping,
 				Labels:      labels,
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(context.Background(), start, end, p)
+			err = w.Convert(context.Background(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -71,13 +72,14 @@ var _ = Describe("pprof parsing", func() {
 				"foo":      "bar",
 			}
 
-			w := NewProfileWriter(ingester, ProfileWriterConfig{
+			w := NewParser(ParserConfig{
+				Putter:      ingester,
 				SampleTypes: tree.DefaultSampleTypeMapping,
 				Labels:      labels,
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(context.Background(), start, end, p)
+			err = w.Convert(context.Background(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -110,13 +112,14 @@ var _ = Describe("pprof parsing", func() {
 			tree.DefaultSampleTypeMapping["inuse_objects"].Cumulative = false
 			tree.DefaultSampleTypeMapping["inuse_space"].Cumulative = false
 
-			w := NewProfileWriter(ingester, ProfileWriterConfig{
+			w := NewParser(ParserConfig{
+				Putter:      ingester,
 				SampleTypes: tree.DefaultSampleTypeMapping,
 				Labels:      labels,
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(context.Background(), start, end, p)
+			err = w.Convert(context.Background(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ingester.actual).To(HaveLen(2))
 			sort.Slice(ingester.actual, func(i, j int) bool {
@@ -157,13 +160,14 @@ var _ = Describe("pprof profile_id multiplexing", func() {
 			"foo":      "bar",
 		}
 
-		w := NewProfileWriter(ingester, ProfileWriterConfig{
+		w := NewParser(ParserConfig{
+			Putter:      ingester,
 			SampleTypes: tree.DefaultSampleTypeMapping,
 			Labels:      labels,
 			SpyName:     spyName,
 		})
 
-		err = w.WriteProfile(context.Background(), start, end, p)
+		err = w.Convert(context.Background(), start, end, p)
 		Expect(err).ToNot(HaveOccurred())
 
 		var actualTotal uint64
@@ -199,7 +203,8 @@ var _ = Describe("custom pprof parsing", func() {
 			"foo":      "bar",
 		}
 
-		w := NewProfileWriter(ingester, ProfileWriterConfig{
+		w := NewParser(ParserConfig{
+			Putter: ingester,
 			SampleTypes: map[string]*tree.SampleTypeConfig{
 				"objects": {
 					Units:       "objects",
@@ -214,7 +219,7 @@ var _ = Describe("custom pprof parsing", func() {
 			SpyName: spyName,
 		})
 
-		err = w.WriteProfile(context.TODO(), start, end, p)
+		err = w.Convert(context.TODO(), start, end, p)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ingester.actual).To(HaveLen(2))
 		sort.Slice(ingester.actual, func(i, j int) bool {

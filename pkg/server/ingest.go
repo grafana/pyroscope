@@ -160,11 +160,7 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInpu
 }
 
 func loadProfileFromBody(pi *parser.PutInput, r *http.Request) error {
-	bufferSize := int64(64 << 10) // Defaults to 64K body size
-	if r.ContentLength > 0 {
-		bufferSize = r.ContentLength
-	}
-	buf := bytes.NewBuffer(make([]byte, 0, bufferSize))
+	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
 	if _, err := io.Copy(buf, r.Body); err != nil {
 		return err
 	}
@@ -199,26 +195,30 @@ func loadPprofFromForm(pi *parser.PutInput, r *http.Request) error {
 		return err
 	}
 	pi.SampleTypeConfig, err = parseSampleTypesConfig(form)
-	if err != nil {
-		return err
-	}
-	if pi.SampleTypeConfig == nil {
-		pi.SampleTypeConfig = tree.DefaultSampleTypeMapping
-	}
-
-	return nil
+	return err
 }
 
-func formField(form *multipart.Form, name string) (io.ReadCloser, error) {
+func formField(form *multipart.Form, name string) (_ io.Reader, err error) {
 	files, ok := form.File[name]
 	if !ok || len(files) == 0 {
 		return nil, nil
 	}
-	f, err := files[0].Open()
+	fh := files[0]
+	if fh.Size == 0 {
+		return nil, nil
+	}
+	f, err := fh.Open()
 	if err != nil {
 		return nil, err
 	}
-	return f, nil
+	defer func() {
+		err = f.Close()
+	}()
+	b := bytes.NewBuffer(make([]byte, 0, fh.Size))
+	if _, err = io.Copy(b, f); err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
 func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {

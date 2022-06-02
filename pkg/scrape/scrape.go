@@ -18,7 +18,6 @@ package scrape
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -29,7 +28,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
@@ -327,8 +325,6 @@ type scrapeLoop struct {
 	timeout  time.Duration
 }
 
-var bufPool = bytebufferpool.Pool{}
-
 func (sl *scrapeLoop) run() {
 	defer close(sl.stopped)
 	select {
@@ -417,7 +413,7 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 	}
 
 	sl.scraper.targetMetrics.profileSize.Observe(float64(buf.Len()))
-	profile := bytes.NewReader(buf.Bytes())
+	profile := &parser.PprofData{Buffer: buf}
 	previousProfile := sl.scraper.previousProfile
 	if sl.scraper.cumulative {
 		sl.scraper.previousProfile = profile
@@ -484,36 +480,10 @@ func (s *scraper) scrape(ctx context.Context, dst *bytes.Buffer) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("server returned HTTP status %s", resp.Status)
 	}
-	if resp.ContentLength > 0 {
-		dst.Grow(int(resp.ContentLength))
-	}
-
 	if s.bodySizeLimit <= 0 {
 		s.bodySizeLimit = math.MaxInt64
 	}
-
-	if s.buf == nil {
-		s.buf = bufio.NewReader(resp.Body)
-	} else {
-		s.buf.Reset(resp.Body)
-	}
-
-	header, err := s.buf.Peek(2)
-	if err != nil {
-		return err
-	}
-
-	r := resp.Body
-	if header[0] == 0x1f && header[1] == 0x8b {
-		gzipr, err := gzip.NewReader(s.buf)
-		if err != nil {
-			return err
-		}
-		r = gzipr
-		defer gzipr.Close()
-	}
-
-	n, err := io.Copy(dst, io.LimitReader(r, s.bodySizeLimit))
+	n, err := io.Copy(dst, io.LimitReader(resp.Body, s.bodySizeLimit))
 	if err != nil {
 		return err
 	}
