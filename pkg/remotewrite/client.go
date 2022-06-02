@@ -1,8 +1,12 @@
 package remotewrite
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"time"
@@ -29,7 +33,7 @@ type Client struct {
 func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
 	client := &http.Client{
 		// TODO(eh-am): make timeout configurable
-		Timeout: time.Second * 5,
+		Timeout: time.Second * 15,
 	}
 
 	return &Client{
@@ -45,8 +49,9 @@ func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 		return multierror.Append(err, ErrConvertPutInputToRequest)
 	}
 
-	req = req.WithContext(ctx)
+	r.enhanceWithAuth(req)
 
+	req = req.WithContext(ctx)
 	r.log.Debugf("Making request to %s", req.URL.String())
 	res, err := r.client.Do(req)
 	if err != nil {
@@ -54,15 +59,41 @@ func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 	}
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
-		return ErrNotOkResponse
+		return multierror.Append(ErrNotOkResponse, fmt.Errorf("status code: '%d'", res.StatusCode))
 	}
 
 	return nil
 }
 
+func streamToByte(stream io.Reader) []byte {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(stream)
+	return buf.Bytes()
+}
+
 func (r *Client) putInputToRequest(pi *parser.PutInput) (*http.Request, error) {
-	// TODO(eh-am): copy put.Profile?
-	req, err := http.NewRequest("POST", r.config.Address, pi.Profile)
+	pi = pi.Clone()
+
+	// TODO(eh-am): is this the most efficient to do this?
+	// maybe we shouldn't even clone it
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	fw, err := writer.CreateFormFile("profile", "profile.pprof")
+	fw.Write(streamToByte(pi.Profile))
+	if err != nil {
+		return nil, err
+	}
+
+	if pi.PreviousProfile != nil {
+		fw, err = writer.CreateFormFile("prev_profile", "profile.pprof")
+		fw.Write(streamToByte(pi.PreviousProfile))
+		if err != nil {
+			return nil, err
+		}
+	}
+	writer.Close()
+
+	req, err := http.NewRequest("POST", r.config.Address, body)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +111,9 @@ func (r *Client) putInputToRequest(pi *parser.PutInput) (*http.Request, error) {
 
 	req.URL.RawQuery = params.Encode()
 
+	contentType := writer.FormDataContentType()
+	req.Header.Set("Content-Type", contentType)
+
 	return req, nil
 }
 
@@ -87,5 +121,13 @@ func (r *Client) enhanceWithTags(key *segment.Key) {
 	labels := key.Labels()
 	for tag, value := range r.config.Tags {
 		labels[tag] = value
+	}
+}
+
+func (r *Client) enhanceWithAuth(req *http.Request) {
+	token := r.config.AuthToken
+
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 }

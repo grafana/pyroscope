@@ -41,7 +41,7 @@ func (p *Paralellizer) Put(ctx context.Context, pi *parser.PutInput) error {
 	if err := g.Wait(); err != nil {
 		// swallow the error
 		// TODO(eh-am): should we swallow errors?
-		p.log.Error("Failed to parallelize put", err)
+		p.log.Error("Failed to parallelize put: ", err)
 	}
 
 	return nil
