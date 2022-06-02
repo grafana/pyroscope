@@ -14,8 +14,6 @@ import (
 var bufPool = bytebufferpool.Pool{}
 
 func Decode(r io.Reader, p *tree.Profile) error {
-	buf := bufPool.Get()
-	defer bufPool.Put(buf)
 	br := bufio.NewReader(r)
 	header, err := br.Peek(2)
 	if err != nil {
@@ -31,6 +29,8 @@ func Decode(r io.Reader, p *tree.Profile) error {
 	} else {
 		r = br
 	}
+	buf := bufPool.Get()
+	defer bufPool.Put(buf)
 	if _, err = io.Copy(buf, r); err != nil {
 		return err
 	}

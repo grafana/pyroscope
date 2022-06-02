@@ -2,6 +2,7 @@
 package parser
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -20,7 +21,8 @@ import (
 )
 
 type PutInput struct {
-	Format           Format
+	Format Format
+
 	Profile          io.Reader
 	PreviousProfile  io.Reader
 	SampleTypeConfig map[string]*tree.SampleTypeConfig
@@ -74,7 +76,6 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 }
 
 // Put takes parser.PutInput, turns it into storage.PutIntput and passes it to Putter.
-// TODO(kolesnikovae): Should we split it into more specific methods (e.g PutPprof, PutTrie, etc)?
 func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	pi := &storage.PutInput{
 		StartTime:       in.StartTime,
@@ -119,26 +120,100 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	return nil
 }
 
-func writePprof(ctx context.Context, s storage.Putter, pi *PutInput) error {
+func (pi *PutInput) Clone() *PutInput {
+	return &PutInput{
+		Format:           pi.Format,
+		Profile:          cloneProfile(pi.Profile),
+		PreviousProfile:  cloneProfile(pi.PreviousProfile),
+		SampleTypeConfig: pi.SampleTypeConfig, // Read only.
+		StartTime:        pi.StartTime,
+		EndTime:          pi.EndTime,
+		Key:              pi.Key.Clone(), // Can be modified at Normalized call.
+		SpyName:          pi.SpyName,
+		SampleRate:       pi.SampleRate,
+		Units:            pi.Units,
+		AggregationType:  pi.AggregationType,
+	}
+}
+
+func cloneProfile(p io.Reader) io.Reader {
+	if p == nil {
+		return nil
+	}
+	switch x := p.(type) {
+	case *bytes.Buffer:
+		return bytes.NewBuffer(x.Bytes())
+	case *PprofData:
+		// FIXME(kolesnikovae): Ideally, we should clone it as well.
+		//  As for now, we assume that the actual parsing happens just
+		//  once. The problem is that caller (e.g scrapper) holds
+		//  reference to *PprofData, therefore it can't be changed.
+		x.Buffer = bytes.NewBuffer(x.Bytes())
+		return x
+	default:
+		var b bytes.Buffer
+		_, _ = io.Copy(&b, p)
+		return &b
+	}
+}
+
+func writePprof(ctx context.Context, putter storage.Putter, pi *PutInput) error {
 	if len(pi.SampleTypeConfig) == 0 {
 		pi.SampleTypeConfig = tree.DefaultSampleTypeMapping
 	}
 
-	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
+	if ok, err := tryUseParsedPprof(ctx, putter, pi); ok {
+		return err
+	}
+
+	p := pprof.NewParser(pprof.ParserConfig{
+		Putter:      putter,
 		SampleTypes: pi.SampleTypeConfig,
 		Labels:      pi.Key.Labels(),
 		SpyName:     pi.SpyName,
 	})
 
 	if pi.PreviousProfile != nil {
-		if err := pprof.DecodePool(pi.PreviousProfile, func(p *tree.Profile) error {
-			return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
-		}); err != nil {
+		if err := p.ParsePprof(ctx, pi.StartTime, pi.EndTime, pi.PreviousProfile); err != nil {
 			return err
 		}
 	}
 
-	return pprof.DecodePool(pi.Profile, func(p *tree.Profile) error {
-		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
-	})
+	return p.ParsePprof(ctx, pi.StartTime, pi.EndTime, pi.Profile)
+}
+
+type PprofData struct {
+	parser *pprof.Parser
+	*bytes.Buffer
+}
+
+func tryUseParsedPprof(ctx context.Context, putter storage.Putter, pi *PutInput) (bool, error) {
+	previous, ok := pi.PreviousProfile.(*PprofData)
+	if !ok {
+		return false, nil
+	}
+	current, ok := pi.Profile.(*PprofData)
+	if !ok {
+		return false, nil
+	}
+
+	parser := previous.parser
+	if parser == nil {
+		parser = pprof.NewParser(pprof.ParserConfig{
+			Putter:      putter,
+			SampleTypes: pi.SampleTypeConfig,
+			Labels:      pi.Key.Labels(),
+			SpyName:     pi.SpyName,
+		})
+		if err := parser.ParsePprof(ctx, pi.StartTime, pi.EndTime, pi.PreviousProfile); err != nil {
+			return true, err
+		}
+	}
+
+	if err := parser.ParsePprof(ctx, pi.StartTime, pi.EndTime, pi.Profile); err != nil {
+		return true, err
+	}
+
+	current.parser = parser
+	return true, nil
 }
