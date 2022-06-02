@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ProfileHeaderProps, useSizeMode } from './Toolbar';
 import Input from '@webapp/ui/Input';
 import usePreviousProps from '@webapp/hooks/previousProps.hook';
@@ -12,6 +12,15 @@ interface SharedQueryProps {
   highlightQuery: ProfileHeaderProps['highlightQuery'];
   sharedQuery: ProfileHeaderProps['sharedQuery'];
 }
+
+const Tooltip = ({ syncEnabled }: { syncEnabled: string | boolean }) => (
+  <div
+    onClick={(e) => e.stopPropagation()}
+    className={styles[syncEnabled ? 'tooltip-sync-enabled' : 'tooltip']}
+  >
+    {syncEnabled ? 'Unsync all views' : 'Sync all views to this search query'}
+  </div>
+);
 
 const SharedQueryInput = ({
   onHighlightChange,
@@ -69,9 +78,9 @@ const SharedQueryInput = ({
     <div className={styles.wrapper}>
       <Input
         testId="flamegraph-search"
-        className={`${
-          styles[sharedQuery?.syncEnabled ? 'search-synced' : 'search']
-        } ${showMode === 'small' ? styles['search-small'] : ''}`}
+        className={`${styles[sharedQuery ? 'search-with-sync' : 'search']} ${
+          showMode === 'small' ? styles['search-small'] : ''
+        } ${styles[sharedQuery?.syncEnabled ? 'search-synced' : '']}`}
         type="search"
         name="flamegraph-search"
         placeholder="Search…"
@@ -91,6 +100,7 @@ const SharedQueryInput = ({
             }`}
             icon={faLink}
           />
+          <Tooltip syncEnabled={sharedQuery.syncEnabled} />
         </button>
       ) : null}
     </div>

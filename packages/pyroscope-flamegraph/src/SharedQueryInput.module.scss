@@ -8,14 +8,21 @@
   background: var(--ps-immutable-5);
   transition: background-color ease-out 0.1s;
   font: inherit;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  border-right: 1px solid var(--ps-neutral-10);
+  margin-right: 8px;
 
   &,
   &::placeholder {
     color: var(--ps-immutable-4) !important;
   }
+}
+
+.search-with-sync {
+  @extend .search;
+
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 1px solid var(--ps-neutral-10);
+  margin-right: 0;
 }
 
 .search-synced {
@@ -57,6 +64,13 @@
   border-top-right-radius: 4px;
   border-bottom-right-radius: 4px;
   border: 1px solid var(--ps-neutral-20);
+  position: relative;
+
+  &:hover {
+    .tooltip {
+      display: block;
+    }
+  }
 }
 
 .sync-selected {
@@ -65,4 +79,40 @@
   border-top-color: var(--ps-immutable-2);
   border-right-color: var(--ps-immutable-2);
   border-bottom-color: var(--ps-immutable-2);
+}
+
+.tooltip {
+  position: absolute;
+  white-space: nowrap;
+  border: 1px solid var(--ps-immutable-6);
+  display: none;
+  z-index: 2;
+  background-color: var(--ps-neutral-6);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 16px;
+  padding: 4px 8px;
+  bottom: -36px;
+  left: -104px;
+  cursor: default;
+
+  &::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid var(--ps-immutable-6);
+    position: absolute;
+    top: -7px;
+    left: 0;
+    right: 0;
+    margin: auto;
+  }
+}
+
+.tooltip-sync-enabled {
+  @extend .tooltip;
+
+  left: -46px;
 }
