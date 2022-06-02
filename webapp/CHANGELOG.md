@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.10.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.9.0...@pyroscope/webapp@1.10.0) (2022-06-01)
+
+
+### Features
+
+* UTC timezone ([#1107](https://github.com/pyroscope-io/pyroscope/issues/1107)) ([9fa550c](https://github.com/pyroscope-io/pyroscope/commit/9fa550c0b577625780aeb00b5fcd9ca3858d410a))
+
+
+
+
+
 # [1.9.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.8...@pyroscope/webapp@1.9.0) (2022-05-30)
 
 
