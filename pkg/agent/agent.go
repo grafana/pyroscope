@@ -46,7 +46,9 @@ func (a *Agent) running(ctx context.Context) error {
 			level.Error(a.logger).Log("msg", "error running discovery manager", "err", err)
 		}
 	}()
-	a.manager.ApplyConfig(a.jobs)
+	if err := a.manager.ApplyConfig(a.jobs); err != nil {
+		return nil
+	}
 
 	for {
 		select {
