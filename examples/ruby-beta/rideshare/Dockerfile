@@ -7,7 +7,7 @@ USER root
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 ENV PATH=$PATH:/root/.cargo/bin
 
-RUN gem install pyroscope_beta
+RUN gem install pyroscope_beta -v 0.1.7
 
 COPY Gemfile ./Gemfile
 COPY Gemfile.lock ./Gemfile.lock
