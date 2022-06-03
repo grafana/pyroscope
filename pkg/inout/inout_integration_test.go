@@ -2,6 +2,7 @@ package inout_test
 
 import (
 	"bytes"
+	"io"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,6 +16,8 @@ import (
 
 var _ = Describe("In/Out Integration", func() {
 	It("works", func() {
+		profile := []byte("foo;bar\nfoo;bar\nfoo;baz\nfoo;baz\nfoo;baz\n")
+
 		pi := &parser.PutInput{
 			Key: segment.NewKey(map[string]string{
 				"__name__": "myapp",
@@ -27,7 +30,7 @@ var _ = Describe("In/Out Integration", func() {
 			SpyName:         "gospy",
 			Units:           metadata.SamplesUnits,
 			AggregationType: metadata.SumAggregationType,
-			Profile:         bytes.NewReader([]byte("foo;bar\nfoo;bar\nfoo;baz\nfoo;baz\nfoo;baz\n")),
+			Profile:         bytes.NewReader(profile),
 		}
 
 		inout := inout.NewInOut()
@@ -40,7 +43,18 @@ var _ = Describe("In/Out Integration", func() {
 		out, err := inout.PutInputFromRequest(req)
 		Expect(err).NotTo(HaveOccurred())
 
-		// TODO(eh-am): check fields individually since tructs are likely not the same
-		Expect(*out).To(Equal(*pi))
+		// TODO(eh-am): do this with reflection?
+		Expect(out.SpyName).To(Equal(pi.SpyName))
+		Expect(out.AggregationType).To(Equal(pi.AggregationType))
+		Expect(out.StartTime).To(Equal(pi.StartTime))
+		Expect(out.EndTime).To(Equal(pi.EndTime))
+		Expect(out.Format).To(Equal(pi.Format))
+		Expect(readProfile(len(profile), out.Profile)).To(Equal(profile))
 	})
 })
+
+func streamToByte(stream io.Reader) []byte {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(stream)
+	return buf.Bytes()
+}

@@ -31,6 +31,8 @@ func (io InOut) RequestFromPutInput(pi *parser.PutInput, address string) (*http.
 	params.Set("spyName", pi.SpyName)
 	params.Set("units", pi.Units.String())
 	params.Set("aggregationType", pi.AggregationType.String())
+	params.Set("format", pi.Format.String())
+
 	req.URL.RawQuery = params.Encode()
 
 	return req, nil
