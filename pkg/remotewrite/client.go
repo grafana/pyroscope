@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime/multipart"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
@@ -25,9 +25,10 @@ var (
 )
 
 type Client struct {
-	log    *logrus.Logger
-	config config.RemoteWrite
-	client *http.Client
+	log         *logrus.Logger
+	config      config.RemoteWrite
+	client      *http.Client
+	bodyCreator *BodyCreator
 }
 
 func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
@@ -37,9 +38,10 @@ func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
 	}
 
 	return &Client{
-		log:    logger,
-		config: cfg,
-		client: client,
+		log:         logger,
+		config:      cfg,
+		client:      client,
+		bodyCreator: NewBodyCreator(logger),
 	}
 }
 
@@ -59,7 +61,9 @@ func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 	}
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
-		return multierror.Append(ErrNotOkResponse, fmt.Errorf("status code: '%d'", res.StatusCode))
+		// read all the response body
+		respBody, _ := ioutil.ReadAll(res.Body)
+		return multierror.Append(ErrNotOkResponse, fmt.Errorf("status code: '%d'. body: '%s'", res.StatusCode, respBody))
 	}
 
 	return nil
@@ -74,26 +78,12 @@ func streamToByte(stream io.Reader) []byte {
 func (r *Client) putInputToRequest(pi *parser.PutInput) (*http.Request, error) {
 	pi = pi.Clone()
 
-	// TODO(eh-am): is this the most efficient to do this?
-	// maybe we shouldn't even clone it
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	fw, err := writer.CreateFormFile("profile", "profile.pprof")
-	fw.Write(streamToByte(pi.Profile))
+	body, contentType, err := r.bodyCreator.Create(pi)
 	if err != nil {
 		return nil, err
 	}
 
-	if pi.PreviousProfile != nil {
-		fw, err = writer.CreateFormFile("prev_profile", "profile.pprof")
-		fw.Write(streamToByte(pi.PreviousProfile))
-		if err != nil {
-			return nil, err
-		}
-	}
-	writer.Close()
-
-	req, err := http.NewRequest("POST", r.config.Address, body)
+	req, err := http.NewRequest("POST", r.config.Address+"/ingest", body)
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +98,8 @@ func (r *Client) putInputToRequest(pi *parser.PutInput) (*http.Request, error) {
 	params.Set("spyName", pi.SpyName)
 	params.Set("units", pi.Units.String())
 	params.Set("aggregationType", pi.AggregationType.String())
-
 	req.URL.RawQuery = params.Encode()
 
-	contentType := writer.FormDataContentType()
 	req.Header.Set("Content-Type", contentType)
 
 	return req, nil
