@@ -1,12 +1,13 @@
+/* eslint-disable no-unused-expressions */
 import React, { useEffect, useMemo, ChangeEvent, useRef } from 'react';
-import { ProfileHeaderProps, useSizeMode } from './Toolbar';
-import Input from '@webapp/ui/Input';
-import styles from './SharedQueryInput.module.scss';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
+import Input from '@pyroscope/webapp/javascript/ui/Input';
+import styles from './SharedQueryInput.module.scss';
+import type { ProfileHeaderProps, ShowModeType } from './Toolbar';
 
 interface SharedQueryProps {
-  showMode: ReturnType<typeof useSizeMode>;
+  showMode: ShowModeType;
   onHighlightChange: ProfileHeaderProps['handleSearchChange'];
   highlightQuery: ProfileHeaderProps['highlightQuery'];
   sharedQuery: ProfileHeaderProps['sharedQuery'];
@@ -25,7 +26,7 @@ const usePreviousSyncEnabled = (syncEnabled?: string | boolean) => {
 const Tooltip = ({ syncEnabled }: { syncEnabled: string | boolean }) => (
   <div
     onClick={(e) => e.stopPropagation()}
-    className={styles[syncEnabled ? 'tooltip-sync-enabled' : 'tooltip']}
+    className={syncEnabled ? styles.tooltipSyncEnabled : styles.tooltip}
   >
     {syncEnabled ? 'Unsync search bars' : 'Sync search bars'}
   </div>
@@ -83,11 +84,13 @@ const SharedQueryInput = ({
     [sharedQuery, highlightQuery]
   );
 
-  const inputClassName = useMemo(() => {
-    return `${styles[sharedQuery ? 'search-with-sync' : 'search']} ${
-      showMode === 'small' ? styles['search-small'] : ''
-    } ${sharedQuery?.syncEnabled ? styles['search-synced'] : ''}`;
-  }, [sharedQuery, showMode]);
+  const inputClassName = useMemo(
+    () =>
+      `${sharedQuery ? styles.searchWithSync : styles.search} ${
+        showMode === 'small' ? styles['search-small'] : ''
+      } ${sharedQuery?.syncEnabled ? styles['search-synced'] : ''}`,
+    [sharedQuery, showMode]
+  );
 
   return (
     <div className={styles.wrapper}>
@@ -104,12 +107,14 @@ const SharedQueryInput = ({
       />
       {sharedQuery ? (
         <button
-          className={styles[sharedQuery.syncEnabled ? 'sync-selected' : 'sync']}
+          className={
+            sharedQuery.syncEnabled ? styles.syncSelected : styles.sync
+          }
           onClick={onToggleSync}
         >
           <FontAwesomeIcon
             className={`${
-              !!sharedQuery.syncEnabled ? styles.checked : styles.icon
+              sharedQuery.syncEnabled ? styles.checked : styles.icon
             }`}
             icon={faLink}
           />

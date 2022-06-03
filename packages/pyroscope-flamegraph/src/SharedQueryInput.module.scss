@@ -17,7 +17,7 @@
   }
 }
 
-.search-with-sync {
+.searchWithSync {
   @extend .search;
 
   border-top-right-radius: 0;
@@ -75,7 +75,7 @@
   }
 }
 
-.sync-selected {
+.syncSelected {
   @extend .sync;
 
   border-top-color: var(--ps-immutable-2);
@@ -113,7 +113,7 @@
   }
 }
 
-.tooltip-sync-enabled {
+.tooltipSyncEnabled {
   @extend .tooltip;
 
   left: -53px;

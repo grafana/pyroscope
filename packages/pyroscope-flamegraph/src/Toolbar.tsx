@@ -18,7 +18,7 @@ import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import SharedQueryInput from './SharedQueryInput';
 import styles from './ProfilerHeader.module.css';
-import { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
+import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
@@ -30,6 +30,8 @@ export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
  * that should be displayed
  * based on the toolbar width
  */
+export type ShowModeType = ReturnType<typeof useSizeMode>;
+
 export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
   const [size, setSize] = React.useState<'large' | 'small'>('large');
 
