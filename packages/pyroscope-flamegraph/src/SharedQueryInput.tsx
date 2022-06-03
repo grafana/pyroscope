@@ -12,11 +12,11 @@ interface SharedQueryProps {
   sharedQuery: ProfileHeaderProps['sharedQuery'];
 }
 
-const usePreviousSyncEnabled = (syncEnabled) => {
+const usePreviousSyncEnabled = (syncEnabled?: string | boolean) => {
   const ref = useRef();
 
   useEffect(() => {
-    ref.current = syncEnabled;
+    (ref.current as string | boolean | undefined) = syncEnabled;
   });
 
   return ref.current;
