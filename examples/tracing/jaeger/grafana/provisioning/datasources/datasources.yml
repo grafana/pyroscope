@@ -29,6 +29,6 @@ datasources:
           url: '$${__value.raw}'
           datasourceUid: jaeger
         - name: 'profileExemplar'
-          matcherRegex: "trace_id=(\\w+)"
-          url: 'ride-sharing-app.cpu{profile_id=${__value.raw}}'
+          matcherRegex: "span_id=(\\w+)"
+          url: 'ride-sharing-app.cpu{profile_id="$${__value.raw}"}'
           datasourceUid: pyroscope
