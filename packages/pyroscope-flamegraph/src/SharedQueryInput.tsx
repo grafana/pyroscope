@@ -83,13 +83,17 @@ const SharedQueryInput = ({
     [sharedQuery, highlightQuery]
   );
 
+  const inputClassName = useMemo(() => {
+    return `${styles[sharedQuery ? 'search-with-sync' : 'search']} ${
+      showMode === 'small' ? styles['search-small'] : ''
+    } ${sharedQuery?.syncEnabled ? styles['search-synced'] : ''}`;
+  }, [sharedQuery, showMode]);
+
   return (
     <div className={styles.wrapper}>
       <Input
         testId="flamegraph-search"
-        className={`${styles[sharedQuery ? 'search-with-sync' : 'search']} ${
-          showMode === 'small' ? styles['search-small'] : ''
-        } ${styles[sharedQuery?.syncEnabled ? 'search-synced' : '']}`}
+        className={inputClassName}
         type="search"
         name="flamegraph-search"
         placeholder="Search…"
