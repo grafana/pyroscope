@@ -8,11 +8,12 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-	"github.com/grafana/fire/pkg/agent"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/user"
+
+	"github.com/grafana/fire/pkg/agent"
 )
 
 // The various modules that make up Fire.

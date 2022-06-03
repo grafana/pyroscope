@@ -187,7 +187,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, er
 			}
 			lbls, origLabels, err := populateLabels(lset, tg.config)
 			if err != nil {
-				return nil, fmt.Errorf("instance %d in group %s: %s", i, tg, err)
+				return nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
 			if lbls != nil || origLabels != nil {
 				params := tg.config.Params
