@@ -1,0 +1,15 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/fire/pkg/gen/proto/go
+
+plugins:
+  - remote: buf.build/protocolbuffers/plugins/go:v1.28.0-1
+    out: pkg/gen/proto/go
+    opt: paths=source_relative
+
+  - remote: buf.build/cerbos/plugins/vtproto:v0.2.0-1
+    out: pkg/gen/proto/go
+    opt:
+      - paths=source_relative,features=marshal+unmarshal+size+pool+grpc

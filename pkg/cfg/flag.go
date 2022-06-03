@@ -8,6 +8,8 @@ import (
 
 	"github.com/grafana/dskit/flagext"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Defaults registers flags to the flagSet using dst as the flagext.Registerer
@@ -91,7 +93,7 @@ func categorizedUsage(fs *flag.FlagSet) func() {
 			if name == "" {
 				continue
 			}
-			fmt.Fprintf(fs.Output(), " %s:\n", strings.Title(name))
+			fmt.Fprintf(fs.Output(), " %s:\n", cases.Title(language.English).String(name))
 			for _, u := range categories[name] {
 				fmt.Fprintln(fs.Output(), u)
 			}
