@@ -12,19 +12,26 @@ import (
 	"rideshare/car"
 	"rideshare/rideshare"
 	"rideshare/scooter"
+	rlog "rideshare/log"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func bikeRoute(_ http.ResponseWriter, r *http.Request) {
+	logger := rlog.Logger(r.Context())
+	logger.Info("Ordering nearest bike")
 	bike.OrderBike(r.Context(), 1)
 }
 
 func scooterRoute(_ http.ResponseWriter, r *http.Request) {
+	logger := rlog.Logger(r.Context())
+	logger.Info("Ordering nearest scooter")
 	scooter.OrderScooter(r.Context(), 2)
 }
 
 func carRoute(_ http.ResponseWriter, r *http.Request) {
+	logger := rlog.Logger(r.Context())
+	logger.Info("Ordering nearest car")
 	car.OrderCar(r.Context(), 3)
 }
 
