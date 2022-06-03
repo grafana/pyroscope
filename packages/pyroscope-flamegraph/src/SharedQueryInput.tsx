@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, ChangeEvent } from 'react';
 import { ProfileHeaderProps, useSizeMode } from './Toolbar';
 import Input from '@webapp/ui/Input';
 import usePreviousProps from '@webapp/hooks/previousProps.hook';
@@ -30,7 +30,7 @@ const SharedQueryInput = ({
 }: SharedQueryProps) => {
   const prevProps = usePreviousProps(sharedQuery);
 
-  const onQueryChange = (e) => {
+  const onQueryChange = (e: ChangeEvent<HTMLInputElement>) => {
     onHighlightChange(e.target.value);
 
     if (sharedQuery && sharedQuery.syncEnabled) {
