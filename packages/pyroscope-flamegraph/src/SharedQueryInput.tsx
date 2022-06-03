@@ -48,9 +48,9 @@ const SharedQueryInput = ({
   };
 
   useEffect(() => {
-    if (typeof sharedQuery?.query === 'string') {
+    if (typeof sharedQuery?.searchQuery === 'string') {
       if (sharedQuery.syncEnabled) {
-        onHighlightChange(sharedQuery.query);
+        onHighlightChange(sharedQuery.searchQuery);
       }
 
       if (
@@ -61,7 +61,7 @@ const SharedQueryInput = ({
         onHighlightChange('');
       }
     }
-  }, [sharedQuery?.query, sharedQuery?.syncEnabled]);
+  }, [sharedQuery?.searchQuery, sharedQuery?.syncEnabled]);
 
   const onToggleSync = () => {
     const newValue = sharedQuery?.syncEnabled ? false : sharedQuery?.id;
@@ -78,7 +78,7 @@ const SharedQueryInput = ({
   const inputValue = useMemo(
     () =>
       sharedQuery && sharedQuery.syncEnabled
-        ? sharedQuery.query || ''
+        ? sharedQuery.searchQuery || ''
         : highlightQuery,
     [sharedQuery, highlightQuery]
   );

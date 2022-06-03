@@ -1,18 +1,18 @@
 import { useState, Dispatch, SetStateAction } from 'react';
 
-export interface SharedQueryHookProps {
-  query?: string;
+interface SharedQueryHookProps {
+  searchQuery?: string;
   onQueryChange: Dispatch<SetStateAction<string | undefined>>;
   syncEnabled: string | boolean;
   toggleSync: Dispatch<SetStateAction<boolean | string>>;
 }
 
 const useFlamegraphSharedQuery = (): SharedQueryHookProps => {
-  const [query, onQueryChange] = useState<string | undefined>();
+  const [searchQuery, onQueryChange] = useState<string | undefined>();
   const [syncEnabled, toggleSync] = useState<boolean | string>(false);
 
   return {
-    query,
+    searchQuery,
     onQueryChange,
     syncEnabled,
     toggleSync,

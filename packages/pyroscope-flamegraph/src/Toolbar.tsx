@@ -16,9 +16,9 @@ import Button from '@webapp/ui/Button';
 import Select from '@webapp/ui/Select';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
-import { SharedQueryHookProps } from '@webapp/hooks/flamegraphSharedQuery.hook';
 import SharedQueryInput from './SharedQueryInput';
 import styles from './ProfilerHeader.module.css';
+import { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
@@ -78,7 +78,7 @@ export interface ProfileHeaderProps {
    */
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
-  sharedQuery?: SharedQueryHookProps & { id: string };
+  sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
 // TODO: move this to assets pipeline. for now just embedding it here because this is less likely to break
