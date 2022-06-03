@@ -44,6 +44,13 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.Server.RegisterFlags(f)
 }
 
+func (c *Config) Validate() error {
+	if len(c.Target) == 0 {
+		return errors.New("no modules specified")
+	}
+	return c.AgentConfig.Validate()
+}
+
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	defaults := Config{}
 	flagext.DefaultValues(&defaults)
@@ -77,6 +84,9 @@ func New(cfg Config) (*Fire, error) {
 	fire := &Fire{
 		Cfg:    cfg,
 		logger: logger,
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
 	if err := fire.setupModuleManager(); err != nil {
 		return nil, err
