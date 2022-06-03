@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, ChangeEvent } from 'react';
+import React, { useEffect, useMemo, ChangeEvent, useRef } from 'react';
 import { ProfileHeaderProps, useSizeMode } from './Toolbar';
 import Input from '@webapp/ui/Input';
-import usePreviousProps from '@webapp/hooks/previousProps.hook';
 import styles from './SharedQueryInput.module.scss';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
@@ -12,6 +11,16 @@ interface SharedQueryProps {
   highlightQuery: ProfileHeaderProps['highlightQuery'];
   sharedQuery: ProfileHeaderProps['sharedQuery'];
 }
+
+const usePreviousSyncEnabled = (syncEnabled) => {
+  const ref = useRef();
+
+  useEffect(() => {
+    ref.current = syncEnabled;
+  });
+
+  return ref.current;
+};
 
 const Tooltip = ({ syncEnabled }: { syncEnabled: string | boolean }) => (
   <div
@@ -28,7 +37,7 @@ const SharedQueryInput = ({
   highlightQuery,
   sharedQuery,
 }: SharedQueryProps) => {
-  const prevProps = usePreviousProps(sharedQuery);
+  const prevSyncEnabled = usePreviousSyncEnabled(sharedQuery?.syncEnabled);
 
   const onQueryChange = (e: ChangeEvent<HTMLInputElement>) => {
     onHighlightChange(e.target.value);
@@ -46,8 +55,8 @@ const SharedQueryInput = ({
 
       if (
         !sharedQuery.syncEnabled &&
-        prevProps?.syncEnabled &&
-        prevProps?.syncEnabled !== sharedQuery?.id
+        prevSyncEnabled &&
+        prevSyncEnabled !== sharedQuery?.id
       ) {
         onHighlightChange('');
       }
