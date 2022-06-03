@@ -18,7 +18,7 @@ const Tooltip = ({ syncEnabled }: { syncEnabled: string | boolean }) => (
     onClick={(e) => e.stopPropagation()}
     className={styles[syncEnabled ? 'tooltip-sync-enabled' : 'tooltip']}
   >
-    {syncEnabled ? 'Unsync all views' : 'Sync all views to this search query'}
+    {syncEnabled ? 'Unsync search bars' : 'Sync search bars'}
   </div>
 );
 
