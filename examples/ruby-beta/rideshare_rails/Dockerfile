@@ -2,9 +2,6 @@ FROM ruby:2.7.4
 
 USER root
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
-ENV PATH=$PATH:/root/.cargo/bin
-
 RUN gem install pyroscope_beta
 RUN gem install ffi
 

@@ -17,7 +17,7 @@ gem "puma", "~> 5.0"
 
 gem "ffi", ">= 1.15"
 gem "fiddle", ">= 1.0"
-gem "pyroscope_beta", "= 0.1.4"
+gem "pyroscope_beta", "= 0.1.7"
 
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
