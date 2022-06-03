@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	// "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
@@ -17,12 +17,6 @@ func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string)
 	span.SetAttributes(attribute.String("vehicle", vehicle))
 	defer span.End()
 
-	logger := log.Logger(ctx).WithFields(logrus.Fields{
-		"radius":  searchRadius,
-		"vehicle": vehicle,
-	})
-
-	logger.Info("looking for nearest vehicle")
 	burnCPU(searchRadius)
 	if vehicle == "car" {
 		checkDriverAvailability(ctx, searchRadius)
