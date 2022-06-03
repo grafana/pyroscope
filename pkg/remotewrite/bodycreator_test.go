@@ -2,6 +2,7 @@ package remotewrite_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -49,7 +50,7 @@ var _ = Describe("BodyCreator", func() {
 		})
 
 		It("fails with ErrUnsupportedFormat", func() {
-			_, _, err := bc.Add(pi)
+			_, _, err := bc.Create(pi)
 			Expect(err).To(MatchError(remotewrite.ErrUnsupportedFormat))
 		})
 	})
@@ -69,7 +70,7 @@ var _ = Describe("BodyCreator", func() {
 			})
 
 			It("is not supported", func() {
-				_, _, err := bc.Add(pi)
+				_, _, err := bc.Create(pi)
 				Expect(err).To(MatchError(remotewrite.ErrPprofRequiresPrevProfile))
 			})
 		})
@@ -84,7 +85,7 @@ var _ = Describe("BodyCreator", func() {
 			})
 
 			It("generates the body correctly", func() {
-				body, contentType, err := bc.Add(pi)
+				body, contentType, err := bc.Create(pi)
 				Expect(err).NotTo(HaveOccurred())
 
 				_, params, err := mime.ParseMediaType(contentType)
@@ -126,7 +127,7 @@ var _ = Describe("BodyCreator", func() {
 		})
 
 		It("works", func() {
-			body, contentType, err := bc.Add(pi)
+			body, contentType, err := bc.Create(pi)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(contentType).To(Equal("binary/octet-stream+trie"))
 			Expect(readProfile(len(buf), body)).To(Equal(buf))
@@ -143,7 +144,7 @@ var _ = Describe("BodyCreator", func() {
 		})
 
 		It("works", func() {
-			body, contentType, err := bc.Add(pi)
+			body, contentType, err := bc.Create(pi)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(contentType).To(Equal("binary/octet-stream+tree"))
 			Expect(readProfile(len(buf), body)).To(Equal(buf))
@@ -160,9 +161,26 @@ var _ = Describe("BodyCreator", func() {
 		})
 
 		It("works", func() {
-			body, contentType, err := bc.Add(pi)
+			body, contentType, err := bc.Create(pi)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(contentType).To(Equal("binary/octet-stream+lines"))
+			Expect(readProfile(len(buf), body)).To(Equal(buf))
+		})
+	})
+
+	When("format is jfr", func() {
+		var buf []byte
+
+		BeforeEach(func() {
+			buf = jfrFromFile("../server/testdata/jfr.bin.gz").Bytes()
+			pi.Profile = bytes.NewReader(buf)
+			pi.Format = "jfr"
+		})
+
+		It("works", func() {
+			body, contentType, err := bc.Create(pi)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(contentType).To(Equal("application/x-www-form-urlencoded"))
 			Expect(readProfile(len(buf), body)).To(Equal(buf))
 		})
 	})
@@ -190,4 +208,15 @@ func formField(form *multipart.Form, name string) (_ io.Reader, err error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+// TODO(eh-am): unify from ingest_test.go
+func jfrFromFile(name string) *bytes.Buffer {
+	b, err := ioutil.ReadFile(name)
+	Expect(err).ToNot(HaveOccurred())
+	b2, err := gzip.NewReader(bytes.NewBuffer(b))
+	Expect(err).ToNot(HaveOccurred())
+	b3, err := io.ReadAll(b2)
+	Expect(err).ToNot(HaveOccurred())
+	return bytes.NewBuffer(b3)
 }

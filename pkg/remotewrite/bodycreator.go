@@ -23,8 +23,7 @@ func NewBodyCreator(logger *logrus.Logger) *BodyCreator {
 	}
 }
 
-// Add given a parser.Input adds the payload body to the request
-func (b BodyCreator) Add(pi *parser.PutInput) (body io.Reader, contentType string, err error) {
+func (b BodyCreator) Create(pi *parser.PutInput) (body io.Reader, contentType string, err error) {
 	switch pi.Format {
 	case "pprof":
 		return b.pprof(pi)
@@ -34,6 +33,8 @@ func (b BodyCreator) Add(pi *parser.PutInput) (body io.Reader, contentType strin
 		return b.tree(pi)
 	case "lines":
 		return b.lines(pi)
+	case "jfr":
+		return b.jfr(pi)
 	default:
 		return nil, "", ErrUnsupportedFormat
 	}
@@ -48,11 +49,12 @@ func (BodyCreator) tree(pi *parser.PutInput) (bodyReader io.Reader, contentType 
 func (BodyCreator) lines(pi *parser.PutInput) (bodyReader io.Reader, contentType string, err error) {
 	return pi.Profile, "binary/octet-stream+lines", nil
 }
-
 func (BodyCreator) pprof(pi *parser.PutInput) (bodyReader io.Reader, contentType string, err error) {
 	// TODO(eh-am): is this correct?
 	// prev profile should be required only for cumulative profiles
 	// so it should not be required for eg cpu
+
+	// also TODO(eh-am): support https://pyroscope.io/docs/server-api-reference/#sample-type-configuration
 	if pi.PreviousProfile == nil {
 		return nil, "", ErrPprofRequiresPrevProfile
 	}
@@ -73,4 +75,8 @@ func (BodyCreator) pprof(pi *parser.PutInput) (bodyReader io.Reader, contentType
 	writer.Close()
 
 	return body, writer.FormDataContentType(), nil
+}
+
+func (BodyCreator) jfr(pi *parser.PutInput) (bodyReader io.Reader, contentType string, err error) {
+	return pi.Profile, "application/x-www-form-urlencoded", nil
 }
