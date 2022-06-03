@@ -1,19 +1,26 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    pyroscope_beta (0.1.7)
     daemons (1.4.1)
     eventmachine (1.2.7)
+    ffi (1.15.5)
+    fiddle (1.1.0)
     mustermann (1.1.1)
       ruby2_keywords (~> 0.0.1)
-    rack (2.2.3)
-    rack-protection (2.1.0)
+    pyroscope_beta (0.1.7-x86_64-darwin)
+      ffi (~> 1.9)
+      fiddle (~> 1.1)
+    pyroscope_beta (0.1.7-x86_64-linux)
+      ffi (~> 1.9)
+      fiddle (~> 1.1)
+    rack (2.2.3.1)
+    rack-protection (2.2.0)
       rack
     ruby2_keywords (0.0.5)
-    sinatra (2.1.0)
+    sinatra (2.2.0)
       mustermann (~> 1.0)
       rack (~> 2.2)
-      rack-protection (= 2.1.0)
+      rack-protection (= 2.2.0)
       tilt (~> 2.0)
     thin (1.8.1)
       daemons (~> 1.0, >= 1.0.9)
@@ -22,12 +29,13 @@ GEM
     tilt (2.0.10)
 
 PLATFORMS
+  x86_64-darwin-21
   x86_64-linux
 
 DEPENDENCIES
+  pyroscope_beta (= 0.1.7)
   sinatra (~> 2.1)
   thin (~> 1.8)
-  pyroscope_beta (= 0.1.7)
 
 BUNDLED WITH
-   2.2.22
+   2.3.12
