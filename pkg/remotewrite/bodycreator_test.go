@@ -24,6 +24,12 @@ func readTestdataFile(name string) []byte {
 	return f
 }
 
+func readProfile(size int, profile io.Reader) []byte {
+	b := make([]byte, size)
+	gbytes.TimeoutReader(profile, time.Second).Read(b)
+	return b
+}
+
 var _ = Describe("BodyCreator", func() {
 	var logger *logrus.Logger
 	var bc *remotewrite.BodyCreator
@@ -49,17 +55,35 @@ var _ = Describe("BodyCreator", func() {
 	})
 
 	When("format is 'pprof'", func() {
+		var bufProfile []byte
+		var bufPrevProfile []byte
+
 		BeforeEach(func() {
 			pi.Format = "pprof"
 		})
 
+		When("there's a single profile", func() {
+			BeforeEach(func() {
+				bufProfile = readTestdataFile("./testdata/profile.pprof")
+				pi.Profile = bytes.NewReader(bufProfile)
+			})
+
+			It("is not supported", func() {
+				_, _, err := bc.Add(pi)
+				Expect(err).To(MatchError(remotewrite.ErrPprofRequiresPrevProfile))
+			})
+		})
+
 		When("there's both a 'profile' and a 'prev_profile'", func() {
-			It("generates the body correctly", func() {
-				bufProfile := readTestdataFile("./testdata/profile.pprof")
-				bufPrevProfile := readTestdataFile("./testdata/prev_profile.pprof")
+			BeforeEach(func() {
+				bufProfile = readTestdataFile("./testdata/profile.pprof")
+				bufPrevProfile = readTestdataFile("./testdata/prev_profile.pprof")
 
 				pi.Profile = bytes.NewReader(bufProfile)
 				pi.PreviousProfile = bytes.NewReader(bufPrevProfile)
+			})
+
+			It("generates the body correctly", func() {
 				body, contentType, err := bc.Add(pi)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -85,6 +109,61 @@ var _ = Describe("BodyCreator", func() {
 				gbytes.TimeoutReader(prevProfile, time.Second).Read(b)
 				Expect(b).To(Equal(bufPrevProfile))
 			})
+		})
+	})
+
+	When("format is 'jfr'", func() {
+
+	})
+
+	When("format is trie", func() {
+		var buf []byte
+
+		BeforeEach(func() {
+			buf = []byte("\x00\x00\x01\x06foo;ba\x00\x02\x01r\x02\x00\x01z\x03\x00")
+			pi.Profile = bytes.NewReader(buf)
+			pi.Format = "trie"
+		})
+
+		It("works", func() {
+			body, contentType, err := bc.Add(pi)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(contentType).To(Equal("binary/octet-stream+trie"))
+			Expect(readProfile(len(buf), body)).To(Equal(buf))
+		})
+	})
+
+	When("format is tree", func() {
+		var buf []byte
+
+		BeforeEach(func() {
+			buf = []byte("\x00\x00\x01\x03foo\x00\x02\x03bar\x02\x00\x03baz\x03\x00")
+			pi.Profile = bytes.NewReader(buf)
+			pi.Format = "tree"
+		})
+
+		It("works", func() {
+			body, contentType, err := bc.Add(pi)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(contentType).To(Equal("binary/octet-stream+tree"))
+			Expect(readProfile(len(buf), body)).To(Equal(buf))
+		})
+	})
+
+	When("format is lines", func() {
+		var buf []byte
+
+		BeforeEach(func() {
+			buf = []byte("foo;bar\nfoo;bar\nfoo;baz\nfoo;baz\nfoo;baz\n")
+			pi.Profile = bytes.NewReader(buf)
+			pi.Format = "lines"
+		})
+
+		It("works", func() {
+			body, contentType, err := bc.Add(pi)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(contentType).To(Equal("binary/octet-stream+lines"))
+			Expect(readProfile(len(buf), body)).To(Equal(buf))
 		})
 	})
 })
