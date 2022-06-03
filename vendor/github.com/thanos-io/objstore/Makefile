@@ -1,0 +1,5 @@
+test-local:
+	THANOS_TEST_OBJSTORE_SKIP=GCS,S3,AZURE,SWIFT,COS,ALIYUNOSS,BOS $(MAKE) test
+
+test:
+	go test ./...

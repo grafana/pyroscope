@@ -119,7 +119,7 @@ func (ls *Labels) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (ls Labels) MatchLabels(on bool, names ...string) Labels {
 	matchedLabels := Labels{}
 
-	nameSet := make(map[string]struct{}, len(names))
+	nameSet := map[string]struct{}{}
 	for _, n := range names {
 		nameSet[n] = struct{}{}
 	}
@@ -307,7 +307,7 @@ func Equal(ls, o Labels) bool {
 		return false
 	}
 	for i, l := range ls {
-		if l != o[i] {
+		if l.Name != o[i].Name || l.Value != o[i].Value {
 			return false
 		}
 	}

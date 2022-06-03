@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/fire/pkg/agent"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/weaveworks/common/server"
@@ -49,8 +50,11 @@ func (f *Fire) initDistributor() (services.Service, error) {
 }
 
 func (f *Fire) initAgent() (services.Service, error) {
-	// todo
-	return nil, nil
+	a, err := agent.New(&f.Cfg.AgentConfig, f.logger)
+	if err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
 func (f *Fire) initServer() (services.Service, error) {
@@ -89,8 +93,6 @@ func (f *Fire) initServer() (services.Service, error) {
 	}(f.Server.HTTPServer.Handler)
 
 	return s, nil
-	// todo
-	return nil, nil
 }
 
 // NewServerService constructs service from Server component.
