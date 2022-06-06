@@ -8,8 +8,6 @@ import Select from '@webapp/ui/Select';
 
 import styles from './CustomDatePicker.module.scss';
 
-import styles from './CustomDatePicker.module.scss';
-
 interface CustomDatePickerProps {
   from: string;
   until: string;
