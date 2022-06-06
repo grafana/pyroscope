@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.10.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.0...@pyroscope/webapp@1.10.1) (2022-06-06)
+
+
+### Bug Fixes
+
+* infinite loop when no apps are available ([#1125](https://github.com/pyroscope-io/pyroscope/issues/1125)) ([330eb23](https://github.com/pyroscope-io/pyroscope/commit/330eb234a1f2b7b3de4b36f862729180462262ce))
+
+
+
+
+
 # [1.10.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.9.0...@pyroscope/webapp@1.10.0) (2022-06-01)
 
 
