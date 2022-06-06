@@ -103,7 +103,7 @@ var _ = Describe("server", func() {
 						c, _ := New(Config{
 							Configuration:           &(*cfg).Server,
 							Storage:                 s,
-							Parser:                  parser.New(logrus.StandardLogger(), queue, e),
+							Ingester:                parser.New(logrus.StandardLogger(), queue, e),
 							Logger:                  logrus.New(),
 							MetricsRegisterer:       prometheus.NewRegistry(),
 							ExportedMetricsRegistry: prometheus.NewRegistry(),

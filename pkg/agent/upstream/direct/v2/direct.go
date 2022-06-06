@@ -8,8 +8,9 @@ import (
 	"github.com/pyroscope-io/client/upstream"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -44,23 +45,27 @@ func (u *Direct) Upload(j *upstream.UploadJob) {
 		logger.Warn("empty profile")
 		return
 	}
-	pi := parser.PutInput{
-		Format:           parser.Format(j.Format),
-		Profile:          bytes.NewReader(j.Profile),
+
+	profile := &pprof.RawProfile{
+		Profile:          bytes.NewBuffer(j.Profile),
 		SampleTypeConfig: tree.DefaultSampleTypeMapping,
-		StartTime:        j.StartTime,
-		EndTime:          j.EndTime,
-		Key:              key,
-		SpyName:          j.SpyName,
-		SampleRate:       j.SampleRate,
-		Units:            metadata.Units(j.Units),
-		AggregationType:  metadata.AggregationType(j.AggregationType),
 	}
 	if len(j.PrevProfile) > 0 {
-		pi.PreviousProfile = bytes.NewReader(j.PrevProfile)
+		profile.PreviousProfile = bytes.NewBuffer(j.PrevProfile)
 	}
 
-	if err = u.parser.Put(context.TODO(), &pi); err != nil {
+	err = u.parser.Ingest(context.TODO(), &ingestion.IngestInput{
+		Format:  ingestion.FormatPprof,
+		Profile: profile,
+		Metadata: ingestion.Metadata{
+			SpyName:   j.SpyName,
+			StartTime: j.StartTime,
+			EndTime:   j.EndTime,
+			Key:       key,
+		},
+	})
+
+	if err != nil {
 		logger.WithError(err).Error("failed to store a local profile")
 	}
 }

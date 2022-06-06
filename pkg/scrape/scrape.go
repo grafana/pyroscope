@@ -30,7 +30,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
-	"github.com/pyroscope-io/pyroscope/pkg/parser"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -42,8 +43,8 @@ var errBodySizeLimit = errors.New("body size limit exceeded")
 
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
-	parser Parser
-	logger logrus.FieldLogger
+	ingester ingestion.Ingester
+	logger   logrus.FieldLogger
 
 	// Global metrics shared by all pools.
 	metrics *metrics
@@ -66,7 +67,7 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *config.Config, p Parser, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, p ingestion.Ingester, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
 	m.pools.Inc()
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
@@ -79,7 +80,7 @@ func newScrapePool(cfg *config.Config, p Parser, logger logrus.FieldLogger, m *m
 		ctx:           ctx,
 		cancel:        cancel,
 		logger:        logger,
-		parser:        p,
+		ingester:      p,
 		config:        cfg,
 		client:        client,
 		activeTargets: make(map[uint64]*Target),
@@ -98,7 +99,7 @@ func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop 
 	x := scrapeLoop{
 		scraper:     s,
 		logger:      sp.logger,
-		parser:      sp.parser,
+		ingester:    sp.ingester,
 		poolMetrics: sp.poolMetrics,
 		stopped:     make(chan struct{}),
 		delta:       d,
@@ -213,7 +214,7 @@ func (sp *scrapePool) newScraper(t *Target, timeout time.Duration, bodySizeLimit
 		timeout:       timeout,
 		bodySizeLimit: bodySizeLimit,
 		targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.config.Path),
-		parser:        sp.parser,
+		ingester:      sp.ingester,
 		key:           segment.NewKey(t.Labels().Map()),
 		spyName:       t.SpyName(),
 		cumulative:    t.IsCumulative(),
@@ -310,9 +311,9 @@ func (sp *scrapePool) sync(targets []*Target) {
 }
 
 type scrapeLoop struct {
-	scraper *scraper
-	logger  logrus.FieldLogger
-	parser  Parser
+	scraper  *scraper
+	logger   logrus.FieldLogger
+	ingester ingestion.Ingester
 
 	poolMetrics *poolMetrics
 
@@ -403,34 +404,37 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
 	case errors.Is(err, context.Canceled):
-		sl.scraper.previousProfile = nil
+		sl.scraper.profile = nil
 		return nil
 	default:
 		sl.poolMetrics.scrapesFailed.Inc()
 		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
-		sl.scraper.previousProfile = nil
+		sl.scraper.profile = nil
 		return err
 	}
 
 	sl.scraper.targetMetrics.profileSize.Observe(float64(buf.Len()))
-	profile := &parser.PprofData{Buffer: buf}
-	previousProfile := sl.scraper.previousProfile
-	if sl.scraper.cumulative {
-		sl.scraper.previousProfile = profile
-		if previousProfile == nil {
-			return nil
+	if sl.scraper.profile == nil {
+		sl.scraper.profile = &pprof.RawProfile{
+			SampleTypeConfig: sl.scraper.config.SampleTypes,
 		}
 	}
 
-	return sl.scraper.parser.Put(ctx, &parser.PutInput{
-		Format:           parser.Pprof,
-		Profile:          profile,
-		PreviousProfile:  previousProfile,
-		SampleTypeConfig: sl.scraper.config.SampleTypes,
-		StartTime:        startTime,
-		EndTime:          endTime,
-		Key:              sl.scraper.key,
-		SpyName:          sl.scraper.spyName,
+	if sl.scraper.cumulative {
+		sl.scraper.profile.Push(buf)
+	} else {
+		sl.scraper.profile.Put(buf)
+	}
+
+	return sl.scraper.ingester.Ingest(ctx, &ingestion.IngestInput{
+		Format:  ingestion.FormatPprof,
+		Profile: sl.scraper.profile,
+		Metadata: ingestion.Metadata{
+			SpyName:   sl.scraper.spyName,
+			Key:       sl.scraper.key,
+			StartTime: startTime,
+			EndTime:   endTime,
+		},
 	})
 }
 
@@ -442,11 +446,12 @@ func (sl *scrapeLoop) stop() {
 type scraper struct {
 	*Target
 
-	parser          Parser
-	cumulative      bool
-	previousProfile io.Reader
-	spyName         string
-	key             *segment.Key
+	ingester ingestion.Ingester
+	profile  *pprof.RawProfile
+
+	cumulative bool
+	spyName    string
+	key        *segment.Key
 
 	client  *http.Client
 	req     *http.Request

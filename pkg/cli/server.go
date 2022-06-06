@@ -174,13 +174,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		parser,
+		ingestionParser,
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration: svc.config,
 		Storage:       svc.storage,
-		Parser:        parser,
+		Ingester:      ingestionParser,
 		Notifier:      svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,
