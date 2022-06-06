@@ -40,16 +40,25 @@ func (bodyCreator) tree(pi *parser.PutInput) (bodyReader io.Reader, contentType 
 func (bodyCreator) lines(pi *parser.PutInput) (bodyReader io.Reader, contentType string, err error) {
 	return pi.Profile, "binary/octet-stream+lines", nil
 }
-func (bodyCreator) pprof(pi *parser.PutInput) (bodyReader io.Reader, contentType string, err error) {
-	// TODO(eh-am): is this correct?
-	// prev profile should be required only for cumulative profiles
-	// so it should not be required for eg cpu
-
-	// also TODO(eh-am): support https://pyroscope.io/docs/server-api-reference/#sample-type-configuration
-	if pi.PreviousProfile == nil {
-		return nil, "", ErrPprofRequiresPrevProfile
+func (b bodyCreator) pprof(pi *parser.PutInput) (bodyReader io.Reader, contentType string, err error) {
+	// When there's 2 profiles (profile and prev_profile), we send as multipart/form-data
+	if pi.PreviousProfile != nil {
+		return b.pprofMultipart(pi)
 	}
 
+	buf := &bytes.Buffer{}
+	buf.ReadFrom(pi.Profile)
+
+	println("buf")
+	println(buf.Bytes())
+	reader := bytes.NewReader(buf.Bytes())
+
+	// Otherwise, send in the body directly
+	//	return pi.Profile, "application/octet-stream", nil
+	return reader, "application/octet-stream", nil
+}
+
+func (bodyCreator) pprofMultipart(pi *parser.PutInput) (bodyReader io.Reader, contentType string, err error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	fw, err := writer.CreateFormFile("profile", "profile.pprof")

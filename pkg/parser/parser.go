@@ -39,6 +39,10 @@ type PutInput struct {
 
 type Format string
 
+func (f Format) String() string {
+	return string(f)
+}
+
 const (
 	Pprof  Format = "pprof"
 	JFR    Format = "jfr"

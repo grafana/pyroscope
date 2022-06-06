@@ -167,7 +167,7 @@ var _ = Describe("TrafficShadower", func() {
 	})
 
 	Context("sad path", func() {
-		When("it can't convert PutInput a http.Request", func() {
+		When("it can't convert PutInput into a http.Request", func() {
 			It("fails with ErrConvertPutInputToRequest", func() {
 				client := remotewrite.NewClient(logger, config.RemoteWrite{
 					Address: "%%",
@@ -238,4 +238,37 @@ var _ = Describe("TrafficShadower", func() {
 			})
 		})
 	})
+
+	//	Context("formats", func() {
+	//		When("format is not supported", func() {
+	//			//			BeforeEach(func() {
+	//			//				pi.Format = "unsupported"
+	//			//			})
+	//
+	//			It("fails with ErrConvertPutInputToRequest and ErrUnsupportedFormat", func() {
+	//				client := remotewrite.NewClient(logger, config.RemoteWrite{
+	//					Address: "https://www.example.com",
+	//				})
+	//				pi := parser.PutInput{
+	//					Key: segment.NewKey(map[string]string{
+	//						"__name__": "myapp",
+	//					}),
+	//
+	//					Format:          "unsupported",
+	//					StartTime:       attime.Parse("1654110240"),
+	//					EndTime:         attime.Parse("1654110250"),
+	//					SampleRate:      100,
+	//					SpyName:         "gospy",
+	//					Units:           metadata.SamplesUnits,
+	//					AggregationType: metadata.SumAggregationType,
+	//					Profile:         strings.NewReader(""),
+	//				}
+	//
+	//				err := client.Put(context.TODO(), &pi)
+	//				Expect(err).To(MatchError(remotewrite.ErrUnsupportedFormat))
+	//				Expect(err).To(MatchError(remotewrite.ErrConvertPutInputToRequest))
+	//			})
+	//		})
+	//	})
+
 })

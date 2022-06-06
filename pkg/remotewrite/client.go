@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/inout"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/sirupsen/logrus"
@@ -29,6 +30,7 @@ type Client struct {
 	config      config.RemoteWrite
 	client      *http.Client
 	bodyCreator *BodyCreator
+	inout       *inout.InOut
 }
 
 func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
@@ -42,11 +44,13 @@ func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
 		config:      cfg,
 		client:      client,
 		bodyCreator: NewBodyCreator(logger),
+		inout:       inout.NewInOut(),
 	}
 }
 
 func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
-	req, err := r.putInputToRequest(put)
+	req, err := r.inout.RequestFromPutInput(put, r.config.Address+"/ingest")
+	//	req, err := r.putInputToRequest(put)
 	if err != nil {
 		return multierror.Append(err, ErrConvertPutInputToRequest)
 	}

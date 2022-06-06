@@ -31,7 +31,13 @@ func (io InOut) RequestFromPutInput(pi *parser.PutInput, address string) (*http.
 	params.Set("spyName", pi.SpyName)
 	params.Set("units", pi.Units.String())
 	params.Set("aggregationType", pi.AggregationType.String())
-	params.Set("format", pi.Format.String())
+
+	// This is dumb, but the ingester expects:
+	// all parsers expect pprof to set a format
+	// when format=='pprof' and a previousProfile is set, use multipart and NOT set a format
+	if pi.Format != parser.Pprof || (pi.Format == parser.Pprof && pi.PreviousProfile == nil) {
+		params.Set("format", pi.Format.String())
+	}
 
 	req.URL.RawQuery = params.Encode()
 

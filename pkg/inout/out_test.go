@@ -60,6 +60,24 @@ var _ = Describe("Out", func() {
 		}
 	})
 
+	Context("happy path", func() {
+		BeforeEach(func() {
+			pi.Format = "lines"
+		})
+
+		It("sets up fields correctly", func() {
+			req, err := bc.RequestFromPutInput(pi, address)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(req.URL.Query().Get("from")).To(Equal("1654110240"))
+			Expect(req.URL.Query().Get("until")).To(Equal("1654110250"))
+			Expect(req.URL.Query().Get("sampleRate")).To(Equal("100"))
+			Expect(req.URL.Query().Get("spyName")).To(Equal("gospy"))
+			Expect(req.URL.Query().Get("units")).To(Equal("samples"))
+			Expect(req.URL.Query().Get("aggregationType")).To(Equal("sum"))
+		})
+	})
+
 	When("format is not supported", func() {
 		BeforeEach(func() {
 			pi.Format = "unsupported"
@@ -78,6 +96,8 @@ var _ = Describe("Out", func() {
 
 			BeforeEach(func() {
 				pi.Format = "pprof"
+				pi.Profile = nil
+				pi.PreviousProfile = nil
 			})
 
 			When("there's a single profile", func() {
@@ -86,9 +106,10 @@ var _ = Describe("Out", func() {
 					pi.Profile = bytes.NewReader(bufProfile)
 				})
 
-				It("is not supported", func() {
-					_, err := bc.RequestFromPutInput(pi, address)
-					Expect(err).To(MatchError(inout.ErrPprofRequiresPrevProfile))
+				It("sets up 'format' query parameter", func() {
+					req, err := bc.RequestFromPutInput(pi, address)
+					Expect(req.URL.Query().Get("format")).To(Equal("pprof"))
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 
@@ -101,11 +122,18 @@ var _ = Describe("Out", func() {
 					pi.PreviousProfile = bytes.NewReader(bufPrevProfile)
 				})
 
+				It("does not set a 'format' query parameter", func() {
+					req, err := bc.RequestFromPutInput(pi, address)
+					Expect(req.URL.Query().Get("format")).To(BeEmpty())
+					Expect(err).NotTo(HaveOccurred())
+				})
+
 				It("generates the body correctly", func() {
 					req, err := bc.RequestFromPutInput(pi, address)
 					Expect(err).NotTo(HaveOccurred())
 
 					contentType := req.Header.Get("Content-Type")
+					Expect(contentType).To(ContainSubstring("multipart/form-data"))
 					_, params, err := mime.ParseMediaType(contentType)
 					Expect(err).NotTo(HaveOccurred())
 					boundary, _ := params["boundary"]

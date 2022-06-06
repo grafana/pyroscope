@@ -9,20 +9,14 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
+	"github.com/pyroscope-io/pyroscope/pkg/inout"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type Parser interface {
@@ -34,6 +28,7 @@ type ingestHandler struct {
 	parser    Parser
 	onSuccess func(pi *parser.PutInput)
 	httpUtils httputils.Utils
+	inout     *inout.InOut
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
@@ -50,6 +45,7 @@ func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.Pu
 		parser:    p,
 		onSuccess: onSuccess,
 		httpUtils: httpUtils,
+		inout:     inout.NewInOut(),
 	}
 }
 
@@ -72,91 +68,92 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInput, error) {
-	var (
-		q   = r.URL.Query()
-		pi  parser.PutInput
-		err error
-	)
-
-	format := q.Get("format")
-	contentType := r.Header.Get("Content-Type")
-	switch {
-	default:
-		pi.Format = parser.Groups
-	case format == "trie", contentType == "binary/octet-stream+trie":
-		pi.Format = parser.Trie
-	case format == "tree", contentType == "binary/octet-stream+tree":
-		pi.Format = parser.Tree
-	case format == "lines":
-		pi.Format = parser.Lines
-	case format == "jfr":
-		pi.Format = parser.JFR
-	case format == "pprof":
-		pi.Format = parser.Pprof
-	case strings.Contains(contentType, "multipart/form-data"):
-		pi.Format = parser.Pprof
-		if err = loadPprofFromForm(&pi, r); err != nil {
-			return nil, err
-		}
-	}
-
-	if pi.Profile == nil {
-		if err = loadProfileFromBody(&pi, r); err != nil {
-			return nil, err
-		}
-	}
-
-	pi.Key, err = segment.ParseKey(q.Get("name"))
-	if err != nil {
-		return nil, fmt.Errorf("name: %w", err)
-	}
-
-	if qt := q.Get("from"); qt != "" {
-		pi.StartTime = attime.Parse(qt)
-	} else {
-		pi.StartTime = time.Now()
-	}
-
-	if qt := q.Get("until"); qt != "" {
-		pi.EndTime = attime.Parse(qt)
-	} else {
-		pi.EndTime = time.Now()
-	}
-
-	if sr := q.Get("sampleRate"); sr != "" {
-		sampleRate, err := strconv.Atoi(sr)
-		if err != nil {
-			h.log.WithError(err).Errorf("invalid sample rate: %q", sr)
-			pi.SampleRate = types.DefaultSampleRate
-		} else {
-			pi.SampleRate = uint32(sampleRate)
-		}
-	} else {
-		pi.SampleRate = types.DefaultSampleRate
-	}
-
-	if sn := q.Get("spyName"); sn != "" {
-		// TODO: error handling
-		pi.SpyName = sn
-	} else {
-		pi.SpyName = "unknown"
-	}
-
-	if u := q.Get("units"); u != "" {
-		// TODO(petethepig): add validation for these?
-		pi.Units = metadata.Units(u)
-	} else {
-		pi.Units = metadata.SamplesUnits
-	}
-
-	if at := q.Get("aggregationType"); at != "" {
-		// TODO(petethepig): add validation for these?
-		pi.AggregationType = metadata.AggregationType(at)
-	} else {
-		pi.AggregationType = metadata.SumAggregationType
-	}
-
-	return &pi, nil
+	return h.inout.PutInputFromRequest(r)
+	//	var (
+	//		q   = r.URL.Query()
+	//		pi  parser.PutInput
+	//		err error
+	//	)
+	//
+	//	format := q.Get("format")
+	//	contentType := r.Header.Get("Content-Type")
+	//	switch {
+	//	default:
+	//		pi.Format = parser.Groups
+	//	case format == "trie", contentType == "binary/octet-stream+trie":
+	//		pi.Format = parser.Trie
+	//	case format == "tree", contentType == "binary/octet-stream+tree":
+	//		pi.Format = parser.Tree
+	//	case format == "lines":
+	//		pi.Format = parser.Lines
+	//	case format == "jfr":
+	//		pi.Format = parser.JFR
+	//	case format == "pprof":
+	//		pi.Format = parser.Pprof
+	//	case strings.Contains(contentType, "multipart/form-data"):
+	//		pi.Format = parser.Pprof
+	//		if err = loadPprofFromForm(&pi, r); err != nil {
+	//			return nil, err
+	//		}
+	//	}
+	//
+	//	if pi.Profile == nil {
+	//		if err = loadProfileFromBody(&pi, r); err != nil {
+	//			return nil, err
+	//		}
+	//	}
+	//
+	//	pi.Key, err = segment.ParseKey(q.Get("name"))
+	//	if err != nil {
+	//		return nil, fmt.Errorf("name: %w", err)
+	//	}
+	//
+	//	if qt := q.Get("from"); qt != "" {
+	//		pi.StartTime = attime.Parse(qt)
+	//	} else {
+	//		pi.StartTime = time.Now()
+	//	}
+	//
+	//	if qt := q.Get("until"); qt != "" {
+	//		pi.EndTime = attime.Parse(qt)
+	//	} else {
+	//		pi.EndTime = time.Now()
+	//	}
+	//
+	//	if sr := q.Get("sampleRate"); sr != "" {
+	//		sampleRate, err := strconv.Atoi(sr)
+	//		if err != nil {
+	//			h.log.WithError(err).Errorf("invalid sample rate: %q", sr)
+	//			pi.SampleRate = types.DefaultSampleRate
+	//		} else {
+	//			pi.SampleRate = uint32(sampleRate)
+	//		}
+	//	} else {
+	//		pi.SampleRate = types.DefaultSampleRate
+	//	}
+	//
+	//	if sn := q.Get("spyName"); sn != "" {
+	//		// TODO: error handling
+	//		pi.SpyName = sn
+	//	} else {
+	//		pi.SpyName = "unknown"
+	//	}
+	//
+	//	if u := q.Get("units"); u != "" {
+	//		// TODO(petethepig): add validation for these?
+	//		pi.Units = metadata.Units(u)
+	//	} else {
+	//		pi.Units = metadata.SamplesUnits
+	//	}
+	//
+	//	if at := q.Get("aggregationType"); at != "" {
+	//		// TODO(petethepig): add validation for these?
+	//		pi.AggregationType = metadata.AggregationType(at)
+	//	} else {
+	//		pi.AggregationType = metadata.SumAggregationType
+	//	}
+	//
+	//	return &pi, nil
 }
 
 func loadProfileFromBody(pi *parser.PutInput, r *http.Request) error {
