@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-expressions */
+/* eslint-disable no-unused-expressions, css-modules/no-unused-class */
 import React, {
   useEffect,
   useMemo,
@@ -9,9 +9,9 @@ import React, {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import Input from '@pyroscope/webapp/javascript/ui/Input';
+import Tooltip from '@pyroscope/webapp/javascript/ui/Tooltip';
 import styles from './SharedQueryInput.module.scss';
 import type { ProfileHeaderProps, ShowModeType } from './Toolbar';
-import Tooltip from '../../../webapp/javascript/ui/Tooltip';
 
 interface SharedQueryProps {
   showMode: ShowModeType;
