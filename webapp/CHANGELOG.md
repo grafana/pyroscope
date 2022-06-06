@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.10.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.1...@pyroscope/webapp@1.10.2) (2022-06-06)
+
+
+### Bug Fixes
+
+* **webapp:** fix border of <input> element ([#1127](https://github.com/pyroscope-io/pyroscope/issues/1127)) ([458b62b](https://github.com/pyroscope-io/pyroscope/commit/458b62bcbd50ecc612636565c6dfe821b395fd87))
+
+
+
+
+
 ## [1.10.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.0...@pyroscope/webapp@1.10.1) (2022-06-06)
 
 
