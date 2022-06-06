@@ -3,6 +3,7 @@ package inout
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 
@@ -50,7 +51,11 @@ func (b bodyCreator) pprof(pi *parser.PutInput) (bodyReader io.Reader, contentTy
 	buf.ReadFrom(pi.Profile)
 
 	println("buf")
-	println(buf.Bytes())
+	fmt.Println(buf.Bytes())
+
+	fmt.Println("printing again")
+	fmt.Println(buf.Bytes())
+	//	println(buf.Bytes())
 	reader := bytes.NewReader(buf.Bytes())
 
 	// Otherwise, send in the body directly

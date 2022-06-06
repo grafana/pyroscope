@@ -43,10 +43,11 @@ type Server struct {
 }
 
 type serverService struct {
-	config           *config.Server
-	logger           *logrus.Logger
-	controller       *server.Controller
-	storage          *storage.Storage
+	config     *config.Server
+	logger     *logrus.Logger
+	controller *server.Controller
+	storage    *storage.Storage
+	// queue used to ingest data into the storage
 	ingestionQueue   *storage.IngestionQueue
 	directUpstream   *direct.Direct
 	analyticsService *analytics.Service
@@ -143,17 +144,20 @@ func newServerService(c *config.Server) (*serverService, error) {
 	if err != nil {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
+	//
+	//	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
+	//		ingestionQueueWorkers,
+	//		ingestionQueueSize)
+	//
+	//	ingestionParser := parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+	//
+	//	if svc.config.RemoteWrite.Enabled {
+	//		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
+	//		parallel := remotewrite.NewParalellizer(svc.logger, ingestionParser, remoteWriter)
+	//	}
 
-	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
-		ingestionQueueWorkers,
-		ingestionQueueSize)
-
-	ingestionParser := parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
-
-	if svc.config.RemoteWrite.Enabled {
-		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
-		_ = remotewrite.NewParalellizer(svc.logger, ingestionParser, remoteWriter)
-	}
+	// TODO(eh-am): fix so that selfprofiling works with remote write
+	parser, ingestionParser := svc.createParser(metricsExporter)
 
 	svc.directUpstream = direct.New(svc.logger, ingestionParser)
 	if !svc.config.NoSelfProfiling {
@@ -170,13 +174,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		ingestionParser,
+		parser,
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration: svc.config,
 		Storage:       svc.storage,
-		Parser:        ingestionParser,
+		Parser:        parser,
 		Notifier:      svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,
@@ -356,4 +360,26 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 	// Populate scrape configs.
 	c.ScrapeConfigs = s.ScrapeConfigs
 	return nil
+}
+
+// createParser creates a Parser (as in the interface, not an actual parser)
+// the only reason this exists is to abstract the creation
+// since its functionality may be affected by feature flags
+func (svc *serverService) createParser(metricsExporter *exporter.MetricsExporter) (server.Parser, server.Parser) {
+	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
+		ingestionQueueWorkers,
+		ingestionQueueSize)
+
+	ingestionParser := parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+
+	// If remote write is available, let's write to both local storage and to the remote server
+	if svc.config.RemoteWrite.Enabled {
+		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
+		parallelizer := remotewrite.NewParalellizer(svc.logger, ingestionParser, remoteWriter)
+		//parallelizer := remotewrite.NewParalellizer(svc.logger, remoteWriter)
+
+		return parallelizer, ingestionParser
+	}
+
+	return ingestionParser, ingestionParser
 }

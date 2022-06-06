@@ -1,13 +1,7 @@
 package server
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"mime"
-	"mime/multipart"
 	"net/http"
 
 	"github.com/sirupsen/logrus"
@@ -16,7 +10,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 type Parser interface {
@@ -156,77 +149,77 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInpu
 	//	return &pi, nil
 }
 
-func loadProfileFromBody(pi *parser.PutInput, r *http.Request) error {
-	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
-	if _, err := io.Copy(buf, r.Body); err != nil {
-		return err
-	}
-	pi.Profile = buf
-	return nil
-}
-
-func loadPprofFromForm(pi *parser.PutInput, r *http.Request) error {
-	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil {
-		return err
-	}
-	boundary, ok := params["boundary"]
-	if !ok {
-		return fmt.Errorf("malformed multipart content type header")
-	}
-	// maxMemory 32MB.
-	// TODO(kolesnikovae): If the limit is exceeded, parts will be written
-	//  to disk. It may be better to limit the request body size to be sure
-	//  that they loaded into memory entirely.
-	form, err := multipart.NewReader(r.Body, boundary).ReadForm(32 << 20)
-	if err != nil {
-		return err
-	}
-
-	pi.Profile, err = formField(form, "profile")
-	if err != nil {
-		return err
-	}
-	pi.PreviousProfile, err = formField(form, "prev_profile")
-	if err != nil {
-		return err
-	}
-	pi.SampleTypeConfig, err = parseSampleTypesConfig(form)
-	return err
-}
-
-func formField(form *multipart.Form, name string) (_ io.Reader, err error) {
-	files, ok := form.File[name]
-	if !ok || len(files) == 0 {
-		return nil, nil
-	}
-	fh := files[0]
-	if fh.Size == 0 {
-		return nil, nil
-	}
-	f, err := fh.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		err = f.Close()
-	}()
-	b := bytes.NewBuffer(make([]byte, 0, fh.Size))
-	if _, err = io.Copy(b, f); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
-	r, err := formField(form, "sample_type_config")
-	if err != nil || r == nil {
-		return nil, err
-	}
-	d := json.NewDecoder(r)
-	var config map[string]*tree.SampleTypeConfig
-	if err = d.Decode(&config); err != nil {
-		return nil, err
-	}
-	return config, nil
-}
+//func loadProfileFromBody(pi *parser.PutInput, r *http.Request) error {
+//	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
+//	if _, err := io.Copy(buf, r.Body); err != nil {
+//		return err
+//	}
+//	pi.Profile = buf
+//	return nil
+//}
+//
+//func loadPprofFromForm(pi *parser.PutInput, r *http.Request) error {
+//	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+//	if err != nil {
+//		return err
+//	}
+//	boundary, ok := params["boundary"]
+//	if !ok {
+//		return fmt.Errorf("malformed multipart content type header")
+//	}
+//	// maxMemory 32MB.
+//	// TODO(kolesnikovae): If the limit is exceeded, parts will be written
+//	//  to disk. It may be better to limit the request body size to be sure
+//	//  that they loaded into memory entirely.
+//	form, err := multipart.NewReader(r.Body, boundary).ReadForm(32 << 20)
+//	if err != nil {
+//		return err
+//	}
+//
+//	pi.Profile, err = formField(form, "profile")
+//	if err != nil {
+//		return err
+//	}
+//	pi.PreviousProfile, err = formField(form, "prev_profile")
+//	if err != nil {
+//		return err
+//	}
+//	pi.SampleTypeConfig, err = parseSampleTypesConfig(form)
+//	return err
+//}
+//
+//func formField(form *multipart.Form, name string) (_ io.Reader, err error) {
+//	files, ok := form.File[name]
+//	if !ok || len(files) == 0 {
+//		return nil, nil
+//	}
+//	fh := files[0]
+//	if fh.Size == 0 {
+//		return nil, nil
+//	}
+//	f, err := fh.Open()
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer func() {
+//		err = f.Close()
+//	}()
+//	b := bytes.NewBuffer(make([]byte, 0, fh.Size))
+//	if _, err = io.Copy(b, f); err != nil {
+//		return nil, err
+//	}
+//	return b, nil
+//}
+//
+//func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
+//	r, err := formField(form, "sample_type_config")
+//	if err != nil || r == nil {
+//		return nil, err
+//	}
+//	d := json.NewDecoder(r)
+//	var config map[string]*tree.SampleTypeConfig
+//	if err = d.Decode(&config); err != nil {
+//		return nil, err
+//	}
+//	return config, nil
+//}

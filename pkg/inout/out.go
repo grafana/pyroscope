@@ -8,9 +8,6 @@ import (
 )
 
 func (io InOut) RequestFromPutInput(pi *parser.PutInput, address string) (*http.Request, error) {
-	// Clone the PutInput, since other people may try to read its fields (eg profile)
-	pi = pi.Clone()
-
 	body, contentType, err := io.bodyCreator.Create(pi)
 	if err != nil {
 		return nil, err

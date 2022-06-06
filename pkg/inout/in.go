@@ -142,7 +142,8 @@ func loadPprofFromForm(pi *parser.PutInput, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	pi.SampleTypeConfig, err = parseSampleTypesConfig(form)
+	// TODO(eh-am): enable
+	// pi.SampleTypeConfig, err = parseSampleTypesConfig(form)
 	return err
 }
 
