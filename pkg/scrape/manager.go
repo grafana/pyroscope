@@ -16,7 +16,6 @@
 package scrape
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -25,7 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/parser"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
@@ -33,9 +32,9 @@ import (
 // Manager maintains a set of scrape pools and manages start/stop cycles
 // when receiving new target groups from the discovery manager.
 type Manager struct {
-	logger logrus.FieldLogger
-	parser Parser
-	stop   chan struct{}
+	logger   logrus.FieldLogger
+	ingester ingestion.Ingester
+	stop     chan struct{}
 
 	*metrics
 	jitterSeed uint64     // Global jitterSeed seed is used to spread scrape workload across HA setup.
@@ -48,15 +47,11 @@ type Manager struct {
 	reloadC chan struct{}
 }
 
-type Parser interface {
-	Put(context.Context, *parser.PutInput) error
-}
-
 // NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, p Parser, r prometheus.Registerer) *Manager {
+func NewManager(logger logrus.FieldLogger, p ingestion.Ingester, r prometheus.Registerer) *Manager {
 	c := make(map[string]*config.Config)
 	return &Manager{
-		parser:        p,
+		ingester:      p,
 		logger:        logger,
 		scrapeConfigs: c,
 		scrapePools:   make(map[string]*scrapePool),
@@ -95,7 +90,7 @@ func (m *Manager) reload() {
 					Errorf("reloading target set")
 				continue
 			}
-			sp, err := newScrapePool(scrapeConfig, m.parser, m.logger, m.metrics)
+			sp, err := newScrapePool(scrapeConfig, m.ingester, m.logger, m.metrics)
 			if err != nil {
 				m.logger.WithError(err).
 					WithField("scrape_pool", setName).

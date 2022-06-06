@@ -169,7 +169,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	svc.controller, err = server.New(server.Config{
 		Configuration: svc.config,
 		Storage:       svc.storage,
-		Parser:        ingestionParser,
+		Ingester:      ingestionParser,
 		Notifier:      svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,

@@ -4,7 +4,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -57,20 +56,6 @@ type LabelValuesGetter interface {
 
 type AppNameGetter interface {
 	GetAppNames(ctx context.Context) []string
-}
-
-type IngestionError struct{ Err error }
-
-func (e IngestionError) Error() string { return e.Err.Error() }
-
-func (e IngestionError) Unwrap() error { return e.Err }
-
-func IsIngestionError(err error) bool {
-	if err == nil {
-		return false
-	}
-	var v IngestionError
-	return errors.As(err, &v)
 }
 
 // Other functions from storage.Storage:

@@ -19,6 +19,7 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/sirupsen/logrus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
@@ -53,7 +54,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
-	parser     Parser
+	ingestser  ingestion.Ingester
 	log        *logrus.Logger
 	httpServer *http.Server
 	db         *gorm.DB
@@ -87,7 +88,7 @@ type Config struct {
 	*logrus.Logger
 	// TODO(kolesnikovae): Ideally, Storage should be decomposed.
 	*storage.Storage
-	Parser
+	ingestion.Ingester
 	*gorm.DB
 	Notifier
 
@@ -134,7 +135,7 @@ func New(c Config) (*Controller, error) {
 		config:    c.Configuration,
 		log:       c.Logger,
 		storage:   c.Storage,
-		parser:    c.Parser,
+		ingestser: c.Ingester,
 		notifier:  c.Notifier,
 		stats:     make(map[string]int),
 		appStats:  mustNewHLL(),
