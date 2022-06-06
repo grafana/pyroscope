@@ -35,7 +35,7 @@ export default function Continuous({
     }
 
     loadAppNames();
-  }, [dispatch, appNames, selectedAppName]);
+  }, []);
 
   return children;
 }
