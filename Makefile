@@ -9,6 +9,7 @@ MAKEFLAGS += --no-print-directory
 BIN := .tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
+GO_TEST_FLAGS ?= -v -race -cover
 
 .PHONY: help
 help: ## Describe useful make targets
@@ -24,13 +25,13 @@ lint: go/lint ## Lint Go and protobuf
 test: go/test ## Run unit tests
 
 .PHONY: generate
-generate: $(BIN)/buf $(BIN)/protoc-gen-go  ## Regenerate protobuf
-	rm -rf pkg/gen/proto/
+generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-connect-go ## Regenerate protobuf
+	rm -rf pkg/gen/
 	PATH=$(BIN) $(BIN)/buf generate
 
 .PHONY: go/test
 go/test:
-	$(GO) test -v -race -cover ./...
+	$(GO) test $(GO_TEST_FLAGS) ./...
 
 .PHONY: build
 build: go/bin ## Build all packages
@@ -49,8 +50,8 @@ go/lint: $(BIN)/golangci-lint
 	$(BIN)/golangci-lint run
 	$(GO) vet ./...
 
-.PHONY: lintfix
-lintfix: $(BIN)/golangci-lint $(BIN)/buf ## Automatically fix some lint errors
+.PHONY: fmt
+fmt: $(BIN)/golangci-lint $(BIN)/buf ## Automatically fix some lint errors
 	$(BIN)/golangci-lint run --fix
 	$(BIN)/buf format -w .
 
@@ -70,3 +71,7 @@ $(BIN)/golangci-lint: Makefile
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
+
+$(BIN)/protoc-gen-connect-go: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@v0.1.0

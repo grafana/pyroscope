@@ -12,8 +12,13 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/user"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"github.com/grafana/fire/pkg/agent"
+	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
+	"github.com/grafana/fire/pkg/util"
 )
 
 // The various modules that make up Fire.
@@ -46,8 +51,12 @@ const (
 )
 
 func (f *Fire) initDistributor() (services.Service, error) {
-	// todo
-	return nil, nil
+	d, err := distributor.New(f.Cfg.Distributor, f.logger)
+	if err != nil {
+		return nil, err
+	}
+	f.Server.HTTP.Handle(pushv1connect.NewPusherHandler(d))
+	return d, nil
 }
 
 func (f *Fire) initAgent() (services.Service, error) {
@@ -81,10 +90,13 @@ func (f *Fire) initServer() (services.Service, error) {
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
 
+	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
+
 	// Best effort to propagate the org ID from the start.
 	f.Server.HTTPServer.Handler = func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !f.Cfg.AuthEnabled {
+				// todo change to configurable tenant ID
 				next.ServeHTTP(w, r.WithContext(user.InjectOrgID(r.Context(), "fake")))
 				return
 			}
@@ -92,6 +104,8 @@ func (f *Fire) initServer() (services.Service, error) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}(f.Server.HTTPServer.Handler)
+
+	f.Server.HTTPServer.Handler = h2c.NewHandler(f.Server.HTTPServer.Handler, &http2.Server{})
 
 	return s, nil
 }

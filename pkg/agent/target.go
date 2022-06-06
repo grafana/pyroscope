@@ -179,7 +179,7 @@ func (t *Target) scrape(ctx context.Context) {
 	t.health = scrape.HealthGood
 	t.lastScrapeDuration = time.Since(start)
 	t.lastError = nil
-	// todo send profiles
+	// todo send profiles using `pushv1connect.NewPusherClient`
 }
 
 func (t *Target) fetchProfile(ctx context.Context, profileType string, buf io.Writer) error {
