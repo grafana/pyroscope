@@ -1,0 +1,41 @@
+.tooltip {
+  position: absolute;
+  white-space: nowrap;
+  border: 1px solid var(--ps-neutral-10);
+  display: none;
+  z-index: 2;
+  background-color: var(--ps-neutral-6);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 16px;
+  padding: 4px 8px;
+  top: -34px;
+  left: -45px;
+  cursor: default;
+
+  &::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--ps-neutral-10);
+    position: absolute;
+    bottom: -7px;
+    left: 0;
+    right: 0;
+    margin: auto;
+  }
+}
+
+.visible {
+  @extend .tooltip;
+
+  display: block;
+}
+
+.tooltipSyncEnabled {
+  @extend .tooltip;
+
+  left: -53px;
+}

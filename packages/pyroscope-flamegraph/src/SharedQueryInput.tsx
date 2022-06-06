@@ -1,10 +1,17 @@
 /* eslint-disable no-unused-expressions */
-import React, { useEffect, useMemo, ChangeEvent, useRef } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  ChangeEvent,
+  useRef,
+  useState,
+} from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import Input from '@pyroscope/webapp/javascript/ui/Input';
 import styles from './SharedQueryInput.module.scss';
 import type { ProfileHeaderProps, ShowModeType } from './Toolbar';
+import Tooltip from '../../../webapp/javascript/ui/Tooltip';
 
 interface SharedQueryProps {
   showMode: ShowModeType;
@@ -23,15 +30,6 @@ const usePreviousSyncEnabled = (syncEnabled?: string | boolean) => {
   return ref.current;
 };
 
-const Tooltip = ({ syncEnabled }: { syncEnabled: string | boolean }) => (
-  <div
-    onClick={(e) => e.stopPropagation()}
-    className={syncEnabled ? styles.tooltipSyncEnabled : styles.tooltip}
-  >
-    {syncEnabled ? 'Unsync search bars' : 'Sync search bars'}
-  </div>
-);
-
 const SharedQueryInput = ({
   onHighlightChange,
   showMode,
@@ -39,6 +37,7 @@ const SharedQueryInput = ({
   sharedQuery,
 }: SharedQueryProps) => {
   const prevSyncEnabled = usePreviousSyncEnabled(sharedQuery?.syncEnabled);
+  const [tooltipVisible, toggleTooltip] = useState(false);
 
   const onQueryChange = (e: ChangeEvent<HTMLInputElement>) => {
     onHighlightChange(e.target.value);
@@ -111,6 +110,8 @@ const SharedQueryInput = ({
             sharedQuery.syncEnabled ? styles.syncSelected : styles.sync
           }
           onClick={onToggleSync}
+          onMouseEnter={() => toggleTooltip(true)}
+          onMouseLeave={() => toggleTooltip(false)}
         >
           <FontAwesomeIcon
             className={`${
@@ -118,7 +119,10 @@ const SharedQueryInput = ({
             }`}
             icon={faLink}
           />
-          <Tooltip syncEnabled={sharedQuery.syncEnabled} />
+          <Tooltip
+            visible={tooltipVisible}
+            syncEnabled={sharedQuery.syncEnabled}
+          />
         </button>
       ) : null}
     </div>
