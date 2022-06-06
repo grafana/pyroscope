@@ -4,7 +4,10 @@ package parser
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/golang/protobuf/proto"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -92,8 +95,10 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	case in.Format == "lines":
 		err = convert.ParseIndividualLines(in.Body, cb)
 	// with some formats we write directly to storage, hence the early return
+	case in.Format == "jfr" && strings.Contains(in.ContentType, "multipart/form-data"):
+		return parseJFRMultipart(ctx, p.putter, in, pi)
 	case in.Format == "jfr":
-		return jfr.ParseJFR(ctx, p.putter, in.Body, pi)
+		return jfr.ParseJFR(ctx, p.putter, in.Body, pi, &jfr.LabelsSnapshot{})
 	case in.Format == "pprof":
 		return writePprofFromBody(ctx, p.putter, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
@@ -111,6 +116,37 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) error {
 	}
 
 	return nil
+}
+
+func parseJFRMultipart(ctx context.Context, s storage.Putter, in *PutInput, pi *storage.PutInput) error {
+	// maxMemory 32MB
+	form, err := multipart.NewReader(in.Body, in.MultipartBoundary).ReadForm(32 << 20)
+	labelsField, err := formField(form, "labels")
+	if err != nil {
+		return err
+	}
+	jfrField, err := formField(form, "jfr")
+	if err != nil {
+		return err
+	}
+	if jfrField == nil {
+		return fmt.Errorf("jfr field is required")
+	}
+	labels := &jfr.LabelsSnapshot{}
+	if labelsField != nil {
+		protoLabels, err := ioutil.ReadAll(labelsField)
+		if err != nil {
+			return err
+		}
+		if len(protoLabels) > 0 {
+			err = proto.Unmarshal(protoLabels, labels)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	err = jfr.ParseJFR(ctx, s, jfrField, pi, labels)
+	return err
 }
 
 func writePprofFromBody(ctx context.Context, s storage.Putter, pi *PutInput) error {
