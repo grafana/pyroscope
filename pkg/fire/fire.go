@@ -23,6 +23,7 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/cfg"
+	"github.com/grafana/fire/pkg/distributor"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -30,6 +31,7 @@ type Config struct {
 	Target      flagext.StringSliceCSV `yaml:"target,omitempty"`
 	AgentConfig agent.Config           `yaml:",inline"`
 	Server      server.Config          `yaml:"server,omitempty"`
+	Distributor distributor.Config     `yaml:"distributor,omitempty"`
 	AuthEnabled bool                   `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
 }
