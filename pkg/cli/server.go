@@ -155,7 +155,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	// If remote write is available, let's write to both local storage and to the remote server
 	if svc.config.RemoteWrite.Enabled {
 		if len(svc.config.RemoteWrite.Targets) <= 0 {
-			return nil, fmt.Errorf("remote write is enabled but no targets are set up.")
+			return nil, fmt.Errorf("remote write is enabled but no targets are set up")
 		}
 
 		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
