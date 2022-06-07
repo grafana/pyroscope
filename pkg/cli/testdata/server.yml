@@ -20,6 +20,11 @@ scrape-configs:
         labels:
           foo: bar
 
+remote-write:
+  enabled: true
+  targets:
+    - address: https://pyroscope.io
+
 auth:
   signup-default-role: admin
   cookie-same-site: strict
