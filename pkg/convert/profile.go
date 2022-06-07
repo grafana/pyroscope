@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -18,6 +17,8 @@ type RawProfile struct {
 }
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
+
+func (p *RawProfile) ContentType() string { return "binary/octet-stream" }
 
 func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter storage.MetricsExporter, md ingestion.Metadata) error {
 	input := &storage.PutInput{
@@ -42,13 +43,6 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 	r := bytes.NewReader(p.RawData)
 	var err error
 	switch p.Format {
-	default:
-		return fmt.Errorf("unknown format %q", p.Format)
-
-	case ingestion.FormatJFR:
-		// with some formats we write directly to storage, hence the early return
-		return jfr.ParseJFR(ctx, putter, r, input)
-
 	case ingestion.FormatTrie:
 		err = transporttrie.IterateRaw(r, make([]byte, 0, 256), cb)
 	case ingestion.FormatTree:
@@ -57,6 +51,8 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 		err = ParseIndividualLines(r, cb)
 	case ingestion.FormatGroups:
 		err = ParseGroups(r, cb)
+	default:
+		return fmt.Errorf("unknown format %q", p.Format)
 	}
 
 	if err != nil {

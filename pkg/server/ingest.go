@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
@@ -43,7 +43,6 @@ func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*
 		ingester:  p,
 		onSuccess: onSuccess,
 		httpUtils: httpUtils,
-		// inout:     inout.NewInOut(),
 	}
 }
 
@@ -138,20 +137,21 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		input.Format = ingestion.FormatTree
 	case format == "lines":
 		input.Format = ingestion.FormatLines
+
 	case format == "jfr":
 		input.Format = ingestion.FormatJFR
+		input.Profile = &jfr.RawProfile{
+			FormDataContentType: contentType,
+			RawData:             b,
+		}
+
 	case format == "pprof":
 		input.Format = ingestion.FormatPprof
 		input.Profile = &pprof.RawProfile{RawData: b}
 	case strings.Contains(contentType, "multipart/form-data"):
-		boundary, err := parseBoundary(r)
-		if err != nil {
-			return nil, err
-		}
-		input.Format = ingestion.FormatPprof
 		input.Profile = &pprof.RawProfile{
-			RawData:  b,
-			Boundary: boundary,
+			FormDataContentType: contentType,
+			RawData:             b,
 		}
 	}
 
@@ -171,16 +171,4 @@ func copyBody(r *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-func parseBoundary(r *http.Request) (string, error) {
-	_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil {
-		return "", err
-	}
-	boundary, ok := params["boundary"]
-	if !ok {
-		return "", fmt.Errorf("malformed multipart content type header")
-	}
-	return boundary, nil
 }

@@ -8,14 +8,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
@@ -84,10 +82,7 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 	r.enhanceWithTags(in.Metadata.Key)
 
 	params := req.URL.Query()
-	contentType := "binary/octet-stream"
-	if p, ok := in.Profile.(*pprof.RawProfile); ok && p.Boundary != "" {
-		contentType = multipartContentType(p.Boundary)
-	} else {
+	if in.Format != "" {
 		params.Set("format", string(in.Format))
 	}
 
@@ -100,18 +95,9 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 	params.Set("aggregationType", in.Metadata.AggregationType.String())
 	req.URL.RawQuery = params.Encode()
 
-	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Type", in.Profile.ContentType())
 
 	return req, nil
-}
-
-func multipartContentType(b string) string {
-	// We must quote the boundary if it contains any of the
-	// tspecials characters defined by RFC 2045, or space.
-	if strings.ContainsAny(b, `()<>@,;:\"/[]?= `) {
-		b = `"` + b + `"`
-	}
-	return "multipart/form-data; boundary=" + b
 }
 
 func (r *Client) enhanceWithTags(key *segment.Key) {

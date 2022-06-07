@@ -34,6 +34,7 @@ const (
 type RawProfile interface {
 	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata) error
 	Bytes() ([]byte, error)
+	ContentType() string
 }
 
 type Metadata struct {

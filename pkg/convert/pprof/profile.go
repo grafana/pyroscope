@@ -11,19 +11,27 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/util/form"
 )
 
 type RawProfile struct {
 	m sync.Mutex
 	// Initializes lazily on Bytes, if not present.
-	RawData  []byte // Represents raw request body as per ingestion API.
-	Boundary string
+	RawData             []byte // Represents raw request body as per ingestion API.
+	FormDataContentType string // Set optionally, if RawData is multipart form.
 	// Initializes lazily on Parse, if not present.
 	Profile          []byte
 	PreviousProfile  []byte
 	SampleTypeConfig map[string]*tree.SampleTypeConfig
 
 	parser *Parser
+}
+
+func (p *RawProfile) ContentType() string {
+	if p.FormDataContentType == "" {
+		return "binary/octet-stream"
+	}
+	return p.FormDataContentType
 }
 
 func (p *RawProfile) Push(profile []byte, cumulative bool) {
@@ -72,7 +80,7 @@ func (p *RawProfile) Bytes() ([]byte, error) {
 	}
 	_ = mw.Close()
 	p.RawData = b.Bytes()
-	p.Boundary = mw.Boundary()
+	p.FormDataContentType = mw.FormDataContentType()
 	return p.RawData, nil
 }
 
@@ -83,7 +91,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 		if p.RawData == nil {
 			return nil
 		}
-		if p.Boundary != "" {
+		if p.FormDataContentType != "" {
 			if err := p.loadPprofFromForm(); err != nil {
 				return err
 			}
@@ -116,54 +124,36 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 }
 
 func (p *RawProfile) loadPprofFromForm() error {
+	boundary, err := form.ParseBoundary(p.FormDataContentType)
+	if err != nil {
+		return err
+	}
+
 	// maxMemory 32MB.
 	// TODO(kolesnikovae): If the limit is exceeded, parts will be written
 	//  to disk. It may be better to limit the request body size to be sure
 	//  that they loaded into memory entirely.
-	form, err := multipart.NewReader(bytes.NewReader(p.RawData), p.Boundary).ReadForm(32 << 20)
+	f, err := multipart.NewReader(bytes.NewReader(p.RawData), boundary).ReadForm(32 << 20)
 	if err != nil {
 		return err
 	}
-	p.Profile, err = formField(form, formFieldProfile)
+	p.Profile, err = form.ReadField(f, formFieldProfile)
 	if err != nil {
 		return err
 	}
-	p.PreviousProfile, err = formField(form, formFieldPreviousProfile)
+	p.PreviousProfile, err = form.ReadField(f, formFieldPreviousProfile)
 	if err != nil {
 		return err
 	}
-	p.SampleTypeConfig, err = parseSampleTypesConfig(form)
-	return err
-}
 
-func formField(form *multipart.Form, name string) ([]byte, error) {
-	files, ok := form.File[name]
-	if !ok || len(files) == 0 {
-		return nil, nil
-	}
-	fh := files[0]
-	if fh.Size == 0 {
-		return nil, nil
-	}
-	f, err := fh.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		err = f.Close()
-	}()
-	b := bytes.NewBuffer(make([]byte, 0, fh.Size))
-	if _, err = io.Copy(b, f); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
-}
-
-func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
-	r, err := formField(form, formFieldSampleTypeConfig)
+	r, err := form.ReadField(f, formFieldSampleTypeConfig)
 	if err != nil || r == nil {
-		return nil, err
+		return err
 	}
 	var config map[string]*tree.SampleTypeConfig
-	return config, json.Unmarshal(r, &config)
+	if err = json.Unmarshal(r, &config); err != nil {
+		return err
+	}
+	p.SampleTypeConfig = config
+	return nil
 }
