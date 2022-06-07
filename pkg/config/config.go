@@ -370,4 +370,5 @@ type RemoteWriteTarget struct {
 	Address   string            `def:"address" desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
 	AuthToken string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	Tags      map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+	Timeout   time.Duration     `def:"30s" desc:"profile upload timeout" mapstructure:"timeout"`
 }
