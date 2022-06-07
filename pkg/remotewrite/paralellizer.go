@@ -4,45 +4,39 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/sirupsen/logrus"
+
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 )
 
-type Putter interface {
-	Put(ctx context.Context, put *parser.PutInput) error
-}
-
 // TODO(eh-am): move this to somehwere else?
-type Paralellizer struct {
-	log     *logrus.Logger
-	putters []Putter
-	wg      sync.WaitGroup
+type Parallelizer struct {
+	log       *logrus.Logger
+	ingesters []ingestion.Ingester
+	wg        sync.WaitGroup
 }
 
-func NewParalellizer(log *logrus.Logger, putters ...Putter) *Paralellizer {
-	return &Paralellizer{
-		log:     log,
-		putters: putters,
+func NewParallelizer(log *logrus.Logger, ingesters ...ingestion.Ingester) *Parallelizer {
+	return &Parallelizer{
+		log:       log,
+		ingesters: ingesters,
 	}
 }
 
-func (p *Paralellizer) Put(ctx context.Context, pi *parser.PutInput) error {
-	p.wg.Add(len(p.putters))
+func (p *Parallelizer) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
+	p.wg.Add(len(p.ingesters))
 
 	// TODO(eh-am): add timeouts for each individual call
-	for _, putter := range p.putters {
+	for _, putter := range p.ingesters {
 		// https://golang.org/doc/faq#closures_and_goroutines
 		putter := putter
-		// Clone the putInput since it will be read concurrently
-		pi := pi.Clone()
-
-		go func(pi *parser.PutInput) {
+		go func(in *ingestion.IngestInput) {
 			defer p.wg.Done()
-			err := putter.Put(ctx, pi)
+			err := putter.Ingest(ctx, in)
 			if err != nil {
 				p.log.Error("Failed to parallelize put: ", err)
 			}
-		}(pi)
+		}(in)
 	}
 
 	p.wg.Wait()

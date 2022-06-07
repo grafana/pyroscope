@@ -5,18 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/inout"
-	"github.com/pyroscope-io/pyroscope/pkg/parser"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/sirupsen/logrus"
+
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
 var (
@@ -26,11 +27,9 @@ var (
 )
 
 type Client struct {
-	log         *logrus.Logger
-	config      config.RemoteWrite
-	client      *http.Client
-	bodyCreator *BodyCreator
-	inout       *inout.InOut
+	log    *logrus.Logger
+	config config.RemoteWrite
+	client *http.Client
 }
 
 func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
@@ -40,17 +39,14 @@ func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
 	}
 
 	return &Client{
-		log:         logger,
-		config:      cfg,
-		client:      client,
-		bodyCreator: NewBodyCreator(logger),
-		inout:       inout.NewInOut(),
+		log:    logger,
+		config: cfg,
+		client: client,
 	}
 }
 
-func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
-	req, err := r.inout.RequestFromPutInput(put, r.config.Address+"/ingest")
-	//	req, err := r.putInputToRequest(put)
+func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
+	req, err := r.ingestInputToRequest(in)
 	if err != nil {
 		return multierror.Append(err, ErrConvertPutInputToRequest)
 	}
@@ -73,40 +69,48 @@ func (r *Client) Put(ctx context.Context, put *parser.PutInput) error {
 	return nil
 }
 
-func streamToByte(stream io.Reader) []byte {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(stream)
-	return buf.Bytes()
-}
-
-func (r *Client) putInputToRequest(pi *parser.PutInput) (*http.Request, error) {
-	pi = pi.Clone()
-
-	body, contentType, err := r.bodyCreator.Create(pi)
+func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request, error) {
+	b, err := in.Profile.Bytes()
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", r.config.Address+"/ingest", body)
+	req, err := http.NewRequest("POST", r.config.Address+"/ingest", bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
 
-	r.enhanceWithTags(pi.Key)
+	r.enhanceWithTags(in.Metadata.Key)
 
 	params := req.URL.Query()
-	params.Set("name", pi.Key.Normalized())
-	params.Set("from", strconv.FormatInt(pi.StartTime.Unix(), 10))
-	params.Set("until", strconv.FormatInt(pi.EndTime.Unix(), 10))
-	params.Set("sampleRate", strconv.FormatUint(uint64(pi.SampleRate), 10))
-	params.Set("spyName", pi.SpyName)
-	params.Set("units", pi.Units.String())
-	params.Set("aggregationType", pi.AggregationType.String())
+	contentType := "binary/octet-stream"
+	if p, ok := in.Profile.(*pprof.RawProfile); ok && p.Boundary != "" {
+		contentType = multipartContentType(p.Boundary)
+	} else {
+		params.Set("format", string(in.Format))
+	}
+
+	params.Set("name", in.Metadata.Key.Normalized())
+	params.Set("from", strconv.FormatInt(in.Metadata.StartTime.Unix(), 10))
+	params.Set("until", strconv.FormatInt(in.Metadata.EndTime.Unix(), 10))
+	params.Set("sampleRate", strconv.FormatUint(uint64(in.Metadata.SampleRate), 10))
+	params.Set("spyName", in.Metadata.SpyName)
+	params.Set("units", in.Metadata.Units.String())
+	params.Set("aggregationType", in.Metadata.AggregationType.String())
 	req.URL.RawQuery = params.Encode()
 
 	req.Header.Set("Content-Type", contentType)
 
 	return req, nil
+}
+
+func multipartContentType(b string) string {
+	// We must quote the boundary if it contains any of the
+	// tspecials characters defined by RFC 2045, or space.
+	if strings.ContainsAny(b, `()<>@,;:\"/[]?= `) {
+		b = `"` + b + `"`
+	}
+	return "multipart/form-data; boundary=" + b
 }
 
 func (r *Client) enhanceWithTags(key *segment.Key) {
