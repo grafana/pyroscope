@@ -32,7 +32,9 @@ export async function renderSingle(
 
   const parsed = FlamebearerProfileSchema.merge(
     z.object({ timeline: TimelineSchema })
-  ).safeParse(response.value);
+  )
+    .merge(z.object({ telemetry: z.object({}).passthrough() }))
+    .safeParse(response.value);
 
   if (parsed.success) {
     // TODO: strip timeline
