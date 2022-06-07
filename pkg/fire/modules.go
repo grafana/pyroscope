@@ -55,7 +55,8 @@ func (f *Fire) initDistributor() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Server.HTTP.Handle(pushv1connect.NewPusherHandler(d))
+	prefix, handler := pushv1connect.NewPusherHandler(d)
+	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	return d, nil
 }
 
@@ -89,9 +90,6 @@ func (f *Fire) initServer() (services.Service, error) {
 	}
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
-
-	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
-
 	// Best effort to propagate the org ID from the start.
 	f.Server.HTTPServer.Handler = func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -104,9 +102,9 @@ func (f *Fire) initServer() (services.Service, error) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}(f.Server.HTTPServer.Handler)
-
+	// todo configure http2
 	f.Server.HTTPServer.Handler = h2c.NewHandler(f.Server.HTTPServer.Handler, &http2.Server{})
-
+	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
 	return s, nil
 }
 

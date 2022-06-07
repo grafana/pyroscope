@@ -106,6 +106,7 @@ require (
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/pprof v0.0.0-20220520215854-d04f2422c8a1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
 	github.com/googleapis/go-type-adapters v1.0.0 // indirect
@@ -127,13 +128,13 @@ require (
 	github.com/hashicorp/memberlist v0.3.0 // indirect
 	github.com/hashicorp/serf v0.9.6 // indirect
 	github.com/hetznercloud/hcloud-go v1.33.1 // indirect
-	github.com/ianlancetaylor/demangle v0.0.0-20220203202831-b7f99f1dbc96 // indirect
+	github.com/ianlancetaylor/demangle v0.0.0-20220319035150-800ac71e25c2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/klauspost/compress v1.15.6 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/kolo/xmlrpc v0.0.0-20201022064351-38db28db192b // indirect
 	github.com/kr/pretty v0.3.0 // indirect

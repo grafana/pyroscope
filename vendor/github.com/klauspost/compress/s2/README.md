@@ -19,6 +19,7 @@ This is important, so you don't have to worry about spending CPU cycles on alrea
 * Adjustable compression (3 levels) 
 * Concurrent stream compression
 * Faster decompression, even for Snappy compatible content
+* Concurrent Snappy/S2 stream decompression
 * Ability to quickly skip forward in compressed stream
 * Random seeking with indexes
 * Compatible with reading Snappy compressed content
@@ -414,6 +415,25 @@ Without assembly decompression is also very fast; single goroutine decompression
 | silesia.tar.s2                 | 1.52x        | 811.58        |
 
 Even though S2 typically compresses better than Snappy, decompression speed is always better. 
+
+### Concurrent Stream Decompression
+
+For full stream decompression S2 offers a [DecodeConcurrent](https://pkg.go.dev/github.com/klauspost/compress/s2#Reader.DecodeConcurrent) 
+that will decode a full stream using multiple goroutines.
+
+Example scaling, AMD Ryzen 3950X, 16 cores, decompression using `s2d -bench=3 <input>`, best of 3: 
+
+| Input                                     | `-cpu=1`   | `-cpu=2`   | `-cpu=4`   | `-cpu=8`   | `-cpu=16`   |
+|-------------------------------------------|------------|------------|------------|------------|-------------|
+| enwik10.snappy                            | 1098.6MB/s | 1819.8MB/s | 3625.6MB/s | 6910.6MB/s | 10818.2MB/s |
+| enwik10.s2                                | 1303.5MB/s | 2606.1MB/s | 4847.9MB/s | 8878.4MB/s | 9592.1MB/s  |
+| sofia-air-quality-dataset.tar.snappy      | 1302.0MB/s | 2165.0MB/s | 4244.5MB/s | 8241.0MB/s | 12920.5MB/s |
+| sofia-air-quality-dataset.tar.s2          | 1399.2MB/s | 2463.2MB/s | 5196.5MB/s | 9639.8MB/s | 11439.5MB/s |
+| sofia-air-quality-dataset.tar.s2 (no asm) | 837.5MB/s  | 1652.6MB/s | 3183.6MB/s | 5945.0MB/s | 9620.7MB/s  |
+
+Scaling can be expected to be pretty linear until memory bandwidth is saturated. 
+
+For now the DecodeConcurrent can only be used for full streams without seeking or combining with regular reads.
 
 ## Block compression
 
@@ -873,7 +893,7 @@ for each entry {
     }
     
     // Uncompressed uses previous offset and adds EstBlockSize
-    entry[entryNum].UncompressedOffset = entry[entryNum-1].UncompressedOffset + EstBlockSize
+    entry[entryNum].UncompressedOffset = entry[entryNum-1].UncompressedOffset + EstBlockSize + uOff
 }
 
 
@@ -900,6 +920,14 @@ for each entry {
      CompressGuess += cOff/2               
 }
 ```
+
+To decode from any given uncompressed offset `(wantOffset)`:
+
+* Iterate entries until `entry[n].UncompressedOffset > wantOffset`.
+* Start decoding from `entry[n-1].CompressedOffset`.
+* Discard `entry[n-1].UncompressedOffset - wantOffset` bytes from the decoded stream.
+
+See [using indexes](https://github.com/klauspost/compress/tree/master/s2#using-indexes) for functions that perform the operations with a simpler interface.
 
 # Format Extensions
 

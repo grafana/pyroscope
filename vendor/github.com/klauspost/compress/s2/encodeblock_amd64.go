@@ -5,6 +5,8 @@
 
 package s2
 
+func _dummy_()
+
 // encodeBlockAsm encodes a non-empty src to a guaranteed-large-enough dst.
 // Maximum input 4294967295 bytes.
 // It assumes that the varint-encoded length of the decompressed bytes has already been written.

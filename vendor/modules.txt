@@ -436,6 +436,9 @@ github.com/google/go-querystring/query
 ## explicit; go 1.12
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
+# github.com/google/pprof v0.0.0-20220520215854-d04f2422c8a1
+## explicit; go 1.17
+github.com/google/pprof/profile
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
@@ -478,7 +481,6 @@ github.com/grafana/dskit/kv/consul
 github.com/grafana/dskit/kv/etcd
 github.com/grafana/dskit/kv/memberlist
 github.com/grafana/dskit/modules
-github.com/grafana/dskit/multierror
 github.com/grafana/dskit/netutil
 github.com/grafana/dskit/ring
 github.com/grafana/dskit/ring/shard
@@ -538,7 +540,7 @@ github.com/hashicorp/serf/coordinate
 github.com/hetznercloud/hcloud-go/hcloud
 github.com/hetznercloud/hcloud-go/hcloud/internal/instrumentation
 github.com/hetznercloud/hcloud-go/hcloud/schema
-# github.com/ianlancetaylor/demangle v0.0.0-20220203202831-b7f99f1dbc96
+# github.com/ianlancetaylor/demangle v0.0.0-20220319035150-800ac71e25c2
 ## explicit; go 1.12
 github.com/ianlancetaylor/demangle
 # github.com/imdario/mergo v0.3.12
@@ -556,11 +558,14 @@ github.com/jpillora/backoff
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
-# github.com/klauspost/compress v1.15.1
-## explicit; go 1.15
+# github.com/klauspost/compress v1.15.6
+## explicit; go 1.16
 github.com/klauspost/compress
+github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
+github.com/klauspost/compress/gzip
 github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/cpuinfo
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/s2
 github.com/klauspost/compress/zstd
