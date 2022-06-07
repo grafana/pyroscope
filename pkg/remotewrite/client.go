@@ -59,6 +59,7 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	if err != nil {
 		return multierror.Append(err, ErrMakingRequest)
 	}
+	defer res.Body.Close()
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
 		// read all the response body
