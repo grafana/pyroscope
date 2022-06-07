@@ -1,3 +1,6 @@
+@use './mixins/outline' as *;
+@import './variables.scss';
+
 pre,
 code,
 tt {
@@ -175,4 +178,11 @@ tt {
       border-radius: 0 4px 4px 0;
     }
   }
+}
+
+// TODO(eh-am): use ui/Input
+input {
+  @include outline;
+  border-radius: 4px;
+  border: 1px solid $btn-border-color;
 }

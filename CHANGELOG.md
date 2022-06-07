@@ -1,3 +1,20 @@
+# [0.18.0](https://github.com/pyroscope-io/pyroscope/compare/v0.17.1...v0.18.0) (2022-06-06)
+
+
+### Bug Fixes
+
+* flamegraph palette selector button styles ([#1113](https://github.com/pyroscope-io/pyroscope/issues/1113)) ([d7a7b11](https://github.com/pyroscope-io/pyroscope/commit/d7a7b117c13beb9528e730bec1353efe72767f83))
+* flamegraph palette selector checkmark styles ([#1114](https://github.com/pyroscope-io/pyroscope/issues/1114)) ([755893f](https://github.com/pyroscope-io/pyroscope/commit/755893f23a04c1031a858c39e8729a5074eaf67b))
+
+
+### Features
+
+* add support for labels when used with JFR and async-profiler's contextId ([#1096](https://github.com/pyroscope-io/pyroscope/issues/1096)) ([b5a57a3](https://github.com/pyroscope-io/pyroscope/commit/b5a57a36cd8382d938b1bf13e06f495ae944f16b))
+* Color mode ([#1103](https://github.com/pyroscope-io/pyroscope/issues/1103)) ([8855859](https://github.com/pyroscope-io/pyroscope/commit/885585958012775f0d51ea82208d641d10215574))
+* UTC timezone ([#1107](https://github.com/pyroscope-io/pyroscope/issues/1107)) ([9fa550c](https://github.com/pyroscope-io/pyroscope/commit/9fa550c0b577625780aeb00b5fcd9ca3858d410a))
+
+
+
 ## [0.17.1](https://github.com/pyroscope-io/pyroscope/compare/v0.17.0...v0.17.1) (2022-05-26)
 
 

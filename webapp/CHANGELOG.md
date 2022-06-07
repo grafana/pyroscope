@@ -3,6 +3,47 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.10.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.2...@pyroscope/webapp@1.10.3) (2022-06-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.10.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.1...@pyroscope/webapp@1.10.2) (2022-06-06)
+
+
+### Bug Fixes
+
+* **webapp:** fix border of <input> element ([#1127](https://github.com/pyroscope-io/pyroscope/issues/1127)) ([458b62b](https://github.com/pyroscope-io/pyroscope/commit/458b62bcbd50ecc612636565c6dfe821b395fd87))
+
+
+
+
+
+## [1.10.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.0...@pyroscope/webapp@1.10.1) (2022-06-06)
+
+
+### Bug Fixes
+
+* infinite loop when no apps are available ([#1125](https://github.com/pyroscope-io/pyroscope/issues/1125)) ([330eb23](https://github.com/pyroscope-io/pyroscope/commit/330eb234a1f2b7b3de4b36f862729180462262ce))
+
+
+
+
+
+# [1.10.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.9.0...@pyroscope/webapp@1.10.0) (2022-06-01)
+
+
+### Features
+
+* UTC timezone ([#1107](https://github.com/pyroscope-io/pyroscope/issues/1107)) ([9fa550c](https://github.com/pyroscope-io/pyroscope/commit/9fa550c0b577625780aeb00b5fcd9ca3858d410a))
+
+
+
+
+
 # [1.9.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.8.8...@pyroscope/webapp@1.9.0) (2022-05-30)
 
 

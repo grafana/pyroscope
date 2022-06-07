@@ -13,9 +13,11 @@ import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
+  const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
 
   const { from, until, query, refreshToken, maxNodes } = useAppSelector(
@@ -95,6 +97,7 @@ function ContinuousSingleView() {
       <div className="main-wrapper">
         <Toolbar />
         <TimelineChartWrapper
+          timezone={offset === 0 ? 'utc' : 'browser'}
           data-testid="timeline-single"
           id="timeline-chart-single"
           timelineA={getTimeline()}

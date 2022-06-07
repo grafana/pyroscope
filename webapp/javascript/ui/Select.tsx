@@ -11,6 +11,8 @@ interface SelectProps {
     React.OptionHTMLAttributes<HTMLOptionElement>,
     HTMLOptionElement
   >[];
+  id?: string;
+  disabled?: boolean;
 }
 
 export default function Select({
@@ -20,9 +22,13 @@ export default function Select({
   onChange,
   children,
   name,
+  id,
+  disabled,
 }: SelectProps) {
   return (
     <select
+      id={id}
+      disabled={disabled || false}
       name={name}
       aria-label={ariaLabel}
       className={`${styles.select} ${className || ''}`}
