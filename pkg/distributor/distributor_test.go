@@ -47,16 +47,8 @@ func Test_ConnectPush(t *testing.T) {
 
 func testProfile(t *testing.T) []byte {
 	t.Helper()
-	buf := bytes.NewBuffer(nil)
-	err := pprof.StartCPUProfile(buf)
-	require.NoError(t, err)
-	doSomething(t)
-	pprof.StopCPUProfile()
-	return buf.Bytes()
-}
 
-func doSomething(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		t.Log("something done")
-	}
+	buf := bytes.NewBuffer(nil)
+	require.NoError(t, pprof.WriteHeapProfile(buf))
+	return buf.Bytes()
 }

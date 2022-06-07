@@ -73,19 +73,26 @@ func ToString(name string, options ...Option) (string, error) {
 
 	// Check for an old-style Rust mangled name.
 	// It starts with _ZN and ends with "17h" followed by 16 hex digits
-	// followed by "E".
-	if strings.HasPrefix(name, "_ZN") && strings.HasSuffix(name, "E") && len(name) > 23 && name[len(name)-20:len(name)-17] == "17h" {
-		noRust := false
-		for _, o := range options {
-			if o == NoRust {
-				noRust = true
-				break
-			}
+	// followed by "E" followed by an optional suffix starting with "."
+	// (which we ignore).
+	if strings.HasPrefix(name, "_ZN") {
+		rname := name
+		if pos := strings.LastIndex(rname, "E."); pos > 0 {
+			rname = rname[:pos+1]
 		}
-		if !noRust {
-			s, ok := oldRustToString(name, options)
-			if ok {
-				return s, nil
+		if strings.HasSuffix(rname, "E") && len(rname) > 23 && rname[len(rname)-20:len(rname)-17] == "17h" {
+			noRust := false
+			for _, o := range options {
+				if o == NoRust {
+					noRust = true
+					break
+				}
+			}
+			if !noRust {
+				s, ok := oldRustToString(rname, options)
+				if ok {
+					return s, nil
+				}
 			}
 		}
 	}
@@ -1572,24 +1579,32 @@ func (st *state) demangleType(isCast bool) AST {
 
 		case 'F':
 			accum := false
+			bits := 0
 			if len(st.str) > 0 && isDigit(st.str[0]) {
 				accum = true
-				// We don't care about the bits.
-				_ = st.number()
+				bits = st.number()
 			}
-			base := st.demangleType(isCast)
-			if len(st.str) > 0 && isDigit(st.str[0]) {
-				// We don't care about the bits.
-				st.number()
-			}
-			sat := false
-			if len(st.str) > 0 {
-				if st.str[0] == 's' {
-					sat = true
+			if len(st.str) > 0 && st.str[0] == '_' {
+				if bits == 0 {
+					st.fail("expected non-zero number of bits")
 				}
 				st.advance(1)
+				ret = &BinaryFP{Bits: bits}
+			} else {
+				base := st.demangleType(isCast)
+				if len(st.str) > 0 && isDigit(st.str[0]) {
+					// We don't care about the bits.
+					st.number()
+				}
+				sat := false
+				if len(st.str) > 0 {
+					if st.str[0] == 's' {
+						sat = true
+					}
+					st.advance(1)
+				}
+				ret = &FixedType{Base: base, Accum: accum, Sat: sat}
 			}
-			ret = &FixedType{Base: base, Accum: accum, Sat: sat}
 
 		case 'v':
 			ret = st.vectorType(isCast)
@@ -2890,9 +2905,9 @@ func (st *state) unnamedTypeName() AST {
 // but are added by GCC when cloning functions.
 func (st *state) cloneSuffix(a AST) AST {
 	i := 0
-	if len(st.str) > 1 && st.str[0] == '.' && (isLower(st.str[1]) || st.str[1] == '_') {
+	if len(st.str) > 1 && st.str[0] == '.' && (isLower(st.str[1]) || isDigit(st.str[1]) || st.str[1] == '_') {
 		i += 2
-		for len(st.str) > i && (isLower(st.str[i]) || st.str[i] == '_') {
+		for len(st.str) > i && (isLower(st.str[i]) || isDigit(st.str[i]) || st.str[i] == '_') {
 			i++
 		}
 	}

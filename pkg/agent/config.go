@@ -1,10 +1,12 @@
 package agent
 
 import (
+	"flag"
 	"fmt"
 	"net/url"
 	"time"
 
+	"github.com/grafana/dskit/flagext"
 	"github.com/parca-dev/parca/pkg/config"
 	parcaconfig "github.com/parca-dev/parca/pkg/config"
 	commonconfig "github.com/prometheus/common/config"
@@ -16,6 +18,22 @@ import (
 
 type Config struct {
 	ScrapeConfigs []*ScrapeConfig `yaml:"scrape_configs,omitempty"`
+	ClientConfig  ClientConfig    `yaml:"client,omitempty"`
+}
+
+// RegisterFlags with prefix registers flags where every name is prefixed by
+// prefix. If prefix is a non-empty string, prefix should end with a period.
+func (c *ClientConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.Var(&c.URL, prefix+"client.url", "URL of log server.")
+	// Default backoff schedule: 0.5s, 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s(4.267m) For a total time of 511.5s(8.5m) before logs are lost
+	// f.IntVar(&c.BackoffConfig.MaxRetries, prefix+"client.max-retries", MaxRetries, "Maximum number of retires when sending batches (deprecated).")
+	// f.DurationVar(&c.BackoffConfig.MinBackoff, prefix+"client.min-backoff", MinBackoff, "Initial backoff time between retries (deprecated).")
+	// f.DurationVar(&c.BackoffConfig.MaxBackoff, prefix+"client.max-backoff", MaxBackoff, "Maximum backoff time between retries (deprecated).")
+}
+
+// RegisterFlags registers flags.
+func (c *Config) RegisterFlags(flags *flag.FlagSet) {
+	c.ClientConfig.RegisterFlagsWithPrefix("", flags)
 }
 
 func (c *Config) Validate() error {
@@ -25,6 +43,22 @@ func (c *Config) Validate() error {
 		}
 	}
 	return nil
+}
+
+type ClientConfig struct {
+	URL       flagext.URLValue
+	BatchWait time.Duration
+	BatchSize int
+	Client    commonconfig.HTTPClientConfig `yaml:",inline"`
+	// todo add backoff config
+	// BackoffConfig backoff.Config                `yaml:"backoff_config"`
+}
+
+func (c *ClientConfig) Validate() error {
+	if c.URL.String() == "" {
+		return fmt.Errorf("client: url is empty")
+	}
+	return c.Client.Validate()
 }
 
 type ScrapeConfig struct {

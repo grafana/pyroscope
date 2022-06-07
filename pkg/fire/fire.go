@@ -45,6 +45,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.AuthEnabled, "auth.enabled", true, "Set to false to disable auth.")
 	c.Server.RegisterFlags(f)
+	c.AgentConfig.RegisterFlags(f)
 }
 
 func (c *Config) Validate() error {
@@ -57,8 +58,16 @@ func (c *Config) Validate() error {
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	defaults := Config{}
 	flagext.DefaultValues(&defaults)
-
 	return func(dst cfg.Cloneable) error {
+		r, ok := dst.(*Config)
+		if !ok {
+			return errors.New("dst is not a Fire config")
+		}
+		if r.AgentConfig.ClientConfig.URL.String() == "" {
+			if err := r.AgentConfig.ClientConfig.URL.Set(fmt.Sprintf("http://%s:%d", c.Server.HTTPListenAddress, c.Server.HTTPListenPort)); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }

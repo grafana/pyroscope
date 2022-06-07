@@ -200,13 +200,14 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, er
 				}
 
 				targets = append(targets, &Target{
-					Target:   scrape.NewTarget(lbls, origLabels, params),
-					labels:   lbls,
-					client:   tg.httpClient,
-					interval: interval,
-					timeout:  timeout,
-					health:   scrape.HealthUnknown,
-					logger:   tg.logger,
+					Target:       scrape.NewTarget(lbls, origLabels, params),
+					labels:       lbls,
+					scrapeClient: tg.scrapeClient,
+					pushClient:   tg.pushClient,
+					interval:     interval,
+					timeout:      timeout,
+					health:       scrape.HealthUnknown,
+					logger:       tg.logger,
 				})
 			}
 		}

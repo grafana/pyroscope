@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 )
 
 const (
@@ -99,6 +100,15 @@ func (i *Index) Find(offset int64) (compressedOff, uncompressedOff int64, err er
 	}
 	if offset > i.TotalUncompressed {
 		return 0, 0, io.ErrUnexpectedEOF
+	}
+	if len(i.info) > 200 {
+		n := sort.Search(len(i.info), func(n int) bool {
+			return i.info[n].uncompressedOffset > offset
+		})
+		if n == 0 {
+			n = 1
+		}
+		return i.info[n-1].compressedOffset, i.info[n-1].uncompressedOffset, nil
 	}
 	for _, info := range i.info {
 		if info.uncompressedOffset > offset {

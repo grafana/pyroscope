@@ -180,14 +180,23 @@ func emitCopy(dst []byte, offset, length int) int {
 
 	// Offset no more than 2 bytes.
 	if length > 64 {
-		// Emit a length 60 copy, encoded as 3 bytes.
-		// Emit remaining as repeat value (minimum 4 bytes).
-		dst[2] = uint8(offset >> 8)
-		dst[1] = uint8(offset)
-		dst[0] = 59<<2 | tagCopy2
-		length -= 60
+		off := 3
+		if offset < 2048 {
+			// emit 8 bytes as tagCopy1, rest as repeats.
+			dst[1] = uint8(offset)
+			dst[0] = uint8(offset>>8)<<5 | uint8(8-4)<<2 | tagCopy1
+			length -= 8
+			off = 2
+		} else {
+			// Emit a length 60 copy, encoded as 3 bytes.
+			// Emit remaining as repeat value (minimum 4 bytes).
+			dst[2] = uint8(offset >> 8)
+			dst[1] = uint8(offset)
+			dst[0] = 59<<2 | tagCopy2
+			length -= 60
+		}
 		// Emit remaining as repeats, at least 4 bytes remain.
-		return 3 + emitRepeat(dst[3:], offset, length)
+		return off + emitRepeat(dst[off:], offset, length)
 	}
 	if length >= 12 || offset >= 2048 {
 		// Emit the remaining copy, encoded as 3 bytes.

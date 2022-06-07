@@ -47,10 +47,19 @@ func rustToString(name string, options []Option) (ret string, err error) {
 	}
 
 	if suffix != "" {
-		rst.skip = false
-		rst.writeString(" (")
-		rst.writeString(suffix)
-		rst.writeByte(')')
+		llvmStyle := false
+		for _, o := range options {
+			if o == LLVMStyle {
+				llvmStyle = true
+				break
+			}
+		}
+		if llvmStyle {
+			rst.skip = false
+			rst.writeString(" (")
+			rst.writeString(suffix)
+			rst.writeByte(')')
+		}
 	}
 
 	return rst.buf.String(), nil
@@ -263,7 +272,7 @@ func (rst *rustState) implPath() {
 // It returns the disambiguator and the identifier.
 func (rst *rustState) identifier() (int64, string) {
 	dis := rst.disambiguator()
-	ident := rst.undisambiguatedIdentifier()
+	ident, _ := rst.undisambiguatedIdentifier()
 	return dis, ident
 }
 
@@ -281,11 +290,11 @@ func (rst *rustState) disambiguator() int64 {
 // undisambiguatedIdentifier parses:
 //
 //	<undisambiguated-identifier> = ["u"] <decimal-number> ["_"] <bytes>
-func (rst *rustState) undisambiguatedIdentifier() string {
-	punycode := false
+func (rst *rustState) undisambiguatedIdentifier() (id string, isPunycode bool) {
+	isPunycode = false
 	if len(rst.str) > 0 && rst.str[0] == 'u' {
 		rst.advance(1)
-		punycode = true
+		isPunycode = true
 	}
 
 	val := rst.decimalNumber()
@@ -297,7 +306,7 @@ func (rst *rustState) undisambiguatedIdentifier() string {
 	if len(rst.str) < val {
 		rst.fail("not enough characters for identifier")
 	}
-	id := rst.str[:val]
+	id = rst.str[:val]
 	rst.advance(val)
 
 	for i := 0; i < len(id); i++ {
@@ -312,11 +321,11 @@ func (rst *rustState) undisambiguatedIdentifier() string {
 		}
 	}
 
-	if punycode {
+	if isPunycode {
 		id = rst.expandPunycode(id)
 	}
 
-	return id
+	return id, isPunycode
 }
 
 // expandPunycode decodes the Rust version of punycode.
@@ -332,13 +341,17 @@ func (rst *rustState) expandPunycode(s string) string {
 		initialN    = 128
 	)
 
+	var (
+		output   []rune
+		encoding string
+	)
 	idx := strings.LastIndex(s, "_")
-	if idx < 0 {
-		rst.fail("missing underscore in punycode string")
+	if idx >= 0 {
+		output = []rune(s[:idx])
+		encoding = s[idx+1:]
+	} else {
+		encoding = s
 	}
-
-	output := []rune(s[:idx])
-	encoding := s[idx+1:]
 
 	i := 0
 	n := initialN
@@ -410,6 +423,8 @@ func (rst *rustState) expandPunycode(s string) string {
 		n += i / (len(output) + 1)
 		if n > utf8.MaxRune {
 			rst.fail("punycode rune overflow")
+		} else if !utf8.ValidRune(rune(n)) {
+			rst.fail("punycode invalid code point")
 		}
 		i %= len(output) + 1
 		output = append(output, 0)
@@ -627,7 +642,10 @@ func (rst *rustState) fnSig() {
 			rst.writeString(`extern "C" `)
 		} else {
 			rst.writeString(`extern "`)
-			id := rst.undisambiguatedIdentifier()
+			id, isPunycode := rst.undisambiguatedIdentifier()
+			if isPunycode {
+				rst.fail("punycode used in ABI string")
+			}
 			id = strings.ReplaceAll(id, "_", "-")
 			rst.writeString(id)
 			rst.writeString(`" `)
@@ -685,7 +703,8 @@ func (rst *rustState) dynTrait() {
 			rst.writeByte('<')
 			started = true
 		}
-		rst.writeString(rst.undisambiguatedIdentifier())
+		id, _ := rst.undisambiguatedIdentifier()
+		rst.writeString(id)
 		rst.writeString(" = ")
 		rst.demangleType()
 	}
