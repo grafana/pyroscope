@@ -19,22 +19,19 @@ type RawProfile struct {
 	RawData  []byte // Represents raw request body as per ingestion API.
 	Boundary string
 	// Initializes lazily on Parse, if not present.
-	Profile          *bytes.Buffer
-	PreviousProfile  *bytes.Buffer
+	Profile          []byte
+	PreviousProfile  []byte
 	SampleTypeConfig map[string]*tree.SampleTypeConfig
-	parser           *Parser
+
+	parser *Parser
 }
 
-func (p *RawProfile) Push(profile *bytes.Buffer) {
+func (p *RawProfile) Push(profile []byte, cumulative bool) {
 	p.m.Lock()
 	p.RawData = nil
-	p.PreviousProfile, p.Profile = p.Profile, profile
-	p.m.Unlock()
-}
-
-func (p *RawProfile) Put(profile *bytes.Buffer) {
-	p.m.Lock()
-	p.RawData = nil
+	if cumulative {
+		p.PreviousProfile = p.Profile
+	}
 	p.Profile = profile
 	p.m.Unlock()
 }
@@ -60,12 +57,12 @@ func (p *RawProfile) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _ = io.Copy(ff, p.Profile)
+	_, _ = io.Copy(ff, bytes.NewReader(p.Profile))
 	if p.PreviousProfile != nil {
 		if ff, err = mw.CreateFormFile(formFieldPreviousProfile, formFilePreviousProfile); err != nil {
 			return nil, err
 		}
-		_, _ = io.Copy(ff, p.PreviousProfile)
+		_, _ = io.Copy(ff, bytes.NewReader(p.PreviousProfile))
 	}
 	if len(p.SampleTypeConfig) > 0 {
 		if ff, err = mw.CreateFormFile(formFieldSampleTypeConfig, formFileSampleTypeConfig); err != nil {
@@ -91,10 +88,10 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 				return err
 			}
 		} else {
-			p.Profile = bytes.NewBuffer(p.RawData)
+			p.Profile = p.RawData
 		}
 	}
-	if p.Profile == nil {
+	if len(p.Profile) == 0 {
 		return nil
 	}
 	if p.parser == nil {
@@ -109,13 +106,13 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 			SampleTypes: sampleTypes,
 		})
 		if p.PreviousProfile != nil {
-			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.PreviousProfile); err != nil {
+			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, bytes.NewReader(p.PreviousProfile)); err != nil {
 				return err
 			}
 		}
 	}
 
-	return p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.Profile)
+	return p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, bytes.NewReader(p.Profile))
 }
 
 func (p *RawProfile) loadPprofFromForm() error {
@@ -139,7 +136,7 @@ func (p *RawProfile) loadPprofFromForm() error {
 	return err
 }
 
-func formField(form *multipart.Form, name string) (r *bytes.Buffer, err error) {
+func formField(form *multipart.Form, name string) ([]byte, error) {
 	files, ok := form.File[name]
 	if !ok || len(files) == 0 {
 		return nil, nil
@@ -159,7 +156,7 @@ func formField(form *multipart.Form, name string) (r *bytes.Buffer, err error) {
 	if _, err = io.Copy(b, f); err != nil {
 		return nil, err
 	}
-	return b, nil
+	return b.Bytes(), nil
 }
 
 func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
@@ -168,5 +165,5 @@ func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeCo
 		return nil, err
 	}
 	var config map[string]*tree.SampleTypeConfig
-	return config, json.NewDecoder(r).Decode(&config)
+	return config, json.Unmarshal(r, &config)
 }

@@ -420,12 +420,7 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 		}
 	}
 
-	if sl.scraper.cumulative {
-		sl.scraper.profile.Push(buf)
-	} else {
-		sl.scraper.profile.Put(buf)
-	}
-
+	sl.scraper.profile.Push(buf.Bytes(), sl.scraper.cumulative)
 	return sl.scraper.ingester.Ingest(ctx, &ingestion.IngestInput{
 		Format:  ingestion.FormatPprof,
 		Profile: sl.scraper.profile,

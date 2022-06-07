@@ -2,20 +2,21 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
-	"github.com/pyroscope-io/pyroscope/pkg/inout"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
@@ -26,7 +27,6 @@ type ingestHandler struct {
 	ingester  ingestion.Ingester
 	onSuccess func(*ingestion.IngestInput)
 	httpUtils httputils.Utils
-	inout     *inout.InOut
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
@@ -43,7 +43,7 @@ func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*
 		ingester:  p,
 		onSuccess: onSuccess,
 		httpUtils: httpUtils,
-		inout:     inout.NewInOut(),
+		// inout:     inout.NewInOut(),
 	}
 }
 

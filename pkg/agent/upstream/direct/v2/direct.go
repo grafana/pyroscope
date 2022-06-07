@@ -1,29 +1,27 @@
 package direct
 
 import (
-	"bytes"
 	"context"
 	"runtime/debug"
 
 	"github.com/pyroscope-io/client/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
-	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 type Direct struct {
-	logger logrus.FieldLogger
-	parser *parser.Parser
+	logger   logrus.FieldLogger
+	ingester ingestion.Ingester
 }
 
-func New(logger logrus.FieldLogger, p *parser.Parser) *Direct {
+func New(logger logrus.FieldLogger, ingester ingestion.Ingester) *Direct {
 	return &Direct{
-		logger: logger,
-		parser: p,
+		logger:   logger,
+		ingester: ingester,
 	}
 }
 
@@ -47,14 +45,14 @@ func (u *Direct) Upload(j *upstream.UploadJob) {
 	}
 
 	profile := &pprof.RawProfile{
-		Profile:          bytes.NewBuffer(j.Profile),
+		Profile:          j.Profile,
 		SampleTypeConfig: tree.DefaultSampleTypeMapping,
 	}
 	if len(j.PrevProfile) > 0 {
-		profile.PreviousProfile = bytes.NewBuffer(j.PrevProfile)
+		profile.PreviousProfile = j.PrevProfile
 	}
 
-	err = u.parser.Ingest(context.TODO(), &ingestion.IngestInput{
+	err = u.ingester.Ingest(context.TODO(), &ingestion.IngestInput{
 		Format:  ingestion.FormatPprof,
 		Profile: profile,
 		Metadata: ingestion.Metadata{

@@ -8,8 +8,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/client/pyroscope"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct/v2"
-	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
@@ -22,11 +20,14 @@ import (
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
+	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
@@ -144,22 +145,21 @@ func newServerService(c *config.Server) (*serverService, error) {
 	if err != nil {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
-	//
-	//	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
-	//		ingestionQueueWorkers,
-	//		ingestionQueueSize)
-	//
-	//	ingestionParser := parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
-	//
-	//	if svc.config.RemoteWrite.Enabled {
-	//		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
-	//		parallel := remotewrite.NewParalellizer(svc.logger, ingestionParser, remoteWriter)
-	//	}
 
-	// TODO(eh-am): fix so that selfprofiling works with remote write
-	parser, ingestionParser := svc.createParser(metricsExporter)
+	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
+		ingestionQueueWorkers,
+		ingestionQueueSize)
 
-	svc.directUpstream = direct.New(svc.logger, ingestionParser)
+	var ingester ingestion.Ingester
+	ingester = parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+
+	// If remote write is available, let's write to both local storage and to the remote server
+	if svc.config.RemoteWrite.Enabled {
+		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
+		ingester = remotewrite.NewParallelizer(svc.logger, ingester, remoteWriter)
+	}
+
+	svc.directUpstream = direct.New(svc.logger, ingester)
 	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling, _ = pyroscope.NewSession(pyroscope.SessionConfig{
 			Upstream:       svc.directUpstream,
@@ -174,13 +174,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		ingestionParser,
+		ingester,
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration: svc.config,
 		Storage:       svc.storage,
-		Ingester:      ingestionParser,
+		Ingester:      ingester,
 		Notifier:      svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,
@@ -360,26 +360,4 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 	// Populate scrape configs.
 	c.ScrapeConfigs = s.ScrapeConfigs
 	return nil
-}
-
-// createParser creates a Parser (as in the interface, not an actual parser)
-// the only reason this exists is to abstract the creation
-// since its functionality may be affected by feature flags
-func (svc *serverService) createParser(metricsExporter *exporter.MetricsExporter) (server.Parser, server.Parser) {
-	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
-		ingestionQueueWorkers,
-		ingestionQueueSize)
-
-	ingestionParser := parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
-
-	// If remote write is available, let's write to both local storage and to the remote server
-	if svc.config.RemoteWrite.Enabled {
-		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
-		parallelizer := remotewrite.NewParalellizer(svc.logger, ingestionParser, remoteWriter)
-		//parallelizer := remotewrite.NewParalellizer(svc.logger, remoteWriter)
-
-		return parallelizer, ingestionParser
-	}
-
-	return ingestionParser, ingestionParser
 }
