@@ -359,7 +359,15 @@ type Database struct {
 type RemoteWrite struct {
 	Enabled bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
 
+	Targets []RemoteWriteTarget `yaml:"targets" desc:"list of remote targets" mapstructure:"targets"`
+
 	Address   string            `def:"" desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
+	AuthToken string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	Tags      map[string]string `name:"" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+}
+
+type RemoteWriteTarget struct {
+	Address   string            `def:"address" desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
 	AuthToken string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	Tags      map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 }

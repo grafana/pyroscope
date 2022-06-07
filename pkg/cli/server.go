@@ -151,10 +151,20 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	var ingester ingestion.Ingester
 	ingester = parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+
 	// If remote write is available, let's write to both local storage and to the remote server
 	if svc.config.RemoteWrite.Enabled {
-		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
-		ingester = remotewrite.NewParallelizer(svc.logger, ingester, remoteWriter)
+		if len(svc.config.RemoteWrite.Targets) <= 0 {
+			return nil, fmt.Errorf("remote write is enabled but no targets are set up.")
+		}
+
+		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
+		for i, t := range svc.config.RemoteWrite.Targets {
+			logrus.Debugf("Instantiating remote write client for target %s", t.Address)
+			remoteClients[i] = remotewrite.NewClient(logger, t)
+		}
+
+		ingester = remotewrite.NewParallelizer(svc.logger, remoteClients...)
 	}
 	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")

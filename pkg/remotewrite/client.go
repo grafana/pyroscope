@@ -26,11 +26,11 @@ var (
 
 type Client struct {
 	log    *logrus.Logger
-	config config.RemoteWrite
+	config config.RemoteWriteTarget
 	client *http.Client
 }
 
-func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
+func NewClient(logger *logrus.Logger, cfg config.RemoteWriteTarget) *Client {
 	client := &http.Client{
 		// TODO(eh-am): make timeout configurable
 		Timeout: time.Second * 15,
