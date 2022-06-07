@@ -1,23 +1,28 @@
-/* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */
+/* eslint-disable 
+jsx-a11y/click-events-have-key-events, 
+jsx-a11y/no-noninteractive-element-interactions, 
+css-modules/no-unused-class 
+*/
 import React from 'react';
 import styles from './Tooltip.module.scss';
 
-const Tooltip = ({
-  syncEnabled,
-  visible,
-}: {
-  syncEnabled: string | boolean;
+interface TooltipProps {
+  title: string;
   visible: boolean;
-}) => {
+  className?: string;
+  placement: 'top' | 'left' | 'bottom' | 'right';
+}
+
+const Tooltip = ({ title, visible, className, placement }: TooltipProps) => {
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className={`${visible ? styles.visible : ''} ${
-        syncEnabled ? styles.tooltipSyncEnabled : styles.tooltip
-      }`}
+      className={`${styles.tooltip} ${visible ? styles.visible : ''} ${
+        styles?.[placement]
+      } ${className || ''} `}
       role="tooltip"
     >
-      {syncEnabled ? 'Unsync search bars' : 'Sync search bars'}
+      {title}
     </div>
   );
 };

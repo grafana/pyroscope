@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-expressions, css-modules/no-unused-class */
+/* eslint-disable no-unused-expressions */
 import React, {
   useEffect,
   useMemo,
@@ -120,8 +120,13 @@ const SharedQueryInput = ({
             icon={faLink}
           />
           <Tooltip
+            placement="top"
             visible={tooltipVisible}
-            syncEnabled={sharedQuery.syncEnabled}
+            title={
+              sharedQuery.syncEnabled
+                ? 'Unsync search bars'
+                : 'Sync search bars'
+            }
           />
         </button>
       ) : null}
