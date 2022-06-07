@@ -1,46 +1,57 @@
-package direct
+package selfprofiling
 
 import (
 	"context"
 	"runtime/debug"
+	"time"
 
+	"github.com/pyroscope-io/client/pyroscope"
 	"github.com/pyroscope-io/client/upstream"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-type Direct struct {
-	logger   logrus.FieldLogger
+func NewSession(logger pyroscope.Logger, ingester ingestion.Ingester, appName string) *pyroscope.Session {
+	session, _ := pyroscope.NewSession(pyroscope.SessionConfig{
+		Upstream:       NewUpstream(logger, ingester),
+		AppName:        appName,
+		ProfilingTypes: pyroscope.DefaultProfileTypes,
+		SampleRate:     100,
+		UploadRate:     10 * time.Second,
+		Logger:         logger,
+	})
+	return session
+}
+
+type Upstream struct {
+	logger   pyroscope.Logger
 	ingester ingestion.Ingester
 }
 
-func New(logger logrus.FieldLogger, ingester ingestion.Ingester) *Direct {
-	return &Direct{
+func NewUpstream(logger pyroscope.Logger, ingester ingestion.Ingester) *Upstream {
+	return &Upstream{
 		logger:   logger,
 		ingester: ingester,
 	}
 }
 
-func (u *Direct) Upload(j *upstream.UploadJob) {
+func (u *Upstream) Upload(j *upstream.UploadJob) {
 	defer func() {
 		if r := recover(); r != nil {
-			logrus.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
+			u.logger.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
 		}
 	}()
 
 	key, err := segment.ParseKey(j.Name)
-	logger := u.logger.WithField("key", key)
 	if err != nil {
-		logger.Error("invalid key")
+		u.logger.Errorf("invalid key %q: %v", j.Name, err)
 		return
 	}
 
 	if len(j.Profile) == 0 {
-		logger.Warn("empty profile")
 		return
 	}
 
@@ -53,7 +64,6 @@ func (u *Direct) Upload(j *upstream.UploadJob) {
 	}
 
 	err = u.ingester.Ingest(context.TODO(), &ingestion.IngestInput{
-		Format:  ingestion.FormatPprof,
 		Profile: profile,
 		Metadata: ingestion.Metadata{
 			SpyName:   j.SpyName,
@@ -64,6 +74,6 @@ func (u *Direct) Upload(j *upstream.UploadJob) {
 	})
 
 	if err != nil {
-		logger.WithError(err).Error("failed to store a local profile")
+		u.logger.Errorf("failed to store a local profile: %v", err)
 	}
 }

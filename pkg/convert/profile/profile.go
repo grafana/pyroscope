@@ -1,10 +1,11 @@
-package convert
+package profile
 
 import (
 	"bytes"
 	"context"
 	"fmt"
 
+	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -18,7 +19,7 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
-func (p *RawProfile) ContentType() string { return "binary/octet-stream" }
+func (*RawProfile) ContentType() string { return "binary/octet-stream" }
 
 func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter storage.MetricsExporter, md ingestion.Metadata) error {
 	input := &storage.PutInput{
@@ -46,11 +47,11 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 	case ingestion.FormatTrie:
 		err = transporttrie.IterateRaw(r, make([]byte, 0, 256), cb)
 	case ingestion.FormatTree:
-		err = ParseTreeNoDict(r, cb)
+		err = convert.ParseTreeNoDict(r, cb)
 	case ingestion.FormatLines:
-		err = ParseIndividualLines(r, cb)
+		err = convert.ParseIndividualLines(r, cb)
 	case ingestion.FormatGroups:
-		err = ParseGroups(r, cb)
+		err = convert.ParseGroups(r, cb)
 	default:
 		return fmt.Errorf("unknown format %q", p.Format)
 	}

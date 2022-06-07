@@ -20,7 +20,6 @@ import (
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
@@ -31,6 +30,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
+	"github.com/pyroscope-io/pyroscope/pkg/selfprofiling"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
@@ -50,7 +50,6 @@ type serverService struct {
 	storage    *storage.Storage
 	// queue used to ingest data into the storage
 	ingestionQueue   *storage.IngestionQueue
-	directUpstream   *direct.Direct
 	analyticsService *analytics.Service
 	selfProfiling    *pyroscope.Session
 	debugReporter    *debug.Reporter
@@ -152,23 +151,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	var ingester ingestion.Ingester
 	ingester = parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
-
 	// If remote write is available, let's write to both local storage and to the remote server
 	if svc.config.RemoteWrite.Enabled {
 		remoteWriter := remotewrite.NewClient(svc.logger, svc.config.RemoteWrite)
 		ingester = remotewrite.NewParallelizer(svc.logger, ingester, remoteWriter)
 	}
-
-	svc.directUpstream = direct.New(svc.logger, ingester)
 	if !svc.config.NoSelfProfiling {
-		svc.selfProfiling, _ = pyroscope.NewSession(pyroscope.SessionConfig{
-			Upstream:       svc.directUpstream,
-			AppName:        "pyroscope.server",
-			ProfilingTypes: pyroscope.DefaultProfileTypes,
-			SampleRate:     100,
-			UploadRate:     10 * time.Second,
-			Logger:         logger,
-		})
+		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")
 	}
 
 	defaultMetricsRegistry := prometheus.DefaultRegisterer

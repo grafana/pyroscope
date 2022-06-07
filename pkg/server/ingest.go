@@ -12,9 +12,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/profile"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
@@ -146,7 +146,6 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		}
 
 	case format == "pprof":
-		input.Format = ingestion.FormatPprof
 		input.Profile = &pprof.RawProfile{RawData: b}
 	case strings.Contains(contentType, "multipart/form-data"):
 		input.Profile = &pprof.RawProfile{
@@ -156,7 +155,7 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 	}
 
 	if input.Profile == nil {
-		input.Profile = &convert.RawProfile{
+		input.Profile = &profile.RawProfile{
 			Format:  input.Format,
 			RawData: b,
 		}

@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/profile"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
@@ -75,7 +75,7 @@ var _ = Describe("TrafficShadower", func() {
 					AggregationType: metadata.SumAggregationType,
 				},
 
-				Profile: new(convert.RawProfile),
+				Profile: new(profile.RawProfile),
 				Format:  ingestion.FormatGroups,
 			}
 
@@ -116,7 +116,7 @@ var _ = Describe("TrafficShadower", func() {
 						AggregationType: metadata.SumAggregationType,
 					},
 
-					Profile: new(convert.RawProfile),
+					Profile: new(profile.RawProfile),
 				}
 
 				remoteHandler = func(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +153,7 @@ var _ = Describe("TrafficShadower", func() {
 						AggregationType: metadata.SumAggregationType,
 					},
 
-					Profile: new(convert.RawProfile),
+					Profile: new(profile.RawProfile),
 				}
 
 				remoteHandler = func(w http.ResponseWriter, r *http.Request) {
@@ -189,7 +189,7 @@ var _ = Describe("TrafficShadower", func() {
 							"__name__": "myapp",
 						}),
 					},
-					Profile: new(convert.RawProfile),
+					Profile: new(profile.RawProfile),
 				}
 
 				err := client.Ingest(context.TODO(), &in)
@@ -217,7 +217,7 @@ var _ = Describe("TrafficShadower", func() {
 						AggregationType: metadata.SumAggregationType,
 					},
 
-					Profile: new(convert.RawProfile),
+					Profile: new(profile.RawProfile),
 				}
 
 				err := client.Ingest(context.TODO(), &in)
@@ -251,7 +251,7 @@ var _ = Describe("TrafficShadower", func() {
 						AggregationType: metadata.SumAggregationType,
 					},
 
-					Profile: new(convert.RawProfile),
+					Profile: new(profile.RawProfile),
 				}
 
 				err := client.Ingest(context.TODO(), &in)

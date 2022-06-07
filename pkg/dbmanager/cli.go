@@ -10,10 +10,9 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/client/pyroscope"
+	"github.com/pyroscope-io/pyroscope/pkg/selfprofiling"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
@@ -70,19 +69,7 @@ func copyData(dbCfg *config.DbManager, stCfg *storage.Config) error {
 	e, _ := exporter.NewExporter(nil, nil)
 	logger := logrus.StandardLogger()
 	if dbCfg.EnableProfiling {
-		p := parser.New(logger, s, e)
-		upstream := direct.New(logger, p)
-		selfProfilingConfig := pyroscope.SessionConfig{
-			Upstream:       upstream,
-			Logger:         logger,
-			AppName:        "pyroscope.dbmanager",
-			ProfilingTypes: pyroscope.DefaultProfileTypes,
-			DisableGCRuns:  false,
-			SampleRate:     100,
-			UploadRate:     10 * time.Second,
-		}
-		session, _ := pyroscope.NewSession(selfProfilingConfig)
-		_ = session.Start()
+		_ = selfprofiling.NewSession(logger, parser.New(logger, s, e), "pyroscope.dbmanager").Start()
 	}
 
 	sk, err := segment.ParseKey(appName)
