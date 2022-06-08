@@ -72,6 +72,12 @@ func Test_ConnectPush(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+
+	require.NoError(
+		t,
+		profileStore.Close(),
+	)
+
 }
 
 func testProfile(t *testing.T) []byte {

@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/parca-dev/parca/pkg/parcacol"
 	"github.com/polarsignals/arcticdb"
@@ -22,9 +23,11 @@ import (
 )
 
 type ProfileStore struct {
-	logger    log.Logger
-	tracer    trace.Tracer
+	logger log.Logger
+	tracer trace.Tracer
+
 	metaStore metastore.ProfileMetaStore
+	col       *arcticdb.ColumnStore
 	table     *arcticdb.Table
 }
 
@@ -65,9 +68,26 @@ func New(logger log.Logger, reg prometheus.Registerer, tracerProvider trace.Trac
 	return &ProfileStore{
 		logger:    logger,
 		tracer:    tracerProvider.Tracer("profilestore"),
+		col:       col,
 		table:     table,
 		metaStore: metaStore,
 	}, nil
+}
+
+func (ps *ProfileStore) Close() error {
+	ps.table.Sync()
+
+	var result error
+
+	if err := ps.col.Close(); err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	if err := ps.metaStore.Close(); err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	return result
 }
 
 func (ps *ProfileStore) Ingest(ctx context.Context, req *connect.Request[pushv1.PushRequest]) error {
