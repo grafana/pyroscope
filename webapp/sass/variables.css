@@ -4,16 +4,15 @@
   --ps-neutral-5: #141414;
   --ps-neutral-7: #212124;
   --ps-neutral-8: #333333;
-  --ps-neutral-9: #272727; /* 272727 non-selected button background, highlighted button text (when buttons are green)  */
+  --ps-neutral-9: #272727; /* non-selected button background, highlighted button text (when buttons are green)  */
   --ps-neutral-10: #4d4d4d;
   --ps-neutral-11: #aaaaaa;
   --ps-neutral-12: #414141;
   --ps-neutral-14: #3b3b3b; /* table and dropdown background highlight */
-  --ps-neutral-15: #d8d8d8;
+  --ps-neutral-15: #d8d8d8; /* sidebar text and datepicker text */
   --ps-neutral-16: #ffffff4c;
   --ps-neutral-17: #ffffff08;
   --ps-neutral-18: #ffffff54;
-  --ps-neutral-19: #ffffffa8;
 
   --ps-accent-1-1: #1d49a1;
   --ps-accent-1-2: #216ba5;
@@ -58,5 +57,4 @@
   --ps-neutral-16: #0000004c;
   --ps-neutral-17: #00000008;
   --ps-neutral-18: #00000054;
-  --ps-neutral-19: #000000a8;
 }
