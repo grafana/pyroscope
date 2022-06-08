@@ -1,10 +1,6 @@
 .searchContainer {
   display: flex;
-}
-
-.searchContainer input {
-  flex: 1;
-  margin-right: 20px;
+  flex-direction: column;
 }
 
 .searchContainer button {

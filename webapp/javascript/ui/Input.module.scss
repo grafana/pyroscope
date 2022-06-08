@@ -6,7 +6,7 @@
   position: relative;
   border-radius: 4px;
   padding: 0.25em 0.375em;
-  border: 1px solid transparent;
+  border: 1px solid var(--ps-neutral-10);
 
   &[type='search'] {
     -webkit-appearance: textfield;
