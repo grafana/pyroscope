@@ -7,12 +7,13 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/parca-dev/parca/pkg/profilestore"
 	"github.com/prometheus/client_golang/prometheus"
 
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -37,12 +38,13 @@ type Ingester struct {
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
-	profileStore      *profilestore.ProfileColumnStore
+	profileStore      *profilestore.ProfileStore
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer, profileStore *profilestore.ProfileColumnStore) (*Ingester, error) {
+func New(cfg Config, logger log.Logger, reg prometheus.Registerer, profileStore *profilestore.ProfileStore) (*Ingester, error) {
 	i := &Ingester{
 		cfg:          cfg,
+		logger:       logger,
 		profileStore: profileStore,
 	}
 	var err error
@@ -91,7 +93,14 @@ func (i *Ingester) running(ctx context.Context) error {
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	return nil, nil
+	level.Debug(i.logger).Log("msg", "message received by ingester push", "request_headers: ", fmt.Sprintf("%+v", req.Header()))
+
+	if err := i.profileStore.Ingest(ctx, req); err != nil {
+		return nil, err
+	}
+
+	res := connect.NewResponse(&pushv1.PushResponse{})
+	return res, nil
 }
 
 func (i *Ingester) stopping(_ error) error {
