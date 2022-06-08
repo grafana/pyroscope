@@ -13,7 +13,6 @@ import (
 type Parallelizer struct {
 	log       *logrus.Logger
 	ingesters []ingestion.Ingester
-	wg        sync.WaitGroup
 }
 
 func NewParallelizer(log *logrus.Logger, ingesters ...ingestion.Ingester) *Parallelizer {
@@ -24,14 +23,15 @@ func NewParallelizer(log *logrus.Logger, ingesters ...ingestion.Ingester) *Paral
 }
 
 func (p *Parallelizer) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
-	p.wg.Add(len(p.ingesters))
+	var wg sync.WaitGroup
+	wg.Add(len(p.ingesters))
 
 	// TODO(eh-am): add timeouts for each individual call
 	for _, putter := range p.ingesters {
 		// https://golang.org/doc/faq#closures_and_goroutines
 		putter := putter
 		go func(in *ingestion.IngestInput) {
-			defer p.wg.Done()
+			defer wg.Done()
 			err := putter.Ingest(ctx, in)
 			if err != nil {
 				p.log.Error("Failed to parallelize put: ", err)
@@ -39,7 +39,7 @@ func (p *Parallelizer) Ingest(ctx context.Context, in *ingestion.IngestInput) er
 		}(in)
 	}
 
-	p.wg.Wait()
+	wg.Wait()
 
 	//	if err := g.Wait(); err != nil {
 	//		// swallow the error
