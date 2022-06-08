@@ -443,7 +443,6 @@ github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
 # github.com/google/pprof v0.0.0-20220520215854-d04f2422c8a1
 ## explicit; go 1.17
-github.com/google/pprof/profile
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
@@ -566,9 +565,7 @@ github.com/json-iterator/go
 # github.com/klauspost/compress v1.15.6
 ## explicit; go 1.16
 github.com/klauspost/compress
-github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
-github.com/klauspost/compress/gzip
 github.com/klauspost/compress/huff0
 github.com/klauspost/compress/internal/cpuinfo
 github.com/klauspost/compress/internal/snapref

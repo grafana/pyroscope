@@ -57,7 +57,7 @@ const (
 )
 
 func (f *Fire) initDistributor() (services.Service, error) {
-	d, err := distributor.New(f.Cfg.Distributor, f.logger)
+	d, err := distributor.New(f.Cfg.Distributor, f.ring, f.logger)
 	if err != nil {
 		return nil, err
 	}
