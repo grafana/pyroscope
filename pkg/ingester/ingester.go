@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/parca-dev/parca/pkg/profilestore"
 	"github.com/prometheus/client_golang/prometheus"
 
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
@@ -36,11 +37,13 @@ type Ingester struct {
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
+	profileStore      *profilestore.ProfileColumnStore
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*Ingester, error) {
+func New(cfg Config, logger log.Logger, reg prometheus.Registerer, profileStore *profilestore.ProfileColumnStore) (*Ingester, error) {
 	i := &Ingester{
-		cfg: cfg,
+		cfg:          cfg,
+		profileStore: profileStore,
 	}
 	var err error
 	i.lifecycler, err = ring.NewLifecycler(
