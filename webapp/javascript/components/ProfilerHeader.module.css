@@ -21,7 +21,7 @@
   margin-right: 8px;
 }
 .search:focus {
-  background: var(--ps-neutral-20);
+  background: var(--ps-neutral-2);
 }
 
 .search-small {
@@ -35,7 +35,7 @@
 .headerLogo {
   display: inline-block;
   text-decoration: none;
-  color: var(--ps-neutral-20);
+  color: var(--ps-neutral-2);
   font-size: 1.2em;
 }
 

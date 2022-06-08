@@ -24,7 +24,7 @@ body {
     Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 
   background-color: var(--ps-neutral-6);
-  color: var(--ps-neutral-20);
+  color: var(--ps-neutral-2);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -225,7 +225,7 @@ $pane-width: 6px;
     // flex-grow: 1;
   }
   a {
-    color: var(--ps-neutral-20);
+    color: var(--ps-neutral-2);
     text-decoration: none;
     &:hover span {
       text-decoration: underline;

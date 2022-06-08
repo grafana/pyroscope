@@ -21,7 +21,7 @@ $tdHeight: 25px;
   tbody tr:not(.rowSelected) {
     &:hover {
       cursor: pointer;
-      color: var(--ps-neutral-20);
+      color: var(--ps-neutral-2);
       background: $btn-hover-color;
     }
   }
