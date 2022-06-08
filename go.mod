@@ -160,3 +160,5 @@ require (
 )
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
+
+replace github.com/pyroscope-io/client => github.com/pyroscope-io/client v0.2.4-0.20220607180407-0ba26860ce5b

@@ -19,6 +19,7 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/sirupsen/logrus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
@@ -31,6 +32,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
@@ -38,8 +40,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 	"github.com/pyroscope-io/pyroscope/webapp"
-
-	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 )
 
 //revive:disable:max-public-structs TODO: we will refactor this later
@@ -54,7 +54,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
-	putter     storage.Putter
+	ingestser  ingestion.Ingester
 	log        *logrus.Logger
 	httpServer *http.Server
 	db         *gorm.DB
@@ -71,7 +71,6 @@ type Controller struct {
 
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
-	exporter        storage.MetricsExporter
 
 	// Adhoc mode
 	adhoc adhocserver.Server
@@ -87,18 +86,15 @@ type Controller struct {
 type Config struct {
 	Configuration *config.Server
 	*logrus.Logger
-	// TODO: Ideally, Storage should be decomposed.
+	// TODO(kolesnikovae): Ideally, Storage should be decomposed.
 	*storage.Storage
-	storage.Putter
+	ingestion.Ingester
 	*gorm.DB
 	Notifier
 
 	// The registerer is used for exposing server metrics.
-	MetricsRegisterer prometheus.Registerer
-
-	// Exported metrics registry and exported.
+	MetricsRegisterer       prometheus.Registerer
 	ExportedMetricsRegistry *prometheus.Registry
-	storage.MetricsExporter
 
 	Adhoc adhocserver.Server
 
@@ -139,8 +135,7 @@ func New(c Config) (*Controller, error) {
 		config:    c.Configuration,
 		log:       c.Logger,
 		storage:   c.Storage,
-		putter:    c.Putter,
-		exporter:  c.MetricsExporter,
+		ingestser: c.Ingester,
 		notifier:  c.Notifier,
 		stats:     make(map[string]int),
 		appStats:  mustNewHLL(),

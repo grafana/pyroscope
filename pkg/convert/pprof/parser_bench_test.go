@@ -7,17 +7,17 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-func Benchmark_ProfileReader(b *testing.B) {
+func Benchmark_ProfileParser(b *testing.B) {
 	p, err := readPprofFixture("testdata/heap.pb.gz")
 	if err != nil {
 		b.Error(err)
 	}
-	r := NewProfileReader().SampleTypeFilter(AllSampleTypes)
+	parser := NewParser(ParserConfig{})
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r.Reset()
-		if err = r.Read(p, readNoOp); err != nil {
+		parser.Reset()
+		if err = parser.iterate(p, readNoOp); err != nil {
 			b.Error(err)
 		}
 	}

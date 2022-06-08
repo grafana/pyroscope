@@ -1,148 +1,173 @@
 package server
 
 import (
-	"context"
+	"bytes"
 	"fmt"
-	"mime"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/parser"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/profile"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-type Parser interface {
-	Put(context.Context, *parser.PutInput) error
-}
-
 type ingestHandler struct {
 	log       *logrus.Logger
-	parser    Parser
-	onSuccess func(pi *parser.PutInput)
+	ingester  ingestion.Ingester
+	onSuccess func(*ingestion.IngestInput)
 	httpUtils httputils.Utils
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
-	p := parser.New(ctrl.log, ctrl.putter, ctrl.exporter)
-	return NewIngestHandler(ctrl.log, p, func(pi *parser.PutInput) {
+	return NewIngestHandler(ctrl.log, ctrl.ingestser, func(pi *ingestion.IngestInput) {
 		ctrl.StatsInc("ingest")
-		ctrl.StatsInc("ingest:" + pi.SpyName)
-		ctrl.appStats.Add(hashString(pi.Key.AppName()))
+		ctrl.StatsInc("ingest:" + pi.Metadata.SpyName)
+		ctrl.appStats.Add(hashString(pi.Metadata.Key.AppName()))
 	}, ctrl.httpUtils)
 }
 
-func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.PutInput), httpUtils httputils.Utils) http.Handler {
+func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils) http.Handler {
 	return ingestHandler{
 		log:       log,
-		parser:    p,
+		ingester:  p,
 		onSuccess: onSuccess,
 		httpUtils: httpUtils,
 	}
 }
 
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	pi, err := h.ingestParamsFromRequest(r)
+	input, err := h.ingestInputFromRequest(r)
 	if err != nil {
 		h.httpUtils.WriteError(r, w, http.StatusBadRequest, err, "invalid parameter")
 		return
 	}
 
-	err = h.parser.Put(r.Context(), pi)
+	err = h.ingester.Ingest(r.Context(), input)
 	switch {
 	case err == nil:
-		h.onSuccess(pi)
-	case storage.IsIngestionError(err):
+		h.onSuccess(input)
+	case ingestion.IsIngestionError(err):
 		h.httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "error happened while ingesting data")
 	default:
 		h.httpUtils.WriteError(r, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 	}
 }
 
-func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInput, error) {
+func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.IngestInput, error) {
 	var (
-		q   = r.URL.Query()
-		pi  parser.PutInput
-		err error
+		q     = r.URL.Query()
+		input ingestion.IngestInput
+		err   error
 	)
 
-	pi.Format = q.Get("format")
-	pi.ContentType = r.Header.Get("Content-Type")
-	pi.Body = r.Body
-	pi.MultipartBoundary = boundaryFromRequest(r)
-
-	pi.Key, err = segment.ParseKey(q.Get("name"))
+	input.Metadata.Key, err = segment.ParseKey(q.Get("name"))
 	if err != nil {
 		return nil, fmt.Errorf("name: %w", err)
 	}
 
 	if qt := q.Get("from"); qt != "" {
-		pi.StartTime = attime.Parse(qt)
+		input.Metadata.StartTime = attime.Parse(qt)
 	} else {
-		pi.StartTime = time.Now()
+		input.Metadata.StartTime = time.Now()
 	}
 
 	if qt := q.Get("until"); qt != "" {
-		pi.EndTime = attime.Parse(qt)
+		input.Metadata.EndTime = attime.Parse(qt)
 	} else {
-		pi.EndTime = time.Now()
+		input.Metadata.EndTime = time.Now()
 	}
 
 	if sr := q.Get("sampleRate"); sr != "" {
 		sampleRate, err := strconv.Atoi(sr)
 		if err != nil {
 			h.log.WithError(err).Errorf("invalid sample rate: %q", sr)
-			pi.SampleRate = types.DefaultSampleRate
+			input.Metadata.SampleRate = types.DefaultSampleRate
 		} else {
-			pi.SampleRate = uint32(sampleRate)
+			input.Metadata.SampleRate = uint32(sampleRate)
 		}
 	} else {
-		pi.SampleRate = types.DefaultSampleRate
+		input.Metadata.SampleRate = types.DefaultSampleRate
 	}
 
 	if sn := q.Get("spyName"); sn != "" {
 		// TODO: error handling
-		pi.SpyName = sn
+		input.Metadata.SpyName = sn
 	} else {
-		pi.SpyName = "unknown"
+		input.Metadata.SpyName = "unknown"
 	}
 
 	if u := q.Get("units"); u != "" {
 		// TODO(petethepig): add validation for these?
-		pi.Units = metadata.Units(u)
+		input.Metadata.Units = metadata.Units(u)
 	} else {
-		pi.Units = metadata.SamplesUnits
+		input.Metadata.Units = metadata.SamplesUnits
 	}
 
 	if at := q.Get("aggregationType"); at != "" {
 		// TODO(petethepig): add validation for these?
-		pi.AggregationType = metadata.AggregationType(at)
+		input.Metadata.AggregationType = metadata.AggregationType(at)
 	} else {
-		pi.AggregationType = metadata.SumAggregationType
+		input.Metadata.AggregationType = metadata.SumAggregationType
 	}
 
-	return &pi, nil
+	b, err := copyBody(r)
+	if err != nil {
+		return nil, err
+	}
+
+	format := q.Get("format")
+	contentType := r.Header.Get("Content-Type")
+	switch {
+	default:
+		input.Format = ingestion.FormatGroups
+	case format == "trie", contentType == "binary/octet-stream+trie":
+		input.Format = ingestion.FormatTrie
+	case format == "tree", contentType == "binary/octet-stream+tree":
+		input.Format = ingestion.FormatTree
+	case format == "lines":
+		input.Format = ingestion.FormatLines
+
+	case format == "jfr":
+		input.Format = ingestion.FormatJFR
+		input.Profile = &jfr.RawProfile{
+			FormDataContentType: contentType,
+			RawData:             b,
+		}
+
+	case format == "pprof":
+		input.Profile = &pprof.RawProfile{RawData: b}
+	case strings.Contains(contentType, "multipart/form-data"):
+		input.Profile = &pprof.RawProfile{
+			FormDataContentType: contentType,
+			RawData:             b,
+		}
+	}
+
+	if input.Profile == nil {
+		input.Profile = &profile.RawProfile{
+			Format:  input.Format,
+			RawData: b,
+		}
+	}
+
+	return &input, nil
 }
 
-func boundaryFromRequest(r *http.Request) string {
-	v := r.Header.Get("Content-Type")
-	if v == "" {
-		return ""
+func copyBody(r *http.Request) ([]byte, error) {
+	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
+	if _, err := io.Copy(buf, r.Body); err != nil {
+		return nil, err
 	}
-	d, params, err := mime.ParseMediaType(v)
-	if err != nil || !(d == "multipart/form-data") {
-		return ""
-	}
-	boundary, ok := params["boundary"]
-	if !ok {
-		return ""
-	}
-	return boundary
+	return buf.Bytes(), nil
 }
