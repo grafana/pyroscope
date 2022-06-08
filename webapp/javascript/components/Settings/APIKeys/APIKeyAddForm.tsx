@@ -118,6 +118,7 @@ function APIKeyAddForm() {
               name="ttlSeconds"
               value={form.ttlSeconds}
               onChange={handleFormChange}
+              type="number"
             />
             <div>
               <Button icon={faCheck} type="submit" kind="secondary">

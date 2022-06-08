@@ -5,9 +5,9 @@ import styles from './Input.module.scss';
 interface InputProps {
   testId?: string;
   className?: string;
-  type: 'search' | 'text' | 'password';
+  type: 'search' | 'text' | 'password' | 'email' | 'number';
   name: string;
-  placeholder: string;
+  placeholder?: string;
   minLength?: number;
   debounceTimeout?: number;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;

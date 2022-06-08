@@ -6,8 +6,8 @@ interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   className?: string;
   name: string;
-  placeholder: string;
-  type: 'text' | 'password';
+  placeholder?: string;
+  type: 'text' | 'password' | 'email' | 'number';
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   id?: string;
