@@ -131,11 +131,12 @@ func (f *Fire) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All:         {Agent, Ingester, Distributor},
-		Distributor: {Ring, Server},
-		Agent:       {Server},
-		Ingester:    {Server, MemberlistKV},
-		Ring:        {MemberlistKV},
+		All:          {Agent, Ingester, Distributor},
+		Distributor:  {Ring, Server},
+		Agent:        {Server},
+		Ingester:     {Server, MemberlistKV},
+		Ring:         {Server, MemberlistKV},
+		MemberlistKV: {Server},
 
 		// Store:                    {Overrides, IndexGatewayRing},
 		// Querier:                  {Store, Ring, Server, IngesterQuerier, TenantConfigs, UsageReport},
