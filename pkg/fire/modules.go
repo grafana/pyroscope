@@ -12,10 +12,6 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 
-	"github.com/parca-dev/parca/pkg/metastore"
-	"github.com/parca-dev/parca/pkg/parcacol"
-	"github.com/parca-dev/parca/pkg/profilestore"
-	"github.com/polarsignals/arcticdb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/thanos-io/thanos/pkg/discovery/dns"
@@ -29,6 +25,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
+	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -124,46 +121,15 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 }
 
 func (f *Fire) initProfileStore() (services.Service, error) {
-	var (
-		granuleSize         = 8 * 1024
-		storageActiveMemory = int64(512 * 1024 * 1024)
-	)
-
-	// initialize metastore
-	metaStore := metastore.NewBadgerMetastore(
+	profileStore, err := profilestore.New(
 		f.logger,
 		f.reg,
-		f.tracerProvider.Tracer("badgerinmemory"),
-		metastore.NewRandomUUIDGenerator(),
+		f.tracerProvider,
 	)
-
-	col := arcticdb.New(
-		f.reg,
-		granuleSize,
-		storageActiveMemory,
-	)
-
-	colDB, err := col.DB("fire")
 	if err != nil {
-		level.Error(f.logger).Log("msg", "failed to load database", "err", err)
 		return nil, err
 	}
-
-	table, err := colDB.Table("stacktraces", arcticdb.NewTableConfig(
-		parcacol.Schema(),
-	), f.logger)
-	if err != nil {
-		level.Error(f.logger).Log("msg", "create table", "err", err)
-		return nil, err
-	}
-
-	f.profileStore = profilestore.NewProfileColumnStore(
-		f.logger,
-		f.tracerProvider.Tracer("profilestore"),
-		metaStore,
-		table,
-		false, // disable debug
-	)
+	f.profileStore = profileStore
 
 	return nil, nil
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/dskit/modules"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/parca-dev/parca/pkg/profilestore"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/weaveworks/common/logging"
 	"github.com/weaveworks/common/middleware"
@@ -30,6 +29,7 @@ import (
 	"github.com/grafana/fire/pkg/cfg"
 	"github.com/grafana/fire/pkg/distributor"
 	"github.com/grafana/fire/pkg/ingester"
+	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -106,7 +106,7 @@ type Fire struct {
 	SignalHandler      *signals.Handler
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
-	profileStore       *profilestore.ProfileColumnStore
+	profileStore       *profilestore.ProfileStore
 }
 
 func New(cfg Config) (*Fire, error) {
