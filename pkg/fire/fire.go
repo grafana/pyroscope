@@ -135,6 +135,7 @@ func (f *Fire) setupModuleManager() error {
 		Distributor: {Ring, Server},
 		Agent:       {Server},
 		Ingester:    {Server, MemberlistKV},
+		Ring:        {MemberlistKV},
 
 		// Store:                    {Overrides, IndexGatewayRing},
 		// Querier:                  {Store, Ring, Server, IngesterQuerier, TenantConfigs, UsageReport},

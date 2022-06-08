@@ -19,7 +19,7 @@ import (
 
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
-	d, err := New(Config{}, log.NewLogfmtLogger(os.Stdout))
+	d, err := New(Config{}, nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherHandler(d))
 	s := httptest.NewServer(mux)
