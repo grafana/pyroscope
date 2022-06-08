@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
@@ -26,14 +25,13 @@ var (
 
 type Client struct {
 	log    *logrus.Logger
-	config config.RemoteWrite
+	config config.RemoteWriteTarget
 	client *http.Client
 }
 
-func NewClient(logger *logrus.Logger, cfg config.RemoteWrite) *Client {
+func NewClient(logger *logrus.Logger, cfg config.RemoteWriteTarget) *Client {
 	client := &http.Client{
-		// TODO(eh-am): make timeout configurable
-		Timeout: time.Second * 15,
+		Timeout: cfg.Timeout,
 	}
 
 	return &Client{
