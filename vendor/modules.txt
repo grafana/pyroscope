@@ -58,6 +58,8 @@ github.com/Azure/go-autorest/logger
 # github.com/Azure/go-autorest/tracing v0.6.0
 ## explicit; go 1.12
 github.com/Azure/go-autorest/tracing
+# github.com/HdrHistogram/hdrhistogram-go v1.1.2
+## explicit; go 1.14
 # github.com/Microsoft/go-winio v0.5.1
 ## explicit; go 1.12
 github.com/Microsoft/go-winio
@@ -251,6 +253,9 @@ github.com/coreos/pkg/capnslog
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
+# github.com/dennwc/varint v1.0.0
+## explicit; go 1.12
+github.com/dennwc/varint
 # github.com/dgraph-io/badger/v3 v3.2103.2
 ## explicit; go 1.12
 github.com/dgraph-io/badger/v3
@@ -656,8 +661,8 @@ github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opentracing-contrib/go-grpc v0.0.0-20210225150812-73cb765af46e
 ## explicit; go 1.11
 github.com/opentracing-contrib/go-grpc
-# github.com/opentracing-contrib/go-stdlib v0.0.0-20190519235532-cf7a6c988dc9
-## explicit
+# github.com/opentracing-contrib/go-stdlib v1.0.0
+## explicit; go 1.14
 github.com/opentracing-contrib/go-stdlib/nethttp
 # github.com/opentracing/opentracing-go v1.2.0
 ## explicit; go 1.14
@@ -693,6 +698,8 @@ github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promauto
 github.com/prometheus/client_golang/prometheus/promhttp
 github.com/prometheus/client_golang/prometheus/push
+github.com/prometheus/client_golang/prometheus/testutil
+github.com/prometheus/client_golang/prometheus/testutil/promlint
 # github.com/prometheus/client_model v0.2.0
 ## explicit; go 1.9
 github.com/prometheus/client_model/go
@@ -738,11 +745,21 @@ github.com/prometheus/prometheus/discovery/triton
 github.com/prometheus/prometheus/discovery/uyuni
 github.com/prometheus/prometheus/discovery/xds
 github.com/prometheus/prometheus/discovery/zookeeper
+github.com/prometheus/prometheus/model/exemplar
 github.com/prometheus/prometheus/model/labels
 github.com/prometheus/prometheus/model/relabel
+github.com/prometheus/prometheus/storage
+github.com/prometheus/prometheus/tsdb/chunkenc
+github.com/prometheus/prometheus/tsdb/chunks
+github.com/prometheus/prometheus/tsdb/encoding
+github.com/prometheus/prometheus/tsdb/errors
+github.com/prometheus/prometheus/tsdb/fileutil
+github.com/prometheus/prometheus/tsdb/index
+github.com/prometheus/prometheus/tsdb/tsdbutil
 github.com/prometheus/prometheus/util/osutil
 github.com/prometheus/prometheus/util/pool
 github.com/prometheus/prometheus/util/strutil
+github.com/prometheus/prometheus/util/testutil
 github.com/prometheus/prometheus/util/treecache
 # github.com/rogpeppe/go-internal v1.8.1-0.20210923151022-86f73c517451
 ## explicit; go 1.16
@@ -798,7 +815,15 @@ github.com/thanos-io/objstore/runutil
 github.com/thanos-io/objstore/s3
 github.com/thanos-io/objstore/swift
 github.com/thanos-io/objstore/testutil
-# github.com/uber/jaeger-client-go v2.28.0+incompatible
+# github.com/thanos-io/thanos v0.26.0
+## explicit; go 1.17
+github.com/thanos-io/thanos/pkg/discovery/dns
+github.com/thanos-io/thanos/pkg/discovery/dns/godns
+github.com/thanos-io/thanos/pkg/discovery/dns/miekgdns
+github.com/thanos-io/thanos/pkg/errutil
+github.com/thanos-io/thanos/pkg/extprom
+github.com/thanos-io/thanos/pkg/testutil
+# github.com/uber/jaeger-client-go v2.30.0+incompatible
 ## explicit
 github.com/uber/jaeger-client-go
 github.com/uber/jaeger-client-go/config
@@ -818,7 +843,7 @@ github.com/uber/jaeger-client-go/thrift-gen/sampling
 github.com/uber/jaeger-client-go/thrift-gen/zipkincore
 github.com/uber/jaeger-client-go/transport
 github.com/uber/jaeger-client-go/utils
-# github.com/uber/jaeger-lib v2.2.0+incompatible
+# github.com/uber/jaeger-lib v2.4.1+incompatible
 ## explicit
 github.com/uber/jaeger-lib/metrics
 github.com/uber/jaeger-lib/metrics/prometheus
@@ -890,6 +915,10 @@ go.opentelemetry.io/otel/trace
 # go.uber.org/atomic v1.9.0
 ## explicit; go 1.13
 go.uber.org/atomic
+# go.uber.org/goleak v1.1.12
+## explicit; go 1.13
+go.uber.org/goleak
+go.uber.org/goleak/internal/stack
 # go.uber.org/multierr v1.6.0
 ## explicit; go 1.12
 go.uber.org/multierr

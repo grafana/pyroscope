@@ -19,11 +19,9 @@ GOFMT=gofmt
 FMT_LOG=fmt.log
 LINT_LOG=lint.log
 
-THRIFT_VER=0.9.3
-THRIFT_IMG=thrift:$(THRIFT_VER)
-THRIFT=docker run -v "${PWD}:/data" $(THRIFT_IMG) thrift
-THRIFT_GO_ARGS=thrift_import="github.com/apache/thrift/lib/go/thrift"
-THRIFT_GEN_DIR=thrift-gen
+THRIFT_VER=0.14
+THRIFT_IMG=jaegertracing/thrift:$(THRIFT_VER)
+THRIFT=docker run -v "${PWD}:/data" -u ${shell id -u}:${shell id -g} $(THRIFT_IMG) thrift
 
 PASS=$(shell printf "\033[32mPASS\033[0m")
 FAIL=$(shell printf "\033[31mFAIL\033[0m")
@@ -47,15 +45,30 @@ fmt:
 	./scripts/updateLicenses.sh
 
 .PHONY: lint
-lint:
+lint: vet golint lint-fmt lint-thrift-testing
+
+.PHONY: vet
+vet:
 	$(GOVET) $(PACKAGES)
+
+.PHONY: golint
+golint:
 	@cat /dev/null > $(LINT_LOG)
 	@$(foreach pkg, $(PACKAGES), $(GOLINT) $(pkg) | grep -v crossdock/thrift >> $(LINT_LOG) || true;)
 	@[ ! -s "$(LINT_LOG)" ] || (echo "Lint Failures" | cat - $(LINT_LOG) && false)
+
+.PHONY: lint-fmt
+lint-fmt:
 	@$(GOFMT) -e -s -l $(ALL_SRC) > $(FMT_LOG)
 	./scripts/updateLicenses.sh >> $(FMT_LOG)
 	@[ ! -s "$(FMT_LOG)" ] || (echo "go fmt or license check failures, run 'make fmt'" | cat - $(FMT_LOG) && false)
 
+# make sure thrift/ module does not import "testing"
+.PHONY: lint-thrift-testing
+lint-thrift-testing:
+	@cat /dev/null > $(LINT_LOG)
+	@(grep -rn '"testing"' thrift | grep -v README.md > $(LINT_LOG)) || true
+	@[ ! -s "$(LINT_LOG)" ] || (echo '"thrift" module must not import "testing", see issue #585' | cat - $(LINT_LOG) && false)
 
 .PHONY: install
 install:
@@ -90,19 +103,7 @@ thrift: idl-submodule thrift-compile
 # TODO at the moment we're not generating tchan_*.go files
 .PHONY: thrift-compile
 thrift-compile: thrift-image
-	$(THRIFT) -o /data --gen go:$(THRIFT_GO_ARGS) --out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/agent.thrift
-	$(THRIFT) -o /data --gen go:$(THRIFT_GO_ARGS) --out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/sampling.thrift
-	$(THRIFT) -o /data --gen go:$(THRIFT_GO_ARGS) --out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/jaeger.thrift
-	$(THRIFT) -o /data --gen go:$(THRIFT_GO_ARGS) --out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/zipkincore.thrift
-	$(THRIFT) -o /data --gen go:$(THRIFT_GO_ARGS) --out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/baggage.thrift
-	$(THRIFT) -o /data --gen go:$(THRIFT_GO_ARGS) --out /data/crossdock/thrift/ /data/idl/thrift/crossdock/tracetest.thrift
-	sed -i '' 's|"zipkincore"|"$(PROJECT_ROOT)/thrift-gen/zipkincore"|g' $(THRIFT_GEN_DIR)/agent/*.go
-	sed -i '' 's|"jaeger"|"$(PROJECT_ROOT)/thrift-gen/jaeger"|g' $(THRIFT_GEN_DIR)/agent/*.go
-	sed -i '' 's|"github.com/apache/thrift/lib/go/thrift"|"github.com/uber/jaeger-client-go/thrift"|g' \
-		$(THRIFT_GEN_DIR)/*/*.go crossdock/thrift/tracetest/*.go
-	rm -rf thrift-gen/*/*-remote
-	rm -rf crossdock/thrift/*/*-remote
-	rm -rf thrift-gen/jaeger/collector.go
+	docker run -v "${PWD}:/data" -u ${shell id -u}:${shell id -g} $(THRIFT_IMG) /data/scripts/gen-thrift.sh
 
 .PHONY: idl-submodule
 idl-submodule:

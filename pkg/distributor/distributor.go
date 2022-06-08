@@ -64,7 +64,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			if err != nil {
 				return nil, err
 			}
-			level.Debug(d.logger).Log("msg", "profile received", "profile: ", p)
+			level.Debug(d.logger).Log("msg", "profile received", "profile: ", p.DefaultSampleType)
 		}
 	}
 

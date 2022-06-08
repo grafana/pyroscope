@@ -7,9 +7,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/kv/codec"
+	"github.com/grafana/dskit/kv/memberlist"
+	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
+	"github.com/thanos-io/thanos/pkg/discovery/dns"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/user"
 	"golang.org/x/net/http2"
@@ -17,23 +21,26 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
+	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/util"
 )
 
 // The various modules that make up Fire.
 const (
-	All         string = "all"
-	Agent       string = "agent"
-	Distributor string = "distributor"
-	Server      string = "server"
+	All          string = "all"
+	Agent        string = "agent"
+	Distributor  string = "distributor"
+	Server       string = "server"
+	Ring         string = "ring"
+	Ingester     string = "ingester"
+	MemberlistKV string = "memberlist-kv"
 
-	// Ring                     string = "ring"
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
 	// OverridesExporter        string = "overrides-exporter"
 	// TenantConfigs            string = "tenant-configs"
-	// Ingester                 string = "ingester"
 	// Querier                  string = "querier"
 	// IngesterQuerier          string = "ingester-querier"
 	// QueryFrontend            string = "query-frontend"
@@ -42,7 +49,6 @@ const (
 	// Ruler                    string = "ruler"
 	// Store                    string = "store"
 	// TableManager             string = "table-manager"
-	// MemberlistKV             string = "memberlist-kv"
 	// Compactor                string = "compactor"
 	// IndexGateway             string = "index-gateway"
 	// IndexGatewayRing         string = "index-gateway-ring"
@@ -68,8 +74,54 @@ func (f *Fire) initAgent() (services.Service, error) {
 	return a, nil
 }
 
+func (f *Fire) initMemberlistKV() (services.Service, error) {
+	reg := prometheus.DefaultRegisterer
+
+	f.Cfg.MemberlistKV.MetricsRegisterer = reg
+	f.Cfg.MemberlistKV.Codecs = []codec.Codec{
+		ring.GetCodec(),
+	}
+
+	dnsProviderReg := prometheus.WrapRegistererWithPrefix(
+		"fire_",
+		prometheus.WrapRegistererWith(
+			prometheus.Labels{"name": "memberlist"},
+			reg,
+		),
+	)
+	dnsProvider := dns.NewProvider(f.logger, dnsProviderReg, dns.GolangResolverType)
+
+	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, reg)
+
+	f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+
+	return f.MemberlistKV, nil
+}
+
+func (f *Fire) initRing() (_ services.Service, err error) {
+	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("fire_", prometheus.DefaultRegisterer))
+	if err != nil {
+		return
+	}
+	f.Server.HTTP.Path("/ring").Methods("GET", "POST").Handler(f.ring)
+	return f.ring, nil
+}
+
+func (f *Fire) initIngester() (_ services.Service, err error) {
+	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.GRPCListenPort
+
+	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, prometheus.DefaultRegisterer)
+	if err != nil {
+		return
+	}
+
+	prefix, handler := ingestv1connect.NewIngesterHandler(ingester)
+	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
+	return ingester, nil
+}
+
 func (f *Fire) initServer() (services.Service, error) {
-	prometheus.MustRegister(version.NewCollector("loki"))
+	prometheus.MustRegister(version.NewCollector("fire"))
 	DisableSignalHandling(&f.Cfg.Server)
 	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
