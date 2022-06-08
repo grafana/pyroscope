@@ -22,8 +22,6 @@ scrape-configs:
 
 remote-write:
   enabled: true
-  targets:
-    - address: https://pyroscope.io
 
 auth:
   signup-default-role: admin

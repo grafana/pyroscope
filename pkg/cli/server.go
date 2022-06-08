@@ -164,7 +164,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 
 		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
-		for i, t := range svc.config.RemoteWrite.Targets {
+		i := 0
+		for _, t := range svc.config.RemoteWrite.Targets {
 			logrus.Debugf("Instantiating remote write client for target %s", t.Address)
 			cfg := config.RemoteWriteTarget{
 				Address:   t.Address,
@@ -172,6 +173,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 				Timeout:   t.Timeout,
 			}
 			remoteClients[i] = remotewrite.NewClient(logger, cfg)
+			i++
 		}
 
 		ingester = remotewrite.NewParallelizer(svc.logger, remoteClients...)
@@ -383,7 +385,7 @@ func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
 
 	type cfg struct {
 		RemoteWrite struct {
-			Targets []config.RemoteWriteTarget `yaml:"targets" mapstructure:"-"`
+			Targets map[string]config.RemoteWriteTarget `yaml:"targets" mapstructure:"-"`
 		} `yaml:"remote-write"`
 	}
 
