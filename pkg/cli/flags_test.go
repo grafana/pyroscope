@@ -296,11 +296,6 @@ var _ = Describe("flags", func() {
 
 					RemoteWrite: config.RemoteWrite{
 						Enabled: true,
-						Targets: []config.RemoteWriteTarget{
-							{
-								Address: "https://pyroscope.io",
-							},
-						},
 					},
 
 					ScrapeConfigs: []*scrape.Config{

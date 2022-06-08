@@ -14,6 +14,7 @@ import (
 
 	// revive:disable:blank-imports register discoverer
 	"github.com/pyroscope-io/pyroscope/pkg/baseurl"
+	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
@@ -26,7 +27,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
-	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
@@ -154,6 +154,11 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	// If remote write is available, let's write to both local storage and to the remote server
 	if svc.config.RemoteWrite.Enabled {
+		err = loadRemoteWriteTargetConfigsFromFile(svc.config)
+		if err != nil {
+			return nil, err
+		}
+
 		if len(svc.config.RemoteWrite.Targets) <= 0 {
 			return nil, fmt.Errorf("remote write is enabled but no targets are set up")
 		}
@@ -161,7 +166,12 @@ func newServerService(c *config.Server) (*serverService, error) {
 		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
 		for i, t := range svc.config.RemoteWrite.Targets {
 			logrus.Debugf("Instantiating remote write client for target %s", t.Address)
-			remoteClients[i] = remotewrite.NewClient(logger, t)
+			cfg := config.RemoteWriteTarget{
+				Address:   t.Address,
+				AuthToken: t.AuthToken,
+				Timeout:   t.Timeout,
+			}
+			remoteClients[i] = remotewrite.NewClient(logger, cfg)
 		}
 
 		ingester = remotewrite.NewParallelizer(svc.logger, remoteClients...)
@@ -358,5 +368,30 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 	}
 	// Populate scrape configs.
 	c.ScrapeConfigs = s.ScrapeConfigs
+	return nil
+}
+
+func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
+	b, err := os.ReadFile(c.Config)
+	switch {
+	case err == nil:
+	case os.IsNotExist(err):
+		return nil
+	default:
+		return err
+	}
+
+	type cfg struct {
+		RemoteWrite struct {
+			Targets []config.RemoteWriteTarget `yaml:"targets" mapstructure:"-"`
+		} `yaml:"remote-write"`
+	}
+
+	var s cfg
+	if err = yaml.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	c.RemoteWrite.Targets = s.RemoteWrite.Targets
 	return nil
 }
