@@ -50,8 +50,8 @@ $border-radius: 4px;
     background-color: var(--ps-accent-2-1);
   }
   &:disabled {
-    border-color: var(--ps-accent-2-4);
-    background-color: var(--ps-accent-2-4);
+    border-color: var(--ps-accent-2-1);
+    background-color: var(--ps-accent-2-1);
     pointer-events: none;
   }
 }
