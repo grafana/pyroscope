@@ -33,7 +33,7 @@ export async function renderSingle(
   const parsed = FlamebearerProfileSchema.merge(
     z.object({ timeline: TimelineSchema })
   )
-    .merge(z.object({ telemetry: z.object({}).passthrough() }))
+    .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
     .safeParse(response.value);
 
   if (parsed.success) {
