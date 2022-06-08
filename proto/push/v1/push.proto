@@ -8,6 +8,10 @@ service Pusher {
   rpc Push(PushRequest) returns (PushResponse) {}
 }
 
+service Ingester {
+  rpc Push(PushRequest) returns (PushResponse) {}
+}
+
 message PushResponse {}
 
 // WriteRawRequest writes a pprof profile
