@@ -29,6 +29,7 @@ services:
       - '4040:4040'
     command:
       - 'server'
+      - '-no-self-profiling'
 
   load-generator:
     build:

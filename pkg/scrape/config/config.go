@@ -23,10 +23,10 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	profile "github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
