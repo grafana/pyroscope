@@ -10,8 +10,7 @@
   --ps-neutral-12: #414141;
   --ps-neutral-14: #3b3b3b; /* table and dropdown background highlight */
   --ps-neutral-15: #d8d8d8; /* sidebar text and datepicker text */
-  --ps-neutral-17: #ffffff08;
-  --ps-neutral-18: #ffffff54;
+  --ps-neutral-17: #ffffff08; /* lighter background for table */
 
   --ps-accent-1-1: #1d49a1;
   --ps-accent-1-2: #216ba5;
@@ -54,5 +53,4 @@
   --ps-neutral-14: #c4c4c4;
   --ps-neutral-15: #272727;
   --ps-neutral-17: #00000008;
-  --ps-neutral-18: #00000054;
 }
