@@ -6,8 +6,6 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,10 +17,10 @@ type IngestionQueue struct {
 	queue chan *IngestInput
 	stop  chan struct{}
 
-	discardedTotal prometheus.Counter
+	//	discardedTotal prometheus.Counter
 }
 
-func NewIngestionQueue(logger logrus.FieldLogger, ingester Ingester, r prometheus.Registerer, queueWorkers, queueSize int) *IngestionQueue {
+func NewIngestionQueue(logger logrus.FieldLogger, ingester Ingester, queueWorkers, queueSize int) *IngestionQueue {
 	q := IngestionQueue{
 		logger:   logger,
 		ingester: ingester,
@@ -30,10 +28,10 @@ func NewIngestionQueue(logger logrus.FieldLogger, ingester Ingester, r prometheu
 		stop:     make(chan struct{}),
 
 		// TODO(eh-am)
-		discardedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_ingestion_queue_discarded_total",
-			Help: "number of ingestion requests discarded",
-		}),
+		//		discardedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
+		//			Name: "pyroscope_ingestion_queue_discarded_total",
+		//			Help: "number of ingestion requests discarded",
+		//		}),
 	}
 
 	q.wg.Add(queueWorkers)
@@ -59,7 +57,7 @@ func (s *IngestionQueue) Put(ctx context.Context, input *IngestInput) error {
 	default:
 		// Drop data if the queue is full.
 	}
-	s.discardedTotal.Inc()
+	//	s.discardedTotal.Inc()
 	return nil
 }
 
