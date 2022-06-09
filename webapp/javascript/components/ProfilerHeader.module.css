@@ -16,7 +16,7 @@
 
 .search {
   background: rgba(255, 255, 255, 0.8);
-  color: var(--ps-neutral-8);
+  color: var(--ps-neutral-14);
   transition: background-color ease-out 0.1s;
   margin-right: 8px;
 }
