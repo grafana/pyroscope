@@ -179,10 +179,3 @@ tt {
     }
   }
 }
-
-// TODO(eh-am): use ui/Input
-input {
-  @include outline;
-  border-radius: 4px;
-  border: 1px solid $btn-border-color;
-}

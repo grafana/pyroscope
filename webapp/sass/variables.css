@@ -45,6 +45,11 @@
   --ps-accent-3-10: #d1283980;
 
   --ps-immutable-1: #e6e6e6;
+  --ps-immutable-2: rgba(235, 123, 24, 1);
+  --ps-immutable-3: #ffffff;
+  --ps-immutable-4: #333333;
+  --ps-immutable-5: rgba(255, 255, 255, 0.8);
+  --ps-immutable-6: rgb(105, 105, 105);
 }
 
 [data-theme='light'],
