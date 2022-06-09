@@ -1,4 +1,4 @@
-package remotewrite_test
+package ingestion
 
 import (
 	"context"
