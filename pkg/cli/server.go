@@ -176,7 +176,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 			i++
 		}
 
-		ingester = remotewrite.NewParallelizer(svc.logger, remoteClients...)
+		ingesters := append([]ingestion.Ingester{ingester}, remoteClients...)
+		ingester = remotewrite.NewParallelizer(svc.logger, ingesters...)
 	}
 	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")
