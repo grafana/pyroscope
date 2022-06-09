@@ -206,7 +206,7 @@ func (p *Parser) readTrees(x *tree.Profile, c labelsCache, f tree.Finder) {
 			if v == 0 {
 				continue
 			}
-			// If the sample has ProfileID labels this an exemplar.
+			// If the sample has ProfileID label, it belongs to an exemplar.
 			if j := labelIndex(x, s.Label, segment.ProfileIDLabelName); j >= 0 {
 				// Regardless of whether we should skip exemplars or not, the value
 				// should be appended to the exemplar baseline profile (w/o ProfileID label).
