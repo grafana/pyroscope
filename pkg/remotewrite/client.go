@@ -24,12 +24,12 @@ var (
 )
 
 type Client struct {
-	log    *logrus.Logger
+	log    logrus.FieldLogger
 	config config.RemoteWriteTarget
 	client *http.Client
 }
 
-func NewClient(logger *logrus.Logger, cfg config.RemoteWriteTarget) *Client {
+func NewClient(logger logrus.FieldLogger, cfg config.RemoteWriteTarget) *Client {
 	client := &http.Client{
 		Timeout: cfg.Timeout,
 	}

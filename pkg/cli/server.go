@@ -166,13 +166,24 @@ func newServerService(c *config.Server) (*serverService, error) {
 		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
 		i := 0
 		for _, t := range svc.config.RemoteWrite.Targets {
-			logrus.Debugf("Instantiating remote write client for target %s", t.Address)
+			targetLogger := logger.WithField("remote_target", t.Address)
+
+			targetLogger.Debugf("Instantiating remote write client for target %s", t.Address)
 			cfg := config.RemoteWriteTarget{
 				Address:   t.Address,
 				AuthToken: t.AuthToken,
 				Timeout:   t.Timeout,
 			}
-			remoteClients[i] = remotewrite.NewClient(logger, cfg)
+
+			remoteClient := remotewrite.NewClient(targetLogger, cfg)
+			q := ingestion.NewIngestionQueue(
+				targetLogger,
+				remoteClient,
+				t.QueueWorkers,
+				t.QueueSize,
+			)
+
+			remoteClients[i] = q
 			i++
 		}
 

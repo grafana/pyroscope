@@ -47,7 +47,7 @@ func (s *IngestionQueue) Stop() {
 	s.wg.Wait()
 }
 
-func (s *IngestionQueue) Put(ctx context.Context, input *IngestInput) error {
+func (s *IngestionQueue) Ingest(ctx context.Context, input *IngestInput) error {
 	select {
 	case <-ctx.Done():
 	case <-s.stop:
