@@ -15,30 +15,33 @@ import (
 )
 
 type Parser struct {
-	putter      storage.Putter
-	spyName     string
-	labels      map[string]string
-	sampleTypes map[string]*tree.SampleTypeConfig
-	cache       labelsCache
+	putter        storage.Putter
+	spyName       string
+	labels        map[string]string
+	skipExemplars bool
+	sampleTypes   map[string]*tree.SampleTypeConfig
 
+	cache             labelsCache
 	sampleTypesFilter func(string) bool
 }
 
 type ParserConfig struct {
-	Putter      storage.Putter
-	SpyName     string
-	Labels      map[string]string
-	SampleTypes map[string]*tree.SampleTypeConfig
+	Putter        storage.Putter
+	SpyName       string
+	Labels        map[string]string
+	SkipExemplars bool
+	SampleTypes   map[string]*tree.SampleTypeConfig
 }
 
 func NewParser(config ParserConfig) *Parser {
 	return &Parser{
-		putter:      config.Putter,
-		spyName:     config.SpyName,
-		labels:      config.Labels,
-		sampleTypes: config.SampleTypes,
-		cache:       make(labelsCache),
+		putter:        config.Putter,
+		spyName:       config.SpyName,
+		labels:        config.Labels,
+		sampleTypes:   config.SampleTypes,
+		skipExemplars: config.SkipExemplars,
 
+		cache:             make(labelsCache),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
 	}
 }
@@ -199,12 +202,20 @@ func (p *Parser) readTrees(x *tree.Profile, c labelsCache, f tree.Finder) {
 		}
 		// Insert tree nodes.
 		for i, vi := range indexes {
-			if v := uint64(s.Value[vi]); v != 0 {
-				c.getOrCreate(types[i], s.Label).InsertStack(stack, v)
-				if j := labelIndex(x, s.Label, segment.ProfileIDLabelName); j >= 0 {
-					c.getOrCreate(types[i], cutLabel(s.Label, j)).InsertStack(stack, v)
+			v := uint64(s.Value[vi])
+			if v == 0 {
+				continue
+			}
+			// If the sample has ProfileID label, it belongs to an exemplar.
+			if j := labelIndex(x, s.Label, segment.ProfileIDLabelName); j >= 0 {
+				// Regardless of whether we should skip exemplars or not, the value
+				// should be appended to the exemplar baseline profile (w/o ProfileID label).
+				c.getOrCreateTree(types[i], cutLabel(s.Label, j)).InsertStack(stack, v)
+				if p.skipExemplars {
+					continue
 				}
 			}
+			c.getOrCreateTree(types[i], s.Label).InsertStack(stack, v)
 		}
 		stack = stack[:0]
 	}
@@ -226,7 +237,7 @@ func newCacheEntry(l tree.Labels) *labelsCacheEntry {
 	return &labelsCacheEntry{Tree: tree.New(), Labels: copyLabels(l)}
 }
 
-func (c labelsCache) getOrCreate(sampleType int64, l tree.Labels) *labelsCacheEntry {
+func (c labelsCache) getOrCreateTree(sampleType int64, l tree.Labels) *labelsCacheEntry {
 	p, ok := c[sampleType]
 	if !ok {
 		e := newCacheEntry(l)
