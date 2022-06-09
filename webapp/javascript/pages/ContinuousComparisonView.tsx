@@ -24,6 +24,7 @@ import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
+import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -37,6 +38,7 @@ function ComparisonApp() {
   const comparisonView = useAppSelector(selectComparisonState);
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
   const { leftTimeline, rightTimeline } = useTimelines();
+  const sharedQuery = useFlamegraphSharedQuery();
 
   useEffect(() => {
     if (leftQuery) {
@@ -106,6 +108,7 @@ function ComparisonApp() {
               profile={leftSide}
               data-testid="flamegraph-renderer-left"
               colorMode={colorMode}
+              sharedQuery={{ ...sharedQuery, id: 'left' }}
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 leftSide && (
@@ -153,6 +156,7 @@ function ComparisonApp() {
               data-testid="flamegraph-renderer-right"
               panesOrientation="vertical"
               colorMode={colorMode}
+              sharedQuery={{ ...sharedQuery, id: 'right' }}
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 rightSide && (

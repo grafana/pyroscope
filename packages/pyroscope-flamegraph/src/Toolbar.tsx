@@ -13,13 +13,12 @@ import useResizeObserver from '@react-hook/resize-observer';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Button from '@webapp/ui/Button';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import Input from '@webapp/ui/Input';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import Select from '@webapp/ui/Select';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
-
+import SharedQueryInput from './SharedQueryInput';
 import styles from './ProfilerHeader.module.css';
+import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
@@ -31,7 +30,9 @@ export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
  * that should be displayed
  * based on the toolbar width
  */
-const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
+export type ShowModeType = ReturnType<typeof useSizeMode>;
+
+export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
   const [size, setSize] = React.useState<'large' | 'small'>('large');
 
   const calcMode = (width: number) => {
@@ -56,7 +57,7 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
   return size;
 };
 
-interface ProfileHeaderProps {
+export interface ProfileHeaderProps {
   view: ViewTypes;
   disableChangingDisplay?: boolean;
   flamegraphType: 'single' | 'double';
@@ -79,6 +80,7 @@ interface ProfileHeaderProps {
    */
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
+  sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
 // TODO: move this to assets pipeline. for now just embedding it here because this is less likely to break
@@ -195,6 +197,7 @@ const Toolbar = React.memo(
     onFocusOnSubtree,
     flamegraphType,
     disableChangingDisplay = false,
+    sharedQuery,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -203,10 +206,11 @@ const Toolbar = React.memo(
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
           {renderLogo ? logo() : ''}
-          <HighlightSearch
+          <SharedQueryInput
             showMode={showMode}
             onHighlightChange={handleSearchChange}
             highlightQuery={highlightQuery}
+            sharedQuery={sharedQuery}
           />
           {flamegraphType === 'double' && (
             <DiffView
@@ -284,34 +288,6 @@ function FocusOnSubtree({
     >
       {text}
     </Button>
-  );
-}
-
-function HighlightSearch({
-  onHighlightChange,
-  showMode,
-  highlightQuery,
-}: {
-  showMode: ReturnType<typeof useSizeMode>;
-  onHighlightChange: ProfileHeaderProps['handleSearchChange'];
-  highlightQuery: ProfileHeaderProps['highlightQuery'];
-}) {
-  return (
-    <Input
-      testId="flamegraph-search"
-      className={`${styles.search} ${
-        showMode === 'small' ? styles['search-small'] : ''
-      }`}
-      type="search"
-      name="flamegraph-search"
-      placeholder="Search…"
-      minLength={2}
-      debounceTimeout={100}
-      onChange={(e) => {
-        onHighlightChange(e.target.value);
-      }}
-      value={highlightQuery}
-    />
   );
 }
 
