@@ -97,14 +97,12 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 		return nil, err
 	}
 
-	r.enhanceWithTags(in.Metadata.Key)
-
 	params := req.URL.Query()
 	if in.Format != "" {
 		params.Set("format", string(in.Format))
 	}
 
-	params.Set("name", in.Metadata.Key.Normalized())
+	params.Set("name", r.getQuery(in.Metadata.Key))
 	params.Set("from", strconv.FormatInt(in.Metadata.StartTime.Unix(), 10))
 	params.Set("until", strconv.FormatInt(in.Metadata.EndTime.Unix(), 10))
 	params.Set("sampleRate", strconv.FormatUint(uint64(in.Metadata.SampleRate), 10))
@@ -118,11 +116,15 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 	return req, nil
 }
 
-func (r *Client) enhanceWithTags(key *segment.Key) {
-	labels := key.Labels()
+func (r *Client) getQuery(key *segment.Key) string {
+	k := key.Clone()
+
+	labels := k.Labels()
 	for tag, value := range r.config.Tags {
 		labels[tag] = value
 	}
+
+	return k.Normalized()
 }
 
 func (r *Client) enhanceWithAuth(req *http.Request) {
