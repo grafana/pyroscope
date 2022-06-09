@@ -63,13 +63,13 @@ func (s *IngestionQueue) Ingest(ctx context.Context, input *ingestion.IngestInpu
 	case <-ctx.Done():
 	case <-s.stop:
 	case s.queue <- input:
-		// TODO(eh-am): bump metric
+		s.metrics.pendingItems.Inc()
 		// Once input is queued, context cancellation is ignored.
 		return nil
 	default:
 		// Drop data if the queue is full.
 	}
-	//	s.discardedTotal.Inc()
+	s.metrics.discardedItems.Inc()
 	return nil
 }
 
@@ -79,10 +79,10 @@ func (s *IngestionQueue) runQueueWorker() {
 		select {
 		case input, ok := <-s.queue:
 			if ok {
-				// TODO(eh-am): decrease metric
 				if err := s.safePut(input); err != nil {
 					s.logger.WithField("key", input.Metadata.Key.Normalized()).WithError(err).Error("error happened while ingesting data")
 				}
+				s.metrics.pendingItems.Dec()
 			}
 		case <-s.stop:
 			return
