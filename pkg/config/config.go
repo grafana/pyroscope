@@ -7,6 +7,7 @@ package config
 // but using squash seems to keep the prefix in the CLI.
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -364,10 +365,19 @@ type RemoteWrite struct {
 }
 
 type RemoteWriteTarget struct {
-	Address      string            `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
+	Address string `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
+	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
 	AuthToken    string            `desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	Tags         map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 	Timeout      time.Duration     `def:"30s" desc:"profile upload timeout" mapstructure:"timeout"`
 	QueueSize    int               `def:"100" desc:"number of items in the queue"`
 	QueueWorkers int               `def:"4" desc:"number of queue workers"`
+}
+
+func (r RemoteWriteTarget) String() string {
+	tags := ""
+	for key, value := range r.Tags {
+		tags = tags + fmt.Sprintf("%s=%s ", key, value)
+	}
+	return fmt.Sprintf("Address: %s\nAuthToken: [redacted]\nTags: %s\nTimeout: %s\nQueueSize: %d\nQueueWorkers %d", r.Address, tags, r.Timeout.String(), r.QueueSize, r.QueueWorkers)
 }

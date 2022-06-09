@@ -49,7 +49,7 @@ type serverService struct {
 	controller *server.Controller
 	storage    *storage.Storage
 	// queue used to ingest data into the storage
-	ingestionQueue   *storage.IngestionQueue
+	storageQueue     *storage.IngestionQueue
 	analyticsService *analytics.Service
 	selfProfiling    *pyroscope.Session
 	debugReporter    *debug.Reporter
@@ -65,8 +65,8 @@ type serverService struct {
 }
 
 const (
-	ingestionQueueWorkers = 1
-	ingestionQueueSize    = 100
+	storageQueueWorkers = 1
+	storageQueueSize    = 100
 )
 
 func newServerService(c *config.Server) (*serverService, error) {
@@ -145,12 +145,12 @@ func newServerService(c *config.Server) (*serverService, error) {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
-		ingestionQueueWorkers,
-		ingestionQueueSize)
+	svc.storageQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
+		storageQueueWorkers,
+		storageQueueSize)
 
 	var ingester ingestion.Ingester
-	ingester = parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+	ingester = parser.New(svc.logger, svc.storageQueue, metricsExporter)
 
 	// If remote write is available, let's write to both local storage and to the remote server
 	if svc.config.RemoteWrite.Enabled {
@@ -168,7 +168,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		for _, t := range svc.config.RemoteWrite.Targets {
 			targetLogger := logger.WithField("remote_target", t.Address)
 
-			targetLogger.Debugf("Instantiating remote write client for target %s", t.Address)
+			targetLogger.Debug("Initializing remote write target", t.String())
 			cfg := config.RemoteWriteTarget{
 				Address:   t.Address,
 				AuthToken: t.AuthToken,
@@ -321,7 +321,7 @@ func (svc *serverService) stop() {
 	}
 
 	svc.logger.Debug("stopping ingestion queue")
-	svc.ingestionQueue.Stop()
+	svc.storageQueue.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
