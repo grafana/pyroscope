@@ -2,14 +2,7 @@
 
 .container {
   display: flex;
-
-  // vertical align
   align-items: center;
-
-  input {
-    @include outline;
-    border-radius: 4px;
-  }
 }
 
 .menuButton {
