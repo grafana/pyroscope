@@ -420,9 +420,10 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 		}
 	}
 
-	sl.scraper.profile.Push(buf.Bytes(), sl.scraper.cumulative)
+	profile := sl.scraper.profile
+	sl.scraper.profile = profile.Push(buf.Bytes(), sl.scraper.cumulative)
 	return sl.scraper.ingester.Ingest(ctx, &ingestion.IngestInput{
-		Profile: sl.scraper.profile,
+		Profile: profile,
 		Metadata: ingestion.Metadata{
 			SpyName:   sl.scraper.spyName,
 			Key:       sl.scraper.key,
