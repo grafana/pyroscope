@@ -47,7 +47,7 @@ func (p *Parallelizer) Ingest(ctx context.Context, in *ingestion.IngestInput) er
 }
 
 // This is required since ingester.Ingest may panic
-func (p *Parallelizer) safeIngest(ctx context.Context, input *ingestion.IngestInput, ingester ingestion.Ingester) (err error) {
+func (*Parallelizer) safeIngest(ctx context.Context, input *ingestion.IngestInput, ingester ingestion.Ingester) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
