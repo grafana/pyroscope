@@ -184,5 +184,5 @@ tt {
 input {
   @include outline;
   border-radius: 4px;
-  border: 1px solid $btn-border-color;
+  border: 1px solid var(--ps-neutral-10);
 }

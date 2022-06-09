@@ -1,10 +1,10 @@
 :root {
   --ps-neutral-1: #000000;
   --ps-neutral-2: #ffffff;
-  --ps-neutral-5: #141414;
-  --ps-neutral-7: #212124; /* sidebar backgroudn and "panel" background */
+  --ps-neutral-5: #141414; /* background furthest back color */
+  --ps-neutral-7: #212124; /* sidebar background and "panel"/"box" background */
   --ps-neutral-9: #272727; /* non-selected button background, highlighted button text (when buttons are green) */
-  --ps-neutral-10: #4d4d4d; /* disabled button text color */
+  --ps-neutral-10: #4d4d4d; /* disabled button text color, button borders, dropdown borders */
   --ps-neutral-14: #3b3b3b; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-15: #d8d8d8; /* sidebar text and datepicker text */
   --ps-neutral-17: #ffffff08; /* lighter background for table */
