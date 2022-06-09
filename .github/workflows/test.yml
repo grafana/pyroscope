@@ -34,4 +34,4 @@ jobs:
       run: make fmt check/unstaged-changes
       if: matrix.os == 'ubuntu-latest'
     - name: Test
-      run: go test -race ./...
+      run: make go/test
