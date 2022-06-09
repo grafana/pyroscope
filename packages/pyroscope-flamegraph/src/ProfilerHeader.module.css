@@ -19,25 +19,6 @@
   flex-grow: 1;
 }
 
-.search {
-  background: rgba(255, 255, 255, 0.8);
-  transition: background-color ease-out 0.1s;
-  margin-right: 8px;
-  font: inherit;
-
-  &,
-  &::placeholder {
-    color: #333 !important;
-  }
-}
-.search:focus {
-  background: rgba(255, 255, 255, 1);
-}
-
-.search-small {
-  width: 170px;
-}
-
 .headerLogo {
   display: flex;
   align-items: center;
@@ -52,4 +33,8 @@
 
 .headerLogo span {
   display: inline-block;
+}
+
+.fit-mode-select {
+  min-width: 65px;
 }

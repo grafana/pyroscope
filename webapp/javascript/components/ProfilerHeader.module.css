@@ -19,20 +19,6 @@
   flex-grow: 1;
 }
 
-.search {
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--ps-neutral-14);
-  transition: background-color ease-out 0.1s;
-  margin-right: 8px;
-}
-.search:focus {
-  background: var(--ps-neutral-2);
-}
-
-.search-small {
-  width: 170px;
-}
-
 .headerLogo {
   display: inline-block;
   text-decoration: none;
