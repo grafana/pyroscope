@@ -2,6 +2,8 @@ package remotewrite
 
 import (
 	"context"
+	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -32,7 +34,7 @@ func (p *Parallelizer) Ingest(ctx context.Context, in *ingestion.IngestInput) er
 		putter := putter
 		go func(in *ingestion.IngestInput) {
 			defer wg.Done()
-			err := putter.Ingest(ctx, in)
+			err := p.safeIngest(ctx, in, putter)
 			if err != nil {
 				p.log.Error("Failed to parallelize put: ", err)
 			}
@@ -41,11 +43,15 @@ func (p *Parallelizer) Ingest(ctx context.Context, in *ingestion.IngestInput) er
 
 	wg.Wait()
 
-	//	if err := g.Wait(); err != nil {
-	//		// swallow the error
-	//		// TODO(eh-am): should we swallow errors?
-	//		p.log.Error("Failed to parallelize put: ", err)
-	//	}
-	//
 	return nil
+}
+
+// This is required since ingester.Ingest may panic
+func (p *Parallelizer) safeIngest(ctx context.Context, input *ingestion.IngestInput, ingester ingestion.Ingester) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
+		}
+	}()
+	return ingester.Ingest(ctx, input)
 }

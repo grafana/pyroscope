@@ -20,7 +20,7 @@ func newClientMetrics(reg prometheus.Registerer, targetName, targetAddress strin
 	}
 
 	m := &clientMetrics{reg: reg}
-	// Suffix the subsystem with queue, since there will be other sub-subsystems (eg client)
+	// Suffix the subsystem with queue, since there will be other sub-subsystems (eg queue)
 	subs := fmt.Sprintf("%s_client", subsystem)
 
 	m.sentBytes = prometheus.NewCounter(prometheus.CounterOpts{
