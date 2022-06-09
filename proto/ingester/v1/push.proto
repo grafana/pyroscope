@@ -1,9 +1,10 @@
 syntax = "proto3";
 
 package ingest.v1;
-import "push/v1/push.proto";
-option go_package = "github.com/grafana/fire/pkg/gen/go/v1/ingest;ingestv1";
 
+import "push/v1/push.proto";
+
+option go_package = "github.com/grafana/fire/pkg/gen/go/v1/ingest;ingestv1";
 
 service Ingester {
   rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
