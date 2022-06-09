@@ -137,7 +137,7 @@ func LoadFile(filename string) (*Config, error) {
 // ScrapeConfig configures a scraping unit for conprof.
 type ScrapeConfig struct {
 	// Name of the section in the config
-	JobName string `yaml:"job_name,omitempty"`
+	JobName string `yaml:"job_name"`
 	// A set of query parameters with which the target is scraped.
 	Params url.Values `yaml:"params,omitempty"`
 	// How frequently to scrape the targets of this scrape config.
@@ -170,6 +170,7 @@ type ServiceDiscoveryConfig struct {
 
 type ProfilingConfig struct {
 	PprofConfig PprofConfig `yaml:"pprof_config,omitempty"`
+	PprofPrefix string      `yaml:"path_prefix,omitempty"`
 }
 
 type PprofConfig map[string]*PprofProfilingConfig
@@ -202,6 +203,13 @@ func (c *ScrapeConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			if unmarshalled.ProfilingConfig.PprofConfig[pt].Path == "" {
 				unmarshalled.ProfilingConfig.PprofConfig[pt].Path = pc.Path
 			}
+		}
+	}
+
+	// If path prefix is specified, add to PprofConfig path
+	if unmarshalled.ProfilingConfig.PprofPrefix != "" {
+		for pt := range unmarshalled.ProfilingConfig.PprofConfig {
+			unmarshalled.ProfilingConfig.PprofConfig[pt].Path = filepath.Join(unmarshalled.ProfilingConfig.PprofPrefix, unmarshalled.ProfilingConfig.PprofConfig[pt].Path)
 		}
 	}
 

@@ -14,6 +14,7 @@
 package addr2line
 
 import (
+	"debug/elf"
 	"debug/gosym"
 	"errors"
 	"fmt"
@@ -22,7 +23,6 @@ import (
 	"github.com/go-kit/log"
 
 	pb "github.com/parca-dev/parca/gen/proto/go/parca/metastore/v1alpha1"
-	"github.com/parca-dev/parca/internal/go/debug/elf"
 	"github.com/parca-dev/parca/pkg/metastore"
 )
 
