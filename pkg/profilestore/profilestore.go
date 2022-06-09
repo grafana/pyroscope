@@ -125,3 +125,7 @@ func (ps *ProfileStore) Ingest(ctx context.Context, req *connect.Request[pushv1.
 	}
 	return nil
 }
+
+func (ps *ProfileStore) Table() *arcticdb.Table {
+	return ps.table
+}
