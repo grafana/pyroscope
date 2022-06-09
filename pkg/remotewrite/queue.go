@@ -1,4 +1,3 @@
-// this queue was based off storage/queue.go
 package remotewrite
 
 import (
@@ -13,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// this queue was based off storage/queue.go
+// TODO(eh-am): merge with that one
 type IngestionQueue struct {
 	logger   logrus.FieldLogger
 	ingester ingestion.Ingester
@@ -48,54 +49,54 @@ func NewIngestionQueue(logger logrus.FieldLogger, reg prometheus.Registerer, ing
 	return &q
 }
 
-func (iq *IngestionQueue) initMetrics(queueSize int, queueWorkers int) {
-	iq.metrics.capacity.Add(float64(queueSize))
-	iq.metrics.numWorkers.Add(float64(queueWorkers))
+func (q *IngestionQueue) initMetrics(queueSize int, queueWorkers int) {
+	q.metrics.capacity.Add(float64(queueSize))
+	q.metrics.numWorkers.Add(float64(queueWorkers))
 }
 
-func (s *IngestionQueue) Stop() {
-	close(s.stop)
-	s.wg.Wait()
+func (q *IngestionQueue) Stop() {
+	close(q.stop)
+	q.wg.Wait()
 }
 
-func (s *IngestionQueue) Ingest(ctx context.Context, input *ingestion.IngestInput) error {
+func (q *IngestionQueue) Ingest(ctx context.Context, input *ingestion.IngestInput) error {
 	select {
 	case <-ctx.Done():
-	case <-s.stop:
-	case s.queue <- input:
-		s.metrics.pendingItems.Inc()
+	case <-q.stop:
+	case q.queue <- input:
+		q.metrics.pendingItems.Inc()
 		// Once input is queued, context cancellation is ignored.
 		return nil
 	default:
 		// Drop data if the queue is full.
 	}
-	s.metrics.droppedItems.Inc()
+	q.metrics.droppedItems.Inc()
 	return nil
 }
 
-func (s *IngestionQueue) runQueueWorker() {
-	defer s.wg.Done()
+func (q *IngestionQueue) runQueueWorker() {
+	defer q.wg.Done()
 	for {
 		select {
-		case input, ok := <-s.queue:
+		case input, ok := <-q.queue:
 			if ok {
-				if err := s.safePut(input); err != nil {
-					s.logger.WithField("key", input.Metadata.Key.Normalized()).WithError(err).Error("error happened while ingesting data")
+				if err := q.safePut(input); err != nil {
+					q.logger.WithField("key", input.Metadata.Key.Normalized()).WithError(err).Error("error happened while ingesting data")
 				}
-				s.metrics.pendingItems.Dec()
+				q.metrics.pendingItems.Dec()
 			}
-		case <-s.stop:
+		case <-q.stop:
 			return
 		}
 	}
 }
 
-func (s *IngestionQueue) safePut(input *ingestion.IngestInput) (err error) {
+func (q *IngestionQueue) safePut(input *ingestion.IngestInput) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
 		}
 	}()
 	// TODO(kolesnikovae): It's better to derive a context that is cancelled on Stop.
-	return s.ingester.Ingest(context.TODO(), input)
+	return q.ingester.Ingest(context.TODO(), input)
 }

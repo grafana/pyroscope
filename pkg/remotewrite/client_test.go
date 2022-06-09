@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -53,7 +54,7 @@ var _ = Describe("TrafficShadower", func() {
 			)
 
 			cfg.Address = remoteServer.URL
-			client := remotewrite.NewClient(logger, cfg)
+			client := remotewrite.NewClient(logger, prometheus.NewRegistry(), "targetName", cfg)
 
 			wg.Add(1)
 			client.Ingest(context.TODO(), &in)
@@ -180,9 +181,10 @@ var _ = Describe("TrafficShadower", func() {
 	Context("sad path", func() {
 		When("it can't convert PutInput into a http.Request", func() {
 			It("fails with ErrConvertPutInputToRequest", func() {
-				client := remotewrite.NewClient(logger, config.RemoteWriteTarget{
-					Address: "%%",
-				})
+				client := remotewrite.NewClient(logger, prometheus.NewRegistry(), "targetName",
+					config.RemoteWriteTarget{
+						Address: "%%",
+					})
 				in := ingestion.IngestInput{
 					Metadata: ingestion.Metadata{
 						Key: segment.NewKey(map[string]string{
@@ -199,9 +201,10 @@ var _ = Describe("TrafficShadower", func() {
 
 		When("it can't send to remote", func() {
 			It("fails with ErrMakingRequest", func() {
-				client := remotewrite.NewClient(logger, config.RemoteWriteTarget{
-					Address: "//inexistent-url",
-				})
+				client := remotewrite.NewClient(logger, prometheus.NewRegistry(), "targetName",
+					config.RemoteWriteTarget{
+						Address: "//inexistent-url",
+					})
 				in := ingestion.IngestInput{
 					Metadata: ingestion.Metadata{
 						Key: segment.NewKey(map[string]string{
@@ -233,9 +236,10 @@ var _ = Describe("TrafficShadower", func() {
 					}),
 				)
 
-				client := remotewrite.NewClient(logger, config.RemoteWriteTarget{
-					Address: remoteServer.URL,
-				})
+				client := remotewrite.NewClient(logger, prometheus.NewRegistry(), "targetName",
+					config.RemoteWriteTarget{
+						Address: remoteServer.URL,
+					})
 				in := ingestion.IngestInput{
 					Metadata: ingestion.Metadata{
 						Key: segment.NewKey(map[string]string{
