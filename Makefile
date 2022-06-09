@@ -11,6 +11,19 @@ COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
 
+IMAGE_PLATFORM = linux/amd64
+
+# Boiler plate for building Docker containers.
+# All this must go at top of file I'm afraid.
+IMAGE_PREFIX ?= us.gcr.io/kubernetes-dev/
+
+IMAGE_TAG ?= $(shell ./tools/image-tag)
+GIT_REVISION := $(shell git rev-parse --short HEAD)
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+
+GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GO_FLAGS     := -ldflags "-extldflags \"-static\" -s -w $(GO_LDFLAGS)" -tags netgo -mod=mod
+
 .PHONY: help
 help: ## Describe useful make targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-30s %s\n", $$1, $$2}'
@@ -43,7 +56,7 @@ go/deps:
 .PHONY: go/bin
 go/bin:
 	mkdir -p ./bin
-	$(GO) build -o bin/ ./cmd/fire
+	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) -o bin/ ./cmd/fire
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
@@ -71,6 +84,19 @@ check/unstaged-changes:
 .PHONY: check/go/mod
 check/go/mod: go/mod
 	@git --no-pager diff --exit-code -- go.sum go.mod vendor/ || { echo ">> There are unstaged changes in go vendoring run 'make go/mod'"; exit 1; }
+
+
+define docker_buildx
+	docker buildx build $(1) --platform $(IMAGE_PLATFORM) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
+endef
+
+.PHONY: docker-image/fire/build
+docker-image/fire/build:
+	$(call docker_buildx,)
+
+.PHONY: docker-image/fire/push
+docker-image/fire/push:
+	$(call docker_buildx,--push)
 
 .PHONY: clean
 clean: ## Delete intermediate build artifacts
