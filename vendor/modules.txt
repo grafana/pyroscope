@@ -681,6 +681,9 @@ github.com/mwitkow/go-conntrack
 # github.com/ncw/swift v1.0.53
 ## explicit
 github.com/ncw/swift
+# github.com/oklog/ulid v1.3.1
+## explicit
+github.com/oklog/ulid
 # github.com/olekukonko/tablewriter v0.0.5
 ## explicit; go 1.12
 github.com/olekukonko/tablewriter
@@ -702,7 +705,7 @@ github.com/opentracing-contrib/go-stdlib/nethttp
 github.com/opentracing/opentracing-go
 github.com/opentracing/opentracing-go/ext
 github.com/opentracing/opentracing-go/log
-# github.com/parca-dev/parca v0.11.1-0.20220608073855-2f98641366cf
+# github.com/parca-dev/parca v0.11.1-0.20220608104838-4e857ab70594
 ## explicit; go 1.18
 github.com/parca-dev/parca/gen/proto/go/parca/debuginfo/v1alpha1
 github.com/parca-dev/parca/gen/proto/go/parca/metastore/v1alpha1
@@ -732,11 +735,13 @@ github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/polarsignals/arcticdb v0.0.0-20220527133324-4e2f5c4b210e
+# github.com/polarsignals/arcticdb v0.0.0-20220607075621-19ee11509854
 ## explicit; go 1.18
 github.com/polarsignals/arcticdb
 github.com/polarsignals/arcticdb/dynparquet
 github.com/polarsignals/arcticdb/pqarrow
+github.com/polarsignals/arcticdb/pqarrow/convert
+github.com/polarsignals/arcticdb/pqarrow/writer
 github.com/polarsignals/arcticdb/query/logicalplan
 # github.com/prometheus/client_golang v1.12.2
 ## explicit; go 1.13
@@ -874,7 +879,7 @@ github.com/stretchr/testify/require
 # github.com/tencentyun/cos-go-sdk-v5 v0.7.34
 ## explicit; go 1.12
 github.com/tencentyun/cos-go-sdk-v5
-# github.com/thanos-io/objstore v0.0.0-20220324101945-f2f24637ce2e
+# github.com/thanos-io/objstore v0.0.0-20220324141029-c4f11442aa33
 ## explicit; go 1.17
 github.com/thanos-io/objstore
 github.com/thanos-io/objstore/azure

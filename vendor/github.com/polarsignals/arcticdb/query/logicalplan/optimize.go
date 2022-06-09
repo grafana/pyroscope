@@ -4,6 +4,13 @@ type Optimizer interface {
 	Optimize(plan *LogicalPlan) *LogicalPlan
 }
 
+var DefaultOptimizers = []Optimizer{
+	&PhysicalProjectionPushDown{},
+	&FilterPushDown{},
+	&DistinctPushDown{},
+	&ProjectionPushDown{},
+}
+
 // The PhysicalProjectionPushDown optimizer tries to push down the actual
 // physical columns used by the query to the table scan, so the table provider
 // can decide to only read the columns that are actually going to be used by

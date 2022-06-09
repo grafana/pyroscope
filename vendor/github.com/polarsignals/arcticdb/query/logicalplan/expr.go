@@ -1,11 +1,16 @@
 package logicalplan
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"reflect"
+
 	"github.com/apache/arrow/go/v8/arrow"
 	"github.com/apache/arrow/go/v8/arrow/scalar"
-	"github.com/segmentio/parquet-go"
 
 	"github.com/polarsignals/arcticdb/dynparquet"
+	"github.com/polarsignals/arcticdb/pqarrow/convert"
 )
 
 type Operator int
@@ -53,8 +58,80 @@ type BinaryExpr struct {
 	Right Expr
 }
 
+func (e *BinaryExpr) MarshalJSON() ([]byte, error) {
+	type binaryExprJSON struct {
+		LeftType  string
+		Left      Expr
+		RightType string
+		Right     Expr
+		Op        Operator
+	}
+	return json.Marshal(binaryExprJSON{
+		LeftType:  reflect.TypeOf(e.Left).String(),
+		Left:      e.Left,
+		Op:        e.Op,
+		RightType: reflect.TypeOf(e.Right).String(),
+		Right:     e.Right,
+	})
+}
+
+func (e *BinaryExpr) UnmarshalJSON(data []byte) error {
+	type binaryExprJSON struct {
+		LeftType  string
+		Left      json.RawMessage
+		RightType string
+		Right     json.RawMessage
+		Op        Operator
+	}
+	var bej binaryExprJSON
+	err := json.Unmarshal(data, &bej)
+	if err != nil {
+		return err
+	}
+
+	e.Op = bej.Op
+
+	switch bej.LeftType {
+	case "*logicalplan.Column":
+		var c Column
+		err := json.Unmarshal(bej.Left, &c)
+		if err != nil {
+			return err
+		}
+		e.Left = &c
+	case "*logicalplan.BinaryExpr":
+		var be BinaryExpr
+		err := json.Unmarshal(bej.Left, &be)
+		if err != nil {
+			return err
+		}
+		e.Left = &be
+	default:
+		return fmt.Errorf("BinaryExpr.Left unmarshalling for %s hasn't been implemented", bej.LeftType)
+	}
+	switch bej.RightType {
+	case "*logicalplan.LiteralExpr":
+		var literal LiteralExpr
+		err := json.Unmarshal(bej.Right, &literal)
+		if err != nil {
+			return err
+		}
+		e.Right = &literal
+	case "*logicalplan.BinaryExpr":
+		var be BinaryExpr
+		err := json.Unmarshal(bej.Right, &be)
+		if err != nil {
+			return err
+		}
+		e.Right = &be
+	default:
+		return fmt.Errorf("BinaryExpr.Right unmarshalling for %s hasn't been implemented", bej.LeftType)
+	}
+	return nil
+}
+
 func (e BinaryExpr) Accept(visitor Visitor) bool {
-	continu := visitor.PreVisit(e)
+	continu := visitor.PreVisit(&e)
 	if !continu {
 		return false
 	}
@@ -69,11 +146,11 @@ func (e BinaryExpr) Accept(visitor Visitor) bool {
 		return false
 	}
 
-	return visitor.PostVisit(e)
+	return visitor.PostVisit(&e)
 }
 
-func (e BinaryExpr) DataType(_ *dynparquet.Schema) arrow.DataType {
-	return &arrow.BooleanType{}
+func (e BinaryExpr) DataType(_ *dynparquet.Schema) (arrow.DataType, error) {
+	return &arrow.BooleanType{}, nil
 }
 
 func (e BinaryExpr) Name() string {
@@ -89,14 +166,39 @@ func (e BinaryExpr) Matcher() ColumnMatcher {
 }
 
 func (e BinaryExpr) Alias(alias string) AliasExpr {
-	return AliasExpr{Expr: e, Alias: alias}
+	return AliasExpr{Expr: &e, Alias: alias}
 }
 
 type Column struct {
 	ColumnName string
 }
 
-func (c Column) Accept(visitor Visitor) bool {
+func (c *Column) MarshalJSON() ([]byte, error) {
+	type columnJSON struct {
+		Expr       string
+		ColumnName string
+	}
+	return json.Marshal(columnJSON{
+		Expr:       reflect.TypeOf(c.ColumnName).String(),
+		ColumnName: c.ColumnName,
+	})
+}
+
+func (c *Column) UnmarshalJSON(data []byte) error {
+	type columnJSON struct {
+		Expr       string
+		ColumnName string
+	}
+	var cj columnJSON
+	err := json.Unmarshal(data, &cj)
+	if err != nil {
+		return err
+	}
+	c.ColumnName = cj.ColumnName
+	return nil
+}
+
+func (c *Column) Accept(visitor Visitor) bool {
 	continu := visitor.PreVisit(c)
 	if !continu {
 		return false
@@ -105,124 +207,97 @@ func (c Column) Accept(visitor Visitor) bool {
 	return visitor.PostVisit(c)
 }
 
-func (c Column) Name() string {
+func (c *Column) Name() string {
 	return c.ColumnName
 }
 
-func (c Column) DataType(s *dynparquet.Schema) arrow.DataType {
+func (c *Column) DataType(s *dynparquet.Schema) (arrow.DataType, error) {
 	colDef, found := s.ColumnByName(c.ColumnName)
 	if !found {
-		panic("column not found")
+		return nil, errors.New("column not found")
 	}
 
-	return ParquetNodeToType(colDef.StorageLayout)
+	return convert.ParquetNodeToType(colDef.StorageLayout)
 }
 
-func (c Column) Alias(alias string) AliasExpr {
+func (c *Column) Alias(alias string) AliasExpr {
 	return AliasExpr{Expr: c, Alias: alias}
 }
 
-// ParquetNodeToType converts a parquet node to an arrow type and a function to
-// create a value writer.
-func ParquetNodeToType(n parquet.Node) arrow.DataType {
-	t := n.Type()
-	lt := t.LogicalType()
-	switch {
-	case lt.UUID != nil:
-		return &arrow.FixedSizeBinaryType{
-			ByteWidth: 16,
-		}
-	case lt.UTF8 != nil:
-		return &arrow.StringType{}
-	case lt.Integer != nil:
-		switch lt.Integer.BitWidth {
-		case 64:
-			if lt.Integer.IsSigned {
-				return &arrow.Int64Type{}
-			}
-			return &arrow.Uint64Type{}
-		default:
-			panic("unsupported int bit width")
-		}
-	default:
-		panic("unsupported type for parquet to arrow conversion")
-	}
-}
-
-func (c Column) ColumnsUsed() []ColumnMatcher {
+func (c *Column) ColumnsUsed() []ColumnMatcher {
 	return []ColumnMatcher{c.Matcher()}
 }
 
-func (c Column) Matcher() ColumnMatcher {
+func (c *Column) Matcher() ColumnMatcher {
 	return StaticColumnMatcher{ColumnName: c.ColumnName}
 }
 
-func (c Column) Eq(e Expr) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) Eq(e Expr) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    EqOp,
 		Right: e,
 	}
 }
 
-func (c Column) NotEq(e Expr) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) NotEq(e Expr) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    NotEqOp,
 		Right: e,
 	}
 }
 
-func (c Column) GT(e Expr) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) GT(e Expr) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    GTOp,
 		Right: e,
 	}
 }
 
-func (c Column) GTE(e Expr) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) GTE(e Expr) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    GTEOp,
 		Right: e,
 	}
 }
 
-func (c Column) LT(e Expr) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) LT(e Expr) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    LTOp,
 		Right: e,
 	}
 }
 
-func (c Column) LTE(e Expr) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) LTE(e Expr) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    LTEOp,
 		Right: e,
 	}
 }
 
-func (c Column) RegexMatch(pattern string) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) RegexMatch(pattern string) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    RegExpOp,
 		Right: Literal(pattern),
 	}
 }
 
-func (c Column) RegexNotMatch(pattern string) BinaryExpr {
-	return BinaryExpr{
+func (c *Column) RegexNotMatch(pattern string) *BinaryExpr {
+	return &BinaryExpr{
 		Left:  c,
 		Op:    NotRegExpOp,
 		Right: Literal(pattern),
 	}
 }
 
-func Col(name string) Column {
-	return Column{ColumnName: name}
+func Col(name string) *Column {
+	return &Column{ColumnName: name}
 }
 
 func And(exprs ...Expr) Expr {
@@ -237,14 +312,14 @@ func and(exprs []Expr) Expr {
 		return exprs[0]
 	}
 	if len(exprs) == 2 {
-		return BinaryExpr{
+		return &BinaryExpr{
 			Left:  exprs[0],
 			Op:    AndOp,
 			Right: exprs[1],
 		}
 	}
 
-	return BinaryExpr{
+	return &BinaryExpr{
 		Left:  exprs[0],
 		Op:    AndOp,
 		Right: and(exprs[1:]),
@@ -255,17 +330,42 @@ type DynamicColumn struct {
 	ColumnName string
 }
 
-func DynCol(name string) DynamicColumn {
-	return DynamicColumn{ColumnName: name}
+func (c DynamicColumn) MarshalJSON() ([]byte, error) {
+	type dynamicColumnJSON struct {
+		Expr string
+		Name string
+	}
+	return json.Marshal(dynamicColumnJSON{
+		Expr: "dynamicColumn",
+		Name: c.ColumnName,
+	})
 }
 
-func (c DynamicColumn) DataType(s *dynparquet.Schema) arrow.DataType {
+func (c *DynamicColumn) UnmarshalJSON(data []byte) error {
+	type dynamicColumnJSON struct {
+		Expr string
+		Name string
+	}
+	var dcj dynamicColumnJSON
+	err := json.Unmarshal(data, &dcj)
+	if err != nil {
+		return err
+	}
+	c.ColumnName = dcj.Name
+	return nil
+}
+
+func DynCol(name string) *DynamicColumn {
+	return &DynamicColumn{ColumnName: name}
+}
+
+func (c DynamicColumn) DataType(s *dynparquet.Schema) (arrow.DataType, error) {
 	colDef, found := s.ColumnByName(c.ColumnName)
 	if !found {
-		panic("column not found")
+		return nil, errors.New("column not found")
 	}
 
-	return ParquetNodeToType(colDef.StorageLayout)
+	return convert.ParquetNodeToType(colDef.StorageLayout)
 }
 
 func (c DynamicColumn) ColumnsUsed() []ColumnMatcher {
@@ -281,7 +381,7 @@ func (c DynamicColumn) Name() string {
 }
 
 func (c DynamicColumn) Accept(visitor Visitor) bool {
-	return visitor.PreVisit(c) && visitor.PostVisit(c)
+	return visitor.PreVisit(&c) && visitor.PostVisit(&c)
 }
 
 func Cols(names ...string) []Expr {
@@ -296,14 +396,43 @@ type LiteralExpr struct {
 	Value scalar.Scalar
 }
 
-func Literal(v interface{}) LiteralExpr {
-	return LiteralExpr{
+func (e LiteralExpr) MarshalJSON() ([]byte, error) {
+	type literalExprJSON struct {
+		ValueType string
+		Value     string
+	}
+	return json.Marshal(literalExprJSON{
+		Value:     e.Value.String(),
+		ValueType: reflect.TypeOf(e.Value).String(),
+	})
+}
+
+func (e *LiteralExpr) UnmarshalJSON(data []byte) error {
+	type literalExprJSON struct {
+		ValueType string
+		Value     interface{}
+	}
+	var literal literalExprJSON
+	err := json.Unmarshal(data, &literal)
+	if err != nil {
+		return err
+	}
+	switch literal.ValueType {
+	case "*scalar.String":
+		e.Value = scalar.MakeScalar(literal.Value)
+	}
+
+	return nil
+}
+
+func Literal(v interface{}) *LiteralExpr {
+	return &LiteralExpr{
 		Value: scalar.MakeScalar(v),
 	}
 }
 
-func (e LiteralExpr) DataType(_ *dynparquet.Schema) arrow.DataType {
-	return e.Value.DataType()
+func (e LiteralExpr) DataType(_ *dynparquet.Schema) (arrow.DataType, error) {
+	return e.Value.DataType(), nil
 }
 
 func (e LiteralExpr) Name() string {
@@ -311,12 +440,12 @@ func (e LiteralExpr) Name() string {
 }
 
 func (e LiteralExpr) Accept(visitor Visitor) bool {
-	continu := visitor.PreVisit(e)
+	continu := visitor.PreVisit(&e)
 	if !continu {
 		return false
 	}
 
-	return visitor.PostVisit(e)
+	return visitor.PostVisit(&e)
 }
 
 func (e LiteralExpr) ColumnsUsed() []ColumnMatcher { return nil }
@@ -328,12 +457,20 @@ type AggregationFunction struct {
 	Expr Expr
 }
 
-func (f AggregationFunction) DataType(s *dynparquet.Schema) arrow.DataType {
+func (f AggregationFunction) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("AggregationFunction does not implement JSON marshalling")
+}
+
+func (f *AggregationFunction) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("AggregationFunction does not implement JSON unmarshalling")
+}
+
+func (f AggregationFunction) DataType(s *dynparquet.Schema) (arrow.DataType, error) {
 	return f.Expr.DataType(s)
 }
 
 func (f AggregationFunction) Accept(visitor Visitor) bool {
-	continu := visitor.PreVisit(f)
+	continu := visitor.PreVisit(&f)
 	if !continu {
 		return false
 	}
@@ -343,7 +480,7 @@ func (f AggregationFunction) Accept(visitor Visitor) bool {
 		return false
 	}
 
-	return visitor.PostVisit(f)
+	return visitor.PostVisit(&f)
 }
 
 func (f AggregationFunction) Name() string {
@@ -373,8 +510,8 @@ func (f AggFunc) String() string {
 	}
 }
 
-func Sum(expr Expr) AggregationFunction {
-	return AggregationFunction{
+func Sum(expr Expr) *AggregationFunction {
+	return &AggregationFunction{
 		Func: SumAggFunc,
 		Expr: expr,
 	}
@@ -385,7 +522,15 @@ type AliasExpr struct {
 	Alias string
 }
 
-func (e AliasExpr) DataType(s *dynparquet.Schema) arrow.DataType {
+func (e *AliasExpr) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("AliasExpr does not implement JSON marshalling")
+}
+
+func (e *AliasExpr) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("AliasExpr does not implement JSON unmarshalling")
+}
+
+func (e AliasExpr) DataType(s *dynparquet.Schema) (arrow.DataType, error) {
 	return e.Expr.DataType(s)
 }
 
@@ -402,7 +547,7 @@ func (e AliasExpr) Matcher() ColumnMatcher {
 }
 
 func (e AliasExpr) Accept(visitor Visitor) bool {
-	continu := visitor.PreVisit(e)
+	continu := visitor.PreVisit(&e)
 	if !continu {
 		return false
 	}
@@ -412,12 +557,12 @@ func (e AliasExpr) Accept(visitor Visitor) bool {
 		return false
 	}
 
-	return visitor.PostVisit(e)
+	return visitor.PostVisit(&e)
 }
 
-func (f AggregationFunction) Alias(alias string) AliasExpr {
-	return AliasExpr{
-		Expr:  f,
+func (f AggregationFunction) Alias(alias string) *AliasExpr {
+	return &AliasExpr{
+		Expr:  &f,
 		Alias: alias,
 	}
 }

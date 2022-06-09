@@ -1,6 +1,7 @@
 package logicalplan
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/apache/arrow/go/v8/arrow"
@@ -62,16 +63,25 @@ type StaticColumnMatcher struct {
 	ColumnName string
 }
 
+func (m StaticColumnMatcher) Name() string {
+	return m.ColumnName
+}
+
 func (m StaticColumnMatcher) Match(columnName string) bool {
 	return m.ColumnName == columnName
 }
 
 type ColumnMatcher interface {
 	Match(columnName string) bool
+	Name() string
 }
 
 type DynamicColumnMatcher struct {
 	ColumnName string
+}
+
+func (m DynamicColumnMatcher) Name() string {
+	return m.ColumnName
 }
 
 func (m DynamicColumnMatcher) Match(columnName string) bool {
@@ -79,7 +89,7 @@ func (m DynamicColumnMatcher) Match(columnName string) bool {
 }
 
 type Expr interface {
-	DataType(*dynparquet.Schema) arrow.DataType
+	DataType(*dynparquet.Schema) (arrow.DataType, error)
 	Accept(Visitor) bool
 	Name() string
 	ColumnsUsed() []ColumnMatcher
@@ -92,6 +102,11 @@ type Expr interface {
 	// used to identify the column in the resulting Apache Arrow frames, while
 	// ColumnsUsed will return `XYZ` to be necessary to be loaded physically.
 	Matcher() ColumnMatcher
+
+	// Expr implements these two interfaces
+	// so that queries can be transported as JSON.
+	json.Marshaler
+	json.Unmarshaler
 }
 
 func (b Builder) Filter(
@@ -135,6 +150,9 @@ func (b Builder) Aggregate(
 	}
 }
 
-func (b Builder) Build() *LogicalPlan {
-	return b.plan
+func (b Builder) Build() (*LogicalPlan, error) {
+	if err := Validate(b.plan); err != nil {
+		return nil, err
+	}
+	return b.plan, nil
 }

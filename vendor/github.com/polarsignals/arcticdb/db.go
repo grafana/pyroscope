@@ -2,11 +2,13 @@ package arcticdb
 
 import (
 	"fmt"
+	"path"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/thanos-io/objstore"
 	"go.uber.org/atomic"
 
 	"github.com/polarsignals/arcticdb/query/logicalplan"
@@ -18,6 +20,8 @@ type ColumnStore struct {
 	reg              prometheus.Registerer
 	granuleSize      int
 	activeMemorySize int64
+	storagePath      string
+	bucket           objstore.Bucket
 
 	// indexDegree is the degree of the btree index (default = 2)
 	indexDegree int
@@ -55,6 +59,16 @@ func (s *ColumnStore) WithSplitSize(splitSize int) *ColumnStore {
 	return s
 }
 
+func (s *ColumnStore) WithStorageBucket(bucket objstore.Bucket) *ColumnStore {
+	s.bucket = bucket
+	return s
+}
+
+func (s *ColumnStore) WithStoragePath(storagePath string) *ColumnStore {
+	s.storagePath = storagePath
+	return s
+}
+
 func (s *ColumnStore) Close() error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
@@ -76,6 +90,7 @@ type DB struct {
 	tables map[string]*Table
 	reg    prometheus.Registerer
 
+	bucket objstore.Bucket
 	// Databases monotonically increasing transaction id
 	tx *atomic.Uint64
 
@@ -114,10 +129,21 @@ func (s *ColumnStore) DB(name string) (*DB, error) {
 		highWatermark: atomic.NewUint64(0),
 	}
 
+	if s.bucket != nil {
+		db.bucket = &BucketPrefixDecorator{
+			Bucket: s.bucket,
+			prefix: db.StorePath(),
+		}
+	}
+
 	db.txPool = NewTxPool(db.highWatermark)
 
 	s.dbs[name] = db
 	return db, nil
+}
+
+func (db *DB) StorePath() string {
+	return path.Join(db.columnStore.storagePath, db.name)
 }
 
 func (db *DB) Close() error {
