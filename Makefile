@@ -50,10 +50,27 @@ go/lint: $(BIN)/golangci-lint
 	$(BIN)/golangci-lint run
 	$(GO) vet ./...
 
+.PHONY: go/mod
+go/mod:
+	GO111MODULE=on go mod download
+	GO111MODULE=on go mod verify
+	GO111MODULE=on go mod tidy
+	GO111MODULE=on go mod vendor
+
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf ## Automatically fix some lint errors
-	$(BIN)/golangci-lint run --fix
+	git ls-files '*.go' | grep -v 'vendor/' | xargs gofmt -s -w
+	# TODO: Reenable once golangci-lint support go 1.18 properly
+	# $(BIN)/golangci-lint run --fix
 	$(BIN)/buf format -w .
+
+.PHONY: check/unstaged-changes
+check/unstaged-changes:
+	@git --no-pager diff --exit-code || { echo ">> There are unstaged changes in the working tree"; exit 1; }
+
+.PHONY: check/go/mod
+check/go/mod: go/mod
+	@git --no-pager diff --exit-code -- go.sum go.mod vendor/ || { echo ">> There are unstaged changes in go vendoring run 'make go/mod'"; exit 1; }
 
 .PHONY: clean
 clean: ## Delete intermediate build artifacts
