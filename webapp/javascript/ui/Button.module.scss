@@ -39,19 +39,15 @@ $border-radius: 4px;
 }
 
 .primary {
+  border: none;
   color: var(--ps-neutral-9) !important;
   background-color: var(--ps-accent-2-1);
-  border-left-color: var(--ps-accent-2-1);
-  border-right-color: var(--ps-accent-2-1);
-  border-top-color: var(--ps-accent-2-1);
-  border-bottom-color: var(--ps-accent-2-1);
 
   &:hover {
-    background-color: var(--ps-accent-2-1);
+    background-color: var(--ps-accent-2-2);
   }
   &:disabled {
-    border-color: var(--ps-accent-2-1);
-    background-color: var(--ps-accent-2-1);
+    background-color: var(--ps-accent-2-3);
     pointer-events: none;
   }
 }

@@ -304,13 +304,10 @@ body,
   .btn {
     padding-left: 12px;
     padding-right: 12px;
+    border: none;
     &.active {
       background-color: var(--ps-accent-2-1);
       color: #222;
-      border-left-color: var(--ps-accent-2-1);
-      border-right-color: var(--ps-accent-2-1);
-      border-top-color: var(--ps-accent-2-1);
-      border-bottom-color: var(--ps-accent-2-1);
     }
   }
 
