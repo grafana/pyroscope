@@ -48,13 +48,13 @@ func arrowScalarToParquetValue(sc scalar.Scalar) (parquet.Value, error) {
 	}
 }
 
-func binaryBooleanExpr(expr logicalplan.BinaryExpr) (TrueNegativeFilter, error) {
+func binaryBooleanExpr(expr *logicalplan.BinaryExpr) (TrueNegativeFilter, error) {
 	switch expr.Op {
 	case logicalplan.EqOp: //, logicalplan.NotEqOp, logicalplan.LTOp, logicalplan.LTEOp, logicalplan.GTOp, logicalplan.GTEOp, logicalplan.RegExpOp, logicalplan.NotRegExpOp:
 		var leftColumnRef *ColumnRef
 		expr.Left.Accept(PreExprVisitorFunc(func(expr logicalplan.Expr) bool {
 			switch e := expr.(type) {
-			case logicalplan.Column:
+			case *logicalplan.Column:
 				leftColumnRef = &ColumnRef{
 					ColumnName: e.ColumnName,
 				}
@@ -72,7 +72,7 @@ func binaryBooleanExpr(expr logicalplan.BinaryExpr) (TrueNegativeFilter, error) 
 		)
 		expr.Right.Accept(PreExprVisitorFunc(func(expr logicalplan.Expr) bool {
 			switch e := expr.(type) {
-			case logicalplan.LiteralExpr:
+			case *logicalplan.LiteralExpr:
 				rightValue, err = arrowScalarToParquetValue(e.Value)
 				return false
 			}
@@ -137,7 +137,7 @@ func booleanExpr(expr logicalplan.Expr) (TrueNegativeFilter, error) {
 	}
 
 	switch e := expr.(type) {
-	case logicalplan.BinaryExpr:
+	case *logicalplan.BinaryExpr:
 		return binaryBooleanExpr(e)
 	default:
 		return nil, fmt.Errorf("unsupported boolean expression %T", e)

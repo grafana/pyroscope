@@ -85,7 +85,7 @@ func NewDebugInfodClientWithObjectStorageCache(logger log.Logger, config *Config
 		return nil, fmt.Errorf("marshal content of debuginfod object storage configuration: %w", err)
 	}
 
-	bucket, err := client.NewBucket(logger, cfg, nil, "parca/debuginfod")
+	bucket, err := client.NewBucket(logger, cfg, "parca/debuginfod")
 	if err != nil {
 		return nil, fmt.Errorf("instantiate debuginfod object storage: %w", err)
 	}
