@@ -149,6 +149,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 		storageQueueWorkers,
 		storageQueueSize)
 
+	defaultMetricsRegistry := prometheus.DefaultRegisterer
+
 	var ingester ingestion.Ingester
 	ingester = parser.New(svc.logger, svc.storageQueue, metricsExporter)
 
@@ -165,23 +167,12 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
 		i := 0
-		for _, t := range svc.config.RemoteWrite.Targets {
-			targetLogger := logger.WithField("remote_target", t.Address)
-
+		for targetName, t := range svc.config.RemoteWrite.Targets {
+			targetLogger := logger.WithField("remote_target", targetName)
 			targetLogger.Debug("Initializing remote write target", t.String())
-			cfg := config.RemoteWriteTarget{
-				Address:   t.Address,
-				AuthToken: t.AuthToken,
-				Timeout:   t.Timeout,
-			}
 
-			remoteClient := remotewrite.NewClient(targetLogger, cfg)
-			q := ingestion.NewIngestionQueue(
-				targetLogger,
-				remoteClient,
-				t.QueueWorkers,
-				t.QueueSize,
-			)
+			remoteClient := remotewrite.NewClient(targetLogger, t)
+			q := remotewrite.NewIngestionQueue(targetLogger, defaultMetricsRegistry, remoteClient, targetName, t)
 
 			remoteClients[i] = q
 			i++
@@ -194,7 +185,6 @@ func newServerService(c *config.Server) (*serverService, error) {
 		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")
 	}
 
-	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
 		ingester,
@@ -407,5 +397,26 @@ func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
 	}
 
 	c.RemoteWrite.Targets = s.RemoteWrite.Targets
+
+	// Setup defaults
+	// Since we are loading from yaml directly, viper's defaults won't work
+	// TODO(eh-am): find a better solution?
+	for k, t := range c.RemoteWrite.Targets {
+		if t.QueueSize == 0 {
+			t.QueueSize = 100
+		}
+
+		if t.QueueWorkers == 0 {
+			t.QueueWorkers = 4
+		}
+
+		if t.Timeout == 0 {
+			t.Timeout = time.Second * 30
+		}
+
+		// Reassign the struct, since range creates a copy
+		c.RemoteWrite.Targets[k] = t
+	}
+
 	return nil
 }
