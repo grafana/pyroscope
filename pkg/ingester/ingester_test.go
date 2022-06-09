@@ -3,8 +3,10 @@ package ingester
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"runtime/pprof"
 	"testing"
@@ -77,7 +79,6 @@ func Test_ConnectPush(t *testing.T) {
 		t,
 		profileStore.Close(),
 	)
-
 }
 
 func testProfile(t *testing.T) []byte {
@@ -86,4 +87,20 @@ func testProfile(t *testing.T) []byte {
 	buf := bytes.NewBuffer(nil)
 	require.NoError(t, pprof.WriteHeapProfile(buf))
 	return buf.Bytes()
+}
+
+func Test_ParseQuery(t *testing.T) {
+	q := url.Values{
+		"query": []string{`memory:alloc_space:bytes:space:bytes{foo="bar",bar=~"buzz"}`},
+		"from":  []string{"now-6h"},
+		"until": []string{"now"},
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost/render/render?%s", q.Encode()), nil)
+	require.NoError(t, err)
+
+	expr, err := parseQuery(req)
+	require.NoError(t, err)
+
+	require.NotNil(t, expr)
 }
