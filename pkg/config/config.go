@@ -367,7 +367,7 @@ type RemoteWrite struct {
 type RemoteWriteTarget struct {
 	Address string `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
 	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
-	AuthToken    string            `desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	AuthToken    string            `desc:"authorization token used to upload profiling data" yaml:"auth-token"`
 	Tags         map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 	Timeout      time.Duration     `desc:"profile upload timeout" mapstructure:"timeout"`
 	QueueSize    int               `desc:"number of items in the queue"`
@@ -379,5 +379,12 @@ func (r RemoteWriteTarget) String() string {
 	for key, value := range r.Tags {
 		tags = tags + fmt.Sprintf("%s=%s ", key, value)
 	}
-	return fmt.Sprintf("Address: %s\nAuthToken: [redacted]\nTags: %s\nTimeout: %s\nQueueSize: %d\nQueueWorkers %d", r.Address, tags, r.Timeout.String(), r.QueueSize, r.QueueWorkers)
+
+	// it's useful to distinguish between set/not set when debugging
+	authToken := "[redacted]"
+	if r.AuthToken == "" {
+		authToken = "[not set]"
+	}
+
+	return fmt.Sprintf("Address: %s\nAuthToken: %s\nTags: %s\nTimeout: %s\nQueueSize: %d\nQueueWorkers %d", r.Address, authToken, tags, r.Timeout.String(), r.QueueSize, r.QueueWorkers)
 }
