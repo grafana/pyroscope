@@ -70,6 +70,8 @@ func (q *IngestionQueue) Ingest(ctx context.Context, input *ingestion.IngestInpu
 	default:
 		// Drop data if the queue is full.
 	}
+
+	q.logger.WithField("key", input.Metadata.Key.Normalized()).Debugf("dropping since there's not enough space in the queue")
 	q.metrics.droppedItems.Inc()
 	return nil
 }

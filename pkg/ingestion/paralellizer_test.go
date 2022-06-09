@@ -1,4 +1,4 @@
-package ingestion
+package ingestion_test
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
-
-	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
@@ -57,11 +55,10 @@ var _ = Describe("Parallelizer", func() {
 		mock1 := mockPutter{Fn: fn}
 		mock2 := mockPutter{Fn: fn}
 
-		p := remotewrite.NewParallelizer(logger, mock1, mock2)
+		p := ingestion.NewParallelizer(logger, mock1, mock2)
 
 		wg.Add(2)
 		p.Ingest(context.TODO(), pi)
 		wg.Wait()
 	})
-
 })
