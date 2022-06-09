@@ -152,9 +152,9 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 			filter := p.parser.sampleTypesFilter
 			p.parser.sampleTypesFilter = func(s string) bool {
 				if filter != nil {
-					return filter(s) && p.SampleTypeConfig[s].Cumulative
+					return filter(s) && sampleTypes[s].Cumulative
 				}
-				return p.SampleTypeConfig[s].Cumulative
+				return sampleTypes[s].Cumulative
 			}
 			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, bytes.NewReader(p.PreviousProfile)); err != nil {
 				return err
