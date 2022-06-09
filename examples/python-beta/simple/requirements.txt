@@ -1,1 +1,1 @@
-pyroscope-beta==0.3.0
+pyroscope-beta==0.0.4

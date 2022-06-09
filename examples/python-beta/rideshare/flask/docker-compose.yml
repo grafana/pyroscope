@@ -5,24 +5,18 @@ services:
       - REGION=us-east-1
     build:
       context: .
-    cap_add:
-      - SYS_PTRACE
 
   us-west-1:
     environment:
       - REGION=us-west-1
     build:
       context: .
-    cap_add:
-      - SYS_PTRACE
 
   eu-west-1:
     environment:
       - REGION=eu-west-1
     build:
       context: .
-    cap_add:
-      - SYS_PTRACE
 
   pyroscope:
     image: pyroscope/pyroscope

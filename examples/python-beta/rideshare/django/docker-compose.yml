@@ -12,8 +12,6 @@ services:
       - ./.env.dev
     depends_on:
       - db
-    cap_add:
-      - SYS_PTRACE
   db:
     image: postgres:13.0-alpine
     volumes:

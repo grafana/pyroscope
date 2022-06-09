@@ -7,7 +7,8 @@ FROM python:3.9
 
 USER root
 
-RUN pip3 install flask pyroscope-beta 
+RUN pip3 install flask
+RUN pip3 install pyroscope-beta==0.0.4
 
 ENV FLASK_ENV=development
 ENV PYTHONUNBUFFERED=1
