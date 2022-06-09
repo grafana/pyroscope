@@ -5,7 +5,7 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
-import React from 'react';
+import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { Flamebearer, Profile } from '@pyroscope/models';
@@ -65,7 +65,7 @@ interface Node {
   j: number;
 }
 
-interface FlamegraphRendererProps {
+export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
   profile?: Profile;
   onlyDisplay?: ViewTypes;
@@ -80,6 +80,13 @@ interface FlamegraphRendererProps {
 
   /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
+  sharedQuery?: {
+    searchQuery?: string;
+    onQueryChange: Dispatch<SetStateAction<string | undefined>>;
+    syncEnabled: string | boolean;
+    toggleSync: Dispatch<SetStateAction<boolean | string>>;
+    id: string;
+  };
 }
 
 interface FlamegraphRendererState {
@@ -372,6 +379,7 @@ class FlameGraphRenderer extends React.Component<
         <div>
           {toolbarVisible && (
             <Toolbar
+              sharedQuery={this.props.sharedQuery}
               renderLogo={this.props.renderLogo || false}
               disableChangingDisplay={!!this.props.onlyDisplay}
               flamegraphType={this.state.flamebearer.format}

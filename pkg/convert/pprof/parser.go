@@ -20,6 +20,8 @@ type Parser struct {
 	labels      map[string]string
 	sampleTypes map[string]*tree.SampleTypeConfig
 	cache       labelsCache
+
+	sampleTypesFilter func(string) bool
 }
 
 type ParserConfig struct {
@@ -36,6 +38,15 @@ func NewParser(config ParserConfig) *Parser {
 		labels:      config.Labels,
 		sampleTypes: config.SampleTypes,
 		cache:       make(labelsCache),
+
+		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
+	}
+}
+
+func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(string) bool {
+	return func(s string) bool {
+		_, ok := sampleTypes[s]
+		return ok
 	}
 }
 
@@ -50,7 +61,7 @@ func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, b
 func (p *Parser) Convert(ctx context.Context, startTime, endTime time.Time, profile *tree.Profile) error {
 	return p.iterate(profile, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		if vt.Type >= int64(len(profile.StringTable)) {
-			return false, fmt.Errorf("sample value type is invalid")
+			return false, fmt.Errorf("sample value type is invalid: %d", vt.Type)
 		}
 		sampleType := profile.StringTable[vt.Type]
 		sampleTypeConfig, ok := p.sampleTypes[sampleType]
@@ -153,13 +164,10 @@ func (p *Parser) readTrees(x *tree.Profile, c labelsCache, f tree.Finder) {
 	// Corresponding type IDs used as the main cache keys.
 	types := make([]int64, 0, len(x.SampleType))
 	for i, s := range x.SampleType {
-		if len(p.sampleTypes) > 0 {
-			if _, ok := p.sampleTypes[x.StringTable[s.Type]]; !ok {
-				continue
-			}
+		if p.sampleTypesFilter != nil && p.sampleTypesFilter(x.StringTable[s.Type]) {
+			indexes = append(indexes, i)
+			types = append(types, s.Type)
 		}
-		indexes = append(indexes, i)
-		types = append(types, s.Type)
 	}
 	if len(indexes) == 0 {
 		return

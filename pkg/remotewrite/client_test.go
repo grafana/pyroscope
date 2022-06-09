@@ -33,7 +33,7 @@ var _ = Describe("TrafficShadower", func() {
 	Context("happy path", func() {
 		var remoteHandler http.HandlerFunc
 		var wg sync.WaitGroup
-		var cfg config.RemoteWrite
+		var cfg config.RemoteWriteTarget
 		var in ingestion.IngestInput
 
 		BeforeEach(func() {
@@ -180,7 +180,7 @@ var _ = Describe("TrafficShadower", func() {
 	Context("sad path", func() {
 		When("it can't convert PutInput into a http.Request", func() {
 			It("fails with ErrConvertPutInputToRequest", func() {
-				client := remotewrite.NewClient(logger, config.RemoteWrite{
+				client := remotewrite.NewClient(logger, config.RemoteWriteTarget{
 					Address: "%%",
 				})
 				in := ingestion.IngestInput{
@@ -199,7 +199,7 @@ var _ = Describe("TrafficShadower", func() {
 
 		When("it can't send to remote", func() {
 			It("fails with ErrMakingRequest", func() {
-				client := remotewrite.NewClient(logger, config.RemoteWrite{
+				client := remotewrite.NewClient(logger, config.RemoteWriteTarget{
 					Address: "//inexistent-url",
 				})
 				in := ingestion.IngestInput{
@@ -233,7 +233,7 @@ var _ = Describe("TrafficShadower", func() {
 					}),
 				)
 
-				client := remotewrite.NewClient(logger, config.RemoteWrite{
+				client := remotewrite.NewClient(logger, config.RemoteWriteTarget{
 					Address: remoteServer.URL,
 				})
 				in := ingestion.IngestInput{
@@ -259,37 +259,4 @@ var _ = Describe("TrafficShadower", func() {
 			})
 		})
 	})
-
-	//	Context("formats", func() {
-	//		When("format is not supported", func() {
-	//			//			BeforeEach(func() {
-	//			//				pi.Format = "unsupported"
-	//			//			})
-	//
-	//			It("fails with ErrConvertPutInputToRequest and ErrUnsupportedFormat", func() {
-	//				client := remotewrite.NewClient(logger, config.RemoteWrite{
-	//					Address: "https://www.example.com",
-	//				})
-	//				pi := parser.PutInput{
-	//					Key: segment.NewKey(map[string]string{
-	//						"__name__": "myapp",
-	//					}),
-	//
-	//					Format:          "unsupported",
-	//					StartTime:       attime.Parse("1654110240"),
-	//					EndTime:         attime.Parse("1654110250"),
-	//					SampleRate:      100,
-	//					SpyName:         "gospy",
-	//					Units:           metadata.SamplesUnits,
-	//					AggregationType: metadata.SumAggregationType,
-	//					Profile:         strings.NewReader(""),
-	//				}
-	//
-	//				err := client.Put(context.TODO(), &pi)
-	//				Expect(err).To(MatchError(remotewrite.ErrUnsupportedFormat))
-	//				Expect(err).To(MatchError(remotewrite.ErrConvertPutInputToRequest))
-	//			})
-	//		})
-	//	})
-
 })
