@@ -2,13 +2,15 @@ package logicalplan
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
-
-	"github.com/polarsignals/arcticdb/dynparquet"
 
 	"github.com/apache/arrow/go/v8/arrow"
 	"github.com/apache/arrow/go/v8/arrow/memory"
+
+	"github.com/polarsignals/arcticdb/dynparquet"
 )
 
 // LogicalPlan is a logical representation of a query. Each LogicalPlan is a
@@ -169,6 +171,40 @@ func (s *SchemaScan) String() string {
 
 type Filter struct {
 	Expr Expr
+}
+
+func (f *Filter) MarshalJSON() ([]byte, error) {
+	type filterJSON struct {
+		ExprType string
+		Expr     Expr
+	}
+	return json.Marshal(filterJSON{
+		ExprType: reflect.TypeOf(f.Expr).String(),
+		Expr:     f.Expr,
+	})
+}
+
+func (f *Filter) UnmarshalJSON(data []byte) error {
+	type filterType struct {
+		ExprType string
+		Expr     json.RawMessage
+	}
+	var ft filterType
+	err := json.Unmarshal(data, &ft)
+	if err != nil {
+		return err
+	}
+	switch ft.ExprType {
+	case "*logicalplan.BinaryExpr":
+		var be BinaryExpr
+		err := json.Unmarshal(ft.Expr, &be)
+		if err != nil {
+			return err
+		}
+		f.Expr = &be
+	}
+
+	return nil
 }
 
 func (f *Filter) String() string {

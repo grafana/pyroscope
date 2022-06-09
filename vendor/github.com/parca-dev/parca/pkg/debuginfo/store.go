@@ -81,7 +81,7 @@ func NewStore(logger log.Logger, symbolizer *symbol.Symbolizer, config *Config, 
 		return nil, fmt.Errorf("marshal content of object storage configuration: %w", err)
 	}
 
-	bucket, err := client.NewBucket(logger, cfg, nil, "parca/store")
+	bucket, err := client.NewBucket(logger, cfg, "parca/store")
 	if err != nil {
 		return nil, fmt.Errorf("instantiate object storage: %w", err)
 	}
