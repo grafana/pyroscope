@@ -97,21 +97,24 @@ function ComparisonDiffApp() {
             dispatch(actions.setQuery(query));
           }}
         />
-        <TimelineChartWrapper
-          data-testid="timeline-main"
-          id="timeline-chart-diff"
-          format="lines"
-          timelineA={leftTimeline}
-          timelineB={rightTimeline}
-          onSelect={(from, until) => {
-            dispatch(actions.setFromAndUntil({ from, until }));
-          }}
-          markings={{
-            left: { from: leftFrom, to: leftUntil, color: leftColor },
-            right: { from: rightFrom, to: rightUntil, color: rightColor },
-          }}
-          timezone={timezone}
-        />
+        <Box>
+          <TimelineChartWrapper
+            data-testid="timeline-main"
+            id="timeline-chart-diff"
+            format="lines"
+            height="125px"
+            timelineA={leftTimeline}
+            timelineB={rightTimeline}
+            onSelect={(from, until) => {
+              dispatch(actions.setFromAndUntil({ from, until }));
+            }}
+            markings={{
+              left: { from: leftFrom, to: leftUntil, color: leftColor },
+              right: { from: rightFrom, to: rightUntil, color: rightColor },
+            }}
+            timezone={timezone}
+          />
+        </Box>
         <Box>
           <div className="diff-instructions-wrapper">
             <div className="diff-instructions-wrapper-side">

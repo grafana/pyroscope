@@ -96,13 +96,16 @@ function ContinuousSingleView() {
     <div>
       <div className="main-wrapper">
         <Toolbar />
-        <TimelineChartWrapper
-          timezone={offset === 0 ? 'utc' : 'browser'}
-          data-testid="timeline-single"
-          id="timeline-chart-single"
-          timelineA={getTimeline()}
-          onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
-        />
+        <Box>
+          <TimelineChartWrapper
+            timezone={offset === 0 ? 'utc' : 'browser'}
+            data-testid="timeline-single"
+            id="timeline-chart-single"
+            timelineA={getTimeline()}
+            onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
+            height="125px"
+          />
+        </Box>
         <Box>{flamegraphRenderer}</Box>
       </div>
     </div>
