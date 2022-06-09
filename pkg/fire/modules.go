@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/thanos-io/thanos/pkg/discovery/dns"
@@ -24,6 +25,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
+	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -36,6 +38,7 @@ const (
 	Ring         string = "ring"
 	Ingester     string = "ingester"
 	MemberlistKV string = "memberlist-kv"
+	ProfileStore string = "profile-store"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
@@ -47,7 +50,6 @@ const (
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// RulerStorage             string = "ruler-storage"
 	// Ruler                    string = "ruler"
-	// Store                    string = "store"
 	// TableManager             string = "table-manager"
 	// Compactor                string = "compactor"
 	// IndexGateway             string = "index-gateway"
@@ -75,9 +77,7 @@ func (f *Fire) initAgent() (services.Service, error) {
 }
 
 func (f *Fire) initMemberlistKV() (services.Service, error) {
-	reg := prometheus.DefaultRegisterer
-
-	f.Cfg.MemberlistKV.MetricsRegisterer = reg
+	f.Cfg.MemberlistKV.MetricsRegisterer = f.reg
 	f.Cfg.MemberlistKV.Codecs = []codec.Codec{
 		ring.GetCodec(),
 	}
@@ -86,12 +86,12 @@ func (f *Fire) initMemberlistKV() (services.Service, error) {
 		"fire_",
 		prometheus.WrapRegistererWith(
 			prometheus.Labels{"name": "memberlist"},
-			reg,
+			f.reg,
 		),
 	)
 	dnsProvider := dns.NewProvider(f.logger, dnsProviderReg, dns.GolangResolverType)
 
-	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, reg)
+	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, f.reg)
 
 	f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 
@@ -99,7 +99,7 @@ func (f *Fire) initMemberlistKV() (services.Service, error) {
 }
 
 func (f *Fire) initRing() (_ services.Service, err error) {
-	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("fire_", prometheus.DefaultRegisterer))
+	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("fire_", f.reg))
 	if err != nil {
 		return
 	}
@@ -110,7 +110,7 @@ func (f *Fire) initRing() (_ services.Service, err error) {
 func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.GRPCListenPort
 
-	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, prometheus.DefaultRegisterer)
+	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.profileStore)
 	if err != nil {
 		return
 	}
@@ -118,6 +118,20 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	prefix, handler := ingestv1connect.NewIngesterHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	return ingester, nil
+}
+
+func (f *Fire) initProfileStore() (services.Service, error) {
+	profileStore, err := profilestore.New(
+		f.logger,
+		f.reg,
+		f.tracerProvider,
+	)
+	if err != nil {
+		return nil, err
+	}
+	f.profileStore = profileStore
+
+	return nil, nil
 }
 
 func (f *Fire) initServer() (services.Service, error) {

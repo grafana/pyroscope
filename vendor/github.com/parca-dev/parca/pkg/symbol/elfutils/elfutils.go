@@ -14,11 +14,10 @@
 package elfutils
 
 import (
+	"debug/elf"
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/parca-dev/parca/internal/go/debug/elf"
 )
 
 var dwarfSuffix = func(s *elf.Section) string {

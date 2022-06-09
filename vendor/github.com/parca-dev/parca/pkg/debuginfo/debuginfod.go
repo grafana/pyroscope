@@ -41,7 +41,9 @@ func (NopDebugInfodClient) GetDebugInfo(context.Context, string) (io.ReadCloser,
 }
 
 type HTTPDebugInfodClient struct {
-	logger          log.Logger
+	logger log.Logger
+	client *http.Client
+
 	UpstreamServers []*url.URL
 	timeoutDuration time.Duration
 }
@@ -71,6 +73,7 @@ func NewHTTPDebugInfodClient(logger log.Logger, serverURLs []string, timeoutDura
 		logger:          logger,
 		UpstreamServers: parsedURLs,
 		timeoutDuration: timeoutDuration,
+		client:          http.DefaultClient,
 	}, nil
 }
 
@@ -149,11 +152,17 @@ func (c *HTTPDebugInfodClient) GetDebugInfo(ctx context.Context, buildID string)
 	//"https://debuginfod.archlinux.org/"
 	//"https://debuginfod.centos.org/"
 	for _, u := range c.UpstreamServers {
-		ctx, cancel := context.WithTimeout(ctx, c.timeoutDuration)
-		defer cancel()
-
 		serverURL := *u
-		rc, err := c.request(ctx, serverURL, buildID)
+		rc, err := func(serverURL url.URL) (io.ReadCloser, error) {
+			ctx, cancel := context.WithTimeout(ctx, c.timeoutDuration)
+			defer cancel()
+
+			rc, err := c.request(ctx, serverURL, buildID)
+			if err != nil {
+				return nil, err
+			}
+			return rc, nil
+		}(serverURL)
 		if err != nil {
 			level.Warn(logger).Log(
 				"msg", "failed to download debug info file from upstream debuginfod server, trying next one (if exists)",
@@ -161,7 +170,9 @@ func (c *HTTPDebugInfodClient) GetDebugInfo(ctx context.Context, buildID string)
 			)
 			continue
 		}
-		return rc, nil
+		if rc != nil {
+			return rc, nil
+		}
 	}
 	return nil, errDebugInfoNotFound
 }
@@ -178,7 +189,7 @@ func (c *HTTPDebugInfodClient) request(ctx context.Context, u url.URL, buildID s
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

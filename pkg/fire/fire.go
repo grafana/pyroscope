@@ -17,16 +17,19 @@ import (
 	"github.com/grafana/dskit/modules"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/weaveworks/common/logging"
 	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/cfg"
 	"github.com/grafana/fire/pkg/distributor"
 	"github.com/grafana/fire/pkg/ingester"
+	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -89,8 +92,10 @@ func (c *Config) Clone() flagext.Registerer {
 }
 
 type Fire struct {
-	Cfg    Config
-	logger log.Logger
+	Cfg            Config
+	logger         log.Logger
+	reg            prometheus.Registerer
+	tracerProvider trace.TracerProvider
 
 	ModuleManager *modules.Manager
 	serviceMap    map[string]services.Service
@@ -101,13 +106,16 @@ type Fire struct {
 	SignalHandler      *signals.Handler
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
+	profileStore       *profilestore.ProfileStore
 }
 
 func New(cfg Config) (*Fire, error) {
 	logger := initLogger(&cfg.Server)
 	fire := &Fire{
-		Cfg:    cfg,
-		logger: logger,
+		Cfg:            cfg,
+		logger:         logger,
+		reg:            prometheus.DefaultRegisterer,
+		tracerProvider: trace.NewNoopTracerProvider(),
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -123,6 +131,7 @@ func (f *Fire) setupModuleManager() error {
 
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileStore, f.initProfileStore, modules.UserInvisibleModule)
 	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
@@ -134,11 +143,11 @@ func (f *Fire) setupModuleManager() error {
 		All:          {Agent, Ingester, Distributor},
 		Distributor:  {Ring, Server},
 		Agent:        {Server},
-		Ingester:     {Server, MemberlistKV},
+		Ingester:     {Server, MemberlistKV, ProfileStore},
+		ProfileStore: {},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
 
-		// Store:                    {Overrides, IndexGatewayRing},
 		// Querier:                  {Store, Ring, Server, IngesterQuerier, TenantConfigs, UsageReport},
 		// QueryFrontendTripperware: {Server, Overrides, TenantConfigs},
 		// QueryFrontend:            {QueryFrontendTripperware, UsageReport},

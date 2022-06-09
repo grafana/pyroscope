@@ -15,6 +15,7 @@ package elfutils
 
 import (
 	"debug/dwarf"
+	"debug/elf"
 	"errors"
 	"fmt"
 	"io"
@@ -24,7 +25,6 @@ import (
 	"github.com/go-delve/delve/pkg/dwarf/reader"
 
 	pb "github.com/parca-dev/parca/gen/proto/go/parca/metastore/v1alpha1"
-	"github.com/parca-dev/parca/internal/go/debug/elf"
 	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/parca-dev/parca/pkg/symbol/demangle"
 )
