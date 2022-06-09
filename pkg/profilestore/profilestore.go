@@ -126,10 +126,14 @@ func (ps *ProfileStore) Ingest(ctx context.Context, req *connect.Request[pushv1.
 	return nil
 }
 
-func (ps *ProfileStore) TableProvider(name string) *arcticdb.DBTableProvider {
-	tb, err := ps.col.DB(name)
+func (ps *ProfileStore) TableProvider() *arcticdb.DBTableProvider {
+	tb, err := ps.col.DB("fire")
 	if err != nil {
 		panic(err)
 	}
 	return tb.TableProvider()
+}
+
+func (ps *ProfileStore) MetaStore() metastore.ProfileMetaStore {
+	return ps.metaStore
 }

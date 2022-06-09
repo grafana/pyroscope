@@ -104,3 +104,57 @@ func Test_ParseQuery(t *testing.T) {
 
 	require.NotNil(t, expr)
 }
+
+func Test_Query(t *testing.T) {
+	cfg := defaultIngesterTestConfig(t)
+	logger := log.NewLogfmtLogger(os.Stdout)
+
+	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider())
+	require.NoError(t, err)
+
+	mux := http.NewServeMux()
+	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
+	require.NoError(t, err)
+
+	mux.Handle(ingestv1connect.NewIngesterHandler(d))
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	client := ingestv1connect.NewIngesterClient(http.DefaultClient, s.URL)
+
+	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{
+			{
+				Labels: []*pushv1.LabelPair{
+					{Name: "__name__", Value: "memory"},
+					// {Name: "cluster", Value: "us-central1"},
+				},
+				Samples: []*pushv1.RawSample{
+					{
+						RawProfile: testProfile(t),
+					},
+				},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	q := url.Values{
+		"query": []string{`memory:inuse_space:bytes:space:bytes{}`},
+		"from":  []string{"now-6h"},
+		"until": []string{"now"},
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost/render/render?%s", q.Encode()), nil)
+	require.NoError(t, err)
+	rec := httptest.NewRecorder()
+	d.RenderHandler(rec, req)
+	require.Equal(t, rec.Body.String(), "")
+	require.Equal(t, rec.Result().StatusCode, 200)
+
+	require.NoError(
+		t,
+		profileStore.Close(),
+	)
+}

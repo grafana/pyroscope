@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/gogo/status"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/polarsignals/arcticdb/query"
 	"github.com/polarsignals/arcticdb/query/logicalplan"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,6 +28,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"google.golang.org/grpc/codes"
 
+	"github.com/grafana/fire/assets"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
@@ -120,7 +123,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
 	eng := query.NewEngine(
 		memory.DefaultAllocator,
-		i.profileStore.TableProvider("stacktraces"),
+		i.profileStore.TableProvider(),
 	)
 
 	filterExpr, err := parseQuery(req)
@@ -148,19 +151,29 @@ func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	defer ar.Release()
 
-	flame, err := buildProfile(ar)
+	flame, err := buildProfile(ar, i.profileStore.MetaStore())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Add("Content-Type", "text/html")
-	if err := flamebearer.FlamebearerToStandaloneHTML(flame, dir, w); err != nil {
+	a, err := assets.Assets()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := flamebearer.FlamebearerToStandaloneHTML(flame, a, w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func buildProfile(ar arrow.Record) (*flamebearer.FlamebearerProfile, error) {
+func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebearer.FlamebearerProfile, error) {
+	type sample struct {
+		stacktraceID []byte
+		locationIDs  [][]byte
+		value        int64
+	}
 	schema := ar.Schema()
 	indices := schema.FieldIndices("stacktrace")
 	if len(indices) != 1 {
@@ -175,19 +188,72 @@ func buildProfile(ar arrow.Record) (*flamebearer.FlamebearerProfile, error) {
 	valueColumn := ar.Column(indices[0]).(*array.Int64)
 
 	rows := int(ar.NumRows())
-	// samples := make([]*sample, 0, rows)
+	samples := make([]*sample, 0, rows)
 	stacktraceUUIDs := make([][]byte, 0, rows)
 	for i := 0; i < rows; i++ {
 		stacktraceID := stacktraceColumn.Value(i)
-		fmt.Println(valueColumn.Value(i))
+		value := valueColumn.Value(i)
 
 		stacktraceUUIDs = append(stacktraceUUIDs, stacktraceID)
-		// samples = append(samples, &sample{
-		// 	stacktraceID: stacktraceID,
-		// 	value:        value,
-		// })
+		samples = append(samples, &sample{
+			stacktraceID: stacktraceID,
+			value:        value,
+		})
 	}
-	return &flamebearer.NewFlamebearerProfile{}, nil
+
+	stacktraceMap, err := meta.GetStacktraceByIDs(context.Background(), stacktraceUUIDs...)
+	if err != nil {
+		return nil, err
+	}
+
+	locationUUIDSeen := map[string]struct{}{}
+	locationUUIDs := [][]byte{}
+	for _, s := range stacktraceMap {
+		for _, id := range s.GetLocationIds() {
+			if _, seen := locationUUIDSeen[string(id)]; !seen {
+				locationUUIDSeen[string(id)] = struct{}{}
+				locationUUIDs = append(locationUUIDs, id)
+			}
+		}
+	}
+
+	locationsMap, err := metastore.GetLocationsByIDs(context.Background(), meta, locationUUIDs...)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(locationsMap)
+
+	for _, s := range samples {
+		s.locationIDs = stacktraceMap[string(s.stacktraceID)].LocationIds
+	}
+	sort.Slice(samples, func(i, j int) bool {
+		return len(samples[i].locationIDs) < len(samples[j].locationIDs)
+	})
+
+	return &flamebearer.FlamebearerProfile{
+		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+			Metadata: flamebearer.FlamebearerMetadataV1{
+				Format: "single",
+				Units:  "bytes",
+				Name:   "inuse_memory",
+			},
+			Timeline: &flamebearer.FlamebearerTimelineV1{
+				StartTime:     time.Now().Add(-1 * time.Hour).Unix(),
+				DurationDelta: 3,
+				Samples:       []uint64{1, 2, 3, 4, 5},
+			},
+			Flamebearer: flamebearer.FlamebearerV1{
+				Names: []string{"total", "bar()"},
+				Levels: [][]int{
+					{0, 2036457, 0, 0},
+					{0, 2036457, 2036457, 1},
+				},
+				NumTicks: 1,
+				MaxSelf:  2036457,
+			},
+		},
+	}, nil
 }
 
 // render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
@@ -216,8 +282,8 @@ func parseQuery(req *http.Request) (logicalplan.Expr, error) {
 	return logicalplan.And(
 		append(
 			selectorExprs,
-			logicalplan.Col("timestamp").GT(logicalplan.Literal(start)),
-			logicalplan.Col("timestamp").LT(logicalplan.Literal(end)),
+			logicalplan.Col("timestamp").GT(logicalplan.Literal(int64(start))),
+			logicalplan.Col("timestamp").LT(logicalplan.Literal(int64(end))),
 		)...,
 	), nil
 }
