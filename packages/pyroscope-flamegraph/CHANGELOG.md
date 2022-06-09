@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.8.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.7.0...@pyroscope/flamegraph@0.8.0) (2022-06-09)
+
+
+### Features
+
+* Add Ability to Sync Search Bar in Comparison View ([#1120](https://github.com/pyroscope-io/pyroscope/issues/1120)) ([8300792](https://github.com/pyroscope-io/pyroscope/commit/830079299cef97db33d26ada31cbdccbc00e3268))
+
+
+
+
+
 # [0.7.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.4...@pyroscope/flamegraph@0.7.0) (2022-05-30)
 
 
