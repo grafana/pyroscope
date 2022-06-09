@@ -294,6 +294,10 @@ var _ = Describe("flags", func() {
 					},
 					AdminSocketPath: "/tmp/pyroscope.sock",
 
+					RemoteWrite: config.RemoteWrite{
+						Enabled: true,
+					},
+
 					ScrapeConfigs: []*scrape.Config{
 						{
 							JobName:          "testing",

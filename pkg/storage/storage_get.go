@@ -31,6 +31,7 @@ type GetOutput struct {
 	Count           uint64
 	Units           metadata.Units
 	AggregationType metadata.AggregationType
+	Telemetry       map[string]interface{}
 }
 
 const (

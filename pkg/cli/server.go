@@ -7,28 +7,30 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/client/pyroscope"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 
 	// revive:disable:blank-imports register discoverer
 	"github.com/pyroscope-io/pyroscope/pkg/baseurl"
+	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
-	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
+	"github.com/pyroscope-io/pyroscope/pkg/selfprofiling"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
@@ -42,21 +44,20 @@ type Server struct {
 }
 
 type serverService struct {
-	config               *config.Server
-	logger               *logrus.Logger
-	controller           *server.Controller
-	storage              *storage.Storage
-	ingestionQueue       *storage.IngestionQueue
-	directUpstream       *direct.Direct
-	directScrapeUpstream *direct.Direct
-	analyticsService     *analytics.Service
-	selfProfiling        *agent.ProfileSession
-	debugReporter        *debug.Reporter
-	healthController     *health.Controller
-	adminServer          *admin.Server
-	discoveryManager     *discovery.Manager
-	scrapeManager        *scrape.Manager
-	database             *sqlstore.SQLStore
+	config     *config.Server
+	logger     *logrus.Logger
+	controller *server.Controller
+	storage    *storage.Storage
+	// queue used to ingest data into the storage
+	ingestionQueue   *storage.IngestionQueue
+	analyticsService *analytics.Service
+	selfProfiling    *pyroscope.Session
+	debugReporter    *debug.Reporter
+	healthController *health.Controller
+	adminServer      *admin.Server
+	discoveryManager *discovery.Manager
+	scrapeManager    *scrape.Manager
+	database         *sqlstore.SQLStore
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -98,6 +99,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
+
+	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 
 	if svc.config.Auth.JWTSecret == "" {
 		if svc.config.Auth.JWTSecret, err = svc.storage.JWT(); err != nil {
@@ -146,34 +149,50 @@ func newServerService(c *config.Server) (*serverService, error) {
 		ingestionQueueWorkers,
 		ingestionQueueSize)
 
-	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
-	svc.directUpstream = direct.New(svc.ingestionQueue, metricsExporter)
-	svc.directScrapeUpstream = direct.New(svc.ingestionQueue, metricsExporter)
+	var ingester ingestion.Ingester
+	ingester = parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
 
+	// If remote write is available, let's write to both local storage and to the remote server
+	if svc.config.RemoteWrite.Enabled {
+		err = loadRemoteWriteTargetConfigsFromFile(svc.config)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(svc.config.RemoteWrite.Targets) <= 0 {
+			return nil, fmt.Errorf("remote write is enabled but no targets are set up")
+		}
+
+		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
+		i := 0
+		for _, t := range svc.config.RemoteWrite.Targets {
+			logrus.Debugf("Instantiating remote write client for target %s", t.Address)
+			cfg := config.RemoteWriteTarget{
+				Address:   t.Address,
+				AuthToken: t.AuthToken,
+				Timeout:   t.Timeout,
+			}
+			remoteClients[i] = remotewrite.NewClient(logger, cfg)
+			i++
+		}
+
+		ingester = remotewrite.NewParallelizer(svc.logger, remoteClients...)
+	}
 	if !svc.config.NoSelfProfiling {
-		svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
-			Upstream:       svc.directUpstream,
-			AppName:        "pyroscope.server",
-			ProfilingTypes: types.DefaultProfileTypes,
-			SpyName:        types.GoSpy,
-			SampleRate:     100,
-			UploadRate:     10 * time.Second,
-			Logger:         logger,
-		})
+		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")
 	}
 
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		svc.ingestionQueue,
+		ingester,
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
-		Configuration:   svc.config,
-		Storage:         svc.storage,
-		Putter:          svc.ingestionQueue,
-		MetricsExporter: metricsExporter,
-		Notifier:        svc.healthController,
+		Configuration: svc.config,
+		Storage:       svc.storage,
+		Ingester:      ingester,
+		Notifier:      svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,
 			svc.config.AdhocDataPath,
@@ -225,9 +244,6 @@ func (svc *serverService) Start() error {
 	}
 
 	svc.healthController.Start()
-	svc.directUpstream.Start()
-	svc.directScrapeUpstream.Start()
-
 	if !svc.config.NoSelfProfiling {
 		if err := svc.selfProfiling.Start(); err != nil {
 			svc.logger.WithError(err).Error("failed to start self-profiling")
@@ -293,9 +309,6 @@ func (svc *serverService) stop() {
 		svc.selfProfiling.Stop()
 	}
 
-	svc.logger.Debug("stopping upstream")
-	svc.directUpstream.Stop()
-	svc.directScrapeUpstream.Stop()
 	svc.logger.Debug("stopping ingestion queue")
 	svc.ingestionQueue.Stop()
 	svc.logger.Debug("stopping storage")
@@ -357,5 +370,30 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 	}
 	// Populate scrape configs.
 	c.ScrapeConfigs = s.ScrapeConfigs
+	return nil
+}
+
+func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
+	b, err := os.ReadFile(c.Config)
+	switch {
+	case err == nil:
+	case os.IsNotExist(err):
+		return nil
+	default:
+		return err
+	}
+
+	type cfg struct {
+		RemoteWrite struct {
+			Targets map[string]config.RemoteWriteTarget `yaml:"targets" mapstructure:"-"`
+		} `yaml:"remote-write"`
+	}
+
+	var s cfg
+	if err = yaml.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	c.RemoteWrite.Targets = s.RemoteWrite.Targets
 	return nil
 }
