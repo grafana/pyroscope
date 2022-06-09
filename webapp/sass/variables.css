@@ -39,11 +39,11 @@
 [data-flamegraph-color-mode='light'] {
   --ps-neutral-1: #ffffff;
   --ps-neutral-2: #000000;
-  --ps-neutral-5: #e4e4e4;
-  --ps-neutral-7: #dededb;
-  --ps-neutral-9: #d8d8d8;
-  --ps-neutral-10: #b2b2b2;
-  --ps-neutral-14: #c4c4c4;
-  --ps-neutral-15: #272727;
-  --ps-neutral-17: #00000008;
+  --ps-neutral-5: #eaeaea; /* background furthest back color */
+  --ps-neutral-7: #f8f8f8; /* sidebar background and "panel"/"box" background */
+  --ps-neutral-9: #e2e2e2; /* non-selected button background, highlighted button text (when buttons are green) */
+  --ps-neutral-10: #b2b2b2; /* disabled button text color, button borders, dropdown borders */
+  --ps-neutral-14: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
+  --ps-neutral-15: #272727; /* sidebar text and datepicker text */
+  --ps-neutral-17: #00000008; /* lighter background for table */
 }
