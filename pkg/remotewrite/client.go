@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -24,20 +27,25 @@ var (
 )
 
 type Client struct {
-	log    logrus.FieldLogger
-	config config.RemoteWriteTarget
-	client *http.Client
+	log     logrus.FieldLogger
+	config  config.RemoteWriteTarget
+	client  *http.Client
+	metrics *clientMetrics
 }
 
-func NewClient(logger logrus.FieldLogger, cfg config.RemoteWriteTarget) *Client {
+func NewClient(logger logrus.FieldLogger, reg prometheus.Registerer, targetName string, cfg config.RemoteWriteTarget) *Client {
 	client := &http.Client{
 		Timeout: cfg.Timeout,
 	}
 
+	metrics := newClientMetrics(reg, targetName, cfg.Address)
+	metrics.mustRegister()
+
 	return &Client{
-		log:    logger,
-		config: cfg,
-		client: client,
+		log:     logger,
+		config:  cfg,
+		client:  client,
+		metrics: metrics,
 	}
 }
 
@@ -50,11 +58,23 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	r.enhanceWithAuth(req)
 
 	req = req.WithContext(ctx)
-	r.log.Debugf("Making request to %s", req.URL.String())
+
+	dump, _ := httputil.DumpRequestOut(req, true)
+	// ignore errors
+	if err == nil {
+		r.metrics.sentBytes.Add(float64(len(dump)))
+	}
+
+	start := time.Now()
 	res, err := r.client.Do(req)
 	if err != nil {
 		return multierror.Append(err, ErrMakingRequest)
 	}
+	duration := time.Since(start)
+
+	r.metrics.responseTime.With(prometheus.Labels{
+		"code": strconv.FormatInt(int64(res.StatusCode), 10),
+	}).Observe(duration.Seconds())
 	defer res.Body.Close()
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {

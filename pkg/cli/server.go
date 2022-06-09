@@ -171,7 +171,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 			targetLogger := logger.WithField("remote_target", targetName)
 			targetLogger.Debug("Initializing remote write target", t.String())
 
-			remoteClient := remotewrite.NewClient(targetLogger, t)
+			remoteClient := remotewrite.NewClient(targetLogger, defaultMetricsRegistry, targetName, t)
 			q := remotewrite.NewIngestionQueue(targetLogger, defaultMetricsRegistry, remoteClient, targetName, t)
 
 			remoteClients[i] = q

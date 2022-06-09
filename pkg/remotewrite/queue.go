@@ -69,7 +69,7 @@ func (s *IngestionQueue) Ingest(ctx context.Context, input *ingestion.IngestInpu
 	default:
 		// Drop data if the queue is full.
 	}
-	s.metrics.discardedItems.Inc()
+	s.metrics.droppedItems.Inc()
 	return nil
 }
 

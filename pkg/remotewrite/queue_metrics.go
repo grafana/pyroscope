@@ -9,10 +9,10 @@ import (
 type queueMetrics struct {
 	reg prometheus.Registerer
 
-	numWorkers     prometheus.Counter
-	capacity       prometheus.Counter
-	pendingItems   prometheus.Gauge
-	discardedItems prometheus.Counter
+	numWorkers   prometheus.Counter
+	capacity     prometheus.Counter
+	pendingItems prometheus.Gauge
+	droppedItems prometheus.Counter
 }
 
 func newQueueMetrics(reg prometheus.Registerer, targetName, targetAddress string) *queueMetrics {
@@ -49,11 +49,11 @@ func newQueueMetrics(reg prometheus.Registerer, targetName, targetAddress string
 		ConstLabels: labels,
 	})
 
-	q.discardedItems = prometheus.NewGauge(prometheus.GaugeOpts{
+	q.droppedItems = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
 		Subsystem:   subs,
-		Name:        "discarded",
-		Help:        "How many items were discarded (as in not accepted into the queue).",
+		Name:        "dropped",
+		Help:        "How many items were dropped (as in not accepted into the queue).",
 		ConstLabels: labels,
 	})
 
@@ -65,6 +65,6 @@ func (q queueMetrics) mustRegister() {
 		q.numWorkers,
 		q.capacity,
 		q.pendingItems,
-		q.discardedItems,
+		q.droppedItems,
 	)
 }
