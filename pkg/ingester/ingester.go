@@ -4,13 +4,27 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
 
+	"github.com/apache/arrow/go/v8/arrow"
+	"github.com/apache/arrow/go/v8/arrow/array"
+	"github.com/apache/arrow/go/v8/arrow/memory"
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/gogo/status"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/polarsignals/arcticdb/query"
+	"github.com/polarsignals/arcticdb/query/logicalplan"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"google.golang.org/grpc/codes"
 
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
@@ -101,6 +115,203 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 
 	res := connect.NewResponse(&pushv1.PushResponse{})
 	return res, nil
+}
+
+func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
+	eng := query.NewEngine(
+		memory.DefaultAllocator,
+		i.profileStore.TableProvider("stacktraces"),
+	)
+
+	filterExpr, err := parseQuery(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var ar arrow.Record
+	err = eng.ScanTable("stacktraces").
+		Filter(filterExpr).
+		Aggregate(
+			logicalplan.Sum(logicalplan.Col("value")),
+			logicalplan.Col("stacktrace"),
+		).
+		Execute(req.Context(), func(r arrow.Record) error {
+			r.Retain()
+			ar = r
+			return nil
+		})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+
+	}
+	defer ar.Release()
+
+	flame, err := buildProfile(ar)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-Type", "text/html")
+	if err := flamebearer.FlamebearerToStandaloneHTML(flame, dir, w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func buildProfile(ar arrow.Record) (*flamebearer.FlamebearerProfile, error) {
+	schema := ar.Schema()
+	indices := schema.FieldIndices("stacktrace")
+	if len(indices) != 1 {
+		return nil, fmt.Errorf("expected exactly one stacktrace column, got %d", len(indices))
+	}
+	stacktraceColumn := ar.Column(indices[0]).(*array.Binary)
+
+	indices = schema.FieldIndices("sum(value)")
+	if len(indices) != 1 {
+		return nil, fmt.Errorf("expected exactly one value column, got %d", len(indices))
+	}
+	valueColumn := ar.Column(indices[0]).(*array.Int64)
+
+	rows := int(ar.NumRows())
+	// samples := make([]*sample, 0, rows)
+	stacktraceUUIDs := make([][]byte, 0, rows)
+	for i := 0; i < rows; i++ {
+		stacktraceID := stacktraceColumn.Value(i)
+		fmt.Println(valueColumn.Value(i))
+
+		stacktraceUUIDs = append(stacktraceUUIDs, stacktraceID)
+		// samples = append(samples, &sample{
+		// 	stacktraceID: stacktraceID,
+		// 	value:        value,
+		// })
+	}
+	return &flamebearer.NewFlamebearerProfile{}, nil
+}
+
+// render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
+func parseQuery(req *http.Request) (logicalplan.Expr, error) {
+	queryParams := req.URL.Query()
+	q := queryParams.Get("query")
+	if q == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+	selectorExprs, err := queryToFilterExprs(q)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse query: %w", err)
+	}
+
+	start := model.TimeFromUnixNano(time.Now().Add(-1 * time.Hour).UnixNano())
+	end := model.TimeFromUnixNano(time.Now().UnixNano())
+
+	if from := queryParams.Get("from"); from != "" {
+		from, err := parseRelativeTime(from)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse from: %w", err)
+		}
+		start = end.Add(-from)
+	}
+
+	return logicalplan.And(
+		append(
+			selectorExprs,
+			logicalplan.Col("timestamp").GT(logicalplan.Literal(start)),
+			logicalplan.Col("timestamp").LT(logicalplan.Literal(end)),
+		)...,
+	), nil
+}
+
+func parseRelativeTime(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "now-")
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, err
+	}
+	return d, nil
+}
+
+func queryToFilterExprs(query string) ([]logicalplan.Expr, error) {
+	parsedSelector, err := parser.ParseMetricSelector(query)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse query")
+	}
+
+	sel := make([]*labels.Matcher, 0, len(parsedSelector))
+	var nameLabel *labels.Matcher
+	for _, matcher := range parsedSelector {
+		if matcher.Name == labels.MetricName {
+			nameLabel = matcher
+		} else {
+			sel = append(sel, matcher)
+		}
+	}
+	if nameLabel == nil {
+		return nil, status.Error(codes.InvalidArgument, "query must contain a profile-type selection")
+	}
+
+	parts := strings.Split(nameLabel.Value, ":")
+	if len(parts) != 5 && len(parts) != 6 {
+		return nil, status.Errorf(codes.InvalidArgument, "profile-type selection must be of the form <name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>(:delta), got(%d): %q", len(parts), nameLabel.Value)
+	}
+	name, sampleType, sampleUnit, periodType, periodUnit, delta := parts[0], parts[1], parts[2], parts[3], parts[4], false
+	if len(parts) == 6 && parts[5] == "delta" {
+		delta = true
+	}
+
+	labelFilterExpressions, err := matchersToBooleanExpressions(sel)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to build query")
+	}
+
+	exprs := append([]logicalplan.Expr{
+		logicalplan.Col("name").Eq(logicalplan.Literal(name)),
+		logicalplan.Col("sample_type").Eq(logicalplan.Literal(sampleType)),
+		logicalplan.Col("sample_unit").Eq(logicalplan.Literal(sampleUnit)),
+		logicalplan.Col("period_type").Eq(logicalplan.Literal(periodType)),
+		logicalplan.Col("period_unit").Eq(logicalplan.Literal(periodUnit)),
+	}, labelFilterExpressions...)
+
+	deltaPlan := logicalplan.Col("duration").Eq(logicalplan.Literal(0))
+	if delta {
+		deltaPlan = logicalplan.Col("duration").NotEq(logicalplan.Literal(0))
+	}
+
+	exprs = append(exprs, deltaPlan)
+
+	return exprs, nil
+}
+
+func matchersToBooleanExpressions(matchers []*labels.Matcher) ([]logicalplan.Expr, error) {
+	exprs := make([]logicalplan.Expr, 0, len(matchers))
+
+	for _, matcher := range matchers {
+		expr, err := matcherToBooleanExpression(matcher)
+		if err != nil {
+			return nil, err
+		}
+
+		exprs = append(exprs, expr)
+	}
+
+	return exprs, nil
+}
+
+func matcherToBooleanExpression(matcher *labels.Matcher) (logicalplan.Expr, error) {
+	ref := logicalplan.Col("labels." + matcher.Name)
+	switch matcher.Type {
+	case labels.MatchEqual:
+		return ref.Eq(logicalplan.Literal(matcher.Value)), nil
+	case labels.MatchNotEqual:
+		return ref.NotEq(logicalplan.Literal(matcher.Value)), nil
+	case labels.MatchRegexp:
+		return ref.RegexMatch(matcher.Value), nil
+	case labels.MatchNotRegexp:
+		return ref.RegexNotMatch(matcher.Value), nil
+	default:
+		return nil, fmt.Errorf("unsupported matcher type %v", matcher.Type.String())
+	}
 }
 
 func (i *Ingester) stopping(_ error) error {
