@@ -2,15 +2,20 @@ package ingester
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"runtime/pprof"
 	"testing"
 
+	"github.com/apache/arrow/go/v8/arrow"
+	"github.com/apache/arrow/go/v8/arrow/memory"
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
@@ -55,6 +60,7 @@ func Test_ConnectPush(t *testing.T) {
 
 	client := ingestv1connect.NewIngesterClient(http.DefaultClient, s.URL)
 
+	rawProfile := testProfile(t)
 	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
@@ -64,7 +70,7 @@ func Test_ConnectPush(t *testing.T) {
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: testProfile(t),
+						RawProfile: rawProfile,
 					},
 				},
 			},
@@ -72,12 +78,49 @@ func Test_ConnectPush(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+	ingestedSamples := countNonZeroValues(parseRawProfile(t, bytes.NewBuffer(rawProfile)))
+
+	var queriedSamples int64
+	require.NoError(t, profileStore.Table().Iterator(context.Background(), memory.NewGoAllocator(), nil, nil, nil, func(ar arrow.Record) error {
+
+		t.Log(ar)
+		defer ar.Release()
+
+		queriedSamples += ar.NumRows()
+
+		return nil
+	}))
+	require.Equal(t, ingestedSamples, queriedSamples, "expected to query all ingested samples")
 
 	require.NoError(
 		t,
 		profileStore.Close(),
 	)
 
+}
+
+// This counts all sample values, where at least a single value in a sample is non-zero
+func countNonZeroValues(p *profile.Profile) int64 {
+	var count int64
+	for _, s := range p.Sample {
+		for _, v := range s.Value {
+			if v != 0 {
+				count += int64(len(s.Value))
+				break
+			}
+		}
+	}
+	return count
+}
+
+func parseRawProfile(t testing.TB, reader io.Reader) *profile.Profile {
+	gzReader, err := gzip.NewReader(reader)
+	require.NoError(t, err, "failed creating gzip reader")
+
+	p, err := profile.Parse(gzReader)
+	require.NoError(t, err, "failed parsing profile")
+
+	return p
 }
 
 func testProfile(t *testing.T) []byte {
