@@ -290,7 +290,7 @@ describe('getPackageNameFromStackTrace', () => {
       ],
       [
         'org/springframework/web/servlet/DispatcherServlet.doService',
-        'org/springframework/web/servet/',
+        'org/springframework/web/servlet/',
       ],
       [
         'org/example/rideshare/RideShareController.orderCar',
