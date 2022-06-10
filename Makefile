@@ -92,7 +92,7 @@ endef
 
 .PHONY: docker-image/fire/build
 docker-image/fire/build:
-	$(call docker_buildx,)
+	$(call docker_buildx,--load)
 
 .PHONY: docker-image/fire/push
 docker-image/fire/push:
@@ -118,3 +118,22 @@ $(BIN)/protoc-gen-go: Makefile go.mod
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@v0.1.0
+
+$(BIN)/kind: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.14.0
+
+$(BIN)/helm: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.8.0
+
+KIND_CLUSTER = fire-dev
+
+.PHONY: deploy
+deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
+	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
+	# Load image into nodes
+	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
+	kubectl get pods
+	$(BIN)/helm upgrade --install fire-dev ./deploy/helm/fire \
+		--set image.tag=$(IMAGE_TAG)
