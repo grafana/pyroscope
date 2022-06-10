@@ -9,8 +9,8 @@ import (
 type queueMetrics struct {
 	reg prometheus.Registerer
 
-	numWorkers   prometheus.Counter
-	capacity     prometheus.Counter
+	numWorkers   prometheus.Gauge
+	capacity     prometheus.Gauge
 	pendingItems prometheus.Gauge
 	droppedItems prometheus.Counter
 }
@@ -25,7 +25,7 @@ func newQueueMetrics(reg prometheus.Registerer, targetName, targetAddress string
 	// Suffix the subsystem with queue, since there will be other sub-subsystems (eg client)
 	subs := fmt.Sprintf("%s_queue", subsystem)
 
-	q.numWorkers = prometheus.NewCounter(prometheus.CounterOpts{
+	q.numWorkers = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
 		Subsystem:   subs,
 		Name:        "workers_total",
@@ -33,7 +33,7 @@ func newQueueMetrics(reg prometheus.Registerer, targetName, targetAddress string
 		ConstLabels: labels,
 	})
 
-	q.capacity = prometheus.NewCounter(prometheus.CounterOpts{
+	q.capacity = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
 		Subsystem:   subs,
 		Name:        "capacity",
@@ -49,7 +49,7 @@ func newQueueMetrics(reg prometheus.Registerer, targetName, targetAddress string
 		ConstLabels: labels,
 	})
 
-	q.droppedItems = prometheus.NewGauge(prometheus.GaugeOpts{
+	q.droppedItems = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace:   namespace,
 		Subsystem:   subs,
 		Name:        "dropped",
