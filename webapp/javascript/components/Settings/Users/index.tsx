@@ -15,6 +15,7 @@ import {
 import { selectCurrentUser } from '@webapp/redux/reducers/user';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { type User } from '@webapp/models/users';
+import Input from '@webapp/ui/Input';
 import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';
@@ -97,11 +98,12 @@ function Users() {
         </Button>
       </div>
       <div className={userStyles.searchContainer}>
-        <input
+        <Input
           type="text"
           placeholder="Search user"
           value={search}
           onChange={(v) => setSearchField(v.target.value)}
+          name="Search user input"
         />
       </div>
       <table

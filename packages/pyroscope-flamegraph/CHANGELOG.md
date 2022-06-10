@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.1...@pyroscope/flamegraph@0.8.2) (2022-06-10)
+
+
+### Bug Fixes
+
+* fix regexp typo ([#1151](https://github.com/pyroscope-io/pyroscope/issues/1151)) ([6396017](https://github.com/pyroscope-io/pyroscope/commit/6396017b09c0dfe731b35925ea5ba9459888e922))
+
+
+
+
+
+## [0.8.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.0...@pyroscope/flamegraph@0.8.1) (2022-06-10)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 # [0.8.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.7.0...@pyroscope/flamegraph@0.8.0) (2022-06-09)
 
 

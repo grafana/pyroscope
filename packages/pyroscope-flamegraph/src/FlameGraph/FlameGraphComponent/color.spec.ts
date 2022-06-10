@@ -273,4 +273,35 @@ describe('getPackageNameFromStackTrace', () => {
       });
     });
   });
+
+  describe('java spy', () => {
+    describe.each([
+      [
+        'org/apache/catalina/core/ApplicationFilterChain.doFilter',
+        'org/apache/catalina/core/',
+      ],
+      [
+        'org/apache/catalina/core/ApplicationFilterChain.internalDoFilter',
+        'org/apache/catalina/core/',
+      ],
+      [
+        'org/apache/coyote/AbstractProcessorLight.process',
+        'org/apache/coyote/',
+      ],
+      [
+        'org/springframework/web/servlet/DispatcherServlet.doService',
+        'org/springframework/web/servlet/',
+      ],
+      [
+        'org/example/rideshare/RideShareController.orderCar',
+        'org/example/rideshare/',
+      ],
+      ['org/example/rideshare/OrderService.orderCar', 'org/example/rideshare/'],
+      ['total', 'total'],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('javaspy', a)).toBe(expected);
+      });
+    });
+  });
 });
