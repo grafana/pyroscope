@@ -40,6 +40,7 @@ type Config struct {
 	Distributor  distributor.Config     `yaml:"distributor,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
+	ProfileStore profilestore.Config    `yaml:"profile_store,omitempty"`
 
 	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
@@ -57,6 +58,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.AgentConfig.RegisterFlags(f)
 	c.Ingester.RegisterFlags(f)
 	c.MemberlistKV.RegisterFlags(f)
+	c.ProfileStore.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
