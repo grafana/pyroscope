@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"runtime/debug"
 	"sync"
 
@@ -31,12 +32,14 @@ type IngestionQueue struct {
 // is to take multiple arguments
 func NewIngestionQueue(logger logrus.FieldLogger, reg prometheus.Registerer, ingester ingestion.Ingester, targetName string, cfg config.RemoteWriteTarget) *IngestionQueue {
 	// Setup defaults
-	if cfg.QueueSize == 0 {
-		cfg.QueueSize = 100
+	if cfg.QueueWorkers == 0 {
+		// This may be a very conservative value
+		// Since it's IO bounded work
+		cfg.QueueWorkers = runtime.NumCPU() * 10
 	}
 
-	if cfg.QueueWorkers == 0 {
-		cfg.QueueWorkers = 4
+	if cfg.QueueSize == 0 {
+		cfg.QueueSize = cfg.QueueWorkers * 50
 	}
 
 	q := IngestionQueue{
