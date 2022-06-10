@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pyroscope-io/jfr-parser/parser"
@@ -198,8 +199,21 @@ func frames(st *parser.StackTrace) []string {
 		f := st.Frames[i]
 		// TODO(abeaumont): Add support for line numbers.
 		if f.Method != nil && f.Method.Type != nil && f.Method.Type.Name != nil && f.Method.Name != nil {
-			frames = append(frames, f.Method.Type.Name.String+"."+f.Method.Name.String)
+			cls := mergeJVMGeneratedClasses(f.Method.Type.Name.String)
+			frames = append(frames, cls+"."+f.Method.Name.String)
 		}
 	}
 	return frames
+}
+
+// jdk/internal/reflect/GeneratedMethodAccessor31
+var generatedMethodAccessor = regexp.MustCompile("^(jdk/internal/reflect/GeneratedMethodAccessor)(\\d+)$")
+
+// org/example/rideshare/OrderService$$Lambda$669.0x0000000800fd7318.run
+var lambdaGeneratedEnclosingClass = regexp.MustCompile("^(.+\\$\\$Lambda\\$)\\d+[./](0x[\\da-f]+|\\d+)$")
+
+func mergeJVMGeneratedClasses(frame string) string {
+	frame = generatedMethodAccessor.ReplaceAllString(frame, "${1}_")
+	frame = lambdaGeneratedEnclosingClass.ReplaceAllString(frame, "${1}_")
+	return frame
 }
