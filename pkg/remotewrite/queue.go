@@ -30,7 +30,6 @@ type IngestionQueue struct {
 // not all fields are used. This is done to simplify the API, as the alternative
 // is to take multiple arguments
 func NewIngestionQueue(logger logrus.FieldLogger, reg prometheus.Registerer, ingester ingestion.Ingester, targetName string, cfg config.RemoteWriteTarget) *IngestionQueue {
-
 	// Setup defaults
 	if cfg.QueueSize == 0 {
 		cfg.QueueSize = 100
