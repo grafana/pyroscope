@@ -56,6 +56,7 @@ type Ingester struct {
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
 	profileStore      *profilestore.ProfileStore
+	engine            *query.LocalEngine
 }
 
 func New(cfg Config, logger log.Logger, reg prometheus.Registerer, profileStore *profilestore.ProfileStore) (*Ingester, error) {
@@ -63,7 +64,12 @@ func New(cfg Config, logger log.Logger, reg prometheus.Registerer, profileStore 
 		cfg:          cfg,
 		logger:       logger,
 		profileStore: profileStore,
+		engine: query.NewEngine(
+			memory.DefaultAllocator,
+			profileStore.TableProvider(),
+		),
 	}
+
 	var err error
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
@@ -121,37 +127,13 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 }
 
 func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
-	eng := query.NewEngine(
-		memory.DefaultAllocator,
-		i.profileStore.TableProvider(),
-	)
-
-	filterExpr, err := parseQuery(req)
+	q, err := parseQuery(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var ar arrow.Record
-	err = eng.ScanTable("stacktraces").
-		Filter(filterExpr).
-		Aggregate(
-			logicalplan.Sum(logicalplan.Col("value")),
-			logicalplan.Col("stacktrace"),
-		).
-		Execute(req.Context(), func(r arrow.Record) error {
-			r.Retain()
-			ar = r
-			return nil
-		})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-
-	}
-	defer ar.Release()
-
-	flame, err := buildProfile(ar, i.profileStore.MetaStore())
+	flame, err := i.selectMerge(req.Context(), q)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -168,11 +150,46 @@ func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+type selectMerge struct {
+	query      string
+	start, end int64
+}
+
+func (i *Ingester) selectMerge(ctx context.Context, req selectMerge) (*flamebearer.FlamebearerProfile, error) {
+	filterExpr, err := mergePlan(req)
+	if err != nil {
+		// todo 4xx
+		return nil, err
+	}
+
+	var ar arrow.Record
+	err = i.engine.ScanTable("stacktraces").
+		Filter(filterExpr).
+		Aggregate(
+			logicalplan.Sum(logicalplan.Col("value")),
+			logicalplan.Col("stacktrace"),
+		).
+		Execute(ctx, func(r arrow.Record) error {
+			r.Retain()
+			ar = r
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer ar.Release()
+
+	return buildProfile(ar, i.profileStore.MetaStore())
+}
+
 func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebearer.FlamebearerProfile, error) {
 	type sample struct {
 		stacktraceID []byte
 		locationIDs  [][]byte
-		value        int64
+		total        int64
+		self         int64
+
+		*metastore.Location
 	}
 	schema := ar.Schema()
 	indices := schema.FieldIndices("stacktrace")
@@ -193,11 +210,13 @@ func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebeare
 	for i := 0; i < rows; i++ {
 		stacktraceID := stacktraceColumn.Value(i)
 		value := valueColumn.Value(i)
-
+		if value == 0 {
+			continue
+		}
 		stacktraceUUIDs = append(stacktraceUUIDs, stacktraceID)
 		samples = append(samples, &sample{
 			stacktraceID: stacktraceID,
-			value:        value,
+			self:         value,
 		})
 	}
 
@@ -217,19 +236,104 @@ func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebeare
 		}
 	}
 
-	locationsMap, err := metastore.GetLocationsByIDs(context.Background(), meta, locationUUIDs...)
+	locationMaps, err := metastore.GetLocationsByIDs(context.Background(), meta, locationUUIDs...)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(locationsMap)
 
 	for _, s := range samples {
 		s.locationIDs = stacktraceMap[string(s.stacktraceID)].LocationIds
 	}
 	sort.Slice(samples, func(i, j int) bool {
-		return len(samples[i].locationIDs) < len(samples[j].locationIDs)
+		return len(samples[i].locationIDs) > len(samples[j].locationIDs)
 	})
+	graph := flamebearer.FlamebearerV1{}
+	locationBylevels := map[int]map[string]sample{}
+	total := int64(0)
+	for _, s := range samples {
+		total += s.self
+		for i := len(s.locationIDs) - 1; i >= 0; i-- {
+			level := len(s.locationIDs) - i - 1
+			_, seen := locationBylevels[level]
+			if !seen {
+				locationBylevels[level] = map[string]sample{
+					string(s.locationIDs[i]): {
+						stacktraceID: s.stacktraceID,
+						locationIDs:  s.locationIDs,
+						self:         s.self,
+						total:        s.self,
+					},
+				}
+			}
+			locationBylevels[level][string(s.locationIDs[i])] = sample{
+				stacktraceID: s.stacktraceID,
+				locationIDs:  s.locationIDs,
+				total:        locationBylevels[i][string(s.locationIDs[i])].total + s.self,
+				Location:     locationMaps[string(s.locationIDs[i])],
+			}
+			fmt.Print(locationMaps[string(s.locationIDs[i])].Lines[0].Function.Name)
+			fmt.Print("self=")
+			fmt.Print(s.self)
+			fmt.Print("total=")
+			fmt.Print(locationBylevels[level][string(s.locationIDs[i])].total)
+			fmt.Print("/line=")
+			fmt.Print(locationMaps[string(s.locationIDs[i])].Lines[0].Line)
+			fmt.Print("/level=")
+			fmt.Print(level)
+		}
+		fmt.Println("-------------------")
+	}
+
+	graph.Levels = make([][]int, len(locationBylevels))
+	namesTotal := map[string]struct {
+		idx   int
+		total int64
+	}{}
+	names := make([]string, 0, len(samples))
+	var max int
+	for i, locations := range locationBylevels {
+		graph.Levels[i] = make([]int, len(locations)*4)
+		j := 0
+		for _, loc := range locations {
+			graph.Levels[i][j] = 0
+			found, ok := namesTotal[string(loc.Lines[0].Function.Name)]
+			if !ok {
+				names = append(names, loc.Lines[0].Function.Name)
+				namesTotal[string(loc.Lines[0].Function.Name)] = struct {
+					idx   int
+					total int64
+				}{
+					idx:   len(names),
+					total: loc.self,
+				}
+				graph.Levels[i][j+3] = len(names) - 1
+				graph.Levels[i][j+1] = int(loc.self) // todo find the right value
+				graph.Levels[i][j+2] = int(loc.total)
+				j = j + 4
+				continue
+			}
+			graph.Levels[i][j+3] = found.idx
+			namesTotal[string(loc.Lines[0].Function.Name)] = struct {
+				idx   int
+				total int64
+			}{
+				idx:   found.idx,
+				total: loc.total,
+			}
+			if int(loc.self) > max {
+				max = int(loc.self)
+			}
+			// setting values
+			graph.Levels[i][j+1] = int(loc.total)
+			graph.Levels[i][j+2] = int(loc.self)
+			j = j + 4
+
+		}
+	}
+
+	graph.Names = names
+	graph.MaxSelf = max
+	graph.NumTicks = int(total)
 
 	return &flamebearer.FlamebearerProfile{
 		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
@@ -241,31 +345,27 @@ func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebeare
 			Timeline: &flamebearer.FlamebearerTimelineV1{
 				StartTime:     time.Now().Add(-1 * time.Hour).Unix(),
 				DurationDelta: 3,
-				Samples:       []uint64{1, 2, 3, 4, 5},
 			},
-			Flamebearer: flamebearer.FlamebearerV1{
-				Names: []string{"total", "bar()"},
-				Levels: [][]int{
-					{0, 2036457, 0, 0},
-					{0, 2036457, 2036457, 1},
-				},
-				NumTicks: 1,
-				MaxSelf:  2036457,
-			},
+			Flamebearer: graph,
+			// Flamebearer: flamebearer.FlamebearerV1{
+			// 	Names: []string{"total", "bar()"},
+			// 	Levels: [][]int{
+			// 		{0, 2036457, 0, 0},
+			// 		{0, 2036457, 2036457, 1},
+			// 	},
+			// 	NumTicks: 1,
+			// 	MaxSelf:  2036457,
+			// },
 		},
 	}, nil
 }
 
 // render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
-func parseQuery(req *http.Request) (logicalplan.Expr, error) {
+func parseQuery(req *http.Request) (selectMerge, error) {
 	queryParams := req.URL.Query()
 	q := queryParams.Get("query")
 	if q == "" {
-		return nil, fmt.Errorf("query is required")
-	}
-	selectorExprs, err := queryToFilterExprs(q)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse query: %w", err)
+		return selectMerge{}, fmt.Errorf("query is required")
 	}
 
 	start := model.TimeFromUnixNano(time.Now().Add(-1 * time.Hour).UnixNano())
@@ -274,16 +374,32 @@ func parseQuery(req *http.Request) (logicalplan.Expr, error) {
 	if from := queryParams.Get("from"); from != "" {
 		from, err := parseRelativeTime(from)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse from: %w", err)
+			return selectMerge{}, fmt.Errorf("failed to parse from: %w", err)
 		}
 		start = end.Add(-from)
+	}
+
+	return selectMerge{
+		query: q,
+		start: int64(start),
+		end:   int64(end),
+	}, nil
+}
+
+func mergePlan(q selectMerge) (logicalplan.Expr, error) {
+	if q.query == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+	selectorExprs, err := queryToFilterExprs(q.query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
 	return logicalplan.And(
 		append(
 			selectorExprs,
-			logicalplan.Col("timestamp").GT(logicalplan.Literal(int64(start))),
-			logicalplan.Col("timestamp").LT(logicalplan.Literal(int64(end))),
+			logicalplan.Col("timestamp").GT(logicalplan.Literal(int64(q.start))),
+			logicalplan.Col("timestamp").LT(logicalplan.Literal(int64(q.end))),
 		)...,
 	), nil
 }

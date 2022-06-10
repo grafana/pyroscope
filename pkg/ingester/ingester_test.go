@@ -12,10 +12,12 @@ import (
 	"testing"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 
@@ -105,24 +107,14 @@ func Test_ParseQuery(t *testing.T) {
 	require.NotNil(t, expr)
 }
 
-func Test_Query(t *testing.T) {
+func Test_selectMerge(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
-	logger := log.NewLogfmtLogger(os.Stdout)
-
-	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider())
+	profileStore, err := profilestore.New(log.NewNopLogger(), nil, trace.NewNoopTracerProvider())
 	require.NoError(t, err)
-
-	mux := http.NewServeMux()
-	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
+	testPprof := testProfile(t)
+	d, err := New(cfg, log.NewNopLogger(), nil, profileStore)
 	require.NoError(t, err)
-
-	mux.Handle(ingestv1connect.NewIngesterHandler(d))
-	s := httptest.NewServer(mux)
-	defer s.Close()
-
-	client := ingestv1connect.NewIngesterClient(http.DefaultClient, s.URL)
-
-	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
+	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
 				Labels: []*pushv1.LabelPair{
@@ -131,7 +123,7 @@ func Test_Query(t *testing.T) {
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: testProfile(t),
+						RawProfile: testPprof,
 					},
 				},
 			},
@@ -139,19 +131,16 @@ func Test_Query(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+	os.WriteFile("/Users/cyriltovena/work/fire/test.pprof", testPprof, 0o644)
 
-	q := url.Values{
-		"query": []string{`memory:inuse_space:bytes:space:bytes{}`},
-		"from":  []string{"now-6h"},
-		"until": []string{"now"},
-	}
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost/render/render?%s", q.Encode()), nil)
+	flame, err := d.selectMerge(context.Background(), selectMerge{
+		query: `memory:inuse_space:bytes:space:bytes{}`,
+		start: 0,
+		end:   int64(model.Now()),
+	})
 	require.NoError(t, err)
-	rec := httptest.NewRecorder()
-	d.RenderHandler(rec, req)
-	require.Equal(t, rec.Body.String(), "")
-	require.Equal(t, rec.Result().StatusCode, 200)
+
+	spew.Config.Dump(flame)
 
 	require.NoError(
 		t,
