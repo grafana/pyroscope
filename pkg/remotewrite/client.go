@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -38,8 +39,15 @@ func NewClient(logger logrus.FieldLogger, reg prometheus.Registerer, targetName 
 		cfg.Timeout = time.Second * 30
 	}
 
+	numCPU := runtime.NumCPU()
+
 	client := &http.Client{
 		Timeout: cfg.Timeout,
+		Transport: &http.Transport{
+			MaxConnsPerHost:     numCPU * queueFactor,
+			MaxIdleConns:        numCPU * queueFactor,
+			MaxIdleConnsPerHost: numCPU * queueFactor,
+		},
 	}
 
 	metrics := newClientMetrics(reg, targetName, cfg.Address)

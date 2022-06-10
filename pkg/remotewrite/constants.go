@@ -5,3 +5,7 @@ const (
 	namespace = "pyroscope"
 	subsystem = "remote_write"
 )
+
+const (
+	queueFactor = 4
+)

@@ -35,11 +35,11 @@ func NewIngestionQueue(logger logrus.FieldLogger, reg prometheus.Registerer, ing
 	if cfg.QueueWorkers == 0 {
 		// This may be a very conservative value
 		// Since it's IO bounded work
-		cfg.QueueWorkers = runtime.NumCPU() * 10
+		cfg.QueueWorkers = runtime.NumCPU() * queueFactor
 	}
 
 	if cfg.QueueSize == 0 {
-		cfg.QueueSize = cfg.QueueWorkers * 50
+		cfg.QueueSize = 100
 	}
 
 	q := IngestionQueue{
