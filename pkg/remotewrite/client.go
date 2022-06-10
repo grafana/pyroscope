@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
@@ -52,7 +51,7 @@ func NewClient(logger logrus.FieldLogger, reg prometheus.Registerer, targetName 
 func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	req, err := r.ingestInputToRequest(in)
 	if err != nil {
-		return multierror.Append(err, ErrConvertPutInputToRequest)
+		return fmt.Errorf("%w: %v", ErrConvertPutInputToRequest, err)
 	}
 
 	r.enhanceWithAuth(req)
@@ -68,7 +67,7 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	start := time.Now()
 	res, err := r.client.Do(req)
 	if err != nil {
-		return multierror.Append(err, ErrMakingRequest)
+		return fmt.Errorf("%w: %v", ErrMakingRequest, err)
 	}
 	duration := time.Since(start)
 
@@ -80,7 +79,7 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
 		// read all the response body
 		respBody, _ := ioutil.ReadAll(res.Body)
-		return multierror.Append(ErrNotOkResponse, fmt.Errorf("status code: '%d'. body: '%s'", res.StatusCode, respBody))
+		return fmt.Errorf("%w: %v", ErrNotOkResponse, fmt.Errorf("status code: '%d'. body: '%s'", res.StatusCode, respBody))
 	}
 
 	return nil
