@@ -1,6 +1,6 @@
 {
   "name": "@pyroscope/webapp",
-  "version": "1.11.0",
+  "version": "1.11.1",
   "private": true,
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
@@ -13,7 +13,7 @@
     "build:webapp": "NODE_ENV=production webpack --config ../scripts/webpack/webpack.prod.ts"
   },
   "dependencies": {
-    "@pyroscope/flamegraph": "^0.8.0",
+    "@pyroscope/flamegraph": "^0.8.1",
     "@pyroscope/models": "^0.0.7"
   }
 }
