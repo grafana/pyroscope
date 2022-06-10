@@ -58,6 +58,7 @@ type serverService struct {
 	discoveryManager *discovery.Manager
 	scrapeManager    *scrape.Manager
 	database         *sqlstore.SQLStore
+	remoteWriteQueue []*remotewrite.IngestionQueue
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -166,6 +167,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 
 		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
+		svc.remoteWriteQueue = make([]*remotewrite.IngestionQueue, len(svc.config.RemoteWrite.Targets))
+
 		i := 0
 		for targetName, t := range svc.config.RemoteWrite.Targets {
 			targetLogger := logger.WithField("remote_target", targetName)
@@ -175,6 +178,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 			q := remotewrite.NewIngestionQueue(targetLogger, defaultMetricsRegistry, remoteClient, targetName, t)
 
 			remoteClients[i] = q
+			svc.remoteWriteQueue[i] = q
 			i++
 		}
 
@@ -309,6 +313,13 @@ func (svc *serverService) stop() {
 	if !svc.config.NoSelfProfiling {
 		svc.logger.Debug("stopping self profiling")
 		svc.selfProfiling.Stop()
+	}
+
+	if svc.config.RemoteWrite.Enabled {
+		svc.logger.Debug("stopping remote queues")
+		for _, q := range svc.remoteWriteQueue {
+			q.Stop()
+		}
 	}
 
 	svc.logger.Debug("stopping ingestion queue")
