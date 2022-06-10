@@ -79,10 +79,14 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 
 	start := time.Now()
 	res, err := r.client.Do(req)
+	if res != nil {
+		// sometimes both res and err are non-nil
+		// therefore we must always close the body first
+		defer res.Body.Close()
+	}
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrMakingRequest, err)
 	}
-	defer res.Body.Close()
 
 	duration := time.Since(start)
 	r.metrics.responseTime.With(prometheus.Labels{
