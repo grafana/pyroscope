@@ -82,12 +82,12 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrMakingRequest, err)
 	}
-	duration := time.Since(start)
+	defer res.Body.Close()
 
+	duration := time.Since(start)
 	r.metrics.responseTime.With(prometheus.Labels{
 		"code": strconv.FormatInt(int64(res.StatusCode), 10),
 	}).Observe(duration.Seconds())
-	defer res.Body.Close()
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
 		// read all the response body
