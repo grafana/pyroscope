@@ -66,6 +66,7 @@ function ChangePasswordForm(props: ShamefulAny) {
             name="oldPassword"
             required
             onChange={handleChange}
+            value={form.oldPassword}
           />
           <InputField
             label="New password"
@@ -74,6 +75,7 @@ function ChangePasswordForm(props: ShamefulAny) {
             name="password"
             required
             onChange={handleChange}
+            value={form.password}
           />
           <InputField
             label="Confirm new password"
@@ -82,6 +84,7 @@ function ChangePasswordForm(props: ShamefulAny) {
             name="passwordAgain"
             required
             onChange={handleChange}
+            value={form.passwordAgain}
           />
           <Button type="submit" kind="secondary">
             Save

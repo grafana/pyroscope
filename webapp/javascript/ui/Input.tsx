@@ -1,41 +1,52 @@
-import React from 'react';
+import React, { Ref, ChangeEvent } from 'react';
 import { DebounceInput } from 'react-debounce-input';
 import styles from './Input.module.scss';
 
 interface InputProps {
   testId?: string;
   className?: string;
-  type: 'search';
+  type: 'search' | 'text' | 'password' | 'email' | 'number';
   name: string;
-  placeholder: string;
-  minLength: number;
-  debounceTimeout: number;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  minLength?: number;
+  debounceTimeout?: number;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   value: string | number;
+  htmlId?: string;
 }
 
-export default function Input({
-  testId,
-  className,
-  type,
-  name,
-  placeholder,
-  minLength,
-  debounceTimeout,
-  onChange,
-  value,
-}: InputProps) {
-  return (
-    <DebounceInput
-      data-testid={testId}
-      className={`${styles.input} ${className || ''}`}
-      type={type}
-      name={name}
-      placeholder={placeholder}
-      minLength={minLength}
-      debounceTimeout={debounceTimeout}
-      onChange={onChange}
-      value={value}
-    />
-  );
-}
+const Input = React.forwardRef(
+  (
+    {
+      testId,
+      className,
+      type,
+      name,
+      placeholder,
+      minLength = 0,
+      debounceTimeout = 100,
+      onChange,
+      value,
+      htmlId,
+    }: InputProps,
+    ref?: Ref<HTMLInputElement>
+  ) => {
+    return (
+      <DebounceInput
+        inputRef={ref}
+        data-testid={testId}
+        className={`${styles.input} ${className || ''}`}
+        type={type}
+        name={name}
+        placeholder={placeholder}
+        minLength={minLength}
+        debounceTimeout={debounceTimeout}
+        onChange={onChange}
+        value={value}
+        id={htmlId}
+      />
+    );
+  }
+);
+
+export default Input;
