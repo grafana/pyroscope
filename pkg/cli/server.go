@@ -169,7 +169,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		i := 0
 		for targetName, t := range svc.config.RemoteWrite.Targets {
 			targetLogger := logger.WithField("remote_target", targetName)
-			targetLogger.Debug("Initializing remote write target", t.String())
+			targetLogger.Debug("Initializing remote write target")
 
 			remoteClient := remotewrite.NewClient(targetLogger, defaultMetricsRegistry, targetName, t)
 			q := remotewrite.NewIngestionQueue(targetLogger, defaultMetricsRegistry, remoteClient, targetName, t)
@@ -397,26 +397,6 @@ func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
 	}
 
 	c.RemoteWrite.Targets = s.RemoteWrite.Targets
-
-	// Setup defaults
-	// Since we are loading from yaml directly, viper's defaults won't work
-	// TODO(eh-am): find a better solution?
-	for k, t := range c.RemoteWrite.Targets {
-		if t.QueueSize == 0 {
-			t.QueueSize = 100
-		}
-
-		if t.QueueWorkers == 0 {
-			t.QueueWorkers = 4
-		}
-
-		if t.Timeout == 0 {
-			t.Timeout = time.Second * 30
-		}
-
-		// Reassign the struct, since range creates a copy
-		c.RemoteWrite.Targets[k] = t
-	}
 
 	return nil
 }
