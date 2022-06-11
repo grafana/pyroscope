@@ -9,18 +9,19 @@
   --ps-neutral-8: #d8d8d8; /* sidebar text and datepicker text */
   --ps-neutral-9: #ffffff08; /* lighter background for table */
 
-  --ps-accent-1-1: #0d8eff; /* Standard blue for button, instructions text (right) */
-  --ps-accent-1-2: #40a6ff; /* highlight (hover) blue */
-  --ps-accent-1-3: #85a4c9; /* disabled blue */
+  --ps-blue-primary: #0d8eff; /* Standard blue for button, instructions text (right) */
+  --ps-blue-highlight: #40a6ff; /* highlight (hover) blue */
+  --ps-blue-disabled: #85a4c9; /* disabled blue */
 
-  --ps-accent-2-1: #2ecc40; /* standard green for button */
-  --ps-accent-2-2: #61ea71; /* highlight (hover) green */
-  --ps-accent-2-3: #85c985; /* disabled green */
+  --ps-green-primary: #2ecc40; /* standard green for button */
+  --ps-green-highlight: #61ea71; /* highlight (hover) green */
+  --ps-green-disabled: #85c985; /* disabled green */
 
-  --ps-accent-3-1: #dc3545; /* standard red for button */
-  --ps-accent-3-2: #e4606d; /* highlight (hover) red */
-  --ps-accent-3-3: #eb8c95; /* disabled red */
-  --ps-accent-3-4: #df8b53; /* active selected app color in dropdown */
+  --ps-red-primary: #dc3545; /* standard red for button */
+  --ps-red-highlight: #e4606d; /* highlight (hover) red */
+  --ps-red-disabled: #eb8c95; /* disabled red */
+
+  --ps-selected-app: #df8b53; /* active selected app color in dropdown */
 
   --ps-immutable-google-button: #e84d3c; /* sign up with google button */
   --ps-immutable-google-button-hover: #e53825; /* sign up with google hover */
@@ -47,7 +48,9 @@
   --ps-neutral-8: #272727; /* sidebar text and datepicker text */
   --ps-neutral-9: #00000008; /* lighter background for table */
 
-  --ps-accent-2-1: #7db26d; /* standard green */
-  --ps-accent-2-2: #8fcb7c; /* highlight (hover) green */
-  --ps-accent-2-3: #67935a; /* disabled green */
+  --ps-selected-app: #0d8eff; /* active selected app color in dropdown */
+
+  --ps-green-primary: #7db26d; /* standard green */
+  --ps-green-highlight: #8fcb7c; /* highlight (hover) green */
+  --ps-green-disabled: #67935a; /* disabled green */
 }

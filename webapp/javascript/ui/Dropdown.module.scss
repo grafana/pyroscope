@@ -22,7 +22,7 @@
 
   [class*='rc-menu__item active'] {
     background-color: var(--ps-neutral-7);
-    color: var(--ps-accent-3-4);
+    color: var(--ps-selected-app);
   }
 
   [class*='rc-menu__item--focusable'] {

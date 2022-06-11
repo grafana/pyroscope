@@ -180,7 +180,7 @@ $pane-width: 6px;
 }
 
 .right-instructions-text {
-  color: var(--ps-accent-1-1);
+  color: var(--ps-blue-primary);
   font-size: 12px;
 }
 
@@ -306,7 +306,7 @@ body,
     padding-right: 12px;
     border: none;
     &.active {
-      background-color: var(--ps-accent-2-1);
+      background-color: var(--ps-green-primary);
       color: #222;
     }
   }

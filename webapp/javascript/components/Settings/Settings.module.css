@@ -33,7 +33,7 @@
   height: 4px;
   bottom: 6px;
   border-radius: 2px;
-  background: var(--ps-accent-1-1);
+  background: var(--ps-blue-primary);
 }
 
 .settingsWrapper h1 {

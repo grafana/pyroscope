@@ -41,13 +41,13 @@ $border-radius: 4px;
 .primary {
   border: none;
   color: var(--ps-neutral-5) !important;
-  background-color: var(--ps-accent-2-1);
+  background-color: var(--ps-green-primary);
 
   &:hover {
-    background-color: var(--ps-accent-2-2);
+    background-color: var(--ps-green-highlight);
   }
   &:disabled {
-    background-color: var(--ps-accent-2-3);
+    background-color: var(--ps-green-disabled);
     pointer-events: none;
   }
 }
@@ -55,13 +55,13 @@ $border-radius: 4px;
 .secondary {
   border: none;
   color: var(--ps-immutable-1);
-  background-color: var(--ps-accent-1-1);
+  background-color: var(--ps-blue-primary);
 
   &:hover {
-    background-color: var(--ps-accent-1-2);
+    background-color: var(--ps-blue-highlight);
   }
   &:disabled {
-    background-color: var(--ps-accent-1-3);
+    background-color: var(--ps-blue-disabled);
     pointer-events: none;
   }
 }
@@ -69,12 +69,12 @@ $border-radius: 4px;
 .danger {
   border: none;
   color: var(--ps-neutral-2);
-  background-color: var(--ps-accent-3-1);
+  background-color: var(--ps-red-primary);
   &:hover {
-    background-color: var(--ps-accent-3-2);
+    background-color: var(--ps-red-highlight);
   }
   &:disabled {
-    background-color: var(--ps-accent-3-3);
+    background-color: var(--ps-red-disabled);
     pointer-events: none;
   }
 }

@@ -31,5 +31,5 @@
 .validationMessage {
   color: var(--ps-neutral-2);
   font-weight: bold;
-  background-color: var(--ps-accent-3-1);
+  background-color: var(--ps-red-primary);
 }
