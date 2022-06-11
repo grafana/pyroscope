@@ -5,12 +5,12 @@
 
 .dropdownMenuItem {
   display: block;
-  padding: 4px 16px;
   clear: both;
   font-weight: normal;
+  padding: 4px 16px;
   font-size: 11px;
   line-height: 20px;
-  color: var(--ps-neutral-7);
+  color: var(--ps-neutral-2) !important;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -18,19 +18,19 @@
   text-align: left;
   border: 0;
   &:hover {
-    background-color: var(--ps-neutral-11);
+    background-color: var(--ps-neutral-14);
   }
 }
 
 .menuShow {
   display: flex;
-  min-width: 150px;
+  min-width: 180px;
   position: absolute;
   right: 0;
   z-index: 1000;
   flex-direction: column;
   border: 1px solid var(--ps-neutral-10);
-  background-color: var(--ps-neutral-20);
+  background-color: var(--ps-neutral-9);
   box-shadow: 0 5px 15px var(--ps-neutral-1);
   color: var(--ps-neutral-1);
 }

@@ -76,7 +76,7 @@
     padding: 2px 0;
     // compensates for the negative margin in .drp-presets
     padding-left: 20px;
-    color: var(--ps-neutral-19);
+    color: var(--ps-neutral-15);
 
     // give some room between the text and the icon
     // https://web.dev/learn/css/logical-properties/#solving-the-icon-issue
@@ -86,7 +86,7 @@
 
     &:hover,
     &.active {
-      color: var(--ps-neutral-20);
+      color: var(--ps-neutral-2);
       background: var(--ps-neutral-14);
     }
 
@@ -128,7 +128,7 @@
 // range picker custom styles
 .react-datepicker__day--in-range {
   background-color: var(--ps-accent-1-2) !important;
-  color: var(--ps-neutral-20) !important;
+  color: var(--ps-neutral-2) !important;
 }
 .react-datepicker__day--in-selecting-range {
   background: none;
@@ -136,14 +136,14 @@
 }
 .react-datepicker__day--in-range:hover {
   background-color: var(--ps-accent-1-2);
-  color: var(--ps-neutral-20);
+  color: var(--ps-neutral-2);
 }
 
 .react-datepicker__day--disabled {
   background-color: transparent;
-  color: var(--ps-neutral-11);
+  color: var(--ps-neutral-15);
 }
 
 .react-datepicker__day--in-selecting-range:hover {
-  color: var(--ps-neutral-20);
+  color: var(--ps-neutral-2);
 }

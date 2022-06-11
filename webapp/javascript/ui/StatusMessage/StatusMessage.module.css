@@ -3,7 +3,7 @@
 }
 
 .success {
-  color: var(--ps-neutral-20);
+  color: var(--ps-neutral-2);
   background-color: var(--ps-accent-2-3);
   padding: 10px;
   margin: 1em 0;
@@ -11,7 +11,7 @@
 }
 
 .error {
-  color: var(--ps-neutral-20);
+  color: var(--ps-neutral-2);
   font-weight: bold;
   background-color: var(--ps-accent-3-1);
   margin: 1em 0;

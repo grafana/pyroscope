@@ -10,7 +10,7 @@ $tdHeight: 25px;
 
 .rowSelected {
   cursor: pointer;
-  background: var(--ps-accent-2-2);
+  background: var(--ps-accent-2-1);
   color: var(--ps-neutral-1);
 }
 
@@ -21,7 +21,7 @@ $tdHeight: 25px;
   tbody tr:not(.rowSelected) {
     &:hover {
       cursor: pointer;
-      color: var(--ps-neutral-20);
+      color: var(--ps-neutral-2);
       background: $btn-hover-color;
     }
   }
@@ -31,15 +31,15 @@ $tdHeight: 25px;
     text-align: right;
     padding: 0px 10px;
 
-    border-left: 1px solid var(--ps-neutral-8);
-    border-bottom: 1px solid var(--ps-neutral-8);
+    border-left: 1px solid var(--ps-neutral-14);
+    border-bottom: 1px solid var(--ps-neutral-14);
     width: 400px;
     min-width: 400px;
     max-width: 400px;
 
     span {
       // mix-blend-mode: exclusion;
-      text-shadow: 0 0 2px var(--ps-neutral-3);
+      text-shadow: 0 0 1px var(--ps-neutral-1);
     }
 
     &:first-child {

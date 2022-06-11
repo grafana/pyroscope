@@ -10,7 +10,7 @@
 
   cursor: pointer;
 
-  border: 1px solid $btn-border-color;
+  border: 1px solid var(--ps-neutral-10);
   border-radius: 4px;
   background: $btn-color;
 
@@ -19,7 +19,7 @@
   }
 
   &:disabled {
-    color: var(--ps-neutral-18);
+    color: var(--ps-neutral-15);
     color: 1px solid var(--ps-neutral-17);
     pointer-events: none;
   }

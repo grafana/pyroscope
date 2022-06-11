@@ -29,29 +29,25 @@ $border-radius: 4px;
   background: var(--ps-neutral-9);
 
   &:hover:not(:disabled) {
-    background-color: var(--ps-neutral-12);
+    background-color: var(--ps-neutral-14);
   }
 
   &:disabled {
-    color: var(--ps-neutral-16);
+    color: var(--ps-neutral-10);
     pointer-events: none;
   }
 }
 
 .primary {
-  color: var(--ps-neutral-13) !important;
+  border: none;
+  color: var(--ps-neutral-9) !important;
   background-color: var(--ps-accent-2-1);
-  border-left-color: var(--ps-accent-2-1);
-  border-right-color: var(--ps-accent-2-1);
-  border-top-color: var(--ps-accent-2-1);
-  border-bottom-color: var(--ps-accent-2-1);
 
   &:hover {
     background-color: var(--ps-accent-2-2);
   }
   &:disabled {
-    border-color: var(--ps-accent-2-4);
-    background-color: var(--ps-accent-2-4);
+    background-color: var(--ps-accent-2-3);
     pointer-events: none;
   }
 }

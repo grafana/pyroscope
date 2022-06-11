@@ -2,7 +2,7 @@
 // So we can't use css modules
 $sidebar-bg-color: var(--ps-neutral-7);
 $submenu-bg-color: transparent;
-$sidebar-color: var(--ps-neutral-19);
+$sidebar-color: var(--ps-neutral-15);
 $submenu-bg-color-collapsed: var(--ps-neutral-7);
 $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
@@ -36,8 +36,8 @@ $sidebar-collapsed-width: 54px !default;
 // when collapsed, highlight since there's nothing visible
 .pro-sidebar.collapsed .pro-menu-item.active,
 .pro-sidebar.collapsed .pro-sub-menu.pro-menu-item:hover {
-  background: var(--ps-neutral-8);
-  color: var(--ps-neutral-20);
+  background: var(--ps-neutral-14);
+  color: var(--ps-neutral-2);
 }
 
 // for some reason it was inheriting a different background

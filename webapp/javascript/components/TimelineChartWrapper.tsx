@@ -31,6 +31,7 @@ type TimelineChartWrapperProps = {
   timelineA: TimelineData;
   /** timelineB refers to the second timeline, useful for comparison view */
   timelineB?: TimelineData;
+  height?: string;
 
   /** refers to the highlighted selection */
   markings?: {
@@ -70,7 +71,7 @@ class TimelineChartWrapper extends React.Component<
         lineWidth: '1',
       },
       grid: {
-        borderWidth: 1,
+        borderWidth: 1, // outside border of the timelines
         hoverable: true,
       },
       yaxis: {
@@ -90,6 +91,8 @@ class TimelineChartWrapper extends React.Component<
         mode: 'time',
         timezone: 'browser',
         reserveSpace: false,
+        // tickColor: '#E6E6E6',
+        // tickLength: 20,
       },
     };
 
@@ -234,7 +237,7 @@ class TimelineChartWrapper extends React.Component<
         data={data}
         //        data={d}
         width="100%"
-        height="100px"
+        height={this.props.height || '100px'}
       />
     );
   };

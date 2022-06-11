@@ -44,7 +44,7 @@ class TimelineChart extends ReactFlot<TimelineChartProps> {
   // https://github.com/rodrigowirth/react-flot/blob/master/src/ReactFlot.jsx
   render() {
     const style = {
-      height: this.props.height || '400px',
+      height: this.props.height || '100px',
       width: this.props.width || '100%',
     };
 
