@@ -67,16 +67,14 @@ $border-radius: 4px;
 }
 
 .danger {
+  border: none;
   color: var(--ps-neutral-2);
-  background-color: var(--ps-accent-3-2);
-  border-color: var(--ps-accent-3-2);
-
+  background-color: var(--ps-accent-3-1);
   &:hover {
-    background-color: var(--ps-accent-3-3);
+    background-color: var(--ps-accent-3-2);
   }
   &:disabled {
-    border-color: var(--ps-accent-3-4);
-    background-color: var(--ps-accent-3-4);
+    background-color: var(--ps-accent-3-3);
     pointer-events: none;
   }
 }

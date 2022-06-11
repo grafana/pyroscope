@@ -18,16 +18,16 @@
   --ps-accent-2-2: #61ea71; /* highlight (hover) green */
   --ps-accent-2-3: #85c985; /* disabled green */
 
-  --ps-accent-3-1: #8a1722;
-  --ps-accent-3-2: #dc3545;
-  --ps-accent-3-3: #e4606d;
-  --ps-accent-3-4: #eb8c95;
-  --ps-accent-3-5: #e84d3c;
-  --ps-accent-3-6: #fc6d26;
-  --ps-accent-3-7: #fc5c0d;
-  --ps-accent-3-8: #e53825;
-  --ps-accent-3-9: #df8b53;
-  --ps-accent-3-10: #d1283980;
+  --ps-accent-3-1: #dc3545; /* standard red for button */
+  --ps-accent-3-2: #e4606d; /* highlight (hover) red */
+  --ps-accent-3-3: #eb8c95; /* disabled red */
+  --ps-accent-3-4: #df8b53; /* active selected app color in dropdown */
+
+  --ps-immutable-google-button: #e84d3c; /* sign up with google button */
+  --ps-immutable-google-button-hover: #e53825; /* sign up with google hover */
+  --ps-immutable-gitlab-button: #fc6d26; /* sign up with gitlab button */
+  --ps-immutable-gitlab-button-hover: #fc5c0d; /* sign up with gitlab hover */
+  --ps-immutable-gradient-0: #d1283980; /* used for gradient */
 
   --ps-immutable-1: #e6e6e6;
   --ps-immutable-2: #eb7b18;
