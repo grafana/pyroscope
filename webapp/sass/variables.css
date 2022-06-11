@@ -49,4 +49,8 @@
   --ps-neutral-14: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-15: #272727; /* sidebar text and datepicker text */
   --ps-neutral-17: #00000008; /* lighter background for table */
+
+  --ps-accent-2-1: #7db26d; /* standard green */
+  --ps-accent-2-2: #8fcb7c; /* highlight (hover) green */
+  --ps-accent-2-3: #67935a; /* disabled green */
 }
