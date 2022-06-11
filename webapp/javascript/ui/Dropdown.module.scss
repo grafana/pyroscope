@@ -3,17 +3,17 @@
 .dropdownMenu {
   box-shadow: 0 2px 5px var(--ps-neutral-1);
   padding: 0.25rem 0;
-  background-color: var(--ps-neutral-9) !important;
+  background-color: var(--ps-neutral-5) !important;
   color: var(--ps-neutral-2) !important;
 
   & ul[class*='rc-menu'] {
-    background-color: var(--ps-neutral-9);
+    background-color: var(--ps-neutral-5);
     color: var(--ps-neutral-2) !important;
   }
 
   & li[class*='hover'],
   div[class*='hover'] {
-    background-color: var(--ps-neutral-14);
+    background-color: var(--ps-neutral-7);
   }
 
   [class*='rc-menu--open']:empty {
@@ -21,7 +21,7 @@
   }
 
   [class*='rc-menu__item active'] {
-    background-color: var(--ps-neutral-14);
+    background-color: var(--ps-neutral-7);
     color: var(--ps-accent-3-9);
   }
 
@@ -43,8 +43,8 @@
   flex-shrink: 0;
   position: relative;
   border-radius: 4px;
-  background-color: var(--ps-neutral-9);
-  border: 1px solid var(--ps-neutral-10);
+  background-color: var(--ps-neutral-5);
+  border: 1px solid var(--ps-neutral-6);
   margin-right: 5px;
   padding-right: 20px;
   &::after {
@@ -56,6 +56,6 @@
 
   &:hover {
     cursor: pointer;
-    background-color: var(--ps-neutral-14);
+    background-color: var(--ps-neutral-7);
   }
 }

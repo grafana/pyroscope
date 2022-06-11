@@ -1,5 +1,5 @@
 .popup {
-  background-color: var(--ps-neutral-7);
+  background-color: var(--ps-neutral-4);
 }
 
 .popup label {
@@ -17,15 +17,15 @@
 .input {
   outline: none;
   color: var(--ps-neutral-2);
-  background-color: var(--ps-neutral-9);
-  border: 1px solid var(--ps-neutral-10);
+  background-color: var(--ps-neutral-5);
+  border: 1px solid var(--ps-neutral-6);
   border-radius: 4px;
 }
 
 .input:focus {
   outline: none;
   box-shadow: none;
-  border: 1px solid var(--ps-neutral-10);
+  border: 1px solid var(--ps-neutral-6);
 }
 
 .validationMessage {

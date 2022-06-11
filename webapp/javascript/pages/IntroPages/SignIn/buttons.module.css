@@ -11,11 +11,11 @@
 }
 
 .buttonGithub {
-  background-color: var(--ps-neutral-10);
+  background-color: var(--ps-neutral-6);
 }
 
 .buttonGithub:hover {
-  background-color: var(--ps-neutral-14);
+  background-color: var(--ps-neutral-7);
 }
 
 .buttonGitlab {

@@ -31,8 +31,8 @@ $tdHeight: 25px;
     text-align: right;
     padding: 0px 10px;
 
-    border-left: 1px solid var(--ps-neutral-14);
-    border-bottom: 1px solid var(--ps-neutral-14);
+    border-left: 1px solid var(--ps-neutral-7);
+    border-bottom: 1px solid var(--ps-neutral-7);
     width: 400px;
     min-width: 400px;
     max-width: 400px;
@@ -59,7 +59,7 @@ $tdHeight: 25px;
   }
   tr th,
   tr:nth-child(2n) td {
-    background: var(--ps-neutral-17);
+    background: var(--ps-neutral-9);
   }
 
   td {
