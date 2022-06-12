@@ -22,6 +22,7 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
           # these are credentials for https://github.com/pyroscopebot
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
           commit_user_name: Pyroscope Bot
           commit_user_email: dmitry+bot@pyroscope.io
           commit_author: 'Pyroscope Bot <dmitry+bot@pyroscope.io>'
