@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"runtime"
 	"strconv"
 	"time"
@@ -71,10 +70,11 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 
 	req = req.WithContext(ctx)
 
-	dump, _ := httputil.DumpRequestOut(req, true)
-	// ignore errors
+	b, err := in.Profile.Bytes()
 	if err == nil {
-		r.metrics.sentBytes.Add(float64(len(dump)))
+		// TODO(petethepig): we might want to improve accuracy of this metric at some point
+		//   see comment here: https://github.com/pyroscope-io/pyroscope/pull/1147#discussion_r894975126
+		r.metrics.sentBytes.Add(float64(len(b)))
 	}
 
 	start := time.Now()
