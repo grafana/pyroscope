@@ -73,6 +73,9 @@ func (f *Fire) initAgent() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	f.agent = a
+	f.Server.HTTP.Path("/targets").Methods("GET").Handler(http.HandlerFunc(a.TargetsHandler))
+
 	return a, nil
 }
 

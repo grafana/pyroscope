@@ -307,3 +307,15 @@ func (t *Target) Health() scrape.TargetHealth {
 
 	return t.health
 }
+
+func (t *Target) Labels() labels.Labels {
+	t.mtx.RLock()
+	defer t.mtx.RUnlock()
+
+	return t.labels
+}
+
+// GetValue gets a label value from the entire label set.
+func (t *Target) GetValue(name string) string {
+	return t.labels.Get(name)
+}
