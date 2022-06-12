@@ -10,7 +10,7 @@
 
   cursor: pointer;
 
-  border: 1px solid var(--ps-neutral-10);
+  border: 1px solid var(--ps-neutral-6);
   border-radius: 4px;
   background: $btn-color;
 
@@ -19,23 +19,23 @@
   }
 
   &:disabled {
-    color: var(--ps-neutral-15);
-    color: 1px solid var(--ps-neutral-17);
+    color: var(--ps-neutral-8);
+    color: 1px solid var(--ps-neutral-9);
     pointer-events: none;
   }
 }
 
 // inspired by .viz-switch .btn
 .btn.primary {
-  background-color: var(--ps-accent-2-3);
-  border-left-color: var(--ps-accent-2-3);
-  border-right-color: var(--ps-accent-2-3);
-  border-top-color: var(--ps-accent-2-3);
-  border-bottom-color: var(--ps-accent-2-3);
+  background-color: var(--ps-green-disabled);
+  border-left-color: var(--ps-green-disabled);
+  border-right-color: var(--ps-green-disabled);
+  border-top-color: var(--ps-green-disabled);
+  border-bottom-color: var(--ps-green-disabled);
   transition: 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
   font-weight: 600;
 
   &:hover {
-    background-color: var(--ps-accent-2-1);
+    background-color: var(--ps-green-primary);
   }
 }

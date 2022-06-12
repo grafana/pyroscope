@@ -11,15 +11,15 @@
 }
 
 .buttonGithub {
-  background-color: var(--ps-neutral-10);
+  background-color: var(--ps-neutral-6);
 }
 
 .buttonGithub:hover {
-  background-color: var(--ps-neutral-14);
+  background-color: var(--ps-neutral-7);
 }
 
 .buttonGitlab {
-  background-color: var(--ps-accent-3-6);
+  background-color: var(--ps-immutable-gitlab-button);
 }
 
 .buttonGitlab svg {
@@ -28,11 +28,11 @@
 }
 
 .buttonGitlab:hover {
-  background-color: var(--ps-accent-3-7);
+  background-color: var(--ps-immutable-gitlab-button-hover);
 }
 
 .buttonGoogle {
-  background-color: var(--ps-accent-3-5);
+  background-color: var(--ps-immutable-google-button);
 }
 
 .buttonGoogle svg {
@@ -41,7 +41,7 @@
 }
 
 .buttonGoogle:hover {
-  background-color: var(--ps-accent-3-8);
+  background-color: var(--ps-immutable-google-button-hover);
 }
 
 .buttonGithub,
