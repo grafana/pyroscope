@@ -92,13 +92,11 @@ func (q *IngestionQueue) runQueueWorker() {
 	defer q.wg.Done()
 	for {
 		select {
-		case input, ok := <-q.queue:
-			if ok {
-				if err := q.safePut(input); err != nil {
-					q.logger.WithField("key", input.Metadata.Key.Normalized()).WithError(err).Error("error happened while ingesting data")
-				}
-				q.metrics.pendingItems.Dec()
+		case input := <-q.queue:
+			if err := q.safePut(input); err != nil {
+				q.logger.WithField("key", input.Metadata.Key.Normalized()).WithError(err).Error("error happened while ingesting data")
 			}
+			q.metrics.pendingItems.Dec()
 		case <-q.stop:
 			return
 		}
