@@ -83,6 +83,8 @@ jobs:
           git config --global user.email "dmitry+bot@pyroscope.io"
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
           yarn run lerna version --conventional-commits --yes
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
 
       # build all packages
       - name: Build
