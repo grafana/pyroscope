@@ -3,7 +3,6 @@ package remotewrite
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"runtime/debug"
 	"sync"
 
@@ -35,7 +34,7 @@ func NewIngestionQueue(logger logrus.FieldLogger, reg prometheus.Registerer, ing
 	if cfg.QueueWorkers == 0 {
 		// This may be a very conservative value
 		// Since it's IO bounded work
-		cfg.QueueWorkers = runtime.NumCPU() * queueFactor
+		cfg.QueueWorkers = numWorkers()
 	}
 
 	if cfg.QueueSize == 0 {
