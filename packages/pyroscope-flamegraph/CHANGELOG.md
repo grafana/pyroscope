@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.2...@pyroscope/flamegraph@0.8.3) (2022-06-12)
+
+
+### Bug Fixes
+
+* Merge jvm generated classes in jfr at ingestion time ([#1149](https://github.com/pyroscope-io/pyroscope/issues/1149)) ([c80878f](https://github.com/pyroscope-io/pyroscope/commit/c80878f765c6f1f8bcbe0d26eebd83d117f55113))
+
+
+
+
+
 ## [0.8.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.1...@pyroscope/flamegraph@0.8.2) (2022-06-10)
 
 
