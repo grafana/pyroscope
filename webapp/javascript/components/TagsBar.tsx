@@ -231,8 +231,9 @@ function LabelsSubmenu({
           <Input
             ref={ref}
             name="Search Tags Input"
+            className="search"
             type="text"
-            placeholder="Type a tag"
+            placeholder="Type a tag..."
             value={filter[label] || ''}
             onChange={(e) =>
               setFilter({

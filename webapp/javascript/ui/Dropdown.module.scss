@@ -10,6 +10,7 @@
 
   & ul[class*='rc-menu'] {
     color: var(--ps-neutral-2) !important;
+    background-color: var(--ps-dropdown-background) !important;
   }
 
   & li[class*='hover'],
