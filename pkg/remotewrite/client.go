@@ -34,7 +34,7 @@ type Client struct {
 func NewClient(logger logrus.FieldLogger, reg prometheus.Registerer, targetName string, cfg config.RemoteWriteTarget) *Client {
 	// setup defaults
 	if cfg.Timeout == 0 {
-		cfg.Timeout = time.Second * 30
+		cfg.Timeout = time.Second * 10
 	}
 
 	client := &http.Client{
