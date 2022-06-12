@@ -358,7 +358,8 @@ type Database struct {
 }
 
 type RemoteWrite struct {
-	Enabled bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
+	Enabled            bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
+	DisableLocalWrites bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
 
 	// see loadRemoteWriteTargetConfigsFromFile in server.go
 	Targets map[string]RemoteWriteTarget `yaml:"scrape-configs" mapstructure:"-"`
