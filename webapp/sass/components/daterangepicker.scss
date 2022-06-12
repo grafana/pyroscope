@@ -22,7 +22,7 @@
   }
 
   .drp-dropdown {
-    background-color: var(--ps-neutral-4);
+    background-color: var(--ps-neutral-dropdown);
     display: none;
     position: absolute;
     top: 45px;
@@ -30,7 +30,7 @@
     width: 400px;
     padding: 20px 20px 20px 20px;
     border: 1px solid var(--ps-neutral-6);
-    box-shadow: 0 5px 20px var(--ps-neutral-1);
+    box-shadow: 0px 10px 20px var(--ps-neutral-1);
     border-radius: 4px;
 
     // 2 so that it's above the '.tags-bar .tags-highlighted' element
