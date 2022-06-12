@@ -103,3 +103,18 @@
     margin: 0;
   }
 }
+
+// TODO: DRY This from SharedQueryInput.module.scss
+.search {
+  background: var(--ps-immutable-1);
+  transition: background-color ease-out 0.1s;
+  font: inherit;
+  margin-right: 8px;
+  border: 1px solid var(--ps-neutral-6);
+  width: 300px;
+
+  &,
+  &::placeholder {
+    color: var(--ps-immutable-4) !important;
+  }
+}
