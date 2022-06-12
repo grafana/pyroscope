@@ -10,6 +10,7 @@
   font: inherit;
   margin-right: 8px;
   border: 1px solid var(--ps-neutral-6);
+  width: 300px;
 
   &,
   &::placeholder {
@@ -37,7 +38,7 @@
 }
 
 .search-small {
-  width: 100px;
+  width: 150px;
 }
 
 .icon {

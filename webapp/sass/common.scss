@@ -43,7 +43,7 @@ tt {
 .flamegraph-table {
   width: 100%;
   font-size: 14px;
-  border-collapse: collapse;
+  border: 1px solid var(--ps-neutral-6);
 
   th,
   td {
