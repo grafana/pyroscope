@@ -15,20 +15,7 @@ public class OrderService {
 
     public static final Duration OP_DURATION = Duration.of(200, ChronoUnit.MILLIS);
 
-    public void orderBike(int searchRadius) {
-        findNearestVehicle(searchRadius, "bike");
-    }
-
-    public void orderScooter(int searchRadius) {
-        findNearestVehicle(searchRadius, "scooter");
-    }
-
-    public void orderCar(int searchRadius) {
-        findNearestVehicle(searchRadius, "car");
-    }
-
-
-    private synchronized void findNearestVehicle(int searchRadius, String vehicle) {
+    public synchronized void findNearestVehicle(int searchRadius, String vehicle) {
         Pyroscope.LabelsWrapper.run(new LabelsSet("vehicle", vehicle), () -> {
             AtomicLong i = new AtomicLong();
             Instant end = Instant.now()
