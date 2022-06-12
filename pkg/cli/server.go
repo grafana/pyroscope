@@ -153,7 +153,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 
 	var ingester ingestion.Ingester
-	if svc.config.RemoteWrite.Enabled && !svc.config.RemoteWrite.DisableLocalWrites {
+	if !svc.config.RemoteWrite.Enabled || !svc.config.RemoteWrite.DisableLocalWrites {
 		ingester = parser.New(svc.logger, svc.storageQueue, metricsExporter)
 	}
 
