@@ -3,12 +3,11 @@ package jfr
 import (
 	"context"
 	"fmt"
-	"io"
-	"regexp"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/pyroscope-io/jfr-parser/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
+	"io"
+	"regexp"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -16,7 +15,9 @@ import (
 )
 
 func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
-	chunks, err := parser.Parse(body)
+	chunks, err := parser.ParseWithOptions(body, &parser.ChunkParseOptions{
+		CPoolProcessor: processSymbols,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)
 	}
@@ -199,8 +200,7 @@ func frames(st *parser.StackTrace) []string {
 		f := st.Frames[i]
 		// TODO(abeaumont): Add support for line numbers.
 		if f.Method != nil && f.Method.Type != nil && f.Method.Type.Name != nil && f.Method.Name != nil {
-			cls := mergeJVMGeneratedClasses(f.Method.Type.Name.String)
-			frames = append(frames, cls+"."+f.Method.Name.String)
+			frames = append(frames, f.Method.Type.Name.String+"."+f.Method.Name.String)
 		}
 	}
 	return frames
@@ -216,4 +216,13 @@ func mergeJVMGeneratedClasses(frame string) string {
 	frame = generatedMethodAccessor.ReplaceAllString(frame, "${1}_")
 	frame = lambdaGeneratedEnclosingClass.ReplaceAllString(frame, "${1}_")
 	return frame
+}
+
+func processSymbols(meta parser.ClassMetadata, cpool *parser.CPool) {
+	if meta.Name == "jdk.types.Symbol" {
+		for _, v := range cpool.Pool {
+			sym := v.(*parser.Symbol)
+			sym.String = mergeJVMGeneratedClasses(sym.String)
+		}
+	}
 }
