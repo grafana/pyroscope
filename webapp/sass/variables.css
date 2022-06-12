@@ -1,14 +1,14 @@
 :root {
   --ps-neutral-1: #000000;
   --ps-neutral-2: #ffffff;
-  --ps-neutral-3: #0e0e13; /* background furthest back color (also try: #0E0E13) */
   --ps-neutral-4: #212124; /* sidebar background and "panel"/"box" background */
   --ps-neutral-5: #242428; /* non-selected button background, highlighted button text (when buttons are green) */
-  --ps-neutral-dropdown: #2c2c30; /* dropdown background */
   --ps-neutral-6: #3b3b44; /* disabled button text color, button borders, dropdown borders */
   --ps-neutral-7: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-8: #d8d8d8; /* sidebar text and datepicker text */
   --ps-neutral-9: #ffffff08; /* lighter background for table */
+  --ps-ui-background: #0e0e13; /* background furthest back color */
+  --ps-dropdown-background: #2c2c30; /* dropdown background */
 
   --ps-blue-primary: #0d8eff; /* Standard blue for button, instructions text (right) */
   --ps-blue-highlight: #40a6ff; /* highlight (hover) blue */
@@ -41,14 +41,14 @@
 [data-flamegraph-color-mode='light'] {
   --ps-neutral-1: #ffffff;
   --ps-neutral-2: #000000;
-  --ps-neutral-3: #eaeaea; /* background furthest back color */
   --ps-neutral-4: #f8f8f8; /* sidebar background and "panel"/"box" background */
   --ps-neutral-5: #e2e2e2; /* non-selected button background, highlighted button text (when buttons are green) */
-  --ps-neutral-dropdown: #e2e2e2; /* dropdown background */
   --ps-neutral-6: #b2b2b2; /* disabled button text color, button borders, dropdown borders */
   --ps-neutral-7: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-8: #272727; /* sidebar text and datepicker text */
   --ps-neutral-9: #00000008; /* lighter background for table */
+  --ps-ui-background: #eaeaea; /* background furthest back color */
+  --ps-dropdown-background: #e2e2e2; /* dropdown background */
 
   --ps-selected-app: #0d8eff; /* active selected app color in dropdown */
 
