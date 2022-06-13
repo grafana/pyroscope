@@ -25,6 +25,7 @@ type TargetDiscovery struct {
 
 // Target has the information for one target.
 type APITarget struct {
+	// TODO: (callum) do we have these labels?
 	// Labels before any processing.
 	// DiscoveredLabels map[string]string `json:"discoveredLabels"`
 	// Any labels that are added to this target and its profiles.
@@ -69,14 +70,11 @@ func (a *Agent) TargetsHandler(rw http.ResponseWriter, req *http.Request) {
 					lastErrStr = lastErr.Error()
 				}
 
-				// globalURL, err := getGlobalURL(target.URL(), api.globalURLOptions)
 				var err error
 				res.ActiveTargets = append(res.ActiveTargets, &APITarget{
-					// DiscoveredLabels: target.DiscoveredLabels().Map(),
 					Labels:     target.Labels().Map(),
 					ScrapePool: group,
 					ScrapeURL:  target.URL().String(),
-					// GlobalURL:  globalURL.String(),
 					LastError: func() string {
 						if err == nil && lastErrStr == "" {
 							return ""
@@ -100,7 +98,6 @@ func (a *Agent) TargetsHandler(rw http.ResponseWriter, req *http.Request) {
 		res.DroppedTargets = make([]*APIDroppedTarget, 0, len(tDropped))
 		for _, t := range tDropped {
 			res.DroppedTargets = append(res.DroppedTargets, &APIDroppedTarget{
-				// t.Labels()
 				ScrapeURL: t.URL().String(),
 				Labels:    t.Labels().Map(),
 			})
