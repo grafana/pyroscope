@@ -155,7 +155,8 @@ type Server struct {
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 
-	NoSelfProfiling bool `def:"false" desc:"disable profiling of pyroscope itself" mapstructure:"no-self-profiling"`
+	NoSelfProfiling   bool              `def:"false" desc:"disable profiling of pyroscope itself" mapstructure:"no-self-profiling"`
+	SelfProfilingTags map[string]string `name:"self-profiling-tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"self-profiling-tags" yaml:"self-profiling-tags"`
 
 	RemoteWrite RemoteWrite `yaml:"remote-write" mapstructure:"remote-write"`
 }

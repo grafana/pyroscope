@@ -69,7 +69,7 @@ func copyData(dbCfg *config.DbManager, stCfg *storage.Config) error {
 	e, _ := exporter.NewExporter(nil, nil)
 	logger := logrus.StandardLogger()
 	if dbCfg.EnableProfiling {
-		_ = selfprofiling.NewSession(logger, parser.New(logger, s, e), "pyroscope.dbmanager").Start()
+		_ = selfprofiling.NewSession(logger, parser.New(logger, s, e), "pyroscope.dbmanager", map[string]string{}).Start()
 	}
 
 	sk, err := segment.ParseKey(appName)

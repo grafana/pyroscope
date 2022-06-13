@@ -188,7 +188,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		ingester = ingestion.NewParallelizer(svc.logger, ingesters...)
 	}
 	if !svc.config.NoSelfProfiling {
-		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")
+		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server", svc.config.SelfProfilingTags)
 	}
 
 	svc.scrapeManager = scrape.NewManager(
