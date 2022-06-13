@@ -7,9 +7,8 @@ GEM
     fiddle (1.1.0)
     mustermann (1.1.1)
       ruby2_keywords (~> 0.0.1)
-    pyroscope_beta (0.2.1-x86_64-linux)
+    pyroscope_beta (0.2.2-x86_64-linux)
       ffi (~> 1.9)
-      fiddle (~> 1.1)
     rack (2.2.3.1)
     rack-protection (2.2.0)
       rack
@@ -29,7 +28,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  pyroscope_beta (= 0.2.1)
+  pyroscope_beta (= 0.2.2)
   sinatra (~> 2.1)
   thin (~> 1.8)
 
