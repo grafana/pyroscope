@@ -33,7 +33,7 @@ export const DefaultPalette: FlamegraphPalette = {
     Color.rgb(244, 213, 152),
     Color.rgb(112, 219, 237),
     Color.rgb(249, 186, 143),
-    Color.rgb(242, 145, 145), //index.js:5 colorBasedOnPackageName: java/lang/reflect/ -> 12 rgb(242,145,145)
+    Color.rgb(242, 145, 145),
     Color.rgb(130, 181, 216),
     Color.rgb(229, 168, 226),
     Color.rgb(174, 162, 224),
