@@ -17,8 +17,8 @@ type queueMetrics struct {
 
 func newQueueMetrics(reg prometheus.Registerer, targetName, targetAddress string) *queueMetrics {
 	labels := prometheus.Labels{
-		"targetName":    targetName,
-		"targetAddress": targetAddress,
+		"target_name":    targetName,
+		"target_address": targetAddress,
 	}
 
 	q := &queueMetrics{reg: reg}
