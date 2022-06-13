@@ -86,6 +86,7 @@ type EC2SDConfig struct {
 	SecretKey       string        `yaml:"secret-key,omitempty"`
 	Profile         string        `yaml:"profile,omitempty"`
 	RoleARN         string        `yaml:"role-arn,omitempty"`
+	Application     string        `yaml:"application,omitempty"`
 	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
 	Port            int           `yaml:"port"`
 	Filters         []*EC2Filter  `yaml:"filters"`
@@ -165,15 +166,17 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 	if d.cfg.AccessKey == "" && d.cfg.SecretKey == "" {
 		creds = nil
 	}
-
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
 			Endpoint:    &d.cfg.Endpoint,
 			Region:      &d.cfg.Region,
 			Credentials: creds,
 		},
-		Profile: d.cfg.Profile,
+		SharedConfigState: session.SharedConfigEnable,
+		Profile:           d.cfg.Profile,
 	})
+	fmt.Printf("region %s, profile %s", d.cfg.Region, d.cfg.Profile)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create aws session")
 	}
@@ -236,6 +239,7 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 
 				labels := model.LabelSet{
 					ec2LabelInstanceID: model.LabelValue(*inst.InstanceId),
+					model.AppNameLabel: model.LabelValue(d.cfg.Application),
 				}
 
 				if r.OwnerId != nil {
