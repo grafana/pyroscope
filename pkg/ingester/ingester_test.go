@@ -47,7 +47,16 @@ func Test_ConnectPush(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider())
+	dataPath, err := os.MkdirTemp("", "fire-db")
+	require.NoError(t, err)
+	t.Logf("created temporary data path: %s", dataPath)
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dataPath); err != nil {
+			t.Logf("remove data path failed: %v", err)
+		}
+	})
+
+	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), &profilestore.Config{DataPath: dataPath})
 	require.NoError(t, err)
 
 	mux := http.NewServeMux()
@@ -82,7 +91,6 @@ func Test_ConnectPush(t *testing.T) {
 
 	var queriedSamples int64
 	require.NoError(t, profileStore.Table().Iterator(context.Background(), memory.NewGoAllocator(), nil, nil, nil, func(ar arrow.Record) error {
-
 		t.Log(ar)
 		defer ar.Release()
 
@@ -91,6 +99,8 @@ func Test_ConnectPush(t *testing.T) {
 		return nil
 	}))
 	require.Equal(t, ingestedSamples, queriedSamples, "expected to query all ingested samples")
+
+	require.NoError(t, profileStore.Table().RotateBlock())
 
 	require.NoError(
 		t,
