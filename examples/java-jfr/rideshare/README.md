@@ -1,6 +1,6 @@
 ## Continuous Profiling for Java applications
 ### Profiling a Java Rideshare App with Pyroscope
-![golang_example_architecture_05_1](https://user-images.githubusercontent.com/23323466/149699777-8f73c459-917d-48c5-b2d8-87560a7bfb11.gif)
+![java_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369880-da9210af-9a60-4ace-8326-f21edf882575.gif)
 
 Note: For documentation on Pyroscope's java integration visit our website for [java](https://pyroscope.io/docs/java/).
 

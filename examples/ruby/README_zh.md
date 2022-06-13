@@ -1,5 +1,5 @@
 ### Pyroscope Rideshare 示例
-![ruby_example_architecture_05](https://user-images.githubusercontent.com/23323466/135726784-0c367d3f-c9e5-4e3f-91be-761d4d6d21b1.gif)
+![ruby_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369670-ba6fe5ce-eab0-4824-94dd-c72255efc063.gif)
 
 #### _用其他语言阅读此文。_
 <kbd>[English](README.md)</kbd>
