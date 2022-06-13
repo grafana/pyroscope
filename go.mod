@@ -5,10 +5,12 @@ go 1.18
 require (
 	github.com/apache/arrow/go/v8 v8.0.0-20220414050214-b61fb727fcc9
 	github.com/bufbuild/connect-go v0.1.0
+	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/drone/envsubst v1.0.3
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/status v1.1.0
 	github.com/google/pprof v0.0.0-20220520215854-d04f2422c8a1
+	github.com/google/uuid v1.3.0
 	github.com/grafana/dskit v0.0.0-20220526081034-789ec0ca4a3b
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -19,6 +21,7 @@ require (
 	github.com/prometheus/common v0.34.0
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
 	github.com/stretchr/testify v1.7.2
+	github.com/thanos-io/objstore v0.0.0-20220324141029-c4f11442aa33
 	github.com/thanos-io/thanos v0.26.0
 	github.com/weaveworks/common v0.0.0-20220428113342-f83ccc76d823
 	go.opentelemetry.io/otel/trace v1.7.0
@@ -81,7 +84,6 @@ require (
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
-	github.com/dgraph-io/badger/v3 v3.2103.2 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/digitalocean/godo v1.75.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
@@ -120,7 +122,6 @@ require (
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
 	github.com/googleapis/go-type-adapters v1.0.0 // indirect
 	github.com/gophercloud/gophercloud v0.24.0 // indirect
@@ -191,7 +192,6 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.34 // indirect
-	github.com/thanos-io/objstore v0.0.0-20220324141029-c4f11442aa33 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/weaveworks/promrus v1.2.0 // indirect
