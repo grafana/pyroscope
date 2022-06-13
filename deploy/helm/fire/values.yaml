@@ -12,6 +12,9 @@ fire:
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""
 
+  extraArgs:
+    log.level: debug
+
   imagePullSecrets: []
   nameOverride: ""
   fullnameOverride: ""
