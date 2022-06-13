@@ -1,5 +1,5 @@
 ### Pyroscope Rideshare 示例
-![python_example_architecture_05_00](https://user-images.githubusercontent.com/23323466/135728737-0c5e54ca-1e78-4c6d-933c-145f441c96a9.gif)
+![python_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369382-267af200-6126-4bd0-8607-a933e8400dbb.gif)
 
 #### _用其他语言阅读此文。_
 <kbd>[English](README.md)</kbd>
@@ -13,9 +13,9 @@
 - `/scooter` : 调用`order_scooter(search_radius)`函数来订购共享摩托车
 
 我们还模拟了在3个不同地区运行3个不同的服务器（通过[docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/python/docker-compose.yml))
-- us-east-1
-- us-west-1
-- eu-west-1
+- us-east
+- eu-north
+- ap-south
 
 
 Pyroscope最有用的功能之一是能够以对你有意义的方式来标记你的数据。在这种情况下，我们有两个自然划分，因此我们 "标记(tag)" 我们的数据以表示这些：
@@ -79,7 +79,7 @@ docker-compose up --build
 ![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
 ## 使用标签缩小问题的范围
-知道`order_car()`函数有问题，我们就自动选择该标签。然后，在检查了多个 `region` 标签后，通过查看时间线，可以清楚地看到 `us-west-1`区域存在问题，它在高cpu时间和低cpu时间之间交替出现。
+知道`order_car()`函数有问题，我们就自动选择该标签。然后，在检查了多个 `region` 标签后，通过查看时间线，可以清楚地看到 `eu-north`区域存在问题，它在高cpu时间和低cpu时间之间交替出现。
 
 我们还可以看到，`mutex_lock()`函数在这段时间内几乎消耗了70%的CPU资源。
 ![python_second_slide_05](https://user-images.githubusercontent.com/23323466/135805908-ae9a1650-51fc-457a-8c47-0b56e8538b08.jpg)

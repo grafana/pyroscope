@@ -42,11 +42,11 @@ services:
       options:
         loki-url: 'http://localhost:3100/loki/api/v1/push'
 
-  us-east-1:
+  us-east:
     env_file:
       - config.env
     environment:
-      - REGION=us-east-1
+      - REGION=us-east
     build:
       context: ''
     logging:
@@ -54,11 +54,11 @@ services:
       options:
         loki-url: 'http://localhost:3100/loki/api/v1/push'
 
-  us-west-1:
+  eu-north:
     env_file:
       - config.env
     environment:
-      - REGION=us-west-1
+      - REGION=eu-north
     build:
       context: ''
     logging:
@@ -66,11 +66,11 @@ services:
       options:
         loki-url: 'http://localhost:3100/loki/api/v1/push'
 
-  eu-west-1:
+  ap-south:
     env_file:
       - config.env
     environment:
-      - REGION=eu-west-1
+      - REGION=ap-south
     build:
       context: ''
     logging:
@@ -85,9 +85,9 @@ services:
       context: ''
       dockerfile: Dockerfile.loadgen
     depends_on:
-      - eu-west-1
-      - us-west-1
-      - us-east-1
+      - ap-south
+      - eu-north
+      - us-east
     logging:
       driver: loki
       options:

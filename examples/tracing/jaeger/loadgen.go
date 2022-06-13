@@ -16,9 +16,9 @@ import (
 )
 
 var hosts = []string{
-	"us-east-1",
-	"us-west-1",
-	"eu-west-1",
+	"us-east",
+	"eu-north",
+	"ap-south",
 }
 
 var vehicles = []string{
