@@ -136,4 +136,4 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install fire-dev ./deploy/helm/fire \
-		--set image.tag=$(IMAGE_TAG)
+		--set fire.image.tag=$(IMAGE_TAG)
