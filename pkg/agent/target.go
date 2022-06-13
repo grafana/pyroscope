@@ -188,6 +188,7 @@ func (t *Target) scrape(ctx context.Context) {
 	t.health = scrape.HealthGood
 	t.lastScrapeDuration = time.Since(start)
 	t.lastError = nil
+	t.lastScrape = start
 	// todo retry strategy
 	req := &pushv1.PushRequest{}
 	series := &pushv1.RawProfileSeries{
