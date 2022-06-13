@@ -19,6 +19,7 @@ jobs:
         if: github.event_name != 'pull_request'
         with:
           fetch-depth: 0
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
 
       # For pull requests, also checkout out the REAL commit (as opposed to a merge commit with main)
       - uses: actions/checkout@v2
@@ -28,6 +29,7 @@ jobs:
         # https://github.com/actions/checkout/issues/455#issuecomment-792228083
         with:
           fetch-depth: 0
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{github.event.pull_request.head.repo.full_name}}
 

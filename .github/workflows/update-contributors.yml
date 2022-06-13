@@ -12,6 +12,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.head_ref }}
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: make install-web-dependencies
