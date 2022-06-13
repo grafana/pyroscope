@@ -25,7 +25,7 @@ type PutInput struct {
 	AggregationType metadata.AggregationType
 }
 
-func (s *Storage) Put(_ context.Context, pi *PutInput) error {
+func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
@@ -37,8 +37,8 @@ func (s *Storage) Put(_ context.Context, pi *PutInput) error {
 	}
 
 	s.putTotal.Inc()
-	if id, ok := pi.Key.ProfileID(); ok {
-		return s.exemplars.insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
+	if pi.Key.HasProfileID() {
+		return s.exemplars.insert(ctx, pi)
 	}
 
 	s.logger.WithFields(logrus.Fields{

@@ -16,6 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
 // TODO(kolesnikovae): decouple from Storage.
@@ -23,7 +24,7 @@ import (
 const (
 	exemplarDataPrefix      Prefix = "v:"
 	exemplarTimestampPrefix Prefix = "t:"
-	exemplarsFormatV1       byte   = 1
+	exemplarsCurrentFormat         = 2
 
 	exemplarBatches       = 5
 	exemplarsPerBatch     = 10 << 10 // 10K
@@ -56,11 +57,16 @@ type exemplarsBatch struct {
 }
 
 type exemplarsBatchEntry struct {
-	Timestamp int64
+	// DB exemplar key and its parts.
+	Key       []byte
 	AppName   string
 	ProfileID string
-	Key       []byte
-	Value     *tree.Tree
+
+	// Value.
+	StartTime int64
+	EndTime   int64
+	Labels    map[string]string
+	Tree      *tree.Tree
 }
 
 func (e *exemplars) newExemplarsBatch() *exemplarsBatch {
@@ -194,6 +200,28 @@ func (e *exemplars) flushCurrentBatch() {
 	}
 }
 
+func (e *exemplars) Sync() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.flush(e.currentBatch)
+	n := len(e.batches)
+	var i int
+	for {
+		if i == n {
+			return
+		}
+		select {
+		default:
+			return
+		case b, ok := <-e.batches:
+			if ok {
+				e.flush(b)
+				i++
+			}
+		}
+	}
+}
+
 func (e *exemplars) flushBatchQueue() {
 	e.once.Do(func() {
 		e.flush(e.currentBatch)
@@ -205,9 +233,6 @@ func (e *exemplars) flushBatchQueue() {
 }
 
 func (e *exemplars) flush(b *exemplarsBatch) {
-	b.mu.Lock()
-	b.done = true
-	b.mu.Unlock()
 	if len(b.entries) == 0 {
 		return
 	}
@@ -226,14 +251,14 @@ func (e *exemplars) flush(b *exemplarsBatch) {
 	}
 }
 
-func (e *exemplars) insert(appName, profileID string, v *tree.Tree, timestamp time.Time) error {
-	if v == nil {
+func (e *exemplars) insert(ctx context.Context, input *PutInput) error {
+	if input.Val == nil || input.Val.Samples() == 0 {
 		return nil
 	}
-	err := e.currentBatch.insert(appName, profileID, timestamp, v)
+	err := e.currentBatch.insert(ctx, input)
 	if err == errBatchIsFull {
 		e.flushCurrentBatch()
-		return e.currentBatch.insert(appName, profileID, timestamp, v)
+		return e.currentBatch.insert(ctx, input)
 	}
 	return err
 }
@@ -243,7 +268,7 @@ func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []stri
 	if !ok {
 		return nil
 	}
-	r := e.valueReader(d.(*dict.Dict), fn)
+	dx := d.(*dict.Dict)
 	return e.db.View(func(txn *badger.Txn) error {
 		for _, profileID := range profileIDs {
 			if err := ctx.Err(); err != nil {
@@ -255,34 +280,21 @@ func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []stri
 				return err
 			case errors.Is(err, badger.ErrKeyNotFound):
 			case err == nil:
-				if err = item.Value(r); err != nil {
+				err = item.Value(func(val []byte) error {
+					e.metrics.exemplarsReadBytes.Observe(float64(len(val)))
+					var x exemplarsBatchEntry
+					if err = x.Deserialize(dx, val); err != nil {
+						return err
+					}
+					return fn(x.Tree)
+				})
+				if err != nil {
 					return err
 				}
 			}
 		}
 		return nil
 	})
-}
-
-func (e *exemplars) valueReader(d *dict.Dict, fn func(*tree.Tree) error) func(val []byte) error {
-	return func(val []byte) error {
-		e.metrics.exemplarsReadBytes.Observe(float64(len(val)))
-		r := bytes.NewReader(val)
-		v, err := r.ReadByte()
-		if err != nil {
-			return err
-		}
-		switch v {
-		default:
-			return fmt.Errorf("unknown exemplar format version %d", v)
-		case exemplarsFormatV1:
-			var t *tree.Tree
-			if t, err = tree.Deserialize(d, r); err != nil {
-				return err
-			}
-			return fn(t)
-		}
-	}
 }
 
 func (e *exemplars) truncateBefore(ctx context.Context, before time.Time) (err error) {
@@ -351,32 +363,37 @@ func (e *exemplars) truncateN(before time.Time, count int) (bool, error) {
 	return true, err
 }
 
-func (b *exemplarsBatch) insert(appName, profileID string, timestamp time.Time, value *tree.Tree) error {
+func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if len(b.entries) == exemplarsPerBatch || b.done {
 		return errBatchIsFull
 	}
+	appName := input.Key.AppName()
+	profileID, _ := input.Key.ProfileID()
 	k := exemplarKey(appName, profileID)
 	key := string(k)
 	e, ok := b.entries[key]
 	if ok {
-		e.Value.Merge(value)
-		e.Timestamp = timestamp.UnixNano()
+		e.Tree.Merge(input.Val)
+		e.EndTime = input.EndTime.UnixNano()
 		return nil
 	}
 	b.entries[key] = &exemplarsBatchEntry{
-		Timestamp: timestamp.UnixNano(),
+		Key:       k,
 		AppName:   appName,
 		ProfileID: profileID,
-		Key:       k,
-		Value:     value,
+
+		StartTime: input.StartTime.UnixNano(),
+		EndTime:   input.EndTime.UnixNano(),
+		Labels:    input.Key.Labels(),
+		Tree:      input.Val,
 	}
 	return nil
 }
 
 func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEntry) error {
-	k, ok := exemplarKeyToTimestampKey(e.Key, e.Timestamp)
+	k, ok := exemplarKeyToTimestampKey(e.Key, e.EndTime)
 	if !ok {
 		return fmt.Errorf("invalid exemplar key")
 	}
@@ -388,8 +405,6 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEnt
 		return err
 	}
 	dx := d.(*dict.Dict)
-	buf := bytes.NewBuffer(make([]byte, 0, 100))
-	buf.WriteByte(exemplarsFormatV1)
 
 	item, err := txn.Get(e.Key)
 	switch {
@@ -401,27 +416,120 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEnt
 		// Merge with the found exemplar using the buffer provided.
 		err = item.Value(func(val []byte) error {
 			b.metrics.exemplarsReadBytes.Observe(float64(len(val)))
-			dbVal := bytes.NewBuffer(val)
-			_, _ = dbVal.ReadByte()
-			var t *tree.Tree
-			if t, err = tree.Deserialize(dx, dbVal); err != nil {
-				return err
+			var x exemplarsBatchEntry
+			if err = x.Deserialize(dx, val); err == nil {
+				e = x.Merge(e)
 			}
-			t.Merge(e.Value)
-			e.Value = t
-			return nil
+			return err
 		})
 		if err != nil {
 			return err
 		}
 	}
 
-	if err = e.Value.SerializeTruncate(dx, b.config.maxNodesSerialization, buf); err != nil {
+	r, err := e.Serialize(dx, b.config.maxNodesSerialization)
+	if err != nil {
 		return err
 	}
-	if err = txn.Set(e.Key, buf.Bytes()); err != nil {
+	if err = txn.Set(e.Key, r); err != nil {
 		return err
 	}
-	b.metrics.exemplarsWriteBytes.Observe(float64(buf.Len()))
+	b.metrics.exemplarsWriteBytes.Observe(float64(len(r)))
+	return nil
+}
+
+func (e *exemplarsBatchEntry) Merge(src *exemplarsBatchEntry) *exemplarsBatchEntry {
+	// TODO: time range.
+	e.Tree.Merge(src.Tree)
+	return e
+}
+
+func (e *exemplarsBatchEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, error) {
+	b := bytes.NewBuffer(make([]byte, 0, 1<<10)) // 1 KB.
+	b.WriteByte(exemplarsCurrentFormat)          // Version.
+	if err := e.Tree.SerializeTruncate(d, maxNodes, b); err != nil {
+		return nil, err
+	}
+	vw := varint.NewWriter()
+	_, _ = vw.Write(b, uint64(e.StartTime))
+	_, _ = vw.Write(b, uint64(e.EndTime))
+	// Strip profile_id and __name__ labels.
+	_, _ = vw.Write(b, uint64(2*(len(e.Labels)-2)))
+	for k, v := range e.Labels {
+		if k == segment.ProfileIDLabelName || k == "__name__" {
+			continue
+		}
+		_, _ = vw.Write(b, uint64(len(k)))
+		_, _ = b.Write([]byte(k))
+		_, _ = vw.Write(b, uint64(len(v)))
+		_, _ = b.Write([]byte(v))
+	}
+	return b.Bytes(), nil
+}
+
+func (e *exemplarsBatchEntry) Deserialize(d *dict.Dict, b []byte) error {
+	buf := bytes.NewBuffer(b)
+	v, err := buf.ReadByte()
+	if err != nil {
+		return err
+	}
+	switch v {
+	case 1:
+		return e.deserializeV1(d, buf)
+	case 2:
+		return e.deserializeV2(d, buf)
+	default:
+		return fmt.Errorf("unknown exemplar format version %d", v)
+	}
+}
+
+func (e *exemplarsBatchEntry) deserializeV1(d *dict.Dict, src *bytes.Buffer) error {
+	t, err := tree.Deserialize(d, src)
+	if err != nil {
+		return err
+	}
+	e.Tree = t
+	return nil
+}
+
+func (e *exemplarsBatchEntry) deserializeV2(d *dict.Dict, src *bytes.Buffer) error {
+	t, err := tree.Deserialize(d, src)
+	if err != nil {
+		return err
+	}
+	e.Tree = t
+
+	st, err := varint.Read(src)
+	if err != nil {
+		return err
+	}
+	e.StartTime = int64(st)
+	et, err := varint.Read(src)
+	if err != nil {
+		return err
+	}
+	e.EndTime = int64(et)
+
+	n, err := varint.Read(src)
+	if err != nil {
+		return err
+	}
+	if e.Labels == nil {
+		e.Labels = make(map[string]string, n)
+	}
+	var k string
+	for i := uint64(0); i < n; i++ {
+		m, err := varint.Read(src)
+		if err != nil {
+			return err
+		}
+		v := string(src.Next(int(m)))
+		if i%2 != 0 {
+			e.Labels[k] = v
+		} else {
+			k = v
+		}
+	}
+
 	return nil
 }

@@ -150,7 +150,22 @@ type parentNode struct {
 
 func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	t := New()
-	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
+
+	type reader interface {
+		io.ByteReader
+		io.Reader
+	}
+	var br reader
+	switch x := r.(type) {
+	case *bytes.Buffer:
+		br = x
+	case *bytes.Reader:
+		br = x
+	case *bufio.Reader:
+		br = x
+	default:
+		br = bufio.NewReader(r)
+	}
 
 	// reads serialization format version, see comment at the top
 	_, err := varint.Read(br)
