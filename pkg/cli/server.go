@@ -49,7 +49,7 @@ type serverService struct {
 	controller *server.Controller
 	storage    *storage.Storage
 	// queue used to ingest data into the storage
-	ingestionQueue   *storage.IngestionQueue
+	storageQueue     *storage.IngestionQueue
 	analyticsService *analytics.Service
 	selfProfiling    *pyroscope.Session
 	debugReporter    *debug.Reporter
@@ -58,6 +58,7 @@ type serverService struct {
 	discoveryManager *discovery.Manager
 	scrapeManager    *scrape.Manager
 	database         *sqlstore.SQLStore
+	remoteWriteQueue []*remotewrite.IngestionQueue
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -65,8 +66,8 @@ type serverService struct {
 }
 
 const (
-	ingestionQueueWorkers = 1
-	ingestionQueueSize    = 100
+	storageQueueWorkers = 1
+	storageQueueSize    = 100
 )
 
 func newServerService(c *config.Server) (*serverService, error) {
@@ -145,12 +146,16 @@ func newServerService(c *config.Server) (*serverService, error) {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	svc.ingestionQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
-		ingestionQueueWorkers,
-		ingestionQueueSize)
+	svc.storageQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
+		storageQueueWorkers,
+		storageQueueSize)
+
+	defaultMetricsRegistry := prometheus.DefaultRegisterer
 
 	var ingester ingestion.Ingester
-	ingester = parser.New(svc.logger, svc.ingestionQueue, metricsExporter)
+	if !svc.config.RemoteWrite.Enabled || !svc.config.RemoteWrite.DisableLocalWrites {
+		ingester = parser.New(svc.logger, svc.storageQueue, metricsExporter)
+	}
 
 	// If remote write is available, let's write to both local storage and to the remote server
 	if svc.config.RemoteWrite.Enabled {
@@ -164,26 +169,28 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 
 		remoteClients := make([]ingestion.Ingester, len(svc.config.RemoteWrite.Targets))
+		svc.remoteWriteQueue = make([]*remotewrite.IngestionQueue, len(svc.config.RemoteWrite.Targets))
+
 		i := 0
-		for _, t := range svc.config.RemoteWrite.Targets {
-			logrus.Debugf("Instantiating remote write client for target %s", t.Address)
-			cfg := config.RemoteWriteTarget{
-				Address:   t.Address,
-				AuthToken: t.AuthToken,
-				Timeout:   t.Timeout,
-			}
-			remoteClients[i] = remotewrite.NewClient(logger, cfg)
+		for targetName, t := range svc.config.RemoteWrite.Targets {
+			targetLogger := logger.WithField("remote_target", targetName)
+			targetLogger.Debug("Initializing remote write target")
+
+			remoteClient := remotewrite.NewClient(targetLogger, defaultMetricsRegistry, targetName, t)
+			q := remotewrite.NewIngestionQueue(targetLogger, defaultMetricsRegistry, remoteClient, targetName, t)
+
+			remoteClients[i] = q
+			svc.remoteWriteQueue[i] = q
 			i++
 		}
 
 		ingesters := append([]ingestion.Ingester{ingester}, remoteClients...)
-		ingester = remotewrite.NewParallelizer(svc.logger, ingesters...)
+		ingester = ingestion.NewParallelizer(svc.logger, ingesters...)
 	}
 	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")
 	}
 
-	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
 		ingester,
@@ -310,8 +317,15 @@ func (svc *serverService) stop() {
 		svc.selfProfiling.Stop()
 	}
 
+	if svc.config.RemoteWrite.Enabled {
+		svc.logger.Debug("stopping remote queues")
+		for _, q := range svc.remoteWriteQueue {
+			q.Stop()
+		}
+	}
+
 	svc.logger.Debug("stopping ingestion queue")
-	svc.ingestionQueue.Stop()
+	svc.storageQueue.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
@@ -396,5 +410,6 @@ func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
 	}
 
 	c.RemoteWrite.Targets = s.RemoteWrite.Targets
+
 	return nil
 }
