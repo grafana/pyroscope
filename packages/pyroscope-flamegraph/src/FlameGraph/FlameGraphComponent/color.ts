@@ -127,8 +127,6 @@ export function colorBasedOnPackageName(
 ) {
   const hash = murmurhash3_32_gc(name);
   const colorIndex = hash % palette.colors.length;
-  console.log(`colorBasedOnPackageName: ${name} -> ${colorIndex}`);
-
   const baseClr = palette.colors[colorIndex];
   if (!baseClr) {
     console.warn('Could not calculate color. Defaulting to the first one');
