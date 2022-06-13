@@ -156,11 +156,12 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 }
 
 // targetsFromGroup builds targets based on the given TargetGroup and config.
-func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, error) {
+func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []*Target, error) {
 	var (
-		targets  = make([]*Target, 0, len(group.Targets))
-		interval = time.Duration(tg.config.ScrapeInterval)
-		timeout  = time.Duration(tg.config.ScrapeTimeout)
+		targets        = make([]*Target, 0, len(group.Targets))
+		droppedTargets = make([]*Target, 0, len(group.Targets))
+		interval       = time.Duration(tg.config.ScrapeInterval)
+		timeout        = time.Duration(tg.config.ScrapeTimeout)
 	)
 
 	for i, tlset := range group.Targets {
@@ -187,7 +188,35 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, er
 			}
 			lbls, origLabels, err := populateLabels(lset, tg.config)
 			if err != nil {
-				return nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
+				return nil, nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
+			}
+			// This is a dropped target, according to the current return behaviour of populateLabels
+			if lbls == nil && origLabels != nil {
+				// ensure we get the full url path for dropped targets
+				params := tg.config.Params
+				if params == nil {
+					params = url.Values{}
+				}
+				lbls = append(lbls, labels.Label{Name: model.AddressLabel, Value: lset.Get(model.AddressLabel)})
+				lbls = append(lbls, labels.Label{Name: model.SchemeLabel, Value: tg.config.Scheme})
+				lbls = append(lbls, labels.Label{Name: scrape.ProfilePath, Value: lset.Get(scrape.ProfilePath)})
+				// Encode scrape query parameters as labels.
+				for k, v := range tg.config.Params {
+					if len(v) > 0 {
+						lbls = append(lbls, labels.Label{Name: model.ParamLabelPrefix + k, Value: v[0]})
+					}
+				}
+				droppedTargets = append(droppedTargets, &Target{
+					Target:       scrape.NewTarget(lbls, origLabels, params),
+					labels:       lbls,
+					scrapeClient: tg.scrapeClient,
+					pushClient:   tg.pushClient,
+					interval:     interval,
+					timeout:      timeout,
+					health:       scrape.HealthUnknown,
+					logger:       tg.logger,
+				})
+				continue
 			}
 			if lbls != nil || origLabels != nil {
 				params := tg.config.Params
@@ -198,7 +227,6 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, er
 				if pcfg, found := tg.config.ProfilingConfig.PprofConfig[profType]; found && pcfg.Delta {
 					params.Add("seconds", strconv.Itoa(int(time.Duration(tg.config.ScrapeTimeout)/time.Second)-1))
 				}
-
 				targets = append(targets, &Target{
 					Target:       scrape.NewTarget(lbls, origLabels, params),
 					labels:       lbls,
@@ -213,5 +241,5 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, er
 		}
 	}
 
-	return targets, nil
+	return targets, droppedTargets, nil
 }
