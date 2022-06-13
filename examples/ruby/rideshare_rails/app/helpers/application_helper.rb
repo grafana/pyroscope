@@ -16,14 +16,14 @@ module ApplicationHelper
       i += 1
     end
 
-    # Every 4 minutes this will artificially create make requests in us-west-1 region slow
+    # Every 4 minutes this will artificially create make requests in eu-north region slow
     # this is just for demonstration purposes to show how performance impacts show up in the
     # flamegraph
     current_time = Time.now
     current_minute = current_time.strftime('%M').to_i
     force_mutex_lock = (current_minute * 4 % 8) == 0
 
-    mutex_lock(n) if ENV["REGION"] == "us-west-1" and force_mutex_lock
+    mutex_lock(n) if ENV["REGION"] == "eu-north" and force_mutex_lock
   end
 
   def find_nearest_vehicle(n, vehicle)

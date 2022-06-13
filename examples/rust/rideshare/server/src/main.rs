@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_address = std::env::var("PYROSCOPE_SERVER_ADDRESS")
         .unwrap_or_else(|_| "http://localhost:4040".to_string());
     // Get Region from environment variable.
-    let region = std::env::var("REGION").unwrap_or_else(|_| "us-east-1".to_string());
+    let region = std::env::var("REGION").unwrap_or_else(|_| "us-east".to_string());
 
     // Configure Pyroscope client.
     let agent = PyroscopeAgent::builder(server_address, "ride-sharing-rust".to_owned())
@@ -133,11 +133,11 @@ fn check_driver_availability(search_radius: u64) {
     while start_time.elapsed().as_secs() < (search_radius / 2) {
         _i += 1;
     }
-    // Every 4 minutes this will artificially create make requests in us-west-1 region slow
+    // Every 4 minutes this will artificially create make requests in eu-north region slow
     // this is just for demonstration purposes to show how performance impacts show up in the
     // flamegraph
     let time_minutes = Local::now().minute();
-    if std::env::var("REGION").unwrap_or_else(|_| "us-west-1".to_owned()) == "us-west-1"
+    if std::env::var("REGION").unwrap_or_else(|_| "eu-north".to_owned()) == "eu-north"
         && (time_minutes * 8 % 4 == 0)
     {
         mutex_lock(search_radius);

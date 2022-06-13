@@ -41,7 +41,7 @@ module RideshareRails
       config.app_name = "ride-sharing-app"
       config.server_address = "http://pyroscope:4040"
       config.tags = {
-        "region": ENV["REGION"] || "us-east-1",
+        "region": ENV["REGION"] || "us-east",
       }
     end
   end

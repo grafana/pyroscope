@@ -37,11 +37,11 @@ public class OrderService {
         while (Instant.now().compareTo(end) <= 0) {
             i.incrementAndGet();
         }
-        // Every other minute this will artificially create make requests in us-west-1 region slow
+        // Every other minute this will artificially create make requests in eu-north region slow
         // this is just for demonstration purposes to show how performance impacts show up in the
         // flamegraph
         boolean force_mutex_lock = Instant.now().atZone(ZoneOffset.UTC).getMinute() % 2 == 0;
-        if (System.getenv("REGION").equals("us-west-1") && force_mutex_lock) {
+        if (System.getenv("REGION").equals("eu-north") && force_mutex_lock) {
             mutexLock(searchRadius);
         }
     }

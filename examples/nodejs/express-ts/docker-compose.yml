@@ -1,21 +1,21 @@
 ---
 version: '3.9'
 services:
-  us-east-1:
+  us-east:
     environment:
-      - REGION=us-east-1
+      - REGION=us-east
     build:
       context: .
 
-  us-west-1:
+  eu-north:
     environment:
-      - REGION=us-west-1
+      - REGION=eu-north
     build:
       context: .
 
-  eu-west-1:
+  ap-south:
     environment:
-      - REGION=eu-west-1
+      - REGION=ap-south
     build:
       context: .
   pyroscope:
