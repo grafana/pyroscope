@@ -39,6 +39,7 @@ type ComparisonView = {
 type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
+  | { type: 'reloading'; timeline: Timeline }
   | { type: 'loaded'; timeline: Timeline }
   | { type: 'failed'; timeline: Timeline };
 
@@ -101,6 +102,12 @@ interface ContinuousState {
   rightTimeline: TimelineState;
 }
 
+let singleViewAbortController: AbortController | undefined;
+let sideTimelinesAbortController: AbortController | undefined;
+let diffViewAbortController: AbortController | undefined;
+let comparisonSideAbortControllerLeft: AbortController | undefined;
+let comparisonSideAbortControllerRight: AbortController | undefined;
+
 const initialState: ContinuousState = {
   from: 'now-1h',
   until: 'now',
@@ -146,22 +153,20 @@ const initialState: ContinuousState = {
   },
 };
 
-let fetchAbortController: AbortController | undefined;
-
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
   null,
   { state: { continuous: ContinuousState } }
 >('continuous/singleView', async (_, thunkAPI) => {
-  if (fetchAbortController) {
-    fetchAbortController.abort();
+  if (singleViewAbortController) {
+    singleViewAbortController.abort();
   }
 
-  fetchAbortController = new AbortController();
-  thunkAPI.signal = fetchAbortController.signal;
+  singleViewAbortController = new AbortController();
+  thunkAPI.signal = singleViewAbortController.signal;
 
   const state = thunkAPI.getState();
-  const res = await renderSingle(state.continuous, fetchAbortController);
+  const res = await renderSingle(state.continuous, singleViewAbortController);
 
   if (res.isOk) {
     return Promise.resolve(res.value);
@@ -182,19 +187,17 @@ export const fetchSingleView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-let sideTimelinesFetchAbortController: AbortController | undefined;
-
 export const fetchSideTimelines = createAsyncThunk<
   { left: Timeline; right: Timeline },
   null,
   { state: { continuous: ContinuousState } }
 >('continuous/fetchSideTimelines', async (_, thunkAPI) => {
-  if (sideTimelinesFetchAbortController) {
-    sideTimelinesFetchAbortController.abort();
+  if (sideTimelinesAbortController) {
+    sideTimelinesAbortController.abort();
   }
 
-  sideTimelinesFetchAbortController = new AbortController();
-  thunkAPI.signal = sideTimelinesFetchAbortController.signal;
+  sideTimelinesAbortController = new AbortController();
+  thunkAPI.signal = sideTimelinesAbortController.signal;
 
   const state = thunkAPI.getState();
 
@@ -207,7 +210,7 @@ export const fetchSideTimelines = createAsyncThunk<
         maxNodes: state.continuous.maxNodes,
         refreshToken: state.continuous.refreshToken,
       },
-      sideTimelinesFetchAbortController
+      sideTimelinesAbortController
     ),
     await renderSingle(
       {
@@ -217,7 +220,7 @@ export const fetchSideTimelines = createAsyncThunk<
         maxNodes: state.continuous.maxNodes,
         refreshToken: state.continuous.refreshToken,
       },
-      sideTimelinesFetchAbortController
+      sideTimelinesAbortController
     ),
   ]);
 
@@ -229,7 +232,7 @@ export const fetchSideTimelines = createAsyncThunk<
   }
 
   if (res[0].isErr && res[0].error instanceof RequestAbortedError) {
-    return Promise.reject(res.filter((a) => a.isErr).map((a) => a.error));
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
   }
 
   thunkAPI.dispatch(
@@ -254,28 +257,52 @@ export const fetchComparisonSide = createAsyncThunk<
   const res = await (() => {
     switch (side) {
       case 'left': {
-        return renderSingle({
-          ...state.continuous,
-          query,
+        if (comparisonSideAbortControllerLeft) {
+          comparisonSideAbortControllerLeft.abort();
+        }
 
-          from: state.continuous.leftFrom,
-          until: state.continuous.leftUntil,
-        });
+        comparisonSideAbortControllerLeft = new AbortController();
+        thunkAPI.signal = comparisonSideAbortControllerLeft.signal;
+
+        return renderSingle(
+          {
+            ...state.continuous,
+            query,
+
+            from: state.continuous.leftFrom,
+            until: state.continuous.leftUntil,
+          },
+          comparisonSideAbortControllerLeft
+        );
       }
       case 'right': {
-        return renderSingle({
-          ...state.continuous,
-          query,
+        if (comparisonSideAbortControllerRight) {
+          comparisonSideAbortControllerRight.abort();
+        }
 
-          from: state.continuous.rightFrom,
-          until: state.continuous.rightUntil,
-        });
+        comparisonSideAbortControllerRight = new AbortController();
+        thunkAPI.signal = comparisonSideAbortControllerRight.signal;
+
+        return renderSingle(
+          {
+            ...state.continuous,
+            query,
+
+            from: state.continuous.rightFrom,
+            until: state.continuous.rightUntil,
+          },
+          comparisonSideAbortControllerRight
+        );
       }
       default: {
         throw new Error('invalid side');
       }
     }
   })();
+
+  if (res?.isErr && res?.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
 
   if (res.isOk) {
     return Promise.resolve({
@@ -309,12 +336,12 @@ export const fetchDiffView = createAsyncThunk<
   },
   { state: { continuous: ContinuousState } }
 >('continuous/diffView', async (params, thunkAPI) => {
-  if (fetchAbortController) {
-    fetchAbortController.abort();
+  if (diffViewAbortController) {
+    diffViewAbortController.abort();
   }
 
-  fetchAbortController = new AbortController();
-  thunkAPI.signal = fetchAbortController.signal;
+  diffViewAbortController = new AbortController();
+  thunkAPI.signal = diffViewAbortController.signal;
 
   const state = thunkAPI.getState();
   const res = await renderDiff(
@@ -322,7 +349,7 @@ export const fetchDiffView = createAsyncThunk<
       ...params,
       maxNodes: state.continuous.maxNodes,
     },
-    fetchAbortController
+    diffViewAbortController
   );
 
   if (res.isOk) {
@@ -579,6 +606,16 @@ export const continuousSlice = createSlice({
       };
     });
 
+    builder.addCase(fetchComparisonSide.rejected, (state, action) => {
+      if (action?.meta?.rejectedWithValue) {
+        state.comparisonView[action.meta.arg.side] = {
+          ...state.comparisonView[action.meta.arg.side],
+          type: (action?.payload as { rejectedWithValue: 'reloading' })
+            ?.rejectedWithValue,
+        } as ComparisonView['left' | 'right'];
+      }
+    });
+
     /*****************************/
     /*      Timeline Sides       */
     /*****************************/
@@ -596,9 +633,20 @@ export const continuousSlice = createSlice({
         timeline: action.payload.right,
       };
     });
-    builder.addCase(fetchSideTimelines.rejected, (state) => {
-      state.leftTimeline = { ...state.leftTimeline, type: 'failed' };
-      state.rightTimeline = { ...state.rightTimeline, type: 'failed' };
+
+    builder.addCase(fetchSideTimelines.rejected, (state, action: any) => {
+      const type: TimelineState['type'] = action?.meta?.rejectedWithValue
+        ? action?.payload?.rejectedWithValue
+        : 'failed';
+
+      state.leftTimeline = {
+        ...state.leftTimeline,
+        type,
+      };
+      state.rightTimeline = {
+        ...state.rightTimeline,
+        type,
+      };
     });
 
     /***********************/
@@ -696,7 +744,7 @@ export const selectComparisonState = (state: RootState) =>
   state.continuous.comparisonView;
 
 export const selectIsLoadingData = (state: RootState) => {
-  const loadingStates = ['loading', 'reloading'];
+  const loadingStates = ['loading', 'reloading', 'failed'];
 
   // TODO: should we check if timelines are being reloaded too?
   return (

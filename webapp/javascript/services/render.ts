@@ -21,12 +21,14 @@ interface renderSingleProps {
 }
 export async function renderSingle(
   props: renderSingleProps,
-  abortController?: AbortController
+  params?: {
+    signal?: AbortSignal;
+  }
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
   // TODO
   const response = await request(`${url}&format=json`, {
-    signal: abortController?.signal,
+    signal: params?.signal,
   });
 
   if (response.isErr) {
