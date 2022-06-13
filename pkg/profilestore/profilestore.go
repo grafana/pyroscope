@@ -3,6 +3,9 @@ package profilestore
 import (
 	"bytes"
 	"context"
+	"flag"
+	"os"
+	"path/filepath"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -10,46 +13,85 @@ import (
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/parca-dev/parca/pkg/metastore"
+	parcametastore "github.com/parca-dev/parca/pkg/metastore"
 	"github.com/parca-dev/parca/pkg/parcacol"
 	"github.com/polarsignals/arcticdb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/thanos-io/objstore/filesystem"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	"github.com/grafana/fire/pkg/metastore"
 )
 
 type ProfileStore struct {
 	logger log.Logger
 	tracer trace.Tracer
 
-	metaStore metastore.ProfileMetaStore
+	metaStore parcametastore.ProfileMetaStore
 	col       *arcticdb.ColumnStore
 	table     *arcticdb.Table
 }
 
-func New(logger log.Logger, reg prometheus.Registerer, tracerProvider trace.TracerProvider) (*ProfileStore, error) {
+type Config struct {
+	// TODO: Reassemble to match Mimir/Loki/Tempo
+	DataPath string `json:"data_path"`
+}
+
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	f.StringVar(&cfg.DataPath, "profile-store.data-path", "./data", "Storage path of profile-store")
+}
+
+func New(logger log.Logger, reg prometheus.Registerer, tracerProvider trace.TracerProvider, cfg *Config) (*ProfileStore, error) {
 	var (
 		granuleSize         = 8 * 1024
 		storageActiveMemory = int64(512 * 1024 * 1024)
 	)
 
+	var (
+		metaDataPath, profileDataPath string
+	)
+
+	if cfg != nil && cfg.DataPath != "" {
+		level.Info(logger).Log("msg", "initilizing persistent profile-store", "data-path", cfg.DataPath)
+		metaDataPath = filepath.Join(cfg.DataPath, "metastore-v1")
+		profileDataPath = filepath.Join(cfg.DataPath, "profilestore-v1")
+		if err := os.MkdirAll(metaDataPath, 0755); err != nil {
+			return nil, err
+		}
+		if err := os.MkdirAll(profileDataPath, 0755); err != nil {
+			return nil, err
+		}
+	}
+
 	// initialize metastore
-	metaStore := metastore.NewBadgerMetastore(
+	metaStore, err := metastore.NewBadgerMetastore(
 		logger,
 		reg,
-		tracerProvider.Tracer("badgerinmemory"),
-		metastore.NewRandomUUIDGenerator(),
+		tracerProvider.Tracer("badger"),
+		parcametastore.NewRandomUUIDGenerator(),
+		metaDataPath,
 	)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create badger metastore", "err", err)
+		return nil, err
+	}
 
 	col := arcticdb.New(
 		reg,
 		granuleSize,
 		storageActiveMemory,
 	)
+	if profileDataPath != "" {
+		bucket, err := filesystem.NewBucket(profileDataPath)
+		if err != nil {
+			return nil, err
+		}
+		col.WithStorageBucket(bucket)
+	}
 
 	colDB, err := col.DB("fire")
 	if err != nil {
