@@ -1,0 +1,7 @@
+apiVersion: v2
+name: fire
+description: 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
+
+type: application
+version: 0.1.0
+appVersion: 0.0.0

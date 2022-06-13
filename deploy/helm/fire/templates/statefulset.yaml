@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "fire.fullname" . }}
+  labels:
+    {{- include "fire.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "fire.fullname" . }}-headless
+  selector:
+    matchLabels:
+      {{- include "fire.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.fire.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "fire.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.fire.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "fire.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.fire.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.fire.securityContext | nindent 12 }}
+          image: "{{ .Values.fire.image.repository }}:{{ .Values.fire.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.fire.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/fire/config.yaml
+              subPath: config.yaml
+          resources:
+            {{- toYaml .Values.fire.resources | nindent 12 }}
+      {{- with .Values.fire.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.fire.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.fire.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "fire.fullname" . }}-config-{{ .Values.fire.config | sha256sum | trunc 16 }}
