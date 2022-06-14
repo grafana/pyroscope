@@ -174,7 +174,7 @@ func (t *Target) scrape(ctx context.Context) {
 	}
 
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
-		level.Error(t.logger).Log("msg", "fetch profile failed", "err", err)
+		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t.Labels().String(), "err", err)
 		t.health = scrape.HealthBad
 		t.lastScrapeDuration = time.Since(start)
 		t.lastError = err
@@ -207,9 +207,8 @@ func (t *Target) scrape(ctx context.Context) {
 		},
 	}
 	req.Series = append(req.Series, series)
-
 	if _, err := t.pushClient.Push(ctx, connect.NewRequest(req)); err != nil {
-		level.Error(t.logger).Log("msg", "push failed", "err", err)
+		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)
 	}
 }
 
@@ -224,7 +223,7 @@ func (t *Target) fetchProfile(ctx context.Context, profileType string, buf io.Wr
 		t.req = req
 	}
 
-	level.Debug(t.logger).Log("msg", "scraping profile", "url", t.req.URL.String())
+	level.Debug(t.logger).Log("msg", "scraping profile", "labels", t.Labels().String(), "url", t.req.URL.String())
 	resp, err := ctxhttp.Do(ctx, t.scrapeClient, t.req)
 	if err != nil {
 		return err
