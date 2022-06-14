@@ -48,6 +48,8 @@ spec:
             - name: config
               mountPath: /etc/fire/config.yaml
               subPath: config.yaml
+            - name: data
+              mountPath: /data
           resources:
             {{- toYaml .Values.fire.resources | nindent 12 }}
       {{- with .Values.fire.nodeSelector }}
@@ -66,3 +68,28 @@ spec:
         - name: config
           configMap:
             name: {{ include "fire.fullname" . }}-config-{{ .Values.fire.config | sha256sum | trunc 16 }}
+  {{- if not .Values.fire.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+  {{- else if .Values.fire.persistence.existingClaim }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.fire.persistence.existingClaim }}
+  {{- else }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      annotations:
+        {{- toYaml .Values.fire.persistence.annotations | nindent 8 }}
+    spec:
+      accessModes:
+        {{- toYaml .Values.fire.persistence.accessModes | nindent 8 }}
+      resources:
+        requests:
+          storage: {{ .Values.fire.persistence.size | quote }}
+      storageClassName: {{ .Values.fire.persistence.storageClassName }}
+      {{- if .Values.fire.persistence.selector }}
+      selector:
+        {{- toYaml .Values.fire.persistence.selector | nindent 8 }}
+      {{- end }}
+  {{- end }}
