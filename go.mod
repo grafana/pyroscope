@@ -47,7 +47,7 @@ require (
 	github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1
-	github.com/pyroscope-io/jfr-parser v0.5.1
+	github.com/pyroscope-io/jfr-parser v0.5.2
 	github.com/rlmcpherson/s3gof3r v0.5.0
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.8.1
@@ -55,7 +55,7 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
@@ -94,13 +94,13 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
-	github.com/go-logr/logr v1.0.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.5 // indirect
+	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect

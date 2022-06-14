@@ -1,72 +1,58 @@
 :root {
   --ps-neutral-1: #000000;
   --ps-neutral-2: #ffffff;
-  --ps-neutral-3: #00000099;
-  --ps-neutral-4: #00000054;
-  --ps-neutral-5: #141414;
-  --ps-neutral-6: #1b1b1b;
-  --ps-neutral-7: #212124;
-  --ps-neutral-8: #333333;
-  --ps-neutral-9: #272727;
-  --ps-neutral-10: #4d4d4d;
-  --ps-neutral-11: #aaaaaa;
-  --ps-neutral-12: #414141;
-  --ps-neutral-13: #222222;
-  --ps-neutral-14: #3b3b3b;
-  --ps-neutral-15: #d8d8d8;
-  --ps-neutral-16: #ffffff4c;
-  --ps-neutral-17: #ffffff08;
-  --ps-neutral-18: #ffffff54;
-  --ps-neutral-19: #ffffffa8;
-  --ps-neutral-20: #e6e6e6;
+  --ps-neutral-4: #212124; /* sidebar background and "panel"/"box" background */
+  --ps-neutral-5: #242428; /* non-selected button background, highlighted button text (when buttons are green) */
+  --ps-neutral-6: #3b3b44; /* disabled button text color, button borders, dropdown borders */
+  --ps-neutral-7: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
+  --ps-neutral-8: #d8d8d8; /* sidebar text and datepicker text */
+  --ps-neutral-9: #ffffff08; /* lighter background for table */
+  --ps-ui-background: #0e0e13; /* background furthest back color */
+  --ps-dropdown-background: #2c2c30; /* dropdown background */
 
-  --ps-accent-1-1: #1d49a1;
-  --ps-accent-1-2: #216ba5;
-  --ps-accent-1-3: #0074d9;
-  --ps-accent-1-4: #0d8eff;
-  --ps-accent-1-5: #1398f6;
-  --ps-accent-1-6: #40a6ff;
-  --ps-accent-1-7: #3dc1d3cc;
+  --ps-blue-primary: #0d8eff; /* Standard blue for button, instructions text (right) */
+  --ps-blue-highlight: #40a6ff; /* highlight (hover) blue */
+  --ps-blue-disabled: #85a4c9; /* disabled blue */
 
-  --ps-accent-2-1: #2ecc40;
-  --ps-accent-2-2: #54d964;
-  --ps-accent-2-3: #28a745;
-  --ps-accent-2-4: #7ee289;
+  --ps-green-primary: #2ecc40; /* standard green for button */
+  --ps-green-highlight: #61ea71; /* highlight (hover) green */
+  --ps-green-disabled: #85c985; /* disabled green */
 
-  --ps-accent-3-1: #8a1722;
-  --ps-accent-3-2: #dc3545;
-  --ps-accent-3-3: #e4606d;
-  --ps-accent-3-4: #eb8c95;
-  --ps-accent-3-5: #e84d3c;
-  --ps-accent-3-6: #fc6d26;
-  --ps-accent-3-7: #fc5c0d;
-  --ps-accent-3-8: #e53825;
-  --ps-accent-3-9: #df8b53;
-  --ps-accent-3-10: #d1283980;
+  --ps-red-primary: #dc3545; /* standard red for button */
+  --ps-red-highlight: #e4606d; /* highlight (hover) red */
+  --ps-red-disabled: #eb8c95; /* disabled red */
+
+  --ps-selected-app: #df8b53; /* active selected app color in dropdown */
+
+  --ps-immutable-google-button: #e84d3c; /* sign up with google button */
+  --ps-immutable-google-button-hover: #e53825; /* sign up with google hover */
+  --ps-immutable-gitlab-button: #fc6d26; /* sign up with gitlab button */
+  --ps-immutable-gitlab-button-hover: #fc5c0d; /* sign up with gitlab hover */
+  --ps-immutable-gradient-0: #d1283980; /* used for gradient */
+  --ps-immutable-gradient-1: #3dc1d3cc; /* used for gradient */
 
   --ps-immutable-1: #e6e6e6;
+  --ps-immutable-2: #eb7b18;
+  --ps-immutable-3: #ffffff;
+  --ps-immutable-4: #333333;
 }
 
 [data-theme='light'],
 [data-flamegraph-color-mode='light'] {
   --ps-neutral-1: #ffffff;
   --ps-neutral-2: #000000;
-  --ps-neutral-3: #ffffff99;
-  --ps-neutral-4: #ffffff54;
-  --ps-neutral-5: #ebebeb;
-  --ps-neutral-6: #e4e4e4;
-  --ps-neutral-7: #dededb;
-  --ps-neutral-8: #cccccc;
-  --ps-neutral-9: #d8d8d8;
-  --ps-neutral-10: #b2b2b2;
-  --ps-neutral-11: #555555;
-  --ps-neutral-12: #bebebe;
-  --ps-neutral-13: #dddddd;
-  --ps-neutral-14: #c4c4c4;
-  --ps-neutral-15: #272727;
-  --ps-neutral-16: #0000004c;
-  --ps-neutral-17: #00000008;
-  --ps-neutral-18: #00000054;
-  --ps-neutral-19: #000000a8;
-  --ps-neutral-20: #191919;
+  --ps-neutral-4: #f8f8f8; /* sidebar background and "panel"/"box" background */
+  --ps-neutral-5: #e2e2e2; /* non-selected button background, highlighted button text (when buttons are green) */
+  --ps-neutral-6: #b2b2b2; /* disabled button text color, button borders, dropdown borders */
+  --ps-neutral-7: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
+  --ps-neutral-8: #272727; /* sidebar text and datepicker text */
+  --ps-neutral-9: #00000008; /* lighter background for table */
+  --ps-ui-background: #eaeaea; /* background furthest back color */
+  --ps-dropdown-background: #e2e2e2; /* dropdown background */
+
+  --ps-selected-app: #0d8eff; /* active selected app color in dropdown */
+
+  --ps-green-primary: #7db26d; /* standard green */
+  --ps-green-highlight: #8fcb7c; /* highlight (hover) green */
+  --ps-green-disabled: #67935a; /* disabled green */
 }

@@ -8,8 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
-	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -24,43 +25,75 @@ var (
 )
 
 type Client struct {
-	log    *logrus.Logger
-	config config.RemoteWriteTarget
-	client *http.Client
+	log     logrus.FieldLogger
+	config  config.RemoteWriteTarget
+	client  *http.Client
+	metrics *clientMetrics
 }
 
-func NewClient(logger *logrus.Logger, cfg config.RemoteWriteTarget) *Client {
-	client := &http.Client{
-		Timeout: cfg.Timeout,
+func NewClient(logger logrus.FieldLogger, reg prometheus.Registerer, targetName string, cfg config.RemoteWriteTarget) *Client {
+	// setup defaults
+	if cfg.Timeout == 0 {
+		cfg.Timeout = time.Second * 10
 	}
 
+	client := &http.Client{
+		Timeout: cfg.Timeout,
+		Transport: &http.Transport{
+			MaxConnsPerHost:     numWorkers(),
+			MaxIdleConns:        numWorkers(),
+			MaxIdleConnsPerHost: numWorkers(),
+		},
+	}
+
+	metrics := newClientMetrics(reg, targetName, cfg.Address)
+	metrics.mustRegister()
+
 	return &Client{
-		log:    logger,
-		config: cfg,
-		client: client,
+		log:     logger,
+		config:  cfg,
+		client:  client,
+		metrics: metrics,
 	}
 }
 
 func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	req, err := r.ingestInputToRequest(in)
 	if err != nil {
-		return multierror.Append(err, ErrConvertPutInputToRequest)
+		return fmt.Errorf("%w: %v", ErrConvertPutInputToRequest, err)
 	}
 
 	r.enhanceWithAuth(req)
 
 	req = req.WithContext(ctx)
-	r.log.Debugf("Making request to %s", req.URL.String())
-	res, err := r.client.Do(req)
-	if err != nil {
-		return multierror.Append(err, ErrMakingRequest)
+
+	b, err := in.Profile.Bytes()
+	if err == nil {
+		// TODO(petethepig): we might want to improve accuracy of this metric at some point
+		//   see comment here: https://github.com/pyroscope-io/pyroscope/pull/1147#discussion_r894975126
+		r.metrics.sentBytes.Add(float64(len(b)))
 	}
-	defer res.Body.Close()
+
+	start := time.Now()
+	res, err := r.client.Do(req)
+	if res != nil {
+		// sometimes both res and err are non-nil
+		// therefore we must always close the body first
+		defer res.Body.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrMakingRequest, err)
+	}
+
+	duration := time.Since(start)
+	r.metrics.responseTime.With(prometheus.Labels{
+		"code": strconv.FormatInt(int64(res.StatusCode), 10),
+	}).Observe(duration.Seconds())
 
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
 		// read all the response body
 		respBody, _ := ioutil.ReadAll(res.Body)
-		return multierror.Append(ErrNotOkResponse, fmt.Errorf("status code: '%d'. body: '%s'", res.StatusCode, respBody))
+		return fmt.Errorf("%w: %v", ErrNotOkResponse, fmt.Errorf("status code: '%d'. body: '%s'", res.StatusCode, respBody))
 	}
 
 	return nil
@@ -77,14 +110,12 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 		return nil, err
 	}
 
-	r.enhanceWithTags(in.Metadata.Key)
-
 	params := req.URL.Query()
 	if in.Format != "" {
 		params.Set("format", string(in.Format))
 	}
 
-	params.Set("name", in.Metadata.Key.Normalized())
+	params.Set("name", r.getQuery(in.Metadata.Key))
 	params.Set("from", strconv.FormatInt(in.Metadata.StartTime.Unix(), 10))
 	params.Set("until", strconv.FormatInt(in.Metadata.EndTime.Unix(), 10))
 	params.Set("sampleRate", strconv.FormatUint(uint64(in.Metadata.SampleRate), 10))
@@ -98,11 +129,15 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 	return req, nil
 }
 
-func (r *Client) enhanceWithTags(key *segment.Key) {
-	labels := key.Labels()
+func (r *Client) getQuery(key *segment.Key) string {
+	k := key.Clone()
+
+	labels := k.Labels()
 	for tag, value := range r.config.Tags {
 		labels[tag] = value
 	}
+
+	return k.Normalized()
 }
 
 func (r *Client) enhanceWithAuth(req *http.Request) {

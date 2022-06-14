@@ -93,6 +93,9 @@ function spyToRegex(spyName: string) {
       return /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/;
     case 'nodespy':
       return /^(\.\/node_modules\/)?(?<packageName>[^/]*)(?<filename>.*\.?(jsx?|tsx?)?):(?<functionName>.*):(?<line_info>.*)$/;
+    case 'javaspy':
+      // TODO: we might want to add ? after groups
+      return /^(?<packageName>.+\/)(?<filename>.+\.)(?<functionName>.+)$/;
     case 'pyroscope-rs':
       return /^(?<packageName>[^::]+)/;
 
@@ -113,7 +116,7 @@ export function getPackageNameFromStackTrace(
   const regexp = spyToRegex(spyName);
   const fullStackGroups = stackTrace.match(regexp);
   if (fullStackGroups && fullStackGroups.groups) {
-    return fullStackGroups.groups['packageName'];
+    return fullStackGroups.groups['packageName'] || '';
   }
   return stackTrace;
 }

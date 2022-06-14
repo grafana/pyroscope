@@ -3,11 +3,11 @@ package jfr
 import (
 	"context"
 	"fmt"
-	"io"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/pyroscope-io/jfr-parser/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
+	"io"
+	"regexp"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -15,7 +15,9 @@ import (
 )
 
 func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
-	chunks, err := parser.Parse(body)
+	chunks, err := parser.ParseWithOptions(body, &parser.ChunkParseOptions{
+		CPoolProcessor: processSymbols,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)
 	}
@@ -202,4 +204,25 @@ func frames(st *parser.StackTrace) []string {
 		}
 	}
 	return frames
+}
+
+// jdk/internal/reflect/GeneratedMethodAccessor31
+var generatedMethodAccessor = regexp.MustCompile("^(jdk/internal/reflect/GeneratedMethodAccessor)(\\d+)$")
+
+// org/example/rideshare/OrderService$$Lambda$669.0x0000000800fd7318.run
+var lambdaGeneratedEnclosingClass = regexp.MustCompile("^(.+\\$\\$Lambda\\$)\\d+[./](0x[\\da-f]+|\\d+)$")
+
+func mergeJVMGeneratedClasses(frame string) string {
+	frame = generatedMethodAccessor.ReplaceAllString(frame, "${1}_")
+	frame = lambdaGeneratedEnclosingClass.ReplaceAllString(frame, "${1}_")
+	return frame
+}
+
+func processSymbols(meta parser.ClassMetadata, cpool *parser.CPool) {
+	if meta.Name == "jdk.types.Symbol" {
+		for _, v := range cpool.Pool {
+			sym := v.(*parser.Symbol)
+			sym.String = mergeJVMGeneratedClasses(sym.String)
+		}
+	}
 }

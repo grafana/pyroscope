@@ -8,7 +8,7 @@ import {
 import Color from 'color';
 
 // Purple
-export const leftColor = Color('rgb(200, 102, 204)');
+export const leftColor = Color('rgb(208, 102, 212)');
 // Blue
 export const rightColor = Color('rgb(19, 152, 246)');
 

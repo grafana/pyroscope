@@ -1,4 +1,4 @@
-$border: 1px solid var(--ps-neutral-10);
+$border: 1px solid var(--ps-neutral-6);
 $border-radius: 4px;
 
 .button {
@@ -26,68 +26,55 @@ $border-radius: 4px;
 }
 
 .default {
-  background: var(--ps-neutral-9);
+  background: var(--ps-neutral-5);
 
   &:hover:not(:disabled) {
-    background-color: var(--ps-neutral-12);
+    background-color: var(--ps-neutral-7);
   }
 
   &:disabled {
-    color: var(--ps-neutral-16);
+    color: var(--ps-neutral-6);
     pointer-events: none;
   }
 }
 
 .primary {
-  color: var(--ps-neutral-13) !important;
-  background-color: var(--ps-accent-2-1);
-  border-left-color: var(--ps-accent-2-1);
-  border-right-color: var(--ps-accent-2-1);
-  border-top-color: var(--ps-accent-2-1);
-  border-bottom-color: var(--ps-accent-2-1);
+  border: none;
+  color: var(--ps-neutral-5) !important;
+  background-color: var(--ps-green-primary);
 
   &:hover {
-    background-color: var(--ps-accent-2-2);
+    background-color: var(--ps-green-highlight);
   }
   &:disabled {
-    border-color: var(--ps-accent-2-4);
-    background-color: var(--ps-accent-2-4);
+    background-color: var(--ps-green-disabled);
     pointer-events: none;
   }
 }
 
 .secondary {
-  background-color: var(--ps-accent-1-3);
-  border-left-color: var(--ps-accent-1-3);
-  border-right-color: var(--ps-accent-1-3);
-  border-top-color: var(--ps-accent-1-3);
-  border-bottom-color: var(--ps-accent-1-3);
+  border: none;
   color: var(--ps-immutable-1);
+  background-color: var(--ps-blue-primary);
 
   &:hover {
-    background-color: var(--ps-accent-1-4);
+    background-color: var(--ps-blue-highlight);
   }
   &:disabled {
-    border-color: var(--ps-accent-1-6);
-    background-color: var(--ps-accent-1-6);
+    background-color: var(--ps-blue-disabled);
     pointer-events: none;
   }
 }
 
 .danger {
+  border: none;
   color: var(--ps-neutral-2);
-  background-color: var(--ps-accent-3-2);
-  border-left-color: var(--ps-accent-3-2);
-  border-right-color: var(--ps-accent-3-2);
-  border-top-color: var(--ps-accent-3-2);
-  border-bottom-color: var(--ps-accent-3-2);
-
+  background-color: var(--ps-red-primary);
   &:hover {
-    background-color: var(--ps-accent-3-3);
+    background-color: var(--ps-red-highlight);
   }
   &:disabled {
-    border-color: var(--ps-accent-3-4);
-    background-color: var(--ps-accent-3-4);
+    background-color: var(--ps-red-disabled);
     pointer-events: none;
   }
 }

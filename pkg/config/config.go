@@ -7,6 +7,7 @@ package config
 // but using squash seems to keep the prefix in the CLI.
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -357,15 +358,34 @@ type Database struct {
 }
 
 type RemoteWrite struct {
-	Enabled bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
+	Enabled            bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
+	DisableLocalWrites bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
 
 	// see loadRemoteWriteTargetConfigsFromFile in server.go
 	Targets map[string]RemoteWriteTarget `yaml:"scrape-configs" mapstructure:"-"`
 }
 
 type RemoteWriteTarget struct {
-	Address   string            `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
-	AuthToken string            `desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	Tags      map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
-	Timeout   time.Duration     `def:"30s" desc:"profile upload timeout" mapstructure:"timeout"`
+	Address string `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
+	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
+	AuthToken    string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
+	Tags         map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+	Timeout      time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
+	QueueSize    int               `desc:"number of items in the queue" yaml:"queue-size"`
+	QueueWorkers int               `desc:"number of queue workers" yaml:"queue-workers"`
+}
+
+func (r RemoteWriteTarget) String() string {
+	tags := ""
+	for key, value := range r.Tags {
+		tags = tags + fmt.Sprintf("%s=%s ", key, value)
+	}
+
+	// it's useful to distinguish between set/not set when debugging
+	authToken := "[redacted]"
+	if r.AuthToken == "" {
+		authToken = "[not set]"
+	}
+
+	return fmt.Sprintf("Address: %s\nAuthToken: %s\nTags: %s\nTimeout: %s\nQueueSize: %d\nQueueWorkers %d", r.Address, authToken, tags, r.Timeout.String(), r.QueueSize, r.QueueWorkers)
 }

@@ -3,6 +3,55 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.3...@pyroscope/flamegraph@0.8.4) (2022-06-13)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.8.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.2...@pyroscope/flamegraph@0.8.3) (2022-06-12)
+
+
+### Bug Fixes
+
+* Merge jvm generated classes in jfr at ingestion time ([#1149](https://github.com/pyroscope-io/pyroscope/issues/1149)) ([c80878f](https://github.com/pyroscope-io/pyroscope/commit/c80878f765c6f1f8bcbe0d26eebd83d117f55113))
+
+
+
+
+
+## [0.8.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.1...@pyroscope/flamegraph@0.8.2) (2022-06-10)
+
+
+### Bug Fixes
+
+* fix regexp typo ([#1151](https://github.com/pyroscope-io/pyroscope/issues/1151)) ([6396017](https://github.com/pyroscope-io/pyroscope/commit/6396017b09c0dfe731b35925ea5ba9459888e922))
+
+
+
+
+
+## [0.8.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.0...@pyroscope/flamegraph@0.8.1) (2022-06-10)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+# [0.8.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.7.0...@pyroscope/flamegraph@0.8.0) (2022-06-09)
+
+
+### Features
+
+* Add Ability to Sync Search Bar in Comparison View ([#1120](https://github.com/pyroscope-io/pyroscope/issues/1120)) ([8300792](https://github.com/pyroscope-io/pyroscope/commit/830079299cef97db33d26ada31cbdccbc00e3268))
+
+
+
+
+
 # [0.7.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.4...@pyroscope/flamegraph@0.7.0) (2022-05-30)
 
 

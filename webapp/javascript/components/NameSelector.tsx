@@ -17,6 +17,7 @@ import Dropdown, {
   FocusableItem,
   MenuGroup,
 } from '@webapp/ui/Dropdown';
+import Input from '@webapp/ui/Input';
 import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import styles from './NameSelector.module.scss';
 
@@ -83,7 +84,8 @@ function NameSelector({ onSelectedName }: NameSelectorProps) {
         {noApp}
         <FocusableItem>
           {({ ref }) => (
-            <input
+            <Input
+              name="application seach"
               ref={ref}
               type="text"
               placeholder="Type an app"

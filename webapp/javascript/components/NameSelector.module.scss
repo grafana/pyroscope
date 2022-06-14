@@ -1,7 +1,7 @@
+@use '../../sass/mixins/outline.scss' as *;
+
 .container {
   display: flex;
-
-  // vertical align
   align-items: center;
 }
 

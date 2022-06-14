@@ -145,46 +145,84 @@ var _ = Describe("pprof parsing", func() {
 	})
 })
 
-var _ = Describe("pprof profile_id multiplexing", func() {
-	It("can parse profiles labeled with profile_id correctly", func() {
-		p, err := readPprofFixture("testdata/cpu-mux.pb.gz")
-		Expect(err).ToNot(HaveOccurred())
+var _ = Describe("pprof parser", func() {
+	p, err := readPprofFixture("testdata/cpu-exemplars.pb.gz")
+	Expect(err).ToNot(HaveOccurred())
 
-		ingester := new(mockIngester)
-		spyName := "spy-name"
+	m := make(map[string]*storage.PutInput)
+	var skipExemplars bool
+
+	JustBeforeEach(func() {
+		putter := new(mockIngester)
 		now := time.Now()
 		start := now
 		end := now.Add(10 * time.Second)
-		labels := map[string]string{
-			"__name__": "app",
-			"foo":      "bar",
-		}
 
 		w := NewParser(ParserConfig{
-			Putter:      ingester,
-			SampleTypes: tree.DefaultSampleTypeMapping,
-			Labels:      labels,
-			SpyName:     spyName,
+			Putter:        putter,
+			Labels:        map[string]string{"__name__": "app"},
+			SampleTypes:   tree.DefaultSampleTypeMapping,
+			SkipExemplars: skipExemplars,
 		})
 
 		err = w.Convert(context.Background(), start, end, p)
 		Expect(err).ToNot(HaveOccurred())
-
-		var actualTotal uint64
-		const (
-			expectedTotal = uint64(789)
-			expectedDiff  = uint64(20)
-		)
-
-		for _, v := range ingester.actual {
-			if v.Key.Normalized() == "app.cpu{foo=bar}" {
-				Expect(v.Val.Samples()).To(Equal(expectedTotal))
-				continue
-			}
-			actualTotal += v.Val.Samples()
+		m = make(map[string]*storage.PutInput)
+		for _, x := range putter.actual {
+			m[x.Key.Normalized()] = x
 		}
+	})
 
-		Expect(expectedTotal - actualTotal).To(Equal(expectedDiff))
+	expectBaselineProfiles := func(m map[string]*storage.PutInput) {
+		baseline, ok := m["app.cpu{foo=bar}"]
+		Expect(ok).To(BeTrue())
+		Expect(baseline.Val.Samples()).To(Equal(uint64(49)))
+
+		baseline, ok = m["app.cpu{foo=bar,function=fast}"]
+		Expect(ok).To(BeTrue())
+		Expect(baseline.Val.Samples()).To(Equal(uint64(150)))
+
+		baseline, ok = m["app.cpu{foo=bar,function=slow}"]
+		Expect(ok).To(BeTrue())
+		Expect(baseline.Val.Samples()).To(Equal(uint64(674)))
+	}
+
+	expectExemplarProfiles := func(m map[string]*storage.PutInput) {
+		exemplar, ok := m["app.cpu{foo=bar,function=slow,profile_id=72bee0038027cfb1}"]
+		Expect(ok).To(BeTrue())
+		Expect(exemplar.Val.Samples()).To(Equal(uint64(3)))
+
+		exemplar, ok = m["app.cpu{foo=bar,function=fast,profile_id=ff4d0449f061174f}"]
+		Expect(ok).To(BeTrue())
+		Expect(exemplar.Val.Samples()).To(Equal(uint64(1)))
+	}
+
+	Context("by default exemplars are not skipped", func() {
+		It("can parse all exemplars", func() {
+			Expect(len(m)).To(Equal(435))
+		})
+
+		It("correctly handles labels and values", func() {
+			expectExemplarProfiles(m)
+		})
+
+		It("merges baseline profiles", func() {
+			expectBaselineProfiles(m)
+		})
+	})
+
+	Context("when configured to skip exemplars", func() {
+		BeforeEach(func() {
+			skipExemplars = true
+		})
+
+		It("skip exemplars", func() {
+			Expect(len(m)).To(Equal(3))
+		})
+
+		It("merges baseline profiles", func() {
+			expectBaselineProfiles(m)
+		})
 	})
 })
 

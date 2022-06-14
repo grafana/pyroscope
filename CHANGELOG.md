@@ -1,3 +1,28 @@
+# [0.19.0](https://github.com/pyroscope-io/pyroscope/compare/v0.18.0...v0.19.0) (2022-06-13)
+
+
+### Bug Fixes
+
+* Fix missed style in tags submenu ([#1154](https://github.com/pyroscope-io/pyroscope/issues/1154)) ([006771b](https://github.com/pyroscope-io/pyroscope/commit/006771b4fa541289b1dec180e477ce3130e8ffd8))
+* fix regexp typo ([#1151](https://github.com/pyroscope-io/pyroscope/issues/1151)) ([6396017](https://github.com/pyroscope-io/pyroscope/commit/6396017b09c0dfe731b35925ea5ba9459888e922))
+* infinite loop when no apps are available ([#1125](https://github.com/pyroscope-io/pyroscope/issues/1125)) ([330eb23](https://github.com/pyroscope-io/pyroscope/commit/330eb234a1f2b7b3de4b36f862729180462262ce))
+* make pprof parser to track the sequence ([#1139](https://github.com/pyroscope-io/pyroscope/issues/1139)) ([e448205](https://github.com/pyroscope-io/pyroscope/commit/e448205a8e3f4320c9bca29261a5a7bc7bc8c896))
+* Merge jvm generated classes in jfr at ingestion time ([#1149](https://github.com/pyroscope-io/pyroscope/issues/1149)) ([c80878f](https://github.com/pyroscope-io/pyroscope/commit/c80878f765c6f1f8bcbe0d26eebd83d117f55113))
+* pprof parser sample types config ([#1145](https://github.com/pyroscope-io/pyroscope/issues/1145)) ([efcb0bb](https://github.com/pyroscope-io/pyroscope/commit/efcb0bb6eb1bd2c8ece67c01d049e4b27b72229c))
+* still write to local storage when remote write is turned on ([#1144](https://github.com/pyroscope-io/pyroscope/issues/1144)) ([baba1b8](https://github.com/pyroscope-io/pyroscope/commit/baba1b88dcb876cbe6bb335032d4a64668b5dbde))
+* use new wg per parallelizer request ([#1138](https://github.com/pyroscope-io/pyroscope/issues/1138)) ([7757c44](https://github.com/pyroscope-io/pyroscope/commit/7757c447b5f982f234797851869ce917c8dfa45f))
+* **webapp:** fix border of <input> element ([#1127](https://github.com/pyroscope-io/pyroscope/issues/1127)) ([458b62b](https://github.com/pyroscope-io/pyroscope/commit/458b62bcbd50ecc612636565c6dfe821b395fd87))
+
+
+### Features
+
+* Add Ability to Sync Search Bar in Comparison View ([#1120](https://github.com/pyroscope-io/pyroscope/issues/1120)) ([8300792](https://github.com/pyroscope-io/pyroscope/commit/830079299cef97db33d26ada31cbdccbc00e3268))
+* allow skipping exemplars in pprof profiles ([#1146](https://github.com/pyroscope-io/pyroscope/issues/1146)) ([ff4e030](https://github.com/pyroscope-io/pyroscope/commit/ff4e030b4f86a0f725b719fdce328c1fc917be49))
+* multiple remote write targets ([#1135](https://github.com/pyroscope-io/pyroscope/issues/1135)) ([75dea47](https://github.com/pyroscope-io/pyroscope/commit/75dea471205a1055549fd703f44efeb20dc1a5b9))
+* remote write ([#1122](https://github.com/pyroscope-io/pyroscope/issues/1122)) ([e8d3d24](https://github.com/pyroscope-io/pyroscope/commit/e8d3d2457d6bc48bc8a5983d4d066b9f0ebc7b73))
+
+
+
 # [0.18.0](https://github.com/pyroscope-io/pyroscope/compare/v0.17.1...v0.18.0) (2022-06-06)
 
 

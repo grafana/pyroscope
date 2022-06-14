@@ -38,10 +38,10 @@ func checkDriverAvailability(ctx context.Context, n int64) {
 	region := os.Getenv("REGION")
 
 	burnCPU(n / 2)
-	// Every 4 minutes this will artificially make requests in us-west-1 region slow
+	// Every 4 minutes this will artificially make requests in eu-north region slow
 	// this is just for demonstration purposes to show how performance impacts show
 	// up in the flamegraph.
-	if region == "us-west-1" && time.Now().Minute()*4%8 == 0 {
+	if region == "eu-north" && time.Now().Minute()*4%8 == 0 {
 		burnCPU(n * 2)
 	}
 }

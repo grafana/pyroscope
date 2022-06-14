@@ -4,7 +4,7 @@ Pyroscope.configure do |config|
   config.app_name = "test.ruby.app"
   config.server_address = "http://pyroscope:4040/"
   config.tags = {
-    :region => "us-east-1",
+    :region => "us-east",
     :hostname => ENV["HOSTNAME"]
   }
 end

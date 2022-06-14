@@ -6,36 +6,23 @@
 }
 
 /* Give same amount of space between all children */
-.navbar > *:not(:first-child):not(:last-child) {
-  margin: 0 8px;
+.navbar > *:not(:first-child) {
+  margin-left: 5px;
+  margin-right: 5px;
+
+  &.fit-mode-select {
+    min-width: 65px;
+  }
 }
 
 .space-filler {
   flex-grow: 1;
 }
 
-.search {
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--ps-neutral-8);
-  transition: background-color ease-out 0.1s;
-  margin-right: 8px;
-}
-.search:focus {
-  background: var(--ps-neutral-20);
-}
-
-.search-small {
-  width: 100px;
-}
-
-.fit-mode-select {
-  margin: 0 8px;
-}
-
 .headerLogo {
   display: inline-block;
   text-decoration: none;
-  color: var(--ps-neutral-20);
+  color: var(--ps-neutral-2);
   font-size: 1.2em;
 }
 

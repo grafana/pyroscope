@@ -1,6 +1,6 @@
 .rowSelected {
   cursor: pointer;
-  background: var(--ps-accent-2-2) !important;
+  background: var(--ps-green-primary) !important;
   color: var(--ps-neutral-1);
 }
 
@@ -10,7 +10,7 @@
     &:hover {
       cursor: pointer;
       color: var(--ps-neutral-2);
-      background: var(--ps-neutral-14);
+      background: var(--ps-neutral-7);
     }
   }
 }

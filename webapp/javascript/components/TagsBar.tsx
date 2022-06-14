@@ -12,6 +12,7 @@ import Dropdown, {
 import TextareaAutosize from 'react-textarea-autosize';
 import { Prism } from '@webapp/util/prism';
 import { Query, brandQuery } from '@webapp/models/query';
+import Input from '@webapp/ui/Input';
 import styles from './TagsBar.module.css';
 
 interface TagsBarProps {
@@ -227,10 +228,12 @@ function LabelsSubmenu({
     return (
       <FocusableItem>
         {({ ref }) => (
-          <input
+          <Input
             ref={ref}
+            name="Search Tags Input"
+            className="search"
             type="text"
-            placeholder="Type a tag"
+            placeholder="Type a tag..."
             value={filter[label] || ''}
             onChange={(e) =>
               setFilter({

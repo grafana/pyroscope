@@ -3,6 +3,52 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.11.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.3...@pyroscope/webapp@1.11.4) (2022-06-13)
+
+
+### Bug Fixes
+
+* Fix missed style in tags submenu ([#1154](https://github.com/pyroscope-io/pyroscope/issues/1154)) ([006771b](https://github.com/pyroscope-io/pyroscope/commit/006771b4fa541289b1dec180e477ce3130e8ffd8))
+
+
+
+
+
+## [1.11.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.2...@pyroscope/webapp@1.11.3) (2022-06-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.11.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.1...@pyroscope/webapp@1.11.2) (2022-06-10)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.11.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.0...@pyroscope/webapp@1.11.1) (2022-06-10)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.11.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.4...@pyroscope/webapp@1.11.0) (2022-06-09)
+
+
+### Features
+
+* Add Ability to Sync Search Bar in Comparison View ([#1120](https://github.com/pyroscope-io/pyroscope/issues/1120)) ([8300792](https://github.com/pyroscope-io/pyroscope/commit/830079299cef97db33d26ada31cbdccbc00e3268))
+
+
+
+
+
 ## [1.10.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.10.3...@pyroscope/webapp@1.10.4) (2022-06-08)
 
 **Note:** Version bump only for package @pyroscope/webapp
