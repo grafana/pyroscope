@@ -2,6 +2,7 @@ package ingester
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -16,9 +17,7 @@ import (
 	"github.com/polarsignals/arcticdb/query/logicalplan"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 
-	"github.com/grafana/fire/assets"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
@@ -133,13 +132,8 @@ func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Add("Content-Type", "text/html")
-	a, err := assets.Assets()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := flamebearer.FlamebearerToStandaloneHTML(flame, a, w); err != nil {
+	w.Header().Add("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(flame); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
