@@ -26,6 +26,11 @@ type Agent struct {
 	mtx sync.Mutex
 }
 
+type TargetManager interface {
+	Ready() bool
+	ActiveTargets() map[string][]Target
+}
+
 func New(config *Config, logger log.Logger) (*Agent, error) {
 	httpClient, err := commonconfig.NewClientFromConfig(config.ClientConfig.Client, config.ClientConfig.URL.String())
 	if err != nil {
@@ -77,6 +82,31 @@ func (a *Agent) running(ctx context.Context) error {
 			return nil
 		}
 	}
+}
+
+func (a *Agent) ActiveTargets() map[string][]Target {
+	result := map[string][]Target{}
+
+	// todo: (callum) maybe return not a map + sort so the results don't reorder on every load?
+	for g, tg := range a.groups {
+		tg.mtx.RLock()
+		for _, targets := range tg.activeTargets {
+			result[g] = append(result[g], []Target{*targets}...)
+		}
+	}
+	return result
+}
+
+func (a *Agent) DroppedTargets() []*Target {
+	result := []*Target{}
+
+	for _, tg := range a.groups {
+		tg.mtx.RLock()
+		for _, target := range tg.droppedTargets {
+			result = append(result, target)
+		}
+	}
+	return result
 }
 
 func jobConfig(jobName string, config *Config) ScrapeConfig {

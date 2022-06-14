@@ -70,7 +70,7 @@ func (tg *TargetGroup) sync(groups []*targetgroup.Group) {
 	var actives []*Target
 	tg.droppedTargets = []*Target{}
 	for _, group := range groups {
-		targets, err := tg.targetsFromGroup(group)
+		targets, dropped, err := tg.targetsFromGroup(group)
 		if err != nil {
 			level.Error(tg.logger).Log("msg", "creating targets failed", "err", err)
 			continue
@@ -78,9 +78,10 @@ func (tg *TargetGroup) sync(groups []*targetgroup.Group) {
 		for _, t := range targets {
 			if t.Labels().Len() > 0 {
 				actives = append(actives, t)
-			} else if t.DiscoveredLabels().Len() > 0 {
-				tg.droppedTargets = append(tg.droppedTargets, t)
 			}
+		}
+		for _, dt := range dropped {
+			tg.droppedTargets = append(tg.droppedTargets, dt)
 		}
 	}
 
@@ -307,4 +308,16 @@ func (t *Target) Health() scrape.TargetHealth {
 	defer t.mtx.RUnlock()
 
 	return t.health
+}
+
+func (t *Target) Labels() labels.Labels {
+	t.mtx.RLock()
+	defer t.mtx.RUnlock()
+
+	return t.labels
+}
+
+// GetValue gets a label value from the entire label set.
+func (t *Target) GetValue(name string) string {
+	return t.labels.Get(name)
 }
