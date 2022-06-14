@@ -5,27 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
-	"github.com/apache/arrow/go/v8/arrow"
-	"github.com/apache/arrow/go/v8/arrow/array"
 	"github.com/apache/arrow/go/v8/arrow/memory"
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/gogo/status"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/polarsignals/arcticdb/query"
 	"github.com/polarsignals/arcticdb/query/logicalplan"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
-	"google.golang.org/grpc/codes"
 
 	"github.com/grafana/fire/assets"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
@@ -126,13 +117,18 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 }
 
 func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
-	q, err := parseQuery(req)
+	q, err := parseQueryRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	flame, err := i.selectMerge(req.Context(), q)
+	query, err := parseQuery(q.query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	flame, err := i.selectMerge(req.Context(), query, q.start, q.end)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -147,266 +143,6 @@ func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-type selectMerge struct {
-	query      string
-	start, end int64
-}
-
-func (i *Ingester) selectMerge(ctx context.Context, req selectMerge) (*flamebearer.FlamebearerProfile, error) {
-	filterExpr, err := mergePlan(req)
-	if err != nil {
-		// todo 4xx
-		return nil, err
-	}
-
-	var ar arrow.Record
-	err = i.engine.ScanTable("stacktraces").
-		Filter(filterExpr).
-		Aggregate(
-			logicalplan.Sum(logicalplan.Col("value")),
-			logicalplan.Col("stacktrace"),
-		).
-		Execute(ctx, func(r arrow.Record) error {
-			r.Retain()
-			ar = r
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	defer ar.Release()
-
-	return buildProfile(ar, i.profileStore.MetaStore())
-}
-
-func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebearer.FlamebearerProfile, error) {
-	type sample struct {
-		stacktraceID []byte
-		locationIDs  [][]byte
-		total        int64
-		self         int64
-
-		*metastore.Location
-	}
-	schema := ar.Schema()
-	indices := schema.FieldIndices("stacktrace")
-	if len(indices) != 1 {
-		return nil, fmt.Errorf("expected exactly one stacktrace column, got %d", len(indices))
-	}
-	stacktraceColumn := ar.Column(indices[0]).(*array.Binary)
-
-	indices = schema.FieldIndices("sum(value)")
-	if len(indices) != 1 {
-		return nil, fmt.Errorf("expected exactly one value column, got %d", len(indices))
-	}
-	valueColumn := ar.Column(indices[0]).(*array.Int64)
-
-	rows := int(ar.NumRows())
-	samples := make([]*sample, 0, rows)
-	stacktraceUUIDs := make([][]byte, 0, rows)
-	for i := 0; i < rows; i++ {
-		stacktraceID := stacktraceColumn.Value(i)
-		value := valueColumn.Value(i)
-		// if value == 0 {
-		// 	continue
-		// }
-		stacktraceUUIDs = append(stacktraceUUIDs, stacktraceID)
-		samples = append(samples, &sample{
-			stacktraceID: stacktraceID,
-			self:         value,
-		})
-	}
-
-	stacktraceMap, err := meta.GetStacktraceByIDs(context.Background(), stacktraceUUIDs...)
-	if err != nil {
-		return nil, err
-	}
-
-	locationUUIDSeen := map[string]struct{}{}
-	locationUUIDs := [][]byte{}
-	for _, s := range stacktraceMap {
-		for _, id := range s.GetLocationIds() {
-			if _, seen := locationUUIDSeen[string(id)]; !seen {
-				locationUUIDSeen[string(id)] = struct{}{}
-				locationUUIDs = append(locationUUIDs, id)
-			}
-		}
-	}
-
-	locationMaps, err := metastore.GetLocationsByIDs(context.Background(), meta, locationUUIDs...)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, s := range samples {
-		s.locationIDs = stacktraceMap[string(s.stacktraceID)].LocationIds
-	}
-
-	stacks := make([]stack, 0, len(samples))
-	for _, s := range samples {
-		stack := stack{
-			value: s.self,
-		}
-
-		for i := range s.locationIDs {
-			stack.locations = append(stack.locations, location{
-				function: locationMaps[string(s.locationIDs[i])].Lines[0].Function.Name,
-			})
-		}
-
-		stacks = append(stacks, stack)
-	}
-	tree := stacksToTree(stacks)
-	fmt.Println()
-	fmt.Println(tree.String())
-	graph := tree.toFlamebearer()
-	return &flamebearer.FlamebearerProfile{
-		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
-			Metadata: flamebearer.FlamebearerMetadataV1{
-				Format: "single",
-				Units:  "bytes",
-				Name:   "inuse_memory",
-			},
-			// Timeline: &flamebearer.FlamebearerTimelineV1{
-			// 	StartTime:     time.Now().Add(-1 * time.Hour).Unix(),
-			// 	DurationDelta: 3,
-			// },
-			Flamebearer: graph,
-			// Flamebearer: flamebearer.FlamebearerV1{
-			// 	Names: []string{"total", "bar", "buz", "blop"},
-			// 	Levels: [][]int{
-			// 		{0, 2, 0, 0},
-			// 		{0, 2, 0, 1},
-			// 		{0, 2, 1, 2},
-			// 		{1, 1, 1, 3},
-			// 	},
-			// 	NumTicks: 2,
-			// 	MaxSelf:  1,
-			// },
-		},
-	}, nil
-}
-
-// render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
-func parseQuery(req *http.Request) (selectMerge, error) {
-	queryParams := req.URL.Query()
-	q := queryParams.Get("query")
-	if q == "" {
-		return selectMerge{}, fmt.Errorf("query is required")
-	}
-
-	start := model.TimeFromUnixNano(time.Now().Add(-1 * time.Hour).UnixNano())
-	end := model.TimeFromUnixNano(time.Now().UnixNano())
-
-	if from := queryParams.Get("from"); from != "" {
-		from, err := parseRelativeTime(from)
-		if err != nil {
-			return selectMerge{}, fmt.Errorf("failed to parse from: %w", err)
-		}
-		start = end.Add(-from)
-	}
-
-	return selectMerge{
-		query: q,
-		start: int64(start),
-		end:   int64(end),
-	}, nil
-}
-
-func mergePlan(q selectMerge) (logicalplan.Expr, error) {
-	if q.query == "" {
-		return nil, fmt.Errorf("query is required")
-	}
-	selectorExprs, err := queryToFilterExprs(q.query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse query: %w", err)
-	}
-
-	return logicalplan.And(
-		append(
-			selectorExprs,
-			// logicalplan.Col("timestamp").GT(logicalplan.Literal(int64(q.start))),
-			// logicalplan.Col("timestamp").LT(logicalplan.Literal(int64(q.end))),
-		)...,
-	), nil
-}
-
-func parseRelativeTime(s string) (time.Duration, error) {
-	s = strings.TrimSpace(s)
-	s = strings.TrimPrefix(s, "now-")
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		return 0, err
-	}
-	return d, nil
-}
-
-func queryToFilterExprs(query string) ([]logicalplan.Expr, error) {
-	parsedSelector, err := parser.ParseMetricSelector(query)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "failed to parse query")
-	}
-
-	sel := make([]*labels.Matcher, 0, len(parsedSelector))
-	var nameLabel *labels.Matcher
-	for _, matcher := range parsedSelector {
-		if matcher.Name == labels.MetricName {
-			nameLabel = matcher
-		} else {
-			sel = append(sel, matcher)
-		}
-	}
-	if nameLabel == nil {
-		return nil, status.Error(codes.InvalidArgument, "query must contain a profile-type selection")
-	}
-
-	parts := strings.Split(nameLabel.Value, ":")
-	if len(parts) != 5 && len(parts) != 6 {
-		return nil, status.Errorf(codes.InvalidArgument, "profile-type selection must be of the form <name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>(:delta), got(%d): %q", len(parts), nameLabel.Value)
-	}
-	name, sampleType, sampleUnit, periodType, periodUnit, delta := parts[0], parts[1], parts[2], parts[3], parts[4], false
-	if len(parts) == 6 && parts[5] == "delta" {
-		delta = true
-	}
-
-	labelFilterExpressions, err := matchersToBooleanExpressions(sel)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "failed to build query")
-	}
-
-	exprs := append([]logicalplan.Expr{
-		logicalplan.Col("name").Eq(logicalplan.Literal(name)),
-		logicalplan.Col("sample_type").Eq(logicalplan.Literal(sampleType)),
-		logicalplan.Col("sample_unit").Eq(logicalplan.Literal(sampleUnit)),
-		logicalplan.Col("period_type").Eq(logicalplan.Literal(periodType)),
-		logicalplan.Col("period_unit").Eq(logicalplan.Literal(periodUnit)),
-	}, labelFilterExpressions...)
-
-	deltaPlan := logicalplan.Col("duration").Eq(logicalplan.Literal(0))
-	if delta {
-		deltaPlan = logicalplan.Col("duration").NotEq(logicalplan.Literal(0))
-	}
-
-	exprs = append(exprs, deltaPlan)
-
-	return exprs, nil
-}
-
-func matchersToBooleanExpressions(matchers []*labels.Matcher) ([]logicalplan.Expr, error) {
-	exprs := make([]logicalplan.Expr, 0, len(matchers))
-
-	for _, matcher := range matchers {
-		expr, err := matcherToBooleanExpression(matcher)
-		if err != nil {
-			return nil, err
-		}
-
-		exprs = append(exprs, expr)
-	}
-
-	return exprs, nil
 }
 
 func matcherToBooleanExpression(matcher *labels.Matcher) (logicalplan.Expr, error) {
