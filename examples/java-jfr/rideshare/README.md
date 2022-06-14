@@ -2,10 +2,10 @@
 ### Profiling a Java Rideshare App with Pyroscope
 ![java_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369880-da9210af-9a60-4ace-8326-f21edf882575.gif)
 
-Note: For documentation on Pyroscope's java integration visit our website for [java](https://pyroscope.io/docs/java/) or check out our [JFR parser](https://github.com/pyroscope-io/jfr-parser) repo.
+Note: For documentation on Pyroscope's java integration visit our website for [java](https://pyroscope.io/docs/java/). It's also worth noting that Pyroscope's java integration is powered by our [JFR parser](https://github.com/pyroscope-io/jfr-parser).
 
 ## Background
-In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `main.go`:
+In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `RideShareController.java`:
 - `/bike`    : calls the `orderBike(searchRadius)` function to order a bike
 - `/car`     : calls the `orderCar(searchRadius)` function to order a car
 - `/scooter` : calls the `orderScooter(searchRadius)` function to order a scooter
@@ -23,11 +23,11 @@ One of the most useful capabilities of Pyroscope is the ability to tag your data
 ## How to create static tags
 Tagging something static, like the `region`, can be done in the initialization code in the `main()` function:
 ```
-@SpringBootApplication
 public class Main {
     public static void main(String[] args) {
         Pyroscope.setStaticLabels(Map.of("REGION", System.getenv("REGION")));
-        SpringApplication.run(Main.class, args);
+
+        [ all code here will be attatched to the "region" label ]
     }
 }
 ```
