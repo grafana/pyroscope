@@ -127,6 +127,7 @@ type Fire struct {
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
 	profileStore       *profilestore.ProfileStore
+	agent              *agent.Agent
 }
 
 func New(cfg Config) (*Fire, error) {
