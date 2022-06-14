@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -210,9 +209,9 @@ func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebeare
 	for i := 0; i < rows; i++ {
 		stacktraceID := stacktraceColumn.Value(i)
 		value := valueColumn.Value(i)
-		if value == 0 {
-			continue
-		}
+		// if value == 0 {
+		// 	continue
+		// }
 		stacktraceUUIDs = append(stacktraceUUIDs, stacktraceID)
 		samples = append(samples, &sample{
 			stacktraceID: stacktraceID,
@@ -244,97 +243,25 @@ func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebeare
 	for _, s := range samples {
 		s.locationIDs = stacktraceMap[string(s.stacktraceID)].LocationIds
 	}
-	sort.Slice(samples, func(i, j int) bool {
-		return len(samples[i].locationIDs) > len(samples[j].locationIDs)
-	})
-	graph := flamebearer.FlamebearerV1{}
-	locationBylevels := map[int]map[string]sample{}
-	total := int64(0)
+
+	stacks := make([]stack, 0, len(samples))
 	for _, s := range samples {
-		total += s.self
-		for i := len(s.locationIDs) - 1; i >= 0; i-- {
-			level := len(s.locationIDs) - i - 1
-			_, seen := locationBylevels[level]
-			if !seen {
-				locationBylevels[level] = map[string]sample{
-					string(s.locationIDs[i]): {
-						stacktraceID: s.stacktraceID,
-						locationIDs:  s.locationIDs,
-						self:         s.self,
-						total:        s.self,
-					},
-				}
-			}
-			locationBylevels[level][string(s.locationIDs[i])] = sample{
-				stacktraceID: s.stacktraceID,
-				locationIDs:  s.locationIDs,
-				total:        locationBylevels[i][string(s.locationIDs[i])].total + s.self,
-				Location:     locationMaps[string(s.locationIDs[i])],
-			}
-			fmt.Print(locationMaps[string(s.locationIDs[i])].Lines[0].Function.Name)
-			fmt.Print("self=")
-			fmt.Print(s.self)
-			fmt.Print("total=")
-			fmt.Print(locationBylevels[level][string(s.locationIDs[i])].total)
-			fmt.Print("/line=")
-			fmt.Print(locationMaps[string(s.locationIDs[i])].Lines[0].Line)
-			fmt.Print("/level=")
-			fmt.Print(level)
+		stack := stack{
+			value: s.self,
 		}
-		fmt.Println("-------------------")
-	}
 
-	graph.Levels = make([][]int, len(locationBylevels))
-	namesTotal := map[string]struct {
-		idx   int
-		total int64
-	}{}
-	names := make([]string, 0, len(samples))
-	var max int
-	for i, locations := range locationBylevels {
-		graph.Levels[i] = make([]int, len(locations)*4)
-		j := 0
-		for _, loc := range locations {
-			graph.Levels[i][j] = 0
-			found, ok := namesTotal[string(loc.Lines[0].Function.Name)]
-			if !ok {
-				names = append(names, loc.Lines[0].Function.Name)
-				namesTotal[string(loc.Lines[0].Function.Name)] = struct {
-					idx   int
-					total int64
-				}{
-					idx:   len(names),
-					total: loc.self,
-				}
-				graph.Levels[i][j+3] = len(names) - 1
-				graph.Levels[i][j+1] = int(loc.self) // todo find the right value
-				graph.Levels[i][j+2] = int(loc.total)
-				j = j + 4
-				continue
-			}
-			graph.Levels[i][j+3] = found.idx
-			namesTotal[string(loc.Lines[0].Function.Name)] = struct {
-				idx   int
-				total int64
-			}{
-				idx:   found.idx,
-				total: loc.total,
-			}
-			if int(loc.self) > max {
-				max = int(loc.self)
-			}
-			// setting values
-			graph.Levels[i][j+1] = int(loc.total)
-			graph.Levels[i][j+2] = int(loc.self)
-			j = j + 4
-
+		for i := range s.locationIDs {
+			stack.locations = append(stack.locations, location{
+				function: locationMaps[string(s.locationIDs[i])].Lines[0].Function.Name,
+			})
 		}
+
+		stacks = append(stacks, stack)
 	}
-
-	graph.Names = names
-	graph.MaxSelf = max
-	graph.NumTicks = int(total)
-
+	tree := stacksToTree(stacks)
+	fmt.Println()
+	fmt.Println(tree.String())
+	graph := tree.toFlamebearer()
 	return &flamebearer.FlamebearerProfile{
 		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
 			Metadata: flamebearer.FlamebearerMetadataV1{
@@ -342,19 +269,21 @@ func buildProfile(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebeare
 				Units:  "bytes",
 				Name:   "inuse_memory",
 			},
-			Timeline: &flamebearer.FlamebearerTimelineV1{
-				StartTime:     time.Now().Add(-1 * time.Hour).Unix(),
-				DurationDelta: 3,
-			},
+			// Timeline: &flamebearer.FlamebearerTimelineV1{
+			// 	StartTime:     time.Now().Add(-1 * time.Hour).Unix(),
+			// 	DurationDelta: 3,
+			// },
 			Flamebearer: graph,
 			// Flamebearer: flamebearer.FlamebearerV1{
-			// 	Names: []string{"total", "bar()"},
+			// 	Names: []string{"total", "bar", "buz", "blop"},
 			// 	Levels: [][]int{
-			// 		{0, 2036457, 0, 0},
-			// 		{0, 2036457, 2036457, 1},
+			// 		{0, 2, 0, 0},
+			// 		{0, 2, 0, 1},
+			// 		{0, 2, 1, 2},
+			// 		{1, 1, 1, 3},
 			// 	},
-			// 	NumTicks: 1,
-			// 	MaxSelf:  2036457,
+			// 	NumTicks: 2,
+			// 	MaxSelf:  1,
 			// },
 		},
 	}, nil
@@ -398,8 +327,8 @@ func mergePlan(q selectMerge) (logicalplan.Expr, error) {
 	return logicalplan.And(
 		append(
 			selectorExprs,
-			logicalplan.Col("timestamp").GT(logicalplan.Literal(int64(q.start))),
-			logicalplan.Col("timestamp").LT(logicalplan.Literal(int64(q.end))),
+			// logicalplan.Col("timestamp").GT(logicalplan.Literal(int64(q.start))),
+			// logicalplan.Col("timestamp").LT(logicalplan.Literal(int64(q.end))),
 		)...,
 	), nil
 }
