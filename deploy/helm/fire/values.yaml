@@ -60,6 +60,22 @@ fire:
 
   nodeSelector: {}
 
+  ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  ## If you set enabled as "True", you need :
+  ## - create a pv which above 10Gi and has same namespace with loki
+  ## - keep storageClassName same with below setting
+  persistence:
+    enabled: false
+    accessModes:
+    - ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+    # selector:
+    #   matchLabels:
+    #     app.kubernetes.io/name: loki
+    # subPath: ""
+    # existingClaim:
+
   tolerations: []
 
   affinity: {}
