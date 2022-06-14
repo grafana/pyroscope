@@ -20,7 +20,7 @@ One of the most useful capabilities of Pyroscope is the ability to tag your data
 - `vehicle`: dynamically tags the endpoint
 
 
-## Tagging static region
+## How to create static tags
 Tagging something static, like the `region`, can be done in the initialization code in the `main()` function:
 ```
 @SpringBootApplication
@@ -32,11 +32,11 @@ public class Main {
 }
 ```
 
-## Tagging dynamically within functions
+## How to create dynamic tags within functions
 Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `OrderService.findNearestVehicle()` function using `pyroscope.LabelsWrapper`
 ```
 Pyroscope.LabelsWrapper.run(new LabelsSet("vehicle", vehicle), () -> {
-    [ all code here will be attateched to the "vehicle" label ]
+    [ all code here will be attatched to the "vehicle" label ]
 });
 ```
 
@@ -80,7 +80,7 @@ We can also see that the `mutexLock()` function is consuming 76% of CPU resource
 ![2_java_second_slide-01-01](https://user-images.githubusercontent.com/23323466/173279046-1e67bf51-640c-45b8-9e9a-4db0db1c6709.jpg)
 
 
-## Comparing two time periods
+## Comparing Two Tag Sets
 Using Pyroscope's "comparison view" we can actually select two different sets of tags to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north 
 ```
 REGION != "eu-north"
