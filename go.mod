@@ -24,6 +24,7 @@ require (
 	github.com/stretchr/testify v1.7.2
 	github.com/thanos-io/thanos v0.26.0
 	github.com/weaveworks/common v0.0.0-20220428113342-f83ccc76d823
+	github.com/xlab/treeprint v1.1.0
 	go.opentelemetry.io/otel/trace v1.7.0
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93
 	golang.org/x/text v0.3.7
