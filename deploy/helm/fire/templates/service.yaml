@@ -8,9 +8,9 @@ spec:
   type: {{ .Values.fire.service.type }}
   ports:
     - port: {{ .Values.fire.service.port }}
-      targetPort: http
+      targetPort: {{ .Values.fire.service.port_name }}
       protocol: TCP
-      name: http
+      name: {{ .Values.fire.service.port_name }}
   selector:
     {{- include "fire.selectorLabels" . | nindent 4 }}
 ---
@@ -24,9 +24,9 @@ spec:
   type: {{ .Values.fire.service.type }}
   ports:
     - port: {{ .Values.fire.service.port }}
-      targetPort: http
+      targetPort: {{ .Values.fire.service.port_name }}
       protocol: TCP
-      name: http
+      name: {{ .Values.fire.service.port_name }}
   selector:
     {{- include "fire.selectorLabels" . | nindent 4 }}
 
