@@ -2,7 +2,6 @@ package ingester
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/xlab/treeprint"
@@ -146,17 +145,20 @@ func strackToTree(stack stack) *tree {
 	}
 	remaining := stack.locations[1:]
 	for len(remaining) > 0 {
+
 		location := remaining[0]
+		name := location.function
 		remaining = remaining[1:]
 
-		name := location.function
-		for len(remaining) != 0 {
-			if remaining[0].function == name {
-				remaining = remaining[1:]
-				continue
-			}
-			break
-		}
+		// This pack node with the same name as the next location
+		// Disable for now but we might want to introduce it if we find it useful.
+		// for len(remaining) != 0 {
+		// 	if remaining[0].function == name {
+		// 		remaining = remaining[1:]
+		// 		continue
+		// 	}
+		// 	break
+		// }
 
 		parent := &node{
 			children: []*node{current},
@@ -172,35 +174,30 @@ func strackToTree(stack stack) *tree {
 
 func stacksToTree(stacks []stack) *tree {
 	t := &tree{}
-	sort.Slice(stacks, func(i, j int) bool {
-		return stacks[i].locations[0].function > stacks[j].locations[0].function
-	})
 	for _, stack := range stacks {
 		if stack.value == 0 {
 			continue
 		}
 		if t == nil {
 			t = strackToTree(stack)
-		} else {
-			mergeTree(t, strackToTree(stack))
+			continue
 		}
+		mergeTree(t, strackToTree(stack))
 	}
 	return t
 }
 
-func (t *tree) toFlamebearer() flamebearer.FlamebearerV1 {
+func (t *tree) toFlamebearer() *flamebearer.FlamebearerV1 {
 	var total, max int64
-
+	for _, node := range t.root {
+		total += node.total
+	}
 	names := []string{}
 	nameLocationCache := map[string]int{}
 	res := [][]int{}
 
 	xOffsets := []int{0}
-	for _, node := range t.root {
-		total += node.total
-		// xOffsets[i] = xOffset
-		// xOffset += int(node.total)
-	}
+
 	levels := []int{0}
 
 	nodes := []*node{{children: t.root, total: total}}
@@ -238,7 +235,6 @@ func (t *tree) toFlamebearer() flamebearer.FlamebearerV1 {
 		// i+2 = self
 		// i+3 = index in names array
 		res[level] = append([]int{xOffset, int(current.total), int(current.self), i}, res[level]...)
-		fmt.Println("level", level, []int{xOffset, int(current.total), int(current.self), i}, " name:", name)
 		xOffset += int(current.self)
 
 		for _, child := range current.children {
@@ -248,15 +244,15 @@ func (t *tree) toFlamebearer() flamebearer.FlamebearerV1 {
 			xOffset += int(child.total)
 		}
 	}
+	// delta encode xoffsets
 	for _, l := range res {
 		prev := 0
 		for i := 0; i < len(l); i += 4 {
-			// fmt.Println("level", j, " point ", i, " l[i]", l[i], " prev:", prev)
 			l[i] -= prev
 			prev += l[i] + l[i+1]
 		}
 	}
-	return flamebearer.FlamebearerV1{
+	return &flamebearer.FlamebearerV1{
 		Names:    names,
 		Levels:   res,
 		NumTicks: int(total),
