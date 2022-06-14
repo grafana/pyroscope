@@ -37,13 +37,13 @@ spec:
             - "-{{ $key }}={{ $value }}"
           {{- end }}
           ports:
-            - name: http
+            - name: {{ .Values.fire.service.port_name }}
               containerPort: 4100
               protocol: TCP
           readinessProbe:
             httpGet:
               path: /ready
-              port: http
+              port: {{ .Values.fire.service.port_name }}
           volumeMounts:
             - name: config
               mountPath: /etc/fire/config.yaml
