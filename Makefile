@@ -68,7 +68,6 @@ go/mod:
 	GO111MODULE=on go mod download
 	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
-	GO111MODULE=on go mod vendor
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf ## Automatically fix some lint errors
