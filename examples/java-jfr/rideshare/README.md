@@ -2,13 +2,13 @@
 ### Profiling a Java Rideshare App with Pyroscope
 ![java_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369880-da9210af-9a60-4ace-8326-f21edf882575.gif)
 
-Note: For documentation on Pyroscope's java integration visit our website for [java](https://pyroscope.io/docs/java/).
+Note: For documentation on Pyroscope's java integration visit our website for [java](https://pyroscope.io/docs/java/) or check out our [JFR parser](https://github.com/pyroscope-io/jfr-parser) repo.
 
 ## Background
 In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `main.go`:
-- `/bike`    : calls the `orderBike(search_radius)` function to order a bike
-- `/car`     : calls the `orderCar(search_radius)` function to order a car
-- `/scooter` : calls the `orderScooter(search_radius)` function to order a scooter
+- `/bike`    : calls the `orderBike(searchRadius)` function to order a bike
+- `/car`     : calls the `orderCar(searchRadius)` function to order a car
+- `/scooter` : calls the `orderScooter(searchRadius)` function to order a scooter
 
 We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/java-jfr/rideshare/docker-compose.yml))
 - us-east
@@ -59,7 +59,7 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `rideshare.java.push.app.itimer` from the dropdown, you should see a flamegraph that looks like this (below). After we give the flamegraph some time to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `rideshare.java.push.app.itimer` from the dropdown, you should see a flamegraph that looks like this (below). After we give the flamegraph some time to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `searchRadius` parameters.
 
 ## Where's the performance bottleneck?
 ![1_java_first_slide-01](https://user-images.githubusercontent.com/23323466/173278973-9842ffec-4f18-4419-b155-81823e8ec024.jpg)
@@ -80,8 +80,8 @@ We can also see that the `mutexLock()` function is consuming 76% of CPU resource
 ![2_java_second_slide-01-01](https://user-images.githubusercontent.com/23323466/173279046-1e67bf51-640c-45b8-9e9a-4db0db1c6709.jpg)
 
 
-## Comparing Two Tag Sets
-Using Pyroscope's "comparison view" we can actually select two different sets of tags to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north 
+## Comparing Two Tag Sets with FlameQL
+Using Pyroscope's "comparison view" we can actually select two different sets of tags using Pyroscope's prometheus-inspired query language [FlameQL](https://pyroscope.io/docs/flameql/) to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north 
 ```
 REGION != "eu-north"
 ```
@@ -96,7 +96,7 @@ In the graph where `REGION = "eu-north"`, `checkDriverAvailability()` takes ~92%
 
 
 ## Visualizing Diff Between Two Flamegraphs
-While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized via a diff flamegraph, where red represents cpu time added and green represents cpu time removed. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
+While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two tagsets/flamegraphs is better visualized via a diff flamegraph, where red represents cpu time added and green represents cpu time removed. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
 ![4_java_fourth_slide-01](https://user-images.githubusercontent.com/23323466/173279888-85c9eead-e3cd-48e6-bf73-204e1074ad2b.jpg)
 
 
