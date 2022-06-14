@@ -50,19 +50,26 @@ function ComparisonDiffApp() {
   const timezone = offset === 0 ? 'utc' : 'browser';
 
   useEffect(() => {
-    if (rightQuery && leftQuery) {
-      dispatch(
-        fetchDiffView({
-          leftQuery,
-          leftFrom,
-          leftUntil,
+    const fetchData =
+      rightQuery && leftQuery
+        ? dispatch(
+            fetchDiffView({
+              leftQuery,
+              leftFrom,
+              leftUntil,
 
-          rightQuery,
-          rightFrom,
-          rightUntil,
-        })
-      );
-    }
+              rightQuery,
+              rightFrom,
+              rightUntil,
+            })
+          )
+        : null;
+
+    return () => {
+      if (fetchData?.abort) {
+        fetchData.abort();
+      }
+    };
   }, [
     leftFrom,
     leftUntil,

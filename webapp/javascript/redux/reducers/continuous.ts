@@ -47,7 +47,8 @@ type DiffView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
   | { type: 'loaded'; profile: Profile }
-  | { type: 'reloading'; profile: Profile };
+  | { type: 'reloading'; profile: Profile }
+  | { type: 'failed'; profile?: Profile };
 
 type DiffView2 = ComparisonView;
 
@@ -678,6 +679,13 @@ export const continuousSlice = createSlice({
         ...action.payload,
         profile: action.payload.profile,
         type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchDiffView.rejected, (state) => {
+      state.diffView = {
+        profile: state?.diffView?.profile,
+        type: 'failed',
       };
     });
 
