@@ -126,6 +126,7 @@ func (f *Fire) initProfileStore() (services.Service, error) {
 		f.logger,
 		f.reg,
 		f.tracerProvider,
+		&f.Cfg.ProfileStore,
 	)
 	if err != nil {
 		return nil, err

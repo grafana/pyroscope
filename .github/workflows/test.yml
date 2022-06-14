@@ -1,0 +1,72 @@
+name: ci
+on:
+  push:
+    branches:
+      - main
+      - r[0-9]+ # Trigger builds after a push to weekly branches
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [ 1.18.2 ]
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Restore cache
+      uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Go Mod
+      run: make check/go/mod
+      if: matrix.os == 'ubuntu-latest'
+    - name: Format
+      run: make fmt check/unstaged-changes
+      if: matrix.os == 'ubuntu-latest'
+    - name: Test
+      run: make go/test
+
+  build-image:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Build image
+        run: make docker-image/fire/build
+
+  build-and-push-image:
+    if: github.event_name == 'push' && github.repository == 'grafana/fire'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Login to GCR
+        uses: docker/login-action@v2
+        with:
+          registry: us.gcr.io
+          username: _json_key
+          password: ${{ secrets.GCR_JSON_KEY }}
+      - name: Build & push multi-arch image
+        run: make docker-image/fire/push IMAGE_PLATFORM=linux/arm/v7,linux/arm64/v8,linux/amd64

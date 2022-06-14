@@ -40,6 +40,7 @@ type Config struct {
 	Distributor  distributor.Config     `yaml:"distributor,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
+	ProfileStore profilestore.Config    `yaml:"profile_store,omitempty"`
 
 	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
@@ -53,10 +54,29 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&c.Target, "target", "Comma-separated list of Loki modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.AuthEnabled, "auth.enabled", true, "Set to false to disable auth.")
-	c.Server.RegisterFlags(f)
+	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.AgentConfig.RegisterFlags(f)
 	c.Ingester.RegisterFlags(f)
 	c.MemberlistKV.RegisterFlags(f)
+	c.ProfileStore.RegisterFlags(f)
+}
+
+// registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
+func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
+	throwaway := flag.NewFlagSet("throwaway", flag.PanicOnError)
+
+	// Register to throwaway flags first. Default values are remembered during registration and cannot be changed,
+	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
+	c.Server.RegisterFlags(throwaway)
+
+	throwaway.VisitAll(func(f *flag.Flag) {
+		// Ignore errors when setting new values. We have a test to verify that it works.
+		switch f.Name {
+		case "server.http-listen-port":
+			_ = f.Value.Set("4100")
+		}
+		fs.Var(f.Value, f.Name, f.Usage)
+	})
 }
 
 func (c *Config) Validate() error {

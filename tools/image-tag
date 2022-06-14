@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-only
+# Provenance-includes-location: https://github.com/cortexproject/cortex/blob/master/tools/image-tag
+# Provenance-includes-license: Apache-2.0
+# Provenance-includes-copyright: The Cortex Authors.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+WORKING_SUFFIX=$(if git status --porcelain | grep -qE '^(?:[^?][^ ]|[^ ][^?])\s'; then echo "-WIP"; else echo ""; fi)
+BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD)
+echo "${BRANCH_PREFIX//\//-}-$(git rev-parse --short HEAD)$WORKING_SUFFIX"

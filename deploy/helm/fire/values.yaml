@@ -1,0 +1,113 @@
+# Default values for fire.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+fire:
+  replicaCount: 1
+
+  image:
+    repository: us.gcr.io/kubernetes-dev/fire
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+
+  extraArgs:
+    log.level: debug
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  service:
+    type: ClusterIP
+    port: 4100
+
+  resources: {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  config: |
+    scrape_configs:
+      - job_name: "default"
+        scrape_interval: "5s"
+        static_configs:
+          - targets: [ '127.0.0.1:4100']
+      - job_name: kubernetes-pods-name
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels:
+          - __meta_kubernetes_pod_label_name
+          target_label: __service__
+        - source_labels:
+          - __meta_kubernetes_pod_node_name
+          target_label: __host__
+        - action: drop
+          regex: ''
+          source_labels:
+          - __service__
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - action: replace
+          replacement: $1
+          separator: /
+          source_labels:
+          - __meta_kubernetes_namespace
+          - __service__
+          target_label: job
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_namespace
+          target_label: namespace
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_pod_name
+          target_label: pod
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_pod_container_name
+          target_label: container
+        - replacement: /var/log/pods/*$1/*.log
+          separator: /
+          source_labels:
+          - __meta_kubernetes_pod_uid
+          - __meta_kubernetes_pod_container_name
+          target_label: __path__
