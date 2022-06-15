@@ -62,7 +62,7 @@ docker-compose up --build
 What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `rideshare.java.push.app.itimer` from the dropdown, you should see a flamegraph that looks like this (below). After we give the flamegraph some time to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `searchRadius` parameters.
 
 ## Where's the performance bottleneck?
-![1_java_first_slide-01](https://user-images.githubusercontent.com/23323466/173278973-9842ffec-4f18-4419-b155-81823e8ec024.jpg)
+![1_java_first_slide-02-01](https://user-images.githubusercontent.com/23323466/173832109-5cf085d7-4164-4112-98ff-95bacf207185.png)
 
 The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `orderCar` function. 
 
@@ -77,8 +77,7 @@ To analyze this we can select one or more tags from the "Select Tag" dropdown:
 Knowing there is an issue with the `orderCar()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
 
 We can also see that the `mutexLock()` function is consuming 76% of CPU resources during this time period. 
-![2_java_second_slide-01-01](https://user-images.githubusercontent.com/23323466/173279046-1e67bf51-640c-45b8-9e9a-4db0db1c6709.jpg)
-
+![2_java_second_slide-02-01](https://user-images.githubusercontent.com/23323466/173831827-085b9fe5-0538-4ea4-8da7-777b71359bf9.png)
 
 ## Comparing Two Tag Sets with FlameQL
 Using Pyroscope's "comparison view" we can actually select two different sets of tags using Pyroscope's prometheus-inspired query language [FlameQL](https://pyroscope.io/docs/flameql/) to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north 
@@ -92,8 +91,8 @@ REGION = "eu-north"
 
 Not only can we see a differing pattern in CPU utilization on the timeline, but we can also see that the `checkDriverAvailability()` and `mutexLock()` functions are responsible for the majority of this difference.
 In the graph where `REGION = "eu-north"`, `checkDriverAvailability()` takes ~92% of CPU while it only takes approximately half that when `REGION != "eu-north"`. 
-![3_java_third_slide-01](https://user-images.githubusercontent.com/23323466/173279800-388aa1ae-cf36-4b5f-876e-8641834408ce.jpg)
 
+![3_java_third_slide-01-01](https://user-images.githubusercontent.com/23323466/173831391-769d3f26-4b7a-4c2d-815c-324ecbbf06f5.png)
 
 ## Visualizing Diff Between Two Flamegraphs
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two tagsets/flamegraphs is better visualized via a diff flamegraph, where red represents cpu time added and green represents cpu time removed. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
