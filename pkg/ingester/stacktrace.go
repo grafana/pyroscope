@@ -53,7 +53,7 @@ func (t *tree) Add(name string, self, total int64) *node {
 	return new
 }
 
-func NewTree() *tree {
+func newTree() *tree {
 	return &tree{}
 }
 

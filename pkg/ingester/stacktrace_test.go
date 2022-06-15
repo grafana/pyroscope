@@ -99,7 +99,7 @@ func Test_Tree(t *testing.T) {
 				},
 			},
 			func() *tree {
-				tr := NewTree()
+				tr := newTree()
 				tr.Add("bar", 0, 2).Add("buz", 2, 2)
 				return tr
 			},
@@ -140,7 +140,7 @@ func Test_Tree(t *testing.T) {
 				},
 			},
 			func() *tree {
-				tr := NewTree()
+				tr := newTree()
 				buz := tr.Add("bar", 0, 3).Add("buz", 0, 3)
 				buz.Add("blip", 1, 1)
 				buz.Add("blop", 0, 2).Add("blap", 2, 2)
@@ -221,7 +221,7 @@ func Test_Tree(t *testing.T) {
 				},
 			},
 			func() *tree {
-				tr := NewTree()
+				tr := newTree()
 
 				bar := tr.Add("bar", 0, 9)
 
