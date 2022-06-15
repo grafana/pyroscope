@@ -53,7 +53,7 @@ func Test_ParseQuery(t *testing.T) {
 
 func Test_selectMerge(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
-	profileStore, err := profilestore.New(log.NewNopLogger(), nil, trace.NewNoopTracerProvider(), &profilestore.Config{})
+	profileStore, err := profilestore.New(log.NewNopLogger(), nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
 	require.NoError(t, err)
 	buf := bytes.NewBuffer(nil)
 	mapping := &profile.Mapping{
