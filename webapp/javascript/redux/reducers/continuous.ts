@@ -12,6 +12,7 @@ import {
 import { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
+import { PAGES } from '@webapp/pages/constants';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
@@ -27,13 +28,15 @@ type ComparisonView = {
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
+    | { type: 'reloading'; profile: Profile }
+    | { type: 'failed'; profile?: Profile };
 
   right:
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
+    | { type: 'reloading'; profile: Profile }
+    | { type: 'failed'; profile?: Profile };
 };
 
 type TimelineState =
@@ -756,21 +759,39 @@ export const selectAppNames = (state: RootState) =>
 export const selectComparisonState = (state: RootState) =>
   state.continuous.comparisonView;
 
-export const selectIsLoadingData = (state: RootState) => {
-  const loadingStates = ['loading', 'reloading', 'failed'];
+export const selectIsLoadingData = (state: RootState, pathname?: PAGES) => {
+  const loadingStates = ['loading', 'reloading'];
 
-  // TODO: should we check if timelines are being reloaded too?
-  return (
-    loadingStates.includes(state.continuous.singleView.type) ||
-    // Comparison
-    loadingStates.includes(state.continuous.comparisonView.left.type) ||
-    loadingStates.includes(state.continuous.comparisonView.right.type) ||
-    // Diff
-    loadingStates.includes(state.continuous.diffView.type) ||
-    // Timeline Sides
-    loadingStates.includes(state.continuous.leftTimeline.type) ||
-    loadingStates.includes(state.continuous.rightTimeline.type)
-  );
+  switch (pathname) {
+    case PAGES.CONTINOUS_SINGLE_VIEW:
+      return loadingStates.includes(state.continuous.singleView.type);
+    case PAGES.COMPARISON_VIEW:
+      return (
+        loadingStates.includes(state.continuous.comparisonView.left.type) ||
+        loadingStates.includes(state.continuous.comparisonView.right.type) ||
+        loadingStates.includes(state.continuous.leftTimeline.type) ||
+        loadingStates.includes(state.continuous.rightTimeline.type)
+      );
+    case PAGES.COMPARISON_DIFF_VIEW:
+      return (
+        loadingStates.includes(state.continuous.diffView.type) ||
+        loadingStates.includes(state.continuous.leftTimeline.type) ||
+        loadingStates.includes(state.continuous.rightTimeline.type)
+      );
+
+    default:
+      return (
+        loadingStates.includes(state.continuous.singleView.type) ||
+        // Comparison
+        loadingStates.includes(state.continuous.comparisonView.left.type) ||
+        loadingStates.includes(state.continuous.comparisonView.right.type) ||
+        // Diff
+        loadingStates.includes(state.continuous.diffView.type) ||
+        // Timeline Sides
+        loadingStates.includes(state.continuous.leftTimeline.type) ||
+        loadingStates.includes(state.continuous.rightTimeline.type)
+      );
+  }
 };
 
 export const selectAppTags = (query?: Query) => (state: RootState) => {
