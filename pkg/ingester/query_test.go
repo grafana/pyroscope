@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"testing"
 	"time"
 
@@ -91,8 +92,8 @@ func Test_selectMerge(t *testing.T) {
 		Period:        3,
 		TimeNanos:     time.Now().Add(-1 * time.Minute).UnixNano(),
 		Sample: []*profile.Sample{
-			{Value: []int64{1}, Location: []*profile.Location{locs[0], locs[1]}},
-			{Value: []int64{1}, Location: []*profile.Location{locs[0], locs[2]}},
+			{Value: []int64{1}, Location: []*profile.Location{locs[1], locs[0]}},
+			{Value: []int64{1}, Location: []*profile.Location{locs[2], locs[0]}},
 		},
 		Mapping: []*profile.Mapping{
 			mapping,
@@ -129,23 +130,23 @@ func Test_selectMerge(t *testing.T) {
 	}, 0, int64(model.Latest))
 	require.NoError(t, err)
 
-	require.Equal(t, &flamebearer.FlamebearerProfile{
-		Version: 1,
-		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
-			Flamebearer: flamebearer.FlamebearerV1{
-				Names:    []string{"total", "buzz", "foo", "bar"},
-				NumTicks: 2,
-				MaxSelf:  1,
-				Levels:   [][]int{{0, 2, 0, 0}, {0, 1, 0, 3, 0, 1, 0, 1}, {0, 1, 1, 2, 0, 1, 1, 2}},
-			},
-			Metadata: flamebearer.FlamebearerMetadataV1{
-				Format: "single",
-				Units:  "bytes",
-				Name:   "inuse_space",
-			},
-		},
-	}, f)
+	// aggregate plan have no guarantee of order so we sort the results
+	sort.Strings(f.Flamebearer.Names)
 
+	require.Equal(t, []string{"bar", "buzz", "foo", "total"}, f.Flamebearer.Names)
+	require.Equal(t, flamebearer.FlamebearerMetadataV1{
+		Format: "single",
+		Units:  "bytes",
+		Name:   "inuse_space",
+	}, f.Metadata)
+	require.Equal(t, 2, f.Flamebearer.NumTicks)
+	require.Equal(t, 1, f.Flamebearer.MaxSelf)
+	require.Equal(t, []int{0, 2, 0, 0}, f.Flamebearer.Levels[0])
+	require.Equal(t, []int{0, 2, 0, 1}, f.Flamebearer.Levels[1])
+	require.Equal(t, []int{0, 1, 1}, f.Flamebearer.Levels[2][:3])
+	require.Equal(t, []int{0, 1, 1}, f.Flamebearer.Levels[2][4:7])
+	require.True(t, f.Flamebearer.Levels[2][3] == 3 || f.Flamebearer.Levels[2][3] == 2)
+	require.True(t, f.Flamebearer.Levels[2][7] == 3 || f.Flamebearer.Levels[2][7] == 2)
 	require.NoError(
 		t,
 		profileStore.Close(),
