@@ -14,7 +14,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-func NewSession(logger pyroscope.Logger, ingester ingestion.Ingester, appName string) *pyroscope.Session {
+func NewSession(logger pyroscope.Logger, ingester ingestion.Ingester, appName string, tags map[string]string) *pyroscope.Session {
 	session, _ := pyroscope.NewSession(pyroscope.SessionConfig{
 		Upstream:       NewUpstream(logger, ingester),
 		AppName:        appName,
@@ -22,6 +22,7 @@ func NewSession(logger pyroscope.Logger, ingester ingestion.Ingester, appName st
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
 		Logger:         logger,
+		Tags:           tags,
 	})
 	return session
 }
