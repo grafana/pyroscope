@@ -3,6 +3,7 @@
 
 # options for analysis running
 run:
+  go: '1.18'
   # default concurrency is a available CPU number
   concurrency: 16
 
@@ -65,17 +66,22 @@ linters:
     - goimports
     - revive
     - ineffassign
-    - staticcheck
+    # - staticcheck
     - misspell
     - structcheck
     - unconvert
     - unparam
     - varcheck
     - govet
-    - unused
+    # - unused
     - typecheck
     - depguard
     - exportloopref
+  # disable for now as they don't work with 1.18
+  disable:
+    - staticcheck
+    - unused
+    - gosimple
 
 issues:
   exclude:
