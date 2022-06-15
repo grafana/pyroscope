@@ -13,13 +13,14 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
+
+	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	"github.com/grafana/fire/pkg/profilestore"
 )
 
 func Test_ParseQuery(t *testing.T) {

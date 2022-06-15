@@ -24,9 +24,6 @@ import (
 
 const (
 	stacktraceIDPrefix = "v1/stacktrace/by-id/"
-	locationsKeyPrefix = "v1/locations/by-key/"
-	functionKeyPrefix  = "v1/functions/by-key/"
-	mappingKeyPrefix   = "v1/mappings/by-key/"
 )
 
 // BadgerMetastore is an implementation of the metastore using the badger KV
