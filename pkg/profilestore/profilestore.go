@@ -51,18 +51,16 @@ func New(logger log.Logger, reg prometheus.Registerer, tracerProvider trace.Trac
 		storageActiveMemory = int64(512 * 1024 * 1024)
 	)
 
-	var (
-		metaDataPath, profileDataPath string
-	)
+	var metaDataPath, profileDataPath string
 
 	if cfg != nil && cfg.DataPath != "" {
 		level.Info(logger).Log("msg", "initilizing persistent profile-store", "data-path", cfg.DataPath)
 		metaDataPath = filepath.Join(cfg.DataPath, "metastore-v1")
 		profileDataPath = filepath.Join(cfg.DataPath, "profilestore-v1")
-		if err := os.MkdirAll(metaDataPath, 0755); err != nil {
+		if err := os.MkdirAll(metaDataPath, 0o755); err != nil {
 			return nil, err
 		}
-		if err := os.MkdirAll(profileDataPath, 0755); err != nil {
+		if err := os.MkdirAll(profileDataPath, 0o755); err != nil {
 			return nil, err
 		}
 	}
@@ -166,6 +164,18 @@ func (ps *ProfileStore) Ingest(ctx context.Context, req *connect.Request[pushv1.
 		}
 	}
 	return nil
+}
+
+func (ps *ProfileStore) TableProvider() *arcticdb.DBTableProvider {
+	tb, err := ps.col.DB("fire")
+	if err != nil {
+		panic(err)
+	}
+	return tb.TableProvider()
+}
+
+func (ps *ProfileStore) MetaStore() parcametastore.ProfileMetaStore {
+	return ps.metaStore
 }
 
 func (ps *ProfileStore) Table() *arcticdb.Table {

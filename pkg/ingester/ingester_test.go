@@ -106,7 +106,6 @@ func Test_ConnectPush(t *testing.T) {
 		t,
 		profileStore.Close(),
 	)
-
 }
 
 // This counts all sample values, where at least a single value in a sample is non-zero
