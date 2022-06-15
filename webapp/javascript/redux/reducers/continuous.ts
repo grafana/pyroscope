@@ -614,6 +614,11 @@ export const continuousSlice = createSlice({
           type: (action?.payload as { rejectedWithValue: 'reloading' })
             ?.rejectedWithValue,
         } as ComparisonView['left' | 'right'];
+      } else {
+        state.comparisonView[action.meta.arg.side] = {
+          ...state.comparisonView[action.meta.arg.side],
+          type: 'failed',
+        };
       }
     });
 
