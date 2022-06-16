@@ -20,11 +20,15 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
+import useCancelRequestOnUnmount from '@webapp/hooks/cancelRequestOnUnmount.hook';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
+
+let fetchLeftQueryData: ShamefulAny;
+let fetchRightQueryData: ShamefulAny;
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -41,28 +45,22 @@ function ComparisonApp() {
   const sharedQuery = useFlamegraphSharedQuery();
 
   useEffect(() => {
-    const fetchLeftQueryData = leftQuery
-      ? dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }))
-      : null;
-
-    return () => {
-      if (fetchLeftQueryData && fetchLeftQueryData.abort) {
-        fetchLeftQueryData.abort();
-      }
-    };
+    if (leftQuery) {
+      fetchLeftQueryData = dispatch(
+        fetchComparisonSide({ side: 'left', query: leftQuery })
+      );
+    }
   }, [leftFrom, leftUntil, leftQuery]);
 
   useEffect(() => {
-    const fetchRightQueryData = rightQuery
-      ? dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }))
-      : null;
-
-    return () => {
-      if (fetchRightQueryData && fetchRightQueryData.abort) {
-        fetchRightQueryData.abort();
-      }
-    };
+    if (rightQuery) {
+      fetchRightQueryData = dispatch(
+        fetchComparisonSide({ side: 'right', query: rightQuery })
+      );
+    }
   }, [rightFrom, rightUntil, rightQuery]);
+
+  useCancelRequestOnUnmount([fetchLeftQueryData, fetchRightQueryData]);
 
   const leftSide = comparisonView.left.profile;
   const rightSide = comparisonView.right.profile;
