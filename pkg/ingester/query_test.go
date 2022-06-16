@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -136,9 +137,10 @@ func Test_selectMerge(t *testing.T) {
 
 	require.Equal(t, []string{"bar", "buzz", "foo", "total"}, f.Flamebearer.Names)
 	require.Equal(t, flamebearer.FlamebearerMetadataV1{
-		Format: "single",
-		Units:  "bytes",
-		Name:   "inuse_space",
+		Format:     "single",
+		Units:      "bytes",
+		Name:       "inuse_space",
+		SampleRate: 100,
 	}, f.Metadata)
 	require.Equal(t, 2, f.Flamebearer.NumTicks)
 	require.Equal(t, 1, f.Flamebearer.MaxSelf)
@@ -152,4 +154,69 @@ func Test_selectMerge(t *testing.T) {
 		t,
 		profileStore.Close(),
 	)
+}
+
+func Test_QueryMetadata(t *testing.T) {
+	cfg := defaultIngesterTestConfig(t)
+	logger := log.NewLogfmtLogger(os.Stdout)
+
+	dataPath, err := os.MkdirTemp("", "fire-db")
+	require.NoError(t, err)
+	t.Logf("created temporary data path: %s", dataPath)
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dataPath); err != nil {
+			t.Logf("remove data path failed: %v", err)
+		}
+	})
+
+	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), &profilestore.Config{DataPath: dataPath})
+	require.NoError(t, err)
+
+	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
+	require.NoError(t, err)
+
+	rawProfile := testProfile(t)
+	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{
+			{
+				Labels: []*pushv1.LabelPair{
+					{Name: "__name__", Value: "memory"},
+					{Name: "cluster", Value: "us-central1"},
+				},
+				Samples: []*pushv1.RawSample{
+					{
+						RawProfile: rawProfile,
+					},
+				},
+			},
+			{
+				Labels: []*pushv1.LabelPair{
+					{Name: "__name__", Value: "memory"},
+					{Name: "cluster", Value: "us-east1"},
+				},
+				Samples: []*pushv1.RawSample{
+					{
+						RawProfile: rawProfile,
+					},
+				},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	clusters, err := d.LabelValues(context.Background(), "cluster")
+	require.NoError(t, err)
+	require.Equal(t, []string{"us-central1", "us-east1"}, clusters)
+	types, err := d.ProfileTypes(context.Background())
+	require.NoError(t, err)
+	expectedTypes := []string{
+		"memory:inuse_space:bytes:space:bytes",
+		"memory:inuse_objects:count:space:bytes",
+		"memory:alloc_space:bytes:space:bytes",
+		"memory:alloc_objects:count:space:bytes",
+	}
+	sort.Strings(expectedTypes)
+	sort.Strings(types)
+	require.Equal(t, expectedTypes, types)
 }

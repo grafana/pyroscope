@@ -121,6 +121,7 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	prefix, handler := ingestv1connect.NewIngesterHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	f.Server.HTTP.Handle("/render", http.HandlerFunc(ingester.RenderHandler))
+	f.Server.HTTP.Handle("/label-values", http.HandlerFunc(ingester.LabelValuesHandler))
 	return ingester, nil
 }
 
