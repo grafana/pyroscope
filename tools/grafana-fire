@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+FIRE_URL=${FIRE_URL:-http://127.0.0.1:4100/pyroscope}
+
+datasource_provisioning=$(mktemp -u --suffix ".yaml")
+trap 'rm -f "${datasource_provisioning}"' EXIT
+cat > "${datasource_provisioning}" <<EOF
+apiVersion: 1
+
+datasources:
+  - name: Fire
+    type: pyroscope-datasource
+    jsonData:
+      path: ${FIRE_URL}
+EOF
+
+docker run --net=host --rm \
+  --name fire-grafana \
+  -v "${datasource_provisioning}:/etc/grafana/provisioning/datasources/fire.yaml:ro" \
+  -e GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel \
+  -e GF_AUTH_ANONYMOUS_ENABLED=true \
+  -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
+  -t -i -p 3000:3000 ctovena/grafana:hackathon-1
