@@ -97,7 +97,12 @@ func (c *Config) ApplyDynamicConfig() cfg.Source {
 			return errors.New("dst is not a Fire config")
 		}
 		if r.AgentConfig.ClientConfig.URL.String() == "" {
-			if err := r.AgentConfig.ClientConfig.URL.Set(fmt.Sprintf("http://%s:%d", c.Server.HTTPListenAddress, c.Server.HTTPListenPort)); err != nil {
+			var listenAddress = "0.0.0.0"
+			if c.Server.HTTPListenAddress != "" {
+				listenAddress = c.Server.HTTPListenAddress
+			}
+
+			if err := r.AgentConfig.ClientConfig.URL.Set(fmt.Sprintf("http://%s:%d", listenAddress, c.Server.HTTPListenPort)); err != nil {
 				return err
 			}
 		}
@@ -127,6 +132,7 @@ type Fire struct {
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
 	profileStore       *profilestore.ProfileStore
+	agent              *agent.Agent
 }
 
 func New(cfg Config) (*Fire, error) {
