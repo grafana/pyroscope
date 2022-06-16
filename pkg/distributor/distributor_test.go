@@ -33,7 +33,7 @@ func newFakeIngester(t testing.TB) ingestv1connect.IngesterClient {
 
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
-	d, err := New(Config{}, nil, log.NewLogfmtLogger(os.Stdout))
+	d, err := New(Config{}, nil, nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	d.client = newFakeIngester(t)
 	mux.Handle(pushv1connect.NewPusherHandler(d))
