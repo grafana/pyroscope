@@ -38,17 +38,18 @@ type ProfileStore struct {
 
 type Config struct {
 	// TODO: Reassemble to match Mimir/Loki/Tempo
-	DataPath string `json:"data_path"`
+	DataPath         string `json:"data_path"`
+	ActiveMemorySize int64  `json:""active_memory_size` // the active uncompressed memory used by the profile store
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataPath, "profile-store.data-path", "./data", "Storage path of profile-store")
+	f.Int64Var(&cfg.ActiveMemorySize, "profile-store.active-memory-size", 128*1024*1024, "Active memory size of the profile store")
 }
 
 func New(logger log.Logger, reg prometheus.Registerer, tracerProvider trace.TracerProvider, cfg *Config) (*ProfileStore, error) {
 	var (
-		granuleSize         = 8 * 1024
-		storageActiveMemory = int64(512 * 1024 * 1024)
+		granuleSize = 8 * 1024
 	)
 
 	var metaDataPath, profileDataPath string
@@ -81,7 +82,7 @@ func New(logger log.Logger, reg prometheus.Registerer, tracerProvider trace.Trac
 	col := arcticdb.New(
 		reg,
 		granuleSize,
-		storageActiveMemory,
+		cfg.ActiveMemorySize,
 	)
 	if profileDataPath != "" {
 		bucket, err := filesystem.NewBucket(profileDataPath)
