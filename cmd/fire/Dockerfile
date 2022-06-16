@@ -18,9 +18,9 @@ COPY cmd/fire/fire.yaml /etc/fire/config.yaml
 
 RUN addgroup -g 10001 -S fire && \
     adduser -u 10001 -S fire -G fire
-RUN mkdir -p /fire/rules && \
-    mkdir -p /fire/rules-temp && \
-    chown -R fire:fire /etc/fire /fire
+RUN mkdir -p /data && \
+    chown -R fire:fire /data
+VOLUME /data
 
 USER fire
 EXPOSE 4100
