@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/apache/arrow/go/v8/arrow/array"
 	"github.com/gogo/status"
 	"github.com/parca-dev/parca/pkg/metastore"
+	"github.com/parca-dev/parca/pkg/parcacol"
 	"github.com/polarsignals/arcticdb/query/logicalplan"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -19,6 +21,112 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"google.golang.org/grpc/codes"
 )
+
+// LabelValues returns the possible label values for a given label name.
+func (i *Ingester) LabelValues(ctx context.Context, name string) ([]string, error) {
+	vals := []string{}
+
+	err := i.engine.ScanTable("stacktraces").
+		Distinct(logicalplan.Col("labels."+name)).
+		Execute(ctx, func(ar arrow.Record) error {
+			if ar.NumCols() != 1 {
+				return fmt.Errorf("expected 1 column, got %d", ar.NumCols())
+			}
+
+			col := ar.Column(0)
+			stringCol, ok := col.(*array.Binary)
+			if !ok {
+				return fmt.Errorf("expected string column, got %T", col)
+			}
+
+			for i := 0; i < stringCol.Len(); i++ {
+				val := stringCol.Value(i)
+				vals = append(vals, string(val))
+			}
+
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(vals)
+	return vals, nil
+}
+
+// ProfileTypes returns the possible profile types.
+func (i *Ingester) ProfileTypes(ctx context.Context) ([]string, error) {
+	seen := map[string]struct{}{}
+	err := i.engine.ScanTable("stacktraces").
+		Distinct(
+			logicalplan.Col(parcacol.ColumnName),
+			logicalplan.Col(parcacol.ColumnSampleType),
+			logicalplan.Col(parcacol.ColumnSampleUnit),
+			logicalplan.Col(parcacol.ColumnPeriodType),
+			logicalplan.Col(parcacol.ColumnPeriodUnit),
+			logicalplan.Col(parcacol.ColumnDuration).GT(logicalplan.Literal(0)),
+		).
+		Execute(ctx, func(ar arrow.Record) error {
+			if ar.NumCols() != 6 {
+				return fmt.Errorf("expected 6 column, got %d", ar.NumCols())
+			}
+
+			nameColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnName)
+			if err != nil {
+				return err
+			}
+
+			sampleTypeColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnSampleType)
+			if err != nil {
+				return err
+			}
+
+			sampleUnitColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnSampleUnit)
+			if err != nil {
+				return err
+			}
+
+			periodTypeColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnPeriodType)
+			if err != nil {
+				return err
+			}
+
+			periodUnitColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnPeriodUnit)
+			if err != nil {
+				return err
+			}
+
+			//
+
+			for i := 0; i < int(ar.NumRows()); i++ {
+				name := string(nameColumn.Value(i))
+				sampleType := string(sampleTypeColumn.Value(i))
+				sampleUnit := string(sampleUnitColumn.Value(i))
+				periodType := string(periodTypeColumn.Value(i))
+				periodUnit := string(periodUnitColumn.Value(i))
+
+				key := fmt.Sprintf("%s:%s:%s:%s:%s", name, sampleType, sampleUnit, periodType, periodUnit)
+
+				if _, ok := seen[key]; ok {
+					continue
+				}
+				seen[key] = struct{}{}
+
+			}
+
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	types := make([]string, 0, len(seen))
+	for key := range seen {
+		types = append(types, key)
+	}
+
+	return types, nil
+}
 
 type selectMergeReq struct {
 	query      string
@@ -52,14 +160,25 @@ func (i *Ingester) selectMerge(ctx context.Context, query profileQuery, start, e
 	if err != nil {
 		return nil, err
 	}
+	unit := metadata.Units(query.sampleUnit)
+	sampleRate := uint32(100)
+	switch query.sampleType {
+	case "inuse_objects", "alloc_objects", "goroutine", "samples":
+		unit = metadata.ObjectsUnits
+	case "cpu":
+		unit = metadata.SamplesUnits
+		sampleRate = uint32(100000000)
+
+	}
 	return &flamebearer.FlamebearerProfile{
 		Version: 1,
 		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
 			Flamebearer: *flame,
 			Metadata: flamebearer.FlamebearerMetadataV1{
-				Format: "single",
-				Units:  metadata.Units(query.sampleUnit),
-				Name:   query.sampleType,
+				Format:     "single",
+				Units:      unit,
+				Name:       query.sampleType,
+				SampleRate: sampleRate,
 			},
 		},
 	}, nil
@@ -253,13 +372,6 @@ func queryToFilterExprs(q profileQuery) ([]logicalplan.Expr, error) {
 		logicalplan.Col("period_unit").Eq(logicalplan.Literal(q.periodUnit)),
 	}, labelFilterExpressions...)
 
-	deltaPlan := logicalplan.Col("duration").Eq(logicalplan.Literal(0))
-	if q.delta {
-		deltaPlan = logicalplan.Col("duration").NotEq(logicalplan.Literal(0))
-	}
-
-	exprs = append(exprs, deltaPlan)
-
 	return exprs, nil
 }
 
@@ -276,4 +388,18 @@ func matchersToBooleanExpressions(matchers []*labels.Matcher) ([]logicalplan.Exp
 	}
 
 	return exprs, nil
+}
+
+func binaryFieldFromRecord(ar arrow.Record, name string) (*array.Binary, error) {
+	indices := ar.Schema().FieldIndices(name)
+	if len(indices) != 1 {
+		return nil, fmt.Errorf("expected 1 column named %q, got %d", name, len(indices))
+	}
+
+	col, ok := ar.Column(indices[0]).(*array.Binary)
+	if !ok {
+		return nil, fmt.Errorf("expected column %q to be a binary column, got %T", name, ar.Column(indices[0]))
+	}
+
+	return col, nil
 }
