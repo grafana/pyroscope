@@ -94,7 +94,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		}
 	}
 	tracker := pushTracker{
-		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendSamples() only sends once on each
+		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each
 		err:  make(chan error, 1),
 	}
 	for ingester, samples := range samplesByIngester {

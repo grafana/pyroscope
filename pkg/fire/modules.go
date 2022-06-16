@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	grpchealth "github.com/bufbuild/connect-grpchealth-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/kv/codec"
@@ -111,13 +112,14 @@ func (f *Fire) initRing() (_ services.Service, err error) {
 }
 
 func (f *Fire) initIngester() (_ services.Service, err error) {
-	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.GRPCListenPort
+	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
 	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.profileStore)
 	if err != nil {
 		return
 	}
 
+	f.Server.HTTP.Handle(grpchealth.NewHandler(grpchealth.NewStaticChecker(ingestv1connect.IngesterName)))
 	prefix, handler := ingestv1connect.NewIngesterHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	f.Server.HTTP.Handle("/render", http.HandlerFunc(ingester.RenderHandler))
