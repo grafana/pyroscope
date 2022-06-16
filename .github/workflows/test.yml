@@ -69,4 +69,4 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCR_JSON_KEY }}
       - name: Build & push multi-arch image
-        run: make docker-image/fire/push IMAGE_PLATFORM=linux/arm/v7,linux/arm64/v8,linux/amd64
+        run: make docker-image/fire/push IMAGE_PLATFORM=linux/arm64/v8,linux/amd64
