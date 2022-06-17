@@ -14,6 +14,7 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
@@ -44,6 +45,9 @@ type Distributor struct {
 	cfg           Config
 	ingestersRing ring.ReadRing
 	pool          *ring_client.Pool
+
+	subservices        *services.Manager
+	subservicesWatcher *services.FailureWatcher
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, logger log.Logger) (*Distributor, error) {
@@ -56,13 +60,32 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 		ingestersRing: ingestersRing,
 		pool:          NewPool(cfg.PoolConfig, ingestersRing, factory, logger),
 	}
-	d.Service = services.NewBasicService(nil, d.running, nil)
+	var err error
+	d.subservices, err = services.NewManager(d.pool)
+	if err != nil {
+		return nil, errors.Wrap(err, "services manager")
+	}
+	d.subservicesWatcher = services.NewFailureWatcher()
+	d.subservicesWatcher.WatchManager(d.subservices)
+	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
 	return d, nil
 }
 
+func (d *Distributor) starting(ctx context.Context) error {
+	return services.StartManagerAndAwaitHealthy(ctx, d.subservices)
+}
+
 func (d *Distributor) running(ctx context.Context) error {
-	<-ctx.Done()
-	return nil
+	select {
+	case <-ctx.Done():
+		return nil
+	case err := <-d.subservicesWatcher.Chan():
+		return errors.Wrap(err, "distributor subservice failed")
+	}
+}
+
+func (d *Distributor) stopping(_ error) error {
+	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
 }
 
 func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
