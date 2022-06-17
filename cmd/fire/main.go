@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafana/fire/pkg/cfg"
 	"github.com/grafana/fire/pkg/fire"
+	_ "github.com/grafana/fire/pkg/util/build"
 )
 
 func main() {
