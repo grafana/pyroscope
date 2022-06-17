@@ -10,6 +10,7 @@ import (
 
 	"github.com/apache/arrow/go/v8/arrow"
 	"github.com/apache/arrow/go/v8/arrow/array"
+	"github.com/bufbuild/connect-go"
 	"github.com/gogo/status"
 	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/parca-dev/parca/pkg/parcacol"
@@ -20,14 +21,16 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"google.golang.org/grpc/codes"
+
+	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 )
 
 // LabelValues returns the possible label values for a given label name.
-func (i *Ingester) LabelValues(ctx context.Context, name string) ([]string, error) {
+func (i *Ingester) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
 	vals := []string{}
 
 	err := i.engine.ScanTable("stacktraces").
-		Distinct(logicalplan.Col("labels."+name)).
+		Distinct(logicalplan.Col("labels."+req.Msg.Name)).
 		Execute(ctx, func(ar arrow.Record) error {
 			if ar.NumCols() != 1 {
 				return fmt.Errorf("expected 1 column, got %d", ar.NumCols())
@@ -51,11 +54,13 @@ func (i *Ingester) LabelValues(ctx context.Context, name string) ([]string, erro
 	}
 
 	sort.Strings(vals)
-	return vals, nil
+	return connect.NewResponse(&ingestv1.LabelValuesResponse{
+		Names: vals,
+	}), nil
 }
 
 // ProfileTypes returns the possible profile types.
-func (i *Ingester) ProfileTypes(ctx context.Context) ([]string, error) {
+func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	seen := map[string]struct{}{}
 	err := i.engine.ScanTable("stacktraces").
 		Distinct(
@@ -125,7 +130,9 @@ func (i *Ingester) ProfileTypes(ctx context.Context) ([]string, error) {
 		types = append(types, key)
 	}
 
-	return types, nil
+	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
+		Names: types,
+	}), nil
 }
 
 type selectMergeReq struct {

@@ -31,6 +31,7 @@ import (
 	"github.com/grafana/fire/pkg/distributor"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/profilestore"
+	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -39,6 +40,7 @@ type Config struct {
 	AgentConfig  agent.Config           `yaml:",inline"`
 	Server       server.Config          `yaml:"server,omitempty"`
 	Distributor  distributor.Config     `yaml:"distributor,omitempty"`
+	Querier      querier.Config         `yaml:"querier,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
 	ProfileStore profilestore.Config    `yaml:"profile_store,omitempty"`
@@ -60,6 +62,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.MemberlistKV.RegisterFlags(f)
 	c.ProfileStore.RegisterFlags(f)
 	c.Distributor.RegisterFlags(f)
+	c.Querier.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -165,6 +168,7 @@ func (f *Fire) setupModuleManager() error {
 	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
+	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(Agent, f.initAgent)
 	mm.RegisterModule(All, nil)
 
@@ -172,6 +176,7 @@ func (f *Fire) setupModuleManager() error {
 	deps := map[string][]string{
 		All:          {Agent, Ingester, Distributor},
 		Distributor:  {Ring, Server},
+		Querier:      {Ring, Server},
 		Agent:        {Server},
 		Ingester:     {Server, MemberlistKV, ProfileStore},
 		ProfileStore: {},

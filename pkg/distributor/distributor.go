@@ -14,25 +14,32 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	"github.com/grafana/fire/pkg/ingester/clientpool"
 )
+
+// todo: move to non global metrics.
+var clients = promauto.NewGauge(prometheus.GaugeOpts{
+	Namespace: "fire",
+	Name:      "distributor_ingester_clients",
+	Help:      "The current number of ingester clients.",
+})
 
 // Config for a Distributor.
 type Config struct {
-	// Distributors ring
-	DistributorRing RingConfig `yaml:"ring,omitempty"`
-	PushTimeout     time.Duration
-	PoolConfig      PoolConfig `yaml:"pool_config,omitempty"`
+	PushTimeout time.Duration
+	PoolConfig  clientpool.PoolConfig `yaml:"pool_config,omitempty"`
 }
 
 // RegisterFlags registers distributor-related flags.
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
-	cfg.DistributorRing.RegisterFlags(fs)
-	cfg.PoolConfig.RegisterFlags(fs)
+	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
 }
 
@@ -47,14 +54,11 @@ type Distributor struct {
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, logger log.Logger) (*Distributor, error) {
-	if factory == nil {
-		factory = PoolFactory
-	}
 	d := &Distributor{
 		cfg:           cfg,
 		logger:        logger,
 		ingestersRing: ingestersRing,
-		pool:          NewPool(cfg.PoolConfig, ingestersRing, factory, logger),
+		pool:          clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger),
 	}
 	d.Service = services.NewBasicService(nil, d.running, nil)
 	return d, nil
