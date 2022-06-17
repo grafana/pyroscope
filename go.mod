@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/apache/arrow/go/v8 v8.0.0-20220414050214-b61fb727fcc9
 	github.com/bufbuild/connect-go v0.1.0
+	github.com/bufbuild/connect-grpchealth-go v0.1.0
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/drone/envsubst v1.0.3
 	github.com/go-kit/log v0.2.1
@@ -14,6 +15,7 @@ require (
 	github.com/grafana/dskit v0.0.0-20220526081034-789ec0ca4a3b
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/opentracing/opentracing-go v1.2.0
 	github.com/parca-dev/parca v0.11.1-0.20220608104838-4e857ab70594
 	github.com/pkg/errors v0.9.1
 	github.com/polarsignals/arcticdb v0.0.0-20220607075621-19ee11509854
@@ -27,6 +29,7 @@ require (
 	github.com/weaveworks/common v0.0.0-20220428113342-f83ccc76d823
 	github.com/xlab/treeprint v1.1.0
 	go.opentelemetry.io/otel/trace v1.7.0
+	go.uber.org/atomic v1.9.0
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.47.0
@@ -191,7 +194,6 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opentracing-contrib/go-grpc v0.0.0-20210225150812-73cb765af46e // indirect
 	github.com/opentracing-contrib/go-stdlib v1.0.0 // indirect
-	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.12 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -223,7 +225,6 @@ require (
 	go.opentelemetry.io/otel v1.7.0 // indirect
 	go.opentelemetry.io/otel/internal/metric v0.27.0 // indirect
 	go.opentelemetry.io/otel/metric v0.27.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/goleak v1.1.12 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
