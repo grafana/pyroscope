@@ -1,22 +1,48 @@
+{{- $global := . }}
+{{- $component_names := list }}
+{{- $component_kinds := list }}
+{{- range .Values.fire.stateful_set_targets }}
+{{- $component_names = append $component_names . }}
+{{- $component_kinds = append $component_kinds "StatefulSet" }}
+{{- end }}
+{{- range .Values.fire.deployment_targets }}
+{{- $component_names = append $component_names . }}
+{{- $component_kinds = append $component_kinds "Deployment" }}
+{{- end }}
+{{- if eq (len $component_names) 0 }}
+{{- $component_names = append $component_names "" }}
+{{- $component_kinds = append $component_kinds "StatefulSet" }}
+{{- end }}
+{{- range $pos, $component := $component_names }}
+{{- with $global }}
+{{- $kind := index $component_kinds $pos }}
+{{- $name := printf "%s-%s" (include "fire.fullname" . ) $component | trimSuffix "-" }}
+---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: {{ $kind }}
 metadata:
-  name: {{ include "fire.fullname" . }}
+  name: {{ $name }}
   labels:
     {{- include "fire.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  serviceName: {{ include "fire.fullname" . }}-headless
+{{- if eq $kind "StatefulSet" }}
+  serviceName: {{ $name }}-headless
+{{- end }}
   selector:
     matchLabels:
       {{- include "fire.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component | quote }}
   template:
     metadata:
-    {{- with .Values.fire.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.fire.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-    {{- end }}
+        {{- end }}
       labels:
         {{- include "fire.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component | quote }}
     spec:
       {{- with .Values.fire.imagePullSecrets }}
       imagePullSecrets:
@@ -67,7 +93,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "fire.fullname" . }}-config-{{ .Values.fire.config | sha256sum | trunc 16 }}
+            name: {{ include "fire.fullname" . }}-config
   {{- if not .Values.fire.persistence.enabled }}
         - name: data
           emptyDir: {}
@@ -93,3 +119,5 @@ spec:
         {{- toYaml .Values.fire.persistence.selector | nindent 8 }}
       {{- end }}
   {{- end }}
+{{- end }}
+{{- end }}

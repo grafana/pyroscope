@@ -81,6 +81,10 @@ fire:
 
   affinity: {}
 
+  # run specific targets in specific styles
+  deployment_targets: []
+  stateful_set_targets: []
+
   config: |
     scrape_configs:
       - job_name: "default"

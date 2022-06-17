@@ -1,0 +1,7 @@
+# Default values for fire.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+fire:
+  deployment_targets: [querier, distributor,agent]
+  stateful_set_targets: [ingester]
