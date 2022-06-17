@@ -33,7 +33,7 @@ spec:
           imagePullPolicy: {{ .Values.fire.image.pullPolicy }}
           args:
             - "-config.file=/etc/fire/config.yaml"
-          {{- range $key, $value := .Values.extraArgs }}
+          {{- range $key, $value := .Values.fire.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
           ports:
