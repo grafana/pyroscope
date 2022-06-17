@@ -213,8 +213,11 @@ install-dev-tools: ## Install dev tools
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
 .PHONY: web-bootstrap
-web-bootstrap:
+web-bootstrap: install-web-dependencies
 	yarn bootstrap
+# build webapp just to get its dependencies built
+# otherwise when first running, the webapp will fail to build since its deps don't exist yet
+	yarn build:webapp > /dev/null
 
 .PHONY: dev
 dev: web-bootstrap ## Start webpack and pyroscope server. Use this one for working on pyroscope
