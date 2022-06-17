@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/profilestore"
+	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -40,12 +41,12 @@ const (
 	Ingester     string = "ingester"
 	MemberlistKV string = "memberlist-kv"
 	ProfileStore string = "profile-store"
+	Querier      string = "querier"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
 	// OverridesExporter        string = "overrides-exporter"
 	// TenantConfigs            string = "tenant-configs"
-	// Querier                  string = "querier"
 	// IngesterQuerier          string = "ingester-querier"
 	// QueryFrontend            string = "query-frontend"
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
@@ -58,6 +59,15 @@ const (
 	// QueryScheduler           string = "query-scheduler"
 	// UsageReport              string = "usage-report"
 )
+
+func (f *Fire) initQuerier() (services.Service, error) {
+	q, err := querier.New(f.Cfg.Querier, f.ring, nil, f.logger)
+	if err != nil {
+		return nil, err
+	}
+	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
+	return q, nil
+}
 
 func (f *Fire) initDistributor() (services.Service, error) {
 	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.logger)
@@ -124,7 +134,6 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(ingester.RenderHandler))
-	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(ingester.LabelValuesHandler))
 	return ingester, nil
 }
 

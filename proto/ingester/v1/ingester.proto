@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package ingest.v1;
+
+import "push/v1/push.proto";
+
+option go_package = "github.com/grafana/fire/pkg/gen/go/v1/ingest;ingestv1";
+
+service Ingester {
+  rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
+
+  rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
+  rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
+}
+
+message LabelValuesRequest {
+  string name = 1;
+}
+
+message LabelValuesResponse {
+  repeated string names = 1;
+}
+
+message ProfileTypesRequest {
+}
+
+message ProfileTypesResponse {
+  repeated string names = 1;
+}

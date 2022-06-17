@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 
+	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
 )
@@ -205,10 +206,10 @@ func Test_QueryMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	clusters, err := d.LabelValues(context.Background(), "cluster")
+	clusterRes, err := d.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"us-central1", "us-east1"}, clusters)
-	types, err := d.ProfileTypes(context.Background())
+	require.Equal(t, []string{"us-central1", "us-east1"}, clusterRes.Msg.Names)
+	typeRes, err := d.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
 	expectedTypes := []string{
 		"memory:inuse_space:bytes:space:bytes",
@@ -217,6 +218,6 @@ func Test_QueryMetadata(t *testing.T) {
 		"memory:alloc_objects:count:space:bytes",
 	}
 	sort.Strings(expectedTypes)
-	sort.Strings(types)
-	require.Equal(t, expectedTypes, types)
+	sort.Strings(typeRes.Msg.Names)
+	require.Equal(t, expectedTypes, typeRes.Msg.Names)
 }

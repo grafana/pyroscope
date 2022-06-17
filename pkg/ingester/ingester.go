@@ -139,38 +139,6 @@ func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// LabelValuesHandler only returns the label values for the given label name.
-// This is mostly for fulfilling the pyroscope API and won't be used in the future.
-// /label-values?label=__name__
-func (i *Ingester) LabelValuesHandler(w http.ResponseWriter, req *http.Request) {
-	label := req.URL.Query().Get("label")
-	if label == "" {
-		http.Error(w, "label parameter is required", http.StatusBadRequest)
-		return
-	}
-	var (
-		res []string
-		err error
-	)
-
-	if label == "__name__" {
-		res, err = i.ProfileTypes(req.Context())
-	} else {
-		res, err = i.LabelValues(req.Context(), label)
-	}
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
 func matcherToBooleanExpression(matcher *labels.Matcher) (logicalplan.Expr, error) {
 	ref := logicalplan.Col("labels." + matcher.Name)
 	switch matcher.Type {
