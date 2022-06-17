@@ -12,9 +12,6 @@ import (
 	"testing"
 	"time"
 
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
-
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
@@ -23,6 +20,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
+
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 )
 
 func Test_ConnectPush(t *testing.T) {
@@ -47,7 +48,7 @@ func Test_ConnectPush(t *testing.T) {
 	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
 				Samples: []*pushv1.RawSample{
@@ -72,7 +73,7 @@ func Test_Replication(t *testing.T) {
 	req := connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
 				Samples: []*pushv1.RawSample{
