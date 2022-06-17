@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/version"
 	"github.com/weaveworks/common/logging"
 	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
@@ -220,7 +221,7 @@ func (f *Fire) Run() error {
 	f.Server.HTTP.Path("/ready").Methods("GET").Handler(f.readyHandler(sm))
 
 	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, grpcutil.NewHealthCheck(sm))
-	healthy := func() { level.Info(f.logger).Log("msg", "Fire started") }
+	healthy := func() { level.Info(f.logger).Log("msg", "Fire started", "version", version.Info()) }
 	stopped := func() { level.Info(f.logger).Log("msg", "Fire stopped") }
 	serviceFailed := func(service services.Service) {
 		// if any service fails, stop entire Fire
