@@ -105,7 +105,7 @@ func Test_Replication(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-func Test_UnhealthyPool(t *testing.T) {
+func Test_Subservices(t *testing.T) {
 	ing := newFakeIngester(t, false)
 	d, err := New(Config{
 		PoolConfig: PoolConfig{ClientCleanupPeriod: 1 * time.Second},
@@ -122,7 +122,7 @@ func Test_UnhealthyPool(t *testing.T) {
 	require.NoError(t, d.StartAsync(context.Background()))
 	require.Eventually(t, func() bool {
 		fmt.Println(d.State())
-		return d.State() == services.Running
+		return d.State() == services.Running && d.pool.State() == services.Running
 	}, 5*time.Second, 100*time.Millisecond)
 	d.StopAsync()
 	require.Eventually(t, func() bool {
