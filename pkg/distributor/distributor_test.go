@@ -26,7 +26,7 @@ import (
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
 	d, err := New(Config{}, &mockRing{
-		replicationFactor: 3,
+		replicationFactor: 1,
 		ingesters: []ring.InstanceDesc{
 			{Addr: "foo"},
 		},
@@ -104,6 +104,12 @@ func (r mockRing) Get(key uint32, op ring.Operation, buf []ring.InstanceDesc, _ 
 		MaxErrors: 1,
 		Instances: buf[:0],
 	}
+	if r.replicationFactor == 1 && len(r.ingesters) == 1 {
+		result.MaxErrors = 0
+		result.Instances = append(result.Instances, r.ingesters[0])
+		return result, nil
+	}
+
 	for i := uint32(0); i < r.replicationFactor; i++ {
 		n := (key + i) % uint32(len(r.ingesters))
 		result.Instances = append(result.Instances, r.ingesters[n])
