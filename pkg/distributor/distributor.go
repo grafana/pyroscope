@@ -97,6 +97,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each
 		err:  make(chan error, 1),
 	}
+	tracker.samplesPending.Store(int32(len(profiles)))
 	for ingester, samples := range samplesByIngester {
 		go func(ingester ring.InstanceDesc, samples []*profileTracker) {
 			// Use a background context to make sure all ingesters get samples even if we return early
