@@ -230,13 +230,16 @@ func (t *Target) fetchProfile(ctx context.Context, profileType string, buf io.Wr
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server returned HTTP status %s", resp.Status)
-	}
-
 	b, err := ioutil.ReadAll(io.TeeReader(resp.Body, buf))
 	if err != nil {
 		return fmt.Errorf("failed to read body: %w", err)
+	}
+
+	if resp.StatusCode/100 != 2 {
+		if len(b) > 0 {
+			return fmt.Errorf("server returned HTTP status (%d) %v", resp.StatusCode, string(bytes.TrimSpace(b)))
+		}
+		return fmt.Errorf("server returned HTTP status (%d) %v", resp.StatusCode, resp.Status)
 	}
 
 	if len(b) == 0 {
