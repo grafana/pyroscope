@@ -26,7 +26,7 @@ import (
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
 	d, err := New(Config{}, &mockRing{
-		replicationFactor: 1,
+		replicationFactor: 3,
 		ingesters: []ring.InstanceDesc{
 			{Addr: "foo"},
 		},
