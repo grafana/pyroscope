@@ -72,6 +72,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 	)
 
 	for _, series := range req.Msg.Series {
+		// todo propagate tenantID.
 		keys = append(keys, TokenFor("", labelsString(series.Labels)))
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
@@ -200,9 +201,9 @@ func labelsString(ls []*pushv1.LabelPair) string {
 }
 
 // TokenFor generates a token used for finding ingesters from ring
-func TokenFor(userID, labels string) uint32 {
+func TokenFor(tenantID, labels string) uint32 {
 	h := fnv.New32()
-	_, _ = h.Write([]byte(userID))
+	_, _ = h.Write([]byte(tenantID))
 	_, _ = h.Write([]byte(labels))
 	return h.Sum32()
 }
