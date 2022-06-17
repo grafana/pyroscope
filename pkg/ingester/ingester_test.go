@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
@@ -82,7 +83,7 @@ func Test_ConnectPush(t *testing.T) {
 	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "my_own_profile"},
 					{Name: "cluster", Value: "us-central1"},
 				},

@@ -1,15 +1,21 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log/level"
 	"github.com/parca-dev/parca/pkg/scrape"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+
+	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 )
 
 // DiscoveredTargets has all the targets discovered by the agent.
@@ -42,6 +48,52 @@ type APIDroppedTarget struct {
 	// Any labels that are added to this target and its profiles.
 	Labels    map[string]string `json:"labels"`
 	ScrapeURL string            `json:"scrapeUrl"`
+}
+
+func (a *Agent) GetTargets(ctx context.Context, req *connect.Request[agentv1.GetTargetsRequest]) (*connect.Response[agentv1.GetTargetsResponse], error) {
+	showActive := req.Msg.State == agentv1.State_STATE_UNSPECIFIED || req.Msg.State == agentv1.State_STATE_ACTIVE
+	showDropped := req.Msg.State == agentv1.State_STATE_UNSPECIFIED || req.Msg.State == agentv1.State_STATE_DROPPED
+
+	resp := agentv1.GetTargetsResponse{}
+
+	if showActive {
+		targetsActive := a.ActiveTargets()
+		resp.ActiveTargets = make([]*agentv1.Target, 0, len(targetsActive))
+		for group, tg := range targetsActive {
+			for _, target := range tg {
+				lastErrStr := ""
+				lastErr := target.LastError()
+				if lastErr != nil {
+					lastErrStr = lastErr.Error()
+				}
+
+				var err error
+				resp.ActiveTargets = append(resp.ActiveTargets, &agentv1.Target{
+					Labels:     target.CommonV1Labels(),
+					ScrapePool: group,
+					ScrapeUrl:  target.URL().String(),
+					LastError: func() string {
+						if err == nil && lastErrStr == "" {
+							return ""
+						} else if err != nil {
+							return errors.Wrapf(err, lastErrStr).Error()
+						}
+						return lastErrStr
+					}(),
+					LastScrape:         timestamppb.New(target.LastScrape()),
+					LastScrapeDuration: durationpb.New(target.LastScrapeDuration()),
+					Health:             target.Health(),
+					ScrapeInterval:     durationpb.New(target.interval),
+					ScrapeTimeout:      durationpb.New(target.timeout),
+				})
+			}
+		}
+	}
+
+	if showDropped {
+	}
+
+	return connect.NewResponse(&resp), nil
 }
 
 // targets serves the targets page.
@@ -80,9 +132,9 @@ func (a *Agent) TargetsHandler(rw http.ResponseWriter, req *http.Request) {
 					}(),
 					LastScrape:         target.LastScrape(),
 					LastScrapeDuration: target.LastScrapeDuration().Seconds(),
-					Health:             target.Health(),
-					ScrapeInterval:     target.GetValue(model.ScrapeIntervalLabel),
-					ScrapeTimeout:      target.GetValue(model.ScrapeTimeoutLabel),
+					//					Health:             target.Health(),
+					ScrapeInterval: target.GetValue(model.ScrapeIntervalLabel),
+					ScrapeTimeout:  target.GetValue(model.ScrapeTimeoutLabel),
 				})
 			}
 		}
