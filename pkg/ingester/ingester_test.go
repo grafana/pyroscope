@@ -43,10 +43,11 @@ func defaultIngesterTestConfig(t testing.TB) Config {
 	return cfg
 }
 
-func Test_ConnectPush(t *testing.T) {
-	cfg := defaultIngesterTestConfig(t)
-	logger := log.NewLogfmtLogger(os.Stdout)
+func defaultProfileStoreTestConfig(t testing.TB) *profilestore.Config {
+	cfg := &profilestore.Config{}
+	flagext.DefaultValues(cfg)
 
+	// create data path
 	dataPath, err := os.MkdirTemp("", "fire-db")
 	require.NoError(t, err)
 	t.Logf("created temporary data path: %s", dataPath)
@@ -55,8 +56,16 @@ func Test_ConnectPush(t *testing.T) {
 			t.Logf("remove data path failed: %v", err)
 		}
 	})
+	cfg.DataPath = dataPath
 
-	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), &profilestore.Config{DataPath: dataPath})
+	return cfg
+}
+
+func Test_ConnectPush(t *testing.T) {
+	cfg := defaultIngesterTestConfig(t)
+	logger := log.NewLogfmtLogger(os.Stdout)
+
+	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
 	require.NoError(t, err)
 
 	mux := http.NewServeMux()
