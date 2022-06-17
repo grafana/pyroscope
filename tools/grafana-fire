@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 
-FIRE_URL=${FIRE_URL:-http://127.0.0.1:4100/pyroscope}
+DOCKER_ARGS="--net=host"
 
-datasource_provisioning=$(mktemp -u --suffix ".yaml")
+if [[ $OSTYPE == 'darwin'* ]]; then
+    FIRE_URL=${FIRE_URL:-http://docker.for.mac.localhost:4100/pyroscope}
+    DOCKER_ARGS=""
+else
+    FIRE_URL=${FIRE_URL:-http://localhost:4100/pyroscope}
+fi
+
+datasource_provisioning="$(mktemp "${TMPDIR:-/tmp}/fire-provisioning-XXXXXX")"
+chmod 0644 "${datasource_provisioning}"
 trap 'rm -f "${datasource_provisioning}"' EXIT
 cat > "${datasource_provisioning}" <<EOF
 apiVersion: 1
-
 datasources:
   - name: Fire
     type: pyroscope-datasource
@@ -14,7 +21,7 @@ datasources:
       path: ${FIRE_URL}
 EOF
 
-docker run --net=host --rm \
+docker run $DOCKER_ARGS --rm \
   --name fire-grafana \
   -v "${datasource_provisioning}:/etc/grafana/provisioning/datasources/fire.yaml:ro" \
   -e GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel \
