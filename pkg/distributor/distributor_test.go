@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
+	"github.com/grafana/dskit/services"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 )
@@ -101,6 +103,32 @@ func Test_Replication(t *testing.T) {
 	resp, err = d.Push(context.Background(), req)
 	require.Error(t, err)
 	require.Nil(t, resp)
+}
+
+func Test_UnhealthyPool(t *testing.T) {
+	ing := newFakeIngester(t, false)
+	d, err := New(Config{
+		PoolConfig: PoolConfig{ClientCleanupPeriod: 1 * time.Second},
+	}, &mockRing{
+		replicationFactor: 3,
+		ingesters: []ring.InstanceDesc{
+			{Addr: "foo"},
+		},
+	}, func(addr string) (client.PoolClient, error) {
+		return ing, nil
+	}, log.NewLogfmtLogger(os.Stdout))
+
+	require.NoError(t, err)
+	require.NoError(t, d.StartAsync(context.Background()))
+	require.Eventually(t, func() bool {
+		fmt.Println(d.State())
+		return d.State() == services.Running
+	}, 5*time.Second, 100*time.Millisecond)
+	d.StopAsync()
+	require.Eventually(t, func() bool {
+		fmt.Println(d.State())
+		return d.State() == services.Terminated && d.pool.State() == services.Terminated
+	}, 5*time.Second, 100*time.Millisecond)
 }
 
 func testProfile(t *testing.T) []byte {
