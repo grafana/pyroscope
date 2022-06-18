@@ -2,9 +2,6 @@ FROM ruby:2.7.4
 
 USER root
 
-RUN gem install pyroscope_beta
-RUN gem install ffi
-
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
