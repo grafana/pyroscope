@@ -14,6 +14,18 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
+const (
+	_ = iota
+	sampleTypeCpu
+	sampleTypeWall
+	sampleTypeInTLABObjects
+	sampleTypeInTLABBytes
+	sampleTypeOutTLABObjects
+	sampleTypeOutTLABBytes
+	sampleTypeLockSamples
+	sampleTypeLockDuration
+)
+
 func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
 	chunks, err := parser.ParseWithOptions(body, &parser.ChunkParseOptions{
 		CPoolProcessor: processSymbols,
@@ -31,140 +43,191 @@ func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage
 
 // revive:disable-next-line:cognitive-complexity necessary complexity
 func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
-	var event, alloc, lock string
+	var event string
 	for _, e := range c.Events {
 		if as, ok := e.(*parser.ActiveSetting); ok {
 			switch as.Name {
 			case "event":
 				event = as.Value
-			case "alloc":
-				alloc = as.Value
-			case "lock":
-				lock = as.Value
 			}
 		}
 	}
+	cache := make(tree.LabelsCache)
 	for contextID, events := range groupEventsByContextID(c.Events) {
-		resolvedJfrLabels := resolveLabels(contextID, jfrLabels)
-		cpu := tree.New()
-		wall := tree.New()
-		inTLABObjects := tree.New()
-		inTLABBytes := tree.New()
-		outTLABObjects := tree.New()
-		outTLABBytes := tree.New()
-		lockSamples := tree.New()
-		lockDuration := tree.New()
+		labels := getContextLabels(contextID, jfrLabels)
+		//cpu := tree.New()
+		//wall := tree.New()
+		//inTLABObjects := tree.New()
+		//inTLABBytes := tree.New()
+		//outTLABObjects := tree.New()
+		//outTLABBytes := tree.New()
+		//lockSamples := tree.New()
+		//lockDuration := tree.New()
 		for _, e := range events {
 			switch e.(type) {
 			case *parser.ExecutionSample:
 				es := e.(*parser.ExecutionSample)
 				if fs := frames(es.StackTrace); fs != nil {
 					if es.State.Name == "STATE_RUNNABLE" {
-						cpu.InsertStackString(fs, 1)
+						cache.GetOrCreateTree(sampleTypeCpu, labels).InsertStackString(fs, 1)
 					}
-					wall.InsertStackString(fs, 1)
+					cache.GetOrCreateTree(sampleTypeWall, labels).InsertStackString(fs, 1)
 				}
 			case *parser.ObjectAllocationInNewTLAB:
 				oa := e.(*parser.ObjectAllocationInNewTLAB)
 				if fs := frames(oa.StackTrace); fs != nil {
-					inTLABObjects.InsertStackString(fs, 1)
-					inTLABBytes.InsertStackString(fs, uint64(oa.TLABSize))
+					cache.GetOrCreateTree(sampleTypeInTLABObjects, labels).InsertStackString(fs, 1)
+					cache.GetOrCreateTree(sampleTypeInTLABBytes, labels).InsertStackString(fs, uint64(oa.TLABSize))
 				}
 			case *parser.ObjectAllocationOutsideTLAB:
 				oa := e.(*parser.ObjectAllocationOutsideTLAB)
 				if fs := frames(oa.StackTrace); fs != nil {
-					outTLABObjects.InsertStackString(fs, 1)
-					outTLABBytes.InsertStackString(fs, uint64(oa.AllocationSize))
+					cache.GetOrCreateTree(sampleTypeOutTLABObjects, labels).InsertStackString(fs, 1)
+					cache.GetOrCreateTree(sampleTypeOutTLABBytes, labels).InsertStackString(fs, uint64(oa.AllocationSize))
 				}
 			case *parser.JavaMonitorEnter:
 				jme := e.(*parser.JavaMonitorEnter)
 				if fs := frames(jme.StackTrace); fs != nil {
-					lockSamples.InsertStackString(fs, 1)
-					lockDuration.InsertStackString(fs, uint64(jme.Duration))
+					cache.GetOrCreateTree(sampleTypeLockSamples, labels).InsertStackString(fs, 1)
+					cache.GetOrCreateTree(sampleTypeLockDuration, labels).InsertStackString(fs, uint64(jme.Duration))
 				}
 			case *parser.ThreadPark:
 				tp := e.(*parser.ThreadPark)
 				if fs := frames(tp.StackTrace); fs != nil {
-					lockSamples.InsertStackString(fs, 1)
-					lockDuration.InsertStackString(fs, uint64(tp.Duration))
+					cache.GetOrCreateTree(sampleTypeLockSamples, labels).InsertStackString(fs, 1)
+					cache.GetOrCreateTree(sampleTypeLockDuration, labels).InsertStackString(fs, uint64(tp.Duration))
 				}
 			}
 		}
-
-		labelsOriginal := piOriginal.Key.Labels()
-		prefix := labelsOriginal["__name__"]
-
-		cb := func(n string, t *tree.Tree, u metadata.Units) {
-			labels := map[string]string{}
-			for k, v := range labelsOriginal {
-				labels[k] = v
-			}
-			for k, v := range resolvedJfrLabels {
-				labels[k] = v
-			}
-
-			labels["__name__"] = prefix + "." + n
-			pi := &storage.PutInput{
-				StartTime:       piOriginal.StartTime,
-				EndTime:         piOriginal.EndTime,
-				Key:             segment.NewKey(labels),
-				Val:             t,
-				SpyName:         piOriginal.SpyName,
-				SampleRate:      piOriginal.SampleRate,
-				Units:           u,
-				AggregationType: metadata.SumAggregationType,
-			}
-			if putErr := s.Put(ctx, pi); putErr != nil {
-				err = multierror.Append(err, putErr)
+	}
+	for sampleType, entries := range cache {
+		for _, e := range entries {
+			if i := labelIndex(jfrLabels, e.Labels, segment.ProfileIDLabelName); i != -1 {
+				cutLabels := tree.CutLabel(e.Labels, i)
+				cache.GetOrCreateTree(sampleType, cutLabels).Merge(e.Tree)
 			}
 		}
-
-		if event == "cpu" || event == "itimer" || event == "wall" {
-			profile := event
-			if event == "wall" {
-				profile = "cpu"
-			}
-			cb(profile, cpu, metadata.SamplesUnits)
+	}
+	cb := func(n string, labels tree.Labels, t *tree.Tree, u metadata.Units) {
+		key := buildKey(n, piOriginal.Key.Labels(), labels, jfrLabels)
+		pi := &storage.PutInput{
+			StartTime:       piOriginal.StartTime,
+			EndTime:         piOriginal.EndTime,
+			Key:             key,
+			Val:             t,
+			SpyName:         piOriginal.SpyName,
+			SampleRate:      piOriginal.SampleRate,
+			Units:           u,
+			AggregationType: metadata.SumAggregationType,
 		}
-		if event == "wall" {
-			cb(event, wall, metadata.SamplesUnits)
+		if putErr := s.Put(ctx, pi); putErr != nil {
+			err = multierror.Append(err, putErr)
 		}
-		if alloc != "" {
-			cb("alloc_in_new_tlab_objects", inTLABObjects, metadata.ObjectsUnits)
-			cb("alloc_in_new_tlab_bytes", inTLABBytes, metadata.BytesUnits)
-			cb("alloc_outside_tlab_objects", outTLABObjects, metadata.ObjectsUnits)
-			cb("alloc_outside_tlab_bytes", outTLABBytes, metadata.BytesUnits)
+	}
+	for sampleType, entries := range cache {
+		if sampleType == sampleTypeWall && event != "wall" {
+			continue
 		}
-		if lock != "" {
-			cb("lock_count", lockSamples, metadata.LockSamplesUnits)
-			cb("lock_duration", lockDuration, metadata.LockNanosecondsUnits)
+		n := getName(sampleType, event)
+		units := getUnits(sampleType)
+		for _, e := range entries {
+			cb(n, e.Labels, e.Tree, units)
 		}
 	}
 	return err
 }
 
-func resolveLabels(contextID int64, labels *LabelsSnapshot) map[string]string {
-	res := make(map[string]string)
+func getName(sampleType int64, event string) string {
+	switch sampleType {
+	case sampleTypeCpu:
+		if event == "cpu" || event == "itimer" || event == "wall" {
+			profile := event
+			if event == "wall" {
+				profile = "cpu"
+			}
+			return profile
+		}
+	case sampleTypeWall:
+		return "wall"
+	case sampleTypeInTLABObjects:
+		return "alloc_in_new_tlab_objects"
+	case sampleTypeInTLABBytes:
+		return "alloc_in_new_tlab_bytes"
+	case sampleTypeOutTLABObjects:
+		return "alloc_outside_tlab_objects"
+	case sampleTypeOutTLABBytes:
+		return "alloc_outside_tlab_bytes"
+	case sampleTypeLockSamples:
+		return "lock_count"
+	case sampleTypeLockDuration:
+		return "lock_duration"
+	}
+	return "unknown"
+}
+
+func getUnits(sampleType int64) metadata.Units {
+	switch sampleType {
+	case sampleTypeCpu:
+		return metadata.SamplesUnits
+	case sampleTypeWall:
+		return metadata.SamplesUnits
+	case sampleTypeInTLABObjects:
+		return metadata.ObjectsUnits
+	case sampleTypeInTLABBytes:
+		return metadata.BytesUnits
+	case sampleTypeOutTLABObjects:
+		return metadata.ObjectsUnits
+	case sampleTypeOutTLABBytes:
+		return metadata.BytesUnits
+	case sampleTypeLockSamples:
+		return metadata.LockSamplesUnits
+	case sampleTypeLockDuration:
+		return metadata.LockNanosecondsUnits
+	}
+	return metadata.SamplesUnits
+}
+func buildKey(n string, appLabels map[string]string, labels tree.Labels, snapshot *LabelsSnapshot) *segment.Key {
+	finalLabels := map[string]string{}
+	for k, v := range appLabels {
+		finalLabels[k] = v
+	}
+	for _, v := range labels { //todo
+		ks, ok := snapshot.Strings[v.Key]
+		if !ok {
+			continue
+		}
+		vs, ok := snapshot.Strings[v.Str]
+		finalLabels[ks] = vs
+	}
+
+	finalLabels["__name__"] += "." + n
+	return segment.NewKey(finalLabels)
+}
+
+func getContextLabels(contextID int64, labels *LabelsSnapshot) tree.Labels {
 	if contextID == 0 {
-		return res
+		return nil
 	}
 	var ctx *Context
 	var ok bool
 	if ctx, ok = labels.Contexts[contextID]; !ok {
-		return res
+		return nil
 	}
+	res := make(tree.Labels, 0, len(ctx.Labels))
 	for k, v := range ctx.Labels {
-		var ks string
-		var vs string
-		if ks, ok = labels.Strings[k]; !ok {
-			continue
-		}
-		if vs, ok = labels.Strings[v]; !ok {
-			continue
-		}
-		res[ks] = vs
+		res = append(res, &tree.Label{Key: k, Str: v})
 	}
 	return res
+}
+func labelIndex(s *LabelsSnapshot, labels tree.Labels, key string) int {
+	for i, label := range labels {
+		if n, ok := s.Strings[label.Key]; ok {
+			if n == key {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 func groupEventsByContextID(events []parser.Parseable) map[int64][]parser.Parseable {

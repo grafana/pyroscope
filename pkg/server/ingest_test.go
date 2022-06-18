@@ -205,7 +205,7 @@ var _ = Describe("server", func() {
 
 						close(done)
 					}()
-					Eventually(done, 2).Should(BeClosed())
+					Eventually(done, 10).Should(BeClosed())
 				})
 			}
 
@@ -328,12 +328,14 @@ var _ = Describe("server", func() {
 					for _, t := range types {
 						func(t string) {
 							type contextID struct {
-								id  string
-								key string
+								id    string
+								sleep time.Duration
+								key   string
 							}
 							cids := []contextID{
-								{id: "0", key: `test.app.` + t + `{foo="bar", baz="qux"}`},
-								{id: "1", key: `test.app.` + t + `{foo="bar", baz="qux", thread_name="pool-2-thread-8"}`},
+								{id: "0", sleep: 500 * time.Millisecond, key: `test.app.` + t + `{foo="bar", baz="qux"}`},
+								{id: "1", sleep: 500 * time.Millisecond, key: `test.app.` + t + `{foo="bar", baz="qux", thread_name="pool-2-thread-8"}`},
+								{id: "2", sleep: 6 * time.Second, key: `test.app.` + t + `{foo="bar", baz="qux", thread_name="pool-2-thread-8",profile_id="239239239239"}`},
 							}
 							for _, cid := range cids {
 								func(cid contextID) {
@@ -342,6 +344,7 @@ var _ = Describe("server", func() {
 											BeforeEach(func() {
 												// typeName = t
 												expectedKey = cid.key
+												sleepDur = cid.sleep
 												expectedTree = readTestdataFile("./testdata/jfr/with_labels/" + cid.id + "/jfr-" + t + ".txt")
 											})
 											ItCorrectlyParsesIncomingData(appNames)
