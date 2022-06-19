@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc"

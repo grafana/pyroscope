@@ -12,11 +12,6 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-type apiFuncResult struct {
-	data interface{}
-	err  *error
-}
-
 // DiscoveredTargets has all the targets discovered by the agent.
 type TargetDiscovery struct {
 	ActiveTargets  []*APITarget        `json:"activeTargets"`
@@ -110,5 +105,8 @@ func (a *Agent) TargetsHandler(rw http.ResponseWriter, req *http.Request) {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	rw.Write(b)
+	n, err := rw.Write(b)
+	if err != nil {
+		level.Error(a.logger).Log("msg", "error writing to response", "numBytes", n, "err", err)
+	}
 }
