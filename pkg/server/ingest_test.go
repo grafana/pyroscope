@@ -119,7 +119,7 @@ var _ = Describe("server", func() {
 						reg := prometheus.NewRegistry()
 
 						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), reg, new(health.Controller))
-						queue := storage.NewIngestionQueue(logrus.StandardLogger(), s, reg, 4, 4)
+						queue := storage.NewIngestionQueue(logrus.StandardLogger(), s, reg, 4, 128)
 
 						Expect(err).ToNot(HaveOccurred())
 						e, _ := exporter.NewExporter(nil, nil)
@@ -180,20 +180,24 @@ var _ = Describe("server", func() {
 							EndTime:   et,
 							Key:       sk,
 						})
-						Expect(gOut).ToNot(BeNil())
 						Expect(err).ToNot(HaveOccurred())
-						Expect(gOut.Tree).ToNot(BeNil())
+						if expectedTree != "" {
+							Expect(gOut).ToNot(BeNil())
+							Expect(gOut.Tree).ToNot(BeNil())
 
-						// Checks if only the expected app names were inserted
-						// Since we are comparing slices, let's sort them to have a deterministic order
-						sort.Strings(expectedAppNames)
-						Expect(s.GetAppNames(context.TODO())).To(Equal(expectedAppNames))
+							// Checks if only the expected app names were inserted
+							// Since we are comparing slices, let's sort them to have a deterministic order
+							sort.Strings(expectedAppNames)
+							Expect(s.GetAppNames(context.TODO())).To(Equal(expectedAppNames))
 
-						// Useful for debugging
-						// fmt.Println("sk ", sk)
-						// fmt.Println(gOut.Tree.String())
-						// ioutil.WriteFile("/home/dmitry/pyroscope/pkg/server/testdata/jfr-"+typeName+".txt", []byte(gOut.Tree.String()), 0644)
-						Expect(gOut.Tree.String()).To(Equal(expectedTree))
+							// Useful for debugging
+							// fmt.Println("sk ", sk)
+							// fmt.Println(gOut.Tree.String())
+							// ioutil.WriteFile("/home/dmitry/pyroscope/pkg/server/testdata/jfr-"+typeName+".txt", []byte(gOut.Tree.String()), 0644)
+							Expect(gOut.Tree.String()).To(Equal(expectedTree))
+						} else {
+							Expect(gOut).To(BeNil())
+						}
 
 						close(done)
 					}()
@@ -279,6 +283,7 @@ var _ = Describe("server", func() {
 				})
 				types := []string{
 					"cpu",
+					"wall",
 					"alloc_in_new_tlab_objects",
 					"alloc_in_new_tlab_bytes",
 					"alloc_outside_tlab_objects",
@@ -286,14 +291,9 @@ var _ = Describe("server", func() {
 					"lock_count",
 					"lock_duration",
 				}
-				jfrAppNames := []string{
-					"test.app.cpu",
-					"test.app.alloc_in_new_tlab_objects",
-					"test.app.alloc_in_new_tlab_bytes",
-					"test.app.alloc_outside_tlab_objects",
-					"test.app.alloc_outside_tlab_bytes",
-					"test.app.lock_count",
-					"test.app.lock_duration",
+				appNames := []string{}
+				for _, t := range types {
+					appNames = append(appNames, "test.app."+t)
 				}
 				Context("no labels", func() {
 					BeforeEach(func() {
@@ -308,7 +308,7 @@ var _ = Describe("server", func() {
 									expectedKey = "test.app." + t + "{foo=bar,baz=qux}"
 									expectedTree = readTestdataFile("./testdata/jfr/no_labels/jfr-" + t + ".txt")
 								})
-								ItCorrectlyParsesIncomingData(jfrAppNames)
+								ItCorrectlyParsesIncomingData(appNames)
 							})
 						}(t)
 					}
@@ -322,13 +322,36 @@ var _ = Describe("server", func() {
 					})
 					for _, t := range types {
 						func(t string) {
-							Context(t, func() {
-								BeforeEach(func() {
-									// typeName = t
-									expectedKey = "test.app." + t + "{foo=bar,baz=qux,thread_name=pool-2-thread-8}"
-									expectedTree = readTestdataFile("./testdata/jfr/with_labels/jfr-" + t + ".txt")
+							type contextId struct {
+								id  string
+								key string
+							}
+							cids := []contextId{
+								{id: "0", key: "test.app." + t + "{foo=bar,baz=qux}"},
+								{id: "1", key: "test.app." + t + "{foo=bar,baz=qux,thread_name=pool-2-thread-8}"},
+							}
+							for _, cid := range cids {
+								func(cid contextId) {
+									Context("contextId "+cid.id, func() {
+										Context(t, func() {
+											BeforeEach(func() {
+												// typeName = t
+												expectedKey = cid.key
+												expectedTree = readTestdataFile("./testdata/jfr/with_labels/" + cid.id + "/jfr-" + t + ".txt")
+											})
+											ItCorrectlyParsesIncomingData(appNames)
+										})
+									})
+								}(cid)
+							}
+							Context("non existent label query should return no data", func() {
+								Context(t, func() {
+									BeforeEach(func() {
+										expectedKey = "test.app." + t + "{foo=bar,baz=qux,non_existing=label}"
+										expectedTree = ""
+									})
+									ItCorrectlyParsesIncomingData(appNames)
 								})
-								ItCorrectlyParsesIncomingData(jfrAppNames)
 							})
 						}(t)
 					}
@@ -376,6 +399,16 @@ var _ = Describe("server", func() {
 					})
 
 					ItCorrectlyParsesIncomingData([]string{`test.app.customName`})
+				})
+
+				Context("non existent label query should return no data", func() {
+					BeforeEach(func() {
+						format = "pprof"
+						buf = bytes.NewBuffer([]byte(readTestdataFile("../convert/testdata/cpu.pprof")))
+						expectedKey = "test.app.cpu{foo=bar,baz=qux,non_existing=label}"
+						expectedTree = ""
+					})
+					ItCorrectlyParsesIncomingData([]string{`test.app.cpu`})
 				})
 			})
 		})
