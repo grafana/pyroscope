@@ -5,6 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/klauspost/compress/gzip"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -14,12 +19,6 @@ import (
 	"sort"
 	"strconv"
 	"time"
-
-	"github.com/klauspost/compress/gzip"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
@@ -173,8 +172,13 @@ var _ = Describe("server", func() {
 							expectedKey = name
 						}
 						sk, _ := segment.ParseKey(expectedKey)
+
+						for !queue.IsEmpty() {
+							time.Sleep(10 * time.Millisecond)
+						}
 						time.Sleep(10 * time.Millisecond)
 						time.Sleep(sleepDur)
+
 						gOut, err := s.Get(context.TODO(), &storage.GetInput{
 							StartTime: st,
 							EndTime:   et,

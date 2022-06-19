@@ -87,3 +87,7 @@ func (s *IngestionQueue) safePut(input *PutInput) (err error) {
 	// TODO(kolesnikovae): It's better to derive a context that is cancelled on Stop.
 	return s.putter.Put(context.TODO(), input)
 }
+
+func (s *IngestionQueue) IsEmpty() bool {
+	return len(s.queue) == 0
+}
