@@ -192,7 +192,10 @@ var _ = Describe("server", func() {
 
 							// Useful for debugging
 							// fmt.Println("sk ", sk)
-							// fmt.Println(gOut.Tree.String())
+							if gOut.Tree.String() != expectedTree {
+								fmt.Println(gOut.Tree.String())
+								fmt.Println(expectedTree)
+							}
 							// ioutil.WriteFile("/home/dmitry/pyroscope/pkg/server/testdata/jfr-"+typeName+".txt", []byte(gOut.Tree.String()), 0644)
 							Expect(gOut.Tree.String()).To(Equal(expectedTree))
 						} else {
@@ -278,7 +281,7 @@ var _ = Describe("server", func() {
 
 			Context("jfr", func() {
 				BeforeEach(func() {
-					sleepDur = 100 * time.Millisecond
+					sleepDur = 500 * time.Millisecond
 					format = "jfr"
 				})
 				types := []string{
