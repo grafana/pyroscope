@@ -322,17 +322,17 @@ var _ = Describe("server", func() {
 					})
 					for _, t := range types {
 						func(t string) {
-							type contextId struct {
+							type contextID struct {
 								id  string
 								key string
 							}
-							cids := []contextId{
+							cids := []contextID{
 								{id: "0", key: "test.app." + t + "{foo=bar,baz=qux}"},
 								{id: "1", key: "test.app." + t + "{foo=bar,baz=qux,thread_name=pool-2-thread-8}"},
 							}
 							for _, cid := range cids {
-								func(cid contextId) {
-									Context("contextId "+cid.id, func() {
+								func(cid contextID) {
+									Context("contextID "+cid.id, func() {
 										Context(t, func() {
 											BeforeEach(func() {
 												// typeName = t
