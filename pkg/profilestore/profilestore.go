@@ -39,7 +39,7 @@ type ProfileStore struct {
 type Config struct {
 	// TODO: Reassemble to match Mimir/Loki/Tempo
 	DataPath         string `json:"data_path"`
-	ActiveMemorySize int64  `json:""active_memory_size` // the active uncompressed memory used by the profile store
+	ActiveMemorySize int64  `json:"active_memory_size"` // the active uncompressed memory used by the profile store
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
