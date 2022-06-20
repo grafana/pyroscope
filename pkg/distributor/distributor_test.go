@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"runtime/pprof"
+	"sync"
 	"testing"
 	"time"
 
@@ -135,9 +136,13 @@ type fakeIngester struct {
 	requests []*pushv1.PushRequest
 	fail     bool
 	testutil.FakePoolClient
+
+	mtx sync.Mutex
 }
 
 func (i *fakeIngester) Push(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	i.mtx.Lock()
+	defer i.mtx.Unlock()
 	i.requests = append(i.requests, req.Msg)
 	if i.fail {
 		return nil, errors.New("foo")
