@@ -236,8 +236,6 @@ func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {
 			}
 			if d, ok = s.lookupDimensionKV(k, v); ok {
 				dimensions = append(dimensions, d)
-			} else {
-				return nil
 			}
 		}
 		if len(dimensions) == 1 {
