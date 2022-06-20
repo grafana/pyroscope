@@ -1,33 +1,17 @@
 {{- $global := . }}
-{{- $component_names := list }}
-{{- $component_kinds := list }}
-{{- range .Values.fire.stateful_set_targets }}
-{{- $component_names = append $component_names . }}
-{{- $component_kinds = append $component_kinds "StatefulSet" }}
-{{- end }}
-{{- range .Values.fire.deployment_targets }}
-{{- $component_names = append $component_names . }}
-{{- $component_kinds = append $component_kinds "Deployment" }}
-{{- end }}
-{{- if eq (len $component_names) 0 }}
-{{- $component_names = append $component_names "" }}
-{{- $component_kinds = append $component_kinds "StatefulSet" }}
-{{- end }}
-{{- range $pos, $component := $component_names }}
+{{- range $component, $cfg := (fromYaml (include "fire.components" .)) }}
 {{- with $global }}
-{{- $kind := index $component_kinds $pos }}
-{{- $name := printf "%s-%s" (include "fire.fullname" . ) $component | trimSuffix "-" }}
 ---
 apiVersion: apps/v1
-kind: {{ $kind }}
+kind: {{ $cfg.kind }}
 metadata:
-  name: {{ $name }}
+  name: {{ $cfg.name }}
   labels:
     {{- include "fire.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-{{- if eq $kind "StatefulSet" }}
-  serviceName: {{ $name }}-headless
+{{- if eq $cfg.kind "StatefulSet" }}
+  serviceName: {{ $cfg.name }}-headless
 {{- end }}
   selector:
     matchLabels:

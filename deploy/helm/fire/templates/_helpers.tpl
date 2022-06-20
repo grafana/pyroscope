@@ -61,3 +61,22 @@ Create the name of the service account to use
 {{- default "default" .Values.fire.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create a list of components that should be deployed.
+*/}}
+{{- define "fire.components" -}}
+{{- $full_name := (include "fire.fullname" .) }}
+{{- range .Values.fire.stateful_set_targets }}
+{{.}}: {kind: "StatefulSet", name: "{{$full_name}}-{{.}}"}
+{{- end }}
+{{- range .Values.fire.deployment_targets }}
+{{.}}: {kind: "Deployment", name: "{{$full_name}}-{{.}}"}
+{{- end }}
+{{/*
+If no deployment and statefulset are defined fall back to single binary
+*/}}
+{{- if and (eq (len .Values.fire.stateful_set_targets) 0) (eq (len .Values.fire.deployment_targets) 0) }}
+all: {kind: "StatefulSet", name: "{{$full_name}}"}
+{{- end }}
+{{- end }}
