@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu, windows]
+        os: [ubuntu]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
