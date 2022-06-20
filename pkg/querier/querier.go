@@ -16,7 +16,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 )
 
@@ -88,7 +87,7 @@ func (q *Querier) stopping(_ error) error {
 }
 
 func (q *Querier) ProfileTypes(ctx context.Context) ([]string, error) {
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic ingestv1connect.IngesterClient) ([]string, error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
 		res, err := ic.ProfileTypes(ctx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 		if err != nil {
 			return nil, err
@@ -102,7 +101,7 @@ func (q *Querier) ProfileTypes(ctx context.Context) ([]string, error) {
 }
 
 func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error) {
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic ingestv1connect.IngesterClient) ([]string, error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
 		res, err := ic.LabelValues(ctx, connect.NewRequest(&ingestv1.LabelValuesRequest{
 			Name: name,
 		}))
