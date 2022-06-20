@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
@@ -25,7 +26,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -171,7 +171,8 @@ var _ = Describe("server", func() {
 						if expectedKey == "" {
 							expectedKey = name
 						}
-						sk, _ := segment.ParseKey(expectedKey)
+						fq, err := flameql.ParseQuery(expectedKey)
+						Expect(err).ToNot(HaveOccurred())
 
 						for !queue.IsEmpty() {
 							time.Sleep(10 * time.Millisecond)
@@ -182,7 +183,7 @@ var _ = Describe("server", func() {
 						gOut, err := s.Get(context.TODO(), &storage.GetInput{
 							StartTime: st,
 							EndTime:   et,
-							Key:       sk,
+							Query:     fq,
 						})
 						Expect(err).ToNot(HaveOccurred())
 						if expectedTree != "" {
@@ -195,7 +196,7 @@ var _ = Describe("server", func() {
 							Expect(s.GetAppNames(context.TODO())).To(Equal(expectedAppNames))
 
 							// Useful for debugging
-							// fmt.Println("sk ", sk)
+							fmt.Println("fq ", fq)
 							if gOut.Tree.String() != expectedTree {
 								fmt.Println(gOut.Tree.String())
 								fmt.Println(expectedTree)
@@ -278,6 +279,7 @@ var _ = Describe("server", func() {
 					format = ""
 					contentType = ""
 					name = "test.app{foo=bar,baz=qux}"
+					expectedKey = `test.app{foo="bar", baz="qux"}`
 				})
 
 				ItCorrectlyParsesIncomingData([]string{`test.app`})
@@ -312,7 +314,7 @@ var _ = Describe("server", func() {
 							Context(t, func() {
 								BeforeEach(func() {
 									//typeName = t
-									expectedKey = "test.app." + t + "{foo=bar,baz=qux}"
+									expectedKey = `test.app.` + t + `{foo="bar", baz="qux"}`
 									expectedTree = readTestdataFile("./testdata/jfr/no_labels/jfr-" + t + ".txt")
 								})
 								ItCorrectlyParsesIncomingData(appNames)
@@ -334,8 +336,8 @@ var _ = Describe("server", func() {
 								key string
 							}
 							cids := []contextID{
-								{id: "0", key: "test.app." + t + "{foo=bar,baz=qux}"},
-								{id: "1", key: "test.app." + t + "{foo=bar,baz=qux,thread_name=pool-2-thread-8}"},
+								{id: "0", key: `test.app.` + t + `{foo="bar", baz="qux"}`},
+								{id: "1", key: `test.app.` + t + `{foo="bar", baz="qux", thread_name="pool-2-thread-8"}`},
 							}
 							for _, cid := range cids {
 								func(cid contextID) {
@@ -354,7 +356,7 @@ var _ = Describe("server", func() {
 							Context("non existent label query should return no data", func() {
 								Context(t, func() {
 									BeforeEach(func() {
-										expectedKey = "test.app." + t + "{foo=bar,baz=qux,non_existing=label}"
+										expectedKey = `test.app.` + t + `{foo="bar"",baz="qux",non_existing="label"}`
 										expectedTree = ""
 									})
 									ItCorrectlyParsesIncomingData(appNames)
@@ -370,7 +372,7 @@ var _ = Describe("server", func() {
 					format = ""
 					sleepDur = 100 * time.Millisecond // prof data is not updated immediately with pprof
 					name = "test.app{foo=bar,baz=qux}"
-					expectedKey = "test.app.cpu{foo=bar,baz=qux}"
+					expectedKey = `test.app.cpu{foo="bar",baz="qux"}`
 					expectedTree = readTestdataFile("./testdata/pprof-string.txt")
 				})
 
@@ -402,7 +404,7 @@ var _ = Describe("server", func() {
 							},
 						})
 						contentType = w.FormDataContentType()
-						expectedKey = "test.app.customName{foo=bar,baz=qux}"
+						expectedKey = `test.app.customName{foo="bar",baz="qux"}`
 					})
 
 					ItCorrectlyParsesIncomingData([]string{`test.app.customName`})
@@ -412,7 +414,7 @@ var _ = Describe("server", func() {
 					BeforeEach(func() {
 						format = "pprof"
 						buf = bytes.NewBuffer([]byte(readTestdataFile("../convert/testdata/cpu.pprof")))
-						expectedKey = "test.app.cpu{foo=bar,baz=qux,non_existing=label}"
+						expectedKey = `test.app.cpu{foo="bar",baz="qux",non_existing="label"}`
 						expectedTree = ""
 					})
 					ItCorrectlyParsesIncomingData([]string{`test.app.cpu`})
