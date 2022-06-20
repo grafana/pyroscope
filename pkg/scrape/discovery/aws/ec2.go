@@ -161,6 +161,7 @@ type EC2SDConfig struct {
 	SecretKey       string        `yaml:"secret-key,omitempty"`
 	Profile         string        `yaml:"profile,omitempty"`
 	RoleARN         string        `yaml:"role-arn,omitempty"`
+	Application     string        `yaml:"application,omitempty"`
 	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
 >>>>>>> 3192d0fd (fix as comment)
 	Port            int           `yaml:"port"`
@@ -269,6 +270,7 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> 113d1371 (register ec2 sd config)
@@ -280,6 +282,8 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 =======
 
 >>>>>>> 113d1371 (register ec2 sd config)
+=======
+>>>>>>> d4d5779f (fix issue __name__no exist)
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
 			Endpoint:    &d.cfg.Endpoint,
@@ -290,6 +294,7 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 		SharedConfigState: session.SharedConfigEnable,
 		Profile:           d.cfg.Profile,
 	})
@@ -314,6 +319,13 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 		Profile: d.cfg.Profile,
 	})
 >>>>>>> 113d1371 (register ec2 sd config)
+=======
+		SharedConfigState: session.SharedConfigEnable,
+		Profile:           d.cfg.Profile,
+	})
+	fmt.Printf("region %s, profile %s", d.cfg.Region, d.cfg.Profile)
+
+>>>>>>> d4d5779f (fix issue __name__no exist)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create aws session")
 	}
@@ -404,6 +416,7 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 					model.AppNameLabel: model.LabelValue(d.cfg.Application),
 =======
 >>>>>>> 113d1371 (register ec2 sd config)
@@ -414,6 +427,9 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 >>>>>>> e4a4d6cb (fix issue __name__no exist)
 =======
 >>>>>>> 113d1371 (register ec2 sd config)
+=======
+					model.AppNameLabel: model.LabelValue(d.cfg.Application),
+>>>>>>> d4d5779f (fix issue __name__no exist)
 				}
 
 				if r.OwnerId != nil {
