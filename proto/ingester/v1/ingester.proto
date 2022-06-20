@@ -21,8 +21,7 @@ message LabelValuesResponse {
   repeated string names = 1;
 }
 
-message ProfileTypesRequest {
-}
+message ProfileTypesRequest {}
 
 message ProfileTypesResponse {
   repeated string names = 1;
