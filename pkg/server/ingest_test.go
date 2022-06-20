@@ -118,14 +118,13 @@ var _ = Describe("server", func() {
 						reg := prometheus.NewRegistry()
 
 						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), reg, new(health.Controller))
-						queue := storage.NewIngestionQueue(logrus.StandardLogger(), s, reg, 4, 128)
 
 						Expect(err).ToNot(HaveOccurred())
 						e, _ := exporter.NewExporter(nil, nil)
 						c, _ := New(Config{
 							Configuration:           &(*cfg).Server,
 							Storage:                 s,
-							Ingester:                parser.New(logrus.StandardLogger(), queue, e),
+							Ingester:                parser.New(logrus.StandardLogger(), s, e),
 							Logger:                  logrus.New(),
 							MetricsRegisterer:       prometheus.NewRegistry(),
 							ExportedMetricsRegistry: prometheus.NewRegistry(),
@@ -174,9 +173,6 @@ var _ = Describe("server", func() {
 						fq, err := flameql.ParseQuery(expectedKey)
 						Expect(err).ToNot(HaveOccurred())
 
-						for !queue.IsEmpty() {
-							time.Sleep(10 * time.Millisecond)
-						}
 						time.Sleep(10 * time.Millisecond)
 						time.Sleep(sleepDur)
 
