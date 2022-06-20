@@ -13,11 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-<<<<<<< HEAD
-package aws // revive:disable-line:import-shadowing package name is not referenced
-=======
 package aws // revive:disable-next-line:import-shadowing package name is not referenced
->>>>>>> 0ea624a8 (fix package lint)
 
 import (
 	"context"
@@ -89,6 +85,7 @@ type EC2SDConfig struct {
 	Region          string        `yaml:"region"`
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	AccessKey       string        `yaml:"access-key,omitempty"`
 	SecretKey       string        `yaml:"secret-key,omitempty"`
 	Profile         string        `yaml:"profile,omitempty"`
@@ -96,11 +93,14 @@ type EC2SDConfig struct {
 	Application     string        `yaml:"application,omitempty"`
 	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
 =======
+=======
+>>>>>>> 03601ea1 (register ec2 sd config)
 	AccessKey       string        `yaml:"access_key,omitempty"`
 	SecretKey       string        `yaml:"secret_key,omitempty"`
 	Profile         string        `yaml:"profile,omitempty"`
 	RoleARN         string        `yaml:"role_arn,omitempty"`
 	RefreshInterval time.Duration `yaml:"refresh_interval,omitempty"`
+<<<<<<< HEAD
 >>>>>>> 113d1371 (register ec2 sd config)
 =======
 	AccessKey       string        `yaml:"access-key,omitempty"`
@@ -109,6 +109,8 @@ type EC2SDConfig struct {
 	RoleARN         string        `yaml:"role-arn,omitempty"`
 	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
 >>>>>>> 3192d0fd (fix as comment)
+=======
+>>>>>>> 03601ea1 (register ec2 sd config)
 	Port            int           `yaml:"port"`
 	Filters         []*EC2Filter  `yaml:"filters"`
 }
@@ -180,6 +182,7 @@ func NewEC2Discovery(conf *EC2SDConfig, logger logrus.FieldLogger) *EC2Discovery
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 =======
 func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
@@ -187,6 +190,9 @@ func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
 =======
 func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 >>>>>>> 3192d0fd (fix as comment)
+=======
+func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
+>>>>>>> 03601ea1 (register ec2 sd config)
 	if d.ec2 != nil {
 		return d.ec2, nil
 	}
@@ -196,15 +202,20 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 		creds = nil
 	}
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> 113d1371 (register ec2 sd config)
+=======
+
+>>>>>>> 03601ea1 (register ec2 sd config)
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
 			Endpoint:    &d.cfg.Endpoint,
 			Region:      &d.cfg.Region,
 			Credentials: creds,
 		},
+<<<<<<< HEAD
 <<<<<<< HEAD
 		SharedConfigState: session.SharedConfigEnable,
 		Profile:           d.cfg.Profile,
@@ -215,6 +226,10 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 		Profile: d.cfg.Profile,
 	})
 >>>>>>> 113d1371 (register ec2 sd config)
+=======
+		Profile: d.cfg.Profile,
+	})
+>>>>>>> 03601ea1 (register ec2 sd config)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create aws session")
 	}
@@ -265,6 +280,7 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 		if err := d.refreshAZIDs(ctx); err != nil {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 			d.logger.WithError(err).Debug("Unable to describe availability zones")
 =======
 			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
@@ -272,6 +288,9 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 =======
 			d.logger.WithError(err).Debug("Unable to describe availability zones")
 >>>>>>> 3192d0fd (fix as comment)
+=======
+			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
+>>>>>>> 03601ea1 (register ec2 sd config)
 		}
 	}
 
@@ -286,9 +305,12 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 				labels := model.LabelSet{
 					ec2LabelInstanceID: model.LabelValue(*inst.InstanceId),
 <<<<<<< HEAD
+<<<<<<< HEAD
 					model.AppNameLabel: model.LabelValue(d.cfg.Application),
 =======
 >>>>>>> 113d1371 (register ec2 sd config)
+=======
+>>>>>>> 03601ea1 (register ec2 sd config)
 				}
 
 				if r.OwnerId != nil {
