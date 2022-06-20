@@ -49,7 +49,7 @@ require (
 	github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1
-	github.com/pyroscope-io/jfr-parser v0.5.2
+	github.com/pyroscope-io/jfr-parser v0.4.1
 	github.com/rlmcpherson/s3gof3r v0.5.0
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.8.1
@@ -60,6 +60,7 @@ require (
 	github.com/stretchr/testify v1.7.1
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
@@ -81,6 +82,13 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220328115105-d36c6a25d886
 >>>>>>> 96134286 (fix lint)
+=======
+	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
+	golang.org/x/net v0.0.0-20220325170049-de3da57026de
+	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sys v0.0.0-20220328115105-d36c6a25d886
+>>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.10
 	google.golang.org/protobuf v1.28.0
@@ -112,6 +120,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 <<<<<<< HEAD
+<<<<<<< HEAD
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 =======
 	github.com/felixge/httpsnoop v1.0.2 // indirect
@@ -120,6 +129,9 @@ require (
 >>>>>>> 51248049 (register ec2 sd config)
 =======
 >>>>>>> 96134286 (fix lint)
+=======
+	github.com/felixge/httpsnoop v1.0.2 // indirect
+>>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
@@ -128,10 +140,14 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 <<<<<<< HEAD
+<<<<<<< HEAD
 	github.com/google/gofuzz v1.1.0 // indirect
 =======
 	github.com/google/gofuzz v1.2.0 // indirect
 >>>>>>> 51248049 (register ec2 sd config)
+=======
+	github.com/google/gofuzz v1.2.0 // indirect
+>>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/grafana/regexp v0.0.0-20220304095617-2e8d9baf4ac2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -173,6 +189,7 @@ require (
 	github.com/wacul/ptr v1.0.0 // indirect
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	github.com/yuin/goldmark v1.4.0 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
@@ -189,6 +206,12 @@ require (
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 >>>>>>> 96134286 (fix lint)
+=======
+	github.com/yuin/goldmark v1.4.1 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
+>>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
@@ -207,5 +230,3 @@ require (
 )
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
-
-replace github.com/pyroscope-io/client => github.com/pyroscope-io/client v0.2.4-0.20220607180407-0ba26860ce5b
