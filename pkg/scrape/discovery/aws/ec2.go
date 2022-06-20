@@ -13,44 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-package aws // revive:disable-next-line:import-shadowing package name is not referenced
-=======
-// revive:disable-next-line:import-shadowing package name is not referenced
-package aws
->>>>>>> 73e62b72 (fix as comment)
-=======
-package aws // revive:disable-next-line:import-shadowing package name is not referenced
->>>>>>> 62c38d39 (fix package lint)
-
-=======
 package aws // revive:disable-line:import-shadowing package name is not referenced
->>>>>>> f25520b8 (fix lint)
-=======
-=======
-// revive:disable-next-line:import-shadowing package name is not referenced
->>>>>>> 3192d0fd (fix as comment)
-package aws
-=======
-=======
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
-package aws // revive:disable-next-line:import-shadowing package name is not referenced
 
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-package aws // revive:disable-line:import-shadowing package name is not referenced
->>>>>>> 96134286 (fix lint)
 import (
 	"context"
 	"fmt"
-	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/sirupsen/logrus"
 	"net"
 	"strings"
@@ -64,11 +31,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pkg/errors"
-
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/refresh"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
+	"github.com/pyroscope-io/pyroscope/pkg/util/strutil"
 )
 
 const (
@@ -115,67 +82,12 @@ type EC2Filter struct {
 type EC2SDConfig struct {
 	Endpoint        string        `yaml:"endpoint"`
 	Region          string        `yaml:"region"`
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	AccessKey       string        `yaml:"access-key,omitempty"`
 	SecretKey       string        `yaml:"secret-key,omitempty"`
 	Profile         string        `yaml:"profile,omitempty"`
 	RoleARN         string        `yaml:"role-arn,omitempty"`
 	Application     string        `yaml:"application,omitempty"`
 	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 03601ea1 (register ec2 sd config)
-=======
->>>>>>> 113d1371 (register ec2 sd config)
-	AccessKey       string        `yaml:"access_key,omitempty"`
-	SecretKey       string        `yaml:"secret_key,omitempty"`
-	Profile         string        `yaml:"profile,omitempty"`
-	RoleARN         string        `yaml:"role_arn,omitempty"`
-	RefreshInterval time.Duration `yaml:"refresh_interval,omitempty"`
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-	AccessKey       string        `yaml:"access-key,omitempty"`
-	SecretKey       string        `yaml:"secret-key,omitempty"`
-	Profile         string        `yaml:"profile,omitempty"`
-	RoleARN         string        `yaml:"role-arn,omitempty"`
-	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
->>>>>>> 3192d0fd (fix as comment)
-=======
-<<<<<<< HEAD
->>>>>>> 03601ea1 (register ec2 sd config)
-=======
-	AccessKey       string        `yaml:"access-key,omitempty"`
-	SecretKey       string        `yaml:"secret-key,omitempty"`
-	Profile         string        `yaml:"profile,omitempty"`
-	RoleARN         string        `yaml:"role-arn,omitempty"`
-	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
->>>>>>> 73e62b72 (fix as comment)
-=======
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-	AccessKey       string        `yaml:"access-key,omitempty"`
-	SecretKey       string        `yaml:"secret-key,omitempty"`
-	Profile         string        `yaml:"profile,omitempty"`
-	RoleARN         string        `yaml:"role-arn,omitempty"`
-	Application     string        `yaml:"application,omitempty"`
-	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
->>>>>>> 3192d0fd (fix as comment)
-=======
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	Port            int           `yaml:"port"`
 	Filters         []*EC2Filter  `yaml:"filters"`
 }
@@ -245,37 +157,7 @@ func NewEC2Discovery(conf *EC2SDConfig, logger logrus.FieldLogger) *EC2Discovery
 	return d
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
-=======
-func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-=======
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
-func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
->>>>>>> 3192d0fd (fix as comment)
-=======
-func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
->>>>>>> 03601ea1 (register ec2 sd config)
-=======
-func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
->>>>>>> 73e62b72 (fix as comment)
-=======
-func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
->>>>>>> 3192d0fd (fix as comment)
-=======
-func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
 	if d.ec2 != nil {
 		return d.ec2, nil
 	}
@@ -284,83 +166,16 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 	if d.cfg.AccessKey == "" && d.cfg.SecretKey == "" {
 		creds = nil
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
-=======
 
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-<<<<<<< HEAD
-
->>>>>>> 03601ea1 (register ec2 sd config)
-=======
->>>>>>> e4a4d6cb (fix issue __name__no exist)
-=======
-
->>>>>>> 113d1371 (register ec2 sd config)
-=======
->>>>>>> d4d5779f (fix issue __name__no exist)
-=======
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
 			Endpoint:    &d.cfg.Endpoint,
 			Region:      &d.cfg.Region,
 			Credentials: creds,
 		},
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 		SharedConfigState: session.SharedConfigEnable,
 		Profile:           d.cfg.Profile,
 	})
-	fmt.Printf("region %s, profile %s", d.cfg.Region, d.cfg.Profile)
-
-<<<<<<< HEAD
-=======
-		Profile: d.cfg.Profile,
-	})
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-<<<<<<< HEAD
-		Profile: d.cfg.Profile,
-	})
->>>>>>> 03601ea1 (register ec2 sd config)
-=======
-		SharedConfigState: session.SharedConfigEnable,
-		Profile:           d.cfg.Profile,
-	})
-	fmt.Printf("region %s, profile %s", d.cfg.Region, d.cfg.Profile)
-
->>>>>>> e4a4d6cb (fix issue __name__no exist)
-=======
-		Profile: d.cfg.Profile,
-	})
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-		SharedConfigState: session.SharedConfigEnable,
-		Profile:           d.cfg.Profile,
-	})
-	fmt.Printf("region %s, profile %s", d.cfg.Region, d.cfg.Profile)
-
->>>>>>> d4d5779f (fix issue __name__no exist)
-=======
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create aws session")
 	}
@@ -409,39 +224,7 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 	// Prometheus requires a reload if AWS adds a new AZ to the region.
 	if d.azToAZID == nil {
 		if err := d.refreshAZIDs(ctx); err != nil {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 			d.logger.WithError(err).Debug("Unable to describe availability zones")
-=======
-			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-			d.logger.WithError(err).Debug("Unable to describe availability zones")
->>>>>>> 3192d0fd (fix as comment)
-=======
-<<<<<<< HEAD
-			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
->>>>>>> 03601ea1 (register ec2 sd config)
-=======
-			d.logger.WithError(err).Debug("Unable to describe availability zones")
->>>>>>> 73e62b72 (fix as comment)
-=======
-			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-			d.logger.WithError(err).Debug("Unable to describe availability zones")
->>>>>>> 3192d0fd (fix as comment)
-=======
-			d.logger.WithError(err).Debug("Unable to describe availability zones")
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 		}
 	}
 
@@ -455,32 +238,7 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 
 				labels := model.LabelSet{
 					ec2LabelInstanceID: model.LabelValue(*inst.InstanceId),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 					model.AppNameLabel: model.LabelValue(d.cfg.Application),
-=======
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-<<<<<<< HEAD
->>>>>>> 03601ea1 (register ec2 sd config)
-=======
-					model.AppNameLabel: model.LabelValue(d.cfg.Application),
->>>>>>> e4a4d6cb (fix issue __name__no exist)
-=======
->>>>>>> 113d1371 (register ec2 sd config)
-=======
-					model.AppNameLabel: model.LabelValue(d.cfg.Application),
->>>>>>> d4d5779f (fix issue __name__no exist)
-=======
-					model.AppNameLabel: model.LabelValue(d.cfg.Application),
->>>>>>> ae5b290792031d0fd8c1b1d212159e97b0277cc5
->>>>>>> 542ac9e0e334ab0c36ed72f00b225746cac8931a
 				}
 
 				if r.OwnerId != nil {
