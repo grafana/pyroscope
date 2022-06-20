@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 
+<<<<<<< HEAD
 	// revive:disable:blank-imports register discoverer
 	"github.com/pyroscope-io/pyroscope/pkg/baseurl"
 	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
@@ -20,9 +21,13 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
+=======
+>>>>>>> 51248049 (register ec2 sd config)
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
+	// revive:disable:blank-imports register discoverer
+	"github.com/pyroscope-io/pyroscope/pkg/baseurl"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
@@ -31,7 +36,14 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
+<<<<<<< HEAD
 	"github.com/pyroscope-io/pyroscope/pkg/selfprofiling"
+=======
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/aws"
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
+>>>>>>> 51248049 (register ec2 sd config)
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
