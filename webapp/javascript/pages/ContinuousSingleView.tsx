@@ -27,9 +27,16 @@ function ContinuousSingleView() {
   const { singleView } = useAppSelector((state) => state.continuous);
 
   useEffect(() => {
-    if (from && until && query && maxNodes) {
-      dispatch(fetchSingleView(null));
-    }
+    const fetchData =
+      from && until && query && maxNodes
+        ? dispatch(fetchSingleView(null))
+        : null;
+
+    return () => {
+      if (fetchData && fetchData.abort) {
+        fetchData.abort();
+      }
+    };
   }, [from, until, query, refreshToken, maxNodes]);
 
   const getRaw = () => {

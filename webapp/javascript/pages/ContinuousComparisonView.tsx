@@ -41,15 +41,27 @@ function ComparisonApp() {
   const sharedQuery = useFlamegraphSharedQuery();
 
   useEffect(() => {
-    if (leftQuery) {
-      dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
-    }
+    const fetchLeftQueryData = leftQuery
+      ? dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }))
+      : null;
+
+    return () => {
+      if (fetchLeftQueryData && fetchLeftQueryData.abort) {
+        fetchLeftQueryData.abort();
+      }
+    };
   }, [leftFrom, leftUntil, leftQuery]);
 
   useEffect(() => {
-    if (rightQuery) {
-      dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
-    }
+    const fetchRightQueryData = rightQuery
+      ? dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }))
+      : null;
+
+    return () => {
+      if (fetchRightQueryData && fetchRightQueryData.abort) {
+        fetchRightQueryData.abort();
+      }
+    };
   }, [rightFrom, rightUntil, rightQuery]);
 
   const leftSide = comparisonView.left.profile;
