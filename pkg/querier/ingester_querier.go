@@ -4,18 +4,24 @@ import (
 	"context"
 	"time"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
+	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 )
+
+type IngesterQueryClient interface {
+	LabelValues(context.Context, *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error)
+	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
+}
 
 type responseFromIngesters[T interface{}] struct {
 	addr     string
 	response T
 }
 
-type IngesterFn[T interface{}] func(ingestv1connect.IngesterClient) (T, error)
+type IngesterFn[T interface{}] func(IngesterQueryClient) (T, error)
 
 // IngesterQuerier helps with querying the ingesters.
 type IngesterQuerier struct {
@@ -50,7 +56,7 @@ func forGivenIngesters[T any](ctx context.Context, q *IngesterQuerier, replicati
 			return nil, err
 		}
 
-		resp, err := f(client.(ingestv1connect.IngesterClient))
+		resp, err := f(client.(IngesterQueryClient))
 		if err != nil {
 			return nil, err
 		}
