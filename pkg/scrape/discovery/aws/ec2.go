@@ -13,7 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 package aws // revive:disable-next-line:import-shadowing package name is not referenced
+=======
+// revive:disable-next-line:import-shadowing package name is not referenced
+package aws
+>>>>>>> 73e62b72 (fix as comment)
 
 import (
 	"context"
@@ -86,6 +91,7 @@ type EC2SDConfig struct {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	AccessKey       string        `yaml:"access-key,omitempty"`
 	SecretKey       string        `yaml:"secret-key,omitempty"`
 	Profile         string        `yaml:"profile,omitempty"`
@@ -111,6 +117,13 @@ type EC2SDConfig struct {
 >>>>>>> 3192d0fd (fix as comment)
 =======
 >>>>>>> 03601ea1 (register ec2 sd config)
+=======
+	AccessKey       string        `yaml:"access-key,omitempty"`
+	SecretKey       string        `yaml:"secret-key,omitempty"`
+	Profile         string        `yaml:"profile,omitempty"`
+	RoleARN         string        `yaml:"role-arn,omitempty"`
+	RefreshInterval time.Duration `yaml:"refresh-interval,omitempty"`
+>>>>>>> 73e62b72 (fix as comment)
 	Port            int           `yaml:"port"`
 	Filters         []*EC2Filter  `yaml:"filters"`
 }
@@ -183,6 +196,7 @@ func NewEC2Discovery(conf *EC2SDConfig, logger logrus.FieldLogger) *EC2Discovery
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 =======
 func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
@@ -193,6 +207,9 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 =======
 func (d *EC2Discovery) ec2Client(ctx context.Context) (*ec2.EC2, error) {
 >>>>>>> 03601ea1 (register ec2 sd config)
+=======
+func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
+>>>>>>> 73e62b72 (fix as comment)
 	if d.ec2 != nil {
 		return d.ec2, nil
 	}
@@ -281,6 +298,7 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 			d.logger.WithError(err).Debug("Unable to describe availability zones")
 =======
 			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
@@ -291,6 +309,9 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 =======
 			d.logger.WithError(err).Debug("msg", "Unable to describe availability zones")
 >>>>>>> 03601ea1 (register ec2 sd config)
+=======
+			d.logger.WithError(err).Debug("Unable to describe availability zones")
+>>>>>>> 73e62b72 (fix as comment)
 		}
 	}
 
