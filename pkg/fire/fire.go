@@ -174,7 +174,7 @@ func (f *Fire) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All:          {Agent, Ingester, Distributor},
+		All:          {Agent, Ingester, Distributor, Querier},
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
 		Agent:        {Server},

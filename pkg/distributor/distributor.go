@@ -20,10 +20,13 @@ import (
 	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 )
+
+type PushClient interface {
+	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+}
 
 // todo: move to non global metrics.
 var clients = promauto.NewGauge(prometheus.GaugeOpts{
@@ -192,7 +195,7 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 		req.Msg.Series = append(req.Msg.Series, p.profile)
 	}
 
-	_, err = c.(ingestv1connect.IngesterClient).Push(ctx, req)
+	_, err = c.(PushClient).Push(ctx, req)
 	return err
 }
 
