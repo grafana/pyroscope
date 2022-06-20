@@ -34,16 +34,19 @@ enum State {
 }
 
 message Target {
-  repeated common.v1.LabelPair labels = 1;
+  // Contains labels before any processing.
+  map<string, string> discovered_labels = 1;
 
-  string scrape_pool = 2;
-  string scrape_url = 3;
+  map<string, string> labels = 2;
 
-  string last_error = 4;
-  google.protobuf.Timestamp last_scrape = 5;
-  google.protobuf.Duration last_scrape_duration = 6;
-  Health health = 7;
+  string scrape_pool = 3;
+  string scrape_url = 4;
 
-  google.protobuf.Duration scrape_timeout = 8;
-  google.protobuf.Duration scrape_interval = 9;
+  string last_error = 5;
+  google.protobuf.Timestamp last_scrape = 6;
+  google.protobuf.Duration last_scrape_duration = 7;
+  Health health = 8;
+
+  google.protobuf.Duration scrape_timeout = 9;
+  google.protobuf.Duration scrape_interval = 10;
 }

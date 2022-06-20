@@ -76,8 +76,6 @@ func (f *Fire) initAgent() (services.Service, error) {
 		return nil, err
 	}
 	f.agent = a
-	// TODO: remove me
-	f.Server.HTTP.Path("/targets").Methods("GET").Handler(http.HandlerFunc(a.TargetsHandler))
 
 	prefix, handler := agentv1connect.NewAgentServiceHandler(a)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
