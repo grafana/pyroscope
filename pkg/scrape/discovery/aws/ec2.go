@@ -228,18 +228,22 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 	}
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> 113d1371 (register ec2 sd config)
 =======
 
 >>>>>>> 03601ea1 (register ec2 sd config)
+=======
+>>>>>>> e4a4d6cb (fix issue __name__no exist)
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
 			Endpoint:    &d.cfg.Endpoint,
 			Region:      &d.cfg.Region,
 			Credentials: creds,
 		},
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 		SharedConfigState: session.SharedConfigEnable,
@@ -255,6 +259,13 @@ func (d *EC2Discovery) ec2Client(_ context.Context) (*ec2.EC2, error) {
 		Profile: d.cfg.Profile,
 	})
 >>>>>>> 03601ea1 (register ec2 sd config)
+=======
+		SharedConfigState: session.SharedConfigEnable,
+		Profile:           d.cfg.Profile,
+	})
+	fmt.Printf("region %s, profile %s", d.cfg.Region, d.cfg.Profile)
+
+>>>>>>> e4a4d6cb (fix issue __name__no exist)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create aws session")
 	}
@@ -335,11 +346,15 @@ func (d *EC2Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error
 					ec2LabelInstanceID: model.LabelValue(*inst.InstanceId),
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 					model.AppNameLabel: model.LabelValue(d.cfg.Application),
 =======
 >>>>>>> 113d1371 (register ec2 sd config)
 =======
 >>>>>>> 03601ea1 (register ec2 sd config)
+=======
+					model.AppNameLabel: model.LabelValue(d.cfg.Application),
+>>>>>>> e4a4d6cb (fix issue __name__no exist)
 				}
 
 				if r.OwnerId != nil {
