@@ -314,20 +314,6 @@ func (t *Target) Health() agentv1.Health {
 	return t.health
 }
 
-func (t *Target) CommonV1Labels() []*commonv1.LabelPair {
-	t.mtx.RLock()
-	defer t.mtx.RUnlock()
-	l := make([]*commonv1.LabelPair, len(t.labels))
-	for pos := range t.labels {
-		l[pos] = &commonv1.LabelPair{
-			Name:  t.labels[pos].Name,
-			Value: t.labels[pos].Value,
-		}
-	}
-
-	return l
-}
-
 func (t *Target) Labels() labels.Labels {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
