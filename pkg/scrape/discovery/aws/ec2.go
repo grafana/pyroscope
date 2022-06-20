@@ -18,6 +18,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 package aws // revive:disable-next-line:import-shadowing package name is not referenced
 =======
 // revive:disable-next-line:import-shadowing package name is not referenced
@@ -35,6 +36,9 @@ package aws // revive:disable-line:import-shadowing package name is not referenc
 // revive:disable-next-line:import-shadowing package name is not referenced
 >>>>>>> 3192d0fd (fix as comment)
 package aws
+=======
+package aws // revive:disable-next-line:import-shadowing package name is not referenced
+>>>>>>> 0ea624a8 (fix package lint)
 
 >>>>>>> 113d1371 (register ec2 sd config)
 import (
