@@ -15,6 +15,7 @@
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 package aws // revive:disable-next-line:import-shadowing package name is not referenced
 =======
 // revive:disable-next-line:import-shadowing package name is not referenced
@@ -24,6 +25,9 @@ package aws
 package aws // revive:disable-next-line:import-shadowing package name is not referenced
 >>>>>>> 62c38d39 (fix package lint)
 
+=======
+package aws // revive:disable-line:import-shadowing package name is not referenced
+>>>>>>> f25520b8 (fix lint)
 import (
 	"context"
 	"fmt"
