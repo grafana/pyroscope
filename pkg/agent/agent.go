@@ -84,14 +84,14 @@ func (a *Agent) running(ctx context.Context) error {
 	}
 }
 
-func (a *Agent) ActiveTargets() map[string][]Target {
-	result := map[string][]Target{}
+func (a *Agent) ActiveTargets() map[string][]*Target {
+	result := map[string][]*Target{}
 
 	// todo: (callum) maybe return not a map + sort so the results don't reorder on every load?
 	for g, tg := range a.groups {
 		tg.mtx.RLock()
 		for _, targets := range tg.activeTargets {
-			result[g] = append(result[g], []Target{*targets}...)
+			result[g] = append(result[g], []*Target{targets}...)
 		}
 	}
 	return result
