@@ -14,11 +14,15 @@
 // limitations under the License.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 package aws // revive:disable-next-line:import-shadowing package name is not referenced
 =======
 // revive:disable-next-line:import-shadowing package name is not referenced
 package aws
 >>>>>>> 73e62b72 (fix as comment)
+=======
+package aws // revive:disable-next-line:import-shadowing package name is not referenced
+>>>>>>> 62c38d39 (fix package lint)
 
 import (
 	"context"
