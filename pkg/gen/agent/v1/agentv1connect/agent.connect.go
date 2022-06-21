@@ -27,6 +27,7 @@ const (
 
 // AgentServiceClient is a client for the agent.v1.AgentService service.
 type AgentServiceClient interface {
+	// Retrieve information about targets.
 	GetTargets(context.Context, *connect_go.Request[v1.GetTargetsRequest]) (*connect_go.Response[v1.GetTargetsResponse], error)
 }
 
@@ -60,6 +61,7 @@ func (c *agentServiceClient) GetTargets(ctx context.Context, req *connect_go.Req
 
 // AgentServiceHandler is an implementation of the agent.v1.AgentService service.
 type AgentServiceHandler interface {
+	// Retrieve information about targets.
 	GetTargets(context.Context, *connect_go.Request[v1.GetTargetsRequest]) (*connect_go.Response[v1.GetTargetsResponse], error)
 }
 

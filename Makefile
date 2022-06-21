@@ -41,7 +41,7 @@ test: go/test ## Run unit tests
 
 .PHONY: generate
 generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-connect-go ## Regenerate protobuf
-	rm -rf pkg/gen/
+	rm -rf pkg/gen/ pkg/openapiv2/gen
 	PATH=$(BIN) $(BIN)/buf generate
 
 .PHONY: buf/lint
@@ -132,6 +132,14 @@ $(BIN)/protoc-gen-go: Makefile go.mod
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@v0.1.0
+
+$(BIN)/protoc-gen-openapiv2: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.10.3
+
+$(BIN)/protoc-gen-grpc-gateway: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.10.3
 
 $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)
