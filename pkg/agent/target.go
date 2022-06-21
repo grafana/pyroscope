@@ -37,7 +37,7 @@ type TargetGroup struct {
 
 	logger       log.Logger
 	scrapeClient *http.Client
-	pushClient   pushv1connect.PusherClient
+	pushClient   pushv1connect.PusherServiceClient
 	ctx          context.Context
 
 	mtx            sync.RWMutex
@@ -45,7 +45,7 @@ type TargetGroup struct {
 	droppedTargets []*Target
 }
 
-func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pushClient pushv1connect.PusherClient, logger log.Logger) *TargetGroup {
+func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pushClient pushv1connect.PusherServiceClient, logger log.Logger) *TargetGroup {
 	scrapeClient, err := commonconfig.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating HTTP client", "err", err)
@@ -118,7 +118,7 @@ type Target struct {
 	lastScrapeSize     int
 
 	scrapeClient *http.Client
-	pushClient   pushv1connect.PusherClient
+	pushClient   pushv1connect.PusherServiceClient
 
 	hash              uint64
 	req               *http.Request

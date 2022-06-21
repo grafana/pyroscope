@@ -161,16 +161,7 @@ func Test_QueryMetadata(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	dataPath, err := os.MkdirTemp("", "fire-db")
-	require.NoError(t, err)
-	t.Logf("created temporary data path: %s", dataPath)
-	t.Cleanup(func() {
-		if err := os.RemoveAll(dataPath); err != nil {
-			t.Logf("remove data path failed: %v", err)
-		}
-	})
-
-	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), &profilestore.Config{DataPath: dataPath})
+	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
 	require.NoError(t, err)
 
 	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)

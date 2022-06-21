@@ -4,13 +4,10 @@ package push.v1;
 
 option go_package = "github.com/grafana/fire/pkg/gen/go/v1/push;pushv1";
 
-service Pusher {
+service PusherService {
   rpc Push(PushRequest) returns (PushResponse) {}
 }
 
-service Ingester {
-  rpc Push(PushRequest) returns (PushResponse) {}
-}
 
 message PushResponse {}
 

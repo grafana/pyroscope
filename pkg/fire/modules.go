@@ -23,7 +23,7 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
+	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/profilestore"
@@ -74,7 +74,7 @@ func (f *Fire) initDistributor() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	prefix, handler := pushv1connect.NewPusherHandler(d)
+	prefix, handler := pushv1connect.NewPusherServiceHandler(d)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	return d, nil
 }
@@ -129,8 +129,8 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 		return
 	}
 
-	f.Server.HTTP.Handle(grpchealth.NewHandler(grpchealth.NewStaticChecker(ingestv1connect.IngesterName)))
-	prefix, handler := ingestv1connect.NewIngesterHandler(ingester)
+	f.Server.HTTP.Handle(grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName)))
+	prefix, handler := ingesterv1connect.NewIngesterServiceHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(ingester.RenderHandler))
