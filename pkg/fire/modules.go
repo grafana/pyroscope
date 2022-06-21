@@ -128,9 +128,9 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	if err != nil {
 		return
 	}
-
-	f.Server.HTTP.Handle(grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName)))
-	prefix, handler := ingesterv1connect.NewIngesterServiceHandler(ingester)
+	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
+	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
+	prefix, handler = ingesterv1connect.NewIngesterServiceHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(ingester.RenderHandler))
