@@ -63,7 +63,7 @@ fire:
 
   ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
   ## If you set enabled as "True", you need :
-  ## - create a pv which above 10Gi and has same namespace with loki
+  ## - create a pv which above 10Gi and has same namespace with fire
   ## - keep storageClassName same with below setting
   persistence:
     enabled: false
@@ -73,7 +73,7 @@ fire:
     annotations: {}
     # selector:
     #   matchLabels:
-    #     app.kubernetes.io/name: loki
+    #     app.kubernetes.io/name: fire
     # subPath: ""
     # existingClaim:
 
