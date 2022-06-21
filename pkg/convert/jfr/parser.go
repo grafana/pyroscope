@@ -54,39 +54,40 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 	cache := make(tree.LabelsCache)
 	for contextID, events := range groupEventsByContextID(c.Events) {
 		labels := getContextLabels(contextID, jfrLabels)
+		lh := labels.Hash()
 		for _, e := range events {
 			switch e.(type) {
 			case *parser.ExecutionSample:
 				es := e.(*parser.ExecutionSample)
 				if fs := frames(es.StackTrace); fs != nil {
 					if es.State.Name == "STATE_RUNNABLE" {
-						cache.GetOrCreateTree(sampleTypeCPU, labels).InsertStackString(fs, 1)
+						cache.GetOrCreateTreeByHash(sampleTypeCPU, labels, lh).InsertStackString(fs, 1)
 					}
-					cache.GetOrCreateTree(sampleTypeWall, labels).InsertStackString(fs, 1)
+					cache.GetOrCreateTreeByHash(sampleTypeWall, labels, lh).InsertStackString(fs, 1)
 				}
 			case *parser.ObjectAllocationInNewTLAB:
 				oa := e.(*parser.ObjectAllocationInNewTLAB)
 				if fs := frames(oa.StackTrace); fs != nil {
-					cache.GetOrCreateTree(sampleTypeInTLABObjects, labels).InsertStackString(fs, 1)
-					cache.GetOrCreateTree(sampleTypeInTLABBytes, labels).InsertStackString(fs, uint64(oa.TLABSize))
+					cache.GetOrCreateTreeByHash(sampleTypeInTLABObjects, labels, lh).InsertStackString(fs, 1)
+					cache.GetOrCreateTreeByHash(sampleTypeInTLABBytes, labels, lh).InsertStackString(fs, uint64(oa.TLABSize))
 				}
 			case *parser.ObjectAllocationOutsideTLAB:
 				oa := e.(*parser.ObjectAllocationOutsideTLAB)
 				if fs := frames(oa.StackTrace); fs != nil {
-					cache.GetOrCreateTree(sampleTypeOutTLABObjects, labels).InsertStackString(fs, 1)
-					cache.GetOrCreateTree(sampleTypeOutTLABBytes, labels).InsertStackString(fs, uint64(oa.AllocationSize))
+					cache.GetOrCreateTreeByHash(sampleTypeOutTLABObjects, labels, lh).InsertStackString(fs, 1)
+					cache.GetOrCreateTreeByHash(sampleTypeOutTLABBytes, labels, lh).InsertStackString(fs, uint64(oa.AllocationSize))
 				}
 			case *parser.JavaMonitorEnter:
 				jme := e.(*parser.JavaMonitorEnter)
 				if fs := frames(jme.StackTrace); fs != nil {
-					cache.GetOrCreateTree(sampleTypeLockSamples, labels).InsertStackString(fs, 1)
-					cache.GetOrCreateTree(sampleTypeLockDuration, labels).InsertStackString(fs, uint64(jme.Duration))
+					cache.GetOrCreateTreeByHash(sampleTypeLockSamples, labels, lh).InsertStackString(fs, 1)
+					cache.GetOrCreateTreeByHash(sampleTypeLockDuration, labels, lh).InsertStackString(fs, uint64(jme.Duration))
 				}
 			case *parser.ThreadPark:
 				tp := e.(*parser.ThreadPark)
 				if fs := frames(tp.StackTrace); fs != nil {
-					cache.GetOrCreateTree(sampleTypeLockSamples, labels).InsertStackString(fs, 1)
-					cache.GetOrCreateTree(sampleTypeLockDuration, labels).InsertStackString(fs, uint64(tp.Duration))
+					cache.GetOrCreateTreeByHash(sampleTypeLockSamples, labels, lh).InsertStackString(fs, 1)
+					cache.GetOrCreateTreeByHash(sampleTypeLockDuration, labels, lh).InsertStackString(fs, uint64(tp.Duration))
 				}
 			}
 		}

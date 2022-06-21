@@ -28,6 +28,21 @@ func (c LabelsCache) GetOrCreateTree(sampleType int64, l Labels) *LabelsCacheEnt
 	return e
 }
 
+func (c LabelsCache) GetOrCreateTreeByHash(sampleType int64, l Labels, h uint64) *LabelsCacheEntry {
+	p, ok := c[sampleType]
+	if !ok {
+		e := NewCacheEntry(l)
+		c[sampleType] = map[uint64]*LabelsCacheEntry{h: e}
+		return e
+	}
+	e, found := p[h]
+	if !found {
+		e = NewCacheEntry(l)
+		p[h] = e
+	}
+	return e
+}
+
 func (c LabelsCache) Get(sampleType int64, h uint64) (*LabelsCacheEntry, bool) {
 	p, ok := c[sampleType]
 	if !ok {
