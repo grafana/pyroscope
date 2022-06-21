@@ -22,8 +22,9 @@ import (
 	"github.com/prometheus/prometheus/util/pool"
 	"golang.org/x/net/context/ctxhttp"
 
+	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 )
 
 var (
@@ -35,30 +36,30 @@ type TargetGroup struct {
 	jobName string
 	config  ScrapeConfig
 
-	logger       log.Logger
-	scrapeClient *http.Client
-	pushClient   pushv1connect.PusherClient
-	ctx          context.Context
+	logger               log.Logger
+	scrapeClient         *http.Client
+	pusherClientProvider PusherClientProvider
+	ctx                  context.Context
 
 	mtx            sync.RWMutex
 	activeTargets  map[uint64]*Target
 	droppedTargets []*Target
 }
 
-func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pushClient pushv1connect.PusherClient, logger log.Logger) *TargetGroup {
+func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pusherClientProvider PusherClientProvider, logger log.Logger) *TargetGroup {
 	scrapeClient, err := commonconfig.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating HTTP client", "err", err)
 	}
 
 	return &TargetGroup{
-		jobName:       jobName,
-		config:        cfg,
-		logger:        logger,
-		scrapeClient:  scrapeClient,
-		pushClient:    pushClient,
-		ctx:           ctx,
-		activeTargets: map[uint64]*Target{},
+		jobName:              jobName,
+		config:               cfg,
+		logger:               logger,
+		scrapeClient:         scrapeClient,
+		pusherClientProvider: pusherClientProvider,
+		ctx:                  ctx,
+		activeTargets:        map[uint64]*Target{},
 	}
 }
 
@@ -114,11 +115,11 @@ type Target struct {
 	lastError          error
 	lastScrape         time.Time
 	lastScrapeDuration time.Duration
-	health             scrape.TargetHealth
+	health             agentv1.Health
 	lastScrapeSize     int
 
-	scrapeClient *http.Client
-	pushClient   pushv1connect.PusherClient
+	scrapeClient         *http.Client
+	pusherClientProvider PusherClientProvider
 
 	hash              uint64
 	req               *http.Request
@@ -175,7 +176,7 @@ func (t *Target) scrape(ctx context.Context) {
 
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
 		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t.Labels().String(), "err", err)
-		t.health = scrape.HealthBad
+		t.health = agentv1.Health_HEALTH_DOWN
 		t.lastScrapeDuration = time.Since(start)
 		t.lastError = err
 		t.lastScrape = start
@@ -186,17 +187,17 @@ func (t *Target) scrape(ctx context.Context) {
 	if len(b) > 0 {
 		t.lastScrapeSize = len(b)
 	}
-	t.health = scrape.HealthGood
+	t.health = agentv1.Health_HEALTH_UP
 	t.lastScrapeDuration = time.Since(start)
 	t.lastError = nil
 	t.lastScrape = start
 	// todo retry strategy
 	req := &pushv1.PushRequest{}
 	series := &pushv1.RawProfileSeries{
-		Labels: make([]*pushv1.LabelPair, 0, len(t.labels)),
+		Labels: make([]*commonv1.LabelPair, 0, len(t.labels)),
 	}
 	for _, l := range t.labels {
-		series.Labels = append(series.Labels, &pushv1.LabelPair{
+		series.Labels = append(series.Labels, &commonv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		})
@@ -207,7 +208,7 @@ func (t *Target) scrape(ctx context.Context) {
 		},
 	}
 	req.Series = append(req.Series, series)
-	if _, err := t.pushClient.Push(ctx, connect.NewRequest(req)); err != nil {
+	if _, err := t.pusherClientProvider().Push(ctx, connect.NewRequest(req)); err != nil {
 		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)
 	}
 }
@@ -305,7 +306,7 @@ func (t *Target) LastScrapeDuration() time.Duration {
 }
 
 // Health returns the last known health state of the target.
-func (t *Target) Health() scrape.TargetHealth {
+func (t *Target) Health() agentv1.Health {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
 

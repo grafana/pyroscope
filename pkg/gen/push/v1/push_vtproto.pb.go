@@ -7,6 +7,7 @@ package pushv1
 import (
 	context "context"
 	fmt "fmt"
+	v1 "github.com/grafana/fire/pkg/gen/common/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -27,172 +28,86 @@ const (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// PusherClient is the client API for Pusher service.
+// PusherServiceClient is the client API for PusherService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type PusherClient interface {
+type PusherServiceClient interface {
 	Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error)
 }
 
-type pusherClient struct {
+type pusherServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewPusherClient(cc grpc.ClientConnInterface) PusherClient {
-	return &pusherClient{cc}
+func NewPusherServiceClient(cc grpc.ClientConnInterface) PusherServiceClient {
+	return &pusherServiceClient{cc}
 }
 
-func (c *pusherClient) Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error) {
+func (c *pusherServiceClient) Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error) {
 	out := new(PushResponse)
-	err := c.cc.Invoke(ctx, "/push.v1.Pusher/Push", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/push.v1.PusherService/Push", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// PusherServer is the server API for Pusher service.
-// All implementations must embed UnimplementedPusherServer
+// PusherServiceServer is the server API for PusherService service.
+// All implementations must embed UnimplementedPusherServiceServer
 // for forward compatibility
-type PusherServer interface {
+type PusherServiceServer interface {
 	Push(context.Context, *PushRequest) (*PushResponse, error)
-	mustEmbedUnimplementedPusherServer()
+	mustEmbedUnimplementedPusherServiceServer()
 }
 
-// UnimplementedPusherServer must be embedded to have forward compatible implementations.
-type UnimplementedPusherServer struct {
+// UnimplementedPusherServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedPusherServiceServer struct {
 }
 
-func (UnimplementedPusherServer) Push(context.Context, *PushRequest) (*PushResponse, error) {
+func (UnimplementedPusherServiceServer) Push(context.Context, *PushRequest) (*PushResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
 }
-func (UnimplementedPusherServer) mustEmbedUnimplementedPusherServer() {}
+func (UnimplementedPusherServiceServer) mustEmbedUnimplementedPusherServiceServer() {}
 
-// UnsafePusherServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to PusherServer will
+// UnsafePusherServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PusherServiceServer will
 // result in compilation errors.
-type UnsafePusherServer interface {
-	mustEmbedUnimplementedPusherServer()
+type UnsafePusherServiceServer interface {
+	mustEmbedUnimplementedPusherServiceServer()
 }
 
-func RegisterPusherServer(s grpc.ServiceRegistrar, srv PusherServer) {
-	s.RegisterService(&Pusher_ServiceDesc, srv)
+func RegisterPusherServiceServer(s grpc.ServiceRegistrar, srv PusherServiceServer) {
+	s.RegisterService(&PusherService_ServiceDesc, srv)
 }
 
-func _Pusher_Push_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PusherService_Push_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PushRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PusherServer).Push(ctx, in)
+		return srv.(PusherServiceServer).Push(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/push.v1.Pusher/Push",
+		FullMethod: "/push.v1.PusherService/Push",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PusherServer).Push(ctx, req.(*PushRequest))
+		return srv.(PusherServiceServer).Push(ctx, req.(*PushRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Pusher_ServiceDesc is the grpc.ServiceDesc for Pusher service.
+// PusherService_ServiceDesc is the grpc.ServiceDesc for PusherService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Pusher_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "push.v1.Pusher",
-	HandlerType: (*PusherServer)(nil),
+var PusherService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "push.v1.PusherService",
+	HandlerType: (*PusherServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Push",
-			Handler:    _Pusher_Push_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "push/v1/push.proto",
-}
-
-// IngesterClient is the client API for Ingester service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type IngesterClient interface {
-	Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error)
-}
-
-type ingesterClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewIngesterClient(cc grpc.ClientConnInterface) IngesterClient {
-	return &ingesterClient{cc}
-}
-
-func (c *ingesterClient) Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error) {
-	out := new(PushResponse)
-	err := c.cc.Invoke(ctx, "/push.v1.Ingester/Push", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// IngesterServer is the server API for Ingester service.
-// All implementations must embed UnimplementedIngesterServer
-// for forward compatibility
-type IngesterServer interface {
-	Push(context.Context, *PushRequest) (*PushResponse, error)
-	mustEmbedUnimplementedIngesterServer()
-}
-
-// UnimplementedIngesterServer must be embedded to have forward compatible implementations.
-type UnimplementedIngesterServer struct {
-}
-
-func (UnimplementedIngesterServer) Push(context.Context, *PushRequest) (*PushResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
-}
-func (UnimplementedIngesterServer) mustEmbedUnimplementedIngesterServer() {}
-
-// UnsafeIngesterServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to IngesterServer will
-// result in compilation errors.
-type UnsafeIngesterServer interface {
-	mustEmbedUnimplementedIngesterServer()
-}
-
-func RegisterIngesterServer(s grpc.ServiceRegistrar, srv IngesterServer) {
-	s.RegisterService(&Ingester_ServiceDesc, srv)
-}
-
-func _Ingester_Push_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PushRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(IngesterServer).Push(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/push.v1.Ingester/Push",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IngesterServer).Push(ctx, req.(*PushRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// Ingester_ServiceDesc is the grpc.ServiceDesc for Ingester service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var Ingester_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "push.v1.Ingester",
-	HandlerType: (*IngesterServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Push",
-			Handler:    _Ingester_Push_Handler,
+			Handler:    _PusherService_Push_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -334,53 +249,6 @@ func (m *RawProfileSeries) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *LabelPair) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *LabelPair) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *LabelPair) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.Value) > 0 {
-		i -= len(m.Value)
-		copy(dAtA[i:], m.Value)
-		i = encodeVarint(dAtA, i, uint64(len(m.Value)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Name) > 0 {
-		i -= len(m.Name)
-		copy(dAtA[i:], m.Name)
-		i = encodeVarint(dAtA, i, uint64(len(m.Name)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *RawSample) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -479,26 +347,6 @@ func (m *RawProfileSeries) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
-	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
-	return n
-}
-
-func (m *LabelPair) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Name)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
-	}
-	l = len(m.Value)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
@@ -722,7 +570,7 @@ func (m *RawProfileSeries) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Labels = append(m.Labels, &LabelPair{})
+			m.Labels = append(m.Labels, &v1.LabelPair{})
 			if err := m.Labels[len(m.Labels)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -760,121 +608,6 @@ func (m *RawProfileSeries) UnmarshalVT(dAtA []byte) error {
 			if err := m.Samples[len(m.Samples)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *LabelPair) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: LabelPair: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LabelPair: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Name = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Value = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
