@@ -462,20 +462,27 @@ func (e *exemplarsBatchEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, err
 	if err := e.Tree.SerializeTruncate(d, maxNodes, b); err != nil {
 		return nil, err
 	}
+
 	vw := varint.NewWriter()
 	_, _ = vw.Write(b, uint64(e.StartTime))
 	_, _ = vw.Write(b, uint64(e.EndTime))
+
 	// Strip profile_id and __name__ labels.
-	_, _ = vw.Write(b, uint64(2*(len(e.Labels)-2)))
+	labels := make([]string, 0, len(e.Labels)*2)
 	for k, v := range e.Labels {
 		if k == segment.ProfileIDLabelName || k == "__name__" {
 			continue
 		}
-		_, _ = vw.Write(b, uint64(len(k)))
-		_, _ = b.Write([]byte(k))
-		_, _ = vw.Write(b, uint64(len(v)))
-		_, _ = b.Write([]byte(v))
+		labels = append(labels, k, v)
 	}
+	// Write labels as an array of string pairs.
+	_, _ = vw.Write(b, uint64(len(labels)))
+	for _, v := range labels {
+		bs := []byte(v)
+		_, _ = vw.Write(b, uint64(len(bs)))
+		_, _ = b.Write(bs)
+	}
+
 	return b.Bytes(), nil
 }
 

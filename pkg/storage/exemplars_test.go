@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"math/big"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -213,6 +215,64 @@ var _ = Describe("ConcurrentExemplarsInsert", func() {
 				close(stop)
 				<-done
 			})
+		})
+	})
+})
+
+var _ = Describe("Exemplar serialization", func() {
+	Context("exemplars serialisation", func() {
+		It("can be serialized and deserialized", func() {
+			const appName = "app.cpu"
+			profileID := randomBytesHex(8)
+			t := tree.New()
+			t.Insert([]byte("a;b"), uint64(1))
+			t.Insert([]byte("a;c"), uint64(2))
+
+			e := exemplarsBatchEntry{
+				Key:       exemplarKey(appName, profileID),
+				AppName:   appName,
+				ProfileID: profileID,
+
+				StartTime: testing.SimpleTime(123).UnixNano(),
+				EndTime:   testing.SimpleTime(456).UnixNano(),
+				Tree:      t,
+				Labels: map[string]string{
+					"__name__":   appName,
+					"profile_id": profileID,
+					"foo":        "bar",
+					"baz":        "qux",
+				},
+			}
+
+			d := dict.New()
+			b, err := e.Serialize(d, 1<<10)
+			Expect(err).ToNot(HaveOccurred())
+
+			var n exemplarsBatchEntry
+			Expect(n.Deserialize(d, b)).ToNot(HaveOccurred())
+
+			Expect(e.StartTime).To(Equal(n.StartTime))
+			Expect(e.EndTime).To(Equal(n.EndTime))
+			Expect(e.Tree.String()).To(Equal(n.Tree.String()))
+			Expect(n.Labels).To(Equal(map[string]string{
+				"foo": "bar",
+				"baz": "qux",
+			}))
+		})
+	})
+
+	Context("exemplars v1 compatibility", func() {
+		It("can deserialize exemplars v1", func() {
+			b, err := os.ReadFile("./testdata/exemplar.v1.bin")
+			Expect(err).ToNot(HaveOccurred())
+
+			var n exemplarsBatchEntry
+			Expect(n.Deserialize(dict.New(), b)).ToNot(HaveOccurred())
+
+			Expect(n.Tree.Samples()).To(Equal(uint64(81255)))
+			Expect(n.StartTime).To(BeZero())
+			Expect(n.EndTime).To(BeZero())
+			Expect(n.Labels).To(BeNil())
 		})
 	})
 })
