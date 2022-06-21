@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
@@ -110,7 +111,7 @@ func Test_selectMerge(t *testing.T) {
 	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 				},
 				Samples: []*pushv1.RawSample{
@@ -171,7 +172,7 @@ func Test_QueryMetadata(t *testing.T) {
 	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-central1"},
 				},
@@ -182,7 +183,7 @@ func Test_QueryMetadata(t *testing.T) {
 				},
 			},
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-east1"},
 				},

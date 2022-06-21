@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/require"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
@@ -36,16 +37,16 @@ func Test_ConnectPush(t *testing.T) {
 	}, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
-	mux.Handle(pushv1connect.NewPusherHandler(d))
+	mux.Handle(pushv1connect.NewPusherServiceHandler(d))
 	s := httptest.NewServer(mux)
 	defer s.Close()
 
-	client := pushv1connect.NewPusherClient(http.DefaultClient, s.URL)
+	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL)
 
 	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
 				Samples: []*pushv1.RawSample{
@@ -70,7 +71,7 @@ func Test_Replication(t *testing.T) {
 	req := connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
 				Samples: []*pushv1.RawSample{
