@@ -70,18 +70,26 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	return q, nil
 }
 
+func (f *Fire) getPusherClient() pushv1connect.PusherServiceClient {
+	return f.pusherClient
+}
+
 func (f *Fire) initDistributor() (services.Service, error) {
 	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.logger)
 	if err != nil {
 		return nil, err
 	}
+
+	// initialise direct pusher, this overwrites the default HTTP client
+	f.pusherClient = d
+
 	prefix, handler := pushv1connect.NewPusherServiceHandler(d)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	return d, nil
 }
 
 func (f *Fire) initAgent() (services.Service, error) {
-	a, err := agent.New(&f.Cfg.AgentConfig, f.logger)
+	a, err := agent.New(&f.Cfg.AgentConfig, f.logger, f.getPusherClient)
 	if err != nil {
 		return nil, err
 	}

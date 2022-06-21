@@ -209,14 +209,14 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 					}
 				}
 				droppedTargets = append(droppedTargets, &Target{
-					Target:       scrape.NewTarget(lbls, origLabels, params),
-					labels:       lbls,
-					scrapeClient: tg.scrapeClient,
-					pushClient:   tg.pushClient,
-					interval:     interval,
-					timeout:      timeout,
-					health:       agentv1.Health_HEALTH_UNSPECIFIED,
-					logger:       tg.logger,
+					Target:               scrape.NewTarget(lbls, origLabels, params),
+					labels:               lbls,
+					scrapeClient:         tg.scrapeClient,
+					pusherClientProvider: tg.pusherClientProvider,
+					interval:             interval,
+					timeout:              timeout,
+					health:               agentv1.Health_HEALTH_UNSPECIFIED,
+					logger:               tg.logger,
 				})
 				continue
 			}
@@ -230,14 +230,14 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 					params.Add("seconds", strconv.Itoa(int(time.Duration(tg.config.ScrapeTimeout)/time.Second)-1))
 				}
 				targets = append(targets, &Target{
-					Target:       scrape.NewTarget(lbls, origLabels, params),
-					labels:       lbls,
-					scrapeClient: tg.scrapeClient,
-					pushClient:   tg.pushClient,
-					interval:     interval,
-					timeout:      timeout,
-					health:       agentv1.Health_HEALTH_UNSPECIFIED,
-					logger:       tg.logger,
+					Target:               scrape.NewTarget(lbls, origLabels, params),
+					labels:               lbls,
+					scrapeClient:         tg.scrapeClient,
+					pusherClientProvider: tg.pusherClientProvider,
+					interval:             interval,
+					timeout:              timeout,
+					health:               agentv1.Health_HEALTH_UNSPECIFIED,
+					logger:               tg.logger,
 				})
 			}
 		}

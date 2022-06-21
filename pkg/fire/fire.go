@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/weaveworks/common/logging"
 	"github.com/weaveworks/common/middleware"
@@ -29,6 +30,7 @@ import (
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/cfg"
 	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/querier"
@@ -140,10 +142,12 @@ type Fire struct {
 	ring               *ring.Ring
 	profileStore       *profilestore.ProfileStore
 	agent              *agent.Agent
+	pusherClient       pushv1connect.PusherServiceClient
 }
 
 func New(cfg Config) (*Fire, error) {
 	logger := initLogger(&cfg.Server)
+
 	fire := &Fire{
 		Cfg:            cfg,
 		logger:         logger,
@@ -156,6 +160,14 @@ func New(cfg Config) (*Fire, error) {
 	if err := fire.setupModuleManager(); err != nil {
 		return nil, err
 	}
+
+	// instantiate a fallback pusher client (when not run with a local distributor
+	pusherHTTPClient, err := commonconfig.NewClientFromConfig(cfg.AgentConfig.ClientConfig.Client, cfg.AgentConfig.ClientConfig.URL.String())
+	if err != nil {
+		return nil, err
+	}
+	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient, cfg.AgentConfig.ClientConfig.URL.String())
+
 	return fire, nil
 }
 
