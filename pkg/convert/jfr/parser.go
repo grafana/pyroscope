@@ -55,14 +55,6 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 	cache := make(tree.LabelsCache)
 	for contextID, events := range groupEventsByContextID(c.Events) {
 		labels := getContextLabels(contextID, jfrLabels)
-		//cpu := tree.New()
-		//wall := tree.New()
-		//inTLABObjects := tree.New()
-		//inTLABBytes := tree.New()
-		//outTLABObjects := tree.New()
-		//outTLABBytes := tree.New()
-		//lockSamples := tree.New()
-		//lockDuration := tree.New()
 		for _, e := range events {
 			switch e.(type) {
 			case *parser.ExecutionSample:
