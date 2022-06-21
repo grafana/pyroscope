@@ -3,5 +3,17 @@
 # Declare variables to be passed into your templates.
 
 fire:
-  deployment_targets: [querier, distributor,agent]
-  stateful_set_targets: [ingester]
+  components:
+    querier:
+      kind: Deployment
+      # TODO: Enable once the querier PR is merged
+      replicaCount: 0
+    distributor:
+      kind: Deployment
+      replicaCount: 2
+    agent:
+      kind: Deployment
+      replicaCount: 1
+    ingester:
+      kind: StatefulSet
+      replicaCount: 3
