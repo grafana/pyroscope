@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
+	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 )
 
 // PoolConfig is config for creating a Pool.
@@ -49,14 +49,14 @@ func PoolFactory(addr string) (ring_client.PoolClient, error) {
 		return nil, err
 	}
 	return &ingesterPoolClient{
-		IngesterClient: ingestv1connect.NewIngesterClient(http.DefaultClient, "http://"+addr),
-		HealthClient:   grpc_health_v1.NewHealthClient(conn),
-		Closer:         conn,
+		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(http.DefaultClient, "http://"+addr),
+		HealthClient:          grpc_health_v1.NewHealthClient(conn),
+		Closer:                conn,
 	}, nil
 }
 
 type ingesterPoolClient struct {
-	ingestv1connect.IngesterClient
+	ingesterv1connect.IngesterServiceClient
 	grpc_health_v1.HealthClient
 	io.Closer
 }

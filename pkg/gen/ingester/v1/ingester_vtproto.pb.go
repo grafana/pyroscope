@@ -2,7 +2,7 @@
 // protoc-gen-go-vtproto version: v0.2.0
 // source: ingester/v1/ingester.proto
 
-package ingestv1
+package ingesterv1
 
 import (
 	context "context"
@@ -28,158 +28,158 @@ const (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// IngesterClient is the client API for Ingester service.
+// IngesterServiceClient is the client API for IngesterService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type IngesterClient interface {
+type IngesterServiceClient interface {
 	Push(ctx context.Context, in *v1.PushRequest, opts ...grpc.CallOption) (*v1.PushResponse, error)
 	LabelValues(ctx context.Context, in *LabelValuesRequest, opts ...grpc.CallOption) (*LabelValuesResponse, error)
 	ProfileTypes(ctx context.Context, in *ProfileTypesRequest, opts ...grpc.CallOption) (*ProfileTypesResponse, error)
 }
 
-type ingesterClient struct {
+type ingesterServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewIngesterClient(cc grpc.ClientConnInterface) IngesterClient {
-	return &ingesterClient{cc}
+func NewIngesterServiceClient(cc grpc.ClientConnInterface) IngesterServiceClient {
+	return &ingesterServiceClient{cc}
 }
 
-func (c *ingesterClient) Push(ctx context.Context, in *v1.PushRequest, opts ...grpc.CallOption) (*v1.PushResponse, error) {
+func (c *ingesterServiceClient) Push(ctx context.Context, in *v1.PushRequest, opts ...grpc.CallOption) (*v1.PushResponse, error) {
 	out := new(v1.PushResponse)
-	err := c.cc.Invoke(ctx, "/ingest.v1.Ingester/Push", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ingester.v1.IngesterService/Push", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *ingesterClient) LabelValues(ctx context.Context, in *LabelValuesRequest, opts ...grpc.CallOption) (*LabelValuesResponse, error) {
+func (c *ingesterServiceClient) LabelValues(ctx context.Context, in *LabelValuesRequest, opts ...grpc.CallOption) (*LabelValuesResponse, error) {
 	out := new(LabelValuesResponse)
-	err := c.cc.Invoke(ctx, "/ingest.v1.Ingester/LabelValues", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ingester.v1.IngesterService/LabelValues", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *ingesterClient) ProfileTypes(ctx context.Context, in *ProfileTypesRequest, opts ...grpc.CallOption) (*ProfileTypesResponse, error) {
+func (c *ingesterServiceClient) ProfileTypes(ctx context.Context, in *ProfileTypesRequest, opts ...grpc.CallOption) (*ProfileTypesResponse, error) {
 	out := new(ProfileTypesResponse)
-	err := c.cc.Invoke(ctx, "/ingest.v1.Ingester/ProfileTypes", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ingester.v1.IngesterService/ProfileTypes", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// IngesterServer is the server API for Ingester service.
-// All implementations must embed UnimplementedIngesterServer
+// IngesterServiceServer is the server API for IngesterService service.
+// All implementations must embed UnimplementedIngesterServiceServer
 // for forward compatibility
-type IngesterServer interface {
+type IngesterServiceServer interface {
 	Push(context.Context, *v1.PushRequest) (*v1.PushResponse, error)
 	LabelValues(context.Context, *LabelValuesRequest) (*LabelValuesResponse, error)
 	ProfileTypes(context.Context, *ProfileTypesRequest) (*ProfileTypesResponse, error)
-	mustEmbedUnimplementedIngesterServer()
+	mustEmbedUnimplementedIngesterServiceServer()
 }
 
-// UnimplementedIngesterServer must be embedded to have forward compatible implementations.
-type UnimplementedIngesterServer struct {
+// UnimplementedIngesterServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedIngesterServiceServer struct {
 }
 
-func (UnimplementedIngesterServer) Push(context.Context, *v1.PushRequest) (*v1.PushResponse, error) {
+func (UnimplementedIngesterServiceServer) Push(context.Context, *v1.PushRequest) (*v1.PushResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
 }
-func (UnimplementedIngesterServer) LabelValues(context.Context, *LabelValuesRequest) (*LabelValuesResponse, error) {
+func (UnimplementedIngesterServiceServer) LabelValues(context.Context, *LabelValuesRequest) (*LabelValuesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LabelValues not implemented")
 }
-func (UnimplementedIngesterServer) ProfileTypes(context.Context, *ProfileTypesRequest) (*ProfileTypesResponse, error) {
+func (UnimplementedIngesterServiceServer) ProfileTypes(context.Context, *ProfileTypesRequest) (*ProfileTypesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProfileTypes not implemented")
 }
-func (UnimplementedIngesterServer) mustEmbedUnimplementedIngesterServer() {}
+func (UnimplementedIngesterServiceServer) mustEmbedUnimplementedIngesterServiceServer() {}
 
-// UnsafeIngesterServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to IngesterServer will
+// UnsafeIngesterServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to IngesterServiceServer will
 // result in compilation errors.
-type UnsafeIngesterServer interface {
-	mustEmbedUnimplementedIngesterServer()
+type UnsafeIngesterServiceServer interface {
+	mustEmbedUnimplementedIngesterServiceServer()
 }
 
-func RegisterIngesterServer(s grpc.ServiceRegistrar, srv IngesterServer) {
-	s.RegisterService(&Ingester_ServiceDesc, srv)
+func RegisterIngesterServiceServer(s grpc.ServiceRegistrar, srv IngesterServiceServer) {
+	s.RegisterService(&IngesterService_ServiceDesc, srv)
 }
 
-func _Ingester_Push_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _IngesterService_Push_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.PushRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IngesterServer).Push(ctx, in)
+		return srv.(IngesterServiceServer).Push(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ingest.v1.Ingester/Push",
+		FullMethod: "/ingester.v1.IngesterService/Push",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IngesterServer).Push(ctx, req.(*v1.PushRequest))
+		return srv.(IngesterServiceServer).Push(ctx, req.(*v1.PushRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Ingester_LabelValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _IngesterService_LabelValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LabelValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IngesterServer).LabelValues(ctx, in)
+		return srv.(IngesterServiceServer).LabelValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ingest.v1.Ingester/LabelValues",
+		FullMethod: "/ingester.v1.IngesterService/LabelValues",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IngesterServer).LabelValues(ctx, req.(*LabelValuesRequest))
+		return srv.(IngesterServiceServer).LabelValues(ctx, req.(*LabelValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Ingester_ProfileTypes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _IngesterService_ProfileTypes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProfileTypesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IngesterServer).ProfileTypes(ctx, in)
+		return srv.(IngesterServiceServer).ProfileTypes(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ingest.v1.Ingester/ProfileTypes",
+		FullMethod: "/ingester.v1.IngesterService/ProfileTypes",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IngesterServer).ProfileTypes(ctx, req.(*ProfileTypesRequest))
+		return srv.(IngesterServiceServer).ProfileTypes(ctx, req.(*ProfileTypesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Ingester_ServiceDesc is the grpc.ServiceDesc for Ingester service.
+// IngesterService_ServiceDesc is the grpc.ServiceDesc for IngesterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Ingester_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ingest.v1.Ingester",
-	HandlerType: (*IngesterServer)(nil),
+var IngesterService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "ingester.v1.IngesterService",
+	HandlerType: (*IngesterServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Push",
-			Handler:    _Ingester_Push_Handler,
+			Handler:    _IngesterService_Push_Handler,
 		},
 		{
 			MethodName: "LabelValues",
-			Handler:    _Ingester_LabelValues_Handler,
+			Handler:    _IngesterService_LabelValues_Handler,
 		},
 		{
 			MethodName: "ProfileTypes",
-			Handler:    _Ingester_ProfileTypes_Handler,
+			Handler:    _IngesterService_ProfileTypes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

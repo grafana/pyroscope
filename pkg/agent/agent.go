@@ -7,7 +7,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/discovery"
 
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
@@ -18,10 +17,10 @@ type Agent struct {
 	services.Service
 	logger log.Logger
 
-	manager    *discovery.Manager
-	jobs       map[string]discovery.Configs
-	groups     map[string]*TargetGroup
-	pushClient pushv1connect.PusherClient
+	manager              *discovery.Manager
+	jobs                 map[string]discovery.Configs
+	groups               map[string]*TargetGroup
+	pusherClientProvider PusherClientProvider
 
 	mtx sync.Mutex
 }
@@ -31,15 +30,13 @@ type TargetManager interface {
 	ActiveTargets() map[string][]Target
 }
 
-func New(config *Config, logger log.Logger) (*Agent, error) {
-	httpClient, err := commonconfig.NewClientFromConfig(config.ClientConfig.Client, config.ClientConfig.URL.String())
-	if err != nil {
-		return nil, err
-	}
+type PusherClientProvider func() pushv1connect.PusherServiceClient
+
+func New(config *Config, logger log.Logger, pusherClientProvider PusherClientProvider) (*Agent, error) {
 	a := &Agent{
-		Config:     config,
-		logger:     logger,
-		pushClient: pushv1connect.NewPusherClient(httpClient, config.ClientConfig.URL.String()),
+		Config:               config,
+		logger:               logger,
+		pusherClientProvider: pusherClientProvider,
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
 	jobs := map[string]discovery.Configs{}
@@ -72,7 +69,7 @@ func (a *Agent) running(ctx context.Context) error {
 					a.groups[jobName].sync(groups)
 					continue
 				}
-				newGroup := NewTargetGroup(ctx, jobName, jobConfig(jobName, a.Config), a.pushClient, a.logger)
+				newGroup := NewTargetGroup(ctx, jobName, jobConfig(jobName, a.Config), a.pusherClientProvider, a.logger)
 				a.groups[jobName] = newGroup
 				newGroup.sync(groups)
 
@@ -90,8 +87,8 @@ func (a *Agent) ActiveTargets() map[string][]*Target {
 	// todo: (callum) maybe return not a map + sort so the results don't reorder on every load?
 	for g, tg := range a.groups {
 		tg.mtx.RLock()
-		for _, targets := range tg.activeTargets {
-			result[g] = append(result[g], []*Target{targets}...)
+		for _, target := range tg.activeTargets {
+			result[g] = append(result[g], target)
 		}
 	}
 	return result
