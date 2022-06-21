@@ -23,6 +23,7 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
@@ -75,7 +76,9 @@ func (f *Fire) initAgent() (services.Service, error) {
 		return nil, err
 	}
 	f.agent = a
-	f.Server.HTTP.Path("/targets").Methods("GET").Handler(http.HandlerFunc(a.TargetsHandler))
+
+	prefix, handler := agentv1connect.NewAgentServiceHandler(a)
+	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 
 	return a, nil
 }

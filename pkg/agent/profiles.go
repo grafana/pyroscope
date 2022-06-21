@@ -32,6 +32,8 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
+
+	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 )
 
 const (
@@ -213,7 +215,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 					pushClient:   tg.pushClient,
 					interval:     interval,
 					timeout:      timeout,
-					health:       scrape.HealthUnknown,
+					health:       agentv1.Health_HEALTH_UNSPECIFIED,
 					logger:       tg.logger,
 				})
 				continue
@@ -234,7 +236,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 					pushClient:   tg.pushClient,
 					interval:     interval,
 					timeout:      timeout,
-					health:       scrape.HealthUnknown,
+					health:       agentv1.Health_HEALTH_UNSPECIFIED,
 					logger:       tg.logger,
 				})
 			}
