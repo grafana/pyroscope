@@ -34,6 +34,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AgentServiceClient interface {
+	// Retrieve information about targets.
 	GetTargets(ctx context.Context, in *GetTargetsRequest, opts ...grpc.CallOption) (*GetTargetsResponse, error)
 }
 
@@ -58,6 +59,7 @@ func (c *agentServiceClient) GetTargets(ctx context.Context, in *GetTargetsReque
 // All implementations must embed UnimplementedAgentServiceServer
 // for forward compatibility
 type AgentServiceServer interface {
+	// Retrieve information about targets.
 	GetTargets(context.Context, *GetTargetsRequest) (*GetTargetsResponse, error)
 	mustEmbedUnimplementedAgentServiceServer()
 }

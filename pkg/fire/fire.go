@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/dskit/modules"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
@@ -143,6 +144,8 @@ type Fire struct {
 	profileStore       *profilestore.ProfileStore
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
+
+	grpcGatewayMux *grpcgw.ServeMux
 }
 
 func New(cfg Config) (*Fire, error) {
@@ -174,6 +177,7 @@ func New(cfg Config) (*Fire, error) {
 func (f *Fire) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
+	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
 	mm.RegisterModule(ProfileStore, f.initProfileStore, modules.UserInvisibleModule)
@@ -189,11 +193,12 @@ func (f *Fire) setupModuleManager() error {
 		All:          {Agent, Ingester, Distributor, Querier},
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
-		Agent:        {Server},
+		Agent:        {Server, GRPCGateway},
 		Ingester:     {Server, MemberlistKV, ProfileStore},
 		ProfileStore: {},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
+		GRPCGateway:  {Server},
 
 		// Querier:                  {Store, Ring, Server, IngesterQuerier, TenantConfigs, UsageReport},
 		// QueryFrontendTripperware: {Server, Overrides, TenantConfigs},

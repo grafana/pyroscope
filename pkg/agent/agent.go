@@ -9,10 +9,13 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/prometheus/discovery"
 
+	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 )
 
 type Agent struct {
+	agentv1.UnimplementedAgentServiceServer
+
 	Config *Config
 	services.Service
 	logger log.Logger
