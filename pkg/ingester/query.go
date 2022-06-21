@@ -141,7 +141,7 @@ type selectMergeReq struct {
 }
 
 func (i *Ingester) selectMerge(ctx context.Context, query profileQuery, start, end int64) (*flamebearer.FlamebearerProfile, error) {
-	filterExpr, err := mergePlan(query, start, end)
+	filterExpr, err := selectPlan(query, start, end)
 	if err != nil {
 		// todo 4xx
 		return nil, err
@@ -189,6 +189,51 @@ func (i *Ingester) selectMerge(ctx context.Context, query profileQuery, start, e
 			},
 		},
 	}, nil
+}
+
+func (i *Ingester) selectProfile(ctx context.Context, query profileQuery, start, end int64) error {
+	filterExpr, err := selectPlan(query, start, end)
+	if err != nil {
+		// todo 4xx
+		return err
+	}
+	var colums []logicalplan.Expr
+	err = i.engine.ScanSchema("stacktraces").
+		Distinct(logicalplan.Col("name")).
+		Filter(logicalplan.Col("name").RegexMatch("^labels\\..+$")).
+		Execute(ctx, func(r arrow.Record) error {
+			r.Retain()
+			col := r.Column(0).(*array.String)
+			colums = append(colums, logicalplan.Col(col.Value(0)))
+			return nil
+		})
+	if err != nil {
+		return err
+	}
+	var ar arrow.Record
+	colums = append(colums, logicalplan.Col("name"),
+		logicalplan.Col("sample_type"),
+		logicalplan.Col("sample_unit"),
+		logicalplan.Col("period_type"),
+		logicalplan.Col("period_unit"),
+		logicalplan.Col("stacktrace"),
+		logicalplan.Col("value"),
+		logicalplan.Col("timestamp"))
+	err = i.engine.ScanTable("stacktraces").
+		Project(colums...).
+		Filter(filterExpr).
+		Execute(ctx, func(r arrow.Record) error {
+			r.Retain()
+			ar = r
+			fmt.Println(r)
+			return nil
+		})
+	if err != nil {
+		return err
+	}
+	defer ar.Release()
+
+	return nil
 }
 
 func buildFlamebearer(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebearer.FlamebearerV1, error) {
@@ -296,7 +341,7 @@ func parseQueryRequest(req *http.Request) (selectMergeReq, error) {
 	}, nil
 }
 
-func mergePlan(query profileQuery, start, end int64) (logicalplan.Expr, error) {
+func selectPlan(query profileQuery, start, end int64) (logicalplan.Expr, error) {
 	selectorExprs, err := queryToFilterExprs(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %w", err)

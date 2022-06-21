@@ -221,3 +221,55 @@ func Test_QueryMetadata(t *testing.T) {
 	sort.Strings(typeRes.Msg.Names)
 	require.Equal(t, expectedTypes, typeRes.Msg.Names)
 }
+
+func Test_SelectProfiles(t *testing.T) {
+	cfg := defaultIngesterTestConfig(t)
+	logger := log.NewLogfmtLogger(os.Stdout)
+	storeCfg := defaultProfileStoreTestConfig(t)
+	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), storeCfg)
+	require.NoError(t, err)
+
+	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
+	require.NoError(t, err)
+
+	rawProfile := testProfile(t)
+	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{
+			{
+				Labels: []*pushv1.LabelPair{
+					{Name: "__name__", Value: "memory"},
+					{Name: "cluster", Value: "us-central1"},
+					{Name: "foo", Value: "bar"},
+				},
+				Samples: []*pushv1.RawSample{
+					{
+						RawProfile: rawProfile,
+					},
+				},
+			},
+			{
+				Labels: []*pushv1.LabelPair{
+					{Name: "__name__", Value: "memory"},
+					{Name: "cluster", Value: "us-east1"},
+				},
+				Samples: []*pushv1.RawSample{
+					{
+						RawProfile: rawProfile,
+					},
+				},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NoError(t, d.selectProfile(context.Background(), profileQuery{
+		name:       "memory",
+		sampleType: "inuse_space",
+		sampleUnit: "bytes",
+		periodType: "space",
+		periodUnit: "bytes",
+		selector: []*labels.Matcher{labels.MustNewMatcher(
+			labels.MatchEqual, "cluster", "us-central1",
+		)},
+	}, 0, int64(model.Latest)))
+}
