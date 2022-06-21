@@ -24,10 +24,11 @@ import (
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
 	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
+	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/profilestore"
+	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -41,12 +42,12 @@ const (
 	Ingester     string = "ingester"
 	MemberlistKV string = "memberlist-kv"
 	ProfileStore string = "profile-store"
+	Querier      string = "querier"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
 	// OverridesExporter        string = "overrides-exporter"
 	// TenantConfigs            string = "tenant-configs"
-	// Querier                  string = "querier"
 	// IngesterQuerier          string = "ingester-querier"
 	// QueryFrontend            string = "query-frontend"
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
@@ -60,7 +61,16 @@ const (
 	// UsageReport              string = "usage-report"
 )
 
-func (f *Fire) getPusherClient() pushv1connect.PusherClient {
+func (f *Fire) initQuerier() (services.Service, error) {
+	q, err := querier.New(f.Cfg.Querier, f.ring, nil, f.logger)
+	if err != nil {
+		return nil, err
+	}
+	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
+	return q, nil
+}
+
+func (f *Fire) getPusherClient() pushv1connect.PusherServiceClient {
 	return f.pusherClient
 }
 
@@ -73,7 +83,7 @@ func (f *Fire) initDistributor() (services.Service, error) {
 	// initialise direct pusher, this overwrites the default HTTP client
 	f.pusherClient = d
 
-	prefix, handler := pushv1connect.NewPusherHandler(d)
+	prefix, handler := pushv1connect.NewPusherServiceHandler(d)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	return d, nil
 }
@@ -129,13 +139,12 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	if err != nil {
 		return
 	}
-
-	f.Server.HTTP.Handle(grpchealth.NewHandler(grpchealth.NewStaticChecker(ingestv1connect.IngesterName)))
-	prefix, handler := ingestv1connect.NewIngesterHandler(ingester)
+	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
+	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
+	prefix, handler = ingesterv1connect.NewIngesterServiceHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(ingester.RenderHandler))
-	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(ingester.LabelValuesHandler))
 	return ingester, nil
 }
 

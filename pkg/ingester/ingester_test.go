@@ -23,7 +23,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
+	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
 )
@@ -73,11 +73,11 @@ func Test_ConnectPush(t *testing.T) {
 	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
 	require.NoError(t, err)
 
-	mux.Handle(ingestv1connect.NewIngesterHandler(d))
+	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(d))
 	s := httptest.NewServer(mux)
 	defer s.Close()
 
-	client := ingestv1connect.NewIngesterClient(http.DefaultClient, s.URL)
+	client := ingesterv1connect.NewIngesterServiceClient(http.DefaultClient, s.URL)
 
 	rawProfile := testProfile(t)
 	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{

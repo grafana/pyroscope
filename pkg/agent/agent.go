@@ -30,7 +30,7 @@ type TargetManager interface {
 	ActiveTargets() map[string][]Target
 }
 
-type PusherClientProvider func() pushv1connect.PusherClient
+type PusherClientProvider func() pushv1connect.PusherServiceClient
 
 func New(config *Config, logger log.Logger, pusherClientProvider PusherClientProvider) (*Agent, error) {
 	a := &Agent{
