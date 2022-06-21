@@ -46,6 +46,7 @@ spec:
           imagePullPolicy: {{ .Values.fire.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
+            - "-memberlist.join={{ include "fire.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local."
           {{- if eq $component "agent" }}
             - "-client.url=http://{{ include "fire.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.fire.service.port }}"
           {{- end }}
@@ -59,6 +60,9 @@ spec:
           ports:
             - name: {{ .Values.fire.service.port_name }}
               containerPort: {{ .Values.fire.service.port }}
+              protocol: TCP
+            - name: {{ .Values.fire.memberlist.port_name }}
+              containerPort: {{ .Values.fire.memberlist.port }}
               protocol: TCP
           readinessProbe:
             httpGet:
