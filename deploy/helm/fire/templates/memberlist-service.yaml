@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fire.fullname" . }}-memberlist
+  labels:
+    {{- include "fire.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: {{ .Values.fire.memberlist.port_name }}
+      port: {{ .Values.fire.memberlist.port }}
+      protocol: TCP
+      targetPort: {{ .Values.fire.memberlist.port }}
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "fire.selectorLabels" . | nindent 4 }}
+    # TODO: Ensure only services that offer memberlist register
+    # fire.grafana.com/memberlist: "true"
