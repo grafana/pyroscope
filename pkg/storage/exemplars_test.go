@@ -171,7 +171,7 @@ var _ = Describe("ConcurrentExemplarsInsert", func() {
 				defer s.Close()
 				const (
 					n = 4
-					c = 10 << 10
+					c = 100
 				)
 
 				stop := make(chan struct{})
