@@ -25,7 +25,6 @@ import (
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 )
 
 var (
@@ -37,30 +36,30 @@ type TargetGroup struct {
 	jobName string
 	config  ScrapeConfig
 
-	logger       log.Logger
-	scrapeClient *http.Client
-	pushClient   pushv1connect.PusherServiceClient
-	ctx          context.Context
+	logger               log.Logger
+	scrapeClient         *http.Client
+	pusherClientProvider PusherClientProvider
+	ctx                  context.Context
 
 	mtx            sync.RWMutex
 	activeTargets  map[uint64]*Target
 	droppedTargets []*Target
 }
 
-func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pushClient pushv1connect.PusherServiceClient, logger log.Logger) *TargetGroup {
+func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pusherClientProvider PusherClientProvider, logger log.Logger) *TargetGroup {
 	scrapeClient, err := commonconfig.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating HTTP client", "err", err)
 	}
 
 	return &TargetGroup{
-		jobName:       jobName,
-		config:        cfg,
-		logger:        logger,
-		scrapeClient:  scrapeClient,
-		pushClient:    pushClient,
-		ctx:           ctx,
-		activeTargets: map[uint64]*Target{},
+		jobName:              jobName,
+		config:               cfg,
+		logger:               logger,
+		scrapeClient:         scrapeClient,
+		pusherClientProvider: pusherClientProvider,
+		ctx:                  ctx,
+		activeTargets:        map[uint64]*Target{},
 	}
 }
 
@@ -119,8 +118,8 @@ type Target struct {
 	health             agentv1.Health
 	lastScrapeSize     int
 
-	scrapeClient *http.Client
-	pushClient   pushv1connect.PusherServiceClient
+	scrapeClient         *http.Client
+	pusherClientProvider PusherClientProvider
 
 	hash              uint64
 	req               *http.Request
@@ -209,7 +208,7 @@ func (t *Target) scrape(ctx context.Context) {
 		},
 	}
 	req.Series = append(req.Series, series)
-	if _, err := t.pushClient.Push(ctx, connect.NewRequest(req)); err != nil {
+	if _, err := t.pusherClientProvider().Push(ctx, connect.NewRequest(req)); err != nil {
 		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)
 	}
 }
