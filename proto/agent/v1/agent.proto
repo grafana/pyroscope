@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/grafana/fire/pkg/gen/go/v1/agent;agentv1";
+
+service AgentService {
+  rpc GetTargets(GetTargetsRequest) returns (GetTargetsResponse) {}
+}
+
+message GetTargetsRequest {
+  State state = 1;
+}
+
+message GetTargetsResponse {
+  repeated Target active_targets = 1;
+  repeated Target dropped_targets = 2;
+}
+
+enum Health {
+  HEALTH_UNSPECIFIED = 0;
+  HEALTH_UP = 1;
+  HEALTH_DOWN = 2;
+}
+
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_ACTIVE = 1;
+  STATE_DROPPED = 2;
+}
+
+message Target {
+  // Contains labels before any processing.
+  map<string, string> discovered_labels = 1;
+
+  map<string, string> labels = 2;
+
+  string scrape_pool = 3;
+  string scrape_url = 4;
+
+  string last_error = 5;
+  google.protobuf.Timestamp last_scrape = 6;
+  google.protobuf.Duration last_scrape_duration = 7;
+  Health health = 8;
+
+  google.protobuf.Duration scrape_timeout = 9;
+  google.protobuf.Duration scrape_interval = 10;
+}
