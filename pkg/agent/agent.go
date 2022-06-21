@@ -21,7 +21,7 @@ type Agent struct {
 	manager    *discovery.Manager
 	jobs       map[string]discovery.Configs
 	groups     map[string]*TargetGroup
-	pushClient pushv1connect.PusherClient
+	pushClient pushv1connect.PusherServiceClient
 
 	mtx sync.Mutex
 }
@@ -39,7 +39,7 @@ func New(config *Config, logger log.Logger) (*Agent, error) {
 	a := &Agent{
 		Config:     config,
 		logger:     logger,
-		pushClient: pushv1connect.NewPusherClient(httpClient, config.ClientConfig.URL.String()),
+		pushClient: pushv1connect.NewPusherServiceClient(httpClient, config.ClientConfig.URL.String()),
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
 	jobs := map[string]discovery.Configs{}
