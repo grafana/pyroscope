@@ -16,7 +16,7 @@ import (
 
 const (
 	_ = iota
-	sampleTypeCpu
+	sampleTypeCPU
 	sampleTypeWall
 	sampleTypeInTLABObjects
 	sampleTypeInTLABBytes
@@ -46,8 +46,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 	var event string
 	for _, e := range c.Events {
 		if as, ok := e.(*parser.ActiveSetting); ok {
-			switch as.Name {
-			case "event":
+			if as.Name == "event" {
 				event = as.Value
 			}
 		}
@@ -61,7 +60,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 				es := e.(*parser.ExecutionSample)
 				if fs := frames(es.StackTrace); fs != nil {
 					if es.State.Name == "STATE_RUNNABLE" {
-						cache.GetOrCreateTree(sampleTypeCpu, labels).InsertStackString(fs, 1)
+						cache.GetOrCreateTree(sampleTypeCPU, labels).InsertStackString(fs, 1)
 					}
 					cache.GetOrCreateTree(sampleTypeWall, labels).InsertStackString(fs, 1)
 				}
@@ -131,7 +130,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 
 func getName(sampleType int64, event string) string {
 	switch sampleType {
-	case sampleTypeCpu:
+	case sampleTypeCPU:
 		if event == "cpu" || event == "itimer" || event == "wall" {
 			profile := event
 			if event == "wall" {
@@ -159,7 +158,7 @@ func getName(sampleType int64, event string) string {
 
 func getUnits(sampleType int64) metadata.Units {
 	switch sampleType {
-	case sampleTypeCpu:
+	case sampleTypeCPU:
 		return metadata.SamplesUnits
 	case sampleTypeWall:
 		return metadata.SamplesUnits
@@ -178,6 +177,7 @@ func getUnits(sampleType int64) metadata.Units {
 	}
 	return metadata.SamplesUnits
 }
+
 func buildKey(n string, appLabels map[string]string, labels tree.Labels, snapshot *LabelsSnapshot) *segment.Key {
 	finalLabels := map[string]string{}
 	for k, v := range appLabels {
