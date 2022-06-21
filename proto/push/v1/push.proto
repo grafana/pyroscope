@@ -8,7 +8,6 @@ service PusherService {
   rpc Push(PushRequest) returns (PushResponse) {}
 }
 
-
 message PushResponse {}
 
 // WriteRawRequest writes a pprof profile
