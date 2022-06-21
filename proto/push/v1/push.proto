@@ -6,11 +6,7 @@ import "common/v1/common.proto";
 
 option go_package = "github.com/grafana/fire/pkg/gen/go/v1/push;pushv1";
 
-service Pusher {
-  rpc Push(PushRequest) returns (PushResponse) {}
-}
-
-service Ingester {
+service PusherService {
   rpc Push(PushRequest) returns (PushResponse) {}
 }
 

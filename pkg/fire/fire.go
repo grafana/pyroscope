@@ -33,6 +33,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/profilestore"
+	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -41,6 +42,7 @@ type Config struct {
 	AgentConfig  agent.Config           `yaml:",inline"`
 	Server       server.Config          `yaml:"server,omitempty"`
 	Distributor  distributor.Config     `yaml:"distributor,omitempty"`
+	Querier      querier.Config         `yaml:"querier,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
 	ProfileStore profilestore.Config    `yaml:"profile_store,omitempty"`
@@ -62,6 +64,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.MemberlistKV.RegisterFlags(f)
 	c.ProfileStore.RegisterFlags(f)
 	c.Distributor.RegisterFlags(f)
+	c.Querier.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -139,7 +142,7 @@ type Fire struct {
 	ring               *ring.Ring
 	profileStore       *profilestore.ProfileStore
 	agent              *agent.Agent
-	pusherClient       pushv1connect.PusherClient
+	pusherClient       pushv1connect.PusherServiceClient
 }
 
 func New(cfg Config) (*Fire, error) {
@@ -163,7 +166,7 @@ func New(cfg Config) (*Fire, error) {
 	if err != nil {
 		return nil, err
 	}
-	fire.pusherClient = pushv1connect.NewPusherClient(pusherHTTPClient, cfg.AgentConfig.ClientConfig.URL.String())
+	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient, cfg.AgentConfig.ClientConfig.URL.String())
 
 	return fire, nil
 }
@@ -177,13 +180,15 @@ func (f *Fire) setupModuleManager() error {
 	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
+	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(Agent, f.initAgent)
 	mm.RegisterModule(All, nil)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All:          {Agent, Ingester, Distributor},
+		All:          {Agent, Ingester, Distributor, Querier},
 		Distributor:  {Ring, Server},
+		Querier:      {Ring, Server},
 		Agent:        {Server},
 		Ingester:     {Server, MemberlistKV, ProfileStore},
 		ProfileStore: {},

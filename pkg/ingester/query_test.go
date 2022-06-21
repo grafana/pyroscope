@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
 )
@@ -161,16 +162,7 @@ func Test_QueryMetadata(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	dataPath, err := os.MkdirTemp("", "fire-db")
-	require.NoError(t, err)
-	t.Logf("created temporary data path: %s", dataPath)
-	t.Cleanup(func() {
-		if err := os.RemoveAll(dataPath); err != nil {
-			t.Logf("remove data path failed: %v", err)
-		}
-	})
-
-	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), &profilestore.Config{DataPath: dataPath})
+	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
 	require.NoError(t, err)
 
 	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
@@ -206,10 +198,10 @@ func Test_QueryMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	clusters, err := d.LabelValues(context.Background(), "cluster")
+	clusterRes, err := d.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"us-central1", "us-east1"}, clusters)
-	types, err := d.ProfileTypes(context.Background())
+	require.Equal(t, []string{"us-central1", "us-east1"}, clusterRes.Msg.Names)
+	typeRes, err := d.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
 	expectedTypes := []string{
 		"memory:inuse_space:bytes:space:bytes",
@@ -218,6 +210,6 @@ func Test_QueryMetadata(t *testing.T) {
 		"memory:alloc_objects:count:space:bytes",
 	}
 	sort.Strings(expectedTypes)
-	sort.Strings(types)
-	require.Equal(t, expectedTypes, types)
+	sort.Strings(typeRes.Msg.Names)
+	require.Equal(t, expectedTypes, typeRes.Msg.Names)
 }
