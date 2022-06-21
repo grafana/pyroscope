@@ -18,6 +18,7 @@ import (
 	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingestv1connect"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 )
@@ -207,7 +208,7 @@ type pushTracker struct {
 	err            chan error
 }
 
-func labelsString(ls []*pushv1.LabelPair) string {
+func labelsString(ls []*commonv1.LabelPair) string {
 	var b bytes.Buffer
 	b.WriteByte('{')
 	for i, l := range ls {
