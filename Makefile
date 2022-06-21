@@ -95,6 +95,15 @@ define docker_buildx
 	docker buildx build $(1) --platform $(IMAGE_PLATFORM) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
 endef
 
+define deploy
+	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
+	# Load image into nodes
+	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
+	kubectl get pods
+	$(BIN)/helm upgrade --install $(1) ./deploy/helm/fire $(2) \
+		--set fire.image.tag=$(IMAGE_TAG)
+endef
+
 .PHONY: docker-image/fire/build
 docker-image/fire/build:
 	$(call docker_buildx,--load)
@@ -151,9 +160,8 @@ helm/check: $(BIN)/kubeval $(BIN)/helm
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
-	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
-	# Load image into nodes
-	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
-	kubectl get pods
-	$(BIN)/helm upgrade --install fire-dev ./deploy/helm/fire \
-		--set fire.image.tag=$(IMAGE_TAG)
+	$(call deploy,fire-dev)
+
+.PHONY: deploy-micro-services
+deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/fire/build
+	$(call deploy,fire-micro-services,--values=deploy/helm/values-micro-services.yaml)
