@@ -5,7 +5,10 @@ package storage
 
 import (
 	"context"
+	"encoding/hex"
 	"math/big"
+	"math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -143,6 +146,72 @@ var _ = Describe("Profiles retention policy", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o2.Tree).ToNot(BeNil())
 				Expect(o2.Tree.Samples()).To(Equal(uint64(3)))
+			})
+		})
+	})
+})
+
+func randomBytesHex(n int) string {
+	b := make([]byte, n)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+var _ = Describe("ConcurrentExemplarsInsert", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			Expect(err).ToNot(HaveOccurred())
+		})
+		Context("when exemplars ingested concurrently", func() {
+			It("does not race with sync and periodic flush", func() {
+				defer s.Close()
+				const (
+					n = 4
+					c = 10 << 10
+				)
+
+				stop := make(chan struct{})
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					for {
+						select {
+						case <-stop:
+							return
+						case <-time.After(10 * time.Millisecond):
+							s.exemplars.Sync()
+						}
+					}
+				}()
+
+				var wg sync.WaitGroup
+				wg.Add(n)
+
+				for i := 0; i < n; i++ {
+					go func() {
+						defer wg.Done()
+						for j := 0; j < c; j++ {
+							tree := tree.New()
+							tree.Insert([]byte("a;b"), uint64(1))
+							tree.Insert([]byte("a;c"), uint64(2))
+							Expect(s.Put(context.TODO(), &PutInput{
+								StartTime: testing.SimpleTime(0),
+								EndTime:   testing.SimpleTime(30),
+								Val:       tree,
+								Key: segment.NewKey(map[string]string{
+									"__name__":   "app.cpu",
+									"profile_id": randomBytesHex(8),
+								}),
+							})).ToNot(HaveOccurred())
+						}
+					}()
+				}
+
+				wg.Wait()
+				close(stop)
+				<-done
 			})
 		})
 	})

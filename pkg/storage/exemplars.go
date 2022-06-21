@@ -47,10 +47,7 @@ type exemplars struct {
 var errBatchIsFull = errors.New("exemplars batch is full")
 
 type exemplarsBatch struct {
-	mu      sync.Mutex
-	done    bool
 	entries map[string]*exemplarsBatchEntry
-
 	config  *Config
 	metrics *metrics
 	dicts   BadgerDBWithCache
@@ -118,7 +115,9 @@ func (s *Storage) initExemplarsStorage(db BadgerDBWithCache) {
 
 			case <-batchFlushTicker.C:
 				e.logger.Debug("flushing current batch")
+				e.mu.Lock()
 				e.flushCurrentBatch()
+				e.mu.Unlock()
 
 			case batch, ok := <-e.batches:
 				if ok {
@@ -179,20 +178,12 @@ func exemplarKeyToTimestampKey(k []byte, t int64) ([]byte, bool) {
 }
 
 func (e *exemplars) flushCurrentBatch() {
-	e.mu.Lock()
 	entries := len(e.currentBatch.entries)
 	if entries == 0 {
-		e.mu.Unlock()
 		return
 	}
-	// To ensure writes to the current batch will be rejected,
-	// we also mark is as 'done': any insert calls that may
-	// occur after unlocking the mutex will end up with error
-	// causing caller to retry.
 	b := e.currentBatch
-	b.done = true
 	e.currentBatch = e.newExemplarsBatch()
-	e.mu.Unlock()
 	select {
 	case e.batches <- b:
 	default:
@@ -214,10 +205,11 @@ func (e *exemplars) Sync() {
 		default:
 			return
 		case b, ok := <-e.batches:
-			if ok {
-				e.flush(b)
-				i++
+			if !ok {
+				return
 			}
+			e.flush(b)
+			i++
 		}
 	}
 }
@@ -255,6 +247,8 @@ func (e *exemplars) insert(ctx context.Context, input *PutInput) error {
 	if input.Val == nil || input.Val.Samples() == 0 {
 		return nil
 	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	err := e.currentBatch.insert(ctx, input)
 	if err == errBatchIsFull {
 		e.flushCurrentBatch()
@@ -364,9 +358,7 @@ func (e *exemplars) truncateN(before time.Time, count int) (bool, error) {
 }
 
 func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if len(b.entries) == exemplarsPerBatch || b.done {
+	if len(b.entries) == exemplarsPerBatch {
 		return errBatchIsFull
 	}
 	appName := input.Key.AppName()
@@ -439,8 +431,14 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEnt
 }
 
 func (e *exemplarsBatchEntry) Merge(src *exemplarsBatchEntry) *exemplarsBatchEntry {
-	// TODO: time range.
+	if e.StartTime > src.StartTime {
+		e.StartTime = src.StartTime
+	}
+	if e.EndTime < src.EndTime {
+		e.EndTime = src.EndTime
+	}
 	e.Tree.Merge(src.Tree)
+	e.Key = src.Key
 	return e
 }
 
