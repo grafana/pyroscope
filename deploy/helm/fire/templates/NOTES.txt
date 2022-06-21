@@ -1,3 +1,3 @@
 1. Get to the application by running this commands:
-  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "fire.fullname" . }} 4100:4100
-2. Then you can visit http://127.0.0.1:4100 to use your application
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "fire.fullname" . }} {{ .Values.fire.service.port }}:{{ .Values.fire.service.port }}
+2. Then you can visit http://127.0.0.1:{{ .Values.fire.service.port }} to use your application

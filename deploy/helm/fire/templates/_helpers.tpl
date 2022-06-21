@@ -67,16 +67,14 @@ Create a list of components that should be deployed.
 */}}
 {{- define "fire.components" -}}
 {{- $full_name := (include "fire.fullname" .) }}
-{{- range .Values.fire.stateful_set_targets }}
-{{.}}: {kind: "StatefulSet", name: "{{$full_name}}-{{.}}"}
-{{- end }}
-{{- range .Values.fire.deployment_targets }}
-{{.}}: {kind: "Deployment", name: "{{$full_name}}-{{.}}"}
+{{- range $k, $v := .Values.fire.components }}
+{{- $v :=  set $v "name" (printf "%s-%s" $full_name $k) }}
+{{$k}}: {{ $v | toJson }}
 {{- end }}
 {{/*
-If no deployment and statefulset are defined fall back to single binary
+If no components are defined fall back to single binary statefulset
 */}}
-{{- if and (eq (len .Values.fire.stateful_set_targets) 0) (eq (len .Values.fire.deployment_targets) 0) }}
+{{- if eq (len .Values.fire.components) 0 }}
 all: {kind: "StatefulSet", name: "{{$full_name}}"}
 {{- end }}
 {{- end }}

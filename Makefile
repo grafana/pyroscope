@@ -164,4 +164,4 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/fire/build
-	$(call deploy,fire-micro-services,--values=deploy/helm/values-micro-services.yaml)
+	$(call deploy,fire-micro-services,--values=deploy/helm/fire/values-micro-services.yaml)

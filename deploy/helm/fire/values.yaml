@@ -81,9 +81,8 @@ fire:
 
   affinity: {}
 
-  # run specific targets in specific styles
-  deployment_targets: []
-  stateful_set_targets: []
+  # run specific components separately
+  components: {}
 
   config: |
     scrape_configs:

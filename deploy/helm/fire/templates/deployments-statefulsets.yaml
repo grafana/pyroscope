@@ -13,6 +13,9 @@ spec:
 {{- if eq $cfg.kind "StatefulSet" }}
   serviceName: {{ $cfg.name }}-headless
 {{- end }}
+{{- if hasKey $cfg "replicaCount" }}
+  replicas: {{ $cfg.replicaCount }}
+{{- end }}
   selector:
     matchLabels:
       {{- include "fire.selectorLabels" . | nindent 6 }}
@@ -42,13 +45,20 @@ spec:
           image: "{{ .Values.fire.image.repository }}:{{ .Values.fire.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.fire.image.pullPolicy }}
           args:
+            - "-target={{ $component }}"
+          {{- if eq $component "agent" }}
+            - "-client.url=http://{{ include "fire.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.fire.service.port }}"
+          {{- end }}
             - "-config.file=/etc/fire/config.yaml"
           {{- range $key, $value := .Values.fire.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
+          {{- range $key, $value := $cfg.extraArgs }}
+            - "-{{ $key }}={{ $value }}"
+          {{- end }}
           ports:
             - name: {{ .Values.fire.service.port_name }}
-              containerPort: 4100
+              containerPort: {{ .Values.fire.service.port }}
               protocol: TCP
           readinessProbe:
             httpGet:
