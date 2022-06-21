@@ -44,7 +44,10 @@ type exemplars struct {
 	batches      chan *exemplarsBatch
 }
 
-var errBatchIsFull = errors.New("exemplars batch is full")
+var (
+	errBatchIsFull       = errors.New("exemplars batch is full")
+	errProfileIDRequired = errors.New("profile id label required")
+)
 
 type exemplarsBatch struct {
 	entries map[string]*exemplarsBatchEntry
@@ -361,14 +364,17 @@ func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {
 	if len(b.entries) == exemplarsPerBatch {
 		return errBatchIsFull
 	}
+	profileID, ok := input.Key.ProfileID()
+	if !ok {
+		return errProfileIDRequired
+	}
 	appName := input.Key.AppName()
-	profileID, _ := input.Key.ProfileID()
 	k := exemplarKey(appName, profileID)
 	key := string(k)
 	e, ok := b.entries[key]
 	if ok {
 		e.Tree.Merge(input.Val)
-		e.EndTime = input.EndTime.UnixNano()
+		e.updateTime(input.StartTime.UnixNano(), input.EndTime.UnixNano())
 		return nil
 	}
 	b.entries[key] = &exemplarsBatchEntry{
@@ -406,6 +412,10 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEnt
 		// Fast path: there is no exemplar with this key in the database.
 	case err == nil:
 		// Merge with the found exemplar using the buffer provided.
+		// Ideally, we should also drop existing timestamp key and create a new one,
+		// so that the exemplar wouldn't be deleted before its actual EndTime passes
+		// the retention policy threshold. The time difference is negligible, therefore
+		// it's not happening: only the first EndTime is honored.
 		err = item.Value(func(val []byte) error {
 			b.metrics.exemplarsReadBytes.Observe(float64(len(val)))
 			var x exemplarsBatchEntry
@@ -431,15 +441,19 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEnt
 }
 
 func (e *exemplarsBatchEntry) Merge(src *exemplarsBatchEntry) *exemplarsBatchEntry {
-	if e.StartTime > src.StartTime {
-		e.StartTime = src.StartTime
-	}
-	if e.EndTime < src.EndTime {
-		e.EndTime = src.EndTime
-	}
+	e.updateTime(src.StartTime, src.EndTime)
 	e.Tree.Merge(src.Tree)
 	e.Key = src.Key
 	return e
+}
+
+func (e *exemplarsBatchEntry) updateTime(st, et int64) {
+	if st < e.StartTime {
+		e.StartTime = st
+	}
+	if et > e.EndTime {
+		e.EndTime = et
+	}
 }
 
 func (e *exemplarsBatchEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, error) {
