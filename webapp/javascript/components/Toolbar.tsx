@@ -14,6 +14,8 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import { Query } from '@webapp/models/query';
 import classNames from 'classnames';
+import { PAGES } from '@webapp/pages/constants';
+import { useLocation } from 'react-router-dom';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';
 import NameSelector from './NameSelector';
@@ -28,7 +30,10 @@ interface ToolbarProps {
 }
 function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
   const dispatch = useAppDispatch();
-  const isLoadingData = useAppSelector(selectIsLoadingData);
+  const location = useLocation();
+  const isLoadingData = useAppSelector((state) =>
+    selectIsLoadingData(state, location?.pathname as PAGES)
+  );
   const { query } = useAppSelector(selectQueries);
   const tags = useAppSelector(selectAppTags(query));
 

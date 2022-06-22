@@ -27,13 +27,15 @@ type ComparisonView = {
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
+    | { type: 'reloading'; profile: Profile }
+    | { type: 'failed'; profile?: Profile };
 
   right:
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
+    | { type: 'reloading'; profile: Profile }
+    | { type: 'failed'; profile?: Profile };
 };
 
 type TimelineState =
@@ -47,7 +49,8 @@ type DiffView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
   | { type: 'loaded'; profile: Profile }
-  | { type: 'reloading'; profile: Profile };
+  | { type: 'reloading'; profile: Profile }
+  | { type: 'failed'; profile?: Profile };
 
 type DiffView2 = ComparisonView;
 
@@ -700,7 +703,6 @@ export const continuousSlice = createSlice({
         type: 'loaded',
       };
     });
-
     builder.addCase(fetchDiffView.rejected, (state, action) => {
       switch (state.diffView.type) {
         case 'reloading': {

@@ -15,6 +15,7 @@ import (
 	// revive:disable:blank-imports register discoverer
 	"github.com/pyroscope-io/pyroscope/pkg/baseurl"
 	"github.com/pyroscope-io/pyroscope/pkg/remotewrite"
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/aws"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
@@ -188,7 +189,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		ingester = ingestion.NewParallelizer(svc.logger, ingesters...)
 	}
 	if !svc.config.NoSelfProfiling {
-		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server")
+		svc.selfProfiling = selfprofiling.NewSession(svc.logger, ingester, "pyroscope.server", svc.config.SelfProfilingTags)
 	}
 
 	svc.scrapeManager = scrape.NewManager(

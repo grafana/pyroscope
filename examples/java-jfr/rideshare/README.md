@@ -2,13 +2,13 @@
 ### Profiling a Java Rideshare App with Pyroscope
 ![java_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369880-da9210af-9a60-4ace-8326-f21edf882575.gif)
 
-Note: For documentation on Pyroscope's java integration visit our website for [java](https://pyroscope.io/docs/java/).
+Note: For documentation on Pyroscope's java integration visit our website for [java](https://pyroscope.io/docs/java/). It's also worth noting that Pyroscope's java integration is powered by our [JFR parser](https://github.com/pyroscope-io/jfr-parser).
 
 ## Background
-In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `main.go`:
-- `/bike`    : calls the `orderBike(search_radius)` function to order a bike
-- `/car`     : calls the `orderCar(search_radius)` function to order a car
-- `/scooter` : calls the `orderScooter(search_radius)` function to order a scooter
+In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `RideShareController.java`:
+- `/bike`    : calls the `orderBike(searchRadius)` function to order a bike
+- `/car`     : calls the `orderCar(searchRadius)` function to order a car
+- `/scooter` : calls the `orderScooter(searchRadius)` function to order a scooter
 
 We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/java-jfr/rideshare/docker-compose.yml))
 - us-east
@@ -20,23 +20,23 @@ One of the most useful capabilities of Pyroscope is the ability to tag your data
 - `vehicle`: dynamically tags the endpoint
 
 
-## Tagging static region
+## How to create static tags
 Tagging something static, like the `region`, can be done in the initialization code in the `main()` function:
 ```
-@SpringBootApplication
 public class Main {
     public static void main(String[] args) {
         Pyroscope.setStaticLabels(Map.of("REGION", System.getenv("REGION")));
-        SpringApplication.run(Main.class, args);
+
+        [ all code here will be attatched to the "region" label ]
     }
 }
 ```
 
-## Tagging dynamically within functions
+## How to create dynamic tags within functions
 Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `OrderService.findNearestVehicle()` function using `pyroscope.LabelsWrapper`
 ```
 Pyroscope.LabelsWrapper.run(new LabelsSet("vehicle", vehicle), () -> {
-    [ all code here will be attateched to the "vehicle" label ]
+    [ all code here will be attatched to the "vehicle" label ]
 });
 ```
 
@@ -59,10 +59,10 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `rideshare.java.push.app.itimer` from the dropdown, you should see a flamegraph that looks like this (below). After we give the flamegraph some time to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `rideshare.java.push.app.itimer` from the dropdown, you should see a flamegraph that looks like this (below). After we give the flamegraph some time to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `searchRadius` parameters.
 
 ## Where's the performance bottleneck?
-![1_java_first_slide-01](https://user-images.githubusercontent.com/23323466/173278973-9842ffec-4f18-4419-b155-81823e8ec024.jpg)
+![1_java_first_slide-02-01](https://user-images.githubusercontent.com/23323466/173832109-5cf085d7-4164-4112-98ff-95bacf207185.png)
 
 The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `orderCar` function. 
 
@@ -77,11 +77,10 @@ To analyze this we can select one or more tags from the "Select Tag" dropdown:
 Knowing there is an issue with the `orderCar()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
 
 We can also see that the `mutexLock()` function is consuming 76% of CPU resources during this time period. 
-![2_java_second_slide-01-01](https://user-images.githubusercontent.com/23323466/173279046-1e67bf51-640c-45b8-9e9a-4db0db1c6709.jpg)
+![2_java_second_slide-02-01](https://user-images.githubusercontent.com/23323466/173831827-085b9fe5-0538-4ea4-8da7-777b71359bf9.png)
 
-
-## Comparing two time periods
-Using Pyroscope's "comparison view" we can actually select two different sets of tags to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north 
+## Comparing Two Tag Sets with FlameQL
+Using Pyroscope's "comparison view" we can actually select two different sets of tags using Pyroscope's prometheus-inspired query language [FlameQL](https://pyroscope.io/docs/flameql/) to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north 
 ```
 REGION != "eu-north"
 ```
@@ -92,11 +91,11 @@ REGION = "eu-north"
 
 Not only can we see a differing pattern in CPU utilization on the timeline, but we can also see that the `checkDriverAvailability()` and `mutexLock()` functions are responsible for the majority of this difference.
 In the graph where `REGION = "eu-north"`, `checkDriverAvailability()` takes ~92% of CPU while it only takes approximately half that when `REGION != "eu-north"`. 
-![3_java_third_slide-01](https://user-images.githubusercontent.com/23323466/173279800-388aa1ae-cf36-4b5f-876e-8641834408ce.jpg)
 
+![3_java_third_slide-01-01](https://user-images.githubusercontent.com/23323466/173831391-769d3f26-4b7a-4c2d-815c-324ecbbf06f5.png)
 
 ## Visualizing Diff Between Two Flamegraphs
-While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized via a diff flamegraph, where red represents cpu time added and green represents cpu time removed. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
+While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two tagsets/flamegraphs is better visualized via a diff flamegraph, where red represents cpu time added and green represents cpu time removed. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
 ![4_java_fourth_slide-01](https://user-images.githubusercontent.com/23323466/173279888-85c9eead-e3cd-48e6-bf73-204e1074ad2b.jpg)
 
 
