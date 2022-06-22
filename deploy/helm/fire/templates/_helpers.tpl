@@ -55,6 +55,16 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Template labels
+*/}}
+{{- define "fire.templateLabels" -}}
+{{ include "fire.selectorLabels" . }}
+{{- range $k, $v := .Values.fire.extraLabels }}
+{{$k}}: {{ $v | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "fire.serviceAccountName" -}}
