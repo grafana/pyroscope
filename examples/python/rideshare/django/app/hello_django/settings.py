@@ -139,7 +139,7 @@ MEDIA_ROOT = BASE_DIR / "mediafiles"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 pyroscope.configure(
-	app_name       = "django-ride-sharing-app",
+	application_name       = "django-ride-sharing-app",
 	server_address = "http://pyroscope:4040",
 	# tags           = {
     #     "region":   f'{os.getenv("REGION")}',

@@ -26,7 +26,7 @@ One of the most useful capabilities of Pyroscope is the ability to tag your data
 Tagging something static, like the `region`, can be done in the initialization code in the `config.tags` variable:
 ```
 pyroscope.configure(
-    app_name       = "ride-sharing-app",
+    application_name       = "ride-sharing-app",
     server_address = "http://pyroscope:4040",
     tags           = {
         "region":   f'{os.getenv("REGION")}', # Tags the region based off the environment variable

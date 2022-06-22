@@ -7,7 +7,7 @@ from car.car import order_car
 from scooter.scooter import order_scooter
 
 pyroscope.configure(
-	app_name       = "ride-sharing-app",
+	application_name       = "ride-sharing-app",
 	server_address = "http://pyroscope:4040",
 	tags           = {
         "region":   f'{os.getenv("REGION")}',
