@@ -1,0 +1,19 @@
+# Default values for fire.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+fire:
+  components:
+    querier:
+      kind: Deployment
+      # TODO: Enable once the querier PR is merged
+      replicaCount: 0
+    distributor:
+      kind: Deployment
+      replicaCount: 2
+    agent:
+      kind: Deployment
+      replicaCount: 1
+    ingester:
+      kind: StatefulSet
+      replicaCount: 3

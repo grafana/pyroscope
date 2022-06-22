@@ -34,7 +34,7 @@ help: ## Describe useful make targets
 all: lint test build ## Build, test, and lint (default)
 
 .PHONY: lint
-lint: go/lint ## Lint Go and protobuf
+lint: go/lint helm/lint buf/lint ## Lint Go, Helm and protobuf
 
 .PHONY: test
 test: go/test ## Run unit tests
@@ -43,6 +43,10 @@ test: go/test ## Run unit tests
 generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-connect-go ## Regenerate protobuf
 	rm -rf pkg/gen/
 	PATH=$(BIN) $(BIN)/buf generate
+
+.PHONY: buf/lint
+buf/lint: $(BIN)/buf
+	buf lint || true # TODO: Fix linting problems and remove the always true
 
 .PHONY: go/test
 go/test:
@@ -91,6 +95,15 @@ define docker_buildx
 	docker buildx build $(1) --platform $(IMAGE_PLATFORM) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
 endef
 
+define deploy
+	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
+	# Load image into nodes
+	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
+	kubectl get pods
+	$(BIN)/helm upgrade --install $(1) ./deploy/helm/fire $(2) \
+		--set fire.image.tag=$(IMAGE_TAG)
+endef
+
 .PHONY: docker-image/fire/build
 docker-image/fire/build:
 	$(call docker_buildx,--load)
@@ -128,13 +141,27 @@ $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.8.0
 
+$(BIN)/kubeval: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/instrumenta/kubeval@v0.16.1
+
 KIND_CLUSTER = fire-dev
+
+.PHONY: helm/lint
+helm/lint: $(BIN)/helm
+	$(BIN)/helm lint ./deploy/helm/fire/
+
+.PHONY: helm/check
+helm/check: $(BIN)/kubeval $(BIN)/helm
+	$(BIN)/helm template fire-dev ./deploy/helm/fire/ \
+		| $(BIN)/kubeval --strict
+	$(BIN)/helm template fire-dev ./deploy/helm/fire/ --values deploy/helm/fire/values-micro-services.yaml \
+		| $(BIN)/kubeval --strict
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
-	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
-	# Load image into nodes
-	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
-	kubectl get pods
-	$(BIN)/helm upgrade --install fire-dev ./deploy/helm/fire \
-		--set fire.image.tag=$(IMAGE_TAG)
+	$(call deploy,fire-dev)
+
+.PHONY: deploy-micro-services
+deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/fire/build
+	$(call deploy,fire-micro-services,--values=deploy/helm/fire/values-micro-services.yaml)
