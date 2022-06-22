@@ -205,7 +205,7 @@ export const fetchSideTimelines = createAsyncThunk<
   const state = thunkAPI.getState();
 
   const res = await Promise.all([
-    await renderSingle(
+    renderSingle(
       {
         query: state.continuous.leftQuery || '',
         from: state.continuous.from,
@@ -215,7 +215,7 @@ export const fetchSideTimelines = createAsyncThunk<
       },
       sideTimelinesAbortController
     ),
-    await renderSingle(
+    renderSingle(
       {
         query: state.continuous.rightQuery || '',
         from: state.continuous.from,
@@ -225,17 +225,24 @@ export const fetchSideTimelines = createAsyncThunk<
       },
       sideTimelinesAbortController
     ),
-  ]);
+  ]).catch((e) => {
+    if (e?.message.includes('The user aborted a request')) {
+      thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    }
+  });
 
-  if (res[0].isOk && res[1].isOk) {
+  if (
+    (res?.[0]?.isErr && res?.[0]?.error instanceof RequestAbortedError) ||
+    (res?.[1]?.isErr && res?.[1]?.error instanceof RequestAbortedError)
+  ) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  if (res?.[0].isOk && res?.[1].isOk) {
     return Promise.resolve({
       left: res[0].value.timeline,
       right: res[1].value.timeline,
     });
-  }
-
-  if (res[0].isErr && res[0].error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
   }
 
   thunkAPI.dispatch(
@@ -243,11 +250,14 @@ export const fetchSideTimelines = createAsyncThunk<
       type: 'danger',
       title: `Failed to load the timelines`,
       message: '',
-      additionalInfo: [res[0].error.message, res[1].error.message],
+      additionalInfo: [
+        res?.[0].error.message,
+        res?.[1].error.message,
+      ] as string[],
     })
   );
 
-  return Promise.reject(res.filter((a) => a.isErr).map((a) => a.error));
+  return Promise.reject(res && res.filter((a) => a?.isErr).map((a) => a.error));
 });
 
 export const fetchComparisonSide = createAsyncThunk<
