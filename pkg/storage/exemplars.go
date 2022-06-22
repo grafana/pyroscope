@@ -198,6 +198,7 @@ func (e *exemplars) Sync() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.flush(e.currentBatch)
+	e.currentBatch = e.newExemplarsBatch()
 	n := len(e.batches)
 	var i int
 	for {
