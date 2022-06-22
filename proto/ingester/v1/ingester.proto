@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ingester.v1;
 
+import "common/v1/common.proto";
 import "push/v1/push.proto";
 
 option go_package = "github.com/grafana/fire/pkg/gen/go/v1/ingester;ingesterv1";
@@ -11,6 +12,9 @@ service IngesterService {
 
   rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
+  // Todo(ctovena) we might want to batch stream profiles instead of sending them all at once.
+  // but this requires to ensure we have correct timestamp and labels ordering.
+  rpc SelectProfiles(SelectProfilesRequest) returns (SelectProfilesResponse) {}
 }
 
 message LabelValuesRequest {
@@ -25,4 +29,41 @@ message ProfileTypesRequest {}
 
 message ProfileTypesResponse {
   repeated string names = 1;
+}
+
+message SelectProfilesRequest {
+  string labelSelector = 1;
+  ProfileType type = 2;
+  int64 start = 3;
+  int64 end = 4;
+}
+
+message SelectProfilesResponse {
+  repeated Profile profiles = 1;
+}
+
+// Profile represents a point in time profile.
+message Profile {
+  // The name and type of the profile.
+  ProfileType type = 1;
+  // LabelPair is the key value pairs to identify the corresponding profile
+  repeated common.v1.LabelPair labels = 2;
+  // Timestamp is when that profile was created
+  int64 timestamp = 3;
+  // The list of stracktraces for the profile with their respective value
+  repeated StacktraceSample stacktraces = 4;
+}
+
+// ProfileType is the name and type of profile
+message ProfileType {
+  string name = 1;
+  string sampleType = 2;
+  string sampleUnit = 3;
+  string periodType = 4;
+  string periodUnit = 5;
+}
+
+message StacktraceSample {
+  bytes ID = 1;
+  int64 value = 2;
 }

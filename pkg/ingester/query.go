@@ -1,10 +1,12 @@
 package ingester
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"google.golang.org/grpc/codes"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 )
 
@@ -191,49 +194,167 @@ func (i *Ingester) selectMerge(ctx context.Context, query profileQuery, start, e
 	}, nil
 }
 
-func (i *Ingester) selectProfile(ctx context.Context, query profileQuery, start, end int64) error {
-	filterExpr, err := selectPlan(query, start, end)
+func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
-		// todo 4xx
-		return err
+		return nil, status.Error(codes.InvalidArgument, "failed to label selector")
 	}
-	var colums []logicalplan.Expr
-	err = i.engine.ScanSchema("stacktraces").
-		Distinct(logicalplan.Col("name")).
-		Filter(logicalplan.Col("name").RegexMatch("^labels\\..+$")).
-		Execute(ctx, func(r arrow.Record) error {
-			r.Retain()
-			col := r.Column(0).(*array.String)
-			colums = append(colums, logicalplan.Col(col.Value(0)))
-			return nil
-		})
+	filterExpr, err := selectPlan(profileQuery{
+		name:       req.Msg.Type.Name,
+		sampleType: req.Msg.Type.SampleType,
+		periodType: req.Msg.Type.PeriodType,
+		sampleUnit: req.Msg.Type.SampleUnit,
+		periodUnit: req.Msg.Type.PeriodUnit,
+		selector:   selectors,
+	}, req.Msg.Start, req.Msg.End)
 	if err != nil {
-		return err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	var ar arrow.Record
-	colums = append(colums, logicalplan.Col("name"),
+
+	staticColumns := []logicalplan.Expr{
+		logicalplan.Col("name"),
 		logicalplan.Col("sample_type"),
 		logicalplan.Col("sample_unit"),
 		logicalplan.Col("period_type"),
 		logicalplan.Col("period_unit"),
 		logicalplan.Col("stacktrace"),
 		logicalplan.Col("value"),
-		logicalplan.Col("timestamp"))
-	err = i.engine.ScanTable("stacktraces").
-		Project(colums...).
-		Filter(filterExpr).
+		logicalplan.Col("timestamp"),
+	}
+	// find the label keys (dynamic columns) we need to select eg. labels.key1, labels.key2....
+	var dynamicColums []logicalplan.Expr
+	err = i.engine.ScanSchema("stacktraces").
+		Distinct(logicalplan.Col("name")).
+		Filter(logicalplan.Col("name").RegexMatch("^labels\\..+$")).
 		Execute(ctx, func(r arrow.Record) error {
 			r.Retain()
-			ar = r
-			fmt.Println(r)
+			col := r.Column(0).(*array.String)
+			dynamicColums = append(dynamicColums, logicalplan.Col(col.Value(0)))
 			return nil
 		})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer ar.Release()
 
-	return nil
+	colums := append(staticColumns, dynamicColums...)
+	profileMap := make(map[string]*ingestv1.Profile)
+	labelSet := []*commonv1.LabelPair{}
+	err = i.engine.ScanTable("stacktraces").
+		Project(colums...).
+		Filter(filterExpr).
+		Execute(ctx, func(ar arrow.Record) error {
+			if ar.NumCols() < int64(len(staticColumns)) {
+				return fmt.Errorf("expected %d columns, got %d", len(staticColumns), ar.NumCols())
+			}
+			nameColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnName)
+			if err != nil {
+				return err
+			}
+
+			sampleTypeColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnSampleType)
+			if err != nil {
+				return err
+			}
+
+			sampleUnitColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnSampleUnit)
+			if err != nil {
+				return err
+			}
+
+			periodTypeColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnPeriodType)
+			if err != nil {
+				return err
+			}
+
+			periodUnitColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnPeriodUnit)
+			if err != nil {
+				return err
+			}
+			stacktraceColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnStacktrace)
+			if err != nil {
+				return err
+			}
+
+			timestampColumn, err := int64FieldFromRecord(ar, parcacol.ColumnTimestamp)
+			if err != nil {
+				return err
+			}
+			valueColumn, err := int64FieldFromRecord(ar, parcacol.ColumnValue)
+			if err != nil {
+				return err
+			}
+			labelColumnIndices := []int{}
+			fields := ar.Schema().Fields()
+			for i, f := range fields {
+				if strings.HasPrefix(f.Name, "labels.") {
+					labelColumnIndices = append(labelColumnIndices, i)
+				}
+			}
+
+			for i := 0; i < int(ar.NumRows()); i++ {
+				labelSet = labelSet[:0]
+				for _, j := range labelColumnIndices {
+					col := ar.Column(j).(*array.Binary)
+					if col.IsNull(i) {
+						continue
+					}
+
+					v := col.Value(i)
+					if len(v) > 0 {
+						labelSet = append(labelSet, &commonv1.LabelPair{Name: strings.TrimPrefix(fields[j].Name, "labels."), Value: string(v)})
+					}
+				}
+				sort.Slice(labelSet, func(i, j int) bool {
+					return labelSet[i].Name < labelSet[j].Name
+				})
+				// todo(cyriltovena) we should use a buffer to avoid allocations
+				profileKey := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d",
+					labelPairString(labelSet),
+					nameColumn.Value(i),
+					sampleTypeColumn.Value(i),
+					sampleUnitColumn.Value(i),
+					periodTypeColumn.Value(i),
+					periodUnitColumn.Value(i),
+					timestampColumn.Value(i),
+				)
+				if profile, ok := profileMap[profileKey]; ok {
+					profile.Stacktraces = append(profile.Stacktraces, &ingestv1.StacktraceSample{
+						Value: valueColumn.Value(i),
+						ID:    stacktraceColumn.Value(i),
+					})
+					continue
+				}
+				profile := &ingestv1.Profile{
+					Type: &ingestv1.ProfileType{
+						Name:       string(nameColumn.Value(i)),
+						SampleType: string(sampleTypeColumn.Value(i)),
+						SampleUnit: string(sampleUnitColumn.Value(i)),
+						PeriodType: string(periodTypeColumn.Value(i)),
+						PeriodUnit: string(periodUnitColumn.Value(i)),
+					},
+					Timestamp: timestampColumn.Value(i),
+					Labels:    cloneLabelPairs(labelSet),
+					Stacktraces: []*ingestv1.StacktraceSample{
+						{
+							Value: valueColumn.Value(i),
+							ID:    stacktraceColumn.Value(i),
+						},
+					},
+				}
+				profileMap[profileKey] = profile
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+	result := &ingestv1.SelectProfilesResponse{
+		Profiles: make([]*ingestv1.Profile, 0, len(profileMap)),
+	}
+	for _, profile := range profileMap {
+		result.Profiles = append(result.Profiles, profile)
+	}
+	return connect.NewResponse(result), nil
 }
 
 func buildFlamebearer(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebearer.FlamebearerV1, error) {
@@ -339,6 +460,33 @@ func parseQueryRequest(req *http.Request) (selectMergeReq, error) {
 		start: int64(start),
 		end:   int64(end),
 	}, nil
+}
+
+func labelPairString(lbs []*commonv1.LabelPair) string {
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for i, l := range lbs {
+		if i > 0 {
+			b.WriteByte(',')
+			b.WriteByte(' ')
+		}
+		b.WriteString(l.Name)
+		b.WriteByte('=')
+		b.WriteString(strconv.Quote(l.Value))
+	}
+	b.WriteByte('}')
+	return b.String()
+}
+
+func cloneLabelPairs(lbs []*commonv1.LabelPair) []*commonv1.LabelPair {
+	result := make([]*commonv1.LabelPair, len(lbs))
+	for i, l := range lbs {
+		result[i] = &commonv1.LabelPair{
+			Name:  l.Name,
+			Value: l.Value,
+		}
+	}
+	return result
 }
 
 func selectPlan(query profileQuery, start, end int64) (logicalplan.Expr, error) {
@@ -451,6 +599,20 @@ func binaryFieldFromRecord(ar arrow.Record, name string) (*array.Binary, error) 
 	col, ok := ar.Column(indices[0]).(*array.Binary)
 	if !ok {
 		return nil, fmt.Errorf("expected column %q to be a binary column, got %T", name, ar.Column(indices[0]))
+	}
+
+	return col, nil
+}
+
+func int64FieldFromRecord(ar arrow.Record, name string) (*array.Int64, error) {
+	indices := ar.Schema().FieldIndices(name)
+	if len(indices) != 1 {
+		return nil, fmt.Errorf("expected 1 column named %q, got %d", name, len(indices))
+	}
+
+	col, ok := ar.Column(indices[0]).(*array.Int64)
+	if !ok {
+		return nil, fmt.Errorf("expected column %q to be a int64 column, got %T", name, ar.Column(indices[0]))
 	}
 
 	return col, nil
