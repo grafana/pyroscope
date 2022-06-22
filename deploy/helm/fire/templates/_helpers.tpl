@@ -41,6 +41,9 @@ helm.sh/chart: {{ include "fire.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- range $k, $v := .Values.fire.extraLabels }}
+{{$k}}: {{ $v | quote }}
+{{- end }}
 {{- end }}
 
 {{/*
