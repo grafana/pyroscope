@@ -92,32 +92,35 @@ spec:
         - name: config
           configMap:
             name: {{ include "fire.fullname" . }}-config
-  {{- if not .Values.fire.persistence.enabled }}
+  {{- $persistence := mustMergeOverwrite (deepCopy .Values.fire.persistence ) ($cfg.persistence | default dict) }}
+  {{- if not $persistence.enabled }}
         - name: data
           emptyDir: {}
-  {{- else if .Values.fire.persistence.existingClaim }}
+  {{- else if $persistence.existingClaim}}
         - name: data
           persistentVolumeClaim:
-            claimName: {{ .Values.fire.persistence.existingClaim }}
+            claimName: {{ $persistence.existingClaim }}
+  {{- else if ne $cfg.kind "StatefulSet"}}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $cfg.name }}-data
   {{- else }}
-  {{- if eq $cfg.kind "StatefulSet" }}
   volumeClaimTemplates:
   - metadata:
       name: data
       annotations:
-        {{- toYaml .Values.fire.persistence.annotations | nindent 8 }}
+        {{- toYaml $persistence.annotations | nindent 8 }}
     spec:
       accessModes:
-        {{- toYaml .Values.fire.persistence.accessModes | nindent 8 }}
+        {{- toYaml $persistence.accessModes | nindent 8 }}
       resources:
         requests:
-          storage: {{ .Values.fire.persistence.size | quote }}
-      storageClassName: {{ .Values.fire.persistence.storageClassName }}
-      {{- if .Values.fire.persistence.selector }}
+          storage: {{ $persistence.size | quote }}
+      storageClassName: {{ $persistence.storageClassName }}
+      {{- if $persistence.selector }}
       selector:
-        {{- toYaml .Values.fire.persistence.selector | nindent 8 }}
+        {{- toYaml $persistence.selector | nindent 8 }}
       {{- end }}
-  {{- end }}
   {{- end }}
 {{- end }}
 {{- end }}
