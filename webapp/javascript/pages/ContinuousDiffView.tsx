@@ -23,9 +23,6 @@ import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import InstructionText from '@webapp/components/InstructionText';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
-import useCancelRequestOnUnmount from '@webapp/hooks/cancelRequestOnUnmount.hook';
-
-let fetchData: ShamefulAny;
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -54,7 +51,7 @@ function ComparisonDiffApp() {
 
   useEffect(() => {
     if (rightQuery && leftQuery) {
-      fetchData = dispatch(
+      const fetchData = dispatch(
         fetchDiffView({
           leftQuery,
           leftFrom,
@@ -65,7 +62,9 @@ function ComparisonDiffApp() {
           rightUntil,
         })
       );
+      return fetchData.abort;
     }
+    return undefined;
   }, [
     leftFrom,
     leftUntil,
@@ -76,8 +75,6 @@ function ComparisonDiffApp() {
     refreshToken,
     maxNodes,
   ]);
-
-  useCancelRequestOnUnmount([fetchData]);
 
   const exportData = diffView.profile && (
     <ExportData

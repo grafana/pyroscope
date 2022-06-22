@@ -20,15 +20,11 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
-import useCancelRequestOnUnmount from '@webapp/hooks/cancelRequestOnUnmount.hook';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
-
-let fetchLeftQueryData: ShamefulAny;
-let fetchRightQueryData: ShamefulAny;
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -46,21 +42,24 @@ function ComparisonApp() {
 
   useEffect(() => {
     if (leftQuery) {
-      fetchLeftQueryData = dispatch(
+      const fetchLeftQueryData = dispatch(
         fetchComparisonSide({ side: 'left', query: leftQuery })
       );
+      return fetchLeftQueryData.abort;
     }
+    return undefined;
   }, [leftFrom, leftUntil, leftQuery]);
 
   useEffect(() => {
     if (rightQuery) {
-      fetchRightQueryData = dispatch(
+      const fetchRightQueryData = dispatch(
         fetchComparisonSide({ side: 'right', query: rightQuery })
       );
-    }
-  }, [rightFrom, rightUntil, rightQuery]);
 
-  useCancelRequestOnUnmount([fetchLeftQueryData, fetchRightQueryData]);
+      return fetchRightQueryData.abort;
+    }
+    return undefined;
+  }, [rightFrom, rightUntil, rightQuery]);
 
   const leftSide = comparisonView.left.profile;
   const rightSide = comparisonView.right.profile;

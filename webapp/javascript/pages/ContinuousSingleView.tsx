@@ -14,9 +14,6 @@ import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
-import useCancelRequestOnUnmount from '@webapp/hooks/cancelRequestOnUnmount.hook';
-
-let fetchData: ShamefulAny;
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -31,11 +28,11 @@ function ContinuousSingleView() {
 
   useEffect(() => {
     if (from && until && query && maxNodes) {
-      fetchData = dispatch(fetchSingleView(null));
+      const fetchData = dispatch(fetchSingleView(null));
+      return fetchData.abort;
     }
+    return undefined;
   }, [from, until, query, refreshToken, maxNodes]);
-
-  useCancelRequestOnUnmount([fetchData]);
 
   const getRaw = () => {
     switch (singleView.type) {
