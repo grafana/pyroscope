@@ -359,3 +359,6 @@ func (s *Storage) TreesInternals() (*badger.DB, *cache.Cache) {
 func (s *Storage) MainInternals() (*badger.DB, *cache.Cache) {
 	return s.main.DBInstance(), s.main.CacheInstance()
 }
+func (s *Storage) ExemplarsInternals() (*badger.DB, func()) {
+	return s.exemplars.db.DBInstance(), s.exemplars.Sync
+}

@@ -82,6 +82,7 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 			ids = append(ids, m.Value)
 		}
 		if len(ids) > 0 {
+			// TODO(kolesnikovae): load from segment.
 			o := GetOutput{
 				SpyName:    "gospy",
 				Units:      "samples",
