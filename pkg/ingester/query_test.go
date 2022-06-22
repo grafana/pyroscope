@@ -58,54 +58,7 @@ func Test_selectMerge(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	profileStore, err := profilestore.New(log.NewNopLogger(), nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
 	require.NoError(t, err)
-	buf := bytes.NewBuffer(nil)
-	mapping := &profile.Mapping{
-		ID: 1,
-	}
-	fns := []*profile.Function{
-		{ID: 1, Name: "foo", StartLine: 1},
-		{ID: 2, Name: "bar", StartLine: 1},
-		{ID: 3, Name: "buzz", StartLine: 1},
-	}
-	locs := []*profile.Location{
-		{
-			ID: 1, Address: 1, Mapping: mapping, Line: []profile.Line{
-				{Function: fns[0], Line: 1},
-			},
-		},
-		{
-			ID: 2, Address: 2, Mapping: mapping, Line: []profile.Line{
-				{Function: fns[1], Line: 1},
-			},
-		},
-		{
-			ID: 3, Address: 3, Mapping: mapping, Line: []profile.Line{
-				{Function: fns[2], Line: 1},
-			},
-		},
-	}
-	p := &profile.Profile{
-		SampleType: []*profile.ValueType{
-			{Type: "inuse_space", Unit: "bytes"},
-		},
-		PeriodType: &profile.ValueType{
-			Type: "space",
-			Unit: "bytes",
-		},
-		DurationNanos: 0,
-		Period:        3,
-		TimeNanos:     time.Now().Add(-1 * time.Minute).UnixNano(),
-		Sample: []*profile.Sample{
-			{Value: []int64{1}, Location: []*profile.Location{locs[1], locs[0]}},
-			{Value: []int64{1}, Location: []*profile.Location{locs[2], locs[0]}},
-		},
-		Mapping: []*profile.Mapping{
-			mapping,
-		},
-		Function: fns,
-		Location: locs,
-	}
-	require.NoError(t, p.Write(buf))
+
 	d, err := New(cfg, log.NewNopLogger(), nil, profileStore)
 	require.NoError(t, err)
 	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
@@ -116,7 +69,14 @@ func Test_selectMerge(t *testing.T) {
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: buf.Bytes(),
+						RawProfile: generateProfile(
+							t, "inuse_space", "bytes", "space", "bytes", time.Now().Add(-1*time.Minute),
+							[]int64{1, 1},
+							[][]string{
+								{"bar", "foo"},
+								{"buzz", "foo"},
+							},
+						),
 					},
 				},
 			},
@@ -214,7 +174,7 @@ func Test_QueryMetadata(t *testing.T) {
 	require.Equal(t, expectedTypes, typeRes.Msg.Names)
 }
 
-func Test_SelectProfiles(t *testing.T) {
+func Test_selectProfiles(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
 	storeCfg := defaultProfileStoreTestConfig(t)
@@ -224,29 +184,43 @@ func Test_SelectProfiles(t *testing.T) {
 	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
 	require.NoError(t, err)
 
-	rawProfile := testProfile(t)
 	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-central1"},
 					{Name: "foo", Value: "bar"},
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: rawProfile,
+						RawProfile: generateProfile(
+							t, "inuse_space", "bytes", "space", "bytes", time.Unix(1, 0),
+							[]int64{1, 2},
+							[][]string{
+								{"foo", "bar", "buzz"},
+								{"buzz", "baz", "foo"},
+							},
+						),
 					},
 				},
 			},
 			{
-				Labels: []*pushv1.LabelPair{
+				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-east1"},
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: rawProfile,
+						RawProfile: generateProfile(
+							t, "inuse_space", "bytes", "space", "bytes", time.Unix(2, 0),
+							[]int64{4, 5, 6},
+							[][]string{
+								{"foo", "bar", "buzz"},
+								{"buzz", "baz", "foo"},
+								{"1", "2", "3"},
+							},
+						),
 					},
 				},
 			},
@@ -254,14 +228,107 @@ func Test_SelectProfiles(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.NoError(t, d.selectProfile(context.Background(), profileQuery{
-		name:       "memory",
-		sampleType: "inuse_space",
-		sampleUnit: "bytes",
-		periodType: "space",
-		periodUnit: "bytes",
-		selector: []*labels.Matcher{labels.MustNewMatcher(
-			labels.MatchEqual, "cluster", "us-central1",
-		)},
-	}, 0, int64(model.Latest)))
+
+	res, err := d.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+		LabelSelector: `{cluster=~".*"}`,
+		Type: &ingestv1.ProfileType{
+			Name:       "memory",
+			SampleType: "inuse_space",
+			SampleUnit: "bytes",
+			PeriodType: "space",
+			PeriodUnit: "bytes",
+		},
+		Start: 0,
+		End:   int64(model.Latest),
+	}))
+	require.NoError(t, err)
+	sort.Slice(res.Msg.Profiles, func(i, j int) bool {
+		return res.Msg.Profiles[i].Timestamp < res.Msg.Profiles[j].Timestamp
+	})
+	require.Equal(t, 2, len(res.Msg.Profiles))
+	require.Equal(t, 2, len(res.Msg.Profiles[0].Labels))
+	require.Equal(t, 1, len(res.Msg.Profiles[1].Labels))
+
+	require.Equal(t, "cluster", res.Msg.Profiles[0].Labels[0].Name)
+	require.Equal(t, "us-central1", res.Msg.Profiles[0].Labels[0].Value)
+	require.Equal(t, "foo", res.Msg.Profiles[0].Labels[1].Name)
+	require.Equal(t, "bar", res.Msg.Profiles[0].Labels[1].Value)
+	require.Equal(t, "cluster", res.Msg.Profiles[1].Labels[0].Name)
+	require.Equal(t, "us-east1", res.Msg.Profiles[1].Labels[0].Value)
+
+	require.Equal(t, 2, len(res.Msg.Profiles[0].Stacktraces))
+	require.Equal(t, 3, len(res.Msg.Profiles[1].Stacktraces))
+}
+
+func generateProfile(
+	t *testing.T,
+	sampleType, sampleUnit, periodType, periodUnit string,
+	ts time.Time,
+	values []int64,
+	locations [][]string,
+) []byte {
+	t.Helper()
+	buf := bytes.NewBuffer(nil)
+	mapping := &profile.Mapping{
+		ID: 1,
+	}
+	functionMap := map[string]uint64{}
+	locMap := map[string]*profile.Location{}
+	fns := []*profile.Function{}
+	locs := []*profile.Location{}
+	id := uint64(1)
+	for _, location := range locations {
+		for _, function := range location {
+			if _, ok := functionMap[function]; !ok {
+				functionMap[function] = id
+				fn := &profile.Function{
+					ID:        id,
+					Name:      function,
+					StartLine: 1,
+				}
+				fns = append(fns, fn)
+				loc := &profile.Location{
+					ID:      id,
+					Address: 0,
+					Mapping: mapping,
+					Line: []profile.Line{
+						{Function: fn, Line: 1},
+					},
+				}
+				locMap[function] = loc
+				locs = append(locs, loc)
+				id++
+			}
+		}
+	}
+	var samples []*profile.Sample
+	for i, loc := range locations {
+		s := &profile.Sample{
+			Value: []int64{values[i]},
+		}
+		samples = append(samples, s)
+		for _, function := range loc {
+			s.Location = append(s.Location, locMap[function])
+		}
+	}
+	p := &profile.Profile{
+		SampleType: []*profile.ValueType{
+			{Type: sampleType, Unit: sampleUnit},
+		},
+		PeriodType: &profile.ValueType{
+			Type: periodType,
+			Unit: periodUnit,
+		},
+		DurationNanos: 0,
+		Period:        3,
+		TimeNanos:     ts.UnixNano(),
+		Sample:        samples,
+		Mapping: []*profile.Mapping{
+			mapping,
+		},
+		Function: fns,
+		Location: locs,
+	}
+	require.NoError(t, p.Write(buf))
+	return buf.Bytes()
 }
