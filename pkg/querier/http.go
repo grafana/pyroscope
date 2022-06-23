@@ -49,21 +49,21 @@ func (q *Querier) LabelValuesHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (q *Querier) RenderHandler(w http.ResponseWriter, req *http.Request) {
-	// selectParams, err := parseSelectProfilesRequest(req)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusBadRequest)
-	// 	return
-	// }
-	// flame, err := q.selectMerge(req.Context(), selectParams)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-	// w.Header().Add("Content-Type", "application/json")
-	// if err := json.NewEncoder(w).Encode(flame); err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
+	selectParams, err := parseSelectProfilesRequest(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	flame, err := q.selectMerge(req.Context(), selectParams)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(flame); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
