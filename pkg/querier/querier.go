@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -123,6 +124,16 @@ func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error
 
 type profileResponsesHeap []responseFromIngesters[*ingestv1.SelectProfilesResponse]
 
+func newProfileHeap(profiles []responseFromIngesters[*ingestv1.SelectProfilesResponse]) heap.Interface {
+	res := make(profileResponsesHeap, 0, len(profiles))
+	for _, p := range profiles {
+		if len(p.response.Profiles) > 0 {
+			res = append(res, p)
+		}
+	}
+	return &res
+}
+
 // Implement sort.Interface
 func (h profileResponsesHeap) Len() int      { return len(h) }
 func (h profileResponsesHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
@@ -149,13 +160,12 @@ func (h *profileResponsesHeap) Pop() interface{} {
 // todo: This function can be optimized by peeking instead of popping the heap.
 func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) map[string][]*ingestv1.Profile {
 	type tuple struct {
-		ingester string
-		profile  *ingestv1.Profile
+		ingesterAddr string
+		profile      *ingestv1.Profile
 		responseFromIngesters[*ingestv1.SelectProfilesResponse]
 	}
 	var (
-		r                   = profileResponsesHeap(responses)
-		h                   = heap.Interface(&r)
+		h                   = newProfileHeap(responses)
 		deduped             []*ingestv1.Profile
 		profilesPerIngester = make(map[string][]*ingestv1.Profile, len(responses))
 		tuples              = make([]tuple, 0, len(responses))
@@ -165,10 +175,12 @@ func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesRe
 	for h.Len() > 0 || len(tuples) > 0 {
 		if h.Len() > 0 {
 			top := heap.Pop(h).(responseFromIngesters[*ingestv1.SelectProfilesResponse])
-
+			if len(top.response.Profiles) == 0 {
+				continue
+			}
 			if len(tuples) == 0 || model.CompareProfile(top.response.Profiles[0], tuples[len(tuples)-1].profile) == 0 {
 				tuples = append(tuples, tuple{
-					ingester:              top.addr,
+					ingesterAddr:          top.addr,
 					profile:               top.response.Profiles[0],
 					responseFromIngesters: top,
 				})
@@ -233,18 +245,18 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 
 	// Merge stacktraces and prepare for fetching symbols.
 	stacktracesPerIngester := make(map[string][][]byte, len(profilesPerIngester))
-	stracktracesValue := make(map[string]*stack)
+	stracktracesByID := make(map[string]*stack)
 	for ing, profiles := range profilesPerIngester {
 		for _, profile := range profiles {
 			for _, stacktrace := range profile.Stacktraces {
 				id := util.UnsafeGetString(stacktrace.ID)
 				var stacktraceSample *stack
 				var ok bool
-				stacktraceSample, ok = stracktracesValue[id]
+				stacktraceSample, ok = stracktracesByID[id]
 				if !ok {
 					stacktraceSample = &stack{}
 					stacktracesPerIngester[ing] = append(stacktracesPerIngester[ing], stacktrace.ID)
-					stracktracesValue[id] = stacktraceSample
+					stracktracesByID[id] = stacktraceSample
 				}
 				stacktraceSample.value += stacktrace.Value
 
@@ -274,67 +286,42 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 			for _, idx := range res.Msg.Locations[i].Ids {
 				locs = append(locs, res.Msg.FunctionNames[idx])
 			}
-			stracktracesValue[util.UnsafeGetString(stacktraces[i])].locations = locs
+			stracktracesByID[util.UnsafeGetString(stacktraces[i])].locations = locs
 		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
 	// build the flamegraph
+	stacktraces := make([]stack, 0, len(stracktracesByID))
+	for _, s := range stracktracesByID {
+		s := s
+		stacktraces = append(stacktraces, *s)
+	}
+	flame := stacksToTree(stacktraces).toFlamebearer()
+	unit := metadata.Units(req.Type.SampleUnit)
+	sampleRate := uint32(100)
+	switch req.Type.SampleType {
+	case "inuse_objects", "alloc_objects", "goroutine", "samples":
+		unit = metadata.ObjectsUnits
+	case "cpu":
+		unit = metadata.SamplesUnits
+		sampleRate = uint32(100000000)
 
-	return nil, nil
+	}
+	return &flamebearer.FlamebearerProfile{
+		Version: 1,
+		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+			Flamebearer: *flame,
+			Metadata: flamebearer.FlamebearerMetadataV1{
+				Format:     "single",
+				Units:      unit,
+				Name:       req.Type.SampleType,
+				SampleRate: sampleRate,
+			},
+		},
+	}, nil
 }
-
-// func (q *Querier) selectMerge(ctx context.Context, req *ingesterv1.SelectProfilesRequest) (*flamebearer.FlamebearerProfile, error) {
-// 	filterExpr, err := selectPlan(query, start, end)
-// 	if err != nil {
-// 		// todo 4xx
-// 		return nil, err
-// 	}
-
-// 	var ar arrow.Record
-// 	err = i.engine.ScanTable("stacktraces").
-// 		Filter(filterExpr).
-// 		Aggregate(
-// 			logicalplan.Sum(logicalplan.Col("value")),
-// 			logicalplan.Col("stacktrace"),
-// 		).
-// 		Execute(ctx, func(r arrow.Record) error {
-// 			r.Retain()
-// 			ar = r
-// 			return nil
-// 		})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer ar.Release()
-// 	flame, err := buildFlamebearer(ar, i.profileStore.MetaStore())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	unit := metadata.Units(query.sampleUnit)
-// 	sampleRate := uint32(100)
-// 	switch query.sampleType {
-// 	case "inuse_objects", "alloc_objects", "goroutine", "samples":
-// 		unit = metadata.ObjectsUnits
-// 	case "cpu":
-// 		unit = metadata.SamplesUnits
-// 		sampleRate = uint32(100000000)
-
-// 	}
-// 	return &flamebearer.FlamebearerProfile{
-// 		Version: 1,
-// 		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
-// 			Flamebearer: *flame,
-// 			Metadata: flamebearer.FlamebearerMetadataV1{
-// 				Format:     "single",
-// 				Units:      unit,
-// 				Name:       query.sampleType,
-// 				SampleRate: sampleRate,
-// 			},
-// 		},
-// 	}, nil
-// }
 
 func uniqueSortedStrings(responses []responseFromIngesters[[]string]) []string {
 	total := 0

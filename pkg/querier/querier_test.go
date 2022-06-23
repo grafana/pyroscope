@@ -129,6 +129,22 @@ func (f *fakeQuerierIngester) SelectProfiles(ctx context.Context, req *connect.R
 	return res, err
 }
 
+func (f *fakeQuerierIngester) SymbolizeStacktraces(ctx context.Context, req *connect.Request[ingestv1.SymbolizeStacktraceRequest]) (*connect.Response[ingestv1.SymbolizeStacktraceResponse], error) {
+	var (
+		args = f.Called(ctx, req)
+		res  *connect.Response[ingestv1.SymbolizeStacktraceResponse]
+		err  error
+	)
+	if args[0] != nil {
+		res = args[0].(*connect.Response[ingestv1.SymbolizeStacktraceResponse])
+	}
+	if args[1] != nil {
+		err = args.Get(1).(error)
+	}
+
+	return res, err
+}
+
 func Test_DedupeProfiles(t *testing.T) {
 	actual := dedupeProfiles([]responseFromIngesters[*ingestv1.SelectProfilesResponse]{
 		{
@@ -150,6 +166,10 @@ func Test_DedupeProfiles(t *testing.T) {
 		{
 			addr:     "E",
 			response: buildResponses(t, []int64{4}, []string{`{app="blah"}`}),
+		},
+		{
+			addr:     "F",
+			response: buildResponses(t, []int64{}, []string{}),
 		},
 	})
 	require.Equal(t,
