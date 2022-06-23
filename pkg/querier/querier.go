@@ -19,7 +19,7 @@ import (
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/util"
+	"github.com/grafana/fire/pkg/model"
 )
 
 // todo: move to non global metrics.
@@ -125,14 +125,7 @@ type profileResponsesHeap []responseFromIngesters[*ingestv1.SelectProfilesRespon
 func (h profileResponsesHeap) Len() int      { return len(h) }
 func (h profileResponsesHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
 func (h profileResponsesHeap) Less(i, j int) bool {
-	return CompareProfile(h[i].response.Profiles[0], h[j].response.Profiles[0]) < 0
-}
-
-func CompareProfile(a, b *ingestv1.Profile) int64 {
-	if a.Timestamp == b.Timestamp {
-		return int64(util.CompareLabelPair(a.Labels, b.Labels))
-	}
-	return a.Timestamp - b.Timestamp
+	return model.CompareProfile(h[i].response.Profiles[0], h[j].response.Profiles[0]) < 0
 }
 
 // Implement heap.Interface
@@ -150,22 +143,76 @@ func (h *profileResponsesHeap) Pop() interface{} {
 
 // dedupeProfiles dedupes profiles responses by timestamp and labels.
 // It expects profiles from each response to be sorted by timestamp and labels already.
-func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) []*ingestv1.Profile {
-	r := profileResponsesHeap(responses)
-	h := heap.Interface(&r)
-	var deduped []*ingestv1.Profile
+// Returns the profile deduped per ingester address.
+// todo: This function can be optimized by peeking instead of popping the heap.
+func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) map[string][]*ingestv1.Profile {
+	type tuple struct {
+		ingester string
+		profile  *ingestv1.Profile
+		responseFromIngesters[*ingestv1.SelectProfilesResponse]
+	}
+	var (
+		r                   = profileResponsesHeap(responses)
+		h                   = heap.Interface(&r)
+		deduped             []*ingestv1.Profile
+		profilesPerIngester = make(map[string][]*ingestv1.Profile, len(responses))
+		tuples              = make([]tuple, 0, len(responses))
+	)
+
 	heap.Init(h)
-	for h.Len() > 0 {
-		top := heap.Pop(h).(responseFromIngesters[*ingestv1.SelectProfilesResponse])
-		if len(deduped) == 0 || CompareProfile(top.response.Profiles[0], deduped[len(deduped)-1]) != 0 {
-			deduped = append(deduped, top.response.Profiles[0])
-		}
-		top.response.Profiles = top.response.Profiles[1:]
-		if len(top.response.Profiles) > 0 {
+	for h.Len() > 0 || len(tuples) > 0 {
+		if h.Len() > 0 {
+			top := heap.Pop(h).(responseFromIngesters[*ingestv1.SelectProfilesResponse])
+
+			if len(tuples) == 0 || model.CompareProfile(top.response.Profiles[0], tuples[len(tuples)-1].profile) == 0 {
+				tuples = append(tuples, tuple{
+					ingester:              top.addr,
+					profile:               top.response.Profiles[0],
+					responseFromIngesters: top,
+				})
+				top.response.Profiles = top.response.Profiles[1:]
+				continue
+			}
+			// the current profile is different.
 			heap.Push(h, top)
 		}
+		// if the heap is empty and we don't have tuples we're done.
+		if len(tuples) == 0 {
+			continue
+		}
+		// no duplicate found just a single profile.
+		if len(tuples) == 1 {
+			profilesPerIngester[tuples[0].addr] = append(profilesPerIngester[tuples[0].addr], tuples[0].profile)
+			deduped = append(deduped, tuples[0].profile)
+			if len(tuples[0].response.Profiles) > 0 {
+				heap.Push(h, tuples[0].responseFromIngesters)
+			}
+			tuples = tuples[:0]
+			continue
+		}
+		// we have a duplicate let's select a winner based on the ingester with the less profiles
+		// this way we evenly distribute the profiles symbols API calls across the ingesters
+		min := tuples[0]
+		for _, t := range tuples {
+			if len(profilesPerIngester[t.addr]) < len(profilesPerIngester[min.addr]) {
+				min = t
+			}
+		}
+		profilesPerIngester[min.addr] = append(profilesPerIngester[min.addr], min.profile)
+		deduped = append(deduped, min.profile)
+		if len(min.response.Profiles) > 0 {
+			heap.Push(h, min.responseFromIngesters)
+		}
+		for _, t := range tuples {
+			if t.addr != min.addr && len(t.response.Profiles) > 0 {
+				heap.Push(h, t.responseFromIngesters)
+				continue
+			}
+		}
+		tuples = tuples[:0]
+
 	}
-	return deduped
+	return profilesPerIngester
 }
 
 func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesRequest) (*flamebearer.FlamebearerProfile, error) {
@@ -179,36 +226,8 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 	if err != nil {
 		return nil, err
 	}
-	// Start by ordering by timestamp then labels.
-	for i := range responses {
-		sort.Slice(responses[i].response.Profiles, func(j, k int) bool {
-			if responses[i].response.Profiles[j].Timestamp == responses[i].response.Profiles[k].Timestamp {
-				// we don't need the name label because we're querying only a single profile type at a time.
-				return util.CompareLabelPair(responses[i].response.Profiles[j].Labels, responses[i].response.Profiles[k].Labels) < 0
-			}
-			return responses[i].response.Profiles[j].Timestamp < responses[i].response.Profiles[k].Timestamp
-		})
-	}
 
-	var lastProfile *ingestv1.Profile
-	profilePerIngester := make(map[string][]*ingestv1.Profile, len(responses))
-
-	for i := range responses {
-		if len(responses[i].response.Profiles) > 0 {
-			continue
-		}
-		// if the profile is the same as the last one, we can skip it.
-		if lastProfile != nil && lastProfile.Timestamp == responses[i].response.Profiles[0].Timestamp &&
-			util.CompareLabelPair(lastProfile.Labels, responses[i].response.Profiles[0].Labels) == 0 {
-			responses[i].response.Profiles = responses[i].response.Profiles[1:]
-			continue
-		}
-		lastProfile = responses[i].response.Profiles[0]
-		profilePerIngester[responses[i].addr] = append(profilePerIngester[responses[i].addr], lastProfile)
-		responses[i].response.Profiles = responses[i].response.Profiles[1:]
-		continue
-
-	}
+	_ = dedupeProfiles(responses)
 
 	// Merge stacktraces.
 

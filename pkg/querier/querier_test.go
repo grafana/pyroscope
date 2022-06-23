@@ -16,8 +16,8 @@ import (
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	"github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/testutil"
-	"github.com/grafana/fire/pkg/util"
 )
 
 func Test_QuerySampleType(t *testing.T) {
@@ -113,6 +113,22 @@ func (f *fakeQuerierIngester) ProfileTypes(ctx context.Context, req *connect.Req
 	return res, err
 }
 
+func (f *fakeQuerierIngester) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+	var (
+		args = f.Called(ctx, req)
+		res  *connect.Response[ingestv1.SelectProfilesResponse]
+		err  error
+	)
+	if args[0] != nil {
+		res = args[0].(*connect.Response[ingestv1.SelectProfilesResponse])
+	}
+	if args[1] != nil {
+		err = args.Get(1).(error)
+	}
+
+	return res, err
+}
+
 func Test_DedupeProfiles(t *testing.T) {
 	actual := dedupeProfiles([]responseFromIngesters[*ingestv1.SelectProfilesResponse]{
 		{
@@ -131,9 +147,18 @@ func Test_DedupeProfiles(t *testing.T) {
 			addr:     "D",
 			response: buildResponses(t, []int64{2}, []string{`{app="bar"}`}),
 		},
+		{
+			addr:     "E",
+			response: buildResponses(t, []int64{4}, []string{`{app="blah"}`}),
+		},
 	})
 	require.Equal(t,
-		buildResponses(t, []int64{1, 2, 3}, []string{`{app="foo"}`, `{app="bar"}`, `{app="buzz"}`}).Profiles,
+		map[string][]*ingestv1.Profile{
+			"A": buildResponses(t, []int64{1}, []string{`{app="foo"}`}).Profiles,
+			"B": buildResponses(t, []int64{2}, []string{`{app="bar"}`}).Profiles,
+			"C": buildResponses(t, []int64{3}, []string{`{app="buzz"}`}).Profiles,
+			"E": buildResponses(t, []int64{4}, []string{`{app="blah"}`}).Profiles,
+		},
 		actual)
 }
 
@@ -143,7 +168,7 @@ func buildResponses(t *testing.T, timestamps []int64, labels []string) *ingestv1
 		Profiles: make([]*ingestv1.Profile, len(timestamps)),
 	}
 	for i := range timestamps {
-		ls, err := util.StringToLabelsPairs(labels[i])
+		ls, err := model.StringToLabelsPairs(labels[i])
 		require.NoError(t, err)
 		result.Profiles[i] = &ingestv1.Profile{
 			Timestamp: timestamps[i],
@@ -151,7 +176,7 @@ func buildResponses(t *testing.T, timestamps []int64, labels []string) *ingestv1
 		}
 	}
 	sort.Slice(result.Profiles, func(i, j int) bool {
-		return CompareProfile(result.Profiles[i], result.Profiles[j]) < 0
+		return model.CompareProfile(result.Profiles[i], result.Profiles[j]) < 0
 	})
 	return result
 }
