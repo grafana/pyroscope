@@ -1,4 +1,4 @@
-package ingester
+package querier
 
 import (
 	"testing"

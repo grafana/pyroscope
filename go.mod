@@ -19,15 +19,18 @@ require (
 	github.com/parca-dev/parca v0.11.1-0.20220608104838-4e857ab70594
 	github.com/pkg/errors v0.9.1
 	github.com/polarsignals/arcticdb v0.0.0-20220607075621-19ee11509854
+	github.com/prometheus/alertmanager v0.23.1-0.20210914172521-e35efbddb66a
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.34.0
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
+	github.com/prometheus/tsdb v0.7.1
 	github.com/pyroscope-io/pyroscope v0.18.0
 	github.com/stretchr/testify v1.7.2
 	github.com/thanos-io/objstore v0.0.0-20220324141029-c4f11442aa33
 	github.com/thanos-io/thanos v0.26.0
 	github.com/weaveworks/common v0.0.0-20220428113342-f83ccc76d823
 	github.com/xlab/treeprint v1.1.0
+	go.elastic.co/apm v1.11.0
 	go.opentelemetry.io/otel/trace v1.7.0
 	go.uber.org/atomic v1.9.0
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93
@@ -217,6 +220,7 @@ require (
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/weaveworks/promrus v1.2.0 // indirect
+	go.elastic.co/fastjson v1.1.0 // indirect
 	go.etcd.io/etcd v3.3.25+incompatible // indirect
 	go.etcd.io/etcd/api/v3 v3.5.0 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0 // indirect

@@ -1,6 +1,7 @@
 package querier
 
 import (
+	"container/heap"
 	"context"
 	"flag"
 	"sort"
@@ -14,9 +15,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	"github.com/grafana/fire/pkg/util"
 )
 
 // todo: move to non global metrics.
@@ -115,6 +118,153 @@ func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error
 	}
 	return uniqueSortedStrings(responses), nil
 }
+
+type profileResponsesHeap []responseFromIngesters[*ingestv1.SelectProfilesResponse]
+
+// Implement sort.Interface
+func (h profileResponsesHeap) Len() int      { return len(h) }
+func (h profileResponsesHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h profileResponsesHeap) Less(i, j int) bool {
+	return CompareProfile(h[i].response.Profiles[0], h[j].response.Profiles[0]) < 0
+}
+
+func CompareProfile(a, b *ingestv1.Profile) int64 {
+	if a.Timestamp == b.Timestamp {
+		return int64(util.CompareLabelPair(a.Labels, b.Labels))
+	}
+	return a.Timestamp - b.Timestamp
+}
+
+// Implement heap.Interface
+func (h *profileResponsesHeap) Push(x interface{}) {
+	*h = append(*h, x.(responseFromIngesters[*ingestv1.SelectProfilesResponse]))
+}
+
+func (h *profileResponsesHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+// dedupeProfiles dedupes profiles responses by timestamp and labels.
+// It expects profiles from each response to be sorted by timestamp and labels already.
+func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) []*ingestv1.Profile {
+	r := profileResponsesHeap(responses)
+	h := heap.Interface(&r)
+	var deduped []*ingestv1.Profile
+	heap.Init(h)
+	for h.Len() > 0 {
+		top := heap.Pop(h).(responseFromIngesters[*ingestv1.SelectProfilesResponse])
+		if len(deduped) == 0 || CompareProfile(top.response.Profiles[0], deduped[len(deduped)-1]) != 0 {
+			deduped = append(deduped, top.response.Profiles[0])
+		}
+		top.response.Profiles = top.response.Profiles[1:]
+		if len(top.response.Profiles) > 0 {
+			heap.Push(h, top)
+		}
+	}
+	return deduped
+}
+
+func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesRequest) (*flamebearer.FlamebearerProfile, error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
+		res, err := ic.SelectProfiles(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Start by ordering by timestamp then labels.
+	for i := range responses {
+		sort.Slice(responses[i].response.Profiles, func(j, k int) bool {
+			if responses[i].response.Profiles[j].Timestamp == responses[i].response.Profiles[k].Timestamp {
+				// we don't need the name label because we're querying only a single profile type at a time.
+				return util.CompareLabelPair(responses[i].response.Profiles[j].Labels, responses[i].response.Profiles[k].Labels) < 0
+			}
+			return responses[i].response.Profiles[j].Timestamp < responses[i].response.Profiles[k].Timestamp
+		})
+	}
+
+	var lastProfile *ingestv1.Profile
+	profilePerIngester := make(map[string][]*ingestv1.Profile, len(responses))
+
+	for i := range responses {
+		if len(responses[i].response.Profiles) > 0 {
+			continue
+		}
+		// if the profile is the same as the last one, we can skip it.
+		if lastProfile != nil && lastProfile.Timestamp == responses[i].response.Profiles[0].Timestamp &&
+			util.CompareLabelPair(lastProfile.Labels, responses[i].response.Profiles[0].Labels) == 0 {
+			responses[i].response.Profiles = responses[i].response.Profiles[1:]
+			continue
+		}
+		lastProfile = responses[i].response.Profiles[0]
+		profilePerIngester[responses[i].addr] = append(profilePerIngester[responses[i].addr], lastProfile)
+		responses[i].response.Profiles = responses[i].response.Profiles[1:]
+		continue
+
+	}
+
+	// Merge stacktraces.
+
+	return nil, nil
+}
+
+// func (q *Querier) selectMerge(ctx context.Context, req *ingesterv1.SelectProfilesRequest) (*flamebearer.FlamebearerProfile, error) {
+// 	filterExpr, err := selectPlan(query, start, end)
+// 	if err != nil {
+// 		// todo 4xx
+// 		return nil, err
+// 	}
+
+// 	var ar arrow.Record
+// 	err = i.engine.ScanTable("stacktraces").
+// 		Filter(filterExpr).
+// 		Aggregate(
+// 			logicalplan.Sum(logicalplan.Col("value")),
+// 			logicalplan.Col("stacktrace"),
+// 		).
+// 		Execute(ctx, func(r arrow.Record) error {
+// 			r.Retain()
+// 			ar = r
+// 			return nil
+// 		})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer ar.Release()
+// 	flame, err := buildFlamebearer(ar, i.profileStore.MetaStore())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	unit := metadata.Units(query.sampleUnit)
+// 	sampleRate := uint32(100)
+// 	switch query.sampleType {
+// 	case "inuse_objects", "alloc_objects", "goroutine", "samples":
+// 		unit = metadata.ObjectsUnits
+// 	case "cpu":
+// 		unit = metadata.SamplesUnits
+// 		sampleRate = uint32(100000000)
+
+// 	}
+// 	return &flamebearer.FlamebearerProfile{
+// 		Version: 1,
+// 		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+// 			Flamebearer: *flame,
+// 			Metadata: flamebearer.FlamebearerMetadataV1{
+// 				Format:     "single",
+// 				Units:      unit,
+// 				Name:       query.sampleType,
+// 				SampleRate: sampleRate,
+// 			},
+// 		},
+// 	}, nil
+// }
 
 func uniqueSortedStrings(responses []responseFromIngesters[[]string]) []string {
 	total := 0
