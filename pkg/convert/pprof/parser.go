@@ -21,7 +21,7 @@ type Parser struct {
 	skipExemplars bool
 	sampleTypes   map[string]*tree.SampleTypeConfig
 
-	cache             labelsCache
+	cache             tree.LabelsCache
 	sampleTypesFilter func(string) bool
 }
 
@@ -41,7 +41,7 @@ func NewParser(config ParserConfig) *Parser {
 		sampleTypes:   config.SampleTypes,
 		skipExemplars: config.SkipExemplars,
 
-		cache:             make(labelsCache),
+		cache:             make(tree.LabelsCache),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
 	}
 }
@@ -53,7 +53,7 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 	}
 }
 
-func (p *Parser) Reset() { p.cache = make(labelsCache) }
+func (p *Parser) Reset() { p.cache = make(tree.LabelsCache) }
 
 func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, b io.Reader) error {
 	return DecodePool(b, func(profile *tree.Profile) error {
@@ -133,7 +133,7 @@ func (p *Parser) buildName(sampleTypeName string, labels map[string]string) *seg
 }
 
 func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
-	e, ok := p.cache.get(sampleType, labels.Hash())
+	e, ok := p.cache.Get(sampleType, labels.Hash())
 	if !ok {
 		return nil, false
 	}
@@ -141,7 +141,7 @@ func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
 }
 
 func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
-	c := make(labelsCache)
+	c := make(tree.LabelsCache)
 	p.readTrees(x, c, tree.NewFinder(x))
 	for sampleType, entries := range c {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
@@ -151,7 +151,7 @@ func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Lab
 					return err
 				}
 				if !keep {
-					c.remove(sampleType, h)
+					c.Remove(sampleType, h)
 				}
 			}
 		}
@@ -161,7 +161,7 @@ func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Lab
 }
 
 // readTrees generates trees from the profile populating c.
-func (p *Parser) readTrees(x *tree.Profile, c labelsCache, f tree.Finder) {
+func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
 	// SampleType value indexes.
 	indexes := make([]int, 0, len(x.SampleType))
 	// Corresponding type IDs used as the main cache keys.
@@ -210,12 +210,12 @@ func (p *Parser) readTrees(x *tree.Profile, c labelsCache, f tree.Finder) {
 			if j := labelIndex(x, s.Label, segment.ProfileIDLabelName); j >= 0 {
 				// Regardless of whether we should skip exemplars or not, the value
 				// should be appended to the exemplar baseline profile (w/o ProfileID label).
-				c.getOrCreateTree(types[i], cutLabel(s.Label, j)).InsertStack(stack, v)
+				c.GetOrCreateTree(types[i], tree.CutLabel(s.Label, j)).InsertStack(stack, v)
 				if p.skipExemplars {
 					continue
 				}
 			}
-			c.getOrCreateTree(types[i], s.Label).InsertStack(stack, v)
+			c.GetOrCreateTree(types[i], s.Label).InsertStack(stack, v)
 		}
 		stack = stack[:0]
 	}
@@ -225,63 +225,6 @@ func unsafeStrToSlice(s string) []byte {
 	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
 }
 
-// sample type -> labels hash -> entry
-type labelsCache map[int64]map[uint64]*labelsCacheEntry
-
-type labelsCacheEntry struct {
-	tree.Labels
-	*tree.Tree
-}
-
-func newCacheEntry(l tree.Labels) *labelsCacheEntry {
-	return &labelsCacheEntry{Tree: tree.New(), Labels: copyLabels(l)}
-}
-
-func (c labelsCache) getOrCreateTree(sampleType int64, l tree.Labels) *labelsCacheEntry {
-	p, ok := c[sampleType]
-	if !ok {
-		e := newCacheEntry(l)
-		c[sampleType] = map[uint64]*labelsCacheEntry{l.Hash(): e}
-		return e
-	}
-	h := l.Hash()
-	e, found := p[h]
-	if !found {
-		e = newCacheEntry(l)
-		p[h] = e
-	}
-	return e
-}
-
-func (c labelsCache) get(sampleType int64, h uint64) (*labelsCacheEntry, bool) {
-	p, ok := c[sampleType]
-	if !ok {
-		return nil, false
-	}
-	x, ok := p[h]
-	return x, ok
-}
-
-func (c labelsCache) put(sampleType int64, e *labelsCacheEntry) {
-	p, ok := c[sampleType]
-	if !ok {
-		p = make(map[uint64]*labelsCacheEntry)
-		c[sampleType] = p
-	}
-	p[e.Hash()] = e
-}
-
-func (c labelsCache) remove(sampleType int64, h uint64) {
-	p, ok := c[sampleType]
-	if !ok {
-		return
-	}
-	delete(p, h)
-	if len(p) == 0 {
-		delete(c, sampleType)
-	}
-}
-
 func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
 	for i, label := range labels {
 		if n, ok := p.ResolveLabelName(label); ok && n == key {
@@ -289,32 +232,4 @@ func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
 		}
 	}
 	return -1
-}
-
-func copyLabels(labels tree.Labels) tree.Labels {
-	l := make(tree.Labels, len(labels))
-	for i, v := range labels {
-		l[i] = copyLabel(v)
-	}
-	return l
-}
-
-// cutLabel creates a copy of labels without label i.
-func cutLabel(labels tree.Labels, i int) tree.Labels {
-	c := make(tree.Labels, 0, len(labels)-1)
-	for j, label := range labels {
-		if i != j {
-			c = append(c, copyLabel(label))
-		}
-	}
-	return c
-}
-
-func copyLabel(label *tree.Label) *tree.Label {
-	return &tree.Label{
-		Key:     label.Key,
-		Str:     label.Str,
-		Num:     label.Num,
-		NumUnit: label.NumUnit,
-	}
 }

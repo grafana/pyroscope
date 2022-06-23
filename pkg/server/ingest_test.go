@@ -173,6 +173,8 @@ var _ = Describe("server", func() {
 						fq, err := flameql.ParseQuery(expectedKey)
 						Expect(err).ToNot(HaveOccurred())
 
+						_, exemplarSync := s.ExemplarsInternals()
+						exemplarSync()
 						time.Sleep(10 * time.Millisecond)
 						time.Sleep(sleepDur)
 
@@ -205,7 +207,7 @@ var _ = Describe("server", func() {
 
 						close(done)
 					}()
-					Eventually(done, 2).Should(BeClosed())
+					Eventually(done, 10).Should(BeClosed())
 				})
 			}
 
@@ -283,7 +285,7 @@ var _ = Describe("server", func() {
 
 			Context("jfr", func() {
 				BeforeEach(func() {
-					sleepDur = 500 * time.Millisecond
+					sleepDur = 100 * time.Millisecond
 					format = "jfr"
 				})
 				types := []string{
@@ -334,6 +336,7 @@ var _ = Describe("server", func() {
 							cids := []contextID{
 								{id: "0", key: `test.app.` + t + `{foo="bar", baz="qux"}`},
 								{id: "1", key: `test.app.` + t + `{foo="bar", baz="qux", thread_name="pool-2-thread-8"}`},
+								{id: "2", key: `test.app.` + t + `{foo="bar", baz="qux", thread_name="pool-2-thread-8",profile_id="239239239239"}`},
 							}
 							for _, cid := range cids {
 								func(cid contextID) {
