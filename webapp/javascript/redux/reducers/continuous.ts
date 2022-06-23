@@ -233,7 +233,8 @@ export const fetchSideTimelines = createAsyncThunk<
 
   if (
     (res?.[0]?.isErr && res?.[0]?.error instanceof RequestAbortedError) ||
-    (res?.[1]?.isErr && res?.[1]?.error instanceof RequestAbortedError)
+    (res?.[1]?.isErr && res?.[1]?.error instanceof RequestAbortedError) ||
+    (!res && thunkAPI.signal.aborted)
   ) {
     return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
   }
@@ -572,12 +573,17 @@ export const continuousSlice = createSlice({
       switch (state.singleView.type) {
         // if previous state is loaded, let's continue displaying data
         case 'reloading': {
+          let type: SingleView['type'] = 'reloading';
+          if (action.meta.rejectedWithValue) {
+            type = (
+              action?.payload as { rejectedWithValue: SingleView['type'] }
+            )?.rejectedWithValue;
+          } else if (action.error.message === 'cancel') {
+            type = 'loaded';
+          }
           state.singleView = {
             ...state.singleView,
-            type: action.meta.rejectedWithValue
-              ? (action?.payload as { rejectedWithValue: SingleView['type'] })
-                  ?.rejectedWithValue
-              : 'reloading',
+            type,
           };
           break;
         }

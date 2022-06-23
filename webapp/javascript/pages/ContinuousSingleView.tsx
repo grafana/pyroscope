@@ -29,7 +29,7 @@ function ContinuousSingleView() {
   useEffect(() => {
     if (from && until && query && maxNodes) {
       const fetchData = dispatch(fetchSingleView(null));
-      return fetchData.abort;
+      return () => fetchData.abort('cancel');
     }
     return undefined;
   }, [from, until, query, refreshToken, maxNodes]);
