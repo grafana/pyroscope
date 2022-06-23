@@ -10,12 +10,14 @@ import (
 	"github.com/apache/arrow/go/v8/arrow/array"
 	"github.com/bufbuild/connect-go"
 	"github.com/gogo/status"
+	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/parca-dev/parca/pkg/parcacol"
 	"github.com/polarsignals/arcticdb/query/logicalplan"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/profilestore"
@@ -126,6 +128,54 @@ func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
 		Names: types,
+	}), nil
+}
+
+func (i *Ingester) SymbolizeStacktraces(ctx context.Context, req *connect.Request[ingestv1.SymbolizeStacktraceRequest]) (*connect.Response[ingestv1.SymbolizeStacktraceResponse], error) {
+	stacktraceMap, err := i.profileStore.MetaStore().GetStacktraceByIDs(ctx, req.Msg.Ids...)
+	if err != nil {
+		return nil, err
+	}
+	locationUUIDSeen := map[string]struct{}{}
+	locationUUIDs := [][]byte{}
+	for _, s := range stacktraceMap {
+		for _, id := range s.GetLocationIds() {
+			if _, seen := locationUUIDSeen[string(id)]; !seen {
+				locationUUIDSeen[string(id)] = struct{}{}
+				locationUUIDs = append(locationUUIDs, id)
+			}
+		}
+	}
+
+	locationMaps, err := metastore.GetLocationsByIDs(context.Background(), i.profileStore.MetaStore(), locationUUIDs...)
+	if err != nil {
+		return nil, err
+	}
+	uniqueFn := map[string]int{}
+	var fns []string
+	locations := make([]*ingestv1.Location, len(req.Msg.Ids))
+
+	for i, s := range req.Msg.Ids {
+		locIds := stacktraceMap[string(s)].LocationIds
+		locs := &ingestv1.Location{
+			Ids: make([]int32, len(locIds)),
+		}
+		for j, l := range locIds {
+			fn := locationMaps[string(l)].Lines[0].Function.Name
+			id, seen := uniqueFn[fn]
+			if !seen {
+				id = len(fns)
+				fns = append(fns, fn)
+				uniqueFn[fn] = id
+			}
+			locs.Ids[j] = int32(id)
+		}
+		locations[i] = locs
+	}
+
+	return connect.NewResponse(&ingesterv1.SymbolizeStacktraceResponse{
+		Locations:     locations,
+		FunctionNames: fns,
 	}), nil
 }
 
