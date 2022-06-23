@@ -1,4 +1,4 @@
-package util
+package model
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 )
 
+// LabelPairsString returns a string representation of the label pairs.
 func LabelPairsString(lbs []*commonv1.LabelPair) string {
 	var b bytes.Buffer
 	b.WriteByte('{')
@@ -24,6 +25,7 @@ func LabelPairsString(lbs []*commonv1.LabelPair) string {
 	return b.String()
 }
 
+// StringToLabelsPairs converts a string representation of label pairs to a slice of label pairs.
 func StringToLabelsPairs(s string) ([]*commonv1.LabelPair, error) {
 	matchers, err := parser.ParseMetricSelector(s)
 	if err != nil {
@@ -39,6 +41,7 @@ func StringToLabelsPairs(s string) ([]*commonv1.LabelPair, error) {
 	return result, nil
 }
 
+// CloneLabelPairs clones the label pairs.
 func CloneLabelPairs(lbs []*commonv1.LabelPair) []*commonv1.LabelPair {
 	result := make([]*commonv1.LabelPair, len(lbs))
 	for i, l := range lbs {

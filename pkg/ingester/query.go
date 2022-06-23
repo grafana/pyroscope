@@ -17,8 +17,8 @@ import (
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/profilestore"
-	"github.com/grafana/fire/pkg/util"
 )
 
 // LabelValues returns the possible label values for a given label name.
@@ -244,7 +244,7 @@ func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[inge
 				})
 				// todo(cyriltovena) we should use a buffer to avoid allocations
 				profileKey := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d",
-					util.LabelPairsString(labelSet),
+					model.LabelPairsString(labelSet),
 					nameColumn.Value(i),
 					sampleTypeColumn.Value(i),
 					sampleUnitColumn.Value(i),
@@ -268,7 +268,7 @@ func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[inge
 						PeriodUnit: string(periodUnitColumn.Value(i)),
 					},
 					Timestamp: timestampColumn.Value(i),
-					Labels:    util.CloneLabelPairs(labelSet),
+					Labels:    model.CloneLabelPairs(labelSet),
 					Stacktraces: []*ingestv1.StacktraceSample{
 						{
 							Value: valueColumn.Value(i),
@@ -289,9 +289,9 @@ func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[inge
 	for _, profile := range profileMap {
 		result.Profiles = append(result.Profiles, profile)
 	}
-	// todo sort by timestamp then labels.
+	// sort by timestamp then labels.
 	sort.Slice(result.Profiles, func(i, j int) bool {
-		return CompareProfile(result.Profiles[i], result.Profiles[j]) < 0
+		return model.CompareProfile(result.Profiles[i], result.Profiles[j]) < 0
 	})
 	return connect.NewResponse(result), nil
 }
