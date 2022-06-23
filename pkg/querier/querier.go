@@ -9,6 +9,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
@@ -20,6 +21,7 @@ import (
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 	"github.com/grafana/fire/pkg/model"
+	"github.com/grafana/fire/pkg/util"
 )
 
 // todo: move to non global metrics.
@@ -227,9 +229,58 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 		return nil, err
 	}
 
-	_ = dedupeProfiles(responses)
+	profilesPerIngester := dedupeProfiles(responses)
 
-	// Merge stacktraces.
+	// Merge stacktraces and prepare for fetching symbols.
+	stacktracesPerIngester := make(map[string][][]byte, len(profilesPerIngester))
+	stracktracesValue := make(map[string]*stack)
+	for ing, profiles := range profilesPerIngester {
+		for _, profile := range profiles {
+			for _, stacktrace := range profile.Stacktraces {
+				id := util.UnsafeGetString(stacktrace.ID)
+				var stacktraceSample *stack
+				var ok bool
+				stacktraceSample, ok = stracktracesValue[id]
+				if !ok {
+					stacktraceSample = &stack{}
+					stacktracesPerIngester[ing] = append(stacktracesPerIngester[ing], stacktrace.ID)
+					stracktracesValue[id] = stacktraceSample
+				}
+				stacktraceSample.value += stacktrace.Value
+
+			}
+		}
+	}
+	// fetch symbols to ingester concurrently and assign them to the stacktraces.
+	ingester := make([]string, 0, len(stacktracesPerIngester))
+	for ing := range stacktracesPerIngester {
+		ingester = append(ingester, ing)
+	}
+	if err := concurrency.ForEachJob(ctx, len(ingester), len(ingester), func(ctx context.Context, idx int) error {
+		ing := ingester[idx]
+		stacktraces := stacktracesPerIngester[ing]
+		client, err := q.pool.GetClientFor(ing)
+		if err != nil {
+			return err
+		}
+		res, err := client.(IngesterQueryClient).SymbolizeStacktraces(ctx, connect.NewRequest(&ingestv1.SymbolizeStacktraceRequest{
+			Ids: stacktraces,
+		}))
+		if err != nil {
+			return err
+		}
+		for i := range res.Msg.Locations {
+			locs := make([]string, 0, len(res.Msg.Locations[i].Ids))
+			for _, idx := range res.Msg.Locations[i].Ids {
+				locs = append(locs, res.Msg.FunctionNames[idx])
+			}
+			stracktracesValue[util.UnsafeGetString(stacktraces[i])].locations = locs
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	// build the flamegraph
 
 	return nil, nil
 }

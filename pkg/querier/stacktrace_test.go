@@ -20,43 +20,16 @@ func Test_toFlamebearer(t *testing.T) {
 		MaxSelf:  2,
 	}, stacksToTree([]stack{
 		{
-			locations: []location{
-				{
-					function: "e",
-				},
-				{
-					function: "b",
-				},
-				{
-					function: "a",
-				},
-			},
-			value: 1,
+			locations: []string{"e", "b", "a"},
+			value:     1,
 		},
 		{
-			locations: []location{
-				{
-					function: "c",
-				},
-				{
-					function: "a",
-				},
-			},
-			value: 2,
+			locations: []string{"c", "a"},
+			value:     2,
 		},
 		{
-			locations: []location{
-				{
-					function: "d",
-				},
-				{
-					function: "c",
-				},
-				{
-					function: "a",
-				},
-			},
-			value: 1,
+			locations: []string{"d", "c", "a"},
+			value:     1,
 		},
 	}).toFlamebearer())
 }
@@ -76,26 +49,12 @@ func Test_Tree(t *testing.T) {
 			"double node single stack",
 			[]stack{
 				{
-					locations: []location{
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 1,
+					locations: []string{"buz", "bar"},
+					value:     1,
 				},
 				{
-					locations: []location{
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 1,
+					locations: []string{"buz", "bar"},
+					value:     1,
 				},
 			},
 			func() *tree {
@@ -108,35 +67,12 @@ func Test_Tree(t *testing.T) {
 			"double node double stack",
 			[]stack{
 				{
-					locations: []location{
-						{
-							function: "blip",
-						},
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 1,
+					locations: []string{"blip", "buz", "bar"},
+					value:     1,
 				},
 				{
-					locations: []location{
-						{
-							function: "blap",
-						},
-						{
-							function: "blop",
-						},
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 2,
+					locations: []string{"blap", "blop", "buz", "bar"},
+					value:     2,
 				},
 			},
 			func() *tree {
@@ -151,73 +87,28 @@ func Test_Tree(t *testing.T) {
 			"multiple stacks and duplicates nodes",
 			[]stack{
 				{
-					locations: []location{
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 1,
+					locations: []string{"buz", "bar"},
+					value:     1,
 				},
 				{
-					locations: []location{
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 1,
+					locations: []string{"buz", "bar"},
+					value:     1,
 				},
 				{
-					locations: []location{
-						{
-							function: "buz",
-						},
-					},
-					value: 1,
+					locations: []string{"buz"},
+					value:     1,
 				},
 				{
-					locations: []location{
-						{
-							function: "foo",
-						},
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 1,
+					locations: []string{"foo", "buz", "bar"},
+					value:     1,
 				},
 				{
-					locations: []location{
-						{
-							function: "blop",
-						},
-						{
-							function: "buz",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 2,
+					locations: []string{"blop", "buz", "bar"},
+					value:     2,
 				},
 				{
-					locations: []location{
-						{
-							function: "blip",
-						},
-						{
-							function: "bar",
-						},
-					},
-					value: 4,
+					locations: []string{"blip", "bar"},
+					value:     4,
 				},
 			},
 			func() *tree {

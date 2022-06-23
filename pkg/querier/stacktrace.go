@@ -11,12 +11,8 @@ import (
 	"github.com/xlab/treeprint"
 )
 
-type location struct {
-	function string
-}
-
 type stack struct {
-	locations []location
+	locations []string
 	value     int64
 }
 
@@ -141,7 +137,7 @@ func strackToTree(stack stack) *tree {
 	current := &node{
 		self:  stack.value,
 		total: stack.value,
-		name:  stack.locations[0].function,
+		name:  stack.locations[0],
 	}
 	if len(stack.locations) == 1 {
 		t.root = append(t.root, current)
@@ -151,7 +147,7 @@ func strackToTree(stack stack) *tree {
 	for len(remaining) > 0 {
 
 		location := remaining[0]
-		name := location.function
+		name := location
 		remaining = remaining[1:]
 
 		// This pack node with the same name as the next location
@@ -331,9 +327,7 @@ func buildFlamebearer(ar arrow.Record, meta metastore.ProfileMetaStore) (*flameb
 		}
 
 		for i := range s.locationIDs {
-			stack.locations = append(stack.locations, location{
-				function: locationMaps[string(s.locationIDs[i])].Lines[0].Function.Name,
-			})
+			stack.locations = append(stack.locations, locationMaps[string(s.locationIDs[i])].Lines[0].Function.Name)
 		}
 
 		stacks = append(stacks, stack)
