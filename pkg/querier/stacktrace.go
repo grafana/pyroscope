@@ -1,8 +1,12 @@
-package ingester
+package querier
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/apache/arrow/go/v8/arrow"
+	"github.com/apache/arrow/go/v8/arrow/array"
+	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/xlab/treeprint"
 )
@@ -258,4 +262,83 @@ func (t *tree) toFlamebearer() *flamebearer.FlamebearerV1 {
 		NumTicks: int(total),
 		MaxSelf:  int(max),
 	}
+}
+
+func buildFlamebearer(ar arrow.Record, meta metastore.ProfileMetaStore) (*flamebearer.FlamebearerV1, error) {
+	type sample struct {
+		stacktraceID []byte
+		locationIDs  [][]byte
+		total        int64
+		self         int64
+
+		*metastore.Location
+	}
+	schema := ar.Schema()
+	indices := schema.FieldIndices("stacktrace")
+	if len(indices) != 1 {
+		return nil, fmt.Errorf("expected exactly one stacktrace column, got %d", len(indices))
+	}
+	stacktraceColumn := ar.Column(indices[0]).(*array.Binary)
+
+	indices = schema.FieldIndices("sum(value)")
+	if len(indices) != 1 {
+		return nil, fmt.Errorf("expected exactly one value column, got %d", len(indices))
+	}
+	valueColumn := ar.Column(indices[0]).(*array.Int64)
+
+	rows := int(ar.NumRows())
+	samples := make([]*sample, 0, rows)
+	stacktraceUUIDs := make([][]byte, 0, rows)
+	for i := 0; i < rows; i++ {
+		stacktraceID := stacktraceColumn.Value(i)
+		value := valueColumn.Value(i)
+		stacktraceUUIDs = append(stacktraceUUIDs, stacktraceID)
+		samples = append(samples, &sample{
+			stacktraceID: stacktraceID,
+			self:         value,
+		})
+	}
+
+	stacktraceMap, err := meta.GetStacktraceByIDs(context.Background(), stacktraceUUIDs...)
+	if err != nil {
+		return nil, err
+	}
+
+	locationUUIDSeen := map[string]struct{}{}
+	locationUUIDs := [][]byte{}
+	for _, s := range stacktraceMap {
+		for _, id := range s.GetLocationIds() {
+			if _, seen := locationUUIDSeen[string(id)]; !seen {
+				locationUUIDSeen[string(id)] = struct{}{}
+				locationUUIDs = append(locationUUIDs, id)
+			}
+		}
+	}
+
+	locationMaps, err := metastore.GetLocationsByIDs(context.Background(), meta, locationUUIDs...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, s := range samples {
+		s.locationIDs = stacktraceMap[string(s.stacktraceID)].LocationIds
+	}
+
+	stacks := make([]stack, 0, len(samples))
+	for _, s := range samples {
+		stack := stack{
+			value: s.self,
+		}
+
+		for i := range s.locationIDs {
+			stack.locations = append(stack.locations, location{
+				function: locationMaps[string(s.locationIDs[i])].Lines[0].Function.Name,
+			})
+		}
+
+		stacks = append(stacks, stack)
+	}
+	tree := stacksToTree(stacks)
+	graph := tree.toFlamebearer()
+	return graph, nil
 }

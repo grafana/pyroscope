@@ -3,9 +3,6 @@ package ingester
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"sort"
 	"testing"
@@ -15,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
@@ -25,34 +21,6 @@ import (
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
 )
-
-func Test_ParseQuery(t *testing.T) {
-	q := url.Values{
-		"query": []string{`memory:alloc_space:bytes:space:bytes{foo="bar",bar=~"buzz"}`},
-		"from":  []string{"now-6h"},
-		"until": []string{"now"},
-	}
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost/render/render?%s", q.Encode()), nil)
-	require.NoError(t, err)
-
-	queryRequest, err := parseQueryRequest(req)
-	require.NoError(t, err)
-	require.Equal(t, `memory:alloc_space:bytes:space:bytes{foo="bar",bar=~"buzz"}`, queryRequest.query)
-	require.WithinDuration(t, time.Now(), model.Time(queryRequest.end).Time(), 1*time.Minute)
-	require.WithinDuration(t, time.Now().Add(-6*time.Hour), model.Time(queryRequest.start).Time(), 1*time.Minute)
-
-	query, err := parseQuery(queryRequest.query)
-	require.NoError(t, err)
-	require.Equal(t, profileQuery{
-		selector:   []*labels.Matcher{labels.MustNewMatcher(labels.MatchEqual, "foo", "bar"), labels.MustNewMatcher(labels.MatchRegexp, "bar", "buzz")},
-		name:       "memory",
-		sampleType: "alloc_space",
-		sampleUnit: "bytes",
-		periodType: "space",
-		periodUnit: "bytes",
-	}, query)
-}
 
 func Test_selectMerge(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
