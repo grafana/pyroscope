@@ -225,6 +225,21 @@ func Test_selectProfiles(t *testing.T) {
 
 	require.Equal(t, 2, len(res.Msg.Profiles[0].Stacktraces))
 	require.Equal(t, 3, len(res.Msg.Profiles[1].Stacktraces))
+
+	stackTracesID := [][]byte{}
+	for _, p := range res.Msg.Profiles {
+		for _, s := range p.Stacktraces {
+			stackTracesID = append(stackTracesID, s.ID)
+		}
+	}
+	symbolsReponse, err := d.SymbolizeStacktraces(context.Background(), connect.NewRequest(&ingestv1.SymbolizeStacktraceRequest{Ids: stackTracesID}))
+	require.NoError(t, err)
+	sort.Strings(symbolsReponse.Msg.FunctionNames)
+	require.Equal(t, []string{"1", "2", "3", "bar", "baz", "buzz", "foo"}, symbolsReponse.Msg.FunctionNames)
+	require.Equal(t, []int32{0, 1, 2}, symbolsReponse.Msg.Locations[0].Ids)
+	require.Equal(t, []int32{2, 3, 0}, symbolsReponse.Msg.Locations[1].Ids)
+	require.Equal(t, []int32{0, 1, 2}, symbolsReponse.Msg.Locations[2].Ids)
+	require.Equal(t, 5, len(symbolsReponse.Msg.Locations))
 }
 
 func generateProfile(

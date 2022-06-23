@@ -31,7 +31,10 @@ type IngesterServiceClient interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
+	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
+	// but this requires to ensure we have correct timestamp and labels ordering.
 	SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error)
+	SymbolizeStacktraces(context.Context, *connect_go.Request[v11.SymbolizeStacktraceRequest]) (*connect_go.Response[v11.SymbolizeStacktraceResponse], error)
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -64,15 +67,21 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 			baseURL+"/ingester.v1.IngesterService/SelectProfiles",
 			opts...,
 		),
+		symbolizeStacktraces: connect_go.NewClient[v11.SymbolizeStacktraceRequest, v11.SymbolizeStacktraceResponse](
+			httpClient,
+			baseURL+"/ingester.v1.IngesterService/SymbolizeStacktraces",
+			opts...,
+		),
 	}
 }
 
 // ingesterServiceClient implements IngesterServiceClient.
 type ingesterServiceClient struct {
-	push           *connect_go.Client[v1.PushRequest, v1.PushResponse]
-	labelValues    *connect_go.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
-	profileTypes   *connect_go.Client[v11.ProfileTypesRequest, v11.ProfileTypesResponse]
-	selectProfiles *connect_go.Client[v11.SelectProfilesRequest, v11.SelectProfilesResponse]
+	push                 *connect_go.Client[v1.PushRequest, v1.PushResponse]
+	labelValues          *connect_go.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
+	profileTypes         *connect_go.Client[v11.ProfileTypesRequest, v11.ProfileTypesResponse]
+	selectProfiles       *connect_go.Client[v11.SelectProfilesRequest, v11.SelectProfilesResponse]
+	symbolizeStacktraces *connect_go.Client[v11.SymbolizeStacktraceRequest, v11.SymbolizeStacktraceResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
@@ -95,12 +104,20 @@ func (c *ingesterServiceClient) SelectProfiles(ctx context.Context, req *connect
 	return c.selectProfiles.CallUnary(ctx, req)
 }
 
+// SymbolizeStacktraces calls ingester.v1.IngesterService.SymbolizeStacktraces.
+func (c *ingesterServiceClient) SymbolizeStacktraces(ctx context.Context, req *connect_go.Request[v11.SymbolizeStacktraceRequest]) (*connect_go.Response[v11.SymbolizeStacktraceResponse], error) {
+	return c.symbolizeStacktraces.CallUnary(ctx, req)
+}
+
 // IngesterServiceHandler is an implementation of the ingester.v1.IngesterService service.
 type IngesterServiceHandler interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
+	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
+	// but this requires to ensure we have correct timestamp and labels ordering.
 	SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error)
+	SymbolizeStacktraces(context.Context, *connect_go.Request[v11.SymbolizeStacktraceRequest]) (*connect_go.Response[v11.SymbolizeStacktraceResponse], error)
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -130,6 +147,11 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 		svc.SelectProfiles,
 		opts...,
 	))
+	mux.Handle("/ingester.v1.IngesterService/SymbolizeStacktraces", connect_go.NewUnaryHandler(
+		"/ingester.v1.IngesterService/SymbolizeStacktraces",
+		svc.SymbolizeStacktraces,
+		opts...,
+	))
 	return "/ingester.v1.IngesterService/", mux
 }
 
@@ -150,4 +172,8 @@ func (UnimplementedIngesterServiceHandler) ProfileTypes(context.Context, *connec
 
 func (UnimplementedIngesterServiceHandler) SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.SelectProfiles is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) SymbolizeStacktraces(context.Context, *connect_go.Request[v11.SymbolizeStacktraceRequest]) (*connect_go.Response[v11.SymbolizeStacktraceResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.SymbolizeStacktraces is not implemented"))
 }
