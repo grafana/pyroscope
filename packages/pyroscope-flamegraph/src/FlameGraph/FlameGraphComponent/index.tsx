@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-expressions */
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
@@ -69,6 +69,17 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     }, 50),
     []
   );
+
+  const { x, y } = useMemo(
+    () => ({
+      x: zoom.isJust && zoom?.value?.x,
+      y: zoom.isJust && zoom.value?.y,
+    }),
+    [zoom]
+  );
+
+  // const name2 = zoom.isJust && zoom.get('name')?.value;
+  const prevSelectionName = zoom.isJust && zoom.value.name;
 
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
@@ -198,14 +209,24 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   React.useEffect(() => {
     constructCanvas();
     renderCanvas();
-  }, [
-    canvasRef.current,
-    flamebearer,
-    focusedNode,
-    fitMode,
-    highlightQuery,
-    zoom,
-  ]);
+  }, [canvasRef.current, focusedNode, fitMode, highlightQuery, zoom]);
+
+  React.useEffect(() => {
+    constructCanvas();
+    renderCanvas();
+    // TODO sometimes returns 0 why?
+    const selectionName =
+      x &&
+      y &&
+      getFlamegraph().xyToBar(x, y).isJust &&
+      // @ts-ignore-start
+      getFlamegraph().xyToBar(x, y).get('name')?.value;
+    // @ts-ignore-end
+
+    if (prevSelectionName !== selectionName) {
+      onReset();
+    }
+  }, [flamebearer]);
 
   const renderCanvas = () => {
     canvasRef?.current?.setAttribute('data-state', 'rendering');
