@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"strconv"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	"github.com/prometheus/prometheus/promql/parser"
+
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 )
 
 // LabelPairsString returns a string representation of the label pairs.
