@@ -4,10 +4,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/grafana/fire/pkg/model"
 	"github.com/stretchr/testify/require"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/model"
 )
 
 func Test_DedupeProfiles(t *testing.T) {
