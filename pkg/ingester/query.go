@@ -70,6 +70,7 @@ func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 			logicalplan.Col(parcacol.ColumnDuration).GT(logicalplan.Literal(0)),
 		).
 		Execute(ctx, func(ar arrow.Record) error {
+			fmt.Println(ar)
 			if ar.NumCols() != 6 {
 				return fmt.Errorf("expected 6 column, got %d", ar.NumCols())
 			}

@@ -3,36 +3,8 @@ package querier
 import (
 	"testing"
 
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/stretchr/testify/require"
 )
-
-func Test_toFlamebearer(t *testing.T) {
-	require.Equal(t, &flamebearer.FlamebearerV1{
-		Names: []string{"total", "a", "c", "d", "b", "e"},
-		Levels: [][]int{
-			{0, 4, 0, 0},
-			{0, 4, 0, 1},
-			{0, 1, 0, 4, 0, 3, 2, 2},
-			{0, 1, 1, 5, 2, 1, 1, 3},
-		},
-		NumTicks: 4,
-		MaxSelf:  2,
-	}, stacksToTree([]stack{
-		{
-			locations: []string{"e", "b", "a"},
-			value:     1,
-		},
-		{
-			locations: []string{"c", "a"},
-			value:     2,
-		},
-		{
-			locations: []string{"d", "c", "a"},
-			value:     1,
-		},
-	}).toFlamebearer())
-}
 
 func Test_Tree(t *testing.T) {
 	for _, tc := range []struct {
@@ -58,7 +30,7 @@ func Test_Tree(t *testing.T) {
 				},
 			},
 			func() *tree {
-				tr := newTree()
+				tr := emptyTree()
 				tr.Add("bar", 0, 2).Add("buz", 2, 2)
 				return tr
 			},
@@ -76,7 +48,7 @@ func Test_Tree(t *testing.T) {
 				},
 			},
 			func() *tree {
-				tr := newTree()
+				tr := emptyTree()
 				buz := tr.Add("bar", 0, 3).Add("buz", 0, 3)
 				buz.Add("blip", 1, 1)
 				buz.Add("blop", 0, 2).Add("blap", 2, 2)
@@ -112,7 +84,7 @@ func Test_Tree(t *testing.T) {
 				},
 			},
 			func() *tree {
-				tr := newTree()
+				tr := emptyTree()
 
 				bar := tr.Add("bar", 0, 9)
 
@@ -128,7 +100,7 @@ func Test_Tree(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			expected := tc.expected()
-			tr := stacksToTree(tc.stacks)
+			tr := newTree(tc.stacks)
 			require.Equal(t, tr, expected, "tree should be equal got:%s\n expected:%s\n", tr.String(), expected)
 		})
 	}

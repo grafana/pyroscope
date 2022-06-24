@@ -1,7 +1,6 @@
 package querier
 
 import (
-	"container/heap"
 	"context"
 	"flag"
 	"sort"
@@ -21,7 +20,6 @@ import (
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -122,113 +120,6 @@ func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error
 	return uniqueSortedStrings(responses), nil
 }
 
-type profileResponsesHeap []responseFromIngesters[*ingestv1.SelectProfilesResponse]
-
-func newProfileHeap(profiles []responseFromIngesters[*ingestv1.SelectProfilesResponse]) heap.Interface {
-	res := make(profileResponsesHeap, 0, len(profiles))
-	for _, p := range profiles {
-		if len(p.response.Profiles) > 0 {
-			res = append(res, p)
-		}
-	}
-	return &res
-}
-
-// Implement sort.Interface
-func (h profileResponsesHeap) Len() int      { return len(h) }
-func (h profileResponsesHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-func (h profileResponsesHeap) Less(i, j int) bool {
-	return model.CompareProfile(h[i].response.Profiles[0], h[j].response.Profiles[0]) < 0
-}
-
-// Implement heap.Interface
-func (h *profileResponsesHeap) Push(x interface{}) {
-	*h = append(*h, x.(responseFromIngesters[*ingestv1.SelectProfilesResponse]))
-}
-
-func (h *profileResponsesHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
-// dedupeProfiles dedupes profiles responses by timestamp and labels.
-// It expects profiles from each response to be sorted by timestamp and labels already.
-// Returns the profile deduped per ingester address.
-// todo: This function can be optimized by peeking instead of popping the heap.
-func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) map[string][]*ingestv1.Profile {
-	type tuple struct {
-		ingesterAddr string
-		profile      *ingestv1.Profile
-		responseFromIngesters[*ingestv1.SelectProfilesResponse]
-	}
-	var (
-		h                   = newProfileHeap(responses)
-		deduped             []*ingestv1.Profile
-		profilesPerIngester = make(map[string][]*ingestv1.Profile, len(responses))
-		tuples              = make([]tuple, 0, len(responses))
-	)
-
-	heap.Init(h)
-	for h.Len() > 0 || len(tuples) > 0 {
-		if h.Len() > 0 {
-			top := heap.Pop(h).(responseFromIngesters[*ingestv1.SelectProfilesResponse])
-			if len(top.response.Profiles) == 0 {
-				continue
-			}
-			if len(tuples) == 0 || model.CompareProfile(top.response.Profiles[0], tuples[len(tuples)-1].profile) == 0 {
-				tuples = append(tuples, tuple{
-					ingesterAddr:          top.addr,
-					profile:               top.response.Profiles[0],
-					responseFromIngesters: top,
-				})
-				top.response.Profiles = top.response.Profiles[1:]
-				continue
-			}
-			// the current profile is different.
-			heap.Push(h, top)
-		}
-		// if the heap is empty and we don't have tuples we're done.
-		if len(tuples) == 0 {
-			continue
-		}
-		// no duplicate found just a single profile.
-		if len(tuples) == 1 {
-			profilesPerIngester[tuples[0].addr] = append(profilesPerIngester[tuples[0].addr], tuples[0].profile)
-			deduped = append(deduped, tuples[0].profile)
-			if len(tuples[0].response.Profiles) > 0 {
-				heap.Push(h, tuples[0].responseFromIngesters)
-			}
-			tuples = tuples[:0]
-			continue
-		}
-		// we have a duplicate let's select a winner based on the ingester with the less profiles
-		// this way we evenly distribute the profiles symbols API calls across the ingesters
-		min := tuples[0]
-		for _, t := range tuples {
-			if len(profilesPerIngester[t.addr]) < len(profilesPerIngester[min.addr]) {
-				min = t
-			}
-		}
-		profilesPerIngester[min.addr] = append(profilesPerIngester[min.addr], min.profile)
-		deduped = append(deduped, min.profile)
-		if len(min.response.Profiles) > 0 {
-			heap.Push(h, min.responseFromIngesters)
-		}
-		for _, t := range tuples {
-			if t.addr != min.addr && len(t.response.Profiles) > 0 {
-				heap.Push(h, t.responseFromIngesters)
-				continue
-			}
-		}
-		tuples = tuples[:0]
-
-	}
-	return profilesPerIngester
-}
-
 func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesRequest) (*flamebearer.FlamebearerProfile, error) {
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
 		res, err := ic.SelectProfiles(ctx, connect.NewRequest(req))
@@ -241,35 +132,13 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 		return nil, err
 	}
 
-	profilesPerIngester := dedupeProfiles(responses)
+	// Dedupe profiles and merge stacktraces per ID and ingester for fetching symbols.
+	ingester, stacktracesPerIngester, stracktracesByID := mergeStacktraces(dedupeProfiles(responses))
 
-	// Merge stacktraces and prepare for fetching symbols.
-	stacktracesPerIngester := make(map[string][][]byte, len(profilesPerIngester))
-	stracktracesByID := make(map[string]*stack)
-	for ing, profiles := range profilesPerIngester {
-		for _, profile := range profiles {
-			for _, stacktrace := range profile.Stacktraces {
-				id := util.UnsafeGetString(stacktrace.ID)
-				var stacktraceSample *stack
-				var ok bool
-				stacktraceSample, ok = stracktracesByID[id]
-				if !ok {
-					stacktraceSample = &stack{}
-					stacktracesPerIngester[ing] = append(stacktracesPerIngester[ing], stacktrace.ID)
-					stracktracesByID[id] = stacktraceSample
-				}
-				stacktraceSample.value += stacktrace.Value
-
-			}
-		}
-	}
 	// fetch symbols to ingester concurrently and assign them to the stacktraces.
-	ingester := make([]string, 0, len(stacktracesPerIngester))
-	for ing := range stacktracesPerIngester {
-		ingester = append(ingester, ing)
-	}
 	if err := concurrency.ForEachJob(ctx, len(ingester), len(ingester), func(ctx context.Context, idx int) error {
 		ing := ingester[idx]
+
 		stacktraces := stacktracesPerIngester[ing]
 		client, err := q.pool.GetClientFor(ing)
 		if err != nil {
@@ -281,6 +150,7 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 		if err != nil {
 			return err
 		}
+
 		for i := range res.Msg.Locations {
 			locs := make([]string, 0, len(res.Msg.Locations[i].Ids))
 			for _, idx := range res.Msg.Locations[i].Ids {
@@ -298,9 +168,11 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 		s := s
 		stacktraces = append(stacktraces, *s)
 	}
-	flame := stacksToTree(stacktraces).toFlamebearer()
+
+	flame := NewFlamebearer(newTree(stacktraces))
 	unit := metadata.Units(req.Type.SampleUnit)
 	sampleRate := uint32(100)
+
 	switch req.Type.SampleType {
 	case "inuse_objects", "alloc_objects", "goroutine", "samples":
 		unit = metadata.ObjectsUnits
@@ -309,6 +181,7 @@ func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesR
 		sampleRate = uint32(100000000)
 
 	}
+
 	return &flamebearer.FlamebearerProfile{
 		Version: 1,
 		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
