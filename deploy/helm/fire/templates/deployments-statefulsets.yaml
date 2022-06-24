@@ -1,22 +1,35 @@
+{{- $global := . }}
+{{- range $component, $cfg := (fromYaml (include "fire.components" .)) }}
+{{- with $global }}
+---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: {{ $cfg.kind }}
 metadata:
-  name: {{ include "fire.fullname" . }}
+  name: {{ $cfg.name }}
   labels:
     {{- include "fire.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  serviceName: {{ include "fire.fullname" . }}-headless
+{{- if eq $cfg.kind "StatefulSet" }}
+  serviceName: {{ $cfg.name }}-headless
+{{- end }}
+{{- if hasKey $cfg "replicaCount" }}
+  replicas: {{ $cfg.replicaCount }}
+{{- end }}
   selector:
     matchLabels:
       {{- include "fire.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component | quote }}
   template:
     metadata:
-    {{- with .Values.fire.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.fire.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-    {{- end }}
+        {{- end }}
       labels:
         {{- include "fire.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component | quote }}
     spec:
       {{- with .Values.fire.imagePullSecrets }}
       imagePullSecrets:
@@ -32,13 +45,24 @@ spec:
           image: "{{ .Values.fire.image.repository }}:{{ .Values.fire.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.fire.image.pullPolicy }}
           args:
+            - "-target={{ $component }}"
+            - "-memberlist.join={{ include "fire.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local."
+          {{- if eq $component "agent" }}
+            - "-client.url=http://{{ include "fire.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.fire.service.port }}"
+          {{- end }}
             - "-config.file=/etc/fire/config.yaml"
           {{- range $key, $value := .Values.fire.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
+          {{- range $key, $value := $cfg.extraArgs }}
+            - "-{{ $key }}={{ $value }}"
+          {{- end }}
           ports:
             - name: {{ .Values.fire.service.port_name }}
-              containerPort: 4100
+              containerPort: {{ .Values.fire.service.port }}
+              protocol: TCP
+            - name: {{ .Values.fire.memberlist.port_name }}
+              containerPort: {{ .Values.fire.memberlist.port }}
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -67,7 +91,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "fire.fullname" . }}-config-{{ .Values.fire.config | sha256sum | trunc 16 }}
+            name: {{ include "fire.fullname" . }}-config
   {{- if not .Values.fire.persistence.enabled }}
         - name: data
           emptyDir: {}
@@ -93,3 +117,5 @@ spec:
         {{- toYaml .Values.fire.persistence.selector | nindent 8 }}
       {{- end }}
   {{- end }}
+{{- end }}
+{{- end }}
