@@ -212,9 +212,10 @@ func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[inge
 		Distinct(logicalplan.Col("name")).
 		Filter(logicalplan.Col("name").RegexMatch("^labels\\..+$")).
 		Execute(ctx, func(r arrow.Record) error {
-			r.Retain()
 			col := r.Column(0).(*array.String)
-			dynamicColums = append(dynamicColums, logicalplan.Col(col.Value(0)))
+			for i := 0; i < col.Len(); i++ {
+				dynamicColums = append(dynamicColums, logicalplan.Col(col.Value(i)))
+			}
 			return nil
 		})
 	if err != nil {
