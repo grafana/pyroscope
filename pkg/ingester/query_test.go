@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -232,13 +233,25 @@ func Test_selectProfiles(t *testing.T) {
 			stackTracesID = append(stackTracesID, s.ID)
 		}
 	}
+
 	symbolsReponse, err := d.SymbolizeStacktraces(context.Background(), connect.NewRequest(&ingestv1.SymbolizeStacktraceRequest{Ids: stackTracesID}))
 	require.NoError(t, err)
-	sort.Strings(symbolsReponse.Msg.FunctionNames)
-	require.Equal(t, []string{"1", "2", "3", "bar", "baz", "buzz", "foo"}, symbolsReponse.Msg.FunctionNames)
-	require.Equal(t, []int32{0, 1, 2}, symbolsReponse.Msg.Locations[0].Ids)
-	require.Equal(t, []int32{2, 3, 0}, symbolsReponse.Msg.Locations[1].Ids)
-	require.Equal(t, []int32{0, 1, 2}, symbolsReponse.Msg.Locations[2].Ids)
+
+	var stacktraces []string
+	for _, p := range symbolsReponse.Msg.Locations {
+		stracktrace := strings.Builder{}
+		for j, l := range p.Ids {
+			if j > 0 {
+				stracktrace.WriteString("|")
+			}
+			stracktrace.WriteString(symbolsReponse.Msg.FunctionNames[l])
+
+		}
+		stacktraces = append(stacktraces, stracktrace.String())
+
+	}
+	sort.Strings(stacktraces)
+	require.Equal(t, []string{"1|2|3", "buzz|baz|foo", "buzz|baz|foo", "foo|bar|buzz", "foo|bar|buzz"}, stacktraces)
 	require.Equal(t, 5, len(symbolsReponse.Msg.Locations))
 }
 
