@@ -30,17 +30,10 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 		SampleRate:      md.SampleRate,
 		Units:           md.Units,
 		AggregationType: md.AggregationType,
+		Val:             tree.New(),
 	}
 
-	input.Val = tree.New()
-	cb := input.Val.InsertInt
-	if o, ok := exporter.Evaluate(input); ok {
-		cb = func(k []byte, v int) {
-			o.Observe(k, v)
-			cb(k, v)
-		}
-	}
-
+	cb := createParseCallback(input, exporter)
 	r := bytes.NewReader(p.RawData)
 	var err error
 	switch p.Format {
@@ -65,4 +58,15 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 	}
 
 	return nil
+}
+
+func createParseCallback(pi *storage.PutInput, e storage.MetricsExporter) func([]byte, int) {
+	o, ok := e.Evaluate(pi)
+	if !ok {
+		return pi.Val.InsertInt
+	}
+	return func(k []byte, v int) {
+		o.Observe(k, v)
+		pi.Val.InsertInt(k, v)
+	}
 }
