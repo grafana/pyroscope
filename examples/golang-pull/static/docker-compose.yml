@@ -26,3 +26,8 @@ services:
     ports:
       - '6831:6831/udp'
       - '16686:16686'
+
+  app:
+    build: .
+    ports:
+      - 6061:6060

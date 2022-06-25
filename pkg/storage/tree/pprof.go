@@ -59,6 +59,24 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 		Units:      "bytes",
 		Cumulative: true,
 	},
+	"goroutine": {
+		Units:      "bytes",
+		Cumulative: true,
+	},
+	"contentions": {
+		// TODO(petethepig): technically block profiles have the same name
+		//   so this might be a block profile, need better heuristic
+		DisplayName: "mutex_count",
+		Units:       metadata.LockSamplesUnits,
+		Cumulative:  true,
+	},
+	"delay": {
+		// TODO(petethepig): technically block profiles have the same name
+		//   so this might be a block profile, need better heuristic
+		DisplayName: "mutex_duration",
+		Units:       metadata.LockNanosecondsUnits,
+		Cumulative:  true,
+	},
 }
 
 type pprof struct {
