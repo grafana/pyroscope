@@ -2,7 +2,7 @@
 log-level: debug
 scrape-configs:
   - job-name: testing
-    enabled-profiles: [cpu, mem]
+    enabled-profiles: [cpu, mem, goroutines, mutex, block]
     static-configs:
       - application: hotrod
         spy-name: gospy
@@ -10,3 +10,43 @@ scrape-configs:
           - hotrod:6060
         labels:
           env: dev
+      - application: last-app
+        spy-name: gospy
+        targets:
+          - app:6060
+        labels:
+          env: dev
+    profiles:
+      goroutines:
+        path: /debug/pprof/goroutine
+        sample-types:
+          goroutine:
+            display-name: goroutines
+            units: goroutines
+            aggregation: average
+      mutex:
+        path: /debug/pprof/mutex
+        sample-types:
+          contentions:
+            display-name: mutex_count
+            units: lock_samples
+            aggregation: sum
+            cumulative: true
+          delay:
+            display-name: mutex_duration
+            units: lock_nanoseconds
+            aggregation: sum
+            cumulative: true
+      block:
+        path: /debug/pprof/block
+        sample-types:
+          contentions:
+            display-name: block_count
+            units: lock_samples
+            aggregation: sum
+            cumulative: true
+          delay:
+            display-name: block_duration
+            units: lock_nanoseconds
+            aggregation: sum
+            cumulative: true
