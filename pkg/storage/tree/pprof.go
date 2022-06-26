@@ -40,28 +40,29 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 	// Sample types specific to Go.
 	"samples": {
 		DisplayName: "cpu",
-		Units:       "samples",
+		Units:       metadata.SamplesUnits,
 		Sampled:     true,
 	},
 	"inuse_objects": {
-		Units:       "objects",
-		Aggregation: "average",
+		Units:       metadata.ObjectsUnits,
+		Aggregation: metadata.AverageAggregationType,
 	},
 	"alloc_objects": {
-		Units:      "objects",
+		Units:      metadata.ObjectsUnits,
 		Cumulative: true,
 	},
 	"inuse_space": {
-		Units:       "bytes",
-		Aggregation: "average",
+		Units:       metadata.BytesUnits,
+		Aggregation: metadata.AverageAggregationType,
 	},
 	"alloc_space": {
-		Units:      "bytes",
+		Units:      metadata.BytesUnits,
 		Cumulative: true,
 	},
 	"goroutine": {
-		Units:      "bytes",
-		Cumulative: true,
+		DisplayName: "goroutines",
+		Units:       metadata.GoroutinesUnits,
+		Aggregation: metadata.AverageAggregationType,
 	},
 	"contentions": {
 		// TODO(petethepig): technically block profiles have the same name

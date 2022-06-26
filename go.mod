@@ -46,7 +46,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.34.0
-	github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c
+	github.com/pyroscope-io/client v0.2.4-0.20220625095108-5d4cbe2599eb
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1
 	github.com/pyroscope-io/jfr-parser v0.5.2
@@ -175,5 +175,3 @@ require (
 )
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
-
-replace github.com/pyroscope-io/client => github.com/pyroscope-io/client v0.2.4-0.20220607180407-0ba26860ce5b

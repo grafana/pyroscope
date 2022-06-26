@@ -2,6 +2,7 @@ package selfprofiling
 
 import (
 	"context"
+	"runtime"
 	"runtime/debug"
 	"time"
 
@@ -15,14 +16,29 @@ import (
 )
 
 func NewSession(logger pyroscope.Logger, ingester ingestion.Ingester, appName string, tags map[string]string) *pyroscope.Session {
+
+	runtime.SetMutexProfileFraction(5)
+	runtime.SetBlockProfileRate(5)
+
 	session, _ := pyroscope.NewSession(pyroscope.SessionConfig{
-		Upstream:       NewUpstream(logger, ingester),
-		AppName:        appName,
-		ProfilingTypes: pyroscope.DefaultProfileTypes,
-		SampleRate:     100,
-		UploadRate:     10 * time.Second,
-		Logger:         logger,
-		Tags:           tags,
+		Upstream: NewUpstream(logger, ingester),
+		AppName:  appName,
+		ProfilingTypes: []pyroscope.ProfileType{
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileInuseSpace,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileGoroutines,
+			pyroscope.ProfileMutexCount,
+			pyroscope.ProfileMutexDuration,
+			pyroscope.ProfileBlockCount,
+			pyroscope.ProfileBlockDuration,
+		},
+		SampleRate: 100,
+		UploadRate: 10 * time.Second,
+		Logger:     logger,
+		Tags:       tags,
 	})
 	return session
 }
