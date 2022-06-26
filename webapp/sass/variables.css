@@ -3,11 +3,12 @@
   --ps-neutral-2: #ffffff;
   --ps-neutral-4: #212124; /* sidebar background and "panel"/"box" background */
   --ps-neutral-5: #242428; /* non-selected button background, highlighted button text (when buttons are green) */
-  --ps-border-color: #3b3b44; /* disabled button text color, button borders, dropdown borders */
-  --ps-disabled-button-color: #3b3b44; /* disabled button text color, button borders, dropdown borders */
   --ps-neutral-7: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-8: #d8d8d8; /* sidebar text and datepicker text */
   --ps-neutral-9: #ffffff08; /* lighter background for table */
+
+  --ps-border-color: #3b3b44; /* Note: same as --ps-grey-primary */
+  --ps-tooltip-background: #3b3b44; /* Note: same as --ps-grey-primary */
   --ps-ui-background: #0e0e13; /* background furthest back color */
   --ps-dropdown-background: #2c2c30; /* dropdown background */
 
@@ -23,12 +24,18 @@
   --ps-red-highlight: #e4606d; /* highlight (hover) red */
   --ps-red-disabled: #eb8c95; /* disabled red */
 
+  --ps-grey-primary: #3b3b44;
+  --ps-grey-highlight: #47474e;
+  --ps-grey-disabled: #404047;
+
   --ps-selected-app: #df8b53; /* active selected app color in dropdown */
 
   --ps-immutable-google-button: #e84d3c; /* sign up with google button */
   --ps-immutable-google-button-hover: #e53825; /* sign up with google hover */
   --ps-immutable-gitlab-button: #fc6d26; /* sign up with gitlab button */
   --ps-immutable-gitlab-button-hover: #fc5c0d; /* sign up with gitlab hover */
+  --ps-immutable-gitlab-button: #3b3b44;
+  --ps-immutable-gitlab-button-hover: #47474e;
   --ps-immutable-gradient-0: #d1283980; /* used for gradient */
   --ps-immutable-gradient-1: #3dc1d3cc; /* used for gradient */
 
@@ -44,10 +51,12 @@
   --ps-neutral-2: #000000;
   --ps-neutral-4: #f8f8f8; /* sidebar background and "panel"/"box" background */
   --ps-neutral-5: #e2e2e2; /* non-selected button background, highlighted button text (when buttons are green) */
-  --ps-neutral-6: #b2b2b2; /* disabled button text color, button borders, dropdown borders */
   --ps-neutral-7: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-8: #272727; /* sidebar text and datepicker text */
   --ps-neutral-9: #00000008; /* lighter background for table */
+
+  --ps-border-color: #b2b2b2; /* Note: same as --ps-grey-primary */
+  --ps-tooltip-background: #b2b2b2; /* Note: same as --ps-grey-primary */
   --ps-ui-background: #eaeaea; /* background furthest back color */
   --ps-dropdown-background: #e2e2e2; /* dropdown background */
 
