@@ -1,7 +1,6 @@
 :root {
   --ps-neutral-1: #000000;
   --ps-neutral-2: #ffffff;
-  --ps-neutral-4: #212124; /* sidebar background and "panel"/"box" background */
   --ps-neutral-5: #242428; /* non-selected button background, highlighted button text (when buttons are green) */
   --ps-neutral-7: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-8: #d8d8d8; /* sidebar text and datepicker text */
@@ -9,6 +8,7 @@
 
   --ps-border-color: #3b3b44; /* Note: same as --ps-grey-primary */
   --ps-tooltip-background: #3b3b44; /* Note: same as --ps-grey-primary */
+  --ps-ui-foreground: #212124; /* sidebar background and "panel"/"box" background */
   --ps-ui-background: #0e0e13; /* background furthest back color */
   --ps-dropdown-background: #2c2c30; /* dropdown background */
 
@@ -49,7 +49,6 @@
 [data-flamegraph-color-mode='light'] {
   --ps-neutral-1: #ffffff;
   --ps-neutral-2: #000000;
-  --ps-neutral-4: #f8f8f8; /* sidebar background and "panel"/"box" background */
   --ps-neutral-5: #e2e2e2; /* non-selected button background, highlighted button text (when buttons are green) */
   --ps-neutral-7: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-8: #272727; /* sidebar text and datepicker text */
@@ -57,6 +56,7 @@
 
   --ps-border-color: #b2b2b2; /* Note: same as --ps-grey-primary */
   --ps-tooltip-background: #b2b2b2; /* Note: same as --ps-grey-primary */
+  --ps-ui-foreground: #f8f8f8; /* sidebar background and "panel"/"box" background */
   --ps-ui-background: #eaeaea; /* background furthest back color */
   --ps-dropdown-background: #e2e2e2; /* dropdown background */
 
