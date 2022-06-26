@@ -3,7 +3,8 @@
   --ps-neutral-2: #ffffff;
   --ps-neutral-4: #212124; /* sidebar background and "panel"/"box" background */
   --ps-neutral-5: #242428; /* non-selected button background, highlighted button text (when buttons are green) */
-  --ps-neutral-6: #3b3b44; /* disabled button text color, button borders, dropdown borders */
+  --ps-border-color: #3b3b44; /* disabled button text color, button borders, dropdown borders */
+  --ps-disabled-button-color: #3b3b44; /* disabled button text color, button borders, dropdown borders */
   --ps-neutral-7: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
   --ps-neutral-8: #d8d8d8; /* sidebar text and datepicker text */
   --ps-neutral-9: #ffffff08; /* lighter background for table */
