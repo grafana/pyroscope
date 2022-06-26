@@ -85,7 +85,8 @@ function NameSelector({ onSelectedName }: NameSelectorProps) {
         <FocusableItem>
           {({ ref }) => (
             <Input
-              name="application seach"
+              name="Application Search Input"
+              className="search"
               ref={ref}
               type="text"
               placeholder="Type an app"
