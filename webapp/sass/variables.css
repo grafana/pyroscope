@@ -7,7 +7,6 @@
   --ps-neutral-9: #ffffff08; /* lighter background for table */
 
   --ps-border-color: #3b3b44; /* Note: same as --ps-grey-primary */
-  --ps-tooltip-background: #3b3b44; /* Note: same as --ps-grey-primary */
   --ps-ui-foreground: #212124; /* sidebar background and "panel"/"box" background */
   --ps-ui-background: #0e0e13; /* background furthest back color */
   --ps-dropdown-background: #2c2c30; /* dropdown background */
@@ -55,7 +54,6 @@
   --ps-neutral-9: #00000008; /* lighter background for table */
 
   --ps-border-color: #b2b2b2; /* Note: same as --ps-grey-primary */
-  --ps-tooltip-background: #b2b2b2; /* Note: same as --ps-grey-primary */
   --ps-ui-foreground: #f8f8f8; /* sidebar background and "panel"/"box" background */
   --ps-ui-background: #eaeaea; /* background furthest back color */
   --ps-dropdown-background: #e2e2e2; /* dropdown background */
