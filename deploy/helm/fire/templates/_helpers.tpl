@@ -41,6 +41,9 @@ helm.sh/chart: {{ include "fire.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- range $k, $v := .Values.fire.extraLabels }}
+{{$k}}: {{ $v | quote }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -49,6 +52,16 @@ Selector labels
 {{- define "fire.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "fire.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Template labels
+*/}}
+{{- define "fire.templateLabels" -}}
+{{ include "fire.selectorLabels" . }}
+{{- range $k, $v := .Values.fire.extraLabels }}
+{{$k}}: {{ $v | quote }}
+{{- end }}
 {{- end }}
 
 {{/*
