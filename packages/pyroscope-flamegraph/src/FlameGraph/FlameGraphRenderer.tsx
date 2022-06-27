@@ -63,7 +63,7 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
 interface Node {
   i: number;
   j: number;
-  name?: string;
+  name: string;
 }
 
 export interface FlamegraphRendererProps {
@@ -202,7 +202,7 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  onFocusOnNode = (i: number, j: number) => {
+  onFocusOnNode = (i: number, j: number, name: string) => {
     if (i === 0 && j === 0) {
       this.onReset();
       return;
@@ -226,7 +226,7 @@ class FlameGraphRenderer extends React.Component<
       ...this.state,
       flamegraphConfigs: {
         ...flamegraphConfigs,
-        focusedNode: Maybe.just({ i, j }),
+        focusedNode: Maybe.just({ i, j, name }),
       },
     });
   };
@@ -395,9 +395,7 @@ class FlameGraphRenderer extends React.Component<
               isFlamegraphDirty={this.state.isFlamegraphDirty}
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.highlightQuery}
-              onFocusOnSubtree={(i, j) => {
-                this.onFocusOnNode(i, j);
-              }}
+              onFocusOnSubtree={this.onFocusOnNode}
             />
           )}
           {this.props.children}

@@ -24,7 +24,9 @@ export default class Flamegraph {
      * What node to be 'focused'
      * ie what node to start the tree
      */
-    private focusedNode: Maybe<DeepReadonly<{ i: number; j: number }>>,
+    private focusedNode: Maybe<
+      DeepReadonly<{ i: number; j: number; name: string }>
+    >,
     /**
      * What level has been "selected"
      * All nodes above will be dimmed out

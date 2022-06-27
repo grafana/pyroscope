@@ -24,8 +24,8 @@ interface FlamegraphProps {
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
 
-  onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
-  onFocusOnNode: (i: number, j: number) => void;
+  onZoom: (bar: Maybe<{ i: number; j: number; name: string }>) => void;
+  onFocusOnNode: (i: number, j: number, name: string) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -70,14 +70,18 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     []
   );
 
-  const { i, j, selectionName } = useMemo(
-    () => ({
-      i: zoom.isJust && zoom.value?.i,
-      j: zoom.isJust && zoom.value?.j,
-      selectionName: zoom.isJust && zoom.value.name,
-    }),
-    [zoom]
-  );
+  const { focusedI, focusedJ, focusedName, zoomedI, zoomedJ, zoomedName } =
+    useMemo(
+      () => ({
+        focusedI: focusedNode.isJust && focusedNode.value.i,
+        focusedJ: focusedNode.isJust && focusedNode.value.j,
+        focusedName: focusedNode.isJust && focusedNode.value.name,
+        zoomedI: zoom.isJust && zoom.value?.i,
+        zoomedJ: zoom.isJust && zoom.value?.j,
+        zoomedName: zoom.isJust && zoom.value.name,
+      }),
+      [focusedNode, zoom]
+    );
 
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
@@ -159,7 +163,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
         const onClick = bar.mapOrElse(
           () => () => {},
-          (f) => onFocusOnNode.bind(null, f.i, f.j)
+          (f) => onFocusOnNode.bind(null, f.i, f.j, f.name)
         );
 
         return (
@@ -217,10 +221,22 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
     const { levels, names } = flamebearer;
 
-    const newSelectionName =
-      i && j && levels?.[i] && names?.[singleFF?.getBarName(levels?.[i], j)];
+    const newFocusedName =
+      typeof focusedI === 'number' &&
+      typeof focusedJ === 'number' &&
+      levels?.[focusedI] &&
+      names?.[singleFF?.getBarName(levels?.[focusedI], focusedJ)];
 
-    if (selectionName !== newSelectionName) {
+    const newZoomedName =
+      typeof zoomedI === 'number' &&
+      typeof zoomedJ === 'number' &&
+      levels?.[zoomedI] &&
+      names?.[singleFF?.getBarName(levels?.[zoomedI], zoomedJ)];
+
+    if (
+      newFocusedName !== focusedName ||
+      (focusedNode.isNothing && zoomedName !== newZoomedName)
+    ) {
       onReset();
     }
   }, [flamebearer]);
