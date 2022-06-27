@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -197,6 +198,9 @@ func (t *Target) scrape(ctx context.Context) {
 		Labels: make([]*commonv1.LabelPair, 0, len(t.labels)),
 	}
 	for _, l := range t.labels {
+		if strings.HasPrefix(l.Name, "__") && l.Name != labels.MetricName {
+			continue
+		}
 		series.Labels = append(series.Labels, &commonv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
