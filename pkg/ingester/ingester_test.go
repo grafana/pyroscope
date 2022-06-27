@@ -100,7 +100,7 @@ func Test_ConnectPush(t *testing.T) {
 	ingestedSamples := countNonZeroValues(parseRawProfile(t, bytes.NewBuffer(rawProfile)))
 
 	var queriedSamples int64
-	require.NoError(t, profileStore.Table().Iterator(context.Background(), memory.NewGoAllocator(), nil, nil, nil, func(ar arrow.Record) error {
+	require.NoError(t, profileStore.Table().Iterator(context.Background(), 0, memory.NewGoAllocator(), nil, nil, nil, func(ar arrow.Record) error {
 		t.Log(ar)
 		defer ar.Release()
 
