@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.9.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.4...@pyroscope/flamegraph@0.9.0) (2022-06-27)
+
+
+### Features
+
+* adds proper support for goroutines, block, mutex profiling ([#1178](https://github.com/pyroscope-io/pyroscope/issues/1178)) ([b2e680c](https://github.com/pyroscope-io/pyroscope/commit/b2e680cfbf3c24856543f3a5478204cc24d7cbf7))
+
+
+
+
+
 ## [0.8.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.3...@pyroscope/flamegraph@0.8.4) (2022-06-13)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
