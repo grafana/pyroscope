@@ -164,7 +164,7 @@ describe('Flamegraph', () => {
           const fitMode = 'HEAD';
           const highlightQuery = '';
           const zoom: zoomType = Maybe.nothing();
-          const focusedNode = Maybe.just({ i: 1, j: 0 });
+          const focusedNode = Maybe.just({ i: 1, j: 0, name: '' });
 
           flame = new Flamegraph(
             TestData.SimpleTree,
@@ -245,7 +245,7 @@ describe('Flamegraph', () => {
           const fitMode = 'HEAD';
           const highlightQuery = '';
           const zoom: zoomType = Maybe.nothing();
-          const focusedNode = Maybe.just({ i: 2, j: 8 });
+          const focusedNode = Maybe.just({ i: 2, j: 8, name: '' });
 
           flame = new Flamegraph(
             TestData.SimpleTree,
@@ -475,7 +475,7 @@ describe('Flamegraph', () => {
           const fitMode = 'HEAD';
           const highlightQuery = '';
           const zoom = Maybe.of({ i: 2, j: 8 });
-          const focusedNode = Maybe.of({ i: 1, j: 0 });
+          const focusedNode = Maybe.of({ i: 1, j: 0, name: '' });
 
           flame = new Flamegraph(
             TestData.SimpleTree,

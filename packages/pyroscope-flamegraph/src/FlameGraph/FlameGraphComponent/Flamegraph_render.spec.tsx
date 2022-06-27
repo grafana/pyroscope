@@ -143,7 +143,7 @@ describe("render group:snapshot'", () => {
   describe('focused', () => {
     it('renders a focused node in the beginning', () => {
       const zoom: zoomType = Maybe.nothing();
-      const focusedNode = Maybe.just({ i: 2, j: 0 });
+      const focusedNode = Maybe.just({ i: 2, j: 0, name: '' });
 
       const flame = new Flamegraph(
         TestData.SimpleTree,
@@ -161,7 +161,7 @@ describe("render group:snapshot'", () => {
 
     it('renders a focused node (when node is not in the beginning)', () => {
       const zoom: zoomType = Maybe.nothing();
-      const focusedNode = Maybe.just({ i: 2, j: 8 });
+      const focusedNode = Maybe.just({ i: 2, j: 8, name: '' });
 
       const flame = new Flamegraph(
         TestData.SimpleTree,
@@ -178,8 +178,8 @@ describe("render group:snapshot'", () => {
     });
 
     it('also zooms', () => {
-      const focusedNode = Maybe.just({ i: 1, j: 0 });
-      const zoom = Maybe.just({ i: 2, j: 0 }); // main.fastFunction
+      const focusedNode = Maybe.just({ i: 1, j: 0, name: '' });
+      const zoom = Maybe.just({ i: 2, j: 0, name: '' }); // main.fastFunction
 
       const flame = new Flamegraph(
         TestData.SimpleTree,
