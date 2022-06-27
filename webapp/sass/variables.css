@@ -3,6 +3,16 @@
   --ps-neutral-2: #ffffff;
   --ps-neutral-9: #ffffff08; /* lighter background for table */
 
+  /*
+
+  Colors for the PS UI
+  Depth from furthest back to closest front:
+    1. --ps-ui-background: #2c2c30:   furthest back darkest color in the UI
+    2. --ps-ui-foreground: #212124:   sidebar, box, panel, immediately above background
+    3. --ps-ui-element-bg-primary:    background of "flat" ui elements, such as buttons, dropdown buttons, etc.
+    4. --ps-ui-element-bg-highlight:  highlight of ui elements, selected app, table highlight, 
+  */
+
   --ps-ui-element-bg-primary: #242428; /* non-selected button background, highlighted button text (when buttons are green) */
   --ps-ui-element-bg-highlight: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
 
