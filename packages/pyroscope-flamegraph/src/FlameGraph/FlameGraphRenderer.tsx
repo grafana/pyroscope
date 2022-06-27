@@ -63,6 +63,7 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
 interface Node {
   i: number;
   j: number;
+  name?: string;
 }
 
 export interface FlamegraphRendererProps {

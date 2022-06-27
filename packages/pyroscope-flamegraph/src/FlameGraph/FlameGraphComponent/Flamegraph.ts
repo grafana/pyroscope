@@ -38,7 +38,7 @@ export default class Flamegraph {
      * otherwise it will be greyish.
      */
     private readonly highlightQuery: string,
-    private zoom: Maybe<DeepReadonly<{ i: number; j: number; name: string }>>,
+    private zoom: Maybe<DeepReadonly<{ i: number; j: number; name?: string }>>,
 
     private palette: FlamegraphPalette
   ) {
