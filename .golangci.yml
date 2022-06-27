@@ -19,7 +19,7 @@ run:
   # list of build tags, all linters use it. Default is empty list.
   build-tags: []
 
-  modules-download-mode: mod
+  modules-download-mode: readonly
 
   # which dirs to skip: they won't be analyzed;
   # can use regexp here: generated.*, regexp is applied on full path;
