@@ -16,7 +16,6 @@ import (
 )
 
 func NewSession(logger pyroscope.Logger, ingester ingestion.Ingester, appName string, tags map[string]string) *pyroscope.Session {
-
 	runtime.SetMutexProfileFraction(5)
 	runtime.SetBlockProfileRate(5)
 
