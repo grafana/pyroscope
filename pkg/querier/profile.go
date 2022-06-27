@@ -11,7 +11,7 @@ import (
 type profilesResponsesHeap []responseFromIngesters[*ingestv1.SelectProfilesResponse]
 
 // newProfilesResponseHeap returns a heap that sort responses by their timestamps and labels.
-func newProfilesResponseHeap(profiles []responseFromIngesters[*ingestv1.SelectProfilesResponse]) heap.Interface {
+func newProfilesResponseHeap(profiles profilesResponsesHeap) heap.Interface {
 	res := make(profilesResponsesHeap, 0, len(profiles))
 	for _, p := range profiles {
 		if len(p.response.Profiles) > 0 {
@@ -125,7 +125,7 @@ type stack struct {
 }
 
 // Merge stacktraces and prepare for fetching symbols.
-// Returns a map of strack
+// Returns ingesters addresses, a map of stracktraces per ingester address and per ID.
 func mergeStacktraces(profilesPerIngester map[string][]*ingestv1.Profile) (ingester []string, stacktracesPerIngester map[string][][]byte, stracktracesByID map[string]*stack) {
 	stacktracesPerIngester = make(map[string][][]byte, len(profilesPerIngester))
 	stracktracesByID = make(map[string]*stack)
@@ -149,5 +149,5 @@ func mergeStacktraces(profilesPerIngester map[string][]*ingestv1.Profile) (inges
 			}
 		}
 	}
-	return
+	return ingester, stacktracesPerIngester, stracktracesByID
 }
