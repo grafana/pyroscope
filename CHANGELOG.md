@@ -1,3 +1,19 @@
+# [0.20.0](https://github.com/pyroscope-io/pyroscope/compare/v0.19.0...v0.20.0) (2022-06-27)
+
+
+### Bug Fixes
+
+* stack overflow in parser callback ([#1174](https://github.com/pyroscope-io/pyroscope/issues/1174)) ([c70a643](https://github.com/pyroscope-io/pyroscope/commit/c70a6433b5526d1d075c434092209b1ecac82353))
+
+
+### Features
+
+* adds proper support for goroutines, block, mutex profiling ([#1178](https://github.com/pyroscope-io/pyroscope/issues/1178)) ([b2e680c](https://github.com/pyroscope-io/pyroscope/commit/b2e680cfbf3c24856543f3a5478204cc24d7cbf7))
+* AWS EC2 service discovery ([d02851c](https://github.com/pyroscope-io/pyroscope/commit/d02851c3f594da6243fb6e81e3155843fc87b3ed))
+* **self-profiling:** allow tags to be set ([#1158](https://github.com/pyroscope-io/pyroscope/issues/1158)) ([ac855ba](https://github.com/pyroscope-io/pyroscope/commit/ac855ba7629a6a974f461347ad3291fa6f2e2eeb))
+
+
+
 # [0.19.0](https://github.com/pyroscope-io/pyroscope/compare/v0.18.0...v0.19.0) (2022-06-13)
 
 
