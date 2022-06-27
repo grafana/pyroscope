@@ -460,9 +460,6 @@ func (e *exemplarsBatchEntry) updateTime(st, et int64) {
 func (e *exemplarsBatchEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, error) {
 	b := bytes.NewBuffer(make([]byte, 0, 1<<10)) // 1 KB.
 	b.WriteByte(exemplarsCurrentFormat)          // Version.
-	if err := e.Tree.SerializeTruncate(d, maxNodes, b); err != nil {
-		return nil, err
-	}
 
 	vw := varint.NewWriter()
 	_, _ = vw.Write(b, uint64(e.StartTime))
@@ -482,6 +479,10 @@ func (e *exemplarsBatchEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, err
 		bs := []byte(v)
 		_, _ = vw.Write(b, uint64(len(bs)))
 		_, _ = b.Write(bs)
+	}
+
+	if err := e.Tree.SerializeTruncate(d, maxNodes, b); err != nil {
+		return nil, err
 	}
 
 	return b.Bytes(), nil
@@ -513,12 +514,6 @@ func (e *exemplarsBatchEntry) deserializeV1(d *dict.Dict, src *bytes.Buffer) err
 }
 
 func (e *exemplarsBatchEntry) deserializeV2(d *dict.Dict, src *bytes.Buffer) error {
-	t, err := tree.Deserialize(d, src)
-	if err != nil {
-		return err
-	}
-	e.Tree = t
-
 	st, err := varint.Read(src)
 	if err != nil {
 		return err
@@ -551,5 +546,10 @@ func (e *exemplarsBatchEntry) deserializeV2(d *dict.Dict, src *bytes.Buffer) err
 		}
 	}
 
+	t, err := tree.Deserialize(d, src)
+	if err != nil {
+		return err
+	}
+	e.Tree = t
 	return nil
 }
