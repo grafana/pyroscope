@@ -660,8 +660,6 @@ github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1
 github.com/prometheus/procfs v0.7.3 h1:4jVXhlkAyzOScmCkXBTOLRLTz8EeU+eyjrwB/EPq0VU=
 github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/prometheus/statsd_exporter v0.15.0/go.mod h1:Dv8HnkoLQkeEjkIE4/2ndAA7WL1zHKK7WMqFQqu72rw=
-github.com/pyroscope-io/client v0.2.4-0.20220625095108-5d4cbe2599eb h1:RyEuE+z3JBCFpr0Z4hwXf8w8w2KxWVxPbBgttBGvVII=
-github.com/pyroscope-io/client v0.2.4-0.20220625095108-5d4cbe2599eb/go.mod h1:zRdQXIGxy0H2QbKEkCmZBR6KOLLIFYLWsdzVI0MRm2E=
 github.com/pyroscope-io/client v0.3.0 h1:H+1pvKpdMOESX9jYuJKbO0+7yWY7aQNjIKuQ2rpnZIY=
 github.com/pyroscope-io/client v0.3.0/go.mod h1:zRdQXIGxy0H2QbKEkCmZBR6KOLLIFYLWsdzVI0MRm2E=
 github.com/pyroscope-io/dotnetdiag v1.2.1 h1:3XEMrfFJnZ87BiEhozyQKmCUAuMd/Spq7KChPuD2Cf0=
