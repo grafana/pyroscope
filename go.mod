@@ -6,6 +6,7 @@ require (
 	github.com/apache/arrow/go/v8 v8.0.0
 	github.com/bufbuild/connect-go v0.1.0
 	github.com/bufbuild/connect-grpchealth-go v0.1.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/drone/envsubst v1.0.3
 	github.com/go-kit/log v0.2.1
@@ -23,6 +24,7 @@ require (
 	github.com/prometheus/common v0.35.0
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
 	github.com/pyroscope-io/pyroscope v0.18.0
+	github.com/segmentio/parquet-go v0.0.0-20220623195409-8b4d4260d8cb
 	github.com/stretchr/testify v1.7.5
 	github.com/thanos-io/objstore v0.0.0-20220324141029-c4f11442aa33
 	github.com/thanos-io/thanos v0.26.0
@@ -94,7 +96,6 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
@@ -211,7 +212,6 @@ require (
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.9 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/segmentio/encoding v0.3.5 // indirect
-	github.com/segmentio/parquet-go v0.0.0-20220623195409-8b4d4260d8cb // indirect
 	github.com/sercand/kuberesolver v2.4.0+incompatible // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -261,7 +261,6 @@ require (
 )
 
 replace (
-	github.com/polarsignals/frostdb => github.com/grafana/frostdb v0.0.0-20220623183226-4080ae2447c1
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )
