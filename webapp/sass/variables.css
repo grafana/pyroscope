@@ -6,7 +6,7 @@
   --ps-ui-element-bg-primary: #242428; /* non-selected button background, highlighted button text (when buttons are green) */
   --ps-ui-element-bg-highlight: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
 
-  --ps-border-color: #3b3b44; /* Note: same as --ps-grey-primary */
+  --ps-ui-border-color: #3b3b44; /* Note: same as --ps-grey-primary */
   --ps-ui-foreground: #212124; /* sidebar background and "panel"/"box" background */
   --ps-ui-foreground-text: #d8d8d8; /* sidebar text and datepicker text */
   --ps-ui-background: #0e0e13; /* background furthest back color */
@@ -55,7 +55,7 @@
   --ps-ui-element-bg-primary: #e2e2e2; /* non-selected button background, highlighted button text (when buttons are green) */
   --ps-ui-element-bg-highlight: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
 
-  --ps-border-color: #b2b2b2; /* Note: same as --ps-grey-primary */
+  --ps-ui-border-color: #b2b2b2; /* Note: same as --ps-grey-primary */
   --ps-ui-foreground: #f8f8f8; /* sidebar background and "panel"/"box" background */
   --ps-ui-foreground-text: #272727; /* sidebar text and datepicker text */
   --ps-ui-background: #eaeaea; /* background furthest back color */
