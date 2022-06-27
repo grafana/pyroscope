@@ -9,11 +9,12 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
+	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 )
 
-func (a *Agent) GetTargets(ctx context.Context, req *connect.Request[agentv1.GetTargetsRequest]) (*connect.Response[agentv1.GetTargetsResponse], error) {
-	showActive := req.Msg.State == agentv1.State_STATE_UNSPECIFIED || req.Msg.State == agentv1.State_STATE_ACTIVE
-	showDropped := req.Msg.State == agentv1.State_STATE_UNSPECIFIED || req.Msg.State == agentv1.State_STATE_DROPPED
+func (a *Agent) GetTargets(ctx context.Context, req *agentv1.GetTargetsRequest) (*agentv1.GetTargetsResponse, error) {
+	showActive := req.State == agentv1.State_STATE_UNSPECIFIED || req.State == agentv1.State_STATE_ACTIVE
+	showDropped := req.State == agentv1.State_STATE_UNSPECIFIED || req.State == agentv1.State_STATE_DROPPED
 
 	resp := agentv1.GetTargetsResponse{}
 
@@ -64,5 +65,22 @@ func (a *Agent) GetTargets(ctx context.Context, req *connect.Request[agentv1.Get
 		}
 	}
 
-	return connect.NewResponse(&resp), nil
+	return &resp, nil
+}
+
+type connectAgent struct {
+	*Agent
+}
+
+func (ca *connectAgent) GetTargets(ctx context.Context, req *connect.Request[agentv1.GetTargetsRequest]) (*connect.Response[agentv1.GetTargetsResponse], error) {
+	resp, err := ca.Agent.GetTargets(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (a *Agent) ConnectHandler() agentv1connect.AgentServiceHandler {
+	return &connectAgent{a}
 }
