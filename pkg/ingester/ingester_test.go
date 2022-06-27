@@ -127,8 +127,8 @@ func countNonZeroValues(p *profile.Profile) int64 {
 	for _, s := range p.Sample {
 		for _, v := range s.Value {
 			if v != 0 {
-				count += int64(len(s.Value))
-				break
+				count++
+				continue
 			}
 		}
 	}
