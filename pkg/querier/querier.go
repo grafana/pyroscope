@@ -8,15 +8,19 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	"github.com/grafana/fire/pkg/util"
 )
 
 // todo: move to non global metrics.
@@ -114,6 +118,82 @@ func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error
 		return nil, err
 	}
 	return uniqueSortedStrings(responses), nil
+}
+
+func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesRequest) (*flamebearer.FlamebearerProfile, error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
+		res, err := ic.SelectProfiles(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Dedupe profiles and merge stacktraces per ID and ingester for fetching symbols.
+	ingester, stacktracesPerIngester, stracktracesByID := mergeStacktraces(dedupeProfiles(responses))
+
+	// fetch symbols to ingester concurrently and assign them to the stacktraces.
+	if err := concurrency.ForEachJob(ctx, len(ingester), len(ingester), func(ctx context.Context, idx int) error {
+		ing := ingester[idx]
+
+		stacktraces := stacktracesPerIngester[ing]
+		client, err := q.pool.GetClientFor(ing)
+		if err != nil {
+			return err
+		}
+		res, err := client.(IngesterQueryClient).SymbolizeStacktraces(ctx, connect.NewRequest(&ingestv1.SymbolizeStacktraceRequest{
+			Ids: stacktraces,
+		}))
+		if err != nil {
+			return err
+		}
+
+		for i := range res.Msg.Locations {
+			locs := make([]string, 0, len(res.Msg.Locations[i].Ids))
+			for _, idx := range res.Msg.Locations[i].Ids {
+				locs = append(locs, res.Msg.FunctionNames[idx])
+			}
+			stracktracesByID[util.UnsafeGetString(stacktraces[i])].locations = locs
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	// build the flamegraph
+	stacktraces := make([]stack, 0, len(stracktracesByID))
+	for _, s := range stracktracesByID {
+		s := s
+		stacktraces = append(stacktraces, *s)
+	}
+
+	flame := NewFlamebearer(newTree(stacktraces))
+	unit := metadata.Units(req.Type.SampleUnit)
+	sampleRate := uint32(100)
+
+	switch req.Type.SampleType {
+	case "inuse_objects", "alloc_objects", "goroutine", "samples":
+		unit = metadata.ObjectsUnits
+	case "cpu":
+		unit = metadata.SamplesUnits
+		sampleRate = uint32(100000000)
+
+	}
+
+	return &flamebearer.FlamebearerProfile{
+		Version: 1,
+		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+			Flamebearer: *flame,
+			Metadata: flamebearer.FlamebearerMetadataV1{
+				Format:     "single",
+				Units:      unit,
+				Name:       req.Type.SampleType,
+				SampleRate: sampleRate,
+			},
+		},
+	}, nil
 }
 
 func uniqueSortedStrings(responses []responseFromIngesters[[]string]) []string {
