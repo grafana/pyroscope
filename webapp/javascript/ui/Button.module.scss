@@ -26,10 +26,10 @@ $border-radius: 4px;
 }
 
 .default {
-  background: var(--ps-neutral-5);
+  background: var(--ps-ui-element-bg-primary);
 
   &:hover:not(:disabled) {
-    background-color: var(--ps-neutral-7);
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 
   &:disabled {
@@ -40,7 +40,7 @@ $border-radius: 4px;
 
 .primary {
   border: none;
-  color: var(--ps-neutral-5) !important;
+  color: var(--ps-immutable-green-button-text) !important;
   background-color: var(--ps-green-primary);
 
   &:hover {

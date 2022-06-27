@@ -15,7 +15,7 @@
 
   & li[class*='hover'],
   div[class*='hover'] {
-    background-color: var(--ps-neutral-7);
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 
   [class*='rc-menu--open']:empty {
@@ -23,7 +23,7 @@
   }
 
   [class*='rc-menu__item active'] {
-    background-color: var(--ps-neutral-7);
+    background-color: var(--ps-ui-element-bg-highlight);
     color: var(--ps-selected-app);
   }
 
@@ -45,7 +45,7 @@
   flex-shrink: 0;
   position: relative;
   border-radius: 4px;
-  background-color: var(--ps-neutral-5);
+  background-color: var(--ps-ui-element-bg-primary);
   border: 1px solid var(--ps-border-color);
   margin-right: 5px;
   padding-right: 20px;
@@ -58,6 +58,6 @@
 
   &:hover {
     cursor: pointer;
-    background-color: var(--ps-neutral-7);
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 }

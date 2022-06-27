@@ -12,7 +12,7 @@ tt {
   border-radius: 3px;
   border: 1px solidver(--ps-gray-light-4);
   padding: 2px 4px;
-  background-color: var(--ps-neutral-8);
+  background-color: var(--ps-ui-foreground-text);
 }
 
 .navbar {
@@ -50,8 +50,8 @@ tt {
     text-align: right;
     padding: 0px 10px;
 
-    border-left: 1px solid var(--ps-neutral-7);
-    border-bottom: 1px solid var(--ps-neutral-7);
+    border-left: 1px solid var(--ps-border-color);
+    border-bottom: 1px solid var(--ps-border-color);
     width: 150px;
     min-width: 150px;
     max-width: 150px;
@@ -64,7 +64,7 @@ tt {
     .sort-arrow {
       display: inline-block;
       border: 5px solid transparent;
-      border-top-color: var(--ps-neutral-8);
+      border-top-color: var(--ps-ui-foreground-text);
       top: 3px;
       position: relative;
       margin-left: 7px;

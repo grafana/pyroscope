@@ -19,7 +19,7 @@
   }
 
   &:disabled {
-    color: var(--ps-neutral-8);
+    color: var(--ps-ui-foreground-text);
     color: 1px solid var(--ps-neutral-9);
     pointer-events: none;
   }

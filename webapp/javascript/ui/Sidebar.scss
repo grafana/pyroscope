@@ -2,7 +2,7 @@
 // So we can't use css modules
 $sidebar-bg-color: var(--ps-ui-foreground);
 $submenu-bg-color: transparent;
-$sidebar-color: var(--ps-neutral-8);
+$sidebar-color: var(--ps-ui-foreground-text);
 $submenu-bg-color-collapsed: var(--ps-ui-foreground);
 $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
@@ -36,7 +36,7 @@ $sidebar-collapsed-width: 54px !default;
 // when collapsed, highlight since there's nothing visible
 .pro-sidebar.collapsed .pro-menu-item.active,
 .pro-sidebar.collapsed .pro-sub-menu.pro-menu-item:hover {
-  background: var(--ps-neutral-7);
+  background: var(--ps-ui-element-bg-highlight);
   color: var(--ps-neutral-2);
 }
 
@@ -121,7 +121,7 @@ $sidebar-collapsed-width: 54px !default;
 .pro-sidebar .pro-menu .pro-menu-item.open,
 .pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:focus,
 .pro-sidebar .pro-menu .pro-menu-item {
-  color: var(--ps-neutral-8);
+  color: var(--ps-ui-foreground-text);
 }
 .pro-sidebar
   .pro-menu
