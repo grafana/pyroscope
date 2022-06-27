@@ -1,0 +1,246 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "agent/v1/agent.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AgentService"
+    },
+    {
+      "name": "PusherService"
+    },
+    {
+      "name": "IngesterService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/targets": {
+      "get": {
+        "summary": "Retrieve information about targets.",
+        "operationId": "AgentService_GetTargets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetTargetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "STATE_UNSPECIFIED",
+              "STATE_ACTIVE",
+              "STATE_DROPPED"
+            ],
+            "default": "STATE_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "AgentService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1GetTargetsResponse": {
+      "type": "object",
+      "properties": {
+        "activeTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Target"
+          }
+        },
+        "droppedTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Target"
+          }
+        }
+      }
+    },
+    "v1Health": {
+      "type": "string",
+      "enum": [
+        "HEALTH_UNSPECIFIED",
+        "HEALTH_UP",
+        "HEALTH_DOWN"
+      ],
+      "default": "HEALTH_UNSPECIFIED"
+    },
+    "v1LabelPair": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1ProfileTypesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1PushResponse": {
+      "type": "object"
+    },
+    "v1RawProfileSeries": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1RawSample"
+          },
+          "title": "samples are the set of profile bytes"
+        }
+      },
+      "title": "RawProfileSeries represents the pprof profile and its associated labels"
+    },
+    "v1RawSample": {
+      "type": "object",
+      "properties": {
+        "rawProfile": {
+          "type": "string",
+          "format": "byte",
+          "title": "raw_profile is the set of bytes of the pprof profile"
+        }
+      },
+      "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1State": {
+      "type": "string",
+      "enum": [
+        "STATE_UNSPECIFIED",
+        "STATE_ACTIVE",
+        "STATE_DROPPED"
+      ],
+      "default": "STATE_UNSPECIFIED"
+    },
+    "v1Target": {
+      "type": "object",
+      "properties": {
+        "discoveredLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Contains labels before any processing."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Labels as they are attached to ingested profiles."
+        },
+        "scrapePool": {
+          "type": "string",
+          "title": "Name of the scrape pool used"
+        },
+        "scrapeUrl": {
+          "type": "string",
+          "description": "URL that is used for retrieving the profile."
+        },
+        "lastError": {
+          "type": "string",
+          "description": "Contains the error if the last attempted scrape has failed."
+        },
+        "lastScrape": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Timestamp of last scrape"
+        },
+        "lastScrapeDuration": {
+          "type": "string",
+          "description": "Duation of last scrape."
+        },
+        "health": {
+          "$ref": "#/definitions/v1Health",
+          "description": "Health of last scrape."
+        },
+        "scrapeTimeout": {
+          "type": "string",
+          "description": "Timeout duration for the scrape request."
+        },
+        "scrapeInterval": {
+          "type": "string",
+          "description": "Interval how often profiles are scraped."
+        }
+      }
+    }
+  }
+}

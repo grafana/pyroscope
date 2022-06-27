@@ -3,6 +3,8 @@ managed:
   enabled: true
   go_package_prefix:
     default: github.com/grafana/fire/pkg/gen/
+    except:
+      - buf.build/googleapis/googleapis
 
 plugins:
   - remote: buf.build/protocolbuffers/plugins/go:v1.28.0-1
@@ -17,3 +19,13 @@ plugins:
   - name: connect-go
     out: pkg/gen/
     opt: paths=source_relative
+
+  - name: grpc-gateway
+    out: pkg/gen
+    opt:
+      - paths=source_relative
+
+  - name: openapiv2
+    out: pkg/openapiv2/gen
+    strategy: all
+    opt: allow_merge=true,merge_file_name=fire
