@@ -46,7 +46,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.34.0
-	github.com/pyroscope-io/client v0.2.4-0.20220625095108-5d4cbe2599eb
+	github.com/pyroscope-io/client v0.3.0
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1
 	github.com/pyroscope-io/jfr-parser v0.5.2
