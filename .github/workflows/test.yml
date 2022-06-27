@@ -14,6 +14,10 @@ jobs:
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
+    - name: Configure git for private modules
+      env:
+        TOKEN: ${{ secrets.GRAFANABOT_PAT }}
+      run: git config --global url."https://grafanabot:${TOKEN}@github.com".insteadOf "https://github.com"
     - name: Install Go
       uses: actions/setup-go@v2
       with:
