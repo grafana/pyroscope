@@ -215,19 +215,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   React.useEffect(() => {
     rerenderCanvas();
 
-    try {
-      const level = i && props?.flamebearer?.levels?.[i];
+    const { levels, names } = flamebearer;
 
-      const name =
-        level &&
-        j &&
-        props?.flamebearer?.names?.[singleFF?.getBarName(level, j)];
+    const newSelectionName =
+      i && j && levels?.[i] && names?.[singleFF?.getBarName(levels?.[i], j)];
 
-      if (selectionName !== name) {
-        onReset();
-      }
-    } catch (e) {
-      console.log('Flamegraph Reset Error', e);
+    if (selectionName !== newSelectionName) {
+      onReset();
     }
   }, [flamebearer]);
 
