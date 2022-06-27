@@ -17,14 +17,14 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/parca-dev/parca v0.11.1-0.20220608104838-4e857ab70594
+	github.com/parca-dev/parca v0.11.1-0.20220627115052-0882921d46de
 	github.com/pkg/errors v0.9.1
-	github.com/polarsignals/arcticdb v0.0.0-20220607075621-19ee11509854
+	github.com/polarsignals/frostdb v0.0.0-20220623183226-4080ae2447c1
 	github.com/prometheus/client_golang v1.12.2
-	github.com/prometheus/common v0.34.0
+	github.com/prometheus/common v0.35.0
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
 	github.com/pyroscope-io/pyroscope v0.18.0
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.7.5
 	github.com/thanos-io/objstore v0.0.0-20220324141029-c4f11442aa33
 	github.com/thanos-io/thanos v0.26.0
 	github.com/weaveworks/common v0.0.0-20220428113342-f83ccc76d823
@@ -84,7 +84,6 @@ require (
 	github.com/baidubce/bce-sdk-go v0.9.111 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/clbanning/mxj v1.8.4 // indirect
@@ -114,7 +113,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v0.6.6 // indirect
 	github.com/fatih/color v1.12.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-delve/delve v1.8.3 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
@@ -207,12 +206,12 @@ require (
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.9 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/segmentio/encoding v0.3.5 // indirect
-	github.com/segmentio/parquet-go v0.0.0-20220527005452-bf1e4db66515 // indirect
+	github.com/segmentio/parquet-go v0.0.0-20220616233901-edd371b528ff // indirect
 	github.com/sercand/kuberesolver v2.4.0+incompatible // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/objx v0.2.0 // indirect
+	github.com/stretchr/objx v0.4.0 // indirect
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.34 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
@@ -256,6 +255,7 @@ require (
 )
 
 replace (
+	github.com/polarsignals/frostdb => github.com/grafana/frostdb v0.0.0-20220623183226-4080ae2447c1
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )

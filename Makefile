@@ -12,6 +12,7 @@ LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
 
 IMAGE_PLATFORM = linux/amd64
+GOPRIVATE=github.com/grafana/frostdb
 
 # Boiler plate for building Docker containers.
 # All this must go at top of file I'm afraid.

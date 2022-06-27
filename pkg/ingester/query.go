@@ -14,7 +14,7 @@ import (
 	"github.com/gogo/status"
 	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/parca-dev/parca/pkg/parcacol"
-	"github.com/polarsignals/arcticdb/query/logicalplan"
+	"github.com/polarsignals/frostdb/query/logicalplan"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
