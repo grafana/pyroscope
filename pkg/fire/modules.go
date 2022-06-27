@@ -70,6 +70,8 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Those API are not meant to stay but allows us for testing through Grafana.
+	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
 	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
 	return q, nil
 }
@@ -159,8 +161,6 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	prefix, handler = ingesterv1connect.NewIngesterServiceHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-	// Those API are not meant to stay but allows us for testing through Grafana.
-	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(ingester.RenderHandler))
 	return ingester, nil
 }
 
