@@ -75,6 +75,49 @@ func DefaultConfig() *Config {
 					},
 				},
 			},
+			"goroutines": {
+				Path:   "/debug/pprof/goroutine",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"goroutine": {
+						DisplayName: "goroutines",
+						Units:       metadata.GoroutinesUnits,
+						Aggregation: metadata.AverageAggregationType,
+					},
+				},
+			},
+			"mutex": {
+				Path:   "/debug/pprof/mutex",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "mutex_count",
+						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
+					},
+					"delay": {
+						DisplayName: "mutex_duration",
+						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
+					},
+				},
+			},
+			"block": {
+				Path:   "/debug/pprof/block",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "block_count",
+						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
+					},
+					"delay": {
+						DisplayName: "block_duration",
+						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
+					},
+				},
+			},
 		},
 
 		HTTPClientConfig: DefaultHTTPClientConfig,

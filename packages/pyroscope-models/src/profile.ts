@@ -13,6 +13,7 @@ const UnitsSchema = z.preprocess((u) => {
   const units = [
     'samples',
     'objects',
+    'goroutines',
     'bytes',
     'lock_samples',
     'lock_nanoseconds',
@@ -23,7 +24,7 @@ const UnitsSchema = z.preprocess((u) => {
     }
   }
   return '';
-}, z.enum(['samples', 'objects', 'bytes', 'lock_samples', 'lock_nanoseconds', '']));
+}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', '']));
 
 export const MetadataSchema = z.object({
   // Optional fields since adhoc may be missing them

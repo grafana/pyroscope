@@ -29,6 +29,7 @@ export default function Header(props: HeaderProps) {
 
   const unitsToFlamegraphTitle = {
     objects: 'number of objects in RAM per function',
+    goroutines: 'number of goroutines',
     bytes: 'amount of RAM per function',
     samples: 'CPU time per function',
     lock_nanoseconds: 'time spent waiting on locks per function',
