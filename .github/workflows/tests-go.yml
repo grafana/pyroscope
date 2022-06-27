@@ -8,11 +8,9 @@ on:
 
 jobs:
   go-tests:
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu, windows]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
