@@ -99,15 +99,18 @@ func Test_ConnectPush(t *testing.T) {
 	require.NotNil(t, resp)
 	ingestedSamples := countNonZeroValues(parseRawProfile(t, bytes.NewBuffer(rawProfile)))
 
+	profileStore.Table().Sync()
 	var queriedSamples int64
-	require.NoError(t, profileStore.Table().Iterator(context.Background(), 0, memory.NewGoAllocator(), nil, nil, nil, func(ar arrow.Record) error {
-		t.Log(ar)
-		defer ar.Release()
+	require.NoError(t, profileStore.Table().View(func(tx uint64) error {
+		return profileStore.Table().Iterator(context.Background(), tx, memory.NewGoAllocator(), nil, nil, nil, func(ar arrow.Record) error {
+			t.Log(ar)
 
-		queriedSamples += ar.NumRows()
+			queriedSamples += ar.NumRows()
 
-		return nil
+			return nil
+		})
 	}))
+
 	require.Equal(t, ingestedSamples, queriedSamples, "expected to query all ingested samples")
 
 	require.NoError(t, profileStore.Table().RotateBlock())
