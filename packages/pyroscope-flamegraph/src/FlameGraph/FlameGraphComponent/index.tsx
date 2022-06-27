@@ -5,7 +5,7 @@ import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
 import { Maybe } from 'true-myth';
 import debounce from 'lodash.debounce';
-import { Flamebearer } from '@pyroscope/models';
+import { Flamebearer, singleFF } from '@pyroscope/models';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
@@ -70,16 +70,14 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     []
   );
 
-  const { x, y } = useMemo(
+  const { i, j, selectionName } = useMemo(
     () => ({
-      x: zoom.isJust && zoom?.value?.x,
-      y: zoom.isJust && zoom.value?.y,
+      i: zoom.isJust && zoom.value?.i,
+      j: zoom.isJust && zoom.value?.j,
+      selectionName: zoom.isJust && zoom.value.name,
     }),
     [zoom]
   );
-
-  // const name2 = zoom.isJust && zoom.get('name')?.value;
-  const prevSelectionName = zoom.isJust && zoom.value.name;
 
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
@@ -201,30 +199,35 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     }
   };
 
-  React.useEffect(() => {
+  const rerenderCanvas = () => {
     constructCanvas();
     renderCanvas();
+  };
+
+  React.useEffect(() => {
+    rerenderCanvas();
   }, [palette]);
 
   React.useEffect(() => {
-    constructCanvas();
-    renderCanvas();
+    rerenderCanvas();
   }, [canvasRef.current, focusedNode, fitMode, highlightQuery, zoom]);
 
   React.useEffect(() => {
-    constructCanvas();
-    renderCanvas();
-    // TODO sometimes returns 0 why?
-    const selectionName =
-      x &&
-      y &&
-      getFlamegraph().xyToBar(x, y).isJust &&
-      // @ts-ignore-start
-      getFlamegraph().xyToBar(x, y).get('name')?.value;
-    // @ts-ignore-end
+    rerenderCanvas();
 
-    if (prevSelectionName !== selectionName) {
-      onReset();
+    try {
+      const level = i && props?.flamebearer?.levels?.[i];
+
+      const name =
+        level &&
+        j &&
+        props?.flamebearer?.names?.[singleFF?.getBarName(level, j)];
+
+      if (selectionName !== name) {
+        onReset();
+      }
+    } catch (e) {
+      console.log('Flamegraph Reset Error', e);
     }
   }, [flamebearer]);
 
