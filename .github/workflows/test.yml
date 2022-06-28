@@ -14,11 +14,6 @@ jobs:
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: webfactory/ssh-agent@v0.5.4
-      with:
-          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
-    - name: Enfore SSH for github.com
-      run: git config --global url.ssh://git@github.com/.insteadOf https://github.com/
     - name: Install Go
       uses: actions/setup-go@v2
       with:
@@ -32,6 +27,11 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
+    - uses: webfactory/ssh-agent@v0.5.4
+      with:
+          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
+    - name: Enfore SSH for github.com
+      run: git config --global url.ssh://git@github.com/.insteadOf https://github.com/
     - name: Go Mod
       run: make check/go/mod
       if: matrix.os == 'ubuntu-latest'
@@ -52,13 +52,13 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-version }}
+    - name: Checkout code
+      uses: actions/checkout@v2
     - uses: webfactory/ssh-agent@v0.5.4
       with:
           ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
     - name: Enfore SSH for github.com
       run: git config --global url.ssh://git@github.com/.insteadOf https://github.com/
-    - name: Checkout code
-      uses: actions/checkout@v2
     - name: Run linter
       run: make lint
     - name: Check helm manifests
