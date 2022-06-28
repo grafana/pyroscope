@@ -50,13 +50,13 @@ var (
 )
 
 type exemplarsBatch struct {
-	entries map[string]*exemplarsBatchEntry
+	entries map[string]*exemplarEntry
 	config  *Config
 	metrics *metrics
 	dicts   BadgerDBWithCache
 }
 
-type exemplarsBatchEntry struct {
+type exemplarEntry struct {
 	// DB exemplar key and its parts.
 	Key       []byte
 	AppName   string
@@ -74,7 +74,7 @@ func (e *exemplars) newExemplarsBatch() *exemplarsBatch {
 		metrics: e.metrics,
 		config:  e.config,
 		dicts:   e.dicts,
-		entries: make(map[string]*exemplarsBatchEntry, exemplarsPerBatch),
+		entries: make(map[string]*exemplarEntry, exemplarsPerBatch),
 	}
 }
 
@@ -261,7 +261,7 @@ func (e *exemplars) insert(ctx context.Context, input *PutInput) error {
 	return err
 }
 
-func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []string, fn func(*tree.Tree) error) error {
+func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []string, fn func(exemplarEntry) error) error {
 	d, ok := e.dicts.Lookup(appName)
 	if !ok {
 		return nil
@@ -280,11 +280,11 @@ func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []stri
 			case err == nil:
 				err = item.Value(func(val []byte) error {
 					e.metrics.exemplarsReadBytes.Observe(float64(len(val)))
-					var x exemplarsBatchEntry
+					var x exemplarEntry
 					if err = x.Deserialize(dx, val); err != nil {
 						return err
 					}
-					return fn(x.Tree)
+					return fn(x)
 				})
 				if err != nil {
 					return err
@@ -378,7 +378,7 @@ func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {
 		e.updateTime(input.StartTime.UnixNano(), input.EndTime.UnixNano())
 		return nil
 	}
-	b.entries[key] = &exemplarsBatchEntry{
+	b.entries[key] = &exemplarEntry{
 		Key:       k,
 		AppName:   appName,
 		ProfileID: profileID,
@@ -391,7 +391,7 @@ func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {
 	return nil
 }
 
-func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEntry) error {
+func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarEntry) error {
 	k, ok := exemplarKeyToTimestampKey(e.Key, e.EndTime)
 	if !ok {
 		return fmt.Errorf("invalid exemplar key")
@@ -419,7 +419,7 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEnt
 		// it's not happening: only the first EndTime is honored.
 		err = item.Value(func(val []byte) error {
 			b.metrics.exemplarsReadBytes.Observe(float64(len(val)))
-			var x exemplarsBatchEntry
+			var x exemplarEntry
 			if err = x.Deserialize(dx, val); err == nil {
 				e = x.Merge(e)
 			}
@@ -441,14 +441,14 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarsBatchEnt
 	return nil
 }
 
-func (e *exemplarsBatchEntry) Merge(src *exemplarsBatchEntry) *exemplarsBatchEntry {
+func (e *exemplarEntry) Merge(src *exemplarEntry) *exemplarEntry {
 	e.updateTime(src.StartTime, src.EndTime)
 	e.Tree.Merge(src.Tree)
 	e.Key = src.Key
 	return e
 }
 
-func (e *exemplarsBatchEntry) updateTime(st, et int64) {
+func (e *exemplarEntry) updateTime(st, et int64) {
 	if st < e.StartTime {
 		e.StartTime = st
 	}
@@ -457,7 +457,7 @@ func (e *exemplarsBatchEntry) updateTime(st, et int64) {
 	}
 }
 
-func (e *exemplarsBatchEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, error) {
+func (e *exemplarEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, error) {
 	b := bytes.NewBuffer(make([]byte, 0, 1<<10)) // 1 KB.
 	b.WriteByte(exemplarsCurrentFormat)          // Version.
 	if err := e.Tree.SerializeTruncate(d, maxNodes, b); err != nil {
@@ -487,7 +487,7 @@ func (e *exemplarsBatchEntry) Serialize(d *dict.Dict, maxNodes int) ([]byte, err
 	return b.Bytes(), nil
 }
 
-func (e *exemplarsBatchEntry) Deserialize(d *dict.Dict, b []byte) error {
+func (e *exemplarEntry) Deserialize(d *dict.Dict, b []byte) error {
 	buf := bytes.NewBuffer(b)
 	v, err := buf.ReadByte()
 	if err != nil {
@@ -503,7 +503,7 @@ func (e *exemplarsBatchEntry) Deserialize(d *dict.Dict, b []byte) error {
 	}
 }
 
-func (e *exemplarsBatchEntry) deserializeV1(d *dict.Dict, src *bytes.Buffer) error {
+func (e *exemplarEntry) deserializeV1(d *dict.Dict, src *bytes.Buffer) error {
 	t, err := tree.Deserialize(d, src)
 	if err != nil {
 		return err
@@ -512,7 +512,7 @@ func (e *exemplarsBatchEntry) deserializeV1(d *dict.Dict, src *bytes.Buffer) err
 	return nil
 }
 
-func (e *exemplarsBatchEntry) deserializeV2(d *dict.Dict, src *bytes.Buffer) error {
+func (e *exemplarEntry) deserializeV2(d *dict.Dict, src *bytes.Buffer) error {
 	t, err := tree.Deserialize(d, src)
 	if err != nil {
 		return err

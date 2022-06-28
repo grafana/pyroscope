@@ -228,7 +228,7 @@ var _ = Describe("Exemplar serialization", func() {
 			t.Insert([]byte("a;b"), uint64(1))
 			t.Insert([]byte("a;c"), uint64(2))
 
-			e := exemplarsBatchEntry{
+			e := exemplarEntry{
 				Key:       exemplarKey(appName, profileID),
 				AppName:   appName,
 				ProfileID: profileID,
@@ -248,7 +248,7 @@ var _ = Describe("Exemplar serialization", func() {
 			b, err := e.Serialize(d, 1<<10)
 			Expect(err).ToNot(HaveOccurred())
 
-			var n exemplarsBatchEntry
+			var n exemplarEntry
 			Expect(n.Deserialize(d, b)).ToNot(HaveOccurred())
 
 			Expect(e.StartTime).To(Equal(n.StartTime))
@@ -266,7 +266,7 @@ var _ = Describe("Exemplar serialization", func() {
 			b, err := os.ReadFile("./testdata/exemplar.v1.bin")
 			Expect(err).ToNot(HaveOccurred())
 
-			var n exemplarsBatchEntry
+			var n exemplarEntry
 			Expect(n.Deserialize(dict.New(), b)).ToNot(HaveOccurred())
 
 			Expect(n.Tree.Samples()).To(Equal(uint64(81255)))
