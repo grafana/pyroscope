@@ -3,11 +3,11 @@ package firedb
 import (
 	"bytes"
 	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/require"
 
@@ -38,36 +38,71 @@ func TestReproduce(t *testing.T) {
 	require.NoError(t, pw.Write(p))
 }
 
-func TestCreate(t *testing.T) {
-	fName := "testdata/heap"
-	f, err := os.Open(fName)
-	require.NoError(t, err, "failed opening profile: ", fName)
+func parseProfile(t testing.TB, path string) *profilev1.Profile {
+
+	f, err := os.Open(path)
+	require.NoError(t, err, "failed opening profile: ", path)
 	r, err := gzip.NewReader(f)
 	require.NoError(t, err)
 	content, err := ioutil.ReadAll(r)
-	require.NoError(t, err, "failed reading file: ", fName)
-
-	sch := parquet.SchemaOf(&profilev1.Profile{})
-	t.Logf("%v", sch.Columns())
+	require.NoError(t, err, "failed reading file: ", path)
 
 	p := &profilev1.Profile{}
 	require.NoError(t, p.UnmarshalVT(content))
 
-	//require.Equal(t, sch, "")
+	return p
+}
+
+// This verifies that
+func TestRoundTrip(t *testing.T) {
+	var (
+		profilePaths = []string{
+			"testdata/heap",
+			"testdata/profile",
+		}
+		profiles = make([]*profilev1.Profile, len(profilePaths))
+	)
+	for pos := range profilePaths {
+		profiles[pos] = parseProfile(t, profilePaths[pos])
+	}
 
 	buffer := new(bytes.Buffer)
-	pw := parquet.NewWriter(buffer, sch)
 
-	//spew.Print(p.Sample[:5])
+	t.Run("ingest", func(t *testing.T) {
+		sch := parquet.SchemaOf(&profilev1.Profile{})
+		pw := parquet.NewWriter(buffer, sch)
 
-	p2 := profilev1.Profile{
-		StringTable: p.StringTable,
-		Sample:      p.Sample[0:1],
-	}
-	spew.Print(p2.Sample)
+		for pos := range profiles {
+			require.NoError(t, pw.Write(profiles[pos]), "error writing profile ", profilePaths[pos])
+		}
 
-	require.NoError(t, pw.Write(p2))
+		require.NoError(t, pw.Close())
+	})
 
-	//t.Logf("%v", pw.Schema().Columns())
+	t.Run("read-verify", func(t *testing.T) {
+		rows, err := parquet.Read[*profilev1.Profile](bytes.NewReader(buffer.Bytes()), int64(buffer.Len()))
+		require.Error(t, io.EOF, err)
+		require.Equal(t, len(profiles), len(rows))
+
+		for pos := range rows {
+			// ensure empty slice becomes nil slice, otherwise the equal fails
+			for _, s := range rows[pos].Sample {
+				if len(s.Label) == 0 {
+					s.Label = nil
+				}
+			}
+			require.Equal(t, profiles[pos].Sample, rows[pos].Sample)
+
+			// test other fields exported
+			require.Equal(t, profiles[pos].SampleType, rows[pos].SampleType)
+			require.Equal(t, profiles[pos].Mapping, rows[pos].Mapping)
+			require.Equal(t, profiles[pos].Location, rows[pos].Location)
+			require.Equal(t, profiles[pos].Function, rows[pos].Function)
+			require.Equal(t, profiles[pos].TimeNanos, rows[pos].TimeNanos)
+			require.Equal(t, profiles[pos].DurationNanos, rows[pos].DurationNanos)
+			require.Equal(t, profiles[pos].PeriodType, rows[pos].PeriodType)
+		}
+
+	})
 
 }

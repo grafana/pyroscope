@@ -6,7 +6,6 @@ require (
 	github.com/apache/arrow/go/v8 v8.0.0
 	github.com/bufbuild/connect-go v0.1.0
 	github.com/bufbuild/connect-grpchealth-go v0.1.0
-	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/drone/envsubst v1.0.3
 	github.com/go-kit/log v0.2.1
@@ -96,6 +95,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
