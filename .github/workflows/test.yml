@@ -14,10 +14,11 @@ jobs:
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Configure git for private modules
-      env:
-        TOKEN: ${{ secrets.GRAFANABOT_PAT }}
-      run: git config --global url."https://grafanabot:${TOKEN}@github.com".insteadOf "https://github.com"
+    - uses: webfactory/ssh-agent@v0.5.4
+      with:
+          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
+    - name: Enfore SSH for github.com
+      run: git config --global url.ssh://git@github.com/.insteadOf https://github.com/
     - name: Install Go
       uses: actions/setup-go@v2
       with:
@@ -51,10 +52,11 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Configure git for private modules
-      env:
-        TOKEN: ${{ secrets.GRAFANABOT_PAT }}
-      run: git config --global url."https://grafanabot:${TOKEN}@github.com".insteadOf "https://github.com"
+    - uses: webfactory/ssh-agent@v0.5.4
+      with:
+          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
+    - name: Enfore SSH for github.com
+      run: git config --global url.ssh://git@github.com/.insteadOf https://github.com/
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Run linter
