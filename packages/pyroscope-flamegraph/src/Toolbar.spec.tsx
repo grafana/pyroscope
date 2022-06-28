@@ -330,7 +330,7 @@ describe('ProfileHeader', () => {
           fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Maybe.just({ i: 999, j: 999, name: '' })}
+          selectedNode={Maybe.just({ i: 999, j: 999 })}
           onFocusOnSubtree={onFocusOnSubtree}
           highlightQuery=""
         />
@@ -339,7 +339,7 @@ describe('ProfileHeader', () => {
       render(component);
       screen.getByRole('button', { name: /Focus/ }).click();
 
-      expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999, '');
+      expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999);
     });
 
     it('shows short text', () => {

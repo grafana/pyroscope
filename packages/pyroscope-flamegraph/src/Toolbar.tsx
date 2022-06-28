@@ -78,8 +78,8 @@ export interface ProfileHeaderProps {
   /**
    * Refers to the node that has been selected in the flamegraph
    */
-  selectedNode: Maybe<{ i: number; j: number; name: string }>;
-  onFocusOnSubtree: (i: number, j: number, name: string) => void;
+  selectedNode: Maybe<{ i: number; j: number }>;
+  onFocusOnSubtree: (i: number, j: number) => void;
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
@@ -276,7 +276,7 @@ function FocusOnSubtree({
   const onClick = selectedNode.mapOr(
     () => {},
     (f) => {
-      return () => onFocusOnSubtree(f.i, f.j, f.name);
+      return () => onFocusOnSubtree(f.i, f.j);
     }
   );
 

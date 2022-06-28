@@ -8,7 +8,7 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, Profile, singleFF } from '@pyroscope/models';
+import { createFF, Flamebearer, Profile } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -63,7 +63,6 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
 interface Node {
   i: number;
   j: number;
-  name: string;
 }
 
 export interface FlamegraphRendererProps {
@@ -110,51 +109,6 @@ interface FlamegraphRendererState {
 
   palette: typeof DefaultPalette;
 }
-
-const resetZoomFocus = ({
-  flamegraphConfigs,
-  flamebearer,
-  reset,
-}: {
-  flamegraphConfigs: {
-    focusedNode: Maybe<Node>;
-    zoom: Maybe<Node>;
-  };
-  flamebearer: Flamebearer;
-  reset: () => void;
-}) => {
-  if (!flamebearer) return;
-
-  const { levels, names } = flamebearer;
-  const { zoom, focusedNode } = flamegraphConfigs;
-  const { zoomedI, zoomedJ, zoomedName, focusedI, focusedJ, focusedName } = {
-    zoomedI: zoom.isJust && zoom.value?.i,
-    zoomedJ: zoom.isJust && zoom.value?.j,
-    zoomedName: zoom.isJust && zoom.value.name,
-    focusedI: focusedNode.isJust && focusedNode.value.i,
-    focusedJ: focusedNode.isJust && focusedNode.value.j,
-    focusedName: focusedNode.isJust && focusedNode.value.name,
-  };
-
-  const newZoomedName =
-    typeof zoomedI === 'number' &&
-    typeof zoomedJ === 'number' &&
-    levels?.[zoomedI] &&
-    names?.[singleFF?.getBarName(levels?.[zoomedI], zoomedJ)];
-
-  const newFocusedName =
-    typeof focusedI === 'number' &&
-    typeof focusedJ === 'number' &&
-    levels?.[focusedI] &&
-    names?.[singleFF?.getBarName(levels?.[focusedI], focusedJ)];
-
-  if (
-    (focusedNode.isNothing && zoomedName !== newZoomedName) ||
-    newFocusedName !== focusedName
-  ) {
-    reset();
-  }
-};
 
 class FlameGraphRenderer extends React.Component<
   FlamegraphRendererProps,
@@ -209,6 +163,7 @@ class FlameGraphRenderer extends React.Component<
       const newConfigs = this.calcNewConfigs(prevFlame, currFlame);
 
       // Batch these updates to not do unnecessary work
+      // eslint-disable-next-line react/no-did-update-set-state
       this.setState({
         flamebearer: currFlame,
 
@@ -225,6 +180,46 @@ class FlameGraphRenderer extends React.Component<
       this.updateFlamegraphDirtiness();
     }
   }
+
+  // Calculate what should be the new configs
+  // It checks if the zoom/selectNode still points to the same node
+  // If not, it resets to the resetFlamegraphState
+  calcNewConfigs = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
+    const newConfigs = this.state.flamegraphConfigs;
+
+    // This is a simple heuristic based on the name
+    // It does not account for eg recursive calls
+    const isSameNode = (f: Flamebearer, f2: Flamebearer, s: Maybe<Node>) => {
+      // TODO: don't use createFF directly
+      const getBarName = (f: Flamebearer, i: number, j: number) => {
+        return f.names[createFF(f.format).getBarName(f.levels[i], j)];
+      };
+
+      // No node is technically the same node
+      if (s.isNothing) {
+        return true;
+      }
+
+      return (
+        getBarName(f, s.value.i, s.value.j) ===
+        getBarName(f2, s.value.i, s.value.j)
+      );
+    };
+
+    // Reset zoom
+    const currZoom = this.state.flamegraphConfigs.zoom;
+    if (!isSameNode(prevFlame, currFlame, currZoom)) {
+      newConfigs.zoom = this.resetFlamegraphState.zoom;
+    }
+
+    // Reset focused node
+    const currFocusedNode = this.state.flamegraphConfigs.focusedNode;
+    if (!isSameNode(prevFlame, currFlame, currFocusedNode)) {
+      newConfigs.focusedNode = this.resetFlamegraphState.focusedNode;
+    }
+
+    return newConfigs;
+  };
 
   handleSearchChange = (e: string) => {
     this.setState({
@@ -260,7 +255,7 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  onFocusOnNode = (i: number, j: number, name: string) => {
+  onFocusOnNode = (i: number, j: number) => {
     if (i === 0 && j === 0) {
       this.onReset();
       return;
@@ -284,7 +279,7 @@ class FlameGraphRenderer extends React.Component<
       ...this.state,
       flamegraphConfigs: {
         ...flamegraphConfigs,
-        focusedNode: Maybe.just({ i, j, name }),
+        focusedNode: Maybe.just({ i, j }),
       },
     });
   };
@@ -350,50 +345,6 @@ class FlameGraphRenderer extends React.Component<
   shouldShowToolbar() {
     // default to true
     return this.props.showToolbar !== undefined ? this.props.showToolbar : true;
-  }
-
-  // Calculate what should be the new configs
-  calcNewConfigs = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
-    let newConfigs = this.state.flamegraphConfigs;
-
-    // This is a simple heuristic based on the name
-    // It does not account for eg recursive calls
-    const isSameNode = (f: Flamebearer, f2: Flamebearer, s: Maybe<Node>) => {
-      // TODO: don't use createFF directly
-      const getBarName = (f: Flamebearer, i: number, j: number) => {
-        return f.names[createFF(f.format).getBarName(f.levels[i], j)];
-      };
-
-      // No node is technically the same node
-      if (s.isNothing) {
-        return true;
-      }
-
-      return (
-        getBarName(f, s.value.i, s.value.j) ==
-        getBarName(f2, s.value.i, s.value.j)
-      );
-    };
-
-    // Reset zoom
-    const currZoom = this.state.flamegraphConfigs.zoom;
-    if (!isSameNode(prevFlame, currFlame, currZoom)) {
-      newConfigs.zoom = this.resetFlamegraphState.zoom;
-    }
-
-    // Reset focused node
-    const currFocusedNode = this.state.flamegraphConfigs.focusedNode;
-    if (!isSameNode(prevFlame, currFlame, currFocusedNode)) {
-      newConfigs.focusedNode = this.resetFlamegraphState.focusedNode;
-    }
-
-    return newConfigs;
-  };
-
-  onFlamebearerChange() {
-    const flamebearer = mountFlamebearer(this.props);
-
-    this.setState({ flamebearer });
   }
 
   render = () => {
@@ -549,5 +500,4 @@ function decidePanesOrder(
   }
 }
 
-// Given a previous and new flamebearer
 export default FlameGraphRenderer;

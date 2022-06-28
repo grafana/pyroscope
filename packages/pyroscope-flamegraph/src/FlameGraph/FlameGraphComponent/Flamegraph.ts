@@ -24,9 +24,7 @@ export default class Flamegraph {
      * What node to be 'focused'
      * ie what node to start the tree
      */
-    private focusedNode: Maybe<
-      DeepReadonly<{ i: number; j: number; name: string }>
-    >,
+    private focusedNode: Maybe<DeepReadonly<{ i: number; j: number }>>,
     /**
      * What level has been "selected"
      * All nodes above will be dimmed out
@@ -40,7 +38,7 @@ export default class Flamegraph {
      * otherwise it will be greyish.
      */
     private readonly highlightQuery: string,
-    private zoom: Maybe<DeepReadonly<{ i: number; j: number; name?: string }>>,
+    private zoom: Maybe<DeepReadonly<{ i: number; j: number }>>,
 
     private palette: FlamegraphPalette
   ) {
