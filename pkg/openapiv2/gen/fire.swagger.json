@@ -61,6 +61,18 @@
     }
   },
   "definitions": {
+    "ingesterv1Location": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -136,6 +148,56 @@
         }
       }
     },
+    "v1Profile": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/v1ProfileType",
+          "description": "The name and type of the profile."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "Timestamp is when that profile was created"
+        },
+        "stacktraces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1StacktraceSample"
+          },
+          "title": "The list of stracktraces for the profile with their respective value"
+        }
+      },
+      "description": "Profile represents a point in time profile."
+    },
+    "v1ProfileType": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "sampleType": {
+          "type": "string"
+        },
+        "sampleUnit": {
+          "type": "string"
+        },
+        "periodType": {
+          "type": "string"
+        },
+        "periodUnit": {
+          "type": "string"
+        }
+      },
+      "title": "ProfileType is the name and type of profile"
+    },
     "v1ProfileTypesResponse": {
       "type": "object",
       "properties": {
@@ -181,6 +243,30 @@
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
     },
+    "v1SelectProfilesResponse": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Profile"
+          }
+        }
+      }
+    },
+    "v1StacktraceSample": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "byte"
+        },
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "v1State": {
       "type": "string",
       "enum": [
@@ -189,6 +275,23 @@
         "STATE_DROPPED"
       ],
       "default": "STATE_UNSPECIFIED"
+    },
+    "v1SymbolizeStacktraceResponse": {
+      "type": "object",
+      "properties": {
+        "functionNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ingesterv1Location"
+          }
+        }
+      }
     },
     "v1Target": {
       "type": "object",
