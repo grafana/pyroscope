@@ -7,11 +7,11 @@ managed:
       - buf.build/googleapis/googleapis
 
 plugins:
-  - remote: buf.build/protocolbuffers/plugins/go:v1.28.0-1
+  - name: go
     out: pkg/gen/
     opt: paths=source_relative
 
-  - remote: buf.build/cerbos/plugins/vtproto:v0.2.0-1
+  - name: go-vtproto
     out: pkg/gen/
     opt:
       - paths=source_relative,features=marshal+unmarshal+size+pool+grpc
