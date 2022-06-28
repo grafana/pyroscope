@@ -8,7 +8,7 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { Flamebearer, Profile, singleFF } from '@pyroscope/models';
+import { createFF, Flamebearer, Profile, singleFF } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -160,10 +160,14 @@ class FlameGraphRenderer extends React.Component<
   FlamegraphRendererProps,
   FlamegraphRendererState
 > {
-  initialFlamegraphState = {
+  resetFlamegraphState = {
     focusedNode: Maybe.nothing<Node>(),
     zoom: Maybe.nothing<Node>(),
   };
+
+  // TODO: At some point the initial state may be set via the user
+  // Eg when sharing a specific node
+  initialFlamegraphState = this.resetFlamegraphState;
 
   constructor(props: FlamegraphRendererProps) {
     super(props);
@@ -196,22 +200,24 @@ class FlameGraphRenderer extends React.Component<
     prevProps: FlamegraphRendererProps,
     prevState: FlamegraphRendererState
   ) {
-    resetZoomFocus({
-      flamegraphConfigs: this.state.flamegraphConfigs,
-      flamebearer: (this.props.profile?.flamebearer ||
-        this.props.flamebearer) as Flamebearer,
-      reset: this.onReset,
-    });
+    // TODO: this is a slow operation
+    const prevFlame = mountFlamebearer(prevProps);
+    const currFlame = mountFlamebearer(this.props);
 
-    if (prevProps.profile !== this.props.profile) {
-      this.updateFlamebearerData();
+    // This is a poor heuristic, but it should work most of the times
+    if (prevFlame.numTicks !== currFlame.numTicks) {
+      const newConfigs = this.calcNewConfigs(prevFlame, currFlame);
+
+      // Batch these updates to not do unnecessary work
+      this.setState({
+        flamebearer: currFlame,
+
+        flamegraphConfigs: {
+          ...this.state.flamegraphConfigs,
+          ...newConfigs,
+        },
+      });
       return;
-    }
-
-    const previousFlamebearer = prevProps.flamebearer;
-    const actualFlamebearer = this.props.flamebearer;
-    if (previousFlamebearer !== actualFlamebearer) {
-      this.updateFlamebearerData();
     }
 
     // flamegraph configs changed
@@ -346,8 +352,47 @@ class FlameGraphRenderer extends React.Component<
     return this.props.showToolbar !== undefined ? this.props.showToolbar : true;
   }
 
-  updateFlamebearerData() {
+  // Calculate what should be the new configs
+  calcNewConfigs = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
+    let newConfigs = this.state.flamegraphConfigs;
+
+    // This is a simple heuristic based on the name
+    // It does not account for eg recursive calls
+    const isSameNode = (f: Flamebearer, f2: Flamebearer, s: Maybe<Node>) => {
+      // TODO: don't use createFF directly
+      const getBarName = (f: Flamebearer, i: number, j: number) => {
+        return f.names[createFF(f.format).getBarName(f.levels[i], j)];
+      };
+
+      // No node is technically the same node
+      if (s.isNothing) {
+        return true;
+      }
+
+      return (
+        getBarName(f, s.value.i, s.value.j) ==
+        getBarName(f2, s.value.i, s.value.j)
+      );
+    };
+
+    // Reset zoom
+    const currZoom = this.state.flamegraphConfigs.zoom;
+    if (!isSameNode(prevFlame, currFlame, currZoom)) {
+      newConfigs.zoom = this.resetFlamegraphState.zoom;
+    }
+
+    // Reset focused node
+    const currFocusedNode = this.state.flamegraphConfigs.focusedNode;
+    if (!isSameNode(prevFlame, currFlame, currFocusedNode)) {
+      newConfigs.focusedNode = this.resetFlamegraphState.focusedNode;
+    }
+
+    return newConfigs;
+  };
+
+  onFlamebearerChange() {
     const flamebearer = mountFlamebearer(this.props);
+
     this.setState({ flamebearer });
   }
 
@@ -504,4 +549,5 @@ function decidePanesOrder(
   }
 }
 
+// Given a previous and new flamebearer
 export default FlameGraphRenderer;
