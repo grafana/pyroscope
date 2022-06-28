@@ -78,10 +78,13 @@ func TestRoundTrip(t *testing.T) {
 
 		require.NoError(t, pw.Close())
 	})
+	t.Logf("size of parquet file %d bytes", buffer.Len())
 
 	t.Run("read-verify", func(t *testing.T) {
 		rows, err := parquet.Read[*profilev1.Profile](bytes.NewReader(buffer.Bytes()), int64(buffer.Len()))
-		require.Error(t, io.EOF, err)
+		if err != io.EOF {
+			require.NoError(t, err)
+		}
 		require.Equal(t, len(profiles), len(rows))
 
 		for pos := range rows {
@@ -104,5 +107,37 @@ func TestRoundTrip(t *testing.T) {
 		}
 
 	})
+
+}
+
+func BenchmarkWriteProfiles(t *testing.B) {
+	var (
+		profilePaths = []string{
+			"testdata/heap",
+			"testdata/profile",
+		}
+		profiles = make([]*profilev1.Profile, len(profilePaths))
+	)
+
+	buffer := new(bytes.Buffer)
+	sch := parquet.SchemaOf(&profilev1.Profile{})
+	pw := parquet.NewWriter(buffer, sch)
+
+	require.NoError(t, pw.Close())
+	for pos := range profilePaths {
+		profiles[pos] = parseProfile(t, profilePaths[pos])
+	}
+
+	t.ReportAllocs()
+
+	for n := 0; n < t.N; n++ {
+		for pos := range profiles {
+			require.NoError(t, pw.Write(profiles[pos]), "error writing profile ", profilePaths[pos])
+		}
+	}
+
+	require.NoError(t, pw.Close())
+
+	t.Logf("% 6d profiles % 12d bytes %12f bytes/per-profile", t.N, buffer.Len(), float64(buffer.Len())/float64(t.N))
 
 }
