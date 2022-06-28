@@ -51,6 +51,10 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-version }}
+    - name: Configure git for private modules
+      env:
+        TOKEN: ${{ secrets.GRAFANABOT_PAT }}
+      run: git config --global url."https://grafanabot:${TOKEN}@github.com".insteadOf "https://github.com"
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Run linter
@@ -81,6 +85,9 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
