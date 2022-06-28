@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/status"
-	"github.com/polarsignals/arcticdb/query/logicalplan"
+	"github.com/polarsignals/frostdb/query/logicalplan"
 	"github.com/prometheus/prometheus/model/labels"
 	"google.golang.org/grpc/codes"
 )

@@ -10,9 +10,10 @@ import (
 	"github.com/apache/arrow/go/v8/arrow/array"
 	"github.com/bufbuild/connect-go"
 	"github.com/gogo/status"
-	"github.com/parca-dev/parca/pkg/metastore"
+	metastorev1alpha1 "github.com/parca-dev/parca/gen/proto/go/parca/metastore/v1alpha1"
 	"github.com/parca-dev/parca/pkg/parcacol"
-	"github.com/polarsignals/arcticdb/query/logicalplan"
+	"github.com/parca-dev/parca/pkg/profile"
+	"github.com/polarsignals/frostdb/query/logicalplan"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 
@@ -21,6 +22,7 @@ import (
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/profilestore"
+	"github.com/grafana/fire/pkg/util"
 )
 
 // LabelValues returns the possible label values for a given label name.
@@ -132,36 +134,52 @@ func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 }
 
 func (i *Ingester) SymbolizeStacktraces(ctx context.Context, req *connect.Request[ingestv1.SymbolizeStacktraceRequest]) (*connect.Response[ingestv1.SymbolizeStacktraceResponse], error) {
-	stacktraceMap, err := i.profileStore.MetaStore().GetStacktraceByIDs(ctx, req.Msg.Ids...)
+	// return stacktraceLocations, nil
+	stracktracesIDs := make([]string, 0, len(req.Msg.Ids))
+	for _, id := range req.Msg.Ids {
+		id := id
+		stracktracesIDs = append(stracktracesIDs, util.UnsafeGetString(id))
+	}
+	sres, err := i.profileStore.Metastore().Stacktraces(ctx, &metastorev1alpha1.StacktracesRequest{StacktraceIds: stracktracesIDs})
 	if err != nil {
 		return nil, err
 	}
-	locationUUIDSeen := map[string]struct{}{}
-	locationUUIDs := [][]byte{}
-	for _, s := range stacktraceMap {
-		for _, id := range s.GetLocationIds() {
-			if _, seen := locationUUIDSeen[string(id)]; !seen {
-				locationUUIDSeen[string(id)] = struct{}{}
-				locationUUIDs = append(locationUUIDs, id)
+	locationNum := 0
+	for _, stacktrace := range sres.Stacktraces {
+		locationNum += len(stacktrace.LocationIds)
+	}
+
+	locationIndex := make(map[string]int, locationNum)
+	locationIDs := make([]string, 0, locationNum)
+	for _, s := range sres.Stacktraces {
+		for _, id := range s.LocationIds {
+			if _, seen := locationIndex[id]; !seen {
+				locationIDs = append(locationIDs, id)
+				locationIndex[id] = len(locationIDs) - 1
 			}
 		}
 	}
 
-	locationMaps, err := metastore.GetLocationsByIDs(context.Background(), i.profileStore.MetaStore(), locationUUIDs...)
+	lres, err := i.profileStore.Metastore().Locations(ctx, &metastorev1alpha1.LocationsRequest{LocationIds: locationIDs})
 	if err != nil {
 		return nil, err
 	}
+
+	locations, err := getLocationsFromSerializedLocations(ctx, i.profileStore.Metastore(), locationIDs, lres.Locations)
+	if err != nil {
+		return nil, err
+	}
+
 	uniqueFn := map[string]int{}
 	var fns []string
-	locations := make([]*ingestv1.Location, len(req.Msg.Ids))
+	locationResults := make([]*ingestv1.Location, len(req.Msg.Ids))
 
-	for i, s := range req.Msg.Ids {
-		locIds := stacktraceMap[string(s)].LocationIds
+	for i, stacktrace := range sres.Stacktraces {
 		locs := &ingestv1.Location{
-			Ids: make([]int32, len(locIds)),
+			Ids: make([]int32, len(stacktrace.LocationIds)),
 		}
-		for j, l := range locIds {
-			fn := locationMaps[string(l)].Lines[0].Function.Name
+		for j, id := range stacktrace.LocationIds {
+			fn := locations[locationIndex[id]].Lines[0].Function.Name
 			id, seen := uniqueFn[fn]
 			if !seen {
 				id = len(fns)
@@ -170,13 +188,99 @@ func (i *Ingester) SymbolizeStacktraces(ctx context.Context, req *connect.Reques
 			}
 			locs.Ids[j] = int32(id)
 		}
-		locations[i] = locs
+		locationResults[i] = locs
 	}
 
 	return connect.NewResponse(&ingesterv1.SymbolizeStacktraceResponse{
-		Locations:     locations,
+		Locations:     locationResults,
 		FunctionNames: fns,
 	}), nil
+}
+
+func getLocationsFromSerializedLocations(
+	ctx context.Context,
+	s metastorev1alpha1.MetastoreServiceClient,
+	locationIds []string,
+	locations []*metastorev1alpha1.Location,
+) (
+	[]*profile.Location,
+	error,
+) {
+	mappingIndex := map[string]int{}
+	mappingIDs := []string{}
+	for _, location := range locations {
+		if location.MappingId == "" {
+			continue
+		}
+
+		if _, found := mappingIndex[location.MappingId]; !found {
+			mappingIDs = append(mappingIDs, location.MappingId)
+			mappingIndex[location.MappingId] = len(mappingIDs) - 1
+		}
+	}
+
+	var mappings []*metastorev1alpha1.Mapping
+	if len(mappingIDs) > 0 {
+		mres, err := s.Mappings(ctx, &metastorev1alpha1.MappingsRequest{
+			MappingIds: mappingIDs,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("get mappings by IDs: %w", err)
+		}
+		mappings = mres.Mappings
+	}
+
+	lres, err := s.LocationLines(ctx, &metastorev1alpha1.LocationLinesRequest{
+		LocationIds: locationIds,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get lines by location IDs: %w", err)
+	}
+
+	functionIndex := map[string]int{}
+	functionIDs := []string{}
+	for _, lines := range lres.LocationLines {
+		for _, line := range lines.Entries {
+			if _, found := functionIndex[line.FunctionId]; !found {
+				functionIDs = append(functionIDs, line.FunctionId)
+				functionIndex[line.FunctionId] = len(functionIDs) - 1
+			}
+		}
+	}
+
+	fres, err := s.Functions(ctx, &metastorev1alpha1.FunctionsRequest{
+		FunctionIds: functionIDs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get functions by ids: %w", err)
+	}
+
+	res := make([]*profile.Location, 0, len(locations))
+	for i, location := range locations {
+		var mapping *metastorev1alpha1.Mapping
+		if location.MappingId != "" {
+			mapping = mappings[mappingIndex[location.MappingId]]
+		}
+
+		lines := lres.LocationLines[i].Entries
+		symbolizedLines := make([]profile.LocationLine, 0, len(lines))
+		for _, line := range lines {
+			symbolizedLines = append(symbolizedLines, profile.LocationLine{
+				Function: fres.Functions[functionIndex[line.FunctionId]],
+				Line:     line.Line,
+			})
+		}
+
+		res = append(res, &profile.Location{
+			ID:       location.Id,
+			Address:  location.Address,
+			IsFolded: location.IsFolded,
+			Mapping:  mapping,
+			Lines:    symbolizedLines,
+		})
+	}
+
+	return res, nil
 }
 
 func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {

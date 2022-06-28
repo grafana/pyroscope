@@ -3,11 +3,12 @@ FROM golang:1.18.2 as build
 WORKDIR /src/fire
 
 COPY go.mod go.sum /src/fire/
-RUN go mod download
 
 COPY . /src/fire
 
-RUN make clean build
+RUN git config --global url.ssh://git@github.com/.insteadOf https://github.com/
+RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+RUN --mount=type=ssh make clean go/mod build
 
 FROM alpine:3.16.0
 
