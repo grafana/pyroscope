@@ -47,7 +47,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-connect-go ## Regene
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf
-	buf lint || true # TODO: Fix linting problems and remove the always true
+	$(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
 .PHONY: go/test
 go/test:
