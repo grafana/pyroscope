@@ -11,7 +11,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/polarsignals/arcticdb/query"
+	"github.com/polarsignals/frostdb/query"
 	"github.com/prometheus/client_golang/prometheus"
 
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
