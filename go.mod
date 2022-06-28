@@ -261,6 +261,7 @@ require (
 )
 
 replace (
+	github.com/segmentio/parquet-go => github.com/simonswine/parquet-go v0.0.0-20220628125309-a8439328c44c
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )

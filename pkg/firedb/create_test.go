@@ -14,6 +14,30 @@ import (
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 )
 
+type pointerSlice struct {
+	Values []*value
+}
+
+type value struct {
+	World string
+}
+
+func TestReproduce(t *testing.T) {
+	p := &pointerSlice{
+		Values: []*value{
+			{World: "Helloe"},
+		},
+	}
+
+	sch := parquet.SchemaOf(p)
+	t.Logf("%v", sch.Columns())
+
+	buffer := new(bytes.Buffer)
+	pw := parquet.NewWriter(buffer, sch)
+
+	require.NoError(t, pw.Write(p))
+}
+
 func TestCreate(t *testing.T) {
 	fName := "testdata/heap"
 	f, err := os.Open(fName)
