@@ -93,7 +93,7 @@ check/go/mod: go/mod
 
 
 define docker_buildx
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
+	docker buildx build $(1) --ssh default --platform $(IMAGE_PLATFORM) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
 endef
 
 define deploy
