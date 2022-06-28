@@ -24,8 +24,8 @@ interface FlamegraphProps {
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
 
-  onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
-  onFocusOnNode: (i: number, j: number) => void;
+  onZoom: (bar: Maybe<{ i: number; j: number; name: string }>) => void;
+  onFocusOnNode: (i: number, j: number, name: string) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -150,7 +150,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
         const onClick = bar.mapOrElse(
           () => () => {},
-          (f) => onFocusOnNode.bind(null, f.i, f.j)
+          (f) => onFocusOnNode.bind(null, f.i, f.j, f.name)
         );
 
         return (

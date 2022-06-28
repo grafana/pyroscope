@@ -8,7 +8,7 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { Flamebearer, Profile } from '@pyroscope/models';
+import { Flamebearer, Profile, singleFF } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -63,6 +63,7 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
 interface Node {
   i: number;
   j: number;
+  name: string;
 }
 
 export interface FlamegraphRendererProps {
@@ -110,6 +111,51 @@ interface FlamegraphRendererState {
   palette: typeof DefaultPalette;
 }
 
+const resetZoomFocus = ({
+  flamegraphConfigs,
+  flamebearer,
+  reset,
+}: {
+  flamegraphConfigs: {
+    focusedNode: Maybe<Node>;
+    zoom: Maybe<Node>;
+  };
+  flamebearer: Flamebearer;
+  reset: () => void;
+}) => {
+  if (!flamebearer) return;
+
+  const { levels, names } = flamebearer;
+  const { zoom, focusedNode } = flamegraphConfigs;
+  const { zoomedI, zoomedJ, zoomedName, focusedI, focusedJ, focusedName } = {
+    zoomedI: zoom.isJust && zoom.value?.i,
+    zoomedJ: zoom.isJust && zoom.value?.j,
+    zoomedName: zoom.isJust && zoom.value.name,
+    focusedI: focusedNode.isJust && focusedNode.value.i,
+    focusedJ: focusedNode.isJust && focusedNode.value.j,
+    focusedName: focusedNode.isJust && focusedNode.value.name,
+  };
+
+  const newZoomedName =
+    typeof zoomedI === 'number' &&
+    typeof zoomedJ === 'number' &&
+    levels?.[zoomedI] &&
+    names?.[singleFF?.getBarName(levels?.[zoomedI], zoomedJ)];
+
+  const newFocusedName =
+    typeof focusedI === 'number' &&
+    typeof focusedJ === 'number' &&
+    levels?.[focusedI] &&
+    names?.[singleFF?.getBarName(levels?.[focusedI], focusedJ)];
+
+  if (
+    (focusedNode.isNothing && zoomedName !== newZoomedName) ||
+    newFocusedName !== focusedName
+  ) {
+    reset();
+  }
+};
+
 class FlameGraphRenderer extends React.Component<
   FlamegraphRendererProps,
   FlamegraphRendererState
@@ -150,6 +196,13 @@ class FlameGraphRenderer extends React.Component<
     prevProps: FlamegraphRendererProps,
     prevState: FlamegraphRendererState
   ) {
+    resetZoomFocus({
+      flamegraphConfigs: this.state.flamegraphConfigs,
+      flamebearer: (this.props.profile?.flamebearer ||
+        this.props.flamebearer) as Flamebearer,
+      reset: this.onReset,
+    });
+
     if (prevProps.profile !== this.props.profile) {
       this.updateFlamebearerData();
       return;
@@ -201,7 +254,7 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  onFocusOnNode = (i: number, j: number) => {
+  onFocusOnNode = (i: number, j: number, name: string) => {
     if (i === 0 && j === 0) {
       this.onReset();
       return;
@@ -225,7 +278,7 @@ class FlameGraphRenderer extends React.Component<
       ...this.state,
       flamegraphConfigs: {
         ...flamegraphConfigs,
-        focusedNode: Maybe.just({ i, j }),
+        focusedNode: Maybe.just({ i, j, name }),
       },
     });
   };
@@ -394,9 +447,7 @@ class FlameGraphRenderer extends React.Component<
               isFlamegraphDirty={this.state.isFlamegraphDirty}
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.highlightQuery}
-              onFocusOnSubtree={(i, j) => {
-                this.onFocusOnNode(i, j);
-              }}
+              onFocusOnSubtree={this.onFocusOnNode}
             />
           )}
           {this.props.children}
