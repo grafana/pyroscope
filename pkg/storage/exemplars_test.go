@@ -21,12 +21,82 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-var _ = Describe("MergeProfiles", func() {
+var _ = Describe("Exemplar query", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			Expect(err).ToNot(HaveOccurred())
+		})
+		Context("when profiles with ID ingested", func() {
+			It("queries profiling data correctly", func() {
+				defer s.Close()
+
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+
+				Expect(s.Put(context.TODO(), &PutInput{
+					StartTime: st,
+					EndTime:   et,
+					Val:       tree.Clone(big.NewRat(1, 1)),
+					Key: segment.NewKey(map[string]string{
+						"__name__":                 "app.cpu",
+						"span_name":                "SomeSpanName",
+						segment.ProfileIDLabelName: "my-profile-id",
+					}),
+				})).ToNot(HaveOccurred())
+
+				Expect(s.Put(context.TODO(), &PutInput{
+					StartTime: st,
+					EndTime:   et,
+					Key: segment.NewKey(map[string]string{
+						"__name__":  "app.cpu",
+						"span_name": "SomeSpanName",
+					}),
+					Val:             tree.Clone(big.NewRat(1, 1)),
+					AggregationType: metadata.AverageAggregationType,
+					Units:           metadata.BytesUnits,
+					SpyName:         "debugspy",
+					SampleRate:      42,
+				})).ToNot(HaveOccurred())
+
+				s.exemplars.Sync()
+				o, err := s.Get(context.Background(), &GetInput{
+					Query: &flameql.Query{
+						AppName: "app.cpu",
+						Matchers: []*flameql.TagMatcher{
+							{
+								Key:   segment.ProfileIDLabelName,
+								Value: "my-profile-id",
+								Op:    flameql.OpEqual,
+							},
+						},
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o.Tree).ToNot(BeNil())
+				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
+
+				Expect(o.AggregationType).To(Equal(metadata.AverageAggregationType))
+				Expect(o.Units).To(Equal(metadata.BytesUnits))
+				Expect(o.SpyName).To(Equal("debugspy"))
+				Expect(o.SampleRate).To(Equal(uint32(42)))
+			})
+		})
+	})
+})
+
+var _ = Describe("Exemplar merge", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
@@ -95,7 +165,7 @@ var _ = Describe("MergeProfiles", func() {
 	})
 })
 
-var _ = Describe("Profiles retention policy", func() {
+var _ = Describe("Exemplars retention policy", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
@@ -159,7 +229,7 @@ func randomBytesHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
-var _ = Describe("ConcurrentExemplarsInsert", func() {
+var _ = Describe("Concurrent exemplars insertion", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
