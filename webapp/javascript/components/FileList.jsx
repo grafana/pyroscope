@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
@@ -9,9 +9,10 @@ import clsx from 'clsx';
 import styles from './FileList.module.scss';
 import CheckIcon from './CheckIcon';
 
-const dateModifiedColName = 'dateModified';
+const dateModifiedColName = 'updatedAt';
+const fileNameColName = 'name';
 const tableFormat = [
-  { name: 'filename', label: 'Filename' },
+  { name: fileNameColName, label: 'Filename' },
   { name: dateModifiedColName, label: 'Date Modified' },
 ];
 
@@ -20,13 +21,13 @@ function FileList(props) {
     props;
 
   const [sortBy, updateSortBy] = useState(dateModifiedColName);
-  const [sortByDirection, setSortByDirection] = useState('asc');
+  const [sortByDirection, setSortByDirection] = useState('desc');
 
   const isRowSelected = (id) => {
     return profile === id;
   };
 
-  const updateSort = (newSortBy) => {
+  const updateSortParams = (newSortBy) => {
     let dir = sortByDirection;
     if (sortBy === newSortBy) {
       dir = dir === 'asc' ? 'desc' : 'asc';
@@ -37,6 +38,23 @@ function FileList(props) {
     updateSortBy(newSortBy);
     setSortByDirection(dir);
   };
+
+  const sortedProfilesIds = useMemo(() => {
+    const m = sortByDirection === 'asc' ? 1 : -1;
+
+    let sorted;
+    const filesInfo = Object.values(profiles);
+
+    if (sortBy === fileNameColName) {
+      sorted = filesInfo.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
+    } else {
+      sorted = filesInfo.sort(
+        (a, b) => m * (new Date(a[sortBy]) - new Date(b[sortBy]))
+      );
+    }
+
+    return sorted.reduce((acc, { id }) => [...acc, id], []);
+  }, [profiles, sortBy, sortByDirection]);
 
   return (
     <>
@@ -54,7 +72,7 @@ function FileList(props) {
                   <th
                     key={name}
                     className={styles.sortable}
-                    onClick={() => updateSort(name)}
+                    onClick={() => updateSortParams(name)}
                   >
                     {label}
                     <span
@@ -69,7 +87,7 @@ function FileList(props) {
             </thead>
             <tbody>
               {profiles &&
-                Object.keys(profiles).map((id) => (
+                sortedProfilesIds.map((id) => (
                   <tr
                     key={id}
                     onClick={() => setProfile(id)}
