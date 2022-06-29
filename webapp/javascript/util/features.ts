@@ -8,7 +8,7 @@ interface Features {
   githubEnabled?: boolean;
   internalAuthEnabled?: boolean;
   signupEnabled?: boolean;
-  exportToFlamegraphDotComEnabled?: boolean;
+  exportToFlamegraphDotComEnabled: boolean;
 }
 
 function hasFeatures(
