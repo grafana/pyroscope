@@ -31,7 +31,7 @@ export const DefaultPalette: FlamegraphPalette = {
 
     Color.rgb(183, 219, 171),
     Color.rgb(244, 213, 152),
-    Color.rgb(10,   63,  77),
+    Color.rgb(78,  146, 249),
     Color.rgb(249, 186, 143),
     Color.rgb(242, 145, 145),
     Color.rgb(130, 181, 216),
