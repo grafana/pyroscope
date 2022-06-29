@@ -19,6 +19,9 @@ var hosts = []string{
 	"us-east",
 	"eu-north",
 	"ap-south",
+	"us-east-java",
+	"eu-north-java",
+	"ap-south-java",
 }
 
 var vehicles = []string{
@@ -70,7 +73,7 @@ func orderVehicle(ctx context.Context) error {
 	}
 
 	host := hosts[rand.Intn(len(hosts))]
-	vehicle := vehicles[rand.Intn(len(hosts))]
+	vehicle := vehicles[rand.Intn(len(vehicles))]
 	span.SetAttributes(attribute.String("vehicle", vehicle))
 	url := fmt.Sprintf("http://%s:5000/%s", host, vehicle)
 	fmt.Println("requesting", url)
