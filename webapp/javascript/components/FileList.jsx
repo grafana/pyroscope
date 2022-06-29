@@ -42,7 +42,7 @@ function FileList(props) {
   const sortedProfilesIds = useMemo(() => {
     const m = sortByDirection === 'asc' ? 1 : -1;
 
-    let sorted;
+    let sorted = [];
 
     if (profiles) {
       const filesInfo = Object.values(profiles);
@@ -59,11 +59,11 @@ function FileList(props) {
           );
           break;
         default:
-          sorted = [];
+          sorted = filesInfo;
       }
     }
 
-    return sorted && sorted.reduce((acc, { id }) => [...acc, id], []);
+    return sorted.reduce((acc, { id }) => [...acc, id], []);
   }, [profiles, sortBy, sortByDirection]);
 
   return (
