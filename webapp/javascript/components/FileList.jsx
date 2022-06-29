@@ -45,12 +45,19 @@ function FileList(props) {
     let sorted;
     const filesInfo = Object.values(profiles);
 
-    if (sortBy === fileNameColName) {
-      sorted = filesInfo.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
-    } else {
-      sorted = filesInfo.sort(
-        (a, b) => m * (new Date(a[sortBy]) - new Date(b[sortBy]))
-      );
+    switch (sortBy) {
+      case fileNameColName:
+        sorted = filesInfo.sort(
+          (a, b) => m * a[sortBy].localeCompare(b[sortBy])
+        );
+        break;
+      case dateModifiedColName:
+        sorted = filesInfo.sort(
+          (a, b) => m * (new Date(a[sortBy]) - new Date(b[sortBy]))
+        );
+        break;
+      default:
+        sorted = [];
     }
 
     return sorted.reduce((acc, { id }) => [...acc, id], []);
