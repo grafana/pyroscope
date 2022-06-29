@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.12.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.8...@pyroscope/webapp@1.12.0) (2022-06-29)
+
+
+### Features
+
+* add adhoc sort by date ([#1187](https://github.com/pyroscope-io/pyroscope/issues/1187)) ([206d2c6](https://github.com/pyroscope-io/pyroscope/commit/206d2c6a6e35d30d85f35a0103b8fb0d71b8c0f5))
+
+
+
+
+
 ## [1.11.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.7...@pyroscope/webapp@1.11.8) (2022-06-29)
 
 **Note:** Version bump only for package @pyroscope/webapp
