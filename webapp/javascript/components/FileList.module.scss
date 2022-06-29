@@ -37,7 +37,6 @@ $tdHeight: 25px;
     min-width: 400px;
     max-width: 400px;
 
-    // TODO: same ui as ProfilerTable, maybe we should refactor into a table component ?
     &.sortable {
       cursor: pointer;
       user-select: none;
