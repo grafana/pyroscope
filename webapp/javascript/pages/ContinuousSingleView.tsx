@@ -14,6 +14,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -63,7 +64,7 @@ function ContinuousSingleView() {
                 exportJSON
                 exportPprof
                 exportHTML
-                exportFlamegraphDotCom
+                exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                 exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
               />
             }

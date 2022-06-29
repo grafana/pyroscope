@@ -25,6 +25,7 @@ import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -126,7 +127,7 @@ function ComparisonApp() {
                     exportJSON
                     exportHTML
                     exportPprof
-                    exportFlamegraphDotCom
+                    exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                     exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
                   />
                 )
@@ -174,7 +175,7 @@ function ComparisonApp() {
                     exportJSON
                     exportHTML
                     exportPprof
-                    exportFlamegraphDotCom
+                    exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                     exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
                   />
                 )
