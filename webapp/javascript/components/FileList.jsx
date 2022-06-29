@@ -1,20 +1,67 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import Spinner from 'react-svg-spinner';
 
 import classNames from 'classnames';
+import clsx from 'clsx';
 import styles from './FileList.module.scss';
 import CheckIcon from './CheckIcon';
+
+const dateModifiedColName = 'updatedAt';
+const fileNameColName = 'name';
+const tableFormat = [
+  { name: fileNameColName, label: 'Filename' },
+  { name: dateModifiedColName, label: 'Date Modified' },
+];
 
 function FileList(props) {
   const { areProfilesLoading, profiles, profile, setProfile, className } =
     props;
 
+  const [sortBy, updateSortBy] = useState(dateModifiedColName);
+  const [sortByDirection, setSortByDirection] = useState('desc');
+
   const isRowSelected = (id) => {
     return profile === id;
   };
+
+  const updateSortParams = (newSortBy) => {
+    let dir = sortByDirection;
+    if (sortBy === newSortBy) {
+      dir = dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      dir = 'desc';
+    }
+
+    updateSortBy(newSortBy);
+    setSortByDirection(dir);
+  };
+
+  const sortedProfilesIds = useMemo(() => {
+    const m = sortByDirection === 'asc' ? 1 : -1;
+
+    let sorted;
+    const filesInfo = Object.values(profiles);
+
+    switch (sortBy) {
+      case fileNameColName:
+        sorted = filesInfo.sort(
+          (a, b) => m * a[sortBy].localeCompare(b[sortBy])
+        );
+        break;
+      case dateModifiedColName:
+        sorted = filesInfo.sort(
+          (a, b) => m * (new Date(a[sortBy]) - new Date(b[sortBy]))
+        );
+        break;
+      default:
+        sorted = [];
+    }
+
+    return sorted.reduce((acc, { id }) => [...acc, id], []);
+  }, [profiles, sortBy, sortByDirection]);
 
   return (
     <>
@@ -28,13 +75,26 @@ function FileList(props) {
           <table className={styles.profilesTable} data-testid="table-view">
             <thead>
               <tr>
-                <th>Filename</th>
-                <th>Date Modified</th>
+                {tableFormat.map(({ name, label }) => (
+                  <th
+                    key={name}
+                    className={styles.sortable}
+                    onClick={() => updateSortParams(name)}
+                  >
+                    {label}
+                    <span
+                      className={clsx(
+                        styles.sortArrow,
+                        sortBy === name && styles[sortByDirection]
+                      )}
+                    />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {profiles &&
-                Object.keys(profiles).map((id) => (
+                sortedProfilesIds.map((id) => (
                   <tr
                     key={id}
                     onClick={() => setProfile(id)}
