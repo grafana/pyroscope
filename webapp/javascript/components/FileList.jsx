@@ -42,22 +42,25 @@ function FileList(props) {
   const sortedProfilesIds = useMemo(() => {
     const m = sortByDirection === 'asc' ? 1 : -1;
 
-    let sorted;
-    const filesInfo = Object.values(profiles);
+    let sorted = [];
 
-    switch (sortBy) {
-      case fileNameColName:
-        sorted = filesInfo.sort(
-          (a, b) => m * a[sortBy].localeCompare(b[sortBy])
-        );
-        break;
-      case dateModifiedColName:
-        sorted = filesInfo.sort(
-          (a, b) => m * (new Date(a[sortBy]) - new Date(b[sortBy]))
-        );
-        break;
-      default:
-        sorted = [];
+    if (profiles) {
+      const filesInfo = Object.values(profiles);
+
+      switch (sortBy) {
+        case fileNameColName:
+          sorted = filesInfo.sort(
+            (a, b) => m * a[sortBy].localeCompare(b[sortBy])
+          );
+          break;
+        case dateModifiedColName:
+          sorted = filesInfo.sort(
+            (a, b) => m * (new Date(a[sortBy]) - new Date(b[sortBy]))
+          );
+          break;
+        default:
+          sorted = filesInfo;
+      }
     }
 
     return sorted.reduce((acc, { id }) => [...acc, id], []);
