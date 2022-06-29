@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.13.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.12.2...@pyroscope/webapp@1.13.0) (2022-06-29)
+
+
+### Features
+
+* **frontend:** support disabling exporting to flamegraph.com ([#1188](https://github.com/pyroscope-io/pyroscope/issues/1188)) ([cd48732](https://github.com/pyroscope-io/pyroscope/commit/cd48732bb28dfab903ef00799f2bacdb6d991e0d))
+
+
+
+
+
 ## [1.12.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.12.1...@pyroscope/webapp@1.12.2) (2022-06-29)
 
 
