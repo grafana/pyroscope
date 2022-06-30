@@ -246,13 +246,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         toolbarVisible={toolbarVisible}
       />
 
-      {dataUnavailable ? (
-        <div className={styles.error}>
-          <span>
-            No profiling data available for this application / time range.
-          </span>
-        </div>
-      ) : null}
       <div
         data-testid={dataTestId}
         style={{

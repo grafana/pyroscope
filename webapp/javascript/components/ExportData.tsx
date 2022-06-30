@@ -14,48 +14,38 @@ import styles from './ExportData.module.scss';
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
 // For cases like grafana
-type exportJSON =
-  | {
-      exportJSON: true;
-      flamebearer: Profile;
-    }
-  | { exportJSON?: false };
+type exportJSON = {
+  exportJSON?: boolean;
+  flamebearer: Profile;
+};
 
-type exportPprof =
-  | {
-      exportPprof: true;
-      flamebearer: Profile;
-    }
-  | { exportPprof?: false };
+type exportPprof = {
+  exportPprof?: boolean;
+  flamebearer: Profile;
+};
 
-type exportHTML =
-  | {
-      exportHTML: true;
-      fetchUrlFunc?: () => string;
-      flamebearer: Profile;
-    }
-  | { exportHTML?: false };
+type exportHTML = {
+  exportHTML?: boolean;
+  fetchUrlFunc?: () => string;
+  flamebearer: Profile;
+};
 
-type exportFlamegraphDotCom =
-  | {
-      exportFlamegraphDotCom: true;
-      exportFlamegraphDotComFn: (name?: string) => Promise<string | null>;
-      flamebearer: Profile;
-    }
-  | { exportFlamegraphDotCom?: false };
+type exportFlamegraphDotCom = {
+  exportFlamegraphDotCom?: boolean;
+  exportFlamegraphDotComFn?: (name?: string) => Promise<string | null>;
+  flamebearer: Profile;
+};
 
-type exportPNG =
-  | {
-      exportPNG: true;
-      flamebearer: Profile;
-    }
-  | { exportPNG?: false };
+type exportPNG = {
+  exportPNG?: boolean;
+  flamebearer: Profile;
+};
 
 type ExportDataProps = exportPprof &
-  exportJSON &
   exportHTML &
   exportFlamegraphDotCom &
-  exportPNG;
+  exportPNG &
+  exportJSON;
 
 function ExportData(props: ExportDataProps) {
   const {
@@ -116,7 +106,7 @@ function ExportData(props: ExportDataProps) {
     }
 
     // TODO additional check this won't be needed once we use strictNullChecks
-    if (props.exportFlamegraphDotCom) {
+    if (props.exportFlamegraphDotCom && props.exportFlamegraphDotComFn) {
       const { flamebearer } = props;
 
       const defaultExportName = getFilename(

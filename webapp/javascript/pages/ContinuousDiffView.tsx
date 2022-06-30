@@ -23,6 +23,7 @@ import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import InstructionText from '@webapp/components/InstructionText';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -99,7 +100,7 @@ function ComparisonDiffApp() {
       exportPNG
       // disable this until we fix it
       //      exportHTML
-      exportFlamegraphDotCom
+      exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
   );

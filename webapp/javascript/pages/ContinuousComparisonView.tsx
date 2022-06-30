@@ -20,6 +20,7 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
@@ -126,7 +127,7 @@ function ComparisonApp() {
                     exportJSON
                     exportHTML
                     exportPprof
-                    exportFlamegraphDotCom
+                    exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                     exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
                   />
                 )
@@ -174,7 +175,7 @@ function ComparisonApp() {
                     exportJSON
                     exportHTML
                     exportPprof
-                    exportFlamegraphDotCom
+                    exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                     exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
                   />
                 )
