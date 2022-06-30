@@ -15,6 +15,8 @@ fire:
   extraArgs:
     log.level: debug
 
+  extraLabels: {}
+
   imagePullSecrets: []
   nameOverride: ""
   fullnameOverride: ""

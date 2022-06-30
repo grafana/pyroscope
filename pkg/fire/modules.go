@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -23,10 +24,12 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
+	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
+	"github.com/grafana/fire/pkg/openapiv2"
 	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
@@ -43,6 +46,7 @@ const (
 	MemberlistKV string = "memberlist-kv"
 	ProfileStore string = "profile-store"
 	Querier      string = "querier"
+	GRPCGateway  string = "grpc-gateway"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
@@ -66,12 +70,21 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Those API are not meant to stay but allows us for testing through Grafana.
+	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
 	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
 	return q, nil
 }
 
 func (f *Fire) getPusherClient() pushv1connect.PusherServiceClient {
 	return f.pusherClient
+}
+
+func (f *Fire) initGRPCGateway() (services.Service, error) {
+	f.grpcGatewayMux = grpcgw.NewServeMux()
+	f.Server.HTTP.NewRoute().PathPrefix("/api").Handler(f.grpcGatewayMux)
+
+	return nil, nil
 }
 
 func (f *Fire) initDistributor() (services.Service, error) {
@@ -95,7 +108,12 @@ func (f *Fire) initAgent() (services.Service, error) {
 	}
 	f.agent = a
 
-	prefix, handler := agentv1connect.NewAgentServiceHandler(a)
+	// register endpoint at grpc gateway
+	if err := agentv1.RegisterAgentServiceHandlerServer(context.Background(), f.grpcGatewayMux, a); err != nil {
+		return nil, err
+	}
+
+	prefix, handler := agentv1connect.NewAgentServiceHandler(a.ConnectHandler())
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 
 	return a, nil
@@ -143,8 +161,6 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	prefix, handler = ingesterv1connect.NewIngesterServiceHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-	// Those API are not meant to stay but allows us for testing through Grafana.
-	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(ingester.RenderHandler))
 	return ingester, nil
 }
 
@@ -200,6 +216,14 @@ func (f *Fire) initServer() (services.Service, error) {
 	// todo configure http2
 	f.Server.HTTPServer.Handler = h2c.NewHandler(f.Server.HTTPServer.Handler, &http2.Server{})
 	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
+
+	// expose openapiv2 definition
+	openapiv2Handler, err := openapiv2.Handler()
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize openapiv2 handler: %w", err)
+	}
+	f.Server.HTTP.Handle("/api/swagger.json", openapiv2Handler)
+
 	return s, nil
 }
 
