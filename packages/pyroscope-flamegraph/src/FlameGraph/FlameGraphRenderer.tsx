@@ -14,6 +14,7 @@ import Graph from './FlameGraphComponent';
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
+import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
@@ -354,11 +355,6 @@ class FlameGraphRenderer extends React.Component<
         key="table-pane"
         className={clsx(
           styles.tablePane,
-          {
-            [styles.hidden]:
-              !this.state.flamebearer ||
-              this.state.flamebearer.names.length <= 1,
-          },
           this.state.panesOrientation === 'vertical'
             ? styles.vertical
             : styles.horizontal
@@ -382,9 +378,6 @@ class FlameGraphRenderer extends React.Component<
         />
       </div>
     );
-    const dataExists =
-      this.state.view !== 'table' ||
-      (this.state.flamebearer && this.state.flamebearer.names.length <= 1);
 
     //    const flamegraphDataTestId = figureFlamegraphDataTestId(
     //      this.props.viewType,
@@ -393,31 +386,32 @@ class FlameGraphRenderer extends React.Component<
 
     const toolbarVisible = this.shouldShowToolbar();
 
-    const flameGraphPane =
-      this.state.flamebearer && dataExists ? (
-        <Graph
-          key="flamegraph-pane"
-          // data-testid={flamegraphDataTestId}
-          flamebearer={this.state.flamebearer}
-          ExportData={this.props.ExportData || <></>}
-          highlightQuery={this.state.highlightQuery}
-          fitMode={this.state.fitMode}
-          zoom={this.state.flamegraphConfigs.zoom}
-          focusedNode={this.state.flamegraphConfigs.focusedNode}
-          onZoom={this.onFlamegraphZoom}
-          onFocusOnNode={this.onFocusOnNode}
-          onReset={this.onReset}
-          isDirty={this.isDirty}
-          palette={this.state.palette}
-          toolbarVisible={toolbarVisible}
-          setPalette={(p) =>
-            this.setState({
-              palette: p,
-            })
-          }
-        />
-      ) : null;
+    const flameGraphPane = (
+      <Graph
+        key="flamegraph-pane"
+        // data-testid={flamegraphDataTestId}
+        flamebearer={this.state.flamebearer}
+        ExportData={this.props.ExportData || <></>}
+        highlightQuery={this.state.highlightQuery}
+        fitMode={this.state.fitMode}
+        zoom={this.state.flamegraphConfigs.zoom}
+        focusedNode={this.state.flamegraphConfigs.focusedNode}
+        onZoom={this.onFlamegraphZoom}
+        onFocusOnNode={this.onFocusOnNode}
+        onReset={this.onReset}
+        isDirty={this.isDirty}
+        palette={this.state.palette}
+        toolbarVisible={toolbarVisible}
+        setPalette={(p) =>
+          this.setState({
+            palette: p,
+          })
+        }
+      />
+    );
 
+    const dataUnavailable =
+      !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
     const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
 
     return (
@@ -456,7 +450,7 @@ class FlameGraphRenderer extends React.Component<
               styles.panesWrapper
             )}`}
           >
-            {panes.map((pane) => pane)}
+            {dataUnavailable ? <NoProfilingData /> : panes.map((pane) => pane)}
           </div>
         </div>
 
