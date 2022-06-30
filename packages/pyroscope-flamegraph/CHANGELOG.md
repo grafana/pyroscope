@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.2...@pyroscope/flamegraph@0.9.3) (2022-06-30)
+
+
+### Bug Fixes
+
+* Update flamegraph color pallette ([9476039](https://github.com/pyroscope-io/pyroscope/commit/9476039cff2fe5d06b11ad8748517d16b93f1cc1))
+
+
+
+
+
 ## [0.9.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.1...@pyroscope/flamegraph@0.9.2) (2022-06-29)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
