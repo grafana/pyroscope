@@ -6,24 +6,17 @@
 package metastore
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/google/uuid"
-	pb "github.com/parca-dev/parca/gen/proto/go/parca/metastore/v1alpha1"
-	"github.com/parca-dev/parca/pkg/metastore"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/proto"
-)
 
-const (
-	stacktraceIDPrefix = "v1/stacktrace/by-id/"
+	pb "github.com/parca-dev/parca/gen/proto/go/parca/metastore/v1alpha1"
+	"github.com/parca-dev/parca/pkg/metastore"
 )
 
 // BadgerMetastore is an implementation of the metastore using the badger KV
@@ -33,7 +26,7 @@ type BadgerMetastore struct {
 
 	db *badger.DB
 
-	uuidGenerator metastore.UUIDGenerator
+	pb.UnimplementedMetastoreServiceServer
 }
 
 type badgerLogger struct {
@@ -56,13 +49,14 @@ func (l *badgerLogger) Debugf(f string, v ...interface{}) {
 	level.Debug(l.logger).Log("msg", fmt.Sprintf(f, v...))
 }
 
+var _ pb.MetastoreServiceServer = &BadgerMetastore{}
+
 // NewBadgerMetastore returns a new BadgerMetastore with using in-memory badger
 // instance.
 func NewBadgerMetastore(
 	logger log.Logger,
 	reg prometheus.Registerer,
 	tracer trace.Tracer,
-	uuidGenerator metastore.UUIDGenerator,
 	dataPath string,
 ) (*BadgerMetastore, error) {
 	opts := badger.DefaultOptions(dataPath).WithLogger(&badgerLogger{logger: logger})
@@ -76,443 +70,216 @@ func NewBadgerMetastore(
 	}
 
 	return &BadgerMetastore{
-		db:            db,
-		tracer:        tracer,
-		uuidGenerator: uuidGenerator,
+		db:     db,
+		tracer: tracer,
 	}, nil
 }
 
-// Close closes the badger store.
-func (m *BadgerMetastore) Close() error {
-	return m.db.Close()
-}
+func (m *BadgerMetastore) Mappings(ctx context.Context, r *pb.MappingsRequest) (*pb.MappingsResponse, error) {
+	res := &pb.MappingsResponse{
+		Mappings: make([]*pb.Mapping, 0, len(r.MappingIds)),
+	}
 
-// Ping returns an error if the metastore is not available.
-func (m *BadgerMetastore) Ping() error {
-	return nil
-}
-
-func (m *BadgerMetastore) GetStacktraceByKey(ctx context.Context, key []byte) (uuid.UUID, error) {
-	var id uuid.UUID
+	mappingKeys := make([][]byte, 0, len(r.MappingIds))
+	for _, id := range r.MappingIds {
+		mappingKeys = append(mappingKeys, []byte(metastore.MakeMappingKeyWithID(id)))
+	}
 
 	err := m.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return metastore.ErrStacktraceNotFound
-		}
-		if err != nil {
-			return err
+		for _, mappingKey := range mappingKeys {
+			item, err := txn.Get(mappingKey)
+			if err != nil {
+				return err
+			}
+
+			err = item.Value(func(val []byte) error {
+				mapping := &pb.Mapping{}
+				err := mapping.UnmarshalVT(val)
+				if err != nil {
+					return err
+				}
+
+				res.Mappings = append(res.Mappings, mapping)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 		}
 
-		return item.Value(func(val []byte) error {
-			id, err = uuid.FromBytes(val)
-			return err
-		})
+		return nil
 	})
 
-	return id, err
+	return res, err
 }
 
-func (m *BadgerMetastore) GetStacktraceByIDs(ctx context.Context, ids ...[]byte) (map[string]*pb.Sample, error) {
-	samples := map[string]*pb.Sample{}
+func (m *BadgerMetastore) GetOrCreateMappings(ctx context.Context, r *pb.GetOrCreateMappingsRequest) (*pb.GetOrCreateMappingsResponse, error) {
+	res := &pb.GetOrCreateMappingsResponse{
+		Mappings: make([]*pb.Mapping, 0, len(r.Mappings)),
+	}
 
-	err := m.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			item, err := txn.Get(append([]byte(stacktraceIDPrefix), id[:]...))
+	mappingKeys := make([]string, 0, len(r.Mappings))
+	for _, id := range r.Mappings {
+		mappingKeys = append(mappingKeys, metastore.MakeMappingKey(id))
+	}
+
+	err := m.db.Update(func(txn *badger.Txn) error {
+		for i, mappingKey := range mappingKeys {
+			item, err := txn.Get([]byte(mappingKey))
+			if err != nil && err != badger.ErrKeyNotFound {
+				return err
+			}
+
 			if err == badger.ErrKeyNotFound {
-				return metastore.ErrStacktraceNotFound
-			}
-			if err != nil {
-				return err
-			}
-			err = item.Value(func(val []byte) error {
-				s := &pb.Sample{}
-				err := s.UnmarshalVT(val)
+				mapping := r.Mappings[i]
+				mapping.Id = metastore.MappingIDFromKey(mappingKey)
+				b, err := mapping.MarshalVT()
 				if err != nil {
 					return err
 				}
-				samples[string(id)] = s
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return samples, err
-}
-
-func (m *BadgerMetastore) CreateStacktrace(ctx context.Context, key []byte, sample *pb.Sample) (uuid.UUID, error) {
-	stacktraceID := m.uuidGenerator.New()
-
-	buf, err := proto.Marshal(sample)
-	if err != nil {
-		return stacktraceID, err
-	}
-
-	err = m.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set(append([]byte(stacktraceIDPrefix), stacktraceID[:]...), buf)
-		if err != nil {
-			return err
-		}
-		return txn.Set(key, stacktraceID[:])
-	})
-
-	return stacktraceID, err
-}
-
-// GetMappingsByIDs returns the mappings for the given IDs.
-func (m *BadgerMetastore) GetMappingsByIDs(ctx context.Context, ids ...[]byte) (map[string]*pb.Mapping, error) {
-	mappings := map[string]*pb.Mapping{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			item, err := txn.Get(append([]byte("mappings/by-id/"), id[:]...))
-			if err != nil {
-				return err
-			}
-
-			err = item.Value(func(val []byte) error {
-				ma := &pb.Mapping{}
-				err := ma.UnmarshalVT(val)
-				if err != nil {
+				if err := txn.Set([]byte(mappingKey), b); err != nil {
 					return err
 				}
-
-				mappings[string(id)] = ma
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	return mappings, err
-}
-
-// GetMappingByKey returns the mapping for the given key.
-func (m *BadgerMetastore) GetMappingByKey(ctx context.Context, key *pb.Mapping) (*pb.Mapping, error) {
-	ma := &pb.Mapping{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		var err error
-		item, err := txn.Get(metastore.MakeMappingKey(key))
-		if err == badger.ErrKeyNotFound {
-			return metastore.ErrMappingNotFound
-		}
-		if err != nil {
-			return err
-		}
-
-		var mappingID uuid.UUID
-		err = item.Value(func(val []byte) error {
-			return mappingID.UnmarshalBinary(val)
-		})
-		if err != nil {
-			return err
-		}
-
-		item, err = txn.Get(append([]byte("mappings/by-id/"), mappingID[:]...))
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			return ma.UnmarshalVT(val)
-		})
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return ma, nil
-}
-
-// CreateMapping creates a new mapping in the database.
-func (m *BadgerMetastore) CreateMapping(ctx context.Context, mapping *pb.Mapping) ([]byte, error) {
-	mappingID := m.uuidGenerator.New()
-	mapping.Id = mappingID[:]
-	buf, err := proto.Marshal(mapping)
-	if err != nil {
-		return nil, err
-	}
-
-	err = m.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set(metastore.MakeMappingKey(mapping), mappingID[:])
-		if err != nil {
-			return err
-		}
-
-		return txn.Set(append([]byte("mappings/by-id/"), mappingID[:]...), buf)
-	})
-
-	return mapping.Id, err
-}
-
-// CreateFunction creates a new function in the database.
-func (m *BadgerMetastore) CreateFunction(ctx context.Context, f *pb.Function) ([]byte, error) {
-	functionID := m.uuidGenerator.New()
-	f.Id = functionID[:]
-
-	buf, err := proto.Marshal(f)
-	if err != nil {
-		return nil, err
-	}
-
-	err = m.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set(metastore.MakeFunctionKey(f), f.Id)
-		if err != nil {
-			return err
-		}
-
-		return txn.Set(append([]byte("functions/by-id/"), f.Id...), buf)
-	})
-
-	return f.Id, err
-}
-
-// GetFunctionByKey returns the function for the given key.
-func (m *BadgerMetastore) GetFunctionByKey(ctx context.Context, key *pb.Function) (*pb.Function, error) {
-	f := &pb.Function{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		var err error
-		item, err := txn.Get(metastore.MakeFunctionKey(key))
-		if err == badger.ErrKeyNotFound {
-			return metastore.ErrFunctionNotFound
-		}
-		if err != nil {
-			return fmt.Errorf("get function by key from store: %w", err)
-		}
-
-		var functionID uuid.UUID
-		err = item.Value(func(val []byte) error {
-			return functionID.UnmarshalBinary(val)
-		})
-		if err != nil {
-			return err
-		}
-
-		item, err = txn.Get(append([]byte("functions/by-id/"), functionID[:]...))
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			return f.UnmarshalVT(val)
-		})
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return f, nil
-}
-
-// GetFunctions returns all functions in the database.
-func (m *BadgerMetastore) GetFunctions(ctx context.Context) ([]*pb.Function, error) {
-	var functions []*pb.Function
-	err := m.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		prefix := []byte("functions/by-id/")
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				f := &pb.Function{}
-				err := f.UnmarshalVT(val)
-				if err != nil {
-					return err
-				}
-				functions = append(functions, f)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	return functions, err
-}
-
-// GetFunctionByID returns the function for the given ID.
-func (m *BadgerMetastore) GetFunctionsByIDs(ctx context.Context, ids ...[]byte) (map[string]*pb.Function, error) {
-	functions := map[string]*pb.Function{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			item, err := txn.Get(append([]byte("functions/by-id/"), id[:]...))
-			if err != nil {
-				return err
-			}
-
-			err = item.Value(func(val []byte) error {
-				f := &pb.Function{}
-				err := f.UnmarshalVT(val)
-				if err != nil {
-					return err
-				}
-
-				functions[string(id)] = f
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	return functions, err
-}
-
-// CreateLocationLines writes a set of lines related to a location to the database.
-func (m *BadgerMetastore) CreateLocationLines(ctx context.Context, locID []byte, lines []metastore.LocationLine) error {
-	l := &pb.LocationLines{
-		Id:    locID,
-		Lines: make([]*pb.Line, 0, len(lines)),
-	}
-
-	for _, line := range lines {
-		l.Lines = append(l.Lines, &pb.Line{
-			Line:       line.Line,
-			FunctionId: line.Function.Id,
-		})
-	}
-
-	buf, err := proto.Marshal(l)
-	if err != nil {
-		return err
-	}
-
-	return m.db.Update(func(txn *badger.Txn) error {
-		return txn.Set(append([]byte("locations-lines/"), locID[:]...), buf)
-	})
-}
-
-// GetLinesByLocationIDs returns the lines for the given location IDs.
-func (m *BadgerMetastore) GetLinesByLocationIDs(ctx context.Context, ids ...[]byte) (
-	map[string][]*pb.Line,
-	[][]byte,
-	error,
-) {
-	linesByLocation := map[string][]*pb.Line{}
-	functionsSeen := map[string]struct{}{}
-	functionsIDs := [][]byte{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			item, err := txn.Get(append([]byte("locations-lines/"), id[:]...))
-			if err == badger.ErrKeyNotFound {
+				res.Mappings = append(res.Mappings, mapping)
 				continue
 			}
-			if err != nil {
-				return fmt.Errorf("failed to get location lines for ID %q: %w", id, err)
-			}
 
 			err = item.Value(func(val []byte) error {
-				l := &pb.LocationLines{}
-				err := l.UnmarshalVT(val)
-				if err != nil {
-					return fmt.Errorf("failed to unmarshal location lines for ID %q: %w", id, err)
-				}
-
-				for _, line := range l.Lines {
-					if _, ok := functionsSeen[string(line.FunctionId)]; !ok {
-						functionsIDs = append(functionsIDs, line.FunctionId)
-						functionsSeen[string(line.FunctionId)] = struct{}{}
-					}
-				}
-
-				linesByLocation[string(id)] = l.Lines
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return linesByLocation, functionsIDs, nil
-}
-
-func (m *BadgerMetastore) GetLocationByKey(ctx context.Context, key *metastore.Location) (*pb.Location, error) {
-	l := &pb.Location{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		var err error
-		item, err := txn.Get(metastore.MakeLocationKey(key))
-		if err == badger.ErrKeyNotFound {
-			return metastore.ErrLocationNotFound
-		}
-		if err != nil {
-			return err
-		}
-
-		var locationID uuid.UUID
-		err = item.Value(func(val []byte) error {
-			return locationID.UnmarshalBinary(val)
-		})
-		if err != nil {
-			return err
-		}
-
-		item, err = txn.Get(append([]byte("locations/by-id/"), locationID[:]...))
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			return l.UnmarshalVT(val)
-		})
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return l, nil
-}
-
-func (m *BadgerMetastore) GetLocationsByIDs(ctx context.Context, ids ...[]byte) (
-	map[string]*pb.Location,
-	[][]byte,
-	error,
-) {
-	locations := map[string]*pb.Location{}
-	mappingsSeen := map[string]struct{}{}
-	mappingIDs := [][]byte{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			item, err := txn.Get(append([]byte("locations/by-id/"), id[:]...))
-			if err != nil {
-				return err
-			}
-
-			err = item.Value(func(val []byte) error {
-				l := &pb.Location{}
-				err := l.UnmarshalVT(val)
+				mapping := &pb.Mapping{}
+				err := mapping.UnmarshalVT(val)
 				if err != nil {
 					return err
 				}
 
-				if len(l.MappingId) > 0 && !bytes.Equal(l.MappingId, uuid.Nil[:]) {
-					if _, ok := mappingsSeen[string(l.MappingId)]; !ok {
-						mappingIDs = append(mappingIDs, l.MappingId)
-						mappingsSeen[string(l.MappingId)] = struct{}{}
-					}
+				res.Mappings = append(res.Mappings, mapping)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return res, err
+}
+
+func (m *BadgerMetastore) Functions(ctx context.Context, r *pb.FunctionsRequest) (*pb.FunctionsResponse, error) {
+	res := &pb.FunctionsResponse{
+		Functions: make([]*pb.Function, 0, len(r.FunctionIds)),
+	}
+
+	functionKeys := make([][]byte, 0, len(r.FunctionIds))
+	for _, id := range r.FunctionIds {
+		functionKeys = append(functionKeys, []byte(metastore.MakeFunctionKeyWithID(id)))
+	}
+
+	err := m.db.View(func(txn *badger.Txn) error {
+		for _, functionKey := range functionKeys {
+			item, err := txn.Get(functionKey)
+			if err != nil {
+				return err
+			}
+
+			err = item.Value(func(val []byte) error {
+				function := &pb.Function{}
+				err := function.UnmarshalVT(val)
+				if err != nil {
+					return err
 				}
 
-				locations[string(id)] = l
+				res.Functions = append(res.Functions, function)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return res, err
+}
+
+func (m *BadgerMetastore) GetOrCreateFunctions(ctx context.Context, r *pb.GetOrCreateFunctionsRequest) (*pb.GetOrCreateFunctionsResponse, error) {
+	res := &pb.GetOrCreateFunctionsResponse{
+		Functions: make([]*pb.Function, 0, len(r.Functions)),
+	}
+
+	functionKeys := make([]string, 0, len(r.Functions))
+	for _, function := range r.Functions {
+		functionKeys = append(functionKeys, metastore.MakeFunctionKey(function))
+	}
+
+	err := m.db.Update(func(txn *badger.Txn) error {
+		for i, functionKey := range functionKeys {
+			item, err := txn.Get([]byte(functionKey))
+			if err != nil && err != badger.ErrKeyNotFound {
+				return err
+			}
+
+			if err == badger.ErrKeyNotFound {
+				function := r.Functions[i]
+				function.Id = metastore.FunctionIDFromKey(functionKey)
+				b, err := function.MarshalVT()
+				if err != nil {
+					return err
+				}
+				if err := txn.Set([]byte(functionKey), b); err != nil {
+					return err
+				}
+				res.Functions = append(res.Functions, function)
+				continue
+			}
+
+			err = item.Value(func(val []byte) error {
+				function := &pb.Function{}
+				err := function.UnmarshalVT(val)
+				if err != nil {
+					return err
+				}
+
+				res.Functions = append(res.Functions, function)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return res, err
+}
+
+func (m *BadgerMetastore) LocationLines(ctx context.Context, r *pb.LocationLinesRequest) (*pb.LocationLinesResponse, error) {
+	res := &pb.LocationLinesResponse{
+		LocationLines: make([]*pb.LocationLines, 0, len(r.LocationIds)),
+	}
+
+	locationLineKeys := make([][]byte, 0, len(r.LocationIds))
+	for _, id := range r.LocationIds {
+		locationLineKeys = append(locationLineKeys, []byte(metastore.MakeLocationLinesKeyWithID(id)))
+	}
+
+	err := m.db.View(func(txn *badger.Txn) error {
+		for _, locationLineKey := range locationLineKeys {
+			item, err := txn.Get(locationLineKey)
+			if err != nil {
+				return err
+			}
+
+			err = item.Value(func(val []byte) error {
+				locationLines := &pb.LocationLines{}
+				err := locationLines.UnmarshalVT(val)
+				if err != nil {
+					return err
+				}
+
+				res.LocationLines = append(res.LocationLines, locationLines)
 				return nil
 			})
 			if err != nil {
@@ -521,160 +288,271 @@ func (m *BadgerMetastore) GetLocationsByIDs(ctx context.Context, ids ...[]byte) 
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, nil, err
-	}
 
-	return locations, mappingIDs, nil
+	return res, err
 }
 
-func (m *BadgerMetastore) CreateLocation(ctx context.Context, l *metastore.Location) ([]byte, error) {
-	id := m.uuidGenerator.New()
-	loc := &pb.Location{
-		Id:       id[:],
-		Address:  l.Address,
-		IsFolded: l.IsFolded,
+func (m *BadgerMetastore) Locations(ctx context.Context, r *pb.LocationsRequest) (*pb.LocationsResponse, error) {
+	res := &pb.LocationsResponse{
+		Locations: make([]*pb.Location, 0, len(r.LocationIds)),
 	}
 
-	if l.Mapping != nil {
-		loc.MappingId = l.Mapping.Id
+	locationKeys := make([][]byte, 0, len(r.LocationIds))
+	for _, id := range r.LocationIds {
+		locationKeys = append(locationKeys, []byte(metastore.MakeLocationKeyWithID(id)))
 	}
 
-	buf, err := proto.Marshal(loc)
-	if err != nil {
-		return nil, err
-	}
+	err := m.db.View(func(txn *badger.Txn) error {
+		var err error
+		res.Locations, err = m.locations(ctx, txn, res.Locations, locationKeys)
+		return err
+	})
 
-	err = m.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set(metastore.MakeLocationKey(l), id[:])
+	return res, err
+}
+
+func (m *BadgerMetastore) locations(ctx context.Context, txn *badger.Txn, locations []*pb.Location, locationKeys [][]byte) ([]*pb.Location, error) {
+	for _, locationKey := range locationKeys {
+		item, err := txn.Get(locationKey)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if l.Address != uint64(0) && l.Mapping != nil && len(l.Lines) == 0 {
-			err := txn.Set(append([]byte("locations-unsymbolized/by-id/"), id[:]...), id[:])
+		err = item.Value(func(val []byte) error {
+			location := &pb.Location{}
+			err := location.UnmarshalVT(val)
+			if err != nil {
+				return err
+			}
+
+			locations = append(locations, location)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return locations, nil
+}
+
+func (m *BadgerMetastore) GetOrCreateLocations(ctx context.Context, r *pb.GetOrCreateLocationsRequest) (*pb.GetOrCreateLocationsResponse, error) {
+	res := &pb.GetOrCreateLocationsResponse{
+		Locations: make([]*pb.Location, 0, len(r.Locations)),
+	}
+
+	locationKeys := make([]string, 0, len(r.Locations))
+	for _, location := range r.Locations {
+		locationKeys = append(locationKeys, metastore.MakeLocationKey(location))
+	}
+
+	symbolizedLocationKeys := make([]string, 0, len(r.Locations))
+	symbolizedLocations := make([]*pb.Location, 0, len(r.Locations))
+
+	err := m.db.Update(func(txn *badger.Txn) error {
+		for i, locationKey := range locationKeys {
+			item, err := txn.Get([]byte(locationKey))
+			if err != nil && err != badger.ErrKeyNotFound {
+				return err
+			}
+
+			if err == badger.ErrKeyNotFound {
+				location := r.Locations[i]
+				location.Id = metastore.LocationIDFromKey(locationKey)
+				b, err := location.MarshalVT()
+				if err != nil {
+					return err
+				}
+				if err := txn.Set([]byte(locationKey), b); err != nil {
+					return err
+				}
+				res.Locations = append(res.Locations, location)
+
+				if location.MappingId != "" && location.Address != 0 && (location.Lines == nil || len(location.Lines.Entries) == 0) {
+					unsymbolizableKey := metastore.MakeUnsymbolizedLocationKeyWithID(location.Id)
+					if err := txn.Set([]byte(unsymbolizableKey), []byte{}); err != nil {
+						return err
+					}
+					continue
+				}
+
+				symbolizedLocationKeys = append(symbolizedLocationKeys, location.Id)
+				symbolizedLocations = append(symbolizedLocations, location)
+
+				continue
+			}
+
+			err = item.Value(func(val []byte) error {
+				location := &pb.Location{}
+				err := location.UnmarshalVT(val)
+				if err != nil {
+					return err
+				}
+
+				res.Locations = append(res.Locations, location)
+				return nil
+			})
 			if err != nil {
 				return err
 			}
 		}
 
-		return txn.Set(append([]byte("locations/by-id/"), id[:]...), buf)
+		return m.createLocationLines(ctx, txn, symbolizedLocationKeys, symbolizedLocations)
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	if len(l.Lines) > 0 {
-		return loc.Id, m.CreateLocationLines(ctx, loc.Id, l.Lines)
-	}
-
-	return loc.Id, nil
+	return res, err
 }
 
-func (m *BadgerMetastore) GetSymbolizableLocations(ctx context.Context) ([]*pb.Location, [][]byte, error) {
-	ids := [][]byte{}
+func (m *BadgerMetastore) UnsymbolizedLocations(ctx context.Context, r *pb.UnsymbolizedLocationsRequest) (*pb.UnsymbolizedLocationsResponse, error) {
+	var locations []*pb.Location
+
 	err := m.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
-		prefix := []byte("locations-unsymbolized/by-id/")
-		prefixLen := len(prefix)
 
+		locationKeys := [][]byte{}
+		prefix := []byte(metastore.MakeUnsymbolizedLocationKeyWithID(""))
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			ids = append(ids, it.Item().KeyCopy(nil)[prefixLen:])
+			key := metastore.MakeLocationKeyWithID(metastore.LocationIDFromUnsymbolizedKey(string(it.Item().Key())))
+			locationKeys = append(locationKeys, []byte(key))
 		}
-		return nil
+
+		locations = make([]*pb.Location, 0, len(locationKeys))
+		var err error
+		locations, err = m.locations(ctx, txn, locations, locationKeys)
+
+		return err
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	locsByIDs, mappingIDs, err := m.GetLocationsByIDs(ctx, ids...)
+	return &pb.UnsymbolizedLocationsResponse{
+		Locations: locations,
+	}, nil
+}
+
+func (m *BadgerMetastore) CreateLocationLines(ctx context.Context, r *pb.CreateLocationLinesRequest) (*pb.CreateLocationLinesResponse, error) {
+	locationIDs := make([]string, 0, len(r.Locations))
+	for _, location := range r.Locations {
+		locationIDs = append(locationIDs, metastore.MakeLocationID(location))
+	}
+
+	err := m.db.Update(func(txn *badger.Txn) error {
+		return m.createLocationLines(ctx, txn, locationIDs, r.Locations)
+	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	locs := make([]*pb.Location, 0, len(locsByIDs))
-	for _, loc := range locsByIDs {
-		locs = append(locs, loc)
+	return &pb.CreateLocationLinesResponse{}, nil
+}
+
+func (m *BadgerMetastore) createLocationLines(ctx context.Context, txn *badger.Txn, locationIDs []string, locations []*pb.Location) error {
+	for i, locationID := range locationIDs {
+		b, err := locations[i].Lines.MarshalVT()
+		if err != nil {
+			return err
+		}
+		if err := txn.Set([]byte(metastore.MakeLocationLinesKeyWithID(locationID)), b); err != nil {
+			return err
+		}
+
+		if err := txn.Delete([]byte(metastore.MakeUnsymbolizedLocationKeyWithID(locationID))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *BadgerMetastore) GetOrCreateStacktraces(ctx context.Context, r *pb.GetOrCreateStacktracesRequest) (*pb.GetOrCreateStacktracesResponse, error) {
+	res := &pb.GetOrCreateStacktracesResponse{
+		Stacktraces: make([]*pb.Stacktrace, 0, len(r.Stacktraces)),
 	}
 
-	return locs, mappingIDs, nil
-}
+	stacktraceKeys := make([]string, 0, len(r.Stacktraces))
+	for _, stacktrace := range r.Stacktraces {
+		stacktraceKeys = append(stacktraceKeys, metastore.MakeStacktraceKey(stacktrace))
+	}
 
-func (m *BadgerMetastore) GetLocations(ctx context.Context) ([]*pb.Location, [][]byte, error) {
-	return m.getLocations(ctx, []byte("locations/by-id/"))
-}
+	err := m.db.Update(func(txn *badger.Txn) error {
+		for i, stacktraceKey := range stacktraceKeys {
+			item, err := txn.Get([]byte(stacktraceKey))
+			if err != nil && err != badger.ErrKeyNotFound {
+				return err
+			}
 
-func (m *BadgerMetastore) getLocations(ctx context.Context, prefix []byte) ([]*pb.Location, [][]byte, error) {
-	locations := []*pb.Location{}
-	mappingsSeen := map[string]struct{}{}
-	mappingIDs := [][]byte{}
-	err := m.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
+			if err == badger.ErrKeyNotFound {
+				stacktrace := r.Stacktraces[i]
+				stacktrace.Id = metastore.StacktraceIDFromKey(stacktraceKey)
+				b, err := stacktrace.MarshalVT()
+				if err != nil {
+					return err
+				}
+				if err := txn.Set([]byte(stacktraceKey), b); err != nil {
+					return err
+				}
+				res.Stacktraces = append(res.Stacktraces, stacktrace)
+				continue
+			}
 
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				l := &pb.Location{}
-				err := l.UnmarshalVT(val)
+			err = item.Value(func(val []byte) error {
+				stacktrace := &pb.Stacktrace{}
+				err := stacktrace.UnmarshalVT(val)
 				if err != nil {
 					return err
 				}
 
-				if len(l.MappingId) > 0 && !bytes.Equal(l.MappingId, uuid.Nil[:]) {
-					if _, ok := mappingsSeen[string(l.MappingId)]; !ok {
-						mappingIDs = append(mappingIDs, l.MappingId)
-						mappingsSeen[string(l.MappingId)] = struct{}{}
-					}
-				}
-
-				locations = append(locations, l)
+				res.Stacktraces = append(res.Stacktraces, stacktrace)
 				return nil
 			})
 			if err != nil {
 				return err
 			}
 		}
+
 		return nil
 	})
-	return locations, mappingIDs, err
+
+	return res, err
 }
 
-func (m *BadgerMetastore) Symbolize(ctx context.Context, l *metastore.Location) error {
-	for _, l := range l.Lines {
-		functionID, err := m.getOrCreateFunction(ctx, l.Function)
-		if err != nil {
-			return fmt.Errorf("get or create function: %w", err)
+func (m *BadgerMetastore) Stacktraces(ctx context.Context, r *pb.StacktracesRequest) (*pb.StacktracesResponse, error) {
+	res := &pb.StacktracesResponse{
+		Stacktraces: make([]*pb.Stacktrace, 0, len(r.StacktraceIds)),
+	}
+
+	stacktraceKeys := make([][]byte, 0, len(r.StacktraceIds))
+	for _, id := range r.StacktraceIds {
+		stacktraceKeys = append(stacktraceKeys, []byte(metastore.MakeStacktraceKeyWithID(id)))
+	}
+
+	err := m.db.View(func(txn *badger.Txn) error {
+		for _, stacktraceKey := range stacktraceKeys {
+			item, err := txn.Get(stacktraceKey)
+			if err != nil {
+				return err
+			}
+
+			err = item.Value(func(val []byte) error {
+				stacktrace := &pb.Stacktrace{}
+				err := stacktrace.UnmarshalVT(val)
+				if err != nil {
+					return err
+				}
+
+				res.Stacktraces = append(res.Stacktraces, stacktrace)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 		}
-		l.Function.Id = functionID[:]
-	}
 
-	if err := m.CreateLocationLines(ctx, l.ID[:], l.Lines); err != nil {
-		return fmt.Errorf("create lines: %w", err)
-	}
-
-	return m.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete(append([]byte("locations-unsymbolized/by-id/"), l.ID[:]...))
+		return nil
 	})
-}
 
-func (m *BadgerMetastore) getOrCreateFunction(ctx context.Context, f *pb.Function) ([]byte, error) {
-	fn, err := m.GetFunctionByKey(ctx, f)
-	if err == nil {
-		return fn.Id, nil
-	}
-	if err != nil && err != metastore.ErrFunctionNotFound {
-		return nil, fmt.Errorf("get function by key: %w", err)
-	}
-
-	id, err := m.CreateFunction(ctx, f)
-	if err != nil {
-		return nil, fmt.Errorf("create function: %w", err)
-	}
-
-	return id, nil
+	return res, err
 }

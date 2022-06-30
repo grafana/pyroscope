@@ -2,10 +2,8 @@ package ingester
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 
 	"github.com/apache/arrow/go/v8/arrow/memory"
 	"github.com/bufbuild/connect-go"
@@ -13,10 +11,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/polarsignals/arcticdb/query"
-	"github.com/polarsignals/arcticdb/query/logicalplan"
+	"github.com/polarsignals/frostdb/query"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/labels"
 
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/profilestore"
@@ -113,46 +109,6 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 
 	res := connect.NewResponse(&pushv1.PushResponse{})
 	return res, nil
-}
-
-func (i *Ingester) RenderHandler(w http.ResponseWriter, req *http.Request) {
-	q, err := parseQueryRequest(req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	query, err := parseQuery(q.query)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	flame, err := i.selectMerge(req.Context(), query, q.start, q.end)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Add("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(flame); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func matcherToBooleanExpression(matcher *labels.Matcher) (logicalplan.Expr, error) {
-	ref := logicalplan.Col("labels." + matcher.Name)
-	switch matcher.Type {
-	case labels.MatchEqual:
-		return ref.Eq(logicalplan.Literal(matcher.Value)), nil
-	case labels.MatchNotEqual:
-		return ref.NotEq(logicalplan.Literal(matcher.Value)), nil
-	case labels.MatchRegexp:
-		return ref.RegexMatch(matcher.Value), nil
-	case labels.MatchNotRegexp:
-		return ref.RegexNotMatch(matcher.Value), nil
-	default:
-		return nil, fmt.Errorf("unsupported matcher type %v", matcher.Type.String())
-	}
 }
 
 func (i *Ingester) stopping(_ error) error {
