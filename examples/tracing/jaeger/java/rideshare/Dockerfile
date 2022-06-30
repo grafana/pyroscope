@@ -3,11 +3,16 @@ FROM openjdk:11-slim-bullseye
 WORKDIR /opt/app
 
 
+# download gradle
 COPY gradlew .
 COPY gradle gradle
-RUN ./gradlew
+RUN ./gradlew --no-daemon
 
-COPY build.gradle.kts settings.gradle.kts  .
+# download deps
+COPY build.gradle.kts settings.gradle.kts  ./
+RUN ./gradlew getDeps --no-daemon
+
+# build
 COPY src src
 RUN ./gradlew assemble --no-daemon
 

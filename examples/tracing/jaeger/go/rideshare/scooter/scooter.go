@@ -2,7 +2,6 @@ package scooter
 
 import (
 	"context"
-
 	"rideshare/ride"
 )
 

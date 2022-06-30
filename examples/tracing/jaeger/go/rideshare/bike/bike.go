@@ -2,7 +2,6 @@ package bike
 
 import (
 	"context"
-
 	"rideshare/ride"
 )
 

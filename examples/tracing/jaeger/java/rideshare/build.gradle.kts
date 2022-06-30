@@ -43,3 +43,8 @@ dependencyManagement {
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
+
+tasks.create<Copy>("getDeps") {
+    from(configurations.getByName("compileClasspath"))
+    into("compileClasspath/")
+}
