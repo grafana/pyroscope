@@ -79,21 +79,12 @@ function ComparisonDiffApp() {
     maxNodes,
   ]);
 
-  const exportFileName = `diff_${(leftQuery === rightQuery
-    ? query
-    : `${leftQuery}_${rightQuery}`
-  ).replace(/{}/g, '')}`;
-
   const exportData = diffView.profile && (
     <ExportData
       flamebearer={{
         ...diffView.profile,
         metadata: {
           ...diffView.profile.metadata,
-          appName: exportFileName,
-          // TODO: refactor metadata types
-          startTime: from as unknown as number,
-          endTime: until as unknown as number,
         },
       }}
       exportJSON
