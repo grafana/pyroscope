@@ -1,6 +1,5 @@
 go 1.18
 
 use (
-	.
 	./grafana/fire-datasource
 )
