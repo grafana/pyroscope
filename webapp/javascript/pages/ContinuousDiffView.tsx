@@ -78,7 +78,10 @@ function ComparisonDiffApp() {
     maxNodes,
   ]);
 
-  const exportFileName = `diff_${query.replace(/..$/, '')}`;
+  const exportFileName = `diff_${(leftQuery === rightQuery
+    ? query
+    : `${leftQuery}_${rightQuery}`
+  ).replace(/{}/g, '')}`;
 
   const exportData = diffView.profile && (
     <ExportData
