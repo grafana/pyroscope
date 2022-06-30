@@ -164,7 +164,7 @@ func (s *Storage) tryGetExemplar(ctx context.Context, gi *GetInput) (*GetOutput,
 
 	var (
 		t = tree.New()
-		l map[string]string
+		l = make(map[string]string)
 	)
 	err := s.exemplars.fetch(ctx, gi.Query.AppName, ids, func(e exemplarEntry) error {
 		t.Merge(e.Tree)
