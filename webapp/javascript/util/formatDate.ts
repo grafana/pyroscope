@@ -68,7 +68,7 @@ export function dateForExportFilename(from: string, until: string) {
   const dateFormat = 'yyyy-MM-dd_HHmm';
   if (/^now-/.test(from) && until === 'now') {
     const { number, _multiplier } = convertPresetsToDate(from);
-    return `Last ${number} ${_multiplier}`;
+    return `last_${number}_${_multiplier}`;
   }
 
   const d1 = new Date(Math.round(parseInt(from, 10) * 1000));

@@ -35,8 +35,10 @@ function ComparisonDiffApp() {
     rightFrom,
     leftUntil,
     rightUntil,
+    from,
+    until,
   } = useAppSelector(selectContinuousState);
-  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
+  const { leftQuery, rightQuery, query } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -76,9 +78,18 @@ function ComparisonDiffApp() {
     maxNodes,
   ]);
 
+  const exportFileName = `diff_${query.replace(/..$/, '')}`;
+
   const exportData = diffView.profile && (
     <ExportData
-      flamebearer={diffView.profile}
+      flamebearer={{
+        ...diffView.profile,
+        metadata: {
+          appName: exportFileName,
+          startTime: from,
+          endTime: until,
+        },
+      }}
       exportJSON
       exportPNG
       // disable this until we fix it
