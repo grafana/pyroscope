@@ -23,6 +23,7 @@ import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import InstructionText from '@webapp/components/InstructionText';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import type { Profile } from '@pyroscope/models';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -85,9 +86,11 @@ function ComparisonDiffApp() {
       flamebearer={{
         ...diffView.profile,
         metadata: {
+          ...diffView.profile.metadata,
           appName: exportFileName,
-          startTime: from,
-          endTime: until,
+          // TODO: refactor metadata types
+          startTime: from as unknown as number,
+          endTime: until as unknown as number,
         },
       }}
       exportJSON
