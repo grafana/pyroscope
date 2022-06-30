@@ -36,8 +36,10 @@ function ComparisonDiffApp() {
     rightFrom,
     leftUntil,
     rightUntil,
+    from,
+    until,
   } = useAppSelector(selectContinuousState);
-  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
+  const { leftQuery, rightQuery, query } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -79,7 +81,12 @@ function ComparisonDiffApp() {
 
   const exportData = diffView.profile && (
     <ExportData
-      flamebearer={diffView.profile}
+      flamebearer={{
+        ...diffView.profile,
+        metadata: {
+          ...diffView.profile.metadata,
+        },
+      }}
       exportJSON
       exportPNG
       // disable this until we fix it
