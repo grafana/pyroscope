@@ -67,6 +67,7 @@ const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
       Application:&nbsp;
       <button
         id={TOGGLE_BTN_ID}
+        data-testid={TOGGLE_BTN_ID}
         className={styles.toggleButton}
         onClick={() => toggleSelector(!selectorOpened)}
         type="button"

@@ -36,6 +36,7 @@ const SelectButton = ({
 
   return (
     <button
+      role="menuitem"
       type="button"
       onClick={onClick}
       className={cx({ button: true, isSelected })}
