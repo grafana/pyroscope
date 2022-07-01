@@ -1,0 +1,25 @@
+.button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  width: 100%;
+  justify-content: space-between;
+  margin-right: 10px;
+
+  &.isSelected {
+    background-color: var(--ps-blue-primary);
+  }
+
+  svg {
+    margin-right: 10px;
+
+    &:last-child {
+      margin-left: 5px;
+    }
+  }
+}

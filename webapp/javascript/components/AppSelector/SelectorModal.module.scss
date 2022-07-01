@@ -1,0 +1,53 @@
+.modalBody {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 5px);
+  overflow: hidden;
+  z-index: 1011;
+  background-color: var(--ps-neutral-4);
+  border: 1px solid var(--ps-neutral-6);
+  border-radius: 4px;
+  display: none;
+  padding: 10px;
+
+  &.visible {
+    display: block;
+    box-shadow: 0px 2px 6px var(--ps-neutral-1);
+  }
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+
+  &:last-child {
+    border-top: 1px solid var(--ps-neutral-6);
+    margin-top: 10px;
+  }
+}
+
+.sectionTitle {
+  font-size: 16px;
+}
+
+.section {
+  width: 300px;
+
+  &:last-child {
+    border-left: 1px solid var(--ps-neutral-6);
+  }
+}
+
+.search {
+  background: var(--ps-immutable-1);
+  color: var(--ps-immutable-4);
+  border: 1px solid var(--ps-neutral-6);
+}
+
+.noData {
+  width: 600px;
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
