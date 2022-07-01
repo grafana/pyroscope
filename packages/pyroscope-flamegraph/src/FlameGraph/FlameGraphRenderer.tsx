@@ -159,8 +159,7 @@ class FlameGraphRenderer extends React.Component<
     const prevFlame = mountFlamebearer(prevProps);
     const currFlame = mountFlamebearer(this.props);
 
-    // This is a poor heuristic, but it should work most of the times
-    if (prevFlame.numTicks !== currFlame.numTicks) {
+    if (!this.isSameFlamebearer(prevFlame, currFlame)) {
       const newConfigs = this.calcNewConfigs(prevFlame, currFlame);
 
       // Batch these updates to not do unnecessary work
@@ -191,6 +190,12 @@ class FlameGraphRenderer extends React.Component<
     // This is a simple heuristic based on the name
     // It does not account for eg recursive calls
     const isSameNode = (f: Flamebearer, f2: Flamebearer, s: Maybe<Node>) => {
+      // if flamebearers are different, we can't access the same bar
+      // since it may not exist
+      if (!this.isSameFlamebearer(f, f2)) {
+        return false;
+      }
+
       // TODO: don't use createFF directly
       const getBarName = (f: Flamebearer, i: number, j: number) => {
         return f.names[createFF(f.format).getBarName(f.levels[i], j)];
@@ -226,6 +231,11 @@ class FlameGraphRenderer extends React.Component<
     this.setState({
       highlightQuery: e,
     });
+  };
+
+  isSameFlamebearer = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
+    // This is a poor heuristic, but it should work most of the times
+    return prevFlame.numTicks === currFlame.numTicks;
   };
 
   onReset = () => {
