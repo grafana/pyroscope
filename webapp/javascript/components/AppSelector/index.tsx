@@ -2,17 +2,14 @@ import React, { useState } from 'react';
 import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import {
-  selectIsLoadingData,
   actions,
   selectAppNames,
   reloadAppNames,
   selectQueries,
+  selectAppNamesState,
 } from '@webapp/redux/reducers/continuous';
-import { useLocation } from 'react-router-dom';
-import { PAGES } from '@webapp/pages/constants';
-import classNames from 'classnames';
-import Spinner from 'react-svg-spinner';
 import Button from '@webapp/ui/Button';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import OutsideClickHandler from 'react-outside-click-handler';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import SelectorModal from './SelectorModal';
@@ -24,17 +21,26 @@ interface AppSelectorProps {
 
 const TOGGLE_BTN_ID = 'toggle_button';
 
+const Loading = ({ type }: { type: 'reloading' | 'loaded' | 'failed' }) => {
+  switch (type) {
+    case 'reloading': {
+      return <LoadingSpinner />;
+    }
+
+    default: {
+      return null;
+    }
+  }
+};
+
 const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
   const dispatch = useAppDispatch();
-  const location = useLocation();
   const appNames = useAppSelector(selectAppNames);
   const { query } = useAppSelector(selectQueries);
   const appName = queryToAppName(query).mapOr('', (q) =>
     appNames.indexOf(q) !== -1 ? q : ''
   );
-  const isLoadingData = useAppSelector((state) =>
-    selectIsLoadingData(state, location?.pathname as PAGES)
-  );
+  const appNamesState = useAppSelector(selectAppNamesState);
 
   const [selectorOpened, toggleSelector] = useState(false);
 
@@ -71,15 +77,9 @@ const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
         aria-label="Refresh Apps"
         icon={faSyncAlt}
         onClick={() => dispatch(reloadAppNames())}
+        className={styles.refreshButton}
       />
-      <div
-        className={classNames('spinner-container', {
-          visible: isLoadingData,
-          loaded: !isLoadingData,
-        })}
-      >
-        {isLoadingData && <Spinner color="rgba(255,255,255,0.6)" size="20px" />}
-      </div>
+      <Loading type={appNamesState.type} />
       <OutsideClickHandler onOutsideClick={handleClickOutsile}>
         <SelectorModal
           selectAppName={selectAppName}
