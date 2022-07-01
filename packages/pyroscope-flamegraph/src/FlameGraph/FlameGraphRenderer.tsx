@@ -190,12 +190,6 @@ class FlameGraphRenderer extends React.Component<
     // This is a simple heuristic based on the name
     // It does not account for eg recursive calls
     const isSameNode = (f: Flamebearer, f2: Flamebearer, s: Maybe<Node>) => {
-      // if flamebearers are different, we can't access the same bar
-      // since it may not exist
-      if (!this.isSameFlamebearer(f, f2)) {
-        return false;
-      }
-
       // TODO: don't use createFF directly
       const getBarName = (f: Flamebearer, i: number, j: number) => {
         return f.names[createFF(f.format).getBarName(f.levels[i], j)];
@@ -206,10 +200,14 @@ class FlameGraphRenderer extends React.Component<
         return true;
       }
 
-      return (
-        getBarName(f, s.value.i, s.value.j) ===
-        getBarName(f2, s.value.i, s.value.j)
-      );
+      // if the bar doesn't exist, it will throw an error
+      try {
+        const barName1 = getBarName(f, s.value.i, s.value.j);
+        const barName2 = getBarName(f2, s.value.i, s.value.j);
+        return barName1 === barName2;
+      } catch {
+        return false;
+      }
     };
 
     // Reset zoom
