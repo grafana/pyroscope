@@ -1,4 +1,4 @@
-$border: 1px solid var(--ps-neutral-6);
+$border: 1px solid var(--ps-ui-border-color);
 $border-radius: 4px;
 
 .button {
@@ -26,21 +26,21 @@ $border-radius: 4px;
 }
 
 .default {
-  background: var(--ps-neutral-5);
+  background: var(--ps-ui-element-bg-primary);
 
   &:hover:not(:disabled) {
-    background-color: var(--ps-neutral-7);
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 
   &:disabled {
-    color: var(--ps-neutral-6);
+    color: var(--ps-grey-disabled);
     pointer-events: none;
   }
 }
 
 .primary {
   border: none;
-  color: var(--ps-neutral-5) !important;
+  color: var(--ps-immutable-green-button-text) !important;
   background-color: var(--ps-green-primary);
 
   &:hover {

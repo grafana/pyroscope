@@ -29,7 +29,7 @@
     right: 0px;
     width: 400px;
     padding: 20px 20px 20px 20px;
-    border: 1px solid var(--ps-neutral-6);
+    border: 1px solid var(--ps-ui-border-color);
     box-shadow: 0px 10px 20px var(--ps-neutral-1);
     border-radius: 4px;
 
@@ -76,7 +76,7 @@
     padding: 2px 0;
     // compensates for the negative margin in .drp-presets
     padding-left: 20px;
-    color: var(--ps-neutral-8);
+    color: var(--ps-ui-foreground-text);
 
     // give some room between the text and the icon
     // https://web.dev/learn/css/logical-properties/#solving-the-icon-issue
@@ -87,7 +87,7 @@
     &:hover,
     &.active {
       color: var(--ps-neutral-2);
-      background: var(--ps-neutral-7);
+      background: var(--ps-ui-element-bg-highlight);
     }
 
     &:hover {
@@ -141,7 +141,7 @@
 
 .react-datepicker__day--disabled {
   background-color: transparent;
-  color: var(--ps-neutral-8);
+  color: var(--ps-ui-foreground-text);
 }
 
 .react-datepicker__day--in-selecting-range:hover {

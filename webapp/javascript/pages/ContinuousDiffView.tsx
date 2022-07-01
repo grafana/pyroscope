@@ -23,6 +23,7 @@ import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import InstructionText from '@webapp/components/InstructionText';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -35,8 +36,10 @@ function ComparisonDiffApp() {
     rightFrom,
     leftUntil,
     rightUntil,
+    from,
+    until,
   } = useAppSelector(selectContinuousState);
-  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
+  const { leftQuery, rightQuery, query } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -50,26 +53,21 @@ function ComparisonDiffApp() {
   const timezone = offset === 0 ? 'utc' : 'browser';
 
   useEffect(() => {
-    const fetchData =
-      rightQuery && leftQuery
-        ? dispatch(
-            fetchDiffView({
-              leftQuery,
-              leftFrom,
-              leftUntil,
+    if (rightQuery && leftQuery) {
+      const fetchData = dispatch(
+        fetchDiffView({
+          leftQuery,
+          leftFrom,
+          leftUntil,
 
-              rightQuery,
-              rightFrom,
-              rightUntil,
-            })
-          )
-        : null;
-
-    return () => {
-      if (fetchData?.abort) {
-        fetchData.abort();
-      }
-    };
+          rightQuery,
+          rightFrom,
+          rightUntil,
+        })
+      );
+      return fetchData.abort;
+    }
+    return undefined;
   }, [
     leftFrom,
     leftUntil,
@@ -83,12 +81,17 @@ function ComparisonDiffApp() {
 
   const exportData = diffView.profile && (
     <ExportData
-      flamebearer={diffView.profile}
+      flamebearer={{
+        ...diffView.profile,
+        metadata: {
+          ...diffView.profile.metadata,
+        },
+      }}
       exportJSON
       exportPNG
       // disable this until we fix it
       //      exportHTML
-      exportFlamegraphDotCom
+      exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
   );

@@ -107,16 +107,16 @@
   transition: background-color 0.2s ease-in;
 }
 
-.buttonDark {
-  background-color: var(--ps-neutral-7);
-}
-
 .button:hover {
   background-color: var(--ps-blue-highlight);
 }
 
+.buttonDark {
+  background-color: var(--ps-grey-primary);
+}
+
 .buttonDark:hover {
-  background-color: var(--ps-neutral-6);
+  background-color: var(--ps-grey-highlight);
 }
 
 .link {

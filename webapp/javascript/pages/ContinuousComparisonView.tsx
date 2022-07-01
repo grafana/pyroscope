@@ -20,6 +20,7 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
@@ -41,27 +42,24 @@ function ComparisonApp() {
   const sharedQuery = useFlamegraphSharedQuery();
 
   useEffect(() => {
-    const fetchLeftQueryData = leftQuery
-      ? dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }))
-      : null;
-
-    return () => {
-      if (fetchLeftQueryData && fetchLeftQueryData.abort) {
-        fetchLeftQueryData.abort();
-      }
-    };
+    if (leftQuery) {
+      const fetchLeftQueryData = dispatch(
+        fetchComparisonSide({ side: 'left', query: leftQuery })
+      );
+      return fetchLeftQueryData.abort;
+    }
+    return undefined;
   }, [leftFrom, leftUntil, leftQuery]);
 
   useEffect(() => {
-    const fetchRightQueryData = rightQuery
-      ? dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }))
-      : null;
+    if (rightQuery) {
+      const fetchRightQueryData = dispatch(
+        fetchComparisonSide({ side: 'right', query: rightQuery })
+      );
 
-    return () => {
-      if (fetchRightQueryData && fetchRightQueryData.abort) {
-        fetchRightQueryData.abort();
-      }
-    };
+      return fetchRightQueryData.abort;
+    }
+    return undefined;
   }, [rightFrom, rightUntil, rightQuery]);
 
   const leftSide = comparisonView.left.profile;
@@ -129,7 +127,7 @@ function ComparisonApp() {
                     exportJSON
                     exportHTML
                     exportPprof
-                    exportFlamegraphDotCom
+                    exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                     exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
                   />
                 )
@@ -177,7 +175,7 @@ function ComparisonApp() {
                     exportJSON
                     exportHTML
                     exportPprof
-                    exportFlamegraphDotCom
+                    exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                     exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
                   />
                 )

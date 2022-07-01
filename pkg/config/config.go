@@ -159,6 +159,8 @@ type Server struct {
 	SelfProfilingTags map[string]string `name:"self-profiling-tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"self-profiling-tags" yaml:"self-profiling-tags"`
 
 	RemoteWrite RemoteWrite `yaml:"remote-write" mapstructure:"remote-write"`
+
+	DisableExportToFlamegraphDotCom bool `def:"false" desc:"disable exporting to flamegraph.com in the UI" mapstructure:"disable-export-to-flamegraph-dot-com"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule

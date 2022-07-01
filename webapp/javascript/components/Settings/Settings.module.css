@@ -16,7 +16,7 @@
   padding: 10px 5px;
   text-decoration: none;
   position: relative;
-  color: var(--ps-neutral-8);
+  color: var(--ps-ui-foreground-text);
 }
 
 .navLinkActive {

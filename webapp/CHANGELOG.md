@@ -3,6 +3,90 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.13.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.2...@pyroscope/webapp@1.13.3) (2022-06-30)
+
+
+### Bug Fixes
+
+* default name when exporting diff ([#1195](https://github.com/pyroscope-io/pyroscope/issues/1195)) ([c8e9b79](https://github.com/pyroscope-io/pyroscope/commit/c8e9b79405be23a760260f40d0e594b8c484f165))
+
+
+
+
+
+## [1.13.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.1...@pyroscope/webapp@1.13.2) (2022-06-30)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.13.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.0...@pyroscope/webapp@1.13.1) (2022-06-30)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.13.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.12.2...@pyroscope/webapp@1.13.0) (2022-06-29)
+
+
+### Features
+
+* **frontend:** support disabling exporting to flamegraph.com ([#1188](https://github.com/pyroscope-io/pyroscope/issues/1188)) ([cd48732](https://github.com/pyroscope-io/pyroscope/commit/cd48732bb28dfab903ef00799f2bacdb6d991e0d))
+
+
+
+
+
+## [1.12.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.12.1...@pyroscope/webapp@1.12.2) (2022-06-29)
+
+
+### Bug Fixes
+
+* adhoc/diff-view data table initial render ([#1190](https://github.com/pyroscope-io/pyroscope/issues/1190)) ([b03794c](https://github.com/pyroscope-io/pyroscope/commit/b03794cdad8873685cca734dc287c546442bec99))
+
+
+
+
+
+## [1.12.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.12.0...@pyroscope/webapp@1.12.1) (2022-06-29)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.12.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.8...@pyroscope/webapp@1.12.0) (2022-06-29)
+
+
+### Features
+
+* add adhoc sort by date ([#1187](https://github.com/pyroscope-io/pyroscope/issues/1187)) ([206d2c6](https://github.com/pyroscope-io/pyroscope/commit/206d2c6a6e35d30d85f35a0103b8fb0d71b8c0f5))
+
+
+
+
+
+## [1.11.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.7...@pyroscope/webapp@1.11.8) (2022-06-29)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.11.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.6...@pyroscope/webapp@1.11.7) (2022-06-28)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.11.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.11.5...@pyroscope/webapp@1.11.6) (2022-06-27)
 
 **Note:** Version bump only for package @pyroscope/webapp
