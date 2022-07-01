@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.4...@pyroscope/flamegraph@0.9.5) (2022-07-01)
+
+
+### Bug Fixes
+
+* **frontend:** don't crash when flamegraph changes ([#1200](https://github.com/pyroscope-io/pyroscope/issues/1200)) ([f558e0d](https://github.com/pyroscope-io/pyroscope/commit/f558e0d70e9341d0374dd17c33202e09979b1e38))
+
+
+
+
+
 ## [0.9.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.3...@pyroscope/flamegraph@0.9.4) (2022-06-30)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
