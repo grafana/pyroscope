@@ -18,7 +18,7 @@
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
     background-color: var(--ps-ui-element-bg-primary);
-    border: 1px solid var(--ps-ui-border-color);
+    border: 1px solid var(--ps-ui-border);
     height: 100%;
     display: flex;
     align-items: center;
@@ -35,7 +35,7 @@
     letter-spacing: 0px;
     font-family: monospace;
     font-size: 16px;
-    border: 1px solid var(--ps-ui-border-color);
+    border: 1px solid var(--ps-ui-border);
     padding: 0.25em 0.375em;
     resize: none;
     word-break: break-all;
@@ -110,7 +110,7 @@
   transition: background-color ease-out 0.1s;
   font: inherit;
   margin-right: 8px;
-  border: 1px solid var(--ps-ui-border-color);
+  border: 1px solid var(--ps-ui-border);
   width: 300px;
 
   &,
