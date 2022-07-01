@@ -14,6 +14,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -27,16 +28,11 @@ function ContinuousSingleView() {
   const { singleView } = useAppSelector((state) => state.continuous);
 
   useEffect(() => {
-    const fetchData =
-      from && until && query && maxNodes
-        ? dispatch(fetchSingleView(null))
-        : null;
-
-    return () => {
-      if (fetchData && fetchData.abort) {
-        fetchData.abort();
-      }
-    };
+    if (from && until && query && maxNodes) {
+      const fetchData = dispatch(fetchSingleView(null));
+      return () => fetchData.abort('cancel');
+    }
+    return undefined;
   }, [from, until, query, refreshToken, maxNodes]);
 
   const getRaw = () => {
@@ -68,7 +64,7 @@ function ContinuousSingleView() {
                 exportJSON
                 exportPprof
                 exportHTML
-                exportFlamegraphDotCom
+                exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                 exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
               />
             }

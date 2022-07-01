@@ -1,6 +1,6 @@
 .container {
   // same color as canvas-container
-  background-color: var(--ps-neutral-4);
+  background-color: var(--ps-ui-foreground);
   // same border as canvas-container
   border: 1px solid var(--ps-ui-background);
 
@@ -19,11 +19,11 @@
 
 .dragAndDropContainer {
   border: dashed;
-  border-color: var(--ps-neutral-6);
+  border-color: var(--ps-ui-border-color);
 }
 
 .fileUploadIcon {
-  color: var(--ps-neutral-6);
+  color: var(--ps-grey-primary);
   font-size: 40px;
   text-align: center;
   vertical-align: middle;

@@ -18,7 +18,7 @@
   text-align: left;
   border: 0;
   &:hover {
-    background-color: var(--ps-neutral-7);
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 }
 
@@ -29,7 +29,7 @@
   right: 0;
   z-index: 1000;
   flex-direction: column;
-  border: 1px solid var(--ps-neutral-6);
+  border: 1px solid var(--ps-ui-border-color);
   box-shadow: 0px 5px 10px var(--ps-neutral-1);
   background-color: var(--ps-dropdown-background);
   color: var(--ps-neutral-1);

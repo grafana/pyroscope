@@ -220,7 +220,7 @@ web-bootstrap: install-web-dependencies
 	yarn build:webapp > /dev/null
 
 .PHONY: dev
-dev: web-bootstrap ## Start webpack and pyroscope server. Use this one for working on pyroscope
+dev: install-web-dependencies ## Start webpack and pyroscope server. Use this one for working on pyroscope
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc

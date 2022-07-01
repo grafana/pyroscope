@@ -1,10 +1,11 @@
 /* eslint-disable react/destructuring-assignment */
 import React, { useState } from 'react';
+import { format } from 'date-fns';
 
 import Button from '@webapp/ui/Button';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { buildRenderURL } from '@webapp/util/updateRequests';
-import { dateForExportFilename } from '@webapp/util/formatDate';
+import { convertPresetsToDate } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models';
 import showModalWithInput from './Modals/ModalWithInput';
 
@@ -13,48 +14,38 @@ import styles from './ExportData.module.scss';
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
 // For cases like grafana
-type exportJSON =
-  | {
-      exportJSON: true;
-      flamebearer: Profile;
-    }
-  | { exportJSON?: false };
+type exportJSON = {
+  exportJSON?: boolean;
+  flamebearer: Profile;
+};
 
-type exportPprof =
-  | {
-      exportPprof: true;
-      flamebearer: Profile;
-    }
-  | { exportPprof?: false };
+type exportPprof = {
+  exportPprof?: boolean;
+  flamebearer: Profile;
+};
 
-type exportHTML =
-  | {
-      exportHTML: true;
-      fetchUrlFunc?: () => string;
-      flamebearer: Profile;
-    }
-  | { exportHTML?: false };
+type exportHTML = {
+  exportHTML?: boolean;
+  fetchUrlFunc?: () => string;
+  flamebearer: Profile;
+};
 
-type exportFlamegraphDotCom =
-  | {
-      exportFlamegraphDotCom: true;
-      exportFlamegraphDotComFn: (name?: string) => Promise<string | null>;
-      flamebearer: Profile;
-    }
-  | { exportFlamegraphDotCom?: false };
+type exportFlamegraphDotCom = {
+  exportFlamegraphDotCom?: boolean;
+  exportFlamegraphDotComFn?: (name?: string) => Promise<string | null>;
+  flamebearer: Profile;
+};
 
-type exportPNG =
-  | {
-      exportPNG: true;
-      flamebearer: Profile;
-    }
-  | { exportPNG?: false };
+type exportPNG = {
+  exportPNG?: boolean;
+  flamebearer: Profile;
+};
 
 type ExportDataProps = exportPprof &
-  exportJSON &
   exportHTML &
   exportFlamegraphDotCom &
-  exportPNG;
+  exportPNG &
+  exportJSON;
 
 function ExportData(props: ExportDataProps) {
   const {
@@ -115,7 +106,7 @@ function ExportData(props: ExportDataProps) {
     }
 
     // TODO additional check this won't be needed once we use strictNullChecks
-    if (props.exportFlamegraphDotCom) {
+    if (props.exportFlamegraphDotCom && props.exportFlamegraphDotComFn) {
       const { flamebearer } = props;
 
       const defaultExportName = getFilename(
@@ -345,6 +336,22 @@ function ExportData(props: ExportDataProps) {
       </div>
     </div>
   );
+}
+
+const dateFormat = 'yyyy-MM-dd_HHmm';
+
+function dateForExportFilename(from: string, until: string) {
+  let start = new Date(Math.round(parseInt(from, 10) * 1000));
+  let end = new Date(Math.round(parseInt(until, 10) * 1000));
+
+  if (/^now-/.test(from) && until === 'now') {
+    const { _from } = convertPresetsToDate(from);
+
+    start = new Date(Math.round(parseInt(_from.toString(), 10) * 1000));
+    end = new Date();
+  }
+
+  return `${format(start, dateFormat)}-to-${format(end, dateFormat)}`;
 }
 
 export function getFilename(

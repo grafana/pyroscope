@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.3...@pyroscope/flamegraph@0.9.4) (2022-06-30)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.9.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.2...@pyroscope/flamegraph@0.9.3) (2022-06-30)
+
+
+### Bug Fixes
+
+* Update flamegraph color pallette ([9476039](https://github.com/pyroscope-io/pyroscope/commit/9476039cff2fe5d06b11ad8748517d16b93f1cc1))
+
+
+
+
+
+## [0.9.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.1...@pyroscope/flamegraph@0.9.2) (2022-06-29)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.9.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.0...@pyroscope/flamegraph@0.9.1) (2022-06-29)
+
+
+### Bug Fixes
+
+* zoom/focus reset on changing selected node [refactored] ([#1184](https://github.com/pyroscope-io/pyroscope/issues/1184)) ([949052d](https://github.com/pyroscope-io/pyroscope/commit/949052d6db23daedde589a6eaa7c06a4db527cab))
+
+
+
+
+
 # [0.9.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.4...@pyroscope/flamegraph@0.9.0) (2022-06-27)
 
 

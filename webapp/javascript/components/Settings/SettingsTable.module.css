@@ -18,7 +18,7 @@
 }
 
 .settingsTable tbody {
-  color: var(--ps-neutral-8);
+  color: var(--ps-ui-foreground-text);
 }
 
 .settingsTable button {
