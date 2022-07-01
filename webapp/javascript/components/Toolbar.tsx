@@ -16,7 +16,6 @@ import { Query } from '@webapp/models/query';
 import classNames from 'classnames';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';
-import NameSelector from './NameSelector';
 import TagsBar from './TagsBar';
 import AppSelector from './AppSelector';
 
@@ -43,7 +42,6 @@ function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
     <>
       <div className="navbar">
         <div className={classNames('labels')}>
-          {/* <NameSelector onSelectedName={onSelectedName} /> */}
           <AppSelector onSelectedName={onSelectedName} />
         </div>
         <div className="navbar-space-filler" />

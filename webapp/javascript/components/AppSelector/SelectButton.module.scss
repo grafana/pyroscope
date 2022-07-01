@@ -11,6 +11,10 @@
   justify-content: space-between;
   margin-right: 10px;
 
+  &:hover {
+    background-color: var(--ps-ui-border-color);
+  }
+
   &.isSelected {
     background-color: var(--ps-blue-primary);
   }
