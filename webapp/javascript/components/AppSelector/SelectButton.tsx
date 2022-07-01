@@ -1,10 +1,8 @@
 import React from 'react';
-import {
-  faFolder,
-  faFolderOpen,
-  faAngleRight,
-  faFire,
-} from '@fortawesome/free-solid-svg-icons';
+import { faFolder } from '@fortawesome/free-solid-svg-icons/faFolder';
+import { faFolderOpen } from '@fortawesome/free-solid-svg-icons/faFolderOpen';
+import { faAngleRight } from '@fortawesome/free-solid-svg-icons/faAngleRight';
+import { faFire } from '@fortawesome/free-solid-svg-icons/faFire';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames/bind';
 // eslint-disable-next-line css-modules/no-unused-class
