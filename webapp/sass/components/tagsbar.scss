@@ -106,7 +106,7 @@
 
 // TODO: DRY This from SharedQueryInput.module.scss and NameSelector.module.scss
 .search {
-  background: var(--ps-immutable-1);
+  background: var(--ps-immutable-off-white);
   transition: background-color ease-out 0.1s;
   font: inherit;
   margin-right: 8px;
@@ -115,6 +115,6 @@
 
   &,
   &::placeholder {
-    color: var(--ps-immutable-4) !important;
+    color: var(--ps-immutable-placeholder-text) !important;
   }
 }

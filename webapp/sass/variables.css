@@ -50,10 +50,10 @@
   --ps-immutable-gradient-0: #d1283980; /* used for gradient */
   --ps-immutable-gradient-1: #3dc1d3cc; /* used for gradient */
 
-  --ps-immutable-1: #e6e6e6;
-  --ps-immutable-2: #eb7b18;
-  --ps-immutable-3: #ffffff;
-  --ps-immutable-4: #333333;
+  --ps-immutable-off-white: #e6e6e6; /* input background, intro pages text, google,gitlab,github buttons text, */
+  --ps-immutable-linked-border: #eb7b18; /* linked border color */
+  --ps-immutable-white: #ffffff; /* white: Use only when it should be white regardless of color mode */
+  --ps-immutable-placeholder-text: #333333; /* placeholder text color */
 }
 
 [data-theme='light'],

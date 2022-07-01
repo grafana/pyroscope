@@ -5,7 +5,7 @@
 }
 
 .search {
-  background: var(--ps-immutable-1);
+  background: var(--ps-immutable-off-white);
   transition: background-color ease-out 0.1s;
   font: inherit;
   margin-right: 8px;
@@ -14,7 +14,7 @@
 
   &,
   &::placeholder {
-    color: var(--ps-immutable-4) !important;
+    color: var(--ps-immutable-placeholder-text) !important;
   }
 }
 
@@ -30,11 +30,11 @@
 .search-synced {
   @extend .search;
 
-  border-color: var(--ps-immutable-2);
+  border-color: var(--ps-immutable-linked-border);
 }
 
 .search:focus {
-  background: var(--ps-immutable-3);
+  background: var(--ps-immutable-white);
 }
 
 .search-small {
@@ -53,13 +53,13 @@
   @extend .icon;
 
   path {
-    fill: var(--ps-immutable-2);
+    fill: var(--ps-immutable-linked-border);
   }
 }
 
 .sync {
   border: none;
-  background-color: var(--ps-immutable-1);
+  background-color: var(--ps-immutable-off-white);
   cursor: pointer;
   width: 40px;
   border-top-right-radius: 4px;
@@ -76,7 +76,7 @@
 .syncSelected {
   @extend .sync;
 
-  border-top-color: var(--ps-immutable-2);
-  border-right-color: var(--ps-immutable-2);
-  border-bottom-color: var(--ps-immutable-2);
+  border-top-color: var(--ps-immutable-linked-border);
+  border-right-color: var(--ps-immutable-linked-border);
+  border-bottom-color: var(--ps-immutable-linked-border);
 }
