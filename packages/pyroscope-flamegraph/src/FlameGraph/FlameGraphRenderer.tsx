@@ -159,8 +159,7 @@ class FlameGraphRenderer extends React.Component<
     const prevFlame = mountFlamebearer(prevProps);
     const currFlame = mountFlamebearer(this.props);
 
-    // This is a poor heuristic, but it should work most of the times
-    if (prevFlame.numTicks !== currFlame.numTicks) {
+    if (!this.isSameFlamebearer(prevFlame, currFlame)) {
       const newConfigs = this.calcNewConfigs(prevFlame, currFlame);
 
       // Batch these updates to not do unnecessary work
@@ -201,10 +200,14 @@ class FlameGraphRenderer extends React.Component<
         return true;
       }
 
-      return (
-        getBarName(f, s.value.i, s.value.j) ===
-        getBarName(f2, s.value.i, s.value.j)
-      );
+      // if the bar doesn't exist, it will throw an error
+      try {
+        const barName1 = getBarName(f, s.value.i, s.value.j);
+        const barName2 = getBarName(f2, s.value.i, s.value.j);
+        return barName1 === barName2;
+      } catch {
+        return false;
+      }
     };
 
     // Reset zoom
@@ -226,6 +229,11 @@ class FlameGraphRenderer extends React.Component<
     this.setState({
       highlightQuery: e,
     });
+  };
+
+  isSameFlamebearer = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
+    // This is a poor heuristic, but it should work most of the times
+    return prevFlame.numTicks === currFlame.numTicks;
   };
 
   onReset = () => {
