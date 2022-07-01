@@ -15,8 +15,8 @@
   text-align: left;
   outline: none;
   display: flex;
-  background-color: var(--ps-neutral-5);
-  border: 1px solid var(--ps-neutral-6);
+  background-color: var(--ps-ui-element-bg-primary);
+  border: 1px solid var(--ps-ui-border-color);
   position: relative;
   border-radius: 4px;
   padding-right: 20px;
@@ -30,7 +30,7 @@
   }
 
   &:hover {
-    background-color: var(--ps-neutral-7);
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 }
 
