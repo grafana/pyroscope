@@ -5,9 +5,9 @@ use pyroscope::PyroscopeAgent;
 use pyroscope_pprofrs::{pprof_backend, PprofConfig};
 use warp::Filter;
 
-// Vehicule enum
+// Vehicle enum
 #[derive(Debug, PartialEq)]
-enum Vehicule {
+enum Vehicle {
     Car,
     Bike,
     Scooter,
@@ -102,18 +102,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn order_bike(n: u64) {
-    find_nearest_vehicule(n, Vehicule::Bike);
+    find_nearest_vehicle(n, Vehicle::Bike);
 }
 
 fn order_scooter(n: u64) {
-    find_nearest_vehicule(n, Vehicule::Scooter);
+    find_nearest_vehicle(n, Vehicle::Scooter);
 }
 
 fn order_car(n: u64) {
-    find_nearest_vehicule(n, Vehicule::Car);
+    find_nearest_vehicle(n, Vehicle::Car);
 }
 
-fn find_nearest_vehicule(search_radius: u64, vehicule: Vehicule) {
+fn find_nearest_vehicle(search_radius: u64, vehicle: Vehicle) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
@@ -121,7 +121,7 @@ fn find_nearest_vehicule(search_radius: u64, vehicule: Vehicule) {
         _i += 1;
     }
 
-    if vehicule == Vehicule::Car {
+    if vehicle == Vehicle::Car {
         check_driver_availability(search_radius);
     }
 }

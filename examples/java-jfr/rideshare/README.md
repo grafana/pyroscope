@@ -100,7 +100,7 @@ While the difference _in this case_ is stark enough to see in the comparison vie
 
 
 ### Future Roadmap
-While this is one popular use case, the ability to add tags opens up many possiblities for other use cases such as linking profiles to other observability signals such as logs, metrics, and traces. 
+While this is one popular use case, the ability to add tags opens up many possibilities for other use cases such as linking profiles to other observability signals such as logs, metrics, and traces. 
 We've already began to make progress on this with our [otel-pyroscope package](https://github.com/pyroscope-io/otelpyroscope#baseline-diffs) for Go... Stay tuned for a version with Java coming soon! 
 
 We'd love to continue to improve our java integration and so we would love to hear what features _you would like to see_. 
