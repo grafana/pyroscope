@@ -7,6 +7,7 @@ const timelineTitles = {
   total: 'Total CPU Time',
   baseline: 'Baseline Flamegraph',
   comparison: 'Comparison Flamegraph',
+  diff: 'Baseline vs. Comparison Diff',
 };
 
 interface TimelineTitleProps {

@@ -23,6 +23,7 @@ import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import InstructionText from '@webapp/components/InstructionText';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ComparisonDiffApp() {
@@ -36,10 +37,8 @@ function ComparisonDiffApp() {
     rightFrom,
     leftUntil,
     rightUntil,
-    from,
-    until,
   } = useAppSelector(selectContinuousState);
-  const { leftQuery, rightQuery, query } = useAppSelector(selectQueries);
+  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -123,11 +122,13 @@ function ComparisonDiffApp() {
               right: { from: rightFrom, to: rightUntil, color: rightColor },
             }}
             timezone={timezone}
+            title={<TimelineTitle titleKey="total" />}
           />
         </Box>
         <Box>
           <div className="diff-instructions-wrapper">
             <div className="diff-instructions-wrapper-side">
+              <TimelineTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
@@ -154,6 +155,7 @@ function ComparisonDiffApp() {
               />
             </div>
             <div className="diff-instructions-wrapper-side">
+              <TimelineTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}
@@ -180,6 +182,7 @@ function ComparisonDiffApp() {
               />
             </div>
           </div>
+          <TimelineTitle titleKey="diff" />
           <FlamegraphRenderer
             profile={diffView.profile}
             ExportData={exportData}
