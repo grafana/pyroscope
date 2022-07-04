@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.13.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.5...@pyroscope/webapp@1.13.6) (2022-07-04)
+
+
+### Bug Fixes
+
+* colors on login pages ([#1197](https://github.com/pyroscope-io/pyroscope/issues/1197)) ([a6b2b22](https://github.com/pyroscope-io/pyroscope/commit/a6b2b2275a21bd0f82dc8d4c62eeb34c80da9e3f))
+
+
+
+
+
 ## [1.13.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.4...@pyroscope/webapp@1.13.5) (2022-07-01)
 
 **Note:** Version bump only for package @pyroscope/webapp
