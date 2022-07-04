@@ -9,7 +9,13 @@
   outline: none;
   width: 100%;
   justify-content: space-between;
-  margin-right: 10px;
+  padding-left: 10px;
+  overflow: hidden;
+
+  & > div {
+    display: flex;
+    align-items: center;
+  }
 
   &:hover {
     background-color: var(--ps-ui-border-color);
@@ -18,12 +24,18 @@
   &.isSelected {
     background-color: var(--ps-blue-primary);
   }
+}
 
-  svg {
-    margin-right: 10px;
+.itemIcon {
+  width: 18px !important;
+  display: flex;
+  flex-shrink: 0;
+  margin-right: 10px;
+}
 
-    &:last-child {
-      margin-left: 5px;
-    }
-  }
+.appName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 245px;
 }

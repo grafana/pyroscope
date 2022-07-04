@@ -40,8 +40,11 @@ const SelectButton = ({
       className={cx({ button: true, isSelected })}
     >
       <div>
-        <FontAwesomeIcon icon={getIcon(isFolder, isSelected)} />
-        {name}
+        <FontAwesomeIcon
+          className={styles.itemIcon}
+          icon={getIcon(isFolder, isSelected)}
+        />
+        <div className={styles.appName}>{name}</div>
       </div>
       <div>{isFolder ? <FontAwesomeIcon icon={faAngleRight} /> : null}</div>
     </button>
