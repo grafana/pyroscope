@@ -105,6 +105,7 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
+            <TimelineTitle title="Baseline Flamegraph" color={leftColor} />
             <TagsBar
               query={leftQuery}
               tags={leftTags}
@@ -153,6 +154,7 @@ function ComparisonApp() {
           </Box>
 
           <Box className={styles.comparisonPane}>
+            <TimelineTitle title="Comparison Flamegraph" color={rightColor} />
             <TagsBar
               query={rightQuery}
               tags={rightTags}

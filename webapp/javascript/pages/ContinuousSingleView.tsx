@@ -100,6 +100,7 @@ function ContinuousSingleView() {
       <div className="main-wrapper">
         <Toolbar />
         <Box>
+          single
           <TimelineChartWrapper
             timezone={offset === 0 ? 'utc' : 'browser'}
             data-testid="timeline-single"

@@ -1,6 +1,21 @@
 .timelineTitle {
-  font-size: 22px;
-  font-weight: 600;
-  text-align: center;
-  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+
+  .colorReference {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    margin-right: 5px;
+    border-radius: 2px;
+  }
+
+  .title {
+    margin: 0 0 10px;
+    font-size: 22px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 22px;
+  }
 }

@@ -10,9 +10,14 @@ interface TimelineTitleProps {
 
 export default function TimelineTitle({ color, title }: TimelineTitleProps) {
   return (
-    <>
-      {color && <h1>{color}</h1>}
-      <p className={styles.timelineTitle}>{title}</p>
-    </>
+    <div className={styles.timelineTitle}>
+      {color && (
+        <span
+          className={styles.colorReference}
+          style={{ backgroundColor: color.rgb().toString() }}
+        />
+      )}
+      <p className={styles.title}>{title}</p>
+    </div>
   );
 }
