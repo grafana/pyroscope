@@ -46,7 +46,8 @@ const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
 
   const selectAppName = (name: string) => {
     const appNameQuery = queryFromAppName(name);
-
+    // Comparison/Diff View pages provide {onSelectedName} func which
+    // handle propagating query to left/right flamegraphs
     if (onSelectedName) {
       onSelectedName(appNameQuery);
     } else {

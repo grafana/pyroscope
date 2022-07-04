@@ -30,6 +30,7 @@ const SelectorModal = ({
   const [selected, select] = useState<string[]>([]);
 
   const filteredAppNames = useMemo(
+    // filtered names by search input
     () =>
       appNames.filter((n: string) =>
         n.toLowerCase().includes(filter.trim().toLowerCase())
