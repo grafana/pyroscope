@@ -69,11 +69,10 @@ func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 			logicalplan.Col(parcacol.ColumnSampleUnit),
 			logicalplan.Col(parcacol.ColumnPeriodType),
 			logicalplan.Col(parcacol.ColumnPeriodUnit),
-			logicalplan.Col(parcacol.ColumnDuration).GT(logicalplan.Literal(0)),
 		).
 		Execute(ctx, func(ar arrow.Record) error {
-			if ar.NumCols() != 6 {
-				return fmt.Errorf("expected 6 column, got %d", ar.NumCols())
+			if ar.NumCols() != 5 {
+				return fmt.Errorf("expected 5 column, got %d", ar.NumCols())
 			}
 
 			nameColumn, err := binaryFieldFromRecord(ar, parcacol.ColumnName)
