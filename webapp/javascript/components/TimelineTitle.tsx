@@ -3,12 +3,18 @@ import Color from 'color';
 
 import styles from './TimelineTitle.module.scss';
 
+const timelineTitles = {
+  total: 'Total CPU Time',
+  baseline: 'Baseline Flamegraph',
+  comparison: 'Comparison Flamegraph',
+};
+
 interface TimelineTitleProps {
   color?: Color;
-  title: string;
+  titleKey: keyof typeof timelineTitles;
 }
 
-export default function TimelineTitle({ color, title }: TimelineTitleProps) {
+export default function TimelineTitle({ color, titleKey }: TimelineTitleProps) {
   return (
     <div className={styles.timelineTitle}>
       {color && (
@@ -17,7 +23,7 @@ export default function TimelineTitle({ color, title }: TimelineTitleProps) {
           style={{ backgroundColor: color.rgb().toString() }}
         />
       )}
-      <p className={styles.title}>{title}</p>
+      <p className={styles.title}>{timelineTitles[titleKey]}</p>
     </div>
   );
 }

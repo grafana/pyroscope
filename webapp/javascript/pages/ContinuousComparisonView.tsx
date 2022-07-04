@@ -97,7 +97,7 @@ function ComparisonApp() {
               right: { from: rightFrom, to: rightUntil, color: rightColor },
             }}
             timezone={timezone}
-            title={<TimelineTitle title="Total CPU Time" />}
+            title={<TimelineTitle titleKey="total" />}
           />
         </Box>
         <div
@@ -105,7 +105,7 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
-            <TimelineTitle title="Baseline Flamegraph" color={leftColor} />
+            <TimelineTitle titleKey="baseline" color={leftColor} />
             <TagsBar
               query={leftQuery}
               tags={leftTags}
@@ -154,7 +154,7 @@ function ComparisonApp() {
           </Box>
 
           <Box className={styles.comparisonPane}>
-            <TimelineTitle title="Comparison Flamegraph" color={rightColor} />
+            <TimelineTitle titleKey="comparison" color={rightColor} />
             <TagsBar
               query={rightQuery}
               tags={rightTags}
