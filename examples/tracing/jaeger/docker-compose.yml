@@ -7,6 +7,7 @@ services:
       - '6831:6831/udp'
       - '16686:16686'
       - '14268:14268'
+      - '14250:14250'
     logging:
       driver: loki
       options:
@@ -48,7 +49,8 @@ services:
     environment:
       - REGION=us-east
     build:
-      context: ''
+      context: 'go/rideshare'
+      dockerfile: Dockerfile
     logging:
       driver: loki
       options:
@@ -60,7 +62,8 @@ services:
     environment:
       - REGION=eu-north
     build:
-      context: ''
+      context: 'go/rideshare'
+      dockerfile: Dockerfile
     logging:
       driver: loki
       options:
@@ -72,7 +75,47 @@ services:
     environment:
       - REGION=ap-south
     build:
-      context: ''
+      context: 'go/rideshare'
+      dockerfile: Dockerfile
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
+
+  us-east-java:
+    env_file:
+      - config.env
+    environment:
+      - REGION=us-east
+    build:
+      context: 'java/rideshare'
+      dockerfile: Dockerfile
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
+
+  eu-north-java:
+    env_file:
+      - config.env
+    environment:
+      - REGION=eu-north
+    build:
+      context: 'java/rideshare'
+      dockerfile: Dockerfile
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
+
+  ap-south-java:
+    env_file:
+      - config.env
+    environment:
+      - REGION=ap-south
+    build:
+      context: 'java/rideshare'
+      dockerfile: Dockerfile
     logging:
       driver: loki
       options:
@@ -82,12 +125,15 @@ services:
     env_file:
       - config.env
     build:
-      context: ''
+      context: 'go/rideshare'
       dockerfile: Dockerfile.loadgen
     depends_on:
       - ap-south
       - eu-north
       - us-east
+      - ap-south-java
+      - eu-north-java
+      - us-east-java
     logging:
       driver: loki
       options:
