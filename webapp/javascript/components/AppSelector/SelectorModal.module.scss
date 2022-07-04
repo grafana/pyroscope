@@ -2,28 +2,31 @@
   position: absolute;
   left: 0;
   top: calc(100% + 5px);
-  overflow: hidden;
   z-index: 1011;
   background-color: var(--ps-ui-foreground);
   border: 1px solid var(--ps-ui-border-color);
   border-radius: 4px;
-  display: none;
-  padding: 10px 0;
+  visibility: hidden;
 
   &.visible {
-    display: block;
+    visibility: visible;
     box-shadow: 0px 2px 6px var(--ps-neutral-1);
   }
 }
 
-.row {
+.selectorHeader {
   display: flex;
   flex-direction: row;
+  height: 90px;
+  padding-top: 10px;
+}
 
-  &:last-child {
-    border-top: 1px solid var(--ps-ui-border-color);
-    margin-top: 10px;
-  }
+.apps {
+  display: flex;
+  flex-direction: row;
+  border-top: 1px solid var(--ps-ui-border-color);
+  margin-top: 10px;
+  overflow-y: auto;
 }
 
 .sectionTitle {

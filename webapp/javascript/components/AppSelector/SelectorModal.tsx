@@ -15,6 +15,7 @@ interface SelectorModalProps {
 }
 
 const DELIMITER = '.';
+const APPS_LIST_ELEMENT_ID = 'apps_list';
 
 const getAppNames = (names: string[], name: string) =>
   names.filter((a) => a.indexOf(name) !== -1);
@@ -102,9 +103,24 @@ const SelectorModal = ({
     }
   }, [appName, selected, groups]);
 
+  const listHeight = useMemo(() => {
+    const windowHeight = window?.innerHeight;
+    const listRequiredHeight =
+      // 35 is list item height
+      Math.max(groups?.length || 0, profileTypes?.length || 0) * 35;
+
+    if (visible && windowHeight && listRequiredHeight) {
+      return listRequiredHeight > windowHeight
+        ? `${windowHeight / 1.5}px`
+        : 'auto';
+    }
+
+    return 'auto';
+  }, [groups, profileTypes, visible]);
+
   return (
     <div className={cx({ modalBody: true, visible })}>
-      <div className={styles.row}>
+      <div className={styles.selectorHeader}>
         <div>
           <div className={styles.sectionTitle}>SELECT APPLICATION</div>
           <Input
@@ -118,32 +134,34 @@ const SelectorModal = ({
         </div>
       </div>
       {filteredAppNames?.length ? (
-        <>
-          <div className={styles.row}>
-            <div className={styles.section}>
-              {groups.map((name) => (
-                <SelectButton
-                  name={name}
-                  onClick={() => onSelect({ index: 0, name })}
-                  fullList={appNames}
-                  isSelected={selected?.[0] === name}
-                  key={name}
-                />
-              ))}
-            </div>
-            <div className={styles.section}>
-              {profileTypes.map((name) => (
-                <SelectButton
-                  name={name}
-                  onClick={() => onSelect({ index: 1, name })}
-                  fullList={appNames}
-                  isSelected={selected?.[1] === name}
-                  key={name}
-                />
-              ))}
-            </div>
+        <div
+          style={{ height: listHeight }}
+          id={APPS_LIST_ELEMENT_ID}
+          className={styles.apps}
+        >
+          <div className={styles.section}>
+            {groups.map((name) => (
+              <SelectButton
+                name={name}
+                onClick={() => onSelect({ index: 0, name })}
+                fullList={appNames}
+                isSelected={selected?.[0] === name}
+                key={name}
+              />
+            ))}
           </div>
-        </>
+          <div className={styles.section}>
+            {profileTypes.map((name) => (
+              <SelectButton
+                name={name}
+                onClick={() => onSelect({ index: 1, name })}
+                fullList={appNames}
+                isSelected={selected?.[1] === name}
+                key={name}
+              />
+            ))}
+          </div>
+        </div>
       ) : (
         <div className={styles.noData}>No Data</div>
       )}
