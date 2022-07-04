@@ -80,12 +80,7 @@ function ComparisonDiffApp() {
 
   const exportData = diffView.profile && (
     <ExportData
-      flamebearer={{
-        ...diffView.profile,
-        metadata: {
-          ...diffView.profile.metadata,
-        },
-      }}
+      flamebearer={diffView.profile}
       exportJSON
       exportPNG
       // disable this until we fix it
@@ -122,7 +117,13 @@ function ComparisonDiffApp() {
               right: { from: rightFrom, to: rightUntil, color: rightColor },
             }}
             timezone={timezone}
-            title={<TimelineTitle titleKey="total" />}
+            title={
+              <TimelineTitle
+                titleKey={
+                  diffView.profile ? diffView.profile.metadata.units : ''
+                }
+              />
+            }
           />
         </Box>
         <div className="diff-instructions-wrapper">
