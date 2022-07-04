@@ -125,63 +125,63 @@ function ComparisonDiffApp() {
             title={<TimelineTitle titleKey="total" />}
           />
         </Box>
+        <div className="diff-instructions-wrapper">
+          <Box className="diff-instructions-wrapper-side">
+            <TimelineTitle titleKey="baseline" color={leftColor} />
+            <TagsBar
+              query={leftQuery}
+              tags={leftTags}
+              onSetQuery={(q) => {
+                dispatch(actions.setLeftQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
+            <InstructionText viewType="diff" viewSide="left" />
+            <TimelineChartWrapper
+              data-testid="timeline-left"
+              key="timeline-chart-left"
+              id="timeline-chart-left"
+              timelineA={leftTimeline}
+              onSelect={(from, until) => {
+                dispatch(actions.setLeft({ from, until }));
+              }}
+              markings={{
+                left: { from: leftFrom, to: leftUntil, color: leftColor },
+              }}
+              timezone={timezone}
+            />
+          </Box>
+          <Box className="diff-instructions-wrapper-side">
+            <TimelineTitle titleKey="comparison" color={rightColor} />
+            <TagsBar
+              query={rightQuery}
+              tags={rightTags}
+              onSetQuery={(q) => {
+                dispatch(actions.setRightQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
+            <InstructionText viewType="diff" viewSide="right" />
+            <TimelineChartWrapper
+              data-testid="timeline-right"
+              key="timeline-chart-right"
+              id="timeline-chart-right"
+              timelineA={rightTimeline}
+              onSelect={(from, until) => {
+                dispatch(actions.setRight({ from, until }));
+              }}
+              markings={{
+                right: { from: rightFrom, to: rightUntil, color: rightColor },
+              }}
+              timezone={timezone}
+            />
+          </Box>
+        </div>
         <Box>
-          <div className="diff-instructions-wrapper">
-            <div className="diff-instructions-wrapper-side">
-              <TimelineTitle titleKey="baseline" color={leftColor} />
-              <TagsBar
-                query={leftQuery}
-                tags={leftTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setLeftQuery(q));
-                }}
-                onSelectedLabel={(label, query) => {
-                  dispatch(fetchTagValues({ query, label }));
-                }}
-              />
-              <InstructionText viewType="diff" viewSide="left" />
-              <TimelineChartWrapper
-                data-testid="timeline-left"
-                key="timeline-chart-left"
-                id="timeline-chart-left"
-                timelineA={leftTimeline}
-                onSelect={(from, until) => {
-                  dispatch(actions.setLeft({ from, until }));
-                }}
-                markings={{
-                  left: { from: leftFrom, to: leftUntil, color: leftColor },
-                }}
-                timezone={timezone}
-              />
-            </div>
-            <div className="diff-instructions-wrapper-side">
-              <TimelineTitle titleKey="comparison" color={rightColor} />
-              <TagsBar
-                query={rightQuery}
-                tags={rightTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setRightQuery(q));
-                }}
-                onSelectedLabel={(label, query) => {
-                  dispatch(fetchTagValues({ query, label }));
-                }}
-              />
-              <InstructionText viewType="diff" viewSide="right" />
-              <TimelineChartWrapper
-                data-testid="timeline-right"
-                key="timeline-chart-right"
-                id="timeline-chart-right"
-                timelineA={rightTimeline}
-                onSelect={(from, until) => {
-                  dispatch(actions.setRight({ from, until }));
-                }}
-                markings={{
-                  right: { from: rightFrom, to: rightUntil, color: rightColor },
-                }}
-                timezone={timezone}
-              />
-            </div>
-          </div>
           <TimelineTitle titleKey="diff" />
           <FlamegraphRenderer
             profile={diffView.profile}
