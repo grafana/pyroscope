@@ -28,7 +28,7 @@ function APIKeyAddForm() {
     ttlSeconds: 360000,
   });
   const [key, setKey] = useState(undefined);
-  const [isRolesTooltipVisible, setRolesTooltipVisibility] = useState(true);
+  const [isRolesTooltipVisible, setRolesTooltipVisibility] = useState(false);
   const dispatch = useAppDispatch();
 
   const handleFormChange = (event: ShamefulAny) => {
