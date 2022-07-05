@@ -10,9 +10,9 @@ import (
 
 	"rideshare/bike"
 	"rideshare/car"
+	rlog "rideshare/log"
 	"rideshare/rideshare"
 	"rideshare/scooter"
-	rlog "rideshare/log"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
