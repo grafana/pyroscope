@@ -232,8 +232,9 @@ class FlameGraphRenderer extends React.Component<
   };
 
   isSameFlamebearer = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
-    // This is a poor heuristic, but it should work most of the times
-    return prevFlame.numTicks === currFlame.numTicks;
+    // TODO: come up with a less resource intensive operation
+    // keep in mind naive heuristics may provide bad behaviours like (https://github.com/pyroscope-io/pyroscope/issues/1192)
+    return JSON.stringify(prevFlame) === JSON.stringify(currFlame);
   };
 
   onReset = () => {
