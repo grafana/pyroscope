@@ -113,7 +113,7 @@ function APIKeyAddForm() {
                   <Tooltip
                     title={
                       'Admin - Manage users/API Key using the HTTP API\n' +
-                      'ReadOnly - for visualization only, eg Grafana datasource\n' +
+                      'ReadOnly: Used only for visualizations (i.e. Grafana datasource, embedding in a UI)\n' +
                       'Agent - the one you use in your code (https://pyroscope.io/docs/api-key-authentication/)'
                     }
                     visible={isRolesTooltipVisible}
