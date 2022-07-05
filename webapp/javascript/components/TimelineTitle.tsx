@@ -18,10 +18,13 @@ const unitsToFlamegraphTitle = {
 
 interface TimelineTitleProps {
   color?: Color;
-  titleKey: keyof typeof unitsToFlamegraphTitle;
+  titleKey?: keyof typeof unitsToFlamegraphTitle;
 }
 
-export default function TimelineTitle({ color, titleKey }: TimelineTitleProps) {
+export default function TimelineTitle({
+  color,
+  titleKey = '',
+}: TimelineTitleProps) {
   return (
     <div className={styles.timelineTitle}>
       {color && (

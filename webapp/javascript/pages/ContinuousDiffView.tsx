@@ -118,11 +118,7 @@ function ComparisonDiffApp() {
             }}
             timezone={timezone}
             title={
-              <TimelineTitle
-                titleKey={
-                  diffView.profile ? diffView.profile.metadata.units : ''
-                }
-              />
+              <TimelineTitle titleKey={diffView.profile?.metadata.units} />
             }
           />
         </Box>

@@ -109,9 +109,7 @@ function ContinuousSingleView() {
             onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
             height="125px"
             title={
-              singleView?.profile?.metadata.units && (
-                <TimelineTitle titleKey={singleView.profile.metadata.units} />
-              )
+              <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
             }
           />
         </Box>
