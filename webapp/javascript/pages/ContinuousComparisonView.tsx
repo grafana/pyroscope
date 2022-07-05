@@ -69,6 +69,10 @@ function ComparisonApp() {
   const exportToFlamegraphDotComRightFn =
     useExportToFlamegraphDotCom(rightSide);
   const timezone = offset === 0 ? 'utc' : 'browser';
+  const isSidesHasSameUnits =
+    leftSide &&
+    rightSide &&
+    leftSide.metadata.units === rightSide.metadata.units;
 
   return (
     <div>
@@ -97,8 +101,11 @@ function ComparisonApp() {
               right: { from: rightFrom, to: rightUntil, color: rightColor },
             }}
             timezone={timezone}
-            // using leftSide because comparison view (for now) should match the application at the top of the screen
-            title={<TimelineTitle titleKey={leftSide?.metadata.units} />}
+            title={
+              <TimelineTitle
+                titleKey={isSidesHasSameUnits ? leftSide.metadata.units : ''}
+              />
+            }
           />
         </Box>
         <div
