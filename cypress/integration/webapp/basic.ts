@@ -20,7 +20,7 @@ describe('basic test', () => {
     cy.findByLabelText(/Refresh apps/i).click();
     cy.wait(`@labelValues`);
 
-    cy.get('.navbar').findAllByTestId('toggle_button').click();
+    cy.get('.navbar').findAllByTestId('app_selector_toggle_button').click();
 
     // For some reason couldn't find the appropriate query
     cy.findAllByRole('menuitem').then((items) => {
