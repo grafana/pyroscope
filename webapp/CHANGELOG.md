@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.14.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.6...@pyroscope/webapp@1.14.0) (2022-07-05)
+
+
+### Features
+
+* support for micro-, milli-, and nanoseconds ([#1209](https://github.com/pyroscope-io/pyroscope/issues/1209)) ([f1ba768](https://github.com/pyroscope-io/pyroscope/commit/f1ba76848163506a043ec3321a25052f66161bb9))
+
+
+
+
+
 ## [1.13.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.5...@pyroscope/webapp@1.13.6) (2022-07-04)
 
 
