@@ -1,10 +1,4 @@
-## Note: This feature is experimental
-
-This is just an experimental feature and there are several improvements needed to make this
-production ready. We would love to get feedback on how people view this feature and ideas on
-how we could improve it for various use cases. Use at your own risk.
-
-## Tracing integration example
+## OTel Tracing integration example
 
 The example demonstrates how Pyroscope can be used in conjunction with tracing.
 In the example we will instrument a sample application with OpenTelemetry tracer and
