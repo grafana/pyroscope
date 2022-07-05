@@ -53,14 +53,8 @@ export function readableRange(
     return `Last ${number} ${multiplier}`;
   }
 
-  const d1 = getUTCdate(
-    parseUnixTime(from),
-    offsetInMinutes
-  );
-  const d2 = getUTCdate(
-    parseUnixTime(until),
-    offsetInMinutes
-  );
+  const d1 = getUTCdate(parseUnixTime(from), offsetInMinutes);
+  const d2 = getUTCdate(parseUnixTime(until), offsetInMinutes);
   return `${format(d1, dateFormat)} - ${format(d2, dateFormat)}`;
 }
 
@@ -86,16 +80,17 @@ export function formatAsOBject(value: string) {
 }
 
 export function parseUnixTime(value: string) {
-  const parsed = parseInt(value, 10)
+  const parsed = parseInt(value, 10);
   switch (value.length) {
-    default: // Seconds.
+    default:
+      // Seconds.
       return new Date(parsed * 1000);
     case 13: // Milliseconds.
       return new Date(parsed);
     case 16: // Microseconds.
-      return new Date(Math.round(parsed/1000));
+      return new Date(Math.round(parsed / 1000));
     case 19: // Nanoseconds.
-      return new Date(Math.round(parsed/1000/1000));
+      return new Date(Math.round(parsed / 1000 / 1000));
   }
 }
 
