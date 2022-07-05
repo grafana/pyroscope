@@ -16,9 +16,31 @@ interface SelectorModalProps {
 
 const DELIMITER = '.';
 const APPS_LIST_ELEMENT_ID = 'apps_list';
+export const APP_SEARCH_INPUT = 'application_search';
 
 const getAppNames = (names: string[], name: string) =>
   names.filter((a) => a.indexOf(name) !== -1);
+
+export const getGroups = (filteredAppNames: string[]) => {
+  const allGroups = filteredAppNames.map((i) => {
+    const splitted = i.split(DELIMITER);
+    const cutProfileType =
+      splitted.length > 1 ? splitted.slice(0, -1) : splitted;
+    const backToStr = cutProfileType.join(DELIMITER);
+
+    return backToStr;
+  });
+
+  const uniqGroups = Array.from(new Set(allGroups));
+
+  const groupOrProfileType = uniqGroups.map((u) => {
+    const appNamesEntries = getAppNames(filteredAppNames, u);
+
+    return appNamesEntries.length > 1 ? u : appNamesEntries?.[0];
+  });
+
+  return groupOrProfileType;
+};
 
 const SelectorModal = ({
   visible,
@@ -38,26 +60,7 @@ const SelectorModal = ({
     [filter, appNames]
   );
 
-  const groups = useMemo(() => {
-    const allGroups = filteredAppNames.map((i) => {
-      const splitted = i.split(DELIMITER);
-      const cutProfileType =
-        splitted.length > 1 ? splitted.slice(0, -1) : splitted;
-      const backToStr = cutProfileType.join(DELIMITER);
-
-      return backToStr;
-    });
-
-    const uniqGroups = Array.from(new Set(allGroups));
-
-    const groupOrProfileType = uniqGroups.map((u) => {
-      const appNamesEntries = getAppNames(filteredAppNames, u);
-
-      return appNamesEntries.length > 1 ? u : appNamesEntries?.[0];
-    });
-
-    return groupOrProfileType;
-  }, [filteredAppNames]);
+  const groups = useMemo(() => getGroups(filteredAppNames), [filteredAppNames]);
 
   const profileTypes = useMemo(() => {
     if (!selected?.[0]) {
@@ -131,6 +134,7 @@ const SelectorModal = ({
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className={styles.search}
+            testId={APP_SEARCH_INPUT}
           />
         </div>
       </div>

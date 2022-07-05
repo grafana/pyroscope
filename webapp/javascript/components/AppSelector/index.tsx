@@ -19,7 +19,7 @@ interface AppSelectorProps {
   onSelectedName?: (name: Query) => void;
 }
 
-const TOGGLE_BTN_ID = 'toggle_button';
+export const TOGGLE_BTN_ID = 'app_selector_toggle_button';
 
 const Loading = ({ type }: { type: 'reloading' | 'loaded' | 'failed' }) => {
   switch (type) {
