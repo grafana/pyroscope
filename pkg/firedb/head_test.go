@@ -3,10 +3,11 @@ package firedb
 import (
 	"context"
 	"testing"
-	"time"
 
+	"github.com/bufbuild/connect-go"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	"github.com/segmentio/parquet-go"
+	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -102,6 +103,21 @@ func TestHeadIngestStrings(t *testing.T) {
 	require.Equal(t, stringConversionTable{0, 3}, r.strings)
 }
 
+func TestHeadLabelValues(t *testing.T) {
+	head := NewHead()
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+
+	res, err := head.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
+	require.NoError(t, err)
+	require.Equal(t, []string{}, res.Msg.Names)
+
+	res, err = head.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "job"}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
+
+}
+
 func TestHeadIngestRealProfiles(t *testing.T) {
 	var (
 		profilePaths = []string{
@@ -122,28 +138,7 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 
 	require.NoError(t, head.WriteTo(ctx, t.TempDir()))
 
-	time.Sleep(time.Hour)
-
-	t.Logf("strings=%d samples=%d", len(head.strings.slice), len(head.samples.slice[0].Values))
-}
-
-func TestDelta(t *testing.T) {
-
-	sc := parquet.SchemaOf(struct {
-		Values []struct {
-			Value int `parquet:",delta"`
-		}
-	}{})
-
-	c, err := sc.Lookup("values", "value")
-
-	t.Logf("%+#v %+#v", c, err)
-
-	sc2 := parquet.SchemaOf(struct {
-		Values []int `parquet:","`
-	}{})
-	t.Logf("%s", sc2)
-
+	t.Logf("strings=%d samples=%d", len(head.strings.slice), len(head.profiles.slice[0].Samples))
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

@@ -5,13 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	"github.com/segmentio/parquet-go"
+
+	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 )
 
 type stringConversionTable []int64
@@ -151,32 +157,32 @@ func (_ *locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
 	return nil
 }
 
-type samplesHelper struct {
+type profilesHelper struct {
 }
 
-func (_ *samplesHelper) key(s *Sample) samplesKey {
+func (_ *profilesHelper) key(s *Profile) profilesKey {
 	id := s.ID
 	if id == uuid.Nil {
 		id = uuid.New()
 	}
-	return samplesKey{
+	return profilesKey{
 		ID: id,
 	}
 
 }
 
-func (_ *samplesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
+func (_ *profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
 	r.locations = elemRewriter
 }
 
-func (_ *samplesHelper) rewrite(r *rewriter, s *Sample) error {
+func (_ *profilesHelper) rewrite(r *rewriter, s *Profile) error {
 
 	for pos := range s.Types {
 		r.strings.rewrite(&s.Types[pos].Type)
 		r.strings.rewrite(&s.Types[pos].Unit)
 	}
 
-	for _, value := range s.Values {
+	for _, value := range s.Samples {
 		for pos := range value.LocationId {
 			r.locations.rewriteUint64(&value.LocationId[pos])
 		}
@@ -197,13 +203,16 @@ func (_ *samplesHelper) rewrite(r *rewriter, s *Sample) error {
 	return nil
 }
 
-type samplesKey struct {
+type profilesKey struct {
 	ID uuid.UUID
 }
 
-type Sample struct {
+type Profile struct {
 	// A unique UUID per ingested profile
 	ID uuid.UUID `parquet:",dict"`
+
+	// External label references
+	ExternalLabels []LabelPairRef `parquet:","`
 
 	// A description of the samples associated with each Sample.value.
 	// For a cpu profile this might be:
@@ -213,9 +222,11 @@ type Sample struct {
 	// If one of the values represents the number of events represented
 	// by the sample, by convention it should be at index 0 and use
 	// sample_type.unit == "count".
+	// TODO: Store only single type here
 	Types []*profilev1.ValueType `parquet:","`
 	// The set of samples recorded in this profile.
-	Values []*profilev1.Sample `parquet:","`
+	// TODO: Flatten into per type sample
+	Samples []*profilev1.Sample `parquet:","`
 
 	// frames with Function.function_name fully matching the following
 	// regexp will be dropped from the samples, along with their successors.
@@ -233,14 +244,14 @@ type Sample struct {
 	// The number of events between sampled occurrences.
 	Period int64 `parquet:","`
 	// Freeform text associated to the profile.
-	Comment []int64 `parquet:","` // Indices into string table.
+	Comment []int64 `parquet:"Comments,"` // Indices into string table.
 	// Index into the string table of the type of the preferred sample
 	// value. If unset, clients should default to the last sample value.
 	DefaultSampleType int64 `parquet:","`
 }
 
 type Models interface {
-	*Sample | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
+	*Profile | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
 }
 
 type rewriter struct {
@@ -317,6 +328,13 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 	return nil
 }
 
+func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	v, ok := s.lookup[key]
+	return v, ok
+}
+
 type Head struct {
 	logger log.Logger
 
@@ -324,7 +342,7 @@ type Head struct {
 	mappings  deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
 	functions deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
 	locations deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
-	samples   deduplicatingSlice[*Sample, samplesKey, *samplesHelper]
+	profiles  deduplicatingSlice[*Profile, profilesKey, *profilesHelper]
 }
 
 func NewHead() *Head {
@@ -335,11 +353,42 @@ func NewHead() *Head {
 	h.mappings.init()
 	h.functions.init()
 	h.locations.init()
-	h.samples.init()
+	h.profiles.init()
 	return h
 }
 
-func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile) error {
+type LabelPairRef struct {
+	Name  int64
+	Value int64
+}
+
+// resolves external labels into string slice
+func (h *Head) internExternalLabels(ctx context.Context, lblStrs []*commonv1.LabelPair) ([]LabelPairRef, error) {
+	var (
+		strs    = make([]string, len(lblStrs)*2)
+		lblRefs = make([]LabelPairRef, len(lblStrs))
+	)
+
+	for pos := range lblStrs {
+		strs[(pos * 2)] = lblStrs[pos].Name
+		strs[(pos*2)+1] = lblStrs[pos].Value
+	}
+
+	// ensure labels are in string table
+	r := &rewriter{}
+	if err := h.strings.ingest(ctx, strs, r); err != nil {
+		return nil, err
+	}
+
+	for pos := range lblRefs {
+		lblRefs[pos].Name = r.strings[(pos * 2)]
+		lblRefs[pos].Value = r.strings[(pos*2)+1]
+	}
+
+	return lblRefs, nil
+}
+
+func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) error {
 	rewrites := &rewriter{}
 
 	if err := h.strings.ingest(ctx, p.StringTable, rewrites); err != nil {
@@ -358,9 +407,15 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile) error {
 		return err
 	}
 
-	// TODO: Add ID and External Labels
-	sample := &Sample{
-		Values:            p.Sample,
+	lblRefs, err := h.internExternalLabels(ctx, externalLabels)
+	if err != nil {
+		return err
+	}
+
+	profile := &Profile{
+		// TODO: Add ID
+		ExternalLabels:    lblRefs,
+		Samples:           p.Sample,
 		Types:             p.SampleType,
 		DropFrames:        p.DropFrames,
 		KeepFrames:        p.KeepFrames,
@@ -372,7 +427,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile) error {
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
-	if err := h.samples.ingest(ctx, []*Sample{sample}, rewrites); err != nil {
+	if err := h.profiles.ingest(ctx, []*Profile{profile}, rewrites); err != nil {
 		return err
 	}
 
@@ -382,6 +437,37 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile) error {
 type table struct {
 	name string
 	rows []any
+}
+
+// LabelValues returns the possible label values for a given label name.
+func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
+
+	idx, ok := h.strings.getIndex(req.Msg.Name)
+	if !ok {
+		fmt.Printf("not found=%+#v\n", req.Msg.Name)
+		return connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{}}), nil
+	}
+
+	valsMap := make(map[int64]struct{})
+	for _, profile := range h.profiles.slice {
+		fmt.Printf("profile=%+#v\n", profile.ID)
+		for _, lbl := range profile.ExternalLabels {
+			if lbl.Name == idx {
+				valsMap[lbl.Value] = struct{}{}
+			}
+		}
+	}
+
+	vals := make([]string, len(valsMap))
+	idx = 0
+	for v := range valsMap {
+		vals[idx] = h.strings.slice[v]
+		idx++
+	}
+	sort.Strings(vals)
+	return connect.NewResponse(&ingestv1.LabelValuesResponse{
+		Names: vals,
+	}), nil
 }
 
 func (h *Head) WriteTo(ctx context.Context, path string) error {
@@ -396,23 +482,34 @@ func (h *Head) WriteTo(ctx context.Context, path string) error {
 		return fmt.Errorf("error %s is no directory", path)
 	}
 
-	if err := writeToFile(ctx, path, "samples", h.samples.slice); err != nil {
+	if err := writeToFile(ctx, path, "samples",
+		[]parquet.RowGroupOption{
+			schemav1.ProfilesSchema(),
+			parquet.SortingColumns(
+				parquet.Ascending("ID"),
+				parquet.Ascending("TimeNanos"),
+			)},
+		[]parquet.WriterOption{
+			schemav1.ProfilesSchema(),
+		},
+		h.profiles.slice,
+	); err != nil {
 		return err
 	}
 
-	if err := writeToFile(ctx, path, "strings", stringSliceToRows(h.strings.slice)); err != nil {
+	if err := writeToFile(ctx, path, "strings", nil, nil, stringSliceToRows(h.strings.slice)); err != nil {
 		return err
 	}
 
-	if err := writeToFile(ctx, path, "mappings", h.mappings.slice); err != nil {
+	if err := writeToFile(ctx, path, "mappings", nil, nil, h.mappings.slice); err != nil {
 		return err
 	}
 
-	if err := writeToFile(ctx, path, "locations", h.locations.slice); err != nil {
+	if err := writeToFile(ctx, path, "locations", nil, nil, h.locations.slice); err != nil {
 		return err
 	}
 
-	if err := writeToFile(ctx, path, "functions", h.functions.slice); err != nil {
+	if err := writeToFile(ctx, path, "functions", nil, nil, h.functions.slice); err != nil {
 		return err
 	}
 
@@ -434,31 +531,70 @@ func stringSliceToRows(strs []string) []stringRow {
 	return rows
 }
 
-func writeToFile[T any](ctx context.Context, path string, table string, rows []T) error {
+/*
+func writeToFrost(ctx context.Context, path string) error {
+	// Create a new column store
+	columnstore := frostdb.New(
+		prometheus.NewRegistry(),
+		8192,
+		10*1024*1024, // 10MiB
+	)
+
+	// Open up a database in the column store
+	database, err := columnstore.DB("fire")
+	if err != nil {
+		return err
+	}
+
+	schProfiles := schemav2.Profiles()
+	table, err := database.Table(
+		"profiles",
+		frostdb.NewTableConfig(schProfiles),
+		log.NewNopLogger(),
+	)
+	if err != nil {
+		return err
+	}
+
+	buf, err := schemav2.Profiles().NewBuffer(nil)
+	if err != nil {
+		return err
+	}
+	schProfiles.Columns
+
+	buf.WriteRow([]parquet.Value{
+		parquet.ValueOf("Thor").Level(0, 1, 0),
+		parquet.ValueOf("Hansen").Level(0, 1, 1),
+		parquet.ValueOf(10).Level(0, 0, 2),
+	})
+	buf.Sort()
+
+	buffer.Clone
+
+	table.Insert
+
+	return nil
+
+}
+*/
+
+func writeToFile[T any](ctx context.Context, path string, table string, rowGroupOptions []parquet.RowGroupOption, writerOptions []parquet.WriterOption, rows []T) error {
 	file, err := os.OpenFile(filepath.Join(path, table+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	/* TODO:
-	buffer := parquet.NewGenericBuffer[RowType](
-		parquet.SortingColumns(
-			parquet.Ascending("LastName"),
-			parquet.Ascending("FistName"),
-		),
-	)
-	*/
+	buffer := parquet.NewGenericBuffer[T](rowGroupOptions...)
+	if _, err := buffer.Write(rows); err != nil {
+		return err
+	}
+	sort.Sort(buffer)
 
-	writerOptions := []parquet.WriterOption{}
 	writer := parquet.NewGenericWriter[T](file, writerOptions...)
-	if _, err := writer.Write(rows); err != nil {
+	if _, err := parquet.CopyRows(writer, buffer.Rows()); err != nil {
 		return err
 	}
 
-	if err := writer.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return writer.Close()
 }
