@@ -68,36 +68,15 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	logger.Debug("storage.Get")
 	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
 
-	// For backward compatibility, profiles can be fetched by ID using query.
+	// Profiles can be fetched by ID using query.
 	// If a query includes 'profile_id' matcher others are ignored.
 	if gi.Query != nil {
-		ids := make([]string, 0, len(gi.Query.Matchers))
-		for _, m := range gi.Query.Matchers {
-			if m.Key != segment.ProfileIDLabelName {
-				continue
-			}
-			if m.Op != flameql.OpEqual {
-				return nil, fmt.Errorf("only '=' operator is allowed for %q label", segment.ProfileIDLabelName)
-			}
-			ids = append(ids, m.Value)
+		out, ok, err := s.tryGetExemplar(ctx, gi)
+		if err != nil {
+			return nil, err
 		}
-		if len(ids) > 0 {
-			// TODO(kolesnikovae): load from segment.
-			o := GetOutput{
-				SpyName:    "gospy",
-				Units:      "samples",
-				SampleRate: 100,
-				Timeline:   segment.GenerateTimeline(gi.StartTime, gi.EndTime),
-				Tree:       tree.New(),
-			}
-			err := s.exemplars.fetch(ctx, gi.Query.AppName, ids, func(t *tree.Tree) error {
-				o.Tree.Merge(t)
-				return nil
-			})
-			if err != nil {
-				return nil, err
-			}
-			return &o, nil
+		if ok {
+			return out, nil
 		}
 	}
 
@@ -166,6 +145,58 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		Units:           lastSegment.Units(),
 		AggregationType: lastSegment.AggregationType(),
 	}, nil
+}
+
+func (s *Storage) tryGetExemplar(ctx context.Context, gi *GetInput) (*GetOutput, bool, error) {
+	ids := make([]string, 0, len(gi.Query.Matchers))
+	for _, m := range gi.Query.Matchers {
+		if m.Key != segment.ProfileIDLabelName {
+			continue
+		}
+		if m.Op != flameql.OpEqual {
+			return nil, true, fmt.Errorf("only '=' operator is allowed for %q label", segment.ProfileIDLabelName)
+		}
+		ids = append(ids, m.Value)
+	}
+	if len(ids) == 0 {
+		return nil, false, nil
+	}
+
+	var (
+		t = tree.New()
+		l = make(map[string]string)
+	)
+	err := s.exemplars.fetch(ctx, gi.Query.AppName, ids, func(e exemplarEntry) error {
+		t.Merge(e.Tree)
+		l = e.Labels
+		return nil
+	})
+	if err != nil {
+		return nil, true, err
+	}
+
+	o := GetOutput{
+		Timeline: segment.GenerateTimeline(gi.StartTime, gi.EndTime),
+		Tree:     t,
+		// Defaults: actual values should be loaded from the segment metadata.
+		SpyName:         "gospy",
+		Units:           "samples",
+		AggregationType: "sum",
+		SampleRate:      100,
+	}
+
+	// Exemplar labels map does not contain the app name.
+	l["__name__"] = gi.Query.AppName
+	r, ok := s.segments.Lookup(segment.NewKey(l).Normalized())
+	if ok {
+		seg := r.(*segment.Segment)
+		o.SpyName = seg.SpyName()
+		o.Units = seg.Units()
+		o.SampleRate = seg.SampleRate()
+		o.AggregationType = seg.AggregationType()
+	}
+
+	return &o, true, nil
 }
 
 func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.Key {
