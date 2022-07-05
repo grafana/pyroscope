@@ -102,8 +102,6 @@ function ComparisonDiffApp() {
         <Toolbar
           hideTagsBar
           onSelectedName={(query) => {
-            dispatch(actions.setRightQuery(query));
-            dispatch(actions.setLeftQuery(query));
             dispatch(actions.setQuery(query));
           }}
         />
