@@ -83,7 +83,7 @@ type Profile struct {
 	Function []*Function `protobuf:"bytes,5,rep,name=function,proto3" json:"function,omitempty" parquet:","`
 	// A common table for strings referenced by various messages.
 	// string_table[0] must always be "".
-	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty" parquet:","`
+	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty" parquet:",zstd,dict"`
 	// frames with Function.function_name fully matching the following
 	// regexp will be dropped from the samples, along with their successors.
 	DropFrames int64 `protobuf:"varint,7,opt,name=drop_frames,json=dropFrames,proto3" json:"drop_frames,omitempty" parquet:"-"` // Index into string table.
@@ -303,17 +303,18 @@ type Sample struct {
 
 	// The ids recorded here correspond to a Profile.location.id.
 	// The leaf is at location_id[0].
-	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty" parquet:","`
+	// TODO:  Create a Stacktrace ID of locations
+	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty" parquet:"LocationIds,"`
 	// The type and unit of each value is defined by the corresponding
 	// entry in Profile.sample_type. All samples must have the same
 	// number of values, the same as the length of Profile.sample_type.
 	// When aggregating multiple samples into a single sample, the
 	// result has a list of values that is the element-wise sum of the
 	// lists of the originals.
-	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:","`
+	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:"Values,"`
 	// label includes additional context for this sample. It can include
 	// things like a thread id, allocation size, etc
-	Label []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty" parquet:","`
+	Label []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty" parquet:"Labels,"`
 }
 
 func (x *Sample) Reset() {

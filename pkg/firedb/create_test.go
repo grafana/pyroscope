@@ -30,7 +30,6 @@ func TestReproduce(t *testing.T) {
 	}
 
 	sch := parquet.SchemaOf(p)
-	t.Logf("%v", sch.Columns())
 
 	buffer := new(bytes.Buffer)
 	pw := parquet.NewWriter(buffer, sch)
@@ -116,12 +115,20 @@ func BenchmarkWriteProfiles(t *testing.B) {
 			"testdata/heap",
 			"testdata/profile",
 		}
-		profiles = make([]*profilev1.Profile, len(profilePaths))
+		profiles     = make([]*profilev1.Profile, len(profilePaths))
+		profileCount = 0
 	)
 
-	buffer := new(bytes.Buffer)
+	tmp, err := os.CreateTemp("/tmp", "*.parquet")
+	require.NoError(t, err)
+	defer tmp.Close()
+	path := tmp.Name()
+	t.Logf("parquet file %s", path)
+	//defer os.Remove(path)
+
 	sch := parquet.SchemaOf(&profilev1.Profile{})
-	pw := parquet.NewWriter(buffer, sch)
+	writerOptions := []parquet.WriterOption{sch, parquet.PageBufferSize(20)}
+	pw := parquet.NewWriter(tmp, writerOptions...)
 
 	require.NoError(t, pw.Close())
 	for pos := range profilePaths {
@@ -133,11 +140,15 @@ func BenchmarkWriteProfiles(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		for pos := range profiles {
 			require.NoError(t, pw.Write(profiles[pos]), "error writing profile ", profilePaths[pos])
+			profileCount++
 		}
 	}
 
 	require.NoError(t, pw.Close())
 
-	t.Logf("% 6d profiles % 12d bytes %12f bytes/per-profile", t.N, buffer.Len(), float64(buffer.Len())/float64(t.N))
+	s, err := tmp.Stat()
+	require.NoError(t, err)
+
+	t.Logf("% 6d profiles % 12d bytes %12f bytes/per-profile", profileCount, s.Size(), float64(s.Size())/float64(profileCount))
 
 }
