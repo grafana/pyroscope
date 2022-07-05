@@ -53,14 +53,8 @@ export function readableRange(
     return `Last ${number} ${multiplier}`;
   }
 
-  const d1 = getUTCdate(
-    new Date(Math.round(parseInt(from, 10) * 1000)),
-    offsetInMinutes
-  );
-  const d2 = getUTCdate(
-    new Date(Math.round(parseInt(until, 10) * 1000)),
-    offsetInMinutes
-  );
+  const d1 = getUTCdate(parseUnixTime(from), offsetInMinutes);
+  const d2 = getUTCdate(parseUnixTime(until), offsetInMinutes);
   return `${format(d1, dateFormat)} - ${format(d2, dateFormat)}`;
 }
 
@@ -82,8 +76,22 @@ export function formatAsOBject(value: string) {
   if (value === 'now') {
     return new Date();
   }
+  return parseUnixTime(value);
+}
 
-  return new Date(parseInt(value, 10) * 1000);
+export function parseUnixTime(value: string) {
+  const parsed = parseInt(value, 10);
+  switch (value.length) {
+    default:
+      // Seconds.
+      return new Date(parsed * 1000);
+    case 13: // Milliseconds.
+      return new Date(parsed);
+    case 16: // Microseconds.
+      return new Date(Math.round(parsed / 1000));
+    case 19: // Nanoseconds.
+      return new Date(Math.round(parsed / 1000 / 1000));
+  }
 }
 
 export const getUTCdate = (date: Date, offsetInMinutes: number): Date =>
