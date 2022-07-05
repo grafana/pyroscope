@@ -54,7 +54,7 @@ go/test:
 	$(GO) test $(GO_TEST_FLAGS) ./...
 
 .PHONY: build
-build: go/bin ## Build all packages
+build: go/bin plugin/datasource/build ## Build all packages
 
 .PHONY: go/deps
 go/deps:
@@ -75,6 +75,13 @@ go/mod:
 	GO111MODULE=on go mod download
 	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
+
+.PHONY: plugin/datasource/build
+plugin/datasource/build: $(BIN)/mage
+	pushd ./grafana/fire-datasource && \
+	yarn install && yarn build && \
+	../../$(BIN)/mage -v \
+
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf ## Automatically fix some lint errors
@@ -157,6 +164,10 @@ $(BIN)/helm: Makefile go.mod
 $(BIN)/kubeval: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/instrumenta/kubeval@v0.16.1
+
+$(BIN)/mage: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/magefile/mage@v1.13.0
 
 KIND_CLUSTER = fire-dev
 
