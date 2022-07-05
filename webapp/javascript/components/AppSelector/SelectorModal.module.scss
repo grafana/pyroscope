@@ -4,7 +4,7 @@
   top: calc(100% + 5px);
   z-index: 1011;
   background-color: var(--ps-dropdown-background);
-  border: 1px solid var(--ps-ui-border-color);
+  border: 1px solid var(--ps-ui-border);
   border-radius: 4px;
   visibility: hidden;
 
@@ -24,7 +24,7 @@
 .apps {
   display: flex;
   flex-direction: row;
-  border-top: 1px solid var(--ps-ui-border-color);
+  border-top: 1px solid var(--ps-ui-border);
   margin-top: 10px;
   overflow-y: auto;
 }
@@ -40,7 +40,7 @@
   width: 300px;
 
   &:last-child {
-    border-left: 1px solid var(--ps-ui-border-color);
+    border-left: 1px solid var(--ps-ui-border);
   }
 }
 
