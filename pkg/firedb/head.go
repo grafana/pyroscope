@@ -2,9 +2,16 @@ package firedb
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	"github.com/segmentio/parquet-go"
 )
 
 type stringConversionTable []int64
@@ -15,42 +22,33 @@ func (t stringConversionTable) rewrite(idx *int64) {
 	*idx = newValue
 }
 
-type idConversionTable map[uint64]uint64
+type idConversionTable map[int64]int64
 
-func (t idConversionTable) rewrite(idx *uint64) {
+func (t idConversionTable) rewrite(idx *int64) {
 	pos := *idx
 	*idx = t[pos]
 }
 
-type Sample struct {
-	// A description of the samples associated with each Sample.value.
-	// For a cpu profile this might be:
-	//   [["cpu","nanoseconds"]] or [["wall","seconds"]] or [["syscall","count"]]
-	// For a heap profile, this might be:
-	//   [["allocations","count"], ["space","bytes"]],
-	// If one of the values represents the number of events represented
-	// by the sample, by convention it should be at index 0 and use
-	// sample_type.unit == "count".
-	Types []*profilev1.ValueType `parquet:","`
-	// The set of samples recorded in this profile.
-	Values []*profilev1.Sample `parquet:","`
+func (t idConversionTable) rewriteUint64(idx *uint64) {
+	pos := *idx
+	*idx = uint64(t[int64(pos)])
 }
 
-type stringHelper struct {
+type stringsHelper struct {
 }
 
-func (_ *stringHelper) key(s string) string {
+func (_ *stringsHelper) key(s string) string {
 	return s
 }
 
-func (_ *stringHelper) addToRewriter(r *rewriter, m map[int64]int64) {
+func (_ *stringsHelper) addToRewriter(r *rewriter, m idConversionTable) {
 	r.strings = make(stringConversionTable, len(m))
 	for x, y := range m {
 		r.strings[x] = y
 	}
 }
 
-func (_ *stringHelper) rewrite(*rewriter, string) error {
+func (_ *stringsHelper) rewrite(*rewriter, string) error {
 	return nil
 }
 
@@ -61,10 +59,10 @@ type functionsKey struct {
 	StartLine  int64
 }
 
-type functionHelper struct {
+type functionsHelper struct {
 }
 
-func (_ *functionHelper) key(f *profilev1.Function) functionsKey {
+func (_ *functionsHelper) key(f *profilev1.Function) functionsKey {
 	return functionsKey{
 		Name:       f.Name,
 		SystemName: f.SystemName,
@@ -73,18 +71,18 @@ func (_ *functionHelper) key(f *profilev1.Function) functionsKey {
 	}
 }
 
-func (_ *functionHelper) addToRewriter(r *rewriter, elemRewriter map[int64]int64) {
+func (_ *functionsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
 	r.functions = elemRewriter
 }
 
-func (_ *functionHelper) rewrite(r *rewriter, f *profilev1.Function) error {
+func (_ *functionsHelper) rewrite(r *rewriter, f *profilev1.Function) error {
 	r.strings.rewrite(&f.Filename)
 	r.strings.rewrite(&f.Name)
 	r.strings.rewrite(&f.SystemName)
 	return nil
 }
 
-type mappingHelper struct {
+type mappingsHelper struct {
 }
 
 type mappingsKey struct {
@@ -99,7 +97,7 @@ type mappingsKey struct {
 	HasInlineFrames bool
 }
 
-func (_ *mappingHelper) key(m *profilev1.Mapping) mappingsKey {
+func (_ *mappingsHelper) key(m *profilev1.Mapping) mappingsKey {
 	return mappingsKey{
 		MemoryStart:     m.MemoryStart,
 		MemoryLimit:     m.MemoryLimit,
@@ -113,34 +111,148 @@ func (_ *mappingHelper) key(m *profilev1.Mapping) mappingsKey {
 	}
 }
 
-func (_ *mappingHelper) addToRewriter(r *rewriter, elemRewriter map[int64]int64) {
+func (_ *mappingsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
 	r.mappings = elemRewriter
 }
 
-func (_ *mappingHelper) rewrite(r *rewriter, m *profilev1.Mapping) error {
+func (_ *mappingsHelper) rewrite(r *rewriter, m *profilev1.Mapping) error {
 	r.strings.rewrite(&m.Filename)
 	r.strings.rewrite(&m.BuildId)
 	return nil
 }
 
-type Models interface {
-	*profilev1.Mapping | *profilev1.Function | string
+type locationsKey struct {
+	MappingId uint64
+	Address   uint64
+	LinesHash string
 }
 
-type Keys interface {
-	mappingsKey | functionsKey | string
+type locationsHelper struct {
+}
+
+func (_ *locationsHelper) key(l *profilev1.Location) locationsKey {
+	return locationsKey{
+		Address:   l.Address,
+		MappingId: l.MappingId,
+		LinesHash: "TODO", // TODO: Implement me to avoid crashes
+	}
+}
+
+func (_ *locationsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
+	r.locations = elemRewriter
+}
+
+func (_ *locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
+	r.mappings.rewriteUint64(&l.MappingId)
+
+	for pos := range l.Line {
+		r.functions.rewrite(&l.Line[pos].Line)
+	}
+	return nil
+}
+
+type samplesHelper struct {
+}
+
+func (_ *samplesHelper) key(s *Sample) samplesKey {
+	id := s.ID
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
+	return samplesKey{
+		ID: id,
+	}
+
+}
+
+func (_ *samplesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
+	r.locations = elemRewriter
+}
+
+func (_ *samplesHelper) rewrite(r *rewriter, s *Sample) error {
+
+	for pos := range s.Types {
+		r.strings.rewrite(&s.Types[pos].Type)
+		r.strings.rewrite(&s.Types[pos].Unit)
+	}
+
+	for _, value := range s.Values {
+		for pos := range value.LocationId {
+			r.locations.rewriteUint64(&value.LocationId[pos])
+		}
+		for pos := range value.Label {
+			r.strings.rewrite(&value.Label[pos].Key)
+			r.strings.rewrite(&value.Label[pos].NumUnit)
+			r.strings.rewrite(&value.Label[pos].Str)
+		}
+	}
+
+	for pos := range s.Comment {
+		r.strings.rewrite(&s.Comment[pos])
+	}
+
+	r.strings.rewrite(&s.DropFrames)
+	r.strings.rewrite(&s.KeepFrames)
+
+	return nil
+}
+
+type samplesKey struct {
+	ID uuid.UUID
+}
+
+type Sample struct {
+	// A unique UUID per ingested profile
+	ID uuid.UUID `parquet:",dict"`
+
+	// A description of the samples associated with each Sample.value.
+	// For a cpu profile this might be:
+	//   [["cpu","nanoseconds"]] or [["wall","seconds"]] or [["syscall","count"]]
+	// For a heap profile, this might be:
+	//   [["allocations","count"], ["space","bytes"]],
+	// If one of the values represents the number of events represented
+	// by the sample, by convention it should be at index 0 and use
+	// sample_type.unit == "count".
+	Types []*profilev1.ValueType `parquet:","`
+	// The set of samples recorded in this profile.
+	Values []*profilev1.Sample `parquet:","`
+
+	// frames with Function.function_name fully matching the following
+	// regexp will be dropped from the samples, along with their successors.
+	DropFrames int64 `parquet:","` // Index into string table.
+	// frames with Function.function_name fully matching the following
+	// regexp will be kept, even if it matches drop_frames.
+	KeepFrames int64 `parquet:","` // Index into string table.
+	// Time of collection (UTC) represented as nanoseconds past the epoch.
+	TimeNanos int64 `parquet:",delta"`
+	// Duration of the profile, if a duration makes sense.
+	DurationNanos int64 `parquet:",delta"`
+	// The kind of events between sampled ocurrences.
+	// e.g [ "cpu","cycles" ] or [ "heap","bytes" ]
+	PeriodType *profilev1.ValueType `parquet:","`
+	// The number of events between sampled occurrences.
+	Period int64 `parquet:","`
+	// Freeform text associated to the profile.
+	Comment []int64 `parquet:","` // Indices into string table.
+	// Index into the string table of the type of the preferred sample
+	// value. If unset, clients should default to the last sample value.
+	DefaultSampleType int64 `parquet:","`
+}
+
+type Models interface {
+	*Sample | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
 }
 
 type rewriter struct {
-	strings stringConversionTable
-
-	functions map[int64]int64
-	mappings  map[int64]int64
+	strings   stringConversionTable
+	functions idConversionTable
+	mappings  idConversionTable
+	locations idConversionTable
 }
 
 type Helper[M Models, K comparable] interface {
 	key(M) K
-	addToRewriter(*rewriter, map[int64]int64)
+	addToRewriter(*rewriter, idConversionTable)
 	rewrite(*rewriter, M) error
 }
 
@@ -206,149 +318,26 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 }
 
 type Head struct {
-	samples     []*Sample
-	samplesLock sync.Mutex
+	logger log.Logger
 
-	strings   deduplicatingSlice[string, string, *stringHelper]
-	mappings  deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingHelper]
-	functions deduplicatingSlice[*profilev1.Function, functionsKey, *functionHelper]
+	strings   deduplicatingSlice[string, string, *stringsHelper]
+	mappings  deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
+	functions deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
+	locations deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
+	samples   deduplicatingSlice[*Sample, samplesKey, *samplesHelper]
 }
 
 func NewHead() *Head {
-	h := &Head{}
+	h := &Head{
+		logger: log.NewLogfmtLogger(os.Stderr),
+	}
 	h.strings.init()
 	h.mappings.init()
 	h.functions.init()
+	h.locations.init()
+	h.samples.init()
 	return h
 }
-
-/*
-
-// add not existing strings to the stringtable and returns a stringTableConversionTable
-func (h *Head) ingestStringTable(ctx context.Context, p *profilev1.Profile) stringConversionTable {
-	var (
-		conversionMap = make(stringConversionTable, len(p.StringTable))
-		missing       []int
-	)
-
-	// resolve existing string maps
-	h.stringLock.RLock()
-	for pos := range p.StringTable {
-		if k, exists := h.stringMap[p.StringTable[pos]]; exists {
-			conversionMap[pos] = k
-		} else {
-			missing = append(missing, pos)
-		}
-	}
-	h.stringLock.RUnlock()
-
-	// add missing strings
-	if len(missing) > 0 {
-		h.stringLock.Lock()
-		count := int64(len(h.functions))
-		for pos := range missing {
-			// lookup if string is still missing now that we have the write lock
-			if k, exists := h.stringMap[p.StringTable[pos]]; exists {
-				conversionMap[pos] = k
-				continue
-			}
-
-			// add string to string table
-			h.stringTable = append(h.stringTable, p.StringTable[pos])
-			h.stringMap[p.StringTable[pos]] = count
-			conversionMap[pos] = count
-			count++
-		}
-		h.stringLock.Unlock()
-	}
-
-	return conversionMap
-}
-*/
-
-/*
-func (h *Head) ingestFunctions(ctx context.Context, p *profilev1.Profile, strTableCnv stringConversionTable) idConversionTable {
-
-	var (
-		idConvTable = make(idConversionTable)
-		missing     []int
-	)
-
-	for pos := range p.Function {
-		key := functionsKeyFromFunction(p.Function[pos])
-		fmt.Printf("before key=%+v\n", key)
-
-		strTableCnv.rewrite(&p.Function[pos].Filename)
-		strTableCnv.rewrite(&p.Function[pos].Name)
-		strTableCnv.rewrite(&p.Function[pos].SystemName)
-
-		key = functionsKeyFromFunction(p.Function[pos])
-		fmt.Printf("after key=%+v\n", key)
-
-		// after conversion lookup if function already exists
-		h.functionsLock.RLock()
-		if idx, exists := h.functionsMap[key]; exists {
-			fmt.Printf("exists %+v", key)
-			idConvTable[p.Function[pos].Id] = idx
-		} else {
-			missing = append(missing, pos)
-		}
-		h.functionsLock.RUnlock()
-	}
-
-	// if there were missing acquire write lock
-	if len(missing) > 0 {
-		h.functionsLock.Lock()
-		count := uint64(len(h.functions)) + 1
-		for pos := range missing {
-			key := functionsKeyFromFunction(p.Function[pos])
-			// check again if the function exists
-			if idx, exists := h.functionsMap[key]; exists {
-				idConvTable[p.Function[pos].Id] = idx
-				continue
-			}
-			p.Function[pos].Id = count
-			h.functionsMap[key] = count
-			h.functions = append(h.functions, p.Function[pos])
-			count++
-		}
-		h.functionsLock.Unlock()
-	}
-
-	return idConvTable
-
-}
-
-func (h *Head) ingestLocations(ctx context.Context, p *profilev1.Profile) {
-}
-
-// modifies submitted profile
-func (h *Head) ingestSamples(ctx context.Context, p *profilev1.Profile, stringsConv stringConversionTable, functionsConv idConversionTable) error {
-	s := &Sample{
-		Types:  p.SampleType,
-		Values: p.Sample,
-	}
-
-	for pos := range s.Types {
-		stringsConv.rewrite(&s.Types[pos].Type)
-		stringsConv.rewrite(&s.Types[pos].Unit)
-	}
-
-	for vPos := range s.Values {
-		for lPos := range s.Values[vPos].Label {
-			stringsConv.rewrite(&s.Values[vPos].Label[lPos].Key)
-			stringsConv.rewrite(&s.Values[vPos].Label[lPos].Str)
-			stringsConv.rewrite(&s.Values[vPos].Label[lPos].NumUnit)
-		}
-	}
-
-	h.samplesLock.Lock()
-	h.samples = append(h.samples, s)
-	h.samplesLock.Unlock()
-
-	return nil
-}
-*/
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile) error {
 	rewrites := &rewriter{}
@@ -362,6 +351,112 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile) error {
 	}
 
 	if err := h.functions.ingest(ctx, p.Function, rewrites); err != nil {
+		return err
+	}
+
+	if err := h.locations.ingest(ctx, p.Location, rewrites); err != nil {
+		return err
+	}
+
+	// TODO: Add ID and External Labels
+	sample := &Sample{
+		Values:            p.Sample,
+		Types:             p.SampleType,
+		DropFrames:        p.DropFrames,
+		KeepFrames:        p.KeepFrames,
+		TimeNanos:         p.TimeNanos,
+		DurationNanos:     p.DurationNanos,
+		PeriodType:        p.PeriodType,
+		Period:            p.Period,
+		Comment:           p.Comment,
+		DefaultSampleType: p.DefaultSampleType,
+	}
+
+	if err := h.samples.ingest(ctx, []*Sample{sample}, rewrites); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type table struct {
+	name string
+	rows []any
+}
+
+func (h *Head) WriteTo(ctx context.Context, path string) error {
+	level.Info(h.logger).Log("msg", "write head to disk", "path", path)
+
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	if !fileInfo.IsDir() {
+		return fmt.Errorf("error %s is no directory", path)
+	}
+
+	if err := writeToFile(ctx, path, "samples", h.samples.slice); err != nil {
+		return err
+	}
+
+	if err := writeToFile(ctx, path, "strings", stringSliceToRows(h.strings.slice)); err != nil {
+		return err
+	}
+
+	if err := writeToFile(ctx, path, "mappings", h.mappings.slice); err != nil {
+		return err
+	}
+
+	if err := writeToFile(ctx, path, "locations", h.locations.slice); err != nil {
+		return err
+	}
+
+	if err := writeToFile(ctx, path, "functions", h.functions.slice); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type stringRow struct {
+	ID     uint64 `parquet:",delta"`
+	String string `parquet:",dict"`
+}
+
+func stringSliceToRows(strs []string) []stringRow {
+	rows := make([]stringRow, len(strs))
+	for pos := range strs {
+		rows[pos].ID = uint64(pos)
+		rows[pos].String = strs[pos]
+	}
+
+	return rows
+}
+
+func writeToFile[T any](ctx context.Context, path string, table string, rows []T) error {
+	file, err := os.OpenFile(filepath.Join(path, table+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	/* TODO:
+	buffer := parquet.NewGenericBuffer[RowType](
+		parquet.SortingColumns(
+			parquet.Ascending("LastName"),
+			parquet.Ascending("FistName"),
+		),
+	)
+	*/
+
+	writerOptions := []parquet.WriterOption{}
+	writer := parquet.NewGenericWriter[T](file, writerOptions...)
+	if _, err := writer.Write(rows); err != nil {
+		return err
+	}
+
+	if err := writer.Close(); err != nil {
 		return err
 	}
 
