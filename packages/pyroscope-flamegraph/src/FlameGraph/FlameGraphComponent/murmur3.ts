@@ -58,11 +58,9 @@ export default function murmurhash3_32_gc(key: string, seed = 0) {
   switch (remainder) {
     case 3:
       k1 ^= (key.charCodeAt(i + 2) & 0xff) << 16;
-      break;
     case 2:
       k1 ^= (key.charCodeAt(i + 1) & 0xff) << 8;
-      break;
-    default:
+    case 1:
       k1 ^= key.charCodeAt(i) & 0xff;
 
       k1 =

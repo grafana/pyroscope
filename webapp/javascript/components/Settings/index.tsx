@@ -20,6 +20,88 @@ import ApiKeys from './APIKeys';
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import trace from '../../../traces/trace2.json';
+import lodash from 'lodash';
+
+function traceToFlamebearer(trace: any) {
+  let result = {
+    topLevel: 0,
+    rangeMin: 0,
+    format: 'single' as const,
+    numTicks: 0,
+    sampleRate: 1000000,
+    names: [],
+    levels: [],
+
+    rangeMax: 1,
+    units: 'samples',
+    fitMode: 'HEAD',
+
+    spyName: 'tracing',
+  };
+
+  // Step 1: converting spans to a tree
+  var spans = {};
+  var root = { children: [] };
+  trace.spans.forEach((span) => {
+    span.children = [];
+    spans[span.spanID] = span;
+  });
+
+  trace.spans.forEach((span) => {
+    let node = root;
+    if (span.references && span.references.length > 0) {
+      node = spans[span.references[0].spanID] || root;
+    }
+    node.children.push(span);
+  });
+
+  // Step 2: group spans with same name
+
+  function groupSpans(span: any, d: int) {
+    (span.children || []).forEach((x) => groupSpans(x, d + 1));
+
+    let childrenDur = 0;
+    const groups = lodash.groupBy(span.children || [], (x) => x.operationName);
+    span.children = lodash.map(groups, (group) => {
+      let res = group[0];
+      for (let i = 1; i < group.length; i++) {
+        res.duration += group[i].duration;
+      }
+      childrenDur += res.duration;
+      return res;
+    });
+    span.total = span.duration || childrenDur;
+    span.self = Math.max(0, span.total - childrenDur);
+  }
+  groupSpans(root, 0);
+
+  // Step 3: traversing the tree
+
+  function processNode(span: any, level: int, offset: int) {
+    result.numTicks ||= span.total;
+    result.levels[level] ||= [];
+    result.levels[level].push(offset);
+    result.levels[level].push(span.total);
+    result.levels[level].push(span.self);
+    result.names.push(
+      (span.processID
+        ? trace.processes[span.processID].serviceName + ': '
+        : '') + (span.operationName || 'total')
+    );
+    result.levels[level].push(result.names.length - 1);
+
+    (span.children || []).forEach((x) => {
+      offset += processNode(x, level + 1, offset);
+    });
+    return span.total;
+  }
+
+  processNode(root, 0, 0);
+
+  return result;
+}
 
 function Settings() {
   const { path, url } = useRouteMatch();
@@ -101,6 +183,11 @@ function Settings() {
           <Switch>
             <Route exact path={path}>
               <Preferences />
+            </Route>
+            <Route exact path={`${path}/tracing`}>
+              <FlamegraphRenderer
+                flamebearer={traceToFlamebearer(trace.data[0])}
+              />
             </Route>
             <Route path={`${path}/security`}>
               <Security />
