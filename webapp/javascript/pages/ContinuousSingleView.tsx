@@ -14,7 +14,6 @@ import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
-import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ContinuousSingleView() {
@@ -27,7 +26,6 @@ function ContinuousSingleView() {
   );
 
   const { singleView } = useAppSelector((state) => state.continuous);
-  usePopulateLeftRightQuery();
 
   useEffect(() => {
     if (from && until && query && maxNodes) {
