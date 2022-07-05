@@ -114,7 +114,7 @@ function APIKeyAddForm() {
                     title={
                       'Admin: Manage users/API keys\n' +
                       'ReadOnly: Used only for visualizations (i.e. Grafana datasource, embedding in a UI)\n' +
-                      'Agent - the one you use in your code (https://pyroscope.io/docs/api-key-authentication/)'
+                      'Agent: Used for "authentication token" in code when auth is enabled\n'
                     }
                     visible={isRolesTooltipVisible}
                     placement="bottom"
