@@ -66,11 +66,14 @@ interface Node {
   j: number;
 }
 
+type Trace = any;
+
 export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
   profile?: Profile;
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
+  trace?: Trace;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
