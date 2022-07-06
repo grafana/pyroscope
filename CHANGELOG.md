@@ -1,3 +1,32 @@
+# [0.21.0](https://github.com/pyroscope-io/pyroscope/compare/v0.20.0...v0.21.0) (2022-07-06)
+
+
+### Bug Fixes
+
+* add sidebar separation lines ([#1216](https://github.com/pyroscope-io/pyroscope/issues/1216)) ([9efc566](https://github.com/pyroscope-io/pyroscope/commit/9efc5666f699a22b6759a326fa663bfe1bd072e3))
+* adhoc/diff-view data table initial render ([#1190](https://github.com/pyroscope-io/pyroscope/issues/1190)) ([b03794c](https://github.com/pyroscope-io/pyroscope/commit/b03794cdad8873685cca734dc287c546442bec99))
+* colors on login pages ([#1197](https://github.com/pyroscope-io/pyroscope/issues/1197)) ([a6b2b22](https://github.com/pyroscope-io/pyroscope/commit/a6b2b2275a21bd0f82dc8d4c62eeb34c80da9e3f))
+* default name when exporting diff ([#1195](https://github.com/pyroscope-io/pyroscope/issues/1195)) ([c8e9b79](https://github.com/pyroscope-io/pyroscope/commit/c8e9b79405be23a760260f40d0e594b8c484f165))
+* **flamegraph:** do a deep comparison for whether the flamegraph is the same ([#1212](https://github.com/pyroscope-io/pyroscope/issues/1212)) ([910d8ea](https://github.com/pyroscope-io/pyroscope/commit/910d8eaeab9c23017da26ecc01c527c3b204b88a))
+* **frontend:** don't crash when flamegraph changes ([#1200](https://github.com/pyroscope-io/pyroscope/issues/1200)) ([f558e0d](https://github.com/pyroscope-io/pyroscope/commit/f558e0d70e9341d0374dd17c33202e09979b1e38))
+* improved nodes coloring by fixing murmur math ([#1214](https://github.com/pyroscope-io/pyroscope/issues/1214)) ([8ea4f73](https://github.com/pyroscope-io/pyroscope/commit/8ea4f730fceb185dba3943dbba524444f2082596))
+* load exemplar metadata from segment ([#1185](https://github.com/pyroscope-io/pyroscope/issues/1185)) ([e869730](https://github.com/pyroscope-io/pyroscope/commit/e869730e472c66ee38d66789722c03864e200b83))
+* single view app update should change comp/diff view left and right apps ([#1211](https://github.com/pyroscope-io/pyroscope/issues/1211)) ([9a4f34d](https://github.com/pyroscope-io/pyroscope/commit/9a4f34d29090dea456de3014ce2a491e7da83f11))
+* Update flamegraph color pallette ([9476039](https://github.com/pyroscope-io/pyroscope/commit/9476039cff2fe5d06b11ad8748517d16b93f1cc1))
+* zoom/focus reset on changing selected node [refactored] ([#1184](https://github.com/pyroscope-io/pyroscope/issues/1184)) ([949052d](https://github.com/pyroscope-io/pyroscope/commit/949052d6db23daedde589a6eaa7c06a4db527cab))
+
+
+### Features
+
+* add adhoc sort by date ([#1187](https://github.com/pyroscope-io/pyroscope/issues/1187)) ([206d2c6](https://github.com/pyroscope-io/pyroscope/commit/206d2c6a6e35d30d85f35a0103b8fb0d71b8c0f5))
+* add an explanation for what each API Key Role is for ([#1210](https://github.com/pyroscope-io/pyroscope/issues/1210)) ([88e04f3](https://github.com/pyroscope-io/pyroscope/commit/88e04f34ed99327fbc95b713c2866968e35684d0))
+* add titles to charts / flamegraphs ([#1208](https://github.com/pyroscope-io/pyroscope/issues/1208)) ([836fa97](https://github.com/pyroscope-io/pyroscope/commit/836fa97f126f8b7ebfb966bb52a97b5bdf179d83))
+* **frontend:** support disabling exporting to flamegraph.com ([#1188](https://github.com/pyroscope-io/pyroscope/issues/1188)) ([cd48732](https://github.com/pyroscope-io/pyroscope/commit/cd48732bb28dfab903ef00799f2bacdb6d991e0d))
+* support for micro-, milli-, and nanoseconds ([#1209](https://github.com/pyroscope-io/pyroscope/issues/1209)) ([f1ba768](https://github.com/pyroscope-io/pyroscope/commit/f1ba76848163506a043ec3321a25052f66161bb9))
+* **webapp:** new app selector ([#1199](https://github.com/pyroscope-io/pyroscope/issues/1199)) ([d671810](https://github.com/pyroscope-io/pyroscope/commit/d6718109bc307191b7e44e0fd0c072958d5e0cc2))
+
+
+
 # [0.20.0](https://github.com/pyroscope-io/pyroscope/compare/v0.19.0...v0.20.0) (2022-06-27)
 
 
