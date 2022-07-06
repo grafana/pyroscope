@@ -132,9 +132,9 @@ $sidebar-collapsed-width: 54px !default;
 }
 
 .pro-sidebar > .pro-sidebar-inner > .pro-sidebar-layout .pro-sidebar-header {
-  border-bottom: 1px solid var(--ps-ui-element-bg-highlight);
+  border-bottom: 1px solid var(--ps-sidebar-separator);
 }
 
 .pro-sidebar > .pro-sidebar-inner > .pro-sidebar-layout .pro-sidebar-footer {
-  border-top: 1px solid var(--ps-ui-element-bg-highlight);
+  border-top: 1px solid var(--ps-sidebar-separator);
 }
