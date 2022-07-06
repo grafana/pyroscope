@@ -71,6 +71,7 @@
   --ps-ui-foreground-text: #272727; /* sidebar text and datepicker text */
   --ps-ui-background: #eaeaea; /* background furthest back color */
   --ps-dropdown-background: #e2e2e2; /* dropdown background */
+  --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
 
   --ps-selected-app: #0d8eff; /* active selected app color in dropdown */
 
