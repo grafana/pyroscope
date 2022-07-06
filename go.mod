@@ -23,6 +23,7 @@ require (
 	github.com/prometheus/common v0.35.0
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
 	github.com/pyroscope-io/pyroscope v0.18.0
+	github.com/segmentio/parquet-go v0.0.0-20220623195409-8b4d4260d8cb
 	github.com/stretchr/testify v1.7.5
 	github.com/thanos-io/objstore v0.0.0-20220324141029-c4f11442aa33
 	github.com/thanos-io/thanos v0.26.0
@@ -211,7 +212,6 @@ require (
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.9 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/segmentio/encoding v0.3.5 // indirect
-	github.com/segmentio/parquet-go v0.0.0-20220623195409-8b4d4260d8cb // indirect
 	github.com/sercand/kuberesolver v2.4.0+incompatible // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -262,6 +262,7 @@ require (
 
 replace (
 	github.com/polarsignals/frostdb => github.com/grafana/frostdb v0.0.0-20220623183226-4080ae2447c1
+	github.com/segmentio/parquet-go => github.com/cyriltovena/parquet-go v0.0.0-20220706111652-c477af2f3d29
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )
