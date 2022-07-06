@@ -1,0 +1,59 @@
+.modalBody {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 5px);
+  z-index: 1011;
+  background-color: var(--ps-dropdown-background);
+  border: 1px solid var(--ps-ui-border);
+  border-radius: 4px;
+  visibility: hidden;
+
+  &.visible {
+    visibility: visible;
+    box-shadow: 0px 2px 6px var(--ps-neutral-1);
+  }
+}
+
+.selectorHeader {
+  display: flex;
+  flex-direction: row;
+  height: 90px;
+  padding: 10px 0;
+}
+
+.apps {
+  display: flex;
+  flex-direction: row;
+  border-top: 1px solid var(--ps-ui-border);
+  overflow-y: auto;
+}
+
+.sectionTitle {
+  margin-left: 10px;
+  color: #888;
+  font-weight: 700;
+  font-size: 0.8em;
+}
+
+.section {
+  width: 300px;
+
+  &:last-child {
+    border-left: 1px solid var(--ps-ui-border);
+  }
+}
+
+.search {
+  background: var(--ps-immutable-off-white);
+  color: var(--ps-immutable-placeholder-text);
+  border: 1px solid var(--ps-ui-border);
+  margin: 10px 0 10px 10px;
+}
+
+.noData {
+  width: 600px;
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
