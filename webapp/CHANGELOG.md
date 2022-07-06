@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.17.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.1...@pyroscope/webapp@1.17.2) (2022-07-06)
+
+
+### Bug Fixes
+
+* add sidebar separation lines ([#1216](https://github.com/pyroscope-io/pyroscope/issues/1216)) ([9efc566](https://github.com/pyroscope-io/pyroscope/commit/9efc5666f699a22b6759a326fa663bfe1bd072e3))
+
+
+
+
+
 ## [1.17.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.0...@pyroscope/webapp@1.17.1) (2022-07-06)
 
 
