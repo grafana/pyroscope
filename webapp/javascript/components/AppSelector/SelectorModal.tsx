@@ -50,7 +50,6 @@ const SelectorModal = ({
 }: SelectorModalProps) => {
   const [filter, setFilter] = useState('');
   const [selected, select] = useState<string[]>([]);
-
   const filteredAppNames = useMemo(
     // filtered names by search input
     () =>
@@ -108,15 +107,14 @@ const SelectorModal = ({
   }, [appName, selected, groups]);
 
   const listHeight = useMemo(() => {
-    const windowHeight = window?.innerHeight;
+    const height = (window?.innerHeight || 0) - 160;
+
     const listRequiredHeight =
       // 35 is list item height
       Math.max(groups?.length || 0, profileTypes?.length || 0) * 35;
 
-    if (visible && windowHeight && listRequiredHeight) {
-      return listRequiredHeight > windowHeight
-        ? `${windowHeight / 1.5}px`
-        : 'auto';
+    if (visible && height && listRequiredHeight) {
+      return height >= listRequiredHeight ? 'auto' : `${height}px`;
     }
 
     return 'auto';
