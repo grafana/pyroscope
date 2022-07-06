@@ -1,3 +1,4 @@
+// eslint-disable import/prefer-default-export
 import groupBy from 'lodash.groupby';
 import map from 'lodash.map';
 import type { Flamebearer, Trace, TraceSpan } from '@pyroscope/models';
