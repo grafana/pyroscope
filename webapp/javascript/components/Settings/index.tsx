@@ -66,7 +66,7 @@ function traceToFlamebearer(trace: any) {
     const groups = lodash.groupBy(span.children || [], (x) => x.operationName);
     span.children = lodash.map(groups, (group) => {
       let res = group[0];
-      for (let i = 1; i < group.length; i++) {
+      for (let i = 1; i < group.length; i += 1) {
         res.duration += group[i].duration;
       }
       childrenDur += res.duration;
