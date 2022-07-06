@@ -25,7 +25,6 @@
   display: flex;
   flex-direction: row;
   border-top: 1px solid var(--ps-ui-border);
-  overflow-y: auto;
 }
 
 .sectionTitle {
@@ -37,6 +36,7 @@
 
 .section {
   width: 300px;
+  overflow-y: auto;
 
   &:last-child {
     border-left: 1px solid var(--ps-ui-border);
