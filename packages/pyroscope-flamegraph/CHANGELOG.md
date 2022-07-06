@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.7...@pyroscope/flamegraph@0.10.0) (2022-07-06)
+
+
+### Features
+
+* add titles to charts / flamegraphs ([#1208](https://github.com/pyroscope-io/pyroscope/issues/1208)) ([836fa97](https://github.com/pyroscope-io/pyroscope/commit/836fa97f126f8b7ebfb966bb52a97b5bdf179d83))
+
+
+
+
+
+## [0.9.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.6...@pyroscope/flamegraph@0.9.7) (2022-07-05)
+
+
+### Bug Fixes
+
+* **flamegraph:** do a deep comparison for whether the flamegraph is the same ([#1212](https://github.com/pyroscope-io/pyroscope/issues/1212)) ([910d8ea](https://github.com/pyroscope-io/pyroscope/commit/910d8eaeab9c23017da26ecc01c527c3b204b88a))
+
+
+
+
+
 ## [0.9.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.5...@pyroscope/flamegraph@0.9.6) (2022-07-01)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

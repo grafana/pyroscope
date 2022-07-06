@@ -24,8 +24,19 @@ func Parse(s string) time.Time {
 			return t
 		}
 
+		// Unix time.
 		v, _ := strconv.Atoi(s)
-		return time.Unix(int64(v), 0)
+		switch len(s) {
+		default:
+			// Seconds.
+			return time.Unix(int64(v), 0)
+		case 13:
+			return time.UnixMilli(int64(v))
+		case 16:
+			return time.UnixMicro(int64(v))
+		case 19:
+			return time.Unix(0, int64(v))
+		}
 	}
 
 	ref := s

@@ -18,6 +18,7 @@ import InstructionText from '@webapp/components/InstructionText';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
+import TimelineTitle from '@webapp/components/TimelineTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
@@ -68,6 +69,10 @@ function ComparisonApp() {
   const exportToFlamegraphDotComRightFn =
     useExportToFlamegraphDotCom(rightSide);
   const timezone = offset === 0 ? 'utc' : 'browser';
+  const isSidesHasSameUnits =
+    leftSide &&
+    rightSide &&
+    leftSide.metadata.units === rightSide.metadata.units;
 
   return (
     <div>
@@ -96,6 +101,11 @@ function ComparisonApp() {
               right: { from: rightFrom, to: rightUntil, color: rightColor },
             }}
             timezone={timezone}
+            title={
+              <TimelineTitle
+                titleKey={isSidesHasSameUnits ? leftSide.metadata.units : ''}
+              />
+            }
           />
         </Box>
         <div
@@ -103,6 +113,7 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
+            <TimelineTitle titleKey="baseline" color={leftColor} />
             <TagsBar
               query={leftQuery}
               tags={leftTags}
@@ -151,6 +162,7 @@ function ComparisonApp() {
           </Box>
 
           <Box className={styles.comparisonPane}>
+            <TimelineTitle titleKey="comparison" color={rightColor} />
             <TagsBar
               query={rightQuery}
               tags={rightTags}

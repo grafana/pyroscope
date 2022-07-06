@@ -3,6 +3,47 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.16.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.15.1...@pyroscope/webapp@1.16.0) (2022-07-06)
+
+
+### Features
+
+* add titles to charts / flamegraphs ([#1208](https://github.com/pyroscope-io/pyroscope/issues/1208)) ([836fa97](https://github.com/pyroscope-io/pyroscope/commit/836fa97f126f8b7ebfb966bb52a97b5bdf179d83))
+
+
+
+
+
+## [1.15.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.15.0...@pyroscope/webapp@1.15.1) (2022-07-05)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.15.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.14.0...@pyroscope/webapp@1.15.0) (2022-07-05)
+
+
+### Features
+
+* add an explanation for what each API Key Role is for ([#1210](https://github.com/pyroscope-io/pyroscope/issues/1210)) ([88e04f3](https://github.com/pyroscope-io/pyroscope/commit/88e04f34ed99327fbc95b713c2866968e35684d0))
+
+
+
+
+
+# [1.14.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.6...@pyroscope/webapp@1.14.0) (2022-07-05)
+
+
+### Features
+
+* support for micro-, milli-, and nanoseconds ([#1209](https://github.com/pyroscope-io/pyroscope/issues/1209)) ([f1ba768](https://github.com/pyroscope-io/pyroscope/commit/f1ba76848163506a043ec3321a25052f66161bb9))
+
+
+
+
+
 ## [1.13.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.13.5...@pyroscope/webapp@1.13.6) (2022-07-04)
 
 

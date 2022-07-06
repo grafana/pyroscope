@@ -8,11 +8,11 @@ func (u Units) String() string {
 
 const (
 	SamplesUnits         Units = "samples"
-	ObjectsUnits               = "objects"
-	GoroutinesUnits            = "goroutines"
-	BytesUnits                 = "bytes"
-	LockNanosecondsUnits       = "lock_nanoseconds"
-	LockSamplesUnits           = "lock_samples"
+	ObjectsUnits         Units = "objects"
+	GoroutinesUnits      Units = "goroutines"
+	BytesUnits           Units = "bytes"
+	LockNanosecondsUnits Units = "lock_nanoseconds"
+	LockSamplesUnits     Units = "lock_samples"
 )
 
 type AggregationType string

@@ -1,0 +1,23 @@
+.timelineTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  height: 20px;
+  margin-bottom: 5px;
+
+  .colorReference {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+    border-radius: 2px;
+  }
+
+  .title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 18px;
+  }
+}
