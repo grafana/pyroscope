@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.17.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.0...@pyroscope/webapp@1.17.1) (2022-07-06)
+
+
+### Bug Fixes
+
+* single view app update should change comp/diff view left and right apps ([#1211](https://github.com/pyroscope-io/pyroscope/issues/1211)) ([9a4f34d](https://github.com/pyroscope-io/pyroscope/commit/9a4f34d29090dea456de3014ce2a491e7da83f11))
+
+
+
+
+
 # [1.17.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.16.0...@pyroscope/webapp@1.17.0) (2022-07-06)
 
 

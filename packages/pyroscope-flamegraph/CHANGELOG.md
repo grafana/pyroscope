@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.10.0...@pyroscope/flamegraph@0.10.1) (2022-07-06)
+
+
+### Bug Fixes
+
+* improved nodes coloring by fixing murmur math ([#1214](https://github.com/pyroscope-io/pyroscope/issues/1214)) ([8ea4f73](https://github.com/pyroscope-io/pyroscope/commit/8ea4f730fceb185dba3943dbba524444f2082596))
+
+
+
+
+
 # [0.10.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.7...@pyroscope/flamegraph@0.10.0) (2022-07-06)
 
 
