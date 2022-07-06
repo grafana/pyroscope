@@ -30,6 +30,22 @@ func (t stringConversionTable) rewrite(idx *int64) {
 
 type idConversionTable map[int64]int64
 
+func (t stringConversionTable) rewritePprofLabels(in []*profilev1.Label) []*profilev1.Label {
+	var (
+		out = make([]*profilev1.Label, len(in))
+	)
+	for pos := range in {
+		out[pos] = &profilev1.Label{
+			Key:     t[in[pos].Key],
+			NumUnit: t[in[pos].NumUnit],
+			Str:     t[in[pos].Str],
+			Num:     in[pos].Num,
+		}
+	}
+
+	return out
+}
+
 func (t idConversionTable) rewrite(idx *int64) {
 	pos := *idx
 	*idx = t[pos]
@@ -127,36 +143,6 @@ func (_ *mappingsHelper) rewrite(r *rewriter, m *profilev1.Mapping) error {
 	return nil
 }
 
-type locationsKey struct {
-	MappingId uint64
-	Address   uint64
-	LinesHash string
-}
-
-type locationsHelper struct {
-}
-
-func (_ *locationsHelper) key(l *profilev1.Location) locationsKey {
-	return locationsKey{
-		Address:   l.Address,
-		MappingId: l.MappingId,
-		LinesHash: "TODO", // TODO: Implement me to avoid crashes
-	}
-}
-
-func (_ *locationsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
-	r.locations = elemRewriter
-}
-
-func (_ *locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
-	r.mappings.rewriteUint64(&l.MappingId)
-
-	for pos := range l.Line {
-		r.functions.rewrite(&l.Line[pos].Line)
-	}
-	return nil
-}
-
 type profilesHelper struct {
 }
 
@@ -182,17 +168,6 @@ func (_ *profilesHelper) rewrite(r *rewriter, s *Profile) error {
 		r.strings.rewrite(&s.Types[pos].Unit)
 	}
 
-	for _, value := range s.Samples {
-		for pos := range value.LocationId {
-			r.locations.rewriteUint64(&value.LocationId[pos])
-		}
-		for pos := range value.Label {
-			r.strings.rewrite(&value.Label[pos].Key)
-			r.strings.rewrite(&value.Label[pos].NumUnit)
-			r.strings.rewrite(&value.Label[pos].Str)
-		}
-	}
-
 	for pos := range s.Comment {
 		r.strings.rewrite(&s.Comment[pos])
 	}
@@ -205,6 +180,12 @@ func (_ *profilesHelper) rewrite(r *rewriter, s *Profile) error {
 
 type profilesKey struct {
 	ID uuid.UUID
+}
+
+type Sample struct {
+	StacktraceID uint64             `parquet:","`
+	Values       []int64            `parquet:","`
+	Labels       []*profilev1.Label `parquet:","`
 }
 
 type Profile struct {
@@ -226,7 +207,7 @@ type Profile struct {
 	Types []*profilev1.ValueType `parquet:","`
 	// The set of samples recorded in this profile.
 	// TODO: Flatten into per type sample
-	Samples []*profilev1.Sample `parquet:","`
+	Samples []*Sample `parquet:","`
 
 	// frames with Function.function_name fully matching the following
 	// regexp will be dropped from the samples, along with their successors.
@@ -251,14 +232,15 @@ type Profile struct {
 }
 
 type Models interface {
-	*Profile | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
+	*Profile | *Stacktrace | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
 }
 
 type rewriter struct {
-	strings   stringConversionTable
-	functions idConversionTable
-	mappings  idConversionTable
-	locations idConversionTable
+	strings     stringConversionTable
+	functions   idConversionTable
+	mappings    idConversionTable
+	locations   idConversionTable
+	stacktraces idConversionTable
 }
 
 type Helper[M Models, K comparable] interface {
@@ -338,11 +320,12 @@ func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
 type Head struct {
 	logger log.Logger
 
-	strings   deduplicatingSlice[string, string, *stringsHelper]
-	mappings  deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
-	functions deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
-	locations deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
-	profiles  deduplicatingSlice[*Profile, profilesKey, *profilesHelper]
+	strings     deduplicatingSlice[string, string, *stringsHelper]
+	mappings    deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
+	functions   deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
+	locations   deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
+	stacktraces deduplicatingSlice[*Stacktrace, stacktracesKey, *stacktracesHelper] // a stacktrace is a slice of location ids
+	profiles    deduplicatingSlice[*Profile, profilesKey, *profilesHelper]
 }
 
 func NewHead() *Head {
@@ -353,6 +336,7 @@ func NewHead() *Head {
 	h.mappings.init()
 	h.functions.init()
 	h.locations.init()
+	h.stacktraces.init()
 	h.profiles.init()
 	return h
 }
@@ -388,6 +372,39 @@ func (h *Head) internExternalLabels(ctx context.Context, lblStrs []*commonv1.Lab
 	return lblRefs, nil
 }
 
+func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([]*Sample, error) {
+	var (
+		out         = make([]*Sample, len(in))
+		stacktraces = make([]*Stacktrace, len(in))
+	)
+
+	for pos := range in {
+		// populate samples
+		out[pos] = &Sample{
+			StacktraceID: 0, // TODO: Ensure stacktrace id exist
+			Values:       in[pos].Value,
+			Labels:       r.strings.rewritePprofLabels(in[pos].Label),
+		}
+
+		// build full stack traces
+		stacktraces[pos] = &Stacktrace{
+			LocationIDs: in[pos].LocationId,
+		}
+	}
+
+	// ingest stacktraces
+	if err := h.stacktraces.ingest(ctx, stacktraces, r); err != nil {
+		return nil, err
+	}
+
+	// reference stacktraces
+	for pos := range out {
+		out[pos].StacktraceID = uint64(r.stacktraces[int64(pos)])
+	}
+
+	return out, nil
+}
+
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) error {
 	rewrites := &rewriter{}
 
@@ -412,10 +429,15 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		return err
 	}
 
+	samples, err := h.convertSamples(ctx, rewrites, p.Sample)
+	if err != nil {
+		return err
+	}
+
 	profile := &Profile{
 		// TODO: Add ID
 		ExternalLabels:    lblRefs,
-		Samples:           p.Sample,
+		Samples:           samples,
 		Types:             p.SampleType,
 		DropFrames:        p.DropFrames,
 		KeepFrames:        p.KeepFrames,
@@ -530,53 +552,6 @@ func stringSliceToRows(strs []string) []stringRow {
 
 	return rows
 }
-
-/*
-func writeToFrost(ctx context.Context, path string) error {
-	// Create a new column store
-	columnstore := frostdb.New(
-		prometheus.NewRegistry(),
-		8192,
-		10*1024*1024, // 10MiB
-	)
-
-	// Open up a database in the column store
-	database, err := columnstore.DB("fire")
-	if err != nil {
-		return err
-	}
-
-	schProfiles := schemav2.Profiles()
-	table, err := database.Table(
-		"profiles",
-		frostdb.NewTableConfig(schProfiles),
-		log.NewNopLogger(),
-	)
-	if err != nil {
-		return err
-	}
-
-	buf, err := schemav2.Profiles().NewBuffer(nil)
-	if err != nil {
-		return err
-	}
-	schProfiles.Columns
-
-	buf.WriteRow([]parquet.Value{
-		parquet.ValueOf("Thor").Level(0, 1, 0),
-		parquet.ValueOf("Hansen").Level(0, 1, 1),
-		parquet.ValueOf(10).Level(0, 0, 2),
-	})
-	buf.Sort()
-
-	buffer.Clone
-
-	table.Insert
-
-	return nil
-
-}
-*/
 
 func writeToFile[T any](ctx context.Context, path string, table string, rowGroupOptions []parquet.RowGroupOption, writerOptions []parquet.WriterOption, rows []T) error {
 	file, err := os.OpenFile(filepath.Join(path, table+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
