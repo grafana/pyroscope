@@ -107,7 +107,7 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] Rust (via `pprof-rs`)
 * [x] .NET (via `dotnet trace`)
 * [x] PHP (via `phpspy`)
-* [ ] Node [(seeking contributors)](https://github.com/pyroscope-io/pyroscope/issues/8)
+* [x] Node
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
@@ -137,20 +137,23 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/kolesnikovae"><img src="https://avatars.githubusercontent.com/u/12090599?v=4" title="kolesnikovae" width="80" height="80"></a>
 <a href="https://github.com/abeaumont"><img src="https://avatars.githubusercontent.com/u/80059?v=4" title="abeaumont" width="80" height="80"></a>
 <a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="LouisInFlow" width="80" height="80"></a>
+<a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80" height="80"></a>
 <a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80" height="80"></a>
 <a href="https://github.com/olvrng"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="olvrng" width="80" height="80"></a>
 <a href="https://github.com/AdrK"><img src="https://avatars.githubusercontent.com/u/15175440?v=4" title="AdrK" width="80" height="80"></a>
+<a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80" height="80"></a>
 <a href="https://github.com/alonlong"><img src="https://avatars.githubusercontent.com/u/3090383?v=4" title="alonlong" width="80" height="80"></a>
 <a href="https://github.com/Loggy"><img src="https://avatars.githubusercontent.com/u/3171097?v=4" title="Loggy" width="80" height="80"></a>
 <a href="https://github.com/cjsampson"><img src="https://avatars.githubusercontent.com/u/8391857?v=4" title="cjsampson" width="80" height="80"></a>
+<a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
 <a href="https://github.com/ekpatrice"><img src="https://avatars.githubusercontent.com/u/77462462?v=4" title="ekpatrice" width="80" height="80"></a>
 <a href="https://github.com/ruslanpascoal2"><img src="https://avatars.githubusercontent.com/u/61955096?v=4" title="ruslanpascoal2" width="80" height="80"></a>
 <a href="https://github.com/gawicks"><img src="https://avatars.githubusercontent.com/u/1481491?v=4" title="gawicks" width="80" height="80"></a>
+<a href="https://github.com/omarabid"><img src="https://avatars.githubusercontent.com/u/909237?v=4" title="omarabid" width="80" height="80"></a>
 <a href="https://github.com/EgorMozheiko"><img src="https://avatars.githubusercontent.com/u/90687109?v=4" title="EgorMozheiko" width="80" height="80"></a>
 <a href="https://github.com/cmonez"><img src="https://avatars.githubusercontent.com/u/39146411?v=4" title="cmonez" width="80" height="80"></a>
 <a href="https://github.com/rajat2004"><img src="https://avatars.githubusercontent.com/u/37938604?v=4" title="rajat2004" width="80" height="80"></a>
 <a href="https://github.com/Skemba"><img src="https://avatars.githubusercontent.com/u/8813875?v=4" title="Skemba" width="80" height="80"></a>
-<a href="https://github.com/omarabid"><img src="https://avatars.githubusercontent.com/u/909237?v=4" title="omarabid" width="80" height="80"></a>
 <a href="https://github.com/Cluas"><img src="https://avatars.githubusercontent.com/u/10056928?v=4" title="Cluas" width="80" height="80"></a>
 <a href="https://github.com/linthan"><img src="https://avatars.githubusercontent.com/u/13914829?v=4" title="linthan" width="80" height="80"></a>
 <a href="https://github.com/clovis1122"><img src="https://avatars.githubusercontent.com/u/22270042?v=4" title="clovis1122" width="80" height="80"></a>
@@ -161,7 +164,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/s4kibs4mi"><img src="https://avatars.githubusercontent.com/u/5650785?v=4" title="s4kibs4mi" width="80" height="80"></a>
 <a href="https://github.com/SusyQinqinYang"><img src="https://avatars.githubusercontent.com/u/55719616?v=4" title="SusyQinqinYang" width="80" height="80"></a>
 <a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
-<a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80" height="80"></a>
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
 <a href="https://github.com/awwalker"><img src="https://avatars.githubusercontent.com/u/11507633?v=4" title="awwalker" width="80" height="80"></a>
@@ -169,6 +171,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/highb"><img src="https://avatars.githubusercontent.com/u/759848?v=4" title="highb" width="80" height="80"></a>
 <a href="https://github.com/waywardmonkeys"><img src="https://avatars.githubusercontent.com/u/178582?v=4" title="waywardmonkeys" width="80" height="80"></a>
 <a href="https://github.com/cfbolz"><img src="https://avatars.githubusercontent.com/u/85942?v=4" title="cfbolz" width="80" height="80"></a>
+<a href="https://github.com/charlesverdad"><img src="https://avatars.githubusercontent.com/u/382186?v=4" title="charlesverdad" width="80" height="80"></a>
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
 <a href="https://github.com/Dzalevski"><img src="https://avatars.githubusercontent.com/u/9572827?v=4" title="Dzalevski" width="80" height="80"></a>
 <a href="https://github.com/dhanusaputra"><img src="https://avatars.githubusercontent.com/u/35093673?v=4" title="dhanusaputra" width="80" height="80"></a>
@@ -187,8 +190,11 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/samoilenko"><img src="https://avatars.githubusercontent.com/u/4024256?v=4" title="samoilenko" width="80" height="80"></a>
 <a href="https://github.com/teivah"><img src="https://avatars.githubusercontent.com/u/934784?v=4" title="teivah" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
+<a href="https://github.com/Tusharkshahi"><img src="https://avatars.githubusercontent.com/u/103762351?v=4" title="Tusharkshahi" width="80" height="80"></a>
 <a href="https://github.com/vbehar"><img src="https://avatars.githubusercontent.com/u/6251?v=4" title="vbehar" width="80" height="80"></a>
+<a href="https://github.com/cuishuang"><img src="https://avatars.githubusercontent.com/u/15921519?v=4" title="cuishuang" width="80" height="80"></a>
 <a href="https://github.com/apps/dependabot"><img src="https://avatars.githubusercontent.com/in/29110?v=4" title="dependabot[bot]" width="80" height="80"></a>
+<a href="https://github.com/futurelm"><img src="https://avatars.githubusercontent.com/u/43361929?v=4" title="futurelm" width="80" height="80"></a>
 <a href="https://github.com/hiyanxu"><img src="https://avatars.githubusercontent.com/u/15027927?v=4" title="hiyanxu" width="80" height="80"></a>
 <a href="https://github.com/miravtmehta"><img src="https://avatars.githubusercontent.com/u/54740656?v=4" title="miravtmehta" width="80" height="80"></a>
 <a href="https://github.com/lzh2nix"><img src="https://avatars.githubusercontent.com/u/7421004?v=4" title="lzh2nix" width="80" height="80"></a>

@@ -150,7 +150,22 @@ type parentNode struct {
 
 func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	t := New()
-	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
+
+	type reader interface {
+		io.ByteReader
+		io.Reader
+	}
+	var br reader
+	switch x := r.(type) {
+	case *bytes.Buffer:
+		br = x
+	case *bytes.Reader:
+		br = x
+	case *bufio.Reader:
+		br = x
+	default:
+		br = bufio.NewReader(r)
+	}
 
 	// reads serialization format version, see comment at the top
 	_, err := varint.Read(br)
@@ -301,6 +316,51 @@ func (t *Tree) SerializeNoDictNoLimit(w io.Writer) error {
 		nodes = append(tn.ChildrenNodes, nodes...)
 		_, err = varint.Write(w, cnl)
 		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *Tree) SerializeTruncateNoDict(maxNodes int, w io.Writer) error {
+	t.Lock()
+	defer t.Unlock()
+	vw := varint.NewWriter()
+	var err error
+	minVal := t.minValue(maxNodes)
+	nodes := make([]*treeNode, 1, 1024)
+	nodes[0] = t.root
+	for len(nodes) > 0 {
+		tn := nodes[0]
+		nodes = nodes[1:]
+		if _, err = vw.Write(w, uint64(len(tn.Name))); err != nil {
+			return err
+		}
+		if _, err = w.Write(tn.Name); err != nil {
+			return err
+		}
+
+		val := tn.Self
+		cNodes := tn.ChildrenNodes
+		tn.ChildrenNodes = tn.ChildrenNodes[:0]
+		for _, cn := range cNodes {
+			if cn.Total >= minVal {
+				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
+			} else {
+				// Truncated children accounted as parent self.
+				val += cn.Total
+			}
+		}
+		if _, err = vw.Write(w, val); err != nil {
+			return err
+		}
+
+		if len(tn.ChildrenNodes) > 0 {
+			nodes = append(tn.ChildrenNodes, nodes...)
+		} else {
+			tn.ChildrenNodes = nil // Just to make it eligible for GC.
+		}
+		if _, err = vw.Write(w, uint64(len(tn.ChildrenNodes))); err != nil {
 			return err
 		}
 	}

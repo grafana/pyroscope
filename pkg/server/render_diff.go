@@ -36,6 +36,7 @@ type RenderDiffParams struct {
 // RenderDiffResponse refers to the response of the renderDiffHandler
 type RenderDiffResponse struct {
 	*flamebearer.FlamebearerProfile
+	Metadata renderMetadataResponse `json:"metadata"`
 }
 
 type diffParams struct {
@@ -160,7 +161,14 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// fallthrough to default, to maintain existing behaviour
 		fallthrough
 	default:
-		res := RenderDiffResponse{&combined}
+		metadata := renderMetadataResponse{FlamebearerMetadataV1: combined.Metadata}
+		rh.enhanceWithCustomFields(&metadata, params)
+
+		res := RenderDiffResponse{
+			FlamebearerProfile: &combined,
+			Metadata:           metadata,
+		}
+
 		rh.httpUtils.WriteResponseJSON(r, w, res)
 	}
 }
@@ -212,4 +220,37 @@ func (rh *RenderDiffHandler) loadTree(ctx context.Context, gi *storage.GetInput,
 		return &storage.GetOutput{Tree: tree.New()}, nil
 	}
 	return out, nil
+}
+
+// add custom fields to renderMetadataResponse
+// original motivation is to add custom {start,end}Time calculated dynamically
+func (rh *RenderDiffHandler) enhanceWithCustomFields(metadata *renderMetadataResponse, params diffParams) {
+	var diffAppName string
+
+	if params.Left.Query.AppName == params.Right.Query.AppName {
+		diffAppName = fmt.Sprintf("diff_%s_%s", params.Left.Query.AppName, params.Right.Query.AppName)
+	} else {
+		diffAppName = fmt.Sprintf("diff_%s", params.Left.Query.AppName)
+	}
+
+	startTime, endTime := rh.findStartEndTime(params.Left, params.Right)
+
+	metadata.AppName = diffAppName
+	metadata.StartTime = startTime.Unix()
+	metadata.EndTime = endTime.Unix()
+	// TODO: add missing fields
+}
+
+func (*RenderDiffHandler) findStartEndTime(left storage.GetInput, right storage.GetInput) (time.Time, time.Time) {
+	startTime := left.StartTime
+	if right.StartTime.Before(left.StartTime) {
+		startTime = right.StartTime
+	}
+
+	endTime := left.EndTime
+	if right.EndTime.After(right.EndTime) {
+		endTime = right.EndTime
+	}
+
+	return startTime, endTime
 }

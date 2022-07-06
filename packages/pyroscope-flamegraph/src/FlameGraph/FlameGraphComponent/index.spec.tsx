@@ -230,6 +230,7 @@ describe('FlamegraphComponent', () => {
           ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
+          toolbarVisible
         />
       );
 
@@ -255,6 +256,7 @@ describe('FlamegraphComponent', () => {
           ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
+          toolbarVisible
         />
       );
 
@@ -265,29 +267,5 @@ describe('FlamegraphComponent', () => {
       expect(screen.getByTestId('flamegraph-legend')).toBeInTheDocument();
       expect(screen.getByText('ExportData')).toBeInTheDocument();
     });
-  });
-
-  it('render a message when there is no data to show', () => {
-    const onZoom = jest.fn();
-    const onReset = jest.fn();
-    const isDirty = jest.fn();
-    const onFocusOnNode = jest.fn();
-    render(
-      <FlamegraphComponent
-        fitMode="HEAD"
-        zoom={Maybe.nothing()}
-        focusedNode={Maybe.nothing()}
-        highlightQuery=""
-        onZoom={onZoom}
-        onFocusOnNode={onFocusOnNode}
-        onReset={onReset}
-        isDirty={isDirty}
-        flamebearer={TestData.empty}
-        ExportData={ExportData}
-        palette={DefaultPalette}
-        setPalette={setPalette}
-      />
-    );
-    screen.getByText(/No profiling data available/);
   });
 });

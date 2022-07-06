@@ -40,39 +40,43 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 	// Sample types specific to Go.
 	"samples": {
 		DisplayName: "cpu",
-		Units:       "samples",
+		Units:       metadata.SamplesUnits,
 		Sampled:     true,
 	},
 	"inuse_objects": {
-		Units:       "objects",
-		Aggregation: "average",
+		Units:       metadata.ObjectsUnits,
+		Aggregation: metadata.AverageAggregationType,
 	},
 	"alloc_objects": {
-		Units:      "objects",
+		Units:      metadata.ObjectsUnits,
 		Cumulative: true,
 	},
 	"inuse_space": {
-		Units:       "bytes",
-		Aggregation: "average",
+		Units:       metadata.BytesUnits,
+		Aggregation: metadata.AverageAggregationType,
 	},
 	"alloc_space": {
-		Units:      "bytes",
+		Units:      metadata.BytesUnits,
 		Cumulative: true,
 	},
-
-	// Sample types specific to pprof-nodejs.
-	"sample": {
-		DisplayName: "cpu",
-		Units:       "samples",
-		Sampled:     true,
+	"goroutine": {
+		DisplayName: "goroutines",
+		Units:       metadata.GoroutinesUnits,
+		Aggregation: metadata.AverageAggregationType,
 	},
-	"objects": {
-		Units:      "objects",
-		Cumulative: true,
+	"contentions": {
+		// TODO(petethepig): technically block profiles have the same name
+		//   so this might be a block profile, need better heuristic
+		DisplayName: "mutex_count",
+		Units:       metadata.LockSamplesUnits,
+		Cumulative:  true,
 	},
-	"space": {
-		Units:      "bytes",
-		Cumulative: true,
+	"delay": {
+		// TODO(petethepig): technically block profiles have the same name
+		//   so this might be a block profile, need better heuristic
+		DisplayName: "mutex_duration",
+		Units:       metadata.LockNanosecondsUnits,
+		Cumulative:  true,
 	},
 }
 

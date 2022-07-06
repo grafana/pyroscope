@@ -42,6 +42,8 @@ const (
 	HealthUnknown TargetHealth = "unknown"
 	HealthGood    TargetHealth = "up"
 	HealthBad     TargetHealth = "down"
+
+	spyName = "scrape"
 )
 
 // Target refers to a singular HTTP or HTTPS endpoint.
@@ -52,7 +54,7 @@ type Target struct {
 	labels labels.Labels
 	// Additional parameters including profile path, URL params,
 	// and sample-type settings.
-	profile *config.Profile
+	config *config.Profile
 
 	mtx                sync.RWMutex
 	lastError          error
@@ -66,7 +68,7 @@ func NewTarget(origLabels, discoveredLabels labels.Labels, profile *config.Profi
 	return &Target{
 		labels:           origLabels,
 		discoveredLabels: discoveredLabels,
-		profile:          profile,
+		config:           profile,
 		health:           HealthUnknown,
 	}
 }
@@ -98,6 +100,24 @@ func (t *Target) offset(interval time.Duration) time.Duration {
 		next -= int64(interval)
 	}
 	return time.Duration(next)
+}
+
+func (t *Target) SpyName() string {
+	for _, l := range t.discoveredLabels {
+		if l.Name == model.SpyNameLabel && l.Value != "" {
+			return l.Value
+		}
+	}
+	return spyName
+}
+
+func (t *Target) IsCumulative() bool {
+	for _, x := range t.config.SampleTypes {
+		if x.Cumulative {
+			return true
+		}
+	}
+	return false
 }
 
 // Labels returns a copy of the set of all public labels of the target.
@@ -132,10 +152,10 @@ func (t *Target) URL() *url.URL {
 	u := url.URL{
 		Scheme: t.labels.Get(model.SchemeLabel),
 		Host:   t.labels.Get(model.AddressLabel),
-		Path:   t.profile.Path,
+		Path:   t.config.Path,
 	}
-	if t.profile.Params != nil {
-		u.RawQuery = t.profile.Params.Encode()
+	if t.config.Params != nil {
+		u.RawQuery = t.config.Params.Encode()
 	}
 	return &u
 }
@@ -192,7 +212,7 @@ func (t *Target) deltaDuration() (time.Duration, error) {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
 	// TODO(kolesnikovae): Delta duration from/to labels.
-	d, ok := t.profile.Params["seconds"]
+	d, ok := t.config.Params["seconds"]
 	if !ok || len(d) != 1 {
 		return 0, fmt.Errorf("delta duration is not defined")
 	}

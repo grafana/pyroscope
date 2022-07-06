@@ -20,6 +20,8 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
       return new DurationFormatter(max / sampleRate);
     case 'objects':
       return new ObjectsFormatter(max);
+    case 'goroutines':
+      return new ObjectsFormatter(max);
     case 'bytes':
       return new BytesFormatter(max);
     case 'lock_nanoseconds':
@@ -85,6 +87,7 @@ class DurationFormatter {
 //   precalculating divider and suffix and not doing it on each iteration
 class NanosecondsFormatter {
   divider = 1;
+
   multiplier = 1;
 
   suffix: string = 'second';

@@ -20,11 +20,16 @@ interface renderSingleProps {
   maxNodes: string | number;
 }
 export async function renderSingle(
-  props: renderSingleProps
+  props: renderSingleProps,
+  params?: {
+    signal?: AbortSignal;
+  }
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
   // TODO
-  const response = await request(`${url}}&format=json`);
+  const response = await request(`${url}&format=json`, {
+    signal: params?.signal,
+  });
 
   if (response.isErr) {
     return Result.err<RenderOutput, RequestError>(response.error);
@@ -32,7 +37,9 @@ export async function renderSingle(
 
   const parsed = FlamebearerProfileSchema.merge(
     z.object({ timeline: TimelineSchema })
-  ).safeParse(response.value);
+  )
+    .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+    .safeParse(response.value);
 
   if (parsed.success) {
     // TODO: strip timeline
@@ -60,7 +67,10 @@ interface renderDiffProps {
   rightFrom: string;
   rightUntil: string;
 }
-export async function renderDiff(props: renderDiffProps) {
+export async function renderDiff(
+  props: renderDiffProps,
+  abortController?: AbortController
+) {
   const params = new URLSearchParams({
     leftQuery: props.leftQuery,
     leftFrom: props.leftFrom,
@@ -71,7 +81,10 @@ export async function renderDiff(props: renderDiffProps) {
     format: 'json',
   });
 
-  const response = await request(`/render-diff?${params}`);
+  const response = await request(`/render-diff?${params}`, {
+    signal: abortController?.signal,
+  });
+
   return parseResponse<z.infer<typeof FlamebearerProfileSchema>>(
     response,
     FlamebearerProfileSchema

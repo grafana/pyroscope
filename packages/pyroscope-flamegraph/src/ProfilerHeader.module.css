@@ -6,34 +6,22 @@
 }
 
 /* Give same amount of space between all children */
-.navbar > *:not(:first-child):not(:last-child) {
-  margin: 0 8px;
+.navbar > *:not(:first-child) {
+  margin-left: 5px;
+  margin-right: 5px;
+
+  &.fit-mode-select {
+    min-width: 65px;
+  }
 }
 
 .space-filler {
   flex-grow: 1;
 }
 
-.search {
-  background: rgba(255, 255, 255, 0.8);
-  color: #333;
-  transition: background-color ease-out 0.1s;
-  margin-right: 8px;
-}
-.search:focus {
-  background: rgba(255, 255, 255, 1);
-}
-
-.search-small {
-  width: 100px;
-}
-
-.fit-mode-select {
-  margin: 0 8px;
-}
-
 .headerLogo {
-  display: inline-block;
+  display: flex;
+  align-items: center;
   text-decoration: none;
   color: #fff;
   font-size: 1.2em;
@@ -45,4 +33,8 @@
 
 .headerLogo span {
   display: inline-block;
+}
+
+.fit-mode-select {
+  min-width: 65px;
 }

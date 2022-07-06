@@ -25,4 +25,13 @@ describe('API tests', () => {
       'http://localhost:4040/comparison-diff?query=pyroscope.server.cpu%7B%7D&rightQuery=pyroscope.server.cpu%7B%7D&leftQuery=pyroscope.server.cpu%7B%7D&leftFrom=1648154123&leftUntil=1648154128&rightFrom=1648154123&rightUntil=1648154129&from=1648154091&until=1648154131'
     );
   });
+
+  it('tests 404 custom page', () => {
+    cy.request({ url: '/my-404-page', failOnStatusCode: false })
+      .its('status')
+      .should('equal', 404);
+
+    cy.visit({ url: '/my-404-page', failOnStatusCode: false });
+    cy.get('.pyroscope-app').should('contain.text', 'does not exist');
+  });
 });

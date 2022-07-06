@@ -30,7 +30,7 @@ warningCode = 0
 [rule.argument-limit]
   arguments = [5]
 [rule.max-public-structs]
-  arguments = [4]
+  arguments = [10]
 [rule.empty-block]
 [rule.superfluous-else]
 # [rule.get-return]

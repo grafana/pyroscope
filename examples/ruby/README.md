@@ -1,6 +1,6 @@
 ## Continuous Profiling for Ruby applications
 ### Profiling a Ruby Rideshare App with Pyroscope
-![ruby_example_architecture_05](https://user-images.githubusercontent.com/23323466/135726784-0c367d3f-c9e5-4e3f-91be-761d4d6d21b1.gif)
+![ruby_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369670-ba6fe5ce-eab0-4824-94dd-c72255efc063.gif)
 
 Note: For documentation on the Pyroscope ruby gem visit [our website](https://pyroscope.io/docs/ruby/)
 ## Background
@@ -10,9 +10,9 @@ In this example we show a simplified, basic use case of Pyroscope. We simulate a
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
 We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/ruby/docker-compose.yml))
-- us-east-1
-- us-west-1
-- eu-west-1
+- us-east
+- eu-north
+- ap-south
 
 One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In this case, we have two natural divisions, and so we "tag" our data to represent those:
 - `region`: statically tags the region of the server running the code
@@ -77,7 +77,7 @@ To analyze this we can select one or more tags from the "Select Tag" dropdown:
 ![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
 ## Narrowing in on the Issue Using Tags
-Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `us-west-1` region, where it alternates between high-cpu times and low-cpu times.
+Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
 
 We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period. 
 

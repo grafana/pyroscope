@@ -23,6 +23,7 @@ export type Flamebearer = {
   units:
     | 'samples'
     | 'objects'
+    | 'goroutines'
     | 'bytes'
     | 'lock_samples'
     | 'lock_nanoseconds'

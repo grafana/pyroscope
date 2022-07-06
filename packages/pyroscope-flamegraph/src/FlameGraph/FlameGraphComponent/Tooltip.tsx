@@ -261,11 +261,11 @@ function formatDouble(
   const leftPercent = ratioToPercent(leftRatio);
   const rightPercent = ratioToPercent(rightRatio);
 
-  const left = `Left: ${numberWithCommas(
+  const left = `Baseline: ${numberWithCommas(
     totalLeft
   )} samples, ${formatter.format(totalLeft, sampleRate)} (${leftPercent}%)`;
 
-  const right = `Right: ${numberWithCommas(
+  const right = `Comparison: ${numberWithCommas(
     totalRight
   )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
 

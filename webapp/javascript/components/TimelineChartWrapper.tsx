@@ -1,7 +1,7 @@
 /* eslint-disable react/no-access-state-in-setstate */
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Timeline } from '@webapp/models/timeline';
 import Color from 'color';
 import { formatAsOBject } from '@webapp/util/formatDate';
@@ -31,12 +31,16 @@ type TimelineChartWrapperProps = {
   timelineA: TimelineData;
   /** timelineB refers to the second timeline, useful for comparison view */
   timelineB?: TimelineData;
+  height?: string;
 
   /** refers to the highlighted selection */
   markings?: {
     left?: Marking;
     right?: Marking;
   };
+
+  timezone: 'browser' | 'utc';
+  title?: ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -68,7 +72,7 @@ class TimelineChartWrapper extends React.Component<
         lineWidth: '1',
       },
       grid: {
-        borderWidth: 1,
+        borderWidth: 1, // outside border of the timelines
         hoverable: true,
       },
       yaxis: {
@@ -88,6 +92,8 @@ class TimelineChartWrapper extends React.Component<
         mode: 'time',
         timezone: 'browser',
         reserveSpace: false,
+        // tickColor: '#E6E6E6',
+        // tickLength: 20,
       },
     };
 
@@ -168,7 +174,7 @@ class TimelineChartWrapper extends React.Component<
 
   render = () => {
     const { flotOptions } = this.state;
-    const { id, timelineA } = this.props;
+    const { id, timelineA, timezone, title } = this.props;
     // TODO deep copy
     let timelineB = this.props.timelineB
       ? JSON.parse(JSON.stringify(this.props.timelineB))
@@ -182,6 +188,7 @@ class TimelineChartWrapper extends React.Component<
         // both sides making it look more centers
         autoscaleMargin:
           timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
+        timezone: timezone || 'browser',
       },
     };
 
@@ -221,18 +228,21 @@ class TimelineChartWrapper extends React.Component<
     ].filter((a) => !!a);
 
     return (
-      <TimelineChart
-        onSelect={this.props.onSelect}
-        className={styles.wrapper}
-        // eslint-disable-next-line react/destructuring-assignment
-        data-testid={this.props['data-testid']}
-        id={id}
-        options={customFlotOptions}
-        data={data}
-        //        data={d}
-        width="100%"
-        height="100px"
-      />
+      <>
+        {title}
+        <TimelineChart
+          onSelect={this.props.onSelect}
+          className={styles.wrapper}
+          // eslint-disable-next-line react/destructuring-assignment
+          data-testid={this.props['data-testid']}
+          id={id}
+          options={customFlotOptions}
+          data={data}
+          //        data={d}
+          width="100%"
+          height={this.props.height || '100px'}
+        />
+      </>
     );
   };
 }

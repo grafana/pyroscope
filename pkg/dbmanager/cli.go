@@ -10,14 +10,13 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/pyroscope/pkg/exporter"
-	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/selfprofiling"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
@@ -68,20 +67,9 @@ func copyData(dbCfg *config.DbManager, stCfg *storage.Config) error {
 	}
 
 	e, _ := exporter.NewExporter(nil, nil)
+	logger := logrus.StandardLogger()
 	if dbCfg.EnableProfiling {
-		upstream := direct.New(s, e)
-		selfProfilingConfig := agent.SessionConfig{
-			Upstream:       upstream,
-			AppName:        "pyroscope.dbmanager.cpu{}",
-			ProfilingTypes: types.DefaultProfileTypes,
-			SpyName:        types.GoSpy,
-			SampleRate:     100,
-			UploadRate:     10 * time.Second,
-			Logger:         logrus.StandardLogger(),
-		}
-		session, _ := agent.NewSession(selfProfilingConfig)
-		upstream.Start()
-		_ = session.Start()
+		_ = selfprofiling.NewSession(logger, parser.New(logger, s, e), "pyroscope.dbmanager", map[string]string{}).Start()
 	}
 
 	sk, err := segment.ParseKey(appName)

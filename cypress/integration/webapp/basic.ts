@@ -20,7 +20,7 @@ describe('basic test', () => {
     cy.findByLabelText(/Refresh apps/i).click();
     cy.wait(`@labelValues`);
 
-    cy.get('.navbar').findByRole('button', { expanded: false }).click();
+    cy.get('.navbar').findAllByTestId('app_selector_toggle_button').click();
 
     // For some reason couldn't find the appropriate query
     cy.findAllByRole('menuitem').then((items) => {
@@ -35,22 +35,6 @@ describe('basic test', () => {
       const queryParams = new URLSearchParams(loc.search);
       expect(queryParams.get('query')).to.eq('pyroscope.server.inuse_space{}');
     });
-  });
-
-  it('highlights nodes that match a search query', () => {
-    cy.intercept('**/render*', {
-      fixture: 'simple-golang-app-cpu.json',
-    }).as('render');
-
-    cy.visit('/');
-
-    cy.findByTestId('flamegraph-search').type('main');
-
-    cy.waitForFlamegraphToRender().get('[data-highlightquery="main"]');
-
-    cy.waitForFlamegraphToRender().matchImageSnapshot(
-      'simple-golang-app-cpu-highlight'
-    );
   });
 
   it('view buttons should change view when clicked', () => {
@@ -291,17 +275,19 @@ describe('basic test', () => {
 
       // This test has a race condition, since it does not wait for the canvas to be rendered
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+      cy.get('div.spinner-container.loaded');
+
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-left').should(
         'have.text',
-        'Left: 991 samples, 9.91 seconds (100%)'
+        'Baseline: 991 samples, 9.91 seconds (100%)'
       );
       cy.findByTestId('flamegraph-tooltip-right').should(
         'have.text',
-        'Right: 987 samples, 9.87 seconds (100%)'
+        'Comparison: 987 samples, 9.87 seconds (100%)'
       );
     });
   });

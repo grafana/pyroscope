@@ -1,18 +1,39 @@
-import React, { InputHTMLAttributes } from 'react';
-
+import React, { InputHTMLAttributes, ChangeEvent } from 'react';
+import Input from '@webapp/ui/Input';
 import styles from './InputField.module.css';
 
 interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   className?: string;
+  name: string;
+  placeholder?: string;
+  type: 'text' | 'password' | 'email' | 'number';
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  id?: string;
 }
 
-/* eslint-disable react/jsx-props-no-spreading */
-function InputField({ label, className, ...rest }: IInputFieldProps) {
+function InputField({
+  label,
+  className,
+  name,
+  onChange,
+  placeholder,
+  type,
+  value,
+  id,
+}: IInputFieldProps) {
   return (
     <div className={`${className || ''} ${styles.inputWrapper}`}>
       <h4>{label}</h4>
-      <input {...rest} />
+      <Input
+        type={type}
+        placeholder={placeholder}
+        name={name}
+        onChange={onChange}
+        value={value}
+        htmlId={id}
+      />
     </div>
   );
 }

@@ -10,7 +10,7 @@ datasources:
     url: http://jaeger:16686
 
   - name: Pyroscope
-    type: pyroscope-datasource
+    type: ppaspa-datasource
     access: proxy
     orgId: 1
     uid: pyroscope
@@ -28,3 +28,7 @@ datasources:
           matcherRegex: "trace_id=(\\w+)"
           url: '$${__value.raw}'
           datasourceUid: jaeger
+        - name: 'profileExemplar'
+          matcherRegex: "span_id=(\\w+)"
+          url: 'ride-sharing-app.cpu{profile_id="$${__value.raw}"}'
+          datasourceUid: pyroscope

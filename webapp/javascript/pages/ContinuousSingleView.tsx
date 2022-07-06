@@ -8,13 +8,19 @@ import {
   fetchSingleView,
   setDateRange,
 } from '@webapp/redux/reducers/continuous';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
+import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
+  const { offset } = useTimeZone();
+  const { colorMode } = useColorMode();
 
   const { from, until, query, refreshToken, maxNodes } = useAppSelector(
     (state) => state.continuous
@@ -24,8 +30,10 @@ function ContinuousSingleView() {
 
   useEffect(() => {
     if (from && until && query && maxNodes) {
-      dispatch(fetchSingleView(null));
+      const fetchData = dispatch(fetchSingleView(null));
+      return () => fetchData.abort('cancel');
     }
+    return undefined;
   }, [from, until, query, refreshToken, maxNodes]);
 
   const getRaw = () => {
@@ -49,6 +57,7 @@ function ContinuousSingleView() {
         return (
           <FlamegraphRenderer
             profile={singleView.profile}
+            colorMode={colorMode}
             ExportData={
               <ExportData
                 flamebearer={singleView.profile}
@@ -56,7 +65,7 @@ function ContinuousSingleView() {
                 exportJSON
                 exportPprof
                 exportHTML
-                exportFlamegraphDotCom
+                exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
                 exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
               />
             }
@@ -91,12 +100,19 @@ function ContinuousSingleView() {
     <div>
       <div className="main-wrapper">
         <Toolbar />
-        <TimelineChartWrapper
-          data-testid="timeline-single"
-          id="timeline-chart-single"
-          timelineA={getTimeline()}
-          onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
-        />
+        <Box>
+          <TimelineChartWrapper
+            timezone={offset === 0 ? 'utc' : 'browser'}
+            data-testid="timeline-single"
+            id="timeline-chart-single"
+            timelineA={getTimeline()}
+            onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
+            height="125px"
+            title={
+              <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
+            }
+          />
+        </Box>
         <Box>{flamegraphRenderer}</Box>
       </div>
     </div>

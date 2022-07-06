@@ -1,0 +1,29 @@
+@use 'sass:math';
+@use 'variables' as *;
+
+@import './variables.css';
+
+.flamegraph-root {
+  @import 'common';
+
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  canvas {
+    display: inline-block;
+  }
+
+  button,
+  select {
+    color: inherit;
+    font: inherit;
+  }
+
+  color: var(--ps-neutral-2);
+  -webkit-font-smoothing: antialiased;
+  font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
+    Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}

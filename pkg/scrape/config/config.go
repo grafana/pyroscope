@@ -23,10 +23,10 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	profile "github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
@@ -72,6 +72,49 @@ func DefaultConfig() *Config {
 					"alloc_space": {
 						Units:      metadata.BytesUnits,
 						Cumulative: true,
+					},
+				},
+			},
+			"goroutines": {
+				Path:   "/debug/pprof/goroutine",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"goroutine": {
+						DisplayName: "goroutines",
+						Units:       metadata.GoroutinesUnits,
+						Aggregation: metadata.AverageAggregationType,
+					},
+				},
+			},
+			"mutex": {
+				Path:   "/debug/pprof/mutex",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "mutex_count",
+						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
+					},
+					"delay": {
+						DisplayName: "mutex_duration",
+						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
+					},
+				},
+			},
+			"block": {
+				Path:   "/debug/pprof/block",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "block_count",
+						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
+					},
+					"delay": {
+						DisplayName: "block_duration",
+						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
 					},
 				},
 			},

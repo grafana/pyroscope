@@ -1,0 +1,39 @@
+version: '3.9'
+services:
+  us-east:
+    environment:
+      - REGION=us-east
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+
+  eu-north:
+    environment:
+      - REGION=eu-north
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+
+  ap-south:
+    environment:
+      - REGION=ap-south
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+
+  pyroscope:
+    # image: pyroscope/pyroscope:latest
+    build:
+      context: ../../../
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+      - '-no-self-profiling'
+
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator

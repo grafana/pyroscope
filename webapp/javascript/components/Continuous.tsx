@@ -18,24 +18,15 @@ export default function Continuous({
   const selectedAppName = useAppSelector(selectApplicationName);
 
   useEffect(() => {
-    async function loadAppNames() {
-      if (appNames.length <= 0) {
-        try {
-          // Load application names
-          const names = await dispatch(reloadAppNames()).unwrap();
+    dispatch(reloadAppNames());
+  }, [dispatch]);
 
-          // Pick the first one if there's nothing selected
-          if (!selectedAppName && names.length > 0) {
-            dispatch(setQuery(queryFromAppName(names[0])));
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
+  // Pick the first one if there's nothing selected
+  useEffect(() => {
+    if (!selectedAppName && appNames.length > 0) {
+      dispatch(setQuery(queryFromAppName(appNames[0])));
     }
-
-    loadAppNames();
-  }, [dispatch, appNames, selectedAppName]);
+  }, [appNames, selectedAppName]);
 
   return children;
 }

@@ -18,12 +18,29 @@ describe('FormatDate', () => {
       ['now-1y', 'now', 'Last 1 year'],
       ['now-2y', 'now', 'Last 2 years'],
       ['1624278889', '1640090089', '2021-06-21 12:34 PM - 2021-12-21 12:34 PM'],
+      [
+        '1624278889000',
+        '1640090089000',
+        '2021-06-21 12:34 PM - 2021-12-21 12:34 PM',
+      ],
+      [
+        '1624278889000000',
+        '1640090089000000',
+        '2021-06-21 12:34 PM - 2021-12-21 12:34 PM',
+      ],
+      [
+        '1624278889000000000',
+        '1640090089000000000',
+        '2021-06-21 12:34 PM - 2021-12-21 12:34 PM',
+      ],
     ];
 
     test.each(cases)(
       'readableRange(%s, %s) should be %s',
       (from, until, expected) => {
-        expect(readableRange(from, until)).toBe(expected);
+        expect(readableRange(from, until, new Date().getTimezoneOffset())).toBe(
+          expected
+        );
       }
     );
   });
@@ -63,9 +80,27 @@ describe('FormatDate', () => {
       expect(got).toEqual(dateFns.subMinutes(mockDate, 1));
     });
 
-    it('works with absolute timestamps', () => {
+    it('works with absolute timestamps in seconds', () => {
       expect(formatAsOBject('1624192489')).toEqual(
         new Date('2021-06-20T12:34:49.000Z')
+      );
+    });
+
+    it('works with absolute timestamps in milliseconds', () => {
+      expect(formatAsOBject('1624192489001')).toEqual(
+        new Date('2021-06-20T12:34:49.001Z')
+      );
+    });
+
+    it('works with absolute timestamps in microseconds', () => {
+      expect(formatAsOBject('1624192489001999')).toEqual(
+        new Date('2021-06-20T12:34:49.002Z')
+      );
+    });
+
+    it('works with absolute timestamps in nanoseconds', () => {
+      expect(formatAsOBject('1624192489001999999')).toEqual(
+        new Date('2021-06-20T12:34:49.002Z')
       );
     });
   });

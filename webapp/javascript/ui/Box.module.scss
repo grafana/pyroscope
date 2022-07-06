@@ -1,11 +1,12 @@
 .box {
-  background-color: var(--ps-c-gray);
-  border: 1px solid var(--ps-c-gray-dark-2);
+  background-color: var(--ps-ui-foreground);
+  border: 1px solid var(--ps-ui-border);
   border-radius: 4px;
 
-  display: inline-block;
+  //  display: inline-block;
 }
 
 .padding {
+  margin-bottom: 10px;
   padding: 10px;
 }

@@ -3,6 +3,232 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.10.0...@pyroscope/flamegraph@0.10.1) (2022-07-06)
+
+
+### Bug Fixes
+
+* improved nodes coloring by fixing murmur math ([#1214](https://github.com/pyroscope-io/pyroscope/issues/1214)) ([8ea4f73](https://github.com/pyroscope-io/pyroscope/commit/8ea4f730fceb185dba3943dbba524444f2082596))
+
+
+
+
+
+# [0.10.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.7...@pyroscope/flamegraph@0.10.0) (2022-07-06)
+
+
+### Features
+
+* add titles to charts / flamegraphs ([#1208](https://github.com/pyroscope-io/pyroscope/issues/1208)) ([836fa97](https://github.com/pyroscope-io/pyroscope/commit/836fa97f126f8b7ebfb966bb52a97b5bdf179d83))
+
+
+
+
+
+## [0.9.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.6...@pyroscope/flamegraph@0.9.7) (2022-07-05)
+
+
+### Bug Fixes
+
+* **flamegraph:** do a deep comparison for whether the flamegraph is the same ([#1212](https://github.com/pyroscope-io/pyroscope/issues/1212)) ([910d8ea](https://github.com/pyroscope-io/pyroscope/commit/910d8eaeab9c23017da26ecc01c527c3b204b88a))
+
+
+
+
+
+## [0.9.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.5...@pyroscope/flamegraph@0.9.6) (2022-07-01)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.9.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.4...@pyroscope/flamegraph@0.9.5) (2022-07-01)
+
+
+### Bug Fixes
+
+* **frontend:** don't crash when flamegraph changes ([#1200](https://github.com/pyroscope-io/pyroscope/issues/1200)) ([f558e0d](https://github.com/pyroscope-io/pyroscope/commit/f558e0d70e9341d0374dd17c33202e09979b1e38))
+
+
+
+
+
+## [0.9.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.3...@pyroscope/flamegraph@0.9.4) (2022-06-30)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.9.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.2...@pyroscope/flamegraph@0.9.3) (2022-06-30)
+
+
+### Bug Fixes
+
+* Update flamegraph color pallette ([9476039](https://github.com/pyroscope-io/pyroscope/commit/9476039cff2fe5d06b11ad8748517d16b93f1cc1))
+
+
+
+
+
+## [0.9.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.1...@pyroscope/flamegraph@0.9.2) (2022-06-29)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.9.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.9.0...@pyroscope/flamegraph@0.9.1) (2022-06-29)
+
+
+### Bug Fixes
+
+* zoom/focus reset on changing selected node [refactored] ([#1184](https://github.com/pyroscope-io/pyroscope/issues/1184)) ([949052d](https://github.com/pyroscope-io/pyroscope/commit/949052d6db23daedde589a6eaa7c06a4db527cab))
+
+
+
+
+
+# [0.9.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.4...@pyroscope/flamegraph@0.9.0) (2022-06-27)
+
+
+### Features
+
+* adds proper support for goroutines, block, mutex profiling ([#1178](https://github.com/pyroscope-io/pyroscope/issues/1178)) ([b2e680c](https://github.com/pyroscope-io/pyroscope/commit/b2e680cfbf3c24856543f3a5478204cc24d7cbf7))
+
+
+
+
+
+## [0.8.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.3...@pyroscope/flamegraph@0.8.4) (2022-06-13)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.8.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.2...@pyroscope/flamegraph@0.8.3) (2022-06-12)
+
+
+### Bug Fixes
+
+* Merge jvm generated classes in jfr at ingestion time ([#1149](https://github.com/pyroscope-io/pyroscope/issues/1149)) ([c80878f](https://github.com/pyroscope-io/pyroscope/commit/c80878f765c6f1f8bcbe0d26eebd83d117f55113))
+
+
+
+
+
+## [0.8.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.1...@pyroscope/flamegraph@0.8.2) (2022-06-10)
+
+
+### Bug Fixes
+
+* fix regexp typo ([#1151](https://github.com/pyroscope-io/pyroscope/issues/1151)) ([6396017](https://github.com/pyroscope-io/pyroscope/commit/6396017b09c0dfe731b35925ea5ba9459888e922))
+
+
+
+
+
+## [0.8.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.8.0...@pyroscope/flamegraph@0.8.1) (2022-06-10)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+# [0.8.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.7.0...@pyroscope/flamegraph@0.8.0) (2022-06-09)
+
+
+### Features
+
+* Add Ability to Sync Search Bar in Comparison View ([#1120](https://github.com/pyroscope-io/pyroscope/issues/1120)) ([8300792](https://github.com/pyroscope-io/pyroscope/commit/830079299cef97db33d26ada31cbdccbc00e3268))
+
+
+
+
+
+# [0.7.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.4...@pyroscope/flamegraph@0.7.0) (2022-05-30)
+
+
+### Bug Fixes
+
+* flamegraph palette selector checkmark styles ([#1114](https://github.com/pyroscope-io/pyroscope/issues/1114)) ([755893f](https://github.com/pyroscope-io/pyroscope/commit/755893f23a04c1031a858c39e8729a5074eaf67b))
+
+
+### Features
+
+* Color mode ([#1103](https://github.com/pyroscope-io/pyroscope/issues/1103)) ([8855859](https://github.com/pyroscope-io/pyroscope/commit/885585958012775f0d51ea82208d641d10215574))
+
+
+
+
+
+## [0.6.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.3...@pyroscope/flamegraph@0.6.4) (2022-05-26)
+
+
+### Bug Fixes
+
+* flamegraph palette selector button styles ([#1113](https://github.com/pyroscope-io/pyroscope/issues/1113)) ([d7a7b11](https://github.com/pyroscope-io/pyroscope/commit/d7a7b117c13beb9528e730bec1353efe72767f83))
+
+
+
+
+
+## [0.6.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.2...@pyroscope/flamegraph@0.6.3) (2022-05-25)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.6.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.1...@pyroscope/flamegraph@0.6.2) (2022-05-12)
+
+
+### Bug Fixes
+
+* **flamegraph:** don't ship react-dom ([#1102](https://github.com/pyroscope-io/pyroscope/issues/1102)) ([c80240c](https://github.com/pyroscope-io/pyroscope/commit/c80240cbfda4d0573baf05b9c48d5b658791bffd))
+
+
+
+
+
+## [0.6.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.6.0...@pyroscope/flamegraph@0.6.1) (2022-05-09)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+# [0.6.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.5.0...@pyroscope/flamegraph@0.6.0) (2022-05-02)
+
+
+### Features
+
+* **flamegraph:** User should be able to adjust title visibility over the Flamegraph ([#1073](https://github.com/pyroscope-io/pyroscope/issues/1073)) ([bd74aae](https://github.com/pyroscope-io/pyroscope/commit/bd74aae448f3d30398484d589675ea168d816a70))
+
+
+
+
+
+# [0.5.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.4.0...@pyroscope/flamegraph@0.5.0) (2022-05-02)
+
+
+### Features
+
+* nodejs push & pull mode ([#1060](https://github.com/pyroscope-io/pyroscope/issues/1060)) ([4317103](https://github.com/pyroscope-io/pyroscope/commit/4317103354b5712c561e4cead7f6906c21a3005c))
+
+
+
+
+
 # [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.3.1...@pyroscope/flamegraph@0.4.0) (2022-04-27)
 
 

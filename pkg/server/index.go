@@ -15,12 +15,13 @@ import (
 )
 
 type Flags struct {
-	EnableAdhocUI       bool `json:"enableAdhocUI"`
-	GoogleEnabled       bool `json:"googleEnabled"`
-	GitlabEnabled       bool `json:"gitlabEnabled"`
-	GithubEnabled       bool `json:"githubEnabled"`
-	InternalAuthEnabled bool `json:"internalAuthEnabled"`
-	SignupEnabled       bool `json:"signupEnabled"`
+	EnableAdhocUI                   bool `json:"enableAdhocUI"`
+	GoogleEnabled                   bool `json:"googleEnabled"`
+	GitlabEnabled                   bool `json:"gitlabEnabled"`
+	GithubEnabled                   bool `json:"githubEnabled"`
+	InternalAuthEnabled             bool `json:"internalAuthEnabled"`
+	SignupEnabled                   bool `json:"signupEnabled"`
+	ExportToFlamegraphDotComEnabled bool `json:"exportToFlamegraphDotComEnabled"`
 }
 
 type IndexHandlerConfig struct {
@@ -43,12 +44,13 @@ type IndexHandler struct {
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	cfg := &IndexHandlerConfig{
 		Flags: Flags{
-			EnableAdhocUI:       !ctrl.config.NoAdhocUI,
-			GoogleEnabled:       ctrl.config.Auth.Google.Enabled,
-			GitlabEnabled:       ctrl.config.Auth.Gitlab.Enabled,
-			GithubEnabled:       ctrl.config.Auth.Github.Enabled,
-			InternalAuthEnabled: ctrl.config.Auth.Internal.Enabled,
-			SignupEnabled:       ctrl.config.Auth.Internal.SignupEnabled,
+			EnableAdhocUI:                   !ctrl.config.NoAdhocUI,
+			GoogleEnabled:                   ctrl.config.Auth.Google.Enabled,
+			GitlabEnabled:                   ctrl.config.Auth.Gitlab.Enabled,
+			GithubEnabled:                   ctrl.config.Auth.Github.Enabled,
+			InternalAuthEnabled:             ctrl.config.Auth.Internal.Enabled,
+			SignupEnabled:                   ctrl.config.Auth.Internal.SignupEnabled,
+			ExportToFlamegraphDotComEnabled: !ctrl.config.DisableExportToFlamegraphDotCom,
 		},
 		IsAuthRequired: ctrl.isAuthRequired(),
 		BaseURL:        ctrl.config.BaseURL,

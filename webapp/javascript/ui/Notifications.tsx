@@ -5,9 +5,14 @@ import ReactNotification, {
   DismissOptions,
 } from 'react-notifications-component';
 import 'react-notifications-component/dist/scss/notification.scss';
+import styles from './Notifications.module.scss';
 
 export default function Notifications() {
-  return <ReactNotification />;
+  return (
+    <div className={styles.notificationsComponent}>
+      <ReactNotification />
+    </div>
+  );
 }
 
 const defaultParams: Partial<ReactNotificationOptions> = {
@@ -61,6 +66,9 @@ export const store = {
   }: NotificationOptions) {
     dismiss = dismiss || {
       duration: 5000,
+      pauseOnHover: true,
+      click: false,
+      touch: false,
       showIcon: true,
     };
 

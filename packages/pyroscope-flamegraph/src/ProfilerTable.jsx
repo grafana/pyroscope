@@ -171,9 +171,6 @@ function Table({
   highlightQuery,
   palette,
 }) {
-  if (!flamebearer || flamebearer.numTicks === 0) {
-    return [];
-  }
   const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
 
   return (

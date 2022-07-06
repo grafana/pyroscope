@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 // Package tools is used to describe various tools we use.

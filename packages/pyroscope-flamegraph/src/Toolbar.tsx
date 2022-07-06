@@ -7,16 +7,18 @@ import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
-import { DebounceInput } from 'react-debounce-input';
 import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Button from '@webapp/ui/Button';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Select from '@webapp/ui/Select';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
-
+import SharedQueryInput from './SharedQueryInput';
 import styles from './ProfilerHeader.module.css';
+import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
@@ -28,7 +30,9 @@ export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
  * that should be displayed
  * based on the toolbar width
  */
-const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
+export type ShowModeType = ReturnType<typeof useSizeMode>;
+
+export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
   const [size, setSize] = React.useState<'large' | 'small'>('large');
 
   const calcMode = (width: number) => {
@@ -53,7 +57,7 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
   return size;
 };
 
-interface ProfileHeaderProps {
+export interface ProfileHeaderProps {
   view: ViewTypes;
   disableChangingDisplay?: boolean;
   flamegraphType: 'single' | 'double';
@@ -76,6 +80,7 @@ interface ProfileHeaderProps {
    */
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
+  sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
 // TODO: move this to assets pipeline. for now just embedding it here because this is less likely to break
@@ -192,6 +197,7 @@ const Toolbar = React.memo(
     onFocusOnSubtree,
     flamegraphType,
     disableChangingDisplay = false,
+    sharedQuery,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -200,10 +206,11 @@ const Toolbar = React.memo(
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
           {renderLogo ? logo() : ''}
-          <HighlightSearch
+          <SharedQueryInput
             showMode={showMode}
             onHighlightChange={handleSearchChange}
             highlightQuery={highlightQuery}
+            sharedQuery={sharedQuery}
           />
           {flamegraphType === 'double' && (
             <DiffView
@@ -284,34 +291,6 @@ function FocusOnSubtree({
   );
 }
 
-function HighlightSearch({
-  onHighlightChange,
-  showMode,
-  highlightQuery,
-}: {
-  showMode: ReturnType<typeof useSizeMode>;
-  onHighlightChange: ProfileHeaderProps['handleSearchChange'];
-  highlightQuery: ProfileHeaderProps['highlightQuery'];
-}) {
-  return (
-    <DebounceInput
-      data-testid="flamegraph-search"
-      className={`${styles.search} ${
-        showMode === 'small' ? styles['search-small'] : ''
-      }`}
-      type="search"
-      name="flamegraph-search"
-      placeholder="Search…"
-      minLength={2}
-      debounceTimeout={100}
-      onChange={(e) => {
-        onHighlightChange(e.target.value);
-      }}
-      value={highlightQuery}
-    />
-  );
-}
-
 function ResetView({
   isFlamegraphDirty,
   reset,
@@ -388,8 +367,8 @@ function FitMode({
   }
 
   return (
-    <select
-      aria-label="fit-mode"
+    <Select
+      ariaLabel="fit-mode"
       className={styles['fit-mode-select']}
       value={fitMode}
       onChange={(event) => updateFitMode(event.target.value as typeof fitMode)}
@@ -397,7 +376,7 @@ function FitMode({
       <option disabled>{texts.header}</option>
       <option value={HeadMode}>{texts.head}</option>
       <option value={TailMode}>{texts.tail}</option>
-    </select>
+    </Select>
   );
 }
 
@@ -414,10 +393,10 @@ function DiffView({
     return null;
   }
 
-  const Select = (
-    <select
+  const ShowModeSelect = (
+    <Select
       name="viewDiff"
-      aria-label="view-diff"
+      ariaLabel="view-diff"
       value={viewDiff}
       onChange={(e) => {
         updateViewDiff(e.target.value as typeof viewDiff);
@@ -426,7 +405,7 @@ function DiffView({
       <option value="self">Self</option>
       <option value="total">Total</option>
       <option value="diff">Diff</option>
-    </select>
+    </Select>
   );
 
   const kindByState = (name: string) => {
@@ -468,7 +447,7 @@ function DiffView({
   const decideWhatToShow = () => {
     switch (showMode) {
       case 'small': {
-        return Select;
+        return ShowModeSelect;
       }
       case 'large': {
         return Buttons;
@@ -496,9 +475,9 @@ function ViewSection({
   updateView: ProfileHeaderProps['updateView'];
   view: ProfileHeaderProps['view'];
 }) {
-  const Select = (
-    <select
-      aria-label="view"
+  const ViewSelect = (
+    <Select
+      ariaLabel="view"
       name="view"
       value={view}
       onChange={(e) => {
@@ -508,7 +487,7 @@ function ViewSection({
       <option value="table">Table</option>
       <option value="both">Both</option>
       <option value="flamegraph">Flame</option>
-    </select>
+    </Select>
   );
 
   const kindByState = (name: ViewTypes) => {
@@ -550,7 +529,7 @@ function ViewSection({
   const decideWhatToShow = () => {
     switch (showMode) {
       case 'small': {
-        return Select;
+        return ViewSelect;
       }
       case 'large': {
         return Buttons;

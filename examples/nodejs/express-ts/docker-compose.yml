@@ -1,0 +1,30 @@
+---
+version: '3.9'
+services:
+  us-east:
+    environment:
+      - REGION=us-east
+    build:
+      context: .
+
+  eu-north:
+    environment:
+      - REGION=eu-north
+    build:
+      context: .
+
+  ap-south:
+    environment:
+      - REGION=ap-south
+    build:
+      context: .
+  pyroscope:
+    image: 'pyroscope/pyroscope:latest'
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+  load-generator:
+    build:
+      context: ../
+      dockerfile: Dockerfile.load-generator

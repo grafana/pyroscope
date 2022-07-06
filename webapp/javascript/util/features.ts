@@ -8,6 +8,7 @@ interface Features {
   githubEnabled?: boolean;
   internalAuthEnabled?: boolean;
   signupEnabled?: boolean;
+  exportToFlamegraphDotComEnabled: boolean;
 }
 
 function hasFeatures(
@@ -45,4 +46,8 @@ export const isInternalAuthEnabled = hasFeatures(window)
 
 export const isSignupEnabled = hasFeatures(window)
   ? window.features.signupEnabled
+  : true;
+
+export const isExportToFlamegraphDotComEnabled = hasFeatures(window)
+  ? window.features.exportToFlamegraphDotComEnabled
   : true;

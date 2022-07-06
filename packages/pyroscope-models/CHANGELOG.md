@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.1.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.0.7...@pyroscope/models@0.1.0) (2022-06-27)
+
+
+### Features
+
+* adds proper support for goroutines, block, mutex profiling ([#1178](https://github.com/pyroscope-io/pyroscope/issues/1178)) ([b2e680c](https://github.com/pyroscope-io/pyroscope/commit/b2e680cfbf3c24856543f3a5478204cc24d7cbf7))
+
+
+
+
+
 ## [0.0.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.0.6...@pyroscope/models@0.0.7) (2022-04-25)
 
 

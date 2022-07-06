@@ -19,6 +19,7 @@ type FlamebearerProfile struct {
 	// Version of the data format. No version / version zero is an unformalized format.
 	Version uint `json:"version"`
 	FlamebearerProfileV1
+	Telemetry map[string]interface{} `json:"telemetry,omitempty"`
 }
 
 // swagger:model
@@ -108,6 +109,7 @@ func NewProfile(name string, output *storage.GetOutput, maxNodes int) Flamebeare
 			Metadata:    newMetadata(name, fb.Format, output),
 			Timeline:    NewTimeline(output.Timeline),
 		},
+		Telemetry: output.Telemetry,
 	}
 }
 
