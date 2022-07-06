@@ -12,13 +12,14 @@ import { continuousSlice } from '@webapp/redux/reducers/continuous';
 import { Result } from '@webapp/util/fp';
 import * as appNames from '@webapp/services/appNames';
 import AppSelector, { TOGGLE_BTN_ID } from './index';
-import { getGroups, APP_SEARCH_INPUT } from './SelectorModal';
+import { APP_SEARCH_INPUT } from './SelectorModal';
+import { MENU_ITEM_ROLE } from './SelectButton';
 
 jest.mock('@webapp/services/appNames');
 
 const { getByTestId, queryByRole, getByRole, findByRole } = screen;
 
-const MENU_ITEM_ROLE = 'menuitem';
+// const MENU_ITEM_ROLE = 'menuitem';
 const mockAppNames = [
   'single',
   'double.cpu',
@@ -79,7 +80,7 @@ describe('AppSelector', () => {
   it('gets the list of apps, iterracts with it', async () => {
     (appNames as any).fetchAppNames.mockResolvedValueOnce(Result.ok());
 
-    render(<AppSelector />, {
+    const ui = render(<AppSelector />, {
       preloadedState: {
         continuous: {
           appNames: {
@@ -91,26 +92,43 @@ describe('AppSelector', () => {
     });
 
     getByTestId(TOGGLE_BTN_ID).click();
+    // checks that there are 3 groups
+    expect(queryByRole(MENU_ITEM_ROLE, { name: 'single' })).toBeInTheDocument();
+    expect(queryByRole(MENU_ITEM_ROLE, { name: 'double' })).toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app' })
+    ).toBeInTheDocument();
 
-    // splits apps by groups correctly and renders them
-    const groups = getGroups(mockAppNames);
-    groups.forEach((g) => {
-      expect(queryByRole(MENU_ITEM_ROLE, { name: g })).toBeInTheDocument();
+    // checks if 'single' group is really sigle
+    // what means that after click on this elem it propagates
+    // as content of toggle button
+    const singleGroupName = 'single';
+    fireEvent.click(ui.getByRole(MENU_ITEM_ROLE, { name: singleGroupName }));
+    await waitFor(() => {
+      expect(getByTestId(TOGGLE_BTN_ID)).toHaveTextContent(singleGroupName);
     });
 
-    // picks app group with inner profile types
-    // expands it
-    // has correct list of profile types rendered on DOM
-    const trippleAppGroup = groups[2];
+    getByTestId(TOGGLE_BTN_ID).click();
 
-    queryByRole(MENU_ITEM_ROLE, { name: trippleAppGroup })?.click();
-
-    const trippleApps = mockAppNames.filter(
-      (g) => g.indexOf(trippleAppGroup) !== -1
-    );
-
-    trippleApps.forEach((g) => {
-      expect(queryByRole(MENU_ITEM_ROLE, { name: g })).toBeInTheDocument();
+    // checks if 'tripple' group expands 2 profile types
+    fireEvent.click(ui.getByRole(MENU_ITEM_ROLE, { name: 'triple.app' }));
+    await waitFor(() => {
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.cpu' })
+      ).toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
+      ).toBeInTheDocument();
+    });
+    // checks if 'double' group expands 2 profile types
+    fireEvent.click(ui.getByRole(MENU_ITEM_ROLE, { name: 'double' }));
+    await waitFor(() => {
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
+      ).toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
+      ).toBeInTheDocument();
     });
   });
 });
@@ -132,31 +150,20 @@ describe('AppSelector', () => {
 
     getByTestId(TOGGLE_BTN_ID).click();
 
-    // splits apps by groups correctly and renders them
-    const groups = getGroups(mockAppNames);
-    groups.forEach((name) => {
-      expect(queryByRole(MENU_ITEM_ROLE, { name })).toBeInTheDocument();
-    });
-
-    // sets triple.app (groups[2]) as input value
     const input = renderUI.getByTestId(APP_SEARCH_INPUT);
-    const trippleAppGroup = groups[2];
-    fireEvent.change(input, { target: { value: trippleAppGroup } });
+    fireEvent.change(input, { target: { value: 'triple.app' } });
 
-    // picks 2 groups, checks either they are in DOM or not
+    // picks groups, which either should be rendered or not
     await waitFor(() => {
-      // must be rendered in DOM
-      groups
-        .filter((g) => g === groups[2])
-        .forEach((name) => {
-          expect(queryByRole(MENU_ITEM_ROLE, { name })).toBeInTheDocument();
-        });
-      // mustn't be rendered in DOM
-      groups
-        .filter((g) => g !== groups[2])
-        .forEach((name) => {
-          expect(queryByRole(MENU_ITEM_ROLE, { name })).not.toBeInTheDocument();
-        });
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'single' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'double' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app' })
+      ).toBeInTheDocument();
     });
   });
 });

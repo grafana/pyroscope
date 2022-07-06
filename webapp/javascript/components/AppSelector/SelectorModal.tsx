@@ -21,7 +21,7 @@ export const APP_SEARCH_INPUT = 'application_search';
 const getAppNames = (names: string[], name: string) =>
   names.filter((a) => a.indexOf(name) !== -1);
 
-export const getGroups = (filteredAppNames: string[]) => {
+const getGroups = (filteredAppNames: string[]) => {
   const allGroups = filteredAppNames.map((i) => {
     const splitted = i.split(DELIMITER);
     const cutProfileType =

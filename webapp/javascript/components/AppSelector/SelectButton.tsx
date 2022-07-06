@@ -9,6 +9,8 @@ import styles from './SelectButton.module.scss';
 
 const cx = classNames.bind(styles);
 
+export const MENU_ITEM_ROLE = 'menuitem';
+
 interface SelectButtonProps {
   name: string;
   fullList: string[];
@@ -61,7 +63,7 @@ const SelectButton = ({
 
   return (
     <button
-      role="menuitem"
+      role={MENU_ITEM_ROLE}
       type="button"
       onClick={onClick}
       className={cx({ button: true, isSelected })}
