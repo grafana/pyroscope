@@ -18,28 +18,39 @@ const DELIMITER = '.';
 const APPS_LIST_ELEMENT_ID = 'apps_list';
 export const APP_SEARCH_INPUT = 'application_search';
 
-const getAppNames = (names: string[], name: string) =>
+const getFilteredNames = (names: string[], name: string) =>
   names.filter((a) => a.indexOf(name) !== -1);
+
+const isGroupMember = (groupName: string, name: string) =>
+  name.indexOf(groupName) === 0 &&
+  (name[groupName.length] === DELIMITER || name.length === groupName.length);
+
+const getGroupMembers = (names: string[], name: string) =>
+  names.filter((a) => isGroupMember(name, a));
+
+const getGroupNameFromAppName = (groups: string[], fullName: string) =>
+  groups.filter((g) => isGroupMember(g, fullName))[0] || '';
 
 const getGroups = (filteredAppNames: string[]) => {
   const allGroups = filteredAppNames.map((i) => {
-    const splitted = i.split(DELIMITER);
-    const cutProfileType =
-      splitted.length > 1 ? splitted.slice(0, -1) : splitted;
-    const backToStr = cutProfileType.join(DELIMITER);
-
-    return backToStr;
+    const arr = i.split(DELIMITER);
+    const cutProfileType = arr.length > 1 ? arr.slice(0, -1) : arr;
+    return cutProfileType.join(DELIMITER);
   });
 
   const uniqGroups = Array.from(new Set(allGroups));
 
-  const groupOrProfileType = uniqGroups.map((u) => {
-    const appNamesEntries = getAppNames(filteredAppNames, u);
+  const dedupedUniqGroups = uniqGroups.filter((x) => {
+    return !uniqGroups.find((y) => x !== y && isGroupMember(y, x));
+  });
+
+  const groupOrApp = dedupedUniqGroups.map((u) => {
+    const appNamesEntries = getGroupMembers(filteredAppNames, u);
 
     return appNamesEntries.length > 1 ? u : appNamesEntries?.[0];
   });
 
-  return groupOrProfileType;
+  return groupOrApp;
 };
 
 const SelectorModal = ({
@@ -49,7 +60,11 @@ const SelectorModal = ({
   appName,
 }: SelectorModalProps) => {
   const [filter, setFilter] = useState('');
-  const [selected, select] = useState<string[]>([]);
+
+  // selected is an array of strings
+  //  0 corresponds to string of group / app name selected in the left pane
+  //  1 corresponds to string of app name selected in the right pane
+  const [selected, setSelected] = useState<string[]>([]);
   const filteredAppNames = useMemo(
     // filtered names by search input
     () =>
@@ -66,7 +81,7 @@ const SelectorModal = ({
       return [];
     }
 
-    const filtered = getAppNames(filteredAppNames, selected?.[0]);
+    const filtered = getGroupMembers(filteredAppNames, selected?.[0]);
 
     if (filtered.length > 1) {
       return filtered;
@@ -76,9 +91,9 @@ const SelectorModal = ({
   }, [selected, groups, filteredAppNames]);
 
   const onSelect = ({ index, name }: { index: number; name: string }) => {
-    const filtered = getAppNames(filteredAppNames, name);
+    const filtered = getGroupMembers(filteredAppNames, name);
 
-    if (filtered.length === 1) {
+    if (filtered.length === 1 || index === 1) {
       selectAppName(filtered?.[0]);
     }
 
@@ -90,18 +105,15 @@ const SelectorModal = ({
 
     arr[index] = name;
 
-    select(arr);
+    setSelected(arr);
   };
 
   useEffect(() => {
     if (appName && !selected.length && groups.length) {
       if (groups.indexOf(appName) !== -1) {
-        select([appName]);
+        setSelected([appName]);
       } else {
-        select([
-          appName.split(DELIMITER).slice(0, -1).join(DELIMITER),
-          appName,
-        ]);
+        setSelected([getGroupNameFromAppName(groups, appName), appName]);
       }
     }
   }, [appName, selected, groups]);
