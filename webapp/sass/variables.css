@@ -21,12 +21,7 @@
   --ps-ui-foreground-text: #d8d8d8; /* sidebar text and datepicker text */
   --ps-ui-background: #0e0e13; /* background furthest back color */
   --ps-dropdown-background: #2c2c30; /* dropdown background */
-  --ps-sidebar-separator: rgba(
-    216,
-    216,
-    216,
-    0.2
-  ); /* sidebar separation lines */
+  --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines */
 
   --ps-blue-primary: #0d8eff; /* Standard blue for button, instructions text (right) */
   --ps-blue-highlight: #40a6ff; /* highlight (hover) blue */
