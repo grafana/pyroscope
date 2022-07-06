@@ -1,44 +1,53 @@
 import groupBy from 'lodash.groupby';
 import map from 'lodash.map';
+import type { Flamebearer, Trace, TraceSpan } from '@pyroscope/models';
 
-export function traceToFlamebearer(trace: any) {
-  let result = {
-    topLevel: 0,
-    rangeMin: 0,
-    format: 'single' as const,
+interface Span extends TraceSpan {
+  children: Span[];
+  total: number;
+  self: number;
+}
+
+export function traceToFlamebearer(trace: Trace): Flamebearer {
+  let result: Flamebearer = {
+    format: 'single',
     numTicks: 0,
     sampleRate: 1000000,
     names: [],
     levels: [],
-
-    rangeMax: 1,
     units: 'samples',
-    fitMode: 'HEAD',
-
     spyName: 'tracing',
+
+    // we use state for that ?
+    // fitMode: 'HEAD',
+
+    // this fields are only on test data. do we need that ?
+    // topLevel: 0,
+    // rangeMin: 0,
+    // rangeMax: 1,
   };
 
   // Step 1: converting spans to a tree
-  var spans = {};
-  var root = { children: [] };
-  trace.spans.forEach((span) => {
+
+  var spans: Record<string, Span> = {};
+  var root: Span = { children: [] } as unknown as Span;
+  (trace.spans as Span[]).forEach((span) => {
     span.children = [];
     spans[span.spanID] = span;
   });
 
-  trace.spans.forEach((span) => {
+  (trace.spans as Span[]).forEach((span) => {
     let node = root;
     if (span.references && span.references.length > 0) {
       node = spans[span.references[0].spanID] || root;
     }
-    // @ts-ignore
+
     node.children.push(span);
   });
 
   // Step 2: group spans with same name
 
-  // @ts-ignore
-  function groupSpans(span: any, d: number) {
+  function groupSpans(span: Span, d: number) {
     (span.children || []).forEach((x) => groupSpans(x, d + 1));
 
     let childrenDur = 0;
@@ -58,24 +67,17 @@ export function traceToFlamebearer(trace: any) {
 
   // Step 3: traversing the tree
 
-  // @ts-ignore
-  function processNode(span: any, level: number, offset: number) {
+  function processNode(span: Span, level: number, offset: number) {
     result.numTicks ||= span.total;
-    // @ts-ignore
     result.levels[level] ||= [];
-    // @ts-ignore
     result.levels[level].push(offset);
-    // @ts-ignore
     result.levels[level].push(span.total);
-    // @ts-ignore
     result.levels[level].push(span.self);
     result.names.push(
-      // @ts-ignore
       (span.processID
         ? trace.processes[span.processID].serviceName + ': '
         : '') + (span.operationName || 'total')
     );
-    // @ts-ignore
     result.levels[level].push(result.names.length - 1);
 
     (span.children || []).forEach((x) => {

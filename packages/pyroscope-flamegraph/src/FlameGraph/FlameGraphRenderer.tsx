@@ -8,7 +8,7 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, Profile } from '@pyroscope/models';
+import { createFF, Flamebearer, Profile, Trace } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -21,14 +21,23 @@ import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
+import { traceToFlamebearer } from '../convert/convert';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
-function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
+function mountFlamebearer(p: {
+  profile?: Profile;
+  flamebearer?: Flamebearer;
+  trace?: Trace;
+}) {
   if (p.profile && p.flamebearer) {
     console.warn(
       "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
     );
+  }
+
+  if (p.trace) {
+    return traceToFlamebearer(p.trace);
   }
 
   if (p.profile) {
@@ -65,8 +74,6 @@ interface Node {
   i: number;
   j: number;
 }
-
-type Trace = any;
 
 export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
