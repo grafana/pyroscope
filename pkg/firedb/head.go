@@ -2,6 +2,7 @@ package firedb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -466,13 +467,11 @@ func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.La
 
 	idx, ok := h.strings.getIndex(req.Msg.Name)
 	if !ok {
-		fmt.Printf("not found=%+#v\n", req.Msg.Name)
 		return connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{}}), nil
 	}
 
 	valsMap := make(map[int64]struct{})
 	for _, profile := range h.profiles.slice {
-		fmt.Printf("profile=%+#v\n", profile.ID)
 		for _, lbl := range profile.ExternalLabels {
 			if lbl.Name == idx {
 				valsMap[lbl.Value] = struct{}{}
@@ -490,6 +489,65 @@ func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.La
 	return connect.NewResponse(&ingestv1.LabelValuesResponse{
 		Names: vals,
 	}), nil
+}
+
+type profileTypeSeen struct {
+	Name       int64
+	SampleType int64
+	SampleUnit int64
+	PeriodType int64
+	PeriodUnit int64
+}
+
+func (pt *profileTypeSeen) String(t []string) string {
+	return fmt.Sprintf("%s:%s:%s:%s:%s",
+		t[pt.Name],
+		t[pt.SampleType],
+		t[pt.SampleUnit],
+		t[pt.PeriodType],
+		t[pt.PeriodUnit],
+	)
+}
+
+// ProfileTypes returns the possible profile types.
+func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+
+	idxLabelName, ok := h.strings.getIndex("__name__")
+	if !ok {
+		return nil, errors.New("No name label found")
+	}
+
+	seen := map[profileTypeSeen]struct{}{}
+
+	var nameRef int64
+	for _, profile := range h.profiles.slice {
+		nameRef = 0
+		for _, lbl := range profile.ExternalLabels {
+			if lbl.Name == idxLabelName {
+				nameRef = lbl.Value
+			}
+		}
+
+		for _, typ := range profile.Types {
+			seen[profileTypeSeen{
+				Name:       nameRef,
+				SampleType: typ.Type,
+				SampleUnit: typ.Unit,
+				PeriodType: profile.PeriodType.Type,
+				PeriodUnit: profile.PeriodType.Unit,
+			}] = struct{}{}
+		}
+	}
+
+	types := make([]string, 0, len(seen))
+	for key := range seen {
+		types = append(types, key.String(h.strings.slice))
+	}
+	sort.Strings(types)
+	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
+		Names: types,
+	}), nil
+
 }
 
 func (h *Head) WriteTo(ctx context.Context, path string) error {

@@ -83,7 +83,7 @@ type Profile struct {
 	Function []*Function `protobuf:"bytes,5,rep,name=function,proto3" json:"function,omitempty" parquet:","`
 	// A common table for strings referenced by various messages.
 	// string_table[0] must always be "".
-	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty" parquet:",zstd,dict"`
+	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty" parquet:","`
 	// frames with Function.function_name fully matching the following
 	// regexp will be dropped from the samples, along with their successors.
 	DropFrames int64 `protobuf:"varint,7,opt,name=drop_frames,json=dropFrames,proto3" json:"drop_frames,omitempty" parquet:"-"` // Index into string table.
@@ -93,10 +93,10 @@ type Profile struct {
 	// Time of collection (UTC) represented as nanoseconds past the epoch.
 	TimeNanos int64 `protobuf:"varint,9,opt,name=time_nanos,json=timeNanos,proto3" json:"time_nanos,omitempty" parquet:",delta"`
 	// Duration of the profile, if a duration makes sense.
-	DurationNanos int64 `protobuf:"varint,10,opt,name=duration_nanos,json=durationNanos,proto3" json:"duration_nanos,omitempty" parquet:",delta"`
+	DurationNanos int64 `protobuf:"varint,10,opt,name=duration_nanos,json=durationNanos,proto3" json:"duration_nanos,omitempty" parquet:"-"`
 	// The kind of events between sampled ocurrences.
 	// e.g [ "cpu","cycles" ] or [ "heap","bytes" ]
-	PeriodType *ValueType `protobuf:"bytes,11,opt,name=period_type,json=periodType,proto3" json:"period_type,omitempty" parquet:","`
+	PeriodType *ValueType `protobuf:"bytes,11,opt,name=period_type,json=periodType,proto3" json:"period_type,omitempty" parquet:"-"`
 	// The number of events between sampled occurrences.
 	Period int64 `protobuf:"varint,12,opt,name=period,proto3" json:"period,omitempty" parquet:"-"`
 	// Freeform text associated to the profile.
@@ -303,18 +303,17 @@ type Sample struct {
 
 	// The ids recorded here correspond to a Profile.location.id.
 	// The leaf is at location_id[0].
-	// TODO:  Create a Stacktrace ID of locations
-	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty" parquet:"LocationIds,"`
+	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty" parquet:","`
 	// The type and unit of each value is defined by the corresponding
 	// entry in Profile.sample_type. All samples must have the same
 	// number of values, the same as the length of Profile.sample_type.
 	// When aggregating multiple samples into a single sample, the
 	// result has a list of values that is the element-wise sum of the
 	// lists of the originals.
-	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:"Values,"`
+	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:","`
 	// label includes additional context for this sample. It can include
 	// things like a thread id, allocation size, etc
-	Label []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty" parquet:"Labels,"`
+	Label []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty"`
 }
 
 func (x *Sample) Reset() {
@@ -375,10 +374,10 @@ type Label struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Key int64 `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty" parquet:","` // Index into string table
+	Key int64 `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty"` // Index into string table
 	// At most one of the following must be present
-	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty" parquet:",optional"` // Index into string table
-	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty" parquet:",optional"`
+	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty"` // Index into string table
+	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty"`
 	// Should only be present when num is present.
 	// Specifies the units of num.
 	// Use arbitrary string (for example, "requests") as a custom count unit.
@@ -386,7 +385,7 @@ type Label struct {
 	// Consumers may also  interpret units like "bytes" and "kilobytes" as memory
 	// units and units like "seconds" and "nanoseconds" as time units,
 	// and apply appropriate unit conversions to these.
-	NumUnit int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty" parquet:",optional"` // Index into string table
+	NumUnit int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty"` // Index into string table
 }
 
 func (x *Label) Reset() {

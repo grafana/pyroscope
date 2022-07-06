@@ -2,24 +2,11 @@ package ingester
 
 import (
 	"bytes"
-	"context"
-	"os"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
-	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
-	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace"
-
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/profilestore"
 )
 
 // func Test_selectMerge(t *testing.T) {
@@ -86,6 +73,7 @@ import (
 // 	)
 // }
 
+/*
 func Test_QueryMetadata(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -141,7 +129,9 @@ func Test_QueryMetadata(t *testing.T) {
 	sort.Strings(typeRes.Msg.Names)
 	require.Equal(t, expectedTypes, typeRes.Msg.Names)
 }
+*/
 
+/*
 func Test_selectProfiles(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -254,6 +244,7 @@ func Test_selectProfiles(t *testing.T) {
 	require.Equal(t, []string{"1|2|3", "buzz|baz|foo", "buzz|baz|foo", "foo|bar|buzz", "foo|bar|buzz"}, stacktraces)
 	require.Equal(t, 5, len(symbolsReponse.Msg.Locations))
 }
+*/
 
 func generateProfile(
 	t *testing.T,
