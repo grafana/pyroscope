@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.17.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.16.0...@pyroscope/webapp@1.17.0) (2022-07-06)
+
+
+### Features
+
+* **webapp:** new app selector ([#1199](https://github.com/pyroscope-io/pyroscope/issues/1199)) ([d671810](https://github.com/pyroscope-io/pyroscope/commit/d6718109bc307191b7e44e0fd0c072958d5e0cc2))
+
+
+
+
+
 # [1.16.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.15.1...@pyroscope/webapp@1.16.0) (2022-07-06)
 
 
