@@ -3,29 +3,17 @@ package ingester
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"io"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"runtime/pprof"
 	"testing"
 
-	"github.com/apache/arrow/go/v8/arrow"
-	"github.com/apache/arrow/go/v8/arrow/memory"
-	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace"
-
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/profilestore"
 )
 
 func defaultIngesterTestConfig(t testing.TB) Config {
@@ -62,6 +50,7 @@ func defaultProfileStoreTestConfig(t testing.TB) *profilestore.Config {
 	return cfg
 }
 
+/*
 func Test_ConnectPush(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -120,6 +109,7 @@ func Test_ConnectPush(t *testing.T) {
 		profileStore.Close(),
 	)
 }
+*/
 
 // This counts all sample values, where at least a single value in a sample is non-zero
 func countNonZeroValues(p *profile.Profile) int64 {
