@@ -29,8 +29,8 @@ var (
 	_ instancemgmt.InstanceDisposer = (*FireDatasource)(nil)
 )
 
-// NewSampleDatasource creates a new datasource instance.
-func NewSampleDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+// NewFireDatasource creates a new datasource instance.
+func NewFireDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	log.DefaultLogger.Info("Created DataSource", "settings", settings)
 
 	return &FireDatasource{}, nil
