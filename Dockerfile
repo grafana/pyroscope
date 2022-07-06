@@ -82,7 +82,8 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #   https://github.com/docker-library/golang/blob/48e32c58a6abc052253fba899cea876740cab262/1.16/alpine3.14/Dockerfile
 # TODO: figure out why linking isn't working on alpine 3.13 or 3.14
 # see https://github.com/pyroscope-io/pyroscope/pull/372 for more context
-FROM pyroscope/golang:1.17.0-alpine3.12 AS go-builder
+FROM pyroscope/golang:1.18.0-alpine3.12 AS go-builder
+
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 RUN apk upgrade binutils
