@@ -145,7 +145,7 @@ func ProfilesSchema() *parquet.Schema {
 		{name: "ExternalLabels", Node: externalLabels},
 		{name: "Types", Node: parquet.Repeated(sampleType)},
 		{name: "Samples", Node: parquet.Repeated(Group{
-			{name: "LocationIds", Node: parquet.Repeated(parquet.Uint(64))},
+			{name: "StacktraceID", Node: parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)},
 			{name: "Values", Node: parquet.Repeated(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))},
 			{name: "Labels", Node: pprofLabels},
 		})},
