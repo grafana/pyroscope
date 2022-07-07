@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.10.1...@pyroscope/flamegraph@0.11.0) (2022-07-07)
+
+
+### Features
+
+* **flamegraph:** allow to filter items in table ([#1226](https://github.com/pyroscope-io/pyroscope/issues/1226)) ([e87284d](https://github.com/pyroscope-io/pyroscope/commit/e87284d4d25ae04f2ca50892d4ed89345aa64b3e))
+
+
+
+
+
 ## [0.10.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.10.0...@pyroscope/flamegraph@0.10.1) (2022-07-06)
 
 
