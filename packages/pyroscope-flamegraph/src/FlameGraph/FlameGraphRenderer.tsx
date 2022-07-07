@@ -101,7 +101,9 @@ interface FlamegraphRendererState {
   viewDiff: 'diff' | 'total' | 'self';
   fitMode: 'HEAD' | 'TAIL';
   flamebearer: NonNullable<FlamegraphRendererProps['flamebearer']>;
+
   highlightQuery: string;
+  tableSelected: Maybe<string>;
 
   flamegraphConfigs: {
     focusedNode: Maybe<Node>;
@@ -143,6 +145,7 @@ class FlameGraphRenderer extends React.Component<
 
       // query used in the 'search' checkbox
       highlightQuery: '',
+      tableSelected: Maybe.nothing(),
 
       flamegraphConfigs: this.initialFlamegraphState,
 
@@ -294,14 +297,42 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  // if clicking on the same item, undo the search
   onTableItemClick = (tableItem: { name: string }) => {
     let { name } = tableItem;
 
-    if (tableItem.name === this.state.highlightQuery) {
-      name = '';
+    // if clicking on the same item, undo the search
+    if (this.state.tableSelected.isJust) {
+      if (tableItem.name === this.state.tableSelected.value) {
+        this.setState({
+          tableSelected: Maybe.nothing(),
+        });
+        return;
+        //        name = '';
+      }
     }
-    this.handleSearchChange(name);
+
+    // clicking for the first time
+    this.setState({
+      tableSelected: Maybe.just(name),
+    });
+
+    //
+    //        if (tableItem.name === this.state.tableSelected.isJust().value) {
+    //          name = '';
+    //        }
+    //    if (tableItem.name === this.state.highlightQuery) {
+    //      name = '';
+    //    }
+    //    this.handleSearchChange(name);
+  };
+
+  getHighlightQuery = () => {
+    // prefer table selected
+    if (this.state.tableSelected.isJust) {
+      return this.state.tableSelected.value;
+    }
+
+    return this.state.highlightQuery;
   };
 
   updateSortBy = (newSortBy: FlamegraphRendererState['sortBy']) => {
@@ -382,26 +413,21 @@ class FlameGraphRenderer extends React.Component<
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
           highlightQuery={this.state.highlightQuery}
+          selectedItem={this.state.tableSelected}
           handleTableItemClick={this.onTableItemClick}
           palette={this.state.palette}
         />
       </div>
     );
 
-    //    const flamegraphDataTestId = figureFlamegraphDataTestId(
-    //      this.props.viewType,
-    //      this.props.viewSide
-    //    );
-
     const toolbarVisible = this.shouldShowToolbar();
 
     const flameGraphPane = (
       <Graph
         key="flamegraph-pane"
-        // data-testid={flamegraphDataTestId}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
-        highlightQuery={this.state.highlightQuery}
+        highlightQuery={this.getHighlightQuery()}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
