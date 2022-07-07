@@ -16,6 +16,8 @@ export type Flamebearer = {
    */
   levels: number[][];
   numTicks: number;
+  maxSelf: number;
+
   /**
    * Sample Rate, used in text information
    */
