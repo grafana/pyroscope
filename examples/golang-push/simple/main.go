@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"os"
 	"runtime/pprof"
 
@@ -41,8 +41,7 @@ func main() {
 		Logger:          pyroscope.StandardLogger,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error starting pyroscope profiler: %v", err)
-		os.Exit(1)
+		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
 	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("foo", "bar"), func(c context.Context) {
 		for {

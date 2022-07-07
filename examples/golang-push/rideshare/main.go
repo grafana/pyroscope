@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -47,16 +47,13 @@ func main() {
 		Tags:            map[string]string{"region": os.Getenv("REGION")},
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error starting pyroscope profiler: %v", err)
-		os.Exit(1)
+		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/bike", bikeRoute)
 	http.HandleFunc("/scooter", scooterRoute)
 	http.HandleFunc("/car", carRoute)
-	err = http.ListenAndServe(":5000", nil)
-	if err != nil {
-		panic(err)
-	}
+
+	log.Fatal(http.ListenAndServe(":5000", nil))
 }
