@@ -17,12 +17,16 @@ for f in SampleType Sample Mapping Location Function StringTable; do
 done
 
 # SampleType
-for f in Type Unit; do 
+for f in Type Unit; do
     gomodifytags -file "${ROOT}/pkg/gen/google/v1/profile.pb.go" -struct ValueType -field "${f}" -add-tags parquet -template "," -w -quiet -override
 done
 
 # Sample
-for f in LocationId Value; do 
+for f in LocationId Value; do
     gomodifytags -file "${ROOT}/pkg/gen/google/v1/profile.pb.go" -struct Sample -field "${f}" -add-tags parquet -template "," -w -quiet -override
 done
 
+# Label
+for f in Str NumUnit Num; do
+gomodifytags -file "${ROOT}/pkg/gen/google/v1/profile.pb.go" -override -struct Label -field "${f}" -add-tags parquet -template ",optional" -w -quiet 
+done

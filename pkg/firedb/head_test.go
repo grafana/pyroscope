@@ -1,16 +1,35 @@
 package firedb
 
 import (
+	"compress/gzip"
 	"context"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
+
+func parseProfile(t testing.TB, path string) *profilev1.Profile {
+
+	f, err := os.Open(path)
+	require.NoError(t, err, "failed opening profile: ", path)
+	r, err := gzip.NewReader(f)
+	require.NoError(t, err)
+	content, err := ioutil.ReadAll(r)
+	require.NoError(t, err, "failed reading file: ", path)
+
+	p := &profilev1.Profile{}
+	require.NoError(t, p.UnmarshalVT(content))
+
+	return p
+}
 
 func newProfileFoo() *profilev1.Profile {
 	return &profilev1.Profile{
@@ -235,7 +254,7 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		for pos := range profilePaths {
 			p := parseProfile(t, profilePaths[pos])
-			head.Ingest(ctx, p)
+			require.NoError(t, head.Ingest(ctx, p))
 			profileCount++
 		}
 	}

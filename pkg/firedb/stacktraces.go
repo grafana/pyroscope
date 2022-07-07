@@ -12,10 +12,9 @@ type Stacktrace struct {
 
 type stacktracesKey uint64
 
-type stacktracesHelper struct {
-}
+type stacktracesHelper struct{}
 
-func (_ *stacktracesHelper) key(s *Stacktrace) stacktracesKey {
+func (*stacktracesHelper) key(s *Stacktrace) stacktracesKey {
 	var (
 		h = xxhash.New()
 		b = make([]byte, 8)
@@ -32,11 +31,11 @@ func (_ *stacktracesHelper) key(s *Stacktrace) stacktracesKey {
 	return stacktracesKey(h.Sum64())
 }
 
-func (_ *stacktracesHelper) addToRewriter(r *rewriter, m idConversionTable) {
+func (*stacktracesHelper) addToRewriter(r *rewriter, m idConversionTable) {
 	r.stacktraces = m
 }
 
-func (_ *stacktracesHelper) rewrite(r *rewriter, s *Stacktrace) error {
+func (*stacktracesHelper) rewrite(r *rewriter, s *Stacktrace) error {
 	for pos := range s.LocationIDs {
 		r.locations.rewriteUint64(&s.LocationIDs[pos])
 	}

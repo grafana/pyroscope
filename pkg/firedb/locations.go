@@ -9,14 +9,14 @@ import (
 )
 
 type locationsKey struct {
-	MappingId uint64
+	MappingId uint64 //nolint
 	Address   uint64
 	LinesHash uint64
 }
 
 type locationsHelper struct{}
 
-func (_ *locationsHelper) key(l *profilev1.Location) locationsKey {
+func (*locationsHelper) key(l *profilev1.Location) locationsKey {
 	var (
 		h = xxhash.New()
 		b = make([]byte, 8)
@@ -42,11 +42,11 @@ func (_ *locationsHelper) key(l *profilev1.Location) locationsKey {
 	}
 }
 
-func (_ *locationsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
+func (*locationsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
 	r.locations = elemRewriter
 }
 
-func (_ *locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
+func (*locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
 	r.mappings.rewriteUint64(&l.MappingId)
 
 	for pos := range l.Line {

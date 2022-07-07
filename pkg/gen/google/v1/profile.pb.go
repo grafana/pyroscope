@@ -376,8 +376,8 @@ type Label struct {
 
 	Key int64 `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty"` // Index into string table
 	// At most one of the following must be present
-	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty"` // Index into string table
-	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty"`
+	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty" parquet:",optional"` // Index into string table
+	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty" parquet:",optional"`
 	// Should only be present when num is present.
 	// Specifies the units of num.
 	// Use arbitrary string (for example, "requests") as a custom count unit.
@@ -385,7 +385,7 @@ type Label struct {
 	// Consumers may also  interpret units like "bytes" and "kilobytes" as memory
 	// units and units like "seconds" and "nanoseconds" as time units,
 	// and apply appropriate unit conversions to these.
-	NumUnit int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty"` // Index into string table
+	NumUnit int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty" parquet:",optional"` // Index into string table
 }
 
 func (x *Label) Reset() {
