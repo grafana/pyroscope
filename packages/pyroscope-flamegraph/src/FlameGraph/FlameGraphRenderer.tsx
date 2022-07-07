@@ -18,7 +18,6 @@ import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
-import LogoLink from './LogoLink';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
@@ -409,6 +408,7 @@ class FlameGraphRenderer extends React.Component<
       <Graph
         key="flamegraph-pane"
         // data-testid={flamegraphDataTestId}
+        showCredit={true || this.props.showCredit}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.state.highlightQuery}
@@ -438,7 +438,6 @@ class FlameGraphRenderer extends React.Component<
         className="flamegraph-root"
         data-flamegraph-color-mode={this.props.colorMode || 'dark'}
       >
-        <LogoLink />
         <div>
           {toolbarVisible && (
             <Toolbar

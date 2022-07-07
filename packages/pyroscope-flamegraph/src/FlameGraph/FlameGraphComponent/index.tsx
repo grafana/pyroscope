@@ -12,6 +12,7 @@ import Highlight from './Highlight';
 import ContextMenuHighlight from './ContextMenuHighlight';
 import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
+import LogoLink from './LogoLink';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
@@ -23,6 +24,7 @@ interface FlamegraphProps {
   fitMode: ConstructorParameters<typeof Flamegraph>[3];
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
+  showCredit: boolean;
 
   onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
@@ -53,6 +55,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     highlightQuery,
     zoom,
     toolbarVisible,
+    showCredit,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
@@ -251,6 +254,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         style={{
           opacity: dataUnavailable ? 0 : 1,
         }}
+        className={indexStyles.canvasContainer}
       >
         <canvas
           height="0"
@@ -261,6 +265,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           onClick={onClick}
         />
       </div>
+      {showCredit ? <LogoLink /> : ''}
       {flamegraph && canvasRef && (
         <Highlight
           barHeight={PX_PER_LEVEL}
