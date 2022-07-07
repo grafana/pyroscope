@@ -298,7 +298,7 @@ class FlameGraphRenderer extends React.Component<
   };
 
   onTableItemClick = (tableItem: { name: string }) => {
-    let { name } = tableItem;
+    const { name } = tableItem;
 
     // if clicking on the same item, undo the search
     if (this.state.tableSelected.isJust) {

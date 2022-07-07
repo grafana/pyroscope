@@ -11,7 +11,7 @@ import {
   getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
 import { fitIntoTableCell } from './fitMode/fitMode';
-import { isMatch } from './FlameGraph/FlameGraphComponent/search';
+import { isMatch } from './search';
 import styles from './ProfilerTable.module.scss';
 
 const zero = (v) => v || 0;
