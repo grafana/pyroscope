@@ -82,6 +82,9 @@ module.exports = {
 
     // disable relative imports to force people to use '@webapp'
     'import/no-relative-packages': 'error',
+
+    // https://humanwhocodes.com/blog/2019/01/stop-using-default-exports-javascript-module/
+    'import/prefer-default-export': 'off',
   },
   env: {
     browser: true,

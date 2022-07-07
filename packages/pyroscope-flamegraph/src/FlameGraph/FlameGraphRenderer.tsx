@@ -91,6 +91,7 @@ export interface FlamegraphRendererProps {
 }
 
 interface FlamegraphRendererState {
+  /** A dirty flamegraph refers to a flamegraph where its original state can be reset */
   isFlamegraphDirty: boolean;
   sortBy: 'self' | 'total' | 'selfDiff' | 'totalDiff';
   sortByDirection: 'desc' | 'asc';
@@ -101,7 +102,12 @@ interface FlamegraphRendererState {
   viewDiff: 'diff' | 'total' | 'self';
   fitMode: 'HEAD' | 'TAIL';
   flamebearer: NonNullable<FlamegraphRendererProps['flamebearer']>;
-  highlightQuery: string;
+
+  /** Query searched in the input box.
+   * It's used to filter data in the table AND highlight items in the flamegraph */
+  searchQuery: string;
+  /** Triggered when an item is clicked on the table. It overwrites the searchQuery */
+  tableSelectedItem: Maybe<string>;
 
   flamegraphConfigs: {
     focusedNode: Maybe<Node>;
@@ -142,7 +148,8 @@ class FlameGraphRenderer extends React.Component<
         : 'horizontal',
 
       // query used in the 'search' checkbox
-      highlightQuery: '',
+      searchQuery: '',
+      tableSelectedItem: Maybe.nothing(),
 
       flamegraphConfigs: this.initialFlamegraphState,
 
@@ -225,10 +232,8 @@ class FlameGraphRenderer extends React.Component<
     return newConfigs;
   };
 
-  handleSearchChange = (e: string) => {
-    this.setState({
-      highlightQuery: e,
-    });
+  onSearchChange = (e: string) => {
+    this.setState({ searchQuery: e });
   };
 
   isSameFlamebearer = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
@@ -294,14 +299,33 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  // if clicking on the same item, undo the search
   onTableItemClick = (tableItem: { name: string }) => {
-    let { name } = tableItem;
+    const { name } = tableItem;
 
-    if (tableItem.name === this.state.highlightQuery) {
-      name = '';
+    // if clicking on the same item, undo the search
+    if (this.state.tableSelectedItem.isJust) {
+      if (tableItem.name === this.state.tableSelectedItem.value) {
+        this.setState({
+          tableSelectedItem: Maybe.nothing(),
+        });
+        return;
+        //        name = '';
+      }
     }
-    this.handleSearchChange(name);
+
+    // clicking for the first time
+    this.setState({
+      tableSelectedItem: Maybe.just(name),
+    });
+  };
+
+  getHighlightQuery = () => {
+    // prefer table selected
+    if (this.state.tableSelectedItem.isJust) {
+      return this.state.tableSelectedItem.value;
+    }
+
+    return this.state.searchQuery;
   };
 
   updateSortBy = (newSortBy: FlamegraphRendererState['sortBy']) => {
@@ -331,6 +355,7 @@ class FlameGraphRenderer extends React.Component<
   };
 
   updateFlamegraphDirtiness = () => {
+    // TODO(eh-am): find a better approach
     const isDirty = this.isDirty();
 
     this.setState({
@@ -344,8 +369,9 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
+  // used as a variable instead of keeping in the state
+  // so that the flamegraph doesn't rerender unnecessarily
   isDirty = () => {
-    // TODO: is this a good idea?
     return (
       JSON.stringify(this.initialFlamegraphState) !==
       JSON.stringify(this.state.flamegraphConfigs)
@@ -381,27 +407,22 @@ class FlameGraphRenderer extends React.Component<
           }
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
-          highlightQuery={this.state.highlightQuery}
+          highlightQuery={this.state.searchQuery}
+          selectedItem={this.state.tableSelectedItem}
           handleTableItemClick={this.onTableItemClick}
           palette={this.state.palette}
         />
       </div>
     );
 
-    //    const flamegraphDataTestId = figureFlamegraphDataTestId(
-    //      this.props.viewType,
-    //      this.props.viewSide
-    //    );
-
     const toolbarVisible = this.shouldShowToolbar();
 
     const flameGraphPane = (
       <Graph
         key="flamegraph-pane"
-        // data-testid={flamegraphDataTestId}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
-        highlightQuery={this.state.highlightQuery}
+        highlightQuery={this.getHighlightQuery()}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
@@ -437,7 +458,7 @@ class FlameGraphRenderer extends React.Component<
               flamegraphType={this.state.flamebearer.format}
               view={this.state.view}
               viewDiff={this.state.viewDiff}
-              handleSearchChange={this.handleSearchChange}
+              handleSearchChange={this.onSearchChange}
               reset={this.onReset}
               updateView={this.updateView}
               updateViewDiff={this.updateViewDiff}
@@ -445,7 +466,7 @@ class FlameGraphRenderer extends React.Component<
               fitMode={this.state.fitMode}
               isFlamegraphDirty={this.state.isFlamegraphDirty}
               selectedNode={this.state.flamegraphConfigs.zoom}
-              highlightQuery={this.state.highlightQuery}
+              highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
             />
           )}

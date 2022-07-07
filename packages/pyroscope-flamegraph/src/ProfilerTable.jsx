@@ -11,6 +11,7 @@ import {
   getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
 import { fitIntoTableCell } from './fitMode/fitMode';
+import { isMatch } from './search';
 import styles from './ProfilerTable.module.scss';
 
 const zero = (v) => v || 0;
@@ -122,6 +123,7 @@ export default function ProfilerTable({
   handleTableItemClick,
   highlightQuery,
   palette,
+  selectedItem,
 }) {
   return (
     <Table
@@ -134,6 +136,7 @@ export default function ProfilerTable({
       highlightQuery={highlightQuery}
       handleTableItemClick={handleTableItemClick}
       palette={palette}
+      selectedItem={selectedItem}
     />
   );
 }
@@ -169,6 +172,7 @@ function Table({
   fitMode,
   handleTableItemClick,
   highlightQuery,
+  selectedItem,
   palette,
 }) {
   const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
@@ -212,6 +216,7 @@ function Table({
           handleTableItemClick={handleTableItemClick}
           highlightQuery={highlightQuery}
           palette={palette}
+          selectedItem={selectedItem}
         />
       </tbody>
     </table>
@@ -228,6 +233,7 @@ const TableBody = React.memo(
     handleTableItemClick,
     highlightQuery,
     palette,
+    selectedItem,
   }) => {
     const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
@@ -249,7 +255,11 @@ const TableBody = React.memo(
     const formatter = getFormatter(numTicks, sampleRate, units);
 
     const isRowSelected = (name) => {
-      return name === highlightQuery;
+      if (selectedItem.isJust) {
+        return name === selectedItem.value;
+      }
+
+      return false;
     };
 
     const nameCell = (x, style) => (
@@ -413,15 +423,23 @@ const TableBody = React.memo(
       <div>invalid</div>
     );
 
-    return sorted.map((x) => {
-      const pn = getPackageNameFromStackTrace(spyName, x.name);
-      const color = viewDiff
-        ? defaultColor
-        : colorBasedOnPackageName(palette, pn);
-      const style = {
-        backgroundColor: color,
-      };
-      return renderRow(x, color, style);
-    });
+    return sorted
+      .filter((x) => {
+        if (!highlightQuery) {
+          return true;
+        }
+
+        return isMatch(highlightQuery, x.name);
+      })
+      .map((x) => {
+        const pn = getPackageNameFromStackTrace(spyName, x.name);
+        const color = viewDiff
+          ? defaultColor
+          : colorBasedOnPackageName(palette, pn);
+        const style = {
+          backgroundColor: color,
+        };
+        return renderRow(x, color, style);
+      });
   }
 );
