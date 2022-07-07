@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -392,7 +393,10 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	return ctrl.corsMiddleware()(gzhttpMiddleware(handler)), nil
+	h := ctrl.corsMiddleware()(gzhttpMiddleware(handler))
+	h = ctrl.logginMiddleware(h)
+
+	return h, nil
 }
 
 func (ctrl *Controller) Start() error {
@@ -523,4 +527,14 @@ func expectFormats(format string) error {
 	default:
 		return errUnknownFormat
 	}
+}
+
+func (ctrl *Controller) logginMiddleware(next http.Handler) http.Handler {
+	if ctrl.config.LogLevel == "debug" {
+		// log to Stdout using Apache Common Log Format
+		// TODO maybe use JSON?
+		return handlers.LoggingHandler(os.Stdout, next)
+	}
+
+	return next
 }
