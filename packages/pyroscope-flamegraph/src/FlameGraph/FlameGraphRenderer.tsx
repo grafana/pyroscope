@@ -75,27 +75,12 @@ interface Node {
   j: number;
 }
 
-interface TraceProp {
-  trace: Trace;
-}
-
-interface ProfileProp {
-  profile: Profile;
-}
-
-interface FlamebeaverProp {
-  /** @deprecated  prefer Profile */
-  flamebearer: Flamebearer;
-}
-
-// one of profile | trace | flamebearer (for now) them MUST be defined (but not all three)
-export interface FlamegraphRendererProps
-  extends FlamebeaverProp,
-    TraceProp,
-    ProfileProp {
+export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
+  trace?: Trace;
+  profile?: Profile;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
@@ -104,6 +89,8 @@ export interface FlamegraphRendererProps
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
+  /** @deprecated  prefer Profile */
+  flamebearer?: Flamebearer;
   sharedQuery?: {
     searchQuery?: string;
     onQueryChange: Dispatch<SetStateAction<string | undefined>>;
