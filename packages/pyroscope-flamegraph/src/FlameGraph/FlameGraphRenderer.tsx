@@ -18,6 +18,7 @@ import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
+import LogoLink from './LogoLink';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
@@ -85,7 +86,7 @@ export interface FlamegraphRendererProps {
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
-  renderLogo?: boolean;
+  showCredit?: boolean;
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
@@ -437,11 +438,11 @@ class FlameGraphRenderer extends React.Component<
         className="flamegraph-root"
         data-flamegraph-color-mode={this.props.colorMode || 'dark'}
       >
+        <LogoLink />
         <div>
           {toolbarVisible && (
             <Toolbar
               sharedQuery={this.props.sharedQuery}
-              renderLogo={this.props.renderLogo || false}
               disableChangingDisplay={!!this.props.onlyDisplay}
               flamegraphType={this.state.flamebearer.format}
               view={this.state.view}

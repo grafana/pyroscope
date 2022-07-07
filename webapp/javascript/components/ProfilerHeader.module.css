@@ -19,13 +19,6 @@
   flex-grow: 1;
 }
 
-.headerLogo {
-  display: inline-block;
-  text-decoration: none;
-  color: var(--ps-neutral-2);
-  font-size: 1.2em;
-}
-
 .headerLogo img {
   display: inline-block;
 }
