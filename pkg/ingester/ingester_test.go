@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"os"
 	"runtime/pprof"
 	"testing"
 
@@ -29,24 +28,6 @@ func defaultIngesterTestConfig(t testing.TB) Config {
 	cfg.LifecyclerConfig.ID = "localhost"
 	cfg.LifecyclerConfig.FinalSleep = 0
 	cfg.LifecyclerConfig.MinReadyDuration = 0
-	return cfg
-}
-
-func defaultProfileStoreTestConfig(t testing.TB) *profilestore.Config {
-	cfg := &profilestore.Config{}
-	flagext.DefaultValues(cfg)
-
-	// create data path
-	dataPath, err := os.MkdirTemp("", "fire-db")
-	require.NoError(t, err)
-	t.Logf("created temporary data path: %s", dataPath)
-	t.Cleanup(func() {
-		if err := os.RemoveAll(dataPath); err != nil {
-			t.Logf("remove data path failed: %v", err)
-		}
-	})
-	cfg.DataPath = dataPath
-
 	return cfg
 }
 

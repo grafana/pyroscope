@@ -17,7 +17,9 @@ type Group []*groupField
 
 func (g Group) String() string {
 	s := new(strings.Builder)
-	parquet.PrintSchema(s, "", g)
+	if err := parquet.PrintSchema(s, "", g); err != nil {
+		panic(err.Error())
+	}
 	return s.String()
 }
 
