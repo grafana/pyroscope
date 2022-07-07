@@ -75,17 +75,24 @@ interface Node {
   j: number;
 }
 
-export interface FlamegraphRendererProps {
+interface TraceProp {
+  trace: Trace;
+}
+
+interface ProfileProp {
+  profile: Profile;
+}
+
+// one of profile | trace MUST be defined (but not both)
+export interface FlamegraphRendererProps extends TraceProp, ProfileProp {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
-  profile?: Profile;
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
-  trace?: Trace;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
-  showCredit: boolean;
+  showCredit?: boolean;
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
@@ -412,7 +419,7 @@ class FlameGraphRenderer extends React.Component<
       <Graph
         key="flamegraph-pane"
         // data-testid={flamegraphDataTestId}
-        showCredit={this.props.showCredit}
+        showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.state.highlightQuery}
