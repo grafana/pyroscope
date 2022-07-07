@@ -85,7 +85,7 @@ export interface FlamegraphRendererProps {
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
-  showCredit?: boolean;
+  showCredit: boolean;
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
@@ -133,6 +133,10 @@ class FlameGraphRenderer extends React.Component<
   // TODO: At some point the initial state may be set via the user
   // Eg when sharing a specific node
   initialFlamegraphState = this.resetFlamegraphState;
+
+  static defaultProps = {
+    showCredit: true,
+  };
 
   constructor(props: FlamegraphRendererProps) {
     super(props);
@@ -408,7 +412,7 @@ class FlameGraphRenderer extends React.Component<
       <Graph
         key="flamegraph-pane"
         // data-testid={flamegraphDataTestId}
-        showCredit={true || this.props.showCredit}
+        showCredit={this.props.showCredit}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.state.highlightQuery}

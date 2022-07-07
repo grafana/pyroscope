@@ -105,7 +105,7 @@ function Settings() {
               <Preferences />
             </Route>
             <Route exact path={`${path}/tracing`}>
-              <FlamegraphRenderer trace={trace.data[0]} showCredit />
+              <FlamegraphRenderer trace={trace.data[0]} />
             </Route>
             <Route path={`${path}/security`}>
               <Security />
