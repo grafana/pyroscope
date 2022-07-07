@@ -83,8 +83,16 @@ interface ProfileProp {
   profile: Profile;
 }
 
-// one of profile | trace MUST be defined (but not both)
-export interface FlamegraphRendererProps extends TraceProp, ProfileProp {
+interface FlamebeaverProp {
+  /** @deprecated  prefer Profile */
+  flamebearer: Flamebearer;
+}
+
+// one of profile | trace | flamebearer (for now) them MUST be defined (but not all three)
+export interface FlamegraphRendererProps
+  extends FlamebeaverProp,
+    TraceProp,
+    ProfileProp {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
@@ -96,8 +104,6 @@ export interface FlamegraphRendererProps extends TraceProp, ProfileProp {
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
-  /** @deprecated  prefer Profile */
-  flamebearer?: Flamebearer;
   sharedQuery?: {
     searchQuery?: string;
     onQueryChange: Dispatch<SetStateAction<string | undefined>>;

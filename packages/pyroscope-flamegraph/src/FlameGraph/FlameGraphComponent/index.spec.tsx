@@ -22,6 +22,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
@@ -46,6 +47,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
@@ -81,6 +83,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
@@ -113,6 +116,7 @@ describe('FlamegraphComponent', () => {
 
       const { rerender } = render(
         <FlamegraphComponent
+          showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
@@ -146,6 +150,7 @@ describe('FlamegraphComponent', () => {
 
       rerender(
         <FlamegraphComponent
+          showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
@@ -179,6 +184,7 @@ describe('FlamegraphComponent', () => {
 
       render(
         <FlamegraphComponent
+          showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
@@ -218,6 +224,7 @@ describe('FlamegraphComponent', () => {
     it('renders when type is single', () => {
       render(
         <FlamegraphComponent
+          showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
@@ -244,6 +251,7 @@ describe('FlamegraphComponent', () => {
       const flamebearer = TestData.DiffTree;
       render(
         <FlamegraphComponent
+          showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
