@@ -12,7 +12,7 @@ import { createFF, Flamebearer, Profile } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
-import ProfilerTable from '../ProfilerTable';
+import ProfilerTable, { ProfilerTableProps } from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
@@ -56,6 +56,7 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
     spyName: '',
     numTicks: 0,
     sampleRate: 0,
+    maxSelf: 0,
   };
   return noop;
 }
@@ -93,8 +94,8 @@ export interface FlamegraphRendererProps {
 interface FlamegraphRendererState {
   /** A dirty flamegraph refers to a flamegraph where its original state can be reset */
   isFlamegraphDirty: boolean;
-  sortBy: 'self' | 'total' | 'selfDiff' | 'totalDiff';
-  sortByDirection: 'desc' | 'asc';
+  sortBy: ProfilerTableProps['sortBy'];
+  sortByDirection: ProfilerTableProps['sortByDirection'];
 
   view: NonNullable<FlamegraphRendererProps['onlyDisplay']>;
   panesOrientation: NonNullable<FlamegraphRendererProps['panesOrientation']>;
@@ -401,12 +402,10 @@ class FlameGraphRenderer extends React.Component<
           sortByDirection={this.state.sortByDirection}
           sortBy={this.state.sortBy}
           updateSortBy={this.updateSortBy}
-          view={this.state.view}
           viewDiff={
             this.state.flamebearer?.format === 'double' && this.state.viewDiff
           }
           fitMode={this.state.fitMode}
-          isFlamegraphDirty={this.state.isFlamegraphDirty}
           highlightQuery={this.state.searchQuery}
           selectedItem={this.state.tableSelectedItem}
           handleTableItemClick={this.onTableItemClick}
