@@ -27,9 +27,7 @@ import (
 type idConversionTable map[int64]int64
 
 func (t stringConversionTable) rewritePprofLabels(in []*profilev1.Label) []*profilev1.Label {
-	var (
-		out = make([]*profilev1.Label, len(in))
-	)
+	out := make([]*profilev1.Label, len(in))
 	for pos := range in {
 		out[pos] = &profilev1.Label{
 			Key:     t[in[pos].Key],
@@ -110,7 +108,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 	// if there are missing elements, acquire write lock
 	if len(missing) > 0 {
 		s.lock.Lock()
-		var posSlice = int64(len(s.slice))
+		posSlice := int64(len(s.slice))
 		for _, pos := range missing {
 			// check again if element exists
 			k := h.key(elems[pos])
@@ -333,20 +331,13 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 			firemodel.LabelNamePeriodType,
 			firemodel.LabelNamePeriodUnit,
 		}
-		series = map[uint64]firemodel.Labels{}
-
-		buf  []byte
-		hash uint64
+		series = map[model.Fingerprint]firemodel.Labels{}
 	)
 	sort.Strings(lblNames)
 
-	if err := h.index.ForMatchingProfiles([]*labels.Matcher{}, func(lbls firemodel.Labels, _ int64, _ int64) error {
-		hash, buf = lbls.HashForLabels(
-			buf,
-			lblNames...,
-		)
-		if _, ok := series[hash]; !ok {
-			series[hash] = lbls
+	if err := h.index.ForMatchingProfiles([]*labels.Matcher{}, func(lbls firemodel.Labels, fp model.Fingerprint, _ int64, _ int64) error {
+		if _, ok := series[fp]; !ok {
+			series[fp] = lbls
 		}
 		return nil
 	}); err != nil {
@@ -397,7 +388,8 @@ func (h *Head) WriteTo(ctx context.Context, path string) error {
 			parquet.SortingColumns(
 				parquet.Ascending("ID"),
 				parquet.Ascending("TimeNanos"),
-			)},
+			),
+		},
 		[]parquet.WriterOption{
 			schemav1.ProfilesSchema(),
 		},
@@ -426,7 +418,7 @@ func (h *Head) WriteTo(ctx context.Context, path string) error {
 }
 
 func writeToFile[T any](ctx context.Context, path string, table string, rowGroupOptions []parquet.RowGroupOption, writerOptions []parquet.WriterOption, rows []T) error {
-	file, err := os.OpenFile(filepath.Join(path, table+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+	file, err := os.OpenFile(filepath.Join(path, table+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}
