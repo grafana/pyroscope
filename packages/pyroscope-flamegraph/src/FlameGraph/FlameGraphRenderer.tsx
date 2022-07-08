@@ -367,10 +367,7 @@ class FlameGraphRenderer extends React.Component<
 
   shouldShowToolbar() {
     // default to true
-    const shouldShowToolbar =
-      this.props.showToolbar !== undefined ? this.props.showToolbar : true;
-    // default to false for tracing
-    return this.props.trace ? false : shouldShowToolbar;
+    return this.props.showToolbar !== undefined ? this.props.showToolbar : true;
   }
 
   render = () => {
