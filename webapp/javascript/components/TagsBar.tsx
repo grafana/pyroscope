@@ -93,7 +93,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
   const windowWidth = useWindowWidth();
   const [query, setQuery] = useState(initialQuery);
   const codeRef = useRef<HTMLElement>(null);
-  const textareaRef = useRef<any>(null);
+  const textareaRef = useRef<ShamefulAny>(null);
   const [textAreaSize, setTextAreaSize] = useState({ width: 0, height: 0 });
 
   // If query updated upstream, most likely the application changed

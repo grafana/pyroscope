@@ -154,7 +154,7 @@ export function NewDiffColor(
       goodColor.rgb().toString(),
       neutralColor.rgb().toString(),
       badColor.rgb().toString(),
-    ] as any);
+    ] as ShamefulAny);
 
   return (n: number) => {
     // convert to our Color object

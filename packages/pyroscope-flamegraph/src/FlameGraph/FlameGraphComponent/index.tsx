@@ -279,7 +279,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         <Tooltip
           format={flamebearer.format}
           canvasRef={canvasRef}
-          xyToData={xyToTooltipData as any /* TODO */}
+          xyToData={xyToTooltipData as ShamefulAny /* TODO */}
           numTicks={flamebearer.numTicks}
           sampleRate={flamebearer.sampleRate}
           leftTicks={

@@ -46,13 +46,13 @@ function SignInPage() {
       const res = await logIn({ username, password });
       if (res.isOk) {
         history.replace(
-          (location.state as any)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
+          (location.state as ShamefulAny)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
         );
         return;
       }
 
       throw res.error;
-    } catch (e: any) {
+    } catch (e: ShamefulAny) {
       setForm({ ...form, errors: e.errors || [e.message] });
     }
   }

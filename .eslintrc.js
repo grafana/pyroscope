@@ -90,6 +90,9 @@ module.exports = {
         ignoreRestSiblings: true,
       },
     ],
+
+    // any is bad, if really necessary one can use ShamefulAny
+    '@typescript-eslint/no-explicit-any': 'error',
   },
   env: {
     browser: true,
