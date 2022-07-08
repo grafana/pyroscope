@@ -76,23 +76,35 @@
     position: absolute;
     margin: 0;
     top: 0;
+    font-size: 16px;
+    font-family: monospace;
+    background: none;
+    border: 1px solid transparent;
+    box-shadow: none;
+    padding: 0.25em 0.375em;
+    margin: 0;
+    line-height: 27px;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    word-break: break-all;
+    white-space: break-spaces;
+    letter-spacing: 0px;
+    border-right: none;
+    color: #999;
 
-    code {
-      font-size: 16px;
-      font-family: monospace;
-      background: none;
-      border: 1px solid transparent;
-      box-shadow: none;
-      padding: 0.25em 0.375em;
-      margin: 0;
-      line-height: 27px;
-      position: absolute;
-      top: 0px;
-      left: 0px;
-      word-break: break-all;
-      white-space: break-spaces;
-      letter-spacing: 0px;
-      border-right: none;
+    .token.label-value.attr-value {
+      pointer-events: auto;
+      background-color: #66ff7836;
+      position: relative;
+      cursor: pointer;
+      display: inline-flex;
+
+      &:hover {
+        & span[data-role='close'] {
+          display: block;
+        }
+      }
     }
   }
 
