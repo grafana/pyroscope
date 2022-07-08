@@ -4,13 +4,9 @@ import styles from './Header.module.css';
 import { FlamegraphPalette } from './colorPalette';
 import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
 
-import { getFormatter } from '../../format/format';
-
 interface HeaderProps {
   format: Flamebearer['format'];
   units: Flamebearer['units'];
-  numTicks: Flamebearer['numTicks'];
-  sampleRate: Flamebearer['sampleRate'];
 
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
@@ -25,8 +21,6 @@ export default function Header(props: HeaderProps) {
   const {
     format,
     units,
-    numTicks,
-    sampleRate,
     ExportData = <></>,
     palette,
     setPalette,
@@ -40,12 +34,7 @@ export default function Header(props: HeaderProps) {
     samples: 'CPU time per function',
     lock_nanoseconds: 'time spent waiting on locks per function',
     lock_samples: 'number of contended locks per function',
-    trace_samples: `${getFormatter(
-      numTicks,
-      sampleRate,
-      'trace_samples'
-    ).format(numTicks, sampleRate)}`,
-    '': '',
+    trace_samples: 'aggregated span duration',
   };
 
   const getTitle = () => {

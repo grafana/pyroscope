@@ -243,8 +243,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       <Header
         format={flamebearer.format}
         units={flamebearer.units}
-        numTicks={flamebearer.numTicks}
-        sampleRate={flamebearer.sampleRate}
         ExportData={ExportData}
         palette={palette}
         setPalette={setPalette}
