@@ -2,22 +2,26 @@ package firedb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/segmentio/parquet-go"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
+	tsdbindex "github.com/grafana/fire/pkg/firedb/tsdb"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	firemodel "github.com/grafana/fire/pkg/model"
 )
 
 type idConversionTable map[int64]int64
@@ -140,17 +144,24 @@ func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
 type Head struct {
 	logger log.Logger
 
+	index       *tsdbindex.Head
 	strings     deduplicatingSlice[string, string, *stringsHelper]
 	mappings    deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
 	functions   deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
 	locations   deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
-	stacktraces deduplicatingSlice[*Stacktrace, stacktracesKey, *stacktracesHelper] // a stacktrace is a slice of location ids
-	profiles    deduplicatingSlice[*Profile, profilesKey, *profilesHelper]
+	stacktraces deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper] // a stacktrace is a slice of location ids
+	profiles    deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper]
 }
 
-func NewHead() *Head {
+func NewHead() (*Head, error) {
+	index, err := tsdbindex.NewHead(4)
+	if err != nil {
+		return nil, err
+	}
+
 	h := &Head{
 		logger: log.NewLogfmtLogger(os.Stderr),
+		index:  index,
 	}
 	h.strings.init()
 	h.mappings.init()
@@ -158,7 +169,7 @@ func NewHead() *Head {
 	h.locations.init()
 	h.stacktraces.init()
 	h.profiles.init()
-	return h
+	return h, nil
 }
 
 type LabelPairRef struct {
@@ -225,6 +236,23 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 }
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) error {
+	// build label set per sample type before references are rewritten
+	lbls := firemodel.NewLabelsBuilder(externalLabels)
+
+	// set common labels
+	if p.PeriodType != nil {
+		lbls.Set(firemodel.LabelNamePeriodType, p.StringTable[p.PeriodType.Type])
+		lbls.Set(firemodel.LabelNamePeriodUnit, p.StringTable[p.PeriodType.Unit])
+	}
+
+	seriesRefs := make([]model.Fingerprint, len(p.SampleType))
+	for pos := range p.SampleType {
+		lbls.Set(firemodel.LabelNameType, p.StringTable[p.SampleType[pos].Type])
+		lbls.Set(firemodel.LabelNameUnit, p.StringTable[p.SampleType[pos].Unit])
+		seriesRefs[pos] = h.index.Add(p.TimeNanos, lbls.Labels())
+	}
+
+	// create a rewriter state
 	rewrites := &rewriter{}
 
 	if err := h.strings.ingest(ctx, p.StringTable, rewrites); err != nil {
@@ -243,11 +271,6 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		return err
 	}
 
-	lblRefs, err := h.internExternalLabels(ctx, externalLabels)
-	if err != nil {
-		return err
-	}
-
 	samples, err := h.convertSamples(ctx, rewrites, p.Sample)
 	if err != nil {
 		return err
@@ -256,13 +279,10 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 	profile := &schemav1.Profile{
 		SeriesRefs:        seriesRefs,
 		Samples:           samples,
-		Types:             p.SampleType,
 		DropFrames:        p.DropFrames,
 		KeepFrames:        p.KeepFrames,
 		TimeNanos:         p.TimeNanos,
 		DurationNanos:     p.DurationNanos,
-		PeriodType:        p.PeriodType,
-		Period:            p.Period,
 		Comment:           p.Comment,
 		DefaultSampleType: p.DefaultSampleType,
 	}
@@ -276,30 +296,12 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 
 // LabelValues returns the possible label values for a given label name.
 func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
-
-	idx, ok := h.strings.getIndex(req.Msg.Name)
-	if !ok {
-		return connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{}}), nil
+	values, err := h.index.LabelValues(req.Msg.Name)
+	if err != nil {
+		return nil, err
 	}
-
-	valsMap := make(map[int64]struct{})
-	for _, profile := range h.profiles.slice {
-		for _, lbl := range profile.ExternalLabels {
-			if lbl.Name == idx {
-				valsMap[lbl.Value] = struct{}{}
-			}
-		}
-	}
-
-	vals := make([]string, len(valsMap))
-	idx = 0
-	for v := range valsMap {
-		vals[idx] = h.strings.slice[v]
-		idx++
-	}
-	sort.Strings(vals)
 	return connect.NewResponse(&ingestv1.LabelValuesResponse{
-		Names: vals,
+		Names: values,
 	}), nil
 }
 
@@ -323,43 +325,58 @@ func (pt *profileTypeSeen) String(t []string) string {
 
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-
-	idxLabelName, ok := h.strings.getIndex("__name__")
-	if !ok {
-		return nil, errors.New("No name label found")
-	}
-
-	seen := map[profileTypeSeen]struct{}{}
-
-	var nameRef int64
-	for _, profile := range h.profiles.slice {
-		nameRef = 0
-		for _, lbl := range profile.ExternalLabels {
-			if lbl.Name == idxLabelName {
-				nameRef = lbl.Value
-			}
+	var (
+		lblNames = []string{
+			"__name__",
+			firemodel.LabelNameUnit,
+			firemodel.LabelNameType,
+			firemodel.LabelNamePeriodType,
+			firemodel.LabelNamePeriodUnit,
 		}
+		series = map[uint64]firemodel.Labels{}
 
-		for _, typ := range profile.Types {
-			seen[profileTypeSeen{
-				Name:       nameRef,
-				SampleType: typ.Type,
-				SampleUnit: typ.Unit,
-				PeriodType: profile.PeriodType.Type,
-				PeriodUnit: profile.PeriodType.Unit,
-			}] = struct{}{}
+		buf  []byte
+		hash uint64
+	)
+	sort.Strings(lblNames)
+
+	if err := h.index.ForMatchingProfiles([]*labels.Matcher{}, func(lbls firemodel.Labels, _ int64, _ int64) error {
+		hash, buf = lbls.HashForLabels(
+			buf,
+			lblNames...,
+		)
+		if _, ok := series[hash]; !ok {
+			series[hash] = lbls
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
-	types := make([]string, 0, len(seen))
-	for key := range seen {
-		types = append(types, key.String(h.strings.slice))
+	var (
+		profileTypes = make([]string, len(series))
+		idx          = 0
+		b            strings.Builder
+	)
+	for _, lbls := range series {
+		b.Reset()
+		_, _ = b.WriteString(lbls.Get("__name__"))
+		_, _ = b.WriteRune(':')
+		_, _ = b.WriteString(lbls.Get(firemodel.LabelNameType))
+		_, _ = b.WriteRune(':')
+		_, _ = b.WriteString(lbls.Get(firemodel.LabelNameUnit))
+		_, _ = b.WriteRune(':')
+		_, _ = b.WriteString(lbls.Get(firemodel.LabelNamePeriodType))
+		_, _ = b.WriteRune(':')
+		_, _ = b.WriteString(lbls.Get(firemodel.LabelNamePeriodUnit))
+		profileTypes[idx] = b.String()
+		idx++
 	}
-	sort.Strings(types)
+	sort.Strings(profileTypes)
+
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
-		Names: types,
+		Names: profileTypes,
 	}), nil
-
 }
 
 func (h *Head) WriteTo(ctx context.Context, path string) error {
