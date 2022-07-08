@@ -34,6 +34,7 @@ export default function Header(props: HeaderProps) {
     samples: 'CPU time per function',
     lock_nanoseconds: 'time spent waiting on locks per function',
     lock_samples: 'number of contended locks per function',
+    trace_samples: `{total span time}`,
     '': '',
   };
 

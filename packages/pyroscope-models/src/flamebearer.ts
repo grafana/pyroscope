@@ -27,6 +27,7 @@ export type Flamebearer = {
     | 'bytes'
     | 'lock_samples'
     | 'lock_nanoseconds'
+    | 'trace_samples'
     | '';
   spyName:
     | 'dotneyspy'

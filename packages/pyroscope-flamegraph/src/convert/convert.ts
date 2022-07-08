@@ -16,16 +16,8 @@ export function traceToFlamebearer(trace: Trace): Flamebearer {
     sampleRate: 1000000,
     names: [],
     levels: [],
-    units: 'samples',
+    units: 'trace_samples',
     spyName: 'tracing',
-
-    // we use state for that ?
-    // fitMode: 'HEAD',
-
-    // this fields are only on test data. do we need that ?
-    // topLevel: 0,
-    // rangeMin: 0,
-    // rangeMax: 1,
   };
 
   // Step 1: converting spans to a tree

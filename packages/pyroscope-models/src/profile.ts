@@ -17,6 +17,7 @@ const UnitsSchema = z.preprocess((u) => {
     'bytes',
     'lock_samples',
     'lock_nanoseconds',
+    'trace_samples',
   ];
   if (typeof u === 'string') {
     if (units.includes(u)) {
@@ -24,7 +25,7 @@ const UnitsSchema = z.preprocess((u) => {
     }
   }
   return '';
-}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', '']));
+}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', 'trace_samples', '']));
 
 export const MetadataSchema = z.object({
   // Optional fields since adhoc may be missing them

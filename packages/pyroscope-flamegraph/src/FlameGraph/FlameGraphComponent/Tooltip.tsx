@@ -38,7 +38,6 @@ export type TooltipProps = {
   rightTicks: number;
 
   palette: FlamegraphPalette;
-  spyName: string;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {
@@ -66,15 +65,7 @@ export default function Tooltip(props: TooltipProps) {
   const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef<HTMLDivElement>(null);
 
-  const {
-    numTicks,
-    sampleRate,
-    units,
-    leftTicks,
-    rightTicks,
-    palette,
-    spyName,
-  } = props;
+  const { numTicks, sampleRate, units, leftTicks, rightTicks, palette } = props;
   const onMouseOut = () => {
     setStyle({
       visibility: 'hidden',
@@ -123,7 +114,7 @@ export default function Tooltip(props: TooltipProps) {
             data.total,
             sampleRate,
             numTicks,
-            spyName
+            units
           );
 
           setContent({
@@ -178,7 +169,7 @@ export default function Tooltip(props: TooltipProps) {
 
     // these are the dependencies from props
     // that are going to be used in onMouseMove
-    [numTicks, sampleRate, units, format, xyToData, spyName]
+    [numTicks, sampleRate, units, format, xyToData]
   );
 
   React.useEffect(() => {
@@ -239,12 +230,12 @@ function formatSingle(
   total: number,
   sampleRate: number,
   numTicks: number,
-  spyName: string
+  units: Units
 ) {
   const percent = formatPercent(total / numTicks);
   const samples = `${numberWithCommas(total)} samples,`;
   const left = `${percent}, ${
-    spyName === 'tracing' ? '' : samples
+    units === 'trace_samples' ? '' : samples
   } ${formatter.format(total, sampleRate)}`;
 
   return {
