@@ -6,14 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/segmentio/parquet-go"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
@@ -323,50 +321,14 @@ func (pt *profileTypeSeen) String(t []string) string {
 
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	var (
-		lblNames = []string{
-			"__name__",
-			firemodel.LabelNameUnit,
-			firemodel.LabelNameType,
-			firemodel.LabelNamePeriodType,
-			firemodel.LabelNamePeriodUnit,
-		}
-		series = map[model.Fingerprint]firemodel.Labels{}
-	)
-	sort.Strings(lblNames)
-
-	if err := h.index.ForMatchingProfiles([]*labels.Matcher{}, func(lbls firemodel.Labels, fp model.Fingerprint, _ int64, _ int64) error {
-		if _, ok := series[fp]; !ok {
-			series[fp] = lbls
-		}
-		return nil
-	}); err != nil {
+	values, err := h.index.LabelValues(model.MetricNameLabel)
+	if err != nil {
 		return nil, err
 	}
-
-	var (
-		profileTypes = make([]string, len(series))
-		idx          = 0
-		b            strings.Builder
-	)
-	for _, lbls := range series {
-		b.Reset()
-		_, _ = b.WriteString(lbls.Get("__name__"))
-		_, _ = b.WriteRune(':')
-		_, _ = b.WriteString(lbls.Get(firemodel.LabelNameType))
-		_, _ = b.WriteRune(':')
-		_, _ = b.WriteString(lbls.Get(firemodel.LabelNameUnit))
-		_, _ = b.WriteRune(':')
-		_, _ = b.WriteString(lbls.Get(firemodel.LabelNamePeriodType))
-		_, _ = b.WriteRune(':')
-		_, _ = b.WriteString(lbls.Get(firemodel.LabelNamePeriodUnit))
-		profileTypes[idx] = b.String()
-		idx++
-	}
-	sort.Strings(profileTypes)
+	sort.Strings(values)
 
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
-		Names: profileTypes,
+		Names: values,
 	}), nil
 }
 
