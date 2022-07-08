@@ -9,6 +9,7 @@ module.exports = {
     'plugin:css-modules/recommended',
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
   ],
   rules: {
     '@typescript-eslint/no-shadow': 'warn',
@@ -93,6 +94,18 @@ module.exports = {
 
     // any is bad, if really necessary one can use ShamefulAny
     '@typescript-eslint/no-explicit-any': 'error',
+
+    // ATM there's too many errors to deal with right now
+    // TODO: deal with each issue individually
+    '@typescript-eslint/no-unsafe-member-access': 'warn',
+    '@typescript-eslint/no-unsafe-argument': 'warn',
+    '@typescript-eslint/no-unsafe-call': 'warn',
+    '@typescript-eslint/no-unsafe-assignment': 'warn',
+    '@typescript-eslint/no-unsafe-return': 'warn',
+    '@typescript-eslint/restrict-template-expressions': 'warn',
+
+    // https://github.com/typescript-eslint/typescript-eslint/issues/1184
+    '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
   },
   env: {
     browser: true,

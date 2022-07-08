@@ -131,7 +131,7 @@ export function colorBasedOnPackageName(
   if (!baseClr) {
     console.warn('Could not calculate color. Defaulting to the first one');
     // We assert to Color since the first position is always available
-    return palette.colors[0] as Color;
+    return palette.colors[0];
   }
 
   return baseClr;

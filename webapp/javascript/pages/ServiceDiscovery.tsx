@@ -23,7 +23,11 @@ const ServiceDiscoveryApp = () => {
   const [expandAll, setExpandAll] = useState(true);
 
   useEffect(() => {
-    dispatch(loadTargets());
+    async function run() {
+      await dispatch(loadTargets());
+    }
+
+    void run();
   }, []);
 
   function getUpCount(targets: Target[]) {
