@@ -152,9 +152,14 @@ func (f *Fire) initRing() (_ services.Service, err error) {
 func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, firedb.NewHead())
+	head, err := firedb.NewHead()
 	if err != nil {
-		return
+		return nil, err
+	}
+
+	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, head)
+	if err != nil {
+		return nil, err
 	}
 	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
