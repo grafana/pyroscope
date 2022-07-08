@@ -67,7 +67,7 @@ func ProfilesSchema() *parquet.Schema {
 
 	return parquet.NewSchema("Profile", fireparquet.Group{
 		fireparquet.NewGroupField("ID", parquet.UUID()),
-		fireparquet.NewGroupField("SeriesIDs", parquet.Repeated(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
+		fireparquet.NewGroupField("SeriesRefs", parquet.Repeated(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
 		fireparquet.NewGroupField("Samples", parquet.Repeated(sample)),
 		fireparquet.NewGroupField("DropFrames", stringRef),
 		fireparquet.NewGroupField("KeepFrames", stringRef),

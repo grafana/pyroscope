@@ -234,7 +234,7 @@ func TestHeadProfileTypes(t *testing.T) {
 
 	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
+	require.Equal(t, []string{"bar:type:unit:type:unit", "foo:type:unit:type:unit"}, res.Msg.Names)
 }
 
 func TestHeadIngestRealProfiles(t *testing.T) {

@@ -15,10 +15,11 @@ import (
 var seps = []byte{'\xff'}
 
 const (
-	LabelNameType       = "__type__"
-	LabelNameUnit       = "__unit__"
-	LabelNamePeriodType = "__period_type__"
-	LabelNamePeriodUnit = "__period_unit__"
+	LabelNameProfileType = "__profile_type__"
+	LabelNameType        = "__type__"
+	LabelNameUnit        = "__unit__"
+	LabelNamePeriodType  = "__period_type__"
+	LabelNamePeriodUnit  = "__period_unit__"
 )
 
 // Labels is a sorted set of labels. Order has to be guaranteed upon
