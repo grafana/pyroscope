@@ -17,7 +17,6 @@ import (
 )
 
 func parseProfile(t testing.TB, path string) *profilev1.Profile {
-
 	f, err := os.Open(path)
 	require.NoError(t, err, "failed opening profile: ", path)
 	r, err := gzip.NewReader(f)
@@ -79,7 +78,7 @@ func newProfileFoo() *profilev1.Profile {
 		SampleType: []*profilev1.ValueType{newValueType()},
 		Sample: []*profilev1.Sample{
 			{
-				Value:      []int64{0123},
+				Value:      []int64{0o123},
 				LocationId: []uint64{1},
 			},
 			{
@@ -162,9 +161,7 @@ func TestHeadIngestFunctions(t *testing.T) {
 }
 
 func TestHeadIngestStrings(t *testing.T) {
-	var (
-		ctx = context.Background()
-	)
+	ctx := context.Background()
 	head, err := NewHead()
 	require.NoError(t, err)
 
@@ -185,9 +182,7 @@ func TestHeadIngestStrings(t *testing.T) {
 }
 
 func TestHeadIngestStacktraces(t *testing.T) {
-	var (
-		ctx = context.Background()
-	)
+	ctx := context.Background()
 	head, err := NewHead()
 	require.NoError(t, err)
 
@@ -214,7 +209,6 @@ func TestHeadIngestStacktraces(t *testing.T) {
 	}
 	// expect 4 samples, 3 of which distinct
 	require.Equal(t, []uint64{0, 1, 2, 2}, samples)
-
 }
 
 func TestHeadLabelValues(t *testing.T) {
@@ -230,7 +224,6 @@ func TestHeadLabelValues(t *testing.T) {
 	res, err = head.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "job"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
-
 }
 
 func TestHeadProfileTypes(t *testing.T) {
@@ -241,16 +234,14 @@ func TestHeadProfileTypes(t *testing.T) {
 
 	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"bar:type:unit:type:unit", "foo:type:unit:type:unit"}, res.Msg.Names)
+	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
 }
 
 func TestHeadIngestRealProfiles(t *testing.T) {
-	var (
-		profilePaths = []string{
-			"testdata/heap",
-			"testdata/profile",
-		}
-	)
+	profilePaths := []string{
+		"testdata/heap",
+		"testdata/profile",
+	}
 
 	head, err := NewHead()
 	require.NoError(t, err)
@@ -290,5 +281,4 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 			profileCount++
 		}
 	}
-
 }
