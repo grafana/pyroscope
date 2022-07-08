@@ -121,6 +121,7 @@ module.exports = {
   globals: {
     // see ./lib/alias.d.ts
     ShamefulAny: true,
+    JSX: true,
   },
   parserOptions: {
     project: ['./tsconfig.json'],
