@@ -1,6 +1,6 @@
 // originally from https://github.com/cortexproject/cortex/blob/868898a2921c662dcd4f90683e8b95c927a8edd8/pkg/ingester/index/index.go
 // but modified to support sharding queries.
-package index
+package tsdb
 
 import (
 	"bytes"
@@ -11,9 +11,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
-	"unicode/utf8"
 	"unsafe"
 
 	"github.com/prometheus/common/model"
@@ -305,9 +303,9 @@ func (shard *indexShard) lookup(matchers []*labels.Matcher) []model.Fingerprint 
 		if matcher.Type == labels.MatchEqual {
 			fps := values.fps[matcher.Value]
 			toIntersect = append(toIntersect, fps.fps...) // deliberate copy
-		} else if matcher.Type == labels.MatchRegexp && len(FindSetMatches(matcher.Value)) > 0 {
+		} else if matcher.Type == labels.MatchRegexp && len(findSetMatches(matcher.Value)) > 0 {
 			// The lookup is of the form `=~"a|b|c|d"`
-			set := FindSetMatches(matcher.Value)
+			set := findSetMatches(matcher.Value)
 			for _, value := range set {
 				toIntersect = append(toIntersect, values.fps[value].fps...)
 			}
@@ -492,58 +490,4 @@ func mergeTwoStringSlices(a, b []string) []string {
 	result = append(result, a[i:]...)
 	result = append(result, b[j:]...)
 	return result
-}
-
-// Bitmap used by func isRegexMetaCharacter to check whether a character needs to be escaped.
-var regexMetaCharacterBytes [16]byte
-
-// isRegexMetaCharacter reports whether byte b needs to be escaped.
-func isRegexMetaCharacter(b byte) bool {
-	return b < utf8.RuneSelf && regexMetaCharacterBytes[b%16]&(1<<(b/16)) != 0
-}
-
-func init() {
-	for _, b := range []byte(`.+*?()|[]{}^$`) {
-		regexMetaCharacterBytes[b%16] |= 1 << (b / 16)
-	}
-}
-
-// FindSetMatches returns list of values that can be equality matched on.
-// copied from Prometheus querier.go, removed check for Prometheus wrapper.
-func FindSetMatches(pattern string) []string {
-	escaped := false
-	sets := []*strings.Builder{{}}
-	for i := 0; i < len(pattern); i++ {
-		if escaped {
-			switch {
-			case isRegexMetaCharacter(pattern[i]):
-				sets[len(sets)-1].WriteByte(pattern[i])
-			case pattern[i] == '\\':
-				sets[len(sets)-1].WriteByte('\\')
-			default:
-				return nil
-			}
-			escaped = false
-		} else {
-			switch {
-			case isRegexMetaCharacter(pattern[i]):
-				if pattern[i] == '|' {
-					sets = append(sets, &strings.Builder{})
-				} else {
-					return nil
-				}
-			case pattern[i] == '\\':
-				escaped = true
-			default:
-				sets[len(sets)-1].WriteByte(pattern[i])
-			}
-		}
-	}
-	matches := make([]string, 0, len(sets))
-	for _, s := range sets {
-		if s.Len() > 0 {
-			matches = append(matches, s.String())
-		}
-	}
-	return matches
 }
