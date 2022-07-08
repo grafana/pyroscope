@@ -21,10 +21,10 @@ import (
 	"strconv"
 	"testing"
 
-	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
-	"github.com/prometheus/prometheus/storage"
+	firemodel "github.com/grafana/fire/pkg/model"
 )
 
 func TestMemPostings_addFor(t *testing.T) {
