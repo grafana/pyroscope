@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/bufbuild/connect-go"
@@ -233,18 +234,40 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) error {
 	// build label set per sample type before references are rewritten
-	lbls := firemodel.NewLabelsBuilder(externalLabels)
+	var (
+		sb                                             strings.Builder
+		lbls                                           = firemodel.NewLabelsBuilder(externalLabels)
+		sampleType, sampleUnit, periodType, periodUnit string
+		metricName                                     = lbls.Labels().Get(model.MetricNameLabel)
+	)
 
 	// set common labels
 	if p.PeriodType != nil {
-		lbls.Set(firemodel.LabelNamePeriodType, p.StringTable[p.PeriodType.Type])
-		lbls.Set(firemodel.LabelNamePeriodUnit, p.StringTable[p.PeriodType.Unit])
+		periodType = p.StringTable[p.PeriodType.Type]
+		lbls.Set(firemodel.LabelNamePeriodType, periodType)
+		periodUnit = p.StringTable[p.PeriodType.Unit]
+		lbls.Set(firemodel.LabelNamePeriodUnit, periodUnit)
 	}
 
 	seriesRefs := make([]model.Fingerprint, len(p.SampleType))
 	for pos := range p.SampleType {
-		lbls.Set(firemodel.LabelNameType, p.StringTable[p.SampleType[pos].Type])
-		lbls.Set(firemodel.LabelNameUnit, p.StringTable[p.SampleType[pos].Unit])
+		sampleType = p.StringTable[p.SampleType[pos].Type]
+		lbls.Set(firemodel.LabelNameType, sampleType)
+		sampleUnit = p.StringTable[p.SampleType[pos].Unit]
+		lbls.Set(firemodel.LabelNameUnit, sampleUnit)
+
+		sb.Reset()
+		_, _ = sb.WriteString(metricName)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(sampleType)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(sampleUnit)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(periodType)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(periodUnit)
+		lbls.Set(firemodel.LabelNameProfileType, sb.String())
+
 		seriesRefs[pos] = h.index.Add(p.TimeNanos, lbls.Labels())
 	}
 
@@ -321,7 +344,7 @@ func (pt *profileTypeSeen) String(t []string) string {
 
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	values, err := h.index.LabelValues(model.MetricNameLabel)
+	values, err := h.index.LabelValues(firemodel.LabelNameProfileType)
 	if err != nil {
 		return nil, err
 	}
