@@ -48,18 +48,22 @@ type series struct {
 }
 
 type mockIndex struct {
-	series   map[storage.SeriesRef]series
-	postings map[*commonv1.LabelPair][]storage.SeriesRef
+	series map[storage.SeriesRef]series
+	// we're forced to use a anonymous struct here because we can't use commonv1.LabelPair as it's not comparable.
+	postings map[struct{ Name, Value string }][]storage.SeriesRef
 	symbols  map[string]struct{}
 }
 
 func newMockIndex() mockIndex {
 	ix := mockIndex{
 		series:   make(map[storage.SeriesRef]series),
-		postings: make(map[*commonv1.LabelPair][]storage.SeriesRef),
+		postings: make(map[struct{ Name, Value string }][]storage.SeriesRef),
 		symbols:  make(map[string]struct{}),
 	}
-	ix.postings[allPostingsKey] = []storage.SeriesRef{}
+	ix.postings[struct {
+		Name  string
+		Value string
+	}{allPostingsKey.Name, allPostingsKey.Value}] = []storage.SeriesRef{}
 	return ix
 }
 
@@ -74,12 +78,30 @@ func (m mockIndex) AddSeries(ref storage.SeriesRef, l firemodel.Labels, chunks .
 	for _, lbl := range l {
 		m.symbols[lbl.Name] = struct{}{}
 		m.symbols[lbl.Value] = struct{}{}
-		if _, ok := m.postings[lbl]; !ok {
-			m.postings[lbl] = []storage.SeriesRef{}
+		if _, ok := m.postings[struct {
+			Name  string
+			Value string
+		}{lbl.Name, lbl.Value}]; !ok {
+			m.postings[struct {
+				Name  string
+				Value string
+			}{lbl.Name, lbl.Value}] = []storage.SeriesRef{}
 		}
-		m.postings[lbl] = append(m.postings[lbl], ref)
+		m.postings[struct {
+			Name  string
+			Value string
+		}{lbl.Name, lbl.Value}] = append(m.postings[struct {
+			Name  string
+			Value string
+		}{lbl.Name, lbl.Value}], ref)
 	}
-	m.postings[allPostingsKey] = append(m.postings[allPostingsKey], ref)
+	m.postings[struct {
+		Name  string
+		Value string
+	}{allPostingsKey.Name, allPostingsKey.Value}] = append(m.postings[struct {
+		Name  string
+		Value string
+	}{allPostingsKey.Name, allPostingsKey.Value}], ref)
 
 	s := series{l: l}
 	// Actual chunk data is not stored in the index.
@@ -106,8 +128,10 @@ func (m mockIndex) LabelValues(name string) ([]string, error) {
 func (m mockIndex) Postings(name string, values ...string) (Postings, error) {
 	p := []Postings{}
 	for _, value := range values {
-		l := &commonv1.LabelPair{Name: name, Value: value}
-		p = append(p, NewListPostings(m.postings[l]))
+		p = append(p, NewListPostings(m.postings[struct {
+			Name  string
+			Value string
+		}{Name: name, Value: value}]))
 	}
 	return Merge(p...), nil
 }

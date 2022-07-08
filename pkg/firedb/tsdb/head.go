@@ -75,7 +75,8 @@ func (h *Head) Add(ts int64, lbs firemodel.Labels) model.Fingerprint {
 	return fp
 }
 
-func (h *Head) ForMatchingProfiles(matchers []*labels.Matcher, fn func(firemodel.Labels, int64, int64) error) error {
+// ForMatchingProfiles iterates through all matching profiles and calls f for each profiles label set.
+func (h *Head) ForMatchingProfiles(matchers []*labels.Matcher, fn func(lbs firemodel.Labels, mint int64, maxt int64) error) error {
 	filters, matchers := SplitFiltersAndMatchers(matchers)
 	ids, err := h.ix.Lookup(matchers, nil)
 	if err != nil {
