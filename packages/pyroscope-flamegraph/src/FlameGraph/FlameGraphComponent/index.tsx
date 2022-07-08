@@ -254,7 +254,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         style={{
           opacity: dataUnavailable ? 0 : 1,
         }}
-        className={indexStyles.canvasContainer}
       >
         <canvas
           height="0"
