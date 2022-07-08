@@ -282,6 +282,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       {flamegraph && (
         <Tooltip
           format={flamebearer.format}
+          spyName={flamebearer.spyName}
           canvasRef={canvasRef}
           xyToData={xyToTooltipData as any /* TODO */}
           numTicks={flamebearer.numTicks}

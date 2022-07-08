@@ -38,6 +38,7 @@ export type TooltipProps = {
   rightTicks: number;
 
   palette: FlamegraphPalette;
+  spyName?: string;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {
@@ -65,7 +66,15 @@ export default function Tooltip(props: TooltipProps) {
   const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef<HTMLDivElement>(null);
 
-  const { numTicks, sampleRate, units, leftTicks, rightTicks, palette } = props;
+  const {
+    numTicks,
+    sampleRate,
+    units,
+    leftTicks,
+    rightTicks,
+    palette,
+    spyName,
+  } = props;
   const onMouseOut = () => {
     setStyle({
       visibility: 'hidden',
@@ -175,6 +184,10 @@ export default function Tooltip(props: TooltipProps) {
       return () => {};
     }
 
+    if (spyName === 'tracing') {
+      return;
+    }
+
     // watch for mouse events on the bar
     canvasEl.addEventListener('mousemove', memoizedOnMouseMove);
     canvasEl.addEventListener('mouseout', onMouseOut);
@@ -183,7 +196,7 @@ export default function Tooltip(props: TooltipProps) {
       canvasEl.removeEventListener('mousemove', memoizedOnMouseMove);
       canvasEl.removeEventListener('mouseout', onMouseOut);
     };
-  }, [canvasRef.current, memoizedOnMouseMove]);
+  }, [canvasRef.current, memoizedOnMouseMove, spyName]);
 
   return (
     <div
