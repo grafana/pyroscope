@@ -49,7 +49,7 @@ func (t idConversionTable) rewriteUint64(idx *uint64) {
 }
 
 type Models interface {
-	*Profile | *Stacktrace | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
+	*schemav1.Profile | *schemav1.Stacktrace | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
 }
 
 // rewriter contains slices to rewrite the per profile reference into per head references.
@@ -192,22 +192,21 @@ func (h *Head) internExternalLabels(ctx context.Context, lblStrs []*commonv1.Lab
 	return lblRefs, nil
 }
 
-func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([]*Sample, error) {
+func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([]*schemav1.Sample, error) {
 	var (
-		out         = make([]*Sample, len(in))
-		stacktraces = make([]*Stacktrace, len(in))
+		out         = make([]*schemav1.Sample, len(in))
+		stacktraces = make([]*schemav1.Stacktrace, len(in))
 	)
 
 	for pos := range in {
 		// populate samples
-		out[pos] = &Sample{
-			StacktraceID: 0, // TODO: Ensure stacktrace id exist
-			Values:       in[pos].Value,
-			Labels:       r.strings.rewritePprofLabels(in[pos].Label),
+		out[pos] = &schemav1.Sample{
+			Values: in[pos].Value,
+			Labels: r.strings.rewritePprofLabels(in[pos].Label),
 		}
 
 		// build full stack traces
-		stacktraces[pos] = &Stacktrace{
+		stacktraces[pos] = &schemav1.Stacktrace{
 			LocationIDs: in[pos].LocationId,
 		}
 	}
@@ -254,9 +253,8 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		return err
 	}
 
-	profile := &Profile{
-		// TODO: Add ID
-		ExternalLabels:    lblRefs,
+	profile := &schemav1.Profile{
+		SeriesRefs:        seriesRefs,
 		Samples:           samples,
 		Types:             p.SampleType,
 		DropFrames:        p.DropFrames,
@@ -269,7 +267,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
-	if err := h.profiles.ingest(ctx, []*Profile{profile}, rewrites); err != nil {
+	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
 		return err
 	}
 
