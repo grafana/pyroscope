@@ -72,14 +72,14 @@ function generateCellDouble(
 function generateTable(
   flamebearer: Flamebearer
 ): ((SingleCell | DoubleCell) & { name: string })[] {
-  const table = [];
+  const table: ((SingleCell | DoubleCell) & { name: string })[] = [];
   if (!flamebearer) {
     return table;
   }
   const { names, levels, format } = flamebearer;
   const ff = format !== 'double' ? singleFF : doubleFF;
 
-  const hash = {};
+  const hash: Record<string, (DoubleCell | SingleCell) & { name: string }> = {};
   // eslint-disable-next-line no-plusplus
   for (let i = 0; i < levels.length; i++) {
     const level = levels[i];
@@ -92,10 +92,10 @@ function generateTable(
       // but better for type checking
       if (format === 'single') {
         const ff = singleFF;
-        generateCellSingle(ff, hash[name], level, j);
+        generateCellSingle(ff, hash[name] as SingleCell, level, j);
       } else {
         const ff = doubleFF;
-        generateCellDouble(ff, hash[name], level, j);
+        generateCellDouble(ff, hash[name] as DoubleCell, level, j);
       }
     }
   }
@@ -283,7 +283,19 @@ const TableBody = ({
   if (sortBy === 'name') {
     sorted = table.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
   } else {
-    sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
+    switch (sortBy) {
+      case 'total':
+      case 'self': {
+        sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
+      }
+
+      // sorting by all other fields means it must be a double
+      default: {
+        sorted = (table as (DoubleCell & { name: string })[]).sort(
+          (a, b) => m * (a[sortBy] - b[sortBy])
+        );
+      }
+    }
   }
 
   // The problem is that when you switch apps or time-range and the function
