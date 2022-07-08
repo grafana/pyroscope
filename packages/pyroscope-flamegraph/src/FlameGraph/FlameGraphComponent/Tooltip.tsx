@@ -38,7 +38,7 @@ export type TooltipProps = {
   rightTicks: number;
 
   palette: FlamegraphPalette;
-  spyName?: string;
+  spyName: string;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {
@@ -118,7 +118,13 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (data.format) {
         case 'single': {
-          const d = formatSingle(formatter, data.total, sampleRate, numTicks);
+          const d = formatSingle(
+            formatter,
+            data.total,
+            sampleRate,
+            numTicks,
+            spyName
+          );
 
           setContent({
             title: {
@@ -172,7 +178,7 @@ export default function Tooltip(props: TooltipProps) {
 
     // these are the dependencies from props
     // that are going to be used in onMouseMove
-    [numTicks, sampleRate, units, format, xyToData]
+    [numTicks, sampleRate, units, format, xyToData, spyName]
   );
 
   React.useEffect(() => {
@@ -184,10 +190,6 @@ export default function Tooltip(props: TooltipProps) {
       return () => {};
     }
 
-    if (spyName === 'tracing') {
-      return;
-    }
-
     // watch for mouse events on the bar
     canvasEl.addEventListener('mousemove', memoizedOnMouseMove);
     canvasEl.addEventListener('mouseout', onMouseOut);
@@ -196,7 +198,7 @@ export default function Tooltip(props: TooltipProps) {
       canvasEl.removeEventListener('mousemove', memoizedOnMouseMove);
       canvasEl.removeEventListener('mouseout', onMouseOut);
     };
-  }, [canvasRef.current, memoizedOnMouseMove, spyName]);
+  }, [canvasRef.current, memoizedOnMouseMove]);
 
   return (
     <div
@@ -236,12 +238,14 @@ function formatSingle(
   formatter: Formatter,
   total: number,
   sampleRate: number,
-  numTicks: number
+  numTicks: number,
+  spyName: string
 ) {
   const percent = formatPercent(total / numTicks);
-  const left = `${percent}, ${numberWithCommas(
-    total
-  )} samples, ${formatter.format(total, sampleRate)}`;
+  const samples = `${numberWithCommas(total)} samples,`;
+  const left = `${percent}, ${
+    spyName === 'tracing' ? '' : samples
+  } ${formatter.format(total, sampleRate)}`;
 
   return {
     left,
