@@ -1,5 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 // ISC License
 
 // Copyright (c) 2018, Mapbox

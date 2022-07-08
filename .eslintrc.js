@@ -105,7 +105,7 @@ module.exports = {
     '@typescript-eslint/restrict-template-expressions': 'warn',
 
     // https://github.com/typescript-eslint/typescript-eslint/issues/1184
-    '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
+    '@typescript-eslint/no-floating-promises': ['warn', { ignoreVoid: true }],
   },
   env: {
     browser: true,

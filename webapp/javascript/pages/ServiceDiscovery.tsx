@@ -27,7 +27,7 @@ const ServiceDiscoveryApp = () => {
       await dispatch(loadTargets());
     }
 
-    void run();
+    run();
   }, []);
 
   function getUpCount(targets: Target[]) {
