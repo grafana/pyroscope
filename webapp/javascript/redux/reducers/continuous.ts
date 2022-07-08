@@ -741,7 +741,7 @@ export const continuousSlice = createSlice({
     });
 
     // TODO:
-    builder.addCase(fetchTags.pending, (state) => {});
+    builder.addCase(fetchTags.pending, () => {});
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
       // convert each
@@ -757,7 +757,7 @@ export const continuousSlice = createSlice({
     });
 
     // TODO
-    builder.addCase(fetchTags.rejected, (state) => {});
+    builder.addCase(fetchTags.rejected, () => {});
 
     // TODO other cases
     builder.addCase(fetchTagValues.fulfilled, (state, action) => {

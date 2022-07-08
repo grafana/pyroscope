@@ -1,6 +1,4 @@
-import { z, ZodError } from 'zod';
-import { Result } from '@webapp/util/fp';
-import { modelToResult } from './utils';
+import { z } from 'zod';
 
 export const appNamesModel = z.array(z.string());
 

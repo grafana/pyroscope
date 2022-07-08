@@ -1,4 +1,5 @@
 /* eslint-disable max-classes-per-file */
+import type React from 'react';
 
 // Got from https://github.com/rodrigowirth/react-flot/blob/master/src/ReactFlot.d.ts
 declare module 'react-flot' {

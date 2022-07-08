@@ -39,7 +39,7 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
 class DurationFormatter {
   divider = 1;
 
-  suffix: string = 'second';
+  suffix = 'second';
 
   durations: [number, string][] = [
     [60, 'minute'],
@@ -90,7 +90,7 @@ class NanosecondsFormatter {
 
   multiplier = 1;
 
-  suffix: string = 'second';
+  suffix = 'second';
 
   durations: [number, string][] = [
     [60, 'minute'],
@@ -121,7 +121,7 @@ class NanosecondsFormatter {
     }
   }
 
-  format(samples: number, sampleRate: number) {
+  format(samples: number) {
     const n = samples / 1000000000 / this.divider;
     let nStr = n.toFixed(2);
 

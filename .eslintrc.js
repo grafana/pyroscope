@@ -1,22 +1,20 @@
 const path = require('path');
 
 module.exports = {
-  plugins: ['prettier', 'css-modules', 'import'],
+  plugins: ['@typescript-eslint', 'css-modules'],
   extends: [
     'airbnb-typescript-prettier',
     'plugin:cypress/recommended',
     'plugin:import/typescript',
-    'prettier',
-    'prettier/react',
     'plugin:css-modules/recommended',
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
   ],
   rules: {
-    '@typescript-eslint/no-unused-vars': 'warn',
     '@typescript-eslint/no-shadow': 'warn',
 
     // https://stackoverflow.com/questions/63818415/react-was-used-before-it-was-defined/64024916#64024916
-    'no-use-before-define': ['off'],
-    '@typescript-eslint/no-use-before-define': 'warn',
+    '@typescript-eslint/no-use-before-define': ['off'],
 
     // react functional components are usually written using PascalCase
     '@typescript-eslint/naming-convention': [
@@ -85,15 +83,18 @@ module.exports = {
 
     // https://humanwhocodes.com/blog/2019/01/stop-using-default-exports-javascript-module/
     'import/prefer-default-export': 'off',
+
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      {
+        ignoreRestSiblings: true,
+      },
+    ],
   },
   env: {
     browser: true,
-    //    node: true,
     jquery: true,
   },
-  //  parserOptions: {
-  //    project: './tsconfig.eslint.json',
-  //  },
   settings: {
     'import/internal-regex': '^@pyroscope',
     'import/resolver': {

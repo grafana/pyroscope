@@ -5,7 +5,6 @@ import Icon from '@webapp/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
-import { useAppDispatch } from '@webapp/redux/hooks';
 import { logIn } from '@webapp/services/users';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
 import {
@@ -25,7 +24,6 @@ import buttonStyles from './buttons.module.css';
 function SignInPage() {
   const history = useHistory();
   const location = useLocation();
-  const dispatch = useAppDispatch();
   const [form, setForm] = useState({
     username: '',
     password: '',

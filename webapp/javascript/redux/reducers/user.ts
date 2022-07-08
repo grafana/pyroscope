@@ -2,7 +2,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { type User } from '@webapp/models/users';
 import { connect, useSelector } from 'react-redux';
-import { PAGES } from '@webapp/pages/constants';
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
