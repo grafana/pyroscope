@@ -40,6 +40,7 @@ function StandaloneApp() {
     <div>
       <Box className={styles.container}>
         <FlamegraphRenderer
+          showCredit={false}
           flamebearer={flamebearer as any}
           ExportData={null}
         />
