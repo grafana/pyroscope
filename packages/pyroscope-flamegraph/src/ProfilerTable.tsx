@@ -91,11 +91,9 @@ function generateTable(
       // TODO(eh-am): not the most optimal performance wise
       // but better for type checking
       if (format === 'single') {
-        const ff = singleFF;
-        generateCellSingle(ff, hash[name] as SingleCell, level, j);
+        generateCellSingle(singleFF, hash[name] as SingleCell, level, j);
       } else {
-        const ff = doubleFF;
-        generateCellDouble(ff, hash[name] as DoubleCell, level, j);
+        generateCellDouble(doubleFF, hash[name] as DoubleCell, level, j);
       }
     }
   }
@@ -113,7 +111,6 @@ function backgroundImageStyle(a: number, b: number, color: Color) {
   const k = w - (a / b) * w;
   const clr = color.alpha(1.0);
   return {
-    // backgroundColor: 'transparent',
     backgroundImage: `linear-gradient(${clr}, ${clr})`,
     backgroundPosition: `-${k}px 0px`,
     backgroundRepeat: 'no-repeat',
@@ -287,6 +284,7 @@ const TableBody = ({
       case 'total':
       case 'self': {
         sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
+        break;
       }
 
       // sorting by all other fields means it must be a double
