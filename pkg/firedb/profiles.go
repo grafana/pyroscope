@@ -23,12 +23,7 @@ func (*profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable
 	r.locations = elemRewriter
 }
 
-func (*profilesHelper) rewrite(r *rewriter, s *Profile) error {
-
-	for pos := range s.Types {
-		r.strings.rewrite(&s.Types[pos].Type)
-		r.strings.rewrite(&s.Types[pos].Unit)
-	}
+func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
 
 	for pos := range s.Comment {
 		r.strings.rewrite(&s.Comment[pos])

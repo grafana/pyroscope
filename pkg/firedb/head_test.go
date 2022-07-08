@@ -31,16 +31,27 @@ func parseProfile(t testing.TB, path string) *profilev1.Profile {
 	return p
 }
 
+var valueTypeStrings = []string{"unit", "type"}
+
+func newValueType() *profilev1.ValueType {
+	return &profilev1.ValueType{
+		Unit: 1,
+		Type: 2,
+	}
+}
+
 func newProfileFoo() *profilev1.Profile {
+	baseTable := append([]string{""}, valueTypeStrings...)
+	baseTableLen := int64(len(baseTable)) + 0
 	return &profilev1.Profile{
 		Function: []*profilev1.Function{
 			{
 				Id:   1,
-				Name: 1,
+				Name: baseTableLen + 0,
 			},
 			{
 				Id:   2,
-				Name: 2,
+				Name: baseTableLen + 1,
 			},
 		},
 		Location: []*profilev1.Location{
@@ -56,15 +67,16 @@ func newProfileFoo() *profilev1.Profile {
 			},
 		},
 		Mapping: []*profilev1.Mapping{
-			{Id: 1, Filename: 3},
+			{Id: 1, Filename: baseTableLen + 2},
 		},
-		StringTable: []string{
-			"",
+		StringTable: append(baseTable, []string{
 			"func_a",
 			"func_b",
 			"my-foo-binary",
-		},
-		TimeNanos: 123456,
+		}...),
+		TimeNanos:  123456,
+		PeriodType: newValueType(),
+		SampleType: []*profilev1.ValueType{newValueType()},
 		Sample: []*profilev1.Sample{
 			{
 				Value:      []int64{0123},
@@ -79,15 +91,17 @@ func newProfileFoo() *profilev1.Profile {
 }
 
 func newProfileBar() *profilev1.Profile {
+	baseTable := append([]string{""}, valueTypeStrings...)
+	baseTableLen := int64(len(baseTable)) + 0
 	return &profilev1.Profile{
 		Function: []*profilev1.Function{
 			{
 				Id:   10,
-				Name: 2,
+				Name: baseTableLen + 1,
 			},
 			{
 				Id:   21,
-				Name: 1,
+				Name: baseTableLen + 0,
 			},
 		},
 		Location: []*profilev1.Location{
@@ -98,15 +112,16 @@ func newProfileBar() *profilev1.Profile {
 			},
 		},
 		Mapping: []*profilev1.Mapping{
-			{Id: 1, Filename: 3},
+			{Id: 1, Filename: baseTableLen + 2},
 		},
-		StringTable: []string{
-			"",
+		StringTable: append(baseTable, []string{
 			"func_b",
 			"func_a",
 			"my-bar-binary",
-		},
-		TimeNanos: 123456,
+		}...),
+		TimeNanos:  123456,
+		PeriodType: newValueType(),
+		SampleType: []*profilev1.ValueType{newValueType()},
 		Sample: []*profilev1.Sample{
 			{
 				Value:      []int64{2345},
@@ -132,7 +147,8 @@ func newProfileBaz() *profilev1.Profile {
 }
 
 func TestHeadIngestFunctions(t *testing.T) {
-	head := NewHead()
+	head, err := NewHead()
+	require.NoError(t, err)
 
 	require.NoError(t, head.Ingest(context.Background(), newProfileFoo()))
 	require.NoError(t, head.Ingest(context.Background(), newProfileBar()))
@@ -140,38 +156,40 @@ func TestHeadIngestFunctions(t *testing.T) {
 
 	require.Equal(t, 3, len(head.functions.slice))
 	helper := &functionsHelper{}
-	assert.Equal(t, functionsKey{Name: 1}, helper.key(head.functions.slice[0]))
-	assert.Equal(t, functionsKey{Name: 2}, helper.key(head.functions.slice[1]))
-	assert.Equal(t, functionsKey{Name: 5}, helper.key(head.functions.slice[2]))
+	assert.Equal(t, functionsKey{Name: 3}, helper.key(head.functions.slice[0]))
+	assert.Equal(t, functionsKey{Name: 4}, helper.key(head.functions.slice[1]))
+	assert.Equal(t, functionsKey{Name: 7}, helper.key(head.functions.slice[2]))
 }
 
 func TestHeadIngestStrings(t *testing.T) {
 	var (
-		head = NewHead()
-		ctx  = context.Background()
+		ctx = context.Background()
 	)
+	head, err := NewHead()
+	require.NoError(t, err)
 
 	r := &rewriter{}
 	require.NoError(t, head.strings.ingest(ctx, newProfileFoo().StringTable, r))
-	require.Equal(t, []string{"", "func_a", "func_b", "my-foo-binary"}, head.strings.slice)
-	require.Equal(t, stringConversionTable{0, 1, 2, 3}, r.strings)
+	require.Equal(t, []string{"", "unit", "type", "func_a", "func_b", "my-foo-binary"}, head.strings.slice)
+	require.Equal(t, stringConversionTable{0, 1, 2, 3, 4, 5}, r.strings)
 
 	r = &rewriter{}
 	require.NoError(t, head.strings.ingest(ctx, newProfileBar().StringTable, r))
-	require.Equal(t, []string{"", "func_a", "func_b", "my-foo-binary", "my-bar-binary"}, head.strings.slice)
-	require.Equal(t, stringConversionTable{0, 2, 1, 4}, r.strings)
+	require.Equal(t, []string{"", "unit", "type", "func_a", "func_b", "my-foo-binary", "my-bar-binary"}, head.strings.slice)
+	require.Equal(t, stringConversionTable{0, 1, 2, 4, 3, 6}, r.strings)
 
 	r = &rewriter{}
 	require.NoError(t, head.strings.ingest(ctx, newProfileBaz().StringTable, r))
-	require.Equal(t, []string{"", "func_a", "func_b", "my-foo-binary", "my-bar-binary", "func_c"}, head.strings.slice)
-	require.Equal(t, stringConversionTable{0, 5}, r.strings)
+	require.Equal(t, []string{"", "unit", "type", "func_a", "func_b", "my-foo-binary", "my-bar-binary", "func_c"}, head.strings.slice)
+	require.Equal(t, stringConversionTable{0, 7}, r.strings)
 }
 
 func TestHeadIngestStacktraces(t *testing.T) {
 	var (
-		head = NewHead()
-		ctx  = context.Background()
+		ctx = context.Background()
 	)
+	head, err := NewHead()
+	require.NoError(t, err)
 
 	require.NoError(t, head.Ingest(ctx, newProfileFoo()))
 	require.NoError(t, head.Ingest(ctx, newProfileBar()))
@@ -200,7 +218,8 @@ func TestHeadIngestStacktraces(t *testing.T) {
 }
 
 func TestHeadLabelValues(t *testing.T) {
-	head := NewHead()
+	head, err := NewHead()
+	require.NoError(t, err)
 	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
 	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
 
@@ -214,6 +233,17 @@ func TestHeadLabelValues(t *testing.T) {
 
 }
 
+func TestHeadProfileTypes(t *testing.T) {
+	head, err := NewHead()
+	require.NoError(t, err)
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), &commonv1.LabelPair{Name: "__name__", Value: "foo"}, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), &commonv1.LabelPair{Name: "__name__", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+
+	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"bar:type:unit:type:unit", "foo:type:unit:type:unit"}, res.Msg.Names)
+}
+
 func TestHeadIngestRealProfiles(t *testing.T) {
 	var (
 		profilePaths = []string{
@@ -222,7 +252,8 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 		}
 	)
 
-	head := NewHead()
+	head, err := NewHead()
+	require.NoError(t, err)
 	ctx := context.Background()
 
 	for range make([]struct{}, 100) {
@@ -246,7 +277,8 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 		profileCount = 0
 	)
 
-	head := NewHead()
+	head, err := NewHead()
+	require.NoError(t, err)
 	ctx := context.Background()
 
 	t.ReportAllocs()

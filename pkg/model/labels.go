@@ -14,6 +14,13 @@ import (
 
 var seps = []byte{'\xff'}
 
+const (
+	LabelNameType       = "__type__"
+	LabelNameUnit       = "__unit__"
+	LabelNamePeriodType = "__period_type__"
+	LabelNamePeriodUnit = "__period_unit__"
+)
+
 // Labels is a sorted set of labels. Order has to be guaranteed upon
 // instantiation.
 type Labels []*commonv1.LabelPair
@@ -185,4 +192,93 @@ func CompareLabelPairs(a []*commonv1.LabelPair, b []*commonv1.LabelPair) int {
 	}
 	// If all labels so far were in common, the set with fewer labels comes first.
 	return len(a) - len(b)
+}
+
+// LabelsBuilder allows modifying Labels.
+type LabelsBuilder struct {
+	base Labels
+	del  []string
+	add  []*commonv1.LabelPair
+}
+
+// NewLabelsBuilder returns a new LabelsBuilder.
+func NewLabelsBuilder(base Labels) *LabelsBuilder {
+	b := &LabelsBuilder{
+		del: make([]string, 0, 5),
+		add: make([]*commonv1.LabelPair, 0, 5),
+	}
+	b.Reset(base)
+	return b
+}
+
+// Reset clears all current state for the builder.
+func (b *LabelsBuilder) Reset(base Labels) {
+	b.base = base
+	b.del = b.del[:0]
+	b.add = b.add[:0]
+	for _, l := range b.base {
+		if l.Value == "" {
+			b.del = append(b.del, l.Name)
+		}
+	}
+}
+
+// Del deletes the label of the given name.
+func (b *LabelsBuilder) Del(ns ...string) *LabelsBuilder {
+	for _, n := range ns {
+		for i, a := range b.add {
+			if a.Name == n {
+				b.add = append(b.add[:i], b.add[i+1:]...)
+			}
+		}
+		b.del = append(b.del, n)
+	}
+	return b
+}
+
+// Set the name/value pair as a label.
+func (b *LabelsBuilder) Set(n, v string) *LabelsBuilder {
+	if v == "" {
+		// Empty labels are the same as missing labels.
+		return b.Del(n)
+	}
+	for i, a := range b.add {
+		if a.Name == n {
+			b.add[i].Value = v
+			return b
+		}
+	}
+	b.add = append(b.add, &commonv1.LabelPair{Name: n, Value: v})
+
+	return b
+}
+
+// Labels returns the labels from the builder. If no modifications
+// were made, the original labels are returned.
+func (b *LabelsBuilder) Labels() Labels {
+	if len(b.del) == 0 && len(b.add) == 0 {
+		return b.base
+	}
+
+	// In the general case, labels are removed, modified or moved
+	// rather than added.
+	res := make(Labels, 0, len(b.base))
+Outer:
+	for _, l := range b.base {
+		for _, n := range b.del {
+			if l.Name == n {
+				continue Outer
+			}
+		}
+		for _, la := range b.add {
+			if l.Name == la.Name {
+				continue Outer
+			}
+		}
+		res = append(res, l)
+	}
+	res = append(res, b.add...)
+	sort.Sort(res)
+
+	return res
 }
