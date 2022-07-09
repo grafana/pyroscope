@@ -10,7 +10,7 @@ interface Span extends TraceSpan {
 }
 
 export function traceToFlamebearer(trace: Trace): Flamebearer {
-  let result: Flamebearer = {
+  const result: Flamebearer = {
     format: 'single',
     numTicks: 0,
     sampleRate: 1000000,
@@ -22,8 +22,8 @@ export function traceToFlamebearer(trace: Trace): Flamebearer {
 
   // Step 1: converting spans to a tree
 
-  var spans: Record<string, Span> = {};
-  var root: Span = { children: [] } as unknown as Span;
+  const spans: Record<string, Span> = {};
+  const root: Span = { children: [] } as unknown as Span;
   (trace.spans as Span[]).forEach((span) => {
     span.children = [];
     spans[span.spanID] = span;
@@ -46,7 +46,7 @@ export function traceToFlamebearer(trace: Trace): Flamebearer {
     let childrenDur = 0;
     const groups = groupBy(span.children || [], (x) => x.operationName);
     span.children = map(groups, (group) => {
-      let res = group[0];
+      const res = group[0];
       for (let i = 1; i < group.length; i += 1) {
         res.duration += group[i].duration;
       }
@@ -68,7 +68,7 @@ export function traceToFlamebearer(trace: Trace): Flamebearer {
     result.levels[level].push(span.self);
     result.names.push(
       (span.processID
-        ? trace.processes[span.processID].serviceName + ': '
+        ? `${trace.processes[span.processID].serviceName}: `
         : '') + (span.operationName || 'total')
     );
     result.levels[level].push(result.names.length - 1);

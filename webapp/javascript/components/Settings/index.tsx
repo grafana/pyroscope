@@ -21,6 +21,7 @@ import ApiKeys from './APIKeys';
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
+import trace from '../../../traces/traceSample.json';
 
 function Settings() {
   const { path, url } = useRouteMatch();
@@ -102,6 +103,9 @@ function Settings() {
           <Switch>
             <Route exact path={path}>
               <Preferences />
+            </Route>
+            <Route exact path={`${path}/tracing`}>
+              <FlamegraphRenderer showCredit={false} trace={trace.data[0]} />
             </Route>
             <Route path={`${path}/security`}>
               <Security />
