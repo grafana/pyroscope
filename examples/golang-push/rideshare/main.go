@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 
@@ -39,19 +40,20 @@ func main() {
 	if serverAddress == "" {
 		serverAddress = "http://localhost:4040"
 	}
-	pyroscope.Start(pyroscope.Config{
+	_, err := pyroscope.Start(pyroscope.Config{
 		ApplicationName: "ride-sharing-app",
 		ServerAddress:   serverAddress,
 		Logger:          pyroscope.StandardLogger,
 		Tags:            map[string]string{"region": os.Getenv("REGION")},
 	})
+	if err != nil {
+		log.Fatalf("error starting pyroscope profiler: %v", err)
+	}
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/bike", bikeRoute)
 	http.HandleFunc("/scooter", scooterRoute)
 	http.HandleFunc("/car", carRoute)
-	err := http.ListenAndServe(":5000", nil)
-	if err != nil {
-		panic(err)
-	}
+
+	log.Fatal(http.ListenAndServe(":5000", nil))
 }

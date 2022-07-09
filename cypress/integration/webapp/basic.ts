@@ -20,7 +20,7 @@ describe('basic test', () => {
     cy.findByLabelText(/Refresh apps/i).click();
     cy.wait(`@labelValues`);
 
-    cy.get('.navbar').findByRole('button', { expanded: false }).click();
+    cy.get('.navbar').findAllByTestId('app_selector_toggle_button').click();
 
     // For some reason couldn't find the appropriate query
     cy.findAllByRole('menuitem').then((items) => {
@@ -283,11 +283,11 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-left').should(
         'have.text',
-        'Left: 991 samples, 9.91 seconds (100%)'
+        'Baseline: 991 samples, 9.91 seconds (100%)'
       );
       cy.findByTestId('flamegraph-tooltip-right').should(
         'have.text',
-        'Right: 987 samples, 9.87 seconds (100%)'
+        'Comparison: 987 samples, 9.87 seconds (100%)'
       );
     });
   });

@@ -1,7 +1,7 @@
 /* eslint-disable react/no-access-state-in-setstate */
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Timeline } from '@webapp/models/timeline';
 import Color from 'color';
 import { formatAsOBject } from '@webapp/util/formatDate';
@@ -40,6 +40,7 @@ type TimelineChartWrapperProps = {
   };
 
   timezone: 'browser' | 'utc';
+  title?: ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -173,7 +174,7 @@ class TimelineChartWrapper extends React.Component<
 
   render = () => {
     const { flotOptions } = this.state;
-    const { id, timelineA, timezone } = this.props;
+    const { id, timelineA, timezone, title } = this.props;
     // TODO deep copy
     let timelineB = this.props.timelineB
       ? JSON.parse(JSON.stringify(this.props.timelineB))
@@ -227,18 +228,21 @@ class TimelineChartWrapper extends React.Component<
     ].filter((a) => !!a);
 
     return (
-      <TimelineChart
-        onSelect={this.props.onSelect}
-        className={styles.wrapper}
-        // eslint-disable-next-line react/destructuring-assignment
-        data-testid={this.props['data-testid']}
-        id={id}
-        options={customFlotOptions}
-        data={data}
-        //        data={d}
-        width="100%"
-        height={this.props.height || '100px'}
-      />
+      <>
+        {title}
+        <TimelineChart
+          onSelect={this.props.onSelect}
+          className={styles.wrapper}
+          // eslint-disable-next-line react/destructuring-assignment
+          data-testid={this.props['data-testid']}
+          id={id}
+          options={customFlotOptions}
+          data={data}
+          //        data={d}
+          width="100%"
+          height={this.props.height || '100px'}
+        />
+      </>
     );
   };
 }

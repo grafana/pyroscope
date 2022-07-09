@@ -3,6 +3,82 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.17.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.4...@pyroscope/webapp@1.17.5) (2022-07-09)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.17.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.3...@pyroscope/webapp@1.17.4) (2022-07-07)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.17.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.2...@pyroscope/webapp@1.17.3) (2022-07-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.17.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.1...@pyroscope/webapp@1.17.2) (2022-07-06)
+
+
+### Bug Fixes
+
+* add sidebar separation lines ([#1216](https://github.com/pyroscope-io/pyroscope/issues/1216)) ([9efc566](https://github.com/pyroscope-io/pyroscope/commit/9efc5666f699a22b6759a326fa663bfe1bd072e3))
+
+
+
+
+
+## [1.17.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.0...@pyroscope/webapp@1.17.1) (2022-07-06)
+
+
+### Bug Fixes
+
+* single view app update should change comp/diff view left and right apps ([#1211](https://github.com/pyroscope-io/pyroscope/issues/1211)) ([9a4f34d](https://github.com/pyroscope-io/pyroscope/commit/9a4f34d29090dea456de3014ce2a491e7da83f11))
+
+
+
+
+
+# [1.17.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.16.0...@pyroscope/webapp@1.17.0) (2022-07-06)
+
+
+### Features
+
+* **webapp:** new app selector ([#1199](https://github.com/pyroscope-io/pyroscope/issues/1199)) ([d671810](https://github.com/pyroscope-io/pyroscope/commit/d6718109bc307191b7e44e0fd0c072958d5e0cc2))
+
+
+
+
+
+# [1.16.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.15.1...@pyroscope/webapp@1.16.0) (2022-07-06)
+
+
+### Features
+
+* add titles to charts / flamegraphs ([#1208](https://github.com/pyroscope-io/pyroscope/issues/1208)) ([836fa97](https://github.com/pyroscope-io/pyroscope/commit/836fa97f126f8b7ebfb966bb52a97b5bdf179d83))
+
+
+
+
+
+## [1.15.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.15.0...@pyroscope/webapp@1.15.1) (2022-07-05)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 # [1.15.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.14.0...@pyroscope/webapp@1.15.0) (2022-07-05)
 
 

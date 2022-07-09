@@ -12,6 +12,7 @@ import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
+import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
@@ -108,6 +109,9 @@ function ContinuousSingleView() {
             timelineA={getTimeline()}
             onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
             height="125px"
+            title={
+              <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
+            }
           />
         </Box>
         <Box>{flamegraphRenderer}</Box>
