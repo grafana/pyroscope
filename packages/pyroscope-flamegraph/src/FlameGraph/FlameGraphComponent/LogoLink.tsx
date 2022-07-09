@@ -1,6 +1,6 @@
 import React from 'react';
 
-import styles from './styles.module.scss';
+import styles from './LogoLink.module.scss';
 
 // TODO: move this to assets pipeline. for now just embedding it here because this is less likely to break
 function svgLogo() {

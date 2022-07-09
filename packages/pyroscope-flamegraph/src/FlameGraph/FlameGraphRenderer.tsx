@@ -140,6 +140,7 @@ class FlameGraphRenderer extends React.Component<
   // Eg when sharing a specific node
   initialFlamegraphState = this.resetFlamegraphState;
 
+  // eslint-disable-next-line react/static-property-placement
   static defaultProps = {
     showCredit: true,
   };

@@ -18,11 +18,3 @@
 .space-filler {
   flex-grow: 1;
 }
-
-.headerLogo img {
-  display: inline-block;
-}
-
-.headerLogo span {
-  display: inline-block;
-}
