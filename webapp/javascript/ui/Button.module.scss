@@ -33,7 +33,7 @@ $border-radius: 4px;
   }
 
   &:disabled {
-    color: var(--ps-grey-disabled);
+    color: var(--ps-disabled-button-text);
     pointer-events: none;
   }
 }
