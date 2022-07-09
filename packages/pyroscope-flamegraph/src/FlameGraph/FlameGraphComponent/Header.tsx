@@ -35,6 +35,7 @@ export default function Header(props: HeaderProps) {
     lock_nanoseconds: 'time spent waiting on locks per function',
     lock_samples: 'number of contended locks per function',
     trace_samples: 'aggregated span duration',
+    '': '',
   };
 
   const getTitle = () => {
