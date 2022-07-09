@@ -81,6 +81,7 @@ function AdhocSingle() {
           )}
           {!isProfileLoading && (
             <FlamegraphRenderer
+              showCredit={false}
               flamebearer={flamebearer}
               ExportData={
                 <ExportData

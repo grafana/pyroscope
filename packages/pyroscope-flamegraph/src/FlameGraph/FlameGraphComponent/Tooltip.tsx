@@ -109,7 +109,13 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (data.format) {
         case 'single': {
-          const d = formatSingle(formatter, data.total, sampleRate, numTicks);
+          const d = formatSingle(
+            formatter,
+            data.total,
+            sampleRate,
+            numTicks,
+            units
+          );
 
           setContent({
             title: {
@@ -223,12 +229,14 @@ function formatSingle(
   formatter: Formatter,
   total: number,
   sampleRate: number,
-  numTicks: number
+  numTicks: number,
+  units: Units
 ) {
   const percent = formatPercent(total / numTicks);
-  const left = `${percent}, ${numberWithCommas(
-    total
-  )} samples, ${formatter.format(total, sampleRate)}`;
+  const samples = `${numberWithCommas(total)} samples,`;
+  const left = `${percent}, ${
+    units === 'trace_samples' ? '' : samples
+  } ${formatter.format(total, sampleRate)}`;
 
   return {
     left,

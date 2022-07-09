@@ -36,10 +36,8 @@ function ComparisonDiffApp() {
     rightFrom,
     leftUntil,
     rightUntil,
-    from,
-    until,
   } = useAppSelector(selectContinuousState);
-  const { leftQuery, rightQuery, query } = useAppSelector(selectQueries);
+  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -181,6 +179,7 @@ function ComparisonDiffApp() {
             </div>
           </div>
           <FlamegraphRenderer
+            showCredit={false}
             profile={diffView.profile}
             ExportData={exportData}
             colorMode={colorMode}
