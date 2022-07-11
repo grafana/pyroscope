@@ -423,23 +423,35 @@ func (h *Head) WriteTo(ctx context.Context, path string) error {
 		return fmt.Errorf("error %s is no directory", path)
 	}
 
-	if err := writeToFile(ctx, path, "samples",
-		[]parquet.RowGroupOption{
-			schemav1.ProfilesSchema(),
-			parquet.SortingColumns(
-				parquet.Ascending("ID"),
-				parquet.Ascending("TimeNanos"),
-			),
-		},
-		[]parquet.WriterOption{
-			schemav1.ProfilesSchema(),
-		},
-		h.index.allProfiles(),
-	); err != nil {
+	file, err := os.OpenFile(filepath.Join(path, "profiles"+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	wProfiles := schemav1.Writer[*schemav1.Profile, *schemav1.ProfilePersister]{}
+	if err := wProfiles.WriteParquetFile(file, h.profiles.slice); err != nil {
 		return err
 	}
 
-	if err := writeToFile(ctx, path, "strings", nil, nil, stringSliceToRows(h.strings.slice)); err != nil {
+	file, err = os.OpenFile(filepath.Join(path, "stacktraces"+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	wStacktraces := schemav1.Writer[*schemav1.Stacktrace, *schemav1.StacktracePersister]{}
+	if err := wStacktraces.WriteParquetFile(file, h.stacktraces.slice); err != nil {
+		return err
+	}
+
+	strings := schemav1.Strings(h.strings.slice)
+	if err := writeToFile(ctx, path, "strings",
+		[]parquet.RowGroupOption{
+			schemav1.StringsSchema(),
+			schemav1.StringsSorting(),
+		},
+		[]parquet.WriterOption{
+			schemav1.StringsSchema(),
+		},
+		strings.ToRows(),
+	); err != nil {
 		return err
 	}
 
