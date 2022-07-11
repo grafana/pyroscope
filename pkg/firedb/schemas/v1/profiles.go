@@ -87,13 +87,13 @@ func (*ProfilePersister) SortingColumns() SortingColumns {
 }
 
 func (*ProfilePersister) Deconstruct(row parquet.Row, id uint64, s *Profile) parquet.Row {
-	row = stacktracesSchema.Deconstruct(row, s)
+	row = profilesSchema.Deconstruct(row, s)
 	return row
 }
 
 func (*ProfilePersister) Reconstruct(row parquet.Row) (id uint64, s *Profile, err error) {
 	var profile Profile
-	if err := stacktracesSchema.Reconstruct(&profile, row); err != nil {
+	if err := profilesSchema.Reconstruct(&profile, row); err != nil {
 		return 0, nil, err
 	}
 	return 0, &profile, nil
