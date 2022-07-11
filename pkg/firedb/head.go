@@ -12,8 +12,13 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/gogo/status"
+	"github.com/google/uuid"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/segmentio/parquet-go"
+	"google.golang.org/grpc/codes"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -297,6 +302,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 	}
 
 	profile := &schemav1.Profile{
+		ID:                uuid.New(),
 		SeriesRefs:        seriesRefs,
 		Samples:           samples,
 		DropFrames:        p.DropFrames,
@@ -326,24 +332,6 @@ func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.La
 	}), nil
 }
 
-type profileTypeSeen struct {
-	Name       int64
-	SampleType int64
-	SampleUnit int64
-	PeriodType int64
-	PeriodUnit int64
-}
-
-func (pt *profileTypeSeen) String(t []string) string {
-	return fmt.Sprintf("%s:%s:%s:%s:%s",
-		t[pt.Name],
-		t[pt.SampleType],
-		t[pt.SampleUnit],
-		t[pt.PeriodType],
-		t[pt.PeriodUnit],
-	)
-}
-
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	values, err := h.index.ix.LabelValues(firemodel.LabelNameProfileType, nil)
@@ -355,6 +343,72 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
 		Names: values,
 	}), nil
+}
+
+func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to label selector")
+	}
+	selectors = append(selectors, &labels.Matcher{
+		Type:  labels.MatchEqual,
+		Name:  firemodel.LabelNameProfileType,
+		Value: req.Msg.Type.Name + ":" + req.Msg.Type.SampleType + ":" + req.Msg.Type.SampleUnit + ":" + req.Msg.Type.PeriodType + ":" + req.Msg.Type.PeriodUnit,
+	})
+
+	result := []*ingestv1.Profile{}
+	names := []string{}
+	namesPositions := map[string]int{}
+
+	h.stacktraces.lock.RLock()
+	h.locations.lock.RLock()
+	h.functions.lock.RLock()
+	h.strings.lock.RLock()
+	defer func() {
+		h.stacktraces.lock.RUnlock()
+		h.locations.lock.RUnlock()
+		h.functions.lock.RUnlock()
+		h.strings.lock.RUnlock()
+	}()
+
+	err = h.index.forMatchingProfiles(selectors, func(lbs firemodel.Labels, _ model.Fingerprint, idx int, profile *schemav1.Profile) error {
+		ts := int64(model.TimeFromUnixNano(profile.TimeNanos))
+		// if the timestamp is not matching we skip this profile.
+		if req.Msg.Start > ts || ts > req.Msg.End {
+			return nil
+		}
+		p := &ingestv1.Profile{
+			Type:        req.Msg.Type,
+			Labels:      lbs,
+			Timestamp:   ts,
+			Stacktraces: make([]*ingestv1.StacktraceSample, 0, len(profile.Samples)),
+		}
+		for _, s := range profile.Samples {
+			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
+			fnIds := make([]int32, len(locs))
+			for i, loc := range locs {
+				fnName := h.strings.slice[h.functions.slice[h.locations.slice[loc].Line[0].FunctionId].Name]
+				pos, ok := namesPositions[fnName]
+				if !ok {
+					namesPositions[fnName] = len(names)
+					names = append(names, fnName)
+					fnIds[i] = int32(len(names))
+					continue
+				}
+				fnIds[i] = int32(pos)
+			}
+			p.Stacktraces = append(p.Stacktraces, &ingestv1.StacktraceSample{
+				Value:       s.Values[idx],
+				FunctionIds: fnIds,
+			})
+		}
+		result = append(result, p)
+		return nil
+	})
+	return connect.NewResponse(&ingestv1.SelectProfilesResponse{
+		Profiles:      result,
+		FunctionNames: names,
+	}), err
 }
 
 func (h *Head) WriteTo(ctx context.Context, path string) error {

@@ -50,7 +50,7 @@ func (*locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
 	r.mappings.rewriteUint64(&l.MappingId)
 
 	for pos := range l.Line {
-		r.functions.rewrite(&l.Line[pos].Line)
+		r.functions.rewriteUint64(&l.Line[pos].FunctionId)
 	}
 	return nil
 }
