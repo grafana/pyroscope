@@ -1,14 +1,5 @@
 package ingester
 
-import (
-	"bytes"
-	"testing"
-	"time"
-
-	"github.com/google/pprof/profile"
-	"github.com/stretchr/testify/require"
-)
-
 // func Test_selectMerge(t *testing.T) {
 // 	cfg := defaultIngesterTestConfig(t)
 // 	profileStore, err := profilestore.New(log.NewNopLogger(), nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
@@ -244,7 +235,6 @@ func Test_selectProfiles(t *testing.T) {
 	require.Equal(t, []string{"1|2|3", "buzz|baz|foo", "buzz|baz|foo", "foo|bar|buzz", "foo|bar|buzz"}, stacktraces)
 	require.Equal(t, 5, len(symbolsReponse.Msg.Locations))
 }
-*/
 
 func generateProfile(
 	t *testing.T,
@@ -318,3 +308,4 @@ func generateProfile(
 	require.NoError(t, p.Write(buf))
 	return buf.Bytes()
 }
+*/

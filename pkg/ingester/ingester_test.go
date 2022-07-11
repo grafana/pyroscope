@@ -1,20 +1,6 @@
 package ingester
 
-import (
-	"bytes"
-	"compress/gzip"
-	"io"
-	"runtime/pprof"
-	"testing"
-
-	"github.com/go-kit/log"
-	"github.com/google/pprof/profile"
-	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/dskit/kv"
-	"github.com/grafana/dskit/ring"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func defaultIngesterTestConfig(t testing.TB) Config {
 	kvClient, err := kv.NewClient(kv.Config{Store: "inmemory"}, ring.GetCodec(), nil, log.NewNopLogger())
 	require.NoError(t, err)
@@ -30,6 +16,7 @@ func defaultIngesterTestConfig(t testing.TB) Config {
 	cfg.LifecyclerConfig.MinReadyDuration = 0
 	return cfg
 }
+*/
 
 /*
 func Test_ConnectPush(t *testing.T) {
@@ -91,35 +78,3 @@ func Test_ConnectPush(t *testing.T) {
 	)
 }
 */
-
-// This counts all sample values, where at least a single value in a sample is non-zero
-func countNonZeroValues(p *profile.Profile) int64 {
-	var count int64
-	for _, s := range p.Sample {
-		for _, v := range s.Value {
-			if v != 0 {
-				count++
-				continue
-			}
-		}
-	}
-	return count
-}
-
-func parseRawProfile(t testing.TB, reader io.Reader) *profile.Profile {
-	gzReader, err := gzip.NewReader(reader)
-	require.NoError(t, err, "failed creating gzip reader")
-
-	p, err := profile.Parse(gzReader)
-	require.NoError(t, err, "failed parsing profile")
-
-	return p
-}
-
-func testProfile(t *testing.T) []byte {
-	t.Helper()
-
-	buf := bytes.NewBuffer(nil)
-	require.NoError(t, pprof.WriteHeapProfile(buf))
-	return buf.Bytes()
-}
