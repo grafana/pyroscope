@@ -128,5 +128,8 @@ func (groupType) ConvertedType() *deprecated.ConvertedType { return nil }
 func (f *groupField) Name() string { return f.name }
 
 func (f *groupField) Value(base reflect.Value) reflect.Value {
+	if base.Kind() == reflect.Pointer {
+		return f.Value(base.Elem())
+	}
 	return base.FieldByName(f.name)
 }
