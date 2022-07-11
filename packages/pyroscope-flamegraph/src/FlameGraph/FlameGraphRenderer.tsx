@@ -8,7 +8,7 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, Profile } from '@pyroscope/models';
+import { createFF, Flamebearer, Profile, Trace } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -21,14 +21,23 @@ import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
+import { traceToFlamebearer } from '../convert/convert';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
-function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
+function mountFlamebearer(p: {
+  profile?: Profile;
+  flamebearer?: Flamebearer;
+  trace?: Trace;
+}) {
   if (p.profile && p.flamebearer) {
     console.warn(
       "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
     );
+  }
+
+  if (p.trace) {
+    return traceToFlamebearer(p.trace);
   }
 
   if (p.profile) {
@@ -68,14 +77,15 @@ interface Node {
 
 export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
-  profile?: Profile;
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
+  trace?: Trace;
+  profile?: Profile;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
-  renderLogo?: boolean;
+  showCredit?: boolean;
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
@@ -129,6 +139,11 @@ class FlameGraphRenderer extends React.Component<
   // TODO: At some point the initial state may be set via the user
   // Eg when sharing a specific node
   initialFlamegraphState = this.resetFlamegraphState;
+
+  // eslint-disable-next-line react/static-property-placement
+  static defaultProps = {
+    showCredit: true,
+  };
 
   constructor(props: FlamegraphRendererProps) {
     super(props);
@@ -420,6 +435,8 @@ class FlameGraphRenderer extends React.Component<
     const flameGraphPane = (
       <Graph
         key="flamegraph-pane"
+        // data-testid={flamegraphDataTestId}
+        showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
@@ -453,7 +470,6 @@ class FlameGraphRenderer extends React.Component<
           {toolbarVisible && (
             <Toolbar
               sharedQuery={this.props.sharedQuery}
-              renderLogo={this.props.renderLogo || false}
               disableChangingDisplay={!!this.props.onlyDisplay}
               flamegraphType={this.state.flamebearer.format}
               view={this.state.view}

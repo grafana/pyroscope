@@ -3,4 +3,5 @@
   pointer-events: none;
   background: #ffffff40;
   mix-blend-mode: overlay;
+  z-index: 2;
 }

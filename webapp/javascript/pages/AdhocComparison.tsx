@@ -105,6 +105,7 @@ function AdhocComparison() {
             )}
             {!left.isProfileLoading && (
               <FlamegraphRenderer
+                showCredit={false}
                 flamebearer={left.flamebearer}
                 data-testid="flamegraph-renderer-left"
                 ExportData={
@@ -149,6 +150,7 @@ function AdhocComparison() {
             )}
             {!right.isProfileLoading && (
               <FlamegraphRenderer
+                showCredit={false}
                 flamebearer={right.flamebearer}
                 data-testid="flamegraph-renderer-right"
                 ExportData={
