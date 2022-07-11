@@ -2,48 +2,34 @@ import React from 'react';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload } from '@fortawesome/free-solid-svg-icons/faDownload';
-// eslint-disable-next-line import/no-relative-packages
-import { version } from '../../../package.json';
+import { BuildInfo, buildInfo, latestVersionInfo } from '../util/buildInfo';
 
 const START_YEAR = '2020';
-const PYROSCOPE_VERSION = version;
 
 function copyrightYears(start: string, end: string) {
   return start === end ? start : `${start} – ${end}`;
 }
 
-const win = window as unknown as { buildInfo: BuildInfo };
-
-export interface BuildInfo {
-  goos: string;
-  goarch: string;
-  goVersion: string;
-  version: string;
-  time: string;
-  gitSHA: string;
-  gitDirty: string;
-  useEmbeddedAssets: string;
-}
-function buildInfo() {
+function buildInfoStr(buildInfo: BuildInfo) {
   return `
     BUILD INFO:
-    js_version: v${PYROSCOPE_VERSION}
-    goos: ${win?.buildInfo?.goos}
-    goarch: ${win.buildInfo?.goarch}
-    go_version: ${win.buildInfo?.goVersion}
-    version: ${win.buildInfo?.version}
-    time: ${win.buildInfo?.time}
-    gitSHA: ${win.buildInfo?.gitSHA}
-    gitDirty: ${win.buildInfo?.gitDirty}
-    embeddedAssets: ${win.buildInfo?.useEmbeddedAssets}
+    js_version: v${buildInfo.jsVersion}
+    goos: ${buildInfo?.goos}
+    goarch: ${buildInfo?.goarch}
+    go_version: ${buildInfo?.goVersion}
+    version: ${buildInfo?.version}
+    time: ${buildInfo?.time}
+    gitSHA: ${buildInfo?.gitSHA}
+    gitDirty: ${buildInfo?.gitDirty}
+    embeddedAssets: ${buildInfo?.useEmbeddedAssets}
 `.replace(/^\s+/gm, '');
 }
 
 //function NewerVersionCheck() {
 //  const latestVersion = (win as ShamefulAny).latestVersionInfo
-//    .latest_version as string;
+//    ?.latest_version as string;
 //  const newVersionAvailable =
-//    latestVersion && win.buildInfo.version !== latestVersion;
+//    latestVersion && win?.buildInfo?.version !== latestVersion;
 //
 //  if (!newVersionAvailable) {
 //    return null;
@@ -64,10 +50,12 @@ function buildInfo() {
 //    </span>
 //  );
 //}
-
+//
 function Footer() {
+  const info = buildInfo();
+
   return (
-    <footer className="footer" title={buildInfo()}>
+    <footer className="footer" title={buildInfoStr(info)}>
       <span>
         {`© Pyroscope ${copyrightYears(
           START_YEAR,
@@ -75,7 +63,7 @@ function Footer() {
         )}`}
       </span>
       &nbsp;&nbsp;|&nbsp;&nbsp;
-      <span>{win.buildInfo?.version}</span>
+      <span>{info.version}</span>
     </footer>
   );
 }
