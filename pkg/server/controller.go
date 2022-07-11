@@ -256,6 +256,15 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
 
+	deleteAppRouter := r.Path("/delete-app").Subrouter()
+	deleteAppRouter.Use(
+		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
+		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
+			authz.Role(model.AdminRole),
+			authz.Role(model.AgentRole),
+		))
+	deleteAppRouter.Methods(http.MethodDelete).Handler(ctrl.deleteAppHandler())
+
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
 	//  Make prometheus middleware to support gorilla patterns.
