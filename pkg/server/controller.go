@@ -260,13 +260,15 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
 
-	adminRouter := r.PathPrefix("/admin/").Subrouter()
-	adminRouter.Use(
-		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
-		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
-			authz.Role(model.AdminRole),
-		))
-	ctrl.adminController.RegisterHandlers(adminRouter)
+	if ctrl.adminController != nil {
+		adminRouter := r.PathPrefix("/admin/").Subrouter()
+		adminRouter.Use(
+			api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
+			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
+				authz.Role(model.AdminRole),
+			))
+		ctrl.adminController.RegisterHandlers(adminRouter)
+	}
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
