@@ -31,9 +31,12 @@
 
 Pyroscope is an open source continuous profiling platform. It will help you:
 * Find performance issues and bottlenecks in your code
+* Use high-cardinality tags/labels to analyze your application
+* Calculate the performance "diff" between various tags/labels and time periods
 * Resolve issues with high CPU utilization
+* Track down memory leaks
 * Understand the call tree of your application
-* Track changes over time
+* Auto-instrument your code to link profiling data to traces
 
 
 ## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/?name=hotrod.python.frontend%7B%7D) 🔥
