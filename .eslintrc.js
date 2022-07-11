@@ -85,6 +85,9 @@ module.exports = {
 
     // https://humanwhocodes.com/blog/2019/01/stop-using-default-exports-javascript-module/
     'import/prefer-default-export': 'off',
+
+    // makes it easier to check what are local variables computated dynamically and what are static props
+    'react/destructuring-assignment': 'off',
   },
   env: {
     browser: true,
