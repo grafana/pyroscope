@@ -217,6 +217,11 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 			Labels: r.strings.rewritePprofLabels(in[pos].Label),
 		}
 
+		// rewrite location ids
+		for posLoc := range in[pos].LocationId {
+			r.locations.rewriteUint64(&in[pos].LocationId[posLoc])
+		}
+
 		// build full stack traces
 		stacktraces[pos] = &schemav1.Stacktrace{
 			LocationIDs: in[pos].LocationId,
