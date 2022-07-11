@@ -2,7 +2,7 @@
 // protoc-gen-go-vtproto version: v0.3.0
 // source: google/v1/profile.proto
 
-package v1
+package googlev1
 
 import (
 	fmt "fmt"
