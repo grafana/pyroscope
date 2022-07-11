@@ -3,6 +3,7 @@ package firedb
 import (
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -270,9 +271,13 @@ func TestSelectProfiles(t *testing.T) {
 
 	// todo write more robust tests.
 	for i := int64(0); i < 4; i++ {
-		p := newProfileBar()
-		p.TimeNanos = int64(time.Second * time.Duration(i))
-		err = head.Ingest(context.Background(), p, &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "__name__", Value: "memory"})
+		pF := newProfileFoo()
+		pB := newProfileBar()
+		pF.TimeNanos = int64(time.Second * time.Duration(i))
+		pB.TimeNanos = int64(time.Second * time.Duration(i))
+		err = head.Ingest(context.Background(), pF, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "__name__", Value: "foomemory"})
+		require.NoError(t, err)
+		err = head.Ingest(context.Background(), pB, &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "__name__", Value: "memory"})
 		require.NoError(t, err)
 	}
 
@@ -290,7 +295,60 @@ func TestSelectProfiles(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.Equal(t, 2, len(resp.Msg.Profiles))
-	require.Equal(t, 1, len(resp.Msg.FunctionNames))
+
+	// compare the first profile deep
+	profileJSON, err := json.Marshal(&resp.Msg.Profiles[0])
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+  "type": {
+    "name": "memory",
+    "sampleType": "type",
+    "sampleUnit": "unit",
+    "periodType": "type",
+    "periodUnit": "unit"
+  },
+  "labels": [
+    {
+      "name": "__name__",
+      "value": "memory"
+    },
+    {
+      "name": "__period_type__",
+      "value": "type"
+    },
+    {
+      "name": "__period_unit__",
+      "value": "unit"
+    },
+    {
+      "name": "__profile_type__",
+      "value": "memory:type:unit:type:unit"
+    },
+    {
+      "name": "__type__",
+      "value": "type"
+    },
+    {
+      "name": "__unit__",
+      "value": "unit"
+    },
+    {
+      "name": "job",
+      "value": "bar"
+    }
+  ],
+  "timestamp": 1000,
+  "stacktraces": [
+    {
+      "function_ids": [
+        0
+      ],
+      "value": 2345
+    }
+  ]}`, string(profileJSON))
+
+	// ensure the func name matches
+	require.Equal(t, []string{"func_a"}, resp.Msg.FunctionNames)
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {
