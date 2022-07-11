@@ -11,7 +11,7 @@ import (
 
 type Server struct {
 	log     *logrus.Logger
-	Ctrl    *Controller
+	ctrl    *Controller
 	Handler http.Handler
 
 	HTTPServer
@@ -28,7 +28,7 @@ type HTTPServer interface {
 func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (*Server, error) {
 	as := &Server{
 		log:  logger,
-		Ctrl: ctrl,
+		ctrl: ctrl,
 	}
 	as.HTTPServer = httpServer
 
