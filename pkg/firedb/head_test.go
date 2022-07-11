@@ -108,7 +108,7 @@ func newProfileBar() *profilev1.Profile {
 		},
 		Location: []*profilev1.Location{
 			{
-				Id:        1,
+				Id:        113,
 				MappingId: 1,
 				Address:   0x1337,
 				Line: []*profilev1.Line{
@@ -130,7 +130,7 @@ func newProfileBar() *profilev1.Profile {
 		Sample: []*profilev1.Sample{
 			{
 				Value:      []int64{2345},
-				LocationId: []uint64{1},
+				LocationId: []uint64{113},
 			},
 		},
 	}

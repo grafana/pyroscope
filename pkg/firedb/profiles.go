@@ -253,6 +253,10 @@ func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
 	return nil
 }
 
+func (*profilesHelper) setID(oldID, newID uint64, p *schemav1.Profile) uint64 {
+	return oldID
+}
+
 type profilesKey struct {
 	ID uuid.UUID
 }

@@ -70,6 +70,8 @@ type Helper[M Models, K comparable] interface {
 	key(M) K
 	addToRewriter(*rewriter, idConversionTable)
 	rewrite(*rewriter, M) error
+	// some Models contain their own IDs within the struct, this allows to set them and keep track of the preexisting ID. It should return the oldID that is supposed to be rewritten.
+	setID(existingSliceID uint64, newID uint64, element M) uint64
 }
 
 type deduplicatingSlice[M Models, K comparable, H Helper[M, K]] struct {
@@ -101,7 +103,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 	for pos := range elems {
 		k := h.key(elems[pos])
 		if posSlice, exists := s.lookup[k]; exists {
-			rewritingMap[int64(pos)] = posSlice
+			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 		} else {
 			missing = append(missing, int64(pos))
 		}
@@ -116,14 +118,14 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 			// check again if element exists
 			k := h.key(elems[pos])
 			if posSlice, exists := s.lookup[k]; exists {
-				rewritingMap[pos] = posSlice
+				rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 				continue
 			}
 
 			// add element to slice/map
 			s.slice = append(s.slice, elems[pos])
 			s.lookup[k] = posSlice
-			rewritingMap[pos] = posSlice
+			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 			posSlice++
 		}
 		s.lock.Unlock()
@@ -215,11 +217,6 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 		out[pos] = &schemav1.Sample{
 			Values: in[pos].Value,
 			Labels: r.strings.rewritePprofLabels(in[pos].Label),
-		}
-
-		// rewrite location ids
-		for posLoc := range in[pos].LocationId {
-			r.locations.rewriteUint64(&in[pos].LocationId[posLoc])
 		}
 
 		// build full stack traces
