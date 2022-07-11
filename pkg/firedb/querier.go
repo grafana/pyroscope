@@ -1,30 +1,15 @@
-package tsdb
+package firedb
 
 import (
 	"sort"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 
+	"github.com/grafana/fire/pkg/firedb/tsdb"
 	"github.com/grafana/fire/pkg/firedb/tsdb/index"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
-
-// Bitmap used by func isRegexMetaCharacter to check whether a character needs to be escaped.
-var regexMetaCharacterBytes [16]byte
-
-// isRegexMetaCharacter reports whether byte b needs to be escaped.
-func isRegexMetaCharacter(b byte) bool {
-	return b < utf8.RuneSelf && regexMetaCharacterBytes[b%16]&(1<<(b/16)) != 0
-}
-
-func init() {
-	for _, b := range []byte(`.+*?()|[]{}^$`) {
-		regexMetaCharacterBytes[b%16] |= 1 << (b / 16)
-	}
-}
 
 // IndexReader provides reading access of serialized index data.
 type IndexReader interface {
@@ -165,7 +150,7 @@ func postingsForMatcher(ix IndexReader, shard *index.ShardAnnotation, m *labels.
 
 	// Fast-path for set matching.
 	if m.Type == labels.MatchRegexp {
-		setMatches := findSetMatches(m.GetRegexString())
+		setMatches := tsdb.FindSetMatches(m.GetRegexString())
 		if len(setMatches) > 0 {
 			sort.Strings(setMatches)
 			return ix.Postings(m.Name, shard, setMatches...)
@@ -222,46 +207,4 @@ func inversePostingsForMatcher(ix IndexReader, shard *index.ShardAnnotation, m *
 		sort.Strings(res)
 	}
 	return ix.Postings(m.Name, shard, res...)
-}
-
-func findSetMatches(pattern string) []string {
-	// Return empty matches if the wrapper from Prometheus is missing.
-	if len(pattern) < 6 || pattern[:4] != "^(?:" || pattern[len(pattern)-2:] != ")$" {
-		return nil
-	}
-	escaped := false
-	sets := []*strings.Builder{{}}
-	for i := 4; i < len(pattern)-2; i++ {
-		if escaped {
-			switch {
-			case isRegexMetaCharacter(pattern[i]):
-				sets[len(sets)-1].WriteByte(pattern[i])
-			case pattern[i] == '\\':
-				sets[len(sets)-1].WriteByte('\\')
-			default:
-				return nil
-			}
-			escaped = false
-		} else {
-			switch {
-			case isRegexMetaCharacter(pattern[i]):
-				if pattern[i] == '|' {
-					sets = append(sets, &strings.Builder{})
-				} else {
-					return nil
-				}
-			case pattern[i] == '\\':
-				escaped = true
-			default:
-				sets[len(sets)-1].WriteByte(pattern[i])
-			}
-		}
-	}
-	matches := make([]string, 0, len(sets))
-	for _, s := range sets {
-		if s.Len() > 0 {
-			matches = append(matches, s.String())
-		}
-	}
-	return matches
 }

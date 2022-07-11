@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
+	"unicode/utf8"
 	"unsafe"
 
 	"github.com/prometheus/common/model"
@@ -22,9 +24,24 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
-const DefaultIndexShards = 32
+var (
+	// Bitmap used by func isRegexMetaCharacter to check whether a character needs to be escaped.
+	regexMetaCharacterBytes [16]byte
+	ErrInvalidShardQuery    = errors.New("incompatible index shard query")
+)
 
-var ErrInvalidShardQuery = errors.New("incompatible index shard query")
+// isRegexMetaCharacter reports whether byte b needs to be escaped.
+func isRegexMetaCharacter(b byte) bool {
+	return b < utf8.RuneSelf && regexMetaCharacterBytes[b%16]&(1<<(b/16)) != 0
+}
+
+func init() {
+	for _, b := range []byte(`.+*?()|[]{}^$`) {
+		regexMetaCharacterBytes[b%16] |= 1 << (b / 16)
+	}
+}
+
+const DefaultIndexShards = 32
 
 type Interface interface {
 	Add(labels []*commonv1.LabelPair, fp model.Fingerprint) labels.Labels
@@ -303,9 +320,9 @@ func (shard *indexShard) lookup(matchers []*labels.Matcher) []model.Fingerprint 
 		if matcher.Type == labels.MatchEqual {
 			fps := values.fps[matcher.Value]
 			toIntersect = append(toIntersect, fps.fps...) // deliberate copy
-		} else if matcher.Type == labels.MatchRegexp && len(findSetMatches(matcher.Value)) > 0 {
+		} else if matcher.Type == labels.MatchRegexp && len(FindSetMatches(matcher.Value)) > 0 {
 			// The lookup is of the form `=~"a|b|c|d"`
-			set := findSetMatches(matcher.Value)
+			set := FindSetMatches(matcher.Value)
 			for _, value := range set {
 				toIntersect = append(toIntersect, values.fps[value].fps...)
 			}
@@ -490,4 +507,46 @@ func mergeTwoStringSlices(a, b []string) []string {
 	result = append(result, a[i:]...)
 	result = append(result, b[j:]...)
 	return result
+}
+
+func FindSetMatches(pattern string) []string {
+	// Return empty matches if the wrapper from Prometheus is missing.
+	if len(pattern) < 6 || pattern[:4] != "^(?:" || pattern[len(pattern)-2:] != ")$" {
+		return nil
+	}
+	escaped := false
+	sets := []*strings.Builder{{}}
+	for i := 4; i < len(pattern)-2; i++ {
+		if escaped {
+			switch {
+			case isRegexMetaCharacter(pattern[i]):
+				sets[len(sets)-1].WriteByte(pattern[i])
+			case pattern[i] == '\\':
+				sets[len(sets)-1].WriteByte('\\')
+			default:
+				return nil
+			}
+			escaped = false
+		} else {
+			switch {
+			case isRegexMetaCharacter(pattern[i]):
+				if pattern[i] == '|' {
+					sets = append(sets, &strings.Builder{})
+				} else {
+					return nil
+				}
+			case pattern[i] == '\\':
+				escaped = true
+			default:
+				sets[len(sets)-1].WriteByte(pattern[i])
+			}
+		}
+	}
+	matches := make([]string, 0, len(sets))
+	for _, s := range sets {
+		if s.Len() > 0 {
+			matches = append(matches, s.String())
+		}
+	}
+	return matches
 }

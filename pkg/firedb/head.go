@@ -16,7 +16,6 @@ import (
 	"github.com/segmentio/parquet-go"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	tsdbindex "github.com/grafana/fire/pkg/firedb/tsdb"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -141,7 +140,7 @@ func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
 type Head struct {
 	logger log.Logger
 
-	index       *tsdbindex.Head
+	index       *profilesIndex
 	strings     deduplicatingSlice[string, string, *stringsHelper]
 	mappings    deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
 	functions   deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
@@ -151,7 +150,7 @@ type Head struct {
 }
 
 func NewHead() (*Head, error) {
-	index, err := tsdbindex.NewHead(4)
+	index, err := newProfileIndex(32)
 	if err != nil {
 		return nil, err
 	}
@@ -250,6 +249,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 	}
 
 	seriesRefs := make([]model.Fingerprint, len(p.SampleType))
+	profilesLabels := make([]firemodel.Labels, len(p.SampleType))
 	for pos := range p.SampleType {
 		sampleType = p.StringTable[p.SampleType[pos].Type]
 		lbls.Set(firemodel.LabelNameType, sampleType)
@@ -267,8 +267,9 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		_, _ = sb.WriteRune(':')
 		_, _ = sb.WriteString(periodUnit)
 		lbls.Set(firemodel.LabelNameProfileType, sb.String())
-
-		seriesRefs[pos] = h.index.Add(p.TimeNanos, lbls.Labels())
+		lbs := lbls.Labels()
+		profilesLabels[pos] = lbs
+		seriesRefs[pos] = model.Fingerprint(lbs.Hash())
 	}
 
 	// create a rewriter state
@@ -309,13 +310,14 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
 		return err
 	}
+	h.index.Add(profile, profilesLabels)
 
 	return nil
 }
 
 // LabelValues returns the possible label values for a given label name.
 func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
-	values, err := h.index.LabelValues(req.Msg.Name)
+	values, err := h.index.ix.LabelValues(req.Msg.Name, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +346,7 @@ func (pt *profileTypeSeen) String(t []string) string {
 
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	values, err := h.index.LabelValues(firemodel.LabelNameProfileType)
+	values, err := h.index.ix.LabelValues(firemodel.LabelNameProfileType, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +380,7 @@ func (h *Head) WriteTo(ctx context.Context, path string) error {
 		[]parquet.WriterOption{
 			schemav1.ProfilesSchema(),
 		},
-		h.profiles.slice,
+		h.index.allProfiles(),
 	); err != nil {
 		return err
 	}
