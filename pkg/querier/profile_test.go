@@ -14,43 +14,44 @@ func Test_DedupeProfiles(t *testing.T) {
 	actual := dedupeProfiles([]responseFromIngesters[*ingestv1.SelectProfilesResponse]{
 		{
 			addr:     "A",
-			response: buildResponses(t, []int64{1, 2, 3}, []string{`{app="foo"}`, `{app="bar"}`, `{app="buzz"}`}),
+			response: buildResponses(t, []int64{1, 2, 3}, []string{`{app="foo"}`, `{app="bar"}`, `{app="buzz"}`}, []string{"foo", "bar", "buzz"}),
 		},
 		{
 			addr:     "B",
-			response: buildResponses(t, []int64{2, 3}, []string{`{app="bar"}`, `{app="buzz"}`}),
+			response: buildResponses(t, []int64{2, 3}, []string{`{app="bar"}`, `{app="buzz"}`}, []string{"bar", "buzz"}),
 		},
 		{
 			addr:     "C",
-			response: buildResponses(t, []int64{1, 2, 3}, []string{`{app="foo"}`, `{app="bar"}`, `{app="buzz"}`}),
+			response: buildResponses(t, []int64{1, 2, 3}, []string{`{app="foo"}`, `{app="bar"}`, `{app="buzz"}`}, []string{"foo", "bar", "buzz"}),
 		},
 		{
 			addr:     "D",
-			response: buildResponses(t, []int64{2}, []string{`{app="bar"}`}),
+			response: buildResponses(t, []int64{2}, []string{`{app="bar"}`}, []string{"bar"}),
 		},
 		{
 			addr:     "E",
-			response: buildResponses(t, []int64{4}, []string{`{app="blah"}`}),
+			response: buildResponses(t, []int64{4}, []string{`{app="blah"}`}, []string{"blah"}),
 		},
 		{
 			addr:     "F",
-			response: buildResponses(t, []int64{}, []string{}),
+			response: buildResponses(t, []int64{}, []string{}, []string{}),
 		},
 	})
 	require.Equal(t,
-		map[string][]*ingestv1.Profile{
-			"A": buildResponses(t, []int64{1}, []string{`{app="foo"}`}).Profiles,
-			"B": buildResponses(t, []int64{2}, []string{`{app="bar"}`}).Profiles,
-			"C": buildResponses(t, []int64{3}, []string{`{app="buzz"}`}).Profiles,
-			"E": buildResponses(t, []int64{4}, []string{`{app="blah"}`}).Profiles,
+		[]profileWithSymbols{
+			{profile: buildResponses(t, []int64{1}, []string{`{app="foo"}`}, nil).Profiles[0], symbols: []string{"foo", "bar", "buzz"}},
+			{profile: buildResponses(t, []int64{2}, []string{`{app="bar"}`}, nil).Profiles[0], symbols: []string{"bar", "buzz"}},
+			{profile: buildResponses(t, []int64{3}, []string{`{app="buzz"}`}, nil).Profiles[0], symbols: []string{"bar", "buzz"}},
+			{profile: buildResponses(t, []int64{4}, []string{`{app="blah"}`}, nil).Profiles[0], symbols: []string{"blah"}},
 		},
 		actual)
 }
 
-func buildResponses(t *testing.T, timestamps []int64, labels []string) *ingestv1.SelectProfilesResponse {
+func buildResponses(t *testing.T, timestamps []int64, labels []string, fns []string) *ingestv1.SelectProfilesResponse {
 	t.Helper()
 	result := &ingestv1.SelectProfilesResponse{
-		Profiles: make([]*ingestv1.Profile, len(timestamps)),
+		Profiles:      make([]*ingestv1.Profile, len(timestamps)),
+		FunctionNames: fns,
 	}
 	for i := range timestamps {
 		ls, err := model.StringToLabelsPairs(labels[i])

@@ -137,7 +137,6 @@ func mergeStacktraces(profiles []profileWithSymbols) []stack {
 			if !ok {
 				stacktrace = &stack{
 					locations: fns,
-					value:     st.Value,
 				}
 				stacktracesByID[id] = stacktrace
 			}
