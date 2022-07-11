@@ -19,10 +19,9 @@ type Persister[T any] interface {
 	SortingColumns() SortingColumns
 }
 
-type Writer[T any, P Persister[T]] struct {
-}
+type ReadWriter[T any, P Persister[T]] struct{}
 
-func (*Writer[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
+func (*ReadWriter[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
 	var (
 		persister P
 		rows      = make([]parquet.Row, len(elements))
@@ -45,4 +44,32 @@ func (*Writer[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
 	}
 
 	return writer.Close()
+}
+
+func (*ReadWriter[T, P]) ReadParquetFile(file io.ReaderAt) ([]T, error) {
+	var (
+		persister P
+		reader    = parquet.NewReader(file, persister.Schema())
+	)
+	defer reader.Close()
+
+	var (
+		rows = make([]parquet.Row, reader.NumRows())
+	)
+	if _, err := reader.ReadRows(rows); err != nil {
+		return nil, err
+	}
+
+	var (
+		elements = make([]T, reader.NumRows())
+		err      error
+	)
+	for pos := range elements {
+		_, elements[pos], err = persister.Reconstruct(rows[pos])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return elements, nil
 }

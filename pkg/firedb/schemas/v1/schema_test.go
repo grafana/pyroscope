@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/segmentio/parquet-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,6 +18,8 @@ func TestSchemaMatch(t *testing.T) {
 	stacktracesStructSchema := parquet.SchemaOf(&storedStacktrace{})
 	require.Equal(t, strings.Replace(stacktracesStructSchema.String(), "message storedStacktrace", "message Stacktrace", 1), stacktracesSchema.String())
 
+	stringsStructSchema := parquet.SchemaOf(&storedString{})
+	require.Equal(t, strings.Replace(stringsStructSchema.String(), "message storedString", "message String", 1), stringsSchema.String())
 }
 
 func newStacktraces() []*Stacktrace {
@@ -32,26 +35,15 @@ func newStacktraces() []*Stacktrace {
 func TestStacktracesRoundTrip(t *testing.T) {
 	var (
 		s   = newStacktraces()
-		w   = &Writer[*Stacktrace, *StacktracePersister]{}
+		w   = &ReadWriter[*Stacktrace, *StacktracePersister]{}
 		buf bytes.Buffer
 	)
 
 	require.NoError(t, w.WriteParquetFile(&buf, s))
 
-	/*
-		n, err := buf.WriteRows(s.ToRows())
-		require.NoError(t, err)
-		assert.Equal(t, 5, n)
-
-		var rows = make([]parquet.Row, len(s))
-		n, err = buf.Rows().ReadRows(rows)
-		require.NoError(t, err)
-		assert.Equal(t, 5, n)
-
-		sRoundTrip, err := StacktracesFromRows(rows)
-		require.NoError(t, err)
-		assert.Equal(t, s, sRoundTrip)
-	*/
+	sRead, err := w.ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, newStacktraces(), sRead)
 }
 
 func newStrings() []string {
@@ -67,10 +59,13 @@ func newStrings() []string {
 func TestStringsRoundTrip(t *testing.T) {
 	var (
 		s   = newStrings()
-		w   = &Writer[string, *StringPersister]{}
+		w   = &ReadWriter[string, *StringPersister]{}
 		buf bytes.Buffer
 	)
 
 	require.NoError(t, w.WriteParquetFile(&buf, s))
 
+	sRead, err := w.ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, newStrings(), sRead)
 }

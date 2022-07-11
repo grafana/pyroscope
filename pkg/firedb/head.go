@@ -435,42 +435,42 @@ func (h *Head) WriteTo(ctx context.Context, path string) error {
 		{
 			name: "profiles",
 			f: func(f io.Writer) error {
-				w := schemav1.Writer[*schemav1.Profile, *schemav1.ProfilePersister]{}
+				w := schemav1.ReadWriter[*schemav1.Profile, *schemav1.ProfilePersister]{}
 				return w.WriteParquetFile(f, h.profiles.slice)
 			},
 		},
 		{
 			name: "stacktraces",
 			f: func(f io.Writer) error {
-				w := schemav1.Writer[*schemav1.Stacktrace, *schemav1.StacktracePersister]{}
+				w := schemav1.ReadWriter[*schemav1.Stacktrace, *schemav1.StacktracePersister]{}
 				return w.WriteParquetFile(f, h.stacktraces.slice)
 			},
 		},
 		{
 			name: "strings",
 			f: func(f io.Writer) error {
-				w := schemav1.Writer[string, *schemav1.StringPersister]{}
+				w := schemav1.ReadWriter[string, *schemav1.StringPersister]{}
 				return w.WriteParquetFile(f, h.strings.slice)
 			},
 		},
 		{
 			name: "mappings",
 			f: func(f io.Writer) error {
-				w := schemav1.Writer[*profilev1.Mapping, *schemav1.MappingPersister]{}
+				w := schemav1.ReadWriter[*profilev1.Mapping, *schemav1.MappingPersister]{}
 				return w.WriteParquetFile(f, h.mappings.slice)
 			},
 		},
 		{
 			name: "locations",
 			f: func(f io.Writer) error {
-				w := schemav1.Writer[*profilev1.Location, *schemav1.LocationPersister]{}
+				w := schemav1.ReadWriter[*profilev1.Location, *schemav1.LocationPersister]{}
 				return w.WriteParquetFile(f, h.locations.slice)
 			},
 		},
 		{
 			name: "functions",
 			f: func(f io.Writer) error {
-				w := schemav1.Writer[*profilev1.Function, *schemav1.FunctionPersister]{}
+				w := schemav1.ReadWriter[*profilev1.Function, *schemav1.FunctionPersister]{}
 				return w.WriteParquetFile(f, h.functions.slice)
 			},
 		},
