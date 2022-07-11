@@ -106,6 +106,9 @@ module.exports = {
 
     // https://github.com/typescript-eslint/typescript-eslint/issues/1184
     '@typescript-eslint/no-floating-promises': ['warn', { ignoreVoid: true }],
+
+    // makes it easier to check what are local variables computated dynamically and what are static props
+    'react/destructuring-assignment': 'off',
   },
   env: {
     browser: true,

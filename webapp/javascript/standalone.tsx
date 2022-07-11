@@ -42,8 +42,8 @@ function StandaloneApp() {
     <div>
       <Box className={styles.container}>
         <FlamegraphRenderer
-          renderLogo
           flamebearer={flamebearer as ShamefulAny}
+          showCredit={false}
           ExportData={null}
         />
       </Box>

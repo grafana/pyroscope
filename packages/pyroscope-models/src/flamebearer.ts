@@ -16,6 +16,8 @@ export type Flamebearer = {
    */
   levels: number[][];
   numTicks: number;
+  maxSelf: number;
+
   /**
    * Sample Rate, used in text information
    */
@@ -27,6 +29,7 @@ export type Flamebearer = {
     | 'bytes'
     | 'lock_samples'
     | 'lock_nanoseconds'
+    | 'trace_samples'
     | '';
   spyName:
     | 'dotneyspy'

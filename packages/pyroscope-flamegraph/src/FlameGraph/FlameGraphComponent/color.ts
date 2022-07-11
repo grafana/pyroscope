@@ -93,6 +93,8 @@ function spyToRegex(spyName: string) {
       return /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/;
     case 'nodespy':
       return /^(\.\/node_modules\/)?(?<packageName>[^/]*)(?<filename>.*\.?(jsx?|tsx?)?):(?<functionName>.*):(?<line_info>.*)$/;
+    case 'tracing':
+      return /^(?<packageName>.+?):.*$/;
     case 'javaspy':
       // TODO: we might want to add ? after groups
       return /^(?<packageName>.+\/)(?<filename>.+\.)(?<functionName>.+)$/;
@@ -125,7 +127,7 @@ export function colorBasedOnPackageName(
   palette: FlamegraphPalette,
   name: string
 ) {
-  const hash = murmurhash3_32_gc(name);
+  const hash = murmurhash3_32_gc(name, 0);
   const colorIndex = hash % palette.colors.length;
   const baseClr = palette.colors[colorIndex];
   if (!baseClr) {

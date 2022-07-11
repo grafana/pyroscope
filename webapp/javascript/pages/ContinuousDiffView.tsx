@@ -179,6 +179,7 @@ function ComparisonDiffApp() {
         <Box>
           <TimelineTitle titleKey="diff" />
           <FlamegraphRenderer
+            showCredit={false}
             profile={diffView.profile}
             ExportData={exportData}
             colorMode={colorMode}
