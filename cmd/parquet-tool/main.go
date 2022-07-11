@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("/tmp/test.parquet")
+	f, err := os.Open(os.Args[1])
 	if err != nil {
 		panic(err)
 	}
