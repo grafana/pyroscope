@@ -10,7 +10,6 @@ require (
 	github.com/drone/envsubst v1.0.3
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/status v1.1.0
-	github.com/google/pprof v0.0.0-20220520215854-d04f2422c8a1
 	github.com/google/uuid v1.3.0
 	github.com/grafana/dskit v0.0.0-20220526081034-789ec0ca4a3b
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
