@@ -253,15 +253,12 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	for range make([]struct{}, 100) {
-		for pos := range profilePaths {
-			profile := parseProfile(t, profilePaths[pos])
-			require.NoError(t, head.Ingest(ctx, profile))
-		}
+	for pos := range profilePaths {
+		profile := parseProfile(t, profilePaths[pos])
+		require.NoError(t, head.Ingest(ctx, profile))
 	}
 
 	require.NoError(t, head.WriteTo(ctx, t.TempDir()))
-
 	t.Logf("strings=%d samples=%d", len(head.strings.slice), len(head.profiles.slice[0].Samples))
 }
 
