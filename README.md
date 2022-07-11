@@ -32,7 +32,6 @@
 Pyroscope is an open source continuous profiling platform. It will help you:
 * Find performance issues and bottlenecks in your code
 * Use high-cardinality tags/labels to analyze your application
-* Calculate the performance "diff" between various tags/labels and time periods
 * Resolve issues with high CPU utilization
 * Track down memory leaks
 * Understand the call tree of your application
@@ -45,11 +44,12 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 
 ## Features
 
-* Can store years of profiling data from multiple applications
-* You can look at years of data at a time or zoom in on specific events
-* Low CPU overhead
+* Minimal CPU overhead
 * Efficient compression, low disk space requirements
-* Snappy UI
+* Can handle high-cardinality tags/labels
+* Can store years of profiling data from multiple applications
+* Calculate the performance "diff" between various tags/labels and time periods
+* Advanced analysis UI
 
 ## Add Pyroscope Server locally in 2 steps:
 
