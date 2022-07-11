@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/segmentio/parquet-go"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,8 +54,8 @@ func TestStacktracesRoundTrip(t *testing.T) {
 	*/
 }
 
-func newStrings() Strings {
-	return Strings{
+func newStrings() []string {
+	return []string{
 		"",
 		"foo",
 		"bar",
@@ -68,19 +67,10 @@ func newStrings() Strings {
 func TestStringsRoundTrip(t *testing.T) {
 	var (
 		s   = newStrings()
-		buf = parquet.NewBuffer(StringsSchema())
+		w   = &Writer[string, *StringPersister]{}
+		buf bytes.Buffer
 	)
 
-	n, err := buf.WriteRows(s.ToRows())
-	require.NoError(t, err)
-	assert.Equal(t, 5, n)
+	require.NoError(t, w.WriteParquetFile(&buf, s))
 
-	var rows = make([]parquet.Row, len(s))
-	n, err = buf.Rows().ReadRows(rows)
-	require.NoError(t, err)
-	assert.Equal(t, 5, n)
-
-	sRoundTrip, err := StringsFromRows(rows)
-	require.NoError(t, err)
-	assert.Equal(t, s, sRoundTrip)
 }

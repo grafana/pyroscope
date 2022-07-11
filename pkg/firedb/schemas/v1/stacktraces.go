@@ -22,8 +22,7 @@ type storedStacktrace struct {
 	LocationIDs []uint64 `parquet:","`
 }
 
-type StacktracePersister struct {
-}
+type StacktracePersister struct{}
 
 func (*StacktracePersister) Schema() *parquet.Schema {
 	return stacktracesSchema

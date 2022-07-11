@@ -71,8 +71,7 @@ type Profile struct {
 	DefaultSampleType int64 `parquet:","`
 }
 
-type ProfilePersister struct {
-}
+type ProfilePersister struct{}
 
 func (*ProfilePersister) Schema() *parquet.Schema {
 	return profilesSchema

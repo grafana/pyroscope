@@ -3,6 +3,7 @@ package firedb
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,7 +18,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"github.com/segmentio/parquet-go"
 	"google.golang.org/grpc/codes"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
@@ -427,70 +427,67 @@ func (h *Head) WriteTo(ctx context.Context, path string) error {
 		return fmt.Errorf("error %s is no directory", path)
 	}
 
-	file, err := os.OpenFile(filepath.Join(path, "profiles"+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return err
-	}
-	wProfiles := schemav1.Writer[*schemav1.Profile, *schemav1.ProfilePersister]{}
-	if err := wProfiles.WriteParquetFile(file, h.profiles.slice); err != nil {
-		return err
-	}
-
-	file, err = os.OpenFile(filepath.Join(path, "stacktraces"+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return err
-	}
-	wStacktraces := schemav1.Writer[*schemav1.Stacktrace, *schemav1.StacktracePersister]{}
-	if err := wStacktraces.WriteParquetFile(file, h.stacktraces.slice); err != nil {
-		return err
-	}
-
-	strings := schemav1.Strings(h.strings.slice)
-	if err := writeToFile(ctx, path, "strings",
-		[]parquet.RowGroupOption{
-			schemav1.StringsSchema(),
-			schemav1.StringsSorting(),
+	// loop over existing tables and write the parquet files sequentially
+	for _, table := range []struct {
+		name string
+		f    func(w io.Writer) error
+	}{
+		{
+			name: "profiles",
+			f: func(f io.Writer) error {
+				w := schemav1.Writer[*schemav1.Profile, *schemav1.ProfilePersister]{}
+				return w.WriteParquetFile(f, h.profiles.slice)
+			},
 		},
-		[]parquet.WriterOption{
-			schemav1.StringsSchema(),
+		{
+			name: "stacktraces",
+			f: func(f io.Writer) error {
+				w := schemav1.Writer[*schemav1.Stacktrace, *schemav1.StacktracePersister]{}
+				return w.WriteParquetFile(f, h.stacktraces.slice)
+			},
 		},
-		strings.ToRows(),
-	); err != nil {
-		return err
-	}
+		{
+			name: "strings",
+			f: func(f io.Writer) error {
+				w := schemav1.Writer[string, *schemav1.StringPersister]{}
+				return w.WriteParquetFile(f, h.strings.slice)
+			},
+		},
+		{
+			name: "mappings",
+			f: func(f io.Writer) error {
+				w := schemav1.Writer[*profilev1.Mapping, *schemav1.MappingPersister]{}
+				return w.WriteParquetFile(f, h.mappings.slice)
+			},
+		},
+		{
+			name: "locations",
+			f: func(f io.Writer) error {
+				w := schemav1.Writer[*profilev1.Location, *schemav1.LocationPersister]{}
+				return w.WriteParquetFile(f, h.locations.slice)
+			},
+		},
+		{
+			name: "functions",
+			f: func(f io.Writer) error {
+				w := schemav1.Writer[*profilev1.Function, *schemav1.FunctionPersister]{}
+				return w.WriteParquetFile(f, h.functions.slice)
+			},
+		},
+	} {
+		file, err := os.OpenFile(filepath.Join(path, table.name+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
+			return err
+		}
 
-	if err := writeToFile(ctx, path, "mappings", nil, nil, h.mappings.slice); err != nil {
-		return err
-	}
+		if err := table.f(file); err != nil {
+			return err
+		}
 
-	if err := writeToFile(ctx, path, "locations", nil, nil, h.locations.slice); err != nil {
-		return err
-	}
-
-	if err := writeToFile(ctx, path, "functions", nil, nil, h.functions.slice); err != nil {
-		return err
+		if err := file.Close(); err != nil {
+			return err
+		}
 	}
 
 	return nil
-}
-
-func writeToFile[T any](ctx context.Context, path string, table string, rowGroupOptions []parquet.RowGroupOption, writerOptions []parquet.WriterOption, rows []T) error {
-	file, err := os.OpenFile(filepath.Join(path, table+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	buffer := parquet.NewGenericBuffer[T](rowGroupOptions...)
-	if _, err := buffer.Write(rows); err != nil {
-		return err
-	}
-	sort.Sort(buffer)
-
-	writer := parquet.NewGenericWriter[T](file, writerOptions...)
-	if _, err := parquet.CopyRows(writer, buffer.Rows()); err != nil {
-		return err
-	}
-
-	return writer.Close()
 }
