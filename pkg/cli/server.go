@@ -55,6 +55,7 @@ type serverService struct {
 	selfProfiling    *pyroscope.Session
 	debugReporter    *debug.Reporter
 	healthController *health.Controller
+	adminController  *admin.Controller
 	adminServer      *admin.Server
 	discoveryManager *discovery.Manager
 	scrapeManager    *scrape.Manager
@@ -120,7 +121,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		socketPath := svc.config.AdminSocketPath
 		adminService := admin.NewService(svc.storage)
 		userService := service.NewUserService(svc.database.DB())
-		adminCtrl := admin.NewController(svc.logger, adminService, userService, svc.storage)
+		svc.adminController = admin.NewController(svc.logger, adminService, userService, svc.storage)
 		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
@@ -133,7 +134,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 		svc.adminServer, err = admin.NewServer(
 			svc.logger,
-			adminCtrl,
+			svc.adminController,
 			adminHTTPOverUDS,
 		)
 		if err != nil {
@@ -213,6 +214,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		ExportedMetricsRegistry: exportedMetricsRegistry,
 		ScrapeManager:           svc.scrapeManager,
 		DB:                      svc.database.DB(),
+		AdminController:         svc.adminController,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)

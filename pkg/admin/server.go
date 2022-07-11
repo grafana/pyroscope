@@ -11,7 +11,7 @@ import (
 
 type Server struct {
 	log     *logrus.Logger
-	ctrl    *Controller
+	Ctrl    *Controller
 	Handler http.Handler
 
 	HTTPServer
@@ -28,7 +28,7 @@ type HTTPServer interface {
 func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (*Server, error) {
 	as := &Server{
 		log:  logger,
-		ctrl: ctrl,
+		Ctrl: ctrl,
 	}
 	as.HTTPServer = httpServer
 
@@ -38,10 +38,7 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 	as.Handler = r
 
 	// Routes
-	r.HandleFunc("/v1/apps", as.ctrl.HandleGetApps).Methods("GET")
-	r.HandleFunc("/v1/apps", as.ctrl.HandleDeleteApp).Methods("DELETE")
-	r.HandleFunc("/v1/users/{username}", as.ctrl.UpdateUserHandler).Methods("PATCH")
-	r.HandleFunc("/v1/storage/cleanup", as.ctrl.StorageCleanupHandler).Methods("PUT")
+	ctrl.RegisterHandlers(r)
 
 	// Global middlewares
 	r.Use(logginMiddleware)
