@@ -18,7 +18,7 @@ var (
 		fireparquet.NewGroupField("NumUnit", parquet.Optional(stringRef)),
 	})
 	sampleField = fireparquet.Group{
-		fireparquet.NewGroupField("ProfileID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		fireparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		fireparquet.NewGroupField("Values", parquet.Repeated(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
 		fireparquet.NewGroupField("Labels", pprofLabels),
 	}
