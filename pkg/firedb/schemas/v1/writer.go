@@ -28,7 +28,7 @@ func (*Writer[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
 		rows      = make([]parquet.Row, len(elements))
 	)
 
-	buffer := parquet.NewGenericBuffer[T](persister.Schema(), persister.SortingColumns())
+	buffer := parquet.NewBuffer(persister.Schema(), persister.SortingColumns())
 
 	for pos := range rows {
 		rows[pos] = persister.Deconstruct(rows[pos], uint64(pos), elements[pos])
@@ -39,7 +39,7 @@ func (*Writer[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
 	}
 	sort.Sort(buffer)
 
-	writer := parquet.NewGenericWriter[T](file, persister.Schema())
+	writer := parquet.NewWriter(file, persister.Schema())
 	if _, err := parquet.CopyRows(writer, buffer.Rows()); err != nil {
 		return err
 	}

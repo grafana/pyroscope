@@ -24,18 +24,3 @@ func (*stringsHelper) addToRewriter(r *rewriter, m idConversionTable) {
 func (*stringsHelper) rewrite(*rewriter, string) error {
 	return nil
 }
-
-type stringRow struct {
-	ID     uint64 `parquet:",delta"`
-	String string `parquet:",dict"`
-}
-
-func stringSliceToRows(strs []string) []stringRow {
-	rows := make([]stringRow, len(strs))
-	for pos := range strs {
-		rows[pos].ID = uint64(pos)
-		rows[pos].String = strs[pos]
-	}
-
-	return rows
-}
