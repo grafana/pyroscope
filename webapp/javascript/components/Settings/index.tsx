@@ -12,7 +12,6 @@ import cx from 'classnames';
 import { useAppSelector } from '@webapp/redux/hooks';
 import { selectCurrentUser } from '@webapp/redux/reducers/user';
 import { User } from '@webapp/models/users';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import Preferences from './Preferences';
 import Security from './Security';
 import Users from './Users';
@@ -21,7 +20,6 @@ import ApiKeys from './APIKeys';
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
-import trace from '../../../traces/traceSample.json';
 
 function Settings() {
   const { path, url } = useRouteMatch();
@@ -103,9 +101,6 @@ function Settings() {
           <Switch>
             <Route exact path={path}>
               <Preferences />
-            </Route>
-            <Route exact path={`${path}/tracing`}>
-              <FlamegraphRenderer showCredit trace={trace.data[0]} />
             </Route>
             <Route path={`${path}/security`}>
               <Security />
