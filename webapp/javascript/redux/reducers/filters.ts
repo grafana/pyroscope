@@ -92,21 +92,10 @@ function decodeFlamebearer({
 
 export default function (state = initialState, action) {
   const { type } = action;
-  let data;
   let file;
   let flamebearer;
-  let from;
-  let maxNodes;
-  let names;
   let profile;
   let profiles;
-  let query;
-  let tag;
-  let tags;
-  let timeline;
-  let until;
-  let values;
-  let viewSide;
 
   switch (type) {
     case SET_ADHOC_FILE:

@@ -666,27 +666,30 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(fetchSideTimelines.rejected, (state, action: any) => {
-      let type: TimelineState['type'] = 'failed';
+    builder.addCase(
+      fetchSideTimelines.rejected,
+      (state, action: ShamefulAny) => {
+        let type: TimelineState['type'] = 'failed';
 
-      if (
-        action?.meta?.rejectedWithValue &&
-        action?.payload?.rejectedWithValue
-      ) {
-        type = action?.payload?.rejectedWithValue;
-      } else if (action.error.message === 'unmount') {
-        type = 'loaded';
+        if (
+          action?.meta?.rejectedWithValue &&
+          action?.payload?.rejectedWithValue
+        ) {
+          type = action?.payload?.rejectedWithValue;
+        } else if (action.error.message === 'unmount') {
+          type = 'loaded';
+        }
+
+        state.leftTimeline = {
+          ...state.leftTimeline,
+          type,
+        };
+        state.rightTimeline = {
+          ...state.rightTimeline,
+          type,
+        };
       }
-
-      state.leftTimeline = {
-        ...state.leftTimeline,
-        type,
-      };
-      state.rightTimeline = {
-        ...state.rightTimeline,
-        type,
-      };
-    });
+    );
 
     /***********************/
     /*      Diff View      */
@@ -741,7 +744,7 @@ export const continuousSlice = createSlice({
     });
 
     // TODO:
-    builder.addCase(fetchTags.pending, (state) => {});
+    builder.addCase(fetchTags.pending, () => {});
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
       // convert each
@@ -757,7 +760,7 @@ export const continuousSlice = createSlice({
     });
 
     // TODO
-    builder.addCase(fetchTags.rejected, (state) => {});
+    builder.addCase(fetchTags.rejected, () => {});
 
     // TODO other cases
     builder.addCase(fetchTagValues.fulfilled, (state, action) => {

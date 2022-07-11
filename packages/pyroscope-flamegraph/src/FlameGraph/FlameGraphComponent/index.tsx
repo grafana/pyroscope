@@ -76,7 +76,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
   // to display the flamegraph isolated from the table
-  useResizeObserver(canvasRef, (e) => {
+  useResizeObserver(canvasRef, () => {
     if (flamegraph) {
       debouncedRenderCanvas();
     }
@@ -283,7 +283,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         <Tooltip
           format={flamebearer.format}
           canvasRef={canvasRef}
-          xyToData={xyToTooltipData as any /* TODO */}
+          xyToData={xyToTooltipData as ShamefulAny /* TODO */}
           numTicks={flamebearer.numTicks}
           sampleRate={flamebearer.sampleRate}
           leftTicks={

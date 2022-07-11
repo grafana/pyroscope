@@ -1,6 +1,4 @@
-import { Result } from '@webapp/util/fp';
-import { z, ZodError } from 'zod';
-import { modelToResult } from './utils';
+import { z } from 'zod';
 
 const healthModel = z.enum(['up', 'down', 'unknown']);
 const targetModel = z.object({

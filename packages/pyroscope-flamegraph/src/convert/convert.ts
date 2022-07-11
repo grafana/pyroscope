@@ -13,6 +13,7 @@ export function traceToFlamebearer(trace: Trace): Flamebearer {
   const result: Flamebearer = {
     format: 'single',
     numTicks: 0,
+    maxSelf: 0,
     sampleRate: 1000000,
     names: [],
     levels: [],

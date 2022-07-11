@@ -1,6 +1,4 @@
-import { Result } from '@webapp/util/fp';
-import { z, ZodError } from 'zod';
-import { modelToResult } from './utils';
+import { z } from 'zod';
 
 export const TagsSchema = z.array(z.string()).transform((ar) => {
   // Strip '__name__' since from user perspective it's not really a label
