@@ -88,26 +88,26 @@ func Test_selectMerge(t *testing.T) {
 		End:   2,
 	})
 	p1, p2, p3 := &ingestv1.Profile{
-		Type:      req.Msg.Type,
-		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
-		Timestamp: 1,
+		Type:        req.Msg.Type,
+		Labels:      []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+		Timestamp:   1,
 		Stacktraces: []*ingestv1.StacktraceSample{
-			{ID: []byte("bar"), Value: 1},
+			// {ID: []byte("bar"), Value: 1},
 		},
 	}, &ingestv1.Profile{
-		Type:      req.Msg.Type,
-		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
-		Timestamp: 2,
+		Type:        req.Msg.Type,
+		Labels:      []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+		Timestamp:   2,
 		Stacktraces: []*ingestv1.StacktraceSample{
-			{ID: []byte("buz"), Value: 1},
+			// {ID: []byte("buz"), Value: 1},
 		},
 	},
 		&ingestv1.Profile{
-			Type:      req.Msg.Type,
-			Labels:    []*commonv1.LabelPair{{Name: "app", Value: "fuzz"}},
-			Timestamp: 3,
+			Type:        req.Msg.Type,
+			Labels:      []*commonv1.LabelPair{{Name: "app", Value: "fuzz"}},
+			Timestamp:   3,
 			Stacktraces: []*ingestv1.StacktraceSample{
-				{ID: []byte("foo"), Value: 1},
+				// {ID: []byte("foo"), Value: 1},
 			},
 		}
 
@@ -140,21 +140,6 @@ func Test_selectMerge(t *testing.T) {
 				},
 			}), nil)
 		}
-		symbols := &ingestv1.SymbolizeStacktraceResponse{}
-		q.On("SymbolizeStacktraces", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-			req := args.Get(1).(*connect.Request[ingestv1.SymbolizeStacktraceRequest])
-			for _, p := range req.Msg.Ids {
-				switch string(p) {
-				case "foo":
-					symbols.Locations = append(symbols.Locations, &ingestv1.Location{Ids: []int32{0}})
-				case "bar":
-					symbols.Locations = append(symbols.Locations, &ingestv1.Location{Ids: []int32{1}})
-				case "buz":
-					symbols.Locations = append(symbols.Locations, &ingestv1.Location{Ids: []int32{2}})
-				}
-			}
-			symbols.FunctionNames = []string{"foo", "bar", "buz"}
-		}).Return(connect.NewResponse(symbols), nil)
 		return q, nil
 	}, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
@@ -224,22 +209,6 @@ func (f *fakeQuerierIngester) SelectProfiles(ctx context.Context, req *connect.R
 	)
 	if args[0] != nil {
 		res = args[0].(*connect.Response[ingestv1.SelectProfilesResponse])
-	}
-	if args[1] != nil {
-		err = args.Get(1).(error)
-	}
-
-	return res, err
-}
-
-func (f *fakeQuerierIngester) SymbolizeStacktraces(ctx context.Context, req *connect.Request[ingestv1.SymbolizeStacktraceRequest]) (*connect.Response[ingestv1.SymbolizeStacktraceResponse], error) {
-	var (
-		args = f.Called(ctx, req)
-		res  *connect.Response[ingestv1.SymbolizeStacktraceResponse]
-		err  error
-	)
-	if args[0] != nil {
-		res = args[0].(*connect.Response[ingestv1.SymbolizeStacktraceResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)

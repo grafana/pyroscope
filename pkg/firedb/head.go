@@ -242,7 +242,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		sb                                             strings.Builder
 		lbls                                           = firemodel.NewLabelsBuilder(externalLabels)
 		sampleType, sampleUnit, periodType, periodUnit string
-		metricName                                     = lbls.Labels().Get(model.MetricNameLabel)
+		metricName                                     = firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
 	)
 
 	// set common labels
@@ -271,8 +271,9 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		_, _ = sb.WriteString(periodType)
 		_, _ = sb.WriteRune(':')
 		_, _ = sb.WriteString(periodUnit)
-		lbls.Set(firemodel.LabelNameProfileType, sb.String())
-		lbs := lbls.Labels()
+		t := sb.String()
+		lbls.Set(firemodel.LabelNameProfileType, t)
+		lbs := lbls.Labels().Clone()
 		profilesLabels[pos] = lbs
 		seriesRefs[pos] = model.Fingerprint(lbs.Hash())
 	}
@@ -391,8 +392,8 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 				pos, ok := namesPositions[fnName]
 				if !ok {
 					namesPositions[fnName] = len(names)
-					names = append(names, fnName)
 					fnIds[i] = int32(len(names))
+					names = append(names, fnName)
 					continue
 				}
 				fnIds[i] = int32(pos)
@@ -404,6 +405,9 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		}
 		result = append(result, p)
 		return nil
+	})
+	sort.Slice(result, func(i, j int) bool {
+		return firemodel.CompareProfile(result[i], result[j]) < 0
 	})
 	return connect.NewResponse(&ingestv1.SelectProfilesResponse{
 		Profiles:      result,

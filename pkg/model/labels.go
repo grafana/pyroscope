@@ -110,6 +110,17 @@ func (ls Labels) Get(name string) string {
 	return ""
 }
 
+func (ls Labels) Clone() Labels {
+	result := make(Labels, len(ls))
+	for i, l := range ls {
+		result[i] = &commonv1.LabelPair{
+			Name:  l.Name,
+			Value: l.Value,
+		}
+	}
+	return result
+}
+
 // LabelPairsString returns a string representation of the label pairs.
 func LabelPairsString(lbs []*commonv1.LabelPair) string {
 	var b bytes.Buffer
