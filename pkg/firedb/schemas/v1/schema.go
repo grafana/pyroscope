@@ -1,82 +1,66 @@
 package v1
 
 import (
-	"github.com/google/uuid"
 	"github.com/segmentio/parquet-go"
 
-	"github.com/prometheus/common/model"
-
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	fireparquet "github.com/grafana/fire/pkg/parquet"
 )
 
-type Sample struct {
-	StacktraceID uint64             `parquet:","`
-	Values       []int64            `parquet:","`
-	Labels       []*profilev1.Label `parquet:","`
+var (
+	stringsSchema = parquet.NewSchema("String", fireparquet.Group{
+		fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		fireparquet.NewGroupField("String", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
+	})
+)
+
+func StringsSchema() *parquet.Schema {
+	return stringsSchema
 }
 
-type Profile struct {
-	// A unique UUID per ingested profile
-	ID uuid.UUID `parquet:",uuid"`
-
-	// SeriesRefs reference the underlying series in the TSDB index
-	SeriesRefs []model.Fingerprint `parquet:","`
-
-	// The set of samples recorded in this profile.
-	Samples []*Sample `parquet:","`
-
-	// frames with Function.function_name fully matching the following
-	// regexp will be dropped from the samples, along with their successors.
-	DropFrames int64 `parquet:","` // Index into string table.
-	// frames with Function.function_name fully matching the following
-	// regexp will be kept, even if it matches drop_frames.
-	KeepFrames int64 `parquet:","` // Index into string table.
-	// Time of collection (UTC) represented as nanoseconds past the epoch.
-	TimeNanos int64 `parquet:",delta,timestamp(nanosecond)"`
-	// Duration of the profile, if a duration makes sense.
-	DurationNanos int64 `parquet:",delta"`
-	// The number of events between sampled occurrences.
-	Period int64 `parquet:","`
-	// Freeform text associated to the profile.
-	Comment []int64 `parquet:"Comments,"` // Indices into string table.
-	// Index into the string table of the type of the preferred sample
-	// value. If unset, clients should default to the last sample value.
-	DefaultSampleType int64 `parquet:","`
+func StringsSorting() interface {
+	parquet.RowGroupOption
+	parquet.WriterOption
+} {
+	return parquet.SortingColumns(
+		parquet.Ascending("ID"),
+		parquet.Ascending("String"),
+	)
 }
 
-func ProfilesSchema() *parquet.Schema {
+type Strings []string
+
+type storedString struct {
+	ID     uint64 `parquet:",delta"`
+	String string `parquet:",dict"`
+}
+
+func (s Strings) ToRows() []parquet.Row {
 	var (
-		stringRef = parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)
-
-		pprofLabels = parquet.Repeated(fireparquet.Group{
-			fireparquet.NewGroupField("Key", stringRef),
-			fireparquet.NewGroupField("Str", parquet.Optional(stringRef)),
-			fireparquet.NewGroupField("Num", parquet.Optional(parquet.Int(64))),
-			fireparquet.NewGroupField("NumUnit", parquet.Optional(stringRef)),
-		})
-
-		sample = fireparquet.Group{
-			fireparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-			fireparquet.NewGroupField("Values", parquet.Repeated(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
-			fireparquet.NewGroupField("Labels", pprofLabels),
-		}
+		rows   = make([]parquet.Row, len(s))
+		stored storedString
 	)
 
-	return parquet.NewSchema("Profile", fireparquet.Group{
-		fireparquet.NewGroupField("ID", parquet.UUID()),
-		fireparquet.NewGroupField("SeriesRefs", parquet.Repeated(parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked))),
-		fireparquet.NewGroupField("Samples", parquet.Repeated(sample)),
-		fireparquet.NewGroupField("DropFrames", stringRef),
-		fireparquet.NewGroupField("KeepFrames", stringRef),
-		fireparquet.NewGroupField("TimeNanos", parquet.Timestamp(parquet.Nanosecond)),
-		fireparquet.NewGroupField("DurationNanos", parquet.Int(64)),
-		fireparquet.NewGroupField("Period", parquet.Int(64)),
-		fireparquet.NewGroupField("Comments", parquet.Repeated(stringRef)),
-		fireparquet.NewGroupField("DefaultSampleType", parquet.Int(64)),
-	})
+	for pos := range s {
+		stored.ID = uint64(pos)
+		stored.String = s[pos]
+		rows[pos] = stringsSchema.Deconstruct(rows[pos], &stored)
+	}
+	return rows
 }
 
-type Stacktrace struct {
-	LocationIDs []uint64 `parquet:","`
+func StringsFromRows(rows []parquet.Row) (Strings, error) {
+	var (
+		s      = make(Strings, len(rows))
+		stored storedString
+	)
+
+	for pos := range rows {
+		stored.String = ""
+		if err := stringsSchema.Reconstruct(&stored, rows[pos]); err != nil {
+			return nil, err
+		}
+		s[stored.ID] = stored.String
+	}
+
+	return s, nil
 }
