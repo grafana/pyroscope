@@ -1,8 +1,9 @@
 package v1
 
 import (
-	fireparquet "github.com/grafana/fire/pkg/parquet"
 	"github.com/segmentio/parquet-go"
+
+	fireparquet "github.com/grafana/fire/pkg/parquet"
 )
 
 var (
@@ -32,7 +33,7 @@ func (*StringPersister) SortingColumns() SortingColumns {
 
 func (*StringPersister) Deconstruct(row parquet.Row, id uint64, s string) parquet.Row {
 	var stored storedString
-	stored.ID = uint64(id)
+	stored.ID = id
 	stored.String = s
 	row = stringsSchema.Deconstruct(row, &stored)
 	return row

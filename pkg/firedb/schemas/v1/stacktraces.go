@@ -37,7 +37,7 @@ func (*StacktracePersister) SortingColumns() SortingColumns {
 
 func (*StacktracePersister) Deconstruct(row parquet.Row, id uint64, s *Stacktrace) parquet.Row {
 	var stored storedStacktrace
-	stored.ID = uint64(id)
+	stored.ID = id
 	stored.LocationIDs = s.LocationIDs
 	row = stacktracesSchema.Deconstruct(row, &stored)
 	return row
