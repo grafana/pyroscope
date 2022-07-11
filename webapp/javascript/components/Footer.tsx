@@ -15,7 +15,6 @@ function copyrightYears(start: string, end: string) {
 const win = window as unknown as { buildInfo: BuildInfo };
 
 export interface BuildInfo {
-  id: string;
   goos: string;
   goarch: string;
   goVersion: string;
@@ -29,26 +28,46 @@ function buildInfo() {
   return `
     BUILD INFO:
     js_version: v${PYROSCOPE_VERSION}
-    goos: ${win.buildInfo.goos}
-    goarch: ${win.buildInfo.goarch}
-    go_version: ${win.buildInfo.goVersion}
-    version: ${win.buildInfo.version}
-    id: ${win.buildInfo.id}
-    time: ${win.buildInfo.time}
-    gitSHA: ${win.buildInfo.gitSHA}
-    gitDirty: ${win.buildInfo.gitDirty}
-    embeddedAssets: ${win.buildInfo.useEmbeddedAssets}
+    goos: ${win?.buildInfo?.goos}
+    goarch: ${win.buildInfo?.goarch}
+    go_version: ${win.buildInfo?.goVersion}
+    version: ${win.buildInfo?.version}
+    time: ${win.buildInfo?.time}
+    gitSHA: ${win.buildInfo?.gitSHA}
+    gitDirty: ${win.buildInfo?.gitDirty}
+    embeddedAssets: ${win.buildInfo?.useEmbeddedAssets}
 `.replace(/^\s+/gm, '');
 }
 
-function Footer() {
-  const latestVersion = (win as ShamefulAny).latestVersionInfo
-    .latest_version as string;
-  const newVersionAvailable =
-    latestVersion && win.buildInfo.version !== latestVersion;
+//function NewerVersionCheck() {
+//  const latestVersion = (win as ShamefulAny).latestVersionInfo
+//    .latest_version as string;
+//  const newVersionAvailable =
+//    latestVersion && win.buildInfo.version !== latestVersion;
+//
+//  if (!newVersionAvailable) {
+//    return null;
+//  }
+//
+//  return (
+//    <span>
+//      &nbsp;&nbsp;|&nbsp;&nbsp;
+//      <a
+//        href="https://pyroscope.io/downloads?utm_source=pyroscope_footer"
+//        rel="noreferrer"
+//        target="_blank"
+//      >
+//        <FontAwesomeIcon icon={faDownload} />
+//        &nbsp;
+//        <span>{`Newer Version Available (${latestVersion})`}</span>
+//      </a>
+//    </span>
+//  );
+//}
 
+function Footer() {
   return (
-    <div className="footer" title={buildInfo()}>
+    <footer className="footer" title={buildInfo()}>
       <span>
         {`© Pyroscope ${copyrightYears(
           START_YEAR,
@@ -56,22 +75,8 @@ function Footer() {
         )}`}
       </span>
       &nbsp;&nbsp;|&nbsp;&nbsp;
-      <span>{win.buildInfo.version}</span>
-      {newVersionAvailable && (
-        <span>
-          &nbsp;&nbsp;|&nbsp;&nbsp;
-          <a
-            href="https://pyroscope.io/downloads?utm_source=pyroscope_footer"
-            rel="noreferrer"
-            target="_blank"
-          >
-            <FontAwesomeIcon icon={faDownload} />
-            &nbsp;
-            <span>{`Newer Version Available (${latestVersion})`}</span>
-          </a>
-        </span>
-      )}
-    </div>
+      <span>{win.buildInfo?.version}</span>
+    </footer>
   );
 }
 
