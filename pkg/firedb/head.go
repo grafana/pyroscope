@@ -45,12 +45,20 @@ func (t stringConversionTable) rewritePprofLabels(in []*profilev1.Label) []*prof
 
 func (t idConversionTable) rewrite(idx *int64) {
 	pos := *idx
-	*idx = t[pos]
+	var ok bool
+	*idx, ok = t[pos]
+	if !ok {
+		panic(fmt.Sprintf("unable to rewrite index %d", pos))
+	}
 }
 
 func (t idConversionTable) rewriteUint64(idx *uint64) {
 	pos := *idx
-	*idx = uint64(t[int64(pos)])
+	v, ok := t[int64(pos)]
+	if !ok {
+		panic(fmt.Sprintf("unable to rewrite index %d", pos))
+	}
+	*idx = uint64(v)
 }
 
 type Models interface {
