@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.11.0...@pyroscope/flamegraph@0.12.0) (2022-07-11)
+
+
+### Features
+
+* **flamegraph:** Add support for visualizing traces ([#1233](https://github.com/pyroscope-io/pyroscope/issues/1233)) ([b15d094](https://github.com/pyroscope-io/pyroscope/commit/b15d094ebb06592a406b4b73485c0f316c411b08))
+
+
+
+
+
 # [0.11.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.10.1...@pyroscope/flamegraph@0.11.0) (2022-07-07)
 
 
