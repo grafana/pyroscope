@@ -391,17 +391,19 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		}
 		for _, s := range profile.Samples {
 			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
-			fnIds := make([]int32, len(locs))
-			for i, loc := range locs {
-				fnName := h.strings.slice[h.functions.slice[h.locations.slice[loc].Line[0].FunctionId].Name]
-				pos, ok := namesPositions[fnName]
-				if !ok {
-					namesPositions[fnName] = len(names)
-					fnIds[i] = int32(len(names))
-					names = append(names, fnName)
-					continue
+			fnIds := make([]int32, 0, len(locs))
+			for _, loc := range locs {
+				for _, line := range h.locations.slice[loc].Line {
+					fnName := h.strings.slice[h.functions.slice[line.FunctionId].Name]
+					pos, ok := namesPositions[fnName]
+					if !ok {
+						namesPositions[fnName] = len(names)
+						fnIds = append(fnIds, int32(len(names)))
+						names = append(names, fnName)
+						continue
+					}
+					fnIds = append(fnIds, int32(pos))
 				}
-				fnIds[i] = int32(pos)
 			}
 			p.Stacktraces = append(p.Stacktraces, &ingestv1.StacktraceSample{
 				Value:       s.Values[idx],
