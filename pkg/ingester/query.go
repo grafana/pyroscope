@@ -178,7 +178,6 @@ func getLocationsFromSerializedLocations(
 */
 
 func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-
 	/*
 		selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
 		if err != nil {
