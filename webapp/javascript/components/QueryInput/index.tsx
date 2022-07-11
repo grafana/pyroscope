@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  Dispatch,
+  SetStateAction,
+} from 'react';
 import classNames from 'classnames/bind';
 import Button from '@webapp/ui/Button';
 import ReactDOM from 'react-dom';
@@ -11,6 +17,8 @@ import OutsideClickHandler from 'react-outside-click-handler';
 import styles from './QueryInput.module.scss';
 
 const cx = classNames.bind(styles);
+
+const inlineSvg = `<svg viewPort="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg"> <line x1="1" y1="11" x2="11" y2="1" stroke="white" stroke-width="2"/> <line x1="1" y1="1" x2="11" y2="11" stroke="white" stroke-width="2"/> </svg>`;
 
 interface QueryInputProps {
   initialQuery: Query;
@@ -59,11 +67,39 @@ const createElem = (
   return el;
 };
 
-const decorateAttrValues = () =>
+function decorateAttrValues(setQuery: Dispatch<SetStateAction<Query>>) {
   Prism.hooks.add('after-highlight', (env) => {
     const list = env.element.querySelectorAll(
       'span.token.label-value.attr-value'
     );
+
+    const handleClick = (e: MouseEvent) => {
+      const eTarget = e.target as ShamefulAny;
+      const attrValue = eTarget?.parentElement?.innerText;
+      const attrPunctuation =
+        eTarget?.parentElement?.previousElementSibling?.innerText;
+      const attrName =
+        eTarget?.parentElement?.previousElementSibling?.previousElementSibling
+          ?.innerText;
+
+      const regExp = new RegExp(
+        `\\b${attrName}\\b[\\s|=|~|!]{1,4}["'\`](.*?(${attrValue.replace(
+          /['"\s]+/g,
+          ''
+        )}).*?)["'\`]`,
+        'gmi'
+      );
+
+      setQuery((query: ShamefulAny) => {
+        const red = query.match(regExp);
+
+        if (red?.[0]) {
+          return query.replace(red?.[0], '');
+        }
+
+        return query;
+      });
+    };
 
     Array.from(list).forEach((item) => {
       const closeBox = item.querySelector(`span[data-role="close"]`);
@@ -74,10 +110,10 @@ const decorateAttrValues = () =>
           'span',
           'close',
           styles.deletePill,
-          `<svg viewPort="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg"> <line x1="1" y1="11" x2="11" y2="1" stroke="white" stroke-width="2"/> <line x1="1" y1="1" x2="11" y2="11" stroke="white" stroke-width="2"/> </svg>`
+          inlineSvg
         );
 
-        closeDiv.onclick = (e) => e.stopPropagation();
+        closeDiv.onclick = (e) => handleClick(e);
 
         item.appendChild(closeDiv);
       }
@@ -91,6 +127,7 @@ const decorateAttrValues = () =>
       }
     });
   });
+}
 
 function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
   const windowWidth = useWindowWidth();
@@ -106,12 +143,13 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
   }, [initialQuery]);
 
   useEffect(() => {
+    // execute decoration before highlighting
+    decorateAttrValues(setQuery);
+
     if (Prism && codeRef.current) {
       Prism.highlightElement(codeRef.current);
     }
-
-    decorateAttrValues();
-  }, [query]);
+  }, [query, setQuery]);
 
   useEffect(() => {
     setTextAreaSize({
