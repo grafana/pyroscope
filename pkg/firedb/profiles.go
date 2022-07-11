@@ -67,10 +67,10 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs []firemodel.Labels) {
 
 // forMatchingProfiles iterates through all matching profiles and calls f for each profiles.
 // The profile contains multiple samples not all of them are matching the matchers.
-// You can use the fingerprint to filter the samples by his position in the returned profile.
+// You can use sampleIdx to filter the samples by his position in the returned profile.
 // The returned profile is not sorted.
 func (pi *profilesIndex) forMatchingProfiles(matchers []*labels.Matcher,
-	fn func(lbs firemodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error,
+	fn func(lbs firemodel.Labels, fp model.Fingerprint, sampleIdx int, profile *schemav1.Profile) error,
 ) error {
 	filters, matchers := SplitFiltersAndMatchers(matchers)
 	ids, err := pi.ix.Lookup(matchers, nil)
@@ -95,8 +95,12 @@ outer:
 			}
 		}
 		for _, p := range profile.profiles {
-			if err := fn(profile.lbs, profile.fp, p); err != nil {
-				return err
+			for i, seriesRef := range p.SeriesRefs {
+				if seriesRef == fp {
+					if err := fn(profile.lbs, profile.fp, i, p); err != nil {
+						return err
+					}
+				}
 			}
 		}
 

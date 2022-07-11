@@ -6,8 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -108,6 +110,9 @@ func newProfileBar() *profilev1.Profile {
 				Id:        1,
 				MappingId: 1,
 				Address:   0x1337,
+				Line: []*profilev1.Line{
+					{FunctionId: 10, Line: 1},
+				},
 			},
 		},
 		Mapping: []*profilev1.Mapping{
@@ -257,6 +262,35 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 	require.NoError(t, head.WriteTo(ctx, t.TempDir()))
 
 	t.Logf("strings=%d samples=%d", len(head.strings.slice), len(head.profiles.slice[0].Samples))
+}
+
+func TestSelectProfiles(t *testing.T) {
+	head, err := NewHead()
+	require.NoError(t, err)
+
+	// todo write more robust tests.
+	for i := int64(0); i < 4; i++ {
+		p := newProfileBar()
+		p.TimeNanos = int64(time.Second * time.Duration(i))
+		err = head.Ingest(context.Background(), p, &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "__name__", Value: "memory"})
+		require.NoError(t, err)
+	}
+
+	resp, err := head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+		LabelSelector: `{job="bar"}`,
+		Type: &ingestv1.ProfileType{
+			Name:       "memory",
+			SampleType: "type",
+			SampleUnit: "unit",
+			PeriodType: "type",
+			PeriodUnit: "unit",
+		},
+		Start: int64(model.TimeFromUnixNano(1 * int64(time.Second))),
+		End:   int64(model.TimeFromUnixNano(2 * int64(time.Second))),
+	}))
+	require.NoError(t, err)
+	require.Equal(t, 2, len(resp.Msg.Profiles))
+	require.Equal(t, 1, len(resp.Msg.FunctionNames))
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

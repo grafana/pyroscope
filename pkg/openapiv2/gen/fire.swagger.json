@@ -61,18 +61,6 @@
     }
   },
   "definitions": {
-    "ingesterv1Location": {
-      "type": "object",
-      "properties": {
-        "ids": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      }
-    },
     "ingesterv1Profile": {
       "type": "object",
       "properties": {
@@ -251,15 +239,24 @@
           "items": {
             "$ref": "#/definitions/ingesterv1Profile"
           }
+        },
+        "functionNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
     "v1StacktraceSample": {
       "type": "object",
       "properties": {
-        "ID": {
-          "type": "string",
-          "format": "byte"
+        "functionIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          }
         },
         "value": {
           "type": "string",
@@ -275,23 +272,6 @@
         "STATE_DROPPED"
       ],
       "default": "STATE_UNSPECIFIED"
-    },
-    "v1SymbolizeStacktraceResponse": {
-      "type": "object",
-      "properties": {
-        "functionNames": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "locations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ingesterv1Location"
-          }
-        }
-      }
     },
     "v1Target": {
       "type": "object",
