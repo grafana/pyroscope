@@ -33,3 +33,9 @@ func (*functionsHelper) rewrite(r *rewriter, f *profilev1.Function) error {
 	r.strings.rewrite(&f.SystemName)
 	return nil
 }
+
+func (*functionsHelper) setID(_, newID uint64, f *profilev1.Function) uint64 {
+	var oldID = f.Id
+	f.Id = newID
+	return oldID
+}

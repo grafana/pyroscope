@@ -54,3 +54,9 @@ func (*locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
 	}
 	return nil
 }
+
+func (*locationsHelper) setID(_, newID uint64, l *profilev1.Location) uint64 {
+	oldID := l.Id
+	l.Id = newID
+	return oldID
+}

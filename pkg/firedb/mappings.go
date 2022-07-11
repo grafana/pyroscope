@@ -41,3 +41,9 @@ func (*mappingsHelper) rewrite(r *rewriter, m *profilev1.Mapping) error {
 	r.strings.rewrite(&m.BuildId)
 	return nil
 }
+
+func (*mappingsHelper) setID(_, newID uint64, m *profilev1.Mapping) uint64 {
+	var oldID = m.Id
+	m.Id = newID
+	return oldID
+}

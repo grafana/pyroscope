@@ -39,3 +39,7 @@ func (*stacktracesHelper) rewrite(r *rewriter, s *schemav1.Stacktrace) error {
 	}
 	return nil
 }
+
+func (*stacktracesHelper) setID(oldID, newID uint64, s *schemav1.Stacktrace) uint64 {
+	return oldID
+}

@@ -24,3 +24,7 @@ func (*stringsHelper) addToRewriter(r *rewriter, m idConversionTable) {
 func (*stringsHelper) rewrite(*rewriter, string) error {
 	return nil
 }
+
+func (*stringsHelper) setID(oldID, newID uint64, s string) uint64 {
+	return oldID
+}
