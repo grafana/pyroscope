@@ -87,27 +87,28 @@ func Test_selectMerge(t *testing.T) {
 		Start: 0,
 		End:   2,
 	})
+	names := []string{"foo", "bar", "buzz"}
 	p1, p2, p3 := &ingestv1.Profile{
-		Type:        req.Msg.Type,
-		Labels:      []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
-		Timestamp:   1,
+		Type:      req.Msg.Type,
+		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+		Timestamp: 1,
 		Stacktraces: []*ingestv1.StacktraceSample{
-			// {ID: []byte("bar"), Value: 1},
+			{FunctionIds: []int32{1}, Value: 1},
 		},
 	}, &ingestv1.Profile{
-		Type:        req.Msg.Type,
-		Labels:      []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
-		Timestamp:   2,
+		Type:      req.Msg.Type,
+		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+		Timestamp: 2,
 		Stacktraces: []*ingestv1.StacktraceSample{
-			// {ID: []byte("buz"), Value: 1},
+			{FunctionIds: []int32{2}, Value: 1},
 		},
 	},
 		&ingestv1.Profile{
-			Type:        req.Msg.Type,
-			Labels:      []*commonv1.LabelPair{{Name: "app", Value: "fuzz"}},
-			Timestamp:   3,
+			Type:      req.Msg.Type,
+			Labels:    []*commonv1.LabelPair{{Name: "app", Value: "fuzz"}},
+			Timestamp: 3,
 			Stacktraces: []*ingestv1.StacktraceSample{
-				// {ID: []byte("foo"), Value: 1},
+				{FunctionIds: []int32{0}, Value: 1},
 			},
 		}
 
@@ -125,12 +126,14 @@ func Test_selectMerge(t *testing.T) {
 				Profiles: []*ingestv1.Profile{
 					p1, p2, p3,
 				},
+				FunctionNames: names,
 			}), nil)
 		case "2":
 			q.On("SelectProfiles", mock.Anything, req).Once().Return(connect.NewResponse(&ingestv1.SelectProfilesResponse{
 				Profiles: []*ingestv1.Profile{
 					p1, p2,
 				},
+				FunctionNames: names,
 			}), nil)
 
 		case "3":
@@ -138,6 +141,7 @@ func Test_selectMerge(t *testing.T) {
 				Profiles: []*ingestv1.Profile{
 					p2, p3,
 				},
+				FunctionNames: names,
 			}), nil)
 		}
 		return q, nil
@@ -155,7 +159,7 @@ func Test_selectMerge(t *testing.T) {
 	}, flame.FlamebearerProfileV1.Metadata)
 
 	sort.Strings(flame.Flamebearer.Names)
-	require.Equal(t, []string{"bar", "buz", "foo", "total"}, flame.Flamebearer.Names)
+	require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Flamebearer.Names)
 	require.Equal(t, []int{0, 3, 0, 0}, flame.Flamebearer.Levels[0])
 	require.Equal(t, 3, flame.FlamebearerProfileV1.Flamebearer.NumTicks)
 	require.Equal(t, 1, flame.FlamebearerProfileV1.Flamebearer.MaxSelf)
