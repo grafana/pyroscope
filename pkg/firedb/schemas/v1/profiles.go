@@ -14,7 +14,7 @@ var (
 	pprofLabels = parquet.Repeated(fireparquet.Group{
 		fireparquet.NewGroupField("Key", stringRef),
 		fireparquet.NewGroupField("Str", parquet.Optional(stringRef)),
-		fireparquet.NewGroupField("Num", parquet.Optional(parquet.Int(64))),
+		fireparquet.NewGroupField("Num", parquet.Optional(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
 		fireparquet.NewGroupField("NumUnit", parquet.Optional(stringRef)),
 	})
 	sampleField = fireparquet.Group{
