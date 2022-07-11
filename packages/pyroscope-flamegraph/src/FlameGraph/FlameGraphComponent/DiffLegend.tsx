@@ -1,5 +1,4 @@
 import React from 'react';
-import useResizeObserver from '@react-hook/resize-observer';
 import { NewDiffColor } from './color';
 import { FlamegraphPalette } from './colorPalette';
 import styles from './DiffLegend.module.css';

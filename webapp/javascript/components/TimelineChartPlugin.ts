@@ -150,7 +150,7 @@ import { getUTCdate } from '@webapp/util/formatDate';
     };
 
     // Trying to mimic flot.selection.js
-    const onMouseDown = (evt) => {
+    const onMouseDown = () => {
       // Save selection state
       this.selecting = true;
     };
@@ -177,10 +177,6 @@ import { getUTCdate } from '@webapp/util/formatDate';
       $tip.css({ position: 'absolute', left: 0, top: 0 });
       $tip.css(tooltipStyle);
       this.$tooltip = $tip;
-    };
-
-    const destroyDomElements = () => {
-      this.$tooltip.remove();
     };
 
     function bindEvents(plot, eventHolder) {

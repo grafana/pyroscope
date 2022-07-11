@@ -332,7 +332,7 @@ const TableBody = ({
     style: React.CSSProperties
   ) => (
     <tr
-      key={x.name + renderID}
+      key={`${x.name}${renderID}`}
       onClick={() => handleTableItemClick(x)}
       className={`${isRowSelected(x.name) && styles.rowSelected}`}
     >
@@ -359,7 +359,7 @@ const TableBody = ({
           style: React.CSSProperties
         ) => (
           <tr
-            key={x.name + renderID}
+            key={`${x.name}${renderID}`}
             onClick={() => handleTableItemClick(x)}
             className={`${isRowSelected(x.name) && styles.rowSelected}`}
           >
@@ -405,7 +405,7 @@ const TableBody = ({
           style: React.CSSProperties
         ) => (
           <tr
-            key={x.name + renderID}
+            key={`${x.name}${renderID}`}
             onClick={() => handleTableItemClick(x)}
             className={`${isRowSelected(x.name) && styles.rowSelected}`}
           >
@@ -449,7 +449,7 @@ const TableBody = ({
           style: React.CSSProperties
         ) => (
           <tr
-            key={x.name + renderID}
+            key={`${x.name}${renderID}`}
             onClick={() => handleTableItemClick(x)}
             className={`${isRowSelected(x.name) && styles.rowSelected}`}
           >

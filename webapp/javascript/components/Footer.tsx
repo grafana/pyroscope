@@ -12,8 +12,19 @@ function copyrightYears(start: string, end: string) {
   return start === end ? start : `${start} – ${end}`;
 }
 
-const win = window as ShamefulAny;
+const win = window as unknown as { buildInfo: BuildInfo };
 
+export interface BuildInfo {
+  id: string;
+  goos: string;
+  goarch: string;
+  goVersion: string;
+  version: string;
+  time: string;
+  gitSHA: string;
+  gitDirty: string;
+  useEmbeddedAssets: string;
+}
 function buildInfo() {
   return `
     BUILD INFO:
@@ -31,7 +42,8 @@ function buildInfo() {
 }
 
 function Footer() {
-  const latestVersion = win.latestVersionInfo.latest_version;
+  const latestVersion = (win as ShamefulAny).latestVersionInfo
+    .latest_version as string;
   const newVersionAvailable =
     latestVersion && win.buildInfo.version !== latestVersion;
 

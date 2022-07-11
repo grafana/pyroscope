@@ -277,7 +277,7 @@ function ExportData(props: ExportDataProps) {
       inputPlaceholder: 'Export name',
       type: 'normal',
       validationMessage: 'Name must not be empty',
-      onConfirm: (value: any) => value,
+      onConfirm: (value: ShamefulAny) => value,
     });
   }
 

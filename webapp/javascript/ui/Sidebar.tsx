@@ -37,7 +37,6 @@ export default function Sidebar(props: SidebarProps) {
 type Icon = React.ReactElement<IconProps>;
 
 export function MenuItem(props: MenuItemProps & { icon: Icon }) {
-  const { icon } = props;
   const { className } = props;
 
   return <RProMenuItem {...props} className={className} />;

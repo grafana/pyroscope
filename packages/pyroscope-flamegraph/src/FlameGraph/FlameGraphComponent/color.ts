@@ -133,7 +133,7 @@ export function colorBasedOnPackageName(
   if (!baseClr) {
     console.warn('Could not calculate color. Defaulting to the first one');
     // We assert to Color since the first position is always available
-    return palette.colors[0] as Color;
+    return palette.colors[0];
   }
 
   return baseClr;
@@ -156,7 +156,7 @@ export function NewDiffColor(
       goodColor.rgb().toString(),
       neutralColor.rgb().toString(),
       badColor.rgb().toString(),
-    ] as any);
+    ] as ShamefulAny);
 
   return (n: number) => {
     // convert to our Color object
