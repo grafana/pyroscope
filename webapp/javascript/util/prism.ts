@@ -59,7 +59,7 @@ https://prismjs.com/download.html#themes=prism-funky&languages=promql */
       pattern: /\{[^{}]*\}/,
       inside: {
         'label-key': {
-          pattern: /\b[a-z_]\w*(?=\s*(?:=|![=~]))/,
+          pattern: /\b[a-z_]\w*(?=\s*(?:=|![=~]|~!))/,
           alias: 'attr-name',
         },
         'label-value': {
@@ -67,7 +67,7 @@ https://prismjs.com/download.html#themes=prism-funky&languages=promql */
           greedy: true,
           alias: 'attr-value',
         },
-        punctuation: /\{|\}|=~?|![=~]|,/,
+        punctuation: /\{|\}|=~?|![=~]|,|~!/,
       },
     },
     'context-range': [

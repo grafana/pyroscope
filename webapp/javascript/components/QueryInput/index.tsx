@@ -89,10 +89,9 @@ function decorateAttrValues(setQuery: Dispatch<SetStateAction<Query>>) {
       );
 
       setQuery((query: ShamefulAny) => {
-        const red = query.match(regExp);
-
-        if (red?.[0]) {
-          return query.replace(red?.[0], '');
+        const matched = query.match(regExp);
+        if (matched?.[0]) {
+          return query.replace(matched?.[0], '');
         }
 
         return query;
