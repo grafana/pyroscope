@@ -65,7 +65,8 @@
     "lint-staged": "lint-staged",
     "size": "yarn build && size-limit",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook"
+    "build-storybook": "build-storybook",
+    "depcruise": "depcruise --config .dependency-cruiser.js webapp/ packages/"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
@@ -167,6 +168,7 @@
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
+    "@pyroscope/nodejs": "^0.2.4",
     "@react-hook/resize-observer": "^1.2.4",
     "@react-hook/window-size": "^3.0.7",
     "@reduxjs/toolkit": "^1.6.2",
@@ -190,6 +192,7 @@
     "d3-scale": "^4.0.2",
     "d3-time": "^3.0.0",
     "date-fns": "^2.27.0",
+    "dependency-cruiser": "^11.11.0",
     "esbuild-loader": "^2.18.0",
     "eslint-import-resolver-webpack": "^0.13.2",
     "file-loader": "^6.2.0",
