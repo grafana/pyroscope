@@ -41,9 +41,10 @@ lint: go/lint helm/lint buf/lint ## Lint Go, Helm and protobuf
 test: go/test ## Run unit tests
 
 .PHONY: generate
-generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go ## Regenerate protobuf
+generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/gomodifytags ## Regenerate protobuf
 	rm -rf pkg/gen/ pkg/openapiv2/gen
 	PATH=$(BIN) $(BIN)/buf generate
+	PATH=$(BIN):$(PATH) ./tools/add-parquet-tags.sh
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf
@@ -152,6 +153,10 @@ $(BIN)/protoc-gen-openapiv2: Makefile go.mod
 $(BIN)/protoc-gen-grpc-gateway: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.10.3
+
+$(BIN)/gomodifytags: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/fatih/gomodifytags@v1.16.0
 
 $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)

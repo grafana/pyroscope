@@ -24,13 +24,13 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/firedb"
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/openapiv2"
-	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
 )
@@ -44,7 +44,6 @@ const (
 	Ring         string = "ring"
 	Ingester     string = "ingester"
 	MemberlistKV string = "memberlist-kv"
-	ProfileStore string = "profile-store"
 	Querier      string = "querier"
 	GRPCGateway  string = "grpc-gateway"
 
@@ -153,30 +152,20 @@ func (f *Fire) initRing() (_ services.Service, err error) {
 func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.profileStore)
+	head, err := firedb.NewHead()
 	if err != nil {
-		return
+		return nil, err
+	}
+
+	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, head)
+	if err != nil {
+		return nil, err
 	}
 	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	prefix, handler = ingesterv1connect.NewIngesterServiceHandler(ingester)
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	return ingester, nil
-}
-
-func (f *Fire) initProfileStore() (services.Service, error) {
-	profileStore, err := profilestore.New(
-		f.logger,
-		f.reg,
-		f.tracerProvider,
-		&f.Cfg.ProfileStore,
-	)
-	if err != nil {
-		return nil, err
-	}
-	f.profileStore = profileStore
-
-	return nil, nil
 }
 
 func (f *Fire) initServer() (services.Service, error) {
