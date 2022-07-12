@@ -23,7 +23,6 @@ function StandaloneApp() {
       <Box>
         <FlamegraphRenderer
           flamebearer={flamebearer as ShamefulAny}
-          showCredit={false}
           ExportData={null}
         />
       </Box>
