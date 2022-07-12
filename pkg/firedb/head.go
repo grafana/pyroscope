@@ -29,20 +29,6 @@ import (
 
 type idConversionTable map[int64]int64
 
-func (t stringConversionTable) rewritePprofLabels(in []*profilev1.Label) []*profilev1.Label {
-	out := make([]*profilev1.Label, len(in))
-	for pos := range in {
-		out[pos] = &profilev1.Label{
-			Key:     t[in[pos].Key],
-			NumUnit: t[in[pos].NumUnit],
-			Str:     t[in[pos].Str],
-			Num:     in[pos].Num,
-		}
-	}
-
-	return out
-}
-
 func (t idConversionTable) rewrite(idx *int64) {
 	pos := *idx
 	var ok bool
@@ -86,6 +72,8 @@ type deduplicatingSlice[M Models, K comparable, H Helper[M, K]] struct {
 	slice  []M
 	lock   sync.RWMutex
 	lookup map[K]int64
+
+	missing []int64
 }
 
 func (s *deduplicatingSlice[M, K, H]) init() {
@@ -94,10 +82,13 @@ func (s *deduplicatingSlice[M, K, H]) init() {
 
 func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {
 	var (
-		missing      []int64
 		rewritingMap = make(map[int64]int64)
 		h            H
 	)
+	if s.missing == nil {
+		s.missing = make([]int64, 0, len(elems))
+	}
+	s.missing = s.missing[:0]
 
 	// rewrite elements
 	for pos := range elems {
@@ -113,16 +104,16 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 		if posSlice, exists := s.lookup[k]; exists {
 			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 		} else {
-			missing = append(missing, int64(pos))
+			s.missing = append(s.missing, int64(pos))
 		}
 	}
 	s.lock.RUnlock()
 
 	// if there are missing elements, acquire write lock
-	if len(missing) > 0 {
+	if len(s.missing) > 0 {
 		s.lock.Lock()
 		posSlice := int64(len(s.slice))
-		for _, pos := range missing {
+		for _, pos := range s.missing {
 			// check again if element exists
 			k := h.key(elems[pos])
 			if posSlice, exists := s.lookup[k]; exists {
@@ -155,13 +146,14 @@ func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
 type Head struct {
 	logger log.Logger
 
-	index       *profilesIndex
-	strings     deduplicatingSlice[string, string, *stringsHelper]
-	mappings    deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
-	functions   deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
-	locations   deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
-	stacktraces deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper] // a stacktrace is a slice of location ids
-	profiles    deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper]
+	index           *profilesIndex
+	strings         deduplicatingSlice[string, string, *stringsHelper]
+	mappings        deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
+	functions       deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
+	locations       deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
+	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper] // a stacktrace is a slice of location ids
+	profiles        deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper]
+	pprofLabelCache labelCache
 }
 
 func NewHead() (*Head, error) {
@@ -180,6 +172,7 @@ func NewHead() (*Head, error) {
 	h.locations.init()
 	h.stacktraces.init()
 	h.profiles.init()
+	h.pprofLabelCache.init()
 	return h, nil
 }
 
@@ -224,7 +217,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 		// populate samples
 		out[pos] = &schemav1.Sample{
 			Values: in[pos].Value,
-			Labels: r.strings.rewritePprofLabels(in[pos].Label),
+			Labels: h.pprofLabelCache.rewriteLabels(r.strings, in[pos].Label),
 		}
 
 		// build full stack traces
