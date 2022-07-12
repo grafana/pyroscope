@@ -1,8 +1,10 @@
+// @typescript-eslint/restrict-template-expressions
 import ReactDOM from 'react-dom';
 import React from 'react';
 import Box from '@webapp/ui/Box';
 import { decodeFlamebearer } from '@webapp/models/flamebearer';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { BuildInfo } from './components/Footer';
 import '@pyroscope/flamegraph/dist/index.css';
 import styles from './standalone.module.scss';
 
@@ -19,7 +21,7 @@ const { flamegraph } = window as ShamefulAny;
 
 // TODO: unify with the one in Footer component
 function buildInfo() {
-  const w = (window as ShamefulAny).buildInfo;
+  const w = (window as ShamefulAny).buildInfo as BuildInfo;
   return `
     BUILD INFO:
     goos: ${w.goos}
@@ -40,8 +42,8 @@ function StandaloneApp() {
     <div>
       <Box className={styles.container}>
         <FlamegraphRenderer
-          renderLogo
-          flamebearer={flamebearer as any}
+          flamebearer={flamebearer as ShamefulAny}
+          showCredit={false}
           ExportData={null}
         />
       </Box>

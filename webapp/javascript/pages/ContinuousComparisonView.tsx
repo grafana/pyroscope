@@ -123,6 +123,7 @@ function ComparisonApp() {
               }}
             />
             <FlamegraphRenderer
+              showCredit={false}
               panesOrientation="vertical"
               profile={leftSide}
               data-testid="flamegraph-renderer-left"
@@ -172,6 +173,7 @@ function ComparisonApp() {
               }}
             />
             <FlamegraphRenderer
+              showCredit={false}
               profile={rightSide}
               data-testid="flamegraph-renderer-right"
               panesOrientation="vertical"

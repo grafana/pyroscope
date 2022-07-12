@@ -72,7 +72,7 @@ function Users() {
   const handleDeleteUser = (user: User) => {
     dispatch(deleteUser(user))
       .unwrap()
-      .then((d) => {
+      .then(() => {
         dispatch(
           addNotification({
             type: 'success',

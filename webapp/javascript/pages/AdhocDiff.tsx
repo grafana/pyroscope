@@ -99,6 +99,7 @@ function AdhocDiff() {
           )}
           {!isProfileLoading && (
             <FlamegraphRenderer
+              showCredit={false}
               flamebearer={flamebearer}
               ExportData={
                 <ExportData

@@ -12,6 +12,7 @@ import Highlight from './Highlight';
 import ContextMenuHighlight from './ContextMenuHighlight';
 import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
+import LogoLink from './LogoLink';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
@@ -23,6 +24,7 @@ interface FlamegraphProps {
   fitMode: ConstructorParameters<typeof Flamegraph>[3];
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
+  showCredit: boolean;
 
   onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
@@ -53,6 +55,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     highlightQuery,
     zoom,
     toolbarVisible,
+    showCredit,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
@@ -73,7 +76,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
   // to display the flamegraph isolated from the table
-  useResizeObserver(canvasRef, (e) => {
+  useResizeObserver(canvasRef, () => {
     if (flamegraph) {
       debouncedRenderCanvas();
     }
@@ -261,6 +264,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           onClick={onClick}
         />
       </div>
+      {showCredit ? <LogoLink /> : ''}
       {flamegraph && canvasRef && (
         <Highlight
           barHeight={PX_PER_LEVEL}
@@ -279,7 +283,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         <Tooltip
           format={flamebearer.format}
           canvasRef={canvasRef}
-          xyToData={xyToTooltipData as any /* TODO */}
+          xyToData={xyToTooltipData as ShamefulAny /* TODO */}
           numTicks={flamebearer.numTicks}
           sampleRate={flamebearer.sampleRate}
           leftTicks={

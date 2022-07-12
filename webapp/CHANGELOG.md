@@ -3,6 +3,49 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.18.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.2...@pyroscope/webapp@1.18.3) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.18.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.1...@pyroscope/webapp@1.18.2) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.18.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.0...@pyroscope/webapp@1.18.1) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.18.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.5...@pyroscope/webapp@1.18.0) (2022-07-11)
+
+
+### Features
+
+* **flamegraph:** Add support for visualizing traces ([#1233](https://github.com/pyroscope-io/pyroscope/issues/1233)) ([b15d094](https://github.com/pyroscope-io/pyroscope/commit/b15d094ebb06592a406b4b73485c0f316c411b08))
+
+
+
+
+
+## [1.17.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.4...@pyroscope/webapp@1.17.5) (2022-07-09)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.17.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.3...@pyroscope/webapp@1.17.4) (2022-07-07)
 
 **Note:** Version bump only for package @pyroscope/webapp

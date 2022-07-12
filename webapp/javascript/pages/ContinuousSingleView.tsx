@@ -56,6 +56,7 @@ function ContinuousSingleView() {
       case 'reloading': {
         return (
           <FlamegraphRenderer
+            showCredit={false}
             profile={singleView.profile}
             colorMode={colorMode}
             ExportData={

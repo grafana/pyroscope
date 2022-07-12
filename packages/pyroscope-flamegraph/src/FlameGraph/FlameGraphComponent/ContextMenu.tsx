@@ -19,7 +19,7 @@ export interface ContextMenuProps {
 }
 
 export default function ContextMenu(props: ContextMenuProps) {
-  const { toggleMenu, openMenu, closeMenu, ...menuProps } = useMenuState(false);
+  const { openMenu, closeMenu, ...menuProps } = useMenuState(false);
   const [anchorPoint, setAnchorPoint] = React.useState({ x: 0, y: 0 });
   const { canvasRef } = props;
   const [menuItems, setMenuItems] = React.useState<JSX.Element[]>([]);

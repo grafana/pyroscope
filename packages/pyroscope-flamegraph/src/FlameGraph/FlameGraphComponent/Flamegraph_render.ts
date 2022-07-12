@@ -72,6 +72,7 @@ type CanvasRendererConfig = Flamebearer & {
   pxPerTick: number;
 
   palette: FlamegraphPalette;
+  maxSelf?: number;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
