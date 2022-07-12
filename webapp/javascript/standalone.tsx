@@ -6,10 +6,6 @@ import { decodeFlamebearer } from '@webapp/models/flamebearer';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import Footer from './components/Footer';
 import '@pyroscope/flamegraph/dist/index.css';
-import styles from './standalone.module.scss';
-
-// Enable this if you are developing and don't want to run a server
-// (window as any).flamegraph = defaultFlamegraph;
 
 if (!(window as ShamefulAny).flamegraph) {
   alert(`'flamegraph' is required`);
@@ -24,7 +20,7 @@ function StandaloneApp() {
 
   return (
     <div>
-      <Box className={styles.container}>
+      <Box>
         <FlamegraphRenderer
           flamebearer={flamebearer as ShamefulAny}
           showCredit={false}
