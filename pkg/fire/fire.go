@@ -33,7 +33,6 @@ import (
 	"github.com/grafana/fire/pkg/distributor"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
-	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
 )
@@ -46,7 +45,6 @@ type Config struct {
 	Querier      querier.Config         `yaml:"querier,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
-	ProfileStore profilestore.Config    `yaml:"profile_store,omitempty"`
 
 	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
@@ -63,7 +61,6 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.AgentConfig.RegisterFlags(f)
 	c.MemberlistKV.RegisterFlags(f)
-	c.ProfileStore.RegisterFlags(f)
 	c.Distributor.RegisterFlags(f)
 	c.Querier.RegisterFlags(f)
 }
@@ -141,7 +138,6 @@ type Fire struct {
 	SignalHandler      *signals.Handler
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
-	profileStore       *profilestore.ProfileStore
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
 
@@ -180,7 +176,6 @@ func (f *Fire) setupModuleManager() error {
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
-	mm.RegisterModule(ProfileStore, f.initProfileStore, modules.UserInvisibleModule)
 	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
@@ -194,8 +189,7 @@ func (f *Fire) setupModuleManager() error {
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
 		Agent:        {Server, GRPCGateway},
-		Ingester:     {Server, MemberlistKV, ProfileStore},
-		ProfileStore: {},
+		Ingester:     {Server, MemberlistKV},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
 		GRPCGateway:  {Server},

@@ -1,11 +1,13 @@
 package querier
 
 import (
+	"bytes"
 	"container/heap"
+
+	"github.com/cespare/xxhash/v2"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/util"
 )
 
 type profilesResponsesHeap []responseFromIngesters[*ingestv1.SelectProfilesResponse]
@@ -41,22 +43,23 @@ func (h *profilesResponsesHeap) Pop() interface{} {
 	return x
 }
 
+type profileWithSymbols struct {
+	profile *ingestv1.Profile
+	symbols []string
+}
+
 // dedupeProfiles dedupes profiles responses by timestamp and labels.
 // It expects profiles from each response to be sorted by timestamp and labels already.
-// Returns the profile deduped per ingester address.
-// The function tries to spread profile per ingester evenly.
-// todo: This function can be optimized by peeking instead of popping the heap.
-func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) map[string][]*ingestv1.Profile {
+func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) []profileWithSymbols {
 	type tuple struct {
 		ingesterAddr string
 		profile      *ingestv1.Profile
 		responseFromIngesters[*ingestv1.SelectProfilesResponse]
 	}
 	var (
-		responsesHeap       = newProfilesResponseHeap(responses)
-		deduped             []*ingestv1.Profile
-		profilesPerIngester = make(map[string][]*ingestv1.Profile, len(responses))
-		tuples              = make([]tuple, 0, len(responses))
+		responsesHeap = newProfilesResponseHeap(responses)
+		deduped       []profileWithSymbols
+		tuples        = make([]tuple, 0, len(responses))
 	)
 
 	heap.Init(responsesHeap)
@@ -86,29 +89,23 @@ func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesRe
 		}
 		// no duplicate found just a single profile.
 		if len(tuples) == 1 {
-			profilesPerIngester[tuples[0].addr] = append(profilesPerIngester[tuples[0].addr], tuples[0].profile)
-			deduped = append(deduped, tuples[0].profile)
+			deduped = append(deduped, profileWithSymbols{profile: tuples[0].profile, symbols: tuples[0].responseFromIngesters.response.FunctionNames})
 			if len(tuples[0].response.Profiles) > 0 {
 				heap.Push(responsesHeap, tuples[0].responseFromIngesters)
 			}
 			tuples = tuples[:0]
 			continue
 		}
-		// we have a duplicate let's select a winner based on the ingester with the less profiles
-		// this way we evenly distribute the profiles symbols API calls across the ingesters
-		min := tuples[0]
-		for _, t := range tuples {
-			if len(profilesPerIngester[t.addr]) < len(profilesPerIngester[min.addr]) {
-				min = t
-			}
-		}
-		profilesPerIngester[min.addr] = append(profilesPerIngester[min.addr], min.profile)
-		deduped = append(deduped, min.profile)
-		if len(min.response.Profiles) > 0 {
-			heap.Push(responsesHeap, min.responseFromIngesters)
+
+		// we have a duplicate let's select first profile from the tuple list.
+		first := tuples[0]
+
+		deduped = append(deduped, profileWithSymbols{profile: first.profile, symbols: first.responseFromIngesters.response.FunctionNames})
+		if len(first.response.Profiles) > 0 {
+			heap.Push(responsesHeap, first.responseFromIngesters)
 		}
 		for _, t := range tuples {
-			if t.addr != min.addr && len(t.response.Profiles) > 0 {
+			if t.addr != first.addr && len(t.response.Profiles) > 0 {
 				heap.Push(responsesHeap, t.responseFromIngesters)
 				continue
 			}
@@ -116,7 +113,7 @@ func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesRe
 		tuples = tuples[:0]
 
 	}
-	return profilesPerIngester
+	return deduped
 }
 
 type stack struct {
@@ -124,30 +121,39 @@ type stack struct {
 	value     int64
 }
 
-// Merge stacktraces and prepare for fetching symbols.
-// Returns ingesters addresses, a map of stracktraces per ingester address and per ID.
-func mergeStacktraces(profilesPerIngester map[string][]*ingestv1.Profile) (ingester []string, stacktracesPerIngester map[string][][]byte, stracktracesByID map[string]*stack) {
-	stacktracesPerIngester = make(map[string][][]byte, len(profilesPerIngester))
-	stracktracesByID = make(map[string]*stack)
-	ingester = make([]string, 0, len(profilesPerIngester))
+// Merge stacktraces from multiple ingesters.
+func mergeStacktraces(profiles []profileWithSymbols) []stack {
+	stacktracesByID := map[uint64]*stack{}
+	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 
-	for ing, profiles := range profilesPerIngester {
-		ingester = append(ingester, ing)
-		for _, profile := range profiles {
-			for _, stacktrace := range profile.Stacktraces {
-				id := util.UnsafeGetString(stacktrace.ID)
-				var stacktraceSample *stack
-				var ok bool
-				stacktraceSample, ok = stracktracesByID[id]
-				if !ok {
-					stacktraceSample = &stack{}
-					stacktracesPerIngester[ing] = append(stacktracesPerIngester[ing], stacktrace.ID)
-					stracktracesByID[id] = stacktraceSample
-				}
-				stacktraceSample.value += stacktrace.Value
-
+	for _, profile := range profiles {
+		for _, st := range profile.profile.Stacktraces {
+			fns := make([]string, len(st.FunctionIds))
+			for i, fnID := range st.FunctionIds {
+				fns[i] = profile.symbols[fnID]
 			}
+			id := stacktraceID(buf, fns)
+			stacktrace, ok := stacktracesByID[id]
+			if !ok {
+				stacktrace = &stack{
+					locations: fns,
+				}
+				stacktracesByID[id] = stacktrace
+			}
+			stacktrace.value += st.Value
 		}
 	}
-	return ingester, stacktracesPerIngester, stracktracesByID
+	result := make([]stack, 0, len(stacktracesByID))
+	for _, stacktrace := range stacktracesByID {
+		result = append(result, *stacktrace)
+	}
+	return result
+}
+
+func stacktraceID(buf *bytes.Buffer, names []string) uint64 {
+	buf.Reset()
+	for _, name := range names {
+		buf.WriteString(name)
+	}
+	return xxhash.Sum64(buf.Bytes())
 }

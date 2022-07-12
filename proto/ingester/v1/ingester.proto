@@ -13,7 +13,6 @@ service IngesterService {
   // Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
   // but this requires to ensure we have correct timestamp and labels ordering.
   rpc SelectProfiles(SelectProfilesRequest) returns (SelectProfilesResponse) {}
-  rpc SymbolizeStacktraces(SymbolizeStacktraceRequest) returns (SymbolizeStacktraceResponse) {}
 }
 
 message LabelValuesRequest {
@@ -39,6 +38,7 @@ message SelectProfilesRequest {
 
 message SelectProfilesResponse {
   repeated Profile profiles = 1;
+  repeated string function_names = 2;
 }
 
 // Profile represents a point in time profile.
@@ -63,19 +63,6 @@ message ProfileType {
 }
 
 message StacktraceSample {
-  bytes ID = 1;
+  repeated int32 function_ids = 1;
   int64 value = 2;
-}
-
-message SymbolizeStacktraceRequest {
-  repeated bytes ids = 1;
-}
-
-message SymbolizeStacktraceResponse {
-  repeated string function_names = 1;
-  repeated Location locations = 2;
-}
-
-message Location {
-  repeated int32 ids = 1;
 }
