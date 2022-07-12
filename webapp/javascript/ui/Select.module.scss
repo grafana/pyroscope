@@ -12,6 +12,6 @@
   background-color: var(--ps-ui-element-bg-primary);
 
   &:not([multiple]):not([size]) {
-    background-image: var(--dropdown-arrow);
+    background-image: var(--ps-dropdown-arrow);
   }
 }

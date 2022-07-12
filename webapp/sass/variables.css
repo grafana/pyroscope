@@ -23,11 +23,14 @@
   --ps-ui-foreground-text: #d8d8d8; /* sidebar text and datepicker text */
   --ps-dropdown-background: #2c2c30; /* dropdown background */
   --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
-  --dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-button-switch-bg: #2ecc40; /* 3 button switch selected button background */
+  --ps-button-switch-bg-highlight: #61ea71; /* 3 button switch selected button background when hovered*/
+  --ps-button-switch-text: #242428; /* 3 button switch selected button text */
 
-  --ps-blue-primary: #0d8eff; /* Standard blue for button, instructions text (right) */
-  --ps-blue-highlight: #40a6ff; /* highlight (hover) blue */
-  --ps-blue-disabled: #85a4c9; /* disabled blue */
+  --ps-blue-primary: #3b78e7; /* Standard blue for button, instructions text (right) */
+  --ps-blue-highlight: #578ae9; /* highlight (hover) blue */
+  --ps-blue-disabled: #5374b0; /* disabled blue */
 
   --ps-green-primary: #2ecc40; /* standard green for button */
   --ps-green-highlight: #61ea71; /* highlight (hover) green */
@@ -75,9 +78,12 @@
   --ps-ui-foreground-text: #272727; /* sidebar text and datepicker text */
   --ps-dropdown-background: #f8f8f8; /* dropdown background */
   --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
-  --dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-button-switch-bg: #3b78e7; /* 3 button switch selected button background */
+  --ps-button-switch-bg-highlight: #578ae9; /* 3 button switch selected button background when hovered*/
+  --ps-button-switch-text: #ffffff; /* 3 button switch selected button text */
 
-  --ps-selected-app: #1b73e7; /* active selected app color in dropdown */
+  --ps-selected-app: #3b78e7; /* active selected app color in dropdown */
 
   --ps-green-primary: #0bdb79; /* standard green */
   --ps-green-highlight: #5bdc9e; /* highlight (hover) green */
