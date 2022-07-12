@@ -11,7 +11,7 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/status v1.1.0
 	github.com/google/uuid v1.3.0
-	github.com/grafana/dskit v0.0.0-20220526081034-789ec0ca4a3b
+	github.com/grafana/dskit v0.0.0-20220708154635-9c29dc5195e4
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
 	github.com/opentracing/opentracing-go v1.2.0
@@ -25,7 +25,7 @@ require (
 	github.com/segmentio/parquet-go v0.0.0-20220623195409-8b4d4260d8cb
 	github.com/stretchr/testify v1.7.5
 	github.com/thanos-io/thanos v0.26.0
-	github.com/weaveworks/common v0.0.0-20220428113342-f83ccc76d823
+	github.com/weaveworks/common v0.0.0-20220629114710-e3b70df0f08b
 	github.com/xlab/treeprint v1.1.0
 	go.opentelemetry.io/otel/trace v1.7.0
 	go.uber.org/atomic v1.9.0
@@ -258,6 +258,11 @@ require (
 )
 
 replace (
+	// Replace memberlist with our fork which includes some fixes that haven't been
+	// merged upstream yet.
+	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
+	// This adds a bugfix for creating schema of structs with pointers.
+	// TODO(simonswine): Remove once upstream PR is merged
 	github.com/segmentio/parquet-go => github.com/simonswine/parquet-go v0.0.0-20220628125309-a8439328c44c
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
