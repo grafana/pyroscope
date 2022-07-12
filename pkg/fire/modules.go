@@ -152,7 +152,7 @@ func (f *Fire) initRing() (_ services.Service, err error) {
 func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	head, err := firedb.NewHead()
+	head, err := firedb.NewHead(f.reg)
 	if err != nil {
 		return nil, err
 	}

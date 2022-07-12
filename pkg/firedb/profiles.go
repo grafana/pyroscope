@@ -29,9 +29,12 @@ type profilesIndex struct {
 	profilesPerFP map[model.Fingerprint]*profileLabels
 	mutex         sync.RWMutex
 	totalProfiles *atomic.Int64
+	totalSeries   *atomic.Int64
+
+	metrics *headMetrics
 }
 
-func newProfileIndex(totalShards uint32) (*profilesIndex, error) {
+func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, error) {
 	ix, err := tsdb.NewBitPrefixWithShards(totalShards)
 	if err != nil {
 		return nil, err
@@ -40,6 +43,8 @@ func newProfileIndex(totalShards uint32) (*profilesIndex, error) {
 		ix:            ix,
 		profilesPerFP: make(map[model.Fingerprint]*profileLabels),
 		totalProfiles: atomic.NewInt64(0),
+		totalSeries:   atomic.NewInt64(0),
+		metrics:       metrics,
 	}, nil
 }
 
@@ -58,11 +63,14 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs []firemodel.Labels) {
 				profiles: []*schemav1.Profile{ps},
 			}
 			pi.profilesPerFP[fp] = profiles
+			pi.totalSeries.Inc()
+			pi.metrics.seriesCreated.Inc()
 			continue
 		}
 		profiles.profiles = append(profiles.profiles, ps)
 	}
 	pi.totalProfiles.Inc()
+	pi.metrics.profilesCreated.Inc()
 }
 
 // forMatchingProfiles iterates through all matching profiles and calls f for each profiles.
