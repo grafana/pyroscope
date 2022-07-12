@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.18.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.4...@pyroscope/webapp@1.18.5) (2022-07-12)
+
+
+### Bug Fixes
+
+* **frontend:** fix latest version checks ([#1243](https://github.com/pyroscope-io/pyroscope/issues/1243)) ([293078a](https://github.com/pyroscope-io/pyroscope/commit/293078a1bf6e8b8aa0a7e436faaa77bacaaa4b56))
+
+
+
+
+
 ## [1.18.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.3...@pyroscope/webapp@1.18.4) (2022-07-12)
 
 **Note:** Version bump only for package @pyroscope/webapp
