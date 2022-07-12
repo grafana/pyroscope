@@ -8,12 +8,14 @@ require (
 	github.com/bufbuild/connect-grpchealth-go v0.1.0
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/drone/envsubst v1.0.3
+	github.com/dustin/go-humanize v1.0.0
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/status v1.1.0
 	github.com/google/uuid v1.3.0
-	github.com/grafana/dskit v0.0.0-20220526081034-789ec0ca4a3b
+	github.com/grafana/dskit v0.0.0-20220708154635-9c29dc5195e4
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/parca-dev/parca v0.11.1-0.20220628070043-1c1a82d2d7bd
 	github.com/pkg/errors v0.9.1
@@ -22,10 +24,10 @@ require (
 	github.com/prometheus/common v0.35.0
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
 	github.com/pyroscope-io/pyroscope v0.18.0
-	github.com/segmentio/parquet-go v0.0.0-20220623195409-8b4d4260d8cb
+	github.com/segmentio/parquet-go v0.0.0-20220711225945-6dc5e4bb634a
 	github.com/stretchr/testify v1.7.5
 	github.com/thanos-io/thanos v0.26.0
-	github.com/weaveworks/common v0.0.0-20220428113342-f83ccc76d823
+	github.com/weaveworks/common v0.0.0-20220629114710-e3b70df0f08b
 	github.com/xlab/treeprint v1.1.0
 	go.opentelemetry.io/otel/trace v1.7.0
 	go.uber.org/atomic v1.9.0
@@ -105,7 +107,6 @@ require (
 	github.com/docker/docker v20.10.12+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/emicklei/go-restful v2.9.5+incompatible // indirect
 	github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1 // indirect
@@ -164,7 +165,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
-	github.com/klauspost/compress v1.15.6 // indirect
+	github.com/klauspost/compress v1.15.7 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.14 // indirect
 	github.com/kolo/xmlrpc v0.0.0-20201022064351-38db28db192b // indirect
@@ -192,7 +193,6 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/ncw/swift v1.0.53 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opentracing-contrib/go-grpc v0.0.0-20210225150812-73cb765af46e // indirect
@@ -236,7 +236,7 @@ require (
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b // indirect
+	golang.org/x/sys v0.0.0-20220712014510-0a85c31ab51e // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	golang.org/x/tools v0.1.11 // indirect
@@ -258,7 +258,12 @@ require (
 )
 
 replace (
-	github.com/segmentio/parquet-go => github.com/simonswine/parquet-go v0.0.0-20220628125309-a8439328c44c
+	// Replace memberlist with our fork which includes some fixes that haven't been
+	// merged upstream yet.
+	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
+	// This adds a bugfix for creating schema of structs with pointers.
+	// TODO(simonswine): Remove once upstream PR is merged
+	github.com/segmentio/parquet-go => github.com/simonswine/parquet-go v0.0.0-20220712063352-1bf563d5557d
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )
