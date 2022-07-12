@@ -19,7 +19,10 @@ import (
 )
 
 func TestQueryIndex(t *testing.T) {
-	a, err := newProfileIndex(32, newHeadMetrics(&Head{}, &prometheus.Registry{}))
+	head, err := NewHead(prometheus.NewRegistry())
+	require.NoError(t, err)
+
+	a, err := newProfileIndex(32, newHeadMetrics(head, prometheus.NewRegistry()))
 	require.NoError(t, err)
 
 	for j := 0; j < 10; j++ {
