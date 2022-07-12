@@ -1,9 +1,12 @@
 package ingester
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 
 	"github.com/apache/arrow/go/v8/arrow/memory"
 	"github.com/bufbuild/connect-go"
@@ -14,8 +17,9 @@ import (
 	"github.com/polarsignals/frostdb/query"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/grafana/fire/pkg/firedb"
+	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -40,18 +44,18 @@ type Ingester struct {
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
-	profileStore      *profilestore.ProfileStore
+	head              *firedb.Head
 	engine            *query.LocalEngine
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer, profileStore *profilestore.ProfileStore) (*Ingester, error) {
+func New(cfg Config, logger log.Logger, reg prometheus.Registerer, head *firedb.Head) (*Ingester, error) {
 	i := &Ingester{
-		cfg:          cfg,
-		logger:       logger,
-		profileStore: profileStore,
+		cfg:    cfg,
+		logger: logger,
+		head:   head,
 		engine: query.NewEngine(
 			memory.DefaultAllocator,
-			profileStore.TableProvider(),
+			nil,
 		),
 	}
 
@@ -103,8 +107,26 @@ func (i *Ingester) running(ctx context.Context) error {
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	level.Debug(i.logger).Log("msg", "message received by ingester push", "request_headers: ", fmt.Sprintf("%+v", req.Header()))
 
-	if err := i.profileStore.Ingest(ctx, req); err != nil {
-		return nil, err
+	for _, series := range req.Msg.Series {
+		for _, sample := range series.Samples {
+
+			reader, err := gzip.NewReader(bytes.NewReader(sample.RawProfile))
+			if err != nil {
+				return nil, err
+			}
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				return nil, err
+			}
+
+			p := &profilev1.Profile{}
+			if err := p.UnmarshalVT(data); err != nil {
+				return nil, err
+			}
+			if err := i.head.Ingest(ctx, p, series.Labels...); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	res := connect.NewResponse(&pushv1.PushResponse{})
