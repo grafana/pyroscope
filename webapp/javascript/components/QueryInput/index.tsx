@@ -5,18 +5,14 @@ import React, {
   Dispatch,
   SetStateAction,
 } from 'react';
-import classNames from 'classnames/bind';
 import Button from '@webapp/ui/Button';
 import ReactDOM from 'react-dom';
 import { useWindowWidth } from '@react-hook/window-size';
 import TextareaAutosize from 'react-textarea-autosize';
 import { Prism } from '@webapp/util/prism';
 import { Query, brandQuery } from '@webapp/models/query';
-import OutsideClickHandler from 'react-outside-click-handler';
-// eslint-disable-next-line css-modules/no-unused-class
+import Menu from './Menu';
 import styles from './QueryInput.module.scss';
-
-const cx = classNames.bind(styles);
 
 const inlineSvg = `<svg viewPort="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg"> <line x1="1" y1="11" x2="11" y2="1" stroke="white" stroke-width="2"/> <line x1="1" y1="1" x2="11" y2="11" stroke="white" stroke-width="2"/> </svg>`;
 
@@ -24,33 +20,6 @@ interface QueryInputProps {
   initialQuery: Query;
   onSubmit: (query: string) => void;
 }
-
-const ItemMenu = ({ query }: { query: string }) => {
-  const [visible, toggle] = useState(false);
-  return (
-    <OutsideClickHandler onOutsideClick={() => toggle(false)}>
-      <div
-        role="none"
-        onClick={() => toggle(!visible)}
-        className={styles.menuInnerWrapper}
-      >
-        <div
-          className={cx({ menu: true, visible })}
-          aria-hidden="true"
-          onClick={(e) => {
-            console.log('query', query);
-
-            e.stopPropagation();
-          }}
-        >
-          <div className={styles.menuItem}>Menu Item I</div>
-          <div className={styles.menuItem}>Menu Item II</div>
-          <div className={styles.menuItem}>Menu Item III</div>
-        </div>
-      </div>
-    </OutsideClickHandler>
-  );
-};
 
 const createElem = (
   type: 'span',
@@ -69,7 +38,7 @@ const createElem = (
   return el;
 };
 
-const getInnerText = (elem: HTMLElement | null | undefined) => {
+export const getInnerText = (elem: HTMLElement | null | undefined) => {
   return elem?.innerText as string;
 };
 
@@ -82,7 +51,7 @@ function decorateAttrValues(
       'span.token.label-value.attr-value'
     );
 
-    const handleClick = (e: MouseEvent) => {
+    const handleClickClose = (e: MouseEvent) => {
       const eTarget = e.target as HTMLElement;
       const attrValue = getInnerText(eTarget?.parentElement);
       const attrName = getInnerText(
@@ -110,7 +79,7 @@ function decorateAttrValues(
         item.querySelector(`span[data-role="close"]`) ||
         createElem('span', 'close', styles.deletePill, inlineSvg);
 
-      (closeBox as HTMLSpanElement).onclick = handleClick;
+      (closeBox as HTMLSpanElement).onclick = handleClickClose;
 
       item.appendChild(closeBox);
 
@@ -118,7 +87,7 @@ function decorateAttrValues(
         item.querySelector(`span[data-role="menu"]`) ||
         createElem('span', 'menu', styles.itemMenuWrapper);
 
-      ReactDOM.render(<ItemMenu query={query} />, menuBox);
+      ReactDOM.render(<Menu parent={menuBox} query={query} />, menuBox);
 
       item.appendChild(menuBox);
     });
