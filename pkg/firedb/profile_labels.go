@@ -22,6 +22,7 @@ func (lc *labelCache) init() {
 }
 
 func (lc *labelCache) rewriteLabels(t stringConversionTable, in []*profilev1.Label) []*profilev1.Label {
+	out := make([]*profilev1.Label, len(in))
 	lc.rw.RLock()
 	defer lc.rw.RUnlock()
 	for i, l := range in {
@@ -33,7 +34,7 @@ func (lc *labelCache) rewriteLabels(t stringConversionTable, in []*profilev1.Lab
 		}
 		l, ok := lc.labels[k]
 		if ok {
-			in[i] = l
+			out[i] = l
 			continue
 		}
 		lc.rw.RUnlock()
@@ -48,16 +49,16 @@ func (lc *labelCache) rewriteLabels(t stringConversionTable, in []*profilev1.Lab
 			}
 			lc.size.Add(labelSize)
 			lc.labels[k] = l
-			in[i] = l
+			out[i] = l
 			lc.rw.Unlock()
 			lc.rw.RLock()
 			continue
 		}
 		lc.rw.Unlock()
 		lc.rw.RLock()
-		in[i] = l
+		out[i] = l
 	}
-	return in
+	return out
 }
 
 type labelKey struct {
