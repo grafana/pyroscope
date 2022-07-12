@@ -76,8 +76,6 @@ function decorateAttrValues(setQuery: Dispatch<SetStateAction<Query>>) {
     const handleClick = (e: MouseEvent) => {
       const eTarget = e.target as ShamefulAny;
       const attrValue = eTarget?.parentElement?.innerText;
-      const attrPunctuation =
-        eTarget?.parentElement?.previousElementSibling?.innerText;
       const attrName =
         eTarget?.parentElement?.previousElementSibling?.previousElementSibling
           ?.innerText;
