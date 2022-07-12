@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -153,7 +154,8 @@ func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
 }
 
 type Head struct {
-	logger log.Logger
+	logger  log.Logger
+	metrics *headMetrics
 
 	index       *profilesIndex
 	strings     deduplicatingSlice[string, string, *stringsHelper]
@@ -164,15 +166,9 @@ type Head struct {
 	profiles    deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper]
 }
 
-func NewHead() (*Head, error) {
-	index, err := newProfileIndex(32)
-	if err != nil {
-		return nil, err
-	}
-
+func NewHead(reg prometheus.Registerer) (*Head, error) {
 	h := &Head{
 		logger: log.NewLogfmtLogger(os.Stderr),
-		index:  index,
 	}
 	h.strings.init()
 	h.mappings.init()
@@ -180,38 +176,19 @@ func NewHead() (*Head, error) {
 	h.locations.init()
 	h.stacktraces.init()
 	h.profiles.init()
+	h.metrics = newHeadMetrics(h, reg)
+	index, err := newProfileIndex(32, h.metrics)
+	if err != nil {
+		return nil, err
+	}
+	h.index = index
+
 	return h, nil
 }
 
 type LabelPairRef struct {
 	Name  int64
 	Value int64
-}
-
-// resolves external labels into string slice
-func (h *Head) internExternalLabels(ctx context.Context, lblStrs []*commonv1.LabelPair) ([]LabelPairRef, error) {
-	var (
-		strs    = make([]string, len(lblStrs)*2)
-		lblRefs = make([]LabelPairRef, len(lblStrs))
-	)
-
-	for pos := range lblStrs {
-		strs[(pos * 2)] = lblStrs[pos].Name
-		strs[(pos*2)+1] = lblStrs[pos].Value
-	}
-
-	// ensure labels are in string table
-	r := &rewriter{}
-	if err := h.strings.ingest(ctx, strs, r); err != nil {
-		return nil, err
-	}
-
-	for pos := range lblRefs {
-		lblRefs[pos].Name = r.strings[(pos * 2)]
-		lblRefs[pos].Value = r.strings[(pos*2)+1]
-	}
-
-	return lblRefs, nil
 }
 
 func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([]*schemav1.Sample, error) {
