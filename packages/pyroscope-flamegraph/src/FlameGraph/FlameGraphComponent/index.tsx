@@ -188,6 +188,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         </MenuItem>,
         CollapseItem(),
         CopyItem(),
+        <MenuItem key="hightlight-similar">Highlight similar nodes</MenuItem>,
       ];
     },
     [flamegraph]
