@@ -144,8 +144,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     (x: number, y: number) => {
       const dirty = isDirty();
       const bar = getFlamegraph().xyToBar(x, y);
+      const barName = bar.isJust ? bar.value.name : '';
 
-      const FocusItem = () => {
+      const CollapseItem = () => {
         const hoveredOnValidNode = bar.mapOrElse(
           () => false,
           () => true
@@ -162,7 +163,21 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             disabled={!hoveredOnValidNode}
             onClick={onClick}
           >
-            Focus on this subtree
+            Collapse nodes above
+          </MenuItem>
+        );
+      };
+
+      const CopyItem = () => {
+        const onClick = () => {
+          if (!navigator.clipboard) return;
+
+          navigator.clipboard.writeText(barName);
+        };
+
+        return (
+          <MenuItem key="copy" onClick={onClick}>
+            Copy function name
           </MenuItem>
         );
       };
@@ -171,7 +186,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
           Reset View
         </MenuItem>,
-        FocusItem(),
+        CollapseItem(),
+        CopyItem(),
       ];
     },
     [flamegraph]
