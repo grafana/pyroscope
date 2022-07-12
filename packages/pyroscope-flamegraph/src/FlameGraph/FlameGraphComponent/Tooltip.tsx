@@ -11,6 +11,8 @@ import {
 
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
+import Icon from '@webapp/ui/Icon';
+import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 
 type xyToDataSingle = (
   x: number,
@@ -48,6 +50,42 @@ export type TooltipProps = {
     }
 );
 
+const tooltipTitles: Record<Units, { percent: string; formatedValue: string }> =
+  {
+    objects: {
+      percent: 'of objects in RAM',
+      formatedValue: 'RAM amount',
+    },
+    goroutines: {
+      percent: 'of goroutines',
+      formatedValue: '<TBD>',
+    },
+    bytes: {
+      percent: 'of RAM',
+      formatedValue: '<TBD>',
+    },
+    samples: {
+      percent: 'of CPU',
+      formatedValue: 'CPU Time',
+    },
+    lock_nanoseconds: {
+      percent: 'of Time spent',
+      formatedValue: '<TBD>',
+    },
+    lock_samples: {
+      percent: 'of contended locks',
+      formatedValue: '<TBD>',
+    },
+    trace_samples: {
+      percent: '<TBD>',
+      formatedValue: '<TBD>',
+    },
+    '': {
+      percent: '',
+      formatedValue: '',
+    },
+  };
+
 export default function Tooltip(props: TooltipProps) {
   const { format, canvasRef, xyToData } = props;
   const [content, setContent] = React.useState({
@@ -58,8 +96,12 @@ export default function Tooltip(props: TooltipProps) {
         color: '',
       },
     },
-    left: '',
-    right: '',
+    tooltipData: [] as {
+      units: Units;
+      percent: string | number;
+      samples: string;
+      formatedValue: string;
+    }[],
   });
 
   const [style, setStyle] = React.useState<React.CSSProperties>();
@@ -109,13 +151,13 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (data.format) {
         case 'single': {
-          const d = formatSingle(
-            formatter,
-            data.total,
-            sampleRate,
-            numTicks,
-            units
-          );
+          const newLeftContent = {
+            percent: formatPercent(data.total / numTicks),
+            samples:
+              units === 'trace_samples' ? '' : numberWithCommas(data.total),
+            units,
+            formatedValue: formatter.format(data.total, sampleRate),
+          };
 
           setContent({
             title: {
@@ -125,8 +167,7 @@ export default function Tooltip(props: TooltipProps) {
                 color: '',
               },
             },
-            left: d.left,
-            right: '',
+            tooltipData: [newLeftContent],
           });
 
           break;
@@ -148,14 +189,14 @@ export default function Tooltip(props: TooltipProps) {
               totalRight: data.totalRight,
               rightTicks,
               title: data.name,
+              units,
             },
             palette
           );
 
           setContent({
             title: d.title,
-            left: d.left,
-            right: d.right,
+            tooltipData: d.tooltipData,
           });
 
           break;
@@ -204,6 +245,12 @@ export default function Tooltip(props: TooltipProps) {
         className={styles.flamegraphTooltipName}
       >
         {content.title.text}
+      </div>
+      <div
+        className={styles.functionName}
+        data-testid="flamegraph-tooltip-function-name"
+      >
+        {content.title.text}
         <span
           data-testid="flamegraph-tooltip-title-diff"
           style={{ color: content.title?.diff?.color }}
@@ -213,9 +260,38 @@ export default function Tooltip(props: TooltipProps) {
           }`}
         </span>
       </div>
-      <div data-testid="flamegraph-tooltip-body">
-        <div data-testid="flamegraph-tooltip-left">{content.left}</div>
-        <div data-testid="flamegraph-tooltip-right">{content.right}</div>
+
+      {content.tooltipData.map(({ units, percent, formatedValue, samples }) => (
+        <div
+          data-testid="flamegraph-tooltip-content"
+          className={styles.contentContainer}
+          key={percent + formatedValue + samples}
+        >
+          <div className={styles.content}>
+            <p className={styles.contentProp}>
+              % {tooltipTitles[units].percent}
+            </p>
+            <p className={styles.contentProp}>{percent}</p>
+          </div>
+          <div className={styles.content}>
+            <p className={styles.contentProp}>
+              {tooltipTitles[units].formatedValue}
+            </p>
+            <p className={styles.contentProp}>{formatedValue}</p>
+          </div>
+          <div className={styles.content}>
+            <p className={styles.contentProp}>Samples:</p>
+            <p className={styles.contentProp}>{samples} samples</p>
+          </div>
+        </div>
+      ))}
+
+      <div className={styles.rightClickInfo}>
+        <Icon icon={faHandPointRight} />
+        <span>
+          Right click for more
+          <br /> node viewing options
+        </span>
       </div>
     </div>
   );
@@ -223,24 +299,6 @@ export default function Tooltip(props: TooltipProps) {
 
 interface Formatter {
   format(samples: number, sampleRate: number): string;
-}
-
-function formatSingle(
-  formatter: Formatter,
-  total: number,
-  sampleRate: number,
-  numTicks: number,
-  units: Units
-) {
-  const percent = formatPercent(total / numTicks);
-  const samples = `${numberWithCommas(total)} samples,`;
-  const left = `${percent}, ${
-    units === 'trace_samples' ? '' : samples
-  } ${formatter.format(total, sampleRate)}`;
-
-  return {
-    left,
-  };
 }
 
 function formatDouble(
@@ -252,6 +310,7 @@ function formatDouble(
     totalRight,
     rightTicks,
     title,
+    units,
   }: {
     formatter: Formatter;
     sampleRate: number;
@@ -260,6 +319,7 @@ function formatDouble(
     totalRight: number;
     rightTicks: number;
     title: string;
+    units: Units;
   },
   palette: FlamegraphPalette = DefaultPalette
 ) {
@@ -269,13 +329,19 @@ function formatDouble(
   const leftPercent = ratioToPercent(leftRatio);
   const rightPercent = ratioToPercent(rightRatio);
 
-  const left = `Baseline: ${numberWithCommas(
-    totalLeft
-  )} samples, ${formatter.format(totalLeft, sampleRate)} (${leftPercent}%)`;
+  const newLeft = {
+    percent: leftPercent,
+    samples: numberWithCommas(totalLeft),
+    units,
+    formatedValue: formatter.format(totalLeft, sampleRate),
+  };
 
-  const right = `Comparison: ${numberWithCommas(
-    totalRight
-  )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
+  const newRight = {
+    percent: rightPercent,
+    samples: numberWithCommas(totalRight),
+    units,
+    formatedValue: formatter.format(totalRight, sampleRate),
+  };
 
   const totalDiff = percentDiff(leftPercent, rightPercent);
 
@@ -307,8 +373,7 @@ function formatDouble(
         color: tooltipDiffColor,
       },
     },
-    left,
-    right,
+    tooltipData: [newLeft, newRight],
   };
 }
 
