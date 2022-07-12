@@ -169,7 +169,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             disabled={!hoveredOnValidNode}
             onClick={onClick}
           >
-            Collapse nodes above
+            --icon-- Collapse nodes above
           </MenuItem>
         );
       };
