@@ -28,7 +28,13 @@ function buildInfoStr(buildInfo: BuildInfo) {
 
 function NewerVersionCheck() {
   const { version } = buildInfo();
-  const { latest_version: latestVersion } = latestVersionInfo();
+  const maybeLatestVersionInfo = latestVersionInfo();
+
+  if (maybeLatestVersionInfo.isNothing) {
+    return null;
+  }
+
+  const latestVersion = maybeLatestVersionInfo.value.latest_version;
 
   interface Version {
     major: string;

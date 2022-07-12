@@ -1,11 +1,13 @@
 import React from 'react';
 import { render } from '@testing-library/react';
+import { Maybe } from 'true-myth';
 import * as buildInfo from '../util/buildInfo';
 import Footer from './Footer';
 
 const mockDate = new Date('2021-12-21T12:44:01.741Z');
 
 jest.mock('../util/buildInfo.ts');
+const actual = jest.requireActual('../util/buildInfo.ts');
 
 const basicBuildInfo = {
   goos: '',
@@ -33,7 +35,7 @@ describe('Footer', function () {
       const latestVersionMock = jest.spyOn(buildInfo, 'latestVersionInfo');
 
       buildInfoMock.mockImplementation(() => ({ ...basicBuildInfo }));
-      latestVersionMock.mockImplementation(() => ({ latest_version: '' }));
+      latestVersionMock.mockImplementation(() => actual.latestVersionInfo());
     });
 
     it('shows current year correctly', function () {
@@ -65,7 +67,9 @@ describe('Footer', function () {
           version: v1,
         }));
 
-        latestVersionMock.mockImplementation(() => ({ latest_version: v2 }));
+        latestVersionMock.mockImplementation(() =>
+          Maybe.of({ latest_version: v2 })
+        );
 
         const { queryByText } = render(<Footer />);
 
@@ -78,5 +82,16 @@ describe('Footer', function () {
         }
       }
     );
+
+    it('does not crash when version is not available', () => {
+      const buildInfoMock = jest.spyOn(buildInfo, 'buildInfo');
+      const latestVersionMock = jest.spyOn(buildInfo, 'latestVersionInfo');
+
+      buildInfoMock.mockImplementation(() => ({ ...basicBuildInfo }));
+      latestVersionMock.mockImplementation(() => Maybe.nothing());
+
+      const { queryByRole } = render(<Footer />);
+      expect(queryByRole('contentinfo')).toBeInTheDocument();
+    });
   });
 });

@@ -1,4 +1,5 @@
 // eslint-disable-next-line import/no-relative-packages
+import { Maybe } from 'true-myth';
 import { version as jsVersion } from '../../../package.json';
 
 export interface BuildInfo {
@@ -15,6 +16,7 @@ export interface BuildInfo {
 
 export const buildInfo = function (): BuildInfo {
   // TODO: it may be possible that these fields are not populated
+  // but as for now assume it is always present
   const win = window as unknown as { buildInfo: BuildInfo };
 
   return {
@@ -34,11 +36,16 @@ interface LatestVersionInfo {
   latest_version: string;
 }
 
-export const latestVersionInfo = function (): LatestVersionInfo {
-  // TODO: it may be possible that these fields are not populated
+// Make it explicit that this field may not be populated
+// for cases like standalone
+export const latestVersionInfo = function (): Maybe<LatestVersionInfo> {
   const win = window as unknown as { latestVersionInfo: LatestVersionInfo };
 
-  return {
+  if (!win.latestVersionInfo) {
+    return Maybe.nothing();
+  }
+
+  return Maybe.of({
     latest_version: win.latestVersionInfo.latest_version,
-  };
+  });
 };
