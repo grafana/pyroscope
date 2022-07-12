@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -152,7 +153,7 @@ func newProfileBaz() *profilev1.Profile {
 }
 
 func TestHeadIngestFunctions(t *testing.T) {
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 
 	require.NoError(t, head.Ingest(context.Background(), newProfileFoo()))
@@ -168,7 +169,7 @@ func TestHeadIngestFunctions(t *testing.T) {
 
 func TestHeadIngestStrings(t *testing.T) {
 	ctx := context.Background()
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 
 	r := &rewriter{}
@@ -189,7 +190,7 @@ func TestHeadIngestStrings(t *testing.T) {
 
 func TestHeadIngestStacktraces(t *testing.T) {
 	ctx := context.Background()
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 
 	require.NoError(t, head.Ingest(ctx, newProfileFoo()))
@@ -218,7 +219,7 @@ func TestHeadIngestStacktraces(t *testing.T) {
 }
 
 func TestHeadLabelValues(t *testing.T) {
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
 	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
@@ -233,7 +234,7 @@ func TestHeadLabelValues(t *testing.T) {
 }
 
 func TestHeadProfileTypes(t *testing.T) {
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), &commonv1.LabelPair{Name: "__name__", Value: "foo"}, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
 	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), &commonv1.LabelPair{Name: "__name__", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
@@ -249,7 +250,7 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 		"testdata/profile",
 	}
 
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 	ctx := context.Background()
 
@@ -263,7 +264,7 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 }
 
 func TestSelectProfiles(t *testing.T) {
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 
 	// todo write more robust tests.
@@ -357,7 +358,7 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 		profileCount = 0
 	)
 
-	head, err := NewHead()
+	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 	ctx := context.Background()
 
