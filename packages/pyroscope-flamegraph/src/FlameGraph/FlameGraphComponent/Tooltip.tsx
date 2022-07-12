@@ -12,6 +12,8 @@ import {
 
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
+import Icon from '@webapp/ui/Icon';
+import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 
 type xyToDataSingle = (
   x: number,
