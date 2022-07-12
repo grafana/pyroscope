@@ -25,7 +25,7 @@ interface QueryInputProps {
   onSubmit: (query: string) => void;
 }
 
-const ItemMenu = () => {
+const ItemMenu = ({ query }: { query: string }) => {
   const [visible, toggle] = useState(false);
   return (
     <OutsideClickHandler onOutsideClick={() => toggle(false)}>
@@ -38,6 +38,8 @@ const ItemMenu = () => {
           className={cx({ menu: true, visible })}
           aria-hidden="true"
           onClick={(e) => {
+            console.log('query', query);
+
             e.stopPropagation();
           }}
         >
@@ -67,18 +69,26 @@ const createElem = (
   return el;
 };
 
-function decorateAttrValues(setQuery: Dispatch<SetStateAction<Query>>) {
+const getInnerText = (elem: HTMLElement | null | undefined) => {
+  return elem?.innerText as string;
+};
+
+function decorateAttrValues(
+  setQuery: Dispatch<SetStateAction<string>>,
+  query: string
+) {
   Prism.hooks.add('after-highlight', (env) => {
     const list = env.element.querySelectorAll(
       'span.token.label-value.attr-value'
     );
 
     const handleClick = (e: MouseEvent) => {
-      const eTarget = e.target as ShamefulAny;
-      const attrValue = eTarget?.parentElement?.innerText;
-      const attrName =
-        eTarget?.parentElement?.previousElementSibling?.previousElementSibling
-          ?.innerText;
+      const eTarget = e.target as HTMLElement;
+      const attrValue = getInnerText(eTarget?.parentElement);
+      const attrName = getInnerText(
+        eTarget?.parentElement?.previousElementSibling
+          ?.previousElementSibling as HTMLElement
+      );
 
       const regExp = new RegExp(
         `\\b${attrName}\\b[\\s|=|~|!]{1,4}["'\`](.*?(${attrValue.replace(
@@ -88,47 +98,36 @@ function decorateAttrValues(setQuery: Dispatch<SetStateAction<Query>>) {
         'gmi'
       );
 
-      setQuery((query: ShamefulAny) => {
-        const matched = query.match(regExp);
-        if (matched?.[0]) {
-          return query.replace(matched?.[0], '');
-        }
+      const matched = query.match(regExp);
 
-        return query;
-      });
+      const result = matched?.[0] ? query.replace(matched?.[0], '') : query;
+
+      setQuery(result);
     };
 
     Array.from(list).forEach((item) => {
-      const closeBox = item.querySelector(`span[data-role="close"]`);
-      const menuBox = item.querySelector(`span[data-role="menu"]`);
+      const closeBox =
+        item.querySelector(`span[data-role="close"]`) ||
+        createElem('span', 'close', styles.deletePill, inlineSvg);
 
-      if (!closeBox) {
-        const closeDiv = createElem(
-          'span',
-          'close',
-          styles.deletePill,
-          inlineSvg
-        );
+      (closeBox as HTMLSpanElement).onclick = handleClick;
 
-        closeDiv.onclick = (e) => handleClick(e);
+      item.appendChild(closeBox);
 
-        item.appendChild(closeDiv);
-      }
+      const menuBox =
+        item.querySelector(`span[data-role="menu"]`) ||
+        createElem('span', 'menu', styles.itemMenuWrapper);
 
-      if (!menuBox) {
-        const menuWrapper = createElem('span', 'menu', styles.itemMenuWrapper);
+      ReactDOM.render(<ItemMenu query={query} />, menuBox);
 
-        ReactDOM.render(<ItemMenu />, menuWrapper);
-
-        item.appendChild(menuWrapper);
-      }
+      item.appendChild(menuBox);
     });
   });
 }
 
 function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
   const windowWidth = useWindowWidth();
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState<string>(initialQuery);
   const codeRef = useRef(null);
   const textareaRef = useRef(null);
   const [textAreaSize, setTextAreaSize] = useState({ width: 0, height: 0 });
@@ -141,7 +140,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
 
   useEffect(() => {
     // execute decoration before highlighting
-    decorateAttrValues(setQuery);
+    decorateAttrValues(setQuery, query);
 
     if (Prism && codeRef.current) {
       Prism.highlightElement(codeRef.current);
