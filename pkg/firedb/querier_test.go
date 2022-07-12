@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,10 @@ import (
 )
 
 func TestQueryIndex(t *testing.T) {
-	a, err := newProfileIndex(32)
+	head, err := NewHead(prometheus.NewRegistry())
+	require.NoError(t, err)
+
+	a, err := newProfileIndex(32, newHeadMetrics(head, prometheus.NewRegistry()))
 	require.NoError(t, err)
 
 	for j := 0; j < 10; j++ {
