@@ -4,12 +4,8 @@ import React from 'react';
 import Box from '@webapp/ui/Box';
 import { decodeFlamebearer } from '@webapp/models/flamebearer';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import { BuildInfo } from './components/Footer';
+import Footer from './components/Footer';
 import '@pyroscope/flamegraph/dist/index.css';
-import styles from './standalone.module.scss';
-
-// Enable this if you are developing and don't want to run a server
-// (window as any).flamegraph = defaultFlamegraph;
 
 if (!(window as ShamefulAny).flamegraph) {
   alert(`'flamegraph' is required`);
@@ -19,37 +15,18 @@ if (!(window as ShamefulAny).flamegraph) {
 // TODO parse window.flamegraph
 const { flamegraph } = window as ShamefulAny;
 
-// TODO: unify with the one in Footer component
-function buildInfo() {
-  const w = (window as ShamefulAny).buildInfo as BuildInfo;
-  return `
-    BUILD INFO:
-    goos: ${w.goos}
-    goarch: ${w.goarch}
-    go_version: ${w.goVersion}
-    version: ${w.version}
-    time: ${w.time}
-    gitSHA: ${w.gitSHA}
-    gitDirty: ${w.gitDirty}
-    embeddedAssets: ${w.useEmbeddedAssets}
-`.replace(/^\s+/gm, '');
-}
-
 function StandaloneApp() {
   const flamebearer = decodeFlamebearer(flamegraph);
 
   return (
     <div>
-      <Box className={styles.container}>
+      <Box>
         <FlamegraphRenderer
           flamebearer={flamebearer as ShamefulAny}
-          showCredit={false}
           ExportData={null}
         />
       </Box>
-      <div className={styles.footer} title={buildInfo()}>
-        {`Copyright © 2020 – ${new Date().getFullYear()} Pyroscope, Inc`}
-      </div>
+      <Footer />
     </div>
   );
 }
