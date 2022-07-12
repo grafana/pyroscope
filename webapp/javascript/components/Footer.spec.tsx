@@ -50,12 +50,15 @@ describe('Footer', function () {
       // smaller
       ['0.0.1', '1.0.0', true],
       ['v0.0.1', 'v1.0.0', true],
+      ['v9.0.1', 'v10.0.0', true],
+
       // same version
       ['1.0.0', '1.0.0', false],
       ['v1.0.0', 'v1.0.0', false],
       // current is bigger (bug with the server most likely)
       ['1.0.0', '0.0.1', false],
       ['v1.0.0', 'v0.0.1', false],
+      ['v10.0.1', 'v1.0.0', false],
     ])(
       `currVer (%s), latestVer(%s) should show update available? '%s'`,
       (v1, v2, display) => {

@@ -37,9 +37,9 @@ function NewerVersionCheck() {
   const latestVersion = maybeLatestVersionInfo.value.latest_version;
 
   interface Version {
-    major: string;
-    minor: string;
-    patch: string;
+    major: number;
+    minor: number;
+    patch: number;
   }
 
   const splitVersion = function (s: string): Maybe<Version> {
@@ -51,9 +51,9 @@ function NewerVersionCheck() {
 
     return Maybe.of({
       // handle cases like v1.0.0
-      major: split[0].replace('v', ''),
-      minor: split[1],
-      patch: split[2],
+      major: parseInt(split[0].replace('v', ''), 10),
+      minor: parseInt(split[1], 10),
+      patch: parseInt(split[2], 10),
     });
   };
 
