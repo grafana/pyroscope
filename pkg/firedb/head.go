@@ -29,6 +29,12 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
+func copySlice[T any](in []T) []T {
+	out := make([]T, len(in))
+	copy(out, in)
+	return out
+}
+
 type idConversionTable map[int64]int64
 
 func (t idConversionTable) rewrite(idx *int64) {
@@ -199,13 +205,13 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 	for pos := range in {
 		// populate samples
 		out[pos] = &schemav1.Sample{
-			Values: in[pos].Value,
+			Values: copySlice(in[pos].Value),
 			Labels: h.pprofLabelCache.rewriteLabels(r.strings, in[pos].Label),
 		}
 
 		// build full stack traces
 		stacktraces[pos] = &schemav1.Stacktrace{
-			LocationIDs: in[pos].LocationId,
+			LocationIDs: copySlice(in[pos].LocationId),
 		}
 	}
 
@@ -296,7 +302,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		KeepFrames:        p.KeepFrames,
 		TimeNanos:         p.TimeNanos,
 		DurationNanos:     p.DurationNanos,
-		Comment:           p.Comment,
+		Comment:           copySlice(p.Comment),
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
