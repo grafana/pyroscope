@@ -15,7 +15,7 @@
   "scripts": {
     "test": "jest",
     "build": "yarn build:types && NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts",
-    "build:types": "tsc -p tsconfig.json",
+    "build:types": "tsc -p tsconfig.json --emitDeclarationOnly",
     "build:types:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint ./ --cache --fix",
