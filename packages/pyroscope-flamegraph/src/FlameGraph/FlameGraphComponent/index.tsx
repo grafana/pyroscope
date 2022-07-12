@@ -1,6 +1,12 @@
 /* eslint-disable no-unused-expressions */
 import React, { useCallback, useRef } from 'react';
 import clsx from 'clsx';
+import Icon from '@webapp/ui/Icon';
+import {
+  faRedo,
+  faCopy,
+  faHighlighter,
+} from '@fortawesome/free-solid-svg-icons';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
 import { Maybe } from 'true-myth';
@@ -163,7 +169,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             disabled={!hoveredOnValidNode}
             onClick={onClick}
           >
-            Collapse nodes above
+            --icon-- Collapse nodes above
           </MenuItem>
         );
       };
@@ -177,6 +183,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
         return (
           <MenuItem key="copy" onClick={onClick}>
+            <Icon icon={faCopy} />
             Copy function name
           </MenuItem>
         );
@@ -184,11 +191,15 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
       return [
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
+          <Icon icon={faRedo} />
           Reset View
         </MenuItem>,
         CollapseItem(),
         CopyItem(),
-        <MenuItem key="hightlight-similar">Highlight similar nodes</MenuItem>,
+        <MenuItem key="hightlight-similar">
+          <Icon icon={faHighlighter} />
+          Highlight similar nodes
+        </MenuItem>,
       ];
     },
     [flamegraph]
