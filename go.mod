@@ -258,12 +258,12 @@ require (
 )
 
 replace (
-	// This adds a bugfix for creating schema of structs with pointers.
-	// TODO(simonswine): Remove once upstream PR is merged
-	github.com/segmentio/parquet-go => github.com/simonswine/parquet-go v0.0.0-20220712063352-1bf563d5557d
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
+	// This adds a bugfix for creating schema of structs with pointers.
+	// TODO(simonswine): Remove once upstream PR is merged
+	github.com/segmentio/parquet-go => github.com/simonswine/parquet-go v0.0.0-20220712063352-1bf563d5557d
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )
