@@ -33,6 +33,7 @@ interface FlamegraphProps {
 
   onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
+  onHighlightSameNode: (nodeName: string) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -61,6 +62,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     zoom,
     toolbarVisible,
     showCredit,
+    onHighlightSameNode,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
@@ -189,6 +191,19 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         );
       };
 
+      const HighlightSimilarNodesItem = () => {
+        const onClick = () => {
+          onHighlightSameNode(barName);
+        };
+
+        return (
+          <MenuItem key="hightlight-similar" onClick={onClick}>
+            <FontAwesomeIcon icon={faHighlighter} />
+            Highlight similar nodes
+          </MenuItem>
+        );
+      };
+
       return [
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
           <FontAwesomeIcon icon={faRedo} />
@@ -196,10 +211,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         </MenuItem>,
         CollapseItem(),
         CopyItem(),
-        <MenuItem key="hightlight-similar">
-          <FontAwesomeIcon icon={faHighlighter} />
-          Highlight similar nodes
-        </MenuItem>,
+        HighlightSimilarNodesItem(),
       ];
     },
     [flamegraph]
