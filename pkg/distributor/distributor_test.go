@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,10 +20,12 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
@@ -162,4 +165,18 @@ func TestBuckets(t *testing.T) {
 	for _, r := range prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30) {
 		t.Log(humanize.Bytes(uint64(r)))
 	}
+}
+
+func TestSanitizeProfile(t *testing.T) {
+	// todo finish this test without using a generated profile.
+	data := testProfile(t)
+	gr, err := gzip.NewReader(bytes.NewReader(data))
+	require.NoError(t, err)
+	data, err = ioutil.ReadAll(gr)
+	require.NoError(t, err)
+	p := profilev1.ProfileFromVTPool()
+	err = p.UnmarshalVT(data)
+	require.NoError(t, err)
+	h := sanitizeProfile(p)
+	require.Equal(t, h, p)
 }
