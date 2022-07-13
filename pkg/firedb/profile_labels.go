@@ -2,6 +2,9 @@ package firedb
 
 import (
 	"sync"
+	"unsafe"
+
+	"go.uber.org/atomic"
 
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 )
@@ -9,7 +12,10 @@ import (
 type labelCache struct {
 	labels map[labelKey]*profilev1.Label
 	rw     sync.RWMutex
+	size   atomic.Uint64
 }
+
+const labelSize = uint64(unsafe.Sizeof(profilev1.Label{}))
 
 func (lc *labelCache) init() {
 	lc.labels = make(map[labelKey]*profilev1.Label)
@@ -40,6 +46,7 @@ func (lc *labelCache) rewriteLabels(t stringConversionTable, in []*profilev1.Lab
 				Str:     k.Str,
 				Num:     k.Num,
 			}
+			lc.size.Add(labelSize)
 			lc.labels[k] = l
 			in[i] = l
 			lc.rw.Unlock()

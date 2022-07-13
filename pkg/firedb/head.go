@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
@@ -67,10 +68,14 @@ type Helper[M Models, K comparable] interface {
 	rewrite(*rewriter, M) error
 	// some Models contain their own IDs within the struct, this allows to set them and keep track of the preexisting ID. It should return the oldID that is supposed to be rewritten.
 	setID(existingSliceID uint64, newID uint64, element M) uint64
+
+	// size returns a (rough estimation) of the size of a single element M
+	size(M) uint64
 }
 
 type deduplicatingSlice[M Models, K comparable, H Helper[M, K]] struct {
 	slice  []M
+	size   atomic.Uint64
 	lock   sync.RWMutex
 	lookup map[K]int64
 
@@ -127,6 +132,9 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 			s.lookup[k] = posSlice
 			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 			posSlice++
+
+			// increase size of stored data
+			s.size.Add(h.size(elems[pos]))
 		}
 		s.lock.Unlock()
 	}
@@ -177,11 +185,6 @@ func NewHead(reg prometheus.Registerer) (*Head, error) {
 
 	h.pprofLabelCache.init()
 	return h, nil
-}
-
-type LabelPairRef struct {
-	Name  int64
-	Value int64
 }
 
 func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([]*schemav1.Sample, error) {

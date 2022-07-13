@@ -25,6 +25,10 @@ func (*stringsHelper) rewrite(*rewriter, string) error {
 	return nil
 }
 
+func (*stringsHelper) size(s string) uint64 {
+	return uint64(len(s))
+}
+
 func (*stringsHelper) setID(oldID, newID uint64, s string) uint64 {
 	return oldID
 }
