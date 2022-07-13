@@ -11,6 +11,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/klauspost/compress/gzip"
@@ -123,7 +124,11 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 			if err := p.UnmarshalVT(data); err != nil {
 				return nil, err
 			}
-			if err := i.head.Ingest(ctx, p, series.Labels...); err != nil {
+			id, err := uuid.Parse(sample.ID)
+			if err != nil {
+				return nil, err
+			}
+			if err := i.head.Ingest(ctx, p, id, series.Labels...); err != nil {
 				return nil, err
 			}
 		}

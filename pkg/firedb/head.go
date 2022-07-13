@@ -219,7 +219,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 	return out, nil
 }
 
-func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) error {
+func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
 	// build label set per sample type before references are rewritten
 	var (
 		sb                                             strings.Builder
@@ -286,7 +286,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 	}
 
 	profile := &schemav1.Profile{
-		ID:                uuid.New(),
+		ID:                id,
 		SeriesRefs:        seriesRefs,
 		Samples:           samples,
 		DropFrames:        p.DropFrames,
@@ -362,6 +362,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			return nil
 		}
 		p := &ingestv1.Profile{
+			ID:          profile.ID.String(),
 			Type:        req.Msg.Type,
 			Labels:      lbs,
 			Timestamp:   ts,
