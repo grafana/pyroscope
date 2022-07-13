@@ -9,6 +9,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 	bits "math/bits"
+	sync "sync"
 )
 
 const (
@@ -648,6 +649,55 @@ func encodeVarint(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
+
+var vtprotoPool_Profile = sync.Pool{
+	New: func() interface{} {
+		return &Profile{}
+	},
+}
+
+func (m *Profile) ResetVT() {
+	for _, mm := range m.Sample {
+		mm.ResetVT()
+	}
+	f0 := m.StringTable[:0]
+	f1 := m.Comment[:0]
+	m.Reset()
+	m.StringTable = f0
+	m.Comment = f1
+}
+func (m *Profile) ReturnToVTPool() {
+	if m != nil {
+		m.ResetVT()
+		vtprotoPool_Profile.Put(m)
+	}
+}
+func ProfileFromVTPool() *Profile {
+	return vtprotoPool_Profile.Get().(*Profile)
+}
+
+var vtprotoPool_Sample = sync.Pool{
+	New: func() interface{} {
+		return &Sample{}
+	},
+}
+
+func (m *Sample) ResetVT() {
+	f0 := m.LocationId[:0]
+	f1 := m.Value[:0]
+	m.Reset()
+	m.LocationId = f0
+	m.Value = f1
+}
+func (m *Sample) ReturnToVTPool() {
+	if m != nil {
+		m.ResetVT()
+		vtprotoPool_Sample.Put(m)
+	}
+}
+func SampleFromVTPool() *Sample {
+	return vtprotoPool_Sample.Get().(*Sample)
+}
 func (m *Profile) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -980,7 +1030,14 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SampleType = append(m.SampleType, &ValueType{})
+			if len(m.SampleType) == cap(m.SampleType) {
+				m.SampleType = append(m.SampleType, &ValueType{})
+			} else {
+				m.SampleType = m.SampleType[:len(m.SampleType)+1]
+				if m.SampleType[len(m.SampleType)-1] == nil {
+					m.SampleType[len(m.SampleType)-1] = &ValueType{}
+				}
+			}
 			if err := m.SampleType[len(m.SampleType)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1014,7 +1071,14 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Sample = append(m.Sample, &Sample{})
+			if len(m.Sample) == cap(m.Sample) {
+				m.Sample = append(m.Sample, &Sample{})
+			} else {
+				m.Sample = m.Sample[:len(m.Sample)+1]
+				if m.Sample[len(m.Sample)-1] == nil {
+					m.Sample[len(m.Sample)-1] = &Sample{}
+				}
+			}
 			if err := m.Sample[len(m.Sample)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1048,7 +1112,14 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Mapping = append(m.Mapping, &Mapping{})
+			if len(m.Mapping) == cap(m.Mapping) {
+				m.Mapping = append(m.Mapping, &Mapping{})
+			} else {
+				m.Mapping = m.Mapping[:len(m.Mapping)+1]
+				if m.Mapping[len(m.Mapping)-1] == nil {
+					m.Mapping[len(m.Mapping)-1] = &Mapping{}
+				}
+			}
 			if err := m.Mapping[len(m.Mapping)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1082,7 +1153,14 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Location = append(m.Location, &Location{})
+			if len(m.Location) == cap(m.Location) {
+				m.Location = append(m.Location, &Location{})
+			} else {
+				m.Location = m.Location[:len(m.Location)+1]
+				if m.Location[len(m.Location)-1] == nil {
+					m.Location[len(m.Location)-1] = &Location{}
+				}
+			}
 			if err := m.Location[len(m.Location)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1116,7 +1194,14 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Function = append(m.Function, &Function{})
+			if len(m.Function) == cap(m.Function) {
+				m.Function = append(m.Function, &Function{})
+			} else {
+				m.Function = m.Function[:len(m.Function)+1]
+				if m.Function[len(m.Function)-1] == nil {
+					m.Function[len(m.Function)-1] = &Function{}
+				}
+			}
 			if err := m.Function[len(m.Function)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1336,7 +1421,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 					}
 				}
 				elementCount = count
-				if elementCount != 0 && len(m.Comment) == 0 {
+				if elementCount != 0 && len(m.Comment) == 0 && cap(m.Comment) < elementCount {
 					m.Comment = make([]int64, 0, elementCount)
 				}
 				for iNdEx < postIndex {
@@ -1571,7 +1656,7 @@ func (m *Sample) UnmarshalVT(dAtA []byte) error {
 					}
 				}
 				elementCount = count
-				if elementCount != 0 && len(m.LocationId) == 0 {
+				if elementCount != 0 && len(m.LocationId) == 0 && cap(m.LocationId) < elementCount {
 					m.LocationId = make([]uint64, 0, elementCount)
 				}
 				for iNdEx < postIndex {
@@ -1647,7 +1732,7 @@ func (m *Sample) UnmarshalVT(dAtA []byte) error {
 					}
 				}
 				elementCount = count
-				if elementCount != 0 && len(m.Value) == 0 {
+				if elementCount != 0 && len(m.Value) == 0 && cap(m.Value) < elementCount {
 					m.Value = make([]int64, 0, elementCount)
 				}
 				for iNdEx < postIndex {
@@ -1700,7 +1785,14 @@ func (m *Sample) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Label = append(m.Label, &Label{})
+			if len(m.Label) == cap(m.Label) {
+				m.Label = append(m.Label, &Label{})
+			} else {
+				m.Label = m.Label[:len(m.Label)+1]
+				if m.Label[len(m.Label)-1] == nil {
+					m.Label[len(m.Label)-1] = &Label{}
+				}
+			}
 			if err := m.Label[len(m.Label)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}

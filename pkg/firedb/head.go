@@ -29,6 +29,12 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
+func copySlice[T any](in []T) []T {
+	out := make([]T, len(in))
+	copy(out, in)
+	return out
+}
+
 type idConversionTable map[int64]int64
 
 func (t idConversionTable) rewrite(idx *int64) {
@@ -71,6 +77,9 @@ type Helper[M Models, K comparable] interface {
 
 	// size returns a (rough estimation) of the size of a single element M
 	size(M) uint64
+
+	// clone copies parts that are not optimally sized from protobuf parsing
+	clone(M) M
 }
 
 type deduplicatingSlice[M Models, K comparable, H Helper[M, K]] struct {
@@ -128,7 +137,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 			}
 
 			// add element to slice/map
-			s.slice = append(s.slice, elems[pos])
+			s.slice = append(s.slice, h.clone(elems[pos]))
 			s.lookup[k] = posSlice
 			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 			posSlice++
@@ -196,12 +205,14 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 	for pos := range in {
 		// populate samples
 		out[pos] = &schemav1.Sample{
-			Values: in[pos].Value,
+			Values: copySlice(in[pos].Value),
 			Labels: h.pprofLabelCache.rewriteLabels(r.strings, in[pos].Label),
 		}
 
 		// build full stack traces
 		stacktraces[pos] = &schemav1.Stacktrace{
+			// no copySlice necessary at this point,stacktracesHelper.clone
+			// will copy it, if it is required to be retained.
 			LocationIDs: in[pos].LocationId,
 		}
 	}
@@ -293,7 +304,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 		KeepFrames:        p.KeepFrames,
 		TimeNanos:         p.TimeNanos,
 		DurationNanos:     p.DurationNanos,
-		Comment:           p.Comment,
+		Comment:           copySlice(p.Comment),
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
