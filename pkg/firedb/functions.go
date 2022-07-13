@@ -1,6 +1,8 @@
 package firedb
 
 import (
+	"unsafe"
+
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 )
 
@@ -11,8 +13,9 @@ type functionsKey struct {
 	StartLine  int64
 }
 
-type functionsHelper struct {
-}
+type functionsHelper struct{}
+
+const functionSize = uint64(unsafe.Sizeof(profilev1.Function{}))
 
 func (*functionsHelper) key(f *profilev1.Function) functionsKey {
 	return functionsKey{
@@ -38,4 +41,7 @@ func (*functionsHelper) setID(_, newID uint64, f *profilev1.Function) uint64 {
 	var oldID = f.Id
 	f.Id = newID
 	return oldID
+}
+func (*functionsHelper) size(_ *profilev1.Function) uint64 {
+	return functionSize
 }
