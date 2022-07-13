@@ -34,10 +34,10 @@ app.get('/bike', function bikeSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);
 });
 app.get('/car', function carSearchHandler(req, res) {
-  return genericSearchHandler(1);
+  return genericSearchHandler(1)(req, res);
 });
 app.get('/scooter', function scooterSearchHandler(req, res) {
-  return genericSearchHandler(0.25);
+  return genericSearchHandler(0.25)(req, res);
 });
 
 app.listen(port, () => {
