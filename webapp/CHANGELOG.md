@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.20.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.19.3...@pyroscope/webapp@1.20.0) (2022-07-13)
+
+
+### Features
+
+* add new tooltip design ([#1246](https://github.com/pyroscope-io/pyroscope/issues/1246)) ([8345168](https://github.com/pyroscope-io/pyroscope/commit/83451683d131671771b0e97e052068b08bfe35bd))
+
+
+
+
+
 ## [1.19.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.19.2...@pyroscope/webapp@1.19.3) (2022-07-13)
 
 **Note:** Version bump only for package @pyroscope/webapp
