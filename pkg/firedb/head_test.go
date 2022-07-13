@@ -1,7 +1,6 @@
 package firedb
 
 import (
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
