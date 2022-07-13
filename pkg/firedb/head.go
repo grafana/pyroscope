@@ -211,7 +211,9 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 
 		// build full stack traces
 		stacktraces[pos] = &schemav1.Stacktrace{
-			LocationIDs: copySlice(in[pos].LocationId),
+			// no copySlice necessary at this point,stacktracesHelper.clone
+			// will copy it, if it is required to be retained.
+			LocationIDs: in[pos].LocationId,
 		}
 	}
 
