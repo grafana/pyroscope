@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.5...@pyroscope/webapp@1.19.0) (2022-07-13)
+
+
+### Features
+
+* adds support for group-by queries on the backend ([#1244](https://github.com/pyroscope-io/pyroscope/issues/1244)) ([c52f0e4](https://github.com/pyroscope-io/pyroscope/commit/c52f0e4fdc08feced533d60b9daf0c21c565381c))
+
+
+
+
+
 ## [1.18.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.4...@pyroscope/webapp@1.18.5) (2022-07-12)
 
 
