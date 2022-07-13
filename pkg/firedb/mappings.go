@@ -1,10 +1,14 @@
 package firedb
 
 import (
+	"unsafe"
+
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 )
 
 type mappingsHelper struct{}
+
+const mappingSize = uint64(unsafe.Sizeof(profilev1.Mapping{}))
 
 type mappingsKey struct {
 	MemoryStart     uint64
@@ -46,4 +50,8 @@ func (*mappingsHelper) setID(_, newID uint64, m *profilev1.Mapping) uint64 {
 	var oldID = m.Id
 	m.Id = newID
 	return oldID
+}
+
+func (*mappingsHelper) size(_ *profilev1.Mapping) uint64 {
+	return mappingSize
 }

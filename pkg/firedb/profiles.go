@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/common/model"
@@ -234,6 +235,11 @@ func SplitFiltersAndMatchers(allMatchers []*labels.Matcher) (filters, matchers [
 	return
 }
 
+const (
+	profileSize = uint64(unsafe.Sizeof(schemav1.Profile{}))
+	sampleSize  = uint64(unsafe.Sizeof(schemav1.Sample{}))
+)
+
 type profilesHelper struct{}
 
 func (*profilesHelper) key(s *schemav1.Profile) profilesKey {
@@ -263,6 +269,23 @@ func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
 
 func (*profilesHelper) setID(oldID, newID uint64, p *schemav1.Profile) uint64 {
 	return oldID
+}
+
+func sizeOfSample(s *schemav1.Sample) uint64 {
+	return sampleSize + uint64(len(s.Values)*8)
+}
+
+func (*profilesHelper) size(p *schemav1.Profile) uint64 {
+	var size = profileSize
+
+	size += uint64(len(p.SeriesRefs) * 8)
+	size += uint64(len(p.Comment) * 8)
+
+	for _, s := range p.Samples {
+		size += sizeOfSample(s)
+	}
+
+	return size
 }
 
 type profilesKey struct {
