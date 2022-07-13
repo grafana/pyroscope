@@ -64,6 +64,10 @@
     "ingesterv1Profile": {
       "type": "object",
       "properties": {
+        "ID": {
+          "type": "string",
+          "description": "The ID of the profile."
+        },
         "type": {
           "$ref": "#/definitions/v1ProfileType",
           "description": "The name and type of the profile."
@@ -227,6 +231,10 @@
           "type": "string",
           "format": "byte",
           "title": "raw_profile is the set of bytes of the pprof profile"
+        },
+        "ID": {
+          "type": "string",
+          "title": "unique ID of the profile"
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
