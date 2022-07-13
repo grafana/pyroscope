@@ -244,39 +244,40 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
-	middlewares := []mux.MiddlewareFunc{
-		ctrl.drainMiddleware,
-		ctrl.authMiddleware(nil),
-	}
+	routes := []route{}
 	if ctrl.config.RemoteRead.Enabled {
 		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
 		if err != nil {
 			logrus.WithError(err).Error("failed to initialize remote read handler")
 		} else {
-			ctrl.addRoutes(r, []route{
+			routes = append(routes, []route{
 				{"/render", h},
 				{"/render-diff", h},
 				{"/merge", h},
 				{"/labels", h},
 				{"/label-values", h},
 				{"/export", h},
-			}, middlewares...)
+			}...)
 		}
 	} else {
-		ctrl.addRoutes(r, []route{
+		routes = append(routes, []route{
 			{"/render", ctrl.renderHandler()},
 			{"/render-diff", ctrl.renderDiffHandler()},
 			{"/merge", ctrl.mergeHandler()},
 			{"/labels", ctrl.labelsHandler()},
 			{"/label-values", ctrl.labelValuesHandler()},
 			{"/export", ctrl.exportHandler()},
-		}, middlewares...)
+		}...)
 	}
 
+	routes = append(routes, []route{
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
+	}...)
+
 	// For these routes server responds with 401.
-	ctrl.addRoutes(r, []route{
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
-		middlewares...)
+	ctrl.addRoutes(r, routes,
+		ctrl.drainMiddleware,
+		ctrl.authMiddleware(nil))
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
