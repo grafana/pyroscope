@@ -175,7 +175,7 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-table').should(
         'have.text',
-        '% of CPU:100%CPU Time:9.88 secondsSamples:988 samples'
+        'Share of CPU:100%CPU Time:9.88 secondsSamples:988'
       );
 
       cy.waitForFlamegraphToRender().trigger('mouseout');
@@ -223,7 +223,7 @@ describe('basic test', () => {
         .findByTestId('flamegraph-tooltip-table')
         .should(
           'have.text',
-          '% of CPU:100%CPU Time:9.91 secondsSamples:991 samples'
+          'Share of CPU:100%CPU Time:9.91 secondsSamples:991'
         );
 
       findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove');
@@ -252,7 +252,7 @@ describe('basic test', () => {
         .findByTestId('flamegraph-tooltip-table')
         .should(
           'have.text',
-          '% of CPU:100%CPU Time:9.88 secondsSamples:988 samples'
+          'Share of CPU:100%CPU Time:9.88 secondsSamples:988'
         );
 
       findFlamegraph(2)
@@ -289,7 +289,7 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-table').should(
         'have.text',
-        'BaselineComparisonDiff% of CPU:100100CPU Time:9.91 seconds9.87 secondsSamples:991 samples987 samples'
+        'BaselineComparisonDiffShare of CPU:100%100%CPU Time:9.91 seconds9.87 secondsSamples:991987'
       );
     });
   });

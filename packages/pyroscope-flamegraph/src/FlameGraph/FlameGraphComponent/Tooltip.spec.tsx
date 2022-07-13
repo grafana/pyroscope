@@ -92,8 +92,8 @@ describe('Tooltip', () => {
       };
 
       const expectedTableData = {
-        percent: '% of CPU:10%',
-        samples: 'Samples:10 samples',
+        percent: 'Share of CPU:10%',
+        samples: 'Samples:10',
         formattedValue: 'CPU Time:0.10 seconds',
         title: 'function_title',
       };
@@ -124,9 +124,9 @@ describe('Tooltip', () => {
       };
 
       const expectedTableData = {
-        percent: '% of CPU:0.1100',
+        percent: 'Share of CPU:0.1%100%',
         formattedValue: 'CPU Time:1.00 second1.00 second',
-        samples: 'Samples:100 samples100 samples',
+        samples: 'Samples:100100',
         title: 'my_function',
         diff: {
           text: '(+99900.00%)',
@@ -158,9 +158,9 @@ describe('Tooltip', () => {
       };
 
       const expectedTableData = {
-        percent: '% of CPU:010',
+        percent: 'Share of CPU:0%10%',
         formattedValue: 'CPU Time:< 0.01 seconds1.00 second',
-        samples: 'Samples:0 samples100 samples',
+        samples: 'Samples:0100',
         title: 'my_function',
         diff: {
           text: '(new)',
@@ -192,9 +192,9 @@ describe('Tooltip', () => {
       };
 
       const expectedTableData = {
-        percent: '% of CPU:100',
+        percent: 'Share of CPU:10%0%',
         formattedValue: 'CPU Time:1.00 second< 0.01 seconds',
-        samples: 'Samples:100 samples0 samples',
+        samples: 'Samples:1000',
         title: 'my_function',
         diff: {
           text: '(removed)',
@@ -226,9 +226,9 @@ describe('Tooltip', () => {
       };
 
       const expectedTableData = {
-        percent: '% of CPU:1020',
+        percent: 'Share of CPU:10%20%',
         formattedValue: 'CPU Time:1.00 second2.00 seconds',
-        samples: 'Samples:100 samples200 samples',
+        samples: 'Samples:100200',
         title: 'my_function',
         diff: {
           text: '(+100.00%)',
@@ -260,9 +260,9 @@ describe('Tooltip', () => {
       };
 
       const expectedTableData = {
-        percent: '% of CPU:2010',
+        percent: 'Share of CPU:20%10%',
         formattedValue: 'CPU Time:2.00 seconds1.00 second',
-        samples: 'Samples:200 samples100 samples',
+        samples: 'Samples:200100',
         title: 'my_function',
         diff: {
           text: '(-50.00%)',

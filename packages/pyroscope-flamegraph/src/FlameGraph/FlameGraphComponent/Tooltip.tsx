@@ -54,27 +54,27 @@ const tooltipTitles: Record<
   { percent: string; formattedValue: string }
 > = {
   objects: {
-    percent: 'of objects in RAM',
+    percent: '% of objects in RAM',
     formattedValue: 'RAM amount',
   },
   goroutines: {
-    percent: 'of goroutines',
+    percent: '% of goroutines',
     formattedValue: '<TBD>',
   },
   bytes: {
-    percent: 'of RAM',
+    percent: '% of RAM',
     formattedValue: '<TBD>',
   },
   samples: {
-    percent: 'of CPU',
+    percent: 'Share of CPU',
     formattedValue: 'CPU Time',
   },
   lock_nanoseconds: {
-    percent: 'of Time spent',
+    percent: '% of Time spent',
     formattedValue: '<TBD>',
   },
   lock_samples: {
-    percent: 'of contended locks',
+    percent: '% of contended locks',
     formattedValue: '<TBD>',
   },
   trace_samples: {
@@ -299,7 +299,7 @@ function TooltipTable({
       )}
       <tbody>
         <tr>
-          <td>% {tooltipTitles[baselineData.units].percent}:</td>
+          <td>{tooltipTitles[baselineData.units].percent}:</td>
           <td>{baselineData.percent}</td>
           {comparisonData && (
             <>
@@ -329,10 +329,10 @@ function TooltipTable({
         </tr>
         <tr>
           <td>Samples:</td>
-          <td>{baselineData.samples} samples</td>
+          <td>{baselineData.samples}</td>
           {comparisonData && (
             <>
-              <td>{comparisonData.samples} samples</td>
+              <td>{comparisonData.samples}</td>
               <td />
             </>
           )}
@@ -375,14 +375,14 @@ function formatDouble(
   const rightPercent = ratioToPercent(rightRatio);
 
   const newLeft: TooltipData = {
-    percent: leftPercent,
+    percent: leftPercent + '%',
     samples: numberWithCommas(totalLeft),
     units,
     formattedValue: formatter.format(totalLeft, sampleRate),
   };
 
   const newRight: TooltipData = {
-    percent: rightPercent,
+    percent: rightPercent + '%',
     samples: numberWithCommas(totalRight),
     units,
     formattedValue: formatter.format(totalRight, sampleRate),
