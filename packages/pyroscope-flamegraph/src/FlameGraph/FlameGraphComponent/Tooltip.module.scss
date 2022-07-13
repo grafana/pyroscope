@@ -1,17 +1,23 @@
 .flamegraphTooltip {
   width: 320px;
-
   position: fixed;
-  background: #ffffff;
+  background: var(--ps-neutral-2);
   box-shadow: 1px 2px 4px 0px rgba(0, 0, 0, 0.3);
   border-radius: 4px;
-  color: #333;
+  color: var(--ps-neutral-1);
   font-size: 12px;
   visibility: hidden;
   z-index: 2;
 
+  &.flamegraphDiffTooltip {
+    width: 450px;
+  }
+
   .flamegraphTooltipName {
-    border-bottom: 1px solid #333;
+    color: var(--ps-neutral-1);
+    background-color: var(--ps-tooltip-header-bg);
+    border-top-right-radius: 4px;
+    border-top-left-radius: 4px;
     font-weight: bold;
     white-space: nowrap;
     overflow: hidden;
@@ -21,39 +27,28 @@
 
   .functionName {
     padding: 8px 5px 0;
-    min-height: 50px;
   }
 
-  .contentContainer {
-    padding: 8px 5px;
-    border-bottom: 1px solid #333;
+  .tooltipTable {
+    width: calc(100% - 5px * 2);
+    margin: 10px 5px 16px;
 
-    .content {
-      display: flex;
+    th,
+    td {
+      border: 1px solid var(--ps-tooltip-header-bg);
+      padding: 5px;
     }
 
-    p {
-      text-align: left;
-      margin: 0;
+    td {
       width: 50%;
     }
-  }
 
-  .rightClickInfo {
-    padding: 8px 5px;
-    display: flex;
-    justify-content: center;
-
-    svg {
-      display: block;
-      align-self: center;
-      width: 40px;
-      height: 40px;
-      margin-right: 10px;
-    }
-
-    span {
-      font-size: 14px;
+    &.tooltipDiffTable {
+      th,
+      td {
+        width: 25%;
+        font-weight: normal;
+      }
     }
   }
 }

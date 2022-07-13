@@ -1,6 +1,7 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
-import { Units } from '@pyroscope/models/src';
+import clsx from 'clsx';
+import type { Units } from '@pyroscope/models/src';
 import type { Unwrapped } from 'true-myth/maybe';
 import {
   getFormatter,
@@ -11,8 +12,6 @@ import {
 
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
-import Icon from '@webapp/ui/Icon';
-import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 
 type xyToDataSingle = (
   x: number,
@@ -50,41 +49,50 @@ export type TooltipProps = {
     }
 );
 
-const tooltipTitles: Record<Units, { percent: string; formatedValue: string }> =
-  {
-    objects: {
-      percent: 'of objects in RAM',
-      formatedValue: 'RAM amount',
-    },
-    goroutines: {
-      percent: 'of goroutines',
-      formatedValue: '<TBD>',
-    },
-    bytes: {
-      percent: 'of RAM',
-      formatedValue: '<TBD>',
-    },
-    samples: {
-      percent: 'of CPU',
-      formatedValue: 'CPU Time',
-    },
-    lock_nanoseconds: {
-      percent: 'of Time spent',
-      formatedValue: '<TBD>',
-    },
-    lock_samples: {
-      percent: 'of contended locks',
-      formatedValue: '<TBD>',
-    },
-    trace_samples: {
-      percent: '<TBD>',
-      formatedValue: '<TBD>',
-    },
-    '': {
-      percent: '',
-      formatedValue: '',
-    },
-  };
+const tooltipTitles: Record<
+  Units,
+  { percent: string; formattedValue: string }
+> = {
+  objects: {
+    percent: 'of objects in RAM',
+    formattedValue: 'RAM amount',
+  },
+  goroutines: {
+    percent: 'of goroutines',
+    formattedValue: '<TBD>',
+  },
+  bytes: {
+    percent: 'of RAM',
+    formattedValue: '<TBD>',
+  },
+  samples: {
+    percent: 'of CPU',
+    formattedValue: 'CPU Time',
+  },
+  lock_nanoseconds: {
+    percent: 'of Time spent',
+    formattedValue: '<TBD>',
+  },
+  lock_samples: {
+    percent: 'of contended locks',
+    formattedValue: '<TBD>',
+  },
+  trace_samples: {
+    percent: '<TBD>',
+    formattedValue: '<TBD>',
+  },
+  '': {
+    percent: '',
+    formattedValue: '',
+  },
+};
+
+type TooltipData = {
+  units: Units;
+  percent: string | number;
+  samples: string;
+  formattedValue: string;
+};
 
 export default function Tooltip(props: TooltipProps) {
   const { format, canvasRef, xyToData } = props;
@@ -96,12 +104,7 @@ export default function Tooltip(props: TooltipProps) {
         color: '',
       },
     },
-    tooltipData: [] as {
-      units: Units;
-      percent: string | number;
-      samples: string;
-      formatedValue: string;
-    }[],
+    tooltipData: [] as TooltipData[],
   });
 
   const [style, setStyle] = React.useState<React.CSSProperties>();
@@ -156,7 +159,7 @@ export default function Tooltip(props: TooltipProps) {
             samples:
               units === 'trace_samples' ? '' : numberWithCommas(data.total),
             units,
-            formatedValue: formatter.format(data.total, sampleRate),
+            formattedValue: formatter.format(data.total, sampleRate),
           };
 
           setContent({
@@ -236,7 +239,9 @@ export default function Tooltip(props: TooltipProps) {
     <div
       role="tooltip"
       data-testid="flamegraph-tooltip"
-      className={styles.flamegraphTooltip}
+      className={clsx(styles.flamegraphTooltip, {
+        [styles.flamegraphDiffTooltip]: content.title.diff.text.length > 0,
+      })}
       style={style}
       ref={tooltipEl}
     >
@@ -251,49 +256,87 @@ export default function Tooltip(props: TooltipProps) {
         data-testid="flamegraph-tooltip-function-name"
       >
         {content.title.text}
-        <span
-          data-testid="flamegraph-tooltip-title-diff"
-          style={{ color: content.title?.diff?.color }}
-        >
-          {`${content.title.diff.text.length > 0 ? ' ' : ''}${
-            content.title.diff.text
-          }`}
-        </span>
       </div>
 
-      {content.tooltipData.map(({ units, percent, formatedValue, samples }) => (
-        <div
-          data-testid="flamegraph-tooltip-content"
-          className={styles.contentContainer}
-          key={percent + formatedValue + samples}
-        >
-          <div className={styles.content}>
-            <p className={styles.contentProp}>
-              % {tooltipTitles[units].percent}
-            </p>
-            <p className={styles.contentProp}>{percent}</p>
-          </div>
-          <div className={styles.content}>
-            <p className={styles.contentProp}>
-              {tooltipTitles[units].formatedValue}
-            </p>
-            <p className={styles.contentProp}>{formatedValue}</p>
-          </div>
-          <div className={styles.content}>
-            <p className={styles.contentProp}>Samples:</p>
-            <p className={styles.contentProp}>{samples} samples</p>
-          </div>
-        </div>
-      ))}
-
-      <div className={styles.rightClickInfo}>
-        <Icon icon={faHandPointRight} />
-        <span>
-          Right click for more
-          <br /> node viewing options
-        </span>
-      </div>
+      {content.title.diff.text.length > 0 ? (
+        <TooltipTable data={content.tooltipData} diff={content.title.diff} />
+      ) : (
+        <TooltipTable data={content.tooltipData} />
+      )}
     </div>
+  );
+}
+
+function TooltipTable({
+  data,
+  diff,
+}: {
+  data: TooltipData[];
+  diff?: { text: string; color: string };
+}) {
+  const [baselineData, comparisonData] = data;
+
+  if (!baselineData) {
+    return null;
+  }
+
+  return (
+    <table
+      data-testid="flamegraph-tooltip-table"
+      className={clsx(styles.tooltipTable, {
+        [styles.tooltipDiffTable]: diff,
+      })}
+    >
+      {diff && (
+        <thead>
+          <tr>
+            <th />
+            <th>Baseline</th>
+            <th>Comparison</th>
+            <th>Diff</th>
+          </tr>
+        </thead>
+      )}
+      <tbody>
+        <tr>
+          <td>% {tooltipTitles[baselineData.units].percent}:</td>
+          <td>{baselineData.percent}</td>
+          {diff && (
+            <>
+              <td>{comparisonData.percent}</td>
+              <td>
+                <span
+                  data-testid="flamegraph-tooltip-table-diff"
+                  style={{ color: diff.color }}
+                >
+                  {diff.text}
+                </span>
+              </td>
+            </>
+          )}
+        </tr>
+        <tr>
+          <td>{tooltipTitles[baselineData.units].formattedValue}:</td>
+          <td>{baselineData.formattedValue}</td>
+          {diff && (
+            <>
+              <td>{comparisonData.formattedValue}</td>
+              <td />
+            </>
+          )}
+        </tr>
+        <tr>
+          <td>Samples:</td>
+          <td>{baselineData.samples} samples</td>
+          {diff && (
+            <>
+              <td>{comparisonData.samples} samples</td>
+              <td />
+            </>
+          )}
+        </tr>
+      </tbody>
+    </table>
   );
 }
 
@@ -333,14 +376,14 @@ function formatDouble(
     percent: leftPercent,
     samples: numberWithCommas(totalLeft),
     units,
-    formatedValue: formatter.format(totalLeft, sampleRate),
+    formattedValue: formatter.format(totalLeft, sampleRate),
   };
 
   const newRight = {
     percent: rightPercent,
     samples: numberWithCommas(totalRight),
     units,
-    formatedValue: formatter.format(totalRight, sampleRate),
+    formattedValue: formatter.format(totalRight, sampleRate),
   };
 
   const totalDiff = percentDiff(leftPercent, rightPercent);
