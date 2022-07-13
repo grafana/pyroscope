@@ -244,14 +244,33 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
+	if ctrl.config.RemoteRead.Enabled {
+		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
+		if err != nil {
+			logrus.WithError(err).Error("failed to initialize remote read handler")
+		} else {
+			ctrl.addRoutes(r, []route{
+				{"/render", h},
+				{"/render-diff", h},
+				{"/merge", h},
+				{"/labels", h},
+				{"/label-values", h},
+				{"/export", h},
+			})
+		}
+	} else {
+		ctrl.addRoutes(r, []route{
+			{"/render", ctrl.renderHandler()},
+			{"/render-diff", ctrl.renderDiffHandler()},
+			{"/merge", ctrl.mergeHandler()},
+			{"/labels", ctrl.labelsHandler()},
+			{"/label-values", ctrl.labelValuesHandler()},
+			{"/export", ctrl.exportHandler()},
+		})
+	}
+
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, []route{
-		{"/render", ctrl.renderHandler()},
-		{"/render-diff", ctrl.renderDiffHandler()},
-		{"/merge", ctrl.mergeHandler()},
-		{"/labels", ctrl.labelsHandler()},
-		{"/label-values", ctrl.labelValuesHandler()},
-		{"/export", ctrl.exportHandler()},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
