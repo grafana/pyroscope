@@ -55,3 +55,7 @@ func (*mappingsHelper) setID(_, newID uint64, m *profilev1.Mapping) uint64 {
 func (*mappingsHelper) size(_ *profilev1.Mapping) uint64 {
 	return mappingSize
 }
+
+func (*mappingsHelper) clone(m *profilev1.Mapping) *profilev1.Mapping {
+	return m
+}

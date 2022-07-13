@@ -52,3 +52,12 @@ func (*stacktracesHelper) setID(oldID, newID uint64, s *schemav1.Stacktrace) uin
 func (*stacktracesHelper) size(s *schemav1.Stacktrace) uint64 {
 	return stacktraceSize + uint64(len(s.LocationIDs)*8)
 }
+
+func (*stacktracesHelper) clone(s *schemav1.Stacktrace) *schemav1.Stacktrace {
+	locationIDs := make([]uint64, len(s.LocationIDs))
+	for pos := range locationIDs {
+		locationIDs[pos] = s.LocationIDs[pos]
+	}
+	s.LocationIDs = locationIDs
+	return s
+}
