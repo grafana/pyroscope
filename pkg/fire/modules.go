@@ -87,7 +87,7 @@ func (f *Fire) initGRPCGateway() (services.Service, error) {
 }
 
 func (f *Fire) initDistributor() (services.Service, error) {
-	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.logger)
+	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.reg, f.logger)
 	if err != nil {
 		return nil, err
 	}

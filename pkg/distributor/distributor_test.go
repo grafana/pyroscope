@@ -14,10 +14,12 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -34,7 +36,7 @@ func Test_ConnectPush(t *testing.T) {
 		{Addr: "foo"},
 	}, 3), func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d))
@@ -88,7 +90,7 @@ func Test_Replication(t *testing.T) {
 		{Addr: "3"},
 	}, 3), func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(context.Background(), req)
@@ -109,7 +111,7 @@ func Test_Subservices(t *testing.T) {
 		{Addr: "foo"},
 	}, 1), func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -154,4 +156,10 @@ func (i *fakeIngester) Push(_ context.Context, req *connect.Request[pushv1.PushR
 
 func newFakeIngester(t testing.TB, fail bool) *fakeIngester {
 	return &fakeIngester{t: t, fail: fail}
+}
+
+func TestBuckets(t *testing.T) {
+	for _, r := range prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30) {
+		t.Log(humanize.Bytes(uint64(r)))
+	}
 }
