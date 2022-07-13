@@ -7,6 +7,7 @@ import (
 	"flag"
 	"hash/fnv"
 	"io/ioutil"
+	"sort"
 	"strconv"
 	"time"
 
@@ -20,10 +21,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/samber/lo"
 	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 	firemodel "github.com/grafana/fire/pkg/model"
@@ -108,8 +111,9 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		keys     = make([]uint32, 0, len(req.Msg.Series))
 		profiles = make([]*profileTracker, 0, len(req.Msg.Series))
 
-		// todo pool readers
+		// todo pool readers/writer
 		gzipReader *gzip.Reader
+		gzipWriter *gzip.Writer
 		err        error
 		br         = bytes.NewReader(nil)
 	)
@@ -136,6 +140,39 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 				return nil, errors.Wrap(err, "gzip read all")
 			}
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName).Observe(float64(len(data)))
+			p := profilev1.ProfileFromVTPool()
+			if err := p.UnmarshalVT(data); err != nil {
+				return nil, err
+			}
+
+			p = sanitizeProfile(p)
+
+			// reuse the data buffer if possible
+			size := p.SizeVT()
+			if cap(data) < size {
+				data = make([]byte, size)
+			}
+			n, err := p.MarshalToVT(data)
+			if err != nil {
+				return nil, err
+			}
+			p.ReturnToVTPool()
+			data = data[:n]
+
+			// zip the data back into the buffer
+			bw := bytes.NewBuffer(raw.RawProfile[:0])
+			if gzipWriter == nil {
+				gzipWriter = gzip.NewWriter(bw)
+			} else {
+				gzipWriter.Reset(bw)
+			}
+			if _, err := gzipWriter.Write(data); err != nil {
+				return nil, errors.Wrap(err, "gzip write")
+			}
+			if err := gzipWriter.Close(); err != nil {
+				return nil, errors.Wrap(err, "gzip close")
+			}
+			raw.RawProfile = bw.Bytes()
 		}
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
@@ -269,4 +306,164 @@ func TokenFor(tenantID, labels string) uint32 {
 	_, _ = h.Write([]byte(tenantID))
 	_, _ = h.Write([]byte(labels))
 	return h.Sum32()
+}
+
+func sanitizeProfile(p *profilev1.Profile) *profilev1.Profile {
+	// first pass remove samples that have no value.
+	var removedSamples []*profilev1.Sample
+Outer:
+	for i := 0; i < len(p.Sample); i++ {
+		for j := 0; j < len(p.Sample[i].Value); j++ {
+			if p.Sample[i].Value[j] != 0 {
+				for k := 0; k < len(p.Sample[i].Label); k++ {
+					// remove labels block "bytes" as it's redundant.
+					if p.Sample[i].Label[k].Num != 0 && p.Sample[i].Label[k].Key != 0 &&
+						p.StringTable[p.Sample[i].Label[k].Key] == "bytes" {
+						p.Sample[i].Label = append(p.Sample[i].Label[:k], p.Sample[i].Label[k+1:]...)
+					}
+				}
+				continue Outer
+			}
+			// all values are 0, remove the sample.
+			removedSamples = append(removedSamples, p.Sample[i])
+			p.Sample = append(p.Sample[:i], p.Sample[i+1:]...)
+		}
+	}
+	if len(removedSamples) == 0 {
+		return p
+	}
+	// remove all data not used anymore.
+	var removedLocationTotal int
+	for _, s := range removedSamples {
+		removedLocationTotal = len(s.LocationId)
+	}
+	removedLocationIds := make([]uint64, 0, removedLocationTotal)
+	for _, s := range removedSamples {
+		removedLocationIds = append(removedLocationIds, s.LocationId...)
+	}
+	removedLocationIds = lo.Uniq(removedLocationIds)
+	// figure which removed Locations IDs are not used.
+	for _, s := range p.Sample {
+		for _, l := range s.LocationId {
+			for i := 0; i < len(removedLocationIds); i++ {
+				if l == removedLocationIds[i] {
+					// that ID is used in another sample, remove it.
+					removedLocationIds = append(removedLocationIds[:i], removedLocationIds[i+1:]...)
+				}
+			}
+		}
+	}
+	if len(removedLocationIds) == 0 {
+		return p
+	}
+	var removedFunctionIds []uint64
+	// remove the locations that are not used anymore.
+	for i := 0; i < len(p.Location); i++ {
+		for j := 0; j < len(removedLocationIds); j++ {
+			if p.Location[i].Id == removedLocationIds[j] {
+				for _, l := range p.Location[i].Line {
+					removedFunctionIds = append(removedFunctionIds, l.FunctionId)
+				}
+				p.Location = append(p.Location[:i], p.Location[i+1:]...)
+			}
+		}
+	}
+	if len(removedFunctionIds) == 0 {
+		return p
+	}
+	removedFunctionIds = lo.Uniq(removedFunctionIds)
+	// figure which removed Function IDs are not used.
+	for _, l := range p.Location {
+		for _, f := range l.Line {
+			for i := 0; i < len(removedFunctionIds); i++ {
+				if f.FunctionId == removedFunctionIds[i] {
+					// that ID is used in another location, remove it.
+					removedFunctionIds = append(removedFunctionIds[:i], removedFunctionIds[i+1:]...)
+				}
+			}
+		}
+	}
+	var removedNames []int64
+	// remove the functions that are not used anymore.
+	for i := 0; i < len(p.Function); i++ {
+		for j := 0; j < len(removedFunctionIds); j++ {
+			if p.Function[i].Id == removedFunctionIds[j] {
+				removedNames = append(removedNames, p.Function[i].Name, p.Function[i].SystemName, p.Function[i].Filename)
+				p.Function = append(p.Function[:i], p.Function[i+1:]...)
+			}
+		}
+	}
+
+	if len(removedNames) == 0 {
+		return p
+	}
+	removedNames = lo.Uniq(removedNames)
+	// remove names that are still used.
+	forAllRefName(p, func(idx *int64) {
+		for i := 0; i < len(removedNames); i++ {
+			if *idx == removedNames[i] {
+				// that ID is still used, removed it.
+				removedNames = append(removedNames[:i], removedNames[i+1:]...)
+			}
+		}
+	})
+	if len(removedNames) == 0 {
+		return p
+	}
+	// Sort to remove in order.
+	sort.Slice(removedNames, func(i, j int) bool { return removedNames[i] < removedNames[j] })
+	// remove the names that are not used anymore.
+	for i := int64(0); i < int64(len(p.StringTable)); i++ {
+		for j := 0; j < len(removedNames); j++ {
+			if i == removedNames[j] {
+				p.StringTable = append(p.StringTable[:i], p.StringTable[i+1:]...)
+			}
+		}
+	}
+	// Now shift all indices [0,1,2,3,4,5,6]
+	// if we removed [1,2,5] then we need to shift [3,4] to [1,2] and [6] to [3]
+	// Basically we need to shift all indices that are greater than the removed index by the amount of removed indices.
+	forAllRefName(p, func(idx *int64) {
+		var shift int64
+		for i := 0; i < len(removedNames); i++ {
+			if *idx > removedNames[i] {
+				shift++
+				continue
+			}
+			break
+		}
+		*idx -= shift
+	})
+
+	return p
+}
+
+func forAllRefName(p *profilev1.Profile, fn func(*int64)) {
+	fn(&p.DropFrames)
+	fn(&p.KeepFrames)
+	fn(&p.PeriodType.Type)
+	fn(&p.PeriodType.Unit)
+	for _, st := range p.SampleType {
+		fn(&st.Type)
+		fn(&st.Unit)
+	}
+	for _, m := range p.Mapping {
+		fn(&m.Filename)
+		fn(&m.BuildId)
+	}
+	for _, s := range p.Sample {
+		for _, l := range s.Label {
+			fn(&l.Key)
+			fn(&l.Num)
+			fn(&l.NumUnit)
+		}
+	}
+	for _, f := range p.Function {
+		fn(&f.Name)
+		fn(&f.SystemName)
+		fn(&f.Filename)
+	}
+	for i := 0; i < len(p.Comment); i++ {
+		fn(&p.Comment[i])
+	}
 }
