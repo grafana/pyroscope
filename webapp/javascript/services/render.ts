@@ -39,7 +39,7 @@ export async function renderSingle(
     z.object({ timeline: TimelineSchema })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
-    .merge(z.object({ groups: z.object({}) }))
+    .merge(z.object({ groups: z.object({}).passthrough().optional() }))
     .safeParse(response.value);
 
   if (parsed.success) {
