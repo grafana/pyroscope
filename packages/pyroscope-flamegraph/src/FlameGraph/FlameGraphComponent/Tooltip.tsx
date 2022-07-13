@@ -1,6 +1,6 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
-import { Units } from '@pyroscope/models';
+import { Units } from '@pyroscope/models/src';
 import type { Unwrapped } from 'true-myth/maybe';
 import {
   getFormatter,

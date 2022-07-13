@@ -5,7 +5,7 @@ import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
 import { Maybe } from 'true-myth';
 import debounce from 'lodash.debounce';
-import { Flamebearer } from '@pyroscope/models';
+import { Flamebearer } from '@pyroscope/models/src';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';

@@ -1,4 +1,4 @@
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@webapp/models/appNames';
 import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
