@@ -63,6 +63,8 @@
   --ps-immutable-linked-border: #eb7b18; /* linked border color */
   --ps-immutable-white: #ffffff; /* white: Use only when it should be white regardless of color mode */
   --ps-immutable-placeholder-text: #333333; /* placeholder text color */
+
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
 }
 
 [data-theme='light'],
@@ -94,4 +96,6 @@
   --ps-green-primary: #0bdb79; /* standard green */
   --ps-green-highlight: #5bdc9e; /* highlight (hover) green */
   --ps-green-disabled: #00a757; /* disabled green */
+
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
 }
