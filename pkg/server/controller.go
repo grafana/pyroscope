@@ -244,6 +244,10 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
+	middlewares := []mux.MiddlewareFunc{
+		ctrl.drainMiddleware,
+		ctrl.authMiddleware(nil),
+	}
 	if ctrl.config.RemoteRead.Enabled {
 		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
 		if err != nil {
@@ -256,7 +260,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 				{"/labels", h},
 				{"/label-values", h},
 				{"/export", h},
-			})
+			}, middlewares...)
 		}
 	} else {
 		ctrl.addRoutes(r, []route{
@@ -266,14 +270,13 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			{"/labels", ctrl.labelsHandler()},
 			{"/label-values", ctrl.labelValuesHandler()},
 			{"/export", ctrl.exportHandler()},
-		})
+		}, middlewares...)
 	}
 
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, []route{
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
-		ctrl.drainMiddleware,
-		ctrl.authMiddleware(nil))
+		middlewares...)
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
