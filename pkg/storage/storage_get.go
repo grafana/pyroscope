@@ -21,11 +21,14 @@ type GetInput struct {
 	EndTime   time.Time
 	Key       *segment.Key
 	Query     *flameql.Query
+	// TODO: make this a part of the query
+	GroupBy string
 }
 
 type GetOutput struct {
 	Tree            *tree.Tree
 	Timeline        *segment.Timeline
+	Groups          map[string]*segment.Timeline
 	SpyName         string
 	SampleRate      uint32
 	Count           uint64
@@ -88,6 +91,7 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		aggregationType = "sum"
 		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 	)
+	timelines := make(map[string]*segment.Timeline)
 
 	for _, k := range dimensionKeys() {
 		// TODO: refactor, store `Key`s in dimensions
@@ -108,7 +112,16 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 			aggregationType = averageAggregationType
 		}
 
+		timelineKey := "*"
+		if v, ok := parsedKey.Labels()[gi.GroupBy]; ok {
+			timelineKey = v
+		}
+		if _, ok := timelines[timelineKey]; !ok {
+			timelines[timelineKey] = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		}
+
 		timeline.PopulateTimeline(st)
+		timelines[timelineKey].PopulateTimeline(st)
 		lastSegment = st
 
 		trace.Logf(ctx, traceCatGetCallback, "segment_key=%s", key)
@@ -139,6 +152,7 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	return &GetOutput{
 		Tree:            resultTrie,
 		Timeline:        timeline,
+		Groups:          timelines,
 		SpyName:         lastSegment.SpyName(),
 		SampleRate:      lastSegment.SampleRate(),
 		Count:           writesTotal,
@@ -177,6 +191,7 @@ func (s *Storage) tryGetExemplar(ctx context.Context, gi *GetInput) (*GetOutput,
 
 	o := GetOutput{
 		Timeline: segment.GenerateTimeline(gi.StartTime, gi.EndTime),
+		Groups:   make(map[string]*segment.Timeline),
 		Tree:     t,
 		// Defaults: actual values should be loaded from the segment metadata.
 		SpyName:         "gospy",
