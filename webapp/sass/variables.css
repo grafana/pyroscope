@@ -23,7 +23,10 @@
   --ps-ui-foreground-text: #d8d8d8; /* sidebar text and datepicker text */
   --ps-dropdown-background: #2c2c30; /* dropdown background */
   --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
+
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-shadow: #000000; /* dropdown shadow */
+
   --ps-button-switch-bg: #2ecc40; /* 3 button switch selected button background */
   --ps-button-switch-bg-highlight: #61ea71; /* 3 button switch selected button background when hovered*/
   --ps-button-switch-text: #242428; /* 3 button switch selected button text */
@@ -78,7 +81,10 @@
   --ps-ui-foreground-text: #272727; /* sidebar text and datepicker text */
   --ps-dropdown-background: #f8f8f8; /* dropdown background */
   --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
+
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-shadow: #00000052; /* dropdown shadow */
+
   --ps-button-switch-bg: #3b78e7; /* 3 button switch selected button background */
   --ps-button-switch-bg-highlight: #578ae9; /* 3 button switch selected button background when hovered*/
   --ps-button-switch-text: #ffffff; /* 3 button switch selected button text */
