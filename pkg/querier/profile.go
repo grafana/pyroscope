@@ -52,8 +52,7 @@ type profileWithSymbols struct {
 // It expects profiles from each response to be sorted by timestamp and labels already.
 func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesResponse]) []profileWithSymbols {
 	type tuple struct {
-		ingesterAddr string
-		profile      *ingestv1.Profile
+		profile *ingestv1.Profile
 		responseFromIngesters[*ingestv1.SelectProfilesResponse]
 	}
 	var (
@@ -71,9 +70,8 @@ func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesRe
 				continue
 			}
 			// add the top profile to the tuple list if the current profile is equal the previous one.
-			if len(tuples) == 0 || model.CompareProfile(current.response.Profiles[0], tuples[len(tuples)-1].profile) == 0 {
+			if len(tuples) == 0 || current.response.Profiles[0].ID == tuples[len(tuples)-1].profile.ID {
 				tuples = append(tuples, tuple{
-					ingesterAddr:          current.addr,
 					profile:               current.response.Profiles[0],
 					responseFromIngesters: current,
 				})
@@ -104,8 +102,8 @@ func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesRe
 		if len(first.response.Profiles) > 0 {
 			heap.Push(responsesHeap, first.responseFromIngesters)
 		}
-		for _, t := range tuples {
-			if t.addr != first.addr && len(t.response.Profiles) > 0 {
+		for _, t := range tuples[1:] {
+			if len(t.response.Profiles) > 0 {
 				heap.Push(responsesHeap, t.responseFromIngesters)
 				continue
 			}

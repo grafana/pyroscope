@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/google/uuid"
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -156,9 +157,9 @@ func TestHeadIngestFunctions(t *testing.T) {
 	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBaz()))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New()))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New()))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBaz(), uuid.New()))
 
 	require.Equal(t, 3, len(head.functions.slice))
 	helper := &functionsHelper{}
@@ -193,9 +194,9 @@ func TestHeadIngestStacktraces(t *testing.T) {
 	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
 
-	require.NoError(t, head.Ingest(ctx, newProfileFoo()))
-	require.NoError(t, head.Ingest(ctx, newProfileBar()))
-	require.NoError(t, head.Ingest(ctx, newProfileBar()))
+	require.NoError(t, head.Ingest(ctx, newProfileFoo(), uuid.New()))
+	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.New()))
+	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.New()))
 
 	// expect 2 mappings
 	require.Equal(t, 2, len(head.mappings.slice))
@@ -221,8 +222,8 @@ func TestHeadIngestStacktraces(t *testing.T) {
 func TestHeadLabelValues(t *testing.T) {
 	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
 
 	res, err := head.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
 	require.NoError(t, err)
@@ -236,8 +237,8 @@ func TestHeadLabelValues(t *testing.T) {
 func TestHeadProfileTypes(t *testing.T) {
 	head, err := NewHead(prometheus.NewRegistry())
 	require.NoError(t, err)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), &commonv1.LabelPair{Name: "__name__", Value: "foo"}, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), &commonv1.LabelPair{Name: "__name__", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "foo"}, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
 
 	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
@@ -256,7 +257,7 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 
 	for pos := range profilePaths {
 		profile := parseProfile(t, profilePaths[pos])
-		require.NoError(t, head.Ingest(ctx, profile))
+		require.NoError(t, head.Ingest(ctx, profile, uuid.New()))
 	}
 
 	require.NoError(t, head.WriteTo(ctx, t.TempDir()))
@@ -273,9 +274,9 @@ func TestSelectProfiles(t *testing.T) {
 		pB := newProfileBar()
 		pF.TimeNanos = int64(time.Second * time.Duration(i))
 		pB.TimeNanos = int64(time.Second * time.Duration(i))
-		err = head.Ingest(context.Background(), pF, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "__name__", Value: "foomemory"})
+		err = head.Ingest(context.Background(), pF, uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "__name__", Value: "foomemory"})
 		require.NoError(t, err)
-		err = head.Ingest(context.Background(), pB, &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "__name__", Value: "memory"})
+		err = head.Ingest(context.Background(), pB, uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "__name__", Value: "memory"})
 		require.NoError(t, err)
 	}
 
@@ -305,6 +306,7 @@ func TestSelectProfiles(t *testing.T) {
     "periodType": "type",
     "periodUnit": "unit"
   },
+  "ID":"`+resp.Msg.Profiles[0].ID+`",
   "labels": [
     {
       "name": "__name__",
@@ -367,7 +369,7 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		for pos := range profilePaths {
 			p := parseProfile(t, profilePaths[pos])
-			require.NoError(t, head.Ingest(ctx, p))
+			require.NoError(t, head.Ingest(ctx, p, uuid.New()))
 			profileCount++
 		}
 	}

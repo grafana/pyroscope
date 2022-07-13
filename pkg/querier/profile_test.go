@@ -1,6 +1,7 @@
 package querier
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 
@@ -57,6 +58,7 @@ func buildResponses(t *testing.T, timestamps []int64, labels []string, fns []str
 		ls, err := model.StringToLabelsPairs(labels[i])
 		require.NoError(t, err)
 		result.Profiles[i] = &ingestv1.Profile{
+			ID:        fmt.Sprintf("%d - %s", timestamps[i], labels[i]),
 			Timestamp: timestamps[i],
 			Labels:    ls,
 		}
