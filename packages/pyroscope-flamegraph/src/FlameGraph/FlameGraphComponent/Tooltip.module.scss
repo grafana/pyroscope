@@ -1,5 +1,5 @@
 .flamegraphTooltip {
-  width: 320px;
+  width: 420px;
   position: fixed;
   background: var(--ps-neutral-2);
   box-shadow: 1px 2px 4px 0px rgba(0, 0, 0, 0.3);
@@ -22,18 +22,21 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 8px 5px;
-    font-family: monospace;
+    padding: 8px 10px;
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
   }
 
   .functionName {
-    padding: 8px 5px 0;
-    font-family: monospace;
+    padding: 8px 10px 0;
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+
+    white-space: break-spaces;
+    word-break: break-all;
   }
 
   .tooltipTable {
-    width: calc(100% - 5px * 2);
-    margin: 10px 5px 16px;
+    width: calc(100% - 10px * 2);
+    margin: 10px 10px 16px;
 
     th,
     td {
