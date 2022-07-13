@@ -29,4 +29,6 @@ message RawProfileSeries {
 message RawSample {
   // raw_profile is the set of bytes of the pprof profile
   bytes raw_profile = 1;
+  // unique ID of the profile
+  string ID = 2;
 }
