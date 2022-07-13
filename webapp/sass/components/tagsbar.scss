@@ -95,14 +95,28 @@
 
     .token.label-value.attr-value {
       pointer-events: auto;
-      background-color: #66ff7836;
       position: relative;
       cursor: pointer;
       display: inline-flex;
 
+      &::after {
+        content: '';
+        position: absolute;
+        width: calc(100% + 4px);
+        height: calc(100% - 3px);
+        border: 1px solid #74e680;
+        left: -2px;
+        top: 1px;
+        border-radius: 4px;
+      }
+
       &:hover {
         & span[data-role='close'] {
           display: block;
+        }
+
+        &::after {
+          border-right: none;
         }
       }
     }
