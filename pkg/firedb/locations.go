@@ -2,6 +2,7 @@ package firedb
 
 import (
 	"encoding/binary"
+	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -13,6 +14,11 @@ type locationsKey struct {
 	Address   uint64
 	LinesHash uint64
 }
+
+const (
+	lineSize     = uint64(unsafe.Sizeof(profilev1.Line{}))
+	locationSize = uint64(unsafe.Sizeof(profilev1.Location{}))
+)
 
 type locationsHelper struct{}
 
@@ -59,4 +65,8 @@ func (*locationsHelper) setID(_, newID uint64, l *profilev1.Location) uint64 {
 	oldID := l.Id
 	l.Id = newID
 	return oldID
+}
+
+func (*locationsHelper) size(l *profilev1.Location) uint64 {
+	return uint64(len(l.Line))*lineSize + locationSize
 }

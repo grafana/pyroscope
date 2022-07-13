@@ -2,10 +2,15 @@ package firedb
 
 import (
 	"encoding/binary"
+	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
+)
+
+const (
+	stacktraceSize = uint64(unsafe.Sizeof(schemav1.Stacktrace{}))
 )
 
 type stacktracesKey uint64
@@ -42,4 +47,8 @@ func (*stacktracesHelper) rewrite(r *rewriter, s *schemav1.Stacktrace) error {
 
 func (*stacktracesHelper) setID(oldID, newID uint64, s *schemav1.Stacktrace) uint64 {
 	return oldID
+}
+
+func (*stacktracesHelper) size(s *schemav1.Stacktrace) uint64 {
+	return stacktraceSize + uint64(len(s.LocationIDs)*8)
 }
