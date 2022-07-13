@@ -70,3 +70,7 @@ func (*locationsHelper) setID(_, newID uint64, l *profilev1.Location) uint64 {
 func (*locationsHelper) size(l *profilev1.Location) uint64 {
 	return uint64(len(l.Line))*lineSize + locationSize
 }
+
+func (*locationsHelper) clone(l *profilev1.Location) *profilev1.Location {
+	return l
+}
