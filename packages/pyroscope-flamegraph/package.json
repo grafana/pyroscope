@@ -1,6 +1,6 @@
 {
   "name": "@pyroscope/flamegraph",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "_types": "since we are importing stuff from webapp (ui components), tsc ends up generating a weird file tree",
@@ -15,7 +15,7 @@
   "scripts": {
     "test": "jest",
     "build": "yarn build:types && NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts",
-    "build:types": "tsc -p tsconfig.json",
+    "build:types": "tsc -p tsconfig.json --emitDeclarationOnly",
     "build:types:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint ./ --cache --fix",

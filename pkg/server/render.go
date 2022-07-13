@@ -172,6 +172,7 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 
 	k := v.Get("name")
 	q := v.Get("query")
+	p.gi.GroupBy = v.Get("groupBy")
 
 	switch {
 	case k == "" && q == "":
@@ -192,6 +193,9 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 
 	p.maxNodes = rh.maxNodesDefault
 	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn > 0 {
+		p.maxNodes = mn
+	}
+	if mn, err := strconv.Atoi(v.Get("maxNodes")); err == nil && mn > 0 {
 		p.maxNodes = mn
 	}
 

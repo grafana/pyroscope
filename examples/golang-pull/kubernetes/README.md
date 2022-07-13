@@ -74,10 +74,10 @@ pyroscopeConfigs:
 
 ### 3. Deploy Hot R.O.D. application
 
-As a sample application we use slightly modified Jaeger [Hot R.O.D.](https://github.com/jaegertracing/jaeger/tree/master/examples/hotrod) demo – 
+As a sample application we use slightly modified Jaeger [Hot R.O.D.](https://github.com/jaegertracing/jaeger/tree/master/examples/hotrod) demo –
 the only difference is that we enabled built-in Go `pprof` HTTP endpoints. You can find the modified code in the [hotrod-goland](https://github.com/pyroscope-io/hotrod-golang) repository.
 
-Kubernetes resources are defined in [`manifests.yaml`](manifests.yaml): notice pod labels defined – by this we instruct Pyroscope to 
+Kubernetes resources are defined in [`manifests.yaml`](manifests.yaml): notice pod labels defined – by this we instruct Pyroscope to
 scrape cpu and memory profiles at `:6060`:
 ```yaml
 pyroscope.io/scrape: "true"

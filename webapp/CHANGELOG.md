@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.5...@pyroscope/webapp@1.19.0) (2022-07-13)
+
+
+### Features
+
+* adds support for group-by queries on the backend ([#1244](https://github.com/pyroscope-io/pyroscope/issues/1244)) ([c52f0e4](https://github.com/pyroscope-io/pyroscope/commit/c52f0e4fdc08feced533d60b9daf0c21c565381c))
+
+
+
+
+
+## [1.18.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.4...@pyroscope/webapp@1.18.5) (2022-07-12)
+
+
+### Bug Fixes
+
+* **frontend:** fix latest version checks ([#1243](https://github.com/pyroscope-io/pyroscope/issues/1243)) ([293078a](https://github.com/pyroscope-io/pyroscope/commit/293078a1bf6e8b8aa0a7e436faaa77bacaaa4b56))
+
+
+
+
+
+## [1.18.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.3...@pyroscope/webapp@1.18.4) (2022-07-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.18.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.2...@pyroscope/webapp@1.18.3) (2022-07-11)
 
 **Note:** Version bump only for package @pyroscope/webapp
