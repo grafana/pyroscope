@@ -240,7 +240,7 @@ export default function Tooltip(props: TooltipProps) {
       role="tooltip"
       data-testid="flamegraph-tooltip"
       className={clsx(styles.flamegraphTooltip, {
-        [styles.flamegraphDiffTooltip]: content.title.diff.text.length > 0,
+        [styles.flamegraphDiffTooltip]: content.tooltipData.length > 1,
       })}
       style={style}
       ref={tooltipEl}
@@ -284,10 +284,10 @@ function TooltipTable({
     <table
       data-testid="flamegraph-tooltip-table"
       className={clsx(styles.tooltipTable, {
-        [styles.tooltipDiffTable]: diff,
+        [styles.tooltipDiffTable]: comparisonData,
       })}
     >
-      {diff && (
+      {comparisonData && (
         <thead>
           <tr>
             <th />
@@ -301,16 +301,18 @@ function TooltipTable({
         <tr>
           <td>% {tooltipTitles[baselineData.units].percent}:</td>
           <td>{baselineData.percent}</td>
-          {diff && (
+          {comparisonData && (
             <>
               <td>{comparisonData.percent}</td>
               <td>
-                <span
-                  data-testid="flamegraph-tooltip-diff"
-                  style={{ color: diff.color }}
-                >
-                  {diff.text}
-                </span>
+                {diff && (
+                  <span
+                    data-testid="flamegraph-tooltip-diff"
+                    style={{ color: diff.color }}
+                  >
+                    {diff.text}
+                  </span>
+                )}
               </td>
             </>
           )}
@@ -318,7 +320,7 @@ function TooltipTable({
         <tr>
           <td>{tooltipTitles[baselineData.units].formattedValue}:</td>
           <td>{baselineData.formattedValue}</td>
-          {diff && (
+          {comparisonData && (
             <>
               <td>{comparisonData.formattedValue}</td>
               <td />
@@ -328,7 +330,7 @@ function TooltipTable({
         <tr>
           <td>Samples:</td>
           <td>{baselineData.samples} samples</td>
-          {diff && (
+          {comparisonData && (
             <>
               <td>{comparisonData.samples} samples</td>
               <td />

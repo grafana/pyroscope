@@ -289,7 +289,7 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-table').should(
         'have.text',
-        '% of CPU:100CPU Time:9.91 secondsSamples:991 samples'
+        'BaselineComparisonDiff% of CPU:100100CPU Time:9.91 seconds9.87 secondsSamples:991 samples987 samples'
       );
     });
   });
