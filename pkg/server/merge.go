@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -14,11 +15,23 @@ import (
 
 type MergeHandler struct {
 	log             *logrus.Logger
-	storage         storage.Merger
+	storage         storage.ExemplarsMerger
 	dir             http.FileSystem
 	stats           StatsReceiver
 	maxNodesDefault int
 	httpUtils       httputils.Utils
+}
+
+type mergeRequest struct {
+	AppName   string   `json:"appName"`
+	StartTime int64    `json:"startTime"`
+	EndTime   int64    `json:"endTime"`
+	Profiles  []string `json:"profiles"`
+	MaxNodes  int      `json:"maxNodes"`
+}
+
+type mergeResponse struct {
+	flamebearer.FlamebearerProfile
 }
 
 func (ctrl *Controller) mergeHandler() http.HandlerFunc {
@@ -26,7 +39,7 @@ func (ctrl *Controller) mergeHandler() http.HandlerFunc {
 }
 
 //revive:disable:argument-limit TODO(petethepig): we will refactor this later
-func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *MergeHandler {
+func NewMergeHandler(l *logrus.Logger, s storage.ExemplarsMerger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *MergeHandler {
 	return &MergeHandler{
 		log:             l,
 		storage:         s,
@@ -57,9 +70,12 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		maxNodes = req.MaxNodes
 	}
 
-	out, err := mh.storage.MergeProfiles(r.Context(), storage.MergeProfilesInput{
-		AppName:  req.AppName,
-		Profiles: req.Profiles,
+	out, err := mh.storage.MergeProfiles(r.Context(), storage.MergeExemplarsInput{
+		// TODO(kolesnikovae): Time format.
+		StartTime:  time.Unix(0, req.StartTime),
+		EndTime:    time.Unix(0, req.EndTime),
+		AppName:    req.AppName,
+		ProfileIDs: req.Profiles,
 	})
 	if err != nil {
 		mh.httpUtils.WriteInternalServerError(r, w, err, "failed to retrieve data")
@@ -77,12 +93,11 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					NumTicks: flame.NumTicks,
 					MaxSelf:  flame.MaxSelf,
 				},
-				// Hardcoded values for Go.
 				Metadata: flamebearer.FlamebearerMetadataV1{
 					Format:     string(tree.FormatSingle),
-					SpyName:    "unknown",
-					SampleRate: 100,
-					Units:      "samples",
+					SpyName:    out.SpyName,
+					SampleRate: out.SampleRate,
+					Units:      out.Units,
 				},
 			},
 		},

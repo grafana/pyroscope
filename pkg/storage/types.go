@@ -12,15 +12,19 @@ import (
 )
 
 type Putter interface {
-	Put(ctx context.Context, pi *PutInput) error
+	Put(context.Context, *PutInput) error
 }
 
 type Getter interface {
-	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
+	Get(context.Context, *GetInput) (*GetOutput, error)
 }
 
-type Merger interface {
-	MergeProfiles(ctx context.Context, mi MergeProfilesInput) (o MergeProfilesOutput, err error)
+type ExemplarsGetter interface {
+	GetExemplar(context.Context, GetExemplarInput) (GetExemplarOutput, error)
+}
+
+type ExemplarsMerger interface {
+	MergeProfiles(context.Context, MergeExemplarsInput) (MergeExemplarsOutput, error)
 }
 
 type GetLabelKeysByQueryInput struct {

@@ -71,8 +71,8 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	logger.Debug("storage.Get")
 	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
 
-	// Profiles can be fetched by ID using query.
-	// If a query includes 'profile_id' matcher others are ignored.
+	// Profiles can be fetched by ID using query – this should be deprecated,
+	// and GetExemplar should be used instead.
 	if gi.Query != nil {
 		out, ok, err := s.tryGetExemplar(ctx, gi)
 		if err != nil {

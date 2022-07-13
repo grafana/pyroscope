@@ -137,25 +137,25 @@ var _ = Describe("Exemplar merge", func() {
 				})).ToNot(HaveOccurred())
 
 				s.exemplars.Sync()
-				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
-					AppName:  "app.cpu",
-					Profiles: []string{"a"},
+				o, err := s.MergeProfiles(context.Background(), MergeExemplarsInput{
+					AppName:    "app.cpu",
+					ProfileIDs: []string{"a"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(6)))
 
-				o, err = s.MergeProfiles(context.Background(), MergeProfilesInput{
-					AppName:  "app.cpu",
-					Profiles: []string{"b"},
+				o, err = s.MergeProfiles(context.Background(), MergeExemplarsInput{
+					AppName:    "app.cpu",
+					ProfileIDs: []string{"b"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
 
-				o, err = s.MergeProfiles(context.Background(), MergeProfilesInput{
-					AppName:  "app.cpu",
-					Profiles: []string{"a", "b"},
+				o, err = s.MergeProfiles(context.Background(), MergeExemplarsInput{
+					AppName:    "app.cpu",
+					ProfileIDs: []string{"a", "b"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
@@ -204,9 +204,9 @@ var _ = Describe("Exemplars retention policy", func() {
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				s.exemplars.enforceRetentionPolicy(context.Background(), rp)
 
-				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
-					AppName:  "app.cpu",
-					Profiles: []string{"a", "b"},
+				o, err := s.MergeProfiles(context.Background(), MergeExemplarsInput{
+					AppName:    "app.cpu",
+					ProfileIDs: []string{"a", "b"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
