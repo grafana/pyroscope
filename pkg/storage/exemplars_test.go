@@ -103,38 +103,40 @@ var _ = Describe("Exemplar merge", func() {
 			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		put := func(m map[string]string) {
+			tree := tree.New()
+			tree.Insert([]byte("a;b"), uint64(1))
+			tree.Insert([]byte("a;c"), uint64(2))
+
+			Expect(s.Put(context.TODO(), &PutInput{
+				StartTime: testing.SimpleTime(10),
+				EndTime:   testing.SimpleTime(19),
+				Key:       segment.NewKey(m),
+				Val:       tree.Clone(big.NewRat(1, 1)),
+			})).ToNot(HaveOccurred())
+		}
+
 		Context("when profiles with ID ingested", func() {
 			It("merges profiling data correctly", func() {
 				defer s.Close()
 
-				tree := tree.New()
-				tree.Insert([]byte("a;b"), uint64(1))
-				tree.Insert([]byte("a;c"), uint64(2))
-				st := testing.SimpleTime(10)
-				et := testing.SimpleTime(19)
-
-				k1, _ := segment.ParseKey("app.cpu{profile_id=a}")
-				Expect(s.Put(context.TODO(), &PutInput{
-					StartTime: st,
-					EndTime:   et,
-					Key:       k1,
-					Val:       tree.Clone(big.NewRat(1, 1)),
-				})).ToNot(HaveOccurred())
-
-				Expect(s.Put(context.TODO(), &PutInput{
-					StartTime: st,
-					EndTime:   et,
-					Key:       k1,
-					Val:       tree.Clone(big.NewRat(1, 1)),
-				})).ToNot(HaveOccurred())
-
-				k2, _ := segment.ParseKey("app.cpu{profile_id=b}")
-				Expect(s.Put(context.TODO(), &PutInput{
-					StartTime: st,
-					EndTime:   et,
-					Key:       k2,
-					Val:       tree.Clone(big.NewRat(1, 1)),
-				})).ToNot(HaveOccurred())
+				// Just to create the segment.
+				put(map[string]string{
+					"__name__": "app.cpu",
+				})
+				put(map[string]string{
+					"__name__":   "app.cpu",
+					"profile_id": "a",
+				})
+				put(map[string]string{
+					"__name__":   "app.cpu",
+					"profile_id": "a",
+				})
+				put(map[string]string{
+					"__name__":   "app.cpu",
+					"profile_id": "b",
+				})
 
 				s.exemplars.Sync()
 				o, err := s.MergeProfiles(context.Background(), MergeExemplarsInput{
@@ -187,7 +189,7 @@ var _ = Describe("Exemplars retention policy", func() {
 					StartTime: t1,
 					EndTime:   t2,
 					Key:       k1,
-					Val:       tree,
+					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
 				t3 := t2.Add(10 * time.Second)
@@ -197,9 +199,17 @@ var _ = Describe("Exemplars retention policy", func() {
 					StartTime: t3,
 					EndTime:   t4,
 					Key:       k2,
-					Val:       tree,
+					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
+				// Just to create the segment.
+				k3, _ := segment.ParseKey("app.cpu{}")
+				Expect(s.Put(context.TODO(), &PutInput{
+					StartTime: t3,
+					EndTime:   t4,
+					Key:       k3,
+					Val:       tree.Clone(big.NewRat(1, 1)),
+				})).ToNot(HaveOccurred())
 				s.exemplars.Sync()
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				s.exemplars.enforceRetentionPolicy(context.Background(), rp)
