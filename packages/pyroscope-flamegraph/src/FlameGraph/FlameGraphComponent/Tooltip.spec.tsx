@@ -25,8 +25,6 @@ function TestCanvas(props: Omit<TooltipProps, 'canvasRef'>) {
 }
 
 describe('Tooltip', () => {
-  // type XyToData = (x: number, y: number) => Maybe<any>;
-
   function executeTooltipTest(
     props: Omit<TooltipProps, 'canvasRef' | 'palette'>,
     expectedData: {
