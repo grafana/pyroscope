@@ -59,11 +59,11 @@ const tooltipTitles: Record<
   },
   goroutines: {
     percent: '% of goroutines',
-    formattedValue: '<TBD>',
+    formattedValue: 'goroutines',
   },
   bytes: {
     percent: '% of RAM',
-    formattedValue: '<TBD>',
+    formattedValue: 'bytes',
   },
   samples: {
     percent: 'Share of CPU',
@@ -71,15 +71,15 @@ const tooltipTitles: Record<
   },
   lock_nanoseconds: {
     percent: '% of Time spent',
-    formattedValue: '<TBD>',
+    formattedValue: 'seconds',
   },
   lock_samples: {
     percent: '% of contended locks',
-    formattedValue: '<TBD>',
+    formattedValue: 'locks',
   },
   trace_samples: {
-    percent: '<TBD>',
-    formattedValue: '<TBD>',
+    percent: '% of time',
+    formattedValue: 'samples',
   },
   '': {
     percent: '',
