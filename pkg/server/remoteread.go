@@ -15,7 +15,7 @@ type RemoteReadHandler struct {
 	url   *url.URL
 }
 
-func (ctrl *Controller) remoteReadHandler(r config.RemoteRead) (http.HandlerFunc, error) {
+func (*Controller) remoteReadHandler(r config.RemoteRead) (http.HandlerFunc, error) {
 	f, err := NewRemoteReadHandler(r)
 	if err != nil {
 		return nil, err
