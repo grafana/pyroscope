@@ -26,6 +26,7 @@ import {
   uncollapseSidebar,
   recalculateSidebar,
 } from '@webapp/redux/reducers/ui';
+// import useColorMode from '@webapp/hooks/colorMode.hook';
 import { useLocation, NavLink } from 'react-router-dom';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
@@ -42,6 +43,7 @@ function signOut() {
 
 export function SidebarComponent() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
+  // const { changeColorMode, colorMode } = useColorMode();
   const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
