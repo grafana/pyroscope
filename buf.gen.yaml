@@ -14,7 +14,10 @@ plugins:
   - name: go-vtproto
     out: pkg/gen/
     opt:
-      - paths=source_relative,features=marshal+unmarshal+size+pool+grpc
+      - paths=source_relative
+      - features=marshal+unmarshal+size+pool+grpc+pool
+      - pool=github.com/grafana/fire/pkg/gen/google/v1.Profile
+      - pool=github.com/grafana/fire/pkg/gen/google/v1.Sample
 
   - name: connect-go
     out: pkg/gen/
