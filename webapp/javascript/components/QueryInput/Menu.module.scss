@@ -40,7 +40,8 @@
     border-radius: 4px;
     overflow: hidden;
     z-index: 6;
-    width: 280px;
+    width: 300px;
+    cursor: default;
   }
 }
 
@@ -78,7 +79,7 @@
     cursor: pointer;
     color: black;
     padding: 1px 5px 0 5px;
-    font-size: 12px;
+    font-size: 14px;
     display: flex;
     align-items: center;
   }
@@ -90,4 +91,8 @@
   &.include:checked + label {
     background-color: var(--ps-green-disabled);
   }
+}
+
+.selectionError {
+  color: var(--ps-red-disabled);
 }
