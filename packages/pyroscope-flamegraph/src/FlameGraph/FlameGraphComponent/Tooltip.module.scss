@@ -56,4 +56,22 @@
       }
     }
   }
+
+  .rightClickInfo {
+    padding: 0 5px 10px;
+    display: flex;
+    justify-content: center;
+
+    svg {
+      display: block;
+      align-self: center;
+      width: 40px;
+      height: 40px;
+      margin-right: 10px;
+    }
+
+    span {
+      font-size: 14px;
+    }
+  }
 }

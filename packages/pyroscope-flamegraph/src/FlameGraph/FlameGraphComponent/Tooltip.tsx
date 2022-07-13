@@ -1,7 +1,7 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
+import { Units } from '@pyroscope/models/src';
 import clsx from 'clsx';
-import type { Units } from '@pyroscope/models/src';
 import type { Unwrapped } from 'true-myth/maybe';
 import {
   getFormatter,
@@ -9,6 +9,7 @@ import {
   formatPercent,
   ratioToPercent,
 } from '../../format/format';
+import RightClickIcon from './rightClickIcon';
 
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
@@ -263,6 +264,14 @@ export default function Tooltip(props: TooltipProps) {
       ) : (
         <TooltipTable data={content.tooltipData} />
       )}
+
+      <div className={styles.rightClickInfo}>
+        <RightClickIcon />
+        <span>
+          Right click for more
+          <br /> node viewing options
+        </span>
+      </div>
     </div>
   );
 }
@@ -367,7 +376,16 @@ function formatDouble(
     units: Units;
   },
   palette: FlamegraphPalette = DefaultPalette
-) {
+): {
+  tooltipData: TooltipData[];
+  title: {
+    text: string;
+    diff: {
+      text: string;
+      color: string;
+    };
+  };
+} {
   const leftRatio = totalLeft / leftTicks;
   const rightRatio = totalRight / rightTicks;
 
