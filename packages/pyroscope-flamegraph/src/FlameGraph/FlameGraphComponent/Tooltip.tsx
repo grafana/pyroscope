@@ -154,7 +154,7 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (data.format) {
         case 'single': {
-          const newLeftContent = {
+          const newLeftContent: TooltipData = {
             percent: formatPercent(data.total / numTicks),
             samples:
               units === 'trace_samples' ? '' : numberWithCommas(data.total),
@@ -374,14 +374,14 @@ function formatDouble(
   const leftPercent = ratioToPercent(leftRatio);
   const rightPercent = ratioToPercent(rightRatio);
 
-  const newLeft = {
+  const newLeft: TooltipData = {
     percent: leftPercent,
     samples: numberWithCommas(totalLeft),
     units,
     formattedValue: formatter.format(totalLeft, sampleRate),
   };
 
-  const newRight = {
+  const newRight: TooltipData = {
     percent: rightPercent,
     samples: numberWithCommas(totalRight),
     units,
