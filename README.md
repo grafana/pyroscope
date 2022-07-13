@@ -130,7 +130,7 @@ For more documentation on how to add the Pyroscope agent to your code see the [a
 Pyroscope also supports several third-party integrations notably:
 - [Grafana Plugin](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
 - [Jaeger UI](https://github.com/pyroscope-io/jaeger-ui)
-- [OTel Golang (tracing)](https://github.com/pyroscope-io/otelpyroscope)
+- [OTel Golang (tracing)](https://github.com/pyroscope-io/otel-profiling-go)
 
 ## Documentation
 
