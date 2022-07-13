@@ -1,4 +1,4 @@
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 
 function deltaDiffWrapper(
   format: Profile['metadata']['format'],

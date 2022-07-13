@@ -1,5 +1,5 @@
 import { Result } from '@webapp/util/fp';
-import { Profile, FlamebearerProfileSchema } from '@pyroscope/models';
+import { Profile, FlamebearerProfileSchema } from '@pyroscope/models/src';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
 import { buildRenderURL } from '@webapp/util/updateRequests';
