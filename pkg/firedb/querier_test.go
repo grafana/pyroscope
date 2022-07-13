@@ -19,7 +19,7 @@ import (
 )
 
 func TestQueryIndex(t *testing.T) {
-	head, err := NewHead(prometheus.NewRegistry())
+	head, err := NewHead(nil, prometheus.NewRegistry())
 	require.NoError(t, err)
 
 	a, err := newProfileIndex(32, newHeadMetrics(head, prometheus.NewRegistry()))
@@ -49,7 +49,7 @@ func TestQueryIndex(t *testing.T) {
 	}
 
 	tmpFile := t.TempDir() + "/test.db"
-	err = a.writeTo(context.Background(), tmpFile)
+	err = a.WriteTo(context.Background(), tmpFile)
 	require.NoError(t, err)
 
 	r, err := index.NewFileReader(tmpFile)

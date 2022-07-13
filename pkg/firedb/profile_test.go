@@ -107,7 +107,7 @@ func TestWriteRead(t *testing.T) {
 	}
 
 	tmpFile := t.TempDir() + "/test.db"
-	err = a.writeTo(context.Background(), tmpFile)
+	err = a.WriteTo(context.Background(), tmpFile)
 	require.NoError(t, err)
 
 	r, err := index.NewFileReader(tmpFile)
