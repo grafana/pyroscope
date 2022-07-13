@@ -121,6 +121,9 @@
         }
       }
     },
+    "v1FlushResponse": {
+      "type": "object"
+    },
     "v1GetTargetsResponse": {
       "type": "object",
       "properties": {

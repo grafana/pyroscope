@@ -137,8 +137,8 @@ func (pi *profilesIndex) allProfiles() []*schemav1.Profile {
 	return result
 }
 
-// writeTo writes the profiles tsdb index to the specified filepath.
-func (pi *profilesIndex) writeTo(ctx context.Context, path string) error {
+// WriteTo writes the profiles tsdb index to the specified filepath.
+func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 	writer, err := index.NewWriter(ctx, path)
 	if err != nil {
 		return err
