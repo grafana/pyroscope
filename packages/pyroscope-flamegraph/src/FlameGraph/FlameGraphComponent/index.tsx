@@ -1,12 +1,11 @@
 /* eslint-disable no-unused-expressions */
 import React, { useCallback, useRef } from 'react';
 import clsx from 'clsx';
-import Icon from '@webapp/ui/Icon';
-import {
-  faRedo,
-  faCopy,
-  faHighlighter,
-} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faRedo } from '@fortawesome/free-solid-svg-icons/faRedo';
+import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
+import { faHighlighter } from '@fortawesome/free-solid-svg-icons/faHighlighter';
+import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
 import { Maybe } from 'true-myth';
@@ -169,7 +168,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             disabled={!hoveredOnValidNode}
             onClick={onClick}
           >
-            --icon-- Collapse nodes above
+            <FontAwesomeIcon icon={faCompressAlt} />
+            Collapse nodes above
           </MenuItem>
         );
       };
@@ -183,7 +183,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
         return (
           <MenuItem key="copy" onClick={onClick}>
-            <Icon icon={faCopy} />
+            <FontAwesomeIcon icon={faCopy} />
             Copy function name
           </MenuItem>
         );
@@ -191,13 +191,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
       return [
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
-          <Icon icon={faRedo} />
+          <FontAwesomeIcon icon={faRedo} />
           Reset View
         </MenuItem>,
         CollapseItem(),
         CopyItem(),
         <MenuItem key="hightlight-similar">
-          <Icon icon={faHighlighter} />
+          <FontAwesomeIcon icon={faHighlighter} />
           Highlight similar nodes
         </MenuItem>,
       ];
