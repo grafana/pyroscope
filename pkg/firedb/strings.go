@@ -32,3 +32,7 @@ func (*stringsHelper) size(s string) uint64 {
 func (*stringsHelper) setID(oldID, newID uint64, s string) uint64 {
 	return oldID
 }
+
+func (*stringsHelper) clone(s string) string {
+	return s
+}

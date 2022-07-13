@@ -71,6 +71,9 @@ type Helper[M Models, K comparable] interface {
 
 	// size returns a (rough estimation) of the size of a single element M
 	size(M) uint64
+
+	// clone copies parts that are not optimally sized from protobuf parsing
+	clone(M) M
 }
 
 type deduplicatingSlice[M Models, K comparable, H Helper[M, K]] struct {
@@ -128,7 +131,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 			}
 
 			// add element to slice/map
-			s.slice = append(s.slice, elems[pos])
+			s.slice = append(s.slice, h.clone(elems[pos]))
 			s.lookup[k] = posSlice
 			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 			posSlice++

@@ -45,3 +45,7 @@ func (*functionsHelper) setID(_, newID uint64, f *profilev1.Function) uint64 {
 func (*functionsHelper) size(_ *profilev1.Function) uint64 {
 	return functionSize
 }
+
+func (*functionsHelper) clone(f *profilev1.Function) *profilev1.Function {
+	return f
+}

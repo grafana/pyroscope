@@ -288,6 +288,10 @@ func (*profilesHelper) size(p *schemav1.Profile) uint64 {
 	return size
 }
 
+func (*profilesHelper) clone(p *schemav1.Profile) *schemav1.Profile {
+	return p
+}
+
 type profilesKey struct {
 	ID uuid.UUID
 }

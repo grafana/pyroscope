@@ -109,7 +109,6 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 
 	for _, series := range req.Msg.Series {
 		for _, sample := range series.Samples {
-
 			reader, err := gzip.NewReader(bytes.NewReader(sample.RawProfile))
 			if err != nil {
 				return nil, err
@@ -119,13 +118,14 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 				return nil, err
 			}
 
-			p := &profilev1.Profile{}
+			p := profilev1.ProfileFromVTPool()
 			if err := p.UnmarshalVT(data); err != nil {
 				return nil, err
 			}
 			if err := i.head.Ingest(ctx, p, series.Labels...); err != nil {
 				return nil, err
 			}
+			p.ReturnToVTPool()
 		}
 	}
 
