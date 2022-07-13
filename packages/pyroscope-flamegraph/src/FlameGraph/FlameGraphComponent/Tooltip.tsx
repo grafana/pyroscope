@@ -9,7 +9,7 @@ import {
   formatPercent,
   ratioToPercent,
 } from '../../format/format';
-import RightClickIcon from './rightClickIcon';
+import RightClickIcon from './RightClickIcon';
 
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
