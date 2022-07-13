@@ -40,11 +40,11 @@ $border-radius: 4px;
 
 .primary {
   border: none;
-  color: var(--ps-immutable-green-button-text) !important;
-  background-color: var(--ps-green-primary);
+  color: var(--ps-button-switch-text) !important;
+  background-color: var(--ps-button-switch-bg);
 
   &:hover {
-    background-color: var(--ps-green-highlight);
+    background-color: var(--ps-button-switch-bg-highlight);
   }
   &:disabled {
     background-color: var(--ps-green-disabled);
