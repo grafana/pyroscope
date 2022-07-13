@@ -6,7 +6,7 @@ import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { Profile } from '@pyroscope/models';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
