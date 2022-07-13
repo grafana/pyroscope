@@ -400,6 +400,7 @@ class FlameGraphRenderer extends React.Component<
   }
 
   render = () => {
+    console.log('hey');
     // This is necessary because the order switches depending on single vs comparison view
     const tablePane = (
       <div
