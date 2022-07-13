@@ -64,7 +64,7 @@ What this example will do is run all the code mentioned above and also send some
 ## Where's the performance bottleneck?
 ![1_java_first_slide-02-01](https://user-images.githubusercontent.com/23323466/173832109-5cf085d7-4164-4112-98ff-95bacf207185.png)
 
-The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `orderCar` function. 
+The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `orderCar` function.
 
 The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `orderCar()` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
 - Something is wrong with the `/car` endpoint code
@@ -76,21 +76,21 @@ To analyze this we can select one or more tags from the "Select Tag" dropdown:
 ## Narrowing in on the Issue Using Tags
 Knowing there is an issue with the `orderCar()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
 
-We can also see that the `mutexLock()` function is consuming 76% of CPU resources during this time period. 
+We can also see that the `mutexLock()` function is consuming 76% of CPU resources during this time period.
 ![2_java_second_slide-02-01](https://user-images.githubusercontent.com/23323466/173831827-085b9fe5-0538-4ea4-8da7-777b71359bf9.png)
 
 ## Comparing Two Tag Sets with FlameQL
-Using Pyroscope's "comparison view" we can actually select two different sets of tags using Pyroscope's prometheus-inspired query language [FlameQL](https://pyroscope.io/docs/flameql/) to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north 
+Using Pyroscope's "comparison view" we can actually select two different sets of tags using Pyroscope's prometheus-inspired query language [FlameQL](https://pyroscope.io/docs/flameql/) to compare the resulting flamegraphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north
 ```
 REGION != "eu-north"
 ```
-and the blue section on the right contains **only** data where region **is equal to** eu-north 
+and the blue section on the right contains **only** data where region **is equal to** eu-north
 ```
 REGION = "eu-north"
 ```
 
 Not only can we see a differing pattern in CPU utilization on the timeline, but we can also see that the `checkDriverAvailability()` and `mutexLock()` functions are responsible for the majority of this difference.
-In the graph where `REGION = "eu-north"`, `checkDriverAvailability()` takes ~92% of CPU while it only takes approximately half that when `REGION != "eu-north"`. 
+In the graph where `REGION = "eu-north"`, `checkDriverAvailability()` takes ~92% of CPU while it only takes approximately half that when `REGION != "eu-north"`.
 
 ![3_java_third_slide-01-01](https://user-images.githubusercontent.com/23323466/173831391-769d3f26-4b7a-4c2d-815c-324ecbbf06f5.png)
 
@@ -100,7 +100,7 @@ While the difference _in this case_ is stark enough to see in the comparison vie
 
 
 ### Future Roadmap
-While this is one popular use case, the ability to add tags opens up many possibilities for other use cases such as linking profiles to other observability signals such as logs, metrics, and traces. 
-We've already began to make progress on this with our [otel-pyroscope package](https://github.com/pyroscope-io/otelpyroscope#baseline-diffs) for Go... Stay tuned for a version with Java coming soon! 
+While this is one popular use case, the ability to add tags opens up many possibilities for other use cases such as linking profiles to other observability signals such as logs, metrics, and traces.
+We've already began to make progress on this with our [otel-pyroscope package](https://github.com/pyroscope-io/otel-profiling-go#baseline-diffs) for Go... Stay tuned for a version with Java coming soon!
 
-We'd love to continue to improve our java integration and so we would love to hear what features _you would like to see_. 
+We'd love to continue to improve our java integration and so we would love to hear what features _you would like to see_.
