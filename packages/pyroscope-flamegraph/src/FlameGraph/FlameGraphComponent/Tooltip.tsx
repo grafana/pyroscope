@@ -246,8 +246,8 @@ export default function Tooltip(props: TooltipProps) {
       ref={tooltipEl}
     >
       <div
-        data-testid="flamegraph-tooltip-title"
         className={styles.flamegraphTooltipName}
+        data-testid="flamegraph-tooltip-title"
       >
         {content.title.text}
       </div>
@@ -306,7 +306,7 @@ function TooltipTable({
               <td>{comparisonData.percent}</td>
               <td>
                 <span
-                  data-testid="flamegraph-tooltip-table-diff"
+                  data-testid="flamegraph-tooltip-diff"
                   style={{ color: diff.color }}
                 >
                   {diff.text}
