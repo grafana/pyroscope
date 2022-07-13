@@ -54,10 +54,6 @@ func (*stacktracesHelper) size(s *schemav1.Stacktrace) uint64 {
 }
 
 func (*stacktracesHelper) clone(s *schemav1.Stacktrace) *schemav1.Stacktrace {
-	locationIDs := make([]uint64, len(s.LocationIDs))
-	for pos := range locationIDs {
-		locationIDs[pos] = s.LocationIDs[pos]
-	}
-	s.LocationIDs = locationIDs
+	s.LocationIDs = copySlice(s.LocationIDs)
 	return s
 }
