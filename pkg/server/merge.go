@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
-	"github.com/sirupsen/logrus"
+	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type MergeHandler struct {
@@ -24,8 +25,8 @@ type MergeHandler struct {
 
 type mergeRequest struct {
 	AppName   string   `json:"appName"`
-	StartTime int64    `json:"startTime"`
-	EndTime   int64    `json:"endTime"`
+	StartTime string   `json:"startTime"`
+	EndTime   string   `json:"endTime"`
 	Profiles  []string `json:"profiles"`
 	MaxNodes  int      `json:"maxNodes"`
 }
@@ -71,9 +72,8 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out, err := mh.storage.MergeExemplars(r.Context(), storage.MergeExemplarsInput{
-		// TODO(kolesnikovae): Time format.
-		StartTime:  time.Unix(0, req.StartTime),
-		EndTime:    time.Unix(0, req.EndTime),
+		StartTime:  attime.Parse(req.StartTime),
+		EndTime:    attime.Parse(req.EndTime),
 		AppName:    req.AppName,
 		ProfileIDs: req.Profiles,
 	})
