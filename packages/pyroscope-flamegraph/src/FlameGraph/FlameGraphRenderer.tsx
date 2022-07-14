@@ -113,7 +113,6 @@ interface FlamegraphRendererState {
   viewDiff: 'diff' | 'total' | 'self';
   fitMode: 'HEAD' | 'TAIL';
   flamebearer: NonNullable<FlamegraphRendererProps['flamebearer']>;
-  highlightedNode: any;
 
   /** Query searched in the input box.
    * It's used to filter data in the table AND highlight items in the flamegraph */
@@ -158,7 +157,6 @@ class FlameGraphRenderer extends React.Component<
       viewDiff: 'diff',
       fitMode: 'HEAD',
       flamebearer: mountFlamebearer(props),
-      highlightedNode: '',
 
       // Default to horizontal since it's the most common case
       panesOrientation: props.panesOrientation
@@ -317,10 +315,6 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  onHighlightSameNode = (highlightedNode: string) => {
-    this.setState({ highlightedNode });
-  };
-
   onTableItemClick = (tableItem: { name: string }) => {
     const { name } = tableItem;
 
@@ -341,11 +335,13 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  getHighlightQuery = () => {
+  getHighlightQuery = (highlighedNodeName: string) => {
     // prefer table selected
     if (this.state.tableSelectedItem.isJust) {
       return this.state.tableSelectedItem.value;
     }
+
+    if (highlighedNodeName) return highlighedNodeName;
 
     return this.state.searchQuery;
   };
@@ -444,12 +440,11 @@ class FlameGraphRenderer extends React.Component<
         showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
-        highlightQuery={this.getHighlightQuery()}
+        getHighlightQuery={this.getHighlightQuery}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
         onZoom={this.onFlamegraphZoom}
-        onHighlightSameNode={this.onHighlightSameNode}
         onFocusOnNode={this.onFocusOnNode}
         onReset={this.onReset}
         isDirty={this.isDirty}
