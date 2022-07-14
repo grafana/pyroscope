@@ -38,7 +38,10 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 	as.Handler = r
 
 	// Routes
-	ctrl.RegisterHandlers(r)
+	r.HandleFunc("/v1/apps", ctrl.HandleGetApps).Methods("GET")
+	r.HandleFunc("/v1/apps", ctrl.HandleDeleteApp).Methods("DELETE")
+	r.HandleFunc("/v1/users/{username}", ctrl.UpdateUserHandler).Methods("PATCH")
+	r.HandleFunc("/v1/storage/cleanup", ctrl.StorageCleanupHandler).Methods("PUT")
 
 	// Global middlewares
 	r.Use(logginMiddleware)

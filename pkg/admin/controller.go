@@ -44,13 +44,6 @@ func NewController(
 	}
 }
 
-func (ctrl *Controller) RegisterHandlers(r *mux.Router) {
-	r.HandleFunc("/v1/apps", ctrl.HandleGetApps).Methods("GET")
-	r.HandleFunc("/v1/apps", ctrl.HandleDeleteApp).Methods("DELETE")
-	r.HandleFunc("/v1/users/{username}", ctrl.UpdateUserHandler).Methods("PATCH")
-	r.HandleFunc("/v1/storage/cleanup", ctrl.StorageCleanupHandler).Methods("PUT")
-}
-
 // HandleGetApps handles GET requests
 func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, _ *http.Request) {
 	appNames := ctrl.adminService.GetApps()

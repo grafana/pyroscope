@@ -261,13 +261,14 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.authMiddleware(nil))
 
 	if ctrl.adminController != nil {
-		adminRouter := r.PathPrefix("/admin/").Subrouter()
+		adminRouter := apiRouter.PathPrefix("/admin/").Subrouter()
 		adminRouter.Use(
 			api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
 			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
 				authz.Role(model.AdminRole),
 			))
-		ctrl.adminController.RegisterHandlers(adminRouter)
+		adminRouter.HandleFunc("/apps", ctrl.adminController.HandleGetApps).Methods("GET")
+		adminRouter.HandleFunc("/apps", ctrl.adminController.HandleDeleteApp).Methods("DELETE")
 	}
 
 	// TODO(kolesnikovae):
