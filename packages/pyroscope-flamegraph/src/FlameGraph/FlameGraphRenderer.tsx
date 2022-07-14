@@ -440,6 +440,7 @@ class FlameGraphRenderer extends React.Component<
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
         setActiveItem={this.setActiveItem}
+        selectedItem={this.state.selectedItem}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
