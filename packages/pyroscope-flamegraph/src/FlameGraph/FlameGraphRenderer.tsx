@@ -189,11 +189,11 @@ class FlameGraphRenderer extends React.Component<
       // eslint-disable-next-line react/no-did-update-set-state
       this.setState({
         flamebearer: currFlame,
-
         flamegraphConfigs: {
           ...this.state.flamegraphConfigs,
           ...newConfigs,
         },
+        selectedItem: Maybe.nothing(),
       });
       return;
     }
