@@ -26,7 +26,7 @@ describe('FlamegraphComponent', () => {
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
-        highlightQuery=""
+        getHighlightQuery={() => ''}
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
         onReset={onReset}
@@ -51,7 +51,7 @@ describe('FlamegraphComponent', () => {
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
-        highlightQuery=""
+        getHighlightQuery={() => ''}
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
         onReset={onReset}
@@ -87,7 +87,7 @@ describe('FlamegraphComponent', () => {
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
-        highlightQuery=""
+        getHighlightQuery={() => ''}
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
         onReset={onReset}
@@ -120,7 +120,7 @@ describe('FlamegraphComponent', () => {
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          highlightQuery=""
+          getHighlightQuery={() => ''}
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -154,7 +154,7 @@ describe('FlamegraphComponent', () => {
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          highlightQuery=""
+          getHighlightQuery={() => ''}
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -188,7 +188,7 @@ describe('FlamegraphComponent', () => {
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          highlightQuery=""
+          getHighlightQuery={() => ''}
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -228,7 +228,7 @@ describe('FlamegraphComponent', () => {
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          highlightQuery=""
+          getHighlightQuery={() => ''}
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -255,7 +255,7 @@ describe('FlamegraphComponent', () => {
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          highlightQuery=""
+          getHighlightQuery={() => ''}
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
