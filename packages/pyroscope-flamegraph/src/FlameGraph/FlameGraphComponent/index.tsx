@@ -27,12 +27,13 @@ interface FlamegraphProps {
   flamebearer: Flamebearer;
   focusedNode: ConstructorParameters<typeof Flamegraph>[2];
   fitMode: ConstructorParameters<typeof Flamegraph>[3];
-  getHighlightQuery: (s: string) => ConstructorParameters<typeof Flamegraph>[4];
+  highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
   showCredit: boolean;
 
   onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
+  setActiveItem: (item: { name: string }) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -52,24 +53,22 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const [rightClickedNode, setRightClickedNode] = React.useState<
     Maybe<{ top: number; left: number; width: number }>
   >(Maybe.nothing());
-  const [highlighedNode, setHighlighedNode] = React.useState('');
 
   const {
     flamebearer,
     focusedNode,
     fitMode,
-    getHighlightQuery,
+    highlightQuery,
     zoom,
     toolbarVisible,
     showCredit,
+    setActiveItem,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
   const { 'data-testid': dataTestId } = props;
   const { palette, setPalette } = props;
-
-  const highlightQuery = getHighlightQuery(highlighedNode);
 
   // debounce rendering canvas
   // used for situations like resizing
@@ -194,7 +193,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
       const HighlightSimilarNodesItem = () => {
         const onClick = () => {
-          setHighlighedNode(barName);
+          setActiveItem({ name: barName });
         };
 
         return (
@@ -289,13 +288,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         setPalette={setPalette}
         toolbarVisible={toolbarVisible}
       />
-      <button
-        onClick={() => {
-          setHighlighedNode('');
-        }}
-      >
-        reset right click "same node"
-      </button>
       <div
         data-testid={dataTestId}
         style={{
