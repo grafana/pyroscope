@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  js-tests:
+  js-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Webapp dependencies
         run: yarn install
-      - run: build
+      - run: yarn build
       - name: Run Format check
         run: yarn format:check
       - name: Run Lint
