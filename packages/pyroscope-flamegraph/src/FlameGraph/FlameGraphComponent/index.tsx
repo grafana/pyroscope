@@ -204,7 +204,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             : 'Highlight';
 
         return (
-          <MenuItem key="hightlight-similar" onClick={onClick}>
+          <MenuItem key="highlight-similar-nodes" onClick={onClick}>
             <FontAwesomeIcon icon={faHighlighter} />
             {actionName} similar nodes
           </MenuItem>
