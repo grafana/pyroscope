@@ -22,11 +22,12 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        setActiveItem={() => ({})}
         showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
-        getHighlightQuery={() => ''}
+        highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
         onReset={onReset}
@@ -47,11 +48,12 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        setActiveItem={() => ({})}
         showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
-        getHighlightQuery={() => ''}
+        highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
         onReset={onReset}
@@ -83,11 +85,12 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        setActiveItem={() => ({})}
         showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
         focusedNode={Maybe.nothing()}
-        getHighlightQuery={() => ''}
+        highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
         onReset={onReset}
@@ -116,11 +119,12 @@ describe('FlamegraphComponent', () => {
 
       const { rerender } = render(
         <FlamegraphComponent
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          getHighlightQuery={() => ''}
+          highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -150,11 +154,12 @@ describe('FlamegraphComponent', () => {
 
       rerender(
         <FlamegraphComponent
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          getHighlightQuery={() => ''}
+          highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -184,11 +189,12 @@ describe('FlamegraphComponent', () => {
 
       render(
         <FlamegraphComponent
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          getHighlightQuery={() => ''}
+          highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -224,11 +230,12 @@ describe('FlamegraphComponent', () => {
     it('renders when type is single', () => {
       render(
         <FlamegraphComponent
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          getHighlightQuery={() => ''}
+          highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
@@ -251,11 +258,12 @@ describe('FlamegraphComponent', () => {
       const flamebearer = TestData.DiffTree;
       render(
         <FlamegraphComponent
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
           focusedNode={Maybe.nothing()}
-          getHighlightQuery={() => ''}
+          highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
           onReset={onReset}
