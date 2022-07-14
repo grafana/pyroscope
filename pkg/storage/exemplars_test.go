@@ -27,119 +27,112 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-var _ = Describe("Exemplar query", func() {
+var _ = Describe("exemplars", func() {
+	st := time.Now()
+	et := st.Add(10 * time.Second)
+
+	put := func(s *Storage, m map[string]string) {
+		tree := tree.New()
+		tree.Insert([]byte("a;b"), uint64(1))
+		tree.Insert([]byte("a;c"), uint64(2))
+
+		Expect(s.Put(context.TODO(), &PutInput{
+			StartTime:       st,
+			EndTime:         et,
+			Key:             segment.NewKey(m),
+			Val:             tree.Clone(big.NewRat(1, 1)),
+			SpyName:         "debugspy",
+			SampleRate:      100,
+			Units:           metadata.SamplesUnits,
+			AggregationType: metadata.AverageAggregationType,
+		})).ToNot(HaveOccurred())
+	}
+
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
 			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
+
+			put(s, map[string]string{
+				"__name__":  "app.cpu",
+				"span_name": "foo",
+				// w/o profile_id, just to create the segment.
+			})
+			put(s, map[string]string{
+				"__name__":   "app.cpu",
+				"span_name":  "foo",
+				"profile_id": "a",
+			})
+			put(s, map[string]string{
+				"__name__":   "app.cpu",
+				"span_name":  "foo",
+				"profile_id": "a",
+			})
+			put(s, map[string]string{
+				"__name__":   "app.cpu",
+				"span_name":  "foo",
+				"profile_id": "b",
+			})
+
+			s.exemplars.Sync()
 		})
-		Context("when profiles with ID ingested", func() {
-			It("queries profiling data correctly", func() {
+
+		Context("Get", func() {
+			It("merges profiling data correctly", func() {
 				defer s.Close()
 
-				tree := tree.New()
-				tree.Insert([]byte("a;b"), uint64(1))
-				tree.Insert([]byte("a;c"), uint64(2))
-				st := testing.SimpleTime(10)
-				et := testing.SimpleTime(19)
-
-				Expect(s.Put(context.TODO(), &PutInput{
-					StartTime: st,
-					EndTime:   et,
-					Val:       tree.Clone(big.NewRat(1, 1)),
-					Key: segment.NewKey(map[string]string{
-						"__name__":                 "app.cpu",
-						"span_name":                "SomeSpanName",
-						segment.ProfileIDLabelName: "my-profile-id",
-					}),
-				})).ToNot(HaveOccurred())
-
-				Expect(s.Put(context.TODO(), &PutInput{
-					StartTime: st,
-					EndTime:   et,
-					Key: segment.NewKey(map[string]string{
-						"__name__":  "app.cpu",
-						"span_name": "SomeSpanName",
-					}),
-					Val:             tree.Clone(big.NewRat(1, 1)),
-					AggregationType: metadata.AverageAggregationType,
-					Units:           metadata.BytesUnits,
-					SpyName:         "debugspy",
-					SampleRate:      42,
-				})).ToNot(HaveOccurred())
-
-				s.exemplars.Sync()
 				o, err := s.Get(context.Background(), &GetInput{
 					Query: &flameql.Query{
 						AppName: "app.cpu",
 						Matchers: []*flameql.TagMatcher{
-							{
-								Key:   segment.ProfileIDLabelName,
-								Value: "my-profile-id",
-								Op:    flameql.OpEqual,
-							},
+							{Key: segment.ProfileIDLabelName, Value: "a", Op: flameql.OpEqual},
+							{Key: segment.ProfileIDLabelName, Value: "b", Op: flameql.OpEqual},
 						},
 					},
 				})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
-				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
-
-				Expect(o.AggregationType).To(Equal(metadata.AverageAggregationType))
-				Expect(o.Units).To(Equal(metadata.BytesUnits))
+				Expect(o.Tree.Samples()).To(Equal(uint64(4)))
+				Expect(o.Count).To(Equal(uint64(2)))
 				Expect(o.SpyName).To(Equal("debugspy"))
-				Expect(o.SampleRate).To(Equal(uint32(42)))
+				Expect(o.SampleRate).To(Equal(uint32(100)))
+				Expect(o.Units).To(Equal(metadata.SamplesUnits))
+				Expect(o.AggregationType).To(Equal(metadata.AverageAggregationType))
 			})
 		})
-	})
-})
 
-var _ = Describe("Exemplar merge", func() {
-	testing.WithConfig(func(cfg **config.Config) {
-		JustBeforeEach(func() {
-			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
-			Expect(err).ToNot(HaveOccurred())
+		Context("GetExemplar", func() {
+			It("fetches exemplar data correctly", func() {
+				defer s.Close()
+
+				o, err := s.GetExemplar(context.Background(), GetExemplarInput{
+					AppName:   "app.cpu",
+					ProfileID: "a",
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o.Tree).ToNot(BeNil())
+				Expect(o.Tree.Samples()).To(Equal(uint64(6)))
+
+				Expect(o.StartTime).Should(BeTemporally("~", st, time.Second))
+				Expect(o.EndTime).Should(BeTemporally("~", et, time.Second))
+
+				Expect(o.Labels).To(Equal(map[string]string{"span_name": "foo"}))
+
+				Expect(o.SpyName).To(Equal("debugspy"))
+				Expect(o.SampleRate).To(Equal(uint32(100)))
+				Expect(o.Units).To(Equal(metadata.SamplesUnits))
+				Expect(o.AggregationType).To(Equal(metadata.AverageAggregationType))
+			})
 		})
 
-		put := func(m map[string]string) {
-			tree := tree.New()
-			tree.Insert([]byte("a;b"), uint64(1))
-			tree.Insert([]byte("a;c"), uint64(2))
-
-			Expect(s.Put(context.TODO(), &PutInput{
-				StartTime: testing.SimpleTime(10),
-				EndTime:   testing.SimpleTime(19),
-				Key:       segment.NewKey(m),
-				Val:       tree.Clone(big.NewRat(1, 1)),
-			})).ToNot(HaveOccurred())
-		}
-
-		Context("when profiles with ID ingested", func() {
+		Context("MergeExemplars", func() {
 			It("merges profiling data correctly", func() {
 				defer s.Close()
 
-				// Just to create the segment.
-				put(map[string]string{
-					"__name__": "app.cpu",
-				})
-				put(map[string]string{
-					"__name__":   "app.cpu",
-					"profile_id": "a",
-				})
-				put(map[string]string{
-					"__name__":   "app.cpu",
-					"profile_id": "a",
-				})
-				put(map[string]string{
-					"__name__":   "app.cpu",
-					"profile_id": "b",
-				})
-
-				s.exemplars.Sync()
-				o, err := s.MergeProfiles(context.Background(), MergeExemplarsInput{
+				o, err := s.MergeExemplars(context.Background(), MergeExemplarsInput{
 					AppName:    "app.cpu",
 					ProfileIDs: []string{"a"},
 				})
@@ -147,7 +140,7 @@ var _ = Describe("Exemplar merge", func() {
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(6)))
 
-				o, err = s.MergeProfiles(context.Background(), MergeExemplarsInput{
+				o, err = s.MergeExemplars(context.Background(), MergeExemplarsInput{
 					AppName:    "app.cpu",
 					ProfileIDs: []string{"b"},
 				})
@@ -155,13 +148,19 @@ var _ = Describe("Exemplar merge", func() {
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
 
-				o, err = s.MergeProfiles(context.Background(), MergeExemplarsInput{
+				o, err = s.MergeExemplars(context.Background(), MergeExemplarsInput{
 					AppName:    "app.cpu",
 					ProfileIDs: []string{"a", "b"},
 				})
+
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
-				Expect(o.Tree.Samples()).To(Equal(uint64(9)))
+				Expect(o.Tree.Samples()).To(Equal(uint64(4)))
+				Expect(o.Count).To(Equal(uint64(2)))
+				Expect(o.SpyName).To(Equal("debugspy"))
+				Expect(o.SampleRate).To(Equal(uint32(100)))
+				Expect(o.Units).To(Equal(metadata.SamplesUnits))
+				Expect(o.AggregationType).To(Equal(metadata.AverageAggregationType))
 			})
 		})
 	})
@@ -214,7 +213,7 @@ var _ = Describe("Exemplars retention policy", func() {
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				s.exemplars.enforceRetentionPolicy(context.Background(), rp)
 
-				o, err := s.MergeProfiles(context.Background(), MergeExemplarsInput{
+				o, err := s.MergeExemplars(context.Background(), MergeExemplarsInput{
 					AppName:    "app.cpu",
 					ProfileIDs: []string{"a", "b"},
 				})

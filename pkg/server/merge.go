@@ -70,7 +70,7 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		maxNodes = req.MaxNodes
 	}
 
-	out, err := mh.storage.MergeProfiles(r.Context(), storage.MergeExemplarsInput{
+	out, err := mh.storage.MergeExemplars(r.Context(), storage.MergeExemplarsInput{
 		// TODO(kolesnikovae): Time format.
 		StartTime:  time.Unix(0, req.StartTime),
 		EndTime:    time.Unix(0, req.EndTime),

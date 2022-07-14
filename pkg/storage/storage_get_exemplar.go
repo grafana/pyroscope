@@ -2,11 +2,9 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -31,31 +29,30 @@ type GetExemplarOutput struct {
 	Telemetry map[string]interface{}
 }
 
-func (s *Storage) GetExemplar(ctx context.Context, gi GetExemplarInput) (GetExemplarOutput, error) {
-	var out GetExemplarOutput
-	err := s.exemplars.fetch(ctx, gi.AppName, []string{gi.ProfileID}, func(e exemplarEntry) error {
-		out.Tree = e.Tree
-		out.StartTime = time.Unix(0, e.StartTime)
-		out.EndTime = time.Unix(0, e.EndTime)
-		out.Labels = e.Labels
-		return nil
+func (s *Storage) GetExemplar(ctx context.Context, gi GetExemplarInput) (out GetExemplarOutput, err error) {
+	m, err := s.mergeExemplars(ctx, MergeExemplarsInput{
+		AppName:    gi.AppName,
+		StartTime:  gi.StartTime,
+		EndTime:    gi.EndTime,
+		ProfileIDs: []string{gi.ProfileID},
 	})
 	if err != nil {
 		return out, err
 	}
 
-	// Exemplar labels map does not contain the app name.
-	out.Labels["__name__"] = gi.AppName
-	r, ok := s.segments.Lookup(segment.NewKey(out.Labels).Normalized())
-	if !ok {
-		return out, fmt.Errorf("no metadata found for profile %q", gi.ProfileID)
+	out.Tree = m.tree
+	if m.lastEntry != nil {
+		out.Labels = m.lastEntry.Labels
+		out.StartTime = time.Unix(0, m.lastEntry.StartTime)
+		out.EndTime = time.Unix(0, m.lastEntry.EndTime)
 	}
 
-	seg := r.(*segment.Segment)
-	out.SpyName = seg.SpyName()
-	out.Units = seg.Units()
-	out.SampleRate = seg.SampleRate()
-	out.AggregationType = seg.AggregationType()
+	if m.segment != nil {
+		out.SpyName = m.segment.SpyName()
+		out.Units = m.segment.Units()
+		out.SampleRate = m.segment.SampleRate()
+		out.AggregationType = m.segment.AggregationType()
+	}
 
 	return out, nil
 }

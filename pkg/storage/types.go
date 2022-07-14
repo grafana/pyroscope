@@ -24,7 +24,7 @@ type ExemplarsGetter interface {
 }
 
 type ExemplarsMerger interface {
-	MergeProfiles(context.Context, MergeExemplarsInput) (MergeExemplarsOutput, error)
+	MergeExemplars(context.Context, MergeExemplarsInput) (MergeExemplarsOutput, error)
 }
 
 type GetLabelKeysByQueryInput struct {
