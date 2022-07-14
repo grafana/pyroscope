@@ -1,7 +1,7 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
-import { Units } from '@pyroscope/models/src';
 import clsx from 'clsx';
+import type { Units } from '@pyroscope/models/src';
 import type { Unwrapped } from 'true-myth/maybe';
 import {
   getFormatter,
@@ -267,10 +267,7 @@ export default function Tooltip(props: TooltipProps) {
 
       <div className={styles.rightClickInfo}>
         <RightClickIcon />
-        <span>
-          Right click for more
-          <br /> node viewing options
-        </span>
+        <span>Right click for more node viewing options</span>
       </div>
     </div>
   );
@@ -393,14 +390,14 @@ function formatDouble(
   const rightPercent = ratioToPercent(rightRatio);
 
   const newLeft: TooltipData = {
-    percent: leftPercent + '%',
+    percent: `${leftPercent}%`,
     samples: numberWithCommas(totalLeft),
     units,
     formattedValue: formatter.format(totalLeft, sampleRate),
   };
 
   const newRight: TooltipData = {
-    percent: rightPercent + '%',
+    percent: `${rightPercent}%`,
     samples: numberWithCommas(totalRight),
     units,
     formattedValue: formatter.format(totalRight, sampleRate),

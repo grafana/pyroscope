@@ -65,6 +65,7 @@
   --ps-immutable-placeholder-text: #333333; /* placeholder text color */
 
   --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
 }
 
 [data-theme='light'],
@@ -98,4 +99,5 @@
   --ps-green-disabled: #00a757; /* disabled green */
 
   --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
 }
