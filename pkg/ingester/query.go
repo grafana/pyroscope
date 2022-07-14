@@ -13,12 +13,12 @@ import (
 
 // LabelValues returns the possible label values for a given label name.
 func (i *Ingester) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
-	return i.head.LabelValues(ctx, req)
+	return i.fireDB.Head().LabelValues(ctx, req)
 }
 
 // ProfileTypes returns the possible profile types.
 func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	return i.head.ProfileTypes(ctx, req)
+	return i.fireDB.Head().ProfileTypes(ctx, req)
 }
 
 /*
@@ -178,7 +178,7 @@ func getLocationsFromSerializedLocations(
 */
 
 func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	return i.head.SelectProfiles(ctx, req)
+	return i.fireDB.Head().SelectProfiles(ctx, req)
 }
 
 func binaryFieldFromRecord(ar arrow.Record, name string) (*array.Binary, error) {

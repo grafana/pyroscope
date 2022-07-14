@@ -20,6 +20,7 @@ import (
 
 	"github.com/grafana/fire/pkg/firedb"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/util"
 )
@@ -45,15 +46,26 @@ type Ingester struct {
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
-	head              *firedb.Head
+	fireDB            *firedb.FireDB
 	engine            *query.LocalEngine
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer, head *firedb.Head) (*Ingester, error) {
+type ingesterFlusherCompat struct {
+	*Ingester
+}
+
+func (i *ingesterFlusherCompat) Flush() {
+	_, err := i.Ingester.Flush(context.TODO(), connect.NewRequest(&ingesterv1.FlushRequest{}))
+	if err != nil {
+		level.Error(i.Ingester.logger).Log("msg", "flush failed", "err", err)
+	}
+}
+
+func New(cfg Config, logger log.Logger, reg prometheus.Registerer, firedb *firedb.FireDB) (*Ingester, error) {
 	i := &Ingester{
 		cfg:    cfg,
 		logger: logger,
-		head:   head,
+		fireDB: firedb,
 		engine: query.NewEngine(
 			memory.DefaultAllocator,
 			nil,
@@ -63,7 +75,7 @@ func New(cfg Config, logger log.Logger, reg prometheus.Registerer, head *firedb.
 	var err error
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
-		i,
+		&ingesterFlusherCompat{i},
 		"ingester",
 		"ring",
 		true,
@@ -127,7 +139,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 			if err != nil {
 				return nil, err
 			}
-			if err := i.head.Ingest(ctx, p, id, series.Labels...); err != nil {
+			if err := i.fireDB.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
 				return nil, err
 			}
 			p.ReturnToVTPool()
@@ -142,7 +154,12 @@ func (i *Ingester) stopping(_ error) error {
 	return services.StopAndAwaitTerminated(context.Background(), i.lifecycler)
 }
 
-func (i *Ingester) Flush() {
+func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
+	if err := i.fireDB.Flush(ctx); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&ingesterv1.FlushResponse{}), nil
 }
 
 func (i *Ingester) TransferOut(ctx context.Context) error {
