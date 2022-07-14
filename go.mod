@@ -16,6 +16,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
 	github.com/klauspost/compress v1.15.7
+	github.com/oklog/ulid v1.3.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/parca-dev/parca v0.11.1-0.20220628070043-1c1a82d2d7bd
@@ -192,7 +193,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/ncw/swift v1.0.53 // indirect
-	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opentracing-contrib/go-grpc v0.0.0-20210225150812-73cb765af46e // indirect

@@ -46,6 +46,7 @@ const (
 	MemberlistKV string = "memberlist-kv"
 	Querier      string = "querier"
 	GRPCGateway  string = "grpc-gateway"
+	FireDB       string = "firedb"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
@@ -143,21 +144,25 @@ func (f *Fire) initMemberlistKV() (services.Service, error) {
 func (f *Fire) initRing() (_ services.Service, err error) {
 	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("fire_", f.reg))
 	if err != nil {
-		return
+		return nil, err
 	}
 	f.Server.HTTP.Path("/ring").Methods("GET", "POST").Handler(f.ring)
 	return f.ring, nil
 }
 
-func (f *Fire) initIngester() (_ services.Service, err error) {
-	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
-
-	head, err := firedb.NewHead(f.reg)
+func (f *Fire) initFireDB() (_ services.Service, err error) {
+	f.fireDB, err = firedb.New(&f.Cfg.FireDB, f.logger, f.reg)
 	if err != nil {
 		return nil, err
 	}
 
-	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, head)
+	return nil, nil
+}
+
+func (f *Fire) initIngester() (_ services.Service, err error) {
+	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
+
+	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.fireDB)
 	if err != nil {
 		return nil, err
 	}
