@@ -6,5 +6,6 @@ module.exports = merge(prod, {
   output: {
     publicPath: '',
     path: path.resolve(__dirname, '../../webapp/public/assets'),
+    clean: true,
   },
 });

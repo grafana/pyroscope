@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  js-tests:
+  size-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

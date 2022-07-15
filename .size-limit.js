@@ -1,14 +1,14 @@
 module.exports = [
   {
-    path: ['webapp/public/assets/app*.js'],
+    path: ['webapp/public/assets/app.js'],
     // ugly
     limit: '15000ms',
   },
   {
-    path: ['webapp/public/assets/app.*.css'],
+    path: ['webapp/public/assets/index.css'],
   },
   {
-    path: ['webapp/public/assets/styles.*.css'],
+    path: ['webapp/public/assets/styles.css'],
   },
   {
     path: ['packages/pyroscope-flamegraph/dist/index.js'],
