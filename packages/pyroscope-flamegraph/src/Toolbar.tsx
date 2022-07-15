@@ -161,11 +161,11 @@ function FocusOnSubtree({
   let text = '';
   switch (showMode) {
     case 'small': {
-      text = 'Focus';
+      text = 'Collapse';
       break;
     }
     case 'large': {
-      text = 'Focus on subtree';
+      text = 'Collapse nodes above';
       break;
     }
 

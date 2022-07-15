@@ -118,7 +118,7 @@ interface FlamegraphRendererState {
    * It's used to filter data in the table AND highlight items in the flamegraph */
   searchQuery: string;
   /** Triggered when an item is clicked on the table. It overwrites the searchQuery */
-  tableSelectedItem: Maybe<string>;
+  selectedItem: Maybe<string>;
 
   flamegraphConfigs: {
     focusedNode: Maybe<Node>;
@@ -165,7 +165,7 @@ class FlameGraphRenderer extends React.Component<
 
       // query used in the 'search' checkbox
       searchQuery: '',
-      tableSelectedItem: Maybe.nothing(),
+      selectedItem: Maybe.nothing(),
 
       flamegraphConfigs: this.initialFlamegraphState,
 
@@ -189,11 +189,11 @@ class FlameGraphRenderer extends React.Component<
       // eslint-disable-next-line react/no-did-update-set-state
       this.setState({
         flamebearer: currFlame,
-
         flamegraphConfigs: {
           ...this.state.flamegraphConfigs,
           ...newConfigs,
         },
+        selectedItem: Maybe.nothing(),
       });
       return;
     }
@@ -315,14 +315,14 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  onTableItemClick = (tableItem: { name: string }) => {
-    const { name } = tableItem;
+  setActiveItem = (item: { name: string }) => {
+    const { name } = item;
 
     // if clicking on the same item, undo the search
-    if (this.state.tableSelectedItem.isJust) {
-      if (tableItem.name === this.state.tableSelectedItem.value) {
+    if (this.state.selectedItem.isJust) {
+      if (name === this.state.selectedItem.value) {
         this.setState({
-          tableSelectedItem: Maybe.nothing(),
+          selectedItem: Maybe.nothing(),
         });
         return;
         //        name = '';
@@ -331,14 +331,14 @@ class FlameGraphRenderer extends React.Component<
 
     // clicking for the first time
     this.setState({
-      tableSelectedItem: Maybe.just(name),
+      selectedItem: Maybe.just(name),
     });
   };
 
   getHighlightQuery = () => {
     // prefer table selected
-    if (this.state.tableSelectedItem.isJust) {
-      return this.state.tableSelectedItem.value;
+    if (this.state.selectedItem.isJust) {
+      return this.state.selectedItem.value;
     }
 
     return this.state.searchQuery;
@@ -400,7 +400,6 @@ class FlameGraphRenderer extends React.Component<
   }
 
   render = () => {
-    console.log('hey');
     // This is necessary because the order switches depending on single vs comparison view
     const tablePane = (
       <div
@@ -423,8 +422,8 @@ class FlameGraphRenderer extends React.Component<
           }
           fitMode={this.state.fitMode}
           highlightQuery={this.state.searchQuery}
-          selectedItem={this.state.tableSelectedItem}
-          handleTableItemClick={this.onTableItemClick}
+          selectedItem={this.state.selectedItem}
+          handleTableItemClick={this.setActiveItem}
           palette={this.state.palette}
         />
       </div>
@@ -440,6 +439,8 @@ class FlameGraphRenderer extends React.Component<
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
+        setActiveItem={this.setActiveItem}
+        selectedItem={this.state.selectedItem}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
