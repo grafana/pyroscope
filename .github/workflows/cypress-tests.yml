@@ -36,6 +36,10 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn
+      - name: Print cache
+        run: |
+          ls -al /home/runner/.cache/yarn/v6
+          ls -al
       - run: yarn install
       - run: make --version
       - run: make -j e2e-build
