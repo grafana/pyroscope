@@ -200,7 +200,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
         const actionName =
           selectedItem.isJust && selectedItem.value === barName
-            ? 'Unhighlight'
+            ? 'Clear highlight'
             : 'Highlight';
 
         return (
