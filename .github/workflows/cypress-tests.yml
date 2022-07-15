@@ -27,8 +27,6 @@ jobs:
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
-      - run: echo ${{ steps.yarn-cache-dir-path.outputs.dir }}
-
       - uses: actions/cache@v2
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
         with:
@@ -36,11 +34,7 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn
-      - name: Print cache
-        run: |
-          ls -al /home/runner/.cache/yarn/v6
-          ls -al
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
       - run: make --version
       - run: make -j e2e-build
       - uses: actions/cache@v3
@@ -86,7 +80,7 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
       - run: make -j e2e-build
       - name: Cypress run
         uses: cypress-io/github-action@v4
@@ -129,7 +123,7 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
       - run: make -j e2e-build
       - name: run nginx with /pyroscope
         run: docker-compose -f cypress/base-url/base-url-docker-compose.yml up -d
