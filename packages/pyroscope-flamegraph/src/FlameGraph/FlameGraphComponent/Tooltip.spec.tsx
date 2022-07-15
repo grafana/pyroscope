@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from 'true-myth';
-import type { Units } from '@pyroscope/models';
+import type { Units } from '@pyroscope/models/src';
 
 import { diffColorRed, diffColorGreen } from './color';
 import Tooltip, { TooltipProps } from './Tooltip';

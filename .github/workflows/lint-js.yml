@@ -1,4 +1,4 @@
-name: JS Tests
+name: JS Lint
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  js-tests:
+  js-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,15 +27,12 @@ jobs:
 
       - name: Install Webapp dependencies
         run: yarn install
-      - name: Get number of CPU cores
-        id: cpu-cores
-        uses: SimenB/github-actions-cpu-cores@v1
-      - name: Run Webapp tests
-        run: yarn run test --coverage --max-workers ${{ steps.cpu-cores.outputs.count }}
-      - name: Upload codecov coverage
-        if: always()
-        uses: codecov/codecov-action@v1
-        with:
-          name: js coverage
-          fail_ci_if_error: false
-          verbose: true
+      - run: yarn build
+      - name: Run Format check
+        run: yarn format:check
+      - name: Run Lint
+        # Use use --quiet so that it only report errors
+        run: yarn lint:quiet
+
+      - name: Run Type check
+        run: yarn type-check
