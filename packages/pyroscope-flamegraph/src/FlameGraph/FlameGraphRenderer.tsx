@@ -8,7 +8,7 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, Profile, Trace } from '@pyroscope/models/src';
+import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -21,23 +21,14 @@ import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
-import { traceToFlamebearer } from '../convert/convert';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
-function mountFlamebearer(p: {
-  profile?: Profile;
-  flamebearer?: Flamebearer;
-  trace?: Trace;
-}) {
+function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
   if (p.profile && p.flamebearer) {
     console.warn(
       "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
     );
-  }
-
-  if (p.trace) {
-    return traceToFlamebearer(p.trace);
   }
 
   if (p.profile) {
@@ -78,10 +69,10 @@ interface Node {
 
 export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
+  profile?: Profile;
+
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
-  trace?: Trace;
-  profile?: Profile;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
