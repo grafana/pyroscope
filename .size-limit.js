@@ -4,4 +4,13 @@ module.exports = [
     // ugly
     limit: '15000ms',
   },
+  {
+    path: ['packages/pyroscope-flamegraph/dist/index.js'],
+  },
+  {
+    path: ['packages/pyroscope-flamegraph/dist/index.node.js'],
+  },
+  {
+    path: ['packages/pyroscope-flamegraph/dist/index.css'],
+  },
 ];
