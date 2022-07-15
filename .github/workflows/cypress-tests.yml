@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  cypress-tests:
+  build:
     runs-on: ubuntu-latest
     env:
       ENABLED_SPIES: none
@@ -37,6 +37,25 @@ jobs:
             ${{ runner.os }}-yarn
       - run: yarn install
       - run: make e2e-build
+      - name: store build
+        id: store-build
+        uses: actions/cache@v3
+        with:
+          path: bin/pyroscope
+          key: ${{ runner.os }}-pyroscope
+
+  cypress-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      ENABLED_SPIES: none
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: bin/pyroscope
+          key: ${{ runner.os }}-pyroscope
       - name: Cypress run
         uses: cypress-io/github-action@v4
         with:
