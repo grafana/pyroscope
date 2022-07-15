@@ -36,7 +36,7 @@
 
   .tooltipTable {
     width: calc(100% - 10px * 2);
-    margin: 10px 10px 16px;
+    margin: 10px;
 
     th,
     td {
@@ -54,6 +54,25 @@
         width: 25%;
         font-weight: normal;
       }
+    }
+  }
+
+  .rightClickInfo {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    color: var(--ps-right-click-info);
+
+    svg {
+      display: block;
+      align-self: center;
+      width: 22px;
+      height: 22px;
+      margin-right: 5px;
+    }
+
+    span {
+      font-size: 14px;
     }
   }
 }
