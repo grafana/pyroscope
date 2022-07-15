@@ -201,12 +201,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         const actionName =
           selectedItem.isJust && selectedItem.value === barName
             ? 'Clear highlight'
-            : 'Highlight';
+            : 'Highlight similar nodes';
 
         return (
           <MenuItem key="highlight-similar-nodes" onClick={onClick}>
             <FontAwesomeIcon icon={faHighlighter} />
-            {actionName} similar nodes
+            {actionName}
           </MenuItem>
         );
       };
