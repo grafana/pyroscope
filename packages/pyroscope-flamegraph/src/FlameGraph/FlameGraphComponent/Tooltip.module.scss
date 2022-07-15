@@ -1,10 +1,10 @@
 .flamegraphTooltip {
   width: 420px;
   position: fixed;
-  background: var(--ps-neutral-2);
+  background: var(--ps-tooltip-bg);
   box-shadow: 1px 2px 4px 0px rgba(0, 0, 0, 0.3);
   border-radius: 4px;
-  color: var(--ps-neutral-1);
+  color: var(--ps-tooltip-text);
   font-size: 12px;
   visibility: hidden;
   z-index: 2;
@@ -14,7 +14,7 @@
   }
 
   .flamegraphTooltipName {
-    color: var(--ps-neutral-1);
+    color: var(--ps-tooltip-text);
     background-color: var(--ps-tooltip-header-bg);
     border-top-right-radius: 4px;
     border-top-left-radius: 4px;
