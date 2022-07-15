@@ -27,6 +27,7 @@ jobs:
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
+      - run: echo ${{ steps.yarn-cache-dir-path.outputs.dir }}
 
       - uses: actions/cache@v2
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
@@ -36,16 +37,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn
       - run: yarn install
-      - name: Get number of CPU cores
-        id: cpu-cores
-        uses: SimenB/github-actions-cpu-cores@v1
-      - run: make -j${{ steps.cpu-cores.outputs.count }} e2e-build
-      - name: store build
-        id: store-build
-        uses: actions/cache@v3
-        with:
-          path: bin/pyroscope
-          key: ${{ runner.os }}-pyroscope
+      - run: make --version
+      - run: make -j e2e-build
       - uses: actions/cache@v3
         with:
           path: bin/pyroscope
