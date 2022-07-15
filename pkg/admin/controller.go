@@ -44,12 +44,29 @@ func NewController(
 	}
 }
 
-// HandleGetApps handles GET requests
-func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, _ *http.Request) {
-	appNames := ctrl.adminService.GetApps()
+// HandleGetAppNames handles GET requests
+func (ctrl *Controller) HandleGetAppNames(w http.ResponseWriter, r *http.Request) {
+	appNames := ctrl.adminService.GetAppNames(r.Context())
 
 	w.WriteHeader(http.StatusOK)
 	ctrl.writeResponseJSON(w, appNames)
+}
+
+type AppInfo struct {
+	Name string `json:"name"`
+}
+
+func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, r *http.Request) {
+	apps := ctrl.adminService.GetApps(r.Context())
+	res := make([]AppInfo, 0, len(apps.Apps))
+	for _, app := range apps.Apps {
+		it := AppInfo{
+			Name: app.Name,
+		}
+		res = append(res, it)
+	}
+	w.WriteHeader(http.StatusOK)
+	ctrl.writeResponseJSON(w, res)
 }
 
 type DeleteAppInput struct {

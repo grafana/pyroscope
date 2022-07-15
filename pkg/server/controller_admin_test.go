@@ -102,7 +102,7 @@ var _ = Describe("server", func() {
 	checkRoleAccess := func(s testServices, role model.Role, expectAccess bool, expectStatus int) {
 		ingest("foo;bar\nfoo;bar\nfoo;baz\nfoo;baz\nfoo;baz\n", "test.app1")
 		ingest("foo;bar\nfoo;bar\nfoo;baz\nfoo;baz\nfoo;baz\n", "test.app2")
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		Expect(s.s.GetAppNames(context.TODO())).To(Equal([]string{"test.app1", "test.app2"}))
 		key := ""
 		if role != model.InvalidRole {

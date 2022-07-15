@@ -1,26 +1,32 @@
 package admin
 
-import "context"
+import (
+	"context"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+)
 
 type AdminService struct {
 	storage Storage
 }
 
 type Storage interface {
-	GetAppNames(context.Context) []string
-	DeleteApp(ctx context.Context, appname string) error
+	storage.AppGetter
+	storage.AppDeleter
 }
 
 func NewService(v Storage) *AdminService {
 	m := &AdminService{
 		v,
 	}
-
 	return m
 }
 
-func (m *AdminService) GetApps() (appNames []string) {
-	return m.storage.GetAppNames(context.TODO())
+func (m *AdminService) GetAppNames(ctx context.Context) (appNames []string) {
+	return m.storage.GetAppNames(ctx)
+}
+
+func (m *AdminService) GetApps(ctx context.Context) storage.GetAppsOutput {
+	return m.storage.GetApps(ctx)
 }
 
 func (m *AdminService) DeleteApp(appname string) error {
