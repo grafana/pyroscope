@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,11 +20,16 @@ import (
 
 type mockStorage struct {
 	getAppNamesResult []string
+	getAppsResult     storage.GetAppsOutput
 	deleteResult      error
 }
 
 func (m mockStorage) GetAppNames(ctx context.Context) []string {
 	return m.getAppNamesResult
+}
+
+func (m mockStorage) GetApps(ctx context.Context) storage.GetAppsOutput {
+	return m.getAppsResult
 }
 
 func (m mockStorage) DeleteApp(ctx context.Context, appname string) error {
