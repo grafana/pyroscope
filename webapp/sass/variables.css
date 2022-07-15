@@ -24,6 +24,12 @@
   --ps-dropdown-background: #2c2c30; /* dropdown background */
   --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
 
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
   --ps-dropdown-shadow: #000000; /* dropdown shadow */
 
@@ -63,8 +69,6 @@
   --ps-immutable-linked-border: #eb7b18; /* linked border color */
   --ps-immutable-white: #ffffff; /* white: Use only when it should be white regardless of color mode */
   --ps-immutable-placeholder-text: #333333; /* placeholder text color */
-
-  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
 }
 
 [data-theme='light'],
@@ -84,6 +88,11 @@
   --ps-dropdown-background: #f8f8f8; /* dropdown background */
   --ps-sidebar-separator: #0000004d; /* sidebar separation lines color */
 
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
   --ps-dropdown-shadow: #00000052; /* dropdown shadow */
 
@@ -96,6 +105,4 @@
   --ps-green-primary: #0bdb79; /* standard green */
   --ps-green-highlight: #5bdc9e; /* highlight (hover) green */
   --ps-green-disabled: #00a757; /* disabled green */
-
-  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
 }

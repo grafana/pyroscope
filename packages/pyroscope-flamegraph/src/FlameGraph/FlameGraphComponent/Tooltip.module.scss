@@ -1,10 +1,10 @@
 .flamegraphTooltip {
   width: 420px;
   position: fixed;
-  background: var(--ps-neutral-2);
+  background: var(--ps-tooltip-bg);
   box-shadow: 1px 2px 4px 0px rgba(0, 0, 0, 0.3);
   border-radius: 4px;
-  color: var(--ps-neutral-1);
+  color: var(--ps-tooltip-text);
   font-size: 12px;
   visibility: hidden;
   z-index: 2;
@@ -14,7 +14,7 @@
   }
 
   .flamegraphTooltipName {
-    color: var(--ps-neutral-1);
+    color: var(--ps-tooltip-text);
     background-color: var(--ps-tooltip-header-bg);
     border-top-right-radius: 4px;
     border-top-left-radius: 4px;
@@ -36,7 +36,7 @@
 
   .tooltipTable {
     width: calc(100% - 10px * 2);
-    margin: 10px 10px 16px;
+    margin: 10px;
 
     th,
     td {
@@ -54,6 +54,25 @@
         width: 25%;
         font-weight: normal;
       }
+    }
+  }
+
+  .rightClickInfo {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    color: var(--ps-right-click-info);
+
+    svg {
+      display: block;
+      align-self: center;
+      width: 22px;
+      height: 22px;
+      margin-right: 5px;
+    }
+
+    span {
+      font-size: 14px;
     }
   }
 }

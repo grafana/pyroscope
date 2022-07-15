@@ -9,6 +9,7 @@ import {
   formatPercent,
   ratioToPercent,
 } from '../../format/format';
+import RightClickIcon from './RightClickIcon';
 
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
@@ -263,6 +264,11 @@ export default function Tooltip(props: TooltipProps) {
       ) : (
         <TooltipTable data={content.tooltipData} />
       )}
+
+      <div className={styles.rightClickInfo}>
+        <RightClickIcon />
+        <span>Right click for more node viewing options</span>
+      </div>
     </div>
   );
 }
@@ -367,7 +373,16 @@ function formatDouble(
     units: Units;
   },
   palette: FlamegraphPalette = DefaultPalette
-) {
+): {
+  tooltipData: TooltipData[];
+  title: {
+    text: string;
+    diff: {
+      text: string;
+      color: string;
+    };
+  };
+} {
   const leftRatio = totalLeft / leftTicks;
   const rightRatio = totalRight / rightTicks;
 
@@ -375,14 +390,14 @@ function formatDouble(
   const rightPercent = ratioToPercent(rightRatio);
 
   const newLeft: TooltipData = {
-    percent: leftPercent + '%',
+    percent: `${leftPercent}%`,
     samples: numberWithCommas(totalLeft),
     units,
     formattedValue: formatter.format(totalLeft, sampleRate),
   };
 
   const newRight: TooltipData = {
-    percent: rightPercent + '%',
+    percent: `${rightPercent}%`,
     samples: numberWithCommas(totalRight),
     units,
     formattedValue: formatter.format(totalRight, sampleRate),

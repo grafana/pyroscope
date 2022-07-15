@@ -26,11 +26,7 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn
-      - run: yarn
-        # when building hide the logo
-        env:
-          PYROSCOPE_HIDE_LOGO: true
-
+      - run: yarn --frozen-lockfile
       - run: yarn build:panel
         env:
           PYROSCOPE_PANEL_VERSION: test
@@ -39,24 +35,12 @@ jobs:
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
-          config-file: packages/pyroscope-panel-plugin/cypress.json
+          command: yarn cy:panel:ci
           wait-on: http://localhost:3000
-          start: make server
         env:
-          CYPRESS_VIDEO: true
           CYPRESS_COMPARE_SNAPSHOTS: true
       - uses: actions/upload-artifact@v2
-        if: always()
-        with:
-          name: cypress-screenshots
-          path: cypress/screenshots
-      - uses: actions/upload-artifact@v2
-        if: always()
-        with:
-          name: cypress-videos
-          path: cypress/videos
-      - uses: actions/upload-artifact@v2
-        if: always()
+        if: failure()
         with:
           name: cypress-snapshots
           path: cypress/snapshots

@@ -22,6 +22,8 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        selectedItem={Maybe.nothing()}
+        setActiveItem={() => ({})}
         showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
@@ -47,6 +49,8 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        selectedItem={Maybe.nothing()}
+        setActiveItem={() => ({})}
         showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
@@ -83,6 +87,8 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        selectedItem={Maybe.nothing()}
+        setActiveItem={() => ({})}
         showCredit
         fitMode="HEAD"
         zoom={Maybe.nothing()}
@@ -116,6 +122,8 @@ describe('FlamegraphComponent', () => {
 
       const { rerender } = render(
         <FlamegraphComponent
+          selectedItem={Maybe.nothing()}
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
@@ -150,6 +158,8 @@ describe('FlamegraphComponent', () => {
 
       rerender(
         <FlamegraphComponent
+          selectedItem={Maybe.nothing()}
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
@@ -184,6 +194,8 @@ describe('FlamegraphComponent', () => {
 
       render(
         <FlamegraphComponent
+          selectedItem={Maybe.nothing()}
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
@@ -224,6 +236,8 @@ describe('FlamegraphComponent', () => {
     it('renders when type is single', () => {
       render(
         <FlamegraphComponent
+          selectedItem={Maybe.nothing()}
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
@@ -251,6 +265,8 @@ describe('FlamegraphComponent', () => {
       const flamebearer = TestData.DiffTree;
       render(
         <FlamegraphComponent
+          selectedItem={Maybe.nothing()}
+          setActiveItem={() => ({})}
           showCredit
           fitMode="HEAD"
           zoom={Maybe.nothing()}
