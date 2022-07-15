@@ -34,10 +34,11 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn
+      - run: yarn install
+      - run: make e2e-build
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
-          build: make e2e-build
           wait-on: http://localhost:4040
           start: make server
           config-file: cypress/cypress.json
