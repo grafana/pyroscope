@@ -36,7 +36,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn
       - run: yarn install
-      - run: make -j e2e-build
+      - name: Get number of CPU cores
+        id: cpu-cores
+        uses: SimenB/github-actions-cpu-cores@v1
+      - run: make -j${{ steps.cpu-cores.outputs.count }} e2e-build
       - name: store build
         id: store-build
         uses: actions/cache@v3
