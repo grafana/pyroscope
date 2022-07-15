@@ -53,7 +53,7 @@
     "cy:webapp-base-url:ci": "cypress run --config-file cypress/base-url/cypress.json",
     "cy:webapp-base-url:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh --config-file cypress/base-url/cypress.json",
     "cy:panel:open": "cypress open --config-file grafana-plugin/panel/cypress.json",
-    "cy:panel:ci": "cypress run --config-file grafana-plugin/panel/cypress.json",
+    "cy:panel:ci": "cypress run --config-file packages/pyroscope-panel-plugin/cypress.json",
     "cy:panel:ss": "./scripts/cypress-screenshots.sh --config-file packages/pyroscope-panel-plugin/cypress.json",
     "cy:panel:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh --config-file packages/pyroscope-panel-plugin/cypress.json",
     "cy:datasource:open": "cypress open --config-file packages/pyroscope-datasource-plugin/cypress.json",
