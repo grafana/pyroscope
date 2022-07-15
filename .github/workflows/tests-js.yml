@@ -26,7 +26,7 @@ jobs:
             ${{ runner.os }}-yarn
 
       - name: Install Webapp dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile
       - name: Get number of CPU cores
         id: cpu-cores
         uses: SimenB/github-actions-cpu-cores@v1
