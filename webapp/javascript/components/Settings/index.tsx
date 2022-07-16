@@ -23,7 +23,7 @@ import APIKeyAddForm from './APIKeys/APIKeyAddForm';
 import {
   FlamegraphRenderer,
   convertJaegerTraceToProfile,
-} from '@pyroscope/flamegraph';
+} from '@pyroscope/flamegraph/src';
 
 import f1 from '../../../../cypress/fixtures/simple-golang-app-cpu.json';
 import f2 from '../../../../cypress/fixtures/simple-golang-app-cpu2.json';
@@ -56,7 +56,6 @@ function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
         }
 
         const key = [parentKey || '', name].join('/');
-        console.log('key', key);
         lookup[key] ||= {
           name: name,
           children: [],
@@ -82,8 +81,6 @@ function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
 
   return root;
 }
-
-console.log(trace[0]);
 
 function diffFlamebearer(f1: Flamebearer, f2: Flamebearer): Flamebearer {
   const result: Flamebearer = {
@@ -217,6 +214,8 @@ function Settings() {
               trace
               <FlamegraphRenderer
                 profile={convertJaegerTraceToProfile(trace[0])}
+                onlyDisplay="flamegraph"
+                viewType="single"
               />
               f1
               <FlamegraphRenderer
