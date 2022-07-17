@@ -1,3 +1,23 @@
+# [0.22.0](https://github.com/pyroscope-io/pyroscope/compare/v0.21.0...v0.22.0) (2022-07-16)
+
+
+### Bug Fixes
+
+* **frontend:** fix latest version checks ([#1243](https://github.com/pyroscope-io/pyroscope/issues/1243)) ([293078a](https://github.com/pyroscope-io/pyroscope/commit/293078a1bf6e8b8aa0a7e436faaa77bacaaa4b56))
+* rideshare nodejs example anonymous functions  ([#1261](https://github.com/pyroscope-io/pyroscope/issues/1261)) ([d0720a8](https://github.com/pyroscope-io/pyroscope/commit/d0720a8336aef203a720c2a745fbaab1d70351dc))
+
+
+### Features
+
+* add new tooltip design ([#1246](https://github.com/pyroscope-io/pyroscope/issues/1246)) ([8345168](https://github.com/pyroscope-io/pyroscope/commit/83451683d131671771b0e97e052068b08bfe35bd))
+* adds support for group-by queries on the backend ([#1244](https://github.com/pyroscope-io/pyroscope/issues/1244)) ([c52f0e4](https://github.com/pyroscope-io/pyroscope/commit/c52f0e4fdc08feced533d60b9daf0c21c565381c))
+* **flamegraph:** Add support for visualizing traces ([#1233](https://github.com/pyroscope-io/pyroscope/issues/1233)) ([b15d094](https://github.com/pyroscope-io/pyroscope/commit/b15d094ebb06592a406b4b73485c0f316c411b08))
+* **flamegraph:** allow to filter items in table ([#1226](https://github.com/pyroscope-io/pyroscope/issues/1226)) ([e87284d](https://github.com/pyroscope-io/pyroscope/commit/e87284d4d25ae04f2ca50892d4ed89345aa64b3e))
+* remote read functionality ([#1253](https://github.com/pyroscope-io/pyroscope/issues/1253)) ([e2af971](https://github.com/pyroscope-io/pyroscope/commit/e2af9717b307a8d2889bd10e53b81fe054c1c661))
+* update right-click context menu ([#1259](https://github.com/pyroscope-io/pyroscope/issues/1259)) ([8aea02f](https://github.com/pyroscope-io/pyroscope/commit/8aea02f56320daacfd753d73db6936dcc7cdaef8))
+
+
+
 # [0.21.0](https://github.com/pyroscope-io/pyroscope/compare/v0.20.0...v0.21.0) (2022-07-06)
 
 
