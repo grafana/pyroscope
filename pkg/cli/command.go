@@ -3,6 +3,8 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -159,10 +161,20 @@ func loadConfigFile(cmd *cobra.Command, vpr *viper.Viper) error {
 		return nil
 	}
 	vpr.SetConfigFile(configPath)
-	err := vpr.ReadInConfig()
-	if err == nil || (errors.Is(err, os.ErrNotExist) && !userDefined) {
-		// The default config file can be missing.
+	data, err := ioutil.ReadFile(configPath)
+	if err != nil && errors.Is(err, os.ErrNotExist) && !userDefined {
+		// If user did not specify the config file, and the file does not exist,
+		//   this is okay
 		return nil
 	}
+
+	if err == nil {
+		return vpr.ReadConfig(performSubstitutions(data))
+	}
+
 	return fmt.Errorf("loading configuration file: %w", err)
+}
+
+func performSubstitutions(data []byte) io.Reader {
+	return strings.NewReader(os.ExpandEnv(string(data)))
 }
