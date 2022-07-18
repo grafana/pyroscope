@@ -79,6 +79,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_SINGLE,
           PAGES.ADHOC_COMPARISON,
           PAGES.ADHOC_COMPARISON_DIFF,
+          PAGES.EXPLORE,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -207,6 +208,18 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
+          <MenuItem
+            data-testid="sidebar-explore-page"
+            active={isRouteActive(PAGES.EXPLORE)}
+            icon={<Icon icon={faChartBar} />}
+          >
+            Explore
+            <NavLink
+              // add search if needed
+              to={{ pathname: PAGES.EXPLORE }}
+              exact
+            />
+          </MenuItem>
         </Menu>
       </SidebarContent>
       <SidebarFooter>
