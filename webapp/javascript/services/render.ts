@@ -21,14 +21,14 @@ interface renderSingleProps {
 }
 export async function renderSingle(
   props: renderSingleProps,
-  params?: {
+  controller?: {
     signal?: AbortSignal;
   }
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
   // TODO
   const response = await request(`${url}&format=json`, {
-    signal: params?.signal,
+    signal: controller?.signal,
   });
 
   if (response.isErr) {
@@ -70,7 +70,9 @@ interface renderDiffProps {
 }
 export async function renderDiff(
   props: renderDiffProps,
-  abortController?: AbortController
+  controller?: {
+    signal?: AbortSignal;
+  }
 ) {
   const params = new URLSearchParams({
     leftQuery: props.leftQuery,
@@ -83,11 +85,53 @@ export async function renderDiff(
   });
 
   const response = await request(`/render-diff?${params}`, {
-    signal: abortController?.signal,
+    signal: controller?.signal,
   });
 
   return parseResponse<z.infer<typeof FlamebearerProfileSchema>>(
     response,
     FlamebearerProfileSchema
   );
+}
+
+interface renderExplorePageProps extends renderSingleProps {
+  groupBy: string;
+}
+
+export async function renderExplorePage(
+  props: renderExplorePageProps,
+  controller?: {
+    signal?: AbortSignal;
+  }
+): Promise<Result<RenderOutput, RequestError | ZodError>> {
+  const url = buildRenderURL(props);
+
+  const response = await request(
+    `${url}&groupBy=${props.groupBy}&format=json`,
+    {
+      signal: controller?.signal,
+    }
+  );
+
+  if (response.isErr) {
+    return Result.err<RenderOutput, RequestError>(response.error);
+  }
+
+  const parsed = FlamebearerProfileSchema.merge(
+    z.object({ timeline: TimelineSchema })
+  )
+    .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+    .safeParse(response.value);
+
+  if (parsed.success) {
+    const profile = parsed.data;
+    const { timeline } = parsed.data;
+
+    return Result.ok({
+      profile,
+      timeline,
+    });
+  }
+
+  return Result.err(parsed.error);
 }
