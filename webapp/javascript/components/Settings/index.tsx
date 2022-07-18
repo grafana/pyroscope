@@ -27,6 +27,40 @@ import {
 
 import f1 from '../../../../cypress/fixtures/simple-golang-app-cpu.json';
 import f2 from '../../../../cypress/fixtures/simple-golang-app-cpu2.json';
+
+import { Profile } from '@pyroscope/models/src';
+
+function deltaDiffWrapper(
+  format: Profile['metadata']['format'],
+  levels: Profile['flamebearer']['levels']
+) {
+  const mutableLevels = [...levels];
+
+  function deltaDiff(
+    lvls: Profile['flamebearer']['levels'],
+    start: number,
+    step: number
+  ) {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const level of lvls) {
+      let prev = 0;
+      for (let i = start; i < level.length; i += step) {
+        level[i] += prev;
+        prev = level[i] + level[i + 1];
+      }
+    }
+  }
+
+  if (format === 'double') {
+    deltaDiff(mutableLevels, 0, 7);
+    deltaDiff(mutableLevels, 3, 7);
+  } else {
+    deltaDiff(mutableLevels, 0, 4);
+  }
+
+  return mutableLevels;
+}
+
 import trace from './trace.json';
 
 function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
@@ -130,6 +164,13 @@ function diffFlamebearer(f1: Flamebearer, f2: Flamebearer): Flamebearer {
 }
 
 function Settings() {
+  console.log('settings');
+
+  console.log(f1.flamebearer.levels);
+  f1.flamebearer.levels = deltaDiffWrapper('single', f1.flamebearer.levels);
+  console.log(f1.flamebearer.levels);
+  f2.flamebearer.levels = deltaDiffWrapper('single', f2.flamebearer.levels);
+
   const { path, url } = useRouteMatch();
   const currentUser = useAppSelector(selectCurrentUser);
 
