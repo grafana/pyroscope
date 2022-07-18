@@ -137,16 +137,6 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type mergeRequest struct {
-	AppName  string   `json:"appName"`
-	Profiles []string `json:"profiles"`
-	MaxNodes int      `json:"maxNodes"`
-}
-
-type mergeResponse struct {
-	flamebearer.FlamebearerProfile
-}
-
 // Enhance the flamebearer with a few additional fields the UI requires
 func (*RenderHandler) mountRenderResponse(flame flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int) RenderResponse {
 	metadata := renderMetadataResponse{
