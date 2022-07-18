@@ -113,8 +113,8 @@ function generateTable(
           j,
           !seenNodeBefore[name]
         );
-        seenNodeBefore[name] = true;
       }
+      seenNodeBefore[name] = true;
     }
   }
 
