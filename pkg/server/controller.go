@@ -241,7 +241,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/settings", ih},
 		{"/settings/{page}", ih},
 		{"/settings/{page}/{subpage}", ih},
-		{"/forbidden", ih}},
+		{"/forbidden", ih},
+		{"/explore", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
