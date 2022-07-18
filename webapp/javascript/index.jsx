@@ -86,9 +86,11 @@ function App() {
               <ServiceDiscoveryApp />
             </Protected>
           </Route>
-          <Route path={PAGES.EXPLORE}>
+          <Route exact path={PAGES.EXPLORE}>
             <Protected>
-              <ExplorePage />
+              <Continuous>
+                <ExplorePage />
+              </Continuous>
             </Protected>
           </Route>
           {isAdhocUIEnabled && (

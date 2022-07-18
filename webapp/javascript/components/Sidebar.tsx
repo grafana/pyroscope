@@ -214,11 +214,7 @@ export function SidebarComponent() {
             icon={<Icon icon={faChartBar} />}
           >
             Explore
-            <NavLink
-              // add search if needed
-              to={{ pathname: PAGES.EXPLORE }}
-              exact
-            />
+            <NavLink to={{ pathname: PAGES.EXPLORE, search }} exact />
           </MenuItem>
         </Menu>
       </SidebarContent>
