@@ -89,6 +89,7 @@ func Test_selectMerge(t *testing.T) {
 	})
 	names := []string{"foo", "bar", "buzz"}
 	p1, p2, p3 := &ingestv1.Profile{
+		ID:        "1",
 		Type:      req.Msg.Type,
 		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
 		Timestamp: 1,
@@ -96,6 +97,7 @@ func Test_selectMerge(t *testing.T) {
 			{FunctionIds: []int32{1}, Value: 1},
 		},
 	}, &ingestv1.Profile{
+		ID:        "2",
 		Type:      req.Msg.Type,
 		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
 		Timestamp: 2,
@@ -104,6 +106,7 @@ func Test_selectMerge(t *testing.T) {
 		},
 	},
 		&ingestv1.Profile{
+			ID:        "3",
 			Type:      req.Msg.Type,
 			Labels:    []*commonv1.LabelPair{{Name: "app", Value: "fuzz"}},
 			Timestamp: 3,
