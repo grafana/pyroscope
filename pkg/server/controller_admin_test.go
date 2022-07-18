@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/pyroscope-io/pyroscope/pkg/admin"
+
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
@@ -51,7 +51,7 @@ var _ = Describe("server", func() {
 			Name string `json:"name"`
 		}{app}
 		body, _ := json.Marshal(input)
-		req, err := http.NewRequest("DELETE", "http://localhost:4040/api/admin/apps", bytes.NewBuffer(body))
+		req, err := http.NewRequest("DELETE", "http://localhost:4040/api/apps", bytes.NewBuffer(body))
 		if key != "" {
 			req.Header.Set("Authorization", "Bearer "+key)
 		}
@@ -68,8 +68,6 @@ var _ = Describe("server", func() {
 		sql, err := sqlstore.Open(&(*cfg).Server)
 		Expect(err).ToNot(HaveOccurred())
 
-		adminService := admin.NewService(s)
-		userService := service.NewUserService(sql.DB())
 		l := logrus.New()
 
 		c, _ := New(Config{
@@ -82,7 +80,6 @@ var _ = Describe("server", func() {
 			Notifier:                mockNotifier{},
 			Adhoc:                   mockAdhocServer{},
 			DB:                      sql.DB(),
-			AdminController:         admin.NewController(l, adminService, userService, s),
 		})
 
 		go c.Start()

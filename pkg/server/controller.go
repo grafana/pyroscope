@@ -27,7 +27,7 @@ import (
 	"gorm.io/gorm"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
-	"github.com/pyroscope-io/pyroscope/pkg/admin"
+
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
@@ -81,8 +81,7 @@ type Controller struct {
 	userService     service.UserService
 	jwtTokenService service.JWTTokenService
 
-	scrapeManager   *scrape.Manager
-	adminController *admin.Controller
+	scrapeManager *scrape.Manager
 }
 
 type Config struct {
@@ -100,8 +99,7 @@ type Config struct {
 
 	Adhoc adhocserver.Server
 
-	ScrapeManager   *scrape.Manager
-	AdminController *admin.Controller
+	ScrapeManager *scrape.Manager
 }
 
 type StatsReceiver interface {
@@ -152,10 +150,9 @@ func New(c Config) (*Controller, error) {
 			}),
 		}),
 
-		adhoc:           c.Adhoc,
-		db:              c.DB,
-		scrapeManager:   c.ScrapeManager,
-		adminController: c.AdminController,
+		adhoc:         c.Adhoc,
+		db:            c.DB,
+		scrapeManager: c.ScrapeManager,
 	}
 
 	var err error
@@ -260,16 +257,14 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
 
-	if ctrl.adminController != nil {
-		adminRouter := apiRouter.PathPrefix("/admin/").Subrouter()
-		adminRouter.Use(
-			api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
-			authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
-				authz.Role(model.AdminRole),
-			))
-		adminRouter.HandleFunc("/apps", ctrl.adminController.HandleGetApps).Methods("GET")
-		adminRouter.HandleFunc("/apps", ctrl.adminController.HandleDeleteApp).Methods("DELETE")
-	}
+	appsRouter := apiRouter.PathPrefix("/").Subrouter()
+	appsRouter.Use(
+		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
+		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
+			authz.Role(model.AdminRole),
+		))
+	appsRouter.HandleFunc("/apps", ctrl.getAppsHandler()).Methods("GET")
+	appsRouter.HandleFunc("/apps", ctrl.deleteAppsHandler()).Methods("DELETE")
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.

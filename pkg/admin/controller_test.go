@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"io"
 	"net/http"
@@ -66,8 +67,7 @@ var _ = Describe("controller", func() {
 			// create a null logger, since we aren't interested
 			logger, _ := test.NewNullLogger()
 
-			svc := admin.NewService(storage)
-			ctrl := admin.NewController(logger, svc, mockUserService{}, mockStorageService{})
+			ctrl := admin.NewController(logger, storage, mockUserService{}, mockStorageService{})
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
 
@@ -100,7 +100,7 @@ var _ = Describe("controller", func() {
 				It("returns StatusOK", func() {
 					// we are kinda robbing here
 					// since the server and client are defined in the same package
-					payload := admin.DeleteAppInput{Name: "myapp"}
+					payload := server.DeleteAppInput{Name: "myapp"}
 					marshalledPayload, err := json.Marshal(payload)
 					request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 					Expect(err).ToNot(HaveOccurred())
@@ -131,7 +131,7 @@ var _ = Describe("controller", func() {
 					It("returns InternalServerError", func() {
 						// we are kinda robbing here
 						// since the server and client are defined in the same package
-						payload := admin.DeleteAppInput{Name: "myapp"}
+						payload := server.DeleteAppInput{Name: "myapp"}
 						marshalledPayload, err := json.Marshal(payload)
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 						Expect(err).ToNot(HaveOccurred())

@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -15,9 +17,9 @@ import (
 )
 
 type Controller struct {
-	log *logrus.Logger
-
-	adminService   *AdminService
+	log            *logrus.Logger
+	httpUtils      httputils.Utils
+	storage        Storage
 	userService    UserService
 	storageService StorageService
 }
@@ -26,73 +28,27 @@ type UserService interface {
 	UpdateUserByName(ctx context.Context, name string, params model.UpdateUserParams) (model.User, error)
 }
 
+type Storage interface {
+	storage.AppGetter
+	storage.AppDeleter
+}
+
 type StorageService interface {
 	Cleanup(ctx context.Context) error
 }
 
 func NewController(
 	log *logrus.Logger,
-	adminService *AdminService,
+	storage Storage,
 	userService UserService,
 	storageService StorageService) *Controller {
 	return &Controller{
 		log: log,
 
-		adminService:   adminService,
+		storage:        storage,
 		userService:    userService,
 		storageService: storageService,
 	}
-}
-
-// HandleGetAppNames handles GET requests
-func (ctrl *Controller) HandleGetAppNames(w http.ResponseWriter, r *http.Request) {
-	appNames := ctrl.adminService.GetAppNames(r.Context())
-
-	w.WriteHeader(http.StatusOK)
-	ctrl.writeResponseJSON(w, appNames)
-}
-
-type AppInfo struct {
-	Name string `json:"name"`
-}
-
-func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, r *http.Request) {
-	apps := ctrl.adminService.GetApps(r.Context())
-	res := make([]AppInfo, 0, len(apps.Apps))
-	for _, app := range apps.Apps {
-		it := AppInfo{
-			Name: app.Name,
-		}
-		res = append(res, it)
-	}
-	w.WriteHeader(http.StatusOK)
-	ctrl.writeResponseJSON(w, res)
-}
-
-type DeleteAppInput struct {
-	Name string `json:"name"`
-}
-
-// HandleDeleteApp handles DELETE requests
-func (ctrl *Controller) HandleDeleteApp(w http.ResponseWriter, r *http.Request) {
-	var payload DeleteAppInput
-
-	err := json.NewDecoder(r.Body).Decode(&payload)
-	if err != nil {
-		ctrl.writeError(w, http.StatusBadRequest, err, "")
-		return
-	}
-
-	err = ctrl.adminService.DeleteApp(r.Context(), payload.Name)
-	if err != nil {
-		// TODO how to distinguish
-		// it was a bad request
-		// or an internal server error
-		ctrl.writeError(w, http.StatusInternalServerError, err, "")
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 type UpdateUserRequest struct {

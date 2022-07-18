@@ -55,7 +55,6 @@ type serverService struct {
 	selfProfiling    *pyroscope.Session
 	debugReporter    *debug.Reporter
 	healthController *health.Controller
-	adminController  *admin.Controller
 	adminServer      *admin.Server
 	discoveryManager *discovery.Manager
 	scrapeManager    *scrape.Manager
@@ -119,9 +118,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
-		adminService := admin.NewService(svc.storage)
 		userService := service.NewUserService(svc.database.DB())
-		svc.adminController = admin.NewController(svc.logger, adminService, userService, svc.storage)
+		adminController := admin.NewController(svc.logger, svc.storage, userService, svc.storage)
 		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
@@ -134,7 +132,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 		svc.adminServer, err = admin.NewServer(
 			svc.logger,
-			svc.adminController,
+			adminController,
 			adminHTTPOverUDS,
 		)
 		if err != nil {
@@ -214,7 +212,6 @@ func newServerService(c *config.Server) (*serverService, error) {
 		ExportedMetricsRegistry: exportedMetricsRegistry,
 		ScrapeManager:           svc.scrapeManager,
 		DB:                      svc.database.DB(),
-		AdminController:         svc.adminController,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)

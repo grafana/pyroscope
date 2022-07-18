@@ -40,8 +40,7 @@ var _ = Describe("integration", func() {
 
 		httpServer, err := admin.NewUdsHTTPServer(socketAddr, http)
 		Expect(err).ToNot(HaveOccurred())
-		svc := admin.NewService(mockStorage{})
-		ctrl := admin.NewController(logger, svc, mockUserService{}, mockStorageService{})
+		ctrl := admin.NewController(logger, mockStorage{}, mockUserService{}, mockStorageService{})
 		s, err := admin.NewServer(logger, ctrl, httpServer)
 		Expect(err).ToNot(HaveOccurred())
 		server = s
