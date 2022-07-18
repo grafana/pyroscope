@@ -4,17 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
 	"github.com/google/uuid"
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -161,9 +164,16 @@ func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
 	return v, ok
 }
 
+var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func generateULID() ulid.ULID {
+	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+}
+
 type Head struct {
 	logger  log.Logger
 	metrics *headMetrics
+	ulid    ulid.ULID
 
 	index           *profilesIndex
 	strings         deduplicatingSlice[string, string, *stringsHelper]
@@ -175,9 +185,13 @@ type Head struct {
 	pprofLabelCache labelCache
 }
 
-func NewHead(reg prometheus.Registerer) (*Head, error) {
+func NewHead(logger log.Logger, reg prometheus.Registerer) (*Head, error) {
+	if logger == nil {
+		logger = log.NewNopLogger()
+	}
 	h := &Head{
-		logger: log.NewLogfmtLogger(os.Stderr),
+		logger: logger,
+		ulid:   generateULID(),
 	}
 	h.strings.init()
 	h.mappings.init()
@@ -230,7 +244,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 	return out, nil
 }
 
-func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) error {
+func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
 	// build label set per sample type before references are rewritten
 	var (
 		sb                                             strings.Builder
@@ -297,7 +311,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, externalLabels 
 	}
 
 	profile := &schemav1.Profile{
-		ID:                uuid.New(),
+		ID:                id,
 		SeriesRefs:        seriesRefs,
 		Samples:           samples,
 		DropFrames:        p.DropFrames,
@@ -373,6 +387,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			return nil
 		}
 		p := &ingestv1.Profile{
+			ID:          profile.ID.String(),
 			Type:        req.Msg.Type,
 			Labels:      lbs,
 			Timestamp:   ts,
@@ -409,6 +424,28 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		Profiles:      result,
 		FunctionNames: names,
 	}), err
+}
+
+func (h *Head) Flush(ctx context.Context, dataPath string) error {
+	path := filepath.Join(dataPath, h.ulid.String())
+
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return err
+	}
+
+	if err := h.WriteTo(ctx, path); err != nil {
+		return err
+	}
+
+	if err := h.index.WriteTo(ctx, filepath.Join(path, "index.tsdb")); err != nil {
+		return err
+	}
+
+	// TODO: Implement this fully as this is just a prototype to store parquet
+	// files with the memory content out.
+
+	h.ulid = generateULID()
+	return nil
 }
 
 func (h *Head) WriteTo(ctx context.Context, path string) error {

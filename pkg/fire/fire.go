@@ -31,6 +31,7 @@ import (
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/cfg"
 	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/firedb"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/querier"
@@ -45,6 +46,7 @@ type Config struct {
 	Querier      querier.Config         `yaml:"querier,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
+	FireDB       firedb.Config          `yaml:"firedb,omitempty"`
 
 	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
@@ -63,6 +65,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.MemberlistKV.RegisterFlags(f)
 	c.Distributor.RegisterFlags(f)
 	c.Querier.RegisterFlags(f)
+	c.FireDB.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -140,6 +143,7 @@ type Fire struct {
 	ring               *ring.Ring
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
+	fireDB             *firedb.FireDB
 
 	grpcGatewayMux *grpcgw.ServeMux
 }
@@ -177,6 +181,7 @@ func (f *Fire) setupModuleManager() error {
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
 	mm.RegisterModule(Ingester, f.initIngester)
+	mm.RegisterModule(FireDB, f.initFireDB)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
 	mm.RegisterModule(Querier, f.initQuerier)
@@ -189,7 +194,7 @@ func (f *Fire) setupModuleManager() error {
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
 		Agent:        {Server, GRPCGateway},
-		Ingester:     {Server, MemberlistKV},
+		Ingester:     {Server, MemberlistKV, FireDB},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
 		GRPCGateway:  {Server},

@@ -13,6 +13,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
@@ -173,6 +174,8 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 				return nil, errors.Wrap(err, "gzip close")
 			}
 			raw.RawProfile = bw.Bytes()
+			// generate a unique profile ID before pushing.
+			raw.ID = uuid.NewString()
 		}
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
