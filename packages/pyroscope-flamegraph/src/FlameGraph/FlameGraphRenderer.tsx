@@ -90,6 +90,8 @@ export interface FlamegraphRendererProps {
     toggleSync: Dispatch<SetStateAction<boolean | string>>;
     id: string;
   };
+
+  children?: React.ReactNode;
 }
 
 interface FlamegraphRendererState {
