@@ -1,0 +1,26 @@
+.explorePage {
+  .header {
+    display: flex;
+    align-items: center;
+    margin: 0 10px 10px;
+  }
+
+  .appName {
+    display: inline-block;
+    font-weight: 500;
+    font-size: 18px;
+    margin-right: 15px;
+  }
+
+  .query {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+
+    .selectName {
+      font-weight: 500;
+      color: var(--ps-right-click-info);
+      margin-right: 5px;
+    }
+  }
+}
