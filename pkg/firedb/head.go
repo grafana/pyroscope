@@ -394,6 +394,9 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			Stacktraces: make([]*ingestv1.StacktraceSample, 0, len(profile.Samples)),
 		}
 		for _, s := range profile.Samples {
+			if s.Values[idx] == 0 {
+				continue
+			}
 			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
 			fnIds := make([]int32, 0, len(locs))
 			for _, loc := range locs {
@@ -414,7 +417,9 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 				FunctionIds: fnIds,
 			})
 		}
-		result = append(result, p)
+		if len(p.Stacktraces) > 0 {
+			result = append(result, p)
+		}
 		return nil
 	})
 	sort.Slice(result, func(i, j int) bool {
