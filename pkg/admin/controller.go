@@ -83,7 +83,7 @@ func (ctrl *Controller) HandleDeleteApp(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = ctrl.adminService.DeleteApp(payload.Name)
+	err = ctrl.adminService.DeleteApp(r.Context(), payload.Name)
 	if err != nil {
 		// TODO how to distinguish
 		// it was a bad request

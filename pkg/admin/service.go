@@ -29,6 +29,6 @@ func (m *AdminService) GetApps(ctx context.Context) storage.GetAppsOutput {
 	return m.storage.GetApps(ctx)
 }
 
-func (m *AdminService) DeleteApp(appname string) error {
-	return m.storage.DeleteApp(context.TODO(), appname)
+func (m *AdminService) DeleteApp(ctx context.Context, appname string) error {
+	return m.storage.DeleteApp(ctx, appname)
 }
