@@ -94,6 +94,16 @@ func newProfileFoo() *profilev1.Profile {
 	}
 }
 
+func newEmptyProfile() *profilev1.Profile {
+	p := newProfileBar()
+	for _, s := range p.Sample {
+		for i := range s.Value {
+			s.Value[i] = 0
+		}
+	}
+	return p
+}
+
 func newProfileBar() *profilev1.Profile {
 	baseTable := append([]string{""}, valueTypeStrings...)
 	baseTableLen := int64(len(baseTable)) + 0
@@ -272,11 +282,15 @@ func TestSelectProfiles(t *testing.T) {
 	for i := int64(0); i < 4; i++ {
 		pF := newProfileFoo()
 		pB := newProfileBar()
+		pE := newEmptyProfile()
 		pF.TimeNanos = int64(time.Second * time.Duration(i))
+		pE.TimeNanos = int64(time.Second * time.Duration(i))
 		pB.TimeNanos = int64(time.Second * time.Duration(i))
 		err = head.Ingest(context.Background(), pF, uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "__name__", Value: "foomemory"})
 		require.NoError(t, err)
 		err = head.Ingest(context.Background(), pB, uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "__name__", Value: "memory"})
+		require.NoError(t, err)
+		err = head.Ingest(context.Background(), pE, uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "__name__", Value: "memory"})
 		require.NoError(t, err)
 	}
 
