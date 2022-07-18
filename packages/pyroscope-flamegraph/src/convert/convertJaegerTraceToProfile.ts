@@ -9,6 +9,38 @@ interface Span extends TraceSpan {
   self: number;
 }
 
+// TODO: need to remove this ideally
+function deltaDiffWrapperReverse(
+  format: Profile['metadata']['format'],
+  levels: Profile['flamebearer']['levels']
+) {
+  const mutableLevels = [...levels];
+
+  function deltaDiff(
+    lvls: Profile['flamebearer']['levels'],
+    start: number,
+    step: number
+  ) {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const level of lvls) {
+      let total = 0;
+      for (let i = start; i < level.length; i += step) {
+        level[i] -= total;
+        total += level[i] + level[i + 1];
+      }
+    }
+  }
+
+  if (format === 'double') {
+    deltaDiff(mutableLevels, 0, 7);
+    deltaDiff(mutableLevels, 3, 7);
+  } else {
+    deltaDiff(mutableLevels, 0, 4);
+  }
+
+  return mutableLevels;
+}
+
 export function convertJaegerTraceToProfile(trace: Trace): Profile {
   const resultFlamebearer = {
     numTicks: 0,
@@ -50,7 +82,7 @@ export function convertJaegerTraceToProfile(trace: Trace): Profile {
       childrenDur += res.duration;
       return res;
     });
-    span.total = Math.max(span.duration || 0, childrenDur);
+    span.total = span.duration || childrenDur;
     span.self = Math.max(0, span.total - childrenDur);
   }
   groupSpans(root, 0);
@@ -77,6 +109,12 @@ export function convertJaegerTraceToProfile(trace: Trace): Profile {
   }
 
   processNode(root, 0, 0);
+
+  // hack, need to remove this ideally
+  resultFlamebearer.levels = deltaDiffWrapperReverse(
+    'single',
+    resultFlamebearer.levels
+  );
 
   return {
     version: 1,

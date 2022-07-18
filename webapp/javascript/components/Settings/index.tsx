@@ -61,6 +61,8 @@ function deltaDiffWrapper(
   return mutableLevels;
 }
 
+f1.flamebearer.levels = deltaDiffWrapper('single', f1.flamebearer.levels);
+f2.flamebearer.levels = deltaDiffWrapper('single', f2.flamebearer.levels);
 import trace from './trace.json';
 
 function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
@@ -164,13 +166,6 @@ function diffFlamebearer(f1: Flamebearer, f2: Flamebearer): Flamebearer {
 }
 
 function Settings() {
-  console.log('settings');
-
-  console.log(f1.flamebearer.levels);
-  f1.flamebearer.levels = deltaDiffWrapper('single', f1.flamebearer.levels);
-  console.log(f1.flamebearer.levels);
-  f2.flamebearer.levels = deltaDiffWrapper('single', f2.flamebearer.levels);
-
   const { path, url } = useRouteMatch();
   const currentUser = useAppSelector(selectCurrentUser);
 
