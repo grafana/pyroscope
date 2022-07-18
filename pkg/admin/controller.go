@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	pstorage "github.com/pyroscope-io/pyroscope/pkg/storage"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -15,6 +15,11 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
+
+type Storage interface {
+	pstorage.AppGetter
+	pstorage.AppDeleter
+}
 
 type Controller struct {
 	log            *logrus.Logger
@@ -26,11 +31,6 @@ type Controller struct {
 
 type UserService interface {
 	UpdateUserByName(ctx context.Context, name string, params model.UpdateUserParams) (model.User, error)
-}
-
-type Storage interface {
-	storage.AppGetter
-	storage.AppDeleter
 }
 
 type StorageService interface {
