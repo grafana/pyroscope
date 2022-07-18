@@ -79,9 +79,9 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v1
       - name: Build image
-        run: make docker-image/fire/build
+        run: make docker-image/fire/build "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
-  build-and-push-image:
+  build-push-and-deploy-image:
     if: github.event_name == 'push' && github.repository == 'grafana/fire'
     runs-on: ubuntu-latest
     steps:
@@ -103,4 +103,12 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCR_JSON_KEY }}
       - name: Build & push multi-arch image
-        run: make docker-image/fire/push IMAGE_PLATFORM=linux/arm64/v8,linux/amd64
+        id: build-push
+        run: |
+          make docker-image/fire/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+      - name: Deploy to fire-dev-001
+        run: |
+          git config --global url."https://grafanabot:${{ secrets.GRAFANABOT_PAT }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
+          make docker-image/fire/deploy-dev-001
+        env:
+          GITHUB_TOKEN: ${{ secrets.GRAFANABOT_PAT }}

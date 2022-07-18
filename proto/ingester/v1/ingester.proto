@@ -9,6 +9,7 @@ service IngesterService {
   rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
   rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
+  rpc Flush(FlushRequest) returns (FlushResponse) {}
 
   // Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
   // but this requires to ensure we have correct timestamp and labels ordering.
@@ -29,6 +30,10 @@ message ProfileTypesResponse {
   repeated string names = 1;
 }
 
+message FlushRequest {}
+
+message FlushResponse {}
+
 message SelectProfilesRequest {
   string labelSelector = 1;
   ProfileType type = 2;
@@ -43,14 +48,16 @@ message SelectProfilesResponse {
 
 // Profile represents a point in time profile.
 message Profile {
+  // The ID of the profile.
+  string ID = 1;
   // The name and type of the profile.
-  ProfileType type = 1;
+  ProfileType type = 2;
   // LabelPair is the key value pairs to identify the corresponding profile
-  repeated common.v1.LabelPair labels = 2;
+  repeated common.v1.LabelPair labels = 3;
   // Timestamp is when that profile was created
-  int64 timestamp = 3;
+  int64 timestamp = 4;
   // The list of stracktraces for the profile with their respective value
-  repeated StacktraceSample stacktraces = 4;
+  repeated StacktraceSample stacktraces = 5;
 }
 
 // ProfileType is the name and type of profile

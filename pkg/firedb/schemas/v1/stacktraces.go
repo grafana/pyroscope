@@ -9,17 +9,17 @@ import (
 var (
 	stacktracesSchema = parquet.NewSchema("Stacktrace", fireparquet.Group{
 		fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("LocationIDs", parquet.Repeated(parquet.Uint(64))),
+		fireparquet.NewGroupField("LocationIDs", parquet.List(parquet.Uint(64))),
 	})
 )
 
 type Stacktrace struct {
-	LocationIDs []uint64 `parquet:","`
+	LocationIDs []uint64 `parquet:",list"`
 }
 
 type storedStacktrace struct {
 	ID          uint64   `parquet:",delta"`
-	LocationIDs []uint64 `parquet:","`
+	LocationIDs []uint64 `parquet:",list"`
 }
 
 type StacktracePersister struct{}
