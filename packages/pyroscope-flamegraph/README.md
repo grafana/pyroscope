@@ -12,6 +12,8 @@ import '@pyroscope/flamegraph/dist/index.css';
 Import the `FlamegraphRenderer` component
 
 ```
+import { FlamegraphRenderer, Box } from '@pyroscope/flamegraph';
+
 const SimpleTree = {
   topLevel: 0,
   rangeMin: 0,
@@ -43,10 +45,21 @@ const SimpleTree = {
 export const Flamegraph = () => {
   return (
     <FlamegraphRenderer
-      flamebearer={SimpleTree}
-      display="flamegraph"
-      viewType="single"
+      profile={SimpleTree}
+      onlyDisplay="flamegraph"
+      showToolbar={false}
     />
   );
 };
+```
+
+We recommend wrapping your component around a `Box` to give it some padding.
+```
+<Box>
+  <FlamegraphRenderer
+    profile={SimpleTree}
+    onlyDisplay="flamegraph"
+    showToolbar={false}
+  />
+</Box>
 ```

@@ -1,11 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { format } from 'date-fns';
+import { getUTCdate } from '@webapp/util/formatDate';
 
 (function ($) {
   const options = {}; // no options
 
   function init(plot) {
+    const plotOptions = plot.getOptions();
+
     this.selecting = false;
     this.tooltipY = 0;
     this.selectingFrom = {
@@ -30,7 +33,12 @@ import { format } from 'date-fns';
       }
 
       try {
-        const d = new Date(date);
+        const d = getUTCdate(
+          new Date(date),
+          plotOptions.xaxis.timezone === 'utc'
+            ? 0
+            : new Date().getTimezoneOffset()
+        );
 
         const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
 
@@ -142,7 +150,7 @@ import { format } from 'date-fns';
     };
 
     // Trying to mimic flot.selection.js
-    const onMouseDown = (evt) => {
+    const onMouseDown = () => {
       // Save selection state
       this.selecting = true;
     };
@@ -169,10 +177,6 @@ import { format } from 'date-fns';
       $tip.css({ position: 'absolute', left: 0, top: 0 });
       $tip.css(tooltipStyle);
       this.$tooltip = $tip;
-    };
-
-    const destroyDomElements = () => {
-      this.$tooltip.remove();
     };
 
     function bindEvents(plot, eventHolder) {

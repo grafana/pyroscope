@@ -1,33 +1,108 @@
 :root {
-  --ps-c-black: #000000;
-  --ps-c-black-light-1: #00000099;
-  --ps-c-black-light-2: #00000054;
-  --ps-c-gray-dark-2: #141414;
-  --ps-c-gray-dark-1: #1b1b1b;
-  --ps-c-gray: #212124;
-  --ps-c-gray-light-1: #333333;
-  --ps-c-gray-light-2: #272727;
-  --ps-c-gray-light-3: #4d4d4d;
-  --ps-c-gray-light-4: #aaaaaa;
-  --ps-c-white-dark-3: #ffffff08;
-  --ps-c-white-dark-2: #ffffff54;
-  --ps-c-white-dark-1: #ffffffa8;
-  --ps-c-white: #e6e6e6;
-  --ps-c-blue-dark-1: #1d49a1;
-  --ps-c-blue-dark: #216ba5;
-  --ps-c-blue: #0074d9;
-  --ps-c-blue-light-1: #0d8eff;
-  --ps-c-blue-light-2: #1398f6;
-  --ps-c-green: #2ecc40;
-  --ps-c-green-light-1: #54d964;
-  --ps-c-green-success: #28a745;
-  --ps-c-red-error: #8a1722;
-  --ps-c-red-danger: #dc3545;
-  --ps-c-red-light: #dc3545;
-  --ps-c-orange-light-1: #e84d3c;
-  --ps-c-orange-light-2: #fc6d26;
-  --ps-c-orange-dark-2: #fc5c0d;
-  --ps-c-orange-dark-1: #e53825;
-  --ps-c-intro-bg-1: #3dc1d3cc;
-  --ps-c-intro-bg-2: #d1283980;
+  --ps-neutral-1: #000000;
+  --ps-neutral-2: #ffffff;
+  --ps-neutral-9: #ffffff08; /* lighter background for table */
+
+  /*
+
+  Colors for the PS UI
+  Depth from furthest back to closest front:
+    1. --ps-ui-background: #2c2c30:   furthest back darkest color in the UI
+    2. --ps-ui-foreground: #212124:   sidebar, box, panel, immediately above background
+    3. --ps-ui-element-bg-primary:    background of "flat" ui elements, such as buttons, dropdown buttons, etc.
+    4. --ps-ui-element-bg-highlight:  highlight of ui elements, selected app, table highlight, 
+  */
+
+  --ps-ui-element-bg-primary: #2c2c30; /* non-selected button background, highlighted button text (when buttons are green) */
+  --ps-ui-element-bg-highlight: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
+
+  --ps-ui-background: #0e0e13; /* background furthest back color */
+  --ps-ui-border: #3b3b44; /* Note: same as --ps-grey-primary */
+  --ps-disabled-button-text: #404047; /* disabled button text */
+  --ps-ui-foreground: #212124; /* sidebar background and "panel"/"box" background */
+  --ps-ui-foreground-text: #d8d8d8; /* sidebar text and datepicker text */
+  --ps-dropdown-background: #2c2c30; /* dropdown background */
+  --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
+
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+
+  --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-shadow: #000000; /* dropdown shadow */
+
+  --ps-button-switch-bg: #2ecc40; /* 3 button switch selected button background */
+  --ps-button-switch-bg-highlight: #61ea71; /* 3 button switch selected button background when hovered*/
+  --ps-button-switch-text: #242428; /* 3 button switch selected button text */
+
+  --ps-blue-primary: #3b78e7; /* Standard blue for button, instructions text (right) */
+  --ps-blue-highlight: #578ae9; /* highlight (hover) blue */
+  --ps-blue-disabled: #5374b0; /* disabled blue */
+
+  --ps-green-primary: #2ecc40; /* standard green for button */
+  --ps-green-highlight: #61ea71; /* highlight (hover) green */
+  --ps-green-disabled: #85c985; /* disabled green */
+
+  --ps-red-primary: #dc3545; /* standard red for button */
+  --ps-red-highlight: #e4606d; /* highlight (hover) red */
+  --ps-red-disabled: #eb8c95; /* disabled red */
+
+  --ps-grey-primary: #3b3b44;
+  --ps-grey-highlight: #47474e;
+  --ps-grey-disabled: #404047;
+
+  --ps-selected-app: #df8b53; /* active selected app color in dropdown */
+
+  --ps-immutable-green-button-text: #242428;
+  --ps-immutable-google-button: #e84d3c; /* sign up with google button */
+  --ps-immutable-google-button-hover: #e53825; /* sign up with google hover */
+  --ps-immutable-gitlab-button: #fc6d26; /* sign up with gitlab button */
+  --ps-immutable-gitlab-button-hover: #fc5c0d; /* sign up with gitlab hover */
+  --ps-immutable-gitlab-button: #3b3b44;
+  --ps-immutable-gitlab-button-hover: #47474e;
+  --ps-immutable-gradient-0: #d1283980; /* used for gradient */
+  --ps-immutable-gradient-1: #3dc1d3cc; /* used for gradient */
+
+  --ps-immutable-off-white: #e6e6e6; /* input background, intro pages text, google,gitlab,github buttons text, */
+  --ps-immutable-linked-border: #eb7b18; /* linked border color */
+  --ps-immutable-white: #ffffff; /* white: Use only when it should be white regardless of color mode */
+  --ps-immutable-placeholder-text: #333333; /* placeholder text color */
+}
+
+[data-theme='light'],
+[data-flamegraph-color-mode='light'] {
+  --ps-neutral-1: #ffffff;
+  --ps-neutral-2: #000000;
+  --ps-neutral-9: #00000008; /* lighter background for table */
+
+  --ps-ui-element-bg-primary: #f8f8f8; /* non-selected button background, highlighted button text (when buttons are green) */
+  --ps-ui-element-bg-highlight: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
+
+  --ps-ui-background: #eaeaea; /* original: background furthest back color */
+  --ps-ui-border: #cccccc; /* border color */
+  --ps-disabled-button-text: #cccccc; /* disabled button text */
+  --ps-ui-foreground: #f8f8f8; /* sidebar background and "panel"/"box" background */
+  --ps-ui-foreground-text: #272727; /* sidebar text and datepicker text */
+  --ps-dropdown-background: #f8f8f8; /* dropdown background */
+  --ps-sidebar-separator: #0000004d; /* sidebar separation lines color */
+
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+
+  --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-shadow: #00000052; /* dropdown shadow */
+
+  --ps-button-switch-bg: #3b78e7; /* 3 button switch selected button background */
+  --ps-button-switch-bg-highlight: #578ae9; /* 3 button switch selected button background when hovered*/
+  --ps-button-switch-text: #ffffff; /* 3 button switch selected button text */
+
+  --ps-selected-app: #3b78e7; /* active selected app color in dropdown */
+
+  --ps-green-primary: #0bdb79; /* standard green */
+  --ps-green-highlight: #5bdc9e; /* highlight (hover) green */
+  --ps-green-disabled: #00a757; /* disabled green */
 }

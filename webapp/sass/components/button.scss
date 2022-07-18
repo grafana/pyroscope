@@ -10,7 +10,7 @@
 
   cursor: pointer;
 
-  border: 1px solid $btn-border-color;
+  border: 1px solid var(--ps-ui-border);
   border-radius: 4px;
   background: $btn-color;
 
@@ -19,23 +19,23 @@
   }
 
   &:disabled {
-    color: var(--ps-c-white-dark-2);
-    color: 1px solid var(--ps-c-white-dark-3);
+    color: var(--ps-ui-foreground-text);
+    color: 1px solid var(--ps-neutral-9);
     pointer-events: none;
   }
 }
 
 // inspired by .viz-switch .btn
 .btn.primary {
-  background-color: var(--ps-c-green-success);
-  border-left-color: var(--ps-c-green-success);
-  border-right-color: var(--ps-c-green-success);
-  border-top-color: var(--ps-c-green-success);
-  border-bottom-color: var(--ps-c-green-success);
+  background-color: var(--ps-green-disabled);
+  border-left-color: var(--ps-green-disabled);
+  border-right-color: var(--ps-green-disabled);
+  border-top-color: var(--ps-green-disabled);
+  border-bottom-color: var(--ps-green-disabled);
   transition: 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
   font-weight: 600;
 
   &:hover {
-    background-color: var(--ps-c-green);
+    background-color: var(--ps-green-primary);
   }
 }

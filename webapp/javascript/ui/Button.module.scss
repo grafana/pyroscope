@@ -1,17 +1,5 @@
-// Variables were intentionally scoped
-// So that we can later refactor into a common variables.scss
-$btn-default-color: #272727; // grey
-$btn-primary-color: #2ecc40; // green
-$btn-secondary-color: #0074d9; // azul
-$btn-danger-color: #dc3545; // red*
-
-$border-color: #4d4d4d;
-
-$border: 1px solid $border-color;
+$border: 1px solid var(--ps-ui-border);
 $border-radius: 4px;
-
-$light-text: #fff;
-$dark-text: #222;
 
 .button {
   white-space: nowrap;
@@ -20,6 +8,12 @@ $dark-text: #222;
   cursor: pointer;
   border: $border;
   border-radius: $border-radius;
+
+  &[type='button'],
+  &[type='reset'],
+  &[type='submit'] {
+    -webkit-appearance: button;
+  }
 
   /* when we have an icon only button */
   //min-width: 48px;
@@ -32,67 +26,55 @@ $dark-text: #222;
 }
 
 .default {
-  background: $btn-default-color;
+  background: var(--ps-ui-element-bg-primary);
 
   &:hover:not(:disabled) {
-    background-color: lighten($btn-default-color, 10%);
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 
   &:disabled {
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--ps-disabled-button-text);
     pointer-events: none;
   }
 }
 
 .primary {
-  color: $dark-text;
-  background-color: $btn-primary-color;
-  border-left-color: $btn-primary-color;
-  border-right-color: $btn-primary-color;
-  border-top-color: $btn-primary-color;
-  border-bottom-color: $btn-primary-color;
+  border: none;
+  color: var(--ps-button-switch-text) !important;
+  background-color: var(--ps-button-switch-bg);
 
   &:hover {
-    background-color: lighten($btn-primary-color, 10%);
+    background-color: var(--ps-button-switch-bg-highlight);
   }
   &:disabled {
-    border-color: lighten($btn-primary-color, 20%);
-    background-color: lighten($btn-primary-color, 20%);
+    background-color: var(--ps-green-disabled);
     pointer-events: none;
   }
 }
 
 .secondary {
-  background-color: $btn-secondary-color;
-  border-left-color: $btn-secondary-color;
-  border-right-color: $btn-secondary-color;
-  border-top-color: $btn-secondary-color;
-  border-bottom-color: $btn-secondary-color;
+  border: none;
+  color: var(--ps-immutable-off-white);
+  background-color: var(--ps-blue-primary);
 
   &:hover {
-    background-color: lighten($btn-secondary-color, 10%);
+    background-color: var(--ps-blue-highlight);
   }
   &:disabled {
-    border-color: lighten($btn-secondary-color, 20%);
-    background-color: lighten($btn-secondary-color, 20%);
+    background-color: var(--ps-blue-disabled);
     pointer-events: none;
   }
 }
 
 .danger {
-  color: $light-text;
-  background-color: $btn-danger-color;
-  border-left-color: $btn-danger-color;
-  border-right-color: $btn-danger-color;
-  border-top-color: $btn-danger-color;
-  border-bottom-color: $btn-danger-color;
-
+  border: none;
+  color: var(--ps-neutral-2);
+  background-color: var(--ps-red-primary);
   &:hover {
-    background-color: lighten($btn-danger-color, 10%);
+    background-color: var(--ps-red-highlight);
   }
   &:disabled {
-    border-color: lighten($btn-danger-color, 20%);
-    background-color: lighten($btn-danger-color, 20%);
+    background-color: var(--ps-red-disabled);
     pointer-events: none;
   }
 }

@@ -237,14 +237,14 @@ export const usersSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(reloadUsers.fulfilled, (state, action) => {
-      state = { type: 'loaded', data: action.payload };
+      return { type: 'loaded', data: action.payload };
     });
 
     builder.addCase(reloadUsers.pending, (state) => {
-      state = { type: 'loading', data: state.data };
+      return { type: 'loading', data: state.data };
     });
     builder.addCase(reloadUsers.rejected, (state) => {
-      state = { type: 'failed', data: state.data };
+      return { type: 'failed', data: state.data };
     });
   },
 });

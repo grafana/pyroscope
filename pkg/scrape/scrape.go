@@ -17,7 +17,7 @@ package scrape
 
 import (
 	"bufio"
-	"compress/gzip"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,24 +28,22 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
 
 var errBodySizeLimit = errors.New("body size limit exceeded")
 
-const spyName = "scrape"
-
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
-	ingester Ingester
+	ingester ingestion.Ingester
 	logger   logrus.FieldLogger
 
 	// Global metrics shared by all pools.
@@ -69,7 +67,7 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *config.Config, ingester Ingester, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, p ingestion.Ingester, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
 	m.pools.Inc()
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
@@ -82,7 +80,7 @@ func newScrapePool(cfg *config.Config, ingester Ingester, logger logrus.FieldLog
 		ctx:           ctx,
 		cancel:        cancel,
 		logger:        logger,
-		ingester:      ingester,
+		ingester:      p,
 		config:        cfg,
 		client:        client,
 		activeTargets: make(map[uint64]*Target),
@@ -143,7 +141,7 @@ func (sp *scrapePool) stop() {
 		}(l)
 		delete(sp.loops, fp)
 		delete(sp.activeTargets, fp)
-		metricsLabels := []string{sp.config.JobName, l.scraper.Target.profile.Path}
+		metricsLabels := []string{sp.config.JobName, l.scraper.Target.config.Path}
 		sp.metrics.profileSize.DeleteLabelValues(metricsLabels...)
 		sp.metrics.profileSamples.DeleteLabelValues(metricsLabels...)
 		sp.metrics.scrapeDuration.DeleteLabelValues(metricsLabels...)
@@ -191,19 +189,8 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 	sp.targetMtx.Lock()
 	for fp, oldLoop := range sp.loops {
 		wg.Add(1)
-		tgt := sp.activeTargets[fp]
-		s := &scraper{
-			Target:        sp.activeTargets[fp],
-			client:        sp.client,
-			timeout:       timeout,
-			bodySizeLimit: bodySizeLimit,
-			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, sp.activeTargets[fp].profile.Path),
-			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
-				SampleTypes: tgt.profile.SampleTypes,
-				Labels:      tgt.Labels().Map(),
-				SpyName:     spyName,
-			}),
-		}
+		t := sp.activeTargets[fp]
+		s := sp.newScraper(t, timeout, bodySizeLimit)
 		n := sp.newScrapeLoop(s, interval, timeout)
 		go func(oldLoop, newLoop *scrapeLoop) {
 			oldLoop.stop()
@@ -218,6 +205,20 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 	oldClient.CloseIdleConnections()
 	sp.poolMetrics.poolReloadIntervalLength.Observe(time.Since(start).Seconds())
 	return nil
+}
+
+func (sp *scrapePool) newScraper(t *Target, timeout time.Duration, bodySizeLimit int64) *scraper {
+	return &scraper{
+		Target:        t,
+		client:        sp.client,
+		timeout:       timeout,
+		bodySizeLimit: bodySizeLimit,
+		targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.config.Path),
+		ingester:      sp.ingester,
+		key:           segment.NewKey(t.Labels().Map()),
+		spyName:       t.SpyName(),
+		cumulative:    t.IsCumulative(),
+	}
 }
 
 // Sync converts target groups into actual scrape targets and synchronizes
@@ -278,19 +279,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 			sp.logger.WithError(err).Errorf("invalid target label")
 		}
 
-		s := &scraper{
-			Target:        t,
-			client:        sp.client,
-			timeout:       timeout,
-			bodySizeLimit: bodySizeLimit,
-			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.profile.Path),
-			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
-				SampleTypes: t.profile.SampleTypes,
-				Labels:      t.Labels().Map(),
-				SpyName:     spyName,
-			}),
-		}
-
+		s := sp.newScraper(t, timeout, bodySizeLimit)
 		l := sp.newScrapeLoop(s, interval, timeout)
 		sp.activeTargets[hash] = t
 		sp.loops[hash] = l
@@ -324,7 +313,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 type scrapeLoop struct {
 	scraper  *scraper
 	logger   logrus.FieldLogger
-	ingester Ingester
+	ingester ingestion.Ingester
 
 	poolMetrics *poolMetrics
 
@@ -336,8 +325,6 @@ type scrapeLoop struct {
 	interval time.Duration
 	timeout  time.Duration
 }
-
-var bufPool = bytebufferpool.Pool{}
 
 func (sl *scrapeLoop) run() {
 	defer close(sl.stopped)
@@ -410,33 +397,40 @@ func (sl *scrapeLoop) scrapeAndReport(t *Target) {
 }
 
 func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
-	buf := bufPool.Get()
 	ctx, cancel := context.WithTimeout(sl.ctx, sl.timeout)
-	defer func() {
-		bufPool.Put(buf)
-		cancel()
-	}()
+	defer cancel()
 	sl.poolMetrics.scrapes.Inc()
+	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
 	case errors.Is(err, context.Canceled):
-		sl.scraper.pprofWriter.Reset()
+		sl.scraper.profile = nil
 		return nil
 	default:
 		sl.poolMetrics.scrapesFailed.Inc()
 		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
-		sl.scraper.pprofWriter.Reset()
+		sl.scraper.profile = nil
 		return err
 	}
+
 	sl.scraper.targetMetrics.profileSize.Observe(float64(buf.Len()))
-	p := tree.ProfileFromVTPool()
-	defer p.ReturnToVTPool()
-	p.Reset()
-	if err := p.UnmarshalVT(buf.Bytes()); err != nil {
-		return err
+	if sl.scraper.profile == nil {
+		sl.scraper.profile = &pprof.RawProfile{
+			SampleTypeConfig: sl.scraper.config.SampleTypes,
+		}
 	}
-	sl.scraper.targetMetrics.profileSamples.Observe(float64(len(p.Sample)))
-	return sl.scraper.pprofWriter.WriteProfile(ctx, startTime, endTime, p)
+
+	profile := sl.scraper.profile
+	sl.scraper.profile = profile.Push(buf.Bytes(), sl.scraper.cumulative)
+	return sl.scraper.ingester.Ingest(ctx, &ingestion.IngestInput{
+		Profile: profile,
+		Metadata: ingestion.Metadata{
+			SpyName:   sl.scraper.spyName,
+			Key:       sl.scraper.key,
+			StartTime: startTime,
+			EndTime:   endTime,
+		},
+	})
 }
 
 func (sl *scrapeLoop) stop() {
@@ -446,7 +440,13 @@ func (sl *scrapeLoop) stop() {
 
 type scraper struct {
 	*Target
-	pprofWriter *pprof.ProfileWriter
+
+	ingester ingestion.Ingester
+	profile  *pprof.RawProfile
+
+	cumulative bool
+	spyName    string
+	key        *segment.Key
 
 	client  *http.Client
 	req     *http.Request
@@ -458,7 +458,7 @@ type scraper struct {
 	*targetMetrics
 }
 
-func (s *scraper) scrape(ctx context.Context, w io.Writer) error {
+func (s *scraper) scrape(ctx context.Context, dst *bytes.Buffer) error {
 	if s.req == nil {
 		req, err := http.NewRequest("GET", s.URL().String(), nil)
 		if err != nil {
@@ -480,33 +480,10 @@ func (s *scraper) scrape(ctx context.Context, w io.Writer) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("server returned HTTP status %s", resp.Status)
 	}
-
 	if s.bodySizeLimit <= 0 {
 		s.bodySizeLimit = math.MaxInt64
 	}
-
-	if s.buf == nil {
-		s.buf = bufio.NewReader(resp.Body)
-	} else {
-		s.buf.Reset(resp.Body)
-	}
-
-	header, err := s.buf.Peek(2)
-	if err != nil {
-		return err
-	}
-
-	r := resp.Body
-	if header[0] == 0x1f && header[1] == 0x8b {
-		gzipr, err := gzip.NewReader(s.buf)
-		if err != nil {
-			return err
-		}
-		r = gzipr
-		defer gzipr.Close()
-	}
-
-	n, err := io.Copy(w, io.LimitReader(r, s.bodySizeLimit))
+	n, err := io.Copy(dst, io.LimitReader(resp.Body, s.bodySizeLimit))
 	if err != nil {
 		return err
 	}

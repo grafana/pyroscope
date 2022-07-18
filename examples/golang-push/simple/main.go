@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"runtime/pprof"
 
@@ -34,11 +35,14 @@ func main() {
 	if serverAddress == "" {
 		serverAddress = "http://localhost:4040"
 	}
-	pyroscope.Start(pyroscope.Config{
+	_, err := pyroscope.Start(pyroscope.Config{
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   serverAddress,
 		Logger:          pyroscope.StandardLogger,
 	})
+	if err != nil {
+		log.Fatalf("error starting pyroscope profiler: %v", err)
+	}
 	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("foo", "bar"), func(c context.Context) {
 		for {
 			fastFunction(c)

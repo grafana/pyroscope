@@ -3,8 +3,6 @@ GOBUILD=go build -trimpath
 ARCH ?= $(shell uname -m)
 OS ?= $(shell uname)
 
-SERVERTARGETS ?= dev server
-SERVERPARAMS ?=$(filter-out $(SERVERTARGETS), $(MAKECMDGOALS))
 
 # if you change the name of this variable please change it in generate-git-info.sh file
 PHPSPY_VERSION ?= be3abd72e8e2dd5dd4e61008fcd702f90c6eb238
@@ -215,11 +213,14 @@ install-dev-tools: ## Install dev tools
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
 .PHONY: web-bootstrap
-web-bootstrap:
+web-bootstrap: install-web-dependencies
 	yarn bootstrap
+# build webapp just to get its dependencies built
+# otherwise when first running, the webapp will fail to build since its deps don't exist yet
+	yarn build:webapp > /dev/null
 
 .PHONY: dev
-dev: web-bootstrap ## Start webpack and pyroscope server. Use this one for working on pyroscope
+dev: install-web-dependencies ## Start webpack and pyroscope server. Use this one for working on pyroscope
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc
@@ -275,7 +276,7 @@ print-deps-error-message:
 	@echo ""
 	exit 1
 
-e2e-build: assets-release build
+e2e-build: build assets-release
 
 help: ## Show this help
 	@egrep '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | sed 's/Makefile://' | awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-z0-9A-Z_-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 }'

@@ -16,7 +16,6 @@
 package scrape
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -25,16 +24,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 // Manager maintains a set of scrape pools and manages start/stop cycles
 // when receiving new target groups from the discovery manager.
 type Manager struct {
 	logger   logrus.FieldLogger
-	ingester Ingester
+	ingester ingestion.Ingester
 	stop     chan struct{}
 
 	*metrics
@@ -48,15 +47,11 @@ type Manager struct {
 	reloadC chan struct{}
 }
 
-type Ingester interface {
-	Enqueue(context.Context, *storage.PutInput)
-}
-
 // NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, ingester Ingester, r prometheus.Registerer) *Manager {
+func NewManager(logger logrus.FieldLogger, p ingestion.Ingester, r prometheus.Registerer) *Manager {
 	c := make(map[string]*config.Config)
 	return &Manager{
-		ingester:      ingester,
+		ingester:      p,
 		logger:        logger,
 		scrapeConfigs: c,
 		scrapePools:   make(map[string]*scrapePool),

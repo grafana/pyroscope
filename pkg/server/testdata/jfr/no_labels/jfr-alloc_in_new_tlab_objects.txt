@@ -1,0 +1,2 @@
+alloc/InNewTLAB.context0;alloc/InNewTLAB.method1 1
+alloc/InNewTLAB.context0;alloc/InNewTLAB.method2 2

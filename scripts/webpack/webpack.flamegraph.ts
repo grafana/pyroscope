@@ -84,7 +84,7 @@ export default [
 
     externals: {
       react: 'react',
-      reactDom: 'react-dom',
+      'react-dom': 'react-dom',
     },
   },
   {
@@ -106,7 +106,7 @@ export default [
 
     externals: {
       react: 'react',
-      reactDom: 'react-dom',
+      'react-dom': 'react-dom',
     },
   },
 ];

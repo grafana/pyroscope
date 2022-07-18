@@ -114,7 +114,8 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rh.httpUtils.WriteResponseJSON(r, w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
-			Unit:      out.Units,
+			// TODO(petethepig): not sure if this conversion is right
+			Unit:      string(out.Units),
 			StartTime: p.gi.StartTime,
 		})
 		out, err := proto.Marshal(pprof)
@@ -171,6 +172,7 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 
 	k := v.Get("name")
 	q := v.Get("query")
+	p.gi.GroupBy = v.Get("groupBy")
 
 	switch {
 	case k == "" && q == "":
@@ -191,6 +193,9 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 
 	p.maxNodes = rh.maxNodesDefault
 	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn > 0 {
+		p.maxNodes = mn
+	}
+	if mn, err := strconv.Atoi(v.Get("maxNodes")); err == nil && mn > 0 {
 		p.maxNodes = mn
 	}
 

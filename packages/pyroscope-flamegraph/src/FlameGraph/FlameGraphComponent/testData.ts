@@ -14,6 +14,7 @@ const TestData = {
     rangeMin: 0,
     format: 'single' as const,
     numTicks: 988,
+    maxSelf: 988,
     sampleRate: 100,
     names: [
       'total',

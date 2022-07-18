@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { isAfter, isSameSecond } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import Button from '@webapp/ui/Button';
-import { formatAsOBject } from '@webapp/util/formatDate';
+import { formatAsOBject, getUTCdate } from '@webapp/util/formatDate';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
+import Select from '@webapp/ui/Select';
+
+import styles from './CustomDatePicker.module.scss';
 
 interface CustomDatePickerProps {
   from: string;
@@ -10,6 +14,11 @@ interface CustomDatePickerProps {
   onSubmit: (from: string, until: string) => void;
 }
 function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
+  const {
+    options: timeZoneOptions,
+    changeTimeZoneOffset,
+    offset,
+  } = useTimeZone();
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),
@@ -41,8 +50,22 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
     });
   }, [from, until]);
 
-  const selectFromAsDate = selectedDate.from;
-  const selectUntilAsDate = selectedDate.until;
+  const selectFromAsDate = getUTCdate(selectedDate.from, offset);
+  const selectUntilAsDate = getUTCdate(selectedDate.until, offset);
+
+  const onDateChange = (date: Date | null, area: 'from' | 'until') => {
+    if (date) {
+      setSelectedDate({
+        ...selectedDate,
+        [area]:
+          offset === 0
+            ? new Date(
+                date.getTime() + date.getTimezoneOffset() * 60 * 1000 * -1
+              )
+            : date,
+      });
+    }
+  };
 
   return (
     <div className="drp-custom">
@@ -52,15 +75,12 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
         <DatePicker
           id="datepicker-from"
           selected={selectFromAsDate}
-          onChange={(date) => {
-            if (date) {
-              setSelectedDate({ ...selectedDate, from: date });
-            }
-          }}
+          onChange={(date) => onDateChange(date, 'from')}
           selectsStart
           showTimeSelect
           startDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
+          className={styles.datepicker}
         />
       </div>
       <div className="until">
@@ -68,17 +88,14 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
         <DatePicker
           id="datepicker-until"
           selected={selectUntilAsDate}
-          onChange={(date) => {
-            if (date) {
-              setSelectedDate({ ...selectedDate, until: date });
-            }
-          }}
+          onChange={(date) => onDateChange(date, 'until')}
           selectsEnd
           showTimeSelect
           startDate={selectFromAsDate}
           endDate={selectUntilAsDate}
           minDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
+          className={styles.datepicker}
         />
       </div>
       {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}
@@ -86,6 +103,23 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
       <Button type="submit" kind="primary" onClick={() => updateDateRange()}>
         Apply range
       </Button>
+
+      <div style={{ marginTop: 10 }}>
+        <label htmlFor="select-timezone">Time Zone: </label>
+        <Select
+          ariaLabel="select-timezone"
+          onChange={(e) => changeTimeZoneOffset(Number(e.target.value))}
+          id="select-timezone"
+          value={String(offset)}
+          disabled={timeZoneOptions.every((o) => o.value === 0)}
+        >
+          {timeZoneOptions.map((o) => (
+            <option key={o.key} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </div>
     </div>
   );
 }

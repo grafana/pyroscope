@@ -15,6 +15,12 @@ export class RequestNotOkError extends CustomError {
   }
 }
 
+export class RequestAbortedError extends CustomError {
+  public constructor(public description: string) {
+    super(`Request was aborted by user. Description: '${description}'`);
+  }
+}
+
 // RequestError refers to when the request is not completed
 // For example CORS errors or timeouts
 // or simply the address is wrong
@@ -98,6 +104,10 @@ export async function request(
       message = e.message;
     }
 
+    if (e instanceof Error && e.name === 'AbortError') {
+      return Result.err(new RequestAbortedError(message));
+    }
+
     return Result.err(new RequestIncompleteError(message));
   }
 
@@ -118,9 +128,10 @@ export async function request(
       // Check if it's 401 unauthorized error
       if (response.status === 401) {
         // TODO: Introduce some kind of interceptor (?)
-        if (!/\/(login|signup)$/.test(window?.location?.pathname)) {
-          window.location.href = mountURL('/login');
-        }
+        // if (!/\/(login|signup)$/.test(window?.location?.pathname)) {
+        //   window.location.href = mountURL('/login');
+        // }
+        return Result.err(new RequestNotOkError(response.status, data.error));
       }
 
       // Usually it's a feedback on user's actions like form validation

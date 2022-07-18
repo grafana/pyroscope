@@ -1,5 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 // ISC License
 
 // Copyright (c) 2018, Mapbox
@@ -19,7 +20,7 @@
 // This component is based on flamebearer project
 //   https://github.com/mapbox/flamebearer
 // TODO import the original file
-export function deltaDiff(levels: any[]) {
+export function deltaDiff(levels: ShamefulAny[]) {
   const levelsCopy = new Array(...levels);
   for (const level of levelsCopy) {
     let prev = 0;

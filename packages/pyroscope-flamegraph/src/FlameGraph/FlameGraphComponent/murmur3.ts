@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /*
 
 Copyright (c) 2011 Gary Court
@@ -58,13 +59,14 @@ export default function murmurhash3_32_gc(key: string, seed = 0) {
   switch (remainder) {
     case 3:
       k1 ^= (key.charCodeAt(i + 2) & 0xff) << 16;
-      break;
+    // fall through
     case 2:
       k1 ^= (key.charCodeAt(i + 1) & 0xff) << 8;
-      break;
-    default:
+    // fall through
+    case 1:
       k1 ^= key.charCodeAt(i) & 0xff;
-
+    // fall through
+    default:
       k1 =
         ((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) &
         0xffffffff;

@@ -2,7 +2,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { type User } from '@webapp/models/users';
 import { connect, useSelector } from 'react-redux';
-import { PAGES } from '@webapp/pages/constants';
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
@@ -33,11 +32,7 @@ export const loadCurrentUser = createAsyncThunk(
 
     // Suppress 401 error on login screen
     // TODO(petethepig): we need a better way of handling this exception
-    if (
-      'code' in res.error &&
-      (window?.location?.pathname?.endsWith(PAGES.LOGIN) ||
-        window?.location?.pathname?.endsWith(PAGES.SIGNUP))
-    ) {
+    if ('code' in res.error && res.error.code === 401) {
       return Promise.reject(res.error);
     }
 
@@ -59,7 +54,7 @@ const userSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(loadCurrentUser.fulfilled, (state, action) => {
-      return { type: 'loaded', data: action.payload as User };
+      return { type: 'loaded', data: action.payload };
     });
     builder.addCase(loadCurrentUser.pending, (state) => {
       return { type: 'loading', data: state.data };

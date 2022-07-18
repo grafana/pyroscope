@@ -294,6 +294,10 @@ var _ = Describe("flags", func() {
 					},
 					AdminSocketPath: "/tmp/pyroscope.sock",
 
+					RemoteWrite: config.RemoteWrite{
+						Enabled: true,
+					},
+
 					ScrapeConfigs: []*scrape.Config{
 						{
 							JobName:          "testing",
@@ -307,7 +311,7 @@ var _ = Describe("flags", func() {
 								discovery.StaticConfig{
 									{
 										Targets: []sm.LabelSet{
-											{"__address__": "localhost:6060", "__name__": "app"},
+											{"__address__": "localhost:6060", "__name__": "app", "__spy_name__": ""},
 										},
 										Labels: sm.LabelSet{"foo": "bar"},
 										Source: "0",

@@ -4,6 +4,7 @@ scrape-configs:
     enabled-profiles: [cpu, mem]
     static-configs:
       - application: mattermost
+        spy-name: gospy
         targets:
           - mattermost:8067
         labels:

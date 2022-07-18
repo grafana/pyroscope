@@ -256,4 +256,52 @@ describe('getPackageNameFromStackTrace', () => {
       });
     });
   });
+
+  describe('nodejs spy', () => {
+    describe.each([
+      ['total', 'total'],
+      ['./node_modules/node-fetch/lib/index.js:fetch:1493', 'node-fetch'],
+      [
+        './node_modules/@pyroscope-node/dist/pull/index.js:sampleFunction:1827',
+        '@pyroscope-node',
+      ],
+      ['node:net:Socket:320', 'node:net'],
+      [':(idle):0', ''],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('nodespy', a)).toBe(expected);
+      });
+    });
+  });
+
+  describe('java spy', () => {
+    describe.each([
+      [
+        'org/apache/catalina/core/ApplicationFilterChain.doFilter',
+        'org/apache/catalina/core/',
+      ],
+      [
+        'org/apache/catalina/core/ApplicationFilterChain.internalDoFilter',
+        'org/apache/catalina/core/',
+      ],
+      [
+        'org/apache/coyote/AbstractProcessorLight.process',
+        'org/apache/coyote/',
+      ],
+      [
+        'org/springframework/web/servlet/DispatcherServlet.doService',
+        'org/springframework/web/servlet/',
+      ],
+      [
+        'org/example/rideshare/RideShareController.orderCar',
+        'org/example/rideshare/',
+      ],
+      ['org/example/rideshare/OrderService.orderCar', 'org/example/rideshare/'],
+      ['total', 'total'],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('javaspy', a)).toBe(expected);
+      });
+    });
+  });
 });

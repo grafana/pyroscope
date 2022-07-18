@@ -62,6 +62,7 @@ function UserAddForm() {
           name="name"
           value={form.name}
           onChange={handleFormChange}
+          type="text"
         />
         <InputField
           label="Email"
@@ -69,6 +70,7 @@ function UserAddForm() {
           name="email"
           value={form.email}
           onChange={handleFormChange}
+          type="text"
         />
         <InputField
           label="Full name"
@@ -76,6 +78,7 @@ function UserAddForm() {
           name="fullName"
           value={form.fullName}
           onChange={handleFormChange}
+          type="text"
         />
         <InputField
           label="Password"
@@ -83,6 +86,7 @@ function UserAddForm() {
           name="password"
           type="password"
           onChange={handleFormChange}
+          value={form.password}
         />
         <div>
           <Button

@@ -15,7 +15,7 @@ type FsWriter struct{}
 
 func (*FsWriter) WriteFile(dest string, data []byte) (string, error) {
 	if _, err := os.Stat(dest); err != nil && !os.IsNotExist(err) {
-		// unkown error
+		// unknown error
 		return "", err
 	}
 

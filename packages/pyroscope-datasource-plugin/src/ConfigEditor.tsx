@@ -70,9 +70,7 @@ export class ConfigEditor extends PureComponent<Props, unknown> {
             inputWidth={20}
             onChange={this.onAPIKeyChange}
             onReset={this.onAPIKeyReset}
-            isConfigured={
-              (secureJsonFields && secureJsonFields.apiKey) as boolean
-            }
+            isConfigured={secureJsonFields && secureJsonFields.apiKey}
             value={secureJsonData.apiKey || ''}
             placeholder="Your API Key"
           />

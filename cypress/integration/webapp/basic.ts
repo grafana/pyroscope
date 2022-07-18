@@ -20,7 +20,7 @@ describe('basic test', () => {
     cy.findByLabelText(/Refresh apps/i).click();
     cy.wait(`@labelValues`);
 
-    cy.get('.navbar').findByRole('button', { expanded: false }).click();
+    cy.get('.navbar').findAllByTestId('app_selector_toggle_button').click();
 
     // For some reason couldn't find the appropriate query
     cy.findAllByRole('menuitem').then((items) => {
@@ -35,22 +35,6 @@ describe('basic test', () => {
       const queryParams = new URLSearchParams(loc.search);
       expect(queryParams.get('query')).to.eq('pyroscope.server.inuse_space{}');
     });
-  });
-
-  it('highlights nodes that match a search query', () => {
-    cy.intercept('**/render*', {
-      fixture: 'simple-golang-app-cpu.json',
-    }).as('render');
-
-    cy.visit('/');
-
-    cy.findByTestId('flamegraph-search').type('main');
-
-    cy.waitForFlamegraphToRender().get('[data-highlightquery="main"]');
-
-    cy.waitForFlamegraphToRender().matchImageSnapshot(
-      'simple-golang-app-cpu-highlight'
-    );
   });
 
   it('view buttons should change view when clicked', () => {
@@ -185,13 +169,13 @@ describe('basic test', () => {
 
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
 
-      cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
+      cy.waitForFlamegraphToRender().trigger('mousemove');
       cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
-      cy.findByTestId('flamegraph-tooltip-body').should(
+      cy.findByTestId('flamegraph-tooltip-table').should(
         'have.text',
-        '100%, 988 samples, 9.88 seconds'
+        'Share of CPU:100%CPU Time:9.88 secondsSamples:988'
       );
 
       cy.waitForFlamegraphToRender().trigger('mouseout');
@@ -228,7 +212,7 @@ describe('basic test', () => {
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
-      findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove', 0, 0);
+      findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove');
 
       findFlamegraph(1).findByTestId('flamegraph-tooltip').should('be.visible');
 
@@ -236,10 +220,13 @@ describe('basic test', () => {
         .findByTestId('flamegraph-tooltip-title')
         .should('have.text', 'total');
       findFlamegraph(1)
-        .findByTestId('flamegraph-tooltip-body')
-        .should('have.text', '100%, 991 samples, 9.91 seconds');
+        .findByTestId('flamegraph-tooltip-table')
+        .should(
+          'have.text',
+          'Share of CPU:100%CPU Time:9.91 secondsSamples:991'
+        );
 
-      findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove', 0, 0);
+      findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove');
       findFlamegraph(1).waitForFlamegraphToRender().trigger('mouseout');
 
       findFlamegraph(1)
@@ -262,8 +249,11 @@ describe('basic test', () => {
         .findByTestId('flamegraph-tooltip-title')
         .should('have.text', 'total');
       findFlamegraph(2)
-        .findByTestId('flamegraph-tooltip-body')
-        .should('have.text', '100%, 988 samples, 9.88 seconds');
+        .findByTestId('flamegraph-tooltip-table')
+        .should(
+          'have.text',
+          'Share of CPU:100%CPU Time:9.88 secondsSamples:988'
+        );
 
       findFlamegraph(2)
         .waitForFlamegraphToRender()
@@ -291,17 +281,15 @@ describe('basic test', () => {
 
       // This test has a race condition, since it does not wait for the canvas to be rendered
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+      cy.get('div.spinner-container.loaded');
+
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
-      cy.findByTestId('flamegraph-tooltip-left').should(
+      cy.findByTestId('flamegraph-tooltip-table').should(
         'have.text',
-        'Left: 991 samples, 9.91 seconds (100%)'
-      );
-      cy.findByTestId('flamegraph-tooltip-right').should(
-        'have.text',
-        'Right: 987 samples, 9.87 seconds (100%)'
+        'BaselineComparisonDiffShare of CPU:100%100%CPU Time:9.91 seconds9.87 secondsSamples:991987'
       );
     });
   });

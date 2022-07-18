@@ -5,8 +5,8 @@ import { useAppDispatch, useOldRootSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import { Profile } from '@pyroscope/models';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { Profile } from '@pyroscope/models/src';
 import classNames from 'classnames';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -81,6 +81,7 @@ function AdhocSingle() {
           )}
           {!isProfileLoading && (
             <FlamegraphRenderer
+              showCredit={false}
               flamebearer={flamebearer}
               ExportData={
                 <ExportData

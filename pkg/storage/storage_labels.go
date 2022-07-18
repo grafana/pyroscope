@@ -23,15 +23,16 @@ func (s *Storage) GetValues(_ context.Context, key string, cb func(v string) boo
 	})
 }
 
-func (s *Storage) GetKeysByQuery(_ context.Context, query string, cb func(_k string) bool) error {
-	parsedQuery, err := flameql.ParseQuery(query)
+func (s *Storage) GetKeysByQuery(_ context.Context, in GetLabelKeysByQueryInput) (GetLabelKeysByQueryOutput, error) {
+	var output GetLabelKeysByQueryOutput
+	parsedQuery, err := flameql.ParseQuery(in.Query)
 	if err != nil {
-		return err
+		return output, err
 	}
 
 	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
 	if err != nil {
-		return err
+		return output, err
 	}
 	dimensionKeys := s.dimensionKeysByKey(segmentKey)
 
@@ -45,52 +46,41 @@ func (s *Storage) GetKeysByQuery(_ context.Context, query string, cb func(_k str
 		}
 	}
 
-	resultList := []string{}
 	for v := range resultSet {
-		resultList = append(resultList, v)
+		output.Keys = append(output.Keys, v)
 	}
 
-	sort.Strings(resultList)
-	for _, v := range resultList {
-		if !cb(v) {
-			break
-		}
-	}
-	return nil
+	sort.Strings(output.Keys)
+	return output, nil
 }
 
-func (s *Storage) GetValuesByQuery(_ context.Context, label string, query string, cb func(v string) bool) error {
-	parsedQuery, err := flameql.ParseQuery(query)
+func (s *Storage) GetValuesByQuery(_ context.Context, in GetLabelValuesByQueryInput) (GetLabelValuesByQueryOutput, error) {
+	var output GetLabelValuesByQueryOutput
+	parsedQuery, err := flameql.ParseQuery(in.Query)
 	if err != nil {
-		return err
+		return output, err
 	}
 
 	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
 	if err != nil {
-		return err
+		return output, err
 	}
 	dimensionKeys := s.dimensionKeysByKey(segmentKey)
 
 	resultSet := map[string]bool{}
 	for _, dk := range dimensionKeys() {
 		dkParsed, _ := segment.ParseKey(string(dk))
-		if v, ok := dkParsed.Labels()[label]; ok {
+		if v, ok := dkParsed.Labels()[in.Label]; ok {
 			resultSet[v] = true
 		}
 	}
 
-	resultList := []string{}
 	for v := range resultSet {
-		resultList = append(resultList, v)
+		output.Values = append(output.Values, v)
 	}
 
-	sort.Strings(resultList)
-	for _, v := range resultList {
-		if !cb(v) {
-			break
-		}
-	}
-	return nil
+	sort.Strings(output.Values)
+	return output, nil
 }
 
 // GetAppNames returns the list of all app's names

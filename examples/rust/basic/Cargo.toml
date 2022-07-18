@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pyroscope = "0.4"
-pyroscope_pprofrs = "0.1"
+pyroscope = "0.5"
+pyroscope_pprofrs = "0.2"

@@ -1,7 +1,7 @@
 import React from 'react';
 // import { SimpleSingle as TestData } from '@utils/testData';
 import { render, screen } from '@testing-library/react';
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 import ExportData, { getFilename } from './ExportData';
 
 describe('ExportData', () => {
@@ -9,7 +9,7 @@ describe('ExportData', () => {
     // ignore console.error since jsdom will complain
     jest.spyOn(global.console, 'error').mockImplementation(() => jest.fn());
 
-    expect(() => render(<ExportData />)).toThrow();
+    expect(() => render(<ExportData flamebearer={{} as any} />)).toThrow();
 
     jest.restoreAllMocks();
   });

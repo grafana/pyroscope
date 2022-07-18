@@ -8,12 +8,14 @@ import {
   fetchTagValues,
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
 import useTimelines, {
   leftColor,
   rightColor,
 } from '@webapp/hooks/timeline.hook';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
@@ -21,9 +23,12 @@ import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import InstructionText from '@webapp/components/InstructionText';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import TimelineTitle from '@webapp/components/TimelineTitle';
+import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
+  const { colorMode } = useColorMode();
   const {
     diffView,
     refreshToken,
@@ -43,9 +48,12 @@ function ComparisonDiffApp() {
     diffView.profile
   );
 
+  const { offset } = useTimeZone();
+  const timezone = offset === 0 ? 'utc' : 'browser';
+
   useEffect(() => {
     if (rightQuery && leftQuery) {
-      dispatch(
+      const fetchData = dispatch(
         fetchDiffView({
           leftQuery,
           leftFrom,
@@ -56,7 +64,9 @@ function ComparisonDiffApp() {
           rightUntil,
         })
       );
+      return fetchData.abort;
     }
+    return undefined;
   }, [
     leftFrom,
     leftUntil,
@@ -75,7 +85,7 @@ function ComparisonDiffApp() {
       exportPNG
       // disable this until we fix it
       //      exportHTML
-      exportFlamegraphDotCom
+      exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
   );
@@ -86,81 +96,93 @@ function ComparisonDiffApp() {
         <Toolbar
           hideTagsBar
           onSelectedName={(query) => {
-            dispatch(actions.setRightQuery(query));
-            dispatch(actions.setLeftQuery(query));
             dispatch(actions.setQuery(query));
           }}
         />
-        <TimelineChartWrapper
-          data-testid="timeline-main"
-          id="timeline-chart-diff"
-          format="lines"
-          timelineA={leftTimeline}
-          timelineB={rightTimeline}
-          onSelect={(from, until) => {
-            dispatch(actions.setFromAndUntil({ from, until }));
-          }}
-          markings={{
-            left: { from: leftFrom, to: leftUntil, color: leftColor },
-            right: { from: rightFrom, to: rightUntil, color: rightColor },
-          }}
-        />
         <Box>
-          <div className="diff-instructions-wrapper">
-            <div className="diff-instructions-wrapper-side">
-              <TagsBar
-                query={leftQuery}
-                tags={leftTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setLeftQuery(q));
-                }}
-                onSelectedLabel={(label, query) => {
-                  dispatch(fetchTagValues({ query, label }));
-                }}
-              />
-              <InstructionText viewType="diff" viewSide="left" />
-              <TimelineChartWrapper
-                data-testid="timeline-left"
-                key="timeline-chart-left"
-                id="timeline-chart-left"
-                timelineA={leftTimeline}
-                onSelect={(from, until) => {
-                  dispatch(actions.setLeft({ from, until }));
-                }}
-                markings={{
-                  left: { from: leftFrom, to: leftUntil, color: leftColor },
-                }}
-              />
-            </div>
-            <div className="diff-instructions-wrapper-side">
-              <TagsBar
-                query={rightQuery}
-                tags={rightTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setRightQuery(q));
-                }}
-                onSelectedLabel={(label, query) => {
-                  dispatch(fetchTagValues({ query, label }));
-                }}
-              />
-              <InstructionText viewType="diff" viewSide="right" />
-              <TimelineChartWrapper
-                data-testid="timeline-right"
-                key="timeline-chart-right"
-                id="timeline-chart-right"
-                timelineA={rightTimeline}
-                onSelect={(from, until) => {
-                  dispatch(actions.setRight({ from, until }));
-                }}
-                markings={{
-                  right: { from: rightFrom, to: rightUntil, color: rightColor },
-                }}
-              />
-            </div>
-          </div>
+          <TimelineChartWrapper
+            data-testid="timeline-main"
+            id="timeline-chart-diff"
+            format="lines"
+            height="125px"
+            timelineA={leftTimeline}
+            timelineB={rightTimeline}
+            onSelect={(from, until) => {
+              dispatch(actions.setFromAndUntil({ from, until }));
+            }}
+            markings={{
+              left: { from: leftFrom, to: leftUntil, color: leftColor },
+              right: { from: rightFrom, to: rightUntil, color: rightColor },
+            }}
+            timezone={timezone}
+            title={
+              <TimelineTitle titleKey={diffView.profile?.metadata.units} />
+            }
+          />
+        </Box>
+        <div className="diff-instructions-wrapper">
+          <Box className="diff-instructions-wrapper-side">
+            <TimelineTitle titleKey="baseline" color={leftColor} />
+            <TagsBar
+              query={leftQuery}
+              tags={leftTags}
+              onSetQuery={(q) => {
+                dispatch(actions.setLeftQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
+            <InstructionText viewType="diff" viewSide="left" />
+            <TimelineChartWrapper
+              data-testid="timeline-left"
+              key="timeline-chart-left"
+              id="timeline-chart-left"
+              timelineA={leftTimeline}
+              onSelect={(from, until) => {
+                dispatch(actions.setLeft({ from, until }));
+              }}
+              markings={{
+                left: { from: leftFrom, to: leftUntil, color: leftColor },
+              }}
+              timezone={timezone}
+            />
+          </Box>
+          <Box className="diff-instructions-wrapper-side">
+            <TimelineTitle titleKey="comparison" color={rightColor} />
+            <TagsBar
+              query={rightQuery}
+              tags={rightTags}
+              onSetQuery={(q) => {
+                dispatch(actions.setRightQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
+            <InstructionText viewType="diff" viewSide="right" />
+            <TimelineChartWrapper
+              data-testid="timeline-right"
+              key="timeline-chart-right"
+              id="timeline-chart-right"
+              timelineA={rightTimeline}
+              onSelect={(from, until) => {
+                dispatch(actions.setRight({ from, until }));
+              }}
+              markings={{
+                right: { from: rightFrom, to: rightUntil, color: rightColor },
+              }}
+              timezone={timezone}
+            />
+          </Box>
+        </div>
+        <Box>
+          <TimelineTitle titleKey="diff" />
           <FlamegraphRenderer
+            showCredit={false}
             profile={diffView.profile}
             ExportData={exportData}
+            colorMode={colorMode}
           />
         </Box>
       </div>

@@ -10,6 +10,7 @@ import Button from '@webapp/ui/Button';
 import { readableRange } from '@webapp/util/formatDate';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import OutsideClickHandler from 'react-outside-click-handler';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
 import CustomDatePicker from './CustomDatePicker';
 import CheckIcon from './CheckIcon';
 
@@ -43,18 +44,19 @@ function findPreset(from: string, until = 'now') {
     .find((a) => from === a.from);
 }
 
-function dateToLabel(from: string, until: string) {
+function dateToLabel(from: string, until: string, offsetInMinutes: number) {
   const preset = findPreset(from, until);
 
   if (preset) {
     return preset.label;
   }
 
-  return readableRange(from, until);
+  return readableRange(from, until, offsetInMinutes);
 }
 
 function DateRangePicker() {
   const dispatch = useAppDispatch();
+  const { offset } = useTimeZone();
   const { from, until } = useAppSelector(selectContinuousState);
   const [opened, setOpened] = useState(false);
 
@@ -71,14 +73,18 @@ function DateRangePicker() {
   };
 
   const isPresetSelected = (preset: typeof defaultPresets[0][0]) => {
-    return preset.label === dateToLabel(from, until);
+    return preset.label === dateToLabel(from, until, offset);
   };
 
   return (
     <div className={opened ? 'drp-container opened' : 'drp-container'}>
       <OutsideClickHandler onOutsideClick={hideDropdown}>
-        <Button icon={faClock} onClick={toggleDropdown}>
-          {dateToLabel(from, until)}
+        <Button
+          data-testid="time-dropdown-button"
+          icon={faClock}
+          onClick={toggleDropdown}
+        >
+          {dateToLabel(from, until, offset)}
         </Button>
         <div className="drp-dropdown">
           <div className="drp-quick-presets">

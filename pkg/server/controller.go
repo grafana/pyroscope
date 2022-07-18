@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -19,6 +20,7 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/sirupsen/logrus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
@@ -31,6 +33,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
@@ -38,8 +41,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 	"github.com/pyroscope-io/pyroscope/webapp"
-
-	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 )
 
 //revive:disable:max-public-structs TODO: we will refactor this later
@@ -54,6 +55,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
+	ingestser  ingestion.Ingester
 	log        *logrus.Logger
 	httpServer *http.Server
 	db         *gorm.DB
@@ -70,7 +72,6 @@ type Controller struct {
 
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
-	exporter        storage.MetricsExporter
 
 	// Adhoc mode
 	adhoc adhocserver.Server
@@ -86,16 +87,15 @@ type Controller struct {
 type Config struct {
 	Configuration *config.Server
 	*logrus.Logger
+	// TODO(kolesnikovae): Ideally, Storage should be decomposed.
 	*storage.Storage
+	ingestion.Ingester
 	*gorm.DB
 	Notifier
 
 	// The registerer is used for exposing server metrics.
-	MetricsRegisterer prometheus.Registerer
-
-	// Exported metrics registry and exported.
+	MetricsRegisterer       prometheus.Registerer
 	ExportedMetricsRegistry *prometheus.Registry
-	storage.MetricsExporter
 
 	Adhoc adhocserver.Server
 
@@ -112,6 +112,7 @@ type Notifier interface {
 	// TODO(kolesnikovae): we should poll for notifications (or subscribe).
 	NotificationText() string
 }
+
 type TargetsResponse struct {
 	Job                string              `json:"job"`
 	TargetURL          string              `json:"url"`
@@ -135,7 +136,7 @@ func New(c Config) (*Controller, error) {
 		config:    c.Configuration,
 		log:       c.Logger,
 		storage:   c.Storage,
-		exporter:  c.MetricsExporter,
+		ingestser: c.Ingester,
 		notifier:  c.Notifier,
 		stats:     make(map[string]int),
 		appStats:  mustNewHLL(),
@@ -223,7 +224,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	assetsHandler := r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP
 	ctrl.addRoutes(r, append(insecureRoutes, []route{
-		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", assetsHandler}}...),
 		ctrl.drainMiddleware)
 
@@ -240,19 +240,43 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/adhoc-comparison-diff", ih},
 		{"/settings", ih},
 		{"/settings/{page}", ih},
-		{"/settings/{page}/{subpage}", ih}},
+		{"/settings/{page}/{subpage}", ih},
+		{"/forbidden", ih}},
 		ctrl.drainMiddleware,
-		ctrl.authMiddleware(ctrl.loginRedirect))
+		ctrl.authMiddleware(ctrl.indexHandler()))
+
+	routes := []route{}
+	if ctrl.config.RemoteRead.Enabled {
+		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
+		if err != nil {
+			logrus.WithError(err).Error("failed to initialize remote read handler")
+		} else {
+			routes = append(routes, []route{
+				{"/render", h},
+				{"/render-diff", h},
+				{"/merge", h},
+				{"/labels", h},
+				{"/label-values", h},
+				{"/export", h},
+			}...)
+		}
+	} else {
+		routes = append(routes, []route{
+			{"/render", ctrl.renderHandler()},
+			{"/render-diff", ctrl.renderDiffHandler()},
+			{"/merge", ctrl.mergeHandler()},
+			{"/labels", ctrl.labelsHandler()},
+			{"/label-values", ctrl.labelValuesHandler()},
+			{"/export", ctrl.exportHandler()},
+		}...)
+	}
+
+	routes = append(routes, []route{
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
+	}...)
 
 	// For these routes server responds with 401.
-	ctrl.addRoutes(r, []route{
-		{"/render", ctrl.renderHandler()},
-		{"/render-diff", ctrl.renderDiffHandler()},
-		{"/merge", ctrl.mergeHandler()},
-		{"/labels", ctrl.labelsHandler()},
-		{"/label-values", ctrl.labelValuesHandler()},
-		{"/export", ctrl.exportHandler()},
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
+	ctrl.addRoutes(r, routes,
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
 
@@ -293,7 +317,11 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/healthz", ctrl.healthz},
 	})
 
-	r.NotFoundHandler = ctrl.notfoundHandler()
+	// Respond with 404 for all other routes.
+	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		ih(w, r)
+	})
 
 	return r, nil
 }
@@ -388,7 +416,10 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	return ctrl.corsMiddleware()(gzhttpMiddleware(handler)), nil
+	h := ctrl.corsMiddleware()(gzhttpMiddleware(handler))
+	h = ctrl.logginMiddleware(h)
+
+	return h, nil
 }
 
 func (ctrl *Controller) Start() error {
@@ -519,4 +550,14 @@ func expectFormats(format string) error {
 	default:
 		return errUnknownFormat
 	}
+}
+
+func (ctrl *Controller) logginMiddleware(next http.Handler) http.Handler {
+	if ctrl.config.LogLevel == "debug" {
+		// log to Stdout using Apache Common Log Format
+		// TODO maybe use JSON?
+		return handlers.LoggingHandler(os.Stdout, next)
+	}
+
+	return next
 }

@@ -14,7 +14,7 @@ function randomName() {
 }
 
 // assume this is probably the first app when ordered alphabetically
-const firstApp = 'aaaaa';
+const firstApp = '0';
 
 describe('E2E Tests', () => {
   // TODO:
@@ -64,7 +64,7 @@ describe('E2E Tests', () => {
 
     cy.visit(`/?${params.toString()}`);
 
-    cy.waitForFlamegraphToRender().matchImageSnapshot(`e2e-single-flamegraph`);
+    cy.waitForFlamegraphToRender();
   });
 
   it('tests /comparison view', () => {
@@ -86,14 +86,10 @@ describe('E2E Tests', () => {
     };
 
     // flamegraph 1 (the left one)
-    findFlamegraph(1)
-      .waitForFlamegraphToRender()
-      .matchImageSnapshot(`e2e-comparison-flamegraph-left`);
+    findFlamegraph(1).waitForFlamegraphToRender();
 
     // flamegraph 2 (the right one)
-    findFlamegraph(2)
-      .waitForFlamegraphToRender()
-      .matchImageSnapshot(`e2e-comparison-flamegraph-right`);
+    findFlamegraph(2).waitForFlamegraphToRender();
   });
 
   it('works with standalone view', () => {
@@ -108,9 +104,7 @@ describe('E2E Tests', () => {
     params.set('format', 'html');
 
     cy.visit(`/render?${params.toString()}`);
-    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
-      `e2e-render-standalone`
-    );
+    cy.findByTestId('flamegraph-canvas');
   });
 
   // This is tested as an e2e test

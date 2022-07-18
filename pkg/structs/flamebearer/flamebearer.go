@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -18,6 +19,7 @@ type FlamebearerProfile struct {
 	// Version of the data format. No version / version zero is an unformalized format.
 	Version uint `json:"version"`
 	FlamebearerProfileV1
+	Telemetry map[string]interface{} `json:"telemetry,omitempty"`
 }
 
 // swagger:model
@@ -30,7 +32,8 @@ type FlamebearerProfileV1 struct {
 	// required: true
 	Metadata FlamebearerMetadataV1 `json:"metadata"`
 	// Timeline associated to the profile, used for continuous profiling only.
-	Timeline *FlamebearerTimelineV1 `json:"timeline"`
+	Timeline *FlamebearerTimelineV1            `json:"timeline"`
+	Groups   map[string]*FlamebearerTimelineV1 `json:"groups"`
 	// Number of samples in the left / base profile. Only used in "double" format.
 	LeftTicks uint64 `json:"leftTicks,omitempty"`
 	// Number of samples in the right / diff profile. Only used in "double" format.
@@ -80,7 +83,7 @@ type FlamebearerMetadataV1 struct {
 	// Sample rate at which the profiler was operating.
 	SampleRate uint32 `json:"sampleRate"`
 	// The unit of measurement for the profiled data.
-	Units string `json:"units"`
+	Units metadata.Units `json:"units"`
 	// A name that identifies the profile.
 	Name string `json:"name"`
 }
@@ -106,8 +109,18 @@ func NewProfile(name string, output *storage.GetOutput, maxNodes int) Flamebeare
 			Flamebearer: newFlambearer(fb),
 			Metadata:    newMetadata(name, fb.Format, output),
 			Timeline:    NewTimeline(output.Timeline),
+			Groups:      convertGroups(output.Groups),
 		},
+		Telemetry: output.Telemetry,
 	}
+}
+
+func convertGroups(v map[string]*segment.Timeline) map[string]*FlamebearerTimelineV1 {
+	res := make(map[string]*FlamebearerTimelineV1)
+	for k, v := range v {
+		res[k] = NewTimeline(v)
+	}
+	return res
 }
 
 func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes int) (FlamebearerProfile, error) {

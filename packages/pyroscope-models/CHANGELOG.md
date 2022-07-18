@@ -3,6 +3,55 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.2.1...@pyroscope/models@0.2.2) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+## [0.2.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.2.0...@pyroscope/models@0.2.1) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+# [0.2.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.1.0...@pyroscope/models@0.2.0) (2022-07-11)
+
+
+### Features
+
+* **flamegraph:** Add support for visualizing traces ([#1233](https://github.com/pyroscope-io/pyroscope/issues/1233)) ([b15d094](https://github.com/pyroscope-io/pyroscope/commit/b15d094ebb06592a406b4b73485c0f316c411b08))
+
+
+
+
+
+# [0.1.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.0.7...@pyroscope/models@0.1.0) (2022-06-27)
+
+
+### Features
+
+* adds proper support for goroutines, block, mutex profiling ([#1178](https://github.com/pyroscope-io/pyroscope/issues/1178)) ([b2e680c](https://github.com/pyroscope-io/pyroscope/commit/b2e680cfbf3c24856543f3a5478204cc24d7cbf7))
+
+
+
+
+
+## [0.0.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.0.6...@pyroscope/models@0.0.7) (2022-04-25)
+
+
+### Bug Fixes
+
+* **jfr:** fixes a parser regression introduced in 1.15.0 ([#1050](https://github.com/pyroscope-io/pyroscope/issues/1050)) ([946468d](https://github.com/pyroscope-io/pyroscope/commit/946468dbf42ff4450edc94762812ddb4a5f3482d))
+
+
+
+
+
 ## [0.0.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.0.5...@pyroscope/models@0.0.6) (2022-04-11)
 
 **Note:** Version bump only for package @pyroscope/models

@@ -1,6 +1,8 @@
 ---
 auth:
   signup-default-role: Admin
+  internal:
+    enabled: true
 
   gitlab:
     enabled: true

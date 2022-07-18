@@ -63,7 +63,10 @@ func dumpJSON(w io.Writer) error {
 
 type ingester struct{ actual []*storage.PutInput }
 
-func (m *ingester) Enqueue(_ context.Context, p *storage.PutInput) { m.actual = append(m.actual, p) }
+func (m *ingester) Put(_ context.Context, p *storage.PutInput) error {
+	m.actual = append(m.actual, p)
+	return nil
+}
 
 func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error {
 	c := tree.DefaultSampleTypeMapping
@@ -84,13 +87,14 @@ func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error
 	}
 
 	x := new(ingester)
-	pw := pprof.NewProfileWriter(x, pprof.ProfileWriterConfig{
+	pw := pprof.NewParser(pprof.ParserConfig{
+		Putter:      x,
 		SampleTypes: c,
 		SpyName:     "spy-name",
 		Labels:      nil,
 	})
 
-	if err = pw.WriteProfile(context.TODO(), time.Time{}, time.Time{}, p); err != nil {
+	if err = pw.Convert(context.TODO(), time.Time{}, time.Time{}, p); err != nil {
 		return fmt.Errorf("parsing pprof: %w", err)
 	}
 

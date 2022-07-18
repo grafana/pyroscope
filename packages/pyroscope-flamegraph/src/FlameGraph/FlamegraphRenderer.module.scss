@@ -30,15 +30,9 @@
 }
 
 .panesWrapper {
-  //  margin: 0 -$pane-width;
   display: flex;
 }
 
 .tablePane {
   flex: 1;
-}
-
-// TODO: do this in the react side?
-.hidden {
-  display: none;
 }

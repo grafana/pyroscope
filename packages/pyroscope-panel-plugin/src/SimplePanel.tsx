@@ -1,5 +1,6 @@
 import React from 'react';
 import { PanelProps } from '@grafana/data';
+import { config } from '@grafana/runtime';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { SimpleOptions } from './types';
 // TODO: remove after FlamegraphRenderer is updated to typescript
@@ -14,7 +15,7 @@ export const SimplePanel: React.FC<Props> = ({ options, data }) => {
   // this can fail in so many ways
   // let's handle it better
   const flamebearer = (
-    data.series[data.series.length - 1].fields[0].values as any
+    data.series[data.series.length - 1].fields[0].values as ShamefulAny
   ).buffer[0];
 
   return (
@@ -24,6 +25,7 @@ export const SimplePanel: React.FC<Props> = ({ options, data }) => {
         ExportData={<div />}
         onlyDisplay="flamegraph"
         showToolbar={options.showToolbar}
+        colorMode={config.theme2.colors.mode}
       />
     </div>
   );

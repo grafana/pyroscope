@@ -1,22 +1,21 @@
 const path = require('path');
 
 module.exports = {
-  plugins: ['prettier', 'css-modules', 'import'],
+  plugins: ['@typescript-eslint', 'css-modules'],
   extends: [
     'airbnb-typescript-prettier',
     'plugin:cypress/recommended',
     'plugin:import/typescript',
-    'prettier',
-    'prettier/react',
     'plugin:css-modules/recommended',
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
   ],
   rules: {
-    '@typescript-eslint/no-unused-vars': 'warn',
     '@typescript-eslint/no-shadow': 'warn',
 
     // https://stackoverflow.com/questions/63818415/react-was-used-before-it-was-defined/64024916#64024916
-    'no-use-before-define': ['off'],
-    '@typescript-eslint/no-use-before-define': 'warn',
+    '@typescript-eslint/no-use-before-define': ['off'],
 
     // react functional components are usually written using PascalCase
     '@typescript-eslint/naming-convention': [
@@ -82,15 +81,39 @@ module.exports = {
 
     // disable relative imports to force people to use '@webapp'
     'import/no-relative-packages': 'error',
+
+    // https://humanwhocodes.com/blog/2019/01/stop-using-default-exports-javascript-module/
+    'import/prefer-default-export': 'off',
+
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      {
+        ignoreRestSiblings: true,
+      },
+    ],
+
+    // any is bad, if really necessary one can use ShamefulAny
+    '@typescript-eslint/no-explicit-any': 'error',
+
+    // ATM there's too many errors to deal with right now
+    // TODO: deal with each issue individually
+    '@typescript-eslint/no-unsafe-member-access': 'warn',
+    '@typescript-eslint/no-unsafe-argument': 'warn',
+    '@typescript-eslint/no-unsafe-call': 'warn',
+    '@typescript-eslint/no-unsafe-assignment': 'warn',
+    '@typescript-eslint/no-unsafe-return': 'warn',
+    '@typescript-eslint/restrict-template-expressions': 'warn',
+
+    // https://github.com/typescript-eslint/typescript-eslint/issues/1184
+    '@typescript-eslint/no-floating-promises': ['warn', { ignoreVoid: true }],
+
+    // makes it easier to check what are local variables computated dynamically and what are static props
+    'react/destructuring-assignment': 'off',
   },
   env: {
     browser: true,
-    //    node: true,
     jquery: true,
   },
-  //  parserOptions: {
-  //    project: './tsconfig.eslint.json',
-  //  },
   settings: {
     'import/internal-regex': '^@pyroscope',
     'import/resolver': {
@@ -118,6 +141,7 @@ module.exports = {
   globals: {
     // see ./lib/alias.d.ts
     ShamefulAny: true,
+    JSX: true,
   },
   parserOptions: {
     project: ['./tsconfig.json'],

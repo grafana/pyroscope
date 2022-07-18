@@ -15,6 +15,7 @@ import {
 import { selectCurrentUser } from '@webapp/redux/reducers/user';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { type User } from '@webapp/models/users';
+import Input from '@webapp/ui/Input';
 import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';
@@ -30,9 +31,6 @@ function Users() {
   useEffect(() => {
     dispatch(reloadUsers());
   }, []);
-
-  if (!currentUser) return null;
-
   const displayUsers =
     (users &&
       users.filter(
@@ -40,6 +38,8 @@ function Users() {
           JSON.stringify(x).toLowerCase().indexOf(search.toLowerCase()) !== -1
       )) ||
     [];
+
+  if (!currentUser) return null;
 
   const handleDisableUser = (user: User) => {
     if (user.isDisabled) {
@@ -72,7 +72,7 @@ function Users() {
   const handleDeleteUser = (user: User) => {
     dispatch(deleteUser(user))
       .unwrap()
-      .then((d) => {
+      .then(() => {
         dispatch(
           addNotification({
             type: 'success',
@@ -98,15 +98,17 @@ function Users() {
         </Button>
       </div>
       <div className={userStyles.searchContainer}>
-        <input
+        <Input
           type="text"
           placeholder="Search user"
           value={search}
           onChange={(v) => setSearchField(v.target.value)}
+          name="Search user input"
         />
       </div>
       <table
         className={[userStyles.usersTable, tableStyles.settingsTable].join(' ')}
+        data-testId="users-table"
       >
         <thead>
           <tr>

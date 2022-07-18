@@ -44,7 +44,7 @@ function SignUpPage() {
       }
 
       throw res.error;
-    } catch (e: any) {
+    } catch (e: ShamefulAny) {
       setForm({ ...form, errors: e.errors || [e.message] });
     }
   }
@@ -62,7 +62,7 @@ function SignUpPage() {
           ) : (
             <>
               <p>
-                Sing up functionality in not enabled. To learn more, please
+                Sign up functionality is not enabled. To learn more, please
                 refer to{' '}
                 <a
                   className={styles.link}

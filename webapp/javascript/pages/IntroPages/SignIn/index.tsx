@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import cx from 'classnames';
 import Icon from '@webapp/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
-import { useAppDispatch } from '@webapp/redux/hooks';
 import { logIn } from '@webapp/services/users';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
-import { loadCurrentUser } from '@webapp/redux/reducers/user';
 import {
   isGithubEnabled,
   isGitlabEnabled,
@@ -24,7 +22,8 @@ import styles from '../IntroPages.module.css';
 import buttonStyles from './buttons.module.css';
 
 function SignInPage() {
-  const dispatch = useAppDispatch();
+  const history = useHistory();
+  const location = useLocation();
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -46,18 +45,20 @@ function SignInPage() {
 
       const res = await logIn({ username, password });
       if (res.isOk) {
-        dispatch(loadCurrentUser());
+        history.replace(
+          (location.state as ShamefulAny)?.redir || PAGES.CONTINOUS_SINGLE_VIEW
+        );
         return;
       }
 
       throw res.error;
-    } catch (e: any) {
+    } catch (e: ShamefulAny) {
       setForm({ ...form, errors: e.errors || [e.message] });
     }
   }
 
   useNavigateUserIntroPages();
-  const hasTLS = location.protocol === 'https:';
+  const hasTLS = window.location.protocol === 'https:';
 
   return (
     <div className={styles.loginWrapper}>
@@ -134,7 +135,8 @@ function SignInPage() {
         <div className={cx(buttonStyles.buttonContainer)}>
           {isGoogleEnabled && (
             <a
-              href={'./auth/google/login' + (hasTLS ? '?tls=true' : '')}
+              id="google-link"
+              href={`./auth/google/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGoogle)}
             >
               <GoogleIcon /> Sign in with Google
@@ -142,7 +144,8 @@ function SignInPage() {
           )}
           {isGithubEnabled && (
             <a
-              href={'./auth/github/login' + (hasTLS ? '?tls=true' : '')}
+              id="github-link"
+              href={`./auth/github/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGithub)}
             >
               <Icon icon={faGithub} /> Sign in with GitHub
@@ -150,7 +153,8 @@ function SignInPage() {
           )}
           {isGitlabEnabled && (
             <a
-              href={'./auth/gitlab/login' + (hasTLS ? '?tls=true' : '')}
+              id="gitlab-link"
+              href={`./auth/gitlab/login${hasTLS ? '?tls=true' : ''}`}
               className={cx(styles.button, buttonStyles.buttonGitlab)}
             >
               <GitlabIcon /> Sign in with GitLab

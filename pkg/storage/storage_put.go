@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -20,11 +21,11 @@ type PutInput struct {
 	Val             *tree.Tree
 	SpyName         string
 	SampleRate      uint32
-	Units           string
-	AggregationType string
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 }
 
-func (s *Storage) Put(_ context.Context, pi *PutInput) error {
+func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
@@ -36,8 +37,8 @@ func (s *Storage) Put(_ context.Context, pi *PutInput) error {
 	}
 
 	s.putTotal.Inc()
-	if id, ok := pi.Key.ProfileID(); ok {
-		return s.exemplars.insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
+	if pi.Key.HasProfileID() {
+		return s.exemplars.insert(ctx, pi)
 	}
 
 	s.logger.WithFields(logrus.Fields{

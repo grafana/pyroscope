@@ -1,6 +1,7 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
-import { Units } from '@pyroscope/models';
+import clsx from 'clsx';
+import type { Units } from '@pyroscope/models/src';
 import type { Unwrapped } from 'true-myth/maybe';
 import {
   getFormatter,
@@ -8,6 +9,7 @@ import {
   formatPercent,
   ratioToPercent,
 } from '../../format/format';
+import RightClickIcon from './RightClickIcon';
 
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
@@ -48,6 +50,51 @@ export type TooltipProps = {
     }
 );
 
+const tooltipTitles: Record<
+  Units,
+  { percent: string; formattedValue: string }
+> = {
+  objects: {
+    percent: '% of objects in RAM',
+    formattedValue: 'RAM amount',
+  },
+  goroutines: {
+    percent: '% of goroutines',
+    formattedValue: 'goroutines',
+  },
+  bytes: {
+    percent: '% of RAM',
+    formattedValue: 'bytes',
+  },
+  samples: {
+    percent: 'Share of CPU',
+    formattedValue: 'CPU Time',
+  },
+  lock_nanoseconds: {
+    percent: '% of Time spent',
+    formattedValue: 'seconds',
+  },
+  lock_samples: {
+    percent: '% of contended locks',
+    formattedValue: 'locks',
+  },
+  trace_samples: {
+    percent: '% of time',
+    formattedValue: 'samples',
+  },
+  '': {
+    percent: '',
+    formattedValue: '',
+  },
+};
+
+type TooltipData = {
+  units: Units;
+  percent: string | number;
+  samples: string;
+  formattedValue: string;
+};
+
 export default function Tooltip(props: TooltipProps) {
   const { format, canvasRef, xyToData } = props;
   const [content, setContent] = React.useState({
@@ -58,8 +105,7 @@ export default function Tooltip(props: TooltipProps) {
         color: '',
       },
     },
-    left: '',
-    right: '',
+    tooltipData: [] as TooltipData[],
   });
 
   const [style, setStyle] = React.useState<React.CSSProperties>();
@@ -109,7 +155,13 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (data.format) {
         case 'single': {
-          const d = formatSingle(formatter, data.total, sampleRate, numTicks);
+          const newLeftContent: TooltipData = {
+            percent: formatPercent(data.total / numTicks),
+            samples:
+              units === 'trace_samples' ? '' : numberWithCommas(data.total),
+            units,
+            formattedValue: formatter.format(data.total, sampleRate),
+          };
 
           setContent({
             title: {
@@ -119,8 +171,7 @@ export default function Tooltip(props: TooltipProps) {
                 color: '',
               },
             },
-            left: d.left,
-            right: '',
+            tooltipData: [newLeftContent],
           });
 
           break;
@@ -142,14 +193,14 @@ export default function Tooltip(props: TooltipProps) {
               totalRight: data.totalRight,
               rightTicks,
               title: data.name,
+              units,
             },
             palette
           );
 
           setContent({
             title: d.title,
-            left: d.left,
-            right: d.right,
+            tooltipData: d.tooltipData,
           });
 
           break;
@@ -189,50 +240,116 @@ export default function Tooltip(props: TooltipProps) {
     <div
       role="tooltip"
       data-testid="flamegraph-tooltip"
-      className={styles.flamegraphTooltip}
+      className={clsx(styles.flamegraphTooltip, {
+        [styles.flamegraphDiffTooltip]: content.tooltipData.length > 1,
+      })}
       style={style}
       ref={tooltipEl}
     >
       <div
-        data-testid="flamegraph-tooltip-title"
         className={styles.flamegraphTooltipName}
+        data-testid="flamegraph-tooltip-title"
       >
         {content.title.text}
-        <span
-          data-testid="flamegraph-tooltip-title-diff"
-          style={{ color: content.title?.diff?.color }}
-        >
-          {`${content.title.diff.text.length > 0 ? ' ' : ''}${
-            content.title.diff.text
-          }`}
-        </span>
       </div>
-      <div data-testid="flamegraph-tooltip-body">
-        <div data-testid="flamegraph-tooltip-left">{content.left}</div>
-        <div data-testid="flamegraph-tooltip-right">{content.right}</div>
+      <div
+        className={styles.functionName}
+        data-testid="flamegraph-tooltip-function-name"
+      >
+        {content.title.text}
+      </div>
+
+      {content.title.diff.text.length > 0 ? (
+        <TooltipTable data={content.tooltipData} diff={content.title.diff} />
+      ) : (
+        <TooltipTable data={content.tooltipData} />
+      )}
+
+      <div className={styles.rightClickInfo}>
+        <RightClickIcon />
+        <span>Right click for more node viewing options</span>
       </div>
     </div>
   );
 }
 
-interface Formatter {
-  format(samples: number, sampleRate: number): string;
+function TooltipTable({
+  data,
+  diff,
+}: {
+  data: TooltipData[];
+  diff?: { text: string; color: string };
+}) {
+  const [baselineData, comparisonData] = data;
+
+  if (!baselineData) {
+    return null;
+  }
+
+  return (
+    <table
+      data-testid="flamegraph-tooltip-table"
+      className={clsx(styles.tooltipTable, {
+        [styles.tooltipDiffTable]: comparisonData,
+      })}
+    >
+      {comparisonData && (
+        <thead>
+          <tr>
+            <th />
+            <th>Baseline</th>
+            <th>Comparison</th>
+            <th>Diff</th>
+          </tr>
+        </thead>
+      )}
+      <tbody>
+        <tr>
+          <td>{tooltipTitles[baselineData.units].percent}:</td>
+          <td>{baselineData.percent}</td>
+          {comparisonData && (
+            <>
+              <td>{comparisonData.percent}</td>
+              <td>
+                {diff && (
+                  <span
+                    data-testid="flamegraph-tooltip-diff"
+                    style={{ color: diff.color }}
+                  >
+                    {diff.text}
+                  </span>
+                )}
+              </td>
+            </>
+          )}
+        </tr>
+        <tr>
+          <td>{tooltipTitles[baselineData.units].formattedValue}:</td>
+          <td>{baselineData.formattedValue}</td>
+          {comparisonData && (
+            <>
+              <td>{comparisonData.formattedValue}</td>
+              <td />
+            </>
+          )}
+        </tr>
+        <tr>
+          <td>Samples:</td>
+          <td>{baselineData.samples}</td>
+          {comparisonData && (
+            <>
+              <td>{comparisonData.samples}</td>
+              <td />
+            </>
+          )}
+        </tr>
+      </tbody>
+    </table>
+  );
 }
 
-function formatSingle(
-  formatter: Formatter,
-  total: number,
-  sampleRate: number,
-  numTicks: number
-) {
-  const percent = formatPercent(total / numTicks);
-  const left = `${percent}, ${numberWithCommas(
-    total
-  )} samples, ${formatter.format(total, sampleRate)}`;
-
-  return {
-    left,
-  };
+interface Formatter {
+  format(samples: number, sampleRate: number): string;
 }
 
 function formatDouble(
@@ -244,6 +361,7 @@ function formatDouble(
     totalRight,
     rightTicks,
     title,
+    units,
   }: {
     formatter: Formatter;
     sampleRate: number;
@@ -252,22 +370,38 @@ function formatDouble(
     totalRight: number;
     rightTicks: number;
     title: string;
+    units: Units;
   },
   palette: FlamegraphPalette = DefaultPalette
-) {
+): {
+  tooltipData: TooltipData[];
+  title: {
+    text: string;
+    diff: {
+      text: string;
+      color: string;
+    };
+  };
+} {
   const leftRatio = totalLeft / leftTicks;
   const rightRatio = totalRight / rightTicks;
 
   const leftPercent = ratioToPercent(leftRatio);
   const rightPercent = ratioToPercent(rightRatio);
 
-  const left = `Left: ${numberWithCommas(
-    totalLeft
-  )} samples, ${formatter.format(totalLeft, sampleRate)} (${leftPercent}%)`;
+  const newLeft: TooltipData = {
+    percent: `${leftPercent}%`,
+    samples: numberWithCommas(totalLeft),
+    units,
+    formattedValue: formatter.format(totalLeft, sampleRate),
+  };
 
-  const right = `Right: ${numberWithCommas(
-    totalRight
-  )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
+  const newRight: TooltipData = {
+    percent: `${rightPercent}%`,
+    samples: numberWithCommas(totalRight),
+    units,
+    formattedValue: formatter.format(totalRight, sampleRate),
+  };
 
   const totalDiff = percentDiff(leftPercent, rightPercent);
 
@@ -299,8 +433,7 @@ function formatDouble(
         color: tooltipDiffColor,
       },
     },
-    left,
-    right,
+    tooltipData: [newLeft, newRight],
   };
 }
 

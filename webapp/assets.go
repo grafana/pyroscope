@@ -1,3 +1,4 @@
+//go:build !embedassets
 // +build !embedassets
 
 package webapp

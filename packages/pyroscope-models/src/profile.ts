@@ -10,14 +10,22 @@ export const FlamebearerSchema = z.object({
 // accept the defined units
 // and convert anything else to empty string
 const UnitsSchema = z.preprocess((u) => {
-  const units = ['samples', 'objects', 'bytes'];
+  const units = [
+    'samples',
+    'objects',
+    'goroutines',
+    'bytes',
+    'lock_samples',
+    'lock_nanoseconds',
+    'trace_samples',
+  ];
   if (typeof u === 'string') {
     if (units.includes(u)) {
       return u;
     }
   }
   return '';
-}, z.enum(['samples', 'objects', 'bytes', '']));
+}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', 'trace_samples', '']));
 
 export const MetadataSchema = z.object({
   // Optional fields since adhoc may be missing them

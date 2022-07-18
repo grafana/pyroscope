@@ -40,7 +40,11 @@ export function convertPresetsToDate(from: string) {
   return { _from, number, _multiplier };
 }
 
-export function readableRange(from: string, until: string) {
+export function readableRange(
+  from: string,
+  until: string,
+  offsetInMinutes: number
+) {
   const dateFormat = 'yyyy-MM-dd hh:mm a';
   if (/^now-/.test(from) && until === 'now') {
     const { number, _multiplier } = convertPresetsToDate(from);
@@ -49,22 +53,11 @@ export function readableRange(from: string, until: string) {
     return `Last ${number} ${multiplier}`;
   }
 
-  const d1 = new Date(Math.round(parseInt(from, 10) * 1000));
-  const d2 = new Date(Math.round(parseInt(until, 10) * 1000));
+  const d1 = getUTCdate(parseUnixTime(from), offsetInMinutes);
+  const d2 = getUTCdate(parseUnixTime(until), offsetInMinutes);
   return `${format(d1, dateFormat)} - ${format(d2, dateFormat)}`;
 }
 
-export function dateForExportFilename(from: string, until: string) {
-  const dateFormat = 'yyyy-MM-dd_HHmm';
-  if (/^now-/.test(from) && until === 'now') {
-    const { number, _multiplier } = convertPresetsToDate(from);
-    return `Last ${number} ${_multiplier}`;
-  }
-
-  const d1 = new Date(Math.round(parseInt(from, 10) * 1000));
-  const d2 = new Date(Math.round(parseInt(until, 10) * 1000));
-  return `${format(d1, dateFormat)}-to-${format(d2, dateFormat)}`;
-}
 /**
  * formateAsOBject() returns a Date object
  * based on the passed-in parameter value
@@ -83,6 +76,25 @@ export function formatAsOBject(value: string) {
   if (value === 'now') {
     return new Date();
   }
-
-  return new Date(parseInt(value, 10) * 1000);
+  return parseUnixTime(value);
 }
+
+export function parseUnixTime(value: string) {
+  const parsed = parseInt(value, 10);
+  switch (value.length) {
+    default:
+      // Seconds.
+      return new Date(parsed * 1000);
+    case 13: // Milliseconds.
+      return new Date(parsed);
+    case 16: // Microseconds.
+      return new Date(Math.round(parsed / 1000));
+    case 19: // Nanoseconds.
+      return new Date(Math.round(parsed / 1000 / 1000));
+  }
+}
+
+export const getUTCdate = (date: Date, offsetInMinutes: number): Date =>
+  offsetInMinutes === 0
+    ? new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000)
+    : date;

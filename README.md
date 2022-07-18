@@ -28,11 +28,14 @@
 <kbd>[<img title="中文 (Simplified)" alt="中文 (Simplified)" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/cn.svg" width="22">](translations/README.ch.md)</kbd>
 
 ### What is Pyroscope?
+
 Pyroscope is an open source continuous profiling platform. It will help you:
 * Find performance issues and bottlenecks in your code
+* Use high-cardinality tags/labels to analyze your application
 * Resolve issues with high CPU utilization
+* Track down memory leaks
 * Understand the call tree of your application
-* Track changes over time
+* Auto-instrument your code to link profiling data to traces
 
 
 ## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/?name=hotrod.python.frontend%7B%7D) 🔥
@@ -41,13 +44,15 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 
 ## Features
 
-* Can store years of profiling data from multiple applications
-* You can look at years of data at a time or zoom in on specific events
-* Low CPU overhead
+* Minimal CPU overhead
 * Efficient compression, low disk space requirements
-* Snappy UI
+* Can handle high-cardinality tags/labels
+* Can store years of profiling data from multiple applications
+* Calculate the performance "diff" between various tags/labels and time periods
+* Advanced analysis UI
 
 ## Add Pyroscope Server locally in 2 steps:
+
 Pyroscope supports all major architectures and is very easy to install. for example here is how you install on a mac:
 ```shell
 # install pyroscope
@@ -56,35 +61,79 @@ brew install pyroscope-io/brew/pyroscope
 # start pyroscope server:
 pyroscope server
 ```
-
 ## Send data to server via Pyroscope agent (language specific)
-For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
-- [Golang Agent (Push)](https://pyroscope.io/docs/golang)
-- [Golang Agent (Pull)](https://pyroscope.io/docs/golang-pull-mode/)
-- [Python Agent (pip)](https://pyroscope.io/docs/python)
-- [Ruby Agent (gem)](https://pyroscope.io/docs/ruby)
-- [Rust Agent (cargo)](https://pyroscope.io/docs/rust)
-- [eBPF Agent](https://pyroscope.io/docs/ebpf)
-- [PHP Agent](https://pyroscope.io/docs/php)
-- [.NET Agent](https://pyroscope.io/docs/dotnet)
 
-## Example Code
-We also have language-specific examples (using Docker) of how to run the *server and agent together*
-- [Golang Push Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push)
-- [Golang Pull Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-pull/static)
-- [Python Pip Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
-- [Ruby Gem Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby)
-- [Rust Cargo Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/rust)
-- [Grafana Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
-- [Java Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/java)
-- [PHP example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/php)
-- [.NET Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/dotnet)
+For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website or find language specific examples and documentation below
+<table>
+   <tr>
+      <td align="center"><a href="https://pyroscope.io/docs/golang"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
+        <b>Golang</b></a><br />
+          <a href="https://pyroscope.io/docs/golang" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push" title="golang-examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/java"><img src="https://user-images.githubusercontent.com/23323466/178160550-2b5a623a-0f4c-4911-923f-2c825784d45d.png" width="100px;" alt=""/><br />
+        <b>Java</b></a><br />
+          <a href="https://pyroscope.io/docs/java" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/java-jfr/rideshare" title="java-examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/python"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
+        <b>Python</b></a><br />
+          <a href="https://pyroscope.io/docs/python" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/python" title="python-examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/ruby"><img src="https://user-images.githubusercontent.com/23323466/178160554-b0be2bc5-8574-4881-ac4c-7977c0b2c195.png" width="100px;" alt=""/><br />
+        <b>Ruby</b></a><br />
+          <a href="https://pyroscope.io/docs/ruby" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby" title="ruby-examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/rust"><img src="https://user-images.githubusercontent.com/23323466/178160555-fb6aeee7-5d31-4bcb-9e3e-41e9f2f7d5b4.png" width="100px;" alt=""/><br />
+        <b>Rust</b></a><br />
+          <a href="https://pyroscope.io/docs/rust" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/rust/rideshare" title="examples">Examples</a>
+      </td>
+   </tr>
+   <tr>
+      <td align="center"><a href="https://pyroscope.io/docs/nodejs"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
+        <b>NodeJS</b></a><br />
+          <a href="https://pyroscope.io/docs/nodejs" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/nodejs/express" title="examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/dotnet"><img src="https://user-images.githubusercontent.com/23323466/178160544-d2e189c6-a521-482c-a7dc-5375c1985e24.png" width="100px;" alt=""/><br />
+        <b>Dotnet</b></a><br />
+          <a href="https://pyroscope.io/docs/dotnet" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/dotnet" title="examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+        <b>eBPF</b></a><br />
+          <a href="https://pyroscope.io/docs/ebpf" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/ebpf" title="examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/php"><img src="https://user-images.githubusercontent.com/23323466/178160552-7aabf63a-b129-404d-8c62-16dedfefe32c.png" width="100px;" alt=""/><br />
+        <b>PHP</b></a><br />
+          <a href="https://pyroscope.io/docs/php" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/php" title="examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://pyroscope.io/docs/grafana-plugins/"><img src="https://user-images.githubusercontent.com/23323466/178341477-c4ad2445-c90e-4ef9-b7f9-b6b3cf615e33.png" width="100px;" alt=""/><br />
+        <b>Grafana</b></a><br />
+          <a href="https://pyroscope.io/docs/grafana-plugins/" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration" title="examples">Examples</a>
+      </td>
+   </tr>
+</table>
 
 ## Deployment Diagram
 
-![agent_server_diagram_10](https://user-images.githubusercontent.com/23323466/153685751-0aac3cd6-bbc1-4ab4-8350-8f4dc7f7c193.svg)
+![agent_server_diagram_11-01](https://user-images.githubusercontent.com/23323466/178165230-a94e1ee2-9725-4752-97ff-542158d1b703.svg)
+
+## Third-Party Integrations
+
+Pyroscope also supports several third-party integrations notably:
+- [Grafana Plugin](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
+- [Jaeger UI](https://github.com/pyroscope-io/jaeger-ui)
+- [OTel Golang (tracing)](https://github.com/pyroscope-io/otel-profiling-go)
 
 ## Documentation
+
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
 * [Public Roadmap](https://github.com/pyroscope-io/pyroscope/projects/1)
@@ -107,7 +156,7 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] Rust (via `pprof-rs`)
 * [x] .NET (via `dotnet trace`)
 * [x] PHP (via `phpspy`)
-* [ ] Node [(seeking contributors)](https://github.com/pyroscope-io/pyroscope/issues/8)
+* [x] Node
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
@@ -121,7 +170,6 @@ Pyroscope is possible thanks to the excellent work of many people, including but
 * Ben Frederickson — creator of py-spy — sampling profiler for Python
 * Adam Saponara — creator of phpspy — sampling profiler for PHP
 * Alexei Starovoitov, Brendan Gregg, and many others who made BPF based profiling in Linux kernel possible
-
 
 ## Contributing
 
@@ -137,20 +185,23 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/kolesnikovae"><img src="https://avatars.githubusercontent.com/u/12090599?v=4" title="kolesnikovae" width="80" height="80"></a>
 <a href="https://github.com/abeaumont"><img src="https://avatars.githubusercontent.com/u/80059?v=4" title="abeaumont" width="80" height="80"></a>
 <a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="LouisInFlow" width="80" height="80"></a>
-<a href="https://github.com/olvrng"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="olvrng" width="80" height="80"></a>
+<a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80" height="80"></a>
+<a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80" height="80"></a>
+<a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
+<a href="https://github.com/iOliverN"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="iOliverN" width="80" height="80"></a>
+<a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80" height="80"></a>
 <a href="https://github.com/AdrK"><img src="https://avatars.githubusercontent.com/u/15175440?v=4" title="AdrK" width="80" height="80"></a>
 <a href="https://github.com/alonlong"><img src="https://avatars.githubusercontent.com/u/3090383?v=4" title="alonlong" width="80" height="80"></a>
 <a href="https://github.com/Loggy"><img src="https://avatars.githubusercontent.com/u/3171097?v=4" title="Loggy" width="80" height="80"></a>
-<a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80" height="80"></a>
 <a href="https://github.com/cjsampson"><img src="https://avatars.githubusercontent.com/u/8391857?v=4" title="cjsampson" width="80" height="80"></a>
 <a href="https://github.com/ekpatrice"><img src="https://avatars.githubusercontent.com/u/77462462?v=4" title="ekpatrice" width="80" height="80"></a>
 <a href="https://github.com/ruslanpascoal2"><img src="https://avatars.githubusercontent.com/u/61955096?v=4" title="ruslanpascoal2" width="80" height="80"></a>
 <a href="https://github.com/gawicks"><img src="https://avatars.githubusercontent.com/u/1481491?v=4" title="gawicks" width="80" height="80"></a>
+<a href="https://github.com/omarabid"><img src="https://avatars.githubusercontent.com/u/909237?v=4" title="omarabid" width="80" height="80"></a>
 <a href="https://github.com/EgorMozheiko"><img src="https://avatars.githubusercontent.com/u/90687109?v=4" title="EgorMozheiko" width="80" height="80"></a>
 <a href="https://github.com/cmonez"><img src="https://avatars.githubusercontent.com/u/39146411?v=4" title="cmonez" width="80" height="80"></a>
 <a href="https://github.com/rajat2004"><img src="https://avatars.githubusercontent.com/u/37938604?v=4" title="rajat2004" width="80" height="80"></a>
 <a href="https://github.com/Skemba"><img src="https://avatars.githubusercontent.com/u/8813875?v=4" title="Skemba" width="80" height="80"></a>
-<a href="https://github.com/omarabid"><img src="https://avatars.githubusercontent.com/u/909237?v=4" title="omarabid" width="80" height="80"></a>
 <a href="https://github.com/Cluas"><img src="https://avatars.githubusercontent.com/u/10056928?v=4" title="Cluas" width="80" height="80"></a>
 <a href="https://github.com/linthan"><img src="https://avatars.githubusercontent.com/u/13914829?v=4" title="linthan" width="80" height="80"></a>
 <a href="https://github.com/clovis1122"><img src="https://avatars.githubusercontent.com/u/22270042?v=4" title="clovis1122" width="80" height="80"></a>
@@ -168,6 +219,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/highb"><img src="https://avatars.githubusercontent.com/u/759848?v=4" title="highb" width="80" height="80"></a>
 <a href="https://github.com/waywardmonkeys"><img src="https://avatars.githubusercontent.com/u/178582?v=4" title="waywardmonkeys" width="80" height="80"></a>
 <a href="https://github.com/cfbolz"><img src="https://avatars.githubusercontent.com/u/85942?v=4" title="cfbolz" width="80" height="80"></a>
+<a href="https://github.com/charlesverdad"><img src="https://avatars.githubusercontent.com/u/382186?v=4" title="charlesverdad" width="80" height="80"></a>
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
 <a href="https://github.com/Dzalevski"><img src="https://avatars.githubusercontent.com/u/9572827?v=4" title="Dzalevski" width="80" height="80"></a>
 <a href="https://github.com/dhanusaputra"><img src="https://avatars.githubusercontent.com/u/35093673?v=4" title="dhanusaputra" width="80" height="80"></a>
@@ -186,10 +238,13 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/samoilenko"><img src="https://avatars.githubusercontent.com/u/4024256?v=4" title="samoilenko" width="80" height="80"></a>
 <a href="https://github.com/teivah"><img src="https://avatars.githubusercontent.com/u/934784?v=4" title="teivah" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
+<a href="https://github.com/Tusharkshahi"><img src="https://avatars.githubusercontent.com/u/103762351?v=4" title="Tusharkshahi" width="80" height="80"></a>
 <a href="https://github.com/vbehar"><img src="https://avatars.githubusercontent.com/u/6251?v=4" title="vbehar" width="80" height="80"></a>
+<a href="https://github.com/cuishuang"><img src="https://avatars.githubusercontent.com/u/15921519?v=4" title="cuishuang" width="80" height="80"></a>
+<a href="https://github.com/apps/dependabot"><img src="https://avatars.githubusercontent.com/in/29110?v=4" title="dependabot[bot]" width="80" height="80"></a>
+<a href="https://github.com/futurelm"><img src="https://avatars.githubusercontent.com/u/43361929?v=4" title="futurelm" width="80" height="80"></a>
 <a href="https://github.com/hiyanxu"><img src="https://avatars.githubusercontent.com/u/15027927?v=4" title="hiyanxu" width="80" height="80"></a>
 <a href="https://github.com/miravtmehta"><img src="https://avatars.githubusercontent.com/u/54740656?v=4" title="miravtmehta" width="80" height="80"></a>
-<a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80" height="80"></a>
 <a href="https://github.com/lzh2nix"><img src="https://avatars.githubusercontent.com/u/7421004?v=4" title="lzh2nix" width="80" height="80"></a>
 <a href="https://github.com/cnych"><img src="https://avatars.githubusercontent.com/u/3094973?v=4" title="cnych" width="80" height="80"></a>
 

@@ -6,8 +6,8 @@ import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import { Profile } from '@pyroscope/models';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { Profile } from '@pyroscope/models/src';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
@@ -99,6 +99,7 @@ function AdhocDiff() {
           )}
           {!isProfileLoading && (
             <FlamegraphRenderer
+              showCredit={false}
               flamebearer={flamebearer}
               ExportData={
                 <ExportData
