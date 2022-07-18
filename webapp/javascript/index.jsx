@@ -13,6 +13,7 @@ import store, { persistor } from './redux/store';
 import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
+import ExplorePage from './pages/Explore';
 import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
@@ -83,6 +84,11 @@ function App() {
           <Route path={PAGES.SERVICE_DISCOVERY}>
             <Protected>
               <ServiceDiscoveryApp />
+            </Protected>
+          </Route>
+          <Route path={PAGES.EXPLORE}>
+            <Protected>
+              <ExplorePage />
             </Protected>
           </Route>
           {isAdhocUIEnabled && (
