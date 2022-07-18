@@ -7,7 +7,7 @@
   "types": "dist/packages/pyroscope-flamegraph/src/index.d.ts",
   "license": "Apache-2.0",
   "files": [
-    "src/FlamegraphRenderer.tsx",
+    "src/**/*",
     "dist/**/*",
     "package.json",
     "README.md",
