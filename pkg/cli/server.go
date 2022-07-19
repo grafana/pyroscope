@@ -156,6 +156,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	var ingester ingestion.Ingester
 	if !svc.config.RemoteWrite.Enabled || !svc.config.RemoteWrite.DisableLocalWrites {
 		ingester = parser.New(svc.logger, svc.storageQueue, metricsExporter)
+	} else {
+		ingester = ingestion.NewNoopIngester()
 	}
 
 	// If remote write is available, let's write to both local storage and to the remote server
