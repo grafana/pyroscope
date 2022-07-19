@@ -1,8 +1,8 @@
 /* eslint-disable import/prefer-default-export */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-
 // @ts-nocheck
-import type { Profile, Trace, TraceSpan } from '@pyroscope/models/src';
+
+import type { Profile } from '@pyroscope/models/src';
 import {
   deltaDiffWrapper,
   deltaDiffWrapperReverse,
