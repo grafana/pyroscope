@@ -7,6 +7,6 @@ type NoopIngester struct{}
 func NewNoopIngester() *NoopIngester {
 	return &NoopIngester{}
 }
-func (*NoopIngester) Ingest(ctx context.Context, in *IngestInput) error {
+func (*NoopIngester) Ingest(_ context.Context, _ *IngestInput) error {
 	return nil
 }
