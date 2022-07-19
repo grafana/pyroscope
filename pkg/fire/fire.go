@@ -25,6 +25,7 @@ import (
 	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
+	wwtracing "github.com/weaveworks/common/tracing"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/querier"
+	"github.com/grafana/fire/pkg/tracing"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -47,6 +49,7 @@ type Config struct {
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
 	FireDB       firedb.Config          `yaml:"firedb,omitempty"`
+	Tracing      tracing.Config         `yaml:"tracing"`
 
 	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
@@ -66,6 +69,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.Distributor.RegisterFlags(f)
 	c.Querier.RegisterFlags(f)
 	c.FireDB.RegisterFlags(f)
+	c.Tracing.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -162,6 +166,22 @@ func New(cfg Config) (*Fire, error) {
 	}
 	if err := fire.setupModuleManager(); err != nil {
 		return nil, err
+	}
+
+	if cfg.Tracing.Enabled {
+		// Setting the environment variable JAEGER_AGENT_HOST enables tracing
+		trace, err := wwtracing.NewFromEnv(fmt.Sprintf("fire-%s", cfg.Target))
+		if err != nil {
+			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
+		}
+
+		defer func() {
+			if trace != nil {
+				if err := trace.Close(); err != nil {
+					level.Error(logger).Log("msg", "error closing tracing", "err", err)
+				}
+			}
+		}()
 	}
 
 	// instantiate a fallback pusher client (when not run with a local distributor

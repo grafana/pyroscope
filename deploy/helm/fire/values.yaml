@@ -16,6 +16,9 @@ fire:
     log.level: debug
 
   extraLabels: {}
+  extraEnvVars:
+    # The following environment variables are set by the Helm chart.
+    # JAEGER_AGENT_HOST: jaeger-agent.jaeger.svc.cluster.local.
 
   imagePullSecrets: []
   nameOverride: ""
