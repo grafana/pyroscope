@@ -20,14 +20,7 @@ import ApiKeys from './APIKeys';
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
-import {
-  FlamegraphRenderer,
-  convertJaegerTraceToProfile,
-  diffTwoProfiles,
-} from '@pyroscope/flamegraph/src';
 
-import p1 from '../../../../cypress/fixtures/simple-golang-app-cpu.json';
-import p2 from '../../../../cypress/fixtures/simple-golang-app-cpu2.json';
 import trace from './trace.json';
 
 function Settings() {
@@ -110,22 +103,6 @@ function Settings() {
           <Switch>
             <Route exact path={path}>
               <Preferences />
-            </Route>
-            <Route exact path={`${path}/diff`}>
-              trace
-              <FlamegraphRenderer
-                profile={convertJaegerTraceToProfile(trace[0])}
-                onlyDisplay="flamegraph"
-              />
-              f1
-              <FlamegraphRenderer profile={p1} onlyDisplay="flamegraph" />
-              f2
-              <FlamegraphRenderer profile={p2} onlyDisplay="flamegraph" />
-              f3
-              <FlamegraphRenderer
-                profile={diffTwoProfiles(p1, p2)}
-                onlyDisplay="flamegraph"
-              />
             </Route>
             <Route path={`${path}/security`}>
               <Security />

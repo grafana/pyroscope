@@ -36,11 +36,11 @@ function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
 
         const key = [parentKey || '', name].join('/');
         lookup[key] ||= {
-          name: name,
+          name,
           children: [],
           self: [],
           total: [],
-          key: key,
+          key,
         };
         const obj = lookup[key];
         obj.total[fi] ||= 0;
@@ -121,7 +121,7 @@ export function diffTwoProfiles(p1: Profile, p2: Profile): Profile {
   return {
     version: 1,
     flamebearer: resultFlamebearer,
-    metadata: metadata,
+    metadata,
     leftTicks: p1.flamebearer.numTicks,
     rightTicks: p2.flamebearer.numTicks,
   };
