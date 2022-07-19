@@ -58,6 +58,11 @@ spec:
           {{- range $key, $value := $cfg.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
+          env:
+           {{- range $key, $value := .Values.fire.extraEnvVars }}
+            - name: {{ $key }}
+              value: {{ $value }}
+           {{- end }}
           ports:
             - name: {{ .Values.fire.service.port_name }}
               containerPort: {{ .Values.fire.service.port }}
