@@ -43,10 +43,12 @@ export const logErrorMiddleware: Middleware = () => (next) => (action) => {
   }
 };
 
+
 const store = configureStore({
   reducer,
-  middleware: (getDefaultMiddleware) => [
-    ...getDefaultMiddleware({
+  // https://github.com/reduxjs/redux-toolkit/issues/587#issuecomment-824927971
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
       serializableCheck: {
         ignoredActionPaths: ['error'],
 
@@ -54,11 +56,10 @@ const store = configureStore({
         // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }),
-
-    logErrorMiddleware,
-  ],
+    }).concat([logErrorMiddleware]),
 });
+
+
 
 export const persistor = persistStore(store);
 
