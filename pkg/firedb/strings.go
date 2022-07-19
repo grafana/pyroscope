@@ -15,7 +15,14 @@ func (*stringsHelper) key(s string) string {
 }
 
 func (*stringsHelper) addToRewriter(r *rewriter, m idConversionTable) {
-	r.strings = make(stringConversionTable, len(m))
+	var maxID int64
+	for id := range m {
+		if id > maxID {
+			maxID = id
+		}
+	}
+	r.strings = make(stringConversionTable, maxID+1)
+
 	for x, y := range m {
 		r.strings[x] = y
 	}
