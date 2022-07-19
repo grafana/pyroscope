@@ -21,8 +21,6 @@ import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
 
-import trace from './trace.json';
-
 function Settings() {
   const { path, url } = useRouteMatch();
   const currentUser = useAppSelector(selectCurrentUser);
