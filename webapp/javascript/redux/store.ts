@@ -43,7 +43,6 @@ export const logErrorMiddleware: Middleware = () => (next) => (action) => {
   }
 };
 
-
 const store = configureStore({
   reducer,
   // https://github.com/reduxjs/redux-toolkit/issues/587#issuecomment-824927971
@@ -58,8 +57,6 @@ const store = configureStore({
       },
     }).concat([logErrorMiddleware]),
 });
-
-
 
 export const persistor = persistStore(store);
 
