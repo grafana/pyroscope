@@ -43,7 +43,7 @@ lint: go/lint helm/lint buf/lint ## Lint Go, Helm and protobuf
 test: go/test ## Run unit tests
 
 .PHONY: generate
-generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/gomodifytags ## Regenerate protobuf
+generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-connect-go-mux $(BIN)/gomodifytags ## Regenerate protobuf
 	rm -rf pkg/gen/ pkg/openapiv2/gen
 	PATH=$(BIN) $(BIN)/buf generate
 	PATH=$(BIN):$(PATH) ./tools/add-parquet-tags.sh
@@ -168,6 +168,10 @@ $(BIN)/protoc-gen-go: Makefile go.mod
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@v0.1.0
+
+$(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/connect-go-mux/cmd/protoc-gen-connect-go-mux@v0.1.1
 
 $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 	@mkdir -p $(@D)
