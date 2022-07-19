@@ -15,7 +15,7 @@ import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
 import ContextMenuHighlight from './ContextMenuHighlight';
-import Tooltip from './Tooltip';
+import Tooltip from '../../Tooltip/Tooltip';
 import ContextMenu from './ContextMenu';
 import LogoLink from './LogoLink';
 import { PX_PER_LEVEL } from './constants';

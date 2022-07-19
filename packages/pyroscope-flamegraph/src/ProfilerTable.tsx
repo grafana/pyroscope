@@ -1,8 +1,8 @@
 import React from 'react';
 import clsx from 'clsx';
+import type Color from 'color';
+import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
-import Color from 'color';
-import { Maybe } from 'true-myth';
 import { getFormatter } from './format/format';
 import {
   colorBasedOnPackageName,
@@ -11,8 +11,8 @@ import {
 } from './FlameGraph/FlameGraphComponent/color';
 import { fitIntoTableCell, FitModes } from './fitMode/fitMode';
 import { isMatch } from './search';
+import type { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 import styles from './ProfilerTable.module.scss';
-import { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 
 const zero = (v?: number) => v || 0;
 
@@ -332,6 +332,7 @@ const TableBody = ({
     style: React.CSSProperties
   ) => (
     <tr
+      onMouseMove={(e) => console.log(e)}
       key={`${x.name}${renderID}`}
       onClick={() => handleTableItemClick(x)}
       className={`${isRowSelected(x.name) && styles.rowSelected}`}

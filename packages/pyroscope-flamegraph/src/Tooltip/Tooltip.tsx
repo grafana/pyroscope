@@ -8,10 +8,12 @@ import {
   numberWithCommas,
   formatPercent,
   ratioToPercent,
-} from '../../format/format';
+} from '../format/format';
 import RightClickIcon from './RightClickIcon';
-
-import { DefaultPalette, FlamegraphPalette } from './colorPalette';
+import {
+  FlamegraphPalette,
+  DefaultPalette,
+} from '../FlameGraph/FlameGraphComponent/colorPalette';
 import styles from './Tooltip.module.scss';
 
 type xyToDataSingle = (
