@@ -1,8 +1,15 @@
-import React from 'react';
+import React, {
+  useRef,
+  RefObject,
+  useCallback,
+  SetStateAction,
+  Dispatch,
+} from 'react';
 import clsx from 'clsx';
 import type Color from 'color';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
+import { Tooltip, TooltipData } from './Tooltip/Tooltip';
 import { getFormatter } from './format/format';
 import {
   colorBasedOnPackageName,
@@ -199,6 +206,7 @@ const tableFormatDiff = ((def) => ({
 }))(tableFormatDiffDef);
 
 function Table({
+  tableBodyRef,
   flamebearer,
   updateSortBy,
   sortBy,
@@ -241,7 +249,7 @@ function Table({
           )}
         </tr>
       </thead>
-      <tbody>
+      <tbody ref={tableBodyRef}>
         <TableBody
           flamebearer={flamebearer}
           sortBy={sortBy}
@@ -269,7 +277,7 @@ const TableBody = ({
   highlightQuery,
   palette,
   selectedItem,
-}: Omit<ProfilerTableProps, 'updateSortBy'>) => {
+}: Omit<ProfilerTableProps, 'updateSortBy' | 'tableBodyRef'>) => {
   const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
   const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
@@ -332,7 +340,6 @@ const TableBody = ({
     style: React.CSSProperties
   ) => (
     <tr
-      onMouseMove={(e) => console.log(e)}
       key={`${x.name}${renderID}`}
       onClick={() => handleTableItemClick(x)}
       className={`${isRowSelected(x.name) && styles.rowSelected}`}
@@ -538,6 +545,8 @@ export interface ProfilerTableProps {
   highlightQuery: string;
   palette: FlamegraphPalette;
   selectedItem: Maybe<string>;
+
+  tableBodyRef: RefObject<HTMLTableSectionElement>;
 }
 
 export default function ProfilerTable({
@@ -552,18 +561,55 @@ export default function ProfilerTable({
   palette,
   selectedItem,
 }: ProfilerTableProps) {
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null);
+
+  const setTooltipContent = useCallback(
+    (
+      setContent: Dispatch<
+        SetStateAction<{
+          title: {
+            text: string;
+            diff: {
+              text: string;
+              color: string;
+            };
+          };
+          tooltipData: TooltipData[];
+        }>
+      >,
+      onMouseOut: () => void, // maybe not needed for table tooltip
+      e: MouseEvent
+    ) => {
+      // todo: get data from html
+      // add data-attribute to row and get it from there ?
+      const title = e.target.title;
+
+      console.log(title);
+    },
+    [tableBodyRef]
+  );
+
   return (
-    <Table
-      flamebearer={flamebearer}
-      updateSortBy={updateSortBy}
-      sortBy={sortBy}
-      sortByDirection={sortByDirection}
-      viewDiff={viewDiff}
-      fitMode={fitMode}
-      highlightQuery={highlightQuery}
-      handleTableItemClick={handleTableItemClick}
-      palette={palette}
-      selectedItem={selectedItem}
-    />
+    <>
+      <Table
+        tableBodyRef={tableBodyRef}
+        flamebearer={flamebearer}
+        updateSortBy={updateSortBy}
+        sortBy={sortBy}
+        sortByDirection={sortByDirection}
+        viewDiff={viewDiff}
+        fitMode={fitMode}
+        highlightQuery={highlightQuery}
+        handleTableItemClick={handleTableItemClick}
+        palette={palette}
+        selectedItem={selectedItem}
+      />
+      <Tooltip
+        dataSourceRef={tableBodyRef}
+        clickInfoSide="left"
+        type="table"
+        setTooltipContent={setTooltipContent}
+      />
+    </>
   );
 }

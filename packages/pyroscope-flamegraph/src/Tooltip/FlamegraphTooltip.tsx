@@ -31,7 +31,7 @@ type xyToDataDouble = (
   barTotal: number;
 }>;
 
-export type TooltipProps = {
+export type FlamegraphTooltipProps = {
   canvasRef: RefObject<HTMLCanvasElement>;
 
   units: Units;
@@ -51,7 +51,7 @@ export type TooltipProps = {
     }
 );
 
-export default function FlamegraphTooltip(props: TooltipProps) {
+export default function FlamegraphTooltip(props: FlamegraphTooltipProps) {
   const {
     format,
     canvasRef,
