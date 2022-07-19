@@ -169,6 +169,7 @@ func New(cfg Config) (*Fire, error) {
 	if err != nil {
 		return nil, err
 	}
+	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
 	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient, cfg.AgentConfig.ClientConfig.URL.String())
 
 	return fire, nil
