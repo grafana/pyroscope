@@ -15,7 +15,7 @@ import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
 import ContextMenuHighlight from './ContextMenuHighlight';
-import Tooltip from '../../Tooltip/Tooltip';
+import FlamegraphTooltip from '../../Tooltip/FlamegraphTooltip';
 import ContextMenu from './ContextMenu';
 import LogoLink from './LogoLink';
 import { PX_PER_LEVEL } from './constants';
@@ -326,10 +326,10 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
       )}
       {flamegraph && (
-        <Tooltip
+        <FlamegraphTooltip
           format={flamebearer.format}
           canvasRef={canvasRef}
-          xyToData={xyToTooltipData as ShamefulAny /* TODO */}
+          xyToData={xyToTooltipData as ShamefulAny}
           numTicks={flamebearer.numTicks}
           sampleRate={flamebearer.sampleRate}
           leftTicks={
