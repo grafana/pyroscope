@@ -25,6 +25,7 @@ import (
 	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
+	wwtracing "github.com/weaveworks/common/tracing"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
@@ -36,8 +37,6 @@ import (
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/tracing"
-	wwtracing "github.com/weaveworks/common/tracing"
-
 	"github.com/grafana/fire/pkg/util"
 )
 
