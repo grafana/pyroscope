@@ -1,3 +1,12 @@
+## [0.22.1](https://github.com/pyroscope-io/pyroscope/compare/v0.22.0...v0.22.1) (2022-07-19)
+
+
+### Bug Fixes
+
+* don't write to local db when `disable-local-writes` is set ([#1287](https://github.com/pyroscope-io/pyroscope/issues/1287)) ([4f791e2](https://github.com/pyroscope-io/pyroscope/commit/4f791e25ebec691013b9568956b533b77032d660))
+
+
+
 # [0.22.0](https://github.com/pyroscope-io/pyroscope/compare/v0.21.0...v0.22.0) (2022-07-16)
 
 
