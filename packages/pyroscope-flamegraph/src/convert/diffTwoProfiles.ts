@@ -17,14 +17,14 @@ function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
       for (let j = 0; j < f.levels[i].length; j += 4) {
         const key2 = [fi, i, j].join('/');
         const name = f.names[f.levels[i][j + 3]];
-        const offset = f.levels[i][j + 0];
+        const offset = f.levels[i][j + 0] as number;
 
         let parentKey;
         if (i !== 0) {
           const pi = i - 1;
           for (let k = 0; k < f.levels[pi].length; k += 4) {
-            const parentOffset = f.levels[pi][k + 0];
-            const total = f.levels[pi][k + 1];
+            const parentOffset = f.levels[pi][k + 0] as number;
+            const total = f.levels[pi][k + 1] as number;
             if (offset >= parentOffset && offset < parentOffset + total) {
               const parentKey2 = [fi, pi, k].join('/');
               const parentObj = lookup2[parentKey2];
@@ -64,7 +64,7 @@ function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
 function diffFlamebearer(f1: Flamebearer, f2: Flamebearer): Flamebearer {
   const result: Flamebearer = {
     format: 'double',
-    numTicks: f1.numTicks + f2.numTicks,
+    numTicks: (f1.numTicks as number) + (f2.numTicks as number),
     leftTicks: f1.numTicks,
     rightTicks: f2.numTicks,
     maxSelf: 100,
@@ -76,7 +76,12 @@ function diffFlamebearer(f1: Flamebearer, f2: Flamebearer): Flamebearer {
   };
 
   const tree = flamebearersToTree(f1, f2);
-  const processNode = (node, level, offsetLeft, offsetRight) => {
+  const processNode = (
+    node,
+    level: number,
+    offsetLeft: number,
+    offsetRight: number
+  ) => {
     const { name, children, self, total } = node;
     result.names.push(name);
     result.levels[level] ||= [];
