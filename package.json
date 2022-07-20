@@ -60,7 +60,6 @@
     "cy:datasource:ci": "cypress run --config-file packages/pyroscope-datasource-plugin/cypress.json",
     "cy:datasource:ss": "./scripts/cypress-screenshots.sh --config-file packages/pyroscope-datasource-plugin/cypress.json",
     "cy:datasource:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh --config-file packages/pyroscope-datasource-plugin/cypress.json",
-    "prepare": "node ./scripts/ci-skip-husky.js",
     "lint-staged": "lint-staged",
     "size": "size-limit",
     "storybook": "start-storybook -p 6006",
