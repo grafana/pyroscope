@@ -12,6 +12,9 @@ var (
 
 type LocationPersister struct{}
 
+func (*LocationPersister) Name() string {
+	return "locations"
+}
 func (*LocationPersister) Schema() *parquet.Schema {
 	return locationsSchema
 }

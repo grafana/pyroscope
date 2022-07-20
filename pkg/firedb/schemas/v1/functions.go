@@ -12,6 +12,10 @@ var (
 
 type FunctionPersister struct{}
 
+func (*FunctionPersister) Name() string {
+	return "functions"
+}
+
 func (*FunctionPersister) Schema() *parquet.Schema {
 	return functionsSchema
 }

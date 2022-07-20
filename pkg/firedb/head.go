@@ -3,13 +3,11 @@ package firedb
 import (
 	"context"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -18,11 +16,11 @@ import (
 	"github.com/gogo/status"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
@@ -32,10 +30,12 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
-var int64SlicePool = &sync.Pool{
-	New: func() interface{} {
-		return make([]int64, 0)
-	},
+var (
+	ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+)
+
+func generateULID() ulid.ULID {
+	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
 }
 
 func copySlice[T any](in []T) []T {
@@ -91,118 +91,88 @@ type Helper[M Models, K comparable] interface {
 	clone(M) M
 }
 
-type deduplicatingSlice[M Models, K comparable, H Helper[M, K]] struct {
-	slice  []M
-	size   atomic.Uint64
-	lock   sync.RWMutex
-	lookup map[K]int64
+type Table interface {
+	Name() string
+	Size() uint64
+	Init(path string) error
+	Flush() (int, error)
+	Close() error
 }
 
-func (s *deduplicatingSlice[M, K, H]) init() {
-	s.lookup = make(map[K]int64)
-}
-
-func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {
-	var (
-		rewritingMap = make(map[int64]int64)
-		h            H
-	)
-	missing := int64SlicePool.Get().([]int64)
-
-	// rewrite elements
-	for pos := range elems {
-		if err := h.rewrite(rewriter, elems[pos]); err != nil {
-			return err
-		}
+func HeadWithRegistry(reg prometheus.Registerer) HeadOption {
+	return func(h *Head) {
+		h.metrics = newHeadMetrics(reg).setHead(h)
 	}
+}
 
-	// try to find if element already exists in slice
-	s.lock.RLock()
-	for pos := range elems {
-		k := h.key(elems[pos])
-		if posSlice, exists := s.lookup[k]; exists {
-			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
-		} else {
-			missing = append(missing, int64(pos))
-		}
+func headWithMetrics(m *headMetrics) HeadOption {
+	return func(h *Head) {
+		h.metrics = m.setHead(h)
 	}
-	s.lock.RUnlock()
+}
 
-	// if there are missing elements, acquire write lock
-	if len(missing) > 0 {
-		s.lock.Lock()
-		posSlice := int64(len(s.slice))
-		for _, pos := range missing {
-			// check again if element exists
-			k := h.key(elems[pos])
-			if posSlice, exists := s.lookup[k]; exists {
-				rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
-				continue
-			}
-
-			// add element to slice/map
-			s.slice = append(s.slice, h.clone(elems[pos]))
-			s.lookup[k] = posSlice
-			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
-			posSlice++
-
-			// increase size of stored data
-			s.size.Add(h.size(elems[pos]))
-		}
-		s.lock.Unlock()
+func HeadWithLogger(l log.Logger) HeadOption {
+	return func(h *Head) {
+		h.logger = l
 	}
-
-	int64SlicePool.Put(missing[:0])
-
-	// add rewrite information to struct
-	h.addToRewriter(rewriter, rewritingMap)
-
-	return nil
 }
 
-func (s *deduplicatingSlice[M, K, H]) getIndex(key K) (int64, bool) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	v, ok := s.lookup[key]
-	return v, ok
-}
-
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func generateULID() ulid.ULID {
-	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
-}
+type HeadOption func(*Head)
 
 type Head struct {
-	logger  log.Logger
-	metrics *headMetrics
-	ulid    ulid.ULID
+	logger    log.Logger
+	metrics   *headMetrics
+	ulid      ulid.ULID
+	blockPath string
 
 	index           *profilesIndex
-	strings         deduplicatingSlice[string, string, *stringsHelper]
-	mappings        deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper]
-	functions       deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper]
-	locations       deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper]
-	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper] // a stacktrace is a slice of location ids
-	profiles        deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper]
+	strings         deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
+	mappings        deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
+	functions       deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
+	locations       deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper, *schemav1.LocationPersister]
+	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper, *schemav1.StacktracePersister] // a stacktrace is a slice of location ids
+	profiles        deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper, *schemav1.ProfilePersister]
+	tables          []Table
 	pprofLabelCache labelCache
 }
 
-func NewHead(logger log.Logger, reg prometheus.Registerer) (*Head, error) {
-	if logger == nil {
-		logger = log.NewNopLogger()
-	}
+func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 	h := &Head{
-		logger: logger,
-		ulid:   generateULID(),
+		ulid: generateULID(),
 	}
-	h.strings.init()
-	h.mappings.init()
-	h.functions.init()
-	h.locations.init()
-	h.stacktraces.init()
-	h.profiles.init()
-	h.metrics = newHeadMetrics(h, reg)
+	h.blockPath = filepath.Join(dataPath, "head", h.ulid.String())
+
+	// execute options
+	for _, o := range opts {
+		o(h)
+	}
+
+	// setup fall backs
+	if h.logger == nil {
+		h.logger = log.NewNopLogger()
+	}
+	if h.metrics == nil {
+		h.metrics = newHeadMetrics(nil).setHead(h)
+	}
+
+	if err := os.MkdirAll(h.blockPath, 0o755); err != nil {
+		return nil, err
+	}
+
+	h.tables = []Table{
+		&h.strings,
+		&h.mappings,
+		&h.functions,
+		&h.locations,
+		&h.stacktraces,
+		&h.profiles,
+	}
+	for _, t := range h.tables {
+		if err := t.Init(h.blockPath); err != nil {
+			return nil, err
+		}
+	}
+
 	index, err := newProfileIndex(32, h.metrics)
 	if err != nil {
 		return nil, err
@@ -434,101 +404,25 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 	}), err
 }
 
-func (h *Head) Flush(ctx context.Context, dataPath string) error {
-	path := filepath.Join(dataPath, h.ulid.String())
-
-	if err := os.MkdirAll(path, 0o755); err != nil {
-		return err
+func (h *Head) Flush(ctx context.Context) error {
+	if err := h.index.WriteTo(ctx, filepath.Join(h.blockPath, "index.tsdb")); err != nil {
+		return errors.Wrap(err, "flushing of index")
 	}
 
-	if err := h.WriteTo(ctx, path); err != nil {
-		return err
-	}
-
-	if err := h.index.WriteTo(ctx, filepath.Join(path, "index.tsdb")); err != nil {
-		return err
-	}
-
-	// TODO: Implement this fully as this is just a prototype to store parquet
-	// files with the memory content out.
-
-	h.ulid = generateULID()
-	return nil
-}
-
-func (h *Head) WriteTo(ctx context.Context, path string) error {
-	level.Info(h.logger).Log("msg", "write head to disk", "path", path)
-
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-
-	if !fileInfo.IsDir() {
-		return fmt.Errorf("error %s is no directory", path)
-	}
-
-	// loop over existing tables and write the parquet files sequentially
-	for _, table := range []struct {
-		name string
-		f    func(w io.Writer) error
-	}{
-		{
-			name: "profiles",
-			f: func(f io.Writer) error {
-				w := schemav1.ReadWriter[*schemav1.Profile, *schemav1.ProfilePersister]{}
-				return w.WriteParquetFile(f, h.profiles.slice)
-			},
-		},
-		{
-			name: "stacktraces",
-			f: func(f io.Writer) error {
-				w := schemav1.ReadWriter[*schemav1.Stacktrace, *schemav1.StacktracePersister]{}
-				return w.WriteParquetFile(f, h.stacktraces.slice)
-			},
-		},
-		{
-			name: "strings",
-			f: func(f io.Writer) error {
-				w := schemav1.ReadWriter[string, *schemav1.StringPersister]{}
-				return w.WriteParquetFile(f, h.strings.slice)
-			},
-		},
-		{
-			name: "mappings",
-			f: func(f io.Writer) error {
-				w := schemav1.ReadWriter[*profilev1.Mapping, *schemav1.MappingPersister]{}
-				return w.WriteParquetFile(f, h.mappings.slice)
-			},
-		},
-		{
-			name: "locations",
-			f: func(f io.Writer) error {
-				w := schemav1.ReadWriter[*profilev1.Location, *schemav1.LocationPersister]{}
-				return w.WriteParquetFile(f, h.locations.slice)
-			},
-		},
-		{
-			name: "functions",
-			f: func(f io.Writer) error {
-				w := schemav1.ReadWriter[*profilev1.Function, *schemav1.FunctionPersister]{}
-				return w.WriteParquetFile(f, h.functions.slice)
-			},
-		},
-	} {
-		file, err := os.OpenFile(filepath.Join(path, table.name+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	for _, t := range h.tables {
+		rowCount, err := t.Flush()
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "flushing of table %s", t.Name())
 		}
+		h.metrics.rowsWritten.WithLabelValues(t.Name()).Add(float64(rowCount))
+	}
 
-		if err := table.f(file); err != nil {
-			return err
-		}
-
-		if err := file.Close(); err != nil {
-			return err
+	for _, t := range h.tables {
+		if err := t.Close(); err != nil {
+			return errors.Wrapf(err, "closing of table %s", t.Name())
 		}
 	}
+	level.Info(h.logger).Log("msg", "head successfully written to block", "block_path", h.blockPath)
 
 	return nil
 }
