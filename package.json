@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "start": "lerna-watch @pyroscope/webapp",
-    "bootstrap": "husky install && lerna bootstrap",
+    "bootstrap": "lerna bootstrap && husky install",
     "web-postinstall": "scripts/web-postinstall.js",
     "postinstall": "yarn run web-postinstall",
     "dev": "yarn run dev:webapp",
