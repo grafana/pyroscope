@@ -176,5 +176,9 @@ func loadConfigFile(cmd *cobra.Command, vpr *viper.Viper) error {
 }
 
 func performSubstitutions(data []byte) io.Reader {
-	return strings.NewReader(os.ExpandEnv(string(data)))
+	return strings.NewReader(performSubstitutionsStr(data))
+}
+
+func performSubstitutionsStr(data []byte) string {
+	return os.ExpandEnv(string(data))
 }
