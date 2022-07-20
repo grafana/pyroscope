@@ -4,7 +4,7 @@ import type { Units } from '@pyroscope/models/src';
 import { Tooltip, TooltipData } from './Tooltip';
 import { getFormatter } from '../format/format';
 
-interface TableTooltipProps {
+export interface TableTooltipProps {
   tableBodyRef: RefObject<HTMLTableSectionElement>;
   numTicks: number;
   sampleRate: number;
