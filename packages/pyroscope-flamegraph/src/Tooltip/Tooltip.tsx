@@ -19,19 +19,13 @@ import styles from './Tooltip.module.scss';
 
 export type TooltipData = {
   units: Units;
-} & (
-  | {
-      percent: string | number;
-      samples: string;
-      formattedValue: string;
-      tooltipType: 'flamegraph';
-    }
-  | {
-      self: string;
-      total: string;
-      tooltipType: 'table';
-    }
-);
+  percent?: string | number;
+  samples?: string;
+  formattedValue?: string;
+  self?: string;
+  total?: string;
+  tooltipType: 'table' | 'flamegraph';
+};
 
 interface TooltipProps {
   // canvas or table body ref
