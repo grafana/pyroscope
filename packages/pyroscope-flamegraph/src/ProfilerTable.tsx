@@ -1,15 +1,9 @@
-import React, {
-  useRef,
-  RefObject,
-  useCallback,
-  SetStateAction,
-  Dispatch,
-} from 'react';
+import React, { useRef, RefObject } from 'react';
 import clsx from 'clsx';
 import type Color from 'color';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
-import { Tooltip, TooltipData } from './Tooltip/Tooltip';
+import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter } from './format/format';
 import {
   colorBasedOnPackageName,
@@ -340,20 +334,17 @@ const TableBody = ({
     style: React.CSSProperties
   ) => (
     <tr
+      data-row={`${x.name};${x.self};${x.total};${x.type}`}
       key={`${x.name}${renderID}`}
       onClick={() => handleTableItemClick(x)}
       className={`${isRowSelected(x.name) && styles.rowSelected}`}
     >
       {nameCell(x, style)}
       <td style={backgroundImageStyle(x.self, maxSelf, color)}>
-        <span title={formatter.format(x.self, sampleRate)}>
-          {formatter.format(x.self, sampleRate)}
-        </span>
+        {formatter.format(x.self, sampleRate)}
       </td>
       <td style={backgroundImageStyle(x.total, numTicks, color)}>
-        <span title={formatter.format(x.total, sampleRate)}>
-          {formatter.format(x.total, sampleRate)}
-        </span>
+        {formatter.format(x.total, sampleRate)}
       </td>
     </tr>
   );
@@ -560,34 +551,8 @@ export default function ProfilerTable({
   highlightQuery,
   palette,
   selectedItem,
-}: ProfilerTableProps) {
+}: Omit<ProfilerTableProps, 'tableBodyRef'>) {
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
-
-  const setTooltipContent = useCallback(
-    (
-      setContent: Dispatch<
-        SetStateAction<{
-          title: {
-            text: string;
-            diff: {
-              text: string;
-              color: string;
-            };
-          };
-          tooltipData: TooltipData[];
-        }>
-      >,
-      onMouseOut: () => void, // maybe not needed for table tooltip
-      e: MouseEvent
-    ) => {
-      // todo: get data from html
-      // add data-attribute to row and get it from there ?
-      const title = e.target.title;
-
-      console.log(title);
-    },
-    [tableBodyRef]
-  );
 
   return (
     <>
@@ -604,11 +569,11 @@ export default function ProfilerTable({
         palette={palette}
         selectedItem={selectedItem}
       />
-      <Tooltip
-        dataSourceRef={tableBodyRef}
-        clickInfoSide="left"
-        type="table"
-        setTooltipContent={setTooltipContent}
+      <TableTooltip
+        tableBodyRef={tableBodyRef}
+        numTicks={flamebearer.numTicks}
+        sampleRate={flamebearer.sampleRate}
+        units={flamebearer.units}
       />
     </>
   );

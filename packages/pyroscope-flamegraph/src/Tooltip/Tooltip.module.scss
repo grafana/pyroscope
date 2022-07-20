@@ -44,14 +44,9 @@
       padding: 5px;
     }
 
-    td {
-      width: 50%;
-    }
-
-    &.tooltipDiffTable {
+    &.flamegraphDiff {
       th,
       td {
-        width: 25%;
         font-weight: normal;
       }
     }

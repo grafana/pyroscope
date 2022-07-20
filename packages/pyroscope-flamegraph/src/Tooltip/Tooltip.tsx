@@ -17,50 +17,28 @@ import LeftClickIcon from './LeftClickIcon';
 
 import styles from './Tooltip.module.scss';
 
-const tooltipTitles: Record<
-  Units,
-  { percent: string; formattedValue: string }
-> = {
-  objects: {
-    percent: '% of objects in RAM',
-    formattedValue: 'RAM amount',
-  },
-  goroutines: {
-    percent: '% of goroutines',
-    formattedValue: 'goroutines',
-  },
-  bytes: {
-    percent: '% of RAM',
-    formattedValue: 'bytes',
-  },
-  samples: {
-    percent: 'Share of CPU',
-    formattedValue: 'CPU Time',
-  },
-  lock_nanoseconds: {
-    percent: '% of Time spent',
-    formattedValue: 'seconds',
-  },
-  lock_samples: {
-    percent: '% of contended locks',
-    formattedValue: 'locks',
-  },
-  trace_samples: {
-    percent: '% of time',
-    formattedValue: 'samples',
-  },
-  '': {
-    percent: '',
-    formattedValue: '',
-  },
-};
+export type TooltipData = {
+  units: Units;
+} & (
+  | {
+      percent: string | number;
+      samples: string;
+      formattedValue: string;
+      tooltipType: 'flamegraph';
+    }
+  | {
+      self: string;
+      total: string;
+      tooltipType: 'table';
+    }
+);
 
 interface TooltipProps {
-  // canvas or table ref
-  dataSourceRef: RefObject<HTMLCanvasElement | any>;
+  // canvas or table body ref
+  dataSourceRef: RefObject<HTMLCanvasElement | HTMLElement>;
 
-  // footer
   shouldShowFooter?: boolean;
+  shouldShowTitle?: boolean;
   clickInfoSide?: 'left' | 'right';
 
   setTooltipContent: (
@@ -79,16 +57,14 @@ interface TooltipProps {
     onMouseOut: () => void,
     e: MouseEvent
   ) => void;
-  // for styles
-  type: 'flamegraph' | 'table';
 }
 
 export function Tooltip({
-  dataSourceRef,
   shouldShowFooter = true,
+  shouldShowTitle = true,
+  dataSourceRef,
   clickInfoSide,
   setTooltipContent,
-  type,
 }: TooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = React.useState({
@@ -146,11 +122,17 @@ export function Tooltip({
     }
 
     // watch for mouse events on the bar
-    dataSourceEl.addEventListener('mousemove', memoizedOnMouseMove);
+    dataSourceEl.addEventListener(
+      'mousemove',
+      memoizedOnMouseMove as EventListener
+    );
     dataSourceEl.addEventListener('mouseout', onMouseOut);
 
     return () => {
-      dataSourceEl.removeEventListener('mousemove', memoizedOnMouseMove);
+      dataSourceEl.removeEventListener(
+        'mousemove',
+        memoizedOnMouseMove as EventListener
+      );
       dataSourceEl.removeEventListener('mouseout', onMouseOut);
     };
   }, [dataSourceRef.current, memoizedOnMouseMove]);
@@ -164,30 +146,78 @@ export function Tooltip({
       style={style}
       ref={tooltipRef}
     >
-      <div className={styles.tooltipName} data-testid="tooltip-title">
-        {content.title.text}
-      </div>
-      <div className={styles.functionName} data-testid="tooltip-function-name">
-        {content.title.text}
-      </div>
-      {content.title.diff.text.length > 0 ? (
-        <TooltipTable data={content.tooltipData} diff={content.title.diff} />
-      ) : (
-        <TooltipTable data={content.tooltipData} />
+      {content.tooltipData.length > 0 && (
+        <>
+          {shouldShowTitle && (
+            <div className={styles.tooltipName} data-testid="tooltip-title">
+              {content.title.text}
+            </div>
+          )}
+          <div
+            className={styles.functionName}
+            data-testid="tooltip-function-name"
+          >
+            {content.title.text}
+          </div>
+          {content.title.diff.text.length > 0 ? (
+            <TooltipTable
+              data={content.tooltipData}
+              diff={content.title.diff}
+            />
+          ) : (
+            <TooltipTable data={content.tooltipData} />
+          )}
+          {shouldShowFooter && <TooltipFooter clickInfoSide={clickInfoSide} />}
+        </>
       )}
-      <TooltipFooter
-        shouldShowFooter={shouldShowFooter}
-        clickInfoSide={clickInfoSide}
-      />
     </div>
   );
 }
 
-export type TooltipData = {
-  units: Units;
-  percent: string | number;
-  samples: string;
-  formattedValue: string;
+const tooltipTitles: Record<
+  Units,
+  { percent: string; formattedValue: string; total: string }
+> = {
+  objects: {
+    percent: '% of objects in RAM',
+    formattedValue: 'RAM amount',
+    total: '% of total RAM',
+  },
+  goroutines: {
+    percent: '% of goroutines',
+    formattedValue: 'goroutines',
+    total: '% of total goroutines',
+  },
+  bytes: {
+    percent: '% of RAM',
+    formattedValue: 'bytes',
+    total: '% of total bytes',
+  },
+  samples: {
+    percent: 'Share of CPU',
+    formattedValue: 'CPU Time',
+    total: '% of total CPU',
+  },
+  lock_nanoseconds: {
+    percent: '% of Time spent',
+    formattedValue: 'seconds',
+    total: '% of total seconds',
+  },
+  lock_samples: {
+    percent: '% of contended locks',
+    formattedValue: 'locks',
+    total: '% of total locks',
+  },
+  trace_samples: {
+    percent: '% of time',
+    formattedValue: 'samples',
+    total: '% of total samples',
+  },
+  '': {
+    percent: '',
+    formattedValue: '',
+    total: '',
+  },
 };
 
 function TooltipTable({
@@ -203,73 +233,106 @@ function TooltipTable({
     return null;
   }
 
+  let renderTable: () => ReactNode;
+
+  switch (baselineData.tooltipType) {
+    case 'flamegraph':
+      renderTable = () => (
+        <>
+          {comparisonData && (
+            <thead>
+              <tr>
+                <th />
+                <th>Baseline</th>
+                <th>Comparison</th>
+                <th>Diff</th>
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            <tr>
+              <td>{tooltipTitles[baselineData.units].percent}:</td>
+              <td>{baselineData.percent}</td>
+              {comparisonData && (
+                <>
+                  <td>{comparisonData.percent}</td>
+                  <td>
+                    {diff && (
+                      <span
+                        data-testid="tooltip-diff"
+                        style={{ color: diff.color }}
+                      >
+                        {diff.text}
+                      </span>
+                    )}
+                  </td>
+                </>
+              )}
+            </tr>
+            <tr>
+              <td>{tooltipTitles[baselineData.units].formattedValue}:</td>
+              <td>{baselineData.formattedValue}</td>
+              {comparisonData && (
+                <>
+                  <td>{comparisonData.formattedValue}</td>
+                  <td />
+                </>
+              )}
+            </tr>
+            <tr>
+              <td>Samples:</td>
+              <td>{baselineData.samples}</td>
+              {comparisonData && (
+                <>
+                  <td>{comparisonData.samples}</td>
+                  <td />
+                </>
+              )}
+            </tr>
+          </tbody>
+        </>
+      );
+      break;
+    case 'table':
+      renderTable = () => (
+        <>
+          <thead>
+            <tr>
+              <td />
+              <td>Self ({tooltipTitles[baselineData.units].total})</td>
+              <td>Total ({tooltipTitles[baselineData.units].total})</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{tooltipTitles[baselineData.units].formattedValue}:</td>
+              <td>{baselineData.self}</td>
+              <td>{baselineData.total}</td>
+            </tr>
+          </tbody>
+        </>
+      );
+      break;
+    default:
+      renderTable = () => null;
+  }
+
   return (
     <table
       data-testid="tooltip-table"
       className={clsx(styles.tooltipTable, {
-        [styles.tooltipDiffTable]: comparisonData,
+        [styles[`${baselineData.tooltipType}${comparisonData ? 'Diff' : ''}`]]:
+          baselineData.tooltipType,
       })}
     >
-      {comparisonData && (
-        <thead>
-          <tr>
-            <th />
-            <th>Baseline</th>
-            <th>Comparison</th>
-            <th>Diff</th>
-          </tr>
-        </thead>
-      )}
-      <tbody>
-        <tr>
-          <td>{tooltipTitles[baselineData.units].percent}:</td>
-          <td>{baselineData.percent}</td>
-          {comparisonData && (
-            <>
-              <td>{comparisonData.percent}</td>
-              <td>
-                {diff && (
-                  <span
-                    data-testid="tooltip-diff"
-                    style={{ color: diff.color }}
-                  >
-                    {diff.text}
-                  </span>
-                )}
-              </td>
-            </>
-          )}
-        </tr>
-        <tr>
-          <td>{tooltipTitles[baselineData.units].formattedValue}:</td>
-          <td>{baselineData.formattedValue}</td>
-          {comparisonData && (
-            <>
-              <td>{comparisonData.formattedValue}</td>
-              <td />
-            </>
-          )}
-        </tr>
-        <tr>
-          <td>Samples:</td>
-          <td>{baselineData.samples}</td>
-          {comparisonData && (
-            <>
-              <td>{comparisonData.samples}</td>
-              <td />
-            </>
-          )}
-        </tr>
-      </tbody>
+      {renderTable()}
     </table>
   );
 }
 
 function TooltipFooter({
-  shouldShowFooter,
   clickInfoSide,
 }: {
-  shouldShowFooter: boolean;
   clickInfoSide?: 'left' | 'right';
 }) {
   let clickInfo: ReactNode;
@@ -295,7 +358,5 @@ function TooltipFooter({
       clickInfo = '<TBD ?>';
   }
 
-  return shouldShowFooter ? (
-    <div className={styles.clickInfo}>{clickInfo}</div>
-  ) : null;
+  return <div className={styles.clickInfo}>{clickInfo}</div>;
 }

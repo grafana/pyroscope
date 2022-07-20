@@ -104,6 +104,7 @@ export default function FlamegraphTooltip(props: FlamegraphTooltipProps) {
               units === 'trace_samples' ? '' : numberWithCommas(data.total),
             units,
             formattedValue: formatter.format(data.total, sampleRate),
+            tooltipType: 'flamegraph',
           };
           setContent({
             title: {
@@ -158,7 +159,6 @@ export default function FlamegraphTooltip(props: FlamegraphTooltipProps) {
     <Tooltip
       dataSourceRef={canvasRef}
       clickInfoSide="right"
-      type="flamegraph"
       setTooltipContent={setTooltipContent}
     />
   );
@@ -210,6 +210,7 @@ function formatDouble(
     samples: numberWithCommas(totalLeft),
     units,
     formattedValue: formatter.format(totalLeft, sampleRate),
+    tooltipType: 'flamegraph',
   };
 
   const newRight: TooltipData = {
@@ -217,6 +218,7 @@ function formatDouble(
     samples: numberWithCommas(totalRight),
     units,
     formattedValue: formatter.format(totalRight, sampleRate),
+    tooltipType: 'flamegraph',
   };
 
   const totalDiff = percentDiff(leftPercent, rightPercent);
