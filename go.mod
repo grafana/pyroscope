@@ -28,7 +28,7 @@ require (
 	github.com/prometheus/common v0.35.0
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
 	github.com/pyroscope-io/pyroscope v0.18.0
-	github.com/segmentio/parquet-go v0.0.0-20220711225945-6dc5e4bb634a
+	github.com/segmentio/parquet-go v0.0.0-20220720065439-3fe644c10645
 	github.com/stretchr/testify v1.7.5
 	github.com/thanos-io/thanos v0.26.0
 	github.com/weaveworks/common v0.0.0-20220629114710-e3b70df0f08b
@@ -261,9 +261,6 @@ replace (
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
-	// This adds a bugfix for creating schema of structs with pointers.
-	// TODO(simonswine): Remove once upstream PR is merged
-	github.com/segmentio/parquet-go => github.com/simonswine/parquet-go v0.0.0-20220712063352-1bf563d5557d
 	google.golang.org/api => google.golang.org/api v0.70.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )
