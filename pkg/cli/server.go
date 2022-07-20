@@ -387,7 +387,7 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 		ScrapeConfigs []*sc.Config `yaml:"scrape-configs" mapstructure:"-"`
 	}
 	var s scrapeConfig
-	if err = yaml.Unmarshal([]byte(performSubstitutionsStr(b)), &s); err != nil {
+	if err = yaml.Unmarshal([]byte(performSubstitutions(b)), &s); err != nil {
 		return err
 	}
 	// Populate scrape configs.
@@ -412,7 +412,7 @@ func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
 	}
 
 	var s cfg
-	if err = yaml.Unmarshal([]byte(performSubstitutionsStr(b)), &s); err != nil {
+	if err = yaml.Unmarshal([]byte(performSubstitutions(b)), &s); err != nil {
 		return err
 	}
 

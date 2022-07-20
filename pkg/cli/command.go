@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -169,16 +168,13 @@ func loadConfigFile(cmd *cobra.Command, vpr *viper.Viper) error {
 	}
 
 	if err == nil {
-		return vpr.ReadConfig(performSubstitutions(data))
+		return vpr.ReadConfig(strings.NewReader(performSubstitutions(data)))
 	}
 
 	return fmt.Errorf("loading configuration file: %w", err)
 }
 
-func performSubstitutions(data []byte) io.Reader {
-	return strings.NewReader(performSubstitutionsStr(data))
-}
-
-func performSubstitutionsStr(data []byte) string {
+func performSubstitutions(data []byte) string {
+	// return string(data)
 	return os.ExpandEnv(string(data))
 }
