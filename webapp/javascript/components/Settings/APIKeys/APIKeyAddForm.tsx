@@ -27,7 +27,7 @@ function APIKeyAddForm() {
     role: 'ReadOnly',
     ttlSeconds: 360000,
   });
-  const [key, setKey] = useState(undefined);
+  const [key, setKey] = useState<string>();
   const [isRolesTooltipVisible, setRolesTooltipVisibility] = useState(false);
   const dispatch = useAppDispatch();
 
@@ -51,8 +51,10 @@ function APIKeyAddForm() {
     dispatch(createAPIKey(data))
       .unwrap()
       .then(
-        (k: ShamefulAny) => {
-          setKey(k.key);
+        (k) => {
+          if (k.key) {
+            setKey(k.key);
+          }
         },
         (e) => {
           setForm({ ...form, errors: e.errors });

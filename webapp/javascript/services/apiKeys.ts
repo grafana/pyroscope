@@ -1,6 +1,11 @@
 import { Result } from '@webapp/util/fp';
 import type { ZodError } from 'zod';
-import { APIKeys, apikeyModel, apiKeysSchema } from '@webapp/models/apikeys';
+import {
+  APIKeys,
+  apikeyModel,
+  apiKeysSchema,
+  APIKey,
+} from '@webapp/models/apikeys';
 import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 
@@ -19,7 +24,7 @@ export async function createAPIKey(data: {
   name: string;
   role: string;
   ttlSeconds: number;
-}): Promise<Result<APIKeys, RequestError | ZodError>> {
+}): Promise<Result<APIKey, RequestError | ZodError>> {
   const response = await request('/api/keys', {
     method: 'POST',
     body: JSON.stringify(data),
