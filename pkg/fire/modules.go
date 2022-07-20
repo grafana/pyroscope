@@ -153,7 +153,7 @@ func (f *Fire) initFireDB() (_ services.Service, err error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return f.fireDB, nil
 }
 
 func (f *Fire) initIngester() (_ services.Service, err error) {

@@ -12,6 +12,10 @@ var (
 
 type MappingPersister struct{}
 
+func (*MappingPersister) Name() string {
+	return "mappings"
+}
+
 func (*MappingPersister) Schema() *parquet.Schema {
 	return mappingsSchema
 }

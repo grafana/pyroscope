@@ -20,6 +20,10 @@ type storedString struct {
 
 type StringPersister struct{}
 
+func (*StringPersister) Name() string {
+	return "strings"
+}
+
 func (*StringPersister) Schema() *parquet.Schema {
 	return stringsSchema
 }
