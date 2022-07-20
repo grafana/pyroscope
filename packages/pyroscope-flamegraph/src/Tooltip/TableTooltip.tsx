@@ -52,8 +52,14 @@ export default function TableTooltip({
       ] = tableRowElementData.split(';');
 
       // think about better way. maybe return value with no units from format method as well ?
-      const selfFormatted = formatter.format(parseInt(selfValue), sampleRate);
-      const totalFormated = formatter.format(parseInt(totalValue), sampleRate);
+      const selfFormatted = formatter.format(
+        parseInt(selfValue, 10),
+        sampleRate
+      );
+      const totalFormated = formatter.format(
+        parseInt(totalValue, 10),
+        sampleRate
+      );
 
       const totalFlamebearerSplitted = totalFlamebearer.split(' ');
       const totalFlamebearerNoUnitsValue =

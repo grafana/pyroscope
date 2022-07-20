@@ -42,13 +42,7 @@
     td {
       border: 1px solid var(--ps-tooltip-header-bg);
       padding: 5px;
-    }
-
-    &.flamegraphDiff {
-      th,
-      td {
-        font-weight: normal;
-      }
+      font-weight: normal;
     }
   }
 
