@@ -45,7 +45,7 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 		stopCh:      make(chan struct{}, 0),
 		headMetrics: headMetrics,
 	}
-	if err := f.Flush(context.Background()); err != nil {
+	if _, err := f.initHead(); err != nil {
 		return nil, err
 	}
 	f.Service = services.NewBasicService(f.starting, f.running, f.stopping)
@@ -95,22 +95,26 @@ func (f *FireDB) Head() *Head {
 	return f.head
 }
 
-func (f *FireDB) Flush(ctx context.Context) error {
+func (f *FireDB) initHead() (oldHead *Head, err error) {
 	f.headLock.Lock()
-	var (
-		oldHead = f.head
-		err     error
-	)
+	defer f.headLock.Unlock()
+	oldHead = f.head
 	f.headFlushTime = time.Now().UTC().Truncate(f.cfg.BlockDuration).Add(f.cfg.BlockDuration)
 	f.head, err = NewHead(f.cfg.DataPath, headWithMetrics(f.headMetrics), HeadWithLogger(f.logger))
 	if err != nil {
+		return oldHead, err
+	}
+	return oldHead, nil
+}
+
+func (f *FireDB) Flush(ctx context.Context) error {
+	oldHead, err := f.initHead()
+	if err != nil {
 		return err
 	}
-	f.headLock.Unlock()
 
 	if oldHead == nil {
 		return nil
 	}
-
 	return oldHead.Flush(ctx)
 }
