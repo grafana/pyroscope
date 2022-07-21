@@ -22,7 +22,7 @@ IMAGE_PREFIX ?= us.gcr.io/kubernetes-dev/
 IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=raw --format=%cd | cut -d ' ' -f 1 | xargs -i date -d @{} -u +"%Y-%m-%dT%H:%M:%SZ")
+GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
 
 # Build flags
 VPREFIX := github.com/grafana/fire/pkg/util/build
