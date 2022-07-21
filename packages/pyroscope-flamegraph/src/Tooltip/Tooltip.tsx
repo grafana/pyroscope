@@ -77,6 +77,16 @@ export function Tooltip({
     setStyle({
       visibility: 'hidden',
     });
+    setContent({
+      title: {
+        text: '',
+        diff: {
+          text: '',
+          color: '',
+        },
+      },
+      tooltipData: [],
+    });
   };
 
   const memoizedOnMouseMove = useCallback(
