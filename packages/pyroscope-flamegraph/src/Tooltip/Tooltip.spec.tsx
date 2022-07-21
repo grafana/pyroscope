@@ -2,14 +2,10 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Maybe } from 'true-myth';
-import type { Units } from '@pyroscope/models/src';
 
-import { diffColorRed, diffColorGreen } from './color';
-import Tooltip, { TooltipProps } from './Tooltip';
-import { DefaultPalette } from './colorPalette';
+import { Tooltip, TooltipProps } from './Tooltip';
 
-function TestCanvas(props: Omit<TooltipProps, 'canvasRef'>) {
+function TestCanvas(props: Omit<TooltipProps, 'dataSourceRef'>) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   return (
@@ -18,259 +14,382 @@ function TestCanvas(props: Omit<TooltipProps, 'canvasRef'>) {
       <Tooltip
         data-testid="tooltip"
         {...(props as TooltipProps)}
-        canvasRef={canvasRef}
+        dataSourceRef={canvasRef}
+      />
+    </>
+  );
+}
+
+function TestTable(props: Omit<TooltipProps, 'dataSourceRef'>) {
+  const tableBodyRef = React.useRef<HTMLTableSectionElement>(null);
+
+  return (
+    <>
+      <table>
+        <tbody data-testid="table-body" ref={tableBodyRef}>
+          <tr>
+            <td>text</td>
+          </tr>
+        </tbody>
+      </table>
+      <Tooltip
+        data-testid="tooltip"
+        {...(props as TooltipProps)}
+        dataSourceRef={tableBodyRef}
       />
     </>
   );
 }
 
 describe('Tooltip', () => {
-  function executeTooltipTest(
-    props: Omit<TooltipProps, 'canvasRef' | 'palette'>,
-    expectedData: {
-      diff?: { text: string; color: string };
-      title: string;
-      percent: string | number;
-      samples: string;
-      formattedValue: string;
-    }
-  ) {
-    render(<TestCanvas {...props} palette={DefaultPalette} />);
+  describe('flamegraph tooltip', () => {
+    it("'single' mode with default settings renders correctly", () => {
+      render(
+        <TestCanvas
+          clickInfoSide="right"
+          setTooltipContent={(setContent) => {
+            setContent({
+              title: {
+                text: 'function_title',
+                diff: {
+                  text: '',
+                  color: '',
+                },
+              },
+              tooltipData: [
+                {
+                  units: 'samples',
+                  percent: 100,
+                  samples: '100',
+                  formattedValue: '1 second',
+                  tooltipType: 'flamegraph',
+                },
+              ],
+            });
+          }}
+        />
+      );
 
-    // since we are mocking the result
-    // we don't care exactly where it's hovered
-    userEvent.hover(screen.getByTestId('canvas'));
+      expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-    expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
-      expectedData.title
-    );
-    expect(
-      screen.getByTestId('flamegraph-tooltip-function-name')
-    ).toHaveTextContent(expectedData.title);
+      userEvent.hover(screen.getByTestId('canvas'));
 
-    const tableComponent = screen.getByTestId('flamegraph-tooltip-table');
-    expect(tableComponent).toContainHTML('table');
+      expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
+        'function_title'
+      );
+      expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
+        'function_title'
+      );
+      expect(screen.getByTestId('tooltip-table')).toHaveTextContent(
+        'Share of CPU:100CPU Time:1 secondSamples:100'
+      );
+      expect(screen.getByTestId('tooltip-footer')).toHaveTextContent(
+        'Right click for more node viewing options'
+      );
+    });
 
-    if (expectedData?.diff) {
-      expect(tableComponent).toContainHTML('thead');
-      expect(tableComponent).toHaveTextContent('BaselineComparisonDiff');
+    describe("'double' mode with default settings", () => {
+      it("works with a function that hasn't changed", () => {
+        render(
+          <TestCanvas
+            clickInfoSide="right"
+            setTooltipContent={(setContent) => {
+              setContent({
+                title: {
+                  text: 'function_title',
+                  diff: {
+                    text: '(+99900.00%)',
+                    color: 'rgb(200, 0, 0)',
+                  },
+                },
+                tooltipData: [
+                  {
+                    percent: '0.1%',
+                    samples: '100',
+                    units: 'samples',
+                    formattedValue: '1.00 second',
+                    tooltipType: 'flamegraph',
+                  },
+                  {
+                    percent: '100%',
+                    samples: '100',
+                    units: 'samples',
+                    formattedValue: '1.00 second',
+                    tooltipType: 'flamegraph',
+                  },
+                ],
+              });
+            }}
+          />
+        );
 
-      const diffComponent = screen.getByTestId('flamegraph-tooltip-diff');
-      expect(diffComponent).toHaveStyle({ color: expectedData.diff.color });
-      expect(diffComponent).toHaveTextContent(expectedData.diff.text);
-    }
+        expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-    const tableHeader = expectedData?.diff ? 'BaselineComparisonDiff' : '';
-    const diff = expectedData?.diff ? expectedData.diff.text : '';
+        userEvent.hover(screen.getByTestId('canvas'));
 
-    expect(tableComponent).toHaveTextContent(
-      tableHeader +
-        expectedData.percent +
-        diff +
-        expectedData.formattedValue +
-        expectedData.samples
-    );
-  }
+        expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-table')).toHaveTextContent(
+          'BaselineComparisonDiffShare of CPU:0.1%100%(+99900.00%)CPU Time:1.00 second1.00 secondSamples:100100'
+        );
+        expect(screen.getByTestId('tooltip-footer')).toHaveTextContent(
+          'Right click for more node viewing options'
+        );
+      });
 
-  describe('"single" mode', () => {
-    it('renders correctly', () => {
-      const xyToData = (x: number, y: number) =>
-        Maybe.of({
-          format: 'single' as const,
-          name: 'function_title',
-          total: 10,
-        });
+      it('works with a function that has been added', () => {
+        render(
+          <TestCanvas
+            clickInfoSide="right"
+            setTooltipContent={(setContent) => {
+              setContent({
+                title: {
+                  text: 'function_title',
+                  diff: {
+                    text: '(new)',
+                    color: 'rgb(200, 0, 0)',
+                  },
+                },
+                tooltipData: [
+                  {
+                    percent: '0%',
+                    samples: '0',
+                    units: 'samples',
+                    formattedValue: '< 0.01 seconds',
+                    tooltipType: 'flamegraph',
+                  },
+                  {
+                    percent: '10%',
+                    samples: '100',
+                    units: 'samples',
+                    formattedValue: '1.00 second',
+                    tooltipType: 'flamegraph',
+                  },
+                ],
+              });
+            }}
+          />
+        );
 
-      const tooltipProps = {
-        numTicks: 100,
-        sampleRate: 100,
-        xyToData,
-        leftTicks: 100,
-        rightTicks: 100,
-        format: 'single' as const,
-        units: 'samples' as Units,
-      };
+        expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-      const expectedTableData = {
-        percent: 'Share of CPU:10%',
-        samples: 'Samples:10',
-        formattedValue: 'CPU Time:0.10 seconds',
-        title: 'function_title',
-      };
+        userEvent.hover(screen.getByTestId('canvas'));
 
-      executeTooltipTest(tooltipProps, expectedTableData);
+        expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-table')).toHaveTextContent(
+          'BaselineComparisonDiffShare of CPU:0%10%(new)CPU Time:< 0.01 seconds1.00 secondSamples:0100'
+        );
+        expect(screen.getByTestId('tooltip-footer')).toHaveTextContent(
+          'Right click for more node viewing options'
+        );
+      });
+
+      it('works with a function that has been removed', () => {
+        render(
+          <TestCanvas
+            clickInfoSide="right"
+            setTooltipContent={(setContent) => {
+              setContent({
+                title: {
+                  text: 'function_title',
+                  diff: {
+                    text: '(removed)',
+                    color: 'rgb(0, 170, 0)',
+                  },
+                },
+                tooltipData: [
+                  {
+                    percent: '10%',
+                    samples: '100',
+                    units: 'samples',
+                    formattedValue: '1.00 second',
+                    tooltipType: 'flamegraph',
+                  },
+                  {
+                    percent: '0%',
+                    samples: '0',
+                    units: 'samples',
+                    formattedValue: '< 0.01 seconds',
+                    tooltipType: 'flamegraph',
+                  },
+                ],
+              });
+            }}
+          />
+        );
+
+        expect(screen.getByTestId('tooltip')).toBeInTheDocument();
+
+        userEvent.hover(screen.getByTestId('canvas'));
+
+        expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-table')).toHaveTextContent(
+          'BaselineComparisonDiffShare of CPU:10%0%(removed)CPU Time:1.00 second< 0.01 secondsSamples:1000'
+        );
+        expect(screen.getByTestId('tooltip-footer')).toHaveTextContent(
+          'Right click for more node viewing options'
+        );
+      });
+
+      it('works with a function that became slower', () => {
+        render(
+          <TestCanvas
+            clickInfoSide="right"
+            setTooltipContent={(setContent) => {
+              setContent({
+                title: {
+                  text: 'function_title',
+                  diff: {
+                    text: '(+100.00%)',
+                    color: 'rgb(200, 0, 0)',
+                  },
+                },
+                tooltipData: [
+                  {
+                    percent: '10%',
+                    samples: '100',
+                    units: 'samples',
+                    formattedValue: '1.00 second',
+                    tooltipType: 'flamegraph',
+                  },
+                  {
+                    percent: '20%',
+                    samples: '200',
+                    units: 'samples',
+                    formattedValue: '2.00 seconds',
+                    tooltipType: 'flamegraph',
+                  },
+                ],
+              });
+            }}
+          />
+        );
+
+        expect(screen.getByTestId('tooltip')).toBeInTheDocument();
+
+        userEvent.hover(screen.getByTestId('canvas'));
+
+        expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-table')).toHaveTextContent(
+          'BaselineComparisonDiffShare of CPU:10%20%(+100.00%)CPU Time:1.00 second2.00 secondsSamples:100200'
+        );
+        expect(screen.getByTestId('tooltip-footer')).toHaveTextContent(
+          'Right click for more node viewing options'
+        );
+      });
+
+      it('works with a function that became faster', () => {
+        render(
+          <TestCanvas
+            clickInfoSide="right"
+            setTooltipContent={(setContent) => {
+              setContent({
+                title: {
+                  text: 'function_title',
+                  diff: {
+                    text: '(-50.00%)',
+                    color: 'rgb(0, 170, 0)',
+                  },
+                },
+                tooltipData: [
+                  {
+                    percent: '20%',
+                    samples: '200',
+                    units: 'samples',
+                    formattedValue: '2.00 second',
+                    tooltipType: 'flamegraph',
+                  },
+                  {
+                    percent: '10%',
+                    samples: '100',
+                    units: 'samples',
+                    formattedValue: '1.00 seconds',
+                    tooltipType: 'flamegraph',
+                  },
+                ],
+              });
+            }}
+          />
+        );
+
+        expect(screen.getByTestId('tooltip')).toBeInTheDocument();
+
+        userEvent.hover(screen.getByTestId('canvas'));
+
+        expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
+          'function_title'
+        );
+        expect(screen.getByTestId('tooltip-table')).toHaveTextContent(
+          'BaselineComparisonDiffShare of CPU:20%10%(-50.00%)CPU Time:2.00 second1.00 secondsSamples:200100'
+        );
+        expect(screen.getByTestId('tooltip-footer')).toHaveTextContent(
+          'Right click for more node viewing options'
+        );
+      });
     });
   });
 
-  describe('"double" mode', () => {
-    it("works with a function that hasn't changed", () => {
-      const myxyToData = (x: number, y: number) =>
-        Maybe.of({
-          format: 'double' as const,
-          name: 'my_function',
-          totalLeft: 100,
-          totalRight: 100,
-          barTotal: 100,
-        });
+  describe('table tooltip', () => {
+    it("'single' mode with custom settings renders correctly", () => {
+      render(
+        <TestTable
+          clickInfoSide="left"
+          shouldShowFooter={false}
+          shouldShowTitle={false}
+          setTooltipContent={(setContent) => {
+            setContent({
+              title: {
+                text: 'function_title',
+                diff: {
+                  text: '',
+                  color: '',
+                },
+              },
+              tooltipData: [
+                {
+                  total: '2 seconds (100%)',
+                  self: '1 second (50%)',
+                  tooltipType: 'table',
+                  units: 'samples',
+                },
+              ],
+            });
+          }}
+        />
+      );
 
-      const tooltipProps = {
-        numTicks: 100,
-        sampleRate: 100,
-        xyToData: myxyToData,
-        leftTicks: 100010,
-        rightTicks: 100,
-        format: 'double' as const,
-        units: 'samples' as Units,
-      };
+      expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-      const expectedTableData = {
-        percent: 'Share of CPU:0.1%100%',
-        formattedValue: 'CPU Time:1.00 second1.00 second',
-        samples: 'Samples:100100',
-        title: 'my_function',
-        diff: {
-          text: '(+99900.00%)',
-          color: 'rgb(200, 0, 0)',
-        },
-      };
+      userEvent.hover(screen.getByTestId('table-body'));
 
-      executeTooltipTest(tooltipProps, expectedTableData);
-    });
-
-    it('works with a function that has been added', () => {
-      const myxyToData = (x: number, y: number) =>
-        Maybe.of({
-          format: 'double' as const,
-          name: 'my_function',
-          totalLeft: 0,
-          totalRight: 100,
-          barTotal: 100,
-        });
-
-      const tooltipProps = {
-        numTicks: 100,
-        sampleRate: 100,
-        xyToData: myxyToData,
-        leftTicks: 1000,
-        rightTicks: 1000,
-        format: 'double' as const,
-        units: 'samples' as Units,
-      };
-
-      const expectedTableData = {
-        percent: 'Share of CPU:0%10%',
-        formattedValue: 'CPU Time:< 0.01 seconds1.00 second',
-        samples: 'Samples:0100',
-        title: 'my_function',
-        diff: {
-          text: '(new)',
-          color: 'rgb(200, 0, 0)',
-        },
-      };
-
-      executeTooltipTest(tooltipProps, expectedTableData);
-    });
-
-    it('works with a function that has been removed', () => {
-      const myxyToData = (x: number, y: number) =>
-        Maybe.of({
-          format: 'double' as const,
-          name: 'my_function',
-          totalLeft: 100,
-          totalRight: 0,
-          barTotal: 100,
-        });
-
-      const tooltipProps = {
-        numTicks: 100,
-        sampleRate: 100,
-        xyToData: myxyToData,
-        leftTicks: 1000,
-        rightTicks: 1000,
-        format: 'double' as const,
-        units: 'samples' as Units,
-      };
-
-      const expectedTableData = {
-        percent: 'Share of CPU:10%0%',
-        formattedValue: 'CPU Time:1.00 second< 0.01 seconds',
-        samples: 'Samples:1000',
-        title: 'my_function',
-        diff: {
-          text: '(removed)',
-          color: 'rgb(0, 170, 0)',
-        },
-      };
-
-      executeTooltipTest(tooltipProps, expectedTableData);
-    });
-
-    it('works with a function that became slower', () => {
-      const myxyToData = (x: number, y: number) =>
-        Maybe.of({
-          format: 'double' as const,
-          name: 'my_function',
-          totalLeft: 100,
-          totalRight: 200,
-          barTotal: 100,
-        });
-
-      const tooltipProps = {
-        numTicks: 100,
-        sampleRate: 100,
-        xyToData: myxyToData,
-        leftTicks: 1000,
-        rightTicks: 1000,
-        format: 'double' as const,
-        units: 'samples' as Units,
-      };
-
-      const expectedTableData = {
-        percent: 'Share of CPU:10%20%',
-        formattedValue: 'CPU Time:1.00 second2.00 seconds',
-        samples: 'Samples:100200',
-        title: 'my_function',
-        diff: {
-          text: '(+100.00%)',
-          color: 'rgb(200, 0, 0)',
-        },
-      };
-
-      executeTooltipTest(tooltipProps, expectedTableData);
-    });
-
-    it('works with a function that became faster', () => {
-      const myxyToData = (x: number, y: number) =>
-        Maybe.of({
-          format: 'double' as const,
-          name: 'my_function',
-          totalLeft: 200,
-          totalRight: 100,
-          barTotal: 100,
-        });
-
-      const tooltipProps = {
-        numTicks: 100,
-        sampleRate: 100,
-        xyToData: myxyToData,
-        leftTicks: 1000,
-        rightTicks: 1000,
-        format: 'double' as const,
-        units: 'samples' as Units,
-      };
-
-      const expectedTableData = {
-        percent: 'Share of CPU:20%10%',
-        formattedValue: 'CPU Time:2.00 seconds1.00 second',
-        samples: 'Samples:200100',
-        title: 'my_function',
-        diff: {
-          text: '(-50.00%)',
-          color: 'rgb(0, 170, 0)',
-        },
-      };
-
-      executeTooltipTest(tooltipProps, expectedTableData);
+      expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
+        'function_title'
+      );
+      expect(screen.getByTestId('tooltip-table')).toHaveTextContent(
+        'Self (% of total CPU)Total (% of total CPU)CPU Time:1 second (50%)2 seconds (100%)'
+      );
     });
   });
 });

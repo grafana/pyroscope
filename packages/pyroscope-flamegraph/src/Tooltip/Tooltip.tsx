@@ -27,9 +27,9 @@ export type TooltipData = {
   tooltipType: 'table' | 'flamegraph';
 };
 
-interface TooltipProps {
+export interface TooltipProps {
   // canvas or table body ref
-  dataSourceRef: RefObject<HTMLCanvasElement | HTMLElement>;
+  dataSourceRef: RefObject<HTMLCanvasElement | HTMLTableSectionElement>;
 
   shouldShowFooter?: boolean;
   shouldShowTitle?: boolean;
@@ -352,5 +352,9 @@ function TooltipFooter({
       clickInfo = '<TBD ?>';
   }
 
-  return <div className={styles.clickInfo}>{clickInfo}</div>;
+  return (
+    <div data-testid="tooltip-footer" className={styles.clickInfo}>
+      {clickInfo}
+    </div>
+  );
 }
