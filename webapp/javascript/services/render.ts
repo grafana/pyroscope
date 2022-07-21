@@ -10,6 +10,7 @@ import { request, parseResponse } from './base';
 export interface RenderOutput {
   profile: Profile;
   timeline: Timeline;
+  groups?: ShamefulAny;
 }
 
 interface renderSingleProps {
@@ -94,7 +95,10 @@ export async function renderDiff(
   );
 }
 
-interface renderExplorePageProps extends renderSingleProps {
+interface renderExplorePageProps {
+  from: string;
+  until: string;
+  query: string;
   groupBy: string;
 }
 
@@ -106,12 +110,9 @@ export async function renderExplorePage(
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
 
-  const response = await request(
-    `${url}&groupBy=${props.groupBy}&format=json`,
-    {
-      signal: controller?.signal,
-    }
-  );
+  const response = await request(`${url}&format=json`, {
+    signal: controller?.signal,
+  });
 
   if (response.isErr) {
     return Result.err<RenderOutput, RequestError>(response.error);
@@ -121,15 +122,17 @@ export async function renderExplorePage(
     z.object({ timeline: TimelineSchema })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+    .merge(z.object({ groups: z.object({}).passthrough() }))
     .safeParse(response.value);
 
   if (parsed.success) {
     const profile = parsed.data;
-    const { timeline } = parsed.data;
+    const { timeline, groups } = parsed.data;
 
     return Result.ok({
       profile,
       timeline,
+      groups,
     });
   }
 

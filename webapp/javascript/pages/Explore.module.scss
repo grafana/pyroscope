@@ -5,11 +5,16 @@
     margin: 0 10px 10px;
   }
 
-  .appName {
+  .tableDescription {
+    margin: 0 10px 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .title {
     display: inline-block;
     font-weight: 500;
     font-size: 18px;
-    margin-right: 15px;
   }
 
   .query {
@@ -21,6 +26,27 @@
       font-weight: 500;
       color: var(--ps-right-click-info);
       margin-right: 5px;
+    }
+  }
+
+  table {
+    background-color: var(--ps-ui-element-bg-highlight);
+
+    tbody {
+      td {
+        font-weight: initial;
+        text-align: c;
+      }
+
+      tr:nth-child(2n + 1) {
+        background-color: var(--ps-ui-element-bg-primary);
+      }
+    }
+
+    td,
+    th {
+      border: 1px solid;
+      border-color: lightcyan;
     }
   }
 }
