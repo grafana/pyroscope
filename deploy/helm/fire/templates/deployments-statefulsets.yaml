@@ -39,7 +39,7 @@ spec:
       securityContext:
         {{- toYaml .Values.fire.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
             {{- toYaml .Values.fire.securityContext | nindent 12 }}
           image: "{{ .Values.fire.image.repository }}:{{ .Values.fire.image.tag | default .Chart.AppVersion }}"
@@ -57,6 +57,13 @@ spec:
           {{- end }}
           {{- range $key, $value := $cfg.extraArgs }}
             - "-{{ $key }}={{ $value }}"
+          {{- end }}
+          {{- with .Values.fire.extraEnvVars }}
+          env:
+           {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+           {{- end }}
           {{- end }}
           ports:
             - name: {{ .Values.fire.service.port_name }}

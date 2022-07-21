@@ -1,0 +1,16 @@
+{
+  local d = (import 'doc-util/main.libsonnet'),
+  '#':: d.pkg(name='condition', url='', help='"Condition contains details for one aspect of the current state of this API Resource."'),
+  '#withLastTransitionTime':: d.fn(help='"Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers."', args=[d.arg(name='lastTransitionTime', type=d.T.string)]),
+  withLastTransitionTime(lastTransitionTime): { lastTransitionTime: lastTransitionTime },
+  '#withMessage':: d.fn(help='"message is a human readable message indicating details about the transition. This may be an empty string."', args=[d.arg(name='message', type=d.T.string)]),
+  withMessage(message): { message: message },
+  '#withObservedGeneration':: d.fn(help='"observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance."', args=[d.arg(name='observedGeneration', type=d.T.integer)]),
+  withObservedGeneration(observedGeneration): { observedGeneration: observedGeneration },
+  '#withReason':: d.fn(help="\"reason contains a programmatic identifier indicating the reason for the condition's last transition. Producers of specific condition types may define expected values and meanings for this field, and whether the values are considered a guaranteed API. The value should be a CamelCase string. This field may not be empty.\"", args=[d.arg(name='reason', type=d.T.string)]),
+  withReason(reason): { reason: reason },
+  '#withType':: d.fn(help='"type of condition in CamelCase or in foo.example.com/CamelCase."', args=[d.arg(name='type', type=d.T.string)]),
+  withType(type): { type: type },
+  '#mixin': 'ignore',
+  mixin: self,
+}
