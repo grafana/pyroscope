@@ -1,0 +1,25 @@
+{{ define "__alert_title" -}}
+    [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.cluster }}: {{ .GroupLabels.alertname }} ({{ .GroupLabels.namespace }})
+{{- end }}
+
+{{ define "__alert_text" -}}
+{{ .CommonAnnotations.summary }}
+{{ if .Alerts.Firing | len }}Firing alerts:
+{{ range .Alerts.Firing }}- {{ .Annotations.message }}{{ .Annotations.description }}
+{{ end }}{{ end }}{{ if .Alerts.Resolved | len }}Resolved alerts:
+{{ range .Alerts.Resolved }}- {{ .Annotations.message }}{{ .Annotations.description }}
+{{ end }}{{ end }}
+{{- end }}
+
+# This builds the silence URL.  We exclude the alertname in the range
+# to avoid the issue of having trailing comma separator (%2C) at the end
+# of the generated URL. Inspired from https://gist.github.com/milesbxf/e2744fc90e9c41b47aa47925f8ff6512
+{{ define "__alert_silence_link" -}}
+    {{ .ExternalURL }}/#/silences/new?filter=%7B
+    {{- range .CommonLabels.SortedPairs -}}
+        {{- if ne .Name "alertname" -}}
+            {{- .Name }}%3D%22{{- .Value -}}%22%2C%20
+        {{- end -}}
+    {{- end -}}
+    alertname%3D%22{{ .CommonLabels.alertname }}%22%7D
+{{- end }}
