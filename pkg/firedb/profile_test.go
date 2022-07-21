@@ -20,7 +20,7 @@ import (
 )
 
 func TestIndex(t *testing.T) {
-	a, err := newProfileIndex(32, newHeadMetrics(&Head{}, prometheus.NewRegistry()))
+	a, err := newProfileIndex(32, newHeadMetrics(prometheus.NewRegistry()))
 	require.NoError(t, err)
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -80,7 +80,7 @@ func TestIndex(t *testing.T) {
 }
 
 func TestWriteRead(t *testing.T) {
-	a, err := newProfileIndex(32, newHeadMetrics(&Head{}, prometheus.NewRegistry()))
+	a, err := newProfileIndex(32, newHeadMetrics(prometheus.NewRegistry()))
 	require.NoError(t, err)
 
 	for j := 0; j < 10; j++ {

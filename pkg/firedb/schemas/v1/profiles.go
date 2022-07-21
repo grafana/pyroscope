@@ -73,6 +73,10 @@ type Profile struct {
 
 type ProfilePersister struct{}
 
+func (*ProfilePersister) Name() string {
+	return "profiles"
+}
+
 func (*ProfilePersister) Schema() *parquet.Schema {
 	return profilesSchema
 }

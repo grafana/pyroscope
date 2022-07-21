@@ -13,6 +13,7 @@ type SortingColumns interface {
 }
 
 type Persister[T any] interface {
+	Name() string
 	Schema() *parquet.Schema
 	Deconstruct(parquet.Row, uint64, T) parquet.Row
 	Reconstruct(parquet.Row) (uint64, T, error)

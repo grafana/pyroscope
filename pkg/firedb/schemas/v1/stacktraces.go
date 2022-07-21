@@ -24,6 +24,10 @@ type storedStacktrace struct {
 
 type StacktracePersister struct{}
 
+func (*StacktracePersister) Name() string {
+	return "stacktraces"
+}
+
 func (*StacktracePersister) Schema() *parquet.Schema {
 	return stacktracesSchema
 }
