@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "start": "lerna-watch @pyroscope/webapp",
-    "bootstrap": "lerna bootstrap",
+    "bootstrap": "lerna bootstrap && husky install",
     "web-postinstall": "scripts/web-postinstall.js",
     "postinstall": "yarn run web-postinstall",
     "dev": "yarn run dev:webapp",
@@ -60,7 +60,6 @@
     "cy:datasource:ci": "cypress run --config-file packages/pyroscope-datasource-plugin/cypress.json",
     "cy:datasource:ss": "./scripts/cypress-screenshots.sh --config-file packages/pyroscope-datasource-plugin/cypress.json",
     "cy:datasource:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh --config-file packages/pyroscope-datasource-plugin/cypress.json",
-    "prepare": "husky install",
     "lint-staged": "lint-staged",
     "size": "size-limit",
     "storybook": "start-storybook -p 6006",
