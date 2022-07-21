@@ -1,0 +1,16 @@
+{
+  local d = (import 'doc-util/main.libsonnet'),
+  '#':: d.pkg(name='ownerReference', url='', help='"OwnerReference contains enough information to let you identify an owning object. An owning object must be in the same namespace as the dependent, or be cluster-scoped, so there is no namespace field."'),
+  '#withBlockOwnerDeletion':: d.fn(help='"If true, AND if the owner has the \\"foregroundDeletion\\" finalizer, then the owner cannot be deleted from the key-value store until this reference is removed. Defaults to false. To set this field, a user needs \\"delete\\" permission of the owner, otherwise 422 (Unprocessable Entity) will be returned."', args=[d.arg(name='blockOwnerDeletion', type=d.T.boolean)]),
+  withBlockOwnerDeletion(blockOwnerDeletion): { blockOwnerDeletion: blockOwnerDeletion },
+  '#withController':: d.fn(help='"If true, this reference points to the managing controller."', args=[d.arg(name='controller', type=d.T.boolean)]),
+  withController(controller): { controller: controller },
+  '#withKind':: d.fn(help='"Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"', args=[d.arg(name='kind', type=d.T.string)]),
+  withKind(kind): { kind: kind },
+  '#withName':: d.fn(help='"Name of the referent. More info: http://kubernetes.io/docs/user-guide/identifiers#names"', args=[d.arg(name='name', type=d.T.string)]),
+  withName(name): { name: name },
+  '#withUid':: d.fn(help='"UID of the referent. More info: http://kubernetes.io/docs/user-guide/identifiers#uids"', args=[d.arg(name='uid', type=d.T.string)]),
+  withUid(uid): { uid: uid },
+  '#mixin': 'ignore',
+  mixin: self,
+}

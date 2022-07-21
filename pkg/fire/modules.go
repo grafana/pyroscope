@@ -96,8 +96,7 @@ func (f *Fire) initDistributor() (services.Service, error) {
 	// initialise direct pusher, this overwrites the default HTTP client
 	f.pusherClient = d
 
-	prefix, handler := pushv1connect.NewPusherServiceHandler(d)
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
+	pushv1connect.RegisterPusherServiceHandler(f.Server.HTTP, d)
 	return d, nil
 }
 
@@ -113,9 +112,7 @@ func (f *Fire) initAgent() (services.Service, error) {
 		return nil, err
 	}
 
-	prefix, handler := agentv1connect.NewAgentServiceHandler(a.ConnectHandler())
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-
+	agentv1connect.RegisterAgentServiceHandler(f.Server.HTTP, a.ConnectHandler())
 	return a, nil
 }
 
@@ -168,14 +165,14 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	}
 	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-	prefix, handler = ingesterv1connect.NewIngesterServiceHandler(ingester)
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
+	ingesterv1connect.RegisterIngesterServiceHandler(f.Server.HTTP, ingester)
 	return ingester, nil
 }
 
 func (f *Fire) initServer() (services.Service, error) {
 	prometheus.MustRegister(version.NewCollector("fire"))
 	DisableSignalHandling(&f.Cfg.Server)
+	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("fire_", f.reg)
 	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
 		return nil, err

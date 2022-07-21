@@ -1,0 +1,18 @@
+{
+  local d = (import 'doc-util/main.libsonnet'),
+  '#':: d.pkg(name='managedFieldsEntry', url='', help='"ManagedFieldsEntry is a workflow-id, a FieldSet and the group version of the resource that the fieldset applies to."'),
+  '#withFieldsType':: d.fn(help='"FieldsType is the discriminator for the different fields format and version. There is currently only one possible value: \\"FieldsV1\\', args=[d.arg(name='fieldsType', type=d.T.string)]),
+  withFieldsType(fieldsType): { fieldsType: fieldsType },
+  '#withFieldsV1':: d.fn(help="\"FieldsV1 stores a set of fields in a data structure like a Trie, in JSON format.\\n\\nEach key is either a '.' representing the field itself, and will always map to an empty set, or a string representing a sub-field or item. The string will follow one of these four formats: 'f:\u003cname\u003e', where \u003cname\u003e is the name of a field in a struct, or key in a map 'v:\u003cvalue\u003e', where \u003cvalue\u003e is the exact json formatted value of a list item 'i:\u003cindex\u003e', where \u003cindex\u003e is position of a item in a list 'k:\u003ckeys\u003e', where \u003ckeys\u003e is a map of  a list item's key fields to their unique values If a key maps to an empty Fields value, the field that key represents is part of the set.\\n\\nThe exact format is defined in sigs.k8s.io/structured-merge-diff\"", args=[d.arg(name='fieldsV1', type=d.T.object)]),
+  withFieldsV1(fieldsV1): { fieldsV1: fieldsV1 },
+  '#withFieldsV1Mixin':: d.fn(help="\"FieldsV1 stores a set of fields in a data structure like a Trie, in JSON format.\\n\\nEach key is either a '.' representing the field itself, and will always map to an empty set, or a string representing a sub-field or item. The string will follow one of these four formats: 'f:\u003cname\u003e', where \u003cname\u003e is the name of a field in a struct, or key in a map 'v:\u003cvalue\u003e', where \u003cvalue\u003e is the exact json formatted value of a list item 'i:\u003cindex\u003e', where \u003cindex\u003e is position of a item in a list 'k:\u003ckeys\u003e', where \u003ckeys\u003e is a map of  a list item's key fields to their unique values If a key maps to an empty Fields value, the field that key represents is part of the set.\\n\\nThe exact format is defined in sigs.k8s.io/structured-merge-diff\"\n\n**Note:** This function appends passed data to existing values", args=[d.arg(name='fieldsV1', type=d.T.object)]),
+  withFieldsV1Mixin(fieldsV1): { fieldsV1+: fieldsV1 },
+  '#withManager':: d.fn(help='"Manager is an identifier of the workflow managing these fields."', args=[d.arg(name='manager', type=d.T.string)]),
+  withManager(manager): { manager: manager },
+  '#withOperation':: d.fn(help="\"Operation is the type of operation which lead to this ManagedFieldsEntry being created. The only valid values for this field are 'Apply' and 'Update'.\"", args=[d.arg(name='operation', type=d.T.string)]),
+  withOperation(operation): { operation: operation },
+  '#withTime':: d.fn(help='"Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers."', args=[d.arg(name='time', type=d.T.string)]),
+  withTime(time): { time: time },
+  '#mixin': 'ignore',
+  mixin: self,
+}

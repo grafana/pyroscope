@@ -32,6 +32,12 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
+var int64SlicePool = &sync.Pool{
+	New: func() interface{} {
+		return make([]int64, 0)
+	},
+}
+
 func copySlice[T any](in []T) []T {
 	out := make([]T, len(in))
 	copy(out, in)
@@ -90,8 +96,6 @@ type deduplicatingSlice[M Models, K comparable, H Helper[M, K]] struct {
 	size   atomic.Uint64
 	lock   sync.RWMutex
 	lookup map[K]int64
-
-	missing []int64
 }
 
 func (s *deduplicatingSlice[M, K, H]) init() {
@@ -103,10 +107,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 		rewritingMap = make(map[int64]int64)
 		h            H
 	)
-	if s.missing == nil {
-		s.missing = make([]int64, 0, len(elems))
-	}
-	s.missing = s.missing[:0]
+	missing := int64SlicePool.Get().([]int64)
 
 	// rewrite elements
 	for pos := range elems {
@@ -122,16 +123,16 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 		if posSlice, exists := s.lookup[k]; exists {
 			rewritingMap[int64(h.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
 		} else {
-			s.missing = append(s.missing, int64(pos))
+			missing = append(missing, int64(pos))
 		}
 	}
 	s.lock.RUnlock()
 
 	// if there are missing elements, acquire write lock
-	if len(s.missing) > 0 {
+	if len(missing) > 0 {
 		s.lock.Lock()
 		posSlice := int64(len(s.slice))
-		for _, pos := range s.missing {
+		for _, pos := range missing {
 			// check again if element exists
 			k := h.key(elems[pos])
 			if posSlice, exists := s.lookup[k]; exists {
@@ -150,6 +151,8 @@ func (s *deduplicatingSlice[M, K, H]) ingest(ctx context.Context, elems []M, rew
 		}
 		s.lock.Unlock()
 	}
+
+	int64SlicePool.Put(missing[:0])
 
 	// add rewrite information to struct
 	h.addToRewriter(rewriter, rewritingMap)
@@ -394,6 +397,9 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			Stacktraces: make([]*ingestv1.StacktraceSample, 0, len(profile.Samples)),
 		}
 		for _, s := range profile.Samples {
+			if s.Values[idx] == 0 {
+				continue
+			}
 			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
 			fnIds := make([]int32, 0, len(locs))
 			for _, loc := range locs {
@@ -414,7 +420,9 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 				FunctionIds: fnIds,
 			})
 		}
-		result = append(result, p)
+		if len(p.Stacktraces) > 0 {
+			result = append(result, p)
+		}
 		return nil
 	})
 	sort.Slice(result, func(i, j int) bool {
