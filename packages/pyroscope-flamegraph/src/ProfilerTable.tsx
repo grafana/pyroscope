@@ -317,11 +317,7 @@ const TableBody = ({
     <td>
       <button className="table-item-button">
         <span className="color-reference" style={style} />
-        <div
-          className="symbol-name"
-          title={x.name}
-          style={fitIntoTableCell(fitMode)}
-        >
+        <div className="symbol-name" style={fitIntoTableCell(fitMode)}>
           {x.name}
         </div>
       </button>
