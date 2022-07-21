@@ -1,0 +1,16 @@
+{
+  local d = (import 'doc-util/main.libsonnet'),
+  '#':: d.pkg(name='certificateSigningRequestCondition', url='', help=''),
+  '#withLastTransitionTime':: d.fn(help='"Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers."', args=[d.arg(name='lastTransitionTime', type=d.T.string)]),
+  withLastTransitionTime(lastTransitionTime): { lastTransitionTime: lastTransitionTime },
+  '#withLastUpdateTime':: d.fn(help='"Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers."', args=[d.arg(name='lastUpdateTime', type=d.T.string)]),
+  withLastUpdateTime(lastUpdateTime): { lastUpdateTime: lastUpdateTime },
+  '#withMessage':: d.fn(help='"human readable message with details about the request state"', args=[d.arg(name='message', type=d.T.string)]),
+  withMessage(message): { message: message },
+  '#withReason':: d.fn(help='"brief reason for the request state"', args=[d.arg(name='reason', type=d.T.string)]),
+  withReason(reason): { reason: reason },
+  '#withType':: d.fn(help='"type of the condition. Known conditions include \\"Approved\\", \\"Denied\\", and \\"Failed\\"."', args=[d.arg(name='type', type=d.T.string)]),
+  withType(type): { type: type },
+  '#mixin': 'ignore',
+  mixin: self,
+}
