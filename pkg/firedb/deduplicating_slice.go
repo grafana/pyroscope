@@ -51,6 +51,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Init(path string) error {
 	}
 	s.file = file
 
+	// TODO: Reuse parquet.Writer beyond life time of the head.
 	s.writer = parquet.NewWriter(file, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool("", "firedb-parquet-buffers*")),
 	)
