@@ -55,11 +55,6 @@ var _ = Describe("exemplars", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			put(s, map[string]string{
-				"__name__":  "app.cpu",
-				"span_name": "foo",
-				// w/o profile_id, just to create the segment.
-			})
-			put(s, map[string]string{
 				"__name__":   "app.cpu",
 				"span_name":  "foo",
 				"profile_id": "a",
@@ -201,14 +196,6 @@ var _ = Describe("Exemplars retention policy", func() {
 					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
-				// Just to create the segment.
-				k3, _ := segment.ParseKey("app.cpu{}")
-				Expect(s.Put(context.TODO(), &PutInput{
-					StartTime: t3,
-					EndTime:   t4,
-					Key:       k3,
-					Val:       tree.Clone(big.NewRat(1, 1)),
-				})).ToNot(HaveOccurred())
 				s.exemplars.Sync()
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				s.exemplars.enforceRetentionPolicy(context.Background(), rp)

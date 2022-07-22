@@ -279,6 +279,9 @@ func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []stri
 				return err
 			case errors.Is(err, badger.ErrKeyNotFound):
 			case err == nil:
+				// TODO(kolesnikovae): Optimize:
+				//   It makes sense to lookup the dictionary keys only after all
+				//   exemplars fetched and merged.
 				err = item.Value(func(val []byte) error {
 					e.metrics.exemplarsReadBytes.Observe(float64(len(val)))
 					var x exemplarEntry
@@ -363,6 +366,27 @@ func (e *exemplars) truncateN(before time.Time, count int) (bool, error) {
 	}
 
 	return true, err
+}
+
+func (s *Storage) ensureAppSegmentExists(in *PutInput) error {
+	k := segment.AppSegmentKey(in.Key.AppName())
+	r, err := s.segments.GetOrCreate(k)
+	if err != nil {
+		return fmt.Errorf("segments cache for %v: %w", k, err)
+	}
+	st := r.(*segment.Segment)
+	if !isMetadataEqual(st, in) {
+		st.SetMetadata(in.SpyName, in.SampleRate, in.Units, in.AggregationType)
+		s.segments.Put(k, st)
+	}
+	return err
+}
+
+func isMetadataEqual(s *segment.Segment, in *PutInput) bool {
+	return in.SpyName == s.SpyName() &&
+		in.AggregationType == s.AggregationType() &&
+		in.SampleRate == s.SampleRate() &&
+		in.Units == s.Units()
 }
 
 func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {

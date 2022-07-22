@@ -67,25 +67,17 @@ func (s *Storage) mergeExemplars(ctx context.Context, mi MergeExemplarsInput) (o
 		out.lastEntry = &e
 		return nil
 	})
-	if err != nil || out.lastEntry == nil {
+	if err != nil {
 		return out, err
 	}
-	out.segment, err = s.findSegmentForExemplar(out.lastEntry)
-	return out, err
-}
-
-func (s *Storage) findSegmentForExemplar(e *exemplarEntry) (*segment.Segment, error) {
-	// Note that exemplar entry labels doesn't contain the app name and profile ID.
-	if e.Labels == nil {
-		e.Labels = make(map[string]string)
+	// Note that exemplar entry labels don't contain the app name and profile ID.
+	if out.lastEntry != nil && out.lastEntry.Labels == nil {
+		out.lastEntry.Labels = make(map[string]string)
 	}
-	labels := map[string]string{"__name__": e.AppName}
-	for k, v := range e.Labels {
-		labels[k] = v
-	}
-	r, ok := s.segments.Lookup(segment.NewKey(labels).Normalized())
+	r, ok := s.segments.Lookup(segment.AppSegmentKey(mi.AppName))
 	if !ok {
-		return nil, fmt.Errorf("no metadata found for profile %q", e.ProfileID)
+		return out, fmt.Errorf("no metadata found for app %q", mi.AppName)
 	}
-	return r.(*segment.Segment), nil
+	out.segment = r.(*segment.Segment)
+	return out, nil
 }

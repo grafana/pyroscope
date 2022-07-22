@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -29,6 +30,10 @@ type mergeRequest struct {
 	EndTime   string   `json:"endTime"`
 	Profiles  []string `json:"profiles"`
 	MaxNodes  int      `json:"maxNodes"`
+
+	// For consistency with render handler: `startTime` and `endTime` take precedence.
+	From  string `json:"from"`
+	Until string `json:"until"`
 }
 
 type mergeResponse struct {
@@ -71,12 +76,7 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		maxNodes = req.MaxNodes
 	}
 
-	out, err := mh.storage.MergeExemplars(r.Context(), storage.MergeExemplarsInput{
-		StartTime:  attime.Parse(req.StartTime),
-		EndTime:    attime.Parse(req.EndTime),
-		AppName:    req.AppName,
-		ProfileIDs: req.Profiles,
-	})
+	out, err := mh.storage.MergeExemplars(r.Context(), mergeExemplarsInputFromMergeRequest(req))
 	if err != nil {
 		mh.httpUtils.WriteInternalServerError(r, w, err, "failed to retrieve data")
 		return
@@ -105,4 +105,20 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	mh.stats.StatsInc("merge")
 	mh.httpUtils.WriteResponseJSON(r, w, resp)
+}
+
+func mergeExemplarsInputFromMergeRequest(req mergeRequest) storage.MergeExemplarsInput {
+	return storage.MergeExemplarsInput{
+		AppName:    req.AppName,
+		StartTime:  pickTime(req.StartTime, req.From),
+		EndTime:    pickTime(req.EndTime, req.Until),
+		ProfileIDs: req.Profiles,
+	}
+}
+
+func pickTime(primary, fallback string) time.Time {
+	if primary == "" {
+		primary = fallback
+	}
+	return attime.Parse(primary)
 }
