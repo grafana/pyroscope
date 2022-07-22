@@ -1,7 +1,7 @@
 /* eslint-disable camelcase */
 import Color from 'color';
 import { scaleLinear } from 'd3-scale';
-import type { SpyName } from '@pyroscope/models';
+import type { SpyName } from '@pyroscope/models/src';
 import murmurhash3_32_gc from './murmur3';
 import type { FlamegraphPalette } from './colorPalette';
 
