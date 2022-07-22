@@ -7,7 +7,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
     'fire-writes.json': {
                           local cfg = self,
 
-                          showMultiCluster:: true,
+                          showMultiCluster:: $._config.multi_cluster,
                           clusterLabel:: $._config.per_cluster_label,
                           clusterMatchers::
                             if cfg.showMultiCluster then
@@ -17,7 +17,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
 
                           matchers:: {
                             distributor: [utils.selector.re('job', '($namespace)/distributor')],
-                            ingester: [utils.selector.re('job', '($namespace)/ingester' )],
+                            ingester: [utils.selector.re('job', '($namespace)/ingester')],
                           },
 
                           local selector(matcherId) =
@@ -37,14 +37,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                           $.row('Distributor')
                           .addPanel(
                             $.panel('QPS') +
-                            $.qpsPanel('fire_request_duration_seconds_count{%s, route=~"api_prom_push|fire_api_v1_push|/httpgrpc.HTTP/Handle"}' % std.rstripChars(dashboards['fire-writes.json'].distributorSelector, ','))
+                            $.qpsPanel('fire_request_duration_seconds_count{%s, route=~".*push.*"}' % std.rstripChars(dashboards['fire-writes.json'].distributorSelector, ','))
                           )
                           .addPanel(
                             $.panel('Latency') +
                             utils.latencyRecordingRulePanel(
                               'fire_request_duration_seconds',
-                              dashboards['fire-writes.json'].matchers.distributor,
-                              extra_selectors=dashboards['fire-writes.json'].clusterMatchers
+                              dashboards['fire-writes.json'].matchers.distributor + [utils.selector.re('route', '.*push.*')] + dashboards['fire-writes.json'].clusterMatchers,
                             )
                           )
                         )
@@ -52,14 +51,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                           $.row('Ingester')
                           .addPanel(
                             $.panel('QPS') +
-                            $.qpsPanel('fire_request_duration_seconds_count{%s route="/logproto.Pusher/Push"}' % dashboards['fire-writes.json'].ingesterSelector)
+                            $.qpsPanel('fire_request_duration_seconds_count{%s route=~".*push.*"}' % dashboards['fire-writes.json'].ingesterSelector)
                           )
                           .addPanel(
                             $.panel('Latency') +
                             utils.latencyRecordingRulePanel(
                               'fire_request_duration_seconds',
-                              dashboards['fire-writes.json'].matchers.ingester + [utils.selector.eq('route', '/logproto.Pusher/Push')],
-                              extra_selectors=dashboards['fire-writes.json'].clusterMatchers
+                              dashboards['fire-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*')] + dashboards['fire-writes.json'].clusterMatchers,
                             )
                           )
                         ),

@@ -11,6 +11,8 @@
 
     // The label used to differentiate between different clusters.
     per_cluster_label: 'cluster',
+    // Add the mixin with support for multiple cluster
+    multi_cluster: true,
 
   },
 }
