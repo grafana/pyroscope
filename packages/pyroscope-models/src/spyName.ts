@@ -10,16 +10,16 @@ export const SpyNameFirstClass = [
   'nodespy',
   'javaspy',
   'pyroscope-rs',
-];
+] as const;
 
 export const SpyNameOther = [
   'scrape', // for compability purposes, it should be golang
   'tracing',
   'unknown',
-];
-type EnumParam = Parameters<typeof z.enum>[0];
-export const SpyNameSchema = z
-  .enum(SpyNameFirstClass.concat(SpyNameOther) as EnumParam)
-  .default('unknown');
+] as const;
+
+const AllSpyNames = [...SpyNameFirstClass, ...SpyNameOther] as const;
+
+export const SpyNameSchema = z.enum(AllSpyNames).optional().default('unknown');
 
 export type SpyName = z.infer<typeof SpyNameSchema>;
