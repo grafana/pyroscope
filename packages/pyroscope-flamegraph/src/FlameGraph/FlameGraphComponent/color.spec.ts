@@ -189,7 +189,7 @@ describe('getPackageNameFromStackTrace', () => {
       ],
     ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
       it(`returns '${expected}'`, () => {
-        expect(getPackageNameFromStackTrace('default', a)).toBe(expected);
+        expect(getPackageNameFromStackTrace('unknown', a)).toBe(expected);
       });
     });
   });
