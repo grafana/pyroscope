@@ -28,9 +28,11 @@ type TimelineChartWrapperProps = {
   format: 'lines' | 'bars';
 
   /** timelineA refers to the first (and maybe unique) timeline */
-  timelineA: TimelineData;
+  timelineA?: TimelineData;
   /** timelineB refers to the second timeline, useful for comparison view */
   timelineB?: TimelineData;
+  /** timelineGroups refers to group of timelines, useful for explore view */
+  timelineGroups?: TimelineData[];
   height?: string;
 
   /** refers to the highlighted selection */
@@ -174,7 +176,8 @@ class TimelineChartWrapper extends React.Component<
 
   render = () => {
     const { flotOptions } = this.state;
-    const { id, timelineA, timezone, title } = this.props;
+    const { id, timelineA, timelineGroups, timezone, title } = this.props;
+
     // TODO deep copy
     let timelineB = this.props.timelineB
       ? JSON.parse(JSON.stringify(this.props.timelineB))
@@ -187,7 +190,7 @@ class TimelineChartWrapper extends React.Component<
         // In case there are few chunks left, then we'd like to add some margins to
         // both sides making it look more centers
         autoscaleMargin:
-          timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
+          timelineA?.data && timelineA.data.samples.length > 3 ? null : 0.005,
         timezone: timezone || 'browser',
       },
     };
@@ -227,6 +230,22 @@ class TimelineChartWrapper extends React.Component<
         timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
     ].filter((a) => !!a);
 
+    const timelineGroupsData = timelineGroups?.reduce(
+      (acc, [tagName, tagTimeline]) => {
+        const newTimeline = {
+          data: tagTimeline,
+        };
+
+        return [
+          ...acc,
+          {
+            data: centerTimelineData(newTimeline),
+          },
+        ];
+      },
+      []
+    );
+
     return (
       <>
         {title}
@@ -237,11 +256,11 @@ class TimelineChartWrapper extends React.Component<
           data-testid={this.props['data-testid']}
           id={id}
           options={customFlotOptions}
-          data={data}
-          //        data={d}
+          data={timelineGroups ? timelineGroupsData : data}
           width="100%"
           height={this.props.height || '100px'}
         />
+        {/* <div className={styles.legend}></div> */}
       </>
     );
   };

@@ -125,12 +125,16 @@ function ExploreView() {
           data-testid="timeline-explore-page"
           id="timeline-chart-explore-page"
           // add ability to display more then 2 timelines
+          timelineGroups={groups}
           timelineA={{
-            data: groups.length ? groups[0][1] : undefined,
+            data: undefined,
           }}
           timelineB={{
-            data: groups.length && groups[1] ? groups[1][1] : undefined,
+            data: undefined,
           }}
+          // timelineB={{
+          //   data: groups.length && groups[1] ? groups[1][1] : undefined,
+          // }}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
