@@ -95,10 +95,8 @@ export async function renderDiff(
   );
 }
 
-interface renderExplorePageProps {
-  from: string;
-  until: string;
-  query: string;
+interface renderExplorePageProps
+  extends Omit<renderSingleProps, 'refreshToken' | 'maxNodes'> {
   groupBy: string;
 }
 

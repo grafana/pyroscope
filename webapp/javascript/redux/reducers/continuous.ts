@@ -24,13 +24,29 @@ type SingleView =
       type: 'loaded';
       timeline: Timeline;
       profile: Profile;
-      groups?: ShamefulAny;
     }
   | {
       type: 'reloading';
       timeline: Timeline;
       profile: Profile;
-      groups?: ShamefulAny;
+    };
+
+type ExploreView =
+  | { type: 'pristine'; groups?: ShamefulAny; groupByTag: string }
+  | { type: 'loading'; groups?: ShamefulAny; groupByTag: string }
+  | {
+      type: 'loaded';
+      groups: ShamefulAny;
+      groupByTag: string;
+      activeTagProfile?: Profile;
+      timeline: Timeline;
+    }
+  | {
+      type: 'reloading';
+      groups: ShamefulAny;
+      groupByTag: string;
+      activeTagProfile?: Profile;
+      timeline: Timeline;
     };
 
 type ComparisonView = {
@@ -103,8 +119,8 @@ interface ContinuousState {
   diffView: DiffView;
   diffView2: DiffView2;
   comparisonView: ComparisonView;
+  exploreView: ExploreView;
   tags: Tags;
-  groupByTag: string;
 
   appNames:
     | { type: 'loaded'; data: AppNames }
@@ -123,6 +139,7 @@ let diffViewAbortController: AbortController | undefined;
 let comparisonSideAbortControllerLeft: AbortController | undefined;
 let comparisonSideAbortControllerRight: AbortController | undefined;
 let explorePageAbortController: AbortController | undefined;
+let profileAbortController: AbortController | undefined;
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -144,7 +161,10 @@ const initialState: ContinuousState = {
     right: { type: 'pristine' },
   },
   tags: {},
-  groupByTag: '',
+  exploreView: {
+    groupByTag: '',
+    type: 'pristine',
+  },
   appNames: {
     type: 'loaded',
     data: [],
@@ -169,6 +189,26 @@ const initialState: ContinuousState = {
     },
   },
 };
+
+// export const fetchActProfile = async ({
+//   from,
+//   until,
+//   query,
+//   maxNodes,
+// }: {
+//   from: string;
+//   until: string;
+//   query: string;
+// }) => {
+//   if (profileAbortController) {
+//     profileAbortController.abort();
+//   }
+
+//   profileAbortController = new AbortController();
+
+//   const res = await renderSingle({}, profileAbortController);
+
+// }
 
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -222,7 +262,7 @@ export const fetchExplorePage = createAsyncThunk<
       query: state.continuous.query,
       from: state.continuous.from,
       until: state.continuous.until,
-      groupBy: state.continuous.groupByTag,
+      groupBy: state.continuous.exploreView.groupByTag,
     },
     explorePageAbortController
   );
@@ -553,8 +593,8 @@ export const continuousSlice = createSlice({
     setQuery(state, action: PayloadAction<Query>) {
       state.query = action.payload;
     },
-    setGroupByTag(state, action: PayloadAction<string>) {
-      state.groupByTag = action.payload;
+    setExploreViewGroupByTag(state, action: PayloadAction<string>) {
+      state.exploreView.groupByTag = action.payload;
     },
     setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
@@ -809,8 +849,10 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchExplorePage.pending, (state) => {});
 
     builder.addCase(fetchExplorePage.fulfilled, (state, action) => {
-      state.singleView = {
+      state.exploreView = {
         ...action.payload,
+        groupByTag: state.exploreView.groupByTag,
+        groups: action.payload.groups,
         type: 'loaded',
       };
     });
@@ -866,8 +908,7 @@ export const continuousSlice = createSlice({
 export const selectContinuousState = (state: RootState) => state.continuous;
 export default continuousSlice.reducer;
 export const { actions } = continuousSlice;
-export const { setDateRange, setQuery, setGroupByTag } =
-  continuousSlice.actions;
+export const { setDateRange, setQuery } = continuousSlice.actions;
 export const selectApplicationName = (state: RootState) => {
   const { query } = selectQueries(state);
 
