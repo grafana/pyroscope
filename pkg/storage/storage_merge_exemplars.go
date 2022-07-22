@@ -67,11 +67,11 @@ func (s *Storage) mergeExemplars(ctx context.Context, mi MergeExemplarsInput) (o
 		out.lastEntry = &e
 		return nil
 	})
-	if err != nil {
+	if err != nil || out.lastEntry == nil {
 		return out, err
 	}
 	// Note that exemplar entry labels don't contain the app name and profile ID.
-	if out.lastEntry != nil && out.lastEntry.Labels == nil {
+	if out.lastEntry.Labels == nil {
 		out.lastEntry.Labels = make(map[string]string)
 	}
 	r, ok := s.segments.Lookup(segment.AppSegmentKey(mi.AppName))
