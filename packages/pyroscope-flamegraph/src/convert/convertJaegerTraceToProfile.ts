@@ -2,6 +2,7 @@
 import groupBy from 'lodash.groupby';
 import map from 'lodash.map';
 import type { Profile, Trace, TraceSpan } from '@pyroscope/models/src';
+import { deltaDiffWrapperReverse } from '../FlameGraph/decode';
 
 interface Span extends TraceSpan {
   children: Span[];
@@ -77,6 +78,11 @@ export function convertJaegerTraceToProfile(trace: Trace): Profile {
   }
 
   processNode(root, 0, 0);
+
+  resultFlamebearer.levels = deltaDiffWrapperReverse(
+    'single',
+    resultFlamebearer.levels
+  );
 
   return {
     version: 1,

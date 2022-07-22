@@ -6,8 +6,8 @@ declare module 'react-flot' {
     id: string;
     data: ShamefulAny[];
     options: object;
-    height: string;
-    width: string;
+    height?: string;
+    width?: string;
   }
 
   class ReactFlot<CustomProps> extends React.Component<

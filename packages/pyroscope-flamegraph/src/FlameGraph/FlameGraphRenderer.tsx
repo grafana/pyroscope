@@ -27,7 +27,7 @@ import { ViewTypes } from './FlameGraphComponent/viewTypes';
 function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
   if (p.profile && p.flamebearer) {
     console.warn(
-      "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
+      "'profile' and 'flamebearer' properties are mutually exclusive. Please use profile if possible."
     );
   }
 
@@ -90,6 +90,8 @@ export interface FlamegraphRendererProps {
     toggleSync: Dispatch<SetStateAction<boolean | string>>;
     id: string;
   };
+
+  children?: React.ReactNode;
 }
 
 interface FlamegraphRendererState {

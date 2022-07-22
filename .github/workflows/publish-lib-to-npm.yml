@@ -63,7 +63,7 @@ jobs:
             ${{ runner.os }}-yarn
 
       - name: Install Webapp dependencies
-        run: yarn bootstrap
+        run: yarn install --frozen-lockfile
 
       # This step will bump the package.json version and NOT push to the repository
       # this is needed since building grafana requires updating the plugin.json file

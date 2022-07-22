@@ -120,8 +120,8 @@ module.exports = {
       'eslint-import-resolver-lerna': {
         packages: path.resolve(__dirname, 'packages'),
       },
-      webpack: {
-        config: path.join(__dirname, 'scripts/webpack/webpack.common.ts'),
+      typescript: {
+        project: 'tsconfig.json',
       },
     },
   },
