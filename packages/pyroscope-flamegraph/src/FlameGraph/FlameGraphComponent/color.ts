@@ -1,6 +1,7 @@
 /* eslint-disable camelcase */
 import Color from 'color';
 import { scaleLinear } from 'd3-scale';
+import type { SpyName } from '@pyroscope/models';
 import murmurhash3_32_gc from './murmur3';
 import type { FlamegraphPalette } from './colorPalette';
 
@@ -71,8 +72,8 @@ export function colorGreyscale(v: number, a: number) {
   return Color.rgb(v, v, v).alpha(a);
 }
 
-// TODO use @pyroscope/models?
-function spyToRegex(spyName: string) {
+function spyToRegex(spyName: SpyName): RegExp {
+  // eslint-disable-next-line default-case
   switch (spyName) {
     case 'dotnetspy':
       return /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/;
@@ -100,16 +101,16 @@ function spyToRegex(spyName: string) {
       return /^(?<packageName>.+\/)(?<filename>.+\.)(?<functionName>.+)$/;
     case 'pyroscope-rs':
       return /^(?<packageName>[^::]+)/;
-
-    // we don't have enough information
-    default:
+    case 'unknown':
       return /^(?<packageName>.+)$/;
   }
+
+  return /^(?<packageName>.+)$/;
 }
 
 // TODO spy names?
 export function getPackageNameFromStackTrace(
-  spyName: string,
+  spyName: SpyName,
   stackTrace: string
 ) {
   if (stackTrace.length === 0) {

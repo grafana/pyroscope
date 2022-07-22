@@ -109,6 +109,8 @@ module.exports = {
 
     // makes it easier to check what are local variables computated dynamically and what are static props
     'react/destructuring-assignment': 'off',
+
+    '@typescript-eslint/switch-exhaustiveness-check': 'error',
   },
   env: {
     browser: true,
