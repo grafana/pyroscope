@@ -13,7 +13,7 @@ import store, { persistor } from './redux/store';
 import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
-import ExplorePage from './pages/Explore';
+import ExploreView from './pages/ExploreView';
 import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
@@ -89,7 +89,7 @@ function App() {
           <Route exact path={PAGES.EXPLORE}>
             <Protected>
               <Continuous>
-                <ExplorePage />
+                <ExploreView />
               </Continuous>
             </Protected>
           </Route>

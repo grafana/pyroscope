@@ -1,7 +1,6 @@
-import React, { useEffect, useState, SetStateAction, Dispatch } from 'react';
+import React, { useEffect } from 'react';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
-import classNames from 'classnames';
 
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
@@ -19,70 +18,81 @@ import {
   selectContinuousState,
   selectAppTags,
   TagsState,
-  fetchExplorePage,
-  fetchSingleView,
+  fetchExploreView,
+  fetchExploreViewProfile,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 
-import styles from './Explore.module.scss';
+import styles from './ExploreView.module.scss';
 
-function Explore() {
+function ExploreView() {
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
   const dispatch = useAppDispatch();
-  const [activeTag, setActiveTag] = useState<string | undefined>(undefined);
 
-  const { from, until, groupByTag, singleView } = useAppSelector(
-    selectContinuousState
-  );
+  const { from, until, exploreView } = useAppSelector(selectContinuousState);
   const { query } = useAppSelector(selectQueries);
   const tags = useAppSelector(selectAppTags(query));
   const appName = queryToAppName(query);
 
+  // maybe put all effects inside 1 hook ?
   useEffect(() => {
     if (query) {
       dispatch(fetchTags(query));
-      setActiveTag(undefined);
+      // setActiveTag(undefined);
     }
   }, [query]);
 
+  const { groupByTag, groupByTagValue, activeTagProfile, timeline } =
+    exploreView;
+
+  useEffect(() => {
+    if (from && until && query && groupByTagValue) {
+      const fetchData = dispatch(fetchExploreViewProfile(null));
+      return () => fetchData.abort('cancel');
+    }
+  }, [from, until, query, groupByTagValue]);
+
   useEffect(() => {
     if (from && until && query) {
-      const fetchData = dispatch(fetchExplorePage(null));
+      const fetchData = dispatch(fetchExploreView(null));
       return () => fetchData.abort('cancel');
     }
     return undefined;
   }, [from, until, query, groupByTag]);
 
   const handleGroupedByTagChange = (value: string) => {
-    dispatch(actions.setGroupByTag(value));
-    setActiveTag(undefined);
+    dispatch(actions.setExploreViewGroupByTag(value));
+    // setActiveTag(undefined);
   };
 
   const getGroupsData = (): { groups: any; legend: string[] } => {
-    switch (singleView.type) {
+    switch (exploreView.type) {
       case 'loaded':
       case 'reloading':
-        if (!singleView.groups) {
+        if (!exploreView.groups) {
           return {
             groups: [],
             legend: [],
           };
         }
 
-        const groups = Object.entries(singleView.groups).filter(
+        const groups = Object.entries(exploreView.groups).filter(
           ([key]) => key !== '*'
         );
 
         if (groups.length > 0) {
           return {
             groups,
-            legend: Object.keys(singleView.groups).filter((key) => key !== '*'),
+            legend: Object.keys(exploreView.groups).filter(
+              (key) => key !== '*'
+            ),
           };
         }
 
         return {
-          groups: [['*', singleView.timeline]],
+          // default value ? timeline dependency is wrong ?
+          groups: [['<app with no tags data>', exploreView.timeline]],
           legend: [],
         };
 
@@ -94,17 +104,23 @@ function Explore() {
     }
   };
 
-  // group type
+  // legend is timelines color + tag value pair
   const { groups, legend } = getGroupsData();
 
+  const handleGroupByTagValueChange = (groupByTagValue: string) => {
+    dispatch(actions.setExploreViewGroupByTagValue(groupByTagValue));
+  };
+
+  console.log(groups);
+
   return (
-    <div className={styles.explorePage}>
+    <div className={styles.exploreView}>
       <Toolbar hideTagsBar />
       <Box>
         <ExploreHeader
           appName={appName}
           tags={tags}
-          selectedTag={groupByTag}
+          selectedTag={exploreView.groupByTag}
           handleTagChange={handleGroupedByTagChange}
         />
         <TimelineChartWrapper
@@ -128,16 +144,16 @@ function Explore() {
           <Table
             appName={appName.value}
             groups={groups}
-            setActiveTag={setActiveTag}
-            activeTag={activeTag}
+            groupByTagValue={groupByTagValue}
+            handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
         )}
       </Box>
       <Box>
-        {activeTag && (
+        {groupByTagValue && (
           <FlamegraphRenderer
             showCredit={false}
-            profile={singleView.profile}
+            profile={activeTagProfile}
             colorMode={colorMode}
           />
         )}
@@ -146,16 +162,17 @@ function Explore() {
   );
 }
 
+// remove timeline dep from table
 function Table({
   appName,
   groups,
-  activeTag,
-  setActiveTag,
+  groupByTagValue,
+  handleGroupByTagValueChange,
 }: {
   appName: string;
   groups: any[];
-  activeTag: string | undefined;
-  setActiveTag: Dispatch<SetStateAction<string | undefined>>;
+  groupByTagValue: string | undefined;
+  handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
   return (
     <>
@@ -186,8 +203,8 @@ function Table({
         <tbody>
           {groups.map(([tagName]) => (
             <tr
-              className={tagName === activeTag ? styles.activeTagRow : ''}
-              onClick={() => setActiveTag(tagName)}
+              className={tagName === groupByTagValue ? styles.activeTagRow : ''}
+              onClick={() => handleGroupByTagValueChange(tagName)}
               key={tagName}
             >
               {/* mock data */}
@@ -249,4 +266,4 @@ function ExploreHeader({
   );
 }
 
-export default Explore;
+export default ExploreView;

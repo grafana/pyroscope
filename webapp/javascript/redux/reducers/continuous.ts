@@ -6,13 +6,14 @@ import { fetchAppNames } from '@webapp/services/appNames';
 import {
   renderSingle,
   renderDiff,
-  renderExplorePage,
+  renderExplore,
   RenderOutput,
   RenderDiffResponse,
 } from '@webapp/services/render';
 import { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
+import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
@@ -32,14 +33,25 @@ type SingleView =
     };
 
 type ExploreView =
-  | { type: 'pristine'; groups?: ShamefulAny; groupByTag: string }
-  | { type: 'loading'; groups?: ShamefulAny; groupByTag: string }
+  | {
+      type: 'pristine';
+      groups?: ShamefulAny;
+      groupByTag: string;
+      groupByTagValue: string;
+    }
+  | {
+      type: 'loading';
+      groups?: ShamefulAny;
+      groupByTag: string;
+      groupByTagValue: string;
+    }
   | {
       type: 'loaded';
       groups: ShamefulAny;
       groupByTag: string;
       activeTagProfile?: Profile;
       timeline: Timeline;
+      groupByTagValue: string;
     }
   | {
       type: 'reloading';
@@ -47,6 +59,7 @@ type ExploreView =
       groupByTag: string;
       activeTagProfile?: Profile;
       timeline: Timeline;
+      groupByTagValue: string;
     };
 
 type ComparisonView = {
@@ -138,8 +151,8 @@ let sideTimelinesAbortController: AbortController | undefined;
 let diffViewAbortController: AbortController | undefined;
 let comparisonSideAbortControllerLeft: AbortController | undefined;
 let comparisonSideAbortControllerRight: AbortController | undefined;
-let explorePageAbortController: AbortController | undefined;
-let profileAbortController: AbortController | undefined;
+let exploreViewAbortController: AbortController | undefined;
+let exploreViewProfileAbortController: AbortController | undefined;
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -163,6 +176,7 @@ const initialState: ContinuousState = {
   tags: {},
   exploreView: {
     groupByTag: '',
+    groupByTagValue: '',
     type: 'pristine',
   },
   appNames: {
@@ -189,26 +203,6 @@ const initialState: ContinuousState = {
     },
   },
 };
-
-// export const fetchActProfile = async ({
-//   from,
-//   until,
-//   query,
-//   maxNodes,
-// }: {
-//   from: string;
-//   until: string;
-//   query: string;
-// }) => {
-//   if (profileAbortController) {
-//     profileAbortController.abort();
-//   }
-
-//   profileAbortController = new AbortController();
-
-//   const res = await renderSingle({}, profileAbortController);
-
-// }
 
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -244,27 +238,27 @@ export const fetchSingleView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const fetchExplorePage = createAsyncThunk<
+export const fetchExploreView = createAsyncThunk<
   RenderOutput,
   null,
   { state: { continuous: ContinuousState } }
->('continuous/explorePage', async (_, thunkAPI) => {
-  if (explorePageAbortController) {
-    explorePageAbortController.abort();
+>('continuous/exploreView', async (_, thunkAPI) => {
+  if (exploreViewAbortController) {
+    exploreViewAbortController.abort();
   }
 
-  explorePageAbortController = new AbortController();
-  thunkAPI.signal = explorePageAbortController.signal;
+  exploreViewAbortController = new AbortController();
+  thunkAPI.signal = exploreViewAbortController.signal;
 
   const state = thunkAPI.getState();
-  const res = await renderExplorePage(
+  const res = await renderExplore(
     {
       query: state.continuous.query,
       from: state.continuous.from,
       until: state.continuous.until,
       groupBy: state.continuous.exploreView.groupByTag,
     },
-    explorePageAbortController
+    exploreViewAbortController
   );
 
   if (res.isOk) {
@@ -278,7 +272,51 @@ export const fetchExplorePage = createAsyncThunk<
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
-      title: 'Failed to load explore page data',
+      title: 'Failed to load explore view data',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchExploreViewProfile = createAsyncThunk<
+  RenderOutput,
+  null,
+  { state: { continuous: ContinuousState } }
+>('continuous/fetchExploreViewProfile', async (_, thunkAPI) => {
+  if (exploreViewProfileAbortController) {
+    exploreViewProfileAbortController.abort();
+  }
+
+  exploreViewProfileAbortController = new AbortController();
+  thunkAPI.signal = exploreViewProfileAbortController.signal;
+
+  const state = thunkAPI.getState();
+  const res = await renderSingle(
+    {
+      ...state.continuous,
+      query: appendLabelToQuery(
+        state.continuous.query,
+        state.continuous.exploreView.groupByTag,
+        state.continuous.exploreView.groupByTagValue
+      ),
+    },
+    exploreViewProfileAbortController
+  );
+
+  if (res.isOk) {
+    return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load explore view profile',
       message: res.error.message,
     })
   );
@@ -596,6 +634,9 @@ export const continuousSlice = createSlice({
     setExploreViewGroupByTag(state, action: PayloadAction<string>) {
       state.exploreView.groupByTag = action.payload;
     },
+    setExploreViewGroupByTagValue(state, action: PayloadAction<string>) {
+      state.exploreView.groupByTagValue = action.payload;
+    },
     setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
     },
@@ -843,21 +884,41 @@ export const continuousSlice = createSlice({
     });
 
     /**************************/
-    /*      Explore Page      */
+    /*      Explore View      */
     /**************************/
 
-    builder.addCase(fetchExplorePage.pending, (state) => {});
+    builder.addCase(fetchExploreView.pending, (state) => {});
 
-    builder.addCase(fetchExplorePage.fulfilled, (state, action) => {
+    builder.addCase(fetchExploreView.fulfilled, (state, action) => {
       state.exploreView = {
         ...action.payload,
-        groupByTag: state.exploreView.groupByTag,
+        ...state.exploreView,
         groups: action.payload.groups,
         type: 'loaded',
       };
     });
 
-    builder.addCase(fetchExplorePage.rejected, (state, action) => {});
+    builder.addCase(fetchExploreView.rejected, (state, action) => {});
+
+    /**********************************/
+    /*      Explore View Profile      */
+    /**********************************/
+
+    builder.addCase(fetchExploreViewProfile.pending, (state) => {});
+
+    builder.addCase(fetchExploreViewProfile.fulfilled, (state, action) => {
+      state.exploreView = {
+        ...state.exploreView,
+        // maybe timeline should not be reseted if we use it for initial timeline
+        // but we dont care if there will be no option to reset seledted tag
+        timeline: action.payload.timeline,
+        activeTagProfile: action.payload.profile,
+        groups: state.exploreView.groups,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchExploreViewProfile.rejected, (state, action) => {});
 
     /*****************/
     /*      Tags     */

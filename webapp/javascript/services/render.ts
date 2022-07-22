@@ -95,13 +95,13 @@ export async function renderDiff(
   );
 }
 
-interface renderExplorePageProps
+interface renderExploreProps
   extends Omit<renderSingleProps, 'refreshToken' | 'maxNodes'> {
   groupBy: string;
 }
 
-export async function renderExplorePage(
-  props: renderExplorePageProps,
+export async function renderExplore(
+  props: renderExploreProps,
   controller?: {
     signal?: AbortSignal;
   }
