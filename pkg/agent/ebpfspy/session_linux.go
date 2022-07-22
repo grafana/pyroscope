@@ -1,135 +1,139 @@
 //go:build ebpfspy
 // +build ebpfspy
 
-// Package ebpfspy provides integration with Linux eBPF.
+// Package ebpfspy provides integration with Linux eBPF. It is a rough copy of profile.py from BCC tools:
+//   https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
 	"fmt"
-	"io"
-	"os/exec"
-	"strconv"
+	"github.com/hashicorp/go-multierror"
 	"strings"
 	"sync"
-	"syscall"
 
-	"github.com/hashicorp/go-multierror"
-
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
-	"github.com/pyroscope-io/pyroscope/pkg/util/file"
+	"github.com/iovisor/gobpf/bcc"
 )
 
-type line struct {
-	name []byte
-	val  int
+// TODO: optimize this
+
+func walkStack(stackTrace *bcc.Table, pid, rootId []byte) string {
+	stack, _ := stackTrace.Get(rootId)
+
+	var pidInt uint32
+	r2 := bytes.NewReader(pid)
+	binary.Read(r2, binary.LittleEndian, &pidInt)
+	var stackFrames []string
+	for len(stack) >= 8 && !bytes.Equal(stack[:8], []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
+		addr := stack[:8]
+		stack = stack[8:]
+
+		var addrInt uint64
+		r := bytes.NewReader(addr)
+		binary.Read(r, binary.LittleEndian, &addrInt)
+		name := globalCache.sym(pidInt, addrInt)
+		stackFrames = append(stackFrames, name+";")
+	}
+	reverse(stackFrames)
+	return strings.Join(stackFrames, "")
+}
+
+func reverse(s []string) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }
 
 type session struct {
-	pid int
-
-	cmd *exec.Cmd
-	ch  chan line
-
-	stopMutex sync.Mutex
-	stop      bool
-
-	stderr io.ReadCloser
+	pid        int
+	sampleRate uint32
+	modMutex   sync.Mutex
+	mod        *bcc.Module
 }
 
-const helpURL = "https://github.com/iovisor/bcc/blob/master/INSTALL.md"
-
-var possibleCommandLocations = []string{
-	"/usr/sbin/profile-bpfcc", // debian: https://github.com/pyroscope-io/pyroscope/issues/114
-	"/usr/share/bcc/tools/profile",
+func newSession(pid int, sampleRate uint32) *session {
+	return &session{pid: pid, sampleRate: sampleRate}
 }
 
-// TODO: make these configurable
-var commandArgs = []string{"-F", "100", "-f", "11"}
-
-func newSession(pid int) *session {
-	return &session{pid: pid}
-}
-
-func findSuitableExecutable() (string, error) {
-	for _, str := range possibleCommandLocations {
-		if file.Exists(str) {
-			return str, nil
-		}
-	}
-	return "", fmt.Errorf("Could not find profile.py at %s. Visit %s for instructions on how to install it", strings.Join(possibleCommandLocations, ", "), helpURL)
-}
-
+// this is a rough copy of what's going on in https://github.com/iovisor/bcc/blob/master/tools/profile.py
 func (s *session) Start() error {
-	command, err := findSuitableExecutable()
+	s.modMutex.Lock()
+	defer s.modMutex.Unlock()
+
+	s.mod = bcc.NewModule(s.createProgram(), []string{})
+	if s.mod == nil {
+		return errors.New("module error")
+	}
+	fd, err := s.mod.LoadPerfEvent("do_perf_event")
+
 	if err != nil {
 		return err
 	}
 
-	args := commandArgs
-	if s.pid != -1 {
-		args = append(commandArgs, "-p", strconv.Itoa(s.pid))
-	}
+	evType := 1   // -1 // PerfType.SOFTWARE
+	evConfig := 0 // -1 // PerfSWConfig.CPU_CLOCK
+	samplePeriod := 0
+	sampleFreq := int(s.sampleRate)
+	pid := -1
+	cpu := -1
+	groupFd := -1
 
-	s.cmd = exec.Command(command, args...)
-	stdout, err := s.cmd.StdoutPipe()
+	err = s.mod.AttachPerfEvent(evType, evConfig, samplePeriod, sampleFreq, pid, cpu, groupFd, fd)
 	if err != nil {
 		return err
 	}
-	s.stderr, err = s.cmd.StderrPipe()
-	if err != nil {
-		return err
+
+	return nil
+}
+
+func (s *session) createProgram() string {
+	var threadFilter string
+	if s.pid < 0 {
+		threadFilter = "1"
+	} else {
+		threadFilter = fmt.Sprintf("tgid == %d", s.pid)
 	}
-
-	s.ch = make(chan line)
-
-	go func() {
-		convert.ParseGroups(stdout, func(name []byte, val int) {
-			s.ch <- line{
-				name: name,
-				val:  val,
-			}
-		})
-		stdout.Close()
-		close(s.ch)
-	}()
-
-	err = s.cmd.Start()
-	return err
+	return strings.Replace(BPF_PROGRAM, "THREAD_FILTER", threadFilter, 1)
 }
 
 func (s *session) Reset(cb func([]byte, uint64) error) error {
 	var errs error
-	s.cmd.Process.Signal(syscall.SIGINT)
-	stderr, err := io.ReadAll(s.stderr)
-	if err != nil {
-		errs = multierror.Append(errs, err)
-	}
+	s.modMutex.Lock()
+	defer s.modMutex.Unlock()
 
-	if err := s.cmd.Wait(); err != nil {
-		errs = multierror.Append(errs, fmt.Errorf("%s: %w", stderr, err))
-	}
-	for v := range s.ch {
-		if err := cb(v.name, uint64(v.val)); err != nil {
-			errs = multierror.Append(errs, err)
+	countsId := s.mod.TableId("counts")
+	stackTracesId := s.mod.TableId("stack_traces")
+
+	ct := bcc.NewTable(countsId, s.mod)
+	st := bcc.NewTable(stackTracesId, s.mod)
+
+	iter := ct.Iter()
+	for iter.Next() {
+		k := UnpackKeyBytes(iter.Key())
+		// TODO: optimize this
+		line := string(k.name) + ";"
+		line += walkStack(st, k.pid, k.user_stack_id)
+		line += walkStack(st, []byte{0, 0, 0, 0}, k.kernel_stack_id)
+
+		v := iter.Leaf()
+		var valInt uint64
+		buf := bytes.NewBuffer(v)
+		binary.Read(buf, binary.LittleEndian, &valInt) // TODO: not sure if it's little endian
+		lb := []byte(line)
+		if len(lb) > 0 {
+			err := cb(lb[:len(lb)-1], valInt)
+			if err != nil {
+				errs = multierror.Append(errs, errs)
+			}
 		}
 	}
 
-	s.stopMutex.Lock()
-	defer s.stopMutex.Unlock()
-
-	if s.stop {
-		return errs
-	}
-	if err := s.Start(); err != nil {
-		errs = multierror.Append(errs, err)
-	}
+	ct.DeleteAll()
+	st.DeleteAll()
 	return errs
-}
 
-func (s *session) Stop() error {
-	s.stopMutex.Lock()
-	defer s.stopMutex.Unlock()
-
-	s.stop = true
-	return nil
+	// s.mod.Close()
+	// return s.Start()
 }

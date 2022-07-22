@@ -7,6 +7,7 @@
 package ebpfspy
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -22,8 +23,8 @@ type EbpfSpy struct {
 	stopCh chan struct{}
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
-	s := newSession(pid)
+func Start(pid int, _ spy.ProfileType, sampleRate uint32, _ bool) (spy.Spy, error) {
+	s := newSession(pid, sampleRate)
 	err := s.Start()
 	if err != nil {
 		return nil, err
@@ -50,12 +51,14 @@ func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 
 	s.reset = false
 	err := s.profilingSession.Reset(func(name []byte, v uint64) error {
+		fmt.Println(string(name))
 		return cb(nil, name, v)
 	})
 
 	if s.stop {
 		s.stopCh <- struct{}{}
-		s.profilingSession.Stop()
+		panic("TODO")
+		//s.profilingSession.Stop()
 	}
 
 	return err

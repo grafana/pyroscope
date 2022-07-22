@@ -30,6 +30,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/iancoleman/strcase v0.2.0
 	github.com/imdario/mergo v0.3.12
+	github.com/iovisor/gobpf v0.2.0
 	github.com/josephspurrier/goversioninfo v1.2.0
 	github.com/jsonnet-bundler/jsonnet-bundler v0.4.0
 	github.com/kardianos/service v1.2.0
