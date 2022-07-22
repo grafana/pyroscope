@@ -272,7 +272,8 @@ func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []stri
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			item, err := txn.Get(exemplarKey(appName, profileID))
+			k := exemplarKey(appName, profileID)
+			item, err := txn.Get(k)
 			switch {
 			default:
 				return err
@@ -284,6 +285,9 @@ func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []stri
 					if err = x.Deserialize(dx, val); err != nil {
 						return err
 					}
+					x.Key = k
+					x.AppName = appName
+					x.ProfileID = profileID
 					return fn(x)
 				})
 				if err != nil {
