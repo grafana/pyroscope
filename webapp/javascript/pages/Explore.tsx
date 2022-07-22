@@ -20,6 +20,7 @@ import {
   selectAppTags,
   TagsState,
   fetchExplorePage,
+  fetchSingleView,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 
@@ -29,6 +30,7 @@ function Explore() {
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
   const dispatch = useAppDispatch();
+  const [activeTag, setActiveTag] = useState<string | undefined>(undefined);
 
   const { from, until, groupByTag, singleView } = useAppSelector(
     selectContinuousState
@@ -40,6 +42,7 @@ function Explore() {
   useEffect(() => {
     if (query) {
       dispatch(fetchTags(query));
+      setActiveTag(undefined);
     }
   }, [query]);
 
@@ -53,25 +56,46 @@ function Explore() {
 
   const handleGroupedByTagChange = (value: string) => {
     dispatch(actions.setGroupByTag(value));
+    setActiveTag(undefined);
   };
 
-  const getGroups = () => {
+  const getGroupsData = (): { groups: any; legend: string[] } => {
     switch (singleView.type) {
       case 'loaded':
       case 'reloading':
-        const groups =
-          Object.keys(singleView.groups).length > 1
-            ? Object.entries(singleView.groups).filter(([key]) => key !== '*')
-            : singleView.timeline;
+        if (!singleView.groups) {
+          return {
+            groups: [],
+            legend: [],
+          };
+        }
 
-        return groups;
+        const groups = Object.entries(singleView.groups).filter(
+          ([key]) => key !== '*'
+        );
+
+        if (groups.length > 0) {
+          return {
+            groups,
+            legend: Object.keys(singleView.groups).filter((key) => key !== '*'),
+          };
+        }
+
+        return {
+          groups: [['*', singleView.timeline]],
+          legend: [],
+        };
 
       default:
-        return undefined;
+        return {
+          groups: [],
+          legend: [],
+        };
     }
   };
 
-  console.log(getGroups());
+  // group type
+  const { groups, legend } = getGroupsData();
 
   return (
     <div className={styles.explorePage}>
@@ -89,13 +113,10 @@ function Explore() {
           id="timeline-chart-explore-page"
           // add ability to display more then 2 timelines
           timelineA={{
-            data: getGroups()?.length ? getGroups()[0][1] : undefined,
+            data: groups.length ? groups[0][1] : undefined,
           }}
           timelineB={{
-            data:
-              getGroups()?.length && getGroups()[1]
-                ? getGroups()[1][1]
-                : undefined,
+            data: groups.length && groups[1] ? groups[1][1] : undefined,
           }}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
@@ -103,22 +124,39 @@ function Explore() {
         />
       </Box>
       <Box>
-        {/* {appName.isJust && <Table appName={appName.value} groups={getGroups()} />} */}
+        {appName.isJust && (
+          <Table
+            appName={appName.value}
+            groups={groups}
+            setActiveTag={setActiveTag}
+            activeTag={activeTag}
+          />
+        )}
       </Box>
       <Box>
-        <FlamegraphRenderer
-          showCredit={false}
-          profile={undefined}
-          colorMode={colorMode}
-        />
+        {activeTag && (
+          <FlamegraphRenderer
+            showCredit={false}
+            profile={singleView.profile}
+            colorMode={colorMode}
+          />
+        )}
       </Box>
     </div>
   );
 }
 
-function Table({ appName }: { appName: string }) {
-
-
+function Table({
+  appName,
+  groups,
+  activeTag,
+  setActiveTag,
+}: {
+  appName: string;
+  groups: any[];
+  activeTag: string | undefined;
+  setActiveTag: Dispatch<SetStateAction<string | undefined>>;
+}) {
   return (
     <>
       <div className={styles.tableDescription}>
@@ -146,9 +184,14 @@ function Table({ appName }: { appName: string }) {
           </tr>
         </thead>
         <tbody>
-          {[1, 2, 3].map(({ }) => (
-            <tr>
-              <td>300</td>
+          {groups.map(([tagName]) => (
+            <tr
+              className={tagName === activeTag ? styles.activeTagRow : ''}
+              onClick={() => setActiveTag(tagName)}
+              key={tagName}
+            >
+              {/* mock data */}
+              <td>{tagName}</td>
               <td>15,000</td>
               <td>3,276</td>
               <td>1,532</td>
@@ -185,12 +228,11 @@ function ExploreHeader({
 
   return (
     <div className={styles.header}>
-      <span className={classNames(styles.appName, styles.title)}>
+      <span className={styles.title}>
         {appName.isJust ? appName.value : ''}
       </span>
       <div className={styles.query}>
         <span className={styles.selectName}>grouped by</span>
-        {/* should add search ? */}
         <Dropdown
           label="tags"
           value={selectedTag ? `tag: ${selectedTag}` : 'select tag'}
