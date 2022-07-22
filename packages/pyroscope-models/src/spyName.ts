@@ -18,8 +18,13 @@ export const SpyNameOther = [
   'unknown',
 ] as const;
 
-const AllSpyNames = [...SpyNameFirstClass, ...SpyNameOther] as const;
+export const AllSpyNames = [...SpyNameFirstClass, ...SpyNameOther] as const;
 
-export const SpyNameSchema = z.enum(AllSpyNames).optional().default('unknown');
+export const SpyNameSchema = z.preprocess((val) => {
+  if (!val) {
+    return 'unknown';
+  }
+  return val;
+}, z.enum(AllSpyNames).default('unknown'));
 
 export type SpyName = z.infer<typeof SpyNameSchema>;
