@@ -1,8 +1,8 @@
 local fire = import './../../../../deploy/jsonnet/fire-mixin/mixin.libsonnet';
-local prometheus = import 'prometheus-ksonnet/prometheus-ksonnet.libsonnet';
+local grafana = import 'grafana/grafana.libsonnet';
 local k = import 'ksonnet-util/kausal.libsonnet';
 local prom_k_grafana = import 'prometheus-ksonnet/grafana/grafana.libsonnet';
-local grafana = import 'grafana/grafana.libsonnet';
+local prometheus = import 'prometheus-ksonnet/prometheus-ksonnet.libsonnet';
 
 
 prometheus {
