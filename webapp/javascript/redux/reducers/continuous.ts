@@ -630,9 +630,12 @@ export const continuousSlice = createSlice({
     },
     setQuery(state, action: PayloadAction<Query>) {
       state.query = action.payload;
+      state.exploreView.groupByTag = '';
+      state.exploreView.groupByTagValue = '';
     },
     setExploreViewGroupByTag(state, action: PayloadAction<string>) {
       state.exploreView.groupByTag = action.payload;
+      state.exploreView.groupByTagValue = '';
     },
     setExploreViewGroupByTagValue(state, action: PayloadAction<string>) {
       state.exploreView.groupByTagValue = action.payload;

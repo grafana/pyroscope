@@ -61,11 +61,6 @@ function ExploreView() {
     return undefined;
   }, [from, until, query, groupByTag]);
 
-  const handleGroupedByTagChange = (value: string) => {
-    dispatch(actions.setExploreViewGroupByTag(value));
-    // setActiveTag(undefined);
-  };
-
   const getGroupsData = (): { groups: any; legend: string[] } => {
     switch (exploreView.type) {
       case 'loaded':
@@ -111,7 +106,9 @@ function ExploreView() {
     dispatch(actions.setExploreViewGroupByTagValue(groupByTagValue));
   };
 
-  console.log(groups);
+  const handleGroupedByTagChange = (value: string) => {
+    dispatch(actions.setExploreViewGroupByTag(value));
+  };
 
   return (
     <div className={styles.exploreView}>
