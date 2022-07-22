@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
 	wwtracing "github.com/weaveworks/common/tracing"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/fire/pkg/agent"
@@ -131,10 +131,10 @@ func (c *Config) Clone() flagext.Registerer {
 }
 
 type Fire struct {
-	Cfg            Config
-	logger         log.Logger
-	reg            prometheus.Registerer
-	tracerProvider trace.TracerProvider
+	Cfg    Config
+	logger log.Logger
+	reg    prometheus.Registerer
+	tracer io.Closer
 
 	ModuleManager *modules.Manager
 	serviceMap    map[string]services.Service
@@ -156,10 +156,9 @@ func New(cfg Config) (*Fire, error) {
 	logger := initLogger(&cfg.Server)
 
 	fire := &Fire{
-		Cfg:            cfg,
-		logger:         logger,
-		reg:            prometheus.DefaultRegisterer,
-		tracerProvider: trace.NewNoopTracerProvider(),
+		Cfg:    cfg,
+		logger: logger,
+		reg:    prometheus.DefaultRegisterer,
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -174,14 +173,7 @@ func New(cfg Config) (*Fire, error) {
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
 		}
-
-		defer func() {
-			if trace != nil {
-				if err := trace.Close(); err != nil {
-					level.Error(logger).Log("msg", "error closing tracing", "err", err)
-				}
-			}
-		}()
+		fire.tracer = trace
 	}
 
 	// instantiate a fallback pusher client (when not run with a local distributor
@@ -264,7 +256,7 @@ func (f *Fire) Run() error {
 
 	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, grpcutil.NewHealthCheck(sm))
 	healthy := func() { level.Info(f.logger).Log("msg", "Fire started", "version", version.Info()) }
-	stopped := func() { level.Info(f.logger).Log("msg", "Fire stopped") }
+
 	serviceFailed := func(service services.Service) {
 		// if any service fails, stop entire Fire
 		sm.StopAsync()
@@ -284,7 +276,7 @@ func (f *Fire) Run() error {
 		level.Error(f.logger).Log("msg", "module failed", "module", "unknown", "error", service.FailureCase())
 	}
 
-	sm.AddListener(services.NewManagerListener(healthy, stopped, serviceFailed))
+	sm.AddListener(services.NewManagerListener(healthy, f.stopped, serviceFailed))
 
 	// Setup signal handler. If signal arrives, we stop the manager, which stops all the services.
 	f.SignalHandler = signals.NewHandler(f.Server.Log)
@@ -335,6 +327,15 @@ func (f *Fire) readyHandler(sm *services.Manager) http.HandlerFunc {
 		}
 
 		http.Error(w, "ready", http.StatusOK)
+	}
+}
+
+func (f *Fire) stopped() {
+	level.Info(f.logger).Log("msg", "Fire stopped")
+	if f.tracer != nil {
+		if err := f.tracer.Close(); err != nil {
+			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)
+		}
 	}
 }
 
