@@ -117,7 +117,7 @@ func mergeExemplarsInputFromMergeRequest(req mergeRequest) storage.MergeExemplar
 }
 
 func pickTime(primary, fallback string) time.Time {
-	if primary == "" {
+	if primary != "" {
 		return attime.Parse(primary)
 	}
 	if fallback != "" {
