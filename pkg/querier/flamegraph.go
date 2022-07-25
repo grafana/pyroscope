@@ -4,6 +4,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
+type stackNode struct {
+	xOffset int
+	level   int
+	node    *node
+}
+
 func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 	var total, max int64
 	for _, node := range t.root {
@@ -18,42 +24,22 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 		}
 	}()
 
-	xOffsets := stackIntPool.Get().(*Stack[int])
-	xOffsets.Reset()
-	xOffsets.Push(0)
-	defer stackIntPool.Put(xOffsets)
-
-	levels := stackIntPool.Get().(*Stack[int])
-	levels.Reset()
-	levels.Push(0)
-	defer stackIntPool.Put(levels)
-
-	nodes := stackNodePool.Get().(*Stack[*node])
-	nodes.Reset()
-	nodes.Push(&node{children: t.root, total: total})
-	defer stackNodePool.Put(nodes)
+	stack := stackNodePool.Get().(*Stack[stackNode])
+	defer stackNodePool.Put(stack)
+	stack.Reset()
+	stack.Push(stackNode{xOffset: 0, level: 0, node: &node{children: t.root, total: total}})
 
 	for {
-		current, hasMoreNodes := nodes.Pop()
+		current, hasMoreNodes := stack.Pop()
 		if !hasMoreNodes {
 			break
 		}
-
-		xOffset, hasMoreOffsets := xOffsets.Pop()
-		if !hasMoreOffsets {
-			break
-		}
-		level, hasMoreLevels := levels.Pop()
-		if !hasMoreLevels {
-			break
-		}
-
-		if current.self > max {
-			max = current.self
+		if current.node.self > max {
+			max = current.node.self
 		}
 		var i int
 		var ok bool
-		name := current.name
+		name := current.node.name
 		if i, ok = nameLocationCache[name]; !ok {
 			i = len(names)
 			if i == 0 {
@@ -63,7 +49,7 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 			names = append(names, name)
 		}
 
-		if level == len(res) {
+		if current.level == len(res) {
 			s := stackIntPool.Get().(*Stack[int])
 			s.Reset()
 			res = append(res, s)
@@ -73,17 +59,16 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 		// i+1 = total
 		// i+2 = self
 		// i+3 = index in names array
-		res[level].Push(i)
-		res[level].Push(int(current.self))
-		res[level].Push(int(current.total))
-		res[level].Push(xOffset)
-		xOffset += int(current.self)
+		level := res[current.level]
+		level.Push(i)
+		level.Push(int(current.node.self))
+		level.Push(int(current.node.total))
+		level.Push(current.xOffset)
+		current.xOffset += int(current.node.self)
 
-		for _, child := range current.children {
-			xOffsets.Push(xOffset)
-			levels.Push(level + 1)
-			nodes.Push(child)
-			xOffset += int(child.total)
+		for _, child := range current.node.children {
+			stack.Push(stackNode{xOffset: current.xOffset, level: current.level + 1, node: child})
+			current.xOffset += int(child.total)
 		}
 	}
 	result := make([][]int, len(res))
