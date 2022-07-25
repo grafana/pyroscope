@@ -1,5 +1,5 @@
-//go:build !windows && stresstest
-// +build !windows,stresstest
+//go:build !windows
+// +build !windows
 
 package storage
 
