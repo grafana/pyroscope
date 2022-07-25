@@ -11,23 +11,37 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 	}
 	names := []string{}
 	nameLocationCache := map[string]int{}
-	res := [][]int{}
+	res := []*Stack[int]{}
+	defer func() {
+		for _, stack := range res {
+			stack.Release()
+		}
+	}()
 
-	xOffsets := []int{0}
+	xOffsets := NewStack(0)
+	defer xOffsets.Release()
 
-	levels := []int{0}
+	levels := NewStack(0)
+	defer levels.Release()
 
-	nodes := []*node{{children: t.root, total: total}}
+	nodes := NewStack(&node{children: t.root, total: total})
+	defer nodes.Release()
 
-	for len(nodes) > 0 {
-		current := nodes[0]
-		nodes = nodes[1:]
+	for {
+		current, hasMoreNodes := nodes.Pop()
+		if !hasMoreNodes {
+			break
+		}
 
-		xOffset := xOffsets[0]
-		xOffsets = xOffsets[1:]
+		xOffset, hasMoreOffsets := xOffsets.Pop()
+		if !hasMoreOffsets {
+			break
+		}
+		level, hasMoreLevels := levels.Pop()
+		if !hasMoreLevels {
+			break
+		}
 
-		level := levels[0]
-		levels = levels[1:]
 		if current.self > max {
 			max = current.self
 		}
@@ -44,25 +58,32 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 		}
 
 		if level == len(res) {
-			res = append(res, []int{})
+			res = append(res, NewStack[int]())
 		}
 
 		// i+0 = x offset
 		// i+1 = total
 		// i+2 = self
 		// i+3 = index in names array
-		res[level] = append([]int{xOffset, int(current.total), int(current.self), i}, res[level]...)
+		res[level].Push(i)
+		res[level].Push(int(current.self))
+		res[level].Push(int(current.total))
+		res[level].Push(xOffset)
 		xOffset += int(current.self)
 
 		for _, child := range current.children {
-			xOffsets = append([]int{xOffset}, xOffsets...)
-			levels = append([]int{level + 1}, levels...)
-			nodes = append([]*node{child}, nodes...)
+			xOffsets.Push(xOffset)
+			levels.Push(level + 1)
+			nodes.Push(child)
 			xOffset += int(child.total)
 		}
 	}
+	result := make([][]int, len(res))
+	for i := range result {
+		result[i] = res[i].Slice()
+	}
 	// delta encode xoffsets
-	for _, l := range res {
+	for _, l := range result {
 		prev := 0
 		for i := 0; i < len(l); i += 4 {
 			l[i] -= prev
@@ -71,7 +92,7 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 	}
 	return &flamebearer.FlamebearerV1{
 		Names:    names,
-		Levels:   res,
+		Levels:   result,
 		NumTicks: int(total),
 		MaxSelf:  int(max),
 	}
