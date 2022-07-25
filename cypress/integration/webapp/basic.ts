@@ -160,26 +160,31 @@ describe('basic test', () => {
     beforeEach(() => {
       cy.viewport(1440, 900);
     });
-    it('works in single view', () => {
+    it('flamegraph tooltip works in single view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu.json',
       }).as('render');
 
       cy.visit('/');
 
-      cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+      cy.findAllByTestId('tooltip').should('not.be.visible');
 
       cy.waitForFlamegraphToRender().trigger('mousemove');
-      cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
-      cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
-      cy.findByTestId('flamegraph-tooltip-table').should(
+      cy.findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
+        .should('be.visible');
+
+      cy.findByTestId('tooltip-title').should('have.text', 'total');
+      cy.findByTestId('tooltip-table').should(
         'have.text',
         'Share of CPU:100%CPU Time:9.88 secondsSamples:988'
       );
 
       cy.waitForFlamegraphToRender().trigger('mouseout');
-      cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+      cy.findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
+        .should('not.be.visible');
     });
 
     it('works in comparison view', () => {
@@ -209,18 +214,22 @@ describe('basic test', () => {
       // flamegraph 1 (the left one)
       cy.log('left flamegraph');
       findFlamegraph(1)
-        .findByTestId('flamegraph-tooltip')
+        .findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
         .should('not.be.visible');
 
       findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove');
 
-      findFlamegraph(1).findByTestId('flamegraph-tooltip').should('be.visible');
+      findFlamegraph(1)
+        .findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
+        .should('be.visible');
 
       findFlamegraph(1)
-        .findByTestId('flamegraph-tooltip-title')
+        .findByTestId('tooltip-title')
         .should('have.text', 'total');
       findFlamegraph(1)
-        .findByTestId('flamegraph-tooltip-table')
+        .findByTestId('tooltip-table')
         .should(
           'have.text',
           'Share of CPU:100%CPU Time:9.91 secondsSamples:991'
@@ -230,26 +239,31 @@ describe('basic test', () => {
       findFlamegraph(1).waitForFlamegraphToRender().trigger('mouseout');
 
       findFlamegraph(1)
-        .findByTestId('flamegraph-tooltip')
+        .findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
         .should('not.be.visible');
 
       // flamegraph 2 (right one)
       cy.log('right flamegraph');
       findFlamegraph(2)
-        .findByTestId('flamegraph-tooltip')
+        .findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
         .should('not.be.visible');
 
       findFlamegraph(2).waitForFlamegraphToRender().trigger('mousemove', 0, 0, {
         force: true,
       });
 
-      findFlamegraph(2).findByTestId('flamegraph-tooltip').should('be.visible');
+      findFlamegraph(2)
+        .findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
+        .should('be.visible');
 
       findFlamegraph(2)
-        .findByTestId('flamegraph-tooltip-title')
+        .findByTestId('tooltip-title')
         .should('have.text', 'total');
       findFlamegraph(2)
-        .findByTestId('flamegraph-tooltip-table')
+        .findByTestId('tooltip-table')
         .should(
           'have.text',
           'Share of CPU:100%CPU Time:9.88 secondsSamples:988'
@@ -259,7 +273,8 @@ describe('basic test', () => {
         .waitForFlamegraphToRender()
         .trigger('mouseout', { force: true });
       findFlamegraph(2)
-        .findByTestId('flamegraph-tooltip')
+        .findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
         .should('not.be.visible');
     });
 
@@ -280,14 +295,18 @@ describe('basic test', () => {
       cy.waitForFlamegraphToRender();
 
       // This test has a race condition, since it does not wait for the canvas to be rendered
-      cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+      cy.findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
+        .should('not.be.visible');
       cy.get('div.spinner-container.loaded');
 
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
-      cy.findByTestId('flamegraph-tooltip').should('be.visible');
+      cy.findByTestId('flamegraph-view')
+        .findByTestId('tooltip')
+        .should('be.visible');
 
-      cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
-      cy.findByTestId('flamegraph-tooltip-table').should(
+      cy.findByTestId('tooltip-title').should('have.text', 'total');
+      cy.findByTestId('tooltip-table').should(
         'have.text',
         'BaselineComparisonDiffShare of CPU:100%100%CPU Time:9.91 seconds9.87 secondsSamples:991987'
       );
