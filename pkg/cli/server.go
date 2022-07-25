@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/client/pyroscope"
 	"github.com/sirupsen/logrus"
@@ -227,6 +228,11 @@ func newServerService(c *config.Server) (*serverService, error) {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}
 
+	if os.Getenv("PYROSCOPE_CONFIG_DEBUG") != "" {
+		fmt.Println("parsed config:")
+		spew.Dump(svc.config)
+	}
+
 	return &svc, nil
 }
 
@@ -383,7 +389,7 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 		ScrapeConfigs []*sc.Config `yaml:"scrape-configs" mapstructure:"-"`
 	}
 	var s scrapeConfig
-	if err = yaml.Unmarshal(b, &s); err != nil {
+	if err = yaml.Unmarshal([]byte(performSubstitutions(b)), &s); err != nil {
 		return err
 	}
 	// Populate scrape configs.
@@ -408,7 +414,7 @@ func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
 	}
 
 	var s cfg
-	if err = yaml.Unmarshal(b, &s); err != nil {
+	if err = yaml.Unmarshal([]byte(performSubstitutions(b)), &s); err != nil {
 		return err
 	}
 
