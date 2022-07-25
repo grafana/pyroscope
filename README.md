@@ -47,13 +47,13 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Minimal CPU overhead
 * Efficient compression, low disk space requirements
 * Can handle high-cardinality tags/labels
-* Can store years of profiling data from multiple applications
 * Calculate the performance "diff" between various tags/labels and time periods
+* Can store years of profiling data from multiple applications
 * Advanced analysis UI
 
 ## Add Pyroscope Server locally in 2 steps:
 
-Pyroscope supports all major architectures and is very easy to install. for example here is how you install on a mac:
+Pyroscope supports all major architectures and is very easy to install. For example, here is how you install on a mac:
 ```shell
 # install pyroscope
 brew install pyroscope-io/brew/pyroscope
@@ -63,7 +63,7 @@ pyroscope server
 ```
 ## Send data to server via Pyroscope agent (language specific)
 
-For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website or find language specific examples and documentation below
+For more documentation on how to add the Pyroscope agent to your code, see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website or find language specific examples and documentation below:
 <table>
    <tr>
       <td align="center"><a href="https://pyroscope.io/docs/golang"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
