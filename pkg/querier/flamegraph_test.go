@@ -1,6 +1,7 @@
 package querier
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
@@ -18,7 +19,7 @@ func Test_toFlamebearer(t *testing.T) {
 		},
 		NumTicks: 4,
 		MaxSelf:  2,
-	}, NewFlamebearer(newTree([]stack{
+	}, NewFlamebearer(newTree([]stacktraces{
 		{
 			locations: []string{"e", "b", "a"},
 			value:     1,
@@ -32,4 +33,22 @@ func Test_toFlamebearer(t *testing.T) {
 			value:     1,
 		},
 	})))
+}
+
+var f *flamebearer.FlamebearerV1
+
+func BenchmarkFlamegraph(b *testing.B) {
+	stacks := make([]stacktraces, 2000)
+	for i := range stacks {
+		stacks[i] = stacktraces{
+			locations: []string{"a", "b", "c", "d", "e", fmt.Sprintf("%d", i)},
+			value:     1,
+		}
+	}
+	tr := newTree(stacks)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		f = NewFlamebearer(tr)
+	}
 }
