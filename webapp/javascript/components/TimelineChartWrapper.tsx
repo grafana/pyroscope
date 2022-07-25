@@ -2,11 +2,19 @@
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
 import React, { ReactNode } from 'react';
-import { Timeline } from '@webapp/models/timeline';
 import Color from 'color';
+import type { Group } from '@pyroscope/models/src';
+import type { Timeline } from '@webapp/models/timeline';
 import { formatAsOBject } from '@webapp/util/formatDate';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
+
+// for timelineGroups prop (more then 2 timelines)
+export interface TimelineGroupData {
+  data: Group;
+  tagName: string;
+  color?: Color;
+}
 
 interface TimelineData {
   data?: Timeline;
@@ -28,11 +36,11 @@ type TimelineChartWrapperProps = {
   format: 'lines' | 'bars';
 
   /** timelineA refers to the first (and maybe unique) timeline */
-  timelineA?: TimelineData;
+  timelineA: TimelineData;
   /** timelineB refers to the second timeline, useful for comparison view */
   timelineB?: TimelineData;
   /** timelineGroups refers to group of timelines, useful for explore view */
-  timelineGroups?: TimelineData[];
+  timelineGroups?: TimelineGroupData[];
   height?: string;
 
   /** refers to the highlighted selection */
@@ -230,21 +238,14 @@ class TimelineChartWrapper extends React.Component<
         timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
     ].filter((a) => !!a);
 
-    const timelineGroupsData = timelineGroups?.reduce(
-      (acc, [tagName, tagTimeline]) => {
-        const newTimeline = {
-          data: tagTimeline,
+    const centeredRimelineGroups =
+      timelineGroups &&
+      timelineGroups.map(({ data, color }) => {
+        return {
+          data: centerTimelineData({ data }),
+          color,
         };
-
-        return [
-          ...acc,
-          {
-            data: centerTimelineData(newTimeline),
-          },
-        ];
-      },
-      []
-    );
+      });
 
     return (
       <>
@@ -256,7 +257,7 @@ class TimelineChartWrapper extends React.Component<
           data-testid={this.props['data-testid']}
           id={id}
           options={customFlotOptions}
-          data={timelineGroups ? timelineGroupsData : data}
+          data={centeredRimelineGroups || data}
           width="100%"
           height={this.props.height || '100px'}
         />

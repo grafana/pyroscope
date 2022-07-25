@@ -1,11 +1,14 @@
 import React, { useEffect } from 'react';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
+import Color from 'color';
 
-import type { Group, Profile } from '@pyroscope/models/src';
+import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
-import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import TimelineChartWrapper, {
+  TimelineGroupData,
+} from '@webapp/components/TimelineChartWrapper';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import useColorMode from '@webapp/hooks/colorMode.hook';
@@ -25,6 +28,24 @@ import {
 import { queryToAppName } from '@webapp/models/query';
 
 import styles from './ExploreView.module.scss';
+
+const timelineSeriesColors = [
+  'blueviolet',
+  'lime',
+  'deepskyblue',
+  'chocolate',
+  'yellowgreen',
+  'lightsalmon',
+  'rosybrown',
+  'maroon',
+  'orangered',
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'hotpink',
+];
 
 function ExploreView() {
   const { offset } = useTimeZone();
@@ -62,8 +83,7 @@ function ExploreView() {
   }, [from, until, query, groupByTag]);
 
   const getGroupsData = (): {
-    groups: [k: string, v: Group][];
-    legend: string[];
+    groupsData: TimelineGroupData[];
     activeTagProfile?: Profile;
   } => {
     switch (exploreView.type) {
@@ -71,43 +91,49 @@ function ExploreView() {
       case 'reloading':
         if (!exploreView.groups) {
           return {
-            groups: [],
-            legend: [],
+            groupsData: [],
             activeTagProfile: undefined,
           };
         }
 
-        const groups = Object.entries(exploreView.groups).filter(
-          ([key]) => key !== '*'
+        const groups = Object.entries(exploreView.groups).reduce(
+          (acc, [tagName, data], index) => {
+            if (tagName === '*' || index === 15) return acc;
+
+            acc.push({
+              tagName,
+              data,
+              color: Color(timelineSeriesColors[index]),
+            });
+
+            return acc;
+          },
+          [] as TimelineGroupData[]
         );
 
         if (groups.length > 0) {
           return {
-            groups,
-            legend: Object.keys(exploreView.groups).filter(
-              (key) => key !== '*'
-            ),
+            groupsData: groups,
             activeTagProfile: exploreView?.activeTagProfile,
           };
         }
 
         return {
-          // default value ? timeline dependency is wrong ?
-          groups: [['<app with no tags data>', exploreView.timeline]],
-          legend: [],
+          groupsData: [
+            { tagName: '<app with no tags data>', data: exploreView.timeline },
+          ],
           activeTagProfile: undefined,
         };
 
       default:
         return {
-          groups: [],
-          legend: [],
+          groupsData: [],
           activeTagProfile: undefined,
         };
     }
   };
 
-  const { groups, legend, activeTagProfile } = getGroupsData();
+  const { groupsData, activeTagProfile } = getGroupsData();
 
   const handleGroupByTagValueChange = (groupByTagValue: string) => {
     dispatch(actions.setExploreViewGroupByTagValue(groupByTagValue));
@@ -131,17 +157,9 @@ function ExploreView() {
           timezone={offset === 0 ? 'utc' : 'browser'}
           data-testid="timeline-explore-page"
           id="timeline-chart-explore-page"
-          // add ability to display more then 2 timelines
-          timelineGroups={groups}
-          timelineA={{
-            data: undefined,
-          }}
-          timelineB={{
-            data: undefined,
-          }}
-          // timelineB={{
-          //   data: groups.length && groups[1] ? groups[1][1] : undefined,
-          // }}
+          timelineA={{ data: undefined }}
+          timelineB={{ data: undefined }}
+          timelineGroups={groupsData}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
@@ -151,7 +169,7 @@ function ExploreView() {
         {appName.isJust && (
           <Table
             appName={appName.value}
-            groups={groups}
+            groupsData={groupsData}
             groupByTagValue={groupByTagValue}
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
@@ -173,12 +191,12 @@ function ExploreView() {
 // remove timeline dep from table
 function Table({
   appName,
-  groups,
+  groupsData,
   groupByTagValue,
   handleGroupByTagValueChange,
 }: {
   appName: string;
-  groups: any[];
+  groupsData: TimelineGroupData[];
   groupByTagValue: string | undefined;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
@@ -209,7 +227,7 @@ function Table({
           </tr>
         </thead>
         <tbody>
-          {groups.map(([tagName]) => (
+          {groupsData.map(({ tagName }) => (
             <tr
               className={tagName === groupByTagValue ? styles.activeTagRow : ''}
               onClick={() => handleGroupByTagValueChange(tagName)}
