@@ -20,6 +20,7 @@ spec:
     matchLabels:
       {{- include "fire.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component | quote }}
+      name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
   template:
     metadata:
       annotations:
@@ -30,6 +31,7 @@ spec:
       labels:
         {{- include "fire.templateLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component | quote }}
+        name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
     spec:
       {{- with .Values.fire.imagePullSecrets }}
       imagePullSecrets:
