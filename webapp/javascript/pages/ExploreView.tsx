@@ -30,8 +30,14 @@ import { queryToAppName } from '@webapp/models/query';
 import styles from './ExploreView.module.scss';
 
 const timelineSeriesColors = [
+  'orange',
+  'yellow',
+  'green',
+  'hotpink',
   'blueviolet',
   'lime',
+  'red',
+  'blue',
   'deepskyblue',
   'chocolate',
   'yellowgreen',
@@ -39,12 +45,6 @@ const timelineSeriesColors = [
   'rosybrown',
   'maroon',
   'orangered',
-  'red',
-  'orange',
-  'yellow',
-  'green',
-  'blue',
-  'hotpink',
 ];
 
 function ExploreView() {
@@ -158,7 +158,6 @@ function ExploreView() {
           timelineA={{ data: undefined }}
           timelineB={{ data: undefined }}
           timelineGroups={groupsData}
-          shouldDisplayLegend
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
@@ -187,7 +186,6 @@ function ExploreView() {
   );
 }
 
-// remove timeline dep from table
 function Table({
   appName,
   groupsData,
@@ -210,7 +208,7 @@ function Table({
           <button>Diff</button>
         </div>
       </div>
-      <table>
+      <table className={styles.exploreTable}>
         <thead>
           <tr>
             <th>{groupsData[0]?.tagName === '*' ? 'App' : 'Tag'} name</th>

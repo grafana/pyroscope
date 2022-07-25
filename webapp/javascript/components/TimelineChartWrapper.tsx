@@ -41,7 +41,6 @@ type TimelineChartWrapperProps = {
   timelineB?: TimelineData;
   /** timelineGroups refers to group of timelines, useful for explore view */
   timelineGroups?: TimelineGroupData[];
-  shouldDisplayLegend?: boolean;
   height?: string;
 
   /** refers to the highlighted selection */
@@ -62,7 +61,6 @@ class TimelineChartWrapper extends React.Component<
   // eslint-disable-next-line react/static-property-placement
   static defaultProps = {
     format: 'bars',
-    shouldDisplayLegend: false,
   };
 
   constructor(props: TimelineChartWrapperProps) {
@@ -186,14 +184,7 @@ class TimelineChartWrapper extends React.Component<
 
   render = () => {
     const { flotOptions } = this.state;
-    const {
-      id,
-      timelineA,
-      timelineGroups,
-      timezone,
-      title,
-      shouldDisplayLegend,
-    } = this.props;
+    const { id, timelineA, timelineGroups, timezone, title } = this.props;
 
     // TODO deep copy
     let timelineB = this.props.timelineB
@@ -205,7 +196,7 @@ class TimelineChartWrapper extends React.Component<
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
-        // both sides making it look more centers (not for timelineGroups)
+        // both sides making it look more centers
         autoscaleMargin:
           (timelineA?.data && timelineA.data.samples.length > 3) ||
           timelineGroups
@@ -273,9 +264,7 @@ class TimelineChartWrapper extends React.Component<
           width="100%"
           height={this.props.height || '100px'}
         />
-        {shouldDisplayLegend && timelineGroups && (
-          <Legend groups={timelineGroups} />
-        )}
+        {timelineGroups && <Legend groups={timelineGroups} />}
       </>
     );
   };

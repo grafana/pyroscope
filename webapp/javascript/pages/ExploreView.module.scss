@@ -29,7 +29,7 @@
     }
   }
 
-  table {
+  .exploreTable {
     background-color: var(--ps-ui-element-bg-highlight);
     width: 100%;
 
@@ -67,7 +67,7 @@
     td,
     th {
       border: 1px solid;
-      border-color: lightcyan;
+      border-color: var(--ps-immutable-white);
       padding: 5px;
       width: 10%;
     }
