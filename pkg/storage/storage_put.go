@@ -50,8 +50,8 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
 
-	for k, v := range pi.Key.Labels() {
-		s.labels.Put(k, v)
+	if err := s.labels.PutLabels(pi.Key.Labels()); err != nil {
+		return fmt.Errorf("unable to write labels: %w", err)
 	}
 
 	sk := pi.Key.SegmentKey()
@@ -78,8 +78,8 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 		Units:           pi.Units,
 		AggregationType: pi.AggregationType,
 	})
-	samples := pi.Val.Samples()
 
+	samples := pi.Val.Samples()
 	err = st.Put(pi.StartTime, pi.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := pi.Key.TreeKey(depth, t)
 		res, err := s.trees.GetOrCreate(tk)

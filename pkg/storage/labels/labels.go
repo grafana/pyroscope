@@ -17,6 +17,20 @@ func New(db *badger.DB) *Labels {
 	return ll
 }
 
+func (ll *Labels) PutLabels(labels map[string]string) error {
+	return ll.db.Update(func(txn *badger.Txn) error {
+		for k, v := range labels {
+			if err := txn.SetEntry(badger.NewEntry([]byte("l:"+k), nil)); err != nil {
+				return err
+			}
+			if err := txn.SetEntry(badger.NewEntry([]byte("v:"+k+":"+v), nil)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (ll *Labels) Put(key, val string) {
 	kk := "l:" + key
 	kv := "v:" + key + ":" + val
