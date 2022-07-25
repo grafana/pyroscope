@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.16.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.15.0...@pyroscope/flamegraph@0.16.0) (2022-07-25)
+
+
+### Features
+
+* show functions % of total [units] in Table ([#1288](https://github.com/pyroscope-io/pyroscope/issues/1288)) ([6c71195](https://github.com/pyroscope-io/pyroscope/commit/6c71195295c3ed5591917ff754e670d4220b77d0))
+
+
+
+
+
 # [0.15.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.9...@pyroscope/flamegraph@0.15.0) (2022-07-25)
 
 
