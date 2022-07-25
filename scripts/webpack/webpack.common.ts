@@ -15,6 +15,20 @@ const packagePath = path.resolve(__dirname, '../../webapp');
 // use a fake hash when running locally
 const LOCAL_HASH = 'local';
 
+function getFilename(ext: string) {
+  // We may want to produce no hash, example when running size-limit
+  if (process.env.NOHASH) {
+    return `[name].${ext}`;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return `[name].[hash].${ext}`;
+  }
+
+  // TODO: there's some cache busting issue when running locally
+  return `[name].${LOCAL_HASH}.${ext}`;
+}
+
 const pages = glob
   .sync(path.join(__dirname, '../../webapp/templates/!(standalone).html'))
   .map((x) => path.basename(x));
@@ -60,10 +74,7 @@ export default {
     path: path.resolve(packagePath, 'public/assets'),
 
     // https://webpack.js.org/guides/build-performance/#avoid-production-specific-tooling
-    filename:
-      process.env.NODE_ENV === 'production'
-        ? '[name].[hash].js'
-        : `[name].${LOCAL_HASH}.js`,
+    filename: getFilename('js'),
     clean: true,
   },
 
@@ -147,10 +158,7 @@ export default {
     }),
     ...pagePlugins,
     new MiniCssExtractPlugin({
-      filename:
-        process.env.NODE_ENV === 'production'
-          ? '[name].[hash].css'
-          : `[name].${LOCAL_HASH}.css`,
+      filename: getFilename('css'),
     }),
     new CopyPlugin({
       patterns: [

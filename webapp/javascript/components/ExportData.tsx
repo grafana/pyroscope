@@ -6,7 +6,7 @@ import Button from '@webapp/ui/Button';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { buildRenderURL } from '@webapp/util/updateRequests';
 import { convertPresetsToDate } from '@webapp/util/formatDate';
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 import showModalWithInput from './Modals/ModalWithInput';
 
 import styles from './ExportData.module.scss';

@@ -10,8 +10,8 @@ $tdHeight: 25px;
 
 .rowSelected {
   cursor: pointer;
-  background: var(--ps-green-primary);
-  color: var(--ps-neutral-1);
+  background: var(--ps-table-highlight-row-bg);
+  color: var(--ps-table-highlight-row-text);
 }
 
 .profilesTable {
@@ -64,7 +64,7 @@ $tdHeight: 25px;
 
     span {
       // mix-blend-mode: exclusion;
-      text-shadow: 0 0 1px var(--ps-neutral-1);
+      text-shadow: 0 0 1px var(--ps-table-row-text-shadow);
     }
 
     &:first-child {

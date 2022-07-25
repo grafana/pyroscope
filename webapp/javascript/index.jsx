@@ -23,7 +23,6 @@ import ServiceDiscoveryApp from './pages/ServiceDiscovery';
 import ServerNotifications from './components/ServerNotifications';
 import Protected from './components/Protected';
 // since this style is practically all pages
-import '@pyroscope/flamegraph/dist/index.css';
 
 import SignInPage from './pages/IntroPages/SignIn';
 import SignUpPage from './pages/IntroPages/SignUp';

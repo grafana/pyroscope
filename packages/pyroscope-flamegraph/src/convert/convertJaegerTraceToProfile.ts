@@ -1,7 +1,8 @@
 /* eslint-disable import/prefer-default-export */
 import groupBy from 'lodash.groupby';
 import map from 'lodash.map';
-import type { Flamebearer, Trace, TraceSpan } from '@pyroscope/models';
+import type { Profile, Trace, TraceSpan } from '@pyroscope/models/src';
+import { deltaDiffWrapperReverse } from '../FlameGraph/decode';
 
 interface Span extends TraceSpan {
   children: Span[];
@@ -9,16 +10,12 @@ interface Span extends TraceSpan {
   self: number;
 }
 
-export function traceToFlamebearer(trace: Trace): Flamebearer {
-  const result: Flamebearer = {
-    format: 'single',
+export function convertJaegerTraceToProfile(trace: Trace): Profile {
+  const resultFlamebearer = {
     numTicks: 0,
     maxSelf: 0,
-    sampleRate: 1000000,
-    names: [],
-    levels: [],
-    units: 'trace_samples',
-    spyName: 'tracing',
+    names: [] as string[],
+    levels: [] as number[][],
   };
 
   // Step 1: converting spans to a tree
@@ -62,17 +59,17 @@ export function traceToFlamebearer(trace: Trace): Flamebearer {
   // Step 3: traversing the tree
 
   function processNode(span: Span, level: number, offset: number) {
-    result.numTicks ||= span.total;
-    result.levels[level] ||= [];
-    result.levels[level].push(offset);
-    result.levels[level].push(span.total);
-    result.levels[level].push(span.self);
-    result.names.push(
+    resultFlamebearer.numTicks ||= span.total;
+    resultFlamebearer.levels[level] ||= [];
+    resultFlamebearer.levels[level].push(offset);
+    resultFlamebearer.levels[level].push(span.total);
+    resultFlamebearer.levels[level].push(span.self);
+    resultFlamebearer.names.push(
       (span.processID
         ? `${trace.processes[span.processID].serviceName}: `
         : '') + (span.operationName || 'total')
     );
-    result.levels[level].push(result.names.length - 1);
+    resultFlamebearer.levels[level].push(resultFlamebearer.names.length - 1);
 
     (span.children || []).forEach((x) => {
       offset += processNode(x, level + 1, offset);
@@ -82,5 +79,19 @@ export function traceToFlamebearer(trace: Trace): Flamebearer {
 
   processNode(root, 0, 0);
 
-  return result;
+  resultFlamebearer.levels = deltaDiffWrapperReverse(
+    'single',
+    resultFlamebearer.levels
+  );
+
+  return {
+    version: 1,
+    flamebearer: resultFlamebearer,
+    metadata: {
+      format: 'single',
+      units: 'trace_samples',
+      spyName: 'tracing',
+      sampleRate: 1000000,
+    },
+  };
 }

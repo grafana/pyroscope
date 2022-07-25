@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/pyroscope-io/client/pyroscope"
-	"github.com/pyroscope-io/otelpyroscope"
+	otelpyroscope "github.com/pyroscope-io/otel-profiling-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
