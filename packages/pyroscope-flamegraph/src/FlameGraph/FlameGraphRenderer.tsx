@@ -53,7 +53,7 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
     names: [],
     units: '',
     levels: [[]],
-    spyName: '',
+    spyName: 'unknown',
     numTicks: 0,
     sampleRate: 0,
     maxSelf: 0,

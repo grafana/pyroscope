@@ -6,7 +6,7 @@ describe('Profile', () => {
       const expected = {
         format: 'single',
         sampleRate: 100,
-        spyName: '',
+        spyName: 'unknown',
         units: '',
       };
 
