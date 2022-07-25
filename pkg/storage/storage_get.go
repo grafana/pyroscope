@@ -87,11 +87,9 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		resultTrie  *tree.Tree
 		lastSegment *segment.Segment
 		writesTotal uint64
-
-		aggregationType = "sum"
-		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		timeline    = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		timelines   = make(map[string]*segment.Timeline)
 	)
-	timelines := make(map[string]*segment.Timeline)
 
 	for _, k := range dimensionKeys() {
 		// TODO: refactor, store `Key`s in dimensions
@@ -107,11 +105,6 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		}
 
 		st := res.(*segment.Segment)
-		switch st.AggregationType() {
-		case averageAggregationType, "avg":
-			aggregationType = averageAggregationType
-		}
-
 		timelineKey := "*"
 		if v, ok := parsedKey.Labels()[gi.GroupBy]; ok {
 			timelineKey = v
@@ -145,7 +138,9 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		return nil, nil
 	}
 
-	if writesTotal > 0 && aggregationType == averageAggregationType {
+	md := lastSegment.GetMetadata()
+	switch md.AggregationType {
+	case averageAggregationType, "avg":
 		resultTrie = resultTrie.Clone(big.NewRat(1, int64(writesTotal)))
 	}
 
@@ -153,11 +148,11 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		Tree:            resultTrie,
 		Timeline:        timeline,
 		Groups:          timelines,
-		SpyName:         lastSegment.SpyName(),
-		SampleRate:      lastSegment.SampleRate(),
+		SpyName:         md.SpyName,
+		SampleRate:      md.SampleRate,
+		Units:           md.Units,
+		AggregationType: md.AggregationType,
 		Count:           writesTotal,
-		Units:           lastSegment.Units(),
-		AggregationType: lastSegment.AggregationType(),
 	}, nil
 }
 

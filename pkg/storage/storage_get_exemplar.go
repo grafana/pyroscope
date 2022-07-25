@@ -48,10 +48,11 @@ func (s *Storage) GetExemplar(ctx context.Context, gi GetExemplarInput) (out Get
 	}
 
 	if m.segment != nil {
-		out.SpyName = m.segment.SpyName()
-		out.Units = m.segment.Units()
-		out.SampleRate = m.segment.SampleRate()
-		out.AggregationType = m.segment.AggregationType()
+		md := m.segment.GetMetadata()
+		out.SpyName = md.SpyName
+		out.Units = md.Units
+		out.SampleRate = md.SampleRate
+		out.AggregationType = md.AggregationType
 	}
 
 	return out, nil

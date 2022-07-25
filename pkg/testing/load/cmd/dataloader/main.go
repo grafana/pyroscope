@@ -67,15 +67,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	c.WriteFn = func(input *storage.PutInput) {
-		if err = x.Put(context.TODO(), input); err != nil {
+	c.WriteFn = func(input load.Input) {
+		if err = x.Put(context.TODO(), &storage.PutInput{
+			StartTime:       input.StartTime,
+			EndTime:         input.EndTime,
+			Key:             input.Key,
+			Val:             input.Val,
+			SpyName:         input.SpyName,
+			SampleRate:      input.SampleRate,
+			Units:           input.Units,
+			AggregationType: input.AggregationType,
+		}); err != nil {
 			fmt.Println(err)
 		}
 	}
 
 	s := load.NewStorageWriteSuite(c.StorageWriteSuiteConfig)
 	for name, appConfig := range c.Apps {
-		s.AddApp(name, appConfig)
+		s.AddAppWithConfig(name, appConfig)
 	}
 
 	start := time.Now()
