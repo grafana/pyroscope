@@ -38,7 +38,7 @@
 
       td {
         font-weight: initial;
-        text-align: c;
+        text-align: center;
       }
 
       tr:nth-child(2n + 1) {
@@ -48,6 +48,19 @@
       tr.activeTagRow {
         background-color: var(--ps-green-highlight);
         color: var(--ps-tooltip-text);
+      }
+
+      .tagName {
+        display: flex;
+        align-items: center;
+
+        .color {
+          display: inline-block;
+          height: 15px;
+          width: 15px;
+          border-radius: 3px;
+          margin-right: 5px;
+        }
       }
     }
 

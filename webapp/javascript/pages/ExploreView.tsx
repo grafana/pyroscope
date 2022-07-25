@@ -61,7 +61,6 @@ function ExploreView() {
   useEffect(() => {
     if (query) {
       dispatch(fetchTags(query));
-      // setActiveTag(undefined);
     }
   }, [query]);
 
@@ -175,15 +174,15 @@ function ExploreView() {
           />
         )}
       </Box>
-      <Box>
-        {groupByTagValue && (
+      {groupByTagValue && (
+        <Box>
           <FlamegraphRenderer
             showCredit={false}
             profile={activeTagProfile}
             colorMode={colorMode}
           />
-        )}
-      </Box>
+        </Box>
+      )}
     </div>
   );
 }
@@ -214,7 +213,7 @@ function Table({
       <table>
         <thead>
           <tr>
-            <th>Tag name</th>
+            <th>{groupsData[0]?.tagName === '*' ? 'App' : 'Tag'} name</th>
             <th>10s event count</th>
             <th>avg samples per 10s</th>
             <th>samples std. deviation</th>
@@ -227,14 +226,26 @@ function Table({
           </tr>
         </thead>
         <tbody>
-          {groupsData.map(({ tagName }) => (
+          {groupsData.map(({ tagName, color }) => (
             <tr
               className={tagName === groupByTagValue ? styles.activeTagRow : ''}
               onClick={() => handleGroupByTagValueChange(tagName)}
               key={tagName}
             >
               {/* mock data */}
-              <td>{tagName}</td>
+              <td>
+                {tagName === '*' ? (
+                  appName
+                ) : (
+                  <div className={styles.tagName}>
+                    <span
+                      className={styles.color}
+                      style={{ backgroundColor: color?.toString() }}
+                    />
+                    {tagName}
+                  </div>
+                )}
+              </td>
               <td>15,000</td>
               <td>3,276</td>
               <td>1,532</td>

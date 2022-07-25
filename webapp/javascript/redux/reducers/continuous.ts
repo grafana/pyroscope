@@ -39,12 +39,14 @@ type ExploreView =
       groups: Groups;
       groupByTag: string;
       groupByTagValue: string;
+      timeline: Timeline;
     }
   | {
       type: 'loading';
       groups: Groups;
       groupByTag: string;
       groupByTagValue: string;
+      timeline: Timeline;
     }
   | {
       type: 'loaded';
@@ -180,6 +182,11 @@ const initialState: ContinuousState = {
     groupByTagValue: '',
     type: 'pristine',
     groups: {},
+    timeline: {
+      startTime: 0,
+      samples: [],
+      durationDelta: 0,
+    },
   },
   appNames: {
     type: 'loaded',
@@ -900,8 +907,8 @@ export const continuousSlice = createSlice({
 
     builder.addCase(fetchExploreView.fulfilled, (state, action) => {
       state.exploreView = {
-        ...action.payload,
         ...state.exploreView,
+        ...action.payload,
         groups: action.payload.groups,
         type: 'loaded',
       };
@@ -918,9 +925,6 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchExploreViewProfile.fulfilled, (state, action) => {
       state.exploreView = {
         ...state.exploreView,
-        // maybe timeline should not be reseted if we use it for initial timeline
-        // but we dont care if there will be no option to reset seledted tag
-        timeline: action.payload.timeline,
         activeTagProfile: action.payload.profile,
         type: 'loaded',
       };

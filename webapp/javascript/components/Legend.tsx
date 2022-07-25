@@ -17,7 +17,7 @@ function Legend({ groups }: LegendProps) {
               <span
                 className={styles.color}
                 style={{ backgroundColor: color?.toString() }}
-              ></span>
+              />
               <span>{tagName}</span>
             </div>
           )
