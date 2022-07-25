@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 
+import type { Group, Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
@@ -43,8 +44,7 @@ function ExploreView() {
     }
   }, [query]);
 
-  const { groupByTag, groupByTagValue, activeTagProfile, timeline } =
-    exploreView;
+  const { groupByTag, groupByTagValue } = exploreView;
 
   useEffect(() => {
     if (from && until && query && groupByTagValue) {
@@ -61,7 +61,11 @@ function ExploreView() {
     return undefined;
   }, [from, until, query, groupByTag]);
 
-  const getGroupsData = (): { groups: any; legend: string[] } => {
+  const getGroupsData = (): {
+    groups: [k: string, v: Group][];
+    legend: string[];
+    activeTagProfile?: Profile;
+  } => {
     switch (exploreView.type) {
       case 'loaded':
       case 'reloading':
@@ -69,6 +73,7 @@ function ExploreView() {
           return {
             groups: [],
             legend: [],
+            activeTagProfile: undefined,
           };
         }
 
@@ -82,6 +87,7 @@ function ExploreView() {
             legend: Object.keys(exploreView.groups).filter(
               (key) => key !== '*'
             ),
+            activeTagProfile: exploreView?.activeTagProfile,
           };
         }
 
@@ -89,18 +95,19 @@ function ExploreView() {
           // default value ? timeline dependency is wrong ?
           groups: [['<app with no tags data>', exploreView.timeline]],
           legend: [],
+          activeTagProfile: undefined,
         };
 
       default:
         return {
           groups: [],
           legend: [],
+          activeTagProfile: undefined,
         };
     }
   };
 
-  // legend is timelines color + tag value pair
-  const { groups, legend } = getGroupsData();
+  const { groups, legend, activeTagProfile } = getGroupsData();
 
   const handleGroupByTagValueChange = (groupByTagValue: string) => {
     dispatch(actions.setExploreViewGroupByTagValue(groupByTagValue));

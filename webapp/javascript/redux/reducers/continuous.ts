@@ -1,16 +1,17 @@
-import { Profile } from '@pyroscope/models/src';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AppNames } from '@webapp/models/appNames';
-import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
-import { fetchAppNames } from '@webapp/services/appNames';
+import type { Profile, Groups } from '@pyroscope/models/src';
 import {
   renderSingle,
   renderDiff,
   renderExplore,
   RenderOutput,
+  RenderExploreOutput,
   RenderDiffResponse,
 } from '@webapp/services/render';
-import { Timeline } from '@webapp/models/timeline';
+import { fetchAppNames } from '@webapp/services/appNames';
+import type { AppNames } from '@webapp/models/appNames';
+import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
+import type { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
 import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
@@ -35,19 +36,19 @@ type SingleView =
 type ExploreView =
   | {
       type: 'pristine';
-      groups?: ShamefulAny;
+      groups: Groups;
       groupByTag: string;
       groupByTagValue: string;
     }
   | {
       type: 'loading';
-      groups?: ShamefulAny;
+      groups: Groups;
       groupByTag: string;
       groupByTagValue: string;
     }
   | {
       type: 'loaded';
-      groups: ShamefulAny;
+      groups: Groups;
       groupByTag: string;
       activeTagProfile?: Profile;
       timeline: Timeline;
@@ -55,7 +56,7 @@ type ExploreView =
     }
   | {
       type: 'reloading';
-      groups: ShamefulAny;
+      groups: Groups;
       groupByTag: string;
       activeTagProfile?: Profile;
       timeline: Timeline;
@@ -178,6 +179,7 @@ const initialState: ContinuousState = {
     groupByTag: '',
     groupByTagValue: '',
     type: 'pristine',
+    groups: {},
   },
   appNames: {
     type: 'loaded',
@@ -239,7 +241,7 @@ export const fetchSingleView = createAsyncThunk<
 });
 
 export const fetchExploreView = createAsyncThunk<
-  RenderOutput,
+  RenderExploreOutput,
   null,
   { state: { continuous: ContinuousState } }
 >('continuous/exploreView', async (_, thunkAPI) => {
@@ -916,7 +918,6 @@ export const continuousSlice = createSlice({
         // but we dont care if there will be no option to reset seledted tag
         timeline: action.payload.timeline,
         activeTagProfile: action.payload.profile,
-        groups: state.exploreView.groups,
         type: 'loaded',
       };
     });

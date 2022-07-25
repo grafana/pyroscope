@@ -1,5 +1,10 @@
 import { Result } from '@webapp/util/fp';
-import { Profile, FlamebearerProfileSchema } from '@pyroscope/models/src';
+import {
+  Profile,
+  Groups,
+  FlamebearerProfileSchema,
+  GroupsSchema,
+} from '@pyroscope/models/src';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
 import { buildRenderURL } from '@webapp/util/updateRequests';
@@ -10,7 +15,7 @@ import { request, parseResponse } from './base';
 export interface RenderOutput {
   profile: Profile;
   timeline: Timeline;
-  groups?: ShamefulAny;
+  groups?: Groups;
 }
 
 interface renderSingleProps {
@@ -40,7 +45,7 @@ export async function renderSingle(
     z.object({ timeline: TimelineSchema })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
-    .merge(z.object({ groups: z.object({}).passthrough().optional() }))
+    .merge(z.object({ groups: GroupsSchema.optional() }))
     .safeParse(response.value);
 
   if (parsed.success) {
@@ -100,12 +105,14 @@ interface renderExploreProps
   groupBy: string;
 }
 
+export type RenderExploreOutput = Required<RenderOutput>;
+
 export async function renderExplore(
   props: renderExploreProps,
   controller?: {
     signal?: AbortSignal;
   }
-): Promise<Result<RenderOutput, RequestError | ZodError>> {
+): Promise<Result<RenderExploreOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
 
   const response = await request(`${url}&format=json`, {
@@ -113,14 +120,14 @@ export async function renderExplore(
   });
 
   if (response.isErr) {
-    return Result.err<RenderOutput, RequestError>(response.error);
+    return Result.err<RenderExploreOutput, RequestError>(response.error);
   }
 
   const parsed = FlamebearerProfileSchema.merge(
     z.object({ timeline: TimelineSchema })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
-    .merge(z.object({ groups: z.object({}).passthrough() }))
+    .merge(z.object({ groups: GroupsSchema }))
     .safeParse(response.value);
 
   if (parsed.success) {
