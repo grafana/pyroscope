@@ -8,11 +8,7 @@ package ebpfspy
 import (
 	"debug/elf"
 	"unsafe"
-) // import "fmt"
-
-// import "encoding/hex"
-
-// import "github.com/iovisor/gobpf/pkg/ksym"
+)
 
 /*
 #cgo CFLAGS: -I/usr/include/bcc/compat
@@ -27,13 +23,6 @@ var globalCache *symbolCache
 
 func init() {
 	globalCache = newSymbolCache()
-}
-
-type bccSymbol struct {
-	name         *C.char
-	demangleName *C.char
-	module       *C.char
-	offset       C.ulonglong
 }
 
 type symbolCache struct {

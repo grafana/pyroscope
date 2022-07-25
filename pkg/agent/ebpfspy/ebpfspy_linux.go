@@ -7,7 +7,6 @@
 package ebpfspy
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -51,7 +50,7 @@ func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 
 	s.reset = false
 	err := s.profilingSession.Reset(func(name []byte, v uint64) error {
-		fmt.Println(string(name))
+		//fmt.Println(string(name))
 		return cb(nil, name, v)
 	})
 

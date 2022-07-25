@@ -7,37 +7,174 @@ package ebpfspy
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
-	"strings"
+	"github.com/korniltsev/gobpf/pkg/cpuonline"
+	"golang.org/x/sys/unix"
 	"sync"
+	"time"
+	"unsafe"
 
-	"github.com/iovisor/gobpf/bcc"
+	bpf "github.com/aquasecurity/libbpfgo"
 )
+
+type session struct {
+	pid          int
+	sampleRate   uint32
+	perfEventFds []int
+
+	bpfModule    *bpf.Module
+	bpfMapCounts *bpf.BPFMap
+	bpfMapStacks *bpf.BPFMap
+	bpfProg      *bpf.BPFProg
+
+	modMutex sync.Mutex
+}
+
+func newSession(pid int, sampleRate uint32) *session {
+	return &session{pid: pid, sampleRate: sampleRate}
+}
+
+func (s *session) Start() error {
+	var err error
+	if err := unix.Setrlimit(unix.RLIMIT_MEMLOCK, &unix.Rlimit{
+		Cur: unix.RLIM_INFINITY,
+		Max: unix.RLIM_INFINITY,
+	}); err != nil {
+		return err
+	}
+	var cpus []uint
+
+	s.modMutex.Lock()
+	defer s.modMutex.Unlock()
+
+	newModuleArgs := bpf.NewModuleArgs{
+		BPFObjBuff: profileBpfObjBuf,
+		BTFObjPath: "", //todo
+	}
+	if s.bpfModule, err = bpf.NewModuleFromBufferArgs(newModuleArgs); err != nil {
+		return err
+	}
+	if err = s.bpfModule.BPFLoadObject(); err != nil {
+		return err
+	}
+	if s.bpfMapCounts, err = s.bpfModule.GetMap("counts"); err != nil {
+		return err
+	}
+	if s.bpfMapStacks, err = s.bpfModule.GetMap("stacks"); err != nil {
+		return err
+	}
+	if s.bpfProg, err = s.bpfModule.GetProgram("do_perf_event"); err != nil {
+		return err
+	}
+	if cpus, err = cpuonline.Get(); err != nil {
+		return err
+	}
+	for _, cpu := range cpus {
+		attr := unix.PerfEventAttr{
+			Type: unix.PERF_TYPE_SOFTWARE,
+			//Size:   unix.PERF_ATTR_SIZE_VER3,
+			Config: unix.PERF_COUNT_SW_CPU_CLOCK,
+			Bits:   unix.PerfBitFreq,
+			Sample: uint64(s.sampleRate),
+		}
+		fd, err := unix.PerfEventOpen(&attr, -1, int(cpu), -1, unix.PERF_FLAG_FD_CLOEXEC)
+		if err != nil {
+			return err
+		}
+		s.perfEventFds = append(s.perfEventFds, fd)
+		if _, err = s.bpfProg.AttachPerfEvent(fd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *session) Reset(cb func([]byte, uint64) error) error {
+	fmt.Println("Reset")
+	var errs error
+	s.modMutex.Lock()
+	defer s.modMutex.Unlock()
+
+	it := s.bpfMapCounts.Iterator()
+	cnt := 0
+	for it.Next() {
+		k := it.Key()
+		v, err := s.bpfMapCounts.GetValue(unsafe.Pointer(&k[0])) // todo consider GetValueBatch
+		if err != nil {
+			fmt.Println("err", err)
+		} else {
+			pid := binary.LittleEndian.Uint32(k[0:4]) // todo use header + C.struct
+			kStack := int64(binary.LittleEndian.Uint64(k[8:16]))
+			uStack := int64(binary.LittleEndian.Uint64(k[16:24]))
+			comm := k[24:]
+			commLen := bytes.IndexByte(comm, 0)
+			if commLen != -1 {
+				comm = comm[:commLen]
+			}
+			count := binary.LittleEndian.Uint32(v)
+			//fmt.Printf("%d %d %d %s -> %d\n", pid, kStack, uStack, string(comm), count)
+			buf := bytes.NewBuffer(v)
+			buf.Write(comm)
+			buf.Write([]byte{';'})
+
+			walkStack(buf, s.bpfMapStacks, uStack, pid)
+			walkStack(buf, s.bpfMapStacks, kStack, pid)
+
+			err = cb(buf.Bytes(), uint64(count))
+			if err != nil {
+				errs = multierror.Append(errs, err)
+			}
+			cnt++
+			fmt.Println(comm)
+		}
+	}
+
+	clearMap(s.bpfMapCounts)
+	clearMap(s.bpfMapStacks)
+	fmt.Println("reset done", cnt)
+	return errs
+}
 
 // TODO: optimize this
 
-func walkStack(stackTrace *bcc.Table, pid, rootId []byte) string {
-	stack, _ := stackTrace.Get(rootId)
-
-	var pidInt uint32
-	r2 := bytes.NewReader(pid)
-	binary.Read(r2, binary.LittleEndian, &pidInt)
+func walkStack(line *bytes.Buffer, stacks *bpf.BPFMap, stackId int64, pid uint32) {
+	if stackId < 0 {
+		return
+	}
+	var bs [8]byte
+	binary.LittleEndian.PutUint64(bs[:], uint64(stackId)) //todo do not pack and unpack back
+	t := time.Now()
+	stack, err := stacks.GetValue(unsafe.Pointer(&bs[0])) // todo retrieve stacks values once with batch
+	t2 := time.Now()
+	if err != nil {
+		return
+	}
 	var stackFrames []string
-	for len(stack) >= 8 && !bytes.Equal(stack[:8], []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
-		addr := stack[:8]
-		stack = stack[8:]
+	for i := 0; i < 127; i++ {
+		it := stack[i*8 : i*8+8]
+		ip := binary.LittleEndian.Uint64(it)
+		if ip == 0 {
+			break
+		}
 
-		var addrInt uint64
-		r := bytes.NewReader(addr)
-		binary.Read(r, binary.LittleEndian, &addrInt)
-		name := globalCache.sym(pidInt, addrInt)
-		stackFrames = append(stackFrames, name+";")
+		//t3 := time.Now()
+		sym := globalCache.sym(pid, ip)
+		//t4 := time.Now()
+		//fmt.Println(t4.Sub(t3))
+		stackFrames = append(stackFrames, sym+";")
 	}
 	reverse(stackFrames)
-	return strings.Join(stackFrames, "")
+	for _, s := range stackFrames {
+		line.Write([]byte(s))
+	}
+	t3 := time.Now()
+	fmt.Println(t2.Sub(t))
+
+	fmt.Println(t3.Sub(t2))
 }
 
 func reverse(s []string) {
@@ -46,94 +183,16 @@ func reverse(s []string) {
 	}
 }
 
-type session struct {
-	pid        int
-	sampleRate uint32
-	modMutex   sync.Mutex
-	mod        *bcc.Module
-}
-
-func newSession(pid int, sampleRate uint32) *session {
-	return &session{pid: pid, sampleRate: sampleRate}
-}
-
-// this is a rough copy of what's going on in https://github.com/iovisor/bcc/blob/master/tools/profile.py
-func (s *session) Start() error {
-	s.modMutex.Lock()
-	defer s.modMutex.Unlock()
-
-	s.mod = bcc.NewModule(s.createProgram(), []string{})
-	if s.mod == nil {
-		return errors.New("module error")
-	}
-	fd, err := s.mod.LoadPerfEvent("do_perf_event")
-
-	if err != nil {
-		return err
-	}
-
-	evType := 1   // -1 // PerfType.SOFTWARE
-	evConfig := 0 // -1 // PerfSWConfig.CPU_CLOCK
-	samplePeriod := 0
-	sampleFreq := int(s.sampleRate)
-	pid := -1
-	cpu := -1
-	groupFd := -1
-
-	err = s.mod.AttachPerfEvent(evType, evConfig, samplePeriod, sampleFreq, pid, cpu, groupFd, fd)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *session) createProgram() string {
-	var threadFilter string
-	if s.pid < 0 {
-		threadFilter = "1"
-	} else {
-		threadFilter = fmt.Sprintf("tgid == %d", s.pid)
-	}
-	return strings.Replace(BPF_PROGRAM, "THREAD_FILTER", threadFilter, 1)
-}
-
-func (s *session) Reset(cb func([]byte, uint64) error) error {
-	var errs error
-	s.modMutex.Lock()
-	defer s.modMutex.Unlock()
-
-	countsId := s.mod.TableId("counts")
-	stackTracesId := s.mod.TableId("stack_traces")
-
-	ct := bcc.NewTable(countsId, s.mod)
-	st := bcc.NewTable(stackTracesId, s.mod)
-
-	iter := ct.Iter()
-	for iter.Next() {
-		k := UnpackKeyBytes(iter.Key())
-		// TODO: optimize this
-		line := string(k.name) + ";"
-		line += walkStack(st, k.pid, k.user_stack_id)
-		line += walkStack(st, []byte{0, 0, 0, 0}, k.kernel_stack_id)
-
-		v := iter.Leaf()
-		var valInt uint64
-		buf := bytes.NewBuffer(v)
-		binary.Read(buf, binary.LittleEndian, &valInt) // TODO: not sure if it's little endian
-		lb := []byte(line)
-		if len(lb) > 0 {
-			err := cb(lb[:len(lb)-1], valInt)
-			if err != nil {
-				errs = multierror.Append(errs, errs)
-			}
+func clearMap(m *bpf.BPFMap) {
+	//todo consider  DeleteKeyBatch ?
+	it := m.Iterator()
+	for it.Next() {
+		err := m.DeleteKey(unsafe.Pointer(&it.Key()[0]))
+		if err != nil {
+			panic(err) //todo
 		}
 	}
-
-	ct.DeleteAll()
-	st.DeleteAll()
-	return errs
-
-	// s.mod.Close()
-	// return s.Start()
 }
+
+//go:embed bpf/profile.bpf.o
+var profileBpfObjBuf []byte

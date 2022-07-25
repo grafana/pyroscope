@@ -31,8 +31,16 @@ else
 endif
 
 EXTRA_GO_TAGS ?=
+CGO_CFLAGS ?=
+CGO_LDFLAGS ?=
 GO_TAGS = $(ENABLED_SPIES)$(EXTRA_GO_TAGS)
 ALPINE_TAG =
+
+ifneq (,$(findstring ebpfspy,$(GO_TAGS)))
+	GO_TAGS := $(GO_TAGS),netgo
+	CGO_CFLAGS := $(CGO_CFLAGS) -I/home/korniltsev/github/libbpf/src/build/include
+	CGO_LDFLAGS := $(CGO_LDFLAGS) -lelf -lz -lbpf -L/home/korniltsev/github/libbpf/src
+endif
 
 ifeq ("$(OS)", "Linux")
 	ifeq ("$(shell cat /etc/os-release | grep ^ID=)", "ID=alpine")
@@ -56,7 +64,7 @@ else
 endif
 
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
-EXTRA_LDFLAGS ?= ""
+EXTRA_LDFLAGS ?=
 
 ifndef $(GOPATH)
 	GOPATH=$(shell go env GOPATH || true)
@@ -106,7 +114,7 @@ install-go-dependencies: ## installs golang dependencies
 
 .PHONY: build
 build: ## Builds the binary
-	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
+	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS)" -o ./bin/pyroscope ./cmd/pyroscope
 
 .PHONY: build-release
 build-release: embedded-assets ## Builds the release build
