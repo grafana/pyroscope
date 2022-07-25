@@ -419,14 +419,16 @@ func (s *Segment) SetMetadata(md metadata.Metadata) {
 	s.m.Unlock()
 }
 
-func (s *Segment) GetMetadata() (md metadata.Metadata) {
+func (s *Segment) GetMetadata() metadata.Metadata {
 	s.m.Lock()
-	md.SpyName = s.spyName
-	md.SampleRate = s.sampleRate
-	md.Units = s.units
-	md.AggregationType = s.aggregationType
+	md := metadata.Metadata{
+		SpyName:         s.spyName,
+		SampleRate:      s.sampleRate,
+		Units:           s.units,
+		AggregationType: s.aggregationType,
+	}
 	s.m.Unlock()
-	return
+	return md
 }
 
 var zeroTime time.Time
