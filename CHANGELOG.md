@@ -1,3 +1,18 @@
+# [0.23.0](https://github.com/pyroscope-io/pyroscope/compare/v0.22.1...v0.23.0) (2022-07-25)
+
+
+### Bug Fixes
+
+* **ebpf:** fix stderr reading deadlock ([#1292](https://github.com/pyroscope-io/pyroscope/issues/1292)) ([c163b37](https://github.com/pyroscope-io/pyroscope/commit/c163b371db12ee658fed8e284bdc166f4eacdd8a))
+* exemplars metadata and timestamps ([#1299](https://github.com/pyroscope-io/pyroscope/issues/1299)) ([1a239f2](https://github.com/pyroscope-io/pyroscope/commit/1a239f256a385ebb196cfd8bd9d0764d19b2414c))
+
+
+### Features
+
+* implements support for environment variable substitutions in config file ([#1283](https://github.com/pyroscope-io/pyroscope/issues/1283)) ([e72c847](https://github.com/pyroscope-io/pyroscope/commit/e72c8477781f528d6f38f4f754e3d76ca6171fad))
+
+
+
 ## [0.22.1](https://github.com/pyroscope-io/pyroscope/compare/v0.22.0...v0.22.1) (2022-07-19)
 
 
