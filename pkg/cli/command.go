@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -174,7 +175,16 @@ func loadConfigFile(cmd *cobra.Command, vpr *viper.Viper) error {
 	return fmt.Errorf("loading configuration file: %w", err)
 }
 
+var digitCheck = regexp.MustCompile(`^[0-9]`)
+
 func performSubstitutions(data []byte) string {
 	// return string(data)
-	return os.ExpandEnv(string(data))
+	return os.Expand(string(data), func(name string) string {
+		// this is here so that $1, $2, etc. work in the config file
+		if digitCheck.MatchString(name) {
+			return "$" + name
+		}
+		s := os.Getenv(name)
+		return s
+	})
 }
