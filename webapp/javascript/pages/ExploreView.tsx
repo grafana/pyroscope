@@ -161,6 +161,7 @@ function ExploreView() {
           timelineA={{ data: undefined }}
           timelineB={{ data: undefined }}
           timelineGroups={groupsData}
+          shouldDisplayLegend
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"

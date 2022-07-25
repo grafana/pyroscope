@@ -7,6 +7,7 @@ import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import { formatAsOBject } from '@webapp/util/formatDate';
 import TimelineChart from './TimelineChart';
+import Legend from './Legend';
 import styles from './TimelineChartWrapper.module.css';
 
 // for timelineGroups prop (more then 2 timelines)
@@ -41,6 +42,7 @@ type TimelineChartWrapperProps = {
   timelineB?: TimelineData;
   /** timelineGroups refers to group of timelines, useful for explore view */
   timelineGroups?: TimelineGroupData[];
+  shouldDisplayLegend?: boolean;
   height?: string;
 
   /** refers to the highlighted selection */
@@ -61,6 +63,7 @@ class TimelineChartWrapper extends React.Component<
   // eslint-disable-next-line react/static-property-placement
   static defaultProps = {
     format: 'bars',
+    shouldDisplayLegend: false,
   };
 
   constructor(props: TimelineChartWrapperProps) {
@@ -184,7 +187,14 @@ class TimelineChartWrapper extends React.Component<
 
   render = () => {
     const { flotOptions } = this.state;
-    const { id, timelineA, timelineGroups, timezone, title } = this.props;
+    const {
+      id,
+      timelineA,
+      timelineGroups,
+      timezone,
+      title,
+      shouldDisplayLegend,
+    } = this.props;
 
     // TODO deep copy
     let timelineB = this.props.timelineB
@@ -238,7 +248,7 @@ class TimelineChartWrapper extends React.Component<
         timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
     ].filter((a) => !!a);
 
-    const centeredRimelineGroups =
+    const centeredTimelineGroups =
       timelineGroups &&
       timelineGroups.map(({ data, color }) => {
         return {
@@ -257,11 +267,13 @@ class TimelineChartWrapper extends React.Component<
           data-testid={this.props['data-testid']}
           id={id}
           options={customFlotOptions}
-          data={centeredRimelineGroups || data}
+          data={centeredTimelineGroups || data}
           width="100%"
           height={this.props.height || '100px'}
         />
-        {/* <div className={styles.legend}></div> */}
+        {shouldDisplayLegend && timelineGroups && (
+          <Legend groups={timelineGroups} />
+        )}
       </>
     );
   };

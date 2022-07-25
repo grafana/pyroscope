@@ -1,0 +1,18 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+
+  .tag {
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+
+    .color {
+      display: inline-block;
+      width: 20px;
+      height: 6px;
+      border-radius: 3px;
+      margin-right: 5px;
+    }
+  }
+}
