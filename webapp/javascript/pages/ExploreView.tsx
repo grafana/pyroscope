@@ -120,9 +120,7 @@ function ExploreView() {
         }
 
         return {
-          groupsData: [
-            { tagName: '<app with no tags data>', data: exploreView.timeline },
-          ],
+          groupsData: [{ tagName: '*', data: exploreView.timeline }],
           activeTagProfile: undefined,
         };
 
