@@ -291,7 +291,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		KeepFrames:        p.KeepFrames,
 		TimeNanos:         p.TimeNanos,
 		DurationNanos:     p.DurationNanos,
-		Comment:           copySlice(p.Comment),
+		Comments:          copySlice(p.Comment),
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
