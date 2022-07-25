@@ -10,7 +10,7 @@ var stackIntPool = sync.Pool{
 
 var stackNodePool = sync.Pool{
 	New: func() interface{} {
-		return NewStack[*node]()
+		return NewStack[stackNode]()
 	},
 }
 
