@@ -15,17 +15,30 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 	defer func() {
 		for _, stack := range res {
 			stack.Release()
+			stackIntPool.Put(stack)
 		}
 	}()
 
-	xOffsets := NewStack(0)
-	defer xOffsets.Release()
+	xOffsets := stackIntPool.Get().(*Stack[int])
+	xOffsets.Push(0)
+	defer func() {
+		defer xOffsets.Release()
+		stackIntPool.Put(xOffsets)
+	}()
 
-	levels := NewStack(0)
-	defer levels.Release()
+	levels := stackIntPool.Get().(*Stack[int])
+	levels.Push(0)
+	defer func() {
+		defer levels.Release()
+		stackIntPool.Put(levels)
+	}()
 
-	nodes := NewStack(&node{children: t.root, total: total})
-	defer nodes.Release()
+	nodes := stackNodePool.Get().(*Stack[*node])
+	nodes.Push(&node{children: t.root, total: total})
+	defer func() {
+		nodes.Release()
+		stackNodePool.Put(nodes)
+	}()
 
 	for {
 		current, hasMoreNodes := nodes.Pop()
@@ -58,7 +71,7 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 		}
 
 		if level == len(res) {
-			res = append(res, NewStack[int]())
+			res = append(res, stackIntPool.Get().(*Stack[int]))
 		}
 
 		// i+0 = x offset
