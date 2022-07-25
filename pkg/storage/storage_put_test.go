@@ -75,10 +75,10 @@ var _ = Describe("storage package", func() {
 
 				suite := load.NewStorageWriteSuite(load.StorageWriteSuiteConfig{
 					Seed:     seed,
-					Sources:  1000,
+					Sources:  100,
 					Interval: 10 * time.Second,
-					Period:   10 * time.Minute,
-					Writers:  32,
+					Period:   time.Minute,
+					Writers:  8,
 					WriteFn:  writeFn,
 				})
 				suite.AddApp(app)
