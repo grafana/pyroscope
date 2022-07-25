@@ -50,7 +50,7 @@ fire:
   service:
     type: ClusterIP
     port: 4100
-    port_name: http-metrics
+    port_name: http
 
   memberlist:
     port: 7946
