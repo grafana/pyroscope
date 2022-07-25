@@ -10,7 +10,6 @@ import TimelineChart from './TimelineChart';
 import Legend from './Legend';
 import styles from './TimelineChartWrapper.module.css';
 
-// for timelineGroups prop (more then 2 timelines)
 export interface TimelineGroupData {
   data: Group;
   tagName: string;
@@ -206,9 +205,12 @@ class TimelineChartWrapper extends React.Component<
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
-        // both sides making it look more centers
+        // both sides making it look more centers (not for timelineGroups)
         autoscaleMargin:
-          timelineA?.data && timelineA.data.samples.length > 3 ? null : 0.005,
+          (timelineA?.data && timelineA.data.samples.length > 3) ||
+          timelineGroups
+            ? null
+            : 0.005,
         timezone: timezone || 'browser',
       },
     };
