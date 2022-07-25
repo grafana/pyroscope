@@ -892,7 +892,7 @@ export const continuousSlice = createSlice({
     /*      Explore View      */
     /**************************/
 
-    builder.addCase(fetchExploreView.pending, (state) => {});
+    builder.addCase(fetchExploreView.pending, () => {});
 
     builder.addCase(fetchExploreView.fulfilled, (state, action) => {
       state.exploreView = {
@@ -903,13 +903,13 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(fetchExploreView.rejected, (state, action) => {});
+    builder.addCase(fetchExploreView.rejected, () => {});
 
     /**********************************/
     /*      Explore View Profile      */
     /**********************************/
 
-    builder.addCase(fetchExploreViewProfile.pending, (state) => {});
+    builder.addCase(fetchExploreViewProfile.pending, () => {});
 
     builder.addCase(fetchExploreViewProfile.fulfilled, (state, action) => {
       state.exploreView = {
@@ -922,7 +922,7 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(fetchExploreViewProfile.rejected, (state, action) => {});
+    builder.addCase(fetchExploreViewProfile.rejected, () => {});
 
     /*****************/
     /*      Tags     */

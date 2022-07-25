@@ -72,6 +72,7 @@ function ExploreView() {
       const fetchData = dispatch(fetchExploreViewProfile(null));
       return () => fetchData.abort('cancel');
     }
+    return undefined;
   }, [from, until, query, groupByTagValue]);
 
   useEffect(() => {
@@ -204,7 +205,7 @@ function Table({
     <>
       <div className={styles.tableDescription}>
         <span className={styles.title}>{appName} Descriptive Statistics</span>
-        <div className={styles.buttons}>
+        <div>
           <button>Export</button>
           <button>Single</button>
           <button>Comparison</button>
