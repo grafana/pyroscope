@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.9...@pyroscope/flamegraph@0.15.0) (2022-07-25)
+
+
+### chore
+
+* **flamegraph/models:** make it mandatory to handle all spyNames ([#1300](https://github.com/pyroscope-io/pyroscope/issues/1300)) ([f7a95a0](https://github.com/pyroscope-io/pyroscope/commit/f7a95a0225c1a39262962a47fd2a1cd493a8333b))
+
+
+### BREAKING CHANGES
+
+* **flamegraph/models:** it will throw an error if spyName is unsupported
+
+
+
+
+
 ## [0.14.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.8...@pyroscope/flamegraph@0.14.9) (2022-07-20)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
