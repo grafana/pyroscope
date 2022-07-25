@@ -27,7 +27,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-var _ = Describe("exemplars", func() {
+var _ = Describe("Exemplars retrieval", func() {
 	st := time.Now()
 	et := st.Add(10 * time.Second)
 
@@ -54,11 +54,6 @@ var _ = Describe("exemplars", func() {
 			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 
-			put(s, map[string]string{
-				"__name__":  "app.cpu",
-				"span_name": "foo",
-				// w/o profile_id, just to create the segment.
-			})
 			put(s, map[string]string{
 				"__name__":   "app.cpu",
 				"span_name":  "foo",
@@ -201,14 +196,6 @@ var _ = Describe("Exemplars retention policy", func() {
 					Val:       tree.Clone(big.NewRat(1, 1)),
 				})).ToNot(HaveOccurred())
 
-				// Just to create the segment.
-				k3, _ := segment.ParseKey("app.cpu{}")
-				Expect(s.Put(context.TODO(), &PutInput{
-					StartTime: t3,
-					EndTime:   t4,
-					Key:       k3,
-					Val:       tree.Clone(big.NewRat(1, 1)),
-				})).ToNot(HaveOccurred())
 				s.exemplars.Sync()
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				s.exemplars.enforceRetentionPolicy(context.Background(), rp)
@@ -231,12 +218,6 @@ var _ = Describe("Exemplars retention policy", func() {
 		})
 	})
 })
-
-func randomBytesHex(n int) string {
-	b := make([]byte, n)
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}
 
 var _ = Describe("Concurrent exemplars insertion", func() {
 	testing.WithConfig(func(cfg **config.Config) {
@@ -355,3 +336,67 @@ var _ = Describe("Exemplar serialization", func() {
 		})
 	})
 })
+
+var _ = Describe("Exemplar timestamps", func() {
+	Context("exemplars query", func() {
+		It("selects all entries if no time range is provided or timestamps are not present", func() {
+			for i := 0; i < 0xF; i++ {
+				e := exemplarEntry{
+					StartTime: bitAt(i, 3),
+					EndTime:   bitAt(i, 2),
+				}
+				startTime := bitAt(i, 1)
+				endTime := bitAt(i, 0)
+
+				Expect(exemplarMatchesTimeRange(e, startTime, endTime)).To(BeTrue())
+			}
+		})
+
+		It("selects matched entries", func() {
+			startTime := time.Now().UnixNano()
+			endTime := startTime + 3
+			e := exemplarEntry{
+				StartTime: startTime,
+				EndTime:   endTime,
+			}
+
+			for _, r := range [][2]int64{
+				{0, 0},
+				{1, -1},
+				{-1, 1},
+
+				{0, 1},
+				{1, 0},
+				{1, 1},
+
+				{0, -1},
+				{-1, 0},
+				{-1, -1},
+			} {
+				Expect(exemplarMatchesTimeRange(e, startTime+r[0], endTime+r[1])).To(BeTrue())
+			}
+
+			for _, r := range [][2]int64{
+				{endTime, endTime},
+				{endTime, endTime + 1},
+				{startTime, startTime},
+				{startTime - 1, startTime},
+			} {
+				Expect(exemplarMatchesTimeRange(e, r[0], r[1])).To(BeFalse())
+			}
+		})
+	})
+})
+
+func randomBytesHex(n int) string {
+	b := make([]byte, n)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func bitAt(n, b int) int64 {
+	if n&(1<<b) > 0 {
+		return 1
+	}
+	return 0
+}
