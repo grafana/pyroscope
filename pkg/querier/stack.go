@@ -2,16 +2,24 @@ package querier
 
 import "sync"
 
-var nodePool = sync.Pool{
+var stackIntPool = sync.Pool{
 	New: func() interface{} {
-		return &stackNode{}
+		return NewStack[int]()
+	},
+}
+
+var stackNodePool = sync.Pool{
+	New: func() interface{} {
+		return NewStack[*node]()
 	},
 }
 
 // Stack is a stack of values. Pushing and popping values is O(1).
 type Stack[T any] struct {
-	top   *stackNode
-	count int
+	values []T
+	next   []int
+	top    int
+	count  int
 }
 
 type stackNode struct {
@@ -20,34 +28,43 @@ type stackNode struct {
 }
 
 func NewStack[T any](initialValues ...T) *Stack[T] {
-	s := &Stack[T]{}
-	for _, v := range initialValues {
-		s.Push(v)
+	s := &Stack[T]{
+		values: make([]T, len(initialValues)),
+		next:   make([]int, len(initialValues)),
+		top:    -1,
+		count:  len(initialValues),
 	}
+	if s.count == 0 {
+		return s
+	}
+	for pos, v := range initialValues {
+		s.values[pos] = v
+		s.next[pos] = pos + 1
+	}
+	s.top = 0
+	s.next[s.count-1] = -1
 	return s
 }
 
 // Push adds a value to the top of the stack.
 func (s *Stack[T]) Push(v T) {
-	new := nodePool.Get().(*stackNode)
-	new.val = v
-	new.next = s.top
-	s.top = new
+	s.values = append(s.values, v)
+	s.next = append(s.next, s.top)
+	s.top = len(s.values) - 1
 	s.count++
 }
 
 // Pop removes and returns the top value from the stack.
 func (s *Stack[T]) Pop() (result T, ok bool) {
-	if s.count == 0 {
+	if s.top == -1 {
 		ok = false
 		return
 	}
 	old := s.top
-	v := s.top.val
-	s.top = s.top.next
+	v := s.values[old]
+	s.top = s.next[old]
 	s.count--
-	nodePool.Put(old)
-	return v.(T), true
+	return v, true
 }
 
 // Count returns the number of values in the stack.
@@ -59,17 +76,16 @@ func (s *Stack[T]) Count() int {
 // The top value of the stack is at the beginning of the slice.
 func (s *Stack[T]) Slice() []T {
 	result := make([]T, 0, s.count)
-	for n := s.top; n != nil; n = n.next {
-		result = append(result, n.val.(T))
+	for n := s.top; n != -1; n = s.next[n] {
+		result = append(result, s.values[n])
 	}
 	return result
 }
 
 // Release releases the stack's resources.
 func (s *Stack[T]) Release() {
-	for n := s.top; n != nil; n = n.next {
-		nodePool.Put(n)
-	}
-	s.top = nil
+	s.values = s.values[:0]
+	s.next = s.next[:0]
+	s.top = -1
 	s.count = 0
 }
