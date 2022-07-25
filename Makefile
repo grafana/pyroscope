@@ -6,7 +6,7 @@ SHELL := bash
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --no-print-directory
-BIN := $(shell pwd)/.tmp/bin
+BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
@@ -113,7 +113,7 @@ define deploy
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./deploy/helm/fire $(2) \
-		--set fire.image.tag=$(IMAGE_TAG)
+		--set fire.image.tag=$(IMAGE_TAG) --set fire.service.port_name=http-metrics
 endef
 
 .PHONY: docker-image/fire/build
@@ -194,9 +194,13 @@ $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.14.0
 
-$(BIN)/tk: Makefile go.mod
+$(BIN)/tk: Makefile go.mod $(BIN)/jb
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/tanka/cmd/tk@v0.22.1
+
+$(BIN)/jb: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
@@ -243,6 +247,6 @@ deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/s
 .PHONY: tools/monitoring/environments/default/spec.json # This is a phony target for now as the cluster might be not already created.
 tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
-	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && $(BIN)/tk init -f
+	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN) $(BIN)/tk init -f
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
 	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name fire-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
