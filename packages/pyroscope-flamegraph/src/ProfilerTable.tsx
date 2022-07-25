@@ -1,6 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
-import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models';
+import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
 import Color from 'color';
 import { Maybe } from 'true-myth';
 import { getFormatter } from './format/format';

@@ -24,12 +24,24 @@
   --ps-dropdown-background: #2c2c30; /* dropdown background */
   --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
 
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
   --ps-dropdown-shadow: #000000; /* dropdown shadow */
 
   --ps-button-switch-bg: #2ecc40; /* 3 button switch selected button background */
   --ps-button-switch-bg-highlight: #61ea71; /* 3 button switch selected button background when hovered*/
   --ps-button-switch-text: #242428; /* 3 button switch selected button text */
+
+  --ps-table-highlight-row-bg: #2ecc40; /* table selected row background */
+  --ps-table-highlight-row-text: #000000; /* table selected row text */
+  --ps-table-row-text-shadow: #000000; /* table selected row text */
+
+  --ps-selected-app: #df8b53; /* active selected app color in dropdown */
 
   --ps-blue-primary: #3b78e7; /* Standard blue for button, instructions text (right) */
   --ps-blue-highlight: #578ae9; /* highlight (hover) blue */
@@ -46,8 +58,6 @@
   --ps-grey-primary: #3b3b44;
   --ps-grey-highlight: #47474e;
   --ps-grey-disabled: #404047;
-
-  --ps-selected-app: #df8b53; /* active selected app color in dropdown */
 
   --ps-immutable-green-button-text: #242428;
   --ps-immutable-google-button: #e84d3c; /* sign up with google button */
@@ -82,6 +92,11 @@
   --ps-dropdown-background: #f8f8f8; /* dropdown background */
   --ps-sidebar-separator: #0000004d; /* sidebar separation lines color */
 
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
   --ps-dropdown-shadow: #00000052; /* dropdown shadow */
 
@@ -89,6 +104,9 @@
   --ps-button-switch-bg-highlight: #578ae9; /* 3 button switch selected button background when hovered*/
   --ps-button-switch-text: #ffffff; /* 3 button switch selected button text */
 
+  --ps-table-highlight-row-bg: #3b78e7; /* table selected row background */
+  --ps-table-highlight-row-text: #ffffff; /* table selected row text */
+  --ps-table-row-text-shadow: #ffffff; /* table selected row text */
   --ps-selected-app: #3b78e7; /* active selected app color in dropdown */
 
   --ps-green-primary: #0bdb79; /* standard green */

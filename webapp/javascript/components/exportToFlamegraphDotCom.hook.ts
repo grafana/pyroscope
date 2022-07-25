@@ -1,4 +1,4 @@
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 import { shareWithFlamegraphDotcom } from '@webapp/services/share';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import handleError from '@webapp/util/handleError';

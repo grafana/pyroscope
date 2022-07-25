@@ -303,7 +303,7 @@ describe('ProfileHeader', () => {
         />
       );
       render(component);
-      expect(screen.getByRole('button', { name: /Focus/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Collapse/ })).toBeDisabled();
     });
 
     it('calls callback when clicked', () => {
@@ -327,7 +327,7 @@ describe('ProfileHeader', () => {
       );
 
       render(component);
-      screen.getByRole('button', { name: /Focus/ }).click();
+      screen.getByRole('button', { name: /Collapse/ }).click();
 
       expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999);
     });
@@ -352,7 +352,7 @@ describe('ProfileHeader', () => {
         />
       );
       render(component);
-      expect(screen.getByRole('button', { name: 'Focus' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Collapse' })).toBeDisabled();
     });
 
     it('shows long text', () => {
@@ -376,7 +376,7 @@ describe('ProfileHeader', () => {
       );
       render(component);
       expect(
-        screen.getByRole('button', { name: 'Focus on subtree' })
+        screen.getByRole('button', { name: 'Collapse nodes above' })
       ).toBeDisabled();
     });
   });

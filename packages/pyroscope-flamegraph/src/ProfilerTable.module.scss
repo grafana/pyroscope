@@ -1,7 +1,7 @@
 .rowSelected {
   cursor: pointer;
-  background: var(--ps-green-primary) !important;
-  color: var(--ps-neutral-1);
+  background: var(--ps-table-highlight-row-bg) !important;
+  color: var(--ps-table-highlight-row-text);
 }
 
 // TODO this uses the same ui as FileList, maybe we should refactor into a table component?

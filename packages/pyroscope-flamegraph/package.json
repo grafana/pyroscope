@@ -1,12 +1,13 @@
 {
   "name": "@pyroscope/flamegraph",
-  "version": "0.12.3",
+  "version": "0.14.9",
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "_types": "since we are importing stuff from webapp (ui components), tsc ends up generating a weird file tree",
   "types": "dist/packages/pyroscope-flamegraph/src/index.d.ts",
   "license": "Apache-2.0",
   "files": [
+    "src/**/*",
     "dist/**/*",
     "package.json",
     "README.md",
@@ -16,18 +17,16 @@
     "test": "jest",
     "build": "yarn build:types && NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts",
     "build:types": "tsc -p tsconfig.json --emitDeclarationOnly",
-    "build:types:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "build:types:watch": "tsc -p tsconfig.json --emitDeclarationOnly --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint ./ --cache --fix",
-    "dev": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts --watch",
-    "watch": "yarn build:types:watch & yarn dev"
+    "lint": "eslint ./ --cache --fix"
   },
   "peerDependencies": {
     "react": ">=16.14.0",
     "react-dom": ">=16.14.0"
   },
   "devDependencies": {
-    "@pyroscope/models": "^0.2.1"
+    "@pyroscope/models": "^0.2.3"
   },
   "dependencies": {
     "true-myth": "^5.1.2"

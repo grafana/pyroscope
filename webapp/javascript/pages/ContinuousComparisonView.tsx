@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import 'react-dom';
 
 import Box from '@webapp/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   selectContinuousState,

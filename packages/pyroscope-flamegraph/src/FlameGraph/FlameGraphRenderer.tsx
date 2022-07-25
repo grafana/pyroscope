@@ -8,7 +8,7 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, Profile, Trace } from '@pyroscope/models';
+import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -21,23 +21,14 @@ import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
-import { traceToFlamebearer } from '../convert/convert';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
-function mountFlamebearer(p: {
-  profile?: Profile;
-  flamebearer?: Flamebearer;
-  trace?: Trace;
-}) {
+function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
   if (p.profile && p.flamebearer) {
     console.warn(
-      "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
+      "'profile' and 'flamebearer' properties are mutually exclusive. Please use profile if possible."
     );
-  }
-
-  if (p.trace) {
-    return traceToFlamebearer(p.trace);
   }
 
   if (p.profile) {
@@ -78,10 +69,10 @@ interface Node {
 
 export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
+  profile?: Profile;
+
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
-  trace?: Trace;
-  profile?: Profile;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
@@ -99,6 +90,8 @@ export interface FlamegraphRendererProps {
     toggleSync: Dispatch<SetStateAction<boolean | string>>;
     id: string;
   };
+
+  children?: React.ReactNode;
 }
 
 interface FlamegraphRendererState {
@@ -118,7 +111,7 @@ interface FlamegraphRendererState {
    * It's used to filter data in the table AND highlight items in the flamegraph */
   searchQuery: string;
   /** Triggered when an item is clicked on the table. It overwrites the searchQuery */
-  tableSelectedItem: Maybe<string>;
+  selectedItem: Maybe<string>;
 
   flamegraphConfigs: {
     focusedNode: Maybe<Node>;
@@ -165,7 +158,7 @@ class FlameGraphRenderer extends React.Component<
 
       // query used in the 'search' checkbox
       searchQuery: '',
-      tableSelectedItem: Maybe.nothing(),
+      selectedItem: Maybe.nothing(),
 
       flamegraphConfigs: this.initialFlamegraphState,
 
@@ -189,11 +182,11 @@ class FlameGraphRenderer extends React.Component<
       // eslint-disable-next-line react/no-did-update-set-state
       this.setState({
         flamebearer: currFlame,
-
         flamegraphConfigs: {
           ...this.state.flamegraphConfigs,
           ...newConfigs,
         },
+        selectedItem: Maybe.nothing(),
       });
       return;
     }
@@ -315,14 +308,14 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  onTableItemClick = (tableItem: { name: string }) => {
-    const { name } = tableItem;
+  setActiveItem = (item: { name: string }) => {
+    const { name } = item;
 
     // if clicking on the same item, undo the search
-    if (this.state.tableSelectedItem.isJust) {
-      if (tableItem.name === this.state.tableSelectedItem.value) {
+    if (this.state.selectedItem.isJust) {
+      if (name === this.state.selectedItem.value) {
         this.setState({
-          tableSelectedItem: Maybe.nothing(),
+          selectedItem: Maybe.nothing(),
         });
         return;
         //        name = '';
@@ -331,14 +324,14 @@ class FlameGraphRenderer extends React.Component<
 
     // clicking for the first time
     this.setState({
-      tableSelectedItem: Maybe.just(name),
+      selectedItem: Maybe.just(name),
     });
   };
 
   getHighlightQuery = () => {
     // prefer table selected
-    if (this.state.tableSelectedItem.isJust) {
-      return this.state.tableSelectedItem.value;
+    if (this.state.selectedItem.isJust) {
+      return this.state.selectedItem.value;
     }
 
     return this.state.searchQuery;
@@ -422,8 +415,8 @@ class FlameGraphRenderer extends React.Component<
           }
           fitMode={this.state.fitMode}
           highlightQuery={this.state.searchQuery}
-          selectedItem={this.state.tableSelectedItem}
-          handleTableItemClick={this.onTableItemClick}
+          selectedItem={this.state.selectedItem}
+          handleTableItemClick={this.setActiveItem}
           palette={this.state.palette}
         />
       </div>
@@ -439,6 +432,8 @@ class FlameGraphRenderer extends React.Component<
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
+        setActiveItem={this.setActiveItem}
+        selectedItem={this.state.selectedItem}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}

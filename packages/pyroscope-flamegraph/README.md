@@ -1,8 +1,8 @@
-# Pyroscope
+# Pyroscope Flamegraph
+This is a component which allows for you to render flamegraphs in your website or application.
+While this is typically used for profiling data this can also be used to render tracing data as well
 
-This is an experimental library. Use at your own risk.
-
-# Usage
+## Rendering Profiling Data
 
 Import the CSS
 ```
@@ -62,4 +62,28 @@ We recommend wrapping your component around a `Box` to give it some padding.
     showToolbar={false}
   />
 </Box>
+```
+
+## Rendering Tracing Data
+Note: Currently Pyroscope only supports rendering tracing data from Jaeger.
+
+```
+import { FlamegraphRenderer, convertJaegerTraceToProfile } from "@pyroscope/flamegraph";
+import "@pyroscope/flamegraph/dist/index.css";
+
+let trace = jaegerTrace.data[0];
+let convertedProfile = convertJaegerTraceToProfile(trace);
+
+function App() {
+  return (
+    <div>
+      <h1>Trace Flamegraph</h1>
+      <FlamegraphRenderer
+        profile={convertedProfile}
+        onlyDisplay="flamegraph"
+        showToolbar={true}
+      />
+    </div>
+  );
+}
 ```

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 import Box from '@webapp/ui/Box';
 import { decodeFlamebearer } from '@webapp/models/flamebearer';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import Footer from './components/Footer';
 import '@pyroscope/flamegraph/dist/index.css';
 
