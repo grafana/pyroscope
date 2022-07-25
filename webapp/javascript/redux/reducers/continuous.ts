@@ -640,7 +640,11 @@ export const continuousSlice = createSlice({
       state.exploreView.groupByTagValue = '';
     },
     setExploreViewGroupByTagValue(state, action: PayloadAction<string>) {
-      state.exploreView.groupByTagValue = action.payload;
+      if (state.exploreView.groupByTagValue === action.payload) {
+        state.exploreView.groupByTagValue = '';
+      } else {
+        state.exploreView.groupByTagValue = action.payload;
+      }
     },
     setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
