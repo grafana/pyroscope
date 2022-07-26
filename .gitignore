@@ -8,3 +8,19 @@ bin
 
 /cmd/fire/data
 /data/
+
+node_modules
+
+# Yarn
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/releases
+!**/.yarn/plugins
+!**/.yarn/sdks
+!**/.yarn/versions
+.pnp.*
+
+
+**/dist
+
+.idea

@@ -84,6 +84,7 @@ func (d *SampleDatasource) query(_ context.Context, pCtx backend.PluginContext, 
 
 	// create data frame response.
 	frame := data.NewFrame("response")
+	frame.Meta = &data.FrameMeta{PreferredVisualization: "profile"}
 
 	// add fields.
 	frame.Fields = append(frame.Fields,
