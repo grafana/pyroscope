@@ -170,6 +170,22 @@ function ExploreView() {
   );
 }
 
+function calculateMean(arr: number[]) {
+  return arr.reduce((acc, b) => acc + b) / arr.length;
+}
+
+function calculateStdDeviation(array: number[], mean: number) {
+  const stdDeviation = Math.sqrt(
+    array.reduce((acc, b) => {
+      const dev = b - mean;
+
+      return acc + Math.pow(dev, 2);
+    }) / array.length
+  );
+
+  return stdDeviation;
+}
+
 function Table({
   appName,
   groupsData,
@@ -208,41 +224,42 @@ function Table({
           </tr>
         </thead>
         <tbody>
-          {groupsData.map(({ tagName, color, data }) => (
-            <tr
-              className={tagName === groupByTagValue ? styles.activeTagRow : ''}
-              onClick={() => handleGroupByTagValueChange(tagName)}
-              key={tagName}
-            >
-              <td>
-                {tagName === '*' ? (
-                  appName
-                ) : (
-                  <div className={styles.tagName}>
-                    <span
-                      className={styles.tagColor}
-                      style={{ backgroundColor: color?.toString() }}
-                    />
-                    {tagName}
-                  </div>
-                )}
-              </td>
-              <td>{data.samples.length}</td>
-              <td>
-                {(
-                  data.samples.reduce((prev, cur) => prev + cur, 0) /
-                  data.samples.length
-                ).toFixed(2)}
-              </td>
-              <td>??</td>
-              <td>{Math.min(...data.samples)}</td>
-              <td>{Math.max(...data.samples)}</td>
-              <td>50,987 mock</td>
-              <td>76,200 mock</td>
-              <td>100,000 mock</td>
-              <td>$ 250 / hr mock</td>
-            </tr>
-          ))}
+          {groupsData.map(({ tagName, color, data }) => {
+            const mean = calculateMean(data.samples);
+
+            return (
+              <tr
+                className={
+                  tagName === groupByTagValue ? styles.activeTagRow : ''
+                }
+                onClick={() => handleGroupByTagValueChange(tagName)}
+                key={tagName}
+              >
+                <td>
+                  {tagName === '*' ? (
+                    appName
+                  ) : (
+                    <div className={styles.tagName}>
+                      <span
+                        className={styles.tagColor}
+                        style={{ backgroundColor: color?.toString() }}
+                      />
+                      {tagName}
+                    </div>
+                  )}
+                </td>
+                <td>{data.samples.length}</td>
+                <td>{mean.toFixed(2)}</td>
+                <td>{calculateStdDeviation(data.samples, mean).toFixed(2)}</td>
+                <td>{Math.min(...data.samples)}</td>
+                <td>{Math.max(...data.samples)}</td>
+                <td>50,987 mock</td>
+                <td>76,200 mock</td>
+                <td>100,000 mock</td>
+                <td>$ 250 / hr mock</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </>
