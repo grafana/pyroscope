@@ -38,8 +38,10 @@ ALPINE_TAG =
 
 ifneq (,$(findstring ebpfspy,$(GO_TAGS)))
 	GO_TAGS := $(GO_TAGS),netgo
-	CGO_CFLAGS := $(CGO_CFLAGS) -I/home/korniltsev/github/libbpf/src/build/include
-	CGO_LDFLAGS := $(CGO_LDFLAGS) -lelf -lz -lbpf -L/home/korniltsev/github/libbpf/src
+#	CGO_CFLAGS := $(CGO_CFLAGS) -I/home/korniltsev/github/libbpf/src/build/include
+#	CGO_LDFLAGS := $(CGO_LDFLAGS) -lelf -lz -lbcc -lbpf -lstdc++ -L/home/korniltsev/github/libbpf/src
+	CGO_CFLAGS := $(CGO_CFLAGS)
+	CGO_LDFLAGS := $(CGO_LDFLAGS) -lelf -lz -lbcc -lbpf -lstdc++
 endif
 
 ifeq ("$(OS)", "Linux")

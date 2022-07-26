@@ -38,6 +38,7 @@ func newSession(pid int, sampleRate uint32) *session {
 }
 
 func (s *session) Start() error {
+
 	var err error
 	if err := unix.Setrlimit(unix.RLIMIT_MEMLOCK, &unix.Rlimit{
 		Cur: unix.RLIM_INFINITY,
@@ -52,7 +53,8 @@ func (s *session) Start() error {
 
 	newModuleArgs := bpf.NewModuleArgs{
 		BPFObjBuff: profileBpfObjBuf,
-		BTFObjPath: "", //todo
+		//BTFObjPath: "/home/korniltsev/Desktop/vmlinux2", //todo
+		BTFObjPath: "huihuuhi", //todo
 	}
 	if s.bpfModule, err = bpf.NewModuleFromBufferArgs(newModuleArgs); err != nil {
 		return err
@@ -95,6 +97,7 @@ func (s *session) Start() error {
 
 func (s *session) Reset(cb func([]byte, uint64) error) error {
 	fmt.Println("Reset")
+	t1 := time.Now()
 	var errs error
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
@@ -117,7 +120,7 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 			}
 			count := binary.LittleEndian.Uint32(v)
 			//fmt.Printf("%d %d %d %s -> %d\n", pid, kStack, uStack, string(comm), count)
-			buf := bytes.NewBuffer(v)
+			buf := bytes.NewBuffer(nil)
 			buf.Write(comm)
 			buf.Write([]byte{';'})
 
@@ -129,13 +132,14 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 				errs = multierror.Append(errs, err)
 			}
 			cnt++
-			fmt.Println(comm)
+			//fmt.Println(comm)
 		}
 	}
 
 	clearMap(s.bpfMapCounts)
 	clearMap(s.bpfMapStacks)
-	fmt.Println("reset done", cnt)
+	t2 := time.Now()
+	fmt.Println("reset done", cnt, t2.Sub(t1))
 	return errs
 }
 
@@ -147,9 +151,9 @@ func walkStack(line *bytes.Buffer, stacks *bpf.BPFMap, stackId int64, pid uint32
 	}
 	var bs [8]byte
 	binary.LittleEndian.PutUint64(bs[:], uint64(stackId)) //todo do not pack and unpack back
-	t := time.Now()
+	//t := time.Now()
 	stack, err := stacks.GetValue(unsafe.Pointer(&bs[0])) // todo retrieve stacks values once with batch
-	t2 := time.Now()
+	//t2 := time.Now()
 	if err != nil {
 		return
 	}
@@ -171,10 +175,10 @@ func walkStack(line *bytes.Buffer, stacks *bpf.BPFMap, stackId int64, pid uint32
 	for _, s := range stackFrames {
 		line.Write([]byte(s))
 	}
-	t3 := time.Now()
-	fmt.Println(t2.Sub(t))
-
-	fmt.Println(t3.Sub(t2))
+	//t3 := time.Now()
+	//fmt.Println(t2.Sub(t))
+	//
+	//fmt.Println(t3.Sub(t2))
 }
 
 func reverse(s []string) {

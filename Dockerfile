@@ -84,6 +84,20 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 # see https://github.com/pyroscope-io/pyroscope/pull/372 for more context
 FROM pyroscope/golang:1.18.0-alpine3.12 AS go-builder
 
+RUN apk add make gcc pkgconfig zlib-dev elfutils-dev libelf-static zlib-static musl-dev linux-headers cmake g++  llvm git tar git build-base iperf linux-headers llvm10-dev llvm10-static \
+  clang-dev clang-static cmake python3 flex-dev bison luajit-dev elfutils-dev \
+  zlib-dev
+
+RUN wget https://github.com/libbpf/libbpf/archive/refs/tags/v0.8.1.tar.gz \
+	&& tar -zxf v0.8.1.tar.gz \
+	&& cd libbpf-0.8.1/src \
+	&& make -j32 install
+
+
+
+
+RUN git clone --branch v0.24.0 https://github.com/iovisor/bcc.git
+RUN mkdir bcc/build && cd bcc/build && cmake -DENABLE_EXAMPLES=OFF .. && make -j32 && make install
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 RUN apk upgrade binutils
@@ -187,4 +201,4 @@ RUN pyroscope completion bash > /usr/share/bash-completion/completions/pyroscope
 
 USER pyroscope
 EXPOSE 4040/tcp
-ENTRYPOINT [ "/usr/bin/pyroscope" ]
+#ENTRYPOINT [ "/usr/bin/pyroscope" ]
