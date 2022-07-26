@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/samber/lo"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/model"
@@ -142,10 +143,7 @@ func mergeStacktraces(profiles []profileWithSymbols) []stacktraces {
 			stacktrace.value += st.Value
 		}
 	}
-	ids := make([]uint64, 0, len(stacktracesByID))
-	for id := range stacktracesByID {
-		ids = append(ids, id)
-	}
+	ids := lo.Keys(stacktracesByID)
 	sort.Slice(ids, func(i, j int) bool {
 		return ids[i] < ids[j]
 	})
