@@ -69,6 +69,11 @@ func (c *Cache) GetOrSet(key string, value func() (interface{}, error)) (interfa
 	e = new(cacheEntry)
 	e.key = key
 	e.value = v
+	// The item returned by value() is either newly allocated or was just
+	// read from the DB, therefore we mark it as persisted to avoid redundant
+	// writes or writing empty object. Once the item is invalidated, caller
+	// has to explicitly set it with Set call.
+	e.persisted = true
 	c.values[key] = e
 	c.increment(e)
 	c.len++
