@@ -145,6 +145,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			if err := p.UnmarshalVT(data); err != nil {
 				return nil, err
 			}
+			d.metrics.receivedSamples.WithLabelValues(profName).Observe(float64(len(p.Sample)))
 
 			p = sanitizeProfile(p)
 

@@ -7,6 +7,7 @@ import (
 type metrics struct {
 	receivedCompressedBytes   *prometheus.HistogramVec
 	receivedDecompressedBytes *prometheus.HistogramVec
+	receivedSamples           *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -29,11 +30,21 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"type"},
 		),
+		receivedSamples: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "fire",
+				Name:      "distributor_received_samples",
+				Help:      "The number of samples per profile name received by the distributor.",
+				Buckets:   prometheus.ExponentialBucketsRange(10^2, 10^5, 30),
+			},
+			[]string{"type"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(
 			m.receivedCompressedBytes,
 			m.receivedDecompressedBytes,
+			m.receivedSamples,
 		)
 	}
 	return m
