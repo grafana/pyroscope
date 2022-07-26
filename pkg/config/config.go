@@ -104,7 +104,10 @@ type Server struct {
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error" mapstructure:"badger-log-level"`
 
-	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
+	StoragePath         string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
+	StorageQueueSize    int    `desc:"storage queue size" mapstructure:"storage-queue-size"`
+	StorageQueueWorkers int    `desc:"number of workers handling internal storage queue" mapstructure:"storage-queue-workers"`
+
 	APIBindAddr     string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
 	BaseURL         string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" mapstructure:"base-url"`
 	BaseURLBindAddr string `def:"" deprecated:"true" desc:"server for debugging base url" mapstructure:"base-url-bind-addr"`
