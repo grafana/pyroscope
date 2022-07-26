@@ -30,9 +30,7 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
-var (
-	ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
+var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func generateULID() ulid.ULID {
 	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
@@ -133,6 +131,7 @@ type Head struct {
 	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper, *schemav1.StacktracePersister] // a stacktrace is a slice of location ids
 	profiles        deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper, *schemav1.ProfilePersister]
 	tables          []Table
+	delta           *deltaProfiles
 	pprofLabelCache labelCache
 }
 
@@ -178,6 +177,7 @@ func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 		return nil, err
 	}
 	h.index = index
+	h.delta = newDeltaProfiles()
 
 	h.pprofLabelCache.init()
 	return h, nil
@@ -293,6 +293,12 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		DurationNanos:     p.DurationNanos,
 		Comment:           copySlice(p.Comment),
 		DefaultSampleType: p.DefaultSampleType,
+	}
+
+	profile, profilesLabels = h.delta.computeDelta(profile, profilesLabels)
+
+	if len(profilesLabels) == 0 {
+		return nil
 	}
 
 	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
