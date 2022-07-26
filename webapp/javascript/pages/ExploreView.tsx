@@ -196,25 +196,24 @@ function Table({
         <thead>
           <tr>
             <th>{groupsData[0]?.tagName === '*' ? 'App' : 'Tag'} name</th>
-            <th>10s event count</th>
-            <th>avg samples per 10s</th>
-            <th>samples std. deviation</th>
+            <th>Event count</th>
+            <th>avg samples</th>
+            <th>std deviation samples</th>
             <th>min samples</th>
-            <th>25%</th>
-            <th>50%</th>
-            <th>75%</th>
-            <th>max</th>
-            <th>cost</th>
+            <th>max samples</th>
+            <th>50% tbd</th>
+            <th>75% tbd</th>
+            <th>max tbd</th>
+            <th>cost tbd</th>
           </tr>
         </thead>
         <tbody>
-          {groupsData.map(({ tagName, color }) => (
+          {groupsData.map(({ tagName, color, data }) => (
             <tr
               className={tagName === groupByTagValue ? styles.activeTagRow : ''}
               onClick={() => handleGroupByTagValueChange(tagName)}
               key={tagName}
             >
-              {/* mock data */}
               <td>
                 {tagName === '*' ? (
                   appName
@@ -228,15 +227,20 @@ function Table({
                   </div>
                 )}
               </td>
-              <td>15,000</td>
-              <td>3,276</td>
-              <td>1,532</td>
-              <td>3,188</td>
-              <td>25,333</td>
-              <td>50,987</td>
-              <td>76,200</td>
-              <td>100,000</td>
-              <td>$ 250 / hr</td>
+              <td>{data.samples.length}</td>
+              <td>
+                {(
+                  data.samples.reduce((prev, cur) => prev + cur, 0) /
+                  data.samples.length
+                ).toFixed(2)}
+              </td>
+              <td>??</td>
+              <td>{Math.min(...data.samples)}</td>
+              <td>{Math.max(...data.samples)}</td>
+              <td>50,987 mock</td>
+              <td>76,200 mock</td>
+              <td>100,000 mock</td>
+              <td>$ 250 / hr mock</td>
             </tr>
           ))}
         </tbody>
