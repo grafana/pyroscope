@@ -1,4 +1,6 @@
+local g = import 'grafana-builder/grafana.libsonnet';
 local utils = import 'mixin-utils/utils.libsonnet';
+
 
 (import 'dashboard-utils.libsonnet') {
   grafanaDashboards+: {
@@ -34,7 +36,28 @@ local utils = import 'mixin-utils/utils.libsonnet';
                         .addNamespace()
                         .addTag()
                         .addRow(
-                          $.row('Distributor')
+                          $.row('Distributor Profiles received')
+                          .addPanel(
+                            $.panel('Compressed Size') +
+                            utils.latencyRecordingRulePanel(
+                              'fire_distributor_received_compressed_bytes',
+                              dashboards['fire-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['fire-writes.json'].clusterMatchers,
+                              multiplier='1',
+                              sum_by=['type'],
+                            ) + { yaxes: g.yaxes('bytes') },
+                          )
+                          .addPanel(
+                            $.panel('Samples') +
+                            utils.latencyRecordingRulePanel(
+                              'fire_distributor_received_samples',
+                              dashboards['fire-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['fire-writes.json'].clusterMatchers,
+                              multiplier='1',
+                              sum_by=['type'],
+                            ) + { yaxes: g.yaxes('count') },
+                          )
+                        )
+                        .addRow(
+                          $.row('Distributor Requests')
                           .addPanel(
                             $.panel('QPS') +
                             $.qpsPanel('fire_request_duration_seconds_count{%s, route=~".*push.*"}' % std.rstripChars(dashboards['fire-writes.json'].distributorSelector, ','))
