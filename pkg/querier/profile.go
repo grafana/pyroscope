@@ -3,8 +3,10 @@ package querier
 import (
 	"bytes"
 	"container/heap"
+	"sort"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/samber/lo"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/model"
@@ -141,10 +143,16 @@ func mergeStacktraces(profiles []profileWithSymbols) []stacktraces {
 			stacktrace.value += st.Value
 		}
 	}
-	result := make([]stacktraces, 0, len(stacktracesByID))
-	for _, stacktrace := range stacktracesByID {
-		result = append(result, *stacktrace)
+	ids := lo.Keys(stacktracesByID)
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i] < ids[j]
+	})
+
+	result := make([]stacktraces, len(stacktracesByID))
+	for pos, id := range ids {
+		result[pos] = *stacktracesByID[id]
 	}
+
 	return result
 }
 
