@@ -328,10 +328,20 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 }
 
 func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+	var (
+		totalSamples   int64
+		totalLocations int64
+	)
 	// nolint:ineffassign
 	// we might use ctx later.
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Head - SelectProfiles")
-	defer sp.Finish()
+	defer func() {
+		sp.LogFields(
+			otlog.Int64("total_samples", totalSamples),
+			otlog.Int64("total_locations", totalLocations),
+		)
+		sp.Finish()
+	}()
 
 	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
@@ -356,16 +366,6 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		h.locations.lock.RUnlock()
 		h.functions.lock.RUnlock()
 		h.strings.lock.RUnlock()
-	}()
-
-	var totalSamples int64
-	var totalLocations int64
-
-	defer func() {
-		sp.LogFields(
-			otlog.Int64("total_samples", totalSamples),
-			otlog.Int64("total_locations", totalLocations),
-		)
 	}()
 
 	err = h.index.forMatchingProfiles(selectors, func(lbs firemodel.Labels, _ model.Fingerprint, idx int, profile *schemav1.Profile) error {
