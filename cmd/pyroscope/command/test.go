@@ -132,7 +132,42 @@ profiles it, then merges into a single profile file.
 				return err
 			}
 
-			fmt.Println("Generated merged.pb.gz file")
+			fmt.Println("written merged.pb.gz")
+
+			// Send to flamegraph.com
+			//			var b bytes.Buffer
+			//			foo := bufio.NewWriter(&b)
+			//			merged.Write(foo)
+			//
+			//			type flamegraphPayload struct {
+			//				Name    string `json:"name"`
+			//				Profile string `json:"profile"`
+			//				Type    string `json:"type"`
+			//			}
+			//			b64encoded := base64.StdEncoding.EncodeToString(b.Bytes())
+			//			payload := &flamegraphPayload{
+			//				Name:    "test",
+			//				Profile: b64encoded,
+			//				Type:    "pprof",
+			//			}
+			//			p, err := json.Marshal(payload)
+			//			if err != nil {
+			//				return err
+			//			}
+			//
+			//			resp, err := http.Post("https://flamegraph.com/api/upload/v1", "application/json", bytes.NewReader(p))
+			//			body, _ := io.ReadAll(resp.Body)
+			//			if err != nil {
+			//				fmt.Println("resp", resp)
+			//				fmt.Println("body", string(body))
+			//				return err
+			//			}
+			//			fmt.Println("body", string(body))
+			//
+			//			// TODO: check response
+			//
+			//			//fmt.Println("Generated merged.pb.gz file")
+			//			fmt.Println(resp)
 			return nil
 		}),
 	}
