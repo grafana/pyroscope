@@ -34,7 +34,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			prometheus.HistogramOpts{
 				Namespace: "fire",
 				Name:      "distributor_received_samples",
-				Help:      "The number of samples per profiles received by the distributor.",
+				Help:      "The number of samples per profile name received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(10^2, 10^5, 30),
 			},
 			[]string{"type"},
