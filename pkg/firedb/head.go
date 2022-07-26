@@ -16,6 +16,8 @@ import (
 	"github.com/gogo/status"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -334,6 +336,21 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 }
 
 func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+	var (
+		totalSamples   int64
+		totalLocations int64
+	)
+	// nolint:ineffassign
+	// we might use ctx later.
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Head - SelectProfiles")
+	defer func() {
+		sp.LogFields(
+			otlog.Int64("total_samples", totalSamples),
+			otlog.Int64("total_locations", totalLocations),
+		)
+		sp.Finish()
+	}()
+
 	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to label selector")
@@ -376,8 +393,10 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			if s.Values[idx] == 0 {
 				continue
 			}
+			totalSamples++
 			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
 			fnIds := make([]int32, 0, len(locs))
+			totalLocations += int64(len(locs))
 			for _, loc := range locs {
 				for _, line := range h.locations.slice[loc].Line {
 					fnName := h.strings.slice[h.functions.slice[line.FunctionId].Name]
