@@ -25,6 +25,7 @@ func Execute() error {
 		newDbManagerCmd(&config.CombinedDbManager{DbManager: &cfg.DbManager, Server: &cfg.Server}),
 		newExecCmd(&cfg.Exec),
 		newServerCmd(&cfg.Server),
+		newTestCmd(&cfg.Test),
 		newVersionCmd(),
 	}
 
