@@ -170,17 +170,17 @@ function ExploreView() {
   );
 }
 
-function calculateMean(arr: number[]) {
-  return arr.reduce((acc, b) => acc + b) / arr.length;
+export function calculateMean(arr: number[]) {
+  return arr.reduce((acc, b) => acc + b, 0) / arr.length;
 }
 
-function calculateStdDeviation(array: number[], mean: number) {
+export function calculateStdDeviation(array: number[], mean: number) {
   const stdDeviation = Math.sqrt(
     array.reduce((acc, b) => {
       const dev = b - mean;
 
-      return acc + Math.pow(dev, 2);
-    }) / array.length
+      return acc + dev ** 2;
+    }, 0) / array.length
   );
 
   return stdDeviation;
