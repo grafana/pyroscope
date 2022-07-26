@@ -3,6 +3,7 @@ package querier
 import (
 	"bytes"
 	"container/heap"
+	"sort"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -141,10 +142,19 @@ func mergeStacktraces(profiles []profileWithSymbols) []stacktraces {
 			stacktrace.value += st.Value
 		}
 	}
-	result := make([]stacktraces, 0, len(stacktracesByID))
-	for _, stacktrace := range stacktracesByID {
-		result = append(result, *stacktrace)
+	ids := make([]uint64, 0, len(stacktracesByID))
+	for id := range stacktracesByID {
+		ids = append(ids, id)
 	}
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i] < ids[j]
+	})
+
+	result := make([]stacktraces, len(stacktracesByID))
+	for pos, id := range ids {
+		result[pos] = *stacktracesByID[id]
+	}
+
 	return result
 }
 
