@@ -99,7 +99,7 @@ func (s *Storage) GetAppNames(ctx context.Context) []string {
 	return appNames
 }
 
-func (s *Storage) GetApps(ctx context.Context) GetAppsOutput {
+func (s *Storage) GetApps(ctx context.Context) (GetAppsOutput, error) {
 	r := GetAppsOutput{}
 	for _, appName := range s.GetAppNames(ctx) {
 		a := AppInfo{
@@ -107,5 +107,5 @@ func (s *Storage) GetApps(ctx context.Context) GetAppsOutput {
 		}
 		r.Apps = append(r.Apps, a)
 	}
-	return r
+	return r, nil
 }

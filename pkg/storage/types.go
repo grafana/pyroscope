@@ -75,8 +75,7 @@ type AppNameGetter interface {
 }
 
 type AppGetter interface {
-	AppNameGetter
-	GetApps(ctx context.Context) GetAppsOutput
+	GetApps(ctx context.Context) (GetAppsOutput, error)
 }
 
 type AppDeleter interface {

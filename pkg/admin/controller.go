@@ -17,6 +17,7 @@ import (
 )
 
 type Storage interface {
+	pstorage.AppNameGetter
 	pstorage.AppGetter
 	pstorage.AppDeleter
 }

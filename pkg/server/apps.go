@@ -21,7 +21,11 @@ func (c *Controller) getAppsHandler() http.HandlerFunc {
 
 func NewGetAppsHandler(s storage.AppGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		apps := s.GetApps(r.Context())
+		apps, err := s.GetApps(r.Context())
+		if err != nil {
+			httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "")
+			return
+		}
 		res := make([]AppInfo, 0, len(apps.Apps))
 		for _, app := range apps.Apps {
 			it := AppInfo{
@@ -38,7 +42,7 @@ func (c *Controller) getAppNames() http.HandlerFunc {
 	return NewGetAppNamesHandler(c.storage, c.httpUtils)
 }
 
-func NewGetAppNamesHandler(s storage.AppGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
+func NewGetAppNamesHandler(s storage.AppNameGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		appNames := s.GetAppNames(r.Context())
 		w.WriteHeader(http.StatusOK)
