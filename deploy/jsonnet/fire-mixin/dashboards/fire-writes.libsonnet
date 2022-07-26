@@ -36,7 +36,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                         .addNamespace()
                         .addTag()
                         .addRow(
-                          $.row('Distributor Profiles')
+                          $.row('Distributor Profiles received')
                           .addPanel(
                             $.panel('Compressed Size') +
                             utils.latencyRecordingRulePanel(
