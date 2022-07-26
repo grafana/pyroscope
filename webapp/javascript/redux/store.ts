@@ -8,7 +8,6 @@ import {
   PURGE,
   REGISTER,
 } from 'redux-persist';
-import { deserializeError } from 'serialize-error';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
@@ -18,7 +17,6 @@ import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 import rootReducer from './reducers';
 import history from '../util/history';
 
-import viewsReducer from './reducers/views';
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
 import continuousReducer, {
@@ -29,7 +27,6 @@ import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 const reducer = combineReducers({
   root: rootReducer,
-  views: viewsReducer,
   settings: settingsReducer,
   user: userReducer,
   serviceDiscovery: serviceDiscoveryReducer,
@@ -48,8 +45,9 @@ export const logErrorMiddleware: Middleware = () => (next) => (action) => {
 
 const store = configureStore({
   reducer,
-  middleware: (getDefaultMiddleware) => [
-    ...getDefaultMiddleware({
+  // https://github.com/reduxjs/redux-toolkit/issues/587#issuecomment-824927971
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
       serializableCheck: {
         ignoredActionPaths: ['error'],
 
@@ -57,10 +55,7 @@ const store = configureStore({
         // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }),
-
-    logErrorMiddleware,
-  ],
+    }).concat([logErrorMiddleware]),
 });
 
 export const persistor = persistStore(store);

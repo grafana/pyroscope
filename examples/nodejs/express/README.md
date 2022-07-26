@@ -10,7 +10,7 @@ docker-compose up -d
 
 As a sample application we use slightly modified rideshare app
 
-Note: you may want to configure pyroscope server by provisioning an env var 
+Note: you may want to configure pyroscope server by provisioning an env var
 
 ```
 export PYROSCOPE_SERVER=http://localhost:4040

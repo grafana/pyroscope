@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -245,15 +246,38 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
+	routes := []route{}
+	if ctrl.config.RemoteRead.Enabled {
+		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
+		if err != nil {
+			logrus.WithError(err).Error("failed to initialize remote read handler")
+		} else {
+			routes = append(routes, []route{
+				{"/render", h},
+				{"/render-diff", h},
+				{"/merge", h},
+				{"/labels", h},
+				{"/label-values", h},
+				{"/export", h},
+			}...)
+		}
+	} else {
+		routes = append(routes, []route{
+			{"/render", ctrl.renderHandler()},
+			{"/render-diff", ctrl.renderDiffHandler()},
+			{"/merge", ctrl.mergeHandler()},
+			{"/labels", ctrl.labelsHandler()},
+			{"/label-values", ctrl.labelValuesHandler()},
+			{"/export", ctrl.exportHandler()},
+		}...)
+	}
+
+	routes = append(routes, []route{
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
+	}...)
+
 	// For these routes server responds with 401.
-	ctrl.addRoutes(r, []route{
-		{"/render", ctrl.renderHandler()},
-		{"/render-diff", ctrl.renderDiffHandler()},
-		{"/merge", ctrl.mergeHandler()},
-		{"/labels", ctrl.labelsHandler()},
-		{"/label-values", ctrl.labelValuesHandler()},
-		{"/export", ctrl.exportHandler()},
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
+	ctrl.addRoutes(r, routes,
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
 
@@ -402,7 +426,10 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	return ctrl.corsMiddleware()(gzhttpMiddleware(handler)), nil
+	h := ctrl.corsMiddleware()(gzhttpMiddleware(handler))
+	h = ctrl.logginMiddleware(h)
+
+	return h, nil
 }
 
 func (ctrl *Controller) Start() error {
@@ -533,4 +560,14 @@ func expectFormats(format string) error {
 	default:
 		return errUnknownFormat
 	}
+}
+
+func (ctrl *Controller) logginMiddleware(next http.Handler) http.Handler {
+	if ctrl.config.LogLevel == "debug" {
+		// log to Stdout using Apache Common Log Format
+		// TODO maybe use JSON?
+		return handlers.LoggingHandler(os.Stdout, next)
+	}
+
+	return next
 }

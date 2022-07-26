@@ -1,6 +1,12 @@
 import { DeepReadonly } from 'ts-essentials';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, singleFF, doubleFF } from '@pyroscope/models';
+import {
+  createFF,
+  Flamebearer,
+  singleFF,
+  doubleFF,
+  SpyName,
+} from '@pyroscope/models/src';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine
@@ -73,8 +79,11 @@ export default class Flamegraph {
       sampleRate: this.flamebearer.sampleRate,
       names: this.flamebearer.names,
       levels: this.flamebearer.levels,
-      spyName: this.flamebearer.spyName,
+      // keep type narrow https://stackoverflow.com/q/54333982
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      spyName: this.flamebearer.spyName as SpyName,
       units: this.flamebearer.units,
+      maxSelf: this.flamebearer.maxSelf,
 
       rangeMin,
       rangeMax,

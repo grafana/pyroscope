@@ -2,13 +2,12 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { type User } from '@webapp/models/users';
 import { connect, useSelector } from 'react-redux';
-import { PAGES } from '@webapp/pages/constants';
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
   editMyUser as editMyUserAPI,
 } from '@webapp/services/users';
-import type { RootState } from '../store';
+import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 
@@ -55,7 +54,7 @@ const userSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(loadCurrentUser.fulfilled, (state, action) => {
-      return { type: 'loaded', data: action.payload as User };
+      return { type: 'loaded', data: action.payload };
     });
     builder.addCase(loadCurrentUser.pending, (state) => {
       return { type: 'loading', data: state.data };

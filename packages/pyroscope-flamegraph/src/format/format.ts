@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { Units } from '@pyroscope/models';
+import { Units } from '@pyroscope/models/src';
 
 export function numberWithCommas(x: number): string {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -28,6 +28,8 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
       return new NanosecondsFormatter(max);
     case 'lock_samples':
       return new ObjectsFormatter(max);
+    case 'trace_samples':
+      return new DurationFormatter(max / sampleRate);
     default:
       console.warn(`Unsupported unit: '${unit}'. Defaulting to 'samples'`);
       return new DurationFormatter(max / sampleRate);
@@ -39,7 +41,7 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
 class DurationFormatter {
   divider = 1;
 
-  suffix: string = 'second';
+  suffix = 'second';
 
   durations: [number, string][] = [
     [60, 'minute'],
@@ -90,7 +92,7 @@ class NanosecondsFormatter {
 
   multiplier = 1;
 
-  suffix: string = 'second';
+  suffix = 'second';
 
   durations: [number, string][] = [
     [60, 'minute'],
@@ -121,7 +123,7 @@ class NanosecondsFormatter {
     }
   }
 
-  format(samples: number, sampleRate: number) {
+  format(samples: number) {
     const n = samples / 1000000000 / this.divider;
     let nStr = n.toFixed(2);
 

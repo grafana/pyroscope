@@ -18,9 +18,6 @@ const DELIMITER = '.';
 const APPS_LIST_ELEMENT_ID = 'apps_list';
 export const APP_SEARCH_INPUT = 'application_search';
 
-const getFilteredNames = (names: string[], name: string) =>
-  names.filter((a) => a.indexOf(name) !== -1);
-
 const isGroupMember = (groupName: string, name: string) =>
   name.indexOf(groupName) === 0 &&
   (name[groupName.length] === DELIMITER || name.length === groupName.length);

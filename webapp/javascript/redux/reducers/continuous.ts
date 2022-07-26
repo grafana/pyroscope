@@ -1,4 +1,4 @@
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@webapp/models/appNames';
 import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
@@ -12,7 +12,7 @@ import {
 import { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
-import type { RootState } from '../store';
+import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 
@@ -666,27 +666,30 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(fetchSideTimelines.rejected, (state, action: any) => {
-      let type: TimelineState['type'] = 'failed';
+    builder.addCase(
+      fetchSideTimelines.rejected,
+      (state, action: ShamefulAny) => {
+        let type: TimelineState['type'] = 'failed';
 
-      if (
-        action?.meta?.rejectedWithValue &&
-        action?.payload?.rejectedWithValue
-      ) {
-        type = action?.payload?.rejectedWithValue;
-      } else if (action.error.message === 'unmount') {
-        type = 'loaded';
+        if (
+          action?.meta?.rejectedWithValue &&
+          action?.payload?.rejectedWithValue
+        ) {
+          type = action?.payload?.rejectedWithValue;
+        } else if (action.error.message === 'unmount') {
+          type = 'loaded';
+        }
+
+        state.leftTimeline = {
+          ...state.leftTimeline,
+          type,
+        };
+        state.rightTimeline = {
+          ...state.rightTimeline,
+          type,
+        };
       }
-
-      state.leftTimeline = {
-        ...state.leftTimeline,
-        type,
-      };
-      state.rightTimeline = {
-        ...state.rightTimeline,
-        type,
-      };
-    });
+    );
 
     /***********************/
     /*      Diff View      */
@@ -741,7 +744,7 @@ export const continuousSlice = createSlice({
     });
 
     // TODO:
-    builder.addCase(fetchTags.pending, (state) => {});
+    builder.addCase(fetchTags.pending, () => {});
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
       // convert each
@@ -757,7 +760,7 @@ export const continuousSlice = createSlice({
     });
 
     // TODO
-    builder.addCase(fetchTags.rejected, (state) => {});
+    builder.addCase(fetchTags.rejected, () => {});
 
     // TODO other cases
     builder.addCase(fetchTagValues.fulfilled, (state, action) => {

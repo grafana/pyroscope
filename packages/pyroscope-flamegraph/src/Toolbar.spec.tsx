@@ -68,7 +68,6 @@ describe('ProfileHeader', () => {
         fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
-        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -92,7 +91,6 @@ describe('ProfileHeader', () => {
         fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
-        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -119,7 +117,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={onReset}
@@ -142,7 +139,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={() => {}}
           reset={onReset}
@@ -170,7 +166,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={() => {}}
           reset={onReset}
@@ -197,7 +192,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={() => {}}
           reset={onReset}
@@ -224,7 +218,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={onChange}
           reset={() => {}}
@@ -257,7 +250,6 @@ describe('ProfileHeader', () => {
         fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
-        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -298,7 +290,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -312,7 +303,7 @@ describe('ProfileHeader', () => {
         />
       );
       render(component);
-      expect(screen.getByRole('button', { name: /Focus/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Collapse/ })).toBeDisabled();
     });
 
     it('calls callback when clicked', () => {
@@ -322,7 +313,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -337,7 +327,7 @@ describe('ProfileHeader', () => {
       );
 
       render(component);
-      screen.getByRole('button', { name: /Focus/ }).click();
+      screen.getByRole('button', { name: /Collapse/ }).click();
 
       expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999);
     });
@@ -349,7 +339,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -363,7 +352,7 @@ describe('ProfileHeader', () => {
         />
       );
       render(component);
-      expect(screen.getByRole('button', { name: 'Focus' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Collapse' })).toBeDisabled();
     });
 
     it('shows long text', () => {
@@ -373,7 +362,6 @@ describe('ProfileHeader', () => {
           view="both"
           viewDiff="diff"
           flamegraphType="single"
-          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -388,7 +376,7 @@ describe('ProfileHeader', () => {
       );
       render(component);
       expect(
-        screen.getByRole('button', { name: 'Focus on subtree' })
+        screen.getByRole('button', { name: 'Collapse nodes above' })
       ).toBeDisabled();
     });
   });
@@ -406,7 +394,6 @@ describe('ProfileHeader', () => {
         fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={updateViewDiff}
-        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -426,7 +413,6 @@ describe('ProfileHeader', () => {
           fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          renderLogo={false}
           isFlamegraphDirty={false}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
@@ -512,7 +498,6 @@ describe('ProfileHeader', () => {
         fitMode={HeadMode}
         updateView={updateView}
         updateViewDiff={() => {}}
-        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}

@@ -8,7 +8,7 @@ import {
   fetchTagValues,
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
 import useTimelines, {
   leftColor,
@@ -179,6 +179,7 @@ function ComparisonDiffApp() {
         <Box>
           <TimelineTitle titleKey="diff" />
           <FlamegraphRenderer
+            showCredit={false}
             profile={diffView.profile}
             ExportData={exportData}
             colorMode={colorMode}

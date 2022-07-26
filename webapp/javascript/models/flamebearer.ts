@@ -1,4 +1,4 @@
-import { Units } from '@pyroscope/models';
+import { Units } from '@pyroscope/models/src';
 import { deltaDiffWrapper } from '@webapp/util/flamebearer';
 
 export type Flamebearer = {

@@ -3,7 +3,7 @@ import 'react-dom';
 
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import {
   fetchSingleView,
   setDateRange,
@@ -56,6 +56,7 @@ function ContinuousSingleView() {
       case 'reloading': {
         return (
           <FlamegraphRenderer
+            showCredit={false}
             profile={singleView.profile}
             colorMode={colorMode}
             ExportData={

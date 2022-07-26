@@ -8,11 +8,11 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, Profile } from '@pyroscope/models';
+import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
-import ProfilerTable from '../ProfilerTable';
+import ProfilerTable, { ProfilerTableProps } from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
@@ -27,7 +27,7 @@ import { ViewTypes } from './FlameGraphComponent/viewTypes';
 function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
   if (p.profile && p.flamebearer) {
     console.warn(
-      "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
+      "'profile' and 'flamebearer' properties are mutually exclusive. Please use profile if possible."
     );
   }
 
@@ -53,9 +53,10 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
     names: [],
     units: '',
     levels: [[]],
-    spyName: '',
+    spyName: 'unknown',
     numTicks: 0,
     sampleRate: 0,
+    maxSelf: 0,
   };
   return noop;
 }
@@ -69,13 +70,14 @@ interface Node {
 export interface FlamegraphRendererProps {
   /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
   profile?: Profile;
+
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
 
   /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
-  renderLogo?: boolean;
+  showCredit?: boolean;
   ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
@@ -88,13 +90,15 @@ export interface FlamegraphRendererProps {
     toggleSync: Dispatch<SetStateAction<boolean | string>>;
     id: string;
   };
+
+  children?: React.ReactNode;
 }
 
 interface FlamegraphRendererState {
   /** A dirty flamegraph refers to a flamegraph where its original state can be reset */
   isFlamegraphDirty: boolean;
-  sortBy: 'self' | 'total' | 'selfDiff' | 'totalDiff';
-  sortByDirection: 'desc' | 'asc';
+  sortBy: ProfilerTableProps['sortBy'];
+  sortByDirection: ProfilerTableProps['sortByDirection'];
 
   view: NonNullable<FlamegraphRendererProps['onlyDisplay']>;
   panesOrientation: NonNullable<FlamegraphRendererProps['panesOrientation']>;
@@ -107,7 +111,7 @@ interface FlamegraphRendererState {
    * It's used to filter data in the table AND highlight items in the flamegraph */
   searchQuery: string;
   /** Triggered when an item is clicked on the table. It overwrites the searchQuery */
-  tableSelectedItem: Maybe<string>;
+  selectedItem: Maybe<string>;
 
   flamegraphConfigs: {
     focusedNode: Maybe<Node>;
@@ -130,6 +134,11 @@ class FlameGraphRenderer extends React.Component<
   // Eg when sharing a specific node
   initialFlamegraphState = this.resetFlamegraphState;
 
+  // eslint-disable-next-line react/static-property-placement
+  static defaultProps = {
+    showCredit: true,
+  };
+
   constructor(props: FlamegraphRendererProps) {
     super(props);
 
@@ -149,7 +158,7 @@ class FlameGraphRenderer extends React.Component<
 
       // query used in the 'search' checkbox
       searchQuery: '',
-      tableSelectedItem: Maybe.nothing(),
+      selectedItem: Maybe.nothing(),
 
       flamegraphConfigs: this.initialFlamegraphState,
 
@@ -173,11 +182,11 @@ class FlameGraphRenderer extends React.Component<
       // eslint-disable-next-line react/no-did-update-set-state
       this.setState({
         flamebearer: currFlame,
-
         flamegraphConfigs: {
           ...this.state.flamegraphConfigs,
           ...newConfigs,
         },
+        selectedItem: Maybe.nothing(),
       });
       return;
     }
@@ -299,14 +308,14 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  onTableItemClick = (tableItem: { name: string }) => {
-    const { name } = tableItem;
+  setActiveItem = (item: { name: string }) => {
+    const { name } = item;
 
     // if clicking on the same item, undo the search
-    if (this.state.tableSelectedItem.isJust) {
-      if (tableItem.name === this.state.tableSelectedItem.value) {
+    if (this.state.selectedItem.isJust) {
+      if (name === this.state.selectedItem.value) {
         this.setState({
-          tableSelectedItem: Maybe.nothing(),
+          selectedItem: Maybe.nothing(),
         });
         return;
         //        name = '';
@@ -315,14 +324,14 @@ class FlameGraphRenderer extends React.Component<
 
     // clicking for the first time
     this.setState({
-      tableSelectedItem: Maybe.just(name),
+      selectedItem: Maybe.just(name),
     });
   };
 
   getHighlightQuery = () => {
     // prefer table selected
-    if (this.state.tableSelectedItem.isJust) {
-      return this.state.tableSelectedItem.value;
+    if (this.state.selectedItem.isJust) {
+      return this.state.selectedItem.value;
     }
 
     return this.state.searchQuery;
@@ -401,15 +410,13 @@ class FlameGraphRenderer extends React.Component<
           sortByDirection={this.state.sortByDirection}
           sortBy={this.state.sortBy}
           updateSortBy={this.updateSortBy}
-          view={this.state.view}
           viewDiff={
             this.state.flamebearer?.format === 'double' && this.state.viewDiff
           }
           fitMode={this.state.fitMode}
-          isFlamegraphDirty={this.state.isFlamegraphDirty}
           highlightQuery={this.state.searchQuery}
-          selectedItem={this.state.tableSelectedItem}
-          handleTableItemClick={this.onTableItemClick}
+          selectedItem={this.state.selectedItem}
+          handleTableItemClick={this.setActiveItem}
           palette={this.state.palette}
         />
       </div>
@@ -420,9 +427,13 @@ class FlameGraphRenderer extends React.Component<
     const flameGraphPane = (
       <Graph
         key="flamegraph-pane"
+        // data-testid={flamegraphDataTestId}
+        showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
         ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
+        setActiveItem={this.setActiveItem}
+        selectedItem={this.state.selectedItem}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
@@ -453,7 +464,6 @@ class FlameGraphRenderer extends React.Component<
           {toolbarVisible && (
             <Toolbar
               sharedQuery={this.props.sharedQuery}
-              renderLogo={this.props.renderLogo || false}
               disableChangingDisplay={!!this.props.onlyDisplay}
               flamegraphType={this.state.flamebearer.format}
               view={this.state.view}

@@ -1,5 +1,5 @@
 import { Result } from '@webapp/util/fp';
-import { Profile, FlamebearerProfileSchema } from '@pyroscope/models';
+import { Profile, FlamebearerProfileSchema } from '@pyroscope/models/src';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
 import { buildRenderURL } from '@webapp/util/updateRequests';
@@ -39,6 +39,7 @@ export async function renderSingle(
     z.object({ timeline: TimelineSchema })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+    .merge(z.object({ groups: z.object({}).passthrough().optional() }))
     .safeParse(response.value);
 
   if (parsed.success) {

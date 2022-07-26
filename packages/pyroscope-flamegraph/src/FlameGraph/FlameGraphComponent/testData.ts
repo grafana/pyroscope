@@ -5,7 +5,7 @@ const TestData = {
     numTicks: 0,
     sampleRate: 0,
     units: 'samples' as const,
-    spyName: '',
+    spyName: 'unknown' as const,
     format: 'single' as const,
     version: 0,
   },
@@ -14,6 +14,7 @@ const TestData = {
     rangeMin: 0,
     format: 'single' as const,
     numTicks: 988,
+    maxSelf: 988,
     sampleRate: 100,
     names: [
       'total',
@@ -34,7 +35,7 @@ const TestData = {
     units: 'samples' as const,
     fitMode: 'HEAD',
 
-    spyName: 'gospy',
+    spyName: 'gospy' as const,
     version: 1,
   },
   ComplexTree: {
@@ -359,7 +360,7 @@ const TestData = {
     ],
     numTicks: 178,
     maxSelf: 16,
-    spyName: 'gospy',
+    spyName: 'gospy' as const,
     sampleRate: 100,
     units: 'samples' as const,
     format: 'single' as const,
@@ -413,7 +414,7 @@ const TestData = {
     ],
     numTicks: 1978,
     maxSelf: 604,
-    spyName: 'gospy',
+    spyName: 'gospy' as const,
     sampleRate: 100,
     units: 'samples' as const,
     format: 'double' as const,

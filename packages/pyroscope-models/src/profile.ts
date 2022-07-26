@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SpyNameSchema } from './spyName';
 
 export const FlamebearerSchema = z.object({
   names: z.array(z.string().nonempty()),
@@ -17,6 +18,7 @@ const UnitsSchema = z.preprocess((u) => {
     'bytes',
     'lock_samples',
     'lock_nanoseconds',
+    'trace_samples',
   ];
   if (typeof u === 'string') {
     if (units.includes(u)) {
@@ -24,7 +26,7 @@ const UnitsSchema = z.preprocess((u) => {
     }
   }
   return '';
-}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', '']));
+}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', 'trace_samples', '']));
 
 export const MetadataSchema = z.object({
   // Optional fields since adhoc may be missing them
@@ -39,9 +41,7 @@ export const MetadataSchema = z.object({
 
   format: z.enum(['single', 'double']),
   sampleRate: z.number(),
-  spyName: z
-    .enum(['dotnetspy', 'ebpfspy', 'gospy', 'phpspy', 'pyspy', 'rbspy'])
-    .or(z.string()),
+  spyName: SpyNameSchema,
 
   units: UnitsSchema,
 });

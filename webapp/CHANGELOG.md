@@ -3,6 +3,237 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.21.14](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.13...@pyroscope/webapp@1.21.14) (2022-07-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.13](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.12...@pyroscope/webapp@1.21.13) (2022-07-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.12](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.11...@pyroscope/webapp@1.21.12) (2022-07-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.11](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.10...@pyroscope/webapp@1.21.11) (2022-07-20)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.10](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.9...@pyroscope/webapp@1.21.10) (2022-07-20)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.8...@pyroscope/webapp@1.21.9) (2022-07-20)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.7...@pyroscope/webapp@1.21.8) (2022-07-19)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.6...@pyroscope/webapp@1.21.7) (2022-07-19)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.5...@pyroscope/webapp@1.21.6) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.4...@pyroscope/webapp@1.21.5) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.3...@pyroscope/webapp@1.21.4) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.2...@pyroscope/webapp@1.21.3) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.1...@pyroscope/webapp@1.21.2) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.0...@pyroscope/webapp@1.21.1) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.21.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.20.0...@pyroscope/webapp@1.21.0) (2022-07-15)
+
+
+### Features
+
+* update right-click context menu ([#1259](https://github.com/pyroscope-io/pyroscope/issues/1259)) ([8aea02f](https://github.com/pyroscope-io/pyroscope/commit/8aea02f56320daacfd753d73db6936dcc7cdaef8))
+
+
+
+
+
+# [1.20.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.19.3...@pyroscope/webapp@1.20.0) (2022-07-13)
+
+
+### Features
+
+* add new tooltip design ([#1246](https://github.com/pyroscope-io/pyroscope/issues/1246)) ([8345168](https://github.com/pyroscope-io/pyroscope/commit/83451683d131671771b0e97e052068b08bfe35bd))
+
+
+
+
+
+## [1.19.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.19.2...@pyroscope/webapp@1.19.3) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.19.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.19.1...@pyroscope/webapp@1.19.2) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.19.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.19.0...@pyroscope/webapp@1.19.1) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.19.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.5...@pyroscope/webapp@1.19.0) (2022-07-13)
+
+
+### Features
+
+* adds support for group-by queries on the backend ([#1244](https://github.com/pyroscope-io/pyroscope/issues/1244)) ([c52f0e4](https://github.com/pyroscope-io/pyroscope/commit/c52f0e4fdc08feced533d60b9daf0c21c565381c))
+
+
+
+
+
+## [1.18.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.4...@pyroscope/webapp@1.18.5) (2022-07-12)
+
+
+### Bug Fixes
+
+* **frontend:** fix latest version checks ([#1243](https://github.com/pyroscope-io/pyroscope/issues/1243)) ([293078a](https://github.com/pyroscope-io/pyroscope/commit/293078a1bf6e8b8aa0a7e436faaa77bacaaa4b56))
+
+
+
+
+
+## [1.18.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.3...@pyroscope/webapp@1.18.4) (2022-07-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.18.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.2...@pyroscope/webapp@1.18.3) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.18.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.1...@pyroscope/webapp@1.18.2) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.18.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.18.0...@pyroscope/webapp@1.18.1) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.18.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.5...@pyroscope/webapp@1.18.0) (2022-07-11)
+
+
+### Features
+
+* **flamegraph:** Add support for visualizing traces ([#1233](https://github.com/pyroscope-io/pyroscope/issues/1233)) ([b15d094](https://github.com/pyroscope-io/pyroscope/commit/b15d094ebb06592a406b4b73485c0f316c411b08))
+
+
+
+
+
+## [1.17.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.4...@pyroscope/webapp@1.17.5) (2022-07-09)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.17.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.17.3...@pyroscope/webapp@1.17.4) (2022-07-07)
 
 **Note:** Version bump only for package @pyroscope/webapp

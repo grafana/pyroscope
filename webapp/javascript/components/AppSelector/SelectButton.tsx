@@ -67,6 +67,7 @@ const SelectButton = ({
       type="button"
       onClick={onClick}
       className={cx({ button: true, isSelected })}
+      title={name}
     >
       <div>
         <Icon isFolder={isFolder} isSelected={isSelected} />

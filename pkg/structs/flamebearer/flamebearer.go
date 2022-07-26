@@ -32,7 +32,8 @@ type FlamebearerProfileV1 struct {
 	// required: true
 	Metadata FlamebearerMetadataV1 `json:"metadata"`
 	// Timeline associated to the profile, used for continuous profiling only.
-	Timeline *FlamebearerTimelineV1 `json:"timeline"`
+	Timeline *FlamebearerTimelineV1            `json:"timeline"`
+	Groups   map[string]*FlamebearerTimelineV1 `json:"groups"`
 	// Number of samples in the left / base profile. Only used in "double" format.
 	LeftTicks uint64 `json:"leftTicks,omitempty"`
 	// Number of samples in the right / diff profile. Only used in "double" format.
@@ -108,9 +109,18 @@ func NewProfile(name string, output *storage.GetOutput, maxNodes int) Flamebeare
 			Flamebearer: newFlambearer(fb),
 			Metadata:    newMetadata(name, fb.Format, output),
 			Timeline:    NewTimeline(output.Timeline),
+			Groups:      convertGroups(output.Groups),
 		},
 		Telemetry: output.Telemetry,
 	}
+}
+
+func convertGroups(v map[string]*segment.Timeline) map[string]*FlamebearerTimelineV1 {
+	res := make(map[string]*FlamebearerTimelineV1)
+	for k, v := range v {
+		res[k] = NewTimeline(v)
+	}
+	return res
 }
 
 func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes int) (FlamebearerProfile, error) {

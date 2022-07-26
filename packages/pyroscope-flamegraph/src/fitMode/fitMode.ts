@@ -102,7 +102,7 @@ export function fitToCanvasRect({
  * or an empty object if not applicable.
  * @param {FitModes} mode - The mode
  */
-export function fitIntoTableCell(mode: FitModes) {
+export function fitIntoTableCell(mode: FitModes): React.CSSProperties {
   switch (mode) {
     case TailMode:
       return {
