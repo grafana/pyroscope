@@ -13,9 +13,9 @@ function Legend({ groups }: LegendProps) {
       {groups.map(
         ({ tagName, color }) =>
           tagName !== '*' && (
-            <div className={styles.tag} key={tagName}>
+            <div className={styles.tagName} key={tagName}>
               <span
-                className={styles.color}
+                className={styles.tagColor}
                 style={{ backgroundColor: color?.toString() }}
               />
               <span>{tagName}</span>

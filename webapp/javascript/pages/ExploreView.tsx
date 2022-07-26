@@ -9,7 +9,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@webapp/components/TimelineChartWrapper';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -28,24 +28,6 @@ import {
 import { queryToAppName } from '@webapp/models/query';
 
 import styles from './ExploreView.module.scss';
-
-const timelineSeriesColors = [
-  'orange',
-  'yellow',
-  'green',
-  'hotpink',
-  'blueviolet',
-  'lime',
-  'red',
-  'blue',
-  'deepskyblue',
-  'chocolate',
-  'yellowgreen',
-  'lightsalmon',
-  'rosybrown',
-  'maroon',
-  'orangered',
-];
 
 function ExploreView() {
   const { offset } = useTimeZone();
@@ -103,7 +85,7 @@ function ExploreView() {
             acc.push({
               tagName,
               data,
-              color: Color(timelineSeriesColors[index]),
+              color: Color(DefaultPalette.timelineSeriesColors[index]),
             });
 
             return acc;
@@ -237,7 +219,7 @@ function Table({
                 ) : (
                   <div className={styles.tagName}>
                     <span
-                      className={styles.color}
+                      className={styles.tagColor}
                       style={{ backgroundColor: color?.toString() }}
                     />
                     {tagName}
