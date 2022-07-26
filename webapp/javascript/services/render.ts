@@ -100,8 +100,7 @@ export async function renderDiff(
   );
 }
 
-interface renderExploreProps
-  extends Omit<renderSingleProps, 'refreshToken' | 'maxNodes'> {
+interface renderExploreProps extends Omit<renderSingleProps, 'maxNodes'> {
   groupBy: string;
 }
 

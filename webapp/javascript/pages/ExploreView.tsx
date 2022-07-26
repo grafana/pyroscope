@@ -34,7 +34,9 @@ function ExploreView() {
   const { colorMode } = useColorMode();
   const dispatch = useAppDispatch();
 
-  const { from, until, exploreView } = useAppSelector(selectContinuousState);
+  const { from, until, exploreView, refreshToken } = useAppSelector(
+    selectContinuousState
+  );
   const { query } = useAppSelector(selectQueries);
   const tags = useAppSelector(selectAppTags(query));
   const appName = queryToAppName(query);
@@ -62,7 +64,7 @@ function ExploreView() {
       return () => fetchData.abort('cancel');
     }
     return undefined;
-  }, [from, until, query, groupByTag]);
+  }, [from, until, query, groupByTag, refreshToken]);
 
   const getGroupsData = (): {
     groupsData: TimelineGroupData[];

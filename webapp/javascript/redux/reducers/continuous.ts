@@ -266,6 +266,7 @@ export const fetchExploreView = createAsyncThunk<
       from: state.continuous.from,
       until: state.continuous.until,
       groupBy: state.continuous.exploreView.groupByTag,
+      refreshToken: state.continuous.refreshToken,
     },
     exploreViewAbortController
   );
