@@ -87,7 +87,7 @@ function ExploreView() {
             acc.push({
               tagName,
               data,
-              color: Color(DefaultPalette.timelineSeriesColors[index]),
+              color: Color(DefaultPalette.colors[index]),
             });
 
             return acc;

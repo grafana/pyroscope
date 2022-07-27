@@ -35,7 +35,6 @@ describe('NewDiffColor with white-to-black example palette', () => {
         goodColor: Color('white'),
         neutralColor: Color('grey'),
         badColor: Color('black'),
-        timelineSeriesColors: [],
       });
 
       expect(color(a).rgb().toString()).toBe(expected);

@@ -8,7 +8,6 @@ export interface FlamegraphPalette {
   badColor: Color;
 
   colors: Color[];
-  timelineSeriesColors: string[];
 }
 
 export const DefaultPalette: FlamegraphPalette = {
@@ -46,24 +45,6 @@ export const DefaultPalette: FlamegraphPalette = {
     Color.rgb(81, 149, 206),
     Color.rgb(214, 131, 206),
     Color.rgb(128, 110, 183),
-  ],
-
-  timelineSeriesColors: [
-    'orange',
-    'yellow',
-    'green',
-    'hotpink',
-    'blueviolet',
-    'lime',
-    'red',
-    'blue',
-    'deepskyblue',
-    'chocolate',
-    'yellowgreen',
-    'lightsalmon',
-    'rosybrown',
-    'maroon',
-    'orangered',
   ],
 };
 
