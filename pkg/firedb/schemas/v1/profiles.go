@@ -11,7 +11,7 @@ import (
 
 var (
 	stringRef   = parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)
-	pprofLabels = parquet.Repeated(fireparquet.Group{
+	pprofLabels = parquet.List(fireparquet.Group{
 		fireparquet.NewGroupField("Key", stringRef),
 		fireparquet.NewGroupField("Str", parquet.Optional(stringRef)),
 		fireparquet.NewGroupField("Num", parquet.Optional(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
@@ -19,27 +19,27 @@ var (
 	})
 	sampleField = fireparquet.Group{
 		fireparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("Values", parquet.Repeated(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
+		fireparquet.NewGroupField("Values", parquet.List(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
 		fireparquet.NewGroupField("Labels", pprofLabels),
 	}
 	profilesSchema = parquet.NewSchema("Profile", fireparquet.Group{
 		fireparquet.NewGroupField("ID", parquet.UUID()),
-		fireparquet.NewGroupField("SeriesRefs", parquet.Repeated(parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked))),
-		fireparquet.NewGroupField("Samples", parquet.Repeated(sampleField)),
-		fireparquet.NewGroupField("DropFrames", stringRef),
-		fireparquet.NewGroupField("KeepFrames", stringRef),
+		fireparquet.NewGroupField("SeriesRefs", parquet.List(parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked))),
+		fireparquet.NewGroupField("Samples", parquet.List(sampleField)),
+		fireparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
+		fireparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
 		fireparquet.NewGroupField("TimeNanos", parquet.Timestamp(parquet.Nanosecond)),
-		fireparquet.NewGroupField("DurationNanos", parquet.Int(64)),
-		fireparquet.NewGroupField("Period", parquet.Int(64)),
-		fireparquet.NewGroupField("Comments", parquet.Repeated(stringRef)),
-		fireparquet.NewGroupField("DefaultSampleType", parquet.Int(64)),
+		fireparquet.NewGroupField("DurationNanos", parquet.Optional(parquet.Int(64))),
+		fireparquet.NewGroupField("Period", parquet.Optional(parquet.Int(64))),
+		fireparquet.NewGroupField("Comments", parquet.List(stringRef)),
+		fireparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
 )
 
 type Sample struct {
 	StacktraceID uint64             `parquet:",delta"`
-	Values       []int64            `parquet:","`
-	Labels       []*profilev1.Label `parquet:","`
+	Values       []int64            `parquet:",list"`
+	Labels       []*profilev1.Label `parquet:",list"`
 }
 
 type Profile struct {
@@ -47,28 +47,28 @@ type Profile struct {
 	ID uuid.UUID `parquet:",uuid"`
 
 	// SeriesRefs reference the underlying series in the TSDB index
-	SeriesRefs []model.Fingerprint `parquet:","`
+	SeriesRefs []model.Fingerprint `parquet:",list"`
 
 	// The set of samples recorded in this profile.
-	Samples []*Sample `parquet:","`
+	Samples []*Sample `parquet:",list"`
 
 	// frames with Function.function_name fully matching the following
 	// regexp will be dropped from the samples, along with their successors.
-	DropFrames int64 `parquet:","` // Index into string table.
+	DropFrames int64 `parquet:",optional"` // Index into string table.
 	// frames with Function.function_name fully matching the following
 	// regexp will be kept, even if it matches drop_frames.
-	KeepFrames int64 `parquet:","` // Index into string table.
+	KeepFrames int64 `parquet:",optional"` // Index into string table.
 	// Time of collection (UTC) represented as nanoseconds past the epoch.
 	TimeNanos int64 `parquet:",delta,timestamp(nanosecond)"`
 	// Duration of the profile, if a duration makes sense.
-	DurationNanos int64 `parquet:",delta"`
+	DurationNanos int64 `parquet:",delta,optional"`
 	// The number of events between sampled occurrences.
-	Period int64 `parquet:","`
+	Period int64 `parquet:",optional"`
 	// Freeform text associated to the profile.
-	Comment []int64 `parquet:"Comments,"` // Indices into string table.
+	Comments []int64 `parquet:",list"` // Indices into string table.
 	// Index into the string table of the type of the preferred sample
 	// value. If unset, clients should default to the last sample value.
-	DefaultSampleType int64 `parquet:","`
+	DefaultSampleType int64 `parquet:",optional"`
 }
 
 type ProfilePersister struct{}
