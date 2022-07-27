@@ -11,7 +11,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
-	"github.com/korniltsev/gobpf/pkg/cpuonline"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
+
 	"golang.org/x/sys/unix"
 	"sync"
 	"time"

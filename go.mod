@@ -36,7 +36,6 @@ require (
 	github.com/kardianos/service v1.2.0
 	github.com/kisielk/godepgraph v0.0.0-20190626013829-57a7e4a651a9
 	github.com/klauspost/compress v1.13.6
-	github.com/korniltsev/gobpf v0.2.1-0.20220725093336-d72d52187e7c
 	github.com/kyoh86/richgo v0.3.3
 	github.com/mattn/goreman v0.3.5
 	github.com/mgechev/revive v1.0.3
@@ -118,7 +117,6 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/ianlancetaylor/demangle v0.0.0-20220319035150-800ac71e25c2 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.3 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

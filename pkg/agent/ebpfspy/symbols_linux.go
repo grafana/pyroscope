@@ -11,11 +11,7 @@ import (
 )
 
 /*
-#cgo CFLAGS: -I/usr/include/bcc/compat
-#cgo LDFLAGS: -lbcc
-#include <bcc/bcc_common.h>
-#include <bcc/libbpf.h>
-#include <bcc/bcc_syms.h>
+#include "bcc_syms/bcc_syms.h"
 */
 import "C"
 

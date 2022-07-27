@@ -1,0 +1,1 @@
+TODO write how to build locally with shared libs

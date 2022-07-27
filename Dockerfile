@@ -68,6 +68,21 @@ ARG EXTRA_METADATA=""
 
 RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
+
+
+#       _            __
+#      | |          / _|
+#   ___| |__  _ __ | |_
+#  / _ \ '_ \| '_ \|  _|
+# |  __/ |_) | |_) | |
+#  \___|_.__/| .__/|_|
+#            | |
+#            |_|
+FROM alpine:3.12 as ebpf-builder
+RUN apk add cmake make binutils gcc g++ clang musl-dev linux-headers zlib-dev elfutils-dev libelf-static zlib-static git openssh
+ADD pkg/agent/ebpfspy/bpf/Makefile pkg/agent/ebpfspy/bpf/profile.bpf.c /ebpfspy/
+RUN cd /ebpfspy && make libs/libbpf libs/bcc-syms profile.bpf.o
+
 #              _
 #             | |
 #   __ _  ___ | | __ _ _ __   __ _
@@ -84,22 +99,8 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 # see https://github.com/pyroscope-io/pyroscope/pull/372 for more context
 FROM pyroscope/golang:1.18.0-alpine3.12 AS go-builder
 
-RUN apk add make gcc pkgconfig zlib-dev elfutils-dev libelf-static zlib-static musl-dev linux-headers cmake g++  llvm git tar git build-base iperf linux-headers llvm10-dev llvm10-static \
-  clang-dev clang-static cmake python3 flex-dev bison luajit-dev elfutils-dev \
-  zlib-dev
-
-RUN wget https://github.com/libbpf/libbpf/archive/refs/tags/v0.8.1.tar.gz \
-	&& tar -zxf v0.8.1.tar.gz \
-	&& cd libbpf-0.8.1/src \
-	&& make -j32 install
-
-
-
-
-RUN git clone --branch v0.24.0 https://github.com/iovisor/bcc.git
-RUN mkdir bcc/build && cd bcc/build && cmake -DENABLE_EXAMPLES=OFF .. && make -j32 && make install
-
-RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
+RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash zlib-dev elfutils-dev libelf-static zlib-static \
+    linux-headers
 RUN apk upgrade binutils
 RUN apk upgrade elfutils
 
@@ -112,6 +113,8 @@ COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
 COPY --from=phpspy-builder /var/www/html/third_party/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
+COPY --from=ebpf-builder /ebpfspy/libs pkg/agent/ebpfspy/bpf/libs
+COPY --from=ebpf-builder /ebpfspy/profile.bpf.o pkg/agent/ebpfspy/bpf/profile.bpf.o
 COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
