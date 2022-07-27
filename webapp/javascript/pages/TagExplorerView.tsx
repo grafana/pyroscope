@@ -26,6 +26,7 @@ import {
   fetchTagExplorerViewProfile,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
+import { calculateMean, calculateStdDeviation } from './math';
 
 import styles from './TagExplorerView.module.scss';
 
@@ -168,22 +169,6 @@ function TagExplorerView() {
       )}
     </div>
   );
-}
-
-export function calculateMean(arr: number[]) {
-  return arr.reduce((acc, b) => acc + b, 0) / arr.length;
-}
-
-export function calculateStdDeviation(array: number[], mean: number) {
-  const stdDeviation = Math.sqrt(
-    array.reduce((acc, b) => {
-      const dev = b - mean;
-
-      return acc + dev ** 2;
-    }, 0) / array.length
-  );
-
-  return stdDeviation;
 }
 
 function Table({
