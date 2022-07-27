@@ -10,18 +10,15 @@ interface LegendProps {
 function Legend({ groups }: LegendProps) {
   return (
     <div className={styles.legend}>
-      {groups.map(
-        ({ tagName, color }) =>
-          tagName !== '*' && (
-            <div className={styles.tagName} key={tagName}>
-              <span
-                className={styles.tagColor}
-                style={{ backgroundColor: color?.toString() }}
-              />
-              <span>{tagName}</span>
-            </div>
-          )
-      )}
+      {groups.map(({ tagName, color }) => (
+        <div className={styles.tagName} key={tagName}>
+          <span
+            className={styles.tagColor}
+            style={{ backgroundColor: color?.toString() }}
+          />
+          <span>{tagName}</span>
+        </div>
+      ))}
     </div>
   );
 }

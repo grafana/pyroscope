@@ -195,9 +195,6 @@ function Table({
             <th>std deviation samples</th>
             <th>min samples</th>
             <th>max samples</th>
-            <th>50% tbd</th>
-            <th>max tbd</th>
-            <th>cost tbd</th>
           </tr>
         </thead>
         <tbody>
@@ -211,26 +208,19 @@ function Table({
                 key={tagName}
               >
                 <td>
-                  {tagName === '*' ? (
-                    appName
-                  ) : (
-                    <div className={styles.tagName}>
-                      <span
-                        className={styles.tagColor}
-                        style={{ backgroundColor: color?.toString() }}
-                      />
-                      {tagName}
-                    </div>
-                  )}
+                  <div className={styles.tagName}>
+                    <span
+                      className={styles.tagColor}
+                      style={{ backgroundColor: color?.toString() }}
+                    />
+                    {tagName}
+                  </div>
                 </td>
                 <td>{data.samples.length}</td>
                 <td>{mean.toFixed(2)}</td>
                 <td>{calculateStdDeviation(data.samples, mean).toFixed(2)}</td>
                 <td>{Math.min(...data.samples)}</td>
                 <td>{Math.max(...data.samples)}</td>
-                <td>50,987 mock</td>
-                <td>100,000 mock</td>
-                <td>$ 250 / hr mock</td>
               </tr>
             );
           })}
