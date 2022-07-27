@@ -201,12 +201,6 @@ function Table({
     <>
       <div className={styles.tableDescription}>
         <span className={styles.title}>{appName} Descriptive Statistics</span>
-        <div>
-          <button>Export</button>
-          <button>Single</button>
-          <button>Comparison</button>
-          <button>Diff</button>
-        </div>
       </div>
       <table className={styles.tagExplorerTable}>
         <thead>
