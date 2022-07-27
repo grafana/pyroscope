@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "name": "pyroscope-oss",
   "private": true,
-  "version": "0.22.0",
+  "version": "0.23.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "start": "lerna-watch @pyroscope/webapp",
-    "bootstrap": "lerna bootstrap",
+    "bootstrap": "lerna bootstrap && husky install",
     "web-postinstall": "scripts/web-postinstall.js",
     "postinstall": "yarn run web-postinstall",
     "dev": "yarn run dev:webapp",
@@ -60,7 +60,6 @@
     "cy:datasource:ci": "cypress run --config-file packages/pyroscope-datasource-plugin/cypress.json",
     "cy:datasource:ss": "./scripts/cypress-screenshots.sh --config-file packages/pyroscope-datasource-plugin/cypress.json",
     "cy:datasource:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh --config-file packages/pyroscope-datasource-plugin/cypress.json",
-    "prepare": "husky install",
     "lint-staged": "lint-staged",
     "size": "size-limit",
     "storybook": "start-storybook -p 6006",
@@ -120,6 +119,7 @@
     "eslint-config-airbnb-typescript-prettier": "^4.2.0",
     "eslint-config-prettier": "^7.1.0",
     "eslint-import-resolver-lerna": "^2.0.0",
+    "eslint-import-resolver-typescript": "^2.0.0",
     "eslint-plugin-css-modules": "^2.11.0",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-import": "~2.26.0",
@@ -255,7 +255,7 @@
     "ts-node": "^10.4.0",
     "url-loader": "^4.1.1",
     "webpack-cli": "~4.9.2",
-    "zod": "^3.11.6"
+    "zod": "3.17.3"
   },
   "engines": {
     "node": ">=14.17.0"

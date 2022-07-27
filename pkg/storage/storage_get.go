@@ -71,8 +71,8 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	logger.Debug("storage.Get")
 	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
 
-	// Profiles can be fetched by ID using query.
-	// If a query includes 'profile_id' matcher others are ignored.
+	// Profiles can be fetched by ID using query – this should be deprecated,
+	// and GetExemplar should be used instead.
 	if gi.Query != nil {
 		out, ok, err := s.tryGetExemplar(ctx, gi)
 		if err != nil {
@@ -176,42 +176,30 @@ func (s *Storage) tryGetExemplar(ctx context.Context, gi *GetInput) (*GetOutput,
 		return nil, false, nil
 	}
 
-	var (
-		t = tree.New()
-		l = make(map[string]string)
-	)
-	err := s.exemplars.fetch(ctx, gi.Query.AppName, ids, func(e exemplarEntry) error {
-		t.Merge(e.Tree)
-		l = e.Labels
-		return nil
+	m, err := s.MergeExemplars(ctx, MergeExemplarsInput{
+		AppName:    gi.Query.AppName,
+		StartTime:  gi.StartTime,
+		EndTime:    gi.EndTime,
+		ProfileIDs: ids,
 	})
 	if err != nil {
 		return nil, true, err
 	}
 
-	o := GetOutput{
+	out := GetOutput{
+		Tree:  m.Tree,
+		Count: m.Count,
+
 		Timeline: segment.GenerateTimeline(gi.StartTime, gi.EndTime),
 		Groups:   make(map[string]*segment.Timeline),
-		Tree:     t,
-		// Defaults: actual values should be loaded from the segment metadata.
-		SpyName:         "gospy",
-		Units:           "samples",
-		AggregationType: "sum",
-		SampleRate:      100,
+
+		SpyName:         m.SpyName,
+		SampleRate:      m.SampleRate,
+		Units:           m.Units,
+		AggregationType: m.AggregationType,
 	}
 
-	// Exemplar labels map does not contain the app name.
-	l["__name__"] = gi.Query.AppName
-	r, ok := s.segments.Lookup(segment.NewKey(l).Normalized())
-	if ok {
-		seg := r.(*segment.Segment)
-		o.SpyName = seg.SpyName()
-		o.Units = seg.Units()
-		o.SampleRate = seg.SampleRate()
-		o.AggregationType = seg.AggregationType()
-	}
-
-	return &o, true, nil
+	return &out, true, nil
 }
 
 func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.Key {

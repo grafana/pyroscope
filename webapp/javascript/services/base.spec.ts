@@ -116,9 +116,7 @@ describe('Base HTTP', () => {
       const res = await request('/test');
 
       expect(res.error).toBeInstanceOf(RequestNotOkWithErrorsList);
-      expect(res.error.message).toBe(
-        'Server returned with multiple errors: error1, error2'
-      );
+      expect(res.error.message).toBe('Error(s) were found: "error1", "error2"');
     });
 
     it(`Returns an error message if available`, async () => {

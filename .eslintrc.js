@@ -109,6 +109,8 @@ module.exports = {
 
     // makes it easier to check what are local variables computated dynamically and what are static props
     'react/destructuring-assignment': 'off',
+
+    '@typescript-eslint/switch-exhaustiveness-check': 'error',
   },
   env: {
     browser: true,
@@ -120,8 +122,8 @@ module.exports = {
       'eslint-import-resolver-lerna': {
         packages: path.resolve(__dirname, 'packages'),
       },
-      webpack: {
-        config: path.join(__dirname, 'scripts/webpack/webpack.common.ts'),
+      typescript: {
+        project: 'tsconfig.json',
       },
     },
   },

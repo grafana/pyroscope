@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef, RefObject } from 'react';
 import clsx from 'clsx';
+import type Color from 'color';
+import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
-import Color from 'color';
-import { Maybe } from 'true-myth';
+import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter } from './format/format';
 import {
   colorBasedOnPackageName,
@@ -11,8 +12,8 @@ import {
 } from './FlameGraph/FlameGraphComponent/color';
 import { fitIntoTableCell, FitModes } from './fitMode/fitMode';
 import { isMatch } from './search';
+import type { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 import styles from './ProfilerTable.module.scss';
-import { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 
 const zero = (v?: number) => v || 0;
 
@@ -199,6 +200,7 @@ const tableFormatDiff = ((def) => ({
 }))(tableFormatDiffDef);
 
 function Table({
+  tableBodyRef,
   flamebearer,
   updateSortBy,
   sortBy,
@@ -241,7 +243,7 @@ function Table({
           )}
         </tr>
       </thead>
-      <tbody>
+      <tbody ref={tableBodyRef}>
         <TableBody
           flamebearer={flamebearer}
           sortBy={sortBy}
@@ -269,7 +271,7 @@ const TableBody = ({
   highlightQuery,
   palette,
   selectedItem,
-}: Omit<ProfilerTableProps, 'updateSortBy'>) => {
+}: Omit<ProfilerTableProps, 'updateSortBy' | 'tableBodyRef'>) => {
   const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
   const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
@@ -315,11 +317,7 @@ const TableBody = ({
     <td>
       <button className="table-item-button">
         <span className="color-reference" style={style} />
-        <div
-          className="symbol-name"
-          title={x.name}
-          style={fitIntoTableCell(fitMode)}
-        >
+        <div className="symbol-name" style={fitIntoTableCell(fitMode)}>
           {x.name}
         </div>
       </button>
@@ -332,20 +330,17 @@ const TableBody = ({
     style: React.CSSProperties
   ) => (
     <tr
+      data-row={`${x.name};${x.self};${x.total};${x.type}`}
       key={`${x.name}${renderID}`}
       onClick={() => handleTableItemClick(x)}
       className={`${isRowSelected(x.name) && styles.rowSelected}`}
     >
       {nameCell(x, style)}
       <td style={backgroundImageStyle(x.self, maxSelf, color)}>
-        <span title={formatter.format(x.self, sampleRate)}>
-          {formatter.format(x.self, sampleRate)}
-        </span>
+        {formatter.format(x.self, sampleRate)}
       </td>
       <td style={backgroundImageStyle(x.total, numTicks, color)}>
-        <span title={formatter.format(x.total, sampleRate)}>
-          {formatter.format(x.total, sampleRate)}
-        </span>
+        {formatter.format(x.total, sampleRate)}
       </td>
     </tr>
   );
@@ -537,6 +532,8 @@ export interface ProfilerTableProps {
   highlightQuery: string;
   palette: FlamegraphPalette;
   selectedItem: Maybe<string>;
+
+  tableBodyRef: RefObject<HTMLTableSectionElement>;
 }
 
 export default function ProfilerTable({
@@ -550,19 +547,30 @@ export default function ProfilerTable({
   highlightQuery,
   palette,
   selectedItem,
-}: ProfilerTableProps) {
+}: Omit<ProfilerTableProps, 'tableBodyRef'>) {
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null);
+
   return (
-    <Table
-      flamebearer={flamebearer}
-      updateSortBy={updateSortBy}
-      sortBy={sortBy}
-      sortByDirection={sortByDirection}
-      viewDiff={viewDiff}
-      fitMode={fitMode}
-      highlightQuery={highlightQuery}
-      handleTableItemClick={handleTableItemClick}
-      palette={palette}
-      selectedItem={selectedItem}
-    />
+    <>
+      <Table
+        tableBodyRef={tableBodyRef}
+        flamebearer={flamebearer}
+        updateSortBy={updateSortBy}
+        sortBy={sortBy}
+        sortByDirection={sortByDirection}
+        viewDiff={viewDiff}
+        fitMode={fitMode}
+        highlightQuery={highlightQuery}
+        handleTableItemClick={handleTableItemClick}
+        palette={palette}
+        selectedItem={selectedItem}
+      />
+      <TableTooltip
+        tableBodyRef={tableBodyRef}
+        numTicks={flamebearer.numTicks}
+        sampleRate={flamebearer.sampleRate}
+        units={flamebearer.units}
+      />
+    </>
   );
 }

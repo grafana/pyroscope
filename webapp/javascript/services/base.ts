@@ -33,7 +33,7 @@ export class RequestIncompleteError extends CustomError {
 // When the server returns a list of errors
 export class RequestNotOkWithErrorsList extends CustomError {
   public constructor(public code: number, public errors: string[]) {
-    super(`Server returned with multiple errors: ${errors.join(', ')}`);
+    super(`Error(s) were found: ${errors.map((e) => `"${e}"`).join(', ')}`);
   }
 }
 

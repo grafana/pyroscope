@@ -22,7 +22,7 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
-import { createFF, Flamebearer } from '@pyroscope/models/src';
+import { createFF, Flamebearer, SpyName } from '@pyroscope/models/src';
 import {
   formatPercent,
   getFormatter,
@@ -240,7 +240,9 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
           selectedLevel,
           highlightModeOn,
           isHighlighted,
-          spyName,
+          // keep type narrow https://stackoverflow.com/q/54333982
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          spyName: spyName as SpyName,
           palette,
         };
 
@@ -368,7 +370,7 @@ type getColorCfg = {
   highlightModeOn: boolean;
   isHighlighted: boolean;
   names: string[];
-  spyName: string;
+  spyName: SpyName;
   palette: FlamegraphPalette;
 };
 

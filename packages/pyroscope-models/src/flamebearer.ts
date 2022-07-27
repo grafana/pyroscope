@@ -1,3 +1,4 @@
+import { SpyName } from './spyName';
 /**
  * @deprecated one should use the Profile model
  */
@@ -31,14 +32,7 @@ export type Flamebearer = {
     | 'lock_nanoseconds'
     | 'trace_samples'
     | '';
-  spyName:
-    | 'dotneyspy'
-    | 'ebpfspy'
-    | 'gospy'
-    | 'phpspy'
-    | 'pyspy'
-    | 'rbspy'
-    | string;
+  spyName: SpyName;
   // format: 'double' | 'single';
   //  leftTicks?: number;
   //  rightTicks?: number;
