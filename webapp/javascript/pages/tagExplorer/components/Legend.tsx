@@ -1,6 +1,6 @@
 import React from 'react';
 
-import type { TimelineGroupData } from './TimelineChartWrapper';
+import type { TimelineGroupData } from '@webapp/components/TimelineChartWrapper';
 import styles from './Legend.module.scss';
 
 interface LegendProps {

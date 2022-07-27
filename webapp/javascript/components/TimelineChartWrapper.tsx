@@ -6,8 +6,8 @@ import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import { formatAsOBject } from '@webapp/util/formatDate';
+import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import TimelineChart from './TimelineChart';
-import Legend from './Legend';
 import styles from './TimelineChartWrapper.module.css';
 
 export interface TimelineGroupData {
