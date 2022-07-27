@@ -161,7 +161,7 @@ function TagExplorerView() {
           />
         )}
       </Box>
-      {groupByTagValue && (
+      {(groupByTag === '' || groupByTagValue) && (
         <Box>
           <FlamegraphRenderer
             showCredit={false}
@@ -213,7 +213,12 @@ function Table({
             return (
               <tr
                 className={isTagSelected(tagName) ? styles.activeTagRow : ''}
-                onClick={() => handleGroupByTagValueChange(tagName)}
+                onClick={
+                  // prevent clicking on single "application without tags" group row
+                  tagName !== appName
+                    ? () => handleGroupByTagValueChange(tagName)
+                    : undefined
+                }
                 key={tagName}
               >
                 <td>
