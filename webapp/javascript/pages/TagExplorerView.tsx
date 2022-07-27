@@ -270,6 +270,7 @@ function ExploreHeader({
   handleTagChange: (value: string) => void;
 }) {
   const tagKeys = Object.keys(tags.tags);
+  const dropdownItems = tagKeys.length > 0 ? tagKeys : ['No tags available'];
 
   const handleClick = (e: ClickEvent) => {
     handleTagChange(e.value);
@@ -283,11 +284,11 @@ function ExploreHeader({
       <div className={styles.query}>
         <span className={styles.selectName}>grouped by</span>
         <Dropdown
-          label="tags"
+          label="select tag"
           value={selectedTag ? `tag: ${selectedTag}` : 'select tag'}
-          onItemClick={handleClick}
+          onItemClick={tagKeys.length > 0 ? handleClick : undefined}
         >
-          {tagKeys.map((tagName) => (
+          {dropdownItems.map((tagName) => (
             <MenuItem key={tagName} value={tagName}>
               {tagName}
             </MenuItem>
