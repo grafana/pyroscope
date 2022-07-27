@@ -104,7 +104,10 @@ interface renderExploreProps extends Omit<renderSingleProps, 'maxNodes'> {
   groupBy: string;
 }
 
-export type RenderExploreOutput = Required<RenderOutput>;
+export interface RenderExploreOutput {
+  profile: Profile;
+  groups: Groups;
+}
 
 export async function renderExplore(
   props: renderExploreProps,
@@ -131,11 +134,10 @@ export async function renderExplore(
 
   if (parsed.success) {
     const profile = parsed.data;
-    const { timeline, groups } = parsed.data;
+    const { groups } = parsed.data;
 
     return Result.ok({
       profile,
-      timeline,
       groups,
     });
   }

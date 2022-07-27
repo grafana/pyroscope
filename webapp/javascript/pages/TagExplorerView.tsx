@@ -74,16 +74,9 @@ function TagExplorerView() {
     switch (tagExplorerView.type) {
       case 'loaded':
       case 'reloading':
-        if (!tagExplorerView.groups) {
-          return {
-            groupsData: [],
-            activeTagProfile: undefined,
-          };
-        }
-
         const groups = Object.entries(tagExplorerView.groups).reduce(
           (acc, [tagName, data], index) => {
-            if (tagName === '*' || index === 15) return acc;
+            if (index === 15) return acc;
 
             acc.push({
               tagName,
@@ -104,7 +97,7 @@ function TagExplorerView() {
         }
 
         return {
-          groupsData: [{ tagName: '*', data: tagExplorerView.timeline }],
+          groupsData: [],
           activeTagProfile: undefined,
         };
 
@@ -152,8 +145,9 @@ function TagExplorerView() {
         {appName.isJust && (
           <Table
             appName={appName.value}
-            groupsData={groupsData}
+            groupByTag={groupByTag}
             groupByTagValue={groupByTagValue}
+            groupsData={groupsData}
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
         )}
@@ -173,13 +167,15 @@ function TagExplorerView() {
 
 function Table({
   appName,
-  groupsData,
+  groupByTag,
   groupByTagValue,
+  groupsData,
   handleGroupByTagValueChange,
 }: {
   appName: string;
-  groupsData: TimelineGroupData[];
+  groupByTag: string;
   groupByTagValue: string | undefined;
+  groupsData: TimelineGroupData[];
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
   const isTagSelected = (tag: string) => tag === groupByTagValue;
@@ -192,7 +188,8 @@ function Table({
       <table className={styles.tagExplorerTable}>
         <thead>
           <tr>
-            <th>{groupsData[0]?.tagName === '*' ? 'App' : 'Tag'} name</th>
+            {/* when backend returns single group "*", which is "application with no tags" group */}
+            <th>{groupByTag === '' ? 'App' : 'Tag'} name</th>
             <th>Event count</th>
             <th>avg samples</th>
             <th>std deviation samples</th>

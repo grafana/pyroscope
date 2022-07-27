@@ -39,21 +39,18 @@ type TagExplorerView =
       groups: Groups;
       groupByTag: string;
       groupByTagValue: string;
-      timeline: Timeline;
     }
   | {
       type: 'loading';
       groups: Groups;
       groupByTag: string;
       groupByTagValue: string;
-      timeline: Timeline;
     }
   | {
       type: 'loaded';
       groups: Groups;
       groupByTag: string;
       activeTagProfile?: Profile;
-      timeline: Timeline;
       groupByTagValue: string;
     }
   | {
@@ -61,7 +58,6 @@ type TagExplorerView =
       groups: Groups;
       groupByTag: string;
       activeTagProfile?: Profile;
-      timeline: Timeline;
       groupByTagValue: string;
     };
 
@@ -182,11 +178,6 @@ const initialState: ContinuousState = {
     groupByTagValue: '',
     type: 'pristine',
     groups: {},
-    timeline: {
-      startTime: 0,
-      samples: [],
-      durationDelta: 0,
-    },
   },
   appNames: {
     type: 'loaded',
@@ -909,7 +900,7 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
       state.tagExplorerView = {
         ...state.tagExplorerView,
-        ...action.payload,
+        activeTagProfile: action.payload.profile,
         groups: action.payload.groups,
         type: 'loaded',
       };
