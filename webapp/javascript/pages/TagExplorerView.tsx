@@ -117,6 +117,7 @@ function TagExplorerView() {
 
   const handleGroupedByTagChange = (value: string) => {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
+    dispatch(actions.setTagExplorerViewGroupByTagValue(''));
   };
 
   // when there's no groupByTag value backend returns groups with single "*" group,

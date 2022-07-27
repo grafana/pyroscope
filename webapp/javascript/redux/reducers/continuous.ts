@@ -636,7 +636,6 @@ export const continuousSlice = createSlice({
     },
     setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTag = action.payload;
-      state.tagExplorerView.groupByTagValue = '';
     },
     setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
       if (state.tagExplorerView.groupByTagValue === action.payload) {
