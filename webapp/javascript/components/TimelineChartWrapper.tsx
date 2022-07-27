@@ -264,6 +264,7 @@ class TimelineChartWrapper extends React.Component<
           width="100%"
           height={this.props.height || '100px'}
         />
+        {/* hide for single timeline */}
         {timelineGroups && <Legend groups={timelineGroups} />}
       </>
     );

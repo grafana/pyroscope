@@ -119,6 +119,15 @@ function TagExplorerView() {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
   };
 
+  // when there's no groupByTag value backend returns groups with single "*" group,
+  // which is "application without any tag" group. when backend returns multiple groups,
+  // "*" group samples array is filled with zeros (not longer valid application data).
+  // removing "*" group from table data helps to show only relevant data
+  const filteredgGroupsData =
+    groupsData.length === 1
+      ? [{ ...groupsData[0], tagName: appName.unwrapOr('') }]
+      : groupsData.filter((a) => a.tagName !== '*');
+
   return (
     <div className={styles.tagExplorerView}>
       <Toolbar hideTagsBar />
@@ -135,7 +144,7 @@ function TagExplorerView() {
           id="timeline-chart-explore-page"
           timelineA={{ data: undefined }}
           timelineB={{ data: undefined }}
-          timelineGroups={groupsData}
+          timelineGroups={filteredgGroupsData}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
@@ -147,7 +156,7 @@ function TagExplorerView() {
             appName={appName.value}
             groupByTag={groupByTag}
             groupByTagValue={groupByTagValue}
-            groupsData={groupsData}
+            groupsData={filteredgGroupsData}
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
         )}
@@ -188,7 +197,7 @@ function Table({
       <table className={styles.tagExplorerTable}>
         <thead>
           <tr>
-            {/* when backend returns single group "*", which is "application with no tags" group */}
+            {/* when groupByTag is not selected table represents single "application without tags" group */}
             <th>{groupByTag === '' ? 'App' : 'Tag'} name</th>
             <th>Event count</th>
             <th>avg samples</th>
