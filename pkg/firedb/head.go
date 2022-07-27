@@ -293,7 +293,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		KeepFrames:        p.KeepFrames,
 		TimeNanos:         p.TimeNanos,
 		DurationNanos:     p.DurationNanos,
-		Comment:           copySlice(p.Comment),
+		Comments:          copySlice(p.Comment),
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
@@ -307,6 +307,8 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return err
 	}
 	h.index.Add(profile, profilesLabels)
+
+	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(profilesLabels)))
 
 	return nil
 }
