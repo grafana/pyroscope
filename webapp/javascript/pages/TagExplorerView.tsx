@@ -22,19 +22,19 @@ import {
   selectContinuousState,
   selectAppTags,
   TagsState,
-  fetchExploreView,
-  fetchExploreViewProfile,
+  fetchTagExplorerView,
+  fetchTagExplorerViewProfile,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 
-import styles from './ExploreView.module.scss';
+import styles from './TagExplorerView.module.scss';
 
-function ExploreView() {
+function TagExplorerView() {
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
   const dispatch = useAppDispatch();
 
-  const { from, until, exploreView, refreshToken } = useAppSelector(
+  const { from, until, tagExplorerView, refreshToken } = useAppSelector(
     selectContinuousState
   );
   const { query } = useAppSelector(selectQueries);
@@ -48,11 +48,11 @@ function ExploreView() {
     }
   }, [query]);
 
-  const { groupByTag, groupByTagValue } = exploreView;
+  const { groupByTag, groupByTagValue } = tagExplorerView;
 
   useEffect(() => {
     if (from && until && query && groupByTagValue) {
-      const fetchData = dispatch(fetchExploreViewProfile(null));
+      const fetchData = dispatch(fetchTagExplorerViewProfile(null));
       return () => fetchData.abort('cancel');
     }
     return undefined;
@@ -60,7 +60,7 @@ function ExploreView() {
 
   useEffect(() => {
     if (from && until && query) {
-      const fetchData = dispatch(fetchExploreView(null));
+      const fetchData = dispatch(fetchTagExplorerView(null));
       return () => fetchData.abort('cancel');
     }
     return undefined;
@@ -70,17 +70,17 @@ function ExploreView() {
     groupsData: TimelineGroupData[];
     activeTagProfile?: Profile;
   } => {
-    switch (exploreView.type) {
+    switch (tagExplorerView.type) {
       case 'loaded':
       case 'reloading':
-        if (!exploreView.groups) {
+        if (!tagExplorerView.groups) {
           return {
             groupsData: [],
             activeTagProfile: undefined,
           };
         }
 
-        const groups = Object.entries(exploreView.groups).reduce(
+        const groups = Object.entries(tagExplorerView.groups).reduce(
           (acc, [tagName, data], index) => {
             if (tagName === '*' || index === 15) return acc;
 
@@ -98,12 +98,12 @@ function ExploreView() {
         if (groups.length > 0) {
           return {
             groupsData: groups,
-            activeTagProfile: exploreView?.activeTagProfile,
+            activeTagProfile: tagExplorerView?.activeTagProfile,
           };
         }
 
         return {
-          groupsData: [{ tagName: '*', data: exploreView.timeline }],
+          groupsData: [{ tagName: '*', data: tagExplorerView.timeline }],
           activeTagProfile: undefined,
         };
 
@@ -118,21 +118,21 @@ function ExploreView() {
   const { groupsData, activeTagProfile } = getGroupsData();
 
   const handleGroupByTagValueChange = (groupByTagValue: string) => {
-    dispatch(actions.setExploreViewGroupByTagValue(groupByTagValue));
+    dispatch(actions.setTagExplorerViewGroupByTagValue(groupByTagValue));
   };
 
   const handleGroupedByTagChange = (value: string) => {
-    dispatch(actions.setExploreViewGroupByTag(value));
+    dispatch(actions.setTagExplorerViewGroupByTag(value));
   };
 
   return (
-    <div className={styles.exploreView}>
+    <div className={styles.tagExplorerView}>
       <Toolbar hideTagsBar />
       <Box>
         <ExploreHeader
           appName={appName}
           tags={tags}
-          selectedTag={exploreView.groupByTag}
+          selectedTag={tagExplorerView.groupByTag}
           handleTagChange={handleGroupedByTagChange}
         />
         <TimelineChartWrapper
@@ -208,7 +208,7 @@ function Table({
           <button>Diff</button>
         </div>
       </div>
-      <table className={styles.exploreTable}>
+      <table className={styles.tagExplorerTable}>
         <thead>
           <tr>
             <th>{groupsData[0]?.tagName === '*' ? 'App' : 'Tag'} name</th>
@@ -306,4 +306,4 @@ function ExploreHeader({
   );
 }
 
-export default ExploreView;
+export default TagExplorerView;

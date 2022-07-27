@@ -13,7 +13,7 @@ import store, { persistor } from './redux/store';
 import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
-import ExploreView from './pages/ExploreView';
+import TagExplorerView from './pages/TagExplorerView';
 import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
@@ -86,10 +86,10 @@ function App() {
               <ServiceDiscoveryApp />
             </Protected>
           </Route>
-          <Route exact path={PAGES.EXPLORE}>
+          <Route exact path={PAGES.TAG_EXPLORER}>
             <Protected>
               <Continuous>
-                <ExploreView />
+                <TagExplorerView />
               </Continuous>
             </Protected>
           </Route>

@@ -33,7 +33,7 @@ type SingleView =
       profile: Profile;
     };
 
-type ExploreView =
+type TagExplorerView =
   | {
       type: 'pristine';
       groups: Groups;
@@ -135,7 +135,7 @@ interface ContinuousState {
   diffView: DiffView;
   diffView2: DiffView2;
   comparisonView: ComparisonView;
-  exploreView: ExploreView;
+  tagExplorerView: TagExplorerView;
   tags: Tags;
 
   appNames:
@@ -154,8 +154,8 @@ let sideTimelinesAbortController: AbortController | undefined;
 let diffViewAbortController: AbortController | undefined;
 let comparisonSideAbortControllerLeft: AbortController | undefined;
 let comparisonSideAbortControllerRight: AbortController | undefined;
-let exploreViewAbortController: AbortController | undefined;
-let exploreViewProfileAbortController: AbortController | undefined;
+let tagExplorerViewAbortController: AbortController | undefined;
+let tagExplorerViewProfileAbortController: AbortController | undefined;
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -177,7 +177,7 @@ const initialState: ContinuousState = {
     right: { type: 'pristine' },
   },
   tags: {},
-  exploreView: {
+  tagExplorerView: {
     groupByTag: '',
     groupByTagValue: '',
     type: 'pristine',
@@ -247,17 +247,17 @@ export const fetchSingleView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const fetchExploreView = createAsyncThunk<
+export const fetchTagExplorerView = createAsyncThunk<
   RenderExploreOutput,
   null,
   { state: { continuous: ContinuousState } }
->('continuous/exploreView', async (_, thunkAPI) => {
-  if (exploreViewAbortController) {
-    exploreViewAbortController.abort();
+>('continuous/tagExplorerView', async (_, thunkAPI) => {
+  if (tagExplorerViewAbortController) {
+    tagExplorerViewAbortController.abort();
   }
 
-  exploreViewAbortController = new AbortController();
-  thunkAPI.signal = exploreViewAbortController.signal;
+  tagExplorerViewAbortController = new AbortController();
+  thunkAPI.signal = tagExplorerViewAbortController.signal;
 
   const state = thunkAPI.getState();
   const res = await renderExplore(
@@ -265,10 +265,10 @@ export const fetchExploreView = createAsyncThunk<
       query: state.continuous.query,
       from: state.continuous.from,
       until: state.continuous.until,
-      groupBy: state.continuous.exploreView.groupByTag,
+      groupBy: state.continuous.tagExplorerView.groupByTag,
       refreshToken: state.continuous.refreshToken,
     },
-    exploreViewAbortController
+    tagExplorerViewAbortController
   );
 
   if (res.isOk) {
@@ -290,17 +290,17 @@ export const fetchExploreView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const fetchExploreViewProfile = createAsyncThunk<
+export const fetchTagExplorerViewProfile = createAsyncThunk<
   RenderOutput,
   null,
   { state: { continuous: ContinuousState } }
->('continuous/fetchExploreViewProfile', async (_, thunkAPI) => {
-  if (exploreViewProfileAbortController) {
-    exploreViewProfileAbortController.abort();
+>('continuous/fetchTagExplorerViewProfile', async (_, thunkAPI) => {
+  if (tagExplorerViewProfileAbortController) {
+    tagExplorerViewProfileAbortController.abort();
   }
 
-  exploreViewProfileAbortController = new AbortController();
-  thunkAPI.signal = exploreViewProfileAbortController.signal;
+  tagExplorerViewProfileAbortController = new AbortController();
+  thunkAPI.signal = tagExplorerViewProfileAbortController.signal;
 
   const state = thunkAPI.getState();
   const res = await renderSingle(
@@ -308,11 +308,11 @@ export const fetchExploreViewProfile = createAsyncThunk<
       ...state.continuous,
       query: appendLabelToQuery(
         state.continuous.query,
-        state.continuous.exploreView.groupByTag,
-        state.continuous.exploreView.groupByTagValue
+        state.continuous.tagExplorerView.groupByTag,
+        state.continuous.tagExplorerView.groupByTagValue
       ),
     },
-    exploreViewProfileAbortController
+    tagExplorerViewProfileAbortController
   );
 
   if (res.isOk) {
@@ -640,18 +640,18 @@ export const continuousSlice = createSlice({
     },
     setQuery(state, action: PayloadAction<Query>) {
       state.query = action.payload;
-      state.exploreView.groupByTag = '';
-      state.exploreView.groupByTagValue = '';
+      state.tagExplorerView.groupByTag = '';
+      state.tagExplorerView.groupByTagValue = '';
     },
-    setExploreViewGroupByTag(state, action: PayloadAction<string>) {
-      state.exploreView.groupByTag = action.payload;
-      state.exploreView.groupByTagValue = '';
+    setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
+      state.tagExplorerView.groupByTag = action.payload;
+      state.tagExplorerView.groupByTagValue = '';
     },
-    setExploreViewGroupByTagValue(state, action: PayloadAction<string>) {
-      if (state.exploreView.groupByTagValue === action.payload) {
-        state.exploreView.groupByTagValue = '';
+    setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
+      if (state.tagExplorerView.groupByTagValue === action.payload) {
+        state.tagExplorerView.groupByTagValue = '';
       } else {
-        state.exploreView.groupByTagValue = action.payload;
+        state.tagExplorerView.groupByTagValue = action.payload;
       }
     },
     setLeftQuery(state, action: PayloadAction<Query>) {
@@ -904,34 +904,34 @@ export const continuousSlice = createSlice({
     /*      Explore View      */
     /**************************/
 
-    builder.addCase(fetchExploreView.pending, () => {});
+    builder.addCase(fetchTagExplorerView.pending, () => {});
 
-    builder.addCase(fetchExploreView.fulfilled, (state, action) => {
-      state.exploreView = {
-        ...state.exploreView,
+    builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
+      state.tagExplorerView = {
+        ...state.tagExplorerView,
         ...action.payload,
         groups: action.payload.groups,
         type: 'loaded',
       };
     });
 
-    builder.addCase(fetchExploreView.rejected, () => {});
+    builder.addCase(fetchTagExplorerView.rejected, () => {});
 
     /**********************************/
     /*      Explore View Profile      */
     /**********************************/
 
-    builder.addCase(fetchExploreViewProfile.pending, () => {});
+    builder.addCase(fetchTagExplorerViewProfile.pending, () => {});
 
-    builder.addCase(fetchExploreViewProfile.fulfilled, (state, action) => {
-      state.exploreView = {
-        ...state.exploreView,
+    builder.addCase(fetchTagExplorerViewProfile.fulfilled, (state, action) => {
+      state.tagExplorerView = {
+        ...state.tagExplorerView,
         activeTagProfile: action.payload.profile,
         type: 'loaded',
       };
     });
 
-    builder.addCase(fetchExploreViewProfile.rejected, () => {});
+    builder.addCase(fetchTagExplorerViewProfile.rejected, () => {});
 
     /*****************/
     /*      Tags     */

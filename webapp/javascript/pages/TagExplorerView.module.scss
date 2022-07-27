@@ -1,4 +1,4 @@
-.exploreView {
+.tagExplorerView {
   .header {
     display: flex;
     align-items: center;
@@ -29,7 +29,7 @@
     }
   }
 
-  .exploreTable {
+  .tagExplorerTable {
     background-color: var(--ps-ui-element-bg-highlight);
     width: 100%;
 

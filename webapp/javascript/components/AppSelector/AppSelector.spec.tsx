@@ -87,7 +87,7 @@ describe('AppSelector', () => {
             type: 'loaded',
             data: mockAppNames,
           },
-          exploreView: {
+          tagExplorerView: {
             groupByTag: '',
             groupByTagValue: '',
             type: 'pristine',
