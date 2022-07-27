@@ -182,6 +182,8 @@ function Table({
   groupByTagValue: string | undefined;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
+  const isTagSelected = (tag: string) => tag === groupByTagValue;
+
   return (
     <>
       <div className={styles.tableDescription}>
@@ -207,9 +209,7 @@ function Table({
 
             return (
               <tr
-                className={
-                  tagName === groupByTagValue ? styles.activeTagRow : ''
-                }
+                className={isTagSelected(tagName) ? styles.activeTagRow : ''}
                 onClick={() => handleGroupByTagValueChange(tagName)}
                 key={tagName}
               >
