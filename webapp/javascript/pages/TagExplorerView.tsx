@@ -263,9 +263,7 @@ function ExploreHeader({
 
   return (
     <div className={styles.header}>
-      <span className={styles.title}>
-        {appName.isJust ? appName.value : ''}
-      </span>
+      <span className={styles.title}>{appName.unwrapOr('')}</span>
       <div className={styles.query}>
         <span className={styles.selectName}>grouped by</span>
         <Dropdown
