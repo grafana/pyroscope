@@ -27,7 +27,25 @@ interface Marking {
   color: Color;
 }
 
-type TimelineChartWrapperProps = {
+type TimelineDataProps =
+  | {
+      /** timelineA refers to the first (and maybe unique) timeline */
+      timelineA: TimelineData;
+      /** timelineB refers to the second timeline, useful for comparison view */
+      timelineB?: TimelineData;
+      /** to manage strict data type */
+      mode: 'singles';
+    }
+  | {
+      /** timelineGroups refers to group of timelines, useful for explore view */
+      timelineGroups: TimelineGroupData[];
+      /** show or hide tags legend, useful forr disabling single timeline legend */
+      showTagsLegend: boolean;
+      /** to manage strict data type */
+      mode: 'multiple';
+    };
+
+type TimelineChartWrapperProps = TimelineDataProps & {
   /** the id attribute of the element float will use to apply to, it should be unique */
   id: string;
 
@@ -35,12 +53,6 @@ type TimelineChartWrapperProps = {
   onSelect: (from: string, until: string) => void;
   format: 'lines' | 'bars';
 
-  /** timelineA refers to the first (and maybe unique) timeline */
-  timelineA: TimelineData;
-  /** timelineB refers to the second timeline, useful for comparison view */
-  timelineB?: TimelineData;
-  /** timelineGroups refers to group of timelines, useful for explore view */
-  timelineGroups?: TimelineGroupData[];
   height?: string;
 
   /** refers to the highlighted selection */
@@ -61,6 +73,7 @@ class TimelineChartWrapper extends React.Component<
   // eslint-disable-next-line react/static-property-placement
   static defaultProps = {
     format: 'bars',
+    mode: 'singles',
   };
 
   constructor(props: TimelineChartWrapperProps) {
@@ -184,7 +197,47 @@ class TimelineChartWrapper extends React.Component<
 
   render = () => {
     const { flotOptions } = this.state;
-    const { id, timelineA, timelineGroups, timezone, title } = this.props;
+
+    if (this.props.mode === 'multiple') {
+      const { timelineGroups, showTagsLegend, id, timezone } = this.props;
+
+      const customFlotOptions = {
+        ...flotOptions,
+        xaxis: {
+          ...flotOptions.xaxis,
+          autoscaleMargin: null,
+          timezone: timezone || 'browser',
+        },
+      };
+
+      const centeredTimelineGroups =
+        timelineGroups &&
+        timelineGroups.map(({ data, color }) => {
+          return {
+            data: centerTimelineData({ data }),
+            color,
+          };
+        });
+
+      return (
+        <>
+          <TimelineChart
+            onSelect={this.props.onSelect}
+            className={styles.wrapper}
+            // eslint-disable-next-line react/destructuring-assignment
+            data-testid={this.props['data-testid']}
+            id={id}
+            options={customFlotOptions}
+            data={centeredTimelineGroups}
+            width="100%"
+            height={this.props.height || '100px'}
+          />
+          {showTagsLegend && <Legend groups={timelineGroups} />}
+        </>
+      );
+    }
+
+    const { id, timelineA, timezone, title } = this.props;
 
     // TODO deep copy
     let timelineB = this.props.timelineB
@@ -198,10 +251,7 @@ class TimelineChartWrapper extends React.Component<
         // In case there are few chunks left, then we'd like to add some margins to
         // both sides making it look more centers
         autoscaleMargin:
-          (timelineA?.data && timelineA.data.samples.length > 3) ||
-          timelineGroups
-            ? null
-            : 0.005,
+          timelineA?.data && timelineA.data.samples.length > 3 ? null : 0.005,
         timezone: timezone || 'browser',
       },
     };
@@ -241,15 +291,6 @@ class TimelineChartWrapper extends React.Component<
         timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
     ].filter((a) => !!a);
 
-    const centeredTimelineGroups =
-      timelineGroups &&
-      timelineGroups.map(({ data, color }) => {
-        return {
-          data: centerTimelineData({ data }),
-          color,
-        };
-      });
-
     return (
       <>
         {title}
@@ -260,12 +301,10 @@ class TimelineChartWrapper extends React.Component<
           data-testid={this.props['data-testid']}
           id={id}
           options={customFlotOptions}
-          data={centeredTimelineGroups || data}
+          data={data}
           width="100%"
           height={this.props.height || '100px'}
         />
-        {/* hide for single timeline */}
-        {timelineGroups && <Legend groups={timelineGroups} />}
       </>
     );
   };

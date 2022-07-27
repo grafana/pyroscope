@@ -140,12 +140,12 @@ function TagExplorerView() {
           handleTagChange={handleGroupedByTagChange}
         />
         <TimelineChartWrapper
+          mode="multiple"
           timezone={offset === 0 ? 'utc' : 'browser'}
           data-testid="timeline-explore-page"
           id="timeline-chart-explore-page"
-          timelineA={{ data: undefined }}
-          timelineB={{ data: undefined }}
           timelineGroups={filteredgGroupsData}
+          showTagsLegend={filteredgGroupsData.length > 1}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
