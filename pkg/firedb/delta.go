@@ -4,15 +4,21 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/prometheus/common/model"
+	"github.com/samber/lo"
+
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/prometheus/common/model"
-	"github.com/samber/lo"
 )
 
-var memoryProfileName = "memory"
+const (
+	memoryProfileName   = "memory"
+	allocObjectTypeName = "alloc_objects"
+	allocSpaceTypeName  = "alloc_space"
+)
 
+// deltaProfiles is a helper to compute delta of profiles.
 type deltaProfiles struct {
 	mtx      sync.Mutex
 	profiles map[model.Fingerprint]*schemav1.Profile
@@ -22,16 +28,6 @@ func newDeltaProfiles() *deltaProfiles {
 	return &deltaProfiles{
 		profiles: make(map[model.Fingerprint]*schemav1.Profile),
 	}
-}
-
-func isDelta(lbs firemodel.Labels) bool {
-	if lbs.Get(model.MetricNameLabel) == memoryProfileName {
-		ty := lbs.Get(firemodel.LabelNameType)
-		if ty == "alloc_objects" || ty == "alloc_space" {
-			return true
-		}
-	}
-	return false
 }
 
 func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labels) (*schemav1.Profile, []firemodel.Labels) {
@@ -45,11 +41,13 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 	}
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	// sort samples by stacktrace id
+
+	// sort samples by stacktrace id, this allows us to merge samples in one iteration.
 	sort.Slice(ps.Samples, func(i, j int) bool {
 		return ps.Samples[i].StacktraceID < ps.Samples[j].StacktraceID
 	})
-	// we store all ref so fetching with one should work.
+
+	// we store all series ref so fetching with one work.
 	lastProfile, ok := d.profiles[ps.SeriesRefs[deltaIdx[0]]]
 	if !ok {
 		// if we don't have the last profile, we can't compute the delta.
@@ -133,4 +131,14 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 	ps.Samples = ps.Samples[:i]
 
 	return ps, lbss
+}
+
+func isDelta(lbs firemodel.Labels) bool {
+	if lbs.Get(model.MetricNameLabel) == memoryProfileName {
+		ty := lbs.Get(firemodel.LabelNameType)
+		if ty == allocObjectTypeName || ty == allocSpaceTypeName {
+			return true
+		}
+	}
+	return false
 }
