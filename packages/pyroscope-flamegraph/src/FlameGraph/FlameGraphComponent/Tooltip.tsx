@@ -56,15 +56,15 @@ const tooltipTitles: Record<
 > = {
   objects: {
     percent: '% of objects in RAM',
-    formattedValue: 'RAM amount',
+    formattedValue: 'Objects in RAM',
   },
   goroutines: {
     percent: '% of goroutines',
-    formattedValue: 'goroutines',
+    formattedValue: 'Goroutines',
   },
   bytes: {
     percent: '% of RAM',
-    formattedValue: 'bytes',
+    formattedValue: 'RAM',
   },
   samples: {
     percent: 'Share of CPU',
@@ -72,11 +72,11 @@ const tooltipTitles: Record<
   },
   lock_nanoseconds: {
     percent: '% of Time spent',
-    formattedValue: 'seconds',
+    formattedValue: 'Time',
   },
   lock_samples: {
     percent: '% of contended locks',
-    formattedValue: 'locks',
+    formattedValue: 'Contended locks',
   },
   trace_samples: {
     percent: '% of time',
