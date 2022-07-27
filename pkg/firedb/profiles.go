@@ -257,8 +257,8 @@ func (*profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable
 }
 
 func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
-	for pos := range s.Comment {
-		r.strings.rewrite(&s.Comment[pos])
+	for pos := range s.Comments {
+		r.strings.rewrite(&s.Comments[pos])
 	}
 
 	r.strings.rewrite(&s.DropFrames)
@@ -279,7 +279,7 @@ func (*profilesHelper) size(p *schemav1.Profile) uint64 {
 	var size = profileSize
 
 	size += uint64(len(p.SeriesRefs) * 8)
-	size += uint64(len(p.Comment) * 8)
+	size += uint64(len(p.Comments) * 8)
 
 	for _, s := range p.Samples {
 		size += sizeOfSample(s)
