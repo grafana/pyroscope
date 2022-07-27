@@ -218,7 +218,6 @@ function Table({
             <th>min samples</th>
             <th>max samples</th>
             <th>50% tbd</th>
-            <th>75% tbd</th>
             <th>max tbd</th>
             <th>cost tbd</th>
           </tr>
@@ -254,7 +253,6 @@ function Table({
                 <td>{Math.min(...data.samples)}</td>
                 <td>{Math.max(...data.samples)}</td>
                 <td>50,987 mock</td>
-                <td>76,200 mock</td>
                 <td>100,000 mock</td>
                 <td>$ 250 / hr mock</td>
               </tr>
