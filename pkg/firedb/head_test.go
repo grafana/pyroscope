@@ -387,3 +387,56 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 		}
 	}
 }
+
+var res *connect.Response[ingestv1.SelectProfilesResponse]
+
+func BenchmarkSelectProfile(b *testing.B) {
+	head, err := NewHead(b.TempDir())
+	require.NoError(b, err)
+	ctx := context.Background()
+
+	p := parseProfile(b, "testdata/heap")
+	for i := 0; i < 10; i++ {
+		p.TimeNanos = int64(time.Second * time.Duration(i))
+		require.NoError(b,
+			head.Ingest(ctx, p, uuid.New(),
+				&commonv1.LabelPair{
+					Name:  "job",
+					Value: "bar",
+				}, &commonv1.LabelPair{
+					Name:  model.MetricNameLabel,
+					Value: "memory",
+				}))
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		res, err = head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+			LabelSelector: `{job="bar"}`,
+			Type: &ingestv1.ProfileType{
+				Name:       "memory",
+				SampleType: "alloc_space",
+				SampleUnit: "bytes",
+				PeriodType: "space",
+				PeriodUnit: "bytes",
+			},
+			Start: int64(model.Earliest),
+			End:   int64(model.Latest),
+		}))
+		require.NoError(b, err)
+		res, err = head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+			LabelSelector: `{job="bar"}`,
+			Type: &ingestv1.ProfileType{
+				Name:       "memory",
+				SampleType: "inuse_space",
+				SampleUnit: "bytes",
+				PeriodType: "space",
+				PeriodUnit: "bytes",
+			},
+			Start: int64(model.Earliest),
+			End:   int64(model.Latest),
+		}))
+		require.NoError(b, err)
+	}
+}
