@@ -359,7 +359,8 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 
 	result := []*ingestv1.Profile{}
 	names := []string{}
-	namesPositions := map[string]int{}
+	stackTraces := map[uint64][]int32{}
+	functions := map[int64]int{}
 
 	h.stacktraces.lock.RLock()
 	h.locations.lock.RLock()
@@ -386,30 +387,36 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			Timestamp:   ts,
 			Stacktraces: make([]*ingestv1.StacktraceSample, 0, len(profile.Samples)),
 		}
+		totalSamples += int64(len(profile.Samples))
 		for _, s := range profile.Samples {
 			if s.Values[idx] == 0 {
+				totalSamples--
 				continue
 			}
-			totalSamples++
-			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
-			fnIds := make([]int32, 0, len(locs))
-			totalLocations += int64(len(locs))
-			for _, loc := range locs {
-				for _, line := range h.locations.slice[loc].Line {
-					fnName := h.strings.slice[h.functions.slice[line.FunctionId].Name]
-					pos, ok := namesPositions[fnName]
-					if !ok {
-						namesPositions[fnName] = len(names)
-						fnIds = append(fnIds, int32(len(names)))
-						names = append(names, fnName)
-						continue
+			stackTracesIds, ok := stackTraces[s.StacktraceID]
+			if !ok {
+				locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
+				totalLocations += int64(len(locs))
+				stackTracesIds = make([]int32, 0, 2*len(locs))
+				for _, loc := range locs {
+					for _, line := range h.locations.slice[loc].Line {
+						fnNameID := h.functions.slice[line.FunctionId].Name
+						pos, ok := functions[fnNameID]
+						if !ok {
+							functions[fnNameID] = len(names)
+							stackTracesIds = append(stackTracesIds, int32(len(names)))
+							names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
+							continue
+						}
+						stackTracesIds = append(stackTracesIds, int32(pos))
 					}
-					fnIds = append(fnIds, int32(pos))
 				}
+				stackTraces[s.StacktraceID] = stackTracesIds
 			}
+
 			p.Stacktraces = append(p.Stacktraces, &ingestv1.StacktraceSample{
 				Value:       s.Values[idx],
-				FunctionIds: fnIds,
+				FunctionIds: stackTracesIds,
 			})
 		}
 		if len(p.Stacktraces) > 0 {
