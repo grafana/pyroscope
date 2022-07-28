@@ -28,9 +28,7 @@ services:
       context: .
 
   pyroscope:
-    # image: pyroscope/pyroscope:latest
-    build:
-      context: ../../../
+    image: pyroscope/pyroscope:latest
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
     ports:
