@@ -98,9 +98,6 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 	// we have the last profile, we can compute the delta.
 	// samples are sorted by stacktrace id.
 	// we need to compute the delta for each stacktrace.
-	for _, i := range deltaIdx {
-		d.profiles[ps.SeriesRefs[i]] = ps
-	}
 	if len(lastProfile.Samples) == 0 {
 		return ps, lbss
 	}
@@ -129,7 +126,9 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 		}
 	}
 	ps.Samples = ps.Samples[:i]
-
+	for _, i := range deltaIdx {
+		d.profiles[ps.SeriesRefs[i]] = ps
+	}
 	return ps, lbss
 }
 
