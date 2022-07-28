@@ -83,9 +83,9 @@ func (*ProfilePersister) Schema() *parquet.Schema {
 
 func (*ProfilePersister) SortingColumns() SortingColumns {
 	return parquet.SortingColumns(
-		parquet.Ascending("ID"),
-		parquet.Ascending("SeriesRefs"),
+		parquet.Ascending("SeriesRefs", "list", "element"),
 		parquet.Ascending("TimeNanos"),
+		parquet.Ascending("ID"),
 	)
 }
 
