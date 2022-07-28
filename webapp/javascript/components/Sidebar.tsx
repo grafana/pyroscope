@@ -94,7 +94,8 @@ export function SidebarComponent() {
   const isContinuousActive =
     isRouteActive(PAGES.CONTINOUS_SINGLE_VIEW) ||
     isRouteActive(PAGES.COMPARISON_VIEW) ||
-    isRouteActive(PAGES.COMPARISON_DIFF_VIEW);
+    isRouteActive(PAGES.COMPARISON_DIFF_VIEW) ||
+    isRouteActive(PAGES.TAG_EXPLORER);
   const isAdhocActive =
     isRouteActive(PAGES.ADHOC_SINGLE) ||
     isRouteActive(PAGES.ADHOC_COMPARISON) ||
@@ -175,6 +176,14 @@ export function SidebarComponent() {
               </SidebarHeader>
             )}
             <MenuItem
+              data-testid="sidebar-explore-page"
+              active={isRouteActive(PAGES.TAG_EXPLORER)}
+              icon={<Icon icon={faChartBar} />}
+            >
+              Tag explorer
+              <NavLink to={{ pathname: PAGES.TAG_EXPLORER, search }} exact />
+            </MenuItem>
+            <MenuItem
               data-testid="sidebar-continuous-single"
               active={isRouteActive(PAGES.CONTINOUS_SINGLE_VIEW)}
               icon={<Icon icon={faWindowMaximize} />}
@@ -208,14 +217,6 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
-          <MenuItem
-            data-testid="sidebar-explore-page"
-            active={isRouteActive(PAGES.TAG_EXPLORER)}
-            icon={<Icon icon={faChartBar} />}
-          >
-            Explore
-            <NavLink to={{ pathname: PAGES.TAG_EXPLORER, search }} exact />
-          </MenuItem>
         </Menu>
       </SidebarContent>
       <SidebarFooter>
