@@ -90,6 +90,11 @@ type queryData struct {
 	Result     parser.Value     `json:"result"`
 }
 
+type prometheusResponse struct {
+	Status string    `json:"status"`
+	Data   queryData `json:"data"`
+}
+
 func (q *Querier) PrometheusQueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
