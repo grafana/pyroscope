@@ -1,6 +1,8 @@
 package firedb
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,22 +17,41 @@ import (
 )
 
 func TestComputeDelta(t *testing.T) {
-	delta := newDeltaProfiles()
+	ctx := context.Background()
+	head, err := NewHead(t.TempDir())
+	require.NoError(t, err)
 
-	profile := newMemoryProfileBuilder(1)
-	profile.ForStacktrace("a", "b", "c").AddMemorySample(1, 10, 1, 1)
-	profile.ForStacktrace("a", "b", "c", "d").AddMemorySample(1, 10, 1, 1)
+	p1 := parseProfile(t, "/Users/cyril/pprof/pprof.enterprise-logs.alloc_objects.alloc_space.inuse_objects.inuse_space.006.pb.gz")
+	p2 := parseProfile(t, "/Users/cyril/pprof/pprof.enterprise-logs.alloc_objects.alloc_space.inuse_objects.inuse_space.007.pb.gz")
 
-	_, deltaLabels := delta.computeDelta(profile.ToModel())
+	uniq := map[string][]*profilev1.Sample{}
+	for _, s := range p1.Sample {
+		key := ""
+		for _, l := range s.LocationId {
+			key += fmt.Sprintf("%d", l) + ":"
+		}
+		if _, ok := uniq[key]; !ok {
+			uniq[key] = []*profilev1.Sample{s}
+			continue
+		}
+		uniq[key] = append(uniq[key], s)
+		fmt.Println("dupe found", key, s)
+	}
+	totalDupe := 0
+	for _, v := range uniq {
+		totalDupe += len(v) - 1
+	}
+	fmt.Println("total dupe", totalDupe)
+	fmt.Println("total samples", len(p1.Sample))
 
-	require.Len(t, deltaLabels, 2)
+	err = head.Ingest(ctx, p1, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
+	require.NoError(t, err)
 
-	// profile = newMemoryProfileBuilder(2)
-	// profile.ForStacktrace("a", "b", "c").AddMemorySample(2, 20, 2, 2)
-	// profile.ForStacktrace("a", "b", "c", "d").AddMemorySample(3, 30, 2, 2)
+	err = head.Ingest(ctx, p1, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
+	require.NoError(t, err)
 
-	// err = head.Ingest(ctx, profile.Profile, profile.UUID, profile.labels...)
-	// require.NoError(t, err)
+	err = head.Ingest(ctx, p2, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
+	require.NoError(t, err)
 }
 
 type memoryProfileBuilder struct {
@@ -146,7 +167,7 @@ func (m *memoryProfileBuilder) ToModel() (*schemav1.Profile, []firemodel.Labels)
 		DurationNanos:     m.DurationNanos,
 		Period:            m.Period,
 		DefaultSampleType: m.DefaultSampleType,
-		Comment:           m.Comment,
+		Comments:          m.Comment,
 	}
 	return res, nil
 }
