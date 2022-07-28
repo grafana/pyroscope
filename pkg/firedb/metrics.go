@@ -8,10 +8,10 @@ type headMetrics struct {
 	head *Head
 
 	series        prometheus.GaugeFunc
-	seriesCreated prometheus.Counter
+	seriesCreated *prometheus.CounterVec
 
 	profiles        prometheus.GaugeFunc
-	profilesCreated prometheus.Counter
+	profilesCreated *prometheus.CounterVec
 
 	sizeBytes   *prometheus.GaugeVec
 	rowsWritten *prometheus.CounterVec
@@ -21,10 +21,10 @@ type headMetrics struct {
 
 func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 	m := &headMetrics{
-		seriesCreated: prometheus.NewCounter(prometheus.CounterOpts{
+		seriesCreated: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "fire_tsdb_head_series_created_total",
 			Help: "Total number of series created in the head",
-		}),
+		}, []string{"type"}),
 		sizeBytes: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "fire_head_size_bytes",
@@ -37,10 +37,10 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 				Help: "Number of rows written to a parquet table.",
 			},
 			[]string{"type"}),
-		profilesCreated: prometheus.NewCounter(prometheus.CounterOpts{
+		profilesCreated: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "fire_head_profiles_created_total",
 			Help: "Total number of profiles created in the head",
-		}),
+		}, []string{"type"}),
 		sampleValuesIngested: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "fire_head_ingested_sample_values_total",
