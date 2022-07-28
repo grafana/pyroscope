@@ -1,6 +1,8 @@
-version: '3.9'
+version: '3'
 services:
   us-east:
+    ports:
+      - 3000
     environment:
       - REGION=us-east
     build:
@@ -9,12 +11,16 @@ services:
       - 'pyroscope'
 
   eu-north:
+    ports:
+      - 3000
     environment:
       - REGION=eu-north
     build:
       context: .
 
   ap-south:
+    ports:
+      - 3000
     environment:
       - REGION=ap-south
     build:
