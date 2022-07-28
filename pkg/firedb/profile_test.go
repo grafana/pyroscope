@@ -46,7 +46,7 @@ func TestIndex(t *testing.T) {
 						ID:         uuid.New(),
 						TimeNanos:  k,
 						SeriesRefs: []model.Fingerprint{model.Fingerprint(lb1.Hash()), model.Fingerprint(lb2.Hash())},
-					}, []firemodel.Labels{lb1, lb2})
+					}, []firemodel.Labels{lb1, lb2}, "memory")
 				}
 			}
 		}()
@@ -102,7 +102,7 @@ func TestWriteRead(t *testing.T) {
 				ID:         uuid.New(),
 				TimeNanos:  k,
 				SeriesRefs: []model.Fingerprint{model.Fingerprint(lb1.Hash()), model.Fingerprint(lb2.Hash())},
-			}, []firemodel.Labels{lb1, lb2})
+			}, []firemodel.Labels{lb1, lb2}, "memory")
 		}
 	}
 

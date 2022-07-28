@@ -51,7 +51,7 @@ func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, 
 
 // Add a new set of profile to the index.
 // The seriesRef are expected to match the profile labels passed in.
-func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs []firemodel.Labels) {
+func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs []firemodel.Labels, profileName string) {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
 	for i, fp := range ps.SeriesRefs {
@@ -65,13 +65,13 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs []firemodel.Labels) {
 			}
 			pi.profilesPerFP[fp] = profiles
 			pi.totalSeries.Inc()
-			pi.metrics.seriesCreated.Inc()
+			pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 			continue
 		}
 		profiles.profiles = append(profiles.profiles, ps)
 	}
 	pi.totalProfiles.Inc()
-	pi.metrics.profilesCreated.Inc()
+	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
 
 // forMatchingProfiles iterates through all matching profiles and calls f for each profiles.
@@ -276,7 +276,7 @@ func sizeOfSample(s *schemav1.Sample) uint64 {
 }
 
 func (*profilesHelper) size(p *schemav1.Profile) uint64 {
-	var size = profileSize
+	size := profileSize
 
 	size += uint64(len(p.SeriesRefs) * 8)
 	size += uint64(len(p.Comments) * 8)

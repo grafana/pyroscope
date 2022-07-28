@@ -298,7 +298,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
 		return err
 	}
-	h.index.Add(profile, profilesLabels)
+	h.index.Add(profile, profilesLabels, metricName)
 
 	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(profilesLabels)))
 
@@ -333,6 +333,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 	var (
 		totalSamples   int64
 		totalLocations int64
+		totalProfiles  int64
 	)
 	// nolint:ineffassign
 	// we might use ctx later.
@@ -341,6 +342,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		sp.LogFields(
 			otlog.Int64("total_samples", totalSamples),
 			otlog.Int64("total_locations", totalLocations),
+			otlog.Int64("total_profiles", totalProfiles),
 		)
 		sp.Finish()
 	}()
@@ -376,6 +378,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		if req.Msg.Start > ts || ts > req.Msg.End {
 			return nil
 		}
+		totalProfiles++
 		p := &ingestv1.Profile{
 			ID:          profile.ID.String(),
 			Type:        req.Msg.Type,
