@@ -112,6 +112,8 @@ type Server struct {
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
 	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run" mapstructure:"cache-evict-volume"`
 
+	DiskThreshold float64 `def:"5" desc:"percentage of available disk space at which ingestion requests are discarded. Defaults to 5%. Set 0 to disable" mapstructure:"storage-disk-threshold"`
+
 	Database Database `mapstructure:"database"`
 
 	// TODO: I don't think a lot of people will change these values.

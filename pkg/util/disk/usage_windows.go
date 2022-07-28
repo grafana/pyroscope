@@ -16,10 +16,10 @@ var (
 	getDiskFreeSpaceEx = kernel32.NewProc("GetDiskFreeSpaceExW")
 )
 
-func FreeSpace(path string) (bytesize.ByteSize, error) {
+func Usage(path string) (UsageStats, error) {
 	dirPath, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
-		return 0, err
+		return UsageStats{}, err
 	}
 
 	var (
@@ -34,8 +34,12 @@ func FreeSpace(path string) (bytesize.ByteSize, error) {
 		uintptr(unsafe.Pointer(&totalNumberOfBytes)),
 		uintptr(unsafe.Pointer(&totalNumberOfFreeBytes)))
 	if ret == 0 {
-		return 0, os.NewSyscallError("GetDiskFreeSpaceEx", err)
+		return UsageStats{}, os.NewSyscallError("GetDiskFreeSpaceEx", err)
 	}
 
-	return bytesize.ByteSize(freeBytesAvailableToCaller), nil
+	u := UsageStats{
+		Total:     bytesize.ByteSize(totalNumberOfBytes),
+		Available: bytesize.ByteSize(freeBytesAvailableToCaller),
+	}
+	return u, nil
 }
