@@ -6,12 +6,10 @@ import (
 	fireparquet "github.com/grafana/fire/pkg/parquet"
 )
 
-var (
-	stacktracesSchema = parquet.NewSchema("Stacktrace", fireparquet.Group{
-		fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("LocationIDs", parquet.List(parquet.Uint(64))),
-	})
-)
+var stacktracesSchema = parquet.NewSchema("Stacktrace", fireparquet.Group{
+	fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+	fireparquet.NewGroupField("LocationIDs", parquet.List(parquet.Uint(64))),
+})
 
 type Stacktrace struct {
 	LocationIDs []uint64 `parquet:",list"`
@@ -35,7 +33,7 @@ func (*StacktracePersister) Schema() *parquet.Schema {
 func (*StacktracePersister) SortingColumns() SortingColumns {
 	return parquet.SortingColumns(
 		parquet.Ascending("ID"),
-		parquet.Ascending("LocationIDs"),
+		parquet.Ascending("LocationIDs", "list", "element"),
 	)
 }
 
