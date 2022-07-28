@@ -73,6 +73,7 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
 	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
+	f.Server.HTTP.Handle("/prometheus/api/v1/query_range", http.HandlerFunc(q.PrometheusQueryRangeHandler))
 	return q, nil
 }
 
