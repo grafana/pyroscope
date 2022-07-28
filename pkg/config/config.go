@@ -104,15 +104,15 @@ type Server struct {
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error" mapstructure:"badger-log-level"`
 
-	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
+	StoragePath          string  `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
+	StorageDiskThreshold float64 `def:"5" desc:"percentage of available disk space at which ingestion requests are discarded. Defaults to 5%. Set 0 to disable" mapstructure:"storage-disk-threshold"`
+
 	APIBindAddr     string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
 	BaseURL         string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" mapstructure:"base-url"`
 	BaseURLBindAddr string `def:"" deprecated:"true" desc:"server for debugging base url" mapstructure:"base-url-bind-addr"`
 
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
 	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run" mapstructure:"cache-evict-volume"`
-
-	DiskThreshold float64 `def:"5" desc:"percentage of available disk space at which ingestion requests are discarded. Defaults to 5%. Set 0 to disable" mapstructure:"storage-disk-threshold"`
 
 	Database Database `mapstructure:"database"`
 

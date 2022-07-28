@@ -214,7 +214,7 @@ var _ = Describe("flags", func() {
 					BaseURL:                 "",
 					CacheEvictThreshold:     0.25,
 					CacheEvictVolume:        0.33,
-					DiskThreshold:           5,
+					StorageDiskThreshold:    5,
 					BadgerNoTruncate:        false,
 					DisablePprofEndpoint:    false,
 					EnableExperimentalAdmin: true,
