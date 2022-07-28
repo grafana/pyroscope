@@ -15,6 +15,8 @@ type headMetrics struct {
 
 	sizeBytes   *prometheus.GaugeVec
 	rowsWritten *prometheus.CounterVec
+
+	sampleValuesIngested *prometheus.CounterVec
 }
 
 func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
@@ -39,6 +41,12 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 			Name: "fire_head_profiles_created_total",
 			Help: "Total number of profiles created in the head",
 		}),
+		sampleValuesIngested: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "fire_head_ingested_sample_values_total",
+				Help: "Number of sample values ingested into the head per profile type.",
+			},
+			[]string{"type"}),
 	}
 
 	m.series = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
@@ -64,11 +72,13 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 			m.profiles,
 			m.profilesCreated,
 			m.rowsWritten,
+			m.sampleValuesIngested,
 			m,
 		)
 	}
 	return m
 }
+
 func (m *headMetrics) setHead(head *Head) *headMetrics {
 	m.head = head
 	return m
