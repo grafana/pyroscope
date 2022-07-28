@@ -42,7 +42,6 @@ function TagExplorerView() {
   const tags = useAppSelector(selectAppTags(query));
   const appName = queryToAppName(query);
 
-  // maybe put all effects inside 1 hook ?
   useEffect(() => {
     if (query) {
       dispatch(fetchTags(query));
@@ -117,14 +116,13 @@ function TagExplorerView() {
 
   const handleGroupedByTagChange = (value: string) => {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
-    dispatch(actions.setTagExplorerViewGroupByTagValue(''));
   };
 
   // when there's no groupByTag value backend returns groups with single "*" group,
   // which is "application without any tag" group. when backend returns multiple groups,
   // "*" group samples array is filled with zeros (not longer valid application data).
   // removing "*" group from table data helps to show only relevant data
-  const filteredgGroupsData =
+  const filteredGroupsData =
     groupsData.length === 1
       ? [{ ...groupsData[0], tagName: appName.unwrapOr('') }]
       : groupsData.filter((a) => a.tagName !== '*');
@@ -144,8 +142,8 @@ function TagExplorerView() {
           timezone={offset === 0 ? 'utc' : 'browser'}
           data-testid="timeline-explore-page"
           id="timeline-chart-explore-page"
-          timelineGroups={filteredgGroupsData}
-          showTagsLegend={filteredgGroupsData.length > 1}
+          timelineGroups={filteredGroupsData}
+          showTagsLegend={filteredGroupsData.length > 1}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
@@ -157,7 +155,7 @@ function TagExplorerView() {
             appName={appName.value}
             groupByTag={groupByTag}
             groupByTagValue={groupByTagValue}
-            groupsData={filteredgGroupsData}
+            groupsData={filteredGroupsData}
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
         )}

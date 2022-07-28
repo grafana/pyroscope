@@ -263,6 +263,34 @@ export const fetchTagExplorerView = createAsyncThunk<
   );
 
   if (res.isOk) {
+    const isGroupBySelected =
+      state.continuous.tagExplorerView.groupByTag !== '';
+
+    if (isGroupBySelected) {
+      // * is "application without tags" group. we need only "real" groups names
+      const firstGroupName = Object.keys(res.value.groups).filter(
+        (groupName) => groupName !== '*'
+      )[0];
+
+      // additionaly load flamegraph profile for first group (first group is selected by default)
+      const profileResponse = await renderSingle({
+        ...state.continuous,
+        query: appendLabelToQuery(
+          state.continuous.query,
+          state.continuous.tagExplorerView.groupByTag,
+          firstGroupName
+        ),
+      });
+
+      if (profileResponse.isOk) {
+        return Promise.resolve({
+          ...res.value,
+          profile: profileResponse.value.profile,
+          groupByTagValue: firstGroupName,
+        });
+      }
+    }
+
     return Promise.resolve(res.value);
   }
 
@@ -890,26 +918,26 @@ export const continuousSlice = createSlice({
       }
     });
 
-    /**************************/
-    /*      Explore View      */
-    /**************************/
+    /*******************************/
+    /*      Tag Explorer View      */
+    /*******************************/
 
     builder.addCase(fetchTagExplorerView.pending, () => {});
 
     builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
       state.tagExplorerView = {
         ...state.tagExplorerView,
+        ...action.payload,
         activeTagProfile: action.payload.profile,
-        groups: action.payload.groups,
         type: 'loaded',
       };
     });
 
     builder.addCase(fetchTagExplorerView.rejected, () => {});
 
-    /**********************************/
-    /*      Explore View Profile      */
-    /**********************************/
+    /***************************************/
+    /*      Tag Explorer View Profile      */
+    /***************************************/
 
     builder.addCase(fetchTagExplorerViewProfile.pending, () => {});
 
