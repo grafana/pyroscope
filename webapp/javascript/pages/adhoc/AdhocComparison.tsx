@@ -11,7 +11,6 @@ import { Profile } from '@pyroscope/models/src';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
-import FileUploader from '@webapp/components/FileUploader';
 import {
   fetchAdhocProfiles,
   fetchAdhocLeftProfile,
@@ -29,6 +28,7 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import ExportData from '@webapp/components/ExportData';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
+import FileUploader from './components/FileUploader';
 
 function AdhocComparison() {
   const dispatch = useAppDispatch();

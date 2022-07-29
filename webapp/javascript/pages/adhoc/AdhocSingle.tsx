@@ -11,7 +11,6 @@ import classNames from 'classnames';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
-import FileUploader from '@webapp/components/FileUploader';
 
 import {
   fetchAdhocProfiles,
@@ -24,6 +23,7 @@ import {
 import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle() {
@@ -63,7 +63,12 @@ function AdhocSingle() {
               <FileUploader
                 className={adhocStyles.tabPanel}
                 file={file}
-                setFile={(f, flame) => dispatch(setAdhocFile(f, flame))}
+                removeFile={() => {
+                  console.log('removing file');
+                }}
+                setFile={(file) => {
+                  console.log('got a file', file);
+                }}
               />
             </TabPanel>
             <TabPanel>
