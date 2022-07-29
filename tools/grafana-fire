@@ -4,9 +4,11 @@ DOCKER_ARGS="--net=host"
 
 if [[ $OSTYPE == 'darwin'* ]]; then
     FIRE_URL=${FIRE_URL:-http://docker.for.mac.localhost:4100/pyroscope}
+    PROMETHEUS_URL=${PROMETHEUS_URL:-http://docker.for.mac.localhost:4100/prometheus}
     DOCKER_ARGS=""
 else
     FIRE_URL=${FIRE_URL:-http://localhost:4100/pyroscope}
+    PROMETHEUS_URL=${PROMETHEUS_URL:-http://localhost:4100/prometheus}
 fi
 
 datasource_provisioning="$(mktemp "${TMPDIR:-/tmp}/fire-provisioning-XXXXXX")"
@@ -19,6 +21,9 @@ datasources:
     type: pyroscope-datasource
     jsonData:
       path: ${FIRE_URL}
+  - name: Prometheus
+    type: prometheus
+    url: ${PROMETHEUS_URL}
 EOF
 
 docker run $DOCKER_ARGS --rm \

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -25,16 +26,17 @@ import (
 	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
-	"go.opentelemetry.io/otel/trace"
+	wwtracing "github.com/weaveworks/common/tracing"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/cfg"
 	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/firedb"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
-	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/querier"
+	"github.com/grafana/fire/pkg/tracing"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -46,7 +48,8 @@ type Config struct {
 	Querier      querier.Config         `yaml:"querier,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
-	ProfileStore profilestore.Config    `yaml:"profile_store,omitempty"`
+	FireDB       firedb.Config          `yaml:"firedb,omitempty"`
+	Tracing      tracing.Config         `yaml:"tracing"`
 
 	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
@@ -63,9 +66,10 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.AgentConfig.RegisterFlags(f)
 	c.MemberlistKV.RegisterFlags(f)
-	c.ProfileStore.RegisterFlags(f)
 	c.Distributor.RegisterFlags(f)
 	c.Querier.RegisterFlags(f)
+	c.FireDB.RegisterFlags(f)
+	c.Tracing.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -127,10 +131,10 @@ func (c *Config) Clone() flagext.Registerer {
 }
 
 type Fire struct {
-	Cfg            Config
-	logger         log.Logger
-	reg            prometheus.Registerer
-	tracerProvider trace.TracerProvider
+	Cfg    Config
+	logger log.Logger
+	reg    prometheus.Registerer
+	tracer io.Closer
 
 	ModuleManager *modules.Manager
 	serviceMap    map[string]services.Service
@@ -141,9 +145,9 @@ type Fire struct {
 	SignalHandler      *signals.Handler
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
-	profileStore       *profilestore.ProfileStore
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
+	fireDB             *firedb.FireDB
 
 	grpcGatewayMux *grpcgw.ServeMux
 }
@@ -152,10 +156,9 @@ func New(cfg Config) (*Fire, error) {
 	logger := initLogger(&cfg.Server)
 
 	fire := &Fire{
-		Cfg:            cfg,
-		logger:         logger,
-		reg:            prometheus.DefaultRegisterer,
-		tracerProvider: trace.NewNoopTracerProvider(),
+		Cfg:    cfg,
+		logger: logger,
+		reg:    prometheus.DefaultRegisterer,
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -164,11 +167,21 @@ func New(cfg Config) (*Fire, error) {
 		return nil, err
 	}
 
+	if cfg.Tracing.Enabled {
+		// Setting the environment variable JAEGER_AGENT_HOST enables tracing
+		trace, err := wwtracing.NewFromEnv(fmt.Sprintf("fire-%s", cfg.Target))
+		if err != nil {
+			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
+		}
+		fire.tracer = trace
+	}
+
 	// instantiate a fallback pusher client (when not run with a local distributor
 	pusherHTTPClient, err := commonconfig.NewClientFromConfig(cfg.AgentConfig.ClientConfig.Client, cfg.AgentConfig.ClientConfig.URL.String())
 	if err != nil {
 		return nil, err
 	}
+	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
 	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient, cfg.AgentConfig.ClientConfig.URL.String())
 
 	return fire, nil
@@ -180,8 +193,8 @@ func (f *Fire) setupModuleManager() error {
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
-	mm.RegisterModule(ProfileStore, f.initProfileStore, modules.UserInvisibleModule)
 	mm.RegisterModule(Ingester, f.initIngester)
+	mm.RegisterModule(FireDB, f.initFireDB)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
 	mm.RegisterModule(Querier, f.initQuerier)
@@ -194,8 +207,7 @@ func (f *Fire) setupModuleManager() error {
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
 		Agent:        {Server, GRPCGateway},
-		Ingester:     {Server, MemberlistKV, ProfileStore},
-		ProfileStore: {},
+		Ingester:     {Server, MemberlistKV, FireDB},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
 		GRPCGateway:  {Server},
@@ -244,7 +256,7 @@ func (f *Fire) Run() error {
 
 	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, grpcutil.NewHealthCheck(sm))
 	healthy := func() { level.Info(f.logger).Log("msg", "Fire started", "version", version.Info()) }
-	stopped := func() { level.Info(f.logger).Log("msg", "Fire stopped") }
+
 	serviceFailed := func(service services.Service) {
 		// if any service fails, stop entire Fire
 		sm.StopAsync()
@@ -264,7 +276,7 @@ func (f *Fire) Run() error {
 		level.Error(f.logger).Log("msg", "module failed", "module", "unknown", "error", service.FailureCase())
 	}
 
-	sm.AddListener(services.NewManagerListener(healthy, stopped, serviceFailed))
+	sm.AddListener(services.NewManagerListener(healthy, f.stopped, serviceFailed))
 
 	// Setup signal handler. If signal arrives, we stop the manager, which stops all the services.
 	f.SignalHandler = signals.NewHandler(f.Server.Log)
@@ -315,6 +327,15 @@ func (f *Fire) readyHandler(sm *services.Manager) http.HandlerFunc {
 		}
 
 		http.Error(w, "ready", http.StatusOK)
+	}
+}
+
+func (f *Fire) stopped() {
+	level.Info(f.logger).Log("msg", "Fire stopped")
+	if f.tracer != nil {
+		if err := f.tracer.Close(); err != nil {
+			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)
+		}
 	}
 }
 

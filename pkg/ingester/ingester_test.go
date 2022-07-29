@@ -1,33 +1,6 @@
 package ingester
 
-import (
-	"bytes"
-	"compress/gzip"
-	"context"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"runtime/pprof"
-	"testing"
-
-	"github.com/apache/arrow/go/v8/arrow"
-	"github.com/apache/arrow/go/v8/arrow/memory"
-	"github.com/bufbuild/connect-go"
-	"github.com/go-kit/log"
-	"github.com/google/pprof/profile"
-	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/dskit/kv"
-	"github.com/grafana/dskit/ring"
-	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace"
-
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/profilestore"
-)
-
+/*
 func defaultIngesterTestConfig(t testing.TB) Config {
 	kvClient, err := kv.NewClient(kv.Config{Store: "inmemory"}, ring.GetCodec(), nil, log.NewNopLogger())
 	require.NoError(t, err)
@@ -43,25 +16,9 @@ func defaultIngesterTestConfig(t testing.TB) Config {
 	cfg.LifecyclerConfig.MinReadyDuration = 0
 	return cfg
 }
+*/
 
-func defaultProfileStoreTestConfig(t testing.TB) *profilestore.Config {
-	cfg := &profilestore.Config{}
-	flagext.DefaultValues(cfg)
-
-	// create data path
-	dataPath, err := os.MkdirTemp("", "fire-db")
-	require.NoError(t, err)
-	t.Logf("created temporary data path: %s", dataPath)
-	t.Cleanup(func() {
-		if err := os.RemoveAll(dataPath); err != nil {
-			t.Logf("remove data path failed: %v", err)
-		}
-	})
-	cfg.DataPath = dataPath
-
-	return cfg
-}
-
+/*
 func Test_ConnectPush(t *testing.T) {
 	cfg := defaultIngesterTestConfig(t)
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -120,35 +77,4 @@ func Test_ConnectPush(t *testing.T) {
 		profileStore.Close(),
 	)
 }
-
-// This counts all sample values, where at least a single value in a sample is non-zero
-func countNonZeroValues(p *profile.Profile) int64 {
-	var count int64
-	for _, s := range p.Sample {
-		for _, v := range s.Value {
-			if v != 0 {
-				count++
-				continue
-			}
-		}
-	}
-	return count
-}
-
-func parseRawProfile(t testing.TB, reader io.Reader) *profile.Profile {
-	gzReader, err := gzip.NewReader(reader)
-	require.NoError(t, err, "failed creating gzip reader")
-
-	p, err := profile.Parse(gzReader)
-	require.NoError(t, err, "failed parsing profile")
-
-	return p
-}
-
-func testProfile(t *testing.T) []byte {
-	t.Helper()
-
-	buf := bytes.NewBuffer(nil)
-	require.NoError(t, pprof.WriteHeapProfile(buf))
-	return buf.Bytes()
-}
+*/

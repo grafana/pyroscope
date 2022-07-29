@@ -30,6 +30,7 @@ spec:
       labels:
         {{- include "fire.templateLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component | quote }}
+        name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
     spec:
       {{- with .Values.fire.imagePullSecrets }}
       imagePullSecrets:
@@ -39,13 +40,14 @@ spec:
       securityContext:
         {{- toYaml .Values.fire.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
             {{- toYaml .Values.fire.securityContext | nindent 12 }}
           image: "{{ .Values.fire.image.repository }}:{{ .Values.fire.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.fire.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
+            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "fire.fullname" .}}"
             - "-memberlist.join={{ include "fire.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local."
           {{- if eq $component "agent" }}
             - "-client.url=http://{{ include "fire.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.fire.service.port }}"
@@ -56,6 +58,13 @@ spec:
           {{- end }}
           {{- range $key, $value := $cfg.extraArgs }}
             - "-{{ $key }}={{ $value }}"
+          {{- end }}
+          {{- with .Values.fire.extraEnvVars }}
+          env:
+           {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+           {{- end }}
           {{- end }}
           ports:
             - name: {{ .Values.fire.service.port_name }}

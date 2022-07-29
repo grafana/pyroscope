@@ -1,0 +1,1216 @@
+rule_files:
+  - prometheus_alerts.yaml
+  - prometheus_rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+# PersistentVolume disk space
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 512 64 16'
+  - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 1024 1024 1024'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '16 64 512 1024'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+    values: '1 1 1 1'
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 2m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 3m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 4m
+    alertname: KubePersistentVolumeFillingUp
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: critical
+      exp_annotations:
+        summary: "PersistentVolume is filling up."
+        description: 'The PersistentVolume claimed by somepvc in Namespace monitoring is only 1.562% free.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumefillingup
+
+# Don't alert when PVC access_mode is ReadOnlyMany
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 512 64 16'
+  - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 1024 1024 1024'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '16 64 512 1024'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadOnlyMany", service="kube-state-metrics"}'
+    values: '1 1 1 1'
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 2m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 3m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 4m
+    alertname: KubePersistentVolumeFillingUp
+
+# Block volume mounts can report 0 for the kubelet_volume_stats_used_bytes metric but it shouldn't trigger the KubePersistentVolumeFillingUp alert.
+# See https://github.com/kubernetes/kubernetes/commit/b997e0e4d6ccbead435a47d6ac75b0db3d17252f for details.
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 512 64 16'
+  - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 1024 1024 1024'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '0 0 0 0'
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 2m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 3m
+    alertname: KubePersistentVolumeFillingUp
+  - eval_time: 4m
+    alertname: KubePersistentVolumeFillingUp
+
+  # Don't alert when PVC has been labelled as fully utilised
+- interval: 1m
+  input_series:
+    - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024 512 64 16'
+    - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024 1024 1024 1024'
+    - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '16 64 512 1024'
+    - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+      values: '1 1 1 1'
+    - series: 'kube_persistentvolumeclaim_labels{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc",label_excluded_from_alerts="true"}'
+      values: '1 1 1 1'
+  alert_rule_test:
+    - eval_time: 1m
+      alertname: KubePersistentVolumeFillingUp
+    - eval_time: 2m
+      alertname: KubePersistentVolumeFillingUp
+    - eval_time: 3m
+      alertname: KubePersistentVolumeFillingUp
+    - eval_time: 4m
+      alertname: KubePersistentVolumeFillingUp
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024+10x61'
+  alert_rule_test:
+  - eval_time: 1h
+    alertname: KubePersistentVolumeFillingUp
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: critical
+      exp_annotations:
+        summary: "PersistentVolume is filling up."
+        description: 'The PersistentVolume claimed by somepvc in Namespace monitoring is only 1.294% free.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumefillingup
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024+10x61'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+    values: '1x61'
+  alert_rule_test:
+  - eval_time: 61m
+    alertname: KubePersistentVolumeFillingUp
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: warning
+      exp_annotations:
+        summary: "PersistentVolume is filling up."
+        description: 'Based on recent sampling, the PersistentVolume claimed by somepvc in Namespace monitoring is expected to fill up within four days. Currently 1.263% is available.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumefillingup
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: critical
+      exp_annotations:
+        summary: "PersistentVolume is filling up."
+        description: 'The PersistentVolume claimed by somepvc in Namespace monitoring is only 1.263% free.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumefillingup
+
+# Block volume mounts can report 0 for the kubelet_volume_stats_used_bytes metric but it shouldn't trigger the KubePersistentVolumeFillingUp alert.
+# See https://github.com/kubernetes/kubernetes/commit/b997e0e4d6ccbead435a47d6ac75b0db3d17252f for details.
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '0x61'
+  alert_rule_test:
+  - eval_time: 61m
+    alertname: KubePersistentVolumeFillingUp
+
+# Don't alert when PVC access_mode is ReadOnlyMany
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1x61'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadOnlyMany", service="kube-state-metrics"}'
+    values: '1x61'
+  alert_rule_test:
+  - eval_time: 61m
+    alertname: KubePersistentVolumeFillingUp
+
+- interval: 1m
+  input_series:
+    - series: 'kubelet_volume_stats_available_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024-10x61'
+    - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '32768+0x61'
+    - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024+10x61'
+    - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+      values: '1x61'
+    - series: 'kube_persistentvolumeclaim_labels{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc",label_excluded_from_alerts="true"}'
+      values: '1x61'
+  alert_rule_test:
+    - eval_time: 61m
+      alertname: KubePersistentVolumeFillingUp
+
+# PersistentVolume inodes
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 512 64 16'
+  - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 1024 1024 1024'
+  - series: 'kubelet_volume_stats_inodes_used{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '16 64 512 1024'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+    values: '1 1 1 1'
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 2m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 3m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 4m
+    alertname: KubePersistentVolumeInodesFillingUp
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: critical
+      exp_annotations:
+        summary: "PersistentVolumeInodes are filling up."
+        description: 'The PersistentVolume claimed by somepvc in Namespace monitoring only has 1.562% free inodes.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumeinodesfillingup
+
+# Don't alert when PVC access_mode is ReadOnlyMany
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 512 64 16'
+  - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 1024 1024 1024'
+  - series: 'kubelet_volume_stats_inodes_used{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '16 64 512 1024'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadOnlyMany", service="kube-state-metrics"}'
+    values: '1 1 1 1'
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 2m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 3m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 4m
+    alertname: KubePersistentVolumeInodesFillingUp
+
+# Block volume mounts can report 0 for the kubelet_volume_stats_inodes_used metric but it shouldn't trigger the KubePersistentVolumeInodesFillingUp alert.
+# See https://github.com/kubernetes/kubernetes/commit/b997e0e4d6ccbead435a47d6ac75b0db3d17252f for details.
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 512 64 16'
+  - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024 1024 1024 1024'
+  - series: 'kubelet_volume_stats_inodes_used{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '0 0 0 0'
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 2m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 3m
+    alertname: KubePersistentVolumeInodesFillingUp
+  - eval_time: 4m
+    alertname: KubePersistentVolumeInodesFillingUp
+
+  # Don't alert when PVC has been labelled as fully utilised
+- interval: 1m
+  input_series:
+    - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024 512 64 16'
+    - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024 1024 1024 1024'
+    - series: 'kubelet_volume_stats_inodes_used{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '16 64 512 1024'
+    - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+      values: '1 1 1 1'
+    - series: 'kube_persistentvolumeclaim_labels{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc",label_excluded_from_alerts="true"}'
+      values: '1 1 1 1'
+  alert_rule_test:
+    - eval_time: 1m
+      alertname: KubePersistentVolumeInodesFillingUp
+    - eval_time: 2m
+      alertname: KubePersistentVolumeInodesFillingUp
+    - eval_time: 3m
+      alertname: KubePersistentVolumeInodesFillingUp
+    - eval_time: 4m
+      alertname: KubePersistentVolumeInodesFillingUp
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_inodes_used{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024+10x61'
+  alert_rule_test:
+  - eval_time: 1h
+    alertname: KubePersistentVolumeInodesFillingUp
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: critical
+      exp_annotations:
+        summary: "PersistentVolumeInodes are filling up."
+        description: 'The PersistentVolume claimed by somepvc in Namespace monitoring only has 1.294% free inodes.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumeinodesfillingup
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_inodes_used{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024+10x61'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+    values: '1x61'
+  alert_rule_test:
+  - eval_time: 61m
+    alertname: KubePersistentVolumeInodesFillingUp
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: warning
+      exp_annotations:
+        summary: "PersistentVolumeInodes are filling up."
+        description: 'Based on recent sampling, the PersistentVolume claimed by somepvc in Namespace monitoring is expected to run out of inodes within four days. Currently 1.263% of its inodes are free.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumeinodesfillingup
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        persistentvolumeclaim: somepvc
+        severity: critical
+      exp_annotations:
+        summary: "PersistentVolumeInodes are filling up."
+        description: 'The PersistentVolume claimed by somepvc in Namespace monitoring only has 1.263% free inodes.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumeinodesfillingup
+
+# Block volume mounts can report 0 for the kubelet_volume_stats_inodes_used metric but it shouldn't trigger the KubePersistentVolumeInodesFillingUp alert.
+# See https://github.com/kubernetes/kubernetes/commit/b997e0e4d6ccbead435a47d6ac75b0db3d17252f for details.
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_inodes_used{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '0x61'
+  alert_rule_test:
+  - eval_time: 61m
+    alertname: KubePersistentVolumeInodesFillingUp
+
+# Don't alert when PVC access_mode is ReadOnlyMany
+- interval: 1m
+  input_series:
+  - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1024-10x61'
+  - series: 'kubelet_volume_stats_inodes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '32768+0x61'
+  - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+    values: '1x61'
+  - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadOnlyMany", service="kube-state-metrics"}'
+    values: '1x61'
+  alert_rule_test:
+  - eval_time: 61m
+    alertname: KubePersistentVolumeInodesFillingUp
+
+- interval: 1m
+  input_series:
+    - series: 'kubelet_volume_stats_inodes_free{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024-10x61'
+    - series: 'kubelet_volume_stats_capacity_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '32768+0x61'
+    - series: 'kubelet_volume_stats_used_bytes{job="kubelet",namespace="monitoring",persistentvolumeclaim="somepvc"}'
+      values: '1024+10x61'
+    - series: 'kube_persistentvolumeclaim_access_mode{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc", access_mode="ReadWriteOnce", service="kube-state-metrics"}'
+      values: '1x61'
+    - series: 'kube_persistentvolumeclaim_labels{job="ksm",namespace="monitoring",persistentvolumeclaim="somepvc",label_excluded_from_alerts="true"}'
+      values: '1x61'
+  alert_rule_test:
+    - eval_time: 61m
+      alertname: KubePersistentVolumeInodesFillingUp
+
+- interval: 1m
+  input_series:
+  - series: 'kube_node_status_capacity{resource="pods",instance="172.17.0.5:8443",node="minikube",job="kube-state-metrics", namespace="kube-system"}'
+    values: '3+0x15'
+  - series: 'kube_pod_info{endpoint="https-main",instance="172.17.0.5:8443",job="kube-state-metrics",namespace="kube-system",node="minikube",pod="pod-1",service="kube-state-metrics"}'
+    values: '1+0x15'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="172.17.0.5:8443",job="kube-state-metrics",namespace="kube-system",phase="Running",pod="pod-1",service="kube-state-metrics"}'
+    values: '1+0x15'
+  - series: 'kube_pod_info{endpoint="https-main",instance="172.17.0.5:8443",job="kube-state-metrics",namespace="kube-system",node="minikube",pod="pod-2",service="kube-state-metrics"}'
+    values: '1+0x15'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="172.17.0.5:8443",job="kube-state-metrics",namespace="kube-system",phase="Running",pod="pod-2",service="kube-state-metrics"}'
+    values: '1+0x15'
+  - series: 'kube_pod_info{endpoint="https-main",instance="172.17.0.5:8443",job="kube-state-metrics",namespace="kube-system",node="minikube",pod="pod-3",service="kube-state-metrics"}'
+    values: '1+0x15'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="172.17.0.5:8443",job="kube-state-metrics",namespace="kube-system",phase="Running",pod="pod-3",service="kube-state-metrics"}'
+    values: '1+0x15'
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: KubeletTooManyPods
+  - eval_time: 15m
+    alertname: KubeletTooManyPods
+    exp_alerts:
+    - exp_labels:
+        node: minikube
+        severity: info
+      exp_annotations:
+        summary: "Kubelet is running at capacity."
+        description: "Kubelet 'minikube' is running at 100% of its Pod capacity."
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubelettoomanypods
+
+- interval: 1m
+  input_series:
+  - series: 'kube_pod_container_resource_requests{resource="cpu",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm"}'
+    values: '0.15+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="cpu",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-2",service="ksm"}'
+    values: '0.15+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="cpu",container="kube-apiserver-67",endpoint="https-main",instance="ksm-2",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm"}'
+    values: '0.1+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="memory",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm"}'
+    values: '1E9+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="memory",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-2",service="ksm"}'
+    values: '1E9+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="memory",container="kube-apiserver-67",endpoint="https-main",instance="ksm-2",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm"}'
+    values: '0.5E9+0x10'
+  # Duplicate kube_pod_status_phase timeseries for the same pod.
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",phase="Running",pod="pod-1",service="ksm"}'
+    values: '1 stale'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",phase="Pending",pod="pod-1",service="ksm"}'
+    values: '1+0x10'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",phase="Completed",pod="pod-2",service="ksm"}'
+    values: '1+0x10'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-2",job="kube-state-metrics",namespace="kube-apiserver",phase="Running",pod="pod-1",service="ksm"}'
+    values: '1+0x10'
+  promql_expr_test:
+  - eval_time: 0m
+    expr: namespace_cpu:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 0.15
+      labels: 'namespace_cpu:kube_pod_container_resource_requests:sum{namespace="kube-apiserver"}'
+  - eval_time: 0m
+    expr: namespace_memory:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 1.0e+9
+      labels: 'namespace_memory:kube_pod_container_resource_requests:sum{namespace="kube-apiserver"}'
+  - eval_time: 1m
+    expr: namespace_cpu:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 0.15
+      labels: 'namespace_cpu:kube_pod_container_resource_requests:sum{namespace="kube-apiserver"}'
+  - eval_time: 1m
+    expr: namespace_memory:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 1.0e+9
+      labels: 'namespace_memory:kube_pod_container_resource_requests:sum{namespace="kube-apiserver"}'
+
+- interval: 1m
+  input_series:
+  - series: 'kube_pod_container_resource_requests{resource="cpu",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm",cluster="test"}'
+    values: '0.15+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="cpu",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-2",service="ksm",cluster="test"}'
+    values: '0.15+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="cpu",container="kube-apiserver-67",endpoint="https-main",instance="ksm-2",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm",cluster="test"}'
+    values: '0.1+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="memory",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm",cluster="test"}'
+    values: '1E9+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="memory",container="kube-apiserver-67",endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-2",service="ksm",cluster="test"}'
+    values: '1E9+0x10'
+  - series: 'kube_pod_container_resource_requests{resource="memory",container="kube-apiserver-67",endpoint="https-main",instance="ksm-2",job="kube-state-metrics",namespace="kube-apiserver",node="node-1",pod="pod-1",service="ksm",cluster="test"}'
+    values: '0.5E9+0x10'
+  # Duplicate kube_pod_status_phase timeseries for the same pod.
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",phase="Running",pod="pod-1",service="ksm",cluster="test"}'
+    values: '1 stale'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",phase="Pending",pod="pod-1",service="ksm",cluster="test"}'
+    values: '1+0x10'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-1",job="kube-state-metrics",namespace="kube-apiserver",phase="Completed",pod="pod-2",service="ksm",cluster="test"}'
+    values: '1+0x10'
+  - series: 'kube_pod_status_phase{endpoint="https-main",instance="ksm-2",job="kube-state-metrics",namespace="kube-apiserver",phase="Running",pod="pod-1",service="ksm",cluster="test"}'
+    values: '1+0x10'
+  promql_expr_test:
+  - eval_time: 0m
+    expr: namespace_cpu:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 0.15
+      labels: 'namespace_cpu:kube_pod_container_resource_requests:sum{namespace="kube-apiserver",cluster="test"}'
+  - eval_time: 0m
+    expr: namespace_memory:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 1.0e+9
+      labels: 'namespace_memory:kube_pod_container_resource_requests:sum{namespace="kube-apiserver",cluster="test"}'
+  - eval_time: 1m
+    expr: namespace_cpu:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 0.15
+      labels: 'namespace_cpu:kube_pod_container_resource_requests:sum{namespace="kube-apiserver",cluster="test"}'
+  - eval_time: 1m
+    expr: namespace_memory:kube_pod_container_resource_requests:sum
+    exp_samples:
+    - value: 1.0e+9
+      labels: 'namespace_memory:kube_pod_container_resource_requests:sum{namespace="kube-apiserver",cluster="test"}'
+
+- interval: 1m
+  input_series:
+  # Create a histogram where all of the last 10 samples are in the +Inf (> 10 seconds) bucket.
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="0.005", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="0.01", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="0.025", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="0.05", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="0.1", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="0.25", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="0.5", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="1", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="2.5", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="5", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="10", instance="10.0.2.15:10250"}'
+    values: '1+0x10'
+  - series: 'kubelet_pleg_relist_duration_seconds_bucket{job="kublet", le="+Inf", instance="10.0.2.15:10250"}'
+    values: '30+1x10'
+  - series: 'kubelet_node_name{endpoint="https-metrics",instance="10.0.2.15:10250",job="kubelet",namespace="kube-system",node="minikube",service="kubelet"}'
+    values: '1 1 1 1 1 1 1 1 1 1'
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: KubeletPlegDurationHigh
+    exp_alerts:
+    - exp_labels:
+        instance: 10.0.2.15:10250
+        node: minikube
+        quantile: 0.99
+        severity: warning
+      exp_annotations:
+        summary: "Kubelet Pod Lifecycle Event Generator is taking too long to relist."
+        description: 'The Kubelet Pod Lifecycle Event Generator has a 99th percentile duration of 10 seconds on node minikube.'
+        runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletplegdurationhigh'
+
+- interval: 1m
+  input_series:
+  - series: 'kube_node_status_condition{condition="Ready",endpoint="https-main",instance="10.0.2.15:10250",job="kube-state-metrics",namespace="monitoring",node="minikube",pod="kube-state-metrics-b894d84cc-d6htw",service="kube-state-metrics",status="true"}'
+    values: '1 0 1 0 1 0 0 0 1 0 1 0 0 0 1 0 1 0 0 1'
+  alert_rule_test:
+  - eval_time: 18m
+    alertname: KubeNodeReadinessFlapping
+    exp_alerts:
+    - exp_labels:
+        node: minikube
+        severity: warning
+      exp_annotations:
+        summary: "Node readiness status is flapping."
+        description: 'The readiness status of node minikube has changed 10 times in the last 15 minutes.'
+        runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodereadinessflapping'
+
+# Verify that node:node_num_cpu:sum triggers no many-to-many errors.
+- interval: 1m
+  input_series:
+  - series: 'node_cpu_seconds_total{cpu="0",endpoint="https",instance="instance1",job="node-exporter",mode="idle",namespace="openshift-monitoring",pod="node-exporter-1",service="node-exporter"}'
+    values: '1 1'
+  - series: 'node_cpu_seconds_total{cpu="1",endpoint="https",instance="instance1",job="node-exporter",mode="idle",namespace="openshift-monitoring",pod="node-exporter-1",service="node-exporter"}'
+    values: '1 1'
+  - series: 'kube_pod_info{namespace="openshift-monitoring",node="node-1",pod="node-exporter-1",job="kube-state-metrics",instance="10.129.2.7:8443"}'
+    values: '1 1'
+  - series: 'kube_pod_info{namespace="openshift-monitoring",node="node-1",pod="alertmanager-0",job="kube-state-metrics",instance="10.129.2.7:8443"}'
+    values: '1 stale'
+  - series: 'kube_pod_info{namespace="openshift-monitoring",node="node-2",pod="alertmanager-0",job="kube-state-metrics",instance="10.129.2.7:8443"}'
+    values: '1 1'
+  promql_expr_test:
+  - eval_time: 0m
+    expr: node:node_num_cpu:sum
+    exp_samples:
+    - value: 2
+      labels: 'node:node_num_cpu:sum{node="node-1"}'
+  - eval_time: 1m
+    expr: node:node_num_cpu:sum
+    exp_samples:
+    - value: 2
+      labels: 'node:node_num_cpu:sum{node="node-1"}'
+
+# Verify that node:node_num_cpu:sum doesn't trigger many-to-many errors when
+# node_namespace_pod:kube_pod_info: has duplicate entries for the same
+# (namespace,pod) tuple. This can happen when Prometheus is restarted because
+# it didn't add stale markers to the "old" series on shutdown.
+- interval: 1m
+  input_series:
+  - series: 'node_cpu_seconds_total{cpu="0",endpoint="https",instance="instance1",job="node-exporter",mode="idle",namespace="openshift-monitoring",pod="node-exporter-1",service="node-exporter"}'
+    values: '1 1'
+  - series: 'node_cpu_seconds_total{cpu="0",endpoint="https",instance="instance2",job="node-exporter",mode="idle",namespace="openshift-monitoring",pod="node-exporter-2",service="node-exporter"}'
+    values: '1 1'
+  - series: 'node_namespace_pod:kube_pod_info:{node="node-1",namespace="openshift-monitoring",pod="node-exporter-1"}'
+    values: '1 1'
+  - series: 'node_namespace_pod:kube_pod_info:{node="node-2",namespace="openshift-monitoring",pod="node-exporter-2"}'
+    values: '1 1'
+  # series for the "old" prometheus instance.
+  - series: 'node_namespace_pod:kube_pod_info:{node="node-1",namespace="openshift-monitoring",pod="prometheus-0"}'
+    values: '1'
+  # series for the "new" prometheus instance.
+  - series: 'node_namespace_pod:kube_pod_info:{node="node-2",namespace="openshift-monitoring",pod="prometheus-0"}'
+    values: 'stale 1'
+  promql_expr_test:
+  - eval_time: 0m
+    expr: node:node_num_cpu:sum
+    exp_samples:
+    - value: 1
+      labels: 'node:node_num_cpu:sum{node="node-1"}'
+    - value: 1
+      labels: 'node:node_num_cpu:sum{node="node-2"}'
+  - eval_time: 1m
+    expr: node:node_num_cpu:sum
+    exp_samples:
+    - value: 1
+      labels: 'node:node_num_cpu:sum{node="node-1"}'
+    - value: 1
+      labels: 'node:node_num_cpu:sum{node="node-2"}'
+
+
+- interval: 1m
+  input_series:
+  - series: 'kube_pod_owner{endpoint="https",instance="instance1",job="kube-state-metrics",namespace="ns1",owner_is_controller="true",owner_kind="ReplicaSet",owner_name="ds-7cc77d965f",pod="ds-7cc77d965f-cgsdv",service="ksm"}'
+    values: '1 1'
+  - series: 'kube_pod_owner{endpoint="https",instance="instance2",job="kube-state-metrics",namespace="ns1",owner_is_controller="true",owner_kind="ReplicaSet",owner_name="ds-7cc77d965f",pod="ds-7cc77d965f-cgsdv",service="ksm"}'
+    values: '1 stale'
+  - series: 'kube_replicaset_owner{endpoint="https",instance="instance1",job="kube-state-metrics",namespace="ns1",owner_is_controller="true",owner_kind="Deployment",owner_name="ds",pod="ds-777f6bf798-kq7tj",replicaset="ds-7cc77d965f",service="ksm"}'
+    values: '1 1'
+  - series: 'kube_replicaset_owner{endpoint="https",instance="instance2",job="kube-state-metrics",namespace="ns1",owner_is_controller="true",owner_kind="Deployment",owner_name="ds",pod="ds-777f6bf798-kq7tj",replicaset="ds-7cc77d965f",service="ksm"}'
+    values: '1 stale'
+  promql_expr_test:
+  - eval_time: 0m
+    expr: namespace_workload_pod:kube_pod_owner:relabel
+    exp_samples:
+    - value: 1
+      labels: 'namespace_workload_pod:kube_pod_owner:relabel{namespace="ns1", pod="ds-7cc77d965f-cgsdv", workload="ds", workload_type="deployment"}'
+  - eval_time: 1m
+    expr: namespace_workload_pod:kube_pod_owner:relabel
+    exp_samples:
+    - value: 1
+      labels: 'namespace_workload_pod:kube_pod_owner:relabel{namespace="ns1", pod="ds-7cc77d965f-cgsdv", workload="ds", workload_type="deployment"}'
+
+- interval: 1m
+  input_series:
+  - series: 'kube_pod_status_phase{endpoint="https",instance="instance1",job="kube-state-metrics",namespace="ns1",phase="Pending",pod="pod-ds-7cc77d965f-cgsdv",service="ksm"}'
+    values: '1+0x20'
+  - series: 'kube_pod_owner{endpoint="https",instance="instance1",job="kube-state-metrics",namespace="ns1",owner_is_controller="false",owner_kind="<None>",owner_name="ds-7cc77d965f",pod="pod-ds-7cc77d965f-cgsdv",service="ksm"}'
+    values: '1+0x20'
+  - series: 'kube_pod_owner{endpoint="https",instance="instance1",job="kube-state-metrics",namespace="ns1",owner_is_controller="true",owner_kind="ReplicaSet",owner_name="ds-7cc77d965f",pod="pod-ds-7cc77d965f-cgsdv",service="ksm"}'
+    values: '1+0x20'
+  alert_rule_test:
+  - eval_time: 15m
+    alertname: KubePodNotReady
+    exp_alerts:
+    - exp_labels:
+        namespace: ns1
+        pod: pod-ds-7cc77d965f-cgsdv
+        severity: warning
+      exp_annotations:
+        summary: "Pod has been in a non-ready state for more than 15 minutes."
+        description: "Pod ns1/pod-ds-7cc77d965f-cgsdv has been in a non-ready state for longer than 15 minutes."
+        runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodnotready"
+
+- interval: 1m
+  input_series:
+  - series: 'container_cpu_usage_seconds_total{container="alertmanager",cpu="total",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-0",service="kubelet"}'
+    values: '0+3x5'
+  - series: 'container_cpu_usage_seconds_total{container="alertmanager",cpu="total",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-1",service="kubelet"}'
+    values: '0+3x5'
+  # Duplicate timeseries from different instances.
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance2"}'
+    values: '1+0x5'
+  # Missing node label.
+  - series: 'kube_pod_info{namespace="monitoring",pod="alertmanager-main-1",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  promql_expr_test:
+  - eval_time: 5m
+    expr: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate
+    exp_samples:
+    - value: 5.0e-2
+      labels: 'node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace="monitoring", pod="alertmanager-main-0", container="alertmanager", node="node1"}'
+
+- interval: 1m
+  input_series:
+  - series: 'container_memory_working_set_bytes{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-0",service="kubelet"}'
+    values: '1000+0x5'
+  - series: 'container_memory_working_set_bytes{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-1",service="kubelet"}'
+    values: '1000+0x5'
+  # Duplicate timeseries from different instances.
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance2"}'
+    values: '1+0x5'
+  # Missing node label.
+  - series: 'kube_pod_info{namespace="monitoring",pod="alertmanager-main-1",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  promql_expr_test:
+  - eval_time: 5m
+    expr: node_namespace_pod_container:container_memory_working_set_bytes
+    exp_samples:
+    - value: 1.0e+3
+      labels: 'node_namespace_pod_container:container_memory_working_set_bytes{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",node="node1",pod="alertmanager-main-0",service="kubelet"}'
+
+- interval: 1m
+  input_series:
+  - series: 'container_memory_rss{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-0",service="kubelet"}'
+    values: '1000+0x5'
+  - series: 'container_memory_rss{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-1",service="kubelet"}'
+    values: '1000+0x5'
+  # Duplicate timeseries from different instances.
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance2"}'
+    values: '1+0x5'
+  # Missing node label.
+  - series: 'kube_pod_info{namespace="monitoring",pod="alertmanager-main-1",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  promql_expr_test:
+  - eval_time: 5m
+    expr: node_namespace_pod_container:container_memory_rss
+    exp_samples:
+    - value: 1.0e+3
+      labels: 'node_namespace_pod_container:container_memory_rss{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",node="node1",pod="alertmanager-main-0",service="kubelet"}'
+
+- interval: 1m
+  input_series:
+  - series: 'container_memory_cache{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-0",service="kubelet"}'
+    values: '1000+0x5'
+  - series: 'container_memory_cache{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-1",service="kubelet"}'
+    values: '1000+0x5'
+  # Duplicate timeseries from different instances.
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance2"}'
+    values: '1+0x5'
+  # Missing node label.
+  - series: 'kube_pod_info{namespace="monitoring",pod="alertmanager-main-1",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  promql_expr_test:
+  - eval_time: 5m
+    expr: node_namespace_pod_container:container_memory_cache
+    exp_samples:
+    - value: 1.0e+3
+      labels: 'node_namespace_pod_container:container_memory_cache{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",node="node1",pod="alertmanager-main-0",service="kubelet"}'
+
+- interval: 1m
+  input_series:
+  - series: 'container_memory_swap{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-0",service="kubelet"}'
+    values: '1000+0x5'
+  - series: 'container_memory_swap{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",pod="alertmanager-main-1",service="kubelet"}'
+    values: '1000+0x5'
+  # Duplicate timeseries from different instances.
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  - series: 'kube_pod_info{namespace="monitoring",node="node1",pod="alertmanager-main-0",job="kube-state-metrics",instance="instance2"}'
+    values: '1+0x5'
+  # Missing node label.
+  - series: 'kube_pod_info{namespace="monitoring",pod="alertmanager-main-1",job="kube-state-metrics",instance="instance1"}'
+    values: '1+0x5'
+  promql_expr_test:
+  - eval_time: 5m
+    expr: node_namespace_pod_container:container_memory_swap
+    exp_samples:
+    - value: 1.0e+3
+      labels: 'node_namespace_pod_container:container_memory_swap{container="alertmanager",endpoint="https",id="/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod3426a9c5_53d6_4736_9ca8_f575828e3e4b.slice/crio-f0d7fb2c909605aad16946ff065a42b25cdcdb812459e712ecdd6bce8a3ed6cb.scope",image="quay.io/prometheus/alertmanager:latest",instance="instance1",job="cadvisor",name="name1",namespace="monitoring",node="node1",pod="alertmanager-main-0",service="kubelet"}'
+- interval: 1m
+  # Current unequal desired and not progressing.
+  input_series:
+  - series: 'kube_daemonset_status_current_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 3 4 4 4 3 4 4 4 3 4 4 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4'
+  - series: 'kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+  - series: 'kube_daemonset_status_number_misscheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+  - series: 'kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 0 0 0 1 1 1 1 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4'
+  - series: 'kube_daemonset_status_number_available{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 3 3 3 4 3 3 3 4 3 3 3 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4'
+  alert_rule_test:
+  - eval_time: 32m
+    alertname: KubeDaemonSetRolloutStuck
+  - eval_time: 33m
+    alertname: KubeDaemonSetRolloutStuck
+    exp_alerts:
+    - exp_labels:
+        job: kube-state-metrics
+        namespace: monitoring
+        daemonset: node-exporter
+        severity: warning
+      exp_annotations:
+        summary: "DaemonSet rollout is stuck."
+        description: 'DaemonSet monitoring/node-exporter has not finished or progressed for at least 15 minutes.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetrolloutstuck
+  - eval_time: 34m
+    alertname: KubeDaemonSetRolloutStuck
+- interval: 1m
+  # Misscheduled is non zero.
+  input_series:
+  - series: 'kube_daemonset_status_current_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 3 4 4 4 3 4 4 4 3 4 4 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4'
+  - series: 'kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+  - series: 'kube_daemonset_status_number_misscheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0'
+  - series: 'kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 0 0 0 1 1 1 1 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4'
+  - series: 'kube_daemonset_status_number_available{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 3 3 3 4 3 3 3 4 3 3 3 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4'
+  alert_rule_test:
+  - eval_time: 32m
+    alertname: KubeDaemonSetRolloutStuck
+  - eval_time: 33m
+    alertname: KubeDaemonSetRolloutStuck
+    exp_alerts:
+    - exp_labels:
+        job: kube-state-metrics
+        namespace: monitoring
+        daemonset: node-exporter
+        severity: warning
+      exp_annotations:
+        summary: "DaemonSet rollout is stuck."
+        description: 'DaemonSet monitoring/node-exporter has not finished or progressed for at least 15 minutes.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetrolloutstuck
+  - eval_time: 34m
+    alertname: KubeDaemonSetRolloutStuck
+- interval: 1m
+  # Updated number unequal desired.
+  input_series:
+  - series: 'kube_daemonset_status_current_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 3 4 4 4 3 4 4 4 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+  - series: 'kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+  - series: 'kube_daemonset_status_number_misscheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+  - series: 'kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 0 0 0 1 1 1 1 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4'
+  - series: 'kube_daemonset_status_number_available{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 3 3 3 4 3 3 3 4 3 3 3 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4'
+  alert_rule_test:
+  - eval_time: 32m
+    alertname: KubeDaemonSetRolloutStuck
+  - eval_time: 33m
+    alertname: KubeDaemonSetRolloutStuck
+    exp_alerts:
+    - exp_labels:
+        job: kube-state-metrics
+        namespace: monitoring
+        daemonset: node-exporter
+        severity: warning
+      exp_annotations:
+        summary: "DaemonSet rollout is stuck."
+        description: 'DaemonSet monitoring/node-exporter has not finished or progressed for at least 15 minutes.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetrolloutstuck
+  - eval_time: 34m
+    alertname: KubeDaemonSetRolloutStuck
+- interval: 1m
+  # Number available unequal desired.
+  input_series:
+  - series: 'kube_daemonset_status_current_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 3 4 4 4 3 4 4 4 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+  - series: 'kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+  - series: 'kube_daemonset_status_number_misscheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+  - series: 'kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 0 0 0 1 1 1 1 2 2 2 2 3 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+  - series: 'kube_daemonset_status_number_available{job="kube-state-metrics",namespace="monitoring",daemonset="node-exporter"}'
+    values: '4 4 4 3 3 3 4 3 3 3 4 3 3 3 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4'
+  alert_rule_test:
+  - eval_time: 34m
+    alertname: KubeDaemonSetRolloutStuck
+  - eval_time: 35m
+    alertname: KubeDaemonSetRolloutStuck
+    exp_alerts:
+    - exp_labels:
+        job: kube-state-metrics
+        namespace: monitoring
+        daemonset: node-exporter
+        severity: warning
+      exp_annotations:
+        summary: "DaemonSet rollout is stuck."
+        description: 'DaemonSet monitoring/node-exporter has not finished or progressed for at least 15 minutes.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetrolloutstuck
+  - eval_time: 36m
+    alertname: KubeDaemonSetRolloutStuck
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_certificate_manager_client_ttl_seconds{job="kubelet",namespace="monitoring",node="minikube"}'
+    values: '86400-60x1'
+  alert_rule_test:
+  - eval_time: 0m
+    alertname: KubeletClientCertificateExpiration
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: warning
+      exp_annotations:
+        summary: "Kubelet client certificate is about to expire."
+        description: 'Client certificate for Kubelet on node minikube expires in 1d 0h 0m 0s.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletclientcertificateexpiration
+  - eval_time: 1m
+    alertname: KubeletClientCertificateExpiration
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: warning
+      exp_annotations:
+        summary: "Kubelet client certificate is about to expire."
+        description: 'Client certificate for Kubelet on node minikube expires in 23h 59m 0s.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletclientcertificateexpiration
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: critical
+      exp_annotations:
+        summary: "Kubelet client certificate is about to expire."
+        description: 'Client certificate for Kubelet on node minikube expires in 23h 59m 0s.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletclientcertificateexpiration
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_certificate_manager_server_ttl_seconds{job="kubelet",namespace="monitoring",node="minikube"}'
+    values: '86400-60x1'
+  alert_rule_test:
+  - eval_time: 0m
+    alertname: KubeletServerCertificateExpiration
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: warning
+      exp_annotations:
+        summary: "Kubelet server certificate is about to expire."
+        description: 'Server certificate for Kubelet on node minikube expires in 1d 0h 0m 0s.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletservercertificateexpiration
+  - eval_time: 1m
+    alertname: KubeletServerCertificateExpiration
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: warning
+      exp_annotations:
+        summary: "Kubelet server certificate is about to expire."
+        description: 'Server certificate for Kubelet on node minikube expires in 23h 59m 0s.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletservercertificateexpiration
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: critical
+      exp_annotations:
+        summary: "Kubelet server certificate is about to expire."
+        description: 'Server certificate for Kubelet on node minikube expires in 23h 59m 0s.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletservercertificateexpiration
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_certificate_manager_client_expiration_renew_errors{job="kubelet",namespace="monitoring",node="minikube"}'
+    values: '0+1x20'
+  alert_rule_test:
+  - eval_time: 16m
+    alertname: KubeletClientCertificateRenewalErrors
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: warning
+      exp_annotations:
+        summary: "Kubelet has failed to renew its client certificate."
+        description: 'Kubelet on node minikube has failed to renew its client certificate (5 errors in the last 5 minutes).'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletclientcertificaterenewalerrors
+
+
+- interval: 1m
+  input_series:
+  - series: 'kubelet_server_expiration_renew_errors{job="kubelet",namespace="monitoring",node="minikube"}'
+    values: '0+1x20'
+  alert_rule_test:
+  - eval_time: 16m
+    alertname: KubeletServerCertificateRenewalErrors
+    exp_alerts:
+    - exp_labels:
+        job: kubelet
+        namespace: monitoring
+        node: minikube
+        severity: warning
+      exp_annotations:
+        summary: "Kubelet has failed to renew its server certificate."
+        description: 'Kubelet on node minikube has failed to renew its server certificate (5 errors in the last 5 minutes).'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletservercertificaterenewalerrors
+
+- interval: 1m
+  input_series:
+  - series: 'kube_job_failed{instance="instance1",condition="true",job="kube-state-metrics",job_name="job-1597623120",namespace="ns1"}'
+    values: '1+0x20'
+  alert_rule_test:
+  - eval_time: 15m
+    alertname: KubeJobFailed
+    exp_alerts:
+    - exp_labels:
+        namespace: ns1
+        job_name: job-1597623120
+        severity: warning
+        condition: true
+        instance: instance1
+        job: kube-state-metrics
+      exp_annotations:
+        summary: "Job failed to complete."
+        description: "Job ns1/job-1597623120 failed to complete. Removing failed job after investigation should clear this alert."
+        runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubejobfailed"
+
+- interval: 1m
+  input_series:
+  - series: 'kube_job_status_start_time{namespace="ns1", job="kube-state-metrics", instance="instance1", job_name="job1"}'
+    values: '0+0x200 _x500 0+0x40'
+  - series: 'kube_job_status_active{namespace="ns1", job="kube-state-metrics", instance="instance1", job_name="job1"}'
+    values: '1x200 _x500 1x40'
+  alert_rule_test:
+  - eval_time: 6h
+    alertname: KubeJobNotCompleted
+  - eval_time: 12h1m
+    alertname: KubeJobNotCompleted
+    exp_alerts:
+    - exp_labels:
+        namespace: ns1
+        job_name: job1
+        severity: warning
+      exp_annotations:
+        summary: "Job did not complete in time"
+        description: "Job ns1/job1 is taking more than 12h 0m 0s to complete."
+        runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubejobnotcompleted"
+
+- interval: 1m
+  input_series:
+  - series: 'kube_job_status_start_time{namespace="ns1", job="kube-state-metrics", instance="instance1", job_name="job1"}'
+    values: '0+0x740'
+  - series: 'kube_job_status_active{namespace="ns1", job="kube-state-metrics", instance="instance1", job_name="job1"}'
+    values: '1+0x710 0x30'
+  alert_rule_test:
+  - eval_time: 6h
+    alertname: KubeJobNotCompleted
+  - eval_time: 12h
+    alertname: KubeJobNotCompleted
+
+- interval: 1m
+  input_series:
+  - series: 'apiserver_request_terminations_total{job="kube-apiserver",apiserver="kube-apiserver"}'
+    values: '1+1x10'
+  - series: 'apiserver_request_total{job="kube-apiserver",apiserver="kube-apiserver"}'
+    values: '1+2x10'
+  alert_rule_test:
+  - eval_time: 5m    # alert hasn't fired
+    alertname: KubeAPITerminatedRequests
+  - eval_time: 10m   # alert fired
+    alertname: KubeAPITerminatedRequests
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "The kubernetes apiserver has terminated 33.33% of its incoming requests."
+        description: "The kubernetes apiserver has terminated 33.33% of its incoming requests."
+        runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapiterminatedrequests"
+
+- interval: 1m
+  input_series:
+  - series: 'kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff",namespace="test",pod="static-web",container="script",job="kube-state-metrics"}'
+    values: '1 1 stale _x3 1 1 stale _x2 1+0x4 stale'
+  alert_rule_test:
+  - eval_time: 10m    # alert hasn't fired
+    alertname: KubePodCrashLooping
+  - eval_time: 16m   # alert fired
+    alertname: KubePodCrashLooping
+    exp_alerts:
+    - exp_labels:
+        severity: "warning"
+        container: "script"
+        job: "kube-state-metrics"
+        namespace: "test"
+        pod: "static-web"
+        reason: "CrashLoopBackOff"
+      exp_annotations:
+        description: 'Pod test/static-web (script) is in waiting state (reason: "CrashLoopBackOff").'
+        runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodcrashlooping"
+        summary: "Pod is crash looping."
+  - eval_time: 20m
+    alertname: KubePodCrashLooping   # alert fired for a period of 5 minutes after resolution because the alert looks back at the last 5 minutes of data and the range vector doesn't take stale samples into account 
+    exp_alerts:
+      - exp_labels:
+          severity: "warning"
+          container: "script"
+          job: "kube-state-metrics"
+          namespace: "test"
+          pod: "static-web"
+          reason: "CrashLoopBackOff"
+        exp_annotations:
+          description: 'Pod test/static-web (script) is in waiting state (reason: "CrashLoopBackOff").'
+          runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodcrashlooping"
+          summary: "Pod is crash looping."
+  - eval_time: 21m    # alert recovers
+    alertname: KubePodCrashLooping
+
+# When ResourceQuota has both cpu and requests.cpu, min value of those will be taken into account for quota calculation.
+- interval: 1m
+  input_series:
+  - series: 'kube_resourcequota{namespace="test", resource="cpu", type="hard", job="kube-state-metrics"}'
+    values: '1000x10'
+  - series: 'kube_resourcequota{namespace="test", resource="requests.cpu", type="hard", job="kube-state-metrics"}'
+    values: '100x10'
+  - series: 'kube_resourcequota{namespace="test1", resource="requests.cpu", type="hard", job="kube-state-metrics"}'
+    values: '50x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n1", resource="cpu", job="kube-state-metrics"}'
+    values: '100x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n2", resource="cpu", job="kube-state-metrics"}'
+    values: '100x10'
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: KubeCPUQuotaOvercommit
+  - eval_time: 5m    # alert shouldn't fire
+    alertname: KubeCPUQuotaOvercommit
+- interval: 1m
+  input_series:
+  - series: 'kube_resourcequota{namespace="test", resource="cpu", type="hard", job="kube-state-metrics"}'
+    values: '1000x10'
+  - series: 'kube_resourcequota{namespace="test", resource="requests.cpu", type="hard", job="kube-state-metrics"}'
+    values: '200x10'
+  - series: 'kube_resourcequota{namespace="test1", resource="requests.cpu", type="hard", job="kube-state-metrics"}'
+    values: '200x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n1", resource="cpu", job="kube-state-metrics"}'
+    values: '100x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n2", resource="cpu", job="kube-state-metrics"}'
+    values: '100x10'
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: KubeCPUQuotaOvercommit
+  - eval_time: 5m    # alert shouldn't fire
+    alertname: KubeCPUQuotaOvercommit
+    exp_alerts:
+    - exp_labels:
+        severity: "warning"
+      exp_annotations:
+        description: 'Cluster has overcommitted CPU resource requests for Namespaces.'
+        runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubecpuquotaovercommit"
+        summary: "Cluster has overcommitted CPU resource requests."
+
+# When ResourceQuota has both memory and requests.memory, min value of those will be taken into account for quota calculation.
+- interval: 1m
+  input_series:
+  - series: 'kube_resourcequota{namespace="test", resource="memory", type="hard", job="kube-state-metrics"}'
+    values: '1000x10'
+  - series: 'kube_resourcequota{namespace="test", resource="requests.memory", type="hard", job="kube-state-metrics"}'
+    values: '100x10'
+  - series: 'kube_resourcequota{namespace="test1", resource="requests.memory", type="hard", job="kube-state-metrics"}'
+    values: '50x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n1", resource="memory", job="kube-state-metrics"}'
+    values: '100x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n2", resource="memory", job="kube-state-metrics"}'
+    values: '100x10'
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: KubeMemoryQuotaOvercommit
+  - eval_time: 5m    # alert shouldn't fire
+    alertname: KubeMemoryQuotaOvercommit
+- interval: 1m
+  input_series:
+  - series: 'kube_resourcequota{namespace="test", resource="memory", type="hard", job="kube-state-metrics"}'
+    values: '1000x10'
+  - series: 'kube_resourcequota{namespace="test", resource="requests.memory", type="hard", job="kube-state-metrics"}'
+    values: '500x10'
+  - series: 'kube_resourcequota{namespace="test1", resource="requests.memory", type="hard", job="kube-state-metrics"}'
+    values: '500x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n1", resource="memory", job="kube-state-metrics"}'
+    values: '10x10'
+  - series: 'kube_node_status_allocatable{namespace="monitoring", node="n2", resource="memory", job="kube-state-metrics"}'
+    values: '10x10'
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: KubeMemoryQuotaOvercommit
+  - eval_time: 5m    # alert shouldn't fire
+    alertname: KubeMemoryQuotaOvercommit
+    exp_alerts:
+    - exp_labels:
+        severity: "warning"
+      exp_annotations:
+        description: 'Cluster has overcommitted memory resource requests for Namespaces.'
+        runbook_url: "https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubememoryquotaovercommit"
+        summary: "Cluster has overcommitted memory resource requests."
