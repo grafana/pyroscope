@@ -7,6 +7,7 @@ import Color from 'color';
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
+import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@webapp/components/TimelineChartWrapper';
@@ -15,6 +16,7 @@ import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import {
   actions,
   setDateRange,
@@ -120,6 +122,11 @@ function TagExplorerView() {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
   };
 
+  const exportFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    activeTagProfile,
+    groupByTag,
+    groupByTagValue
+  );
   // when there's no groupByTag value backend returns groups with single "*" group,
   // which is "application without any tag" group. when backend returns multiple groups,
   // "*" group samples array is filled with zeros (not longer valid application data).
@@ -172,6 +179,15 @@ function TagExplorerView() {
             showCredit={false}
             profile={activeTagProfile}
             colorMode={colorMode}
+            ExportData={
+              activeTagProfile && (
+                <ExportData
+                  flamebearer={activeTagProfile}
+                  exportFlamegraphDotCom={true}
+                  exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+                />
+              )
+            }
           />
         </Box>
       )}
