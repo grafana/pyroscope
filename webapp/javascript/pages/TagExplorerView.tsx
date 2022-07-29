@@ -300,16 +300,16 @@ function ExploreHeader({
   const groupByDropdownItems =
     tagKeys.length > 0 ? tagKeys : ['No tags available'];
   // groupsData has single "application without tags" group for initial view
-  // since it's not a "real" tag we filter it
+  // we change this name to default value
   const whereDropdownItems =
     groupsData.length > 0
       ? groupsData.reduce((acc, group) => {
-          if (group.tagName !== appName.unwrapOr('')) {
-            acc.push(group.tagName);
+          const tagName =
+            group.tagName !== appName.unwrapOr('')
+              ? group.tagName
+              : appWithoutTagsWhereDropdownOptionName;
 
-            return acc;
-          }
-
+          acc.push(tagName);
           return acc;
         }, [] as string[])
       : ['No data available'];
@@ -350,24 +350,18 @@ function ExploreHeader({
             selectedTagValue || appWithoutTagsWhereDropdownOptionName
           }`}
           onItemClick={
-            whereDropdownItems.length > 0 ? handleGroupByValueClick : undefined
+            // to prevent clicking on default (*) option
+            whereDropdownItems.length >= 1 &&
+            whereDropdownItems[0] !== appWithoutTagsWhereDropdownOptionName
+              ? handleGroupByValueClick
+              : undefined
           }
         >
-          {whereDropdownItems.length > 0 ? (
-            whereDropdownItems.map((tagGroupName) => (
-              <MenuItem key={tagGroupName} value={tagGroupName}>
-                {tagGroupName}
-              </MenuItem>
-            ))
-          ) : (
-            // when groupBy tag is not selected we display default * option in where dropdown
-            <MenuItem
-              key={appWithoutTagsWhereDropdownOptionName}
-              value={appWithoutTagsWhereDropdownOptionName}
-            >
-              {appWithoutTagsWhereDropdownOptionName}
+          {whereDropdownItems.map((tagGroupName) => (
+            <MenuItem key={tagGroupName} value={tagGroupName}>
+              {tagGroupName}
             </MenuItem>
-          )}
+          ))}
         </Dropdown>
       </div>
     </div>
