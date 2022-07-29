@@ -133,42 +133,68 @@ func isDelta(lbs firemodel.Labels) bool {
 	return false
 }
 
-func deltaSamples(highest, new []*schemav1.Sample, idx []int) []*schemav1.Sample {
-	var (
-		i, j       int
-		newHighest = make([]*schemav1.Sample, 0, len(highest))
-	)
-	for j < len(new) {
-		if i < len(highest) {
-			if highest[i].StacktraceID < new[j].StacktraceID {
-				newHighest = append(newHighest, highest[i])
-				i++
-				continue
-			}
-			if highest[i].StacktraceID > new[j].StacktraceID {
-				newHighest = append(newHighest, new[j])
-				j++
-				continue
-			}
-			if highest[i].StacktraceID == new[j].StacktraceID {
-				for _, k := range idx {
-					if highest[i].Values[k] <= new[j].Values[k] {
-						newMax := new[j].Values[k]
-						new[j].Values[k] -= highest[i].Values[k]
-						highest[i].Values[k] = newMax
-					} else {
-						new[j].Values[k] = 0
-					}
-				}
-				newHighest = append(newHighest, highest[i])
-				i++
-				j++
-				continue
-			}
-		}
-		newHighest = append(newHighest, new[j])
-		j++
-	}
+// func deltaSamples(highest, new []*schemav1.Sample, idx []int) []*schemav1.Sample {
+// 	var (
+// 		i, j       int
+// 		newHighest = make([]*schemav1.Sample, 0, len(highest))
+// 	)
+// 	for j < len(new) {
+// 		if i < len(highest) {
+// 			if highest[i].StacktraceID < new[j].StacktraceID {
+// 				newHighest = append(newHighest, highest[i])
+// 				i++
+// 				continue
+// 			}
+// 			if highest[i].StacktraceID > new[j].StacktraceID {
+// 				newHighest = append(newHighest, new[j])
+// 				j++
+// 				continue
+// 			}
+// 			if highest[i].StacktraceID == new[j].StacktraceID {
+// 				for _, k := range idx {
+// 					if highest[i].Values[k] <= new[j].Values[k] {
+// 						newMax := new[j].Values[k]
+// 						new[j].Values[k] -= highest[i].Values[k]
+// 						highest[i].Values[k] = newMax
+// 					} else {
+// 						new[j].Values[k] = 0
+// 					}
+// 				}
+// 				newHighest = append(newHighest, highest[i])
+// 				i++
+// 				j++
+// 				continue
+// 			}
+// 		}
+// 		newHighest = append(newHighest, new[j])
+// 		j++
+// 	}
 
-	return newHighest
+// 	return newHighest
+// }
+
+func deltaSamples(highest, new []*schemav1.Sample, idx []int) []*schemav1.Sample {
+	stacktraces := make(map[uint64]*schemav1.Sample)
+	for _, h := range highest {
+		stacktraces[h.StacktraceID] = h
+	}
+	for _, n := range new {
+		if s, ok := stacktraces[n.StacktraceID]; ok {
+			for _, k := range idx {
+				if s.Values[k] <= n.Values[k] {
+					newMax := n.Values[k]
+					n.Values[k] -= s.Values[k]
+					s.Values[k] = newMax
+				} else {
+					n.Values[k] = 0
+				}
+			}
+			continue
+		}
+		highest = append(highest, n)
+	}
+	sort.Slice(highest, func(i, j int) bool {
+		return highest[i].StacktraceID < highest[j].StacktraceID
+	})
+	return highest
 }

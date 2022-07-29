@@ -308,7 +308,8 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	}
 	h.index.Add(profile, profilesLabels, metricName)
 
-	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(profilesLabels)))
+	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(profile.Samples) * len(profilesLabels)))
+	h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(profilesLabels)))
 
 	return nil
 }
