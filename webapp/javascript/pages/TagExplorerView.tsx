@@ -270,6 +270,9 @@ function ExploreHeader({
           label="select tag"
           value={selectedTag ? `tag: ${selectedTag}` : 'select tag'}
           onItemClick={tagKeys.length > 0 ? handleClick : undefined}
+          menuButtonClassName={
+            selectedTag === '' ? styles.notSelectedTagDropdown : undefined
+          }
         >
           {dropdownItems.map((tagName) => (
             <MenuItem key={tagName} value={tagName}>

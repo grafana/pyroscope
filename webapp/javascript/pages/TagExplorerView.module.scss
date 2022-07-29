@@ -3,6 +3,11 @@
     display: flex;
     align-items: center;
     margin: 0 10px 10px;
+
+    .notSelectedTagDropdown {
+      border-color: var(--ps-selected-app);
+      color: var(--ps-selected-app);
+    }
   }
 
   .tableDescription {
