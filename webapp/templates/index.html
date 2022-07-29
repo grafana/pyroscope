@@ -10,11 +10,11 @@
     {{- end }}
     <link
       rel="stylesheet"
-      href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css"
+      href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css<%= webpack.cacheBusting %>"
     />
     <link
       rel="stylesheet"
-      href="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.css"
+      href="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.css<%= webpack.cacheBusting %>"
     />
     {{ .ExtraMetadata }} <%= extra_metadata %>
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />

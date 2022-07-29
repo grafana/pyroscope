@@ -48,6 +48,10 @@ const pagePlugins = pages.map(
             ? compilation.getStats().toJson().hash
             : LOCAL_HASH;
 
+        // When running locally, the browser will cache the css
+        const cacheBusting =
+          process.env.NODE_ENV === 'production' ? '' : `?${Math.random()}`;
+
         return {
           extra_metadata: process.env.EXTRA_METADATA
             ? fs.readFileSync(process.env.EXTRA_METADATA)
@@ -55,6 +59,7 @@ const pagePlugins = pages.map(
           mode: process.env.NODE_ENV,
           webpack: {
             hash,
+            cacheBusting,
           },
         };
       },
