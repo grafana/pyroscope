@@ -134,8 +134,11 @@ function TagExplorerView() {
         <ExploreHeader
           appName={appName}
           tags={tags}
+          groupsData={filteredGroupsData}
           selectedTag={tagExplorerView.groupByTag}
-          handleTagChange={handleGroupedByTagChange}
+          selectedTagValue={tagExplorerView.groupByTagValue}
+          handleGroupByTagChange={handleGroupedByTagChange}
+          handleGroupByTagValueChange={handleGroupByTagValueChange}
         />
         <TimelineChartWrapper
           mode="multiple"
@@ -244,22 +247,49 @@ function Table({
   );
 }
 
+const appWithoutTagsWhereDropdownOptionName = '*';
+
 function ExploreHeader({
   appName,
+  groupsData,
   tags,
   selectedTag,
-  handleTagChange,
+  selectedTagValue,
+  handleGroupByTagChange,
+  handleGroupByTagValueChange,
 }: {
   appName: Maybe<string>;
+  groupsData: TimelineGroupData[];
   tags: TagsState;
   selectedTag: string;
-  handleTagChange: (value: string) => void;
+  selectedTagValue: string;
+  handleGroupByTagChange: (value: string) => void;
+  handleGroupByTagValueChange: (value: string) => void;
 }) {
   const tagKeys = Object.keys(tags.tags);
-  const dropdownItems = tagKeys.length > 0 ? tagKeys : ['No tags available'];
+  const groupByDropdownItems =
+    tagKeys.length > 0 ? tagKeys : ['No tags available'];
+  // groupsData has single "application without tags" group for initial view
+  // since it's not a "real" tag we filter it
+  const whereDropdownItems =
+    groupsData.length > 0
+      ? groupsData.reduce((acc, group) => {
+          if (group.tagName !== appName.unwrapOr('')) {
+            acc.push(group.tagName);
 
-  const handleClick = (e: ClickEvent) => {
-    handleTagChange(e.value);
+            return acc;
+          }
+
+          return acc;
+        }, [] as string[])
+      : ['No data available'];
+
+  const handleGroupByClick = (e: ClickEvent) => {
+    handleGroupByTagChange(e.value);
+  };
+
+  const handleGroupByValueClick = (e: ClickEvent) => {
+    handleGroupByTagValueChange(e.value);
   };
 
   return (
@@ -270,16 +300,44 @@ function ExploreHeader({
         <Dropdown
           label="select tag"
           value={selectedTag ? `tag: ${selectedTag}` : 'select tag'}
-          onItemClick={tagKeys.length > 0 ? handleClick : undefined}
+          onItemClick={tagKeys.length > 0 ? handleGroupByClick : undefined}
           menuButtonClassName={
             selectedTag === '' ? styles.notSelectedTagDropdown : undefined
           }
         >
-          {dropdownItems.map((tagName) => (
+          {groupByDropdownItems.map((tagName) => (
             <MenuItem key={tagName} value={tagName}>
               {tagName}
             </MenuItem>
           ))}
+        </Dropdown>
+      </div>
+      <div className={styles.query}>
+        <span className={styles.selectName}>where</span>
+        <Dropdown
+          label="select where"
+          value={`where = ${
+            selectedTagValue || appWithoutTagsWhereDropdownOptionName
+          }`}
+          onItemClick={
+            whereDropdownItems.length > 0 ? handleGroupByValueClick : undefined
+          }
+        >
+          {whereDropdownItems.length > 0 ? (
+            whereDropdownItems.map((tagGroupName) => (
+              <MenuItem key={tagGroupName} value={tagGroupName}>
+                {tagGroupName}
+              </MenuItem>
+            ))
+          ) : (
+            // when groupBy tag is not selected we display default * option in where dropdown
+            <MenuItem
+              key={appWithoutTagsWhereDropdownOptionName}
+              value={appWithoutTagsWhereDropdownOptionName}
+            >
+              {appWithoutTagsWhereDropdownOptionName}
+            </MenuItem>
+          )}
         </Dropdown>
       </div>
     </div>
