@@ -1,6 +1,7 @@
 package firedb
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -109,6 +110,9 @@ func TestDeltaSample(t *testing.T) {
 		{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
 	}
 	highest = deltaSamples(highest, new, idx)
+	sort.Slice(highest, func(i, j int) bool {
+		return highest[i].StacktraceID < highest[j].StacktraceID
+	})
 	require.Equal(t, []*schemav1.Sample{
 		{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
 		{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
