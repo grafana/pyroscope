@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/prometheus/prometheus/model/labels"
@@ -97,6 +98,25 @@ func (ls Labels) HashWithoutLabels(b []byte, names ...string) (uint64, []byte) {
 		b = append(b, seps[0])
 	}
 	return xxhash.Sum64(b), b
+}
+
+func (ls Labels) ToPrometheusLabels() labels.Labels {
+	res := make([]labels.Label, len(ls))
+	for i, l := range ls {
+		res[i] = labels.Label{Name: l.Name, Value: l.Value}
+	}
+	return res
+}
+
+func (ls Labels) WithoutPrivateLabels() Labels {
+	i := 0
+	for _, l := range ls {
+		if !strings.HasPrefix(l.Name, "__") {
+			ls[i] = l
+			i++
+		}
+	}
+	return ls[:i]
 }
 
 // Get returns the value for the label with the given name.

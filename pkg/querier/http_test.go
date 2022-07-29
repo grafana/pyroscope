@@ -22,6 +22,7 @@ func Test_ParseQuery(t *testing.T) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost/render/render?%s", q.Encode()), nil)
 	require.NoError(t, err)
+	require.NoError(t, req.ParseForm())
 
 	queryRequest, err := parseSelectProfilesRequest(req)
 	require.NoError(t, err)
