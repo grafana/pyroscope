@@ -23,6 +23,7 @@ import continuousReducer, {
   actions as continuousActions,
 } from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
+import adhocReducer from './reducers/adhoc';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 const reducer = combineReducers({
@@ -32,6 +33,7 @@ const reducer = combineReducers({
   serviceDiscovery: serviceDiscoveryReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
   continuous: continuousReducer,
+  adhoc: adhocReducer,
 });
 
 // Most times we will display a (somewhat) user friendly message toast
@@ -60,7 +62,8 @@ const store = configureStore({
           PERSIST,
           PURGE,
           REGISTER,
-          'adhoc/uploadFile',
+          'adhoc/uploadFile/pending',
+          'adhoc/uploadFile/fulfilled',
         ],
       },
     }).concat([logErrorMiddleware]),

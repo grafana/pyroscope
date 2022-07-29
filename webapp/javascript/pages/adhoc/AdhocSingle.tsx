@@ -1,38 +1,36 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useOldRootSelector } from '@webapp/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { Profile } from '@pyroscope/models/src';
-import classNames from 'classnames';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
 
 import {
   fetchAdhocProfiles,
-  fetchAdhocProfile,
-  setAdhocFile,
   setAdhocProfile,
   abortFetchAdhocProfiles,
-  abortFetchAdhocProfile,
 } from '@webapp/redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
-import { uploadFile } from '@webapp/redux/reducers/adhoc';
+import {
+  uploadFile,
+  removeFile,
+  selectAdhocUpload,
+  selectAdhocUploadedFilename,
+} from '@webapp/redux/reducers/adhoc';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();
-
-  const { file, profile, flamebearer, isProfileLoading, raw } =
-    useOldRootSelector((state) => state.adhocSingle);
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
+  const state = useAppSelector(selectAdhocUpload('singleView'));
+  const filename = useAppSelector(selectAdhocUploadedFilename('singleView'));
 
   useEffect(() => {
     dispatch(fetchAdhocProfiles());
@@ -42,14 +40,42 @@ function AdhocSingle() {
     };
   }, [dispatch]);
 
+  // Load the list of profiles after uploading a profile
   useEffect(() => {
-    if (profile) {
-      dispatch(fetchAdhocProfile(profile));
+    if (state.type === 'loaded') {
+      dispatch(fetchAdhocProfiles());
     }
-    return () => {
-      dispatch(abortFetchAdhocProfile());
-    };
-  }, [profile, dispatch]);
+  }, [state, dispatch]);
+
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    'profile' in state ? state.profile : undefined
+  );
+
+  const flamegraph = (() => {
+    switch (state.type) {
+      case 'reloading':
+      case 'loaded': {
+        return (
+          <FlamegraphRenderer
+            profile={state.profile}
+            showCredit={false}
+            ExportData={
+              <ExportData
+                flamebearer={state.profile}
+                exportJSON
+                exportFlamegraphDotCom
+                exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+              />
+            }
+          />
+        );
+      }
+
+      default: {
+        return <></>;
+      }
+    }
+  })();
 
   return (
     <div>
@@ -63,12 +89,11 @@ function AdhocSingle() {
             <TabPanel>
               <FileUploader
                 className={adhocStyles.tabPanel}
-                file={file}
+                filename={filename}
                 removeFile={() => {
-                  console.log('removing file');
+                  dispatch(removeFile('singleView'));
                 }}
                 setFile={(file) => {
-                  console.log('got a file', file);
                   dispatch(uploadFile(file));
                 }}
               />
@@ -76,30 +101,12 @@ function AdhocSingle() {
             <TabPanel>
               <FileList
                 className={adhocStyles.tabPanel}
-                profile={profile}
+                profile={{}}
                 setProfile={(p: Profile) => dispatch(setAdhocProfile(p))}
               />
             </TabPanel>
           </Tabs>
-          {isProfileLoading && (
-            <div className={classNames('spinner-container')}>
-              <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-            </div>
-          )}
-          {!isProfileLoading && (
-            <FlamegraphRenderer
-              showCredit={false}
-              flamebearer={flamebearer}
-              ExportData={
-                <ExportData
-                  flamebearer={raw}
-                  exportJSON
-                  exportFlamegraphDotCom
-                  exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
-                />
-              }
-            />
-          )}
+          {flamegraph}
         </Box>
       </div>
     </div>

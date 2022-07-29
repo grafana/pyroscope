@@ -12,13 +12,13 @@ import Button from '@webapp/ui/Button';
 import styles from './FileUploader.module.scss';
 
 interface Props {
-  file: File;
+  filename?: string;
   setFile: (file: File) => void;
   removeFile: () => void;
   className?: string;
 }
 export default function FileUploader({
-  file,
+  filename,
   setFile,
   removeFile,
   className,
@@ -46,15 +46,22 @@ export default function FileUploader({
     <section className={`${styles.container} ${className}`}>
       <div {...getRootProps()} className={styles.dragAndDropContainer}>
         <input {...getInputProps()} />
-        {file ? (
+        {filename ? (
           <div className={styles.subHeadingContainer}>
             <div className={styles.subHeading}>
               To analyze another file, drag and drop pyroscope JSON files here
               or click to select a file
             </div>
-            <div className={styles.headerMain}> {file.name} </div>
+            <div className={styles.headerMain}> {filename} </div>
             <div className={styles.subHeading}>
-              <Button icon={faTrash} onClick={removeFile}>
+              <Button
+                icon={faTrash}
+                onClick={(e) => {
+                  // TODO(eh-am): for some reason it sill triggers a file selection popup
+                  e.preventDefault();
+                  removeFile();
+                }}
+              >
                 Remove
               </Button>
             </div>
