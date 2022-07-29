@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const FlamebearerSchema = z.object({
-  names: z.array(z.string().nonempty()),
+  names: z.array(z.string()),
   levels: z.array(z.array(z.number())),
   numTicks: z.number(),
   maxSelf: z.number(),
