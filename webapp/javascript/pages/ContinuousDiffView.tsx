@@ -13,6 +13,7 @@ import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook
 import useTimelines, {
   leftColor,
   rightColor,
+  selectionColor,
 } from '@webapp/hooks/timeline.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
@@ -111,9 +112,20 @@ function ComparisonDiffApp() {
               dispatch(actions.setFromAndUntil({ from, until }));
             }}
             markings={{
-              left: { from: leftFrom, to: leftUntil, color: leftColor },
-              right: { from: rightFrom, to: rightUntil, color: rightColor },
+              left: {
+                from: leftFrom,
+                to: leftUntil,
+                color: leftColor,
+                overlayColor: leftColor.alpha(0.3),
+              },
+              right: {
+                from: rightFrom,
+                to: rightUntil,
+                color: rightColor,
+                overlayColor: rightColor.alpha(0.3),
+              },
             }}
+            selectionType="double"
             timezone={timezone}
             title={
               <TimelineTitle titleKey={diffView.profile?.metadata.units} />
@@ -143,8 +155,14 @@ function ComparisonDiffApp() {
                 dispatch(actions.setLeft({ from, until }));
               }}
               markings={{
-                left: { from: leftFrom, to: leftUntil, color: leftColor },
+                left: {
+                  from: leftFrom,
+                  to: leftUntil,
+                  color: selectionColor,
+                  overlayColor: selectionColor.alpha(0.3),
+                },
               }}
+              selectionType="single"
               timezone={timezone}
             />
           </Box>
@@ -170,8 +188,14 @@ function ComparisonDiffApp() {
                 dispatch(actions.setRight({ from, until }));
               }}
               markings={{
-                right: { from: rightFrom, to: rightUntil, color: rightColor },
+                right: {
+                  from: rightFrom,
+                  to: rightUntil,
+                  color: selectionColor,
+                  overlayColor: selectionColor.alpha(0.3),
+                },
               }}
+              selectionType="single"
               timezone={timezone}
             />
           </Box>

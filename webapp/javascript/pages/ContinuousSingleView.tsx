@@ -112,6 +112,7 @@ function ContinuousSingleView() {
             title={
               <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
             }
+            selectionType="single"
           />
         </Box>
         <Box>{flamegraphRenderer}</Box>
