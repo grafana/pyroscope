@@ -81,7 +81,7 @@ func TestNormalizeProfile(t *testing.T) {
 }
 
 func TestRemoveDuplicateSampleStacktraces(t *testing.T) {
-	p, err := Open("testdata/heap")
+	p, err := OpenFile("testdata/heap")
 	require.NoError(t, err)
 	duplicate := countSampleDuplicates(p)
 	total := len(p.Sample)

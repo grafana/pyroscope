@@ -21,11 +21,12 @@ type Profile struct {
 	hasher stacktracesHasher
 }
 
-func Open(path string) (*Profile, error) {
+func OpenFile(path string) (*Profile, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 	r, err := gzip.NewReader(f)
 	if err != nil {
 		return nil, err
