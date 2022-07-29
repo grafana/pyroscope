@@ -21,11 +21,12 @@ type Profile struct {
 	hasher stacktracesHasher
 }
 
-func Open(path string) (*Profile, error) {
+func OpenFile(path string) (*Profile, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 	r, err := gzip.NewReader(f)
 	if err != nil {
 		return nil, err
@@ -67,7 +68,10 @@ func (s *sortedSample) Swap(i, j int) {
 // Normalize normalizes the profile by:
 // - Removing all duplicate samples (summing their values).
 // - Removing redundant profile labels (byte => unique of an allocation site)
+//		todo: We should reassess if this was a good choice because by merging duplicate stacktrace samples
+//            we cannot recompute the allocation per site ("bytes") profile label.
 // - Removing empty samples.
+// - Then remove unused references.
 func (p *Profile) Normalize() {
 	// first we sort the samples location ids.
 	hashes := p.hasher.hashes(p.Sample)
