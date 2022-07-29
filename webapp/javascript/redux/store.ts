@@ -53,7 +53,15 @@ const store = configureStore({
 
         // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
         // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredActions: [
+          FLUSH,
+          REHYDRATE,
+          PAUSE,
+          PERSIST,
+          PURGE,
+          REGISTER,
+          'adhoc/uploadFile',
+        ],
       },
     }).concat([logErrorMiddleware]),
 });

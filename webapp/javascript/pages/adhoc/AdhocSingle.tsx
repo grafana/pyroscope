@@ -23,6 +23,7 @@ import {
 import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import { uploadFile } from '@webapp/redux/reducers/adhoc';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
 
@@ -68,6 +69,7 @@ function AdhocSingle() {
                 }}
                 setFile={(file) => {
                   console.log('got a file', file);
+                  dispatch(uploadFile(file));
                 }}
               />
             </TabPanel>
