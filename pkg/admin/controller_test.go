@@ -29,8 +29,8 @@ func (m mockStorage) GetAppNames(ctx context.Context) []string {
 	return m.getAppNamesResult
 }
 
-func (m mockStorage) GetApps(ctx context.Context) storage.GetAppsOutput {
-	return m.getAppsResult
+func (m mockStorage) GetApps(ctx context.Context) (storage.GetAppsOutput, error) {
+	return m.getAppsResult, nil
 }
 
 func (m mockStorage) DeleteApp(ctx context.Context, appname string) error {
