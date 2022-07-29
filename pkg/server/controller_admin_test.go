@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
@@ -43,10 +41,7 @@ var _ = Describe("server", func() {
 		req, err := http.NewRequest("POST", u.String(), bytes.NewBuffer([]byte(lines)))
 		Expect(err).ToNot(HaveOccurred())
 		req.Header.Set("Content-Type", "text/plain")
-		t1 := time.Now()
 		res, err := http.DefaultClient.Do(req)
-		t2 := time.Now()
-		fmt.Printf("Deleted app %s in %v\n", app, t2.Sub(t1))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.StatusCode).To(Equal(200))
 	}
@@ -60,10 +55,7 @@ var _ = Describe("server", func() {
 			req.Header.Set("Authorization", "Bearer "+key)
 		}
 		Expect(err).ToNot(HaveOccurred())
-		t1 := time.Now()
 		res, err := http.DefaultClient.Do(req)
-		t2 := time.Now()
-		fmt.Printf("Deleted app %s in %v\n", app, t2.Sub(t1))
 		Expect(err).ToNot(HaveOccurred())
 		return res
 	}
