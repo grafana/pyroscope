@@ -39,6 +39,8 @@ type TimelineDataProps =
   | {
       /** timelineGroups refers to group of timelines, useful for explore view */
       timelineGroups: TimelineGroupData[];
+      /** if there is active group, the other groups should "dim" themselves */
+      activeGroup: string;
       /** show or hide tags legend, useful forr disabling single timeline legend */
       showTagsLegend: boolean;
       /** to manage strict data type */
@@ -199,7 +201,8 @@ class TimelineChartWrapper extends React.Component<
     const { flotOptions } = this.state;
 
     if (this.props.mode === 'multiple') {
-      const { timelineGroups, showTagsLegend, id, timezone } = this.props;
+      const { timelineGroups, activeGroup, showTagsLegend, id, timezone } =
+        this.props;
 
       const customFlotOptions = {
         ...flotOptions,
@@ -212,10 +215,13 @@ class TimelineChartWrapper extends React.Component<
 
       const centeredTimelineGroups =
         timelineGroups &&
-        timelineGroups.map(({ data, color }) => {
+        timelineGroups.map(({ data, color, tagName }) => {
           return {
             data: centerTimelineData({ data }),
-            color,
+            color:
+              activeGroup && activeGroup !== tagName
+                ? color?.fade(0.75)
+                : color,
           };
         });
 
