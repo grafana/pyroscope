@@ -4,13 +4,14 @@
 package server_test
 
 import (
-	"testing"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"testing"
 )
 
 func TestServer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Server Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	//reporterConfig.SlowSpecThreshold = 20 * time.Second
+	RunSpecs(t, "Server Suite", suiteConfig, reporterConfig)
 }
