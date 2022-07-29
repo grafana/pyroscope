@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,11 +21,16 @@ import (
 
 type mockStorage struct {
 	getAppNamesResult []string
+	getAppsResult     storage.GetAppsOutput
 	deleteResult      error
 }
 
 func (m mockStorage) GetAppNames(ctx context.Context) []string {
 	return m.getAppNamesResult
+}
+
+func (m mockStorage) GetApps(ctx context.Context) storage.GetAppsOutput {
+	return m.getAppsResult
 }
 
 func (m mockStorage) DeleteApp(ctx context.Context, appname string) error {
@@ -60,8 +67,7 @@ var _ = Describe("controller", func() {
 			// create a null logger, since we aren't interested
 			logger, _ := test.NewNullLogger()
 
-			svc := admin.NewService(storage)
-			ctrl := admin.NewController(logger, svc, mockUserService{}, mockStorageService{})
+			ctrl := admin.NewController(logger, storage, mockUserService{}, mockStorageService{})
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
 
@@ -94,7 +100,7 @@ var _ = Describe("controller", func() {
 				It("returns StatusOK", func() {
 					// we are kinda robbing here
 					// since the server and client are defined in the same package
-					payload := admin.DeleteAppInput{Name: "myapp"}
+					payload := server.DeleteAppInput{Name: "myapp"}
 					marshalledPayload, err := json.Marshal(payload)
 					request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 					Expect(err).ToNot(HaveOccurred())
@@ -125,7 +131,7 @@ var _ = Describe("controller", func() {
 					It("returns InternalServerError", func() {
 						// we are kinda robbing here
 						// since the server and client are defined in the same package
-						payload := admin.DeleteAppInput{Name: "myapp"}
+						payload := server.DeleteAppInput{Name: "myapp"}
 						marshalledPayload, err := json.Marshal(payload)
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 						Expect(err).ToNot(HaveOccurred())

@@ -28,6 +28,7 @@ import (
 	"gorm.io/gorm"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
+
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
@@ -279,6 +280,15 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ctrl.addRoutes(r, routes,
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
+
+	appsRouter := apiRouter.PathPrefix("/").Subrouter()
+	appsRouter.Use(
+		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
+		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
+			authz.Role(model.AdminRole),
+		))
+	appsRouter.HandleFunc("/apps", ctrl.getAppsHandler()).Methods("GET")
+	appsRouter.HandleFunc("/apps", ctrl.deleteAppsHandler()).Methods("DELETE")
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
