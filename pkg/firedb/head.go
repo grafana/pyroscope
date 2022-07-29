@@ -220,46 +220,8 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 }
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
-	// build label set per sample type before references are rewritten
-	var (
-		sb                                             strings.Builder
-		lbls                                           = firemodel.NewLabelsBuilder(externalLabels)
-		sampleType, sampleUnit, periodType, periodUnit string
-		metricName                                     = firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
-	)
-
-	// set common labels
-	if p.PeriodType != nil {
-		periodType = p.StringTable[p.PeriodType.Type]
-		lbls.Set(firemodel.LabelNamePeriodType, periodType)
-		periodUnit = p.StringTable[p.PeriodType.Unit]
-		lbls.Set(firemodel.LabelNamePeriodUnit, periodUnit)
-	}
-
-	seriesRefs := make([]model.Fingerprint, len(p.SampleType))
-	profilesLabels := make([]firemodel.Labels, len(p.SampleType))
-	for pos := range p.SampleType {
-		sampleType = p.StringTable[p.SampleType[pos].Type]
-		lbls.Set(firemodel.LabelNameType, sampleType)
-		sampleUnit = p.StringTable[p.SampleType[pos].Unit]
-		lbls.Set(firemodel.LabelNameUnit, sampleUnit)
-
-		sb.Reset()
-		_, _ = sb.WriteString(metricName)
-		_, _ = sb.WriteRune(':')
-		_, _ = sb.WriteString(sampleType)
-		_, _ = sb.WriteRune(':')
-		_, _ = sb.WriteString(sampleUnit)
-		_, _ = sb.WriteRune(':')
-		_, _ = sb.WriteString(periodType)
-		_, _ = sb.WriteRune(':')
-		_, _ = sb.WriteString(periodUnit)
-		t := sb.String()
-		lbls.Set(firemodel.LabelNameProfileType, t)
-		lbs := lbls.Labels().Clone()
-		profilesLabels[pos] = lbs
-		seriesRefs[pos] = model.Fingerprint(lbs.Hash())
-	}
+	metricName := firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
+	labels, seriesRefs := labelsForProfile(p, externalLabels...)
 
 	// create a rewriter state
 	rewrites := &rewriter{}
@@ -297,21 +259,66 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
-	profile, profilesLabels = h.delta.computeDelta(profile, profilesLabels)
+	profile, labels = h.delta.computeDelta(profile, labels)
 
-	if len(profilesLabels) == 0 {
+	if len(labels) == 0 {
 		return nil
 	}
 
 	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
 		return err
 	}
-	h.index.Add(profile, profilesLabels, metricName)
+	h.index.Add(profile, labels, metricName)
 
-	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(profile.Samples) * len(profilesLabels)))
-	h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(profilesLabels)))
+	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(profile.Samples) * len(labels)))
+	h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(labels)))
 
 	return nil
+}
+
+func labelsForProfile(p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) ([]firemodel.Labels, []model.Fingerprint) {
+	// build label set per sample type before references are rewritten
+	var (
+		sb                                             strings.Builder
+		lbls                                           = firemodel.NewLabelsBuilder(externalLabels)
+		sampleType, sampleUnit, periodType, periodUnit string
+		metricName                                     = firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
+	)
+
+	// set common labels
+	if p.PeriodType != nil {
+		periodType = p.StringTable[p.PeriodType.Type]
+		lbls.Set(firemodel.LabelNamePeriodType, periodType)
+		periodUnit = p.StringTable[p.PeriodType.Unit]
+		lbls.Set(firemodel.LabelNamePeriodUnit, periodUnit)
+	}
+
+	profilesLabels := make([]firemodel.Labels, len(p.SampleType))
+	seriesRefs := make([]model.Fingerprint, len(p.SampleType))
+	for pos := range p.SampleType {
+		sampleType = p.StringTable[p.SampleType[pos].Type]
+		lbls.Set(firemodel.LabelNameType, sampleType)
+		sampleUnit = p.StringTable[p.SampleType[pos].Unit]
+		lbls.Set(firemodel.LabelNameUnit, sampleUnit)
+
+		sb.Reset()
+		_, _ = sb.WriteString(metricName)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(sampleType)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(sampleUnit)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(periodType)
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteString(periodUnit)
+		t := sb.String()
+		lbls.Set(firemodel.LabelNameProfileType, t)
+		lbs := lbls.Labels().Clone()
+		profilesLabels[pos] = lbs
+		seriesRefs[pos] = model.Fingerprint(lbs.Hash())
+
+	}
+	return profilesLabels, seriesRefs
 }
 
 // LabelValues returns the possible label values for a given label name.

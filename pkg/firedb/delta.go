@@ -19,7 +19,8 @@ const (
 
 // deltaProfiles is a helper to compute delta of profiles.
 type deltaProfiles struct {
-	mtx            sync.Mutex
+	mtx sync.Mutex
+	// todo cleanup sample profiles that are not used anymore using a cleanup goroutine.
 	highestSamples map[model.Fingerprint][]*schemav1.Sample
 }
 
