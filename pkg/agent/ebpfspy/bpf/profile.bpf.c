@@ -28,18 +28,23 @@ struct {
 #define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
 #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
 
-
+struct {
+    u32 thread_filter; // 0 => profile everything
+} args;
 
 SEC("perf_event")
 int do_perf_event(struct bpf_perf_event_data *ctx)
 {
     u64 id = bpf_get_current_pid_tgid();
-//    u32 tgid = id >> 32;
+    u32 tgid = id >> 32;
     u32 pid = id;
-	struct key_t key = {.pid = pid};
+	struct key_t key = {.pid = pid};//todo try to use tgid, - they share symbols
 	u64 *val, one = 1;
 
     if (pid == 0) {
+        return 0;
+    }
+    if (args.thread_filter != 0 && tgid != args.thread_filter) {
         return 0;
     }
 

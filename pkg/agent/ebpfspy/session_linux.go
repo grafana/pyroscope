@@ -29,6 +29,7 @@ type session struct {
 	bpfModule    *bpf.Module
 	bpfMapCounts *bpf.BPFMap
 	bpfMapStacks *bpf.BPFMap
+	bpfMapArgs   *bpf.BPFMap
 	bpfProg      *bpf.BPFProg
 
 	modMutex sync.Mutex
@@ -61,6 +62,20 @@ func (s *session) Start() error {
 		return err
 	}
 	if err = s.bpfModule.BPFLoadObject(); err != nil {
+		return err
+	}
+	if s.bpfMapArgs, err = s.bpfModule.GetMap(".bss"); err != nil {
+		return err
+	}
+	zero := uint32(0)
+	var value uint32
+	if s.pid <= 0 {
+		value = 0
+	} else {
+		value = uint32(s.pid)
+	}
+	err = s.bpfMapArgs.UpdateValueFlags(unsafe.Pointer(&zero), unsafe.Pointer(&value), 0)
+	if err != nil {
 		return err
 	}
 	if s.bpfMapCounts, err = s.bpfModule.GetMap("counts"); err != nil {
