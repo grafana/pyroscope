@@ -1,7 +1,6 @@
 package firedb
 
 import (
-	"sort"
 	"sync"
 
 	"github.com/prometheus/common/model"
@@ -41,11 +40,6 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 	}
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-
-	// sort samples by stacktrace id, this allows us to merge samples in one iteration.
-	sort.Slice(ps.Samples, func(i, j int) bool {
-		return ps.Samples[i].StacktraceID < ps.Samples[j].StacktraceID
-	})
 
 	// we store all series ref so fetching with one work.
 	lastSamples, ok := d.highestSamples[ps.SeriesRefs[deltaIdx[0]]]
@@ -152,8 +146,5 @@ func deltaSamples(highest, new []*schemav1.Sample, idx []int) []*schemav1.Sample
 		}
 		highest = append(highest, n)
 	}
-	sort.Slice(highest, func(i, j int) bool {
-		return highest[i].StacktraceID < highest[j].StacktraceID
-	})
 	return highest
 }
