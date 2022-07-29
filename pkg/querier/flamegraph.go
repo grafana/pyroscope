@@ -4,6 +4,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
+type stackNode struct {
+	xOffset int
+	level   int
+	node    *node
+}
+
 func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 	var total, max int64
 	for _, node := range t.root {
@@ -11,29 +17,29 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 	}
 	names := []string{}
 	nameLocationCache := map[string]int{}
-	res := [][]int{}
+	res := []*Stack[int]{}
+	defer func() {
+		for _, stack := range res {
+			stackIntPool.Put(stack)
+		}
+	}()
 
-	xOffsets := []int{0}
+	stack := stackNodePool.Get().(*Stack[stackNode])
+	defer stackNodePool.Put(stack)
+	stack.Reset()
+	stack.Push(stackNode{xOffset: 0, level: 0, node: &node{children: t.root, total: total}})
 
-	levels := []int{0}
-
-	nodes := []*node{{children: t.root, total: total}}
-
-	for len(nodes) > 0 {
-		current := nodes[0]
-		nodes = nodes[1:]
-
-		xOffset := xOffsets[0]
-		xOffsets = xOffsets[1:]
-
-		level := levels[0]
-		levels = levels[1:]
-		if current.self > max {
-			max = current.self
+	for {
+		current, hasMoreNodes := stack.Pop()
+		if !hasMoreNodes {
+			break
+		}
+		if current.node.self > max {
+			max = current.node.self
 		}
 		var i int
 		var ok bool
-		name := current.name
+		name := current.node.name
 		if i, ok = nameLocationCache[name]; !ok {
 			i = len(names)
 			if i == 0 {
@@ -43,26 +49,34 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 			names = append(names, name)
 		}
 
-		if level == len(res) {
-			res = append(res, []int{})
+		if current.level == len(res) {
+			s := stackIntPool.Get().(*Stack[int])
+			s.Reset()
+			res = append(res, s)
 		}
 
 		// i+0 = x offset
 		// i+1 = total
 		// i+2 = self
 		// i+3 = index in names array
-		res[level] = append([]int{xOffset, int(current.total), int(current.self), i}, res[level]...)
-		xOffset += int(current.self)
+		level := res[current.level]
+		level.Push(i)
+		level.Push(int(current.node.self))
+		level.Push(int(current.node.total))
+		level.Push(current.xOffset)
+		current.xOffset += int(current.node.self)
 
-		for _, child := range current.children {
-			xOffsets = append([]int{xOffset}, xOffsets...)
-			levels = append([]int{level + 1}, levels...)
-			nodes = append([]*node{child}, nodes...)
-			xOffset += int(child.total)
+		for _, child := range current.node.children {
+			stack.Push(stackNode{xOffset: current.xOffset, level: current.level + 1, node: child})
+			current.xOffset += int(child.total)
 		}
 	}
+	result := make([][]int, len(res))
+	for i := range result {
+		result[i] = res[i].Slice()
+	}
 	// delta encode xoffsets
-	for _, l := range res {
+	for _, l := range result {
 		prev := 0
 		for i := 0; i < len(l); i += 4 {
 			l[i] -= prev
@@ -71,7 +85,7 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 	}
 	return &flamebearer.FlamebearerV1{
 		Names:    names,
-		Levels:   res,
+		Levels:   result,
 		NumTicks: int(total),
 		MaxSelf:  int(max),
 	}

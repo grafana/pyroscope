@@ -1,21 +1,27 @@
 package ingester
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 
 	"github.com/apache/arrow/go/v8/arrow/memory"
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/klauspost/compress/gzip"
 	"github.com/polarsignals/frostdb/query"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/grafana/fire/pkg/firedb"
+	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -40,25 +46,36 @@ type Ingester struct {
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
-	profileStore      *profilestore.ProfileStore
+	fireDB            *firedb.FireDB
 	engine            *query.LocalEngine
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer, profileStore *profilestore.ProfileStore) (*Ingester, error) {
+type ingesterFlusherCompat struct {
+	*Ingester
+}
+
+func (i *ingesterFlusherCompat) Flush() {
+	_, err := i.Ingester.Flush(context.TODO(), connect.NewRequest(&ingesterv1.FlushRequest{}))
+	if err != nil {
+		level.Error(i.Ingester.logger).Log("msg", "flush failed", "err", err)
+	}
+}
+
+func New(cfg Config, logger log.Logger, reg prometheus.Registerer, firedb *firedb.FireDB) (*Ingester, error) {
 	i := &Ingester{
-		cfg:          cfg,
-		logger:       logger,
-		profileStore: profileStore,
+		cfg:    cfg,
+		logger: logger,
+		fireDB: firedb,
 		engine: query.NewEngine(
 			memory.DefaultAllocator,
-			profileStore.TableProvider(),
+			nil,
 		),
 	}
 
 	var err error
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
-		i,
+		&ingesterFlusherCompat{i},
 		"ingester",
 		"ring",
 		true,
@@ -103,8 +120,30 @@ func (i *Ingester) running(ctx context.Context) error {
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	level.Debug(i.logger).Log("msg", "message received by ingester push", "request_headers: ", fmt.Sprintf("%+v", req.Header()))
 
-	if err := i.profileStore.Ingest(ctx, req); err != nil {
-		return nil, err
+	for _, series := range req.Msg.Series {
+		for _, sample := range series.Samples {
+			reader, err := gzip.NewReader(bytes.NewReader(sample.RawProfile))
+			if err != nil {
+				return nil, err
+			}
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				return nil, err
+			}
+
+			p := profilev1.ProfileFromVTPool()
+			if err := p.UnmarshalVT(data); err != nil {
+				return nil, err
+			}
+			id, err := uuid.Parse(sample.ID)
+			if err != nil {
+				return nil, err
+			}
+			if err := i.fireDB.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
+				return nil, err
+			}
+			p.ReturnToVTPool()
+		}
 	}
 
 	res := connect.NewResponse(&pushv1.PushResponse{})
@@ -115,7 +154,12 @@ func (i *Ingester) stopping(_ error) error {
 	return services.StopAndAwaitTerminated(context.Background(), i.lifecycler)
 }
 
-func (i *Ingester) Flush() {
+func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
+	if err := i.fireDB.Flush(ctx); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&ingesterv1.FlushResponse{}), nil
 }
 
 func (i *Ingester) TransferOut(ctx context.Context) error {

@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "fire.fullname" . }}
+  name: {{ .Release.Namespace }}-{{ include "fire.fullname" . }}
   labels:
     {{- include "fire.labels" . | nindent 4 }}
 rules:

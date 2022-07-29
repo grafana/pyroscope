@@ -14,7 +14,7 @@ func emptyTree() *tree {
 	return &tree{}
 }
 
-func newTree(stacks []stack) *tree {
+func newTree(stacks []stacktraces) *tree {
 	t := emptyTree()
 	for _, stack := range stacks {
 		if stack.value == 0 {
@@ -39,7 +39,7 @@ func (t *tree) Add(name string, self, total int64) *node {
 	return new
 }
 
-func stackToTree(stack stack) *tree {
+func stackToTree(stack stacktraces) *tree {
 	t := emptyTree()
 	if len(stack.locations) == 0 {
 		return t
@@ -157,7 +157,7 @@ func (n *node) Clone() *node {
 func findNodeOrParent(root []*node, new *node) (parent, found, toMerge *node) {
 	current := new
 	var lastParent *node
-	remaining := append([]*node{}, root...)
+	remaining := root
 	for len(remaining) > 0 {
 		n := remaining[0]
 		remaining = remaining[1:]

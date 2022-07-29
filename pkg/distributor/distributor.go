@@ -2,18 +2,22 @@ package distributor
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"flag"
 	"hash/fnv"
+	"io/ioutil"
 	"strconv"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
+	"github.com/parca-dev/parca/pkg/scrape"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -23,6 +27,8 @@ import (
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/fire/pkg/pprof"
 )
 
 type PushClient interface {
@@ -59,14 +65,17 @@ type Distributor struct {
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
+
+	metrics *metrics
 }
 
-func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, logger log.Logger) (*Distributor, error) {
+func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, reg prometheus.Registerer, logger log.Logger) (*Distributor, error) {
 	d := &Distributor{
 		cfg:           cfg,
 		logger:        logger,
 		ingestersRing: ingestersRing,
 		pool:          clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger),
+		metrics:       newMetrics(reg),
 	}
 	var err error
 	d.subservices, err = services.NewManager(d.pool)
@@ -100,11 +109,73 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 	var (
 		keys     = make([]uint32, 0, len(req.Msg.Series))
 		profiles = make([]*profileTracker, 0, len(req.Msg.Series))
+
+		// todo pool readers/writer
+		gzipReader *gzip.Reader
+		gzipWriter *gzip.Writer
+		err        error
+		br         = bytes.NewReader(nil)
 	)
 
 	for _, series := range req.Msg.Series {
 		// todo propagate tenantID.
 		keys = append(keys, TokenFor("", labelsString(series.Labels)))
+		profName := firemodel.Labels(series.Labels).Get(scrape.ProfileName)
+		for _, raw := range series.Samples {
+			d.metrics.receivedCompressedBytes.WithLabelValues(profName).Observe(float64(len(raw.RawProfile)))
+			br.Reset(raw.RawProfile)
+			if gzipReader == nil {
+				gzipReader, err = gzip.NewReader(br)
+				if err != nil {
+					return nil, errors.Wrap(err, "gzip reader")
+				}
+			} else {
+				if err := gzipReader.Reset(br); err != nil {
+					return nil, errors.Wrap(err, "gzip reset")
+				}
+			}
+			data, err := ioutil.ReadAll(gzipReader)
+			if err != nil {
+				return nil, errors.Wrap(err, "gzip read all")
+			}
+			d.metrics.receivedDecompressedBytes.WithLabelValues(profName).Observe(float64(len(data)))
+			p, err := pprof.OpenRaw(data)
+			if err != nil {
+				return nil, err
+			}
+			d.metrics.receivedSamples.WithLabelValues(profName).Observe(float64(len(p.Sample)))
+
+			p.Normalize()
+
+			// reuse the data buffer if possible
+			size := p.SizeVT()
+			if cap(data) < size {
+				data = make([]byte, size)
+			}
+			n, err := p.MarshalToVT(data)
+			if err != nil {
+				return nil, err
+			}
+			p.ReturnToVTPool()
+			data = data[:n]
+
+			// zip the data back into the buffer
+			bw := bytes.NewBuffer(raw.RawProfile[:0])
+			if gzipWriter == nil {
+				gzipWriter = gzip.NewWriter(bw)
+			} else {
+				gzipWriter.Reset(bw)
+			}
+			if _, err := gzipWriter.Write(data); err != nil {
+				return nil, errors.Wrap(err, "gzip write")
+			}
+			if err := gzipWriter.Close(); err != nil {
+				return nil, errors.Wrap(err, "gzip close")
+			}
+			raw.RawProfile = bw.Bytes()
+			// generate a unique profile ID before pushing.
+			raw.ID = uuid.NewString()
+		}
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
 

@@ -3,7 +3,6 @@ package clientpool
 import (
 	"flag"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/go-kit/log"
@@ -14,6 +13,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
+	"github.com/grafana/fire/pkg/util"
 )
 
 // PoolConfig is config for creating a Pool.
@@ -49,7 +49,7 @@ func PoolFactory(addr string) (ring_client.PoolClient, error) {
 		return nil, err
 	}
 	return &ingesterPoolClient{
-		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(http.DefaultClient, "http://"+addr),
+		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+addr),
 		HealthClient:          grpc_health_v1.NewHealthClient(conn),
 		Closer:                conn,
 	}, nil

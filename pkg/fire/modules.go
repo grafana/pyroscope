@@ -24,13 +24,13 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
+	"github.com/grafana/fire/pkg/firedb"
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/openapiv2"
-	"github.com/grafana/fire/pkg/profilestore"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
 )
@@ -44,9 +44,9 @@ const (
 	Ring         string = "ring"
 	Ingester     string = "ingester"
 	MemberlistKV string = "memberlist-kv"
-	ProfileStore string = "profile-store"
 	Querier      string = "querier"
 	GRPCGateway  string = "grpc-gateway"
+	FireDB       string = "firedb"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
@@ -73,6 +73,11 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
 	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
+	f.Server.HTTP.Handle("/prometheus/api/v1/query_range", http.HandlerFunc(q.PrometheusQueryRangeHandler))
+	f.Server.HTTP.Handle("/prometheus/api/v1/query", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// just return empty instant query result to make grafana explore display something in "both" mode
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[]}}`))
+	}))
 	return q, nil
 }
 
@@ -88,7 +93,7 @@ func (f *Fire) initGRPCGateway() (services.Service, error) {
 }
 
 func (f *Fire) initDistributor() (services.Service, error) {
-	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.logger)
+	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.reg, f.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +101,7 @@ func (f *Fire) initDistributor() (services.Service, error) {
 	// initialise direct pusher, this overwrites the default HTTP client
 	f.pusherClient = d
 
-	prefix, handler := pushv1connect.NewPusherServiceHandler(d)
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
+	pushv1connect.RegisterPusherServiceHandler(f.Server.HTTP, d)
 	return d, nil
 }
 
@@ -113,9 +117,7 @@ func (f *Fire) initAgent() (services.Service, error) {
 		return nil, err
 	}
 
-	prefix, handler := agentv1connect.NewAgentServiceHandler(a.ConnectHandler())
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-
+	agentv1connect.RegisterAgentServiceHandler(f.Server.HTTP, a.ConnectHandler())
 	return a, nil
 }
 
@@ -144,44 +146,38 @@ func (f *Fire) initMemberlistKV() (services.Service, error) {
 func (f *Fire) initRing() (_ services.Service, err error) {
 	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("fire_", f.reg))
 	if err != nil {
-		return
+		return nil, err
 	}
 	f.Server.HTTP.Path("/ring").Methods("GET", "POST").Handler(f.ring)
 	return f.ring, nil
 }
 
-func (f *Fire) initIngester() (_ services.Service, err error) {
-	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
-
-	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.profileStore)
-	if err != nil {
-		return
-	}
-	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-	prefix, handler = ingesterv1connect.NewIngesterServiceHandler(ingester)
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-	return ingester, nil
-}
-
-func (f *Fire) initProfileStore() (services.Service, error) {
-	profileStore, err := profilestore.New(
-		f.logger,
-		f.reg,
-		f.tracerProvider,
-		&f.Cfg.ProfileStore,
-	)
+func (f *Fire) initFireDB() (_ services.Service, err error) {
+	f.fireDB, err = firedb.New(&f.Cfg.FireDB, f.logger, f.reg)
 	if err != nil {
 		return nil, err
 	}
-	f.profileStore = profileStore
 
-	return nil, nil
+	return f.fireDB, nil
+}
+
+func (f *Fire) initIngester() (_ services.Service, err error) {
+	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
+
+	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.fireDB)
+	if err != nil {
+		return nil, err
+	}
+	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
+	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
+	ingesterv1connect.RegisterIngesterServiceHandler(f.Server.HTTP, ingester)
+	return ingester, nil
 }
 
 func (f *Fire) initServer() (services.Service, error) {
 	prometheus.MustRegister(version.NewCollector("fire"))
 	DisableSignalHandling(&f.Cfg.Server)
+	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("fire_", f.reg)
 	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
 		return nil, err

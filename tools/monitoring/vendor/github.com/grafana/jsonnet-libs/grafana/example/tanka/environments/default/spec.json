@@ -1,0 +1,13 @@
+{
+  "apiVersion": "tanka.dev/v1alpha1",
+  "kind": "Environment",
+  "metadata": {
+    "name": "environments/default"
+  },
+  "spec": {
+    "apiServer": "https://kubernetes.docker.internal:6443",
+    "namespace": "default",
+    "resourceDefaults": {},
+    "expectVersions": {}
+  }
+}
