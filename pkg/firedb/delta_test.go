@@ -5,10 +5,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/pprof"
 	"github.com/grafana/fire/pkg/pprof/testhelper"
 )
@@ -18,10 +21,29 @@ func TestComputeDelta(t *testing.T) {
 	builder := testhelper.NewProfileBuilder(1).MemoryProfile()
 	builder.ForStacktrace("a", "b", "c").AddSamples(1, 2, 3, 4)
 	builder.ForStacktrace("a", "b", "c", "d").AddSamples(1, 2, 3, 4)
-	delta.computeDelta(newProfileSchema(builder.Profile), nil)
+
+	newProfile, newLabels := delta.computeDelta(newProfileSchema(builder.Profile, "memory"))
+	require.Equal(t, 2, len(newProfile.Samples))
+	require.Equal(t, 2, len(newLabels))
+	require.Equal(t, 2, len(newProfile.SeriesRefs))
+	require.Equal(t, []int64{3, 4}, newProfile.Samples[0].Values)
+	require.Equal(t, []int64{3, 4}, newProfile.Samples[1].Values)
+	require.Equal(t, "memory:inuse_objects:count:space:bytes", newLabels[0].Get(firemodel.LabelNameProfileType))
+	require.Equal(t, "memory:inuse_space:bytes:space:bytes", newLabels[1].Get(firemodel.LabelNameProfileType))
+
+	newProfile, newLabels = delta.computeDelta(newProfileSchema(builder.Profile, "memory"))
+	require.Equal(t, 2, len(newProfile.Samples))
+	require.Equal(t, 4, len(newProfile.SeriesRefs))
+	require.Equal(t, 4, len(newLabels))
+	require.Equal(t, []int64{0, 0, 3, 4}, newProfile.Samples[0].Values)
+	require.Equal(t, []int64{0, 0, 3, 4}, newProfile.Samples[1].Values)
+	require.Equal(t, "memory:alloc_objects:count:space:bytes", newLabels[0].Get(firemodel.LabelNameProfileType))
+	require.Equal(t, "memory:alloc_space:bytes:space:bytes", newLabels[1].Get(firemodel.LabelNameProfileType))
+	require.Equal(t, "memory:inuse_objects:count:space:bytes", newLabels[2].Get(firemodel.LabelNameProfileType))
+	require.Equal(t, "memory:inuse_space:bytes:space:bytes", newLabels[3].Get(firemodel.LabelNameProfileType))
 }
 
-func newProfileSchema(p *profilev1.Profile) *schemav1.Profile {
+func newProfileSchema(p *profilev1.Profile, name string) (*schemav1.Profile, []firemodel.Labels) {
 	ps := &schemav1.Profile{
 		ID:                uuid.New(),
 		TimeNanos:         p.TimeNanos,
@@ -32,7 +54,7 @@ func newProfileSchema(p *profilev1.Profile) *schemav1.Profile {
 		Period:            p.Period,
 		DefaultSampleType: p.DefaultSampleType,
 	}
-	// todo build labels for profiles and externals labels.
+	labels, seriesRefs := labelsForProfile(p, &commonv1.LabelPair{Name: model.MetricNameLabel, Value: name})
 	hashes := pprof.StacktracesHasher{}.Hashes(p.Sample)
 	ps.Samples = make([]*schemav1.Sample, len(p.Sample))
 	for i, s := range p.Sample {
@@ -42,7 +64,8 @@ func newProfileSchema(p *profilev1.Profile) *schemav1.Profile {
 			Labels:       copySlice(s.Label),
 		}
 	}
-	return ps
+	ps.SeriesRefs = seriesRefs
+	return ps, labels
 }
 
 func TestDeltaSample(t *testing.T) {
