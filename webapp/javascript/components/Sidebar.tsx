@@ -11,6 +11,7 @@ import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
 import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
 import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
+import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
 import Sidebar, {
   MenuItem,
   SidebarHeader,
@@ -178,7 +179,7 @@ export function SidebarComponent() {
             <MenuItem
               data-testid="sidebar-explore-page"
               active={isRouteActive(PAGES.TAG_EXPLORER)}
-              icon={<Icon icon={faChartBar} />}
+              icon={<Icon icon={faSearch} />}
             >
               Tag explorer
               <NavLink to={{ pathname: PAGES.TAG_EXPLORER, search }} exact />
