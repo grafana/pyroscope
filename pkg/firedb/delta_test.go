@@ -14,6 +14,7 @@ import (
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/fire/pkg/pprof"
 )
 
 func TestComputeDelta(t *testing.T) {
@@ -21,8 +22,12 @@ func TestComputeDelta(t *testing.T) {
 	head, err := NewHead(t.TempDir())
 	require.NoError(t, err)
 
-	p1 := parseProfile(t, "/Users/cyril/pprof/pprof.enterprise-logs.alloc_objects.alloc_space.inuse_objects.inuse_space.006.pb.gz")
-	p2 := parseProfile(t, "/Users/cyril/pprof/pprof.enterprise-logs.alloc_objects.alloc_space.inuse_objects.inuse_space.007.pb.gz")
+	p1, err := pprof.Open("/Users/cyril/pprof/pprof.enterprise-logs.alloc_objects.alloc_space.inuse_objects.inuse_space.006.pb.gz")
+	require.NoError(t, err)
+	p1.Normalize()
+	p2, err := pprof.Open("/Users/cyril/pprof/pprof.enterprise-logs.alloc_objects.alloc_space.inuse_objects.inuse_space.008.pb.gz")
+	require.NoError(t, err)
+	p2.Normalize()
 
 	uniq := map[string][]*profilev1.Sample{}
 	for _, s := range p1.Sample {
@@ -44,14 +49,94 @@ func TestComputeDelta(t *testing.T) {
 	fmt.Println("total dupe", totalDupe)
 	fmt.Println("total samples", len(p1.Sample))
 
-	err = head.Ingest(ctx, p1, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
+	err = head.Ingest(ctx, p1.Profile, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
 	require.NoError(t, err)
 
-	err = head.Ingest(ctx, p1, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
+	err = head.Ingest(ctx, p1.Profile, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
 	require.NoError(t, err)
 
-	err = head.Ingest(ctx, p2, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
+	err = head.Ingest(ctx, p2.Profile, uuid.New(), &commonv1.LabelPair{Name: model.MetricNameLabel, Value: "memory"})
 	require.NoError(t, err)
+}
+
+func TestDeltaSample(t *testing.T) {
+	idx := []int{0, 1}
+	new := []*schemav1.Sample{
+		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+	}
+	highest := deltaSamples([]*schemav1.Sample{}, new, idx)
+	require.Equal(t, 2, len(highest))
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+	}, highest)
+	require.Equal(t, highest, new)
+
+	new = []*schemav1.Sample{
+		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+	}
+	highest = deltaSamples(highest, new, idx)
+	require.Equal(t, 2, len(highest))
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+	}, highest)
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 2, Values: []int64{0, 0, 3, 4}},
+		{StacktraceID: 3, Values: []int64{0, 0, 3, 4}},
+	}, new)
+
+	new = []*schemav1.Sample{
+		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+	}
+	highest = deltaSamples(highest, new, idx)
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+	}, highest)
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 3, Values: []int64{5, 0, 3, 4}},
+		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+	}, new)
+
+	new = []*schemav1.Sample{
+		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 5, Values: []int64{0, 5, 3, 4}},
+	}
+	highest = deltaSamples(highest, new, idx)
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+	}, highest)
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 3, Values: []int64{0, 0, 3, 4}},
+		{StacktraceID: 5, Values: []int64{0, 0, 3, 4}},
+	}, new)
+
+	new = []*schemav1.Sample{
+		{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
+		{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
+		{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
+	}
+	highest = deltaSamples(highest, new, idx)
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
+		{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
+		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+		{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
+	}, highest)
+	require.Equal(t, []*schemav1.Sample{
+		{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
+		{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
+		{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
+	}, new)
 }
 
 type memoryProfileBuilder struct {
