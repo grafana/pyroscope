@@ -121,6 +121,7 @@ export function SidebarComponent() {
         Single View
         <NavLink to={{ pathname: PAGES.ADHOC_SINGLE, search }} exact />
       </MenuItem>
+      {/*
       <MenuItem
         data-testid="sidebar-adhoc-comparison"
         active={isRouteActive(PAGES.ADHOC_COMPARISON)}
@@ -137,6 +138,7 @@ export function SidebarComponent() {
         Diff View
         <NavLink to={{ pathname: PAGES.ADHOC_COMPARISON_DIFF, search }} exact />
       </MenuItem>
+      */}
     </SubMenu>
   );
 
