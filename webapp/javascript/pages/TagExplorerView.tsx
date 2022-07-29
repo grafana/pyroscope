@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
@@ -27,6 +28,7 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import { calculateMean, calculateStdDeviation } from './math';
+import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
 
@@ -190,12 +192,24 @@ function Table({
   groupsData: TimelineGroupData[];
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
+  const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
 
   return (
     <>
       <div className={styles.tableDescription}>
         <span className={styles.title}>{appName} Descriptive Statistics</span>
+        <div className={styles.buttons}>
+          <NavLink to={{ pathname: PAGES.CONTINOUS_SINGLE_VIEW, search }} exact>
+            Single
+          </NavLink>
+          <NavLink to={{ pathname: PAGES.COMPARISON_VIEW, search }} exact>
+            Comparison
+          </NavLink>
+          <NavLink to={{ pathname: PAGES.COMPARISON_DIFF_VIEW, search }} exact>
+            Diff
+          </NavLink>
+        </div>
       </div>
       <table className={styles.tagExplorerTable}>
         <thead>
