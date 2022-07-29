@@ -178,7 +178,6 @@ func (q *Querier) PrometheusQueryRangeHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func parseTime(s string) (time.Time, error) {
