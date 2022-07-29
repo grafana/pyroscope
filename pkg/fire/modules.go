@@ -74,6 +74,10 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
 	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
 	f.Server.HTTP.Handle("/prometheus/api/v1/query_range", http.HandlerFunc(q.PrometheusQueryRangeHandler))
+	f.Server.HTTP.Handle("/prometheus/api/v1/query", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// just return empty instant query result to make grafana explore display something in "both" mode
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[]}}`))
+	}))
 	return q, nil
 }
 
