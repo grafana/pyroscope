@@ -26,9 +26,9 @@ import {
 } from '@webapp/redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import ExportData from '@webapp/components/ExportData';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
-import ExportData from '../components/ExportData';
 
 function AdhocComparison() {
   const dispatch = useAppDispatch();
