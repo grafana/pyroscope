@@ -1,17 +1,20 @@
-import { Profile } from '@pyroscope/models/src';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AppNames } from '@webapp/models/appNames';
-import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
-import { fetchAppNames } from '@webapp/services/appNames';
+import type { Profile, Groups } from '@pyroscope/models/src';
 import {
   renderSingle,
-  RenderOutput,
   renderDiff,
+  renderExplore,
+  RenderOutput,
+  RenderExploreOutput,
   RenderDiffResponse,
 } from '@webapp/services/render';
-import { Timeline } from '@webapp/models/timeline';
+import { fetchAppNames } from '@webapp/services/appNames';
+import type { AppNames } from '@webapp/models/appNames';
+import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
+import type { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
+import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
@@ -19,8 +22,44 @@ import { createAsyncThunk } from '../async-thunk';
 type SingleView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
-  | { type: 'loaded'; timeline: Timeline; profile: Profile }
-  | { type: 'reloading'; timeline: Timeline; profile: Profile };
+  | {
+      type: 'loaded';
+      timeline: Timeline;
+      profile: Profile;
+    }
+  | {
+      type: 'reloading';
+      timeline: Timeline;
+      profile: Profile;
+    };
+
+type TagExplorerView =
+  | {
+      type: 'pristine';
+      groups: Groups;
+      groupByTag: string;
+      groupByTagValue: string;
+    }
+  | {
+      type: 'loading';
+      groups: Groups;
+      groupByTag: string;
+      groupByTagValue: string;
+    }
+  | {
+      type: 'loaded';
+      groups: Groups;
+      groupByTag: string;
+      activeTagProfile?: Profile;
+      groupByTagValue: string;
+    }
+  | {
+      type: 'reloading';
+      groups: Groups;
+      groupByTag: string;
+      activeTagProfile?: Profile;
+      groupByTagValue: string;
+    };
 
 type ComparisonView = {
   left:
@@ -38,13 +77,6 @@ type ComparisonView = {
     | { type: 'failed'; profile?: Profile };
 };
 
-type TimelineState =
-  | { type: 'pristine'; timeline: Timeline }
-  | { type: 'loading'; timeline: Timeline }
-  | { type: 'reloading'; timeline: Timeline }
-  | { type: 'loaded'; timeline: Timeline }
-  | { type: 'failed'; timeline: Timeline };
-
 type DiffView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
@@ -53,6 +85,13 @@ type DiffView =
   | { type: 'failed'; profile?: Profile };
 
 type DiffView2 = ComparisonView;
+
+type TimelineState =
+  | { type: 'pristine'; timeline: Timeline }
+  | { type: 'loading'; timeline: Timeline }
+  | { type: 'reloading'; timeline: Timeline }
+  | { type: 'loaded'; timeline: Timeline }
+  | { type: 'failed'; timeline: Timeline };
 
 type TagsData =
   | { type: 'pristine' }
@@ -92,6 +131,7 @@ interface ContinuousState {
   diffView: DiffView;
   diffView2: DiffView2;
   comparisonView: ComparisonView;
+  tagExplorerView: TagExplorerView;
   tags: Tags;
 
   appNames:
@@ -110,6 +150,8 @@ let sideTimelinesAbortController: AbortController | undefined;
 let diffViewAbortController: AbortController | undefined;
 let comparisonSideAbortControllerLeft: AbortController | undefined;
 let comparisonSideAbortControllerRight: AbortController | undefined;
+let tagExplorerViewAbortController: AbortController | undefined;
+let tagExplorerViewProfileAbortController: AbortController | undefined;
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -131,6 +173,12 @@ const initialState: ContinuousState = {
     right: { type: 'pristine' },
   },
   tags: {},
+  tagExplorerView: {
+    groupByTag: '',
+    groupByTagValue: '',
+    type: 'pristine',
+    groups: {},
+  },
   appNames: {
     type: 'loaded',
     data: [],
@@ -183,6 +231,121 @@ export const fetchSingleView = createAsyncThunk<
     addNotification({
       type: 'danger',
       title: 'Failed to load single view data',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchTagExplorerView = createAsyncThunk<
+  RenderExploreOutput,
+  null,
+  { state: { continuous: ContinuousState } }
+>('continuous/tagExplorerView', async (_, thunkAPI) => {
+  if (tagExplorerViewAbortController) {
+    tagExplorerViewAbortController.abort();
+  }
+
+  tagExplorerViewAbortController = new AbortController();
+  thunkAPI.signal = tagExplorerViewAbortController.signal;
+
+  const state = thunkAPI.getState();
+  const res = await renderExplore(
+    {
+      query: state.continuous.query,
+      from: state.continuous.from,
+      until: state.continuous.until,
+      groupBy: state.continuous.tagExplorerView.groupByTag,
+      refreshToken: state.continuous.refreshToken,
+    },
+    tagExplorerViewAbortController
+  );
+
+  if (res.isOk) {
+    const isGroupBySelected =
+      state.continuous.tagExplorerView.groupByTag !== '';
+
+    if (isGroupBySelected) {
+      // * is "application without tags" group. we need only "real" groups names
+      const firstGroupName = Object.keys(res.value.groups).filter(
+        (groupName) => groupName !== '*'
+      )[0];
+
+      // additionaly load flamegraph profile for first group (first group is selected by default)
+      const profileResponse = await renderSingle({
+        ...state.continuous,
+        query: appendLabelToQuery(
+          state.continuous.query,
+          state.continuous.tagExplorerView.groupByTag,
+          firstGroupName
+        ),
+      });
+
+      if (profileResponse.isOk) {
+        return Promise.resolve({
+          ...res.value,
+          profile: profileResponse.value.profile,
+          groupByTagValue: firstGroupName,
+        });
+      }
+    }
+
+    return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load explore view data',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchTagExplorerViewProfile = createAsyncThunk<
+  RenderOutput,
+  null,
+  { state: { continuous: ContinuousState } }
+>('continuous/fetchTagExplorerViewProfile', async (_, thunkAPI) => {
+  if (tagExplorerViewProfileAbortController) {
+    tagExplorerViewProfileAbortController.abort();
+  }
+
+  tagExplorerViewProfileAbortController = new AbortController();
+  thunkAPI.signal = tagExplorerViewProfileAbortController.signal;
+
+  const state = thunkAPI.getState();
+  const res = await renderSingle(
+    {
+      ...state.continuous,
+      query: appendLabelToQuery(
+        state.continuous.query,
+        state.continuous.tagExplorerView.groupByTag,
+        state.continuous.tagExplorerView.groupByTagValue
+      ),
+    },
+    tagExplorerViewProfileAbortController
+  );
+
+  if (res.isOk) {
+    return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load explore view profile',
       message: res.error.message,
     })
   );
@@ -496,6 +659,18 @@ export const continuousSlice = createSlice({
     },
     setQuery(state, action: PayloadAction<Query>) {
       state.query = action.payload;
+      state.tagExplorerView.groupByTag = '';
+      state.tagExplorerView.groupByTagValue = '';
+    },
+    setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
+      state.tagExplorerView.groupByTag = action.payload;
+    },
+    setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
+      if (state.tagExplorerView.groupByTagValue === action.payload) {
+        state.tagExplorerView.groupByTagValue = '';
+      } else {
+        state.tagExplorerView.groupByTagValue = action.payload;
+      }
     },
     setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
@@ -742,6 +917,43 @@ export const continuousSlice = createSlice({
         }
       }
     });
+
+    /*******************************/
+    /*      Tag Explorer View      */
+    /*******************************/
+
+    builder.addCase(fetchTagExplorerView.pending, () => {});
+
+    builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
+      state.tagExplorerView = {
+        ...state.tagExplorerView,
+        ...action.payload,
+        activeTagProfile: action.payload.profile,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchTagExplorerView.rejected, () => {});
+
+    /***************************************/
+    /*      Tag Explorer View Profile      */
+    /***************************************/
+
+    builder.addCase(fetchTagExplorerViewProfile.pending, () => {});
+
+    builder.addCase(fetchTagExplorerViewProfile.fulfilled, (state, action) => {
+      state.tagExplorerView = {
+        ...state.tagExplorerView,
+        activeTagProfile: action.payload.profile,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchTagExplorerViewProfile.rejected, () => {});
+
+    /*****************/
+    /*      Tags     */
+    /*****************/
 
     // TODO:
     builder.addCase(fetchTags.pending, () => {});

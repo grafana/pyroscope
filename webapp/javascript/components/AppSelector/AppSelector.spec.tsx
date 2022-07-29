@@ -87,6 +87,17 @@ describe('AppSelector', () => {
             type: 'loaded',
             data: mockAppNames,
           },
+          tagExplorerView: {
+            groupByTag: '',
+            groupByTagValue: '',
+            type: 'pristine',
+            groups: {},
+            timeline: {
+              startTime: 0,
+              samples: [],
+              durationDelta: 0,
+            },
+          },
         },
       },
     });

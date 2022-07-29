@@ -119,6 +119,12 @@ ReduxQuerySync({
       selector: (state: RootState) => state.continuous.maxNodes,
       action: continuousActions.setMaxNodes,
     },
+    groupBy: {
+      defaultValue: '',
+      selector: (state: RootState) =>
+        state.continuous.tagExplorerView.groupByTag,
+      action: continuousActions.setTagExplorerViewGroupByTag,
+    },
   },
   initialTruth: 'location',
   replaceState: false,
