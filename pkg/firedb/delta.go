@@ -20,13 +20,14 @@ const (
 
 // deltaProfiles is a helper to compute delta of profiles.
 type deltaProfiles struct {
-	mtx      sync.Mutex
-	profiles map[model.Fingerprint]*schemav1.Profile
+	mtx sync.Mutex
+	// todo should keep the last highest sample for each series.
+	profiles map[model.Fingerprint][]*schemav1.Sample
 }
 
 func newDeltaProfiles() *deltaProfiles {
 	return &deltaProfiles{
-		profiles: make(map[model.Fingerprint]*schemav1.Profile),
+		profiles: make(map[model.Fingerprint][]*schemav1.Sample),
 	}
 }
 
@@ -48,12 +49,12 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 	})
 
 	// we store all series ref so fetching with one work.
-	lastProfile, ok := d.profiles[ps.SeriesRefs[deltaIdx[0]]]
+	lastSamples, ok := d.profiles[ps.SeriesRefs[deltaIdx[0]]]
 	if !ok {
 		// if we don't have the last profile, we can't compute the delta.
 		// so we remove the delta from the list of labels and profiles.
 		for _, i := range deltaIdx {
-			d.profiles[ps.SeriesRefs[i]] = ps
+			d.profiles[ps.SeriesRefs[i]] = ps.Samples
 		}
 		keepIdx := lo.FilterMap(ps.SeriesRefs, func(_ model.Fingerprint, i int) (int, bool) {
 			return i, !lo.Contains(deltaIdx, i)
@@ -98,22 +99,12 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 	// we have the last profile, we can compute the delta.
 	// samples are sorted by stacktrace id.
 	// we need to compute the delta for each stacktrace.
-	if len(lastProfile.Samples) == 0 {
+	if len(lastSamples) == 0 {
 		return ps, lbss
 	}
-	idx := 0
-	currSample := lastProfile.Samples[idx]
-	for _, s := range ps.Samples {
-		for currSample.StacktraceID < s.StacktraceID && idx+1 < len(lastProfile.Samples) {
-			idx++
-			currSample = lastProfile.Samples[idx]
-		}
-		if s.StacktraceID == currSample.StacktraceID {
-			for _, j := range deltaIdx {
-				s.Values[j] -= currSample.Values[j]
-			}
-		}
-	}
+
+	highestSamples := deltaSamples(lastSamples, ps.Samples, deltaIdx)
+
 	// remove samples that are all zero
 	i := 0
 	for _, x := range ps.Samples {
@@ -127,7 +118,7 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbss []firemodel.Labe
 	}
 	ps.Samples = ps.Samples[:i]
 	for _, i := range deltaIdx {
-		d.profiles[ps.SeriesRefs[i]] = ps
+		d.profiles[ps.SeriesRefs[i]] = highestSamples
 	}
 	return ps, lbss
 }
@@ -140,4 +131,44 @@ func isDelta(lbs firemodel.Labels) bool {
 		}
 	}
 	return false
+}
+
+func deltaSamples(highest, new []*schemav1.Sample, idx []int) []*schemav1.Sample {
+	var (
+		i, j       int
+		newHighest = make([]*schemav1.Sample, 0, len(highest))
+	)
+	for j < len(new) {
+		if i < len(highest) {
+			if highest[i].StacktraceID < new[j].StacktraceID {
+				newHighest = append(newHighest, highest[i])
+				i++
+				continue
+			}
+			if highest[i].StacktraceID > new[j].StacktraceID {
+				newHighest = append(newHighest, new[j])
+				j++
+				continue
+			}
+			if highest[i].StacktraceID == new[j].StacktraceID {
+				for _, k := range idx {
+					if highest[i].Values[k] <= new[j].Values[k] {
+						newMax := new[j].Values[k]
+						new[j].Values[k] -= highest[i].Values[k]
+						highest[i].Values[k] = newMax
+					} else {
+						new[j].Values[k] = 0
+					}
+				}
+				newHighest = append(newHighest, highest[i])
+				i++
+				j++
+				continue
+			}
+		}
+		newHighest = append(newHighest, new[j])
+		j++
+	}
+
+	return newHighest
 }
