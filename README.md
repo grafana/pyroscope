@@ -239,7 +239,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/proggga"><img src="https://avatars.githubusercontent.com/u/12262156?v=4" title="proggga" width="80" height="80"></a>
 <a href="https://github.com/samoilenko"><img src="https://avatars.githubusercontent.com/u/4024256?v=4" title="samoilenko" width="80" height="80"></a>
 <a href="https://github.com/teivah"><img src="https://avatars.githubusercontent.com/u/934784?v=4" title="teivah" width="80" height="80"></a>
-<a href="https://github.com/dreamalligator"><img src="https://avatars.githubusercontent.com/u/2218331?v=4" title="dreamalligator" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
 <a href="https://github.com/Tusharkshahi"><img src="https://avatars.githubusercontent.com/u/103762351?v=4" title="Tusharkshahi" width="80" height="80"></a>
 <a href="https://github.com/vbehar"><img src="https://avatars.githubusercontent.com/u/6251?v=4" title="vbehar" width="80" height="80"></a>
