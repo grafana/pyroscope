@@ -143,9 +143,9 @@ server_addr = os.getenv("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
 auth_token = os.getenv("PYROSCOPE_AUTH_TOKEN", "")
 
 pyroscope.configure(
-	app_name       = app_name,
-	server_address = server_addr,
-	auth_token     = auth_token,
+	application_name = app_name,
+	server_address   = server_addr,
+    auth_token       = auth_token,
 	# tags           = {
     #     "region":   f'{os.getenv("REGION")}',
 	# }
