@@ -2,4 +2,4 @@ Django==3.2.13
 djangorestframework==3.12.4
 gunicorn==20.1.0
 psycopg2-binary==2.9.1
-pyroscope-io==0.4.1
+pyroscope-io==0.7.1

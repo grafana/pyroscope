@@ -5,11 +5,8 @@ import os
 import pyroscope
 
 pyroscope.configure(
-	app_name       = "simple.python.app",
+	application_name       = "simple.python.app",
 	server_address = "http://pyroscope:4040",
-	tags           = {
-    "hostname": os.getenv("HOSTNAME"),
-	}
 )
 
 def work(n):
@@ -22,9 +19,8 @@ def fast_function():
 		work(20000)
 
 def slow_function():
-	pyroscope.tag({ "function": "slow" })
-	work(80000)
-	pyroscope.remove_tags("function")
+	with pyroscope.tag_wrapper({ "function": "fast" }):
+	    work(80000)
 
 if __name__ == "__main__":
 	while True:

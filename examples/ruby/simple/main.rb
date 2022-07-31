@@ -1,7 +1,7 @@
 require "pyroscope"
 
 Pyroscope.configure do |config|
-  config.app_name = "test.ruby.app"
+  config.application_name = "test.ruby.app"
   config.server_address = "http://pyroscope:4040/"
   config.tags = {
     :region => "us-east",
@@ -23,9 +23,9 @@ def fast_function
 end
 
 def slow_function
-  Pyroscope.tag({ "function" => "slow" })
+  Pyroscope.tag_wrapper({ "function" => "slow" }) do
     work(80000)
-  Pyroscope.remove_tags("function")
+  end
 end
 
 while true
