@@ -10,7 +10,7 @@ COPY gradlew .
 COPY gradle gradle
 RUN ./gradlew
 
-COPY build.gradle.kts settings.gradle.kts  .
+COPY build.gradle.kts settings.gradle.kts ./
 COPY src src
 RUN ./gradlew assemble --no-daemon
 
