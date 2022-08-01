@@ -7,6 +7,7 @@ import Color from 'color';
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
+import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@webapp/components/TimelineChartWrapper';
@@ -15,6 +16,7 @@ import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import {
   actions,
   setDateRange,
@@ -120,6 +122,11 @@ function TagExplorerView() {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
   };
 
+  const exportFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    activeTagProfile,
+    groupByTag,
+    groupByTagValue
+  );
   // when there's no groupByTag value backend returns groups with single "*" group,
   // which is "application without any tag" group. when backend returns multiple groups,
   // "*" group samples array is filled with zeros (not longer valid application data).
@@ -172,6 +179,15 @@ function TagExplorerView() {
             showCredit={false}
             profile={activeTagProfile}
             colorMode={colorMode}
+            ExportData={
+              activeTagProfile && (
+                <ExportData
+                  flamebearer={activeTagProfile}
+                  exportFlamegraphDotCom={true}
+                  exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+                />
+              )
+            }
           />
         </Box>
       )}
@@ -284,16 +300,16 @@ function ExploreHeader({
   const groupByDropdownItems =
     tagKeys.length > 0 ? tagKeys : ['No tags available'];
   // groupsData has single "application without tags" group for initial view
-  // since it's not a "real" tag we filter it
+  // we change this name to default value
   const whereDropdownItems =
     groupsData.length > 0
       ? groupsData.reduce((acc, group) => {
-          if (group.tagName !== appName.unwrapOr('')) {
-            acc.push(group.tagName);
+          const tagName =
+            group.tagName !== appName.unwrapOr('')
+              ? group.tagName
+              : appWithoutTagsWhereDropdownOptionName;
 
-            return acc;
-          }
-
+          acc.push(tagName);
           return acc;
         }, [] as string[])
       : ['No data available'];
@@ -334,24 +350,18 @@ function ExploreHeader({
             selectedTagValue || appWithoutTagsWhereDropdownOptionName
           }`}
           onItemClick={
-            whereDropdownItems.length > 0 ? handleGroupByValueClick : undefined
+            // to prevent clicking on default (*) option
+            whereDropdownItems.length >= 1 &&
+            whereDropdownItems[0] !== appWithoutTagsWhereDropdownOptionName
+              ? handleGroupByValueClick
+              : undefined
           }
         >
-          {whereDropdownItems.length > 0 ? (
-            whereDropdownItems.map((tagGroupName) => (
-              <MenuItem key={tagGroupName} value={tagGroupName}>
-                {tagGroupName}
-              </MenuItem>
-            ))
-          ) : (
-            // when groupBy tag is not selected we display default * option in where dropdown
-            <MenuItem
-              key={appWithoutTagsWhereDropdownOptionName}
-              value={appWithoutTagsWhereDropdownOptionName}
-            >
-              {appWithoutTagsWhereDropdownOptionName}
+          {whereDropdownItems.map((tagGroupName) => (
+            <MenuItem key={tagGroupName} value={tagGroupName}>
+              {tagGroupName}
             </MenuItem>
-          )}
+          ))}
         </Dropdown>
       </div>
     </div>
