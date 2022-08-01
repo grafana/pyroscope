@@ -3,10 +3,13 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"math/rand"
 	"time"
 
+	"github.com/bufbuild/connect-go"
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
+	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -29,16 +32,29 @@ var (
 	_ instancemgmt.InstanceDisposer = (*FireDatasource)(nil)
 )
 
+// FireDatasource is an example datasource which can respond to data queries, reports
+// its health and has streaming skills.
+type FireDatasource struct {
+	client querierv1connect.QuerierServiceClient
+}
+
 // NewFireDatasource creates a new datasource instance.
 func NewFireDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	log.DefaultLogger.Info("Created DataSource", "settings", settings)
 
-	return &FireDatasource{}, nil
-}
+	opt, err := settings.HTTPClientOptions()
+	if err != nil {
+		return nil, err
+	}
+	httpClient, err := httpclient.New(opt)
+	if err != nil {
+		return nil, err
+	}
 
-// FireDatasource is an example datasource which can respond to data queries, reports
-// its health and has streaming skills.
-type FireDatasource struct{}
+	return &FireDatasource{
+		client: querierv1connect.NewQuerierServiceClient(httpClient, settings.URL),
+	}, nil
+}
 
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
 // created. As soon as datasource settings change detected by SDK old datasource instance will
@@ -115,15 +131,15 @@ func (d *FireDatasource) query(_ context.Context, pCtx backend.PluginContext, qu
 // The main use case for these health checks is the test button on the
 // datasource configuration page which allows users to verify that
 // a datasource is working as expected.
-func (d *FireDatasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+func (d *FireDatasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	log.DefaultLogger.Info("CheckHealth called", "request", req)
 
 	status := backend.HealthStatusOk
 	message := "Data source is working"
 
-	if rand.Int()%2 == 0 {
+	if _, err := d.client.ProfileTypes(ctx, connect.NewRequest(&querierv1.ProfileTypesRequest{})); err != nil {
 		status = backend.HealthStatusError
-		message = "randomized error"
+		message = err.Error()
 	}
 
 	return &backend.CheckHealthResult{

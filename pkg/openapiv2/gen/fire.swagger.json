@@ -13,6 +13,9 @@
     },
     {
       "name": "IngesterService"
+    },
+    {
+      "name": "QuerierService"
     }
   ],
   "consumes": [
@@ -94,6 +97,17 @@
       },
       "description": "Profile represents a point in time profile."
     },
+    "ingesterv1ProfileTypesResponse": {
+      "type": "object",
+      "properties": {
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ProfileType"
+          }
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -102,6 +116,17 @@
         }
       },
       "additionalProperties": {}
+    },
+    "querierv1ProfileTypesResponse": {
+      "type": "object",
+      "properties": {
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ProfileType"
+          }
+        }
+      }
     },
     "rpcStatus": {
       "type": "object",
@@ -175,6 +200,9 @@
     "v1ProfileType": {
       "type": "object",
       "properties": {
+        "ID": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -189,18 +217,6 @@
         },
         "periodUnit": {
           "type": "string"
-        }
-      },
-      "title": "ProfileType is the name and type of profile"
-    },
-    "v1ProfileTypesResponse": {
-      "type": "object",
-      "properties": {
-        "names": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
