@@ -135,9 +135,9 @@ func (d *FireDatasource) query(_ context.Context, pCtx backend.PluginContext, qu
 		data.NewField("levels.0", nil, []string{`[0, 4862950000000, 0, 0]`}),
 		data.NewField("levels.1", nil, []string{`[0, 75210000000, 70000000, 6112, 0, 884550000000, 490000000, 5601]`}),
 	)
-	// new frame for names
-	// data.NewField("names", nil, []string{"func1", "func2", "func3", "func4", "func5", "func6", "func7", "func8"}),
 
+	// new frame for names
+	// frame.a
 	// If query called with streaming on then return a channel
 	// to subscribe on a client-side and consume updates from a plugin.
 	// Feel free to remove this if you don't need streaming for your datasource.
