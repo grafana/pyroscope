@@ -4,9 +4,10 @@ import (
 	"strings"
 
 	"github.com/gogo/status"
+	"google.golang.org/grpc/codes"
+
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"google.golang.org/grpc/codes"
 )
 
 // CompareProfile compares the two profiles.
