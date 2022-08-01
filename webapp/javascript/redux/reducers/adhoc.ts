@@ -1,6 +1,6 @@
 import { Profile } from '@pyroscope/models/src';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { upload } from '@webapp/services/adhoc';
+import { upload, retrieve } from '@webapp/services/adhoc';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 
@@ -24,6 +24,18 @@ type ComparisonView = {
     | { type: 'reloading'; fileName: string; profile: Profile };
 };
 
+type Shared = {
+  left:
+    | { type: 'pristine' }
+    | { type: 'loading' }
+    | { type: 'loaded'; profile: Profile };
+
+  right:
+    | { type: 'pristine' }
+    | { type: 'loading' }
+    | { type: 'loaded'; profile: Profile };
+};
+
 // The same logic should apply to all sides, the only difference is the data access
 type profileSideArgs =
   | { view: 'singleView' }
@@ -32,11 +44,18 @@ type profileSideArgs =
 interface AdhocState {
   singleView: SingleView;
   comparisonView: ComparisonView;
+
+  // Shared refers to the list of already uploaded files
+  shared: Shared;
 }
 
 const initialState: AdhocState = {
   singleView: { type: 'pristine' },
   comparisonView: { left: { type: 'pristine' }, right: { type: 'pristine' } },
+  shared: {
+    left: { type: 'pristine' },
+    right: { type: 'pristine' },
+  },
 };
 
 export const uploadFile = createAsyncThunk(
@@ -58,6 +77,27 @@ export const uploadFile = createAsyncThunk(
 
     // Since the file is invalid, let's remove it
     thunkAPI.dispatch(removeFile(args));
+
+    return Promise.reject(res.error);
+  }
+);
+
+export const fetchProfile = createAsyncThunk(
+  'adhoc/fetchProfile',
+  async ({ id, side }: { id: string; side: 'left' | 'right' }, thunkAPI) => {
+    const res = await retrieve(id);
+
+    if (res.isOk) {
+      return Promise.resolve({ profile: res.value, side });
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to load adhoc file',
+        message: res.error.message,
+      })
+    );
 
     return Promise.reject(res.error);
   }
@@ -141,6 +181,12 @@ export const adhocSlice = createSlice({
         };
       }
     });
+
+    builder.addCase(fetchProfile.fulfilled, (state, action) => {
+      const { side } = action.meta.arg;
+
+      state.shared[side] = { type: 'loaded', profile: action.payload.profile };
+    });
   },
 });
 
@@ -175,6 +221,10 @@ export const selectAdhocUploadedFilename =
 
     return undefined;
   };
+
+export const selectShared = (state: RootState) => {
+  return state.adhoc.shared;
+};
 
 export const { removeFile } = adhocSlice.actions;
 export default adhocSlice.reducer;

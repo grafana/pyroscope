@@ -49,8 +49,8 @@ export default function FileUploader({
         {filename ? (
           <div className={styles.subHeadingContainer}>
             <div className={styles.subHeading}>
-              To analyze another file, drag and drop pyroscope JSON files here
-              or click to select a file
+              To analyze another file, drag and drop pprof, json, or collapsed
+              files here or click to select a file
             </div>
             <div className={styles.headerMain}> {filename} </div>
             <div className={styles.subHeading}>
@@ -68,7 +68,9 @@ export default function FileUploader({
           </div>
         ) : (
           <div>
-            <p className={styles.headerMain}>Drag and drop files here</p>
+            <p className={styles.headerMain}>
+              Drag and drop pprof, json, or collapsed files here
+            </p>
             <div className={styles.iconContainer}>
               <FontAwesomeIcon
                 icon={faArrowAltCircleUp}

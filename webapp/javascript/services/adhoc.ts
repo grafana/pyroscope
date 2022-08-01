@@ -24,6 +24,13 @@ export async function upload(
   return parseResponse<Profile>(response, FlamebearerProfileSchema);
 }
 
+export async function retrieve(
+  id: string
+): Promise<Result<Profile, RequestError | ZodError>> {
+  const response = await request(`/api/adhoc/v1/profile/${id}`);
+  return parseResponse<Profile>(response, FlamebearerProfileSchema);
+}
+
 /**
  * represents an error when trying to convert a File to base64
  */
