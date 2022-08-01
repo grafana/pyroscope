@@ -10,6 +10,7 @@ type Props = QueryEditorProps<DataSource, Query, MyDataSourceOptions>
 
 interface State {
   profileTypes: CascaderOption[]
+  selectedProfileName: string
 }
 
 export class QueryEditor extends PureComponent<Props, State> {
@@ -17,15 +18,16 @@ export class QueryEditor extends PureComponent<Props, State> {
     super(props);
     this.state = {
       profileTypes: [],
+      selectedProfileName: 'Select a profile type',
     };
   }
-
   onProfileTypeChange = (value: string[], selectedOptions: CascaderOption[]) => {
     if (selectedOptions.length === 0) {
       return
     }
     let type = selectedOptions[selectedOptions.length - 1].value as ProfileType;
     this.props.onChange({ ...this.props.query, ProfileType: type });
+    this.setState({ selectedProfileName: type.name + " - " + type.sampleType });
   };
   onLabelSelectorChange = (value: FormEvent<HTMLInputElement>) => {
     this.props.onChange({ ...this.props.query, LabelSelector: value.currentTarget.value });
@@ -49,9 +51,11 @@ export class QueryEditor extends PureComponent<Props, State> {
         })
       }
       let types = Array.from(mainTypes.values());
-      this.setState({
-        profileTypes: types,
-      });
+      let state = { ...this.state, profileTypes: types };
+      if (this.props.query.ProfileType) {
+        state.selectedProfileName = this.props.query.ProfileType.name + " - " + this.props.query.ProfileType.sampleType;
+      }
+      this.setState(state);
     });
   };
 
@@ -63,7 +67,7 @@ export class QueryEditor extends PureComponent<Props, State> {
           onChange={this.onProfileTypeChange}
           options={this.state.profileTypes}
           icon='process'
-        >{query.ProfileType?.Label() || 'Select a profile type'}</ButtonCascader>
+        >{this.state.selectedProfileName}</ButtonCascader>
         <Input onChange={this.onLabelSelectorChange} value={query.LabelSelector} />
       </div>
     );

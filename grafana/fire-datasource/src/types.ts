@@ -27,7 +27,6 @@ export class ProfileType {
 
 export const defaultQuery: Partial<Query> = {
   LabelSelector: "{}",
-  ProfileType: undefined,
 }
 
 /**
