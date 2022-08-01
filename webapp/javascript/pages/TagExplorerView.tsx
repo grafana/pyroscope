@@ -143,6 +143,7 @@ function TagExplorerView() {
           data-testid="timeline-explore-page"
           id="timeline-chart-explore-page"
           timelineGroups={filteredGroupsData}
+          activeGroup={groupByTagValue}
           showTagsLegend={filteredGroupsData.length > 1}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
