@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/live"
 )
 
-// Make sure SampleDatasource implements required interfaces. This is important to do
+// Make sure FireDatasource implements required interfaces. This is important to do
 // since otherwise we will only get a not implemented error response from plugin in
 // runtime. In this example datasource instance implements backend.QueryDataHandler,
 // backend.CheckHealthHandler, backend.StreamHandler interfaces. Plugin should not
@@ -32,8 +32,7 @@ var (
 	_ instancemgmt.InstanceDisposer = (*FireDatasource)(nil)
 )
 
-// FireDatasource is an example datasource which can respond to data queries, reports
-// its health and has streaming skills.
+// FireDatasource is an datasource for querying application performance profiles.
 type FireDatasource struct {
 	client querierv1connect.QuerierServiceClient
 }
