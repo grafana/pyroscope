@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
@@ -14,6 +13,8 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/live"
+
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 )
 
 // Make sure FireDatasource implements required interfaces. This is important to do
@@ -27,6 +28,7 @@ import (
 // instance created upon datasource settings changed.
 var (
 	_ backend.QueryDataHandler      = (*FireDatasource)(nil)
+	_ backend.CallResourceHandler   = (*FireDatasource)(nil)
 	_ backend.CheckHealthHandler    = (*FireDatasource)(nil)
 	_ backend.StreamHandler         = (*FireDatasource)(nil)
 	_ instancemgmt.InstanceDisposer = (*FireDatasource)(nil)
@@ -60,6 +62,32 @@ func NewFireDatasource(settings backend.DataSourceInstanceSettings) (instancemgm
 // be disposed and a new one will be created using NewSampleDatasource factory function.
 func (d *FireDatasource) Dispose() {
 	// Clean up datasource instance resources.
+}
+
+func (d *FireDatasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	log.DefaultLogger.Info("CallResource", "req", req)
+	if req.Path == "profileTypes" {
+		return d.callProfileTypes(ctx, req, sender)
+	}
+	return sender.Send(&backend.CallResourceResponse{
+		Status: 404,
+	})
+}
+
+func (d *FireDatasource) callProfileTypes(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	res, err := d.client.ProfileTypes(ctx, connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(res.Msg.ProfileTypes)
+	if err != nil {
+		return err
+	}
+	err = sender.Send(&backend.CallResourceResponse{Body: data, Headers: req.Headers, Status: 200})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // QueryData handles multiple queries and returns multiple responses.
@@ -104,9 +132,11 @@ func (d *FireDatasource) query(_ context.Context, pCtx backend.PluginContext, qu
 
 	// add fields.
 	frame.Fields = append(frame.Fields,
-		data.NewField("time", nil, []time.Time{query.TimeRange.From, query.TimeRange.To}),
-		data.NewField("values", nil, []int64{10, 20}),
+		data.NewField("levels.0", nil, []string{`[0, 4862950000000, 0, 0]`}),
+		data.NewField("levels.1", nil, []string{`[0, 75210000000, 70000000, 6112, 0, 884550000000, 490000000, 5601]`}),
 	)
+	// new frame for names
+	// data.NewField("names", nil, []string{"func1", "func2", "func3", "func4", "func5", "func6", "func7", "func8"}),
 
 	// If query called with streaming on then return a channel
 	// to subscribe on a client-side and consume updates from a plugin.
