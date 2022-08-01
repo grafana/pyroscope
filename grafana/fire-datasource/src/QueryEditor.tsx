@@ -9,7 +9,7 @@ import { defaultQuery, MyDataSourceOptions, ProfileType, Query } from './types';
 type Props = QueryEditorProps<DataSource, Query, MyDataSourceOptions>
 
 interface State {
-  profileTypes: Array<CascaderOption>
+  profileTypes: CascaderOption[]
 }
 
 export class QueryEditor extends PureComponent<Props, State> {
@@ -21,7 +21,7 @@ export class QueryEditor extends PureComponent<Props, State> {
   }
 
   onProfileTypeChange = (value: string[], selectedOptions: CascaderOption[]) => {
-    if (selectedOptions.length == 0) {
+    if (selectedOptions.length === 0) {
       return
     }
     let type = selectedOptions[selectedOptions.length - 1].value as ProfileType;
@@ -48,10 +48,7 @@ export class QueryEditor extends PureComponent<Props, State> {
           value: profileType,
         })
       }
-      let types = new Array<CascaderOption>();
-      for (let [_, value] of mainTypes) {
-        types.push(value);
-      }
+      let types = Array.from(mainTypes.values());
       this.setState({
         profileTypes: types,
       });
