@@ -1,46 +1,54 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useOldRootSelector } from '@webapp/redux/hooks';
+import {
+  useAppDispatch,
+  useAppSelector,
+  useOldRootSelector,
+} from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import classNames from 'classnames';
 import { Profile } from '@pyroscope/models/src';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
 import {
   fetchAdhocProfiles,
-  fetchAdhocLeftProfile,
-  fetchAdhocRightProfile,
-  setAdhocLeftFile,
   setAdhocLeftProfile,
-  setAdhocRightFile,
   setAdhocRightProfile,
-  abortFetchAdhocLeftProfile,
   abortFetchAdhocProfiles,
-  abortFetchAdhocRightProfile,
 } from '@webapp/redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import {
+  removeFile,
+  selectAdhocUpload,
+  uploadFile,
+} from '@webapp/redux/reducers/adhoc';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 import FileUploader from './components/FileUploader';
 
 function AdhocComparison() {
   const dispatch = useAppDispatch();
+  const left = useAppSelector(
+    selectAdhocUpload({ view: 'comparisonView', side: 'left' })
+  );
+  const right = useAppSelector(
+    selectAdhocUpload({ view: 'comparisonView', side: 'right' })
+  );
 
-  const { left, right } = useOldRootSelector((state) => state.adhocComparison);
   const { left: leftShared, right: rightShared } = useOldRootSelector(
     (state) => state.adhocShared
   );
 
-  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(left.raw);
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(
+    (left as any).raw
+  );
   const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
-    right.raw
+    (right as any).profile
   );
 
   useEffect(() => {
@@ -50,23 +58,41 @@ function AdhocComparison() {
     };
   }, [dispatch]);
 
-  useEffect(() => {
-    if (leftShared.profile) {
-      dispatch(fetchAdhocLeftProfile(leftShared.profile));
-    }
-    return () => {
-      dispatch(abortFetchAdhocLeftProfile());
-    };
-  }, [dispatch, leftShared.profile]);
+  const flamegraph = (side: 'left' | 'right') => {
+    const f = side === 'left' ? left : right;
 
-  useEffect(() => {
-    if (rightShared.profile) {
-      dispatch(fetchAdhocRightProfile(rightShared.profile));
+    switch (f.type) {
+      case 'reloading':
+      case 'loaded': {
+        return (
+          <FlamegraphRenderer
+            profile={f.profile}
+            showCredit={false}
+            panesOrientation="vertical"
+            ExportData={
+              <ExportData
+                flamebearer={f.profile}
+                exportJSON
+                exportFlamegraphDotCom
+                exportFlamegraphDotComFn={
+                  side === 'left'
+                    ? exportToFlamegraphDotComLeftFn
+                    : exportToFlamegraphDotComRightFn
+                }
+              />
+            }
+          />
+        );
+      }
+
+      default: {
+        return <></>;
+      }
     }
-    return () => {
-      dispatch(abortFetchAdhocRightProfile());
-    };
-  }, [dispatch, rightShared.profile]);
+  };
+
+  const leftFlamegraph = flamegraph('left');
+  const rightFlamegraph = flamegraph('right');
 
   return (
     <div>
@@ -83,9 +109,18 @@ function AdhocComparison() {
               </TabList>
               <TabPanel>
                 <FileUploader
+                  filename={'fileName' in left ? left.fileName : ''}
                   className={adhocStyles.tabPanel}
-                  file={left.file}
-                  setFile={(f, flame) => dispatch(setAdhocLeftFile(f, flame))}
+                  removeFile={() => {
+                    dispatch(
+                      removeFile({ view: 'comparisonView', side: 'left' })
+                    );
+                  }}
+                  setFile={(file) => {
+                    dispatch(
+                      uploadFile({ file, view: 'comparisonView', side: 'left' })
+                    );
+                  }}
                 />
               </TabPanel>
               <TabPanel>
@@ -98,26 +133,7 @@ function AdhocComparison() {
                 />
               </TabPanel>
             </Tabs>
-            {left.isProfileLoading && (
-              <div className={classNames('spinner-container')}>
-                <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-              </div>
-            )}
-            {!left.isProfileLoading && (
-              <FlamegraphRenderer
-                showCredit={false}
-                flamebearer={left.flamebearer}
-                data-testid="flamegraph-renderer-left"
-                ExportData={
-                  <ExportData
-                    flamebearer={left.raw}
-                    exportJSON
-                    exportFlamegraphDotCom
-                    exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
-                  />
-                }
-              />
-            )}
+            {leftFlamegraph}
           </Box>
           {/* Right side */}
           <Box className={adhocComparisonStyles.comparisonPane}>
@@ -129,8 +145,21 @@ function AdhocComparison() {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  file={left.file}
-                  setFile={(f, flame) => dispatch(setAdhocRightFile(f, flame))}
+                  filename={'fileName' in right ? right.fileName : ''}
+                  removeFile={() => {
+                    dispatch(
+                      removeFile({ view: 'comparisonView', side: 'right' })
+                    );
+                  }}
+                  setFile={(file) => {
+                    dispatch(
+                      uploadFile({
+                        file,
+                        view: 'comparisonView',
+                        side: 'right',
+                      })
+                    );
+                  }}
                 />
               </TabPanel>
               <TabPanel>
@@ -143,26 +172,7 @@ function AdhocComparison() {
                 />
               </TabPanel>
             </Tabs>
-            {right.isProfileLoading && (
-              <div className={classNames('spinner-container')}>
-                <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-              </div>
-            )}
-            {!right.isProfileLoading && (
-              <FlamegraphRenderer
-                showCredit={false}
-                flamebearer={right.flamebearer}
-                data-testid="flamegraph-renderer-right"
-                ExportData={
-                  <ExportData
-                    flamebearer={right.raw}
-                    exportJSON
-                    exportFlamegraphDotCom
-                    exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
-                  />
-                }
-              />
-            )}
+            {rightFlamegraph}
           </Box>
         </div>
       </div>

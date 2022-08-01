@@ -29,8 +29,10 @@ import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();
-  const state = useAppSelector(selectAdhocUpload('singleView'));
-  const filename = useAppSelector(selectAdhocUploadedFilename('singleView'));
+  const state = useAppSelector(selectAdhocUpload({ view: 'singleView' }));
+  const filename = useAppSelector(
+    selectAdhocUploadedFilename({ view: 'singleView' })
+  );
 
   useEffect(() => {
     dispatch(fetchAdhocProfiles());
@@ -91,10 +93,10 @@ function AdhocSingle() {
                 className={adhocStyles.tabPanel}
                 filename={filename}
                 removeFile={() => {
-                  dispatch(removeFile('singleView'));
+                  dispatch(removeFile({ view: 'singleView' }));
                 }}
                 setFile={(file) => {
-                  dispatch(uploadFile(file));
+                  dispatch(uploadFile({ file, view: 'singleView' }));
                 }}
               />
             </TabPanel>

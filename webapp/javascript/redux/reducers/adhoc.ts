@@ -10,22 +10,42 @@ type SingleView =
   | { type: 'loaded'; fileName: string; profile: Profile }
   | { type: 'reloading'; fileName: string; profile: Profile };
 
+type ComparisonView = {
+  left:
+    | { type: 'pristine' }
+    | { type: 'loading'; fileName: string }
+    | { type: 'loaded'; fileName: string; profile: Profile }
+    | { type: 'reloading'; fileName: string; profile: Profile };
+
+  right:
+    | { type: 'pristine' }
+    | { type: 'loading'; fileName: string }
+    | { type: 'loaded'; fileName: string; profile: Profile }
+    | { type: 'reloading'; fileName: string; profile: Profile };
+};
+
+// The same logic should apply to all sides, the only difference is the data access
+type profileSideArgs =
+  | { view: 'singleView' }
+  | { view: 'comparisonView'; side: 'left' | 'right' };
+
 interface AdhocState {
   singleView: SingleView;
+  comparisonView: ComparisonView;
 }
 
 const initialState: AdhocState = {
   singleView: { type: 'pristine' },
+  comparisonView: { left: { type: 'pristine' }, right: { type: 'pristine' } },
 };
 
-// TODO(eh-am): ask for which view/side it is
 export const uploadFile = createAsyncThunk(
   'adhoc/uploadFile',
-  async (file: File, thunkAPI) => {
+  async ({ file, ...args }: { file: File } & profileSideArgs, thunkAPI) => {
     const res = await upload(file);
 
     if (res.isOk) {
-      return Promise.resolve(res.value);
+      return Promise.resolve({ profile: res.value, fileName: file.name });
     }
 
     thunkAPI.dispatch(
@@ -37,7 +57,7 @@ export const uploadFile = createAsyncThunk(
     );
 
     // Since the file is invalid, let's remove it
-    thunkAPI.dispatch(removeFile('singleView'));
+    thunkAPI.dispatch(removeFile(args));
 
     return Promise.reject(res.error);
   }
@@ -47,52 +67,107 @@ export const adhocSlice = createSlice({
   name: 'adhoc',
   initialState,
   reducers: {
-    removeFile(state, action: PayloadAction<'singleView'>) {
-      state[action.payload] = { type: 'pristine' };
+    removeFile(state, action: PayloadAction<profileSideArgs>) {
+      if (action.payload.view === 'comparisonView') {
+        state[action.payload.view][action.payload.side] = { type: 'pristine' };
+      } else {
+        state[action.payload.view] = { type: 'pristine' };
+      }
     },
   },
   extraReducers: (builder) => {
     builder.addCase(uploadFile.pending, (state, action) => {
-      switch (state['singleView'].type) {
+      const s = action.meta.arg;
+      const view = (() => {
+        if (s.view === 'comparisonView') {
+          const view = state[s.view];
+          return view[s.side];
+        }
+
+        return state[s.view];
+      })();
+
+      // TODO(eh-am): clean this all up
+      switch (view.type) {
         // We already have data
         case 'loaded': {
-          state['singleView'] = {
-            type: 'reloading',
-            fileName: action.meta.arg.name,
-            profile: state['singleView'].profile,
-          };
+          if (s.view === 'comparisonView') {
+            state[s.view][s.side] = {
+              type: 'reloading',
+              fileName: action.meta.arg.file.name,
+              profile: view.profile,
+            };
+          } else {
+            state[s.view] = {
+              type: 'reloading',
+              fileName: action.meta.arg.file.name,
+              profile: view.profile,
+            };
+          }
           break;
         }
 
         default: {
-          state['singleView'] = {
-            type: 'loading',
-            fileName: action.meta.arg.name,
-          };
+          if (s.view === 'comparisonView') {
+            state[s.view][s.side] = {
+              type: 'loading',
+              fileName: action.meta.arg.file.name,
+            };
+          } else {
+            state[s.view] = {
+              type: 'loading',
+              fileName: action.meta.arg.file.name,
+            };
+          }
         }
       }
     });
 
     builder.addCase(uploadFile.fulfilled, (state, action) => {
-      // It's technically possible to transition rom a non-loading state into a loaded state
-      const filename =
-        'fileName' in state['singleView'] ? state['singleView'].fileName : '';
+      const s = action.meta.arg;
 
-      state['singleView'] = {
-        type: 'loaded',
-        profile: action.payload,
-        fileName: filename,
-      };
+      if (s.view === 'comparisonView') {
+        state[s.view][s.side] = {
+          type: 'loaded',
+          profile: action.payload.profile,
+          fileName: action.payload.fileName,
+        };
+      } else {
+        // TODO(eh-am): add filename
+        state[s.view] = {
+          type: 'loaded',
+          profile: action.payload.profile,
+          fileName: action.payload.fileName,
+        };
+      }
     });
   },
 });
 
-export const selectAdhocUpload = (s: 'singleView') => (state: RootState) =>
-  state.adhoc[s];
+// TODO(eh-am): cleanup view
+export const selectAdhocUpload = (s: profileSideArgs) => (state: RootState) => {
+  const view = (() => {
+    if (s.view === 'comparisonView') {
+      const view = state.adhoc[s.view];
+      return view[s.side];
+    }
+
+    return state.adhoc[s.view];
+  })();
+
+  return view;
+};
 
 export const selectAdhocUploadedFilename =
-  (s: 'singleView') => (state: RootState) => {
-    const view = state.adhoc[s];
+  (s: profileSideArgs) => (state: RootState) => {
+    const view = (() => {
+      if (s.view === 'comparisonView') {
+        const view = state.adhoc[s.view];
+        return view[s.side];
+      }
+
+      return state.adhoc[s.view];
+    })();
 
     if ('fileName' in view) {
       return view.fileName;
