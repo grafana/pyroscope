@@ -11,5 +11,5 @@ service QuerierService {
 message ProfileTypesRequest {}
 
 message ProfileTypesResponse {
-    repeated common.v1.ProfileType profile_types = 1;
+  repeated common.v1.ProfileType profile_types = 1;
 }
