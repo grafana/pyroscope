@@ -8,3 +8,12 @@ message LabelPair {
   string name = 1;
   string value = 2;
 }
+
+message ProfileType {
+  string ID = 1;
+  string name = 2;
+  string sampleType = 4;
+  string sampleUnit = 5;
+  string periodType = 6;
+  string periodUnit = 7;
+}

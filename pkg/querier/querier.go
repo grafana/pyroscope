@@ -17,7 +17,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 )
 
@@ -88,18 +90,35 @@ func (q *Querier) stopping(_ error) error {
 	return services.StopManagerAndAwaitStopped(context.Background(), q.subservices)
 }
 
-func (q *Querier) ProfileTypes(ctx context.Context) ([]string, error) {
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
+func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]*commonv1.ProfileType, error) {
 		res, err := ic.ProfileTypes(ctx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 		if err != nil {
 			return nil, err
 		}
-		return res.Msg.Names, nil
+		return res.Msg.ProfileTypes, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return uniqueSortedStrings(responses), nil
+	var profileTypeIDs []string
+	profileTypes := make(map[string]*commonv1.ProfileType)
+	for _, response := range responses {
+		for _, profileType := range response.response {
+			if _, ok := profileTypes[profileType.ID]; !ok {
+				profileTypeIDs = append(profileTypeIDs, profileType.ID)
+				profileTypes[profileType.ID] = profileType
+			}
+		}
+	}
+	sort.Strings(profileTypeIDs)
+	result := &querierv1.ProfileTypesResponse{
+		ProfileTypes: make([]*commonv1.ProfileType, 0, len(profileTypes)),
+	}
+	for _, id := range profileTypeIDs {
+		result.ProfileTypes = append(result.ProfileTypes, profileTypes[id])
+	}
+	return connect.NewResponse(result), nil
 }
 
 func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error) {
