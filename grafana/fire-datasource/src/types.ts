@@ -6,13 +6,13 @@ export interface Query extends DataQuery {
 }
 
 export class ProfileType {
-  ID: string;
-  name: string;
-  periodType: string;
-  periodUnit: string;
-  sampleType: string;
-  sampleUnit: string;
-  constructor(ID: string, name: string, periodType: string, periodUnit: string, sampleType: string, sampleUnit: string) {
+
+  constructor(public ID: string,
+    public name: string,
+    public periodType: string,
+    public periodUnit: string,
+    public sampleType: string,
+    public sampleUnit: string) {
     this.ID = ID;
     this.name = name;
     this.periodType = periodType;
