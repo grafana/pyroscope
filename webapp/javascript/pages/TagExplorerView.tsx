@@ -277,7 +277,7 @@ function Table({
   );
 }
 
-const appWithoutTagsWhereDropdownOptionName = 'all';
+const appWithoutTagsWhereDropdownOptionName = 'All';
 
 function ExploreHeader({
   appName,
@@ -300,26 +300,25 @@ function ExploreHeader({
   const groupByDropdownItems =
     tagKeys.length > 0 ? tagKeys : ['No tags available'];
   // groupsData has single "application without tags" group for initial view
-  // we change this name to default value
-  const whereDropdownItems =
-    groupsData.length > 0
-      ? groupsData.reduce((acc, group) => {
-          const tagName =
-            group.tagName !== appName.unwrapOr('')
-              ? group.tagName
-              : appWithoutTagsWhereDropdownOptionName;
+  // its not "real" group so we filter it
+  const whereDropdownItems = groupsData.reduce((acc, group) => {
+    if (group.tagName === appName.unwrapOr('')) {
+      return acc;
+    }
 
-          acc.push(tagName);
-          return acc;
-        }, [] as string[])
-      : ['No data available'];
+    acc.push(group.tagName);
+    return acc;
+  }, [] as string[]);
 
   const handleGroupByClick = (e: ClickEvent) => {
     handleGroupByTagChange(e.value);
   };
 
   const handleGroupByValueClick = (e: ClickEvent) => {
-    handleGroupByTagValueChange(e.value);
+    // reset selection when user select "All"
+    const val =
+      e.value === appWithoutTagsWhereDropdownOptionName ? '' : e.value;
+    handleGroupByTagValueChange(val);
   };
 
   return (
@@ -345,23 +344,20 @@ function ExploreHeader({
       <div className={styles.query}>
         <span className={styles.selectName}>where</span>
         <Dropdown
-          label="all"
+          label="select where"
           value={`${selectedTag ? `${selectedTag} = ` : selectedTag} ${
             selectedTagValue || appWithoutTagsWhereDropdownOptionName
           }`}
-          onItemClick={
-            // to prevent clicking on default (all) option
-            whereDropdownItems.length >= 1 &&
-            whereDropdownItems[0] !== appWithoutTagsWhereDropdownOptionName
-              ? handleGroupByValueClick
-              : undefined
-          }
+          onItemClick={handleGroupByValueClick}
         >
-          {whereDropdownItems.map((tagGroupName) => (
-            <MenuItem key={tagGroupName} value={tagGroupName}>
-              {tagGroupName}
-            </MenuItem>
-          ))}
+          {/* always show "All" option */}
+          {[appWithoutTagsWhereDropdownOptionName, ...whereDropdownItems].map(
+            (tagGroupName) => (
+              <MenuItem key={tagGroupName} value={tagGroupName}>
+                {tagGroupName}
+              </MenuItem>
+            )
+          )}
         </Dropdown>
       </div>
     </div>
