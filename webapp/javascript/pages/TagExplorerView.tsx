@@ -277,7 +277,7 @@ function Table({
   );
 }
 
-const appWithoutTagsWhereDropdownOptionName = '*';
+const appWithoutTagsWhereDropdownOptionName = 'all';
 
 function ExploreHeader({
   appName,
@@ -345,12 +345,12 @@ function ExploreHeader({
       <div className={styles.query}>
         <span className={styles.selectName}>where</span>
         <Dropdown
-          label="select where"
-          value={`where = ${
+          label="all"
+          value={`${selectedTag ? `${selectedTag} = ` : selectedTag} ${
             selectedTagValue || appWithoutTagsWhereDropdownOptionName
           }`}
           onItemClick={
-            // to prevent clicking on default (*) option
+            // to prevent clicking on default (all) option
             whereDropdownItems.length >= 1 &&
             whereDropdownItems[0] !== appWithoutTagsWhereDropdownOptionName
               ? handleGroupByValueClick
