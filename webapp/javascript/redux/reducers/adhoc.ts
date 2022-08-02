@@ -6,20 +6,6 @@ import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
 import { addNotification } from './notifications';
 
-type ComparisonView = {
-  left:
-    | { type: 'pristine' }
-    | { type: 'loading'; fileName: string }
-    | { type: 'loaded'; fileName: string; profile: Profile }
-    | { type: 'reloading'; fileName: string; profile: Profile };
-
-  right:
-    | { type: 'pristine' }
-    | { type: 'loading'; fileName: string }
-    | { type: 'loaded'; fileName: string; profile: Profile }
-    | { type: 'reloading'; fileName: string; profile: Profile };
-};
-
 type Upload = {
   left: {
     type: 'pristine' | 'loading' | 'loaded';
@@ -56,8 +42,6 @@ type profileSideArgs2 =
   | { view: 'comparisonView'; side: 'left' | 'right' };
 
 interface AdhocState {
-  comparisonView: ComparisonView;
-
   upload: Upload;
 
   // Shared refers to the list of already uploaded files
@@ -65,7 +49,6 @@ interface AdhocState {
 }
 
 const initialState: AdhocState = {
-  comparisonView: { left: { type: 'pristine' }, right: { type: 'pristine' } },
   shared: {
     profilesList: { type: 'pristine' },
     left: { type: 'pristine' },
