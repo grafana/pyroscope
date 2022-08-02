@@ -1,15 +1,33 @@
 import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
-export interface MyQuery extends DataQuery {
-  queryText?: string;
-  constant: number;
-  withStreaming: boolean;
+export interface Query extends DataQuery {
+  LabelSelector: string;
+  ProfileType?: ProfileType;
 }
 
-export const defaultQuery: Partial<MyQuery> = {
-  constant: 6.5,
-  withStreaming: false,
-};
+export class ProfileType {
+
+  constructor(public ID: string,
+    public name: string,
+    public periodType: string,
+    public periodUnit: string,
+    public sampleType: string,
+    public sampleUnit: string) {
+    this.ID = ID;
+    this.name = name;
+    this.periodType = periodType;
+    this.periodUnit = periodUnit;
+    this.sampleType = sampleType;
+    this.sampleUnit = sampleUnit;
+  }
+  Label(): string {
+    return this.name + " - " + this.sampleType;
+  }
+}
+
+export const defaultQuery: Partial<Query> = {
+  LabelSelector: "{}",
+}
 
 /**
  * These are options configured for each DataSource instance.
