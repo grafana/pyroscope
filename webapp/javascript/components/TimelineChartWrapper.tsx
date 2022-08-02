@@ -43,6 +43,8 @@ type TimelineDataProps =
       activeGroup: string;
       /** show or hide tags legend, useful forr disabling single timeline legend */
       showTagsLegend: boolean;
+      /** to set active tagValue using <Legend /> */
+      handleGroupByTagValueChange: (groupByTagValue: string) => void;
       /** to manage strict data type */
       mode: 'multiple';
     };
@@ -238,7 +240,14 @@ class TimelineChartWrapper extends React.Component<
             width="100%"
             height={this.props.height || '100px'}
           />
-          {showTagsLegend && <Legend groups={timelineGroups} />}
+          {showTagsLegend && (
+            <Legend
+              groups={timelineGroups}
+              handleGroupByTagValueChange={
+                this.props.handleGroupByTagValueChange
+              }
+            />
+          )}
         </>
       );
     }

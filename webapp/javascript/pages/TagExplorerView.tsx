@@ -163,6 +163,7 @@ function TagExplorerView() {
               : ''
           }
           showTagsLegend={filteredGroupsData.length > 1}
+          handleGroupByTagValueChange={handleGroupByTagValueChange}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
@@ -189,7 +190,7 @@ function TagExplorerView() {
               activeTagProfile && (
                 <ExportData
                   flamebearer={activeTagProfile}
-                  exportFlamegraphDotCom={true}
+                  exportFlamegraphDotCom
                   exportFlamegraphDotComFn={exportFlamegraphDotComFn}
                 />
               )
