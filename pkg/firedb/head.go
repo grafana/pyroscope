@@ -324,8 +324,17 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	}
 	sort.Strings(values)
 
+	profileTypes := make([]*commonv1.ProfileType, len(values))
+	for i, v := range values {
+		tp, err := firemodel.ParseProfileTypeSelector(v)
+		if err != nil {
+			return nil, err
+		}
+		profileTypes[i] = tp
+	}
+
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
-		Names: values,
+		ProfileTypes: profileTypes,
 	}), nil
 }
 

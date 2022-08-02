@@ -83,7 +83,7 @@ go/mod:
 plugin/datasource/build: $(BIN)/mage
 	pushd ./grafana/fire-datasource && \
 	yarn install && yarn build && \
-	../../$(BIN)/mage -v \
+	$(BIN)/mage -v \
 
 
 .PHONY: fmt

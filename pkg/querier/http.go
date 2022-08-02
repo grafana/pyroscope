@@ -18,8 +18,10 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -46,7 +48,14 @@ func (q *Querier) LabelValuesHandler(w http.ResponseWriter, req *http.Request) {
 	)
 
 	if label == "__name__" {
-		res, err = q.ProfileTypes(req.Context())
+		response, err := q.ProfileTypes(req.Context(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for _, t := range response.Msg.ProfileTypes {
+			res = append(res, t.ID)
+		}
 	} else {
 		res, err = q.LabelValues(req.Context(), label)
 	}
@@ -229,7 +238,7 @@ func parseSelectProfilesRequest(req *http.Request) (*ingesterv1.SelectProfilesRe
 	}, nil
 }
 
-func parseQuery(req *http.Request) (string, *ingesterv1.ProfileType, error) {
+func parseQuery(req *http.Request) (string, *commonv1.ProfileType, error) {
 	q := req.Form.Get("query")
 	if q == "" {
 		return "", nil, fmt.Errorf("query is required")
@@ -253,19 +262,11 @@ func parseQuery(req *http.Request) (string, *ingesterv1.ProfileType, error) {
 		return "", nil, status.Error(codes.InvalidArgument, "query must contain a profile-type selection")
 	}
 
-	parts := strings.Split(nameLabel.Value, ":")
-	if len(parts) != 5 && len(parts) != 6 {
-		return "", nil, status.Errorf(codes.InvalidArgument, "profile-type selection must be of the form <name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>(:delta), got(%d): %q", len(parts), nameLabel.Value)
+	profileSelector, err := firemodel.ParseProfileTypeSelector(nameLabel.Value)
+	if err != nil {
+		return "", nil, status.Error(codes.InvalidArgument, "failed to parse query")
 	}
-	name, sampleType, sampleUnit, periodType, periodUnit := parts[0], parts[1], parts[2], parts[3], parts[4]
-	return convertMatchersToString(sel),
-		&ingesterv1.ProfileType{
-			Name:       name,
-			SampleType: sampleType,
-			SampleUnit: sampleUnit,
-			PeriodType: periodType,
-			PeriodUnit: periodUnit,
-		}, nil
+	return convertMatchersToString(sel), profileSelector, nil
 }
 
 func parseRelativeTime(s string) (time.Duration, error) {

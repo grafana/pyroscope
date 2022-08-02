@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 	"github.com/grafana/fire/pkg/testutil"
 )
@@ -32,19 +33,41 @@ func Test_QuerySampleType(t *testing.T) {
 		q := newFakeQuerier()
 		switch addr {
 		case "1":
-			q.On("ProfileTypes", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{Names: []string{"foo", "bar"}}), nil)
+			q.On("ProfileTypes", mock.Anything, mock.Anything).
+				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
+					ProfileTypes: []*commonv1.ProfileType{
+						{ID: "foo"},
+						{ID: "bar"},
+					},
+				}), nil)
 		case "2":
-			q.On("ProfileTypes", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{Names: []string{"bar", "buzz"}}), nil)
+			q.On("ProfileTypes", mock.Anything, mock.Anything).
+				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
+					ProfileTypes: []*commonv1.ProfileType{
+						{ID: "bar"},
+						{ID: "buzz"},
+					},
+				}), nil)
 		case "3":
-			q.On("ProfileTypes", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{Names: []string{"buzz", "foo"}}), nil)
+			q.On("ProfileTypes", mock.Anything, mock.Anything).
+				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
+					ProfileTypes: []*commonv1.ProfileType{
+						{ID: "buzz"},
+						{ID: "foo"},
+					},
+				}), nil)
 		}
 		return q, nil
 	}, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
-	out, err := querier.ProfileTypes(context.Background())
+	out, err := querier.ProfileTypes(context.Background(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+	ids := make([]string, 0, len(out.Msg.ProfileTypes))
+	for _, pt := range out.Msg.ProfileTypes {
+		ids = append(ids, pt.ID)
+	}
 	require.NoError(t, err)
-	require.Equal(t, []string{"bar", "buzz", "foo"}, out)
+	require.Equal(t, []string{"bar", "buzz", "foo"}, ids)
 }
 
 func Test_QueryLabelValues(t *testing.T) {
@@ -77,7 +100,7 @@ func Test_QueryLabelValues(t *testing.T) {
 func Test_selectMerge(t *testing.T) {
 	req := connect.NewRequest(&ingestv1.SelectProfilesRequest{
 		LabelSelector: `{app="foo"}`,
-		Type: &ingestv1.ProfileType{
+		Type: &commonv1.ProfileType{
 			Name:       "memory",
 			SampleType: "inuse_space",
 			SampleUnit: "bytes",
