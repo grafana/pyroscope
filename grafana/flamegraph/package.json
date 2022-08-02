@@ -1,0 +1,33 @@
+{
+  "name": "grafana-flamegraph-panel",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "grafana-toolkit plugin:build",
+    "test": "grafana-toolkit plugin:test",
+    "dev": "grafana-toolkit plugin:dev",
+    "watch": "grafana-toolkit plugin:dev --watch",
+    "sign": "grafana-toolkit plugin:sign",
+    "start": "yarn watch"
+  },
+  "author": "Andrej Ocenas",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@grafana/data": "latest",
+    "@grafana/runtime": "latest",
+    "@grafana/toolkit": "latest",
+    "@types/lodash": "4.14.181",
+    "prettier": "2.6.0",
+    "ts-node": "9.1.1"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "react": "17.0.2"
+  },
+  "packageManager": "yarn@3.2.2",
+  "resolutions": {
+    "@grafana/data": "portal:/home/andrej/go/src/github.com/grafana/grafana/packages/grafana-data"
+  }
+}
