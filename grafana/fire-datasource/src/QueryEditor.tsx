@@ -10,7 +10,6 @@ type Props = QueryEditorProps<DataSource, Query, MyDataSourceOptions>
 
 interface State {
   profileTypes: CascaderOption[]
-  selectedProfileName: string
 }
 
 export class QueryEditor extends PureComponent<Props, State> {
@@ -18,7 +17,6 @@ export class QueryEditor extends PureComponent<Props, State> {
     super(props);
     this.state = {
       profileTypes: [],
-      selectedProfileName: 'Select a profile type',
     };
   }
   onProfileTypeChange = (value: string[], selectedOptions: CascaderOption[]) => {
@@ -27,7 +25,6 @@ export class QueryEditor extends PureComponent<Props, State> {
     }
     let type = selectedOptions[selectedOptions.length - 1].value as ProfileType;
     this.props.onChange({ ...this.props.query, ProfileType: type });
-    this.setState({ selectedProfileName: type.name + " - " + type.sampleType });
   };
   onLabelSelectorChange = (value: FormEvent<HTMLInputElement>) => {
     this.props.onChange({ ...this.props.query, LabelSelector: value.currentTarget.value });
@@ -52,22 +49,20 @@ export class QueryEditor extends PureComponent<Props, State> {
       }
       let types = Array.from(mainTypes.values());
       let state = { ...this.state, profileTypes: types };
-      if (this.props.query.ProfileType) {
-        state.selectedProfileName = this.props.query.ProfileType.name + " - " + this.props.query.ProfileType.sampleType;
-      }
       this.setState(state);
     });
   };
 
   render() {
     let query = defaults(this.props.query, defaultQuery);
+    const selectedProfileName = this.props.query.ProfileType ? this.props.query.ProfileType.name + " - " + this.props.query.ProfileType.sampleType : 'Select a profile type'
     return (
       <div className="gf-form">
         <ButtonCascader
           onChange={this.onProfileTypeChange}
           options={this.state.profileTypes}
           icon='process'
-        >{this.state.selectedProfileName}</ButtonCascader>
+        >{selectedProfileName}</ButtonCascader>
         <Input onChange={this.onLabelSelectorChange} value={query.LabelSelector} />
       </div>
     );

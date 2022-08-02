@@ -7,11 +7,10 @@ export class DataSource extends DataSourceWithBackend<Query, MyDataSourceOptions
     super(instanceSettings);
   }
 
-  getProfileTypes(): Promise<ProfileType[]> {
-    return super.getResource("profileTypes").then((response): ProfileType[] => {
-      return response.map((profileType: any) => {
-        return new ProfileType(profileType.ID, profileType.name, profileType.periodType, profileType.periodUnit, profileType.sampleType, profileType.sampleUnit);
-      });
+  async getProfileTypes(): Promise<ProfileType[]> {
+    const profiles = await super.getResource("profileTypes");
+    return profiles.map((profileType: any) => {
+      return new ProfileType(profileType.ID, profileType.name, profileType.periodType, profileType.periodUnit, profileType.sampleType, profileType.sampleUnit);
     });
   }
 }
