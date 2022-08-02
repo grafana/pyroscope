@@ -105,9 +105,7 @@ function AdhocComparison() {
                   filename={leftFilename}
                   className={adhocStyles.tabPanel}
                   setFile={(file) => {
-                    dispatch(
-                      uploadFile({ file, view: 'comparisonView', side: 'left' })
-                    );
+                    dispatch(uploadFile({ file, side: 'left' }));
                   }}
                 />
               </TabPanel>
@@ -141,7 +139,6 @@ function AdhocComparison() {
                     dispatch(
                       uploadFile({
                         file,
-                        view: 'comparisonView',
                         side: 'right',
                       })
                     );

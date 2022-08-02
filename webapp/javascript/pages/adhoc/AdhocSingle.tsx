@@ -30,11 +30,6 @@ function AdhocSingle() {
 
   useEffect(() => {
     dispatch(fetchAllProfiles());
-
-    // TODO(eh-am): abort
-    //    return () => {
-    //      dispatch(abortFetchAdhocProfiles());
-    //    };
   }, [dispatch]);
 
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
@@ -75,9 +70,7 @@ function AdhocSingle() {
               className={adhocStyles.tabPanel}
               filename={filename}
               setFile={(file) => {
-                dispatch(
-                  uploadFile({ file, view: 'singleView', side: 'left' })
-                );
+                dispatch(uploadFile({ file, side: 'left' }));
               }}
             />
           </TabPanel>
