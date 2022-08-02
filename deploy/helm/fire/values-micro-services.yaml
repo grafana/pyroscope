@@ -6,8 +6,7 @@ fire:
   components:
     querier:
       kind: Deployment
-      # TODO: Enable once the querier PR is merged
-      replicaCount: 0
+      replicaCount: 3
     distributor:
       kind: Deployment
       replicaCount: 2

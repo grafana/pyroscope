@@ -3,8 +3,10 @@ package querier
 import (
 	"bytes"
 	"container/heap"
+	"sort"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/samber/lo"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/model"
@@ -114,14 +116,14 @@ func dedupeProfiles(responses []responseFromIngesters[*ingestv1.SelectProfilesRe
 	return deduped
 }
 
-type stack struct {
+type stacktraces struct {
 	locations []string
 	value     int64
 }
 
 // Merge stacktraces from multiple ingesters.
-func mergeStacktraces(profiles []profileWithSymbols) []stack {
-	stacktracesByID := map[uint64]*stack{}
+func mergeStacktraces(profiles []profileWithSymbols) []stacktraces {
+	stacktracesByID := map[uint64]*stacktraces{}
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 
 	for _, profile := range profiles {
@@ -133,7 +135,7 @@ func mergeStacktraces(profiles []profileWithSymbols) []stack {
 			id := stacktraceID(buf, fns)
 			stacktrace, ok := stacktracesByID[id]
 			if !ok {
-				stacktrace = &stack{
+				stacktrace = &stacktraces{
 					locations: fns,
 				}
 				stacktracesByID[id] = stacktrace
@@ -141,10 +143,16 @@ func mergeStacktraces(profiles []profileWithSymbols) []stack {
 			stacktrace.value += st.Value
 		}
 	}
-	result := make([]stack, 0, len(stacktracesByID))
-	for _, stacktrace := range stacktracesByID {
-		result = append(result, *stacktrace)
+	ids := lo.Keys(stacktracesByID)
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i] < ids[j]
+	})
+
+	result := make([]stacktraces, len(stacktracesByID))
+	for pos, id := range ids {
+		result[pos] = *stacktracesByID[id]
 	}
+
 	return result
 }
 

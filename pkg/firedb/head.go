@@ -16,6 +16,8 @@ import (
 	"github.com/gogo/status"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -30,9 +32,7 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
-var (
-	ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
+var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func generateULID() ulid.ULID {
 	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
@@ -291,14 +291,16 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		KeepFrames:        p.KeepFrames,
 		TimeNanos:         p.TimeNanos,
 		DurationNanos:     p.DurationNanos,
-		Comment:           copySlice(p.Comment),
+		Comments:          copySlice(p.Comment),
 		DefaultSampleType: p.DefaultSampleType,
 	}
 
 	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
 		return err
 	}
-	h.index.Add(profile, profilesLabels)
+	h.index.Add(profile, profilesLabels, metricName)
+
+	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(profilesLabels)))
 
 	return nil
 }
@@ -322,12 +324,38 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	}
 	sort.Strings(values)
 
+	profileTypes := make([]*commonv1.ProfileType, len(values))
+	for i, v := range values {
+		tp, err := firemodel.ParseProfileTypeSelector(v)
+		if err != nil {
+			return nil, err
+		}
+		profileTypes[i] = tp
+	}
+
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
-		Names: values,
+		ProfileTypes: profileTypes,
 	}), nil
 }
 
 func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+	var (
+		totalSamples   int64
+		totalLocations int64
+		totalProfiles  int64
+	)
+	// nolint:ineffassign
+	// we might use ctx later.
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Head - SelectProfiles")
+	defer func() {
+		sp.LogFields(
+			otlog.Int64("total_samples", totalSamples),
+			otlog.Int64("total_locations", totalLocations),
+			otlog.Int64("total_profiles", totalProfiles),
+		)
+		sp.Finish()
+	}()
+
 	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to label selector")
@@ -340,7 +368,8 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 
 	result := []*ingestv1.Profile{}
 	names := []string{}
-	namesPositions := map[string]int{}
+	stackTraces := map[uint64][]int32{}
+	functions := map[int64]int{}
 
 	h.stacktraces.lock.RLock()
 	h.locations.lock.RLock()
@@ -359,6 +388,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		if req.Msg.Start > ts || ts > req.Msg.End {
 			return nil
 		}
+		totalProfiles++
 		p := &ingestv1.Profile{
 			ID:          profile.ID.String(),
 			Type:        req.Msg.Type,
@@ -366,28 +396,36 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			Timestamp:   ts,
 			Stacktraces: make([]*ingestv1.StacktraceSample, 0, len(profile.Samples)),
 		}
+		totalSamples += int64(len(profile.Samples))
 		for _, s := range profile.Samples {
 			if s.Values[idx] == 0 {
+				totalSamples--
 				continue
 			}
-			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
-			fnIds := make([]int32, 0, len(locs))
-			for _, loc := range locs {
-				for _, line := range h.locations.slice[loc].Line {
-					fnName := h.strings.slice[h.functions.slice[line.FunctionId].Name]
-					pos, ok := namesPositions[fnName]
-					if !ok {
-						namesPositions[fnName] = len(names)
-						fnIds = append(fnIds, int32(len(names)))
-						names = append(names, fnName)
-						continue
+			stackTracesIds, ok := stackTraces[s.StacktraceID]
+			if !ok {
+				locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
+				totalLocations += int64(len(locs))
+				stackTracesIds = make([]int32, 0, 2*len(locs))
+				for _, loc := range locs {
+					for _, line := range h.locations.slice[loc].Line {
+						fnNameID := h.functions.slice[line.FunctionId].Name
+						pos, ok := functions[fnNameID]
+						if !ok {
+							functions[fnNameID] = len(names)
+							stackTracesIds = append(stackTracesIds, int32(len(names)))
+							names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
+							continue
+						}
+						stackTracesIds = append(stackTracesIds, int32(pos))
 					}
-					fnIds = append(fnIds, int32(pos))
 				}
+				stackTraces[s.StacktraceID] = stackTracesIds
 			}
+
 			p.Stacktraces = append(p.Stacktraces, &ingestv1.StacktraceSample{
 				Value:       s.Values[idx],
-				FunctionIds: fnIds,
+				FunctionIds: stackTracesIds,
 			})
 		}
 		if len(p.Stacktraces) > 0 {

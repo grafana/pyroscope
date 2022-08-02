@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 )
 
 func Test_ParseQuery(t *testing.T) {
@@ -22,13 +22,15 @@ func Test_ParseQuery(t *testing.T) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost/render/render?%s", q.Encode()), nil)
 	require.NoError(t, err)
+	require.NoError(t, req.ParseForm())
 
 	queryRequest, err := parseSelectProfilesRequest(req)
 	require.NoError(t, err)
 	require.WithinDuration(t, time.Now(), model.Time(queryRequest.End).Time(), 1*time.Minute)
 	require.WithinDuration(t, time.Now().Add(-6*time.Hour), model.Time(queryRequest.Start).Time(), 1*time.Minute)
 
-	require.Equal(t, &ingesterv1.ProfileType{
+	require.Equal(t, &commonv1.ProfileType{
+		ID:         "memory:alloc_space:bytes:space:bytes",
 		Name:       "memory",
 		SampleType: "alloc_space",
 		SampleUnit: "bytes",
