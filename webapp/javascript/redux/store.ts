@@ -14,7 +14,6 @@ import {
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
-import rootReducer from './reducers';
 import history from '../util/history';
 
 import settingsReducer from './reducers/settings';
@@ -27,7 +26,6 @@ import adhocReducer from './reducers/adhoc';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 const reducer = combineReducers({
-  root: rootReducer,
   settings: settingsReducer,
   user: userReducer,
   serviceDiscovery: serviceDiscoveryReducer,
