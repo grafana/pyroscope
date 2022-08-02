@@ -28,17 +28,21 @@ type Shared = {
   left:
     | { type: 'pristine' }
     | { type: 'loading' }
-    | { type: 'loaded'; profile: Profile };
+    | { type: 'loaded'; profile: Profile; id: string };
 
   right:
     | { type: 'pristine' }
     | { type: 'loading' }
-    | { type: 'loaded'; profile: Profile };
+    | { type: 'loaded'; profile: Profile; id: string };
 };
 
 // The same logic should apply to all sides, the only difference is the data access
 type profileSideArgs =
   | { view: 'singleView' }
+  | { view: 'comparisonView'; side: 'left' | 'right' };
+
+type profileSideArgs2 =
+  | { view: 'singleView'; side: 'left' }
   | { view: 'comparisonView'; side: 'left' | 'right' };
 
 interface AdhocState {
@@ -60,7 +64,7 @@ const initialState: AdhocState = {
 
 export const uploadFile = createAsyncThunk(
   'adhoc/uploadFile',
-  async ({ file, ...args }: { file: File } & profileSideArgs, thunkAPI) => {
+  async ({ file, ...args }: { file: File } & profileSideArgs2, thunkAPI) => {
     const res = await upload(file);
 
     if (res.isOk) {
@@ -166,20 +170,26 @@ export const adhocSlice = createSlice({
     builder.addCase(uploadFile.fulfilled, (state, action) => {
       const s = action.meta.arg;
 
-      if (s.view === 'comparisonView') {
-        state[s.view][s.side] = {
-          type: 'loaded',
-          profile: action.payload.profile,
-          fileName: action.payload.fileName,
-        };
-      } else {
-        // TODO(eh-am): add filename
-        state[s.view] = {
-          type: 'loaded',
-          profile: action.payload.profile,
-          fileName: action.payload.fileName,
-        };
-      }
+      state.shared[s.side] = {
+        type: 'loaded',
+        profile: action.payload.profile,
+        id: 'TODO',
+      };
+
+      //      if (s.view === 'comparisonView') {
+      //        state[s.view][s.side] = {
+      //          type: 'loaded',
+      //          profile: action.payload.profile,
+      //          fileName: action.payload.fileName,
+      //        };
+      //      } else {
+      //        // TODO(eh-am): add filename
+      //        state[s.view] = {
+      //          type: 'loaded',
+      //          profile: action.payload.profile,
+      //          fileName: action.payload.fileName,
+      //        };
+      //      }
     });
 
     builder.addCase(fetchProfile.fulfilled, (state, action) => {
