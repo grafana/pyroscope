@@ -11,3 +11,19 @@ bin
 go.work
 go.work.sum
 .DS_Store
+
+node_modules
+
+# Yarn
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/releases
+!**/.yarn/plugins
+!**/.yarn/sdks
+!**/.yarn/versions
+.pnp.*
+
+
+**/dist
+
+.idea
