@@ -18,6 +18,7 @@ import (
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	firemodel "github.com/grafana/fire/pkg/model"
 )
 
 func parseProfile(t testing.TB, path string) *profilev1.Profile {
@@ -251,7 +252,16 @@ func TestHeadProfileTypes(t *testing.T) {
 
 	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"bar:type:unit:type:unit", "foo:type:unit:type:unit"}, res.Msg.Names)
+	require.Equal(t, []*commonv1.ProfileType{
+		mustParseProfileSelector(t, "bar:type:unit:type:unit"),
+		mustParseProfileSelector(t, "foo:type:unit:type:unit"),
+	}, res.Msg.ProfileTypes)
+}
+
+func mustParseProfileSelector(t *testing.T, selector string) *commonv1.ProfileType {
+	ps, err := firemodel.ParseProfileTypeSelector(selector)
+	require.NoError(t, err)
+	return ps
 }
 
 func TestHeadIngestRealProfiles(t *testing.T) {
@@ -295,7 +305,7 @@ func TestSelectProfiles(t *testing.T) {
 
 	resp, err := head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
 		LabelSelector: `{job="bar"}`,
-		Type: &ingestv1.ProfileType{
+		Type: &commonv1.ProfileType{
 			Name:       "memory",
 			SampleType: "type",
 			SampleUnit: "unit",
@@ -414,7 +424,8 @@ func BenchmarkSelectProfile(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		res, err = head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
 			LabelSelector: `{job="bar"}`,
-			Type: &ingestv1.ProfileType{
+			Type: &commonv1.ProfileType{
+				ID:         "memory:alloc_space:bytes:space:bytes",
 				Name:       "memory",
 				SampleType: "alloc_space",
 				SampleUnit: "bytes",
@@ -427,7 +438,8 @@ func BenchmarkSelectProfile(b *testing.B) {
 		require.NoError(b, err)
 		res, err = head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
 			LabelSelector: `{job="bar"}`,
-			Type: &ingestv1.ProfileType{
+			Type: &commonv1.ProfileType{
+				ID:         "memory:inuse_space:bytes:space:bytes",
 				Name:       "memory",
 				SampleType: "inuse_space",
 				SampleUnit: "bytes",

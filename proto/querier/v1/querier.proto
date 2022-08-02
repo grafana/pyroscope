@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package querier.v1;
+
+import "common/v1/common.proto";
+
+service QuerierService {
+  rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
+}
+
+message ProfileTypesRequest {}
+
+message ProfileTypesResponse {
+  repeated common.v1.ProfileType profile_types = 1;
+}
