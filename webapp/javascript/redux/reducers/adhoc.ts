@@ -46,17 +46,13 @@ type DiffState = {
   profile?: Profile;
 };
 
-// The same logic should apply to all sides, the only difference is the data access
-type profileSideArgs2 =
-  | { view: 'singleView'; side: 'left' }
-  | { view: 'comparisonView'; side: 'left' | 'right' };
+type side = 'left' | 'right';
 
 interface AdhocState {
+  // Upload refers to the files being uploaded
   upload: Upload;
-
   // Shared refers to the list of already uploaded files
   shared: Shared;
-
   diff: DiffState;
 }
 
@@ -66,19 +62,13 @@ const initialState: AdhocState = {
     left: { type: 'pristine' },
     right: { type: 'pristine' },
   },
-  upload: {
-    left: { type: 'pristine' },
-    right: { type: 'pristine' },
-  },
-
-  diff: {
-    type: 'pristine',
-  },
+  upload: { left: { type: 'pristine' }, right: { type: 'pristine' } },
+  diff: { type: 'pristine' },
 };
 
 export const uploadFile = createAsyncThunk(
   'adhoc/uploadFile',
-  async ({ file, ...args }: { file: File } & profileSideArgs2, thunkAPI) => {
+  async ({ file, ...args }: { file: File } & { side: side }, thunkAPI) => {
     const res = await upload(file);
 
     if (res.isOk) {
@@ -122,7 +112,7 @@ export const fetchAllProfiles = createAsyncThunk(
 
 export const fetchProfile = createAsyncThunk(
   'adhoc/fetchProfile',
-  async ({ id, side }: { id: string; side: 'left' | 'right' }, thunkAPI) => {
+  async ({ id, side }: { id: string; side: side }, thunkAPI) => {
     const res = await retrieve(id);
 
     if (res.isOk) {
@@ -169,7 +159,7 @@ export const adhocSlice = createSlice({
   name: 'adhoc',
   initialState,
   reducers: {
-    removeFile(state, action: PayloadAction<profileSideArgs2>) {
+    removeFile(state, action: PayloadAction<{ side: side }>) {
       state.upload[action.payload.side] = {
         type: 'pristine',
         fileName: undefined,
@@ -179,6 +169,13 @@ export const adhocSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(uploadFile.pending, (state, action) => {
       state.upload[action.meta.arg.side].type = 'loading';
+    });
+    builder.addCase(uploadFile.rejected, (state, action) => {
+      // Since the file is invalid, let's remove it
+      state.upload[action.meta.arg.side] = {
+        type: 'pristine',
+        fileName: undefined,
+      };
     });
 
     builder.addCase(uploadFile.fulfilled, (state, action) => {
@@ -233,36 +230,38 @@ export const adhocSlice = createSlice({
   },
 });
 
+const selectAdhocState = (state: RootState) => {
+  return state.adhoc;
+};
+
 export const selectAdhocUploadedFilename =
-  (side: 'left' | 'right') => (state: RootState) => {
-    return Maybe.of(state.adhoc.upload[side].fileName);
+  (side: side) => (state: RootState) => {
+    return Maybe.of(selectAdhocState(state).upload[side].fileName);
   };
 
 export const selectShared = (state: RootState) => {
-  return state.adhoc.shared;
+  return selectAdhocState(state).shared;
 };
 
 export const selectProfilesList = (state: RootState) => {
-  return state.adhoc.shared.profilesList;
+  return selectShared(state).profilesList;
 };
 
-export const selectedSelectedProfileId =
-  (side: 'left' | 'right') => (state: RootState) => {
-    return Maybe.of(state.adhoc.shared[side].id);
-  };
+export const selectedSelectedProfileId = (side: side) => (state: RootState) => {
+  return Maybe.of(selectShared(state)[side].id);
+};
 
-export const selectProfile = (side: 'left' | 'right') => (state: RootState) => {
-  return Maybe.of(state.adhoc.shared[side].profile);
+export const selectProfile = (side: side) => (state: RootState) => {
+  return Maybe.of(selectShared(state)[side].profile);
 };
 
 export const selectDiffProfile = (state: RootState) => {
-  return Maybe.of(state.adhoc.diff.profile);
+  return Maybe.of(selectAdhocState(state).diff.profile);
 };
 
-export const selectProfileId =
-  (side: 'left' | 'right') => (state: RootState) => {
-    return Maybe.of(state.adhoc.shared[side].id);
-  };
+export const selectProfileId = (side: side) => (state: RootState) => {
+  return Maybe.of(selectShared(state)[side].id);
+};
 
 export const { removeFile } = adhocSlice.actions;
 export default adhocSlice.reducer;

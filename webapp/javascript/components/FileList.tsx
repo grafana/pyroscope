@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
 import clsx from 'clsx';
+// eslint-disable-next-line css-modules/no-unused-class
 import styles from './FileList.module.scss';
 import CheckIcon from './CheckIcon';
 
@@ -120,7 +121,7 @@ function FileList(props: FileListProps) {
                     isRowSelected(profile.id) && styles.rowSelected
                   }`}
                 >
-                  <td title={profile.name} className={styles.td}>
+                  <td>
                     {profile.name}
 
                     {isRowSelected(profile.id) && (
