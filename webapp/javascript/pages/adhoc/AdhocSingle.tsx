@@ -11,7 +11,6 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import ExportData from '@webapp/components/ExportData';
 import {
   uploadFile,
-  removeFile,
   selectAdhocUploadedFilename,
   fetchProfile,
   selectShared,
@@ -24,9 +23,7 @@ import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();
-  const filename = useAppSelector(
-    selectAdhocUploadedFilename({ view: 'singleView' })
-  );
+  const filename = useAppSelector(selectAdhocUploadedFilename('left'));
   const { profilesList } = useAppSelector(selectShared);
   const selectedProfileId = useAppSelector(selectedSelectedProfileId('left'));
   const profile = useAppSelector(selectProfile('left'));
@@ -77,9 +74,6 @@ function AdhocSingle() {
             <FileUploader
               className={adhocStyles.tabPanel}
               filename={filename}
-              removeFile={() => {
-                dispatch(removeFile({ view: 'singleView', side: 'left' }));
-              }}
               setFile={(file) => {
                 dispatch(
                   uploadFile({ file, view: 'singleView', side: 'left' })
@@ -94,9 +88,6 @@ function AdhocSingle() {
                 selectedProfileId={selectedProfileId}
                 profilesList={profilesList.profilesList}
                 onProfileSelected={(id: string) => {
-                  // TODO(eh-am): there's a content shift when this happens
-                  dispatch(removeFile({ view: 'singleView', side: 'left' }));
-
                   dispatch(fetchProfile({ id, side: 'left' }));
                 }}
               />

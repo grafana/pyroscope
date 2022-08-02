@@ -6,12 +6,6 @@ import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
 import { addNotification } from './notifications';
 
-type SingleView =
-  | { type: 'pristine' }
-  | { type: 'loading'; fileName: string }
-  | { type: 'loaded'; fileName: string; profile: Profile }
-  | { type: 'reloading'; fileName: string; profile: Profile };
-
 type ComparisonView = {
   left:
     | { type: 'pristine' }
@@ -24,6 +18,17 @@ type ComparisonView = {
     | { type: 'loading'; fileName: string }
     | { type: 'loaded'; fileName: string; profile: Profile }
     | { type: 'reloading'; fileName: string; profile: Profile };
+};
+
+type Upload = {
+  left: {
+    type: 'pristine' | 'loading' | 'loaded';
+    fileName?: string;
+  };
+  right: {
+    type: 'pristine' | 'loading' | 'loaded';
+    fileName?: string;
+  };
 };
 
 type Shared = {
@@ -46,27 +51,27 @@ type Shared = {
 };
 
 // The same logic should apply to all sides, the only difference is the data access
-type profileSideArgs =
-  | { view: 'singleView' }
-  | { view: 'comparisonView'; side: 'left' | 'right' };
-
 type profileSideArgs2 =
   | { view: 'singleView'; side: 'left' }
   | { view: 'comparisonView'; side: 'left' | 'right' };
 
 interface AdhocState {
-  singleView: SingleView;
   comparisonView: ComparisonView;
+
+  upload: Upload;
 
   // Shared refers to the list of already uploaded files
   shared: Shared;
 }
 
 const initialState: AdhocState = {
-  singleView: { type: 'pristine' },
   comparisonView: { left: { type: 'pristine' }, right: { type: 'pristine' } },
   shared: {
     profilesList: { type: 'pristine' },
+    left: { type: 'pristine' },
+    right: { type: 'pristine' },
+  },
+  upload: {
     left: { type: 'pristine' },
     right: { type: 'pristine' },
   },
@@ -142,75 +147,37 @@ export const adhocSlice = createSlice({
   initialState,
   reducers: {
     removeFile(state, action: PayloadAction<profileSideArgs2>) {
-      if (action.payload.view === 'comparisonView') {
-        state[action.payload.view][action.payload.side] = { type: 'pristine' };
-      } else {
-        state[action.payload.view] = { type: 'pristine' };
-      }
-
-      state.shared[action.payload.side] = { type: 'pristine' };
+      state.upload[action.payload.side] = {
+        type: 'pristine',
+        fileName: undefined,
+      };
     },
   },
   extraReducers: (builder) => {
     builder.addCase(uploadFile.pending, (state, action) => {
-      const s = action.meta.arg;
-      const view = (() => {
-        if (s.view === 'comparisonView') {
-          const view = state[s.view];
-          return view[s.side];
-        }
-
-        return state[s.view];
-      })();
-
-      // TODO(eh-am): clean this all up
-      switch (view.type) {
-        // We already have data
-        case 'loaded': {
-          if (s.view === 'comparisonView') {
-            state[s.view][s.side] = {
-              type: 'reloading',
-              fileName: action.meta.arg.file.name,
-              profile: view.profile,
-            };
-          } else {
-            state[s.view] = {
-              type: 'reloading',
-              fileName: action.meta.arg.file.name,
-              profile: view.profile,
-            };
-          }
-          break;
-        }
-
-        default: {
-          if (s.view === 'comparisonView') {
-            state[s.view][s.side] = {
-              type: 'loading',
-              fileName: action.meta.arg.file.name,
-            };
-          } else {
-            state[s.view] = {
-              type: 'loading',
-              fileName: action.meta.arg.file.name,
-            };
-          }
-        }
-      }
+      state.upload[action.meta.arg.side].type = 'loading';
     });
 
     builder.addCase(uploadFile.fulfilled, (state, action) => {
       const s = action.meta.arg;
 
+      state.upload[s.side] = { type: 'loaded', fileName: s.file.name };
+
       state.shared[s.side] = {
         type: 'loaded',
         profile: action.payload.profile,
-        id: '',
+        id: undefined,
       };
     });
 
     builder.addCase(fetchProfile.fulfilled, (state, action) => {
       const { side } = action.meta.arg;
+
+      // After loading a profile, there's no uploaded profile
+      state.upload[side] = {
+        type: 'pristine',
+        fileName: undefined,
+      };
 
       state.shared[side] = {
         type: 'loaded',
@@ -228,36 +195,9 @@ export const adhocSlice = createSlice({
   },
 });
 
-// TODO(eh-am): cleanup view
-export const selectAdhocUpload = (s: profileSideArgs) => (state: RootState) => {
-  const view = (() => {
-    if (s.view === 'comparisonView') {
-      const view = state.adhoc[s.view];
-      return view[s.side];
-    }
-
-    return state.adhoc[s.view];
-  })();
-
-  return view;
-};
-
 export const selectAdhocUploadedFilename =
-  (s: profileSideArgs) => (state: RootState) => {
-    const view = (() => {
-      if (s.view === 'comparisonView') {
-        const view = state.adhoc[s.view];
-        return view[s.side];
-      }
-
-      return state.adhoc[s.view];
-    })();
-
-    if ('fileName' in view) {
-      return view.fileName;
-    }
-
-    return undefined;
+  (side: 'left' | 'right') => (state: RootState) => {
+    return Maybe.of(state.adhoc.upload[side].fileName);
   };
 
 export const selectShared = (state: RootState) => {
