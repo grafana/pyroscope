@@ -1,55 +1,88 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useOldRootSelector } from '@webapp/redux/hooks';
+import { Maybe } from '@webapp/util/fp';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import Spinner from 'react-svg-spinner';
-import classNames from 'classnames';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { Profile } from '@pyroscope/models/src';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import FileList from '@webapp/components/FileList';
-import {
-  fetchAdhocProfiles,
-  fetchAdhocProfileDiff,
-  setAdhocLeftProfile,
-  setAdhocRightProfile,
-  abortFetchAdhocProfileDiff,
-  abortFetchAdhocProfiles,
-} from '@webapp/redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
+import {
+  fetchAllProfiles,
+  fetchDiffProfile,
+  fetchProfile,
+  selectedSelectedProfileId,
+  selectProfileId,
+  selectShared,
+  selectDiffProfile,
+} from '@webapp/redux/reducers/adhoc';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 
 function AdhocDiff() {
   const dispatch = useAppDispatch();
-  const { flamebearer, isProfileLoading, raw } = useOldRootSelector(
-    (state) => state.adhocComparisonDiff
+  const leftProfileId = useAppSelector(selectProfileId('left'));
+  const rightProfileId = useAppSelector(selectProfileId('right'));
+
+  const selectedProfileIdLeft = useAppSelector(
+    selectedSelectedProfileId('left')
   );
-  const { left: leftShared, right: rightShared } = useOldRootSelector(
-    (state) => state.adhocShared
+  const selectedProfileIdRight = useAppSelector(
+    selectedSelectedProfileId('right')
   );
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
+  const { profilesList } = useAppSelector(selectShared);
+  const diffProfile = useAppSelector(selectDiffProfile);
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    diffProfile.unwrapOr(undefined)
+  );
 
   useEffect(() => {
-    dispatch(fetchAdhocProfiles());
-    return () => {
-      return dispatch(abortFetchAdhocProfiles());
-    };
+    dispatch(fetchAllProfiles());
   }, [dispatch]);
 
   useEffect(() => {
-    if (leftShared.profile && rightShared.profile) {
-      dispatch(fetchAdhocProfileDiff(leftShared.profile, rightShared.profile));
+    if (leftProfileId.isJust && rightProfileId.isJust) {
+      dispatch(
+        fetchDiffProfile({
+          leftId: leftProfileId.value,
+          rightId: rightProfileId.value,
+        })
+      );
     }
-    return () => {
-      dispatch(abortFetchAdhocProfileDiff());
-    };
-  }, [dispatch, leftShared.profile, rightShared.profile]);
+  }, [
+    dispatch,
+    leftProfileId.unwrapOr(undefined),
+    rightProfileId.unwrapOr(undefined),
+  ]);
+
+  const flamegraph = (
+    profile: Maybe<Profile>,
+    exportToFn: ReturnType<typeof useExportToFlamegraphDotCom>
+  ) => {
+    if (profile.isNothing) {
+      return <></>;
+    }
+
+    return (
+      <FlamegraphRenderer
+        profile={profile.value}
+        showCredit={false}
+        panesOrientation="vertical"
+        ExportData={
+          <ExportData
+            flamebearer={profile.value}
+            exportJSON
+            exportFlamegraphDotCom
+            exportFlamegraphDotComFn={exportToFn}
+          />
+        }
+      />
+    );
+  };
 
   return (
     <div>
@@ -65,11 +98,16 @@ function AdhocDiff() {
                 <Tab disabled>Upload</Tab>
               </TabList>
               <TabPanel>
-                <FileList
-                  className={adhocStyles.tabPanel}
-                  profile={leftShared.profile}
-                  setProfile={(p: Profile) => dispatch(setAdhocLeftProfile(p))}
-                />
+                {profilesList.type === 'loaded' && (
+                  <FileList
+                    className={adhocStyles.tabPanel}
+                    profilesList={profilesList.profilesList}
+                    selectedProfileId={selectedProfileIdLeft}
+                    onProfileSelected={(id: string) => {
+                      dispatch(fetchProfile({ id, side: 'left' }));
+                    }}
+                  />
+                )}
               </TabPanel>
               <TabPanel />
             </Tabs>
@@ -81,37 +119,22 @@ function AdhocDiff() {
                 <Tab disabled>Upload</Tab>
               </TabList>
               <TabPanel>
-                <FileList
-                  className={adhocStyles.tabPanel}
-                  profile={rightShared.profile}
-                  setProfile={(p: Profile) => dispatch(setAdhocRightProfile(p))}
-                />
+                {profilesList.type === 'loaded' && (
+                  <FileList
+                    className={adhocStyles.tabPanel}
+                    profilesList={profilesList.profilesList}
+                    selectedProfileId={selectedProfileIdRight}
+                    onProfileSelected={(id: string) => {
+                      dispatch(fetchProfile({ id, side: 'right' }));
+                    }}
+                  />
+                )}
               </TabPanel>
               <TabPanel />
             </Tabs>
           </Box>
         </div>
-        <Box>
-          {isProfileLoading && (
-            <div className={classNames('spinner-container')}>
-              <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-            </div>
-          )}
-          {!isProfileLoading && (
-            <FlamegraphRenderer
-              showCredit={false}
-              flamebearer={flamebearer}
-              ExportData={
-                <ExportData
-                  flamebearer={raw}
-                  exportJSON
-                  exportFlamegraphDotCom
-                  exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
-                />
-              }
-            />
-          )}
-        </Box>
+        <Box>{flamegraph(diffProfile, exportToFlamegraphDotComFn)}</Box>
       </div>
     </div>
   );

@@ -1,6 +1,11 @@
 import { Profile } from '@pyroscope/models/src';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { upload, retrieve, retrieveAll } from '@webapp/services/adhoc';
+import {
+  upload,
+  retrieve,
+  retrieveAll,
+  retrieveDiff,
+} from '@webapp/services/adhoc';
 import type { RootState } from '@webapp/redux/store';
 import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
@@ -36,6 +41,11 @@ type Shared = {
   };
 };
 
+type DiffState = {
+  type: 'pristine' | 'loading' | 'loaded';
+  profile?: Profile;
+};
+
 // The same logic should apply to all sides, the only difference is the data access
 type profileSideArgs2 =
   | { view: 'singleView'; side: 'left' }
@@ -46,6 +56,8 @@ interface AdhocState {
 
   // Shared refers to the list of already uploaded files
   shared: Shared;
+
+  diff: DiffState;
 }
 
 const initialState: AdhocState = {
@@ -57,6 +69,10 @@ const initialState: AdhocState = {
   upload: {
     left: { type: 'pristine' },
     right: { type: 'pristine' },
+  },
+
+  diff: {
+    type: 'pristine',
   },
 };
 
@@ -125,6 +141,30 @@ export const fetchProfile = createAsyncThunk(
   }
 );
 
+export const fetchDiffProfile = createAsyncThunk(
+  'adhoc/fetchDiffProfile',
+  async (
+    { leftId, rightId }: { leftId: string; rightId: string },
+    thunkAPI
+  ) => {
+    const res = await retrieveDiff(leftId, rightId);
+
+    if (res.isOk) {
+      return Promise.resolve({ profile: res.value });
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to load adhoc diff',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
 export const adhocSlice = createSlice({
   name: 'adhoc',
   initialState,
@@ -175,6 +215,21 @@ export const adhocSlice = createSlice({
         profilesList: action.payload,
       };
     });
+
+    builder.addCase(fetchDiffProfile.pending, (state, action) => {
+      state.diff = {
+        // Keep previous value
+        ...state.diff,
+        type: 'loading',
+      };
+    });
+
+    builder.addCase(fetchDiffProfile.fulfilled, (state, action) => {
+      state.diff = {
+        type: 'loaded',
+        profile: action.payload.profile,
+      };
+    });
   },
 });
 
@@ -199,6 +254,15 @@ export const selectedSelectedProfileId =
 export const selectProfile = (side: 'left' | 'right') => (state: RootState) => {
   return Maybe.of(state.adhoc.shared[side].profile);
 };
+
+export const selectDiffProfile = (state: RootState) => {
+  return Maybe.of(state.adhoc.diff.profile);
+};
+
+export const selectProfileId =
+  (side: 'left' | 'right') => (state: RootState) => {
+    return Maybe.of(state.adhoc.shared[side].id);
+  };
 
 export const { removeFile } = adhocSlice.actions;
 export default adhocSlice.reducer;

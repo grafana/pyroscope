@@ -99,7 +99,7 @@ function App() {
               </Protected>
             </Route>
           )}
-          {false && isAdhocUIEnabled && (
+          {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
               <Protected>
                 <AdhocDiff />

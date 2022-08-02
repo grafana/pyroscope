@@ -32,6 +32,14 @@ export async function retrieve(
   return parseResponse<Profile>(response, FlamebearerProfileSchema);
 }
 
+export async function retrieveDiff(
+  leftId: string,
+  rightId: string
+): Promise<Result<Profile, RequestError | ZodError>> {
+  const response = await request(`/api/adhoc/v1/diff/${leftId}/${rightId}`);
+  return parseResponse<Profile>(response, FlamebearerProfileSchema);
+}
+
 export async function retrieveAll(): Promise<
   Result<AllProfiles, RequestError | ZodError>
 > {

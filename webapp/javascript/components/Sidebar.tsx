@@ -129,7 +129,6 @@ export function SidebarComponent() {
         Comparison View
         <NavLink to={{ pathname: PAGES.ADHOC_COMPARISON, search }} exact />
       </MenuItem>
-      {/*
       <MenuItem
         data-testid="sidebar-adhoc-comparison-diff"
         active={isRouteActive(PAGES.ADHOC_COMPARISON_DIFF)}
@@ -138,7 +137,6 @@ export function SidebarComponent() {
         Diff View
         <NavLink to={{ pathname: PAGES.ADHOC_COMPARISON_DIFF, search }} exact />
       </MenuItem>
-      */}
     </SubMenu>
   );
 
