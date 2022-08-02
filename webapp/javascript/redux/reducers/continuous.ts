@@ -676,7 +676,9 @@ export const continuousSlice = createSlice({
     },
     setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
       if (state.tagExplorerView.groupByTagValue === action.payload) {
-        state.tagExplorerView.groupByTagValue = '';
+        // to set where dropdown value to "All" as default value
+        state.tagExplorerView.groupByTagValue =
+          appWithoutTagsWhereDropdownOptionName;
       } else {
         state.tagExplorerView.groupByTagValue = action.payload;
       }
