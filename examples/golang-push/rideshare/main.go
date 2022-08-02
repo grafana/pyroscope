@@ -40,9 +40,14 @@ func main() {
 	if serverAddress == "" {
 		serverAddress = "http://localhost:4040"
 	}
+	appName := os.Getenv("PYROSCOPE_APPLICATION_NAME")
+	if appName == "" {
+		appName = "ride-sharing-app"
+	}
 	_, err := pyroscope.Start(pyroscope.Config{
-		ApplicationName: "ride-sharing-app",
+		ApplicationName: appName,
 		ServerAddress:   serverAddress,
+		AuthToken:       os.Getenv("PYROSCOPE_AUTH_TOKEN"),
 		Logger:          pyroscope.StandardLogger,
 		Tags:            map[string]string{"region": os.Getenv("REGION")},
 	})
