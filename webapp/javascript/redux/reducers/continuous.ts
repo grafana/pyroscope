@@ -309,6 +309,7 @@ export const fetchTagExplorerView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
+export const appWithoutTagsWhereDropdownOptionName = 'All';
 export const fetchTagExplorerViewProfile = createAsyncThunk<
   RenderOutput,
   null,
@@ -322,14 +323,22 @@ export const fetchTagExplorerViewProfile = createAsyncThunk<
   thunkAPI.signal = tagExplorerViewProfileAbortController.signal;
 
   const state = thunkAPI.getState();
+  const { groupByTag, groupByTagValue } = state.continuous.tagExplorerView;
+  // if "All" option is selected we dont need to modify query to fetch profile
+  const queryProps =
+    appWithoutTagsWhereDropdownOptionName === groupByTagValue
+      ? { groupBy: groupByTag, query: state.continuous.query }
+      : {
+          query: appendLabelToQuery(
+            state.continuous.query,
+            state.continuous.tagExplorerView.groupByTag,
+            state.continuous.tagExplorerView.groupByTagValue
+          ),
+        };
   const res = await renderSingle(
     {
       ...state.continuous,
-      query: appendLabelToQuery(
-        state.continuous.query,
-        state.continuous.tagExplorerView.groupByTag,
-        state.continuous.tagExplorerView.groupByTagValue
-      ),
+      ...queryProps,
     },
     tagExplorerViewProfileAbortController
   );

@@ -27,6 +27,7 @@ import {
   TagsState,
   fetchTagExplorerView,
   fetchTagExplorerViewProfile,
+  appWithoutTagsWhereDropdownOptionName,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import { calculateMean, calculateStdDeviation } from './math';
@@ -155,7 +156,12 @@ function TagExplorerView() {
           data-testid="timeline-explore-page"
           id="timeline-chart-explore-page"
           timelineGroups={filteredGroupsData}
-          activeGroup={groupByTagValue}
+          // to not "dim" timelines when "All" option is selected
+          activeGroup={
+            groupByTagValue !== appWithoutTagsWhereDropdownOptionName
+              ? groupByTagValue
+              : ''
+          }
           showTagsLegend={filteredGroupsData.length > 1}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
@@ -277,8 +283,6 @@ function Table({
   );
 }
 
-const appWithoutTagsWhereDropdownOptionName = 'All';
-
 function ExploreHeader({
   appName,
   groupsData,
@@ -315,10 +319,7 @@ function ExploreHeader({
   };
 
   const handleGroupByValueClick = (e: ClickEvent) => {
-    // reset selection when user select "All"
-    const val =
-      e.value === appWithoutTagsWhereDropdownOptionName ? '' : e.value;
-    handleGroupByTagValueChange(val);
+    handleGroupByTagValueChange(e.value);
   };
 
   return (
