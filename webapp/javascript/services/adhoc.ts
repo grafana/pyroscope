@@ -1,6 +1,7 @@
 import { Result } from '@webapp/util/fp';
 import { CustomError } from 'ts-custom-error';
 import { FlamebearerProfileSchema, Profile } from '@pyroscope/models/src';
+import { AllProfilesSchema, AllProfiles } from '@webapp/models/adhoc';
 import type { ZodError } from 'zod';
 import { request, parseResponse } from './base';
 import type { RequestError } from './base';
@@ -29,6 +30,13 @@ export async function retrieve(
 ): Promise<Result<Profile, RequestError | ZodError>> {
   const response = await request(`/api/adhoc/v1/profile/${id}`);
   return parseResponse<Profile>(response, FlamebearerProfileSchema);
+}
+
+export async function retrieveAll(): Promise<
+  Result<AllProfiles, RequestError | ZodError>
+> {
+  const response = await request(`/api/adhoc/v1/profiles`);
+  return parseResponse(response, AllProfilesSchema);
 }
 
 /**

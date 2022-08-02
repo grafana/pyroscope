@@ -5,58 +5,57 @@ import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import FileList from '@webapp/components/FileList';
-
-import {
-  fetchAdhocProfiles,
-  abortFetchAdhocProfiles,
-} from '@webapp/redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
 import {
   uploadFile,
   removeFile,
-  selectAdhocUpload,
   selectAdhocUploadedFilename,
   fetchProfile,
   selectShared,
+  fetchAllProfiles,
+  selectedSelectedProfileId,
+  selectProfile,
 } from '@webapp/redux/reducers/adhoc';
-import { Profile } from '@pyroscope/models/src';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();
-  const state = useAppSelector(selectAdhocUpload({ view: 'singleView' }));
   const filename = useAppSelector(
     selectAdhocUploadedFilename({ view: 'singleView' })
   );
-  const { left } = useAppSelector(selectShared);
+  const { profilesList } = useAppSelector(selectShared);
+  const selectedProfileId = useAppSelector(selectedSelectedProfileId('left'));
+  const profile = useAppSelector(selectProfile('left'));
 
   useEffect(() => {
-    dispatch(fetchAdhocProfiles());
+    dispatch(fetchAllProfiles());
 
-    return () => {
-      dispatch(abortFetchAdhocProfiles());
-    };
+    // TODO(eh-am): abort
+    //    return () => {
+    //      dispatch(abortFetchAdhocProfiles());
+    //    };
   }, [dispatch]);
 
-  // TODO(eh-am): don't use a hook
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
-    'profile' in state ? state.profile : undefined
+    profile.unwrapOr(undefined)
   );
 
-  const flame = (profile: Profile) => {
+  const flame = (() => {
+    if (profile.isNothing) {
+      return <></>;
+    }
+
     return (
       <FlamegraphRenderer
-        profile={profile}
+        profile={profile.value}
         showCredit={false}
         ExportData={
           <ExportData
-            flamebearer={profile}
+            flamebearer={profile.value}
             exportJSON
             exportFlamegraphDotCom
             exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
@@ -64,23 +63,6 @@ function AdhocSingle() {
         }
       />
     );
-  };
-
-  const decide = (() => {
-    if (left.type === 'loaded') {
-      return flame(left.profile);
-    }
-
-    //    switch (state.type) {
-    //      case 'reloading':
-    //      case 'loaded': {
-    //        return flame(state.profile);
-    //      }
-    //
-    //      default: {
-    //        return <></>;
-    //      }
-    //    }
   })();
 
   return (
@@ -96,24 +78,32 @@ function AdhocSingle() {
               className={adhocStyles.tabPanel}
               filename={filename}
               removeFile={() => {
-                dispatch(removeFile({ view: 'singleView' }));
+                dispatch(removeFile({ view: 'singleView', side: 'left' }));
               }}
               setFile={(file) => {
-                dispatch(uploadFile({ file, view: 'singleView' }));
+                dispatch(
+                  uploadFile({ file, view: 'singleView', side: 'left' })
+                );
               }}
             />
           </TabPanel>
           <TabPanel>
-            <FileList
-              className={adhocStyles.tabPanel}
-              profile={{}}
-              setProfile={(id: string) =>
-                dispatch(fetchProfile({ id, side: 'left' }))
-              }
-            />
+            {profilesList.type === 'loaded' && (
+              <FileList
+                className={adhocStyles.tabPanel}
+                selectedProfileId={selectedProfileId}
+                profilesList={profilesList.profilesList}
+                onProfileSelected={(id: string) => {
+                  // TODO(eh-am): there's a content shift when this happens
+                  dispatch(removeFile({ view: 'singleView', side: 'left' }));
+
+                  dispatch(fetchProfile({ id, side: 'left' }));
+                }}
+              />
+            )}
           </TabPanel>
         </Tabs>
-        {decide}
+        {flame}
       </Box>
     </div>
   );
