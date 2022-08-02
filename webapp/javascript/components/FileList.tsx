@@ -28,18 +28,21 @@ function FileList(props: FileListProps) {
   } = props;
 
   const [sortBy, updateSortBy] = useState(dateModifiedColName);
-  const [sortByDirection, setSortByDirection] = useState('desc');
+  const [sortByDirection, setSortByDirection] = useState<'desc' | 'asc'>(
+    'desc'
+  );
 
   const isRowSelected = (id: string) => {
     return selectedProfileId.mapOr(false, (profId) => profId === id);
   };
 
-  const updateSortParams = (newSortBy: 'asc' | 'desc') => {
+  const updateSortParams = (newSortBy: typeof tableFormat[number]['name']) => {
     let dir = sortByDirection;
+
     if (sortBy === newSortBy) {
       dir = dir === 'asc' ? 'desc' : 'asc';
     } else {
-      dir = 'desc';
+      dir = 'asc';
     }
 
     updateSortBy(newSortBy);
@@ -62,7 +65,9 @@ function FileList(props: FileListProps) {
           break;
         case dateModifiedColName:
           sorted = filesInfo.sort(
-            (a, b) => m * (new Date(a[sortBy]) - new Date(b[sortBy]))
+            (a, b) =>
+              m *
+              (new Date(a[sortBy]).getTime() - new Date(b[sortBy]).getTime())
           );
           break;
         default:
@@ -70,7 +75,7 @@ function FileList(props: FileListProps) {
       }
     }
 
-    return sorted.reduce((acc, { id }) => [...acc, id], []);
+    return sorted;
   }, [profiles, sortBy, sortByDirection]);
 
   return (
@@ -98,29 +103,31 @@ function FileList(props: FileListProps) {
           </thead>
           <tbody>
             {profiles &&
-              sortedProfilesIds.map((id) => (
+              sortedProfilesIds.map((profile) => (
                 <tr
-                  key={id}
+                  key={profile.id}
                   onClick={() => {
                     // Optimize to not reload the same one
                     if (
                       selectedProfileId.isJust &&
-                      selectedProfileId.value === id
+                      selectedProfileId.value === profile.id
                     ) {
                       return;
                     }
-                    onProfileSelected(id);
+                    onProfileSelected(profile.id);
                   }}
-                  className={`${isRowSelected(id) && styles.rowSelected}`}
+                  className={`${
+                    isRowSelected(profile.id) && styles.rowSelected
+                  }`}
                 >
-                  <td>
-                    {profiles[id].name}
+                  <td title={profile.name} className={styles.td}>
+                    {profile.name}
 
-                    {isRowSelected(id) && (
+                    {isRowSelected(profile.id) && (
                       <CheckIcon className={styles.checkIcon} />
                     )}
                   </td>
-                  <td>{profiles[id].updatedAt}</td>
+                  <td>{profile.updatedAt}</td>
                 </tr>
               ))}
           </tbody>

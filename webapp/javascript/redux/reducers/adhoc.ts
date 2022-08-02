@@ -216,7 +216,7 @@ export const adhocSlice = createSlice({
       };
     });
 
-    builder.addCase(fetchDiffProfile.pending, (state, action) => {
+    builder.addCase(fetchDiffProfile.pending, (state) => {
       state.diff = {
         // Keep previous value
         ...state.diff,
