@@ -8,6 +8,9 @@ bin
 
 /cmd/fire/data
 /data/
+go.work
+go.work.sum
+.DS_Store
 
 node_modules
 

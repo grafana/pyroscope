@@ -7,7 +7,6 @@ import (
 	"flag"
 	"hash/fnv"
 	"io/ioutil"
-	"sort"
 	"strconv"
 	"time"
 
@@ -22,15 +21,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/samber/lo"
 	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/fire/pkg/pprof"
 )
 
 type PushClient interface {
@@ -141,12 +139,13 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 				return nil, errors.Wrap(err, "gzip read all")
 			}
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName).Observe(float64(len(data)))
-			p := profilev1.ProfileFromVTPool()
-			if err := p.UnmarshalVT(data); err != nil {
+			p, err := pprof.OpenRaw(data)
+			if err != nil {
 				return nil, err
 			}
+			d.metrics.receivedSamples.WithLabelValues(profName).Observe(float64(len(p.Sample)))
 
-			p = sanitizeProfile(p)
+			p.Normalize()
 
 			// reuse the data buffer if possible
 			size := p.SizeVT()
@@ -309,170 +308,4 @@ func TokenFor(tenantID, labels string) uint32 {
 	_, _ = h.Write([]byte(tenantID))
 	_, _ = h.Write([]byte(labels))
 	return h.Sum32()
-}
-
-func sanitizeProfile(p *profilev1.Profile) *profilev1.Profile {
-	// first pass remove samples that have no value.
-	var removedSamples []*profilev1.Sample
-
-	p.Sample = RemoveInPlace(p.Sample, func(s *profilev1.Sample) bool {
-		for j := 0; j < len(s.Value); j++ {
-			if s.Value[j] != 0 {
-				s.Label = RemoveInPlace(s.Label, func(l *profilev1.Label) bool {
-					// remove labels block "bytes" as it's redundant.
-					if l.Num != 0 && l.Key != 0 &&
-						p.StringTable[l.Key] == "bytes" {
-						return true
-					}
-					return false
-				})
-
-				return false
-			}
-		}
-		// all values are 0, remove the sample.
-		removedSamples = append(removedSamples, s)
-		return true
-	})
-
-	if len(removedSamples) == 0 {
-		return p
-	}
-	// remove all data not used anymore.
-	var removedLocationTotal int
-	for _, s := range removedSamples {
-		removedLocationTotal = len(s.LocationId)
-	}
-	removedLocationIds := make([]uint64, 0, removedLocationTotal)
-
-	for _, s := range removedSamples {
-		removedLocationIds = append(removedLocationIds, s.LocationId...)
-	}
-	removedLocationIds = lo.Uniq(removedLocationIds)
-
-	// figure which removed Locations IDs are not used.
-	for _, s := range p.Sample {
-		for _, l := range s.LocationId {
-			removedLocationIds = RemoveInPlace(removedLocationIds, func(locID uint64) bool {
-				return l == locID
-			})
-		}
-	}
-	if len(removedLocationIds) == 0 {
-		return p
-	}
-	var removedFunctionIds []uint64
-	// remove the locations that are not used anymore.
-	p.Location = RemoveInPlace(p.Location, func(loc *profilev1.Location) bool {
-		if lo.Contains(removedLocationIds, loc.Id) {
-			for _, l := range loc.Line {
-				removedFunctionIds = append(removedFunctionIds, l.FunctionId)
-			}
-			return true
-		}
-		return false
-	})
-
-	if len(removedFunctionIds) == 0 {
-		return p
-	}
-	removedFunctionIds = lo.Uniq(removedFunctionIds)
-	// figure which removed Function IDs are not used.
-	for _, l := range p.Location {
-		for _, f := range l.Line {
-			removedFunctionIds = RemoveInPlace(removedFunctionIds, func(fnID uint64) bool {
-				// that ID is used in another location, remove it.
-				return f.FunctionId == fnID
-			})
-		}
-	}
-	var removedNames []int64
-	// remove the functions that are not used anymore.
-	p.Function = RemoveInPlace(p.Function, func(fn *profilev1.Function) bool {
-		if lo.Contains(removedFunctionIds, fn.Id) {
-			removedNames = append(removedNames, fn.Name, fn.SystemName, fn.Filename)
-			return true
-		}
-		return false
-	})
-
-	if len(removedNames) == 0 {
-		return p
-	}
-	removedNames = lo.Uniq(removedNames)
-	// remove names that are still used.
-	forAllRefName(p, func(idx *int64) {
-		removedNames = RemoveInPlace(removedNames, func(name int64) bool {
-			return *idx == name
-		})
-	})
-	if len(removedNames) == 0 {
-		return p
-	}
-	// Sort to remove in order.
-	sort.Slice(removedNames, func(i, j int) bool { return removedNames[i] < removedNames[j] })
-	// remove the names that are not used anymore.
-	p.StringTable = lo.Reject(p.StringTable, func(_ string, i int) bool {
-		return lo.Contains(removedNames, int64(i))
-	})
-
-	// Now shift all indices [0,1,2,3,4,5,6]
-	// if we removed [1,2,5] then we need to shift [3,4] to [1,2] and [6] to [3]
-	// Basically we need to shift all indices that are greater than the removed index by the amount of removed indices.
-	forAllRefName(p, func(idx *int64) {
-		var shift int64
-		for i := 0; i < len(removedNames); i++ {
-			if *idx > removedNames[i] {
-				shift++
-				continue
-			}
-			break
-		}
-		*idx -= shift
-	})
-
-	return p
-}
-
-func forAllRefName(p *profilev1.Profile, fn func(*int64)) {
-	fn(&p.DropFrames)
-	fn(&p.KeepFrames)
-	fn(&p.PeriodType.Type)
-	fn(&p.PeriodType.Unit)
-	for _, st := range p.SampleType {
-		fn(&st.Type)
-		fn(&st.Unit)
-	}
-	for _, m := range p.Mapping {
-		fn(&m.Filename)
-		fn(&m.BuildId)
-	}
-	for _, s := range p.Sample {
-		for _, l := range s.Label {
-			fn(&l.Key)
-			fn(&l.Num)
-			fn(&l.NumUnit)
-		}
-	}
-	for _, f := range p.Function {
-		fn(&f.Name)
-		fn(&f.SystemName)
-		fn(&f.Filename)
-	}
-	for i := 0; i < len(p.Comment); i++ {
-		fn(&p.Comment[i])
-	}
-}
-
-// RemoveInPlace removes all elements from a slice that match the given predicate.
-// Does not allocate a new slice.
-func RemoveInPlace[T any](collection []T, predicate func(T) bool) []T {
-	i := 0
-	for _, x := range collection {
-		if !predicate(x) {
-			collection[i] = x
-			i++
-		}
-	}
-	return collection[:i]
 }

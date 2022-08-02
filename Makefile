@@ -6,7 +6,7 @@ SHELL := bash
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --no-print-directory
-BIN := .tmp/bin
+BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
@@ -83,15 +83,16 @@ go/mod:
 plugin/datasource/build: $(BIN)/mage
 	pushd ./grafana/fire-datasource && \
 	yarn install && yarn build && \
-	../../$(BIN)/mage -v \
+	$(BIN)/mage -v \
 
 
 .PHONY: fmt
-fmt: $(BIN)/golangci-lint $(BIN)/buf ## Automatically fix some lint errors
+fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
 	git ls-files '*.go' | grep -v 'vendor/' | xargs gofmt -s -w
 	# TODO: Reenable once golangci-lint support go 1.18 properly
 	# $(BIN)/golangci-lint run --fix
 	$(BIN)/buf format -w .
+	$(BIN)/tk fmt ./deploy/jsonnet/ tools/monitoring/
 
 .PHONY: check/unstaged-changes
 check/unstaged-changes:
@@ -112,7 +113,7 @@ define deploy
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./deploy/helm/fire $(2) \
-		--set fire.image.tag=$(IMAGE_TAG)
+		--set fire.image.tag=$(IMAGE_TAG) --set fire.service.port_name=http-metrics
 endef
 
 .PHONY: docker-image/fire/build
@@ -193,6 +194,14 @@ $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.14.0
 
+$(BIN)/tk: Makefile go.mod $(BIN)/jb
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/tanka/cmd/tk@v0.22.1
+
+$(BIN)/jb: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1
+
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.8.0
@@ -229,3 +238,15 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/fire/build
 	$(call deploy,fire-micro-services,--values=deploy/helm/fire/values-micro-services.yaml)
+
+.PHONY: deploy-monitoring
+deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
+	kubectl  --context="kind-$(KIND_CLUSTER)" create namespace monitoring --dry-run=client -o yaml | kubectl  --context="kind-$(KIND_CLUSTER)" apply -f -
+	$(BIN)/tk apply tools/monitoring/environments/default/main.jsonnet
+
+.PHONY: tools/monitoring/environments/default/spec.json # This is a phony target for now as the cluster might be not already created.
+tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
+	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
+	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN) $(BIN)/tk init -f
+	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
+	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name fire-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring

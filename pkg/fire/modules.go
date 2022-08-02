@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
+	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/openapiv2"
 	"github.com/grafana/fire/pkg/querier"
@@ -73,6 +74,13 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
 	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
+	f.Server.HTTP.Handle("/prometheus/api/v1/query_range", http.HandlerFunc(q.PrometheusQueryRangeHandler))
+	f.Server.HTTP.Handle("/prometheus/api/v1/query", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// just return empty instant query result to make grafana explore display something in "both" mode
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[]}}`))
+	}))
+	querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, q)
+
 	return q, nil
 }
 

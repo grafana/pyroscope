@@ -9,17 +9,17 @@ import (
 func Test_Tree(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		stacks   []stack
+		stacks   []stacktraces
 		expected func() *tree
 	}{
 		{
 			"empty",
-			[]stack{},
+			[]stacktraces{},
 			func() *tree { return &tree{} },
 		},
 		{
 			"double node single stack",
-			[]stack{
+			[]stacktraces{
 				{
 					locations: []string{"buz", "bar"},
 					value:     1,
@@ -37,7 +37,7 @@ func Test_Tree(t *testing.T) {
 		},
 		{
 			"double node double stack",
-			[]stack{
+			[]stacktraces{
 				{
 					locations: []string{"blip", "buz", "bar"},
 					value:     1,
@@ -57,7 +57,7 @@ func Test_Tree(t *testing.T) {
 		},
 		{
 			"multiple stacks and duplicates nodes",
-			[]stack{
+			[]stacktraces{
 				{
 					locations: []string{"buz", "bar"},
 					value:     1,

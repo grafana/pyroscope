@@ -3,11 +3,14 @@
 DOCKER_ARGS="--net=host"
 
 if [[ $OSTYPE == 'darwin'* ]]; then
-    FIRE_URL=${FIRE_URL:-http://docker.for.mac.localhost:4100/pyroscope}
+    FIRE_URL=${FIRE_URL:-http://docker.for.mac.localhost:4100}
     DOCKER_ARGS=""
 else
-    FIRE_URL=${FIRE_URL:-http://localhost:4100/pyroscope}
+    FIRE_URL=${FIRE_URL:-http://localhost:4100}
 fi
+
+PYRO_URL=$FIRE_URL/pyroscope
+PROMETHEUS_URL=$FIRE_URL/prometheus
 
 datasource_provisioning="$(mktemp "${TMPDIR:-/tmp}/fire-provisioning-XXXXXX")"
 chmod 0644 "${datasource_provisioning}"
@@ -15,10 +18,16 @@ trap 'rm -f "${datasource_provisioning}"' EXIT
 cat > "${datasource_provisioning}" <<EOF
 apiVersion: 1
 datasources:
-  - name: Fire
+  - name: Fire-Pyroscope
     type: pyroscope-datasource
     jsonData:
-      path: ${FIRE_URL}
+      path: ${PYRO_URL}
+  - name: Prometheus
+    type: prometheus
+    url: ${PROMETHEUS_URL}
+  - name: Fire
+    type: grafana-fire-datasource
+    url: ${FIRE_URL}
 EOF
 
 docker run $DOCKER_ARGS --rm \

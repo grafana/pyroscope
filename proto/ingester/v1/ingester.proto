@@ -27,7 +27,7 @@ message LabelValuesResponse {
 message ProfileTypesRequest {}
 
 message ProfileTypesResponse {
-  repeated string names = 1;
+  repeated common.v1.ProfileType profile_types = 1;
 }
 
 message FlushRequest {}
@@ -36,7 +36,7 @@ message FlushResponse {}
 
 message SelectProfilesRequest {
   string labelSelector = 1;
-  ProfileType type = 2;
+  common.v1.ProfileType type = 2;
   int64 start = 3;
   int64 end = 4;
 }
@@ -51,22 +51,13 @@ message Profile {
   // The ID of the profile.
   string ID = 1;
   // The name and type of the profile.
-  ProfileType type = 2;
+  common.v1.ProfileType type = 2;
   // LabelPair is the key value pairs to identify the corresponding profile
   repeated common.v1.LabelPair labels = 3;
   // Timestamp is when that profile was created
   int64 timestamp = 4;
   // The list of stracktraces for the profile with their respective value
   repeated StacktraceSample stacktraces = 5;
-}
-
-// ProfileType is the name and type of profile
-message ProfileType {
-  string name = 1;
-  string sampleType = 2;
-  string sampleUnit = 3;
-  string periodType = 4;
-  string periodUnit = 5;
 }
 
 message StacktraceSample {

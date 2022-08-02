@@ -18,6 +18,7 @@ import (
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	firemodel "github.com/grafana/fire/pkg/model"
 )
 
 func parseProfile(t testing.TB, path string) *profilev1.Profile {
@@ -251,7 +252,16 @@ func TestHeadProfileTypes(t *testing.T) {
 
 	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"bar:type:unit:type:unit", "foo:type:unit:type:unit"}, res.Msg.Names)
+	require.Equal(t, []*commonv1.ProfileType{
+		mustParseProfileSelector(t, "bar:type:unit:type:unit"),
+		mustParseProfileSelector(t, "foo:type:unit:type:unit"),
+	}, res.Msg.ProfileTypes)
+}
+
+func mustParseProfileSelector(t *testing.T, selector string) *commonv1.ProfileType {
+	ps, err := firemodel.ParseProfileTypeSelector(selector)
+	require.NoError(t, err)
+	return ps
 }
 
 func TestHeadIngestRealProfiles(t *testing.T) {
@@ -295,7 +305,7 @@ func TestSelectProfiles(t *testing.T) {
 
 	resp, err := head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
 		LabelSelector: `{job="bar"}`,
-		Type: &ingestv1.ProfileType{
+		Type: &commonv1.ProfileType{
 			Name:       "memory",
 			SampleType: "type",
 			SampleUnit: "unit",
@@ -385,5 +395,60 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 			require.NoError(t, head.Ingest(ctx, p, uuid.New()))
 			profileCount++
 		}
+	}
+}
+
+var res *connect.Response[ingestv1.SelectProfilesResponse]
+
+func BenchmarkSelectProfile(b *testing.B) {
+	head, err := NewHead(b.TempDir())
+	require.NoError(b, err)
+	ctx := context.Background()
+
+	p := parseProfile(b, "testdata/heap")
+	for i := 0; i < 10; i++ {
+		p.TimeNanos = int64(time.Second * time.Duration(i))
+		require.NoError(b,
+			head.Ingest(ctx, p, uuid.New(),
+				&commonv1.LabelPair{
+					Name:  "job",
+					Value: "bar",
+				}, &commonv1.LabelPair{
+					Name:  model.MetricNameLabel,
+					Value: "memory",
+				}))
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		res, err = head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+			LabelSelector: `{job="bar"}`,
+			Type: &commonv1.ProfileType{
+				ID:         "memory:alloc_space:bytes:space:bytes",
+				Name:       "memory",
+				SampleType: "alloc_space",
+				SampleUnit: "bytes",
+				PeriodType: "space",
+				PeriodUnit: "bytes",
+			},
+			Start: int64(model.Earliest),
+			End:   int64(model.Latest),
+		}))
+		require.NoError(b, err)
+		res, err = head.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+			LabelSelector: `{job="bar"}`,
+			Type: &commonv1.ProfileType{
+				ID:         "memory:inuse_space:bytes:space:bytes",
+				Name:       "memory",
+				SampleType: "inuse_space",
+				SampleUnit: "bytes",
+				PeriodType: "space",
+				PeriodUnit: "bytes",
+			},
+			Start: int64(model.Earliest),
+			End:   int64(model.Latest),
+		}))
+		require.NoError(b, err)
 	}
 }
