@@ -264,10 +264,13 @@ export const fetchTagExplorerView = createAsyncThunk<
   );
 
   if (res.isOk) {
-    const isGroupBySelected =
-      state.continuous.tagExplorerView.groupByTag !== '';
+    const shouldFetchFirstProfile =
+      state.continuous.tagExplorerView.groupByTag !== '' &&
+      // if "All" was set explicitly
+      state.continuous.tagExplorerView.groupByTagValue !==
+        appWithoutTagsWhereDropdownOptionName;
 
-    if (isGroupBySelected) {
+    if (shouldFetchFirstProfile) {
       // * is "application without tags" group. we need only "real" groups names
       const firstGroupName = Object.keys(res.value.groups).filter(
         (groupName) => groupName !== '*'
