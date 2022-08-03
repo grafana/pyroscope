@@ -257,6 +257,7 @@ export const fetchTagExplorerView = createAsyncThunk<
       from: state.continuous.from,
       until: state.continuous.until,
       groupBy: state.continuous.tagExplorerView.groupByTag,
+      grouByTagValue: state.continuous.tagExplorerView.groupByTagValue,
       refreshToken: state.continuous.refreshToken,
     },
     tagExplorerViewAbortController
