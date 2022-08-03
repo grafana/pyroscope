@@ -180,28 +180,26 @@ function TagExplorerView() {
           />
         )}
       </Box>
-      {(groupByTag === '' || groupByTagValue) && (
-        <Box>
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={activeTagProfile}
-            colorMode={colorMode}
-            ExportData={
-              activeTagProfile && (
-                <ExportData
-                  flamebearer={activeTagProfile}
-                  exportPNG
-                  exportJSON
-                  exportPprof
-                  exportHTML
-                  exportFlamegraphDotCom
-                  exportFlamegraphDotComFn={exportFlamegraphDotComFn}
-                />
-              )
-            }
-          />
-        </Box>
-      )}
+      <Box>
+        <FlamegraphRenderer
+          showCredit={false}
+          profile={activeTagProfile}
+          colorMode={colorMode}
+          ExportData={
+            activeTagProfile && (
+              <ExportData
+                flamebearer={activeTagProfile}
+                exportPNG
+                exportJSON
+                exportPprof
+                exportHTML
+                exportFlamegraphDotCom
+                exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+              />
+            )
+          }
+        />
+      </Box>
     </div>
   );
 }

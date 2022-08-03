@@ -264,37 +264,6 @@ export const fetchTagExplorerView = createAsyncThunk<
   );
 
   if (res.isOk) {
-    const shouldFetchFirstProfile =
-      state.continuous.tagExplorerView.groupByTag !== '' &&
-      // if "All" was set explicitly
-      state.continuous.tagExplorerView.groupByTagValue !==
-        appWithoutTagsWhereDropdownOptionName;
-
-    if (shouldFetchFirstProfile) {
-      // * is "application without tags" group. we need only "real" groups names
-      const firstGroupName = Object.keys(res.value.groups).filter(
-        (groupName) => groupName !== '*'
-      )[0];
-
-      // additionaly load flamegraph profile for first group (first group is selected by default)
-      const profileResponse = await renderSingle({
-        ...state.continuous,
-        query: appendLabelToQuery(
-          state.continuous.query,
-          state.continuous.tagExplorerView.groupByTag,
-          firstGroupName
-        ),
-      });
-
-      if (profileResponse.isOk) {
-        return Promise.resolve({
-          ...res.value,
-          profile: profileResponse.value.profile,
-          groupByTagValue: firstGroupName,
-        });
-      }
-    }
-
     return Promise.resolve(res.value);
   }
 
@@ -677,6 +646,8 @@ export const continuousSlice = createSlice({
     },
     setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTag = action.payload;
+      state.tagExplorerView.groupByTagValue =
+        appWithoutTagsWhereDropdownOptionName;
     },
     setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTagValue = action.payload;
