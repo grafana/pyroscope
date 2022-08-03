@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.24.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.23.0...@pyroscope/webapp@1.24.0) (2022-08-03)
+
+
+### Features
+
+* add app dropdown footer ([#1340](https://github.com/pyroscope-io/pyroscope/issues/1340)) ([dc07d04](https://github.com/pyroscope-io/pyroscope/commit/dc07d04e28cdd821829eaf211a8543723b3956aa))
+
+
+
+
+
 # [1.23.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.22.0...@pyroscope/webapp@1.23.0) (2022-08-03)
 
 
