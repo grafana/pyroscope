@@ -359,7 +359,7 @@ function TooltipFooter({
       );
       break;
     default:
-      clickInfo = '<TBD ?>';
+      clickInfo = <></>;
   }
 
   return (
