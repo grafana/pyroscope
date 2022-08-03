@@ -23,12 +23,10 @@
   },
   "peerDependencies": {
     "react": ">=16.14.0",
-    "react-dom": ">=16.14.0"
+    "react-dom": ">=16.14.0",
+    "true-myth": "^5.1.2"
   },
   "devDependencies": {
     "@pyroscope/models": "^0.4.1"
-  },
-  "dependencies": {
-    "true-myth": "^5.1.2"
   }
 }
