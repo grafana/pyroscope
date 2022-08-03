@@ -16,7 +16,7 @@
   "scripts": {
     "test": "jest",
     "build": "yarn build:types && NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts",
-    "build:types": "tsc -p tsconfig.json --emitDeclarationOnly",
+    "build:types": "tsc -p tsconfig.json --emitDeclarationOnly && downlevel-dts dist dist",
     "build:types:watch": "tsc -p tsconfig.json --emitDeclarationOnly --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint ./ --cache --fix"
@@ -26,7 +26,8 @@
     "react-dom": ">=16.14.0"
   },
   "devDependencies": {
-    "@pyroscope/models": "^0.4.0"
+    "@pyroscope/models": "^0.4.0",
+    "downlevel-dts": "^0.10.0"
   },
   "dependencies": {
     "true-myth": "^5.1.2"
