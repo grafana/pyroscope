@@ -177,6 +177,7 @@ const SelectorModal = ({
       ) : (
         <div className={styles.noData}>No Data</div>
       )}
+      <div className={styles.selectorFooter} />
     </div>
   );
 };
