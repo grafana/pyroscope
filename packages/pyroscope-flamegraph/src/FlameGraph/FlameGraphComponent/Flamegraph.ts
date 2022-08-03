@@ -8,7 +8,7 @@ import {
   SpyName,
 } from '@pyroscope/models/src';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
-import type { FlamegraphPalette } from './colorPalette';
+import { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
 import RenderCanvas from './Flamegraph_render';

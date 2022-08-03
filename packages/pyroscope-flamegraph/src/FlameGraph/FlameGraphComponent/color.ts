@@ -3,7 +3,7 @@ import Color from 'color';
 import { scaleLinear } from 'd3-scale';
 import type { SpyName } from '@pyroscope/models/src';
 import murmurhash3_32_gc from './murmur3';
-import type { FlamegraphPalette } from './colorPalette';
+import { FlamegraphPalette } from './colorPalette';
 
 export const defaultColor = Color.rgb(148, 142, 142);
 export const diffColorRed = Color.rgb(200, 0, 0);

@@ -1,7 +1,7 @@
 import React, { useRef, RefObject } from 'react';
 import clsx from 'clsx';
 import type Color from 'color';
-import type { Maybe } from 'true-myth';
+import { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
 import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter } from './format/format';
@@ -12,7 +12,7 @@ import {
 } from './FlameGraph/FlameGraphComponent/color';
 import { fitIntoTableCell, FitModes } from './fitMode/fitMode';
 import { isMatch } from './search';
-import type { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
+import { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 import styles from './ProfilerTable.module.scss';
 
 const zero = (v?: number) => v || 0;

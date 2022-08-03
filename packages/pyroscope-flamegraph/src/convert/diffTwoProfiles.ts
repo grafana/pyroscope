@@ -2,7 +2,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
-import type { Profile } from '@pyroscope/models/src';
+import { Profile } from '@pyroscope/models/src';
 import {
   deltaDiffWrapper,
   deltaDiffWrapperReverse,

@@ -43,7 +43,7 @@ import {
   colorGreyscale,
   getPackageNameFromStackTrace,
 } from './color';
-import type { FlamegraphPalette } from './colorPalette';
+import { FlamegraphPalette } from './colorPalette';
 import { isMatch } from '../../search';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
