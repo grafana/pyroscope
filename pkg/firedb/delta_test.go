@@ -82,71 +82,96 @@ func TestDeltaSample(t *testing.T) {
 	}, highest)
 	require.Equal(t, highest, new)
 
-	new = []*schemav1.Sample{
-		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
-		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
-	}
-	highest = deltaSamples(highest, new, idx)
-	require.Equal(t, 2, len(highest))
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
-		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
-	}, highest)
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 2, Values: []int64{0, 0, 3, 4}},
-		{StacktraceID: 3, Values: []int64{0, 0, 3, 4}},
-	}, new)
-
-	new = []*schemav1.Sample{
-		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
-		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
-	}
-	highest = deltaSamples(highest, new, idx)
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
-		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
-		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
-	}, highest)
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 3, Values: []int64{5, 0, 3, 4}},
-		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
-	}, new)
-
-	new = []*schemav1.Sample{
-		{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
-		{StacktraceID: 5, Values: []int64{0, 5, 3, 4}},
-	}
-	highest = deltaSamples(highest, new, idx)
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
-		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
-		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
-	}, highest)
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 3, Values: []int64{0, 0, 3, 4}},
-		{StacktraceID: 5, Values: []int64{0, 0, 3, 4}},
-	}, new)
-
-	new = []*schemav1.Sample{
-		{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
-		{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
-		{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
-	}
-	highest = deltaSamples(highest, new, idx)
-	sort.Slice(highest, func(i, j int) bool {
-		return highest[i].StacktraceID < highest[j].StacktraceID
+	t.Run("same stacktraces, matching counter samples, matching gauge samples", func(t *testing.T) {
+		new = []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+		}
+		highest = deltaSamples(highest, new, idx)
+		require.Equal(t, 2, len(highest))
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+		}, highest)
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{0, 0, 3, 4}},
+			{StacktraceID: 3, Values: []int64{0, 0, 3, 4}},
+		}, new)
 	})
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
-		{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
-		{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
-		{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
-		{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
-		{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
-	}, highest)
-	require.Equal(t, []*schemav1.Sample{
-		{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
-		{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
-		{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
-	}, new)
+
+	t.Run("same stacktraces, matching counter samples, empty gauge samples", func(t *testing.T) {
+		new = []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{1, 2, 0, 0}},
+			{StacktraceID: 3, Values: []int64{1, 2, 0, 0}},
+		}
+		highest = deltaSamples(highest, new, idx)
+		require.Equal(t, 2, len(highest))
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+		}, highest)
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{0, 0, 0, 0}},
+			{StacktraceID: 3, Values: []int64{0, 0, 0, 0}},
+		}, new)
+	})
+
+	t.Run("new stacktrace, and increase counter in existing stacktrace", func(t *testing.T) {
+		new = []*schemav1.Sample{
+			{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+			{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+		}
+		highest = deltaSamples(highest, new, idx)
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+			{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+		}, highest)
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 3, Values: []int64{5, 0, 3, 4}},
+			{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+		}, new)
+	})
+
+	t.Run("same stacktraces, counter samples resetting", func(t *testing.T) {
+		new = []*schemav1.Sample{
+			{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 5, Values: []int64{0, 5, 3, 4}},
+		}
+		highest = deltaSamples(highest, new, idx)
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+			{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+		}, highest)
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 3, Values: []int64{1, 0, 3, 4}},
+			{StacktraceID: 5, Values: []int64{0, 0, 3, 4}},
+		}, new)
+	})
+
+	t.Run("two new stacktraces, raise counters of existing stacktrace", func(t *testing.T) {
+		new = []*schemav1.Sample{
+			{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
+			{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
+			{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
+		}
+		highest = deltaSamples(highest, new, idx)
+		sort.Slice(highest, func(i, j int) bool {
+			return highest[i].StacktraceID < highest[j].StacktraceID
+		})
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
+			{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
+			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
+			{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+			{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
+		}, highest)
+		require.Equal(t, []*schemav1.Sample{
+			{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
+			{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
+			{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
+		}, new)
+	})
 }
