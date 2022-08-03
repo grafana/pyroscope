@@ -218,9 +218,9 @@ const tooltipTitles: Record<
     total: '% of total samples',
   },
   '': {
-    percent: '',
-    formattedValue: '',
-    total: '',
+    percent: '% of unknown units',
+    formattedValue: 'unknown units',
+    total: '% of total unknown units',
   },
 };
 
