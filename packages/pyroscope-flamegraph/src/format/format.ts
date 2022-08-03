@@ -31,10 +31,8 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
     case 'trace_samples':
       return new DurationFormatter(max / sampleRate, 'units');
     default:
-      console.warn(
-        `Unsupported unit: '${unit}'. Defaulting to 'unknown units'`
-      );
-      return new DurationFormatter(max / sampleRate, 'unknown units');
+      console.warn(`Unsupported unit: '${unit}'. Defaulting to 'units'`);
+      return new DurationFormatter(max / sampleRate, 'units');
   }
 }
 
