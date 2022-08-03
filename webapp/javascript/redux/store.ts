@@ -14,7 +14,6 @@ import {
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
-import rootReducer from './reducers';
 import history from '../util/history';
 
 import settingsReducer from './reducers/settings';
@@ -23,15 +22,16 @@ import continuousReducer, {
   actions as continuousActions,
 } from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
+import adhocReducer from './reducers/adhoc';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 const reducer = combineReducers({
-  root: rootReducer,
   settings: settingsReducer,
   user: userReducer,
   serviceDiscovery: serviceDiscoveryReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
   continuous: continuousReducer,
+  adhoc: adhocReducer,
 });
 
 // Most times we will display a (somewhat) user friendly message toast
@@ -53,7 +53,16 @@ const store = configureStore({
 
         // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
         // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredActions: [
+          FLUSH,
+          REHYDRATE,
+          PAUSE,
+          PERSIST,
+          PURGE,
+          REGISTER,
+          'adhoc/uploadFile/pending',
+          'adhoc/uploadFile/fulfilled',
+        ],
       },
     }).concat([logErrorMiddleware]),
 });
