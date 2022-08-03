@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.23.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.22.0...@pyroscope/webapp@1.23.0) (2022-08-03)
+
+
+### Features
+
+* upload any arbitrary data (collapsed/pprof/json) via adhoc ui ([#1327](https://github.com/pyroscope-io/pyroscope/issues/1327)) ([6620888](https://github.com/pyroscope-io/pyroscope/commit/662088820b430abb2e4dcb9270cbaf62771ca601)), closes [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333) [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333)
+
+
+
+
+
 # [1.22.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.15...@pyroscope/webapp@1.22.0) (2022-07-29)
 
 
