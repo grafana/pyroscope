@@ -21221,11 +21221,6 @@ trough@^1.0.0:
   resolved "https://registry.yarnpkg.com/trough/-/trough-1.0.5.tgz#b8b639cefad7d0bb2abd37d433ff8293efa5f406"
   integrity sha512-rvuRbTarPXmMb79SmzEp8aqXNKcK+y0XaB298IXueQ8I2PsrATcPBCSPyK/dDNa2iWOhKlfNnOjdAOTBU/nkFA==
 
-"true-myth@^5.1.2":
-  version "5.1.2"
-  resolved "https://registry.yarnpkg.com/true-myth/-/true-myth-5.1.2.tgz#58a425b0aefe57eed279ac2d1b65e567153ea9b0"
-  integrity sha512-4A8CVJiDt35EhS2U4DYoU1Kg8nMdqpC4sIc4ktan/nE3T2u5kLd7fJ1ZSQTn5xO/A41IB7DLF8R8xL6l0MPgsQ==
-
 "true-myth@~5.2.0":
   version "5.2.0"
   resolved "https://registry.yarnpkg.com/true-myth/-/true-myth-5.2.0.tgz#f434d4ca314922568260d742f7bed613b5ae3652"
