@@ -190,6 +190,10 @@ function TagExplorerView() {
               activeTagProfile && (
                 <ExportData
                   flamebearer={activeTagProfile}
+                  exportPNG
+                  exportJSON
+                  exportPprof
+                  exportHTML
                   exportFlamegraphDotCom
                   exportFlamegraphDotComFn={exportFlamegraphDotComFn}
                 />
