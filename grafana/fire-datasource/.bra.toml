@@ -1,0 +1,18 @@
+[run]
+init_cmds = [
+  ["mage", "-v", "build:debug"],
+  ["mage", "-v", "reloadPlugin"]
+]
+watch_all = true
+follow_symlinks = true
+watch_dirs = [
+  "$WORKDIR/pkg",
+]
+# Not sure why but this file is created and deleted, which otherwise trigger a loop
+ignore_files = ["mage_output_file.go"]
+watch_exts = [".go"]
+build_delay = 1500
+cmds = [
+  ["mage", "-v", "build:debug"],
+  ["mage", "-v", "reloadPlugin"]
+]
