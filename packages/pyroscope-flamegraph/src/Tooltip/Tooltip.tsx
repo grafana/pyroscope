@@ -214,13 +214,13 @@ const tooltipTitles: Record<
   },
   trace_samples: {
     percent: '% of time',
-    formattedValue: 'samples',
+    formattedValue: 'Samples',
     total: '% of total samples',
   },
   '': {
-    percent: '',
-    formattedValue: '',
-    total: '',
+    percent: 'Percentage',
+    formattedValue: 'Units',
+    total: '% of total units',
   },
 };
 
