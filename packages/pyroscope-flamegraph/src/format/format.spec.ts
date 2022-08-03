@@ -22,7 +22,7 @@ describe('format', () => {
     it('its constructor should default to DurationFormatter', () => {
       const df = getFormatter(80, 2, '' as any);
 
-      expect(df.format(0.001, 100)).toBe('< 0.01 units');
+      expect(df.format(0.001, 100)).toBe('< 0.01  ');
     });
 
     describe('DurationFormatter', () => {
