@@ -260,9 +260,9 @@ func (s *server) Upload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	type response struct {
 		Flamebearer *flamebearer.FlamebearerProfile `json:"flamebearer"`
-		Id          string                          `json:"id"`
+		ID          string                          `json:"id"`
 	}
-	res := response{Flamebearer: fb, Id: s.generateHash(filename)}
+	res := response{Flamebearer: fb, ID: s.generateHash(filename)}
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		s.log.WithError(err).Error("Unable to encode the response")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -324,6 +324,6 @@ func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
 	return converter(b, p.Name, s.maxNodes)
 }
 
-func (s *server) generateHash(name string) string {
+func (*server) generateHash(name string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(name)))
 }
