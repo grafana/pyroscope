@@ -78,12 +78,13 @@ func (w writer) Write(t0, t1 time.Time) error {
 		if w.outputJSON {
 			flame := flamebearer.NewProfile(name, out, w.maxNodesRender)
 			filename := fmt.Sprintf("%s-%s.json", name, t0.Format("2006-01-02-15-04-05"))
-			err = w.adhocDataDirWriter.Write(filename, flame)
-
+			path, err := w.adhocDataDirWriter.Write(filename, flame)
 			if err != nil {
 				w.logger.WithError(err).Error("saving to AdhocDir")
 				continue
 			}
+
+			w.logger.Infof("profiling data has been saved to %s", path)
 		}
 
 		profiles++

@@ -249,7 +249,7 @@ func (s *server) Upload(w http.ResponseWriter, r *http.Request) {
 	// TODO(eh-am): maybe we should use whatever the user has sent us?
 	filename = fmt.Sprintf("%s-%s.json", filename, now.Format("2006-01-02-15-04-05"))
 
-	err = s.adhocDataDirWriter.Write(filename, *fb)
+	_, err = s.adhocDataDirWriter.Write(filename, *fb)
 	if err != nil {
 		msg := "Unable to write profile to adhoc's DataPath"
 		s.log.WithError(err).Error(msg)
