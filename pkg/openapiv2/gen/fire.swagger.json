@@ -119,6 +119,17 @@
         }
       }
     },
+    "ingesterv1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -146,6 +157,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ProfileType"
+          }
+        }
+      }
+    },
+    "querierv1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
           }
         }
       }
@@ -339,17 +361,6 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
-        }
-      }
-    },
-    "v1SeriesResponse": {
-      "type": "object",
-      "properties": {
-        "labelsSet": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1Labels"
           }
         }
       }
