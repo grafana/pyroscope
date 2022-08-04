@@ -28,8 +28,7 @@
       .title {
         display: inline-block;
         text-transform: uppercase;
-        padding: 10px;
-        padding: 5px 20px 5px 5px;
+        padding: 5px;
       }
 
       .tags {
@@ -40,10 +39,14 @@
         min-height: 150px;
 
         li {
-          padding: 10px 30px;
-
           &.selected {
             background-color: var(--ps-blue-highlight);
+          }
+
+          input {
+            border: none;
+            padding: 10px 30px;
+            width: 100%;
           }
         }
       }

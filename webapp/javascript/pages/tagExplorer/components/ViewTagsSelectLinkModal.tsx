@@ -6,6 +6,8 @@ import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
 import { brandQuery } from '@webapp/models/query';
 import styles from './ViewTagsSelectLinkModal.module.scss';
 
+const emptyTagsTag = 'No tags available';
+
 interface ViewTagsSelectModalProps {
   whereDropdownItems: string[];
   groupByTag: string;
@@ -22,7 +24,6 @@ interface ViewTagsSelectModalProps {
   baselineTag: string;
   comparisonTag: string;
   linkName: string;
-  isModalOpen: boolean;
 }
 
 function ViewTagsSelectLink({
@@ -44,7 +45,7 @@ function ViewTagsSelectLink({
   };
 
   const tags =
-    whereDropdownItems.length > 0 ? whereDropdownItems : ['No tags available'];
+    whereDropdownItems.length > 0 ? whereDropdownItems : [emptyTagsTag];
 
   const getNewSearch = () => {
     const newSearch = { leftQuery: '', rightQuery: '' };
@@ -90,9 +91,16 @@ function ViewTagsSelectLink({
               <li
                 className={baselineTag === tag ? styles.selected : ''}
                 key={tag}
-                onClick={() => handleTagsChange(tag, 'baselineTag')}
               >
-                {tag}
+                <input
+                  type="button"
+                  onClick={
+                    tag !== emptyTagsTag
+                      ? () => handleTagsChange(tag, 'baselineTag')
+                      : undefined
+                  }
+                  value={tag}
+                />
               </li>
             ))}
           </ul>
@@ -104,18 +112,28 @@ function ViewTagsSelectLink({
               <li
                 className={comparisonTag === tag ? styles.selected : ''}
                 key={tag}
-                onClick={() => handleTagsChange(tag, 'comparisonTag')}
               >
-                {tag}
+                <input
+                  type="button"
+                  onClick={
+                    tag !== emptyTagsTag
+                      ? () => handleTagsChange(tag, 'comparisonTag')
+                      : undefined
+                  }
+                  value={tag}
+                />
               </li>
             ))}
           </ul>
         </div>
       </div>
       <div className={styles.modalFooter}>
-        <button className={styles.compareButton} onClick={handleCompareClick}>
-          Compare tags
-        </button>
+        <input
+          type="button"
+          className={styles.compareButton}
+          onClick={handleCompareClick}
+          value="Compare tags"
+        />
       </div>
     </div>
   );
