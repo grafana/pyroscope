@@ -3,6 +3,7 @@ import { NavLink, useLocation, Redirect } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
+import OutsideClickHandler from 'react-outside-click-handler';
 
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
@@ -243,9 +244,9 @@ function Table({
   const [linkTagsSelectModalData, setLinkTagsSelectModalData] = useState(
     defaultLinkTagsSelectModalData
   );
-  useEffect(() => {
+  const handleOutsideModalClick = () => {
     setLinkTagsSelectModalData(defaultLinkTagsSelectModalData);
-  }, [appName, groupByTag, groupByTagValue]);
+  };
 
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
@@ -299,13 +300,15 @@ function Table({
             Diff
           </button>
           {linkTagsSelectModalData.isModalOpen && (
-            <ViewTagsSelectLinkModal
-              whereDropdownItems={whereDropdownItems}
-              groupByTag={groupByTag}
-              appName={appName}
-              {...linkTagsSelectModalData}
-              setLinkTagsSelectModalData={setLinkTagsSelectModalData}
-            />
+            <OutsideClickHandler onOutsideClick={handleOutsideModalClick}>
+              <ViewTagsSelectLinkModal
+                whereDropdownItems={whereDropdownItems}
+                groupByTag={groupByTag}
+                appName={appName}
+                {...linkTagsSelectModalData}
+                setLinkTagsSelectModalData={setLinkTagsSelectModalData}
+              />
+            </OutsideClickHandler>
           )}
         </div>
       </div>
