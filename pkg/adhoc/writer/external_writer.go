@@ -1,4 +1,4 @@
-package adhoc
+package writer
 
 import (
 	"fmt"

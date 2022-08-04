@@ -8,6 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc/writer"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/sirupsen/logrus"
@@ -136,7 +137,7 @@ func Cli(cfg *config.Adhoc, args []string) error {
 		go analytics.AdhocReport(m.String()+"-"+status, &wg)
 	}
 
-	if err := newWriter(cfg, st, logger).write(t0, time.Now()); err != nil {
+	if err := writer.NewWriter(cfg, st, logger).Write(t0, time.Now()); err != nil {
 		logger.WithError(err).Error("writing profiling data")
 	}
 

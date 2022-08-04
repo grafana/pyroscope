@@ -33,7 +33,7 @@ func (w *AdhocDataDirWriter) EnsureExists() error {
 // TODO(eh-am): do we even need a name?
 func (w *AdhocDataDirWriter) Write(filename string, flame flamebearer.FlamebearerProfile) error {
 	// Remove extension
-	path := filepath.Join(w.dataDir, filename+".json")
+	path := filepath.Join(w.dataDir, filename)
 	f, err := os.Create(path)
 	if err != nil {
 		return err

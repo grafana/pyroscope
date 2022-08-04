@@ -1,4 +1,4 @@
-package adhoc
+package writer
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	adhocWriter "github.com/pyroscope-io/pyroscope/pkg/adhoc/writer"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -21,21 +20,21 @@ type writer struct {
 	logger         *logrus.Logger
 	storage        *storage.Storage
 
-	adhocDataDirWriter *adhocWriter.AdhocDataDirWriter
+	adhocDataDirWriter *AdhocDataDirWriter
 }
 
-func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) writer {
+func NewWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) writer {
 	return writer{
 		maxNodesRender:     cfg.MaxNodesRender,
 		outputFormat:       cfg.OutputFormat,
 		outputJSON:         !cfg.NoJSONOutput,
 		logger:             logger,
 		storage:            st,
-		adhocDataDirWriter: adhocWriter.NewAdhocDataDirWriter(cfg.DataPath),
+		adhocDataDirWriter: NewAdhocDataDirWriter(cfg.DataPath),
 	}
 }
 
-func (w writer) write(t0, t1 time.Time) error {
+func (w writer) Write(t0, t1 time.Time) error {
 	err := w.adhocDataDirWriter.EnsureExists()
 	if err != nil {
 		return err
