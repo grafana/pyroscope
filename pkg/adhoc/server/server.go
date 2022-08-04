@@ -87,7 +87,7 @@ func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
 			return fs.SkipDir
 		}
 		if e.Type().IsRegular() {
-			id := fmt.Sprintf("%x", sha256.Sum256([]byte(e.Name())))
+			id := s.generateHash(e.Name())
 			if p, ok := profiles[id]; ok {
 				return fmt.Errorf("a hash collision detected between %s and %s, please report it", e.Name(), p.Name)
 			}
@@ -258,7 +258,12 @@ func (s *server) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(fb); err != nil {
+	type response struct {
+		Flamebearer *flamebearer.FlamebearerProfile `json:"flamebearer"`
+		Id          string                          `json:"id"`
+	}
+	res := response{Flamebearer: fb, Id: s.generateHash(filename)}
+	if err := json.NewEncoder(w).Encode(res); err != nil {
 		s.log.WithError(err).Error("Unable to encode the response")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -317,4 +322,8 @@ func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
 		return nil, errors.New("unsupported profile format")
 	}
 	return converter(b, p.Name, s.maxNodes)
+}
+
+func (s *server) generateHash(name string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(name)))
 }

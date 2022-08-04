@@ -188,8 +188,8 @@ export const adhocSlice = createSlice({
 
       state.shared[s.side] = {
         type: 'loaded',
-        profile: action.payload.profile,
-        id: undefined,
+        profile: action.payload.profile.flamebearer,
+        id: action.payload.profile.id,
       };
     });
 
