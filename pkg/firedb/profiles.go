@@ -117,6 +117,39 @@ outer:
 	return nil
 }
 
+// forMatchingLabels iterates through all matching label sets and calls f for each labels set.
+func (pi *profilesIndex) forMatchingLabels(matchers []*labels.Matcher,
+	fn func(lbs firemodel.Labels, fp model.Fingerprint) error,
+) error {
+	filters, matchers := SplitFiltersAndMatchers(matchers)
+	ids, err := pi.ix.Lookup(matchers, nil)
+	if err != nil {
+		return err
+	}
+
+	pi.mutex.RLock()
+	defer pi.mutex.RUnlock()
+
+outer:
+	for _, fp := range ids {
+		profile, ok := pi.profilesPerFP[fp]
+		if !ok {
+			// If a profile labels is missing here, it has already been flushed
+			// and is supposed to be picked up from storage by querier
+			continue
+		}
+		for _, filter := range filters {
+			if !filter.Matches(profile.lbs.Get(filter.Name)) {
+				continue outer
+			}
+		}
+		if err := fn(profile.lbs, fp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (pi *profilesIndex) allProfiles() []*schemav1.Profile {
 	total := pi.totalProfiles.Load()
 	result := make([]*schemav1.Profile, 0, total)

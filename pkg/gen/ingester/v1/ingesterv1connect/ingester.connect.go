@@ -31,6 +31,7 @@ type IngesterServiceClient interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
+	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
 	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
 	// but this requires to ensure we have correct timestamp and labels ordering.
@@ -62,6 +63,11 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 			baseURL+"/ingester.v1.IngesterService/ProfileTypes",
 			opts...,
 		),
+		series: connect_go.NewClient[v11.SeriesRequest, v11.SeriesResponse](
+			httpClient,
+			baseURL+"/ingester.v1.IngesterService/Series",
+			opts...,
+		),
 		flush: connect_go.NewClient[v11.FlushRequest, v11.FlushResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/Flush",
@@ -80,6 +86,7 @@ type ingesterServiceClient struct {
 	push           *connect_go.Client[v1.PushRequest, v1.PushResponse]
 	labelValues    *connect_go.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
 	profileTypes   *connect_go.Client[v11.ProfileTypesRequest, v11.ProfileTypesResponse]
+	series         *connect_go.Client[v11.SeriesRequest, v11.SeriesResponse]
 	flush          *connect_go.Client[v11.FlushRequest, v11.FlushResponse]
 	selectProfiles *connect_go.Client[v11.SelectProfilesRequest, v11.SelectProfilesResponse]
 }
@@ -99,6 +106,11 @@ func (c *ingesterServiceClient) ProfileTypes(ctx context.Context, req *connect_g
 	return c.profileTypes.CallUnary(ctx, req)
 }
 
+// Series calls ingester.v1.IngesterService.Series.
+func (c *ingesterServiceClient) Series(ctx context.Context, req *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error) {
+	return c.series.CallUnary(ctx, req)
+}
+
 // Flush calls ingester.v1.IngesterService.Flush.
 func (c *ingesterServiceClient) Flush(ctx context.Context, req *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error) {
 	return c.flush.CallUnary(ctx, req)
@@ -114,6 +126,7 @@ type IngesterServiceHandler interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
+	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
 	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
 	// but this requires to ensure we have correct timestamp and labels ordering.
@@ -142,6 +155,11 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 		svc.ProfileTypes,
 		opts...,
 	))
+	mux.Handle("/ingester.v1.IngesterService/Series", connect_go.NewUnaryHandler(
+		"/ingester.v1.IngesterService/Series",
+		svc.Series,
+		opts...,
+	))
 	mux.Handle("/ingester.v1.IngesterService/Flush", connect_go.NewUnaryHandler(
 		"/ingester.v1.IngesterService/Flush",
 		svc.Flush,
@@ -168,6 +186,10 @@ func (UnimplementedIngesterServiceHandler) LabelValues(context.Context, *connect
 
 func (UnimplementedIngesterServiceHandler) ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.ProfileTypes is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.Series is not implemented"))
 }
 
 func (UnimplementedIngesterServiceHandler) Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error) {

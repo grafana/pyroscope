@@ -64,6 +64,17 @@
     }
   },
   "definitions": {
+    "ingesterv1LabelValuesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "ingesterv1Profile": {
       "type": "object",
       "properties": {
@@ -108,6 +119,17 @@
         }
       }
     },
+    "ingesterv1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -117,6 +139,17 @@
       },
       "additionalProperties": {}
     },
+    "querierv1LabelValuesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "querierv1ProfileTypesResponse": {
       "type": "object",
       "properties": {
@@ -124,6 +157,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ProfileType"
+          }
+        }
+      }
+    },
+    "querierv1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
           }
         }
       }
@@ -143,6 +187,31 @@
           "items": {
             "$ref": "#/definitions/protobufAny"
           }
+        }
+      }
+    },
+    "v1FlameGraph": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Level"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxSelf": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
@@ -186,13 +255,26 @@
         }
       }
     },
-    "v1LabelValuesResponse": {
+    "v1Labels": {
       "type": "object",
       "properties": {
-        "names": {
+        "labels": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        }
+      }
+    },
+    "v1Level": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
           }
         }
       }
@@ -257,6 +339,14 @@
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1SelectMergeStacktracesResponse": {
+      "type": "object",
+      "properties": {
+        "flamegraph": {
+          "$ref": "#/definitions/v1FlameGraph"
+        }
+      }
     },
     "v1SelectProfilesResponse": {
       "type": "object",

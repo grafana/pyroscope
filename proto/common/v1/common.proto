@@ -12,8 +12,13 @@ message LabelPair {
 message ProfileType {
   string ID = 1;
   string name = 2;
-  string sampleType = 4;
-  string sampleUnit = 5;
-  string periodType = 6;
-  string periodUnit = 7;
+  string sample_type = 4;
+  string sample_unit = 5;
+  string period_type = 6;
+  string period_unit = 7;
+}
+
+message Labels {
+  // LabelPair is the key value pairs to identify the corresponding profile
+  repeated LabelPair labels = 1;
 }
