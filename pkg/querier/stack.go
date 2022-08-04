@@ -4,7 +4,7 @@ import "sync"
 
 var stackIntPool = sync.Pool{
 	New: func() interface{} {
-		return NewStack[int]()
+		return NewStack[int64]()
 	},
 }
 

@@ -24,7 +24,7 @@ func Test_ParseQuery(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, req.ParseForm())
 
-	queryRequest, err := parseSelectProfilesRequest(req)
+	queryRequest, ptype, err := parseSelectProfilesRequest(req)
 	require.NoError(t, err)
 	require.WithinDuration(t, time.Now(), model.Time(queryRequest.End).Time(), 1*time.Minute)
 	require.WithinDuration(t, time.Now().Add(-6*time.Hour), model.Time(queryRequest.Start).Time(), 1*time.Minute)
@@ -36,7 +36,7 @@ func Test_ParseQuery(t *testing.T) {
 		SampleUnit: "bytes",
 		PeriodType: "space",
 		PeriodUnit: "bytes",
-	}, queryRequest.Type)
+	}, ptype)
 
 	require.Equal(t, `{foo="bar",bar=~"buzz"}`, queryRequest.LabelSelector)
 }
