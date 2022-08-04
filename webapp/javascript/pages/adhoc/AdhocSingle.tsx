@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import 'react-dom';
 
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
@@ -11,7 +11,6 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import ExportData from '@webapp/components/ExportData';
 import {
   uploadFile,
-  selectAdhocUploadedFilename,
   fetchProfile,
   selectShared,
   fetchAllProfiles,
@@ -23,10 +22,10 @@ import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();
-  const filename = useAppSelector(selectAdhocUploadedFilename('left'));
   const { profilesList } = useAppSelector(selectShared);
   const selectedProfileId = useAppSelector(selectedSelectedProfileId('left'));
   const profile = useAppSelector(selectProfile('left'));
+  const [tabIndex, setTabIndex] = useState(0);
 
   useEffect(() => {
     dispatch(fetchAllProfiles());
@@ -60,7 +59,7 @@ function AdhocSingle() {
   return (
     <div className="main-wrapper">
       <Box>
-        <Tabs>
+        <Tabs selectedIndex={tabIndex} onSelect={(index) => setTabIndex(index)}>
           <TabList>
             <Tab>Upload</Tab>
             <Tab>Pyroscope data</Tab>
@@ -68,9 +67,9 @@ function AdhocSingle() {
           <TabPanel>
             <FileUploader
               className={adhocStyles.tabPanel}
-              filename={filename}
-              setFile={(file) => {
-                dispatch(uploadFile({ file, side: 'left' }));
+              setFile={async (file) => {
+                await dispatch(uploadFile({ file, side: 'left' }));
+                setTabIndex(1);
               }}
             />
           </TabPanel>

@@ -11,15 +11,14 @@ import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
 import { addNotification } from './notifications';
 
+type uploadState =
+  | { type: 'pristine' }
+  | { type: 'loading'; fileName: string }
+  | { type: 'loaded' };
+
 type Upload = {
-  left: {
-    type: 'pristine' | 'loading' | 'loaded';
-    fileName?: string;
-  };
-  right: {
-    type: 'pristine' | 'loading' | 'loaded';
-    fileName?: string;
-  };
+  left: uploadState;
+  right: uploadState;
 };
 
 type Shared = {
@@ -165,26 +164,28 @@ export const adhocSlice = createSlice({
     removeFile(state, action: PayloadAction<{ side: side }>) {
       state.upload[action.payload.side] = {
         type: 'pristine',
-        fileName: undefined,
       };
     },
   },
   extraReducers: (builder) => {
     builder.addCase(uploadFile.pending, (state, action) => {
-      state.upload[action.meta.arg.side].type = 'loading';
+      state.upload[action.meta.arg.side] = {
+        type: 'loading',
+        fileName: action.meta.arg.file.name,
+      };
     });
     builder.addCase(uploadFile.rejected, (state, action) => {
       // Since the file is invalid, let's remove it
       state.upload[action.meta.arg.side] = {
         type: 'pristine',
-        fileName: undefined,
       };
     });
 
     builder.addCase(uploadFile.fulfilled, (state, action) => {
       const s = action.meta.arg;
 
-      state.upload[s.side] = { type: 'loaded', fileName: s.file.name };
+      //      state.upload[s.side] = { type: 'loaded', fileName: s.file.name };
+      state.upload[s.side] = { type: 'pristine' };
 
       state.shared[s.side] = {
         type: 'loaded',
@@ -199,7 +200,6 @@ export const adhocSlice = createSlice({
       // After loading a profile, there's no uploaded profile
       state.upload[side] = {
         type: 'pristine',
-        fileName: undefined,
       };
 
       state.shared[side] = {
@@ -236,11 +236,6 @@ export const adhocSlice = createSlice({
 const selectAdhocState = (state: RootState) => {
   return state.adhoc;
 };
-
-export const selectAdhocUploadedFilename =
-  (side: side) => (state: RootState) => {
-    return Maybe.of(selectAdhocState(state).upload[side].fileName);
-  };
 
 export const selectShared = (state: RootState) => {
   return selectAdhocState(state).shared;
