@@ -95,7 +95,7 @@ func TestRemoveDuplicateSampleStacktraces(t *testing.T) {
 }
 
 func countSampleDuplicates(p *Profile) int {
-	hashes := p.hasher.hashes(p.Sample)
+	hashes := p.hasher.Hashes(p.Sample)
 	uniq := map[uint64][]*profilev1.Sample{}
 	for i, s := range p.Sample {
 

@@ -18,7 +18,7 @@ type Profile struct {
 	*profilev1.Profile
 	raw []byte
 
-	hasher stacktracesHasher
+	hasher StacktracesHasher
 }
 
 func OpenFile(path string) (*Profile, error) {
@@ -74,7 +74,7 @@ func (s *sortedSample) Swap(i, j int) {
 // - Then remove unused references.
 func (p *Profile) Normalize() {
 	// first we sort the samples location ids.
-	hashes := p.hasher.hashes(p.Sample)
+	hashes := p.hasher.Hashes(p.Sample)
 
 	ss := &sortedSample{samples: p.Sample, hashes: hashes}
 	sort.Sort(ss)
@@ -245,13 +245,13 @@ func (p *Profile) visitAllNameReferences(fn func(*int64)) {
 	}
 }
 
-type stacktracesHasher struct {
+type StacktracesHasher struct {
 	hash *xxhash.Digest
 	b    [8]byte
 }
 
 // todo we might want to reuse the results to avoid allocations
-func (h stacktracesHasher) hashes(samples []*profilev1.Sample) []uint64 {
+func (h StacktracesHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 	if h.hash == nil {
 		h.hash = xxhash.New()
 	} else {
