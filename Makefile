@@ -31,6 +31,7 @@ else
 endif
 
 EXTRA_GO_TAGS ?=
+EXTRA_GOBUILD_ARGS ?=
 CGO_CFLAGS ?=
 CGO_LDFLAGS ?=
 GO_TAGS = $(ENABLED_SPIES)$(EXTRA_GO_TAGS)
@@ -89,7 +90,7 @@ all: build ## Runs the build target
 .PHONY: build-rbspy-static-library
 build-rbspy-static-library: ## builds rbspy static library (used in our gem integration)
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,rbspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
+	$(GOBUILD) $(EXTRA_GOBUILD_ARGS) -tags nogospy,rbspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
 ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.a
 	ranlib ./out/libpyroscope.rbspy.a
@@ -98,7 +99,7 @@ endif
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library: ## builds pyspy static library (used in our pip integration)
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,pyspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
+	$(GOBUILD) $(EXTRA_GOBUILD_ARGS) -tags nogospy,pyspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
 ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.a
 	ranlib ./out/libpyroscope.pyspy.a
@@ -107,7 +108,7 @@ endif
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library: ## builds phpspy static library
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,phpspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
+	$(GOBUILD) $(EXTRA_GOBUILD_ARGS) -tags nogospy,phpspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
 ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.a
 	ranlib ./out/libpyroscope.phpspy.a
@@ -119,7 +120,7 @@ install-go-dependencies: ## installs golang dependencies
 
 .PHONY: build
 build: ## Builds the binary
-	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
+	$(GOBUILD) $(EXTRA_GOBUILD_ARGS) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
 
 .PHONY: build-release
 build-release: embedded-assets ## Builds the release build

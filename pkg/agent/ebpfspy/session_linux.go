@@ -5,13 +5,14 @@
 //   https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
+import "C"
 import (
 	"bytes"
 	_ "embed"
 	"encoding/binary"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 	"sync"
@@ -21,22 +22,43 @@ import (
 	bpf "github.com/aquasecurity/libbpfgo"
 )
 
+//#cgo CFLAGS: -I./bpf/
+//#include <linux/types.h>
+//#include "profile.bpf.h"
+import "C"
+
 type session struct {
 	pid          int
 	sampleRate   uint32
+	useComm      bool
+	useTGIDAsKey bool
+	pidCacheSize int
+
 	perfEventFds []int
+
+	symCache *symbolCache
 
 	bpfModule    *bpf.Module
 	bpfMapCounts *bpf.BPFMap
 	bpfMapStacks *bpf.BPFMap
 	bpfMapArgs   *bpf.BPFMap
 	bpfProg      *bpf.BPFProg
+	bpfProgLink  *bpf.BPFLink
+
+	bpfTraceExitPorg     *bpf.BPFProg
+	bpfTraceExitPorgLink *bpf.BPFLink
 
 	modMutex sync.Mutex
 }
 
 func newSession(pid int, sampleRate uint32) *session {
-	return &session{pid: pid, sampleRate: sampleRate}
+	return &session{
+		pid:          pid,
+		sampleRate:   sampleRate,
+		useComm:      true,
+		useTGIDAsKey: true,
+		pidCacheSize: 256,
+	}
 }
 
 func (s *session) Start() error {
@@ -49,14 +71,15 @@ func (s *session) Start() error {
 		return err
 	}
 	var cpus []uint
+	zero := uint32(0)
 
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
+	s.symCache = newSymbolCache(s.pidCacheSize)
 	newModuleArgs := bpf.NewModuleArgs{
 		BPFObjBuff: profileBpfObjBuf,
-		//BTFObjPath: "/home/korniltsev/Desktop/vmlinux2", //todo
-		BTFObjPath: "huihuuhi", //todo
+		BTFObjPath: "should not be used", // canary to detect we got relocations
 	}
 	if s.bpfModule, err = bpf.NewModuleFromBufferArgs(newModuleArgs); err != nil {
 		return err
@@ -67,14 +90,24 @@ func (s *session) Start() error {
 	if s.bpfMapArgs, err = s.bpfModule.GetMap(".bss"); err != nil {
 		return err
 	}
-	zero := uint32(0)
-	var value uint32
+	var tgidFilter uint32
 	if s.pid <= 0 {
-		value = 0
+		tgidFilter = 0
 	} else {
-		value = uint32(s.pid)
+		tgidFilter = uint32(s.pid)
 	}
-	err = s.bpfMapArgs.UpdateValueFlags(unsafe.Pointer(&zero), unsafe.Pointer(&value), 0)
+	b2i := func(b bool) uint8 {
+		if b {
+			return 1
+		}
+		return 0
+	}
+	args := C.struct_profile_bss_args{
+		tgid_filter:     C.uint(tgidFilter),
+		use_tgid_as_key: C.uchar(b2i(s.useTGIDAsKey)),
+		use_comm:        C.uchar(b2i(s.useComm)),
+	}
+	err = s.bpfMapArgs.UpdateValueFlags(unsafe.Pointer(&zero), unsafe.Pointer(&args), 0)
 	if err != nil {
 		return err
 	}
@@ -87,13 +120,15 @@ func (s *session) Start() error {
 	if s.bpfProg, err = s.bpfModule.GetProgram("do_perf_event"); err != nil {
 		return err
 	}
+	if s.bpfTraceExitPorg, err = s.bpfModule.GetProgram("sched_process_exit"); err != nil {
+		return err
+	}
 	if cpus, err = cpuonline.Get(); err != nil {
 		return err
 	}
 	for _, cpu := range cpus {
 		attr := unix.PerfEventAttr{
-			Type: unix.PERF_TYPE_SOFTWARE,
-			//Size:   unix.PERF_ATTR_SIZE_VER3,
+			Type:   unix.PERF_TYPE_SOFTWARE,
 			Config: unix.PERF_COUNT_SW_CPU_CLOCK,
 			Bits:   unix.PerfBitFreq,
 			Sample: uint64(s.sampleRate),
@@ -107,7 +142,46 @@ func (s *session) Start() error {
 			return err
 		}
 	}
+	err = s.listenPIDSExitPerfEvent()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (s *session) listenPIDSExitPerfEvent() error {
+	var err error
 
+	s.bpfTraceExitPorgLink, err = s.bpfTraceExitPorg.AttachTracepoint("sched", "sched_process_exit")
+	if err != nil {
+		return err
+	}
+	eventsChannel := make(chan []byte)
+	lostChannel := make(chan uint64)
+	pb, err := s.bpfModule.InitPerfBuf("pid_exits", eventsChannel, lostChannel, 1)
+	if err != nil {
+		return err
+	}
+
+	pb.Start()
+	//defer func() { //todo
+	//	pb.Stop()
+	//	pb.Close()
+	//}()
+
+	go func() {
+		for {
+			select {
+			case e := <-eventsChannel:
+				ee := (*C.struct_pid_exit_event)(unsafe.Pointer(&e[0]))
+				if ee.pid == ee.tgid {
+					fmt.Printf("pid_exit_event %d %d \n", ee.pid, ee.tgid)
+					s.symCache.remove(uint32(ee.pid))
+				}
+			case <-lostChannel:
+				//log.Printf("lost %d events", e)
+			}
+		}
+	}()
 	return nil
 }
 
@@ -122,54 +196,56 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 	cnt := 0
 	for it.Next() {
 		k := it.Key()
-		v, err := s.bpfMapCounts.GetValue(unsafe.Pointer(&k[0])) // todo consider GetValueBatch
+		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&k[0]))
+		v, err := s.bpfMapCounts.GetValue(unsafe.Pointer(ck))
 		if err != nil {
-			fmt.Println("err", err)
+			return err
 		} else {
-			pid := binary.LittleEndian.Uint32(k[0:4]) // todo use header + C.struct
-			kStack := int64(binary.LittleEndian.Uint64(k[8:16]))
-			uStack := int64(binary.LittleEndian.Uint64(k[16:24]))
-			comm := k[24:]
-			commLen := bytes.IndexByte(comm, 0)
-			if commLen != -1 {
-				comm = comm[:commLen]
-			}
+			pid := uint32(ck.pid)
+			kStack := int64(ck.kern_stack)
+			uStack := int64(ck.user_stack)
 			count := binary.LittleEndian.Uint32(v)
-			//fmt.Printf("%d %d %d %s -> %d\n", pid, kStack, uStack, string(comm), count)
 			buf := bytes.NewBuffer(nil)
-			buf.Write(comm)
-			buf.Write([]byte{';'})
 
-			walkStack(buf, s.bpfMapStacks, uStack, pid)
-			walkStack(buf, s.bpfMapStacks, kStack, pid)
+			if s.useComm {
+				comm := C.GoString(&ck.comm[0])
+				buf.Write([]byte(comm))
+				buf.Write([]byte{';'})
+			}
+			s.walkStack(buf, uStack, pid, true)
+			s.walkStack(buf, kStack, pid, false)
 
 			err = cb(buf.Bytes(), uint64(count))
 			if err != nil {
-				errs = multierror.Append(errs, err)
+				return err
 			}
 			cnt++
-			//fmt.Println(comm)
+
 		}
 	}
 
+	t3 := time.Now()
 	clearMap(s.bpfMapCounts)
 	clearMap(s.bpfMapStacks)
 	t2 := time.Now()
-	fmt.Println("reset done", cnt, t2.Sub(t1))
+	fmt.Printf("Reset done stacktaces : %d len(symcache): %d all time %s mapreset time %s\n", cnt, s.symCache.pid2Cache.Len(), t2.Sub(t1), t2.Sub(t3))
 	return errs
 }
 
-// TODO: optimize this
+func (s *session) Stop() {
+	s.symCache.reset()
+	for fd := range s.perfEventFds {
+		_ = syscall.Close(fd)
+	}
+	s.bpfModule.Close()
+}
 
-func walkStack(line *bytes.Buffer, stacks *bpf.BPFMap, stackId int64, pid uint32) {
-	if stackId < 0 {
+func (s *session) walkStack(line *bytes.Buffer, stackId int64, pid uint32, userspace bool) {
+	if stackId < 0 { //todo
 		return
 	}
-	var bs [8]byte
-	binary.LittleEndian.PutUint64(bs[:], uint64(stackId)) //todo do not pack and unpack back
-	//t := time.Now()
-	stack, err := stacks.GetValue(unsafe.Pointer(&bs[0])) // todo retrieve stacks values once with batch
-	//t2 := time.Now()
+	key := unsafe.Pointer(&stackId)
+	stack, err := s.bpfMapStacks.GetValue(key)
 	if err != nil {
 		return
 	}
@@ -180,21 +256,15 @@ func walkStack(line *bytes.Buffer, stacks *bpf.BPFMap, stackId int64, pid uint32
 		if ip == 0 {
 			break
 		}
-
-		//t3 := time.Now()
-		sym := globalCache.sym(pid, ip)
-		//t4 := time.Now()
-		//fmt.Println(t4.Sub(t3))
-		stackFrames = append(stackFrames, sym+";")
+		sym := s.symCache.sym(pid, ip)
+		if userspace || sym != symbolUnknown {
+			stackFrames = append(stackFrames, sym+";")
+		}
 	}
 	reverse(stackFrames)
 	for _, s := range stackFrames {
 		line.Write([]byte(s))
 	}
-	//t3 := time.Now()
-	//fmt.Println(t2.Sub(t))
-	//
-	//fmt.Println(t3.Sub(t2))
 }
 
 func reverse(s []string) {
@@ -204,7 +274,6 @@ func reverse(s []string) {
 }
 
 func clearMap(m *bpf.BPFMap) {
-	//todo consider  DeleteKeyBatch ?
 	it := m.Iterator()
 	for it.Next() {
 		err := m.DeleteKey(unsafe.Pointer(&it.Key()[0]))

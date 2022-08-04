@@ -1,10 +1,9 @@
 package ebpfspy
 
-//todo docker COPY pkg may overwrite built libs
-//readme to build locally
-//check perf
-// check if python takes same time to resolve syms
-// call child makefile to build ebpf
-// check ebpf map sizes
-// todo stopch implementation
-//todo check exec < 10 seconds
+// todo check ebpf map sizes
+// todo close goroutine pid_exits reading
+// todo check if kthreads are reported and try to filter them
+
+// potential optimizations:
+//    - share elf/so symbols between SymbolCache if inode is the same
+//    - DeleteKeyBatch, GetValue

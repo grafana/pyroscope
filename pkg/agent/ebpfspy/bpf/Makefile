@@ -23,7 +23,7 @@ libs/bcc-syms: bcc-src
 		&& cmake ../build-syms  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(shell pwd)/libs/bcc-syms \
 		&& make -j16 install
 
-profile.bpf.o: profile.bpf.c vmlinux.h libs/libbpf
+profile.bpf.o: profile.bpf.c profile.bpf.h vmlinux.h libs/libbpf
 	$(CLANG) $(CFLAGS) -target bpf -D__TARGET_ARCH_x86 -I. -Ilibs/libbpf/include -c profile.bpf.c -o $@
 
 vmlinux.h:

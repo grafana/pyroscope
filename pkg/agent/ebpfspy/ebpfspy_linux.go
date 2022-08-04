@@ -1,23 +1,19 @@
 //go:build ebpfspy
 // +build ebpfspy
 
-// Package ebpfspy provides integration with Linux eBPF. It calls profile.py from BCC tools:
-//   https://github.com/iovisor/bcc/blob/master/tools/profile.py
-// TODO: At some point we might extract the part that starts another process because it has good potential to be reused by similar profiling tools.
 package ebpfspy
 
 import (
-	"sync"
-
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"sync"
 )
 
 type EbpfSpy struct {
-	resetMutex sync.Mutex
-	reset      bool
-	stop       bool
+	mutex sync.Mutex
+	reset bool
+	stop  bool
 
-	profilingSession *session
+	session *session
 
 	stopCh chan struct{}
 }
@@ -29,43 +25,43 @@ func Start(pid int, _ spy.ProfileType, sampleRate uint32, _ bool) (spy.Spy, erro
 		return nil, err
 	}
 	return &EbpfSpy{
-		profilingSession: s,
-		stopCh:           make(chan struct{}),
+		session: s,
+		stopCh:  make(chan struct{}),
 	}, nil
 }
 
-func (s *EbpfSpy) Stop() error {
-	s.stop = true
-	<-s.stopCh
-	return nil
-}
-
 func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
-	s.resetMutex.Lock()
-	defer s.resetMutex.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	if !s.reset {
 		return nil
 	}
 
 	s.reset = false
-	err := s.profilingSession.Reset(func(name []byte, v uint64) error {
-		//fmt.Println(string(name))
+	err := s.session.Reset(func(name []byte, v uint64) error {
 		return cb(nil, name, v)
 	})
 
 	if s.stop {
+		s.session.Stop()
 		s.stopCh <- struct{}{}
-		panic("TODO")
-		//s.profilingSession.Stop()
 	}
 
 	return err
 }
 
+func (s *EbpfSpy) Stop() error {
+	s.mutex.Lock()
+	s.stop = true
+	s.mutex.Unlock()
+	<-s.stopCh
+	return nil
+}
+
 func (s *EbpfSpy) Reset() {
-	s.resetMutex.Lock()
-	defer s.resetMutex.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	s.reset = true
 }

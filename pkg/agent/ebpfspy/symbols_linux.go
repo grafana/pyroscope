@@ -7,6 +7,9 @@ package ebpfspy
 
 import (
 	"debug/elf"
+	"fmt"
+	"github.com/hashicorp/golang-lru/simplelru"
+	"sync"
 	"unsafe"
 )
 
@@ -15,53 +18,39 @@ import (
 */
 import "C"
 
-var globalCache *symbolCache
-
-func init() {
-	globalCache = newSymbolCache()
-}
+const symbolUnknown = "[unknown]"
 
 type symbolCache struct {
-	cachePerPid map[uint32]unsafe.Pointer
+	pid2Cache *simplelru.LRU
+	mutex     sync.Mutex
 }
 
-func newSymbolCache() *symbolCache {
+type symbolCacheEntry struct {
+	cache   unsafe.Pointer
+	cmdline string
+}
 
+func newSymbolCache(pidCacheSize int) *symbolCache {
+	pid2Cache, _ := simplelru.NewLRU(pidCacheSize, func(pid interface{}, cache interface{}) {
+		fmt.Printf("pid cache evicted %v %v\n", pid, cache)
+	})
 	return &symbolCache{
-		cachePerPid: make(map[uint32]unsafe.Pointer),
+		pid2Cache: pid2Cache,
 	}
-}
-
-func (sc *symbolCache) cache(pid uint32) unsafe.Pointer {
-	if cache, ok := sc.cachePerPid[pid]; ok {
-		return cache
-	}
-	pidC := C.int(pid)
-	if pid == 0 {
-		pidC = C.int(-1)
-	}
-	symbolOpt := C.struct_bcc_symbol_option{use_symbol_type: C.uint(1 << elf.STT_FUNC)}
-	symbolOptC := (*C.struct_bcc_symbol_option)(unsafe.Pointer(&symbolOpt))
-	cache := C.bcc_symcache_new(pidC, symbolOptC)
-	sc.cachePerPid[pid] = cache
-	return sc.cachePerPid[pid]
 }
 
 func (sc *symbolCache) bccResolve(pid uint32, addr uint64) (string, uint64, string) {
 	symbol := C.struct_bcc_symbol{}
 	var symbolC = (*C.struct_bcc_symbol)(unsafe.Pointer(&symbol))
 
-	cache := sc.cache(pid)
+	e := sc.getOrCreateCacheEntry(pid)
 	var res C.int
 	if pid == 0 {
-		res = C.bcc_symcache_resolve_no_demangle(cache, C.ulong(addr), symbolC)
+		res = C.bcc_symcache_resolve_no_demangle(e.cache, C.ulong(addr), symbolC)
 	} else {
-		res = C.bcc_symcache_resolve(cache, C.ulong(addr), symbolC)
+		res = C.bcc_symcache_resolve(e.cache, C.ulong(addr), symbolC)
+		defer C.bcc_symbol_free_demangle_name(symbolC)
 	}
-
-	// if res < 0 {
-	// 	return "", fmt.Errorf("unable to locate symbol %x %d, %q", addr, res, symbol)
-	// }
 
 	if res < 0 {
 		if symbol.offset > 0 {
@@ -72,7 +61,7 @@ func (sc *symbolCache) bccResolve(pid uint32, addr uint64) (string, uint64, stri
 	if pid == 0 {
 		return C.GoString(symbol.name), uint64(symbol.offset), C.GoString(symbol.module)
 	} else {
-		defer C.bcc_symbol_free_demangle_name(symbolC)
+
 		return C.GoString(symbol.demangle_name), uint64(symbol.offset), C.GoString(symbol.module)
 	}
 }
@@ -80,7 +69,48 @@ func (sc *symbolCache) bccResolve(pid uint32, addr uint64) (string, uint64, stri
 func (sc *symbolCache) sym(pid uint32, addr uint64) string {
 	name, _, _ := sc.bccResolve(pid, addr)
 	if name == "" {
-		name = "[unknown]"
+		name = symbolUnknown
 	}
 	return name
+}
+
+func (sc *symbolCache) getOrCreateCacheEntry(pid uint32) *symbolCacheEntry {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
+	if cache, ok := sc.pid2Cache.Get(pid); ok {
+		return cache.(*symbolCacheEntry)
+	}
+	pidC := C.int(pid)
+	if pid == 0 {
+		pidC = C.int(-1)
+	}
+	symbolOpt := C.struct_bcc_symbol_option{use_symbol_type: C.uint(1 << elf.STT_FUNC)}
+	symbolOptC := (*C.struct_bcc_symbol_option)(unsafe.Pointer(&symbolOpt))
+	cache := C.bcc_symcache_new(pidC, symbolOptC)
+	e := &symbolCacheEntry{cache: cache}
+
+	sc.pid2Cache.Add(pid, e)
+	return e
+}
+
+func (sc *symbolCache) reset() {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
+	sc.pid2Cache.Keys()
+	for _, pid := range sc.pid2Cache.Keys() {
+		if ei, ok := sc.pid2Cache.Get(pid); ok {
+			e := ei.(*symbolCacheEntry)
+			C.bcc_free_symcache(e.cache, C.int(pid.(uint32)))
+			sc.pid2Cache.Remove(pid)
+		}
+	}
+}
+func (sc *symbolCache) remove(pid uint32) {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
+	if ei, ok := sc.pid2Cache.Get(pid); ok {
+		e := ei.(*symbolCacheEntry)
+		C.bcc_free_symcache(e.cache, C.int(pid))
+		sc.pid2Cache.Remove(pid)
+	}
 }
