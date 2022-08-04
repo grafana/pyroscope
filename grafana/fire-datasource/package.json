@@ -14,8 +14,8 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@grafana/data": "latest",
-    "@grafana/toolkit": "latest",
     "@grafana/runtime": "latest",
+    "@grafana/toolkit": "latest",
     "@grafana/ui": "latest",
     "@types/lodash": "latest"
   },
@@ -24,5 +24,9 @@
   },
   "engines": {
     "node": ">=14"
+  },
+  "dependencies": {
+    "monaco-editor": "^0.33.0",
+    "react-use": "^17.4.0"
   }
 }
