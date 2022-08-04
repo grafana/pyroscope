@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
@@ -13,6 +13,7 @@ import TimelineChartWrapper, {
 } from '@webapp/components/TimelineChartWrapper';
 import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
@@ -137,6 +138,17 @@ function TagExplorerView() {
       ? [{ ...groupsData[0], tagName: appName.unwrapOr('') }]
       : groupsData.filter((a) => a.tagName !== '*');
 
+  // filteredGroupsData has single "application without tags" group for initial view
+  // its not "real" group so we filter it
+  const whereDropdownItems = filteredGroupsData.reduce((acc, group) => {
+    if (group.tagName === appName.unwrapOr('')) {
+      return acc;
+    }
+
+    acc.push(group.tagName);
+    return acc;
+  }, [] as string[]);
+
   return (
     <div className={styles.tagExplorerView}>
       <Toolbar hideTagsBar />
@@ -144,7 +156,7 @@ function TagExplorerView() {
         <ExploreHeader
           appName={appName}
           tags={tags}
-          groupsData={filteredGroupsData}
+          whereDropdownItems={whereDropdownItems}
           selectedTag={tagExplorerView.groupByTag}
           selectedTagValue={tagExplorerView.groupByTagValue}
           handleGroupByTagChange={handleGroupedByTagChange}
@@ -173,6 +185,7 @@ function TagExplorerView() {
         {appName.isJust && (
           <Table
             appName={appName.value}
+            whereDropdownItems={whereDropdownItems}
             groupByTag={groupByTag}
             groupByTagValue={groupByTagValue}
             groupsData={filteredGroupsData}
@@ -204,19 +217,36 @@ function TagExplorerView() {
   );
 }
 
+const defaultLinkTagsSelectModalData = {
+  baselineTag: '',
+  comparisonTag: '',
+  linkName: '',
+  isModalOpen: false,
+};
+
 function Table({
   appName,
+  whereDropdownItems,
   groupByTag,
   groupByTagValue,
   groupsData,
   handleGroupByTagValueChange,
 }: {
   appName: string;
+  whereDropdownItems: string[];
   groupByTag: string;
   groupByTagValue: string | undefined;
   groupsData: TimelineGroupData[];
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
+  const [linkTagsSelectModalData, setLinkTagsSelectModalData] = useState(
+    defaultLinkTagsSelectModalData
+  );
+
+  useEffect(() => {
+    setLinkTagsSelectModalData(defaultLinkTagsSelectModalData);
+  }, [appName, groupByTag, groupByTagValue]);
+
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
 
@@ -228,6 +258,14 @@ function Table({
     }
   };
 
+  const handleLinkModalOpen = (linkName: 'comparison' | 'diff') => {
+    setLinkTagsSelectModalData((currState) => ({
+      ...currState,
+      isModalOpen: true,
+      linkName,
+    }));
+  };
+
   return (
     <>
       <div className={styles.tableDescription}>
@@ -236,12 +274,27 @@ function Table({
           <NavLink to={{ pathname: PAGES.CONTINOUS_SINGLE_VIEW, search }} exact>
             Single
           </NavLink>
-          <NavLink to={{ pathname: PAGES.COMPARISON_VIEW, search }} exact>
+          <button
+            className={styles.buttonName}
+            onClick={() => handleLinkModalOpen('comparison')}
+          >
             Comparison
-          </NavLink>
-          <NavLink to={{ pathname: PAGES.COMPARISON_DIFF_VIEW, search }} exact>
+          </button>
+          <button
+            className={styles.buttonName}
+            onClick={() => handleLinkModalOpen('diff')}
+          >
             Diff
-          </NavLink>
+          </button>
+          {linkTagsSelectModalData.isModalOpen && (
+            <ViewTagsSelectLinkModal
+              whereDropdownItems={whereDropdownItems}
+              groupByTag={groupByTag}
+              appName={appName}
+              {...linkTagsSelectModalData}
+              setLinkTagsSelectModalData={setLinkTagsSelectModalData}
+            />
+          )}
         </div>
       </div>
       <table className={styles.tagExplorerTable}>
@@ -266,7 +319,7 @@ function Table({
                 onClick={
                   // prevent clicking on single "application without tags" group row
                   tagName !== appName
-                    ? () => handleGroupByTagValueChange(tagName)
+                    ? () => handleTableRowClick(tagName)
                     : undefined
                 }
                 key={tagName}
@@ -296,7 +349,7 @@ function Table({
 
 function ExploreHeader({
   appName,
-  groupsData,
+  whereDropdownItems,
   tags,
   selectedTag,
   selectedTagValue,
@@ -304,7 +357,7 @@ function ExploreHeader({
   handleGroupByTagValueChange,
 }: {
   appName: Maybe<string>;
-  groupsData: TimelineGroupData[];
+  whereDropdownItems: string[];
   tags: TagsState;
   selectedTag: string;
   selectedTagValue: string;
@@ -314,16 +367,6 @@ function ExploreHeader({
   const tagKeys = Object.keys(tags.tags);
   const groupByDropdownItems =
     tagKeys.length > 0 ? tagKeys : ['No tags available'];
-  // groupsData has single "application without tags" group for initial view
-  // its not "real" group so we filter it
-  const whereDropdownItems = groupsData.reduce((acc, group) => {
-    if (group.tagName === appName.unwrapOr('')) {
-      return acc;
-    }
-
-    acc.push(group.tagName);
-    return acc;
-  }, [] as string[]);
 
   const handleGroupByClick = (e: ClickEvent) => {
     handleGroupByTagChange(e.value);

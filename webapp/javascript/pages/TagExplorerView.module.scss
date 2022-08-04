@@ -23,14 +23,31 @@
     margin-right: 5px;
   }
 
-  .buttons a {
-    padding: 5px;
-    margin-left: 5px;
-    text-decoration: none;
-    border: 1px solid var(--ps-ui-border);
-    color: var(--ps-neutral-2);
-    background-color: var(--ps-ui-element-bg-primary);
-    border-radius: 4px;
+  .buttons {
+    position: relative;
+
+    a,
+    .buttonName {
+      padding: 5px;
+      margin-left: 5px;
+      text-decoration: none;
+      border: 1px solid var(--ps-ui-border);
+      color: var(--ps-neutral-2);
+      background-color: var(--ps-ui-element-bg-primary);
+      border-radius: 4px;
+    }
+
+    .buttonName {
+      position: relative;
+      line-height: initial;
+      padding: 5px 20px 5px 5px;
+
+      &:after {
+        content: '▾';
+        position: absolute;
+        right: 5px;
+      }
+    }
   }
 
   .query {
