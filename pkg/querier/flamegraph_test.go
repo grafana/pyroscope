@@ -6,36 +6,62 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/stretchr/testify/require"
+
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 )
 
-func Test_toFlamebearer(t *testing.T) {
-	require.Equal(t, &flamebearer.FlamebearerV1{
-		Names: []string{"total", "a", "c", "d", "b", "e"},
-		Levels: [][]int{
-			{0, 4, 0, 0},
-			{0, 4, 0, 1},
-			{0, 1, 0, 4, 0, 3, 2, 2},
-			{0, 1, 1, 5, 2, 1, 1, 3},
+func Test_ExportToFlamebearer(t *testing.T) {
+	expected := &flamebearer.FlamebearerProfile{
+		Version: 1,
+		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+			Metadata: flamebearer.FlamebearerMetadataV1{
+				Format:     "single",
+				Units:      "bytes",
+				Name:       "inuse_space",
+				SampleRate: 100,
+			},
+			Flamebearer: flamebearer.FlamebearerV1{
+				Names: []string{"total", "a", "c", "d", "b", "e"},
+				Levels: [][]int{
+					{0, 4, 0, 0},
+					{0, 4, 0, 1},
+					{0, 1, 0, 4, 0, 3, 2, 2},
+					{0, 1, 1, 5, 2, 1, 1, 3},
+				},
+				NumTicks: 4,
+				MaxSelf:  2,
+			},
 		},
-		NumTicks: 4,
-		MaxSelf:  2,
-	}, NewFlamebearer(newTree([]stacktraces{
-		{
-			locations: []string{"e", "b", "a"},
-			value:     1,
-		},
-		{
-			locations: []string{"c", "a"},
-			value:     2,
-		},
-		{
-			locations: []string{"d", "c", "a"},
-			value:     1,
-		},
-	})))
+	}
+	actual := ExportToFlamebearer(
+		NewFlameGraph(
+			newTree([]stacktraces{
+				{
+					locations: []string{"e", "b", "a"},
+					value:     1,
+				},
+				{
+					locations: []string{"c", "a"},
+					value:     2,
+				},
+				{
+					locations: []string{"d", "c", "a"},
+					value:     1,
+				},
+			}),
+		), &commonv1.ProfileType{
+			ID:         "memory:inuse_space:bytes:space:bytes",
+			Name:       "memory",
+			SampleType: "inuse_space",
+			SampleUnit: "bytes",
+			PeriodType: "space",
+			PeriodUnit: "bytes",
+		})
+	require.Equal(t, expected, actual)
 }
 
-var f *flamebearer.FlamebearerV1
+var f *querierv1.FlameGraph
 
 func BenchmarkFlamegraph(b *testing.B) {
 	stacks := make([]stacktraces, 2000)
@@ -49,6 +75,6 @@ func BenchmarkFlamegraph(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		f = NewFlamebearer(tr)
+		f = NewFlameGraph(tr)
 	}
 }

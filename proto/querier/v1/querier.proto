@@ -6,10 +6,51 @@ import "common/v1/common.proto";
 
 service QuerierService {
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
+  rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
+  rpc Series(SeriesRequest) returns (SeriesResponse) {}
+  rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {}
 }
 
 message ProfileTypesRequest {}
 
 message ProfileTypesResponse {
   repeated common.v1.ProfileType profile_types = 1;
+}
+
+message LabelValuesRequest {
+  string name = 1;
+}
+
+message LabelValuesResponse {
+  repeated string names = 1;
+}
+
+message SeriesRequest {
+  repeated string matchers = 1;
+}
+
+message SeriesResponse {
+  repeated common.v1.Labels labels_set = 2;
+}
+
+message SelectMergeStacktracesRequest {
+  string profile_typeID = 1;
+  string label_selector = 2;
+  int64 start = 3; // milliseconds since epoch
+  int64 end = 4; // milliseconds since epoch
+}
+
+message SelectMergeStacktracesResponse {
+  FlameGraph flamegraph = 1;
+}
+
+message FlameGraph {
+  repeated string names = 1;
+  repeated Level levels = 2;
+  int64 total = 3;
+  int64 max_self = 4;
+}
+
+message Level {
+  repeated int64 values = 1;
 }

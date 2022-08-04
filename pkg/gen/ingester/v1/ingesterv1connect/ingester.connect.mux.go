@@ -34,6 +34,11 @@ func RegisterIngesterServiceHandler(mux *mux.Router, svc IngesterServiceHandler,
 		svc.ProfileTypes,
 		opts...,
 	))
+	mux.Handle("/ingester.v1.IngesterService/Series", connect_go.NewUnaryHandler(
+		"/ingester.v1.IngesterService/Series",
+		svc.Series,
+		opts...,
+	))
 	mux.Handle("/ingester.v1.IngesterService/Flush", connect_go.NewUnaryHandler(
 		"/ingester.v1.IngesterService/Flush",
 		svc.Flush,

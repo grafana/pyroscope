@@ -14,13 +14,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"github.com/samber/lo"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	firemodel "github.com/grafana/fire/pkg/model"
 )
 
 // todo: move to non global metrics.
@@ -121,10 +121,10 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 	return connect.NewResponse(result), nil
 }
 
-func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error) {
+func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
 		res, err := ic.LabelValues(ctx, connect.NewRequest(&ingestv1.LabelValuesRequest{
-			Name: name,
+			Name: req.Msg.Name,
 		}))
 		if err != nil {
 			return nil, err
@@ -134,47 +134,59 @@ func (q *Querier) LabelValues(ctx context.Context, name string) ([]string, error
 	if err != nil {
 		return nil, err
 	}
-	return uniqueSortedStrings(responses), nil
+
+	return connect.NewResponse(&querierv1.LabelValuesResponse{
+		Names: uniqueSortedStrings(responses),
+	}), nil
 }
 
-func (q *Querier) selectMerge(ctx context.Context, req *ingestv1.SelectProfilesRequest) (*flamebearer.FlamebearerProfile, error) {
+func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]*commonv1.Labels, error) {
+		res, err := ic.Series(ctx, connect.NewRequest(&ingestv1.SeriesRequest{
+			Matchers: req.Msg.Matchers,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.LabelsSet, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&querierv1.SeriesResponse{
+		LabelsSet: lo.UniqBy(
+			lo.FlatMap(responses, func(r responseFromIngesters[[]*commonv1.Labels], _ int) []*commonv1.Labels {
+				return r.response
+			}),
+			func(t *commonv1.Labels) uint64 {
+				return firemodel.Labels(t.Labels).Hash()
+			}),
+	}), nil
+}
+
+func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	profileType, err := firemodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
-		res, err := ic.SelectProfiles(ctx, connect.NewRequest(req))
+		res, err := ic.SelectProfiles(ctx, connect.NewRequest(&ingestv1.SelectProfilesRequest{
+			LabelSelector: req.Msg.LabelSelector,
+			Start:         req.Msg.Start,
+			End:           req.Msg.End,
+			Type:          profileType,
+		}))
 		if err != nil {
 			return nil, err
 		}
 		return res.Msg, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-
-	// build the flamegraph
-	flame := NewFlamebearer(newTree(mergeStacktraces(dedupeProfiles(responses))))
-	unit := metadata.Units(req.Type.SampleUnit)
-	sampleRate := uint32(100)
-
-	switch req.Type.SampleType {
-	case "inuse_objects", "alloc_objects", "goroutine", "samples":
-		unit = metadata.ObjectsUnits
-	case "cpu":
-		unit = metadata.SamplesUnits
-		sampleRate = uint32(100000000)
-
-	}
-
-	return &flamebearer.FlamebearerProfile{
-		Version: 1,
-		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
-			Flamebearer: *flame,
-			Metadata: flamebearer.FlamebearerMetadataV1{
-				Format:     "single",
-				Units:      unit,
-				Name:       req.Type.SampleType,
-				SampleRate: sampleRate,
-			},
-		},
-	}, nil
+	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+		Flamegraph: NewFlameGraph(newTree(mergeStacktraces(dedupeProfiles(responses)))),
+	}), nil
 }
 
 func uniqueSortedStrings(responses []responseFromIngesters[[]string]) []string {
