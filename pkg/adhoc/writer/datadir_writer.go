@@ -29,10 +29,7 @@ func (w *AdhocDataDirWriter) EnsureExists() error {
 }
 
 // Write writes a flamebearer in json format to its dataDir
-// given the app name, a flamebearer and a timestamp
-// TODO(eh-am): do we even need a name?
 func (w *AdhocDataDirWriter) Write(filename string, flame flamebearer.FlamebearerProfile) (string, error) {
-	// Remove extension
 	path := filepath.Join(w.dataDir, filename)
 	f, err := os.Create(path)
 	if err != nil {
