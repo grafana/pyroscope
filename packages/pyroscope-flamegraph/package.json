@@ -27,7 +27,6 @@
     "true-myth": "^5.1.2"
   },
   "devDependencies": {
-    "@pyroscope/models": "^0.4.1",
-    "downlevel-dts": "^0.10.0"
+    "@pyroscope/models": "^0.4.1"
   }
 }
