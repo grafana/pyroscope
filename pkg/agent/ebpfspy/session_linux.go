@@ -47,8 +47,9 @@ type session struct {
 
 	bpfTraceExitPorg     *bpf.BPFProg
 	bpfTraceExitPorgLink *bpf.BPFLink
-
-	modMutex sync.Mutex
+	pidExitChan          chan struct{}
+	pidExitWG            sync.WaitGroup
+	modMutex             sync.Mutex
 }
 
 func newSession(pid int, sampleRate uint32) *session {
@@ -58,9 +59,11 @@ func newSession(pid int, sampleRate uint32) *session {
 		useComm:      true,
 		useTGIDAsKey: true,
 		pidCacheSize: 256,
+		pidExitChan:  make(chan struct{}),
 	}
 }
 
+// todo split and cleanup
 func (s *session) Start() error {
 
 	var err error
@@ -163,14 +166,15 @@ func (s *session) listenPIDSExitPerfEvent() error {
 	}
 
 	pb.Start()
-	//defer func() { //todo
-	//	pb.Stop()
-	//	pb.Close()
-	//}()
-
+	s.pidExitWG.Add(1)
 	go func() {
-		for {
+		loop := true
+		for loop {
 			select {
+			case <-s.pidExitChan:
+				loop = false
+				fmt.Printf("pidExitChan closed\n")
+				break
 			case e := <-eventsChannel:
 				ee := (*C.struct_pid_exit_event)(unsafe.Pointer(&e[0]))
 				if ee.pid == ee.tgid {
@@ -180,7 +184,11 @@ func (s *session) listenPIDSExitPerfEvent() error {
 			case <-lostChannel:
 				//log.Printf("lost %d events", e)
 			}
+
 		}
+		pb.Stop()
+		pb.Close()
+		s.pidExitWG.Done()
 	}()
 	return nil
 }
@@ -237,6 +245,8 @@ func (s *session) Stop() {
 	for fd := range s.perfEventFds {
 		_ = syscall.Close(fd)
 	}
+	close(s.pidExitChan)
+	s.pidExitWG.Wait()
 	s.bpfModule.Close()
 }
 
