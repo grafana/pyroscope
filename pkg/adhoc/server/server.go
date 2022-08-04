@@ -10,12 +10,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc/writer"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
@@ -28,12 +30,13 @@ type profile struct {
 }
 
 type server struct {
-	log      logrus.FieldLogger
-	dataDir  string
-	maxNodes int
-	enabled  bool
-	profiles map[string]profile
-	mtx      sync.RWMutex
+	log                logrus.FieldLogger
+	dataDir            string
+	adhocDataDirWriter *writer.AdhocDataDirWriter
+	maxNodes           int
+	enabled            bool
+	profiles           map[string]profile
+	mtx                sync.RWMutex
 }
 
 type Server interface {
@@ -42,11 +45,12 @@ type Server interface {
 
 func New(log logrus.FieldLogger, dataDir string, maxNodes int, enabled bool) Server {
 	return &server{
-		log:      log,
-		dataDir:  dataDir,
-		maxNodes: maxNodes,
-		enabled:  enabled,
-		profiles: make(map[string]profile),
+		log:                log,
+		adhocDataDirWriter: writer.NewAdhocDataDirWriter(dataDir),
+		dataDir:            dataDir,
+		maxNodes:           maxNodes,
+		enabled:            enabled,
+		profiles:           make(map[string]profile),
 	}
 }
 
@@ -230,12 +234,36 @@ func (s *server) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	err = s.adhocDataDirWriter.EnsureExists()
+	if err != nil {
+		msg := "Unable to create adhoc's DataPath"
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	now := time.Now()
+	// Remove extension, since we will store a json file
+	filename := strings.TrimSuffix(m.Filename, filepath.Ext(m.Filename))
+	// TODO(eh-am): maybe we should use whatever the user has sent us?
+	filename = fmt.Sprintf("%s-%s.json", filename, now.Format("2006-01-02-15-04-05"))
+
+	err = s.adhocDataDirWriter.Write(filename, *fb)
+	if err != nil {
+		msg := "Unable to write profile to adhoc's DataPath"
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(fb); err != nil {
 		s.log.WithError(err).Error("Unable to encode the response")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 }
 
 // Upload two single profiles in native JSON format and convert to a diff profile
