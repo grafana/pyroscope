@@ -13,7 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
-type writer struct {
+type Writer struct {
 	maxNodesRender int
 	outputFormat   string
 	outputJSON     bool
@@ -23,8 +23,8 @@ type writer struct {
 	adhocDataDirWriter *AdhocDataDirWriter
 }
 
-func NewWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) writer {
-	return writer{
+func NewWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) Writer {
+	return Writer{
 		maxNodesRender:     cfg.MaxNodesRender,
 		outputFormat:       cfg.OutputFormat,
 		outputJSON:         !cfg.NoJSONOutput,
@@ -34,7 +34,7 @@ func NewWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 	}
 }
 
-func (w writer) Write(t0, t1 time.Time) error {
+func (w Writer) Write(t0, t1 time.Time) error {
 	err := w.adhocDataDirWriter.EnsureExists()
 	if err != nil {
 		return err

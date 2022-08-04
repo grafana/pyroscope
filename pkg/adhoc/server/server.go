@@ -263,7 +263,6 @@ func (s *server) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 }
 
 // Upload two single profiles in native JSON format and convert to a diff profile
