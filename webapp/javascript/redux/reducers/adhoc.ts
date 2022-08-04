@@ -72,6 +72,9 @@ export const uploadFile = createAsyncThunk(
     const res = await upload(file);
 
     if (res.isOk) {
+      // Since we just uploaded a file, let's reload to see it on the file list
+      thunkAPI.dispatch(fetchAllProfiles());
+
       return Promise.resolve({ profile: res.value, fileName: file.name });
     }
 
