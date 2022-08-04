@@ -141,8 +141,8 @@ func TestDeltaSample(t *testing.T) {
 		highest = deltaSamples(highest, new, idx)
 		require.Equal(t, []*schemav1.Sample{
 			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
-			{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
-			{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+			{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 5, Values: []int64{0, 5, 3, 4}},
 		}, highest)
 		require.Equal(t, []*schemav1.Sample{
 			{StacktraceID: 3, Values: []int64{1, 0, 3, 4}},
@@ -164,8 +164,8 @@ func TestDeltaSample(t *testing.T) {
 			{StacktraceID: 0, Values: []int64{10, 20, 3, 4}},
 			{StacktraceID: 1, Values: []int64{2, 3, 3, 4}},
 			{StacktraceID: 2, Values: []int64{1, 2, 3, 4}},
-			{StacktraceID: 3, Values: []int64{6, 2, 3, 4}},
-			{StacktraceID: 5, Values: []int64{1, 5, 3, 4}},
+			{StacktraceID: 3, Values: []int64{1, 2, 3, 4}},
+			{StacktraceID: 5, Values: []int64{0, 5, 3, 4}},
 			{StacktraceID: 7, Values: []int64{1, 1, 3, 4}},
 		}, highest)
 		require.Equal(t, []*schemav1.Sample{
