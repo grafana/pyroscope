@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, Redirect } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
@@ -222,6 +222,7 @@ const defaultLinkTagsSelectModalData = {
   comparisonTag: '',
   linkName: '',
   isModalOpen: false,
+  shouldRedirect: false,
 };
 
 function Table({
@@ -242,7 +243,6 @@ function Table({
   const [linkTagsSelectModalData, setLinkTagsSelectModalData] = useState(
     defaultLinkTagsSelectModalData
   );
-
   useEffect(() => {
     setLinkTagsSelectModalData(defaultLinkTagsSelectModalData);
   }, [appName, groupByTag, groupByTagValue]);
@@ -265,6 +265,18 @@ function Table({
       linkName,
     }));
   };
+
+  if (linkTagsSelectModalData.shouldRedirect) {
+    return (
+      <Redirect
+        to={
+          (linkTagsSelectModalData.linkName === 'diff'
+            ? PAGES.COMPARISON_DIFF_VIEW
+            : PAGES.COMPARISON_VIEW) + search
+        }
+      />
+    );
+  }
 
   return (
     <>

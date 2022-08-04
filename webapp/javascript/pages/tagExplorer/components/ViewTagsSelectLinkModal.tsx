@@ -16,6 +16,7 @@ interface ViewTagsSelectModalProps {
       comparisonTag: string;
       linkName: string;
       isModalOpen: boolean;
+      shouldRedirect: boolean;
     }>
   >;
   baselineTag: string;
@@ -46,7 +47,7 @@ function ViewTagsSelectLink({
     whereDropdownItems.length > 0 ? whereDropdownItems : ['No tags available'];
 
   const getNewSearch = () => {
-    let newSearch = { leftQuery: '', rightQuery: '' };
+    const newSearch = { leftQuery: '', rightQuery: '' };
 
     if (baselineTag) {
       newSearch.leftQuery = appendLabelToQuery(
@@ -72,6 +73,10 @@ function ViewTagsSelectLink({
 
     dispatch(actions.setLeftQuery(brandQuery(leftQuery)));
     dispatch(actions.setRightQuery(brandQuery(rightQuery)));
+    setLinkTagsSelectModalData((currState) => ({
+      ...currState,
+      shouldRedirect: true,
+    }));
   };
 
   return (
