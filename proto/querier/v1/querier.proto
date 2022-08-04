@@ -25,14 +25,13 @@ message LabelValuesResponse {
   repeated string names = 1;
 }
 
-message SeriesRequest  {
+message SeriesRequest {
   repeated string matchers = 1;
 }
 
 message SeriesResponse {
-  repeated common.v1.Labels  labels_set = 2;
+  repeated common.v1.Labels labels_set = 2;
 }
-
 
 message SelectMergeStacktracesRequest {
   string profile_typeID = 1;
@@ -48,8 +47,8 @@ message SelectMergeStacktracesResponse {
 message FlameGraph {
   repeated string names = 1;
   repeated Level levels = 2;
-	int64 total  = 3;
-	int64 max_self  = 4;
+  int64 total = 3;
+  int64 max_self = 4;
 }
 
 message Level {
