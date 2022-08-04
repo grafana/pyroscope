@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/live"
+	"github.com/prometheus/common/model"
 
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 )
@@ -116,7 +117,7 @@ type queryModel struct {
 	WithStreaming bool `json:"withStreaming"`
 }
 
-func (d *FireDatasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
+func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	response := backend.DataResponse{}
 
 	// Unmarshal the JSON into our queryModel.
@@ -130,6 +131,26 @@ func (d *FireDatasource) query(_ context.Context, pCtx backend.PluginContext, qu
 	// create data frame response.
 	frame := data.NewFrame("response")
 	frame.Meta = &data.FrameMeta{PreferredVisualization: "profile"}
+
+	// todo parse the query from queryModel
+	res, err := d.client.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: "memory:inuse_space:bytes:space:bytes",
+		Start:         int64(model.TimeFromUnixNano(time.Now().Add(-1 * time.Hour).UnixNano())),
+		End:           int64(model.TimeFromUnixNano(time.Now().UnixNano())),
+		LabelSelector: "{}",
+	}))
+	if err != nil {
+		response.Error = err
+		return response
+	}
+
+	// todo create data frame response.
+	b, err := json.Marshal(res.Msg)
+	if err != nil {
+		response.Error = err
+		return response
+	}
+	log.DefaultLogger.Info("SelectMergeStacktraces", "result", string(b))
 
 	// add fields.
 	frame.Fields = append(frame.Fields,

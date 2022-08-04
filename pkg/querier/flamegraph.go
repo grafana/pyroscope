@@ -1,7 +1,12 @@
 package querier
 
 import (
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"github.com/samber/lo"
+
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 )
 
 type stackNode struct {
@@ -10,14 +15,14 @@ type stackNode struct {
 	node    *node
 }
 
-func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
+func NewFlameGraph(t *tree) *querierv1.FlameGraph {
 	var total, max int64
 	for _, node := range t.root {
 		total += node.total
 	}
 	names := []string{}
 	nameLocationCache := map[string]int{}
-	res := []*Stack[int]{}
+	res := []*Stack[int64]{}
 	defer func() {
 		for _, stack := range res {
 			stackIntPool.Put(stack)
@@ -50,7 +55,7 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 		}
 
 		if current.level == len(res) {
-			s := stackIntPool.Get().(*Stack[int])
+			s := stackIntPool.Get().(*Stack[int64])
 			s.Reset()
 			res = append(res, s)
 		}
@@ -60,10 +65,10 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 		// i+2 = self
 		// i+3 = index in names array
 		level := res[current.level]
-		level.Push(i)
-		level.Push(int(current.node.self))
-		level.Push(int(current.node.total))
-		level.Push(current.xOffset)
+		level.Push(int64(i))
+		level.Push((current.node.self))
+		level.Push((current.node.total))
+		level.Push(int64(current.xOffset))
 		current.xOffset += int(current.node.self)
 
 		for _, child := range current.node.children {
@@ -71,22 +76,65 @@ func NewFlamebearer(t *tree) *flamebearer.FlamebearerV1 {
 			current.xOffset += int(child.total)
 		}
 	}
-	result := make([][]int, len(res))
+	result := make([][]int64, len(res))
 	for i := range result {
 		result[i] = res[i].Slice()
 	}
 	// delta encode xoffsets
 	for _, l := range result {
-		prev := 0
+		prev := int64(0)
 		for i := 0; i < len(l); i += 4 {
 			l[i] -= prev
 			prev += l[i] + l[i+1]
 		}
 	}
-	return &flamebearer.FlamebearerV1{
-		Names:    names,
-		Levels:   result,
-		NumTicks: int(total),
-		MaxSelf:  int(max),
+	levels := make([]*querierv1.Level, len(result))
+	for i := range levels {
+		levels[i] = &querierv1.Level{
+			Values: result[i],
+		}
+	}
+
+	return &querierv1.FlameGraph{
+		Names:   names,
+		Levels:  levels,
+		Total:   total,
+		MaxSelf: max,
+	}
+}
+
+// ExportToFlamebearer exports the flamegraph to a Flamebearer struct.
+func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *commonv1.ProfileType) *flamebearer.FlamebearerProfile {
+	unit := metadata.Units(profileType.SampleUnit)
+	sampleRate := uint32(100)
+
+	switch profileType.SampleType {
+	case "inuse_objects", "alloc_objects", "goroutine", "samples":
+		unit = metadata.ObjectsUnits
+	case "cpu":
+		unit = metadata.SamplesUnits
+		sampleRate = uint32(100000000)
+
+	}
+	levels := make([][]int, len(fg.Levels))
+	for i := range levels {
+		levels[i] = lo.Map(fg.Levels[i].Values, func(v int64, i int) int { return int(v) })
+	}
+	return &flamebearer.FlamebearerProfile{
+		Version: 1,
+		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+			Flamebearer: flamebearer.FlamebearerV1{
+				Names:    fg.Names,
+				NumTicks: int(fg.Total),
+				MaxSelf:  int(fg.MaxSelf),
+				Levels:   levels,
+			},
+			Metadata: flamebearer.FlamebearerMetadataV1{
+				Format:     "single",
+				Units:      unit,
+				Name:       profileType.SampleType,
+				SampleRate: sampleRate,
+			},
+		},
 	}
 }

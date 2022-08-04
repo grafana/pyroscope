@@ -19,7 +19,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
@@ -57,7 +56,12 @@ func (q *Querier) LabelValuesHandler(w http.ResponseWriter, req *http.Request) {
 			res = append(res, t.ID)
 		}
 	} else {
-		res, err = q.LabelValues(req.Context(), label)
+		response, err := q.LabelValues(req.Context(), connect.NewRequest(&querierv1.LabelValuesRequest{}))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		res = response.Msg.Names
 	}
 
 	if err != nil {
@@ -77,18 +81,18 @@ func (q *Querier) RenderHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	selectParams, err := parseSelectProfilesRequest(req)
+	selectParams, profileType, err := parseSelectProfilesRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	flame, err := q.selectMerge(req.Context(), selectParams)
+	res, err := q.SelectMergeStacktraces(req.Context(), connect.NewRequest(selectParams))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Add("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(flame); err != nil {
+	if err := json.NewEncoder(w).Encode(ExportToFlamebearer(res.Msg.Flamegraph, profileType)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -213,10 +217,10 @@ func parseTime(s string) (time.Time, error) {
 }
 
 // render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
-func parseSelectProfilesRequest(req *http.Request) (*ingesterv1.SelectProfilesRequest, error) {
+func parseSelectProfilesRequest(req *http.Request) (*querierv1.SelectMergeStacktracesRequest, *commonv1.ProfileType, error) {
 	selector, ptype, err := parseQuery(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// default start and end to now-1h
@@ -226,16 +230,16 @@ func parseSelectProfilesRequest(req *http.Request) (*ingesterv1.SelectProfilesRe
 	if from := req.Form.Get("from"); from != "" {
 		from, err := parseRelativeTime(from)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse from: %w", err)
+			return nil, nil, fmt.Errorf("failed to parse from: %w", err)
 		}
 		start = end.Add(-from)
 	}
-	return &ingesterv1.SelectProfilesRequest{
+	return &querierv1.SelectMergeStacktracesRequest{
 		Start:         int64(start),
 		End:           int64(end),
 		LabelSelector: selector,
-		Type:          ptype,
-	}, nil
+		ProfileTypeID: ptype.ID,
+	}, ptype, nil
 }
 
 func parseQuery(req *http.Request) (string, *commonv1.ProfileType, error) {

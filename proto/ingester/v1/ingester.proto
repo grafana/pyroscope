@@ -35,7 +35,7 @@ message FlushRequest {}
 message FlushResponse {}
 
 message SelectProfilesRequest {
-  string labelSelector = 1;
+  string label_selector = 1;
   common.v1.ProfileType type = 2;
   int64 start = 3;
   int64 end = 4;
