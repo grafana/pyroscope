@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/samber/lo"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -140,8 +141,27 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 }
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
-	// todo
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]*commonv1.Labels, error) {
+		res, err := ic.Series(ctx, connect.NewRequest(&ingestv1.SeriesRequest{
+			Matchers: req.Msg.Matchers,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.LabelsSet, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&querierv1.SeriesResponse{
+		LabelsSet: lo.UniqBy(
+			lo.FlatMap(responses, func(r responseFromIngesters[[]*commonv1.Labels], _ int) []*commonv1.Labels {
+				return r.response
+			}),
+			func(t *commonv1.Labels) uint64 {
+				return firemodel.Labels(t.Labels).Hash()
+			}),
+	}), nil
 }
 
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {

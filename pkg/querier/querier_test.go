@@ -97,6 +97,42 @@ func Test_QueryLabelValues(t *testing.T) {
 	require.Equal(t, []string{"bar", "buzz", "foo"}, out.Msg.Names)
 }
 
+func Test_Series(t *testing.T) {
+	foobarlabels := firemodel.NewLabelsBuilder(nil).Set("foo", "bar")
+	foobuzzlabels := firemodel.NewLabelsBuilder(nil).Set("foo", "buzz")
+	req := connect.NewRequest(&querierv1.SeriesRequest{Matchers: []string{`{foo="bar"}`}})
+	ingesterReponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*commonv1.Labels{
+		{Labels: foobarlabels.Labels()},
+		{Labels: foobuzzlabels.Labels()},
+	}})
+	querier, err := New(Config{
+		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+	}, testutil.NewMockRing([]ring.InstanceDesc{
+		{Addr: "1"},
+		{Addr: "2"},
+		{Addr: "3"},
+	}, 3), func(addr string) (client.PoolClient, error) {
+		q := newFakeQuerier()
+		switch addr {
+		case "1":
+			q.On("Series", mock.Anything, mock.Anything).Return(ingesterReponse, nil)
+		case "2":
+			q.On("Series", mock.Anything, mock.Anything).Return(ingesterReponse, nil)
+		case "3":
+			q.On("Series", mock.Anything, mock.Anything).Return(ingesterReponse, nil)
+		}
+		return q, nil
+	}, log.NewLogfmtLogger(os.Stdout))
+
+	require.NoError(t, err)
+	out, err := querier.Series(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, []*commonv1.Labels{
+		{Labels: foobarlabels.Labels()},
+		{Labels: foobuzzlabels.Labels()},
+	}, out.Msg.LabelsSet)
+}
+
 func Test_SelectMergeStacktraces(t *testing.T) {
 	req := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 		LabelSelector: `{app="foo"}`,
@@ -227,6 +263,22 @@ func (f *fakeQuerierIngester) SelectProfiles(ctx context.Context, req *connect.R
 	)
 	if args[0] != nil {
 		res = args[0].(*connect.Response[ingestv1.SelectProfilesResponse])
+	}
+	if args[1] != nil {
+		err = args.Get(1).(error)
+	}
+
+	return res, err
+}
+
+func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	var (
+		args = f.Called(ctx, req)
+		res  *connect.Response[ingestv1.SeriesResponse]
+		err  error
+	)
+	if args[0] != nil {
+		res = args[0].(*connect.Response[ingestv1.SeriesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)

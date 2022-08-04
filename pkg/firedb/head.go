@@ -442,6 +442,35 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 	}), err
 }
 
+func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	selectors := make([][]*labels.Matcher, 0, len(req.Msg.Matchers))
+	for _, m := range req.Msg.Matchers {
+		s, err := parser.ParseMetricSelector(m)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "failed to label selector")
+		}
+		selectors = append(selectors, s)
+	}
+	response := &ingestv1.SeriesResponse{}
+	uniqu := map[model.Fingerprint]struct{}{}
+	for _, selector := range selectors {
+		if err := h.index.forMatchingLabels(selector, func(lbs firemodel.Labels, fp model.Fingerprint) error {
+			if _, ok := uniqu[fp]; ok {
+				return nil
+			}
+			uniqu[fp] = struct{}{}
+			response.LabelsSet = append(response.LabelsSet, &commonv1.Labels{Labels: lbs})
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+	sort.Slice(response.LabelsSet, func(i, j int) bool {
+		return firemodel.CompareLabelPairs(response.LabelsSet[i].Labels, response.LabelsSet[j].Labels) < 0
+	})
+	return connect.NewResponse(response), nil
+}
+
 func (h *Head) Flush(ctx context.Context) error {
 	if err := h.index.WriteTo(ctx, filepath.Join(h.blockPath, "index.tsdb")); err != nil {
 		return errors.Wrap(err, "flushing of index")

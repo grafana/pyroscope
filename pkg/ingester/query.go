@@ -21,6 +21,11 @@ func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 	return i.fireDB.Head().ProfileTypes(ctx, req)
 }
 
+// Series returns labels series for the given set of matchers.
+func (i *Ingester) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	return i.fireDB.Head().Series(ctx, req)
+}
+
 /*
 func (i *Ingester) SymbolizeStacktraces(ctx context.Context, req *connect.Request[ingestv1.SymbolizeStacktraceRequest]) (*connect.Response[ingestv1.SymbolizeStacktraceResponse], error) {
 	return nil, errors.New("not implemented")
