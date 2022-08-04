@@ -220,6 +220,14 @@ function Table({
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
 
+  const handleTableRowClick = (value: string) => {
+    if (value !== groupByTagValue) {
+      handleGroupByTagValueChange(value);
+    } else {
+      handleGroupByTagValueChange(appWithoutTagsWhereDropdownOptionName);
+    }
+  };
+
   return (
     <>
       <div className={styles.tableDescription}>
