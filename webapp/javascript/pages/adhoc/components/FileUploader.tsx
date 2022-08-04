@@ -67,7 +67,7 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
           )}
         </div>
       </section>
-      <div>
+      <div className={styles.uploadWrapper}>
         <Button
           kind="primary"
           disabled={!file}
