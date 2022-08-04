@@ -305,6 +305,7 @@ function Table({
                 whereDropdownItems={whereDropdownItems}
                 groupByTag={groupByTag}
                 appName={appName}
+                /* eslint-disable-next-line react/jsx-props-no-spreading */
                 {...linkTagsSelectModalData}
                 setLinkTagsSelectModalData={setLinkTagsSelectModalData}
               />
