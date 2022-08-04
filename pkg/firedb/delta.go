@@ -140,7 +140,7 @@ func deltaSamples(highest, new []*schemav1.Sample, idx []int) []*schemav1.Sample
 					n.Values[k] -= s.Values[k]
 					s.Values[k] = newMax
 				} else {
-					n.Values[k] = 0
+					s.Values[k] = n.Values[k]
 				}
 			}
 			continue
