@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.26.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.25.0...@pyroscope/webapp@1.26.0) (2022-08-05)
+
+
+### Features
+
+* enhance tag explorer view ([#1329](https://github.com/pyroscope-io/pyroscope/issues/1329)) ([7d66d75](https://github.com/pyroscope-io/pyroscope/commit/7d66d750ba68d27a5046751221dd51d465a08488))
+
+
+
+
+
 # [1.25.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.5...@pyroscope/webapp@1.25.0) (2022-08-05)
 
 

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.18.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.17.3...@pyroscope/flamegraph@0.18.0) (2022-08-05)
+
+
+### Features
+
+* enhance tag explorer view ([#1329](https://github.com/pyroscope-io/pyroscope/issues/1329)) ([7d66d75](https://github.com/pyroscope-io/pyroscope/commit/7d66d750ba68d27a5046751221dd51d465a08488))
+
+
+
+
+
 ## [0.17.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.17.2...@pyroscope/flamegraph@0.17.3) (2022-08-05)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
