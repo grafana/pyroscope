@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.27.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.26.0...@pyroscope/webapp@1.27.0) (2022-08-05)
+
+
+### Features
+
+* **webapp:** break adhoc ui upload into 2 steps ([#1352](https://github.com/pyroscope-io/pyroscope/issues/1352)) ([9c15298](https://github.com/pyroscope-io/pyroscope/commit/9c15298251048e06a96f738b85f2915326c44f25))
+
+
+
+
+
 # [1.26.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.25.0...@pyroscope/webapp@1.26.0) (2022-08-05)
 
 
