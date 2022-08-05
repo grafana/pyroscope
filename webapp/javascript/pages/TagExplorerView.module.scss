@@ -11,6 +11,8 @@
   }
 
   .tableDescription {
+    display: flex;
+    justify-content: space-between;
     margin: 0 10px 10px;
   }
 
@@ -19,6 +21,38 @@
     font-weight: 500;
     font-size: 18px;
     margin-right: 5px;
+  }
+
+  .buttons {
+    position: relative;
+
+    a,
+    .buttonName {
+      cursor: pointer;
+      padding: 8px 6px;
+      margin-left: 5px;
+      text-decoration: none;
+      border: 1px solid var(--ps-ui-border);
+      color: var(--ps-neutral-2);
+      background-color: var(--ps-ui-element-bg-primary);
+      border-radius: 4px;
+
+      &:hover {
+        background-color: var(--ps-ui-element-bg-highlight);
+      }
+    }
+
+    .buttonName {
+      position: relative;
+      line-height: initial;
+      padding: 8px 20px 8px 6px;
+
+      &:after {
+        content: '▾';
+        position: absolute;
+        right: 5px;
+      }
+    }
   }
 
   .query {
@@ -58,6 +92,7 @@
         align-items: center;
 
         .tagColor {
+          flex-shrink: 0;
           display: inline-block;
           height: 10px;
           width: 10px;

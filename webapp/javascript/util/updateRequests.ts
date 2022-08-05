@@ -8,6 +8,7 @@ export function buildRenderURL(
     refreshToken?: string;
     maxNodes?: string | number;
     groupBy?: string;
+    groupByValue?: string;
   },
   fromOverride?: string,
   untilOverride?: string
@@ -38,6 +39,10 @@ export function buildRenderURL(
 
   if (state.groupBy) {
     url += `&groupBy=${state.groupBy}`;
+  }
+
+  if (state.groupByValue) {
+    url += `&groupByValue=${state.groupByValue}`;
   }
 
   return url;

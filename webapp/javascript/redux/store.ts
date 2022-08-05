@@ -134,6 +134,12 @@ ReduxQuerySync({
         state.continuous.tagExplorerView.groupByTag,
       action: continuousActions.setTagExplorerViewGroupByTag,
     },
+    groupByValue: {
+      defaultValue: '',
+      selector: (state: RootState) =>
+        state.continuous.tagExplorerView.groupByTagValue,
+      action: continuousActions.setTagExplorerViewGroupByTagValue,
+    },
   },
   initialTruth: 'location',
   replaceState: false,

@@ -5,14 +5,21 @@ import styles from './Legend.module.scss';
 
 interface LegendProps {
   groups: TimelineGroupData[];
+  handleGroupByTagValueChange: (groupByTagValue: string) => void;
 }
 
-function Legend({ groups }: LegendProps) {
+function Legend({ groups, handleGroupByTagValueChange }: LegendProps) {
   return (
-    <div className={styles.legend}>
+    <div data-testid="legend" className={styles.legend}>
       {groups.map(({ tagName, color }) => (
-        <div className={styles.tagName} key={tagName}>
+        <div
+          data-testid="legend-item"
+          className={styles.tagName}
+          key={tagName}
+          onClick={() => handleGroupByTagValueChange(tagName)}
+        >
           <span
+            data-testid="legend-item-color"
             className={styles.tagColor}
             style={{ backgroundColor: color?.toString() }}
           />

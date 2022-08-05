@@ -1,19 +1,25 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { NavLink, useLocation, Redirect } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
+import OutsideClickHandler from 'react-outside-click-handler';
 
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
+import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@webapp/components/TimelineChartWrapper';
 import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import { appendLabelToQuery } from '@webapp/util/query';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import {
   actions,
   setDateRange,
@@ -24,9 +30,11 @@ import {
   TagsState,
   fetchTagExplorerView,
   fetchTagExplorerViewProfile,
+  appWithoutTagsWhereDropdownOptionName,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import { calculateMean, calculateStdDeviation } from './math';
+import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
 
@@ -118,6 +126,11 @@ function TagExplorerView() {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
   };
 
+  const exportFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    activeTagProfile,
+    groupByTag,
+    groupByTagValue
+  );
   // when there's no groupByTag value backend returns groups with single "*" group,
   // which is "application without any tag" group. when backend returns multiple groups,
   // "*" group samples array is filled with zeros (not longer valid application data).
@@ -127,15 +140,29 @@ function TagExplorerView() {
       ? [{ ...groupsData[0], tagName: appName.unwrapOr('') }]
       : groupsData.filter((a) => a.tagName !== '*');
 
+  // filteredGroupsData has single "application without tags" group for initial view
+  // its not "real" group so we filter it
+  const whereDropdownItems = filteredGroupsData.reduce((acc, group) => {
+    if (group.tagName === appName.unwrapOr('')) {
+      return acc;
+    }
+
+    acc.push(group.tagName);
+    return acc;
+  }, [] as string[]);
+
   return (
-    <div className={styles.tagExplorerView}>
+    <div className={styles.tagExplorerView} data-testid="tag-explorer-view">
       <Toolbar hideTagsBar />
       <Box>
         <ExploreHeader
           appName={appName}
           tags={tags}
+          whereDropdownItems={whereDropdownItems}
           selectedTag={tagExplorerView.groupByTag}
-          handleTagChange={handleGroupedByTagChange}
+          selectedTagValue={tagExplorerView.groupByTagValue}
+          handleGroupByTagChange={handleGroupedByTagChange}
+          handleGroupByTagValueChange={handleGroupByTagValueChange}
         />
         <TimelineChartWrapper
           mode="multiple"
@@ -143,7 +170,14 @@ function TagExplorerView() {
           data-testid="timeline-explore-page"
           id="timeline-chart-explore-page"
           timelineGroups={filteredGroupsData}
+          // to not "dim" timelines when "All" option is selected
+          activeGroup={
+            groupByTagValue !== appWithoutTagsWhereDropdownOptionName
+              ? groupByTagValue
+              : ''
+          }
           showTagsLegend={filteredGroupsData.length > 1}
+          handleGroupByTagValueChange={handleGroupByTagValueChange}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
           height="125px"
           format="lines"
@@ -153,6 +187,7 @@ function TagExplorerView() {
         {appName.isJust && (
           <Table
             appName={appName.value}
+            whereDropdownItems={whereDropdownItems}
             groupByTag={groupByTag}
             groupByTagValue={groupByTagValue}
             groupsData={filteredGroupsData}
@@ -160,38 +195,142 @@ function TagExplorerView() {
           />
         )}
       </Box>
-      {(groupByTag === '' || groupByTagValue) && (
-        <Box>
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={activeTagProfile}
-            colorMode={colorMode}
-          />
-        </Box>
-      )}
+      <Box>
+        <FlamegraphRenderer
+          showCredit={false}
+          profile={activeTagProfile}
+          colorMode={colorMode}
+          ExportData={
+            activeTagProfile && (
+              <ExportData
+                flamebearer={activeTagProfile}
+                exportPNG
+                exportJSON
+                exportPprof
+                exportHTML
+                exportFlamegraphDotCom
+                exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+              />
+            )
+          }
+        />
+      </Box>
     </div>
   );
 }
 
+const defaultLinkTagsSelectModalData = {
+  baselineTag: '',
+  comparisonTag: '',
+  linkName: '',
+  isModalOpen: false,
+  shouldRedirect: false,
+};
+
 function Table({
   appName,
+  whereDropdownItems,
   groupByTag,
   groupByTagValue,
   groupsData,
   handleGroupByTagValueChange,
 }: {
   appName: string;
+  whereDropdownItems: string[];
   groupByTag: string;
   groupByTagValue: string | undefined;
   groupsData: TimelineGroupData[];
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
+  const [linkTagsSelectModalData, setLinkTagsSelectModalData] = useState(
+    defaultLinkTagsSelectModalData
+  );
+  const handleOutsideModalClick = () => {
+    setLinkTagsSelectModalData(defaultLinkTagsSelectModalData);
+  };
+
+  const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
+
+  const handleTableRowClick = (value: string) => {
+    if (value !== groupByTagValue) {
+      handleGroupByTagValueChange(value);
+    } else {
+      handleGroupByTagValueChange(appWithoutTagsWhereDropdownOptionName);
+    }
+  };
+
+  const handleLinkModalOpen = (linkName: 'Comparison' | 'Diff') => {
+    setLinkTagsSelectModalData((currState) => ({
+      ...currState,
+      isModalOpen: true,
+      linkName,
+    }));
+  };
+
+  if (linkTagsSelectModalData.shouldRedirect) {
+    return (
+      <Redirect
+        to={
+          (linkTagsSelectModalData.linkName === 'Diff'
+            ? PAGES.COMPARISON_DIFF_VIEW
+            : PAGES.COMPARISON_VIEW) + search
+        }
+      />
+    );
+  }
+
+  const getSingleViewSearch = () => {
+    if (!groupByTagValue) return search;
+
+    const searchParams = new URLSearchParams(search);
+    searchParams.delete('query');
+    searchParams.set(
+      'query',
+      appendLabelToQuery(`${appName}{}`, groupByTag, groupByTagValue)
+    );
+    return `?${searchParams.toString()}`;
+  };
 
   return (
     <>
-      <div className={styles.tableDescription}>
+      <div className={styles.tableDescription} data-testid="explore-table">
         <span className={styles.title}>{appName} Descriptive Statistics</span>
+        <div className={styles.buttons}>
+          <NavLink
+            to={{
+              pathname: PAGES.CONTINOUS_SINGLE_VIEW,
+              search: getSingleViewSearch(),
+            }}
+            exact
+          >
+            Single
+          </NavLink>
+          <button
+            className={styles.buttonName}
+            onClick={() => handleLinkModalOpen('Comparison')}
+          >
+            Comparison
+          </button>
+          <button
+            className={styles.buttonName}
+            onClick={() => handleLinkModalOpen('Diff')}
+          >
+            Diff
+          </button>
+          {linkTagsSelectModalData.isModalOpen && (
+            <OutsideClickHandler onOutsideClick={handleOutsideModalClick}>
+              <ViewTagsSelectLinkModal
+                whereDropdownItems={whereDropdownItems}
+                groupByTag={groupByTag}
+                appName={appName}
+                /* eslint-disable-next-line react/jsx-props-no-spreading */
+                {...linkTagsSelectModalData}
+                setLinkTagsSelectModalData={setLinkTagsSelectModalData}
+              />
+            </OutsideClickHandler>
+          )}
+        </div>
       </div>
       <table className={styles.tagExplorerTable}>
         <thead>
@@ -215,7 +354,7 @@ function Table({
                 onClick={
                   // prevent clicking on single "application without tags" group row
                   tagName !== appName
-                    ? () => handleGroupByTagValueChange(tagName)
+                    ? () => handleTableRowClick(tagName)
                     : undefined
                 }
                 key={tagName}
@@ -245,40 +384,70 @@ function Table({
 
 function ExploreHeader({
   appName,
+  whereDropdownItems,
   tags,
   selectedTag,
-  handleTagChange,
+  selectedTagValue,
+  handleGroupByTagChange,
+  handleGroupByTagValueChange,
 }: {
   appName: Maybe<string>;
+  whereDropdownItems: string[];
   tags: TagsState;
   selectedTag: string;
-  handleTagChange: (value: string) => void;
+  selectedTagValue: string;
+  handleGroupByTagChange: (value: string) => void;
+  handleGroupByTagValueChange: (value: string) => void;
 }) {
   const tagKeys = Object.keys(tags.tags);
-  const dropdownItems = tagKeys.length > 0 ? tagKeys : ['No tags available'];
+  const groupByDropdownItems =
+    tagKeys.length > 0 ? tagKeys : ['No tags available'];
 
-  const handleClick = (e: ClickEvent) => {
-    handleTagChange(e.value);
+  const handleGroupByClick = (e: ClickEvent) => {
+    handleGroupByTagChange(e.value);
+  };
+
+  const handleGroupByValueClick = (e: ClickEvent) => {
+    handleGroupByTagValueChange(e.value);
   };
 
   return (
-    <div className={styles.header}>
+    <div className={styles.header} data-testid="explore-header">
       <span className={styles.title}>{appName.unwrapOr('')}</span>
       <div className={styles.query}>
         <span className={styles.selectName}>grouped by</span>
         <Dropdown
           label="select tag"
           value={selectedTag ? `tag: ${selectedTag}` : 'select tag'}
-          onItemClick={tagKeys.length > 0 ? handleClick : undefined}
+          onItemClick={tagKeys.length > 0 ? handleGroupByClick : undefined}
           menuButtonClassName={
             selectedTag === '' ? styles.notSelectedTagDropdown : undefined
           }
         >
-          {dropdownItems.map((tagName) => (
+          {groupByDropdownItems.map((tagName) => (
             <MenuItem key={tagName} value={tagName}>
               {tagName}
             </MenuItem>
           ))}
+        </Dropdown>
+      </div>
+      <div className={styles.query}>
+        <span className={styles.selectName}>where</span>
+        <Dropdown
+          label="select where"
+          value={`${selectedTag ? `${selectedTag} = ` : selectedTag} ${
+            selectedTagValue || appWithoutTagsWhereDropdownOptionName
+          }`}
+          onItemClick={handleGroupByValueClick}
+        >
+          {/* always show "All" option */}
+          {[appWithoutTagsWhereDropdownOptionName, ...whereDropdownItems].map(
+            (tagGroupName) => (
+              <MenuItem key={tagGroupName} value={tagGroupName}>
+                {tagGroupName}
+              </MenuItem>
+            )
+          )}
         </Dropdown>
       </div>
     </div>

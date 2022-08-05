@@ -101,6 +101,7 @@ export async function renderDiff(
 
 interface renderExploreProps extends Omit<renderSingleProps, 'maxNodes'> {
   groupBy: string;
+  grouByTagValue: string;
 }
 
 export interface RenderExploreOutput {

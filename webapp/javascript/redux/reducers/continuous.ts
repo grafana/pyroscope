@@ -14,7 +14,7 @@ import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import type { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
-import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
+import { appendLabelToQuery } from '@webapp/util/query';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
@@ -257,40 +257,13 @@ export const fetchTagExplorerView = createAsyncThunk<
       from: state.continuous.from,
       until: state.continuous.until,
       groupBy: state.continuous.tagExplorerView.groupByTag,
+      grouByTagValue: state.continuous.tagExplorerView.groupByTagValue,
       refreshToken: state.continuous.refreshToken,
     },
     tagExplorerViewAbortController
   );
 
   if (res.isOk) {
-    const isGroupBySelected =
-      state.continuous.tagExplorerView.groupByTag !== '';
-
-    if (isGroupBySelected) {
-      // * is "application without tags" group. we need only "real" groups names
-      const firstGroupName = Object.keys(res.value.groups).filter(
-        (groupName) => groupName !== '*'
-      )[0];
-
-      // additionaly load flamegraph profile for first group (first group is selected by default)
-      const profileResponse = await renderSingle({
-        ...state.continuous,
-        query: appendLabelToQuery(
-          state.continuous.query,
-          state.continuous.tagExplorerView.groupByTag,
-          firstGroupName
-        ),
-      });
-
-      if (profileResponse.isOk) {
-        return Promise.resolve({
-          ...res.value,
-          profile: profileResponse.value.profile,
-          groupByTagValue: firstGroupName,
-        });
-      }
-    }
-
     return Promise.resolve(res.value);
   }
 
@@ -309,6 +282,7 @@ export const fetchTagExplorerView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
+export const appWithoutTagsWhereDropdownOptionName = 'All';
 export const fetchTagExplorerViewProfile = createAsyncThunk<
   RenderOutput,
   null,
@@ -322,14 +296,22 @@ export const fetchTagExplorerViewProfile = createAsyncThunk<
   thunkAPI.signal = tagExplorerViewProfileAbortController.signal;
 
   const state = thunkAPI.getState();
+  const { groupByTag, groupByTagValue } = state.continuous.tagExplorerView;
+  // if "All" option is selected we dont need to modify query to fetch profile
+  const queryProps =
+    appWithoutTagsWhereDropdownOptionName === groupByTagValue
+      ? { groupBy: groupByTag, query: state.continuous.query }
+      : {
+          query: appendLabelToQuery(
+            state.continuous.query,
+            state.continuous.tagExplorerView.groupByTag,
+            state.continuous.tagExplorerView.groupByTagValue
+          ),
+        };
   const res = await renderSingle(
     {
       ...state.continuous,
-      query: appendLabelToQuery(
-        state.continuous.query,
-        state.continuous.tagExplorerView.groupByTag,
-        state.continuous.tagExplorerView.groupByTagValue
-      ),
+      ...queryProps,
     },
     tagExplorerViewProfileAbortController
   );
@@ -664,13 +646,11 @@ export const continuousSlice = createSlice({
     },
     setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTag = action.payload;
+      state.tagExplorerView.groupByTagValue =
+        appWithoutTagsWhereDropdownOptionName;
     },
     setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
-      if (state.tagExplorerView.groupByTagValue === action.payload) {
-        state.tagExplorerView.groupByTagValue = '';
-      } else {
-        state.tagExplorerView.groupByTagValue = action.payload;
-      }
+      state.tagExplorerView.groupByTagValue = action.payload;
     },
     setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
