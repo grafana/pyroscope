@@ -17,6 +17,7 @@ import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import { appendLabelToQuery } from '@webapp/util/query';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import {
@@ -279,12 +280,30 @@ function Table({
     );
   }
 
+  const getSingleViewSearch = () => {
+    if (!groupByTagValue) return search;
+
+    const searchParams = new URLSearchParams(search);
+    searchParams.delete('query');
+    searchParams.set(
+      'query',
+      appendLabelToQuery(`${appName}{}`, groupByTag, groupByTagValue)
+    );
+    return `?${searchParams.toString()}`;
+  };
+
   return (
     <>
       <div className={styles.tableDescription}>
         <span className={styles.title}>{appName} Descriptive Statistics</span>
         <div className={styles.buttons}>
-          <NavLink to={{ pathname: PAGES.CONTINOUS_SINGLE_VIEW, search }} exact>
+          <NavLink
+            to={{
+              pathname: PAGES.CONTINOUS_SINGLE_VIEW,
+              search: getSingleViewSearch(),
+            }}
+            exact
+          >
             Single
           </NavLink>
           <button
