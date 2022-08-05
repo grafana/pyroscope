@@ -1,7 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Maybe } from '@webapp/util/fp';
 import Button from '@webapp/ui/Button';
 import type { DropzoneOptions } from 'react-dropzone';
 
