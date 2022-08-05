@@ -1,6 +1,6 @@
 {
   "name": "@pyroscope/flamegraph",
-  "version": "0.17.2",
+  "version": "0.17.3",
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "_types": "since we are importing stuff from webapp (ui components), tsc ends up generating a weird file tree",
@@ -27,6 +27,6 @@
     "true-myth": "^5.1.2"
   },
   "devDependencies": {
-    "@pyroscope/models": "^0.4.1"
+    "@pyroscope/models": "^0.4.2"
   }
 }
