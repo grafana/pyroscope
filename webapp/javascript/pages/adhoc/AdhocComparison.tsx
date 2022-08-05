@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import 'react-dom';
 
 import { Maybe } from '@webapp/util/fp';
@@ -14,7 +14,6 @@ import ExportData from '@webapp/components/ExportData';
 import {
   fetchAllProfiles,
   fetchProfile,
-  selectAdhocUploadedFilename,
   selectedSelectedProfileId,
   selectProfile,
   selectShared,
@@ -27,8 +26,8 @@ import FileUploader from './components/FileUploader';
 function AdhocComparison() {
   const dispatch = useAppDispatch();
 
-  const leftFilename = useAppSelector(selectAdhocUploadedFilename('left'));
-  const rightFilename = useAppSelector(selectAdhocUploadedFilename('right'));
+  const [tabIndexLeft, setTabIndexLeft] = useState(0);
+  const [tabIndexRight, setTabIndexRight] = useState(0);
 
   const leftProfile = useAppSelector(selectProfile('left'));
   const rightProfile = useAppSelector(selectProfile('right'));
@@ -95,17 +94,20 @@ function AdhocComparison() {
           data-testid="comparison-container"
         >
           <Box className={adhocComparisonStyles.comparisonPane}>
-            <Tabs>
+            <Tabs
+              selectedIndex={tabIndexLeft}
+              onSelect={(index) => setTabIndexLeft(index)}
+            >
               <TabList>
                 <Tab>Upload</Tab>
                 <Tab>Pyroscope data</Tab>
               </TabList>
               <TabPanel>
                 <FileUploader
-                  filename={leftFilename}
                   className={adhocStyles.tabPanel}
-                  setFile={(file) => {
-                    dispatch(uploadFile({ file, side: 'left' }));
+                  setFile={async (file) => {
+                    await dispatch(uploadFile({ file, side: 'left' }));
+                    setTabIndexLeft(1);
                   }}
                 />
               </TabPanel>
@@ -126,7 +128,10 @@ function AdhocComparison() {
           </Box>
           {/* Right side */}
           <Box className={adhocComparisonStyles.comparisonPane}>
-            <Tabs>
+            <Tabs
+              selectedIndex={tabIndexRight}
+              onSelect={(index) => setTabIndexRight(index)}
+            >
               <TabList>
                 <Tab>Upload</Tab>
                 <Tab>Pyroscope data</Tab>
@@ -134,14 +139,14 @@ function AdhocComparison() {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  filename={rightFilename}
-                  setFile={(file) => {
-                    dispatch(
+                  setFile={async (file) => {
+                    await dispatch(
                       uploadFile({
                         file,
                         side: 'right',
                       })
                     );
+                    setTabIndexRight(1);
                   }}
                 />
               </TabPanel>

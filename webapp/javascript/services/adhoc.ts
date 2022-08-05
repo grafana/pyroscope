@@ -3,16 +3,25 @@ import { CustomError } from 'ts-custom-error';
 import { FlamebearerProfileSchema, Profile } from '@pyroscope/models/src';
 import { AllProfilesSchema, AllProfiles } from '@webapp/models/adhoc';
 import type { ZodError } from 'zod';
+import { z } from 'zod';
 import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 
+const uploadResponseSchema = z.object({
+  flamebearer: FlamebearerProfileSchema,
+  id: z.string().min(1),
+});
+type UploadResponse = z.infer<typeof uploadResponseSchema>;
+
 export async function upload(
   file: File
-): Promise<Result<Profile, FileToBase64Error | RequestError | ZodError>> {
+): Promise<
+  Result<UploadResponse, FileToBase64Error | RequestError | ZodError>
+> {
   // prepare body
   const b64 = await fileToBase64(file);
   if (b64.isErr) {
-    return Result.err<Profile, FileToBase64Error>(b64.error);
+    return Result.err<UploadResponse, FileToBase64Error>(b64.error);
   }
 
   const response = await request('/api/adhoc/v1/upload', {
@@ -22,7 +31,7 @@ export async function upload(
       profile: b64.value,
     }),
   });
-  return parseResponse<Profile>(response, FlamebearerProfileSchema);
+  return parseResponse(response, uploadResponseSchema);
 }
 
 export async function retrieve(
