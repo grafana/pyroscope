@@ -92,7 +92,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	}
 
 	diskPressure := health.DiskPressure{
-		Threshold: c.StorageDiskThreshold,
+		Threshold: c.MinFreeSpacePercentage,
 		Path:      c.StoragePath,
 	}
 

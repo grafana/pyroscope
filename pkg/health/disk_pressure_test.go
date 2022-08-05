@@ -16,30 +16,43 @@ var _ = Describe("DiskPressure", func() {
 		Expect(m.Message).To(BeEmpty())
 	})
 
-	It("does not fire if available is greater than the configured threshold", func() {
+	It("does not fire if available space is greater than the configured threshold", func() {
 		d := DiskPressure{
-			Threshold: 10,
+			Threshold: 5,
 		}
 		m, err := d.makeProbe(disk.UsageStats{
-			Total:     5 * bytesize.MB,
-			Available: 1 * bytesize.MB,
+			Total:     10 * bytesize.GB,
+			Available: 1 * bytesize.GB,
 		})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(m.Status).To(Equal(Healthy))
 		Expect(m.Message).To(BeEmpty())
 	})
 
-	It("fires if available is less than the configured threshold", func() {
+	It("fires if less than the configured threshold is available", func() {
 		d := DiskPressure{
 			Threshold: 5,
 		}
 		m, err := d.makeProbe(disk.UsageStats{
-			Total:     100 * bytesize.MB,
-			Available: 4 * bytesize.MB,
+			Total:     100 * bytesize.GB,
+			Available: 4 * bytesize.GB,
 		})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(m.Status).To(Equal(Critical))
-		Expect(m.Message).To(Equal("Disk space is running low: 4.00 MB available (4.0%)"))
+		Expect(m.Message).To(Equal("Disk space is running low: 4.00 GB available (4.0%)"))
+	})
+
+	It("fires if less than 1GB is available", func() {
+		d := DiskPressure{
+			Threshold: 5,
+		}
+		m, err := d.makeProbe(disk.UsageStats{
+			Total:     5 * bytesize.GB,
+			Available: bytesize.GB - 1,
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(m.Status).To(Equal(Critical))
+		Expect(m.Message).To(Equal("Disk space is running low: 1024.00 MB available (20.0%)"))
 	})
 
 	It("fires if available is less than the configured threshold", func() {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 )
 
@@ -11,6 +12,8 @@ var (
 	errZeroTotalSize          = errors.New("total disk size is zero")
 	errTotalLessThanAvailable = errors.New("total disk size is less than available space")
 )
+
+const minAvailSpace = bytesize.GB
 
 type DiskPressure struct {
 	Threshold float64
@@ -37,10 +40,18 @@ func (d DiskPressure) makeProbe(u disk.UsageStats) (StatusMessage, error) {
 		return m, errTotalLessThanAvailable
 	}
 	m.Status = Healthy
-	availPercent := 100 * float64(u.Available) / float64(u.Total)
-	if availPercent < d.Threshold {
-		m.Status = Critical
+	if u.Available < d.minRequired(u) {
+		availPercent := 100 * float64(u.Available) / float64(u.Total)
 		m.Message = fmt.Sprintf("Disk space is running low: %v available (%.1f%%)", u.Available, availPercent)
+		m.Status = Critical
 	}
 	return m, nil
+}
+
+func (d DiskPressure) minRequired(u disk.UsageStats) bytesize.ByteSize {
+	t := bytesize.ByteSize(float64(u.Total) / 100 * d.Threshold)
+	if t > minAvailSpace {
+		return t
+	}
+	return minAvailSpace
 }
