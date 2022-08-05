@@ -77,7 +77,7 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
             }
           }}
         >
-          Upload file
+          Save
         </Button>
       </div>
     </>
