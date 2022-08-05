@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React from 'react';
 import { Switch, Route, useRouteMatch, NavLink } from 'react-router-dom';
 import Box from '@webapp/ui/Box';
@@ -25,8 +23,8 @@ function Settings() {
   const { path, url } = useRouteMatch();
   const currentUser = useAppSelector(selectCurrentUser);
 
-  const isAdmin = (user: User) => user && user.role === 'Admin';
-  const isExternal = (user: User) => user && user.isExternal;
+  const isAdmin = (user?: User) => user && user.role === 'Admin';
+  const isExternal = (user?: User) => user && user.isExternal;
   return (
     <div className="pyroscope-app">
       <h1>Settings</h1>
@@ -99,22 +97,22 @@ function Settings() {
       <div className="main-wrapper">
         <Box className={styles.settingsWrapper}>
           <Switch>
-            <Route exact path={path}>
+            <Route path={path}>
               <Preferences />
             </Route>
             <Route path={`${path}/security`}>
               <Security />
             </Route>
-            <Route exact path={`${path}/users`}>
+            <Route path={`${path}/users`}>
               <Users />
             </Route>
-            <Route exact path={`${path}/users/add`}>
+            <Route path={`${path}/users/add`}>
               <UserAddForm />
             </Route>
-            <Route exact path={`${path}/api-keys`}>
+            <Route path={`${path}/api-keys`}>
               <ApiKeys />
             </Route>
-            <Route exact path={`${path}/api-keys/add`}>
+            <Route path={`${path}/api-keys/add`}>
               <APIKeyAddForm />
             </Route>
           </Switch>

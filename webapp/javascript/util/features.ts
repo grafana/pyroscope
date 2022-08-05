@@ -1,13 +1,13 @@
-// Features represents the list of UI experimental features
-// This interfaces serves for when we introduce
-// something more sofisticated than simply booleans
+// Features refers to configurations sent from the backend
 interface Features {
-  enableAdhocUI?: boolean;
-  googleEnabled?: boolean;
-  gitlabEnabled?: boolean;
-  githubEnabled?: boolean;
-  internalAuthEnabled?: boolean;
-  signupEnabled?: boolean;
+  enableAdhocUI: boolean;
+  googleEnabled: boolean;
+  gitlabEnabled: boolean;
+  githubEnabled: boolean;
+  internalAuthEnabled: boolean;
+  signupEnabled: boolean;
+  isAuthRequired: boolean;
+
   exportToFlamegraphDotComEnabled: boolean;
 }
 
@@ -51,3 +51,7 @@ export const isSignupEnabled = hasFeatures(window)
 export const isExportToFlamegraphDotComEnabled = hasFeatures(window)
   ? window.features.exportToFlamegraphDotComEnabled
   : true;
+
+export const isAuthRequired = hasFeatures(window)
+  ? window.features.isAuthRequired
+  : false;
