@@ -14,7 +14,7 @@ import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import type { Timeline } from '@webapp/models/timeline';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
-import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
+import { appendLabelToQuery } from '@webapp/util/query';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';

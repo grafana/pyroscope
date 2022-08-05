@@ -13,7 +13,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 import { Prism } from '@webapp/util/prism';
 import { Query, brandQuery } from '@webapp/models/query';
 import Input from '@webapp/ui/Input';
-import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
+import { appendLabelToQuery } from '@webapp/util/query';
 import styles from './TagsBar.module.css';
 
 interface TagsBarProps {

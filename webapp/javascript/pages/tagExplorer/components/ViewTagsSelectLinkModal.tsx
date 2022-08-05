@@ -2,7 +2,7 @@ import React, { Dispatch, SetStateAction } from 'react';
 
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { actions } from '@webapp/redux/reducers/continuous';
-import { appendLabelToQuery } from '@webapp/util/appendLabelToQuery';
+import { appendLabelToQuery } from '@webapp/util/query';
 import { brandQuery } from '@webapp/models/query';
 import styles from './ViewTagsSelectLinkModal.module.scss';
 
