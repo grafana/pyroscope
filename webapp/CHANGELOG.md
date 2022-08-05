@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.24.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.3...@pyroscope/webapp@1.24.4) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.24.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.2...@pyroscope/webapp@1.24.3) (2022-08-04)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.24.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.1...@pyroscope/webapp@1.24.2) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.24.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.0...@pyroscope/webapp@1.24.1) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.24.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.23.0...@pyroscope/webapp@1.24.0) (2022-08-03)
+
+
+### Features
+
+* add app dropdown footer ([#1340](https://github.com/pyroscope-io/pyroscope/issues/1340)) ([dc07d04](https://github.com/pyroscope-io/pyroscope/commit/dc07d04e28cdd821829eaf211a8543723b3956aa))
+
+
+
+
+
+# [1.23.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.22.0...@pyroscope/webapp@1.23.0) (2022-08-03)
+
+
+### Features
+
+* upload any arbitrary data (collapsed/pprof/json) via adhoc ui ([#1327](https://github.com/pyroscope-io/pyroscope/issues/1327)) ([6620888](https://github.com/pyroscope-io/pyroscope/commit/662088820b430abb2e4dcb9270cbaf62771ca601)), closes [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333) [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333)
+
+
+
+
+
 # [1.22.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.15...@pyroscope/webapp@1.22.0) (2022-07-29)
 
 

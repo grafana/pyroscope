@@ -21,6 +21,11 @@
   padding: 10px 0;
 }
 
+.selectorFooter {
+  height: 40px;
+  border-top: 1px solid var(--ps-ui-border);
+}
+
 .apps {
   display: flex;
   flex-direction: row;

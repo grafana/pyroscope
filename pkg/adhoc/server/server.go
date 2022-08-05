@@ -55,7 +55,7 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 		r.HandleFunc("/v1/profiles", s.Profiles)
 		r.HandleFunc("/v1/profile/{id:[0-9a-f]+}", s.Profile)
 		r.HandleFunc("/v1/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}", s.Diff)
-		r.HandleFunc("/v1/upload/", s.Upload)
+		r.HandleFunc("/v1/upload", s.Upload)
 		r.HandleFunc("/v1/upload-diff/", s.UploadDiff)
 	}
 	return r.ServeHTTP
