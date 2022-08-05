@@ -259,7 +259,7 @@ function Table({
     }
   };
 
-  const handleLinkModalOpen = (linkName: 'comparison' | 'diff') => {
+  const handleLinkModalOpen = (linkName: 'Comparison' | 'Diff') => {
     setLinkTagsSelectModalData((currState) => ({
       ...currState,
       isModalOpen: true,
@@ -271,7 +271,7 @@ function Table({
     return (
       <Redirect
         to={
-          (linkTagsSelectModalData.linkName === 'diff'
+          (linkTagsSelectModalData.linkName === 'Diff'
             ? PAGES.COMPARISON_DIFF_VIEW
             : PAGES.COMPARISON_VIEW) + search
         }
@@ -289,13 +289,13 @@ function Table({
           </NavLink>
           <button
             className={styles.buttonName}
-            onClick={() => handleLinkModalOpen('comparison')}
+            onClick={() => handleLinkModalOpen('Comparison')}
           >
             Comparison
           </button>
           <button
             className={styles.buttonName}
-            onClick={() => handleLinkModalOpen('diff')}
+            onClick={() => handleLinkModalOpen('Diff')}
           >
             Diff
           </button>

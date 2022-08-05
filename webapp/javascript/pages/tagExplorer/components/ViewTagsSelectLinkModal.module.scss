@@ -9,7 +9,6 @@
   border-radius: 4px;
 
   .modalHeader {
-    text-transform: uppercase;
     padding: 12px 10px;
   }
 
@@ -29,6 +28,8 @@
         display: inline-block;
         text-transform: uppercase;
         padding: 5px;
+        color: var(--ps-select-modal-title);
+        font-weight: 700;
       }
 
       .tags {
@@ -47,6 +48,7 @@
             border: none;
             padding: 10px 30px;
             width: 100%;
+            text-align: left;
           }
         }
       }

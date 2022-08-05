@@ -82,7 +82,7 @@ function ViewTagsSelectLink({
 
   return (
     <div className={styles.viewTagsSelectLinkModal}>
-      <div className={styles.modalHeader}>select tag for {linkName}</div>
+      <div className={styles.modalHeader}>Select Tags For {linkName}</div>
       <div className={styles.modalBody}>
         <div className={styles.side}>
           <span className={styles.title}>baseline</span>
