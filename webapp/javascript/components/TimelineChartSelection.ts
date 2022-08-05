@@ -50,6 +50,7 @@ type EventType = { pageX: number; pageY: number; which?: number };
       second: { x: -1, y: -1 },
       show: false,
       active: false,
+      selectingSide: null,
     };
 
     // FIXME: The drag handling implemented here should be
@@ -70,9 +71,79 @@ type EventType = { pageX: number; pageY: number; which?: number };
         >
       | null = null;
 
+    function getCursorPositionX(e: EventType) {
+      const plotOffset = plot.getPlotOffset();
+      const offset = plot.getPlaceholder().offset();
+      return clamp(0, e.pageX - offset.left - plotOffset.left, plot.width());
+    }
+
+    function getPlotSelection() {
+      // unlike function getSelection() which shows temp selection (it doesnt save any data between rerenders)
+      // this function returns left X and right X coords visible user selection (translates opts.grid.markings to X coords)
+      const o = plot.getOptions();
+      const axes = plot.getAxes();
+      const plotOffset = plot.getPlotOffset();
+      const extractedX = extractRange(axes, 'x');
+
+      return {
+        left:
+          Math.floor(extractedX.axis.p2c(o.grid.markings[0]?.xaxis.from)) +
+          plotOffset.left,
+        right:
+          Math.floor(extractedX.axis.p2c(o.grid.markings[0]?.xaxis.to)) +
+          plotOffset.left,
+      };
+    }
+
+    function getDragSide({
+      x,
+      leftSelectionX,
+      rightSelectionX,
+    }: {
+      x: number;
+      leftSelectionX: number;
+      rightSelectionX: number;
+    }) {
+      const plotOffset = plot.getPlotOffset();
+      const isLeftSelecting =
+        Math.abs(x + plotOffset.left - leftSelectionX) <= 5;
+      const isRightSelecting =
+        Math.abs(x + plotOffset.left - rightSelectionX) <= 5;
+
+      return isLeftSelecting ? 'left' : isRightSelecting ? 'right' : null;
+    }
+
+    function setCursor(type: string) {
+      $('canvas.flot-overlay').css('cursor', type);
+    }
+
     function onMouseMove(e: EventType) {
+      const o = plot.getOptions();
+
+      if (o?.selection?.selectionType === 'single') {
+        const { left, right } = getPlotSelection();
+        const clickX = getCursorPositionX(e);
+        const dragSide = getDragSide({
+          x: clickX,
+          leftSelectionX: left,
+          rightSelectionX: right,
+        });
+
+        if (dragSide) {
+          setCursor('ew-resize');
+        } else {
+          setCursor('crosshair');
+        }
+      }
+
       if (selection.active) {
         updateSelection(e);
+
+        if (selection.selectingSide) {
+          setCursor('grabbing');
+        } else {
+          setCursor('crosshair');
+        }
 
         plot.getPlaceholder().trigger('plotselecting', [getSelection()]);
       }
@@ -103,8 +174,33 @@ type EventType = { pageX: number; pageY: number; which?: number };
         };
       }
 
-      setSelectionPos(selection.first, e);
+      const offset = plot.getPlaceholder().offset();
+      const plotOffset = plot.getPlotOffset();
+      const { left, right } = getPlotSelection();
+      const clickX = getCursorPositionX(e);
+      const dragSide = getDragSide({
+        x: clickX,
+        leftSelectionX: left,
+        rightSelectionX: right,
+      });
 
+      if (dragSide) {
+        setCursor('grabbing');
+      }
+
+      if (dragSide === 'right') {
+        setSelectionPos(selection.first, {
+          pageX: left - plotOffset.left + offset.left + plotOffset.left,
+        } as EventType);
+      } else if (dragSide === 'left') {
+        setSelectionPos(selection.first, {
+          pageX: right - plotOffset.left + offset.left + plotOffset.left,
+        } as EventType);
+      } else {
+        setSelectionPos(selection.first, e);
+      }
+
+      (selection.selectingSide as 'left' | 'right' | null) = dragSide;
       selection.active = true;
 
       // this is a bit silly, but we have to use a closure to be
@@ -134,6 +230,8 @@ type EventType = { pageX: number; pageY: number; which?: number };
         plot.getPlaceholder().trigger('plotunselected', []);
         plot.getPlaceholder().trigger('plotselecting', [null]);
       }
+
+      setCursor('crosshair');
 
       return false;
     }
@@ -177,7 +275,7 @@ type EventType = { pageX: number; pageY: number; which?: number };
       return value < min ? min : value > max ? max : value;
     }
 
-    function setSelectionPos(pos: { x: any; y: any }, e: EventType) {
+    function setSelectionPos(pos: { x: number; y: number }, e: EventType) {
       var o = plot.getOptions();
       var offset = plot.getPlaceholder().offset();
       var plotOffset = plot.getPlotOffset();
@@ -303,8 +401,8 @@ type EventType = { pageX: number; pageY: number; which?: number };
     plot.hooks.drawOverlay.push(function (plot: PlotType, ctx: CtxType) {
       // draw selection
       if (selection.show && selectionIsSane()) {
-        var plotOffset = plot.getPlotOffset();
-        var o = plot.getOptions();
+        const plotOffset = plot.getPlotOffset();
+        const o = plot.getOptions();
 
         ctx.save();
         ctx.translate(plotOffset.left, plotOffset.top);
@@ -333,26 +431,34 @@ type EventType = { pageX: number; pageY: number; which?: number };
 
       if (opts?.selection?.selectionType === 'single') {
         const axes = plot.getAxes();
-        const xOffset = 8;
-        const yOffset = 8;
-        const extractedX = extractRange(axes, 'x');
+        const plotOffset = plot.getPlotOffset();
         const extractedY = extractRange(axes, 'y');
-        const leftX =
-          Math.floor(extractedX.axis.p2c(opts.grid.markings[0]?.xaxis.from)) +
-          xOffset;
-        const rightX =
-          Math.floor(extractedX.axis.p2c(opts.grid.markings[0]?.xaxis.to)) +
-          xOffset;
+        const { left, right } = getPlotSelection();
+
         const yMax =
-          Math.floor(extractedY.axis.p2c(extractedY.axis.min)) + yOffset;
-        const yMin = 0 + yOffset;
+          Math.floor(extractedY.axis.p2c(extractedY.axis.min)) + plotOffset.top;
+        const yMin = 0 + plotOffset.top;
 
         // draw selection overlay
         ctx.fillStyle = opts.selection.overlayColor || 'transparent';
-        ctx.fillRect(leftX, yMin, rightX - leftX, yMax - yOffset);
+        ctx.fillRect(left, yMin, right - left, yMax - plotOffset.top);
 
-        drawHorizontalSelectionLines({ ctx, opts, leftX, rightX, yMax, yMin });
-        drawVerticalSelectionLines({ ctx, opts, leftX, rightX, yMax, yMin });
+        drawHorizontalSelectionLines({
+          ctx,
+          opts,
+          leftX: left,
+          rightX: right,
+          yMax,
+          yMin,
+        });
+        drawVerticalSelectionLines({
+          ctx,
+          opts,
+          leftX: left,
+          rightX: right,
+          yMax,
+          yMin,
+        });
       }
     });
 
@@ -417,9 +523,11 @@ const drawVerticalSelectionLines = ({
     ctx.lineTo(leftX + subPixel, yMin);
     ctx.stroke();
 
+    const rectLeftStart = leftX - handleWidth / 2 + subPixel;
+
     drawRoundedRect(
       ctx,
-      leftX - handleWidth / 2 + subPixel,
+      rectLeftStart,
       yMax / 2 - handleHeight / 2 + 3,
       handleWidth,
       handleHeight,
@@ -440,9 +548,11 @@ const drawVerticalSelectionLines = ({
     ctx.lineTo(rightX + subPixel, yMin);
     ctx.stroke();
 
+    const leftRectFinish = rightX - handleWidth / 2 + subPixel;
+
     drawRoundedRect(
       ctx,
-      rightX - handleWidth / 2 + subPixel,
+      leftRectFinish,
       yMax / 2 - handleHeight / 2 + 3,
       handleWidth,
       handleHeight,

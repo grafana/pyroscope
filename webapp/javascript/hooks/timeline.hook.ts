@@ -12,7 +12,7 @@ export const leftColor = Color('rgb(208, 102, 212)');
 // Blue
 export const rightColor = Color('rgb(19, 152, 246)');
 // Greyish
-export const selectionColor = Color('rgb(189, 195, 199)');
+export const selectionColor = Color('rgb(240, 240, 240)');
 
 export default function useTimelines() {
   const dispatch = useAppDispatch();
