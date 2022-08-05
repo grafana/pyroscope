@@ -8,7 +8,7 @@ import styles from './ViewTagsSelectLinkModal.module.scss';
 
 const emptyTagsTag = 'No tags available';
 
-interface ViewTagsSelectModalProps {
+export interface ViewTagsSelectModalProps {
   whereDropdownItems: string[];
   groupByTag: string;
   appName: string;
@@ -26,7 +26,7 @@ interface ViewTagsSelectModalProps {
   linkName: string;
 }
 
-function ViewTagsSelectLink({
+function ViewTagsSelectLinkModal({
   whereDropdownItems,
   groupByTag,
   appName,
@@ -81,7 +81,7 @@ function ViewTagsSelectLink({
   };
 
   return (
-    <div className={styles.viewTagsSelectLinkModal}>
+    <div data-testid="link-modal" className={styles.viewTagsSelectLinkModal}>
       <div className={styles.modalHeader}>Select Tags For {linkName}</div>
       <div className={styles.modalBody}>
         <div className={styles.side}>
@@ -139,4 +139,4 @@ function ViewTagsSelectLink({
   );
 }
 
-export default ViewTagsSelectLink;
+export default ViewTagsSelectLinkModal;

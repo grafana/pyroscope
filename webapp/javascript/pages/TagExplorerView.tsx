@@ -152,7 +152,7 @@ function TagExplorerView() {
   }, [] as string[]);
 
   return (
-    <div className={styles.tagExplorerView}>
+    <div className={styles.tagExplorerView} data-testid="tag-explorer-view">
       <Toolbar hideTagsBar />
       <Box>
         <ExploreHeader
@@ -294,7 +294,7 @@ function Table({
 
   return (
     <>
-      <div className={styles.tableDescription}>
+      <div className={styles.tableDescription} data-testid="explore-table">
         <span className={styles.title}>{appName} Descriptive Statistics</span>
         <div className={styles.buttons}>
           <NavLink
@@ -412,7 +412,7 @@ function ExploreHeader({
   };
 
   return (
-    <div className={styles.header}>
+    <div className={styles.header} data-testid="explore-header">
       <span className={styles.title}>{appName.unwrapOr('')}</span>
       <div className={styles.query}>
         <span className={styles.selectName}>grouped by</span>

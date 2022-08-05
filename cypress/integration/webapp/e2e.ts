@@ -92,6 +92,20 @@ describe('E2E Tests', () => {
     findFlamegraph(2).waitForFlamegraphToRender();
   });
 
+  it('tests /explore view', () => {
+    const params = new URLSearchParams();
+    params.set('query', appName);
+    params.set('from', t0);
+    params.set('until', t4);
+
+    cy.visit(`/explore?${params.toString()}`);
+
+    cy.findByTestId('explore-header');
+    cy.findByTestId('timeline-explore-page');
+    cy.findByTestId('explore-table');
+    cy.findByTestId('tag-explorer-view').waitForFlamegraphToRender();
+  });
+
   it('works with standalone view', () => {
     const params = new URLSearchParams();
     params.set('query', appName);
