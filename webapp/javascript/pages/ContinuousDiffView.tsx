@@ -21,7 +21,6 @@ import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
-import InstructionText from '@webapp/components/InstructionText';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
@@ -145,7 +144,6 @@ function ComparisonDiffApp() {
                 dispatch(fetchTagValues({ query, label }));
               }}
             />
-            <InstructionText viewType="diff" viewSide="left" />
             <TimelineChartWrapper
               data-testid="timeline-left"
               key="timeline-chart-left"
@@ -178,7 +176,6 @@ function ComparisonDiffApp() {
                 dispatch(fetchTagValues({ query, label }));
               }}
             />
-            <InstructionText viewType="diff" viewSide="right" />
             <TimelineChartWrapper
               data-testid="timeline-right"
               key="timeline-chart-right"

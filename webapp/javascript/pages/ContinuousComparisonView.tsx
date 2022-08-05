@@ -14,7 +14,6 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
-import InstructionText from '@webapp/components/InstructionText';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
@@ -158,7 +157,6 @@ function ComparisonApp() {
                 )
               }
             >
-              <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
                 key="timeline-chart-left"
                 id="timeline-chart-left"
@@ -214,7 +212,6 @@ function ComparisonApp() {
                 )
               }
             >
-              <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper
                 key="timeline-chart-right"
                 id="timeline-chart-right"
