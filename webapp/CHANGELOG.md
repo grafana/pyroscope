@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.25.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.5...@pyroscope/webapp@1.25.0) (2022-08-05)
+
+
+### Features
+
+* **webapp:** persist uploaded data via adhoc ui ([#1351](https://github.com/pyroscope-io/pyroscope/issues/1351)) ([cebefc9](https://github.com/pyroscope-io/pyroscope/commit/cebefc94305ffb98467261b24eb6c65ca5e1a18c))
+
+
+
+
+
 ## [1.24.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.4...@pyroscope/webapp@1.24.5) (2022-08-05)
 
 **Note:** Version bump only for package @pyroscope/webapp
