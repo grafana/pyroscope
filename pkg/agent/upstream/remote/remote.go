@@ -133,7 +133,7 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	if r.cfg.AuthToken != "" {
 		request.Header.Set("Authorization", "Bearer "+r.cfg.AuthToken)
 	}
-	if r.cfg.UpstreamRequestCompression == "gzip" {
+	if ce != "" {
 		request.Header.Set("Content-Encoding", ce)
 	}
 
