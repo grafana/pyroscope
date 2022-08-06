@@ -170,9 +170,8 @@ func (r *Remote) compressBody(bs []byte) (string, []byte, error) {
 			return "", nil, err
 		}
 		return "gzip", buf.Bytes(), nil
-	} else {
-		return "", bs, nil
 	}
+	return "", bs, nil
 }
 
 // handle the jobs
