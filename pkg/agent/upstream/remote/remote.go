@@ -2,6 +2,7 @@ package remote
 
 import (
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -35,10 +36,11 @@ type Remote struct {
 }
 
 type RemoteConfig struct {
-	AuthToken              string
-	UpstreamThreads        int
-	UpstreamAddress        string
-	UpstreamRequestTimeout time.Duration
+	AuthToken                  string
+	UpstreamThreads            int
+	UpstreamAddress            string
+	UpstreamRequestTimeout     time.Duration
+	UpstreamRequestCompression string
 }
 
 func New(cfg RemoteConfig, logger agent.Logger) (*Remote, error) {
@@ -118,7 +120,11 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 
 	r.Logger.Debugf("uploading at %s", u.String())
 	// new a request for the job
-	request, err := http.NewRequest("POST", u.String(), bytes.NewReader(j.Trie.Bytes()))
+	ce, body, err := r.compressBody(j.Trie.Bytes())
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("POST", u.String(), bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("new http request: %v", err)
 	}
@@ -126,6 +132,9 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 
 	if r.cfg.AuthToken != "" {
 		request.Header.Set("Authorization", "Bearer "+r.cfg.AuthToken)
+	}
+	if r.cfg.UpstreamRequestCompression == "gzip" {
+		request.Header.Set("Content-Encoding", ce)
 	}
 
 	// do the request and get the response
@@ -146,6 +155,24 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	}
 
 	return nil
+}
+
+func (r *Remote) compressBody(bs []byte) (string, []byte, error) {
+	if r.cfg.UpstreamRequestCompression == "gzip" {
+		buf := bytes.NewBuffer(nil)
+		gz := gzip.NewWriter(buf)
+		_, err := gz.Write(bs)
+		if err != nil {
+			return "", nil, err
+		}
+		err = gz.Close()
+		if err != nil {
+			return "", nil, err
+		}
+		return "gzip", buf.Bytes(), nil
+	} else {
+		return "", bs, nil
+	}
 }
 
 // handle the jobs

@@ -46,10 +46,11 @@ func NewConnect(cfg *config.Connect) (*Connect, error) {
 	logger := NewLogger(cfg.LogLevel, cfg.NoLogging)
 
 	rc := remote.RemoteConfig{
-		AuthToken:              cfg.AuthToken,
-		UpstreamThreads:        cfg.UpstreamThreads,
-		UpstreamAddress:        cfg.ServerAddress,
-		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
+		AuthToken:                  cfg.AuthToken,
+		UpstreamThreads:            cfg.UpstreamThreads,
+		UpstreamAddress:            cfg.ServerAddress,
+		UpstreamRequestTimeout:     cfg.UpstreamRequestTimeout,
+		UpstreamRequestCompression: cfg.UpstreamRequestCompression,
 	}
 	up, err := remote.New(rc, logger)
 	if err != nil {

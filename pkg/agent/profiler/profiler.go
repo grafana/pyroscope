@@ -26,14 +26,15 @@ var (
 )
 
 type Config struct {
-	ApplicationName string // e.g backend.purchases
-	Tags            map[string]string
-	ServerAddress   string // e.g http://pyroscope.services.internal:4040
-	AuthToken       string // specify this token when using pyroscope cloud
-	SampleRate      uint32
-	Logger          agent.Logger
-	ProfileTypes    []ProfileType
-	DisableGCRuns   bool // this will disable automatic runtime.GC runs
+	ApplicationName            string // e.g backend.purchases
+	Tags                       map[string]string
+	ServerAddress              string // e.g http://pyroscope.services.internal:4040
+	AuthToken                  string // specify this token when using pyroscope cloud
+	UpstreamRequestCompression string // "gzip" or ""
+	SampleRate                 uint32
+	Logger                     agent.Logger
+	ProfileTypes               []ProfileType
+	DisableGCRuns              bool // this will disable automatic runtime.GC runs
 }
 
 type Profiler struct {
@@ -59,10 +60,11 @@ func Start(cfg Config) (*Profiler, error) {
 	}
 
 	rc := remote.RemoteConfig{
-		AuthToken:              cfg.AuthToken,
-		UpstreamAddress:        cfg.ServerAddress,
-		UpstreamThreads:        4,
-		UpstreamRequestTimeout: 30 * time.Second,
+		AuthToken:                  cfg.AuthToken,
+		UpstreamAddress:            cfg.ServerAddress,
+		UpstreamThreads:            4,
+		UpstreamRequestTimeout:     30 * time.Second,
+		UpstreamRequestCompression: cfg.UpstreamRequestCompression,
 	}
 	upstream, err := remote.New(rc, cfg.Logger)
 	if err != nil {

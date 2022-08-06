@@ -69,10 +69,11 @@ type Agent struct {
 	LogLevel    string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging   bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
 
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress              string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken                  string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	UpstreamThreads            int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout     time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	UpstreamRequestCompression string        `def:"" desc:"profile upload compression - 'gzip'' or ''" mapstructure:"upstream-request-compression"`
 
 	Targets []Target `yaml:"targets" desc:"list of targets to be profiled" mapstructure:"-"`
 
@@ -288,10 +289,11 @@ type Exec struct {
 	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress              string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken                  string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	UpstreamThreads            int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout     time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	UpstreamRequestCompression string        `def:"" desc:"profile upload compression - 'gzip'' or ''" mapstructure:"upstream-request-compression"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
@@ -313,10 +315,11 @@ type Connect struct {
 	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress              string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken                  string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	UpstreamThreads            int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout     time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	UpstreamRequestCompression string        `def:"" desc:"profile upload compression - 'gzip'' or ''" mapstructure:"upstream-request-compression"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 

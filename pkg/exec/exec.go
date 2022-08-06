@@ -55,10 +55,11 @@ func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
 	logger := NewLogger(cfg.LogLevel, cfg.NoLogging)
 
 	rc := remote.RemoteConfig{
-		AuthToken:              cfg.AuthToken,
-		UpstreamThreads:        cfg.UpstreamThreads,
-		UpstreamAddress:        cfg.ServerAddress,
-		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
+		AuthToken:                  cfg.AuthToken,
+		UpstreamThreads:            cfg.UpstreamThreads,
+		UpstreamAddress:            cfg.ServerAddress,
+		UpstreamRequestTimeout:     cfg.UpstreamRequestTimeout,
+		UpstreamRequestCompression: cfg.UpstreamRequestCompression,
 	}
 	up, err := remote.New(rc, logger)
 	if err != nil {

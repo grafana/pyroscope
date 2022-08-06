@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -165,8 +166,22 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 }
 
 func copyBody(r *http.Request) ([]byte, error) {
+	var body io.ReadCloser
+	var err error
+	contentEncoding := r.Header.Get("Content-Encoding")
 	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
-	if _, err := io.Copy(buf, r.Body); err != nil {
+	switch contentEncoding {
+	case "":
+		body = r.Body
+	case "gzip":
+		body, err = gzip.NewReader(r.Body)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported content-encoding %s", contentEncoding)
+	}
+	if _, err := io.Copy(buf, body); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil

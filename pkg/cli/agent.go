@@ -22,10 +22,11 @@ type agentService struct {
 
 func newAgentService(logger *logrus.Logger, cfg *config.Agent) (*agentService, error) {
 	rc := remote.RemoteConfig{
-		AuthToken:              cfg.AuthToken,
-		UpstreamThreads:        cfg.UpstreamThreads,
-		UpstreamAddress:        cfg.ServerAddress,
-		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
+		AuthToken:                  cfg.AuthToken,
+		UpstreamThreads:            cfg.UpstreamThreads,
+		UpstreamAddress:            cfg.ServerAddress,
+		UpstreamRequestTimeout:     cfg.UpstreamRequestTimeout,
+		UpstreamRequestCompression: cfg.UpstreamRequestCompression,
 	}
 	upstream, err := remote.New(rc, logger)
 	if err != nil {
