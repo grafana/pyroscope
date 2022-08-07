@@ -9,7 +9,7 @@ struct profile_key_t {
 struct pid_exit_event {
     __u32 pid;
     __u32 tgid;
-    //char  comm[16];
+    char  comm[16];
 };
 
 struct profile_bss_args {

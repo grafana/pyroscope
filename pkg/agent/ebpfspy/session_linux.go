@@ -178,7 +178,7 @@ func (s *session) listenPIDSExitPerfEvent() error {
 			case e := <-eventsChannel:
 				ee := (*C.struct_pid_exit_event)(unsafe.Pointer(&e[0]))
 				if ee.pid == ee.tgid {
-					fmt.Printf("pid_exit_event %d %d \n", ee.pid, ee.tgid)
+					fmt.Printf("pid_exit_event %d %d %s\n", ee.pid, ee.tgid, C.GoString(&ee.comm[0]))
 					s.symCache.remove(uint32(ee.pid))
 				}
 			case <-lostChannel:

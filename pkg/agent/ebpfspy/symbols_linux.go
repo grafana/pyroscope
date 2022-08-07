@@ -21,18 +21,19 @@ import "C"
 const symbolUnknown = "[unknown]"
 
 type symbolCache struct {
-	pid2Cache *simplelru.LRU
+	pid2Cache *simplelru.LRU //todo wrap using generics
 	mutex     sync.Mutex
 }
 
 type symbolCacheEntry struct {
-	cache   unsafe.Pointer
-	cmdline string
+	cache unsafe.Pointer
 }
 
 func newSymbolCache(pidCacheSize int) *symbolCache {
-	pid2Cache, _ := simplelru.NewLRU(pidCacheSize, func(pid interface{}, cache interface{}) {
-		fmt.Printf("pid cache evicted %v %v\n", pid, cache)
+	pid2Cache, _ := simplelru.NewLRU(pidCacheSize, func(pid interface{}, entry interface{}) {
+		fmt.Printf("pid cache evicted %v %v\n", pid, entry)
+		e := entry.(*symbolCacheEntry)
+		C.bcc_free_symcache(e.cache, C.int(pid.(uint32)))
 	})
 	return &symbolCache{
 		pid2Cache: pid2Cache,
@@ -82,7 +83,7 @@ func (sc *symbolCache) getOrCreateCacheEntry(pid uint32) *symbolCacheEntry {
 	}
 	pidC := C.int(pid)
 	if pid == 0 {
-		pidC = C.int(-1)
+		pidC = C.int(-1) // for KSyms
 	}
 	symbolOpt := C.struct_bcc_symbol_option{use_symbol_type: C.uint(1 << elf.STT_FUNC)}
 	symbolOptC := (*C.struct_bcc_symbol_option)(unsafe.Pointer(&symbolOpt))
@@ -96,21 +97,13 @@ func (sc *symbolCache) getOrCreateCacheEntry(pid uint32) *symbolCacheEntry {
 func (sc *symbolCache) reset() {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
-	sc.pid2Cache.Keys()
 	for _, pid := range sc.pid2Cache.Keys() {
-		if ei, ok := sc.pid2Cache.Get(pid); ok {
-			e := ei.(*symbolCacheEntry)
-			C.bcc_free_symcache(e.cache, C.int(pid.(uint32)))
-			sc.pid2Cache.Remove(pid)
-		}
+		sc.pid2Cache.Remove(pid)
 	}
 }
 func (sc *symbolCache) remove(pid uint32) {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
-	if ei, ok := sc.pid2Cache.Get(pid); ok {
-		e := ei.(*symbolCacheEntry)
-		C.bcc_free_symcache(e.cache, C.int(pid))
-		sc.pid2Cache.Remove(pid)
-	}
+	fmt.Printf("removing pid %d\n", pid)
+	sc.pid2Cache.Remove(pid)
 }

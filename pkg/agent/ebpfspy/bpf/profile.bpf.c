@@ -70,7 +70,7 @@ int sched_process_exit(void *ctx) {
     u32 pid = id;
     struct pid_exit_event e = {.pid = pid, .tgid = tgid};
 
-//    bpf_get_current_comm(&e.comm, sizeof(e.comm));
+    bpf_get_current_comm(&e.comm, sizeof(e.comm));
 
 	bpf_perf_event_output(ctx, &pid_exits, BPF_F_CURRENT_CPU    , &e, sizeof(e));
 	return 0;
