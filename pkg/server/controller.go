@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	contentencoding "github.com/johejo/go-content-encoding"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -28,6 +29,7 @@ import (
 	"gorm.io/gorm"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
+
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
@@ -180,6 +182,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	//  - Auth middleware should never redirect - the logic should be moved to the client side.
 	r := mux.NewRouter()
 
+	r.Use(contentencoding.Decode())
+
 	ctrl.jwtTokenService = service.NewJWTTokenService(
 		[]byte(ctrl.config.Auth.JWTSecret),
 		24*time.Hour*time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays))
@@ -241,7 +245,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/settings", ih},
 		{"/settings/{page}", ih},
 		{"/settings/{page}/{subpage}", ih},
-		{"/forbidden", ih}},
+		{"/forbidden", ih},
+		{"/explore", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
@@ -279,6 +284,15 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ctrl.addRoutes(r, routes,
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
+
+	appsRouter := apiRouter.PathPrefix("/").Subrouter()
+	appsRouter.Use(
+		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
+		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
+			authz.Role(model.AdminRole),
+		))
+	appsRouter.HandleFunc("/apps", ctrl.getAppsHandler()).Methods("GET")
+	appsRouter.HandleFunc("/apps", ctrl.deleteAppsHandler()).Methods("DELETE")
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.

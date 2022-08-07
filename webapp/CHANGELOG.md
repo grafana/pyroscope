@@ -3,6 +3,144 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.27.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.26.0...@pyroscope/webapp@1.27.0) (2022-08-05)
+
+
+### Features
+
+* **webapp:** break adhoc ui upload into 2 steps ([#1352](https://github.com/pyroscope-io/pyroscope/issues/1352)) ([9c15298](https://github.com/pyroscope-io/pyroscope/commit/9c15298251048e06a96f738b85f2915326c44f25))
+
+
+
+
+
+# [1.26.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.25.0...@pyroscope/webapp@1.26.0) (2022-08-05)
+
+
+### Features
+
+* enhance tag explorer view ([#1329](https://github.com/pyroscope-io/pyroscope/issues/1329)) ([7d66d75](https://github.com/pyroscope-io/pyroscope/commit/7d66d750ba68d27a5046751221dd51d465a08488))
+
+
+
+
+
+# [1.25.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.5...@pyroscope/webapp@1.25.0) (2022-08-05)
+
+
+### Features
+
+* **webapp:** persist uploaded data via adhoc ui ([#1351](https://github.com/pyroscope-io/pyroscope/issues/1351)) ([cebefc9](https://github.com/pyroscope-io/pyroscope/commit/cebefc94305ffb98467261b24eb6c65ca5e1a18c))
+
+
+
+
+
+## [1.24.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.4...@pyroscope/webapp@1.24.5) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.24.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.3...@pyroscope/webapp@1.24.4) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.24.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.2...@pyroscope/webapp@1.24.3) (2022-08-04)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.24.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.1...@pyroscope/webapp@1.24.2) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.24.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.24.0...@pyroscope/webapp@1.24.1) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.24.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.23.0...@pyroscope/webapp@1.24.0) (2022-08-03)
+
+
+### Features
+
+* add app dropdown footer ([#1340](https://github.com/pyroscope-io/pyroscope/issues/1340)) ([dc07d04](https://github.com/pyroscope-io/pyroscope/commit/dc07d04e28cdd821829eaf211a8543723b3956aa))
+
+
+
+
+
+# [1.23.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.22.0...@pyroscope/webapp@1.23.0) (2022-08-03)
+
+
+### Features
+
+* upload any arbitrary data (collapsed/pprof/json) via adhoc ui ([#1327](https://github.com/pyroscope-io/pyroscope/issues/1327)) ([6620888](https://github.com/pyroscope-io/pyroscope/commit/662088820b430abb2e4dcb9270cbaf62771ca601)), closes [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333) [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333)
+
+
+
+
+
+# [1.22.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.15...@pyroscope/webapp@1.22.0) (2022-07-29)
+
+
+### Features
+
+* create tag-explorer page for analyzing tag breakdowns ([#1293](https://github.com/pyroscope-io/pyroscope/issues/1293)) ([5456a86](https://github.com/pyroscope-io/pyroscope/commit/5456a866cfa6b3800fb7d359ff55032a84129138))
+
+
+
+
+
+## [1.21.15](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.14...@pyroscope/webapp@1.21.15) (2022-07-27)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.14](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.13...@pyroscope/webapp@1.21.14) (2022-07-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.13](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.12...@pyroscope/webapp@1.21.13) (2022-07-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.21.12](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.11...@pyroscope/webapp@1.21.12) (2022-07-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.21.11](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.21.10...@pyroscope/webapp@1.21.11) (2022-07-20)
 
 **Note:** Version bump only for package @pyroscope/webapp

@@ -1,3 +1,27 @@
+# [0.24.0](https://github.com/pyroscope-io/pyroscope/compare/v0.23.0...v0.24.0) (2022-07-28)
+
+
+### Bug Fixes
+
+* segment stub deserialization ([#1310](https://github.com/pyroscope-io/pyroscope/issues/1310)) ([1b65b32](https://github.com/pyroscope-io/pyroscope/commit/1b65b32a9b51d40b914c9872b37e9cf8c58987fe))
+
+
+### chore
+
+* **flamegraph/models:** make it mandatory to handle all spyNames ([#1300](https://github.com/pyroscope-io/pyroscope/issues/1300)) ([f7a95a0](https://github.com/pyroscope-io/pyroscope/commit/f7a95a0225c1a39262962a47fd2a1cd493a8333b))
+
+
+### Features
+
+* show functions % of total [units] in Table ([#1288](https://github.com/pyroscope-io/pyroscope/issues/1288)) ([6c71195](https://github.com/pyroscope-io/pyroscope/commit/6c71195295c3ed5591917ff754e670d4220b77d0))
+
+
+### BREAKING CHANGES
+
+* **flamegraph/models:** it will throw an error if spyName is unsupported
+
+
+
 # [0.23.0](https://github.com/pyroscope-io/pyroscope/compare/v0.22.1...v0.23.0) (2022-07-25)
 
 

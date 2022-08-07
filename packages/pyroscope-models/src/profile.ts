@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { SpyNameSchema } from './spyName';
 
 export const FlamebearerSchema = z.object({
-  names: z.array(z.string().nonempty()),
+  names: z.array(z.string()),
   levels: z.array(z.array(z.number())),
   numTicks: z.number(),
   maxSelf: z.number(),
@@ -40,9 +41,7 @@ export const MetadataSchema = z.object({
 
   format: z.enum(['single', 'double']),
   sampleRate: z.number(),
-  spyName: z
-    .enum(['dotnetspy', 'ebpfspy', 'gospy', 'phpspy', 'pyspy', 'rbspy'])
-    .or(z.string()),
+  spyName: SpyNameSchema,
 
   units: UnitsSchema,
 });

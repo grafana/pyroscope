@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "name": "pyroscope-oss",
   "private": true,
-  "version": "0.23.0",
+  "version": "0.24.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -188,6 +188,7 @@
     "d3-array": "^3.1.1",
     "d3-scale": "^4.0.2",
     "d3-time": "^3.0.0",
+    "downlevel-dts": "^0.10.0",
     "date-fns": "^2.27.0",
     "esbuild-loader": "^2.18.0",
     "eslint-import-resolver-webpack": "^0.13.2",

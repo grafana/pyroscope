@@ -47,13 +47,13 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Minimal CPU overhead
 * Efficient compression, low disk space requirements
 * Can handle high-cardinality tags/labels
-* Can store years of profiling data from multiple applications
 * Calculate the performance "diff" between various tags/labels and time periods
+* Can store years of profiling data from multiple applications
 * Advanced analysis UI
 
 ## Add Pyroscope Server locally in 2 steps:
 
-Pyroscope supports all major architectures and is very easy to install. for example here is how you install on a mac:
+Pyroscope supports all major architectures and is very easy to install. For example, here is how you install on a mac:
 ```shell
 # install pyroscope
 brew install pyroscope-io/brew/pyroscope
@@ -63,7 +63,7 @@ pyroscope server
 ```
 ## Send data to server via Pyroscope agent (language specific)
 
-For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website or find language specific examples and documentation below
+For more documentation on how to add the Pyroscope agent to your code, see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website or find language specific examples and documentation below:
 <table>
    <tr>
       <td align="center"><a href="https://pyroscope.io/docs/golang"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
@@ -131,6 +131,7 @@ Pyroscope also supports several third-party integrations notably:
 - [Grafana Plugin](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
 - [Jaeger UI](https://github.com/pyroscope-io/jaeger-ui)
 - [OTel Golang (tracing)](https://github.com/pyroscope-io/otel-profiling-go)
+- [AWS Lambda Extension](https://pyroscope.io/docs/aws-lambda)
 
 ## Documentation
 
@@ -186,9 +187,9 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/abeaumont"><img src="https://avatars.githubusercontent.com/u/80059?v=4" title="abeaumont" width="80" height="80"></a>
 <a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="LouisInFlow" width="80" height="80"></a>
 <a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80" height="80"></a>
+<a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
 <a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80" height="80"></a>
 <a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80" height="80"></a>
-<a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
 <a href="https://github.com/iOliverN"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="iOliverN" width="80" height="80"></a>
 <a href="https://github.com/AdrK"><img src="https://avatars.githubusercontent.com/u/15175440?v=4" title="AdrK" width="80" height="80"></a>
 <a href="https://github.com/alonlong"><img src="https://avatars.githubusercontent.com/u/3090383?v=4" title="alonlong" width="80" height="80"></a>
@@ -221,6 +222,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/cfbolz"><img src="https://avatars.githubusercontent.com/u/85942?v=4" title="cfbolz" width="80" height="80"></a>
 <a href="https://github.com/charlesverdad"><img src="https://avatars.githubusercontent.com/u/382186?v=4" title="charlesverdad" width="80" height="80"></a>
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
+<a href="https://github.com/dleviminzi"><img src="https://avatars.githubusercontent.com/u/51272568?v=4" title="dleviminzi" width="80" height="80"></a>
 <a href="https://github.com/Dzalevski"><img src="https://avatars.githubusercontent.com/u/9572827?v=4" title="Dzalevski" width="80" height="80"></a>
 <a href="https://github.com/dhanusaputra"><img src="https://avatars.githubusercontent.com/u/35093673?v=4" title="dhanusaputra" width="80" height="80"></a>
 <a href="https://github.com/Juneezee"><img src="https://avatars.githubusercontent.com/u/20135478?v=4" title="Juneezee" width="80" height="80"></a>
@@ -232,11 +234,13 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/johnduhart"><img src="https://avatars.githubusercontent.com/u/113642?v=4" title="johnduhart" width="80" height="80"></a>
 <a href="https://github.com/radixdev"><img src="https://avatars.githubusercontent.com/u/2373546?v=4" title="radixdev" width="80" height="80"></a>
 <a href="https://github.com/louisphn"><img src="https://avatars.githubusercontent.com/u/72560298?v=4" title="louisphn" width="80" height="80"></a>
+<a href="https://github.com/Gookuruto"><img src="https://avatars.githubusercontent.com/u/25951216?v=4" title="Gookuruto" width="80" height="80"></a>
 <a href="https://github.com/mhansen"><img src="https://avatars.githubusercontent.com/u/105529?v=4" title="mhansen" width="80" height="80"></a>
 <a href="https://github.com/kavu"><img src="https://avatars.githubusercontent.com/u/1994?v=4" title="kavu" width="80" height="80"></a>
 <a href="https://github.com/proggga"><img src="https://avatars.githubusercontent.com/u/12262156?v=4" title="proggga" width="80" height="80"></a>
 <a href="https://github.com/samoilenko"><img src="https://avatars.githubusercontent.com/u/4024256?v=4" title="samoilenko" width="80" height="80"></a>
 <a href="https://github.com/teivah"><img src="https://avatars.githubusercontent.com/u/934784?v=4" title="teivah" width="80" height="80"></a>
+<a href="https://github.com/dreamalligator"><img src="https://avatars.githubusercontent.com/u/2218331?v=4" title="dreamalligator" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
 <a href="https://github.com/Tusharkshahi"><img src="https://avatars.githubusercontent.com/u/103762351?v=4" title="Tusharkshahi" width="80" height="80"></a>
 <a href="https://github.com/vbehar"><img src="https://avatars.githubusercontent.com/u/6251?v=4" title="vbehar" width="80" height="80"></a>
@@ -244,6 +248,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/apps/dependabot"><img src="https://avatars.githubusercontent.com/in/29110?v=4" title="dependabot[bot]" width="80" height="80"></a>
 <a href="https://github.com/futurelm"><img src="https://avatars.githubusercontent.com/u/43361929?v=4" title="futurelm" width="80" height="80"></a>
 <a href="https://github.com/hiyanxu"><img src="https://avatars.githubusercontent.com/u/15027927?v=4" title="hiyanxu" width="80" height="80"></a>
+<a href="https://github.com/jakemcf22"><img src="https://avatars.githubusercontent.com/u/108971885?v=4" title="jakemcf22" width="80" height="80"></a>
 <a href="https://github.com/miravtmehta"><img src="https://avatars.githubusercontent.com/u/54740656?v=4" title="miravtmehta" width="80" height="80"></a>
 <a href="https://github.com/lzh2nix"><img src="https://avatars.githubusercontent.com/u/7421004?v=4" title="lzh2nix" width="80" height="80"></a>
 <a href="https://github.com/cnych"><img src="https://avatars.githubusercontent.com/u/3094973?v=4" title="cnych" width="80" height="80"></a>

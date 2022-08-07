@@ -9,15 +9,29 @@ import (
 )
 
 var _ = Describe("disk package", func() {
+	var (
+		u   UsageStats
+		err error
+	)
 	testing.WithConfig(func(cfg **config.Config) {
-		Describe("FreeSpace", func() {
+		BeforeEach(func() {
+			u, err = Usage((*cfg).Server.StoragePath)
+		})
+		Describe("Usage", func() {
 			It("doesn't return an error", func() {
-				_, err := FreeSpace((*cfg).Server.StoragePath)
 				Expect(err).To(Not(HaveOccurred()))
 			})
 
-			It("returns non-zero value for storage space", func() {
-				Expect(FreeSpace((*cfg).Server.StoragePath)).To(BeNumerically(">", 0))
+			It("returns non-zero Total", func() {
+				Expect(u.Total).To(BeNumerically(">", 0))
+			})
+
+			It("returns non-zero Available", func() {
+				Expect(u.Available).To(BeNumerically(">", 0))
+			})
+
+			It("returns Available < Total", func() {
+				Expect(u.Available).To(BeNumerically("<", u.Total))
 			})
 		})
 	})
