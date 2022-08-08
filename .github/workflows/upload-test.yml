@@ -12,3 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - uses: ./.github/actions/flamegraph.com
+        id: upload
+        with:
+          file: tests.pb.gz
+      - name: Get Uploaded file
+        run: echo "${{ steps.upload.outputs.url }}"

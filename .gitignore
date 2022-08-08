@@ -29,3 +29,5 @@ coverage
 # this file may contain sensitive credentials
 pkg/server/testdata/oauth-config.yml
 dist
+
+!.github/actions/flamegraph.com/dist

@@ -1,12 +1,8 @@
-name:
-  hello-world
-  #runs:
-  #  using: docker
-  #  image:
-  #    docker://node:16-buster-slim
-  #    #  entrypoint: /bin/sh -c
-  #  args:
-  #    - env
+name: upload to flamegraph.com
 runs:
   using: 'node16'
-  main: 'index.js'
+  main: 'dist/index.js'
+inputs:
+  file:
+    description: 'filepath of the profile'
+    required: true
