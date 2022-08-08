@@ -1,3 +1,19 @@
+## [0.25.1](https://github.com/pyroscope-io/pyroscope/compare/v0.25.0...v0.25.1) (2022-08-08)
+
+
+### Bug Fixes
+
+* export flamegraph "head" select styles ([#1367](https://github.com/pyroscope-io/pyroscope/issues/1367)) ([7bc8b3e](https://github.com/pyroscope-io/pyroscope/commit/7bc8b3e9d41faf8ac0422764d36406b8b890870b))
+* make table value say 0 when it is 0 ([#1371](https://github.com/pyroscope-io/pyroscope/issues/1371)) ([30067ad](https://github.com/pyroscope-io/pyroscope/commit/30067ad5da6eec7655d99b19aef0c012be923853))
+
+
+### Features
+
+* add loader to tag exlorer page ([#1368](https://github.com/pyroscope-io/pyroscope/issues/1368)) ([16a727d](https://github.com/pyroscope-io/pyroscope/commit/16a727d5f51847114fe360eb70aff1bf9bfd3a9e))
+* add ProfilerTable arrow color ([#1366](https://github.com/pyroscope-io/pyroscope/issues/1366)) ([be3901d](https://github.com/pyroscope-io/pyroscope/commit/be3901da82fe1fbed54171938f2bef638819319b))
+
+
+
 # [0.25.0](https://github.com/pyroscope-io/pyroscope/compare/v0.24.0...v0.25.0) (2022-08-08)
 
 
