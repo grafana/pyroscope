@@ -1,3 +1,3 @@
 source 'https://rubygems.org'
 
-gem 'pyroscope', '= 0.1.1'
+gem 'pyroscope', '= 0.3.0'

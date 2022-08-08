@@ -184,17 +184,17 @@ const tooltipTitles: Record<
 > = {
   objects: {
     percent: '% of objects in RAM',
-    formattedValue: 'RAM amount',
+    formattedValue: 'Objects in RAM',
     total: '% of total RAM',
   },
   goroutines: {
     percent: '% of goroutines',
-    formattedValue: 'goroutines',
+    formattedValue: 'Goroutines',
     total: '% of total goroutines',
   },
   bytes: {
     percent: '% of RAM',
-    formattedValue: 'bytes',
+    formattedValue: 'RAM',
     total: '% of total bytes',
   },
   samples: {
@@ -204,23 +204,23 @@ const tooltipTitles: Record<
   },
   lock_nanoseconds: {
     percent: '% of Time spent',
-    formattedValue: 'seconds',
+    formattedValue: 'Time',
     total: '% of total seconds',
   },
   lock_samples: {
     percent: '% of contended locks',
-    formattedValue: 'locks',
+    formattedValue: 'Contended locks',
     total: '% of total locks',
   },
   trace_samples: {
     percent: '% of time',
-    formattedValue: 'samples',
+    formattedValue: 'Samples',
     total: '% of total samples',
   },
   '': {
-    percent: '',
-    formattedValue: '',
-    total: '',
+    percent: 'Percentage',
+    formattedValue: 'Units',
+    total: '% of total units',
   },
 };
 
@@ -359,7 +359,7 @@ function TooltipFooter({
       );
       break;
     default:
-      clickInfo = '<TBD ?>';
+      clickInfo = <></>;
   }
 
   return (

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"io"
 	"net/http"
 	"time"
@@ -67,7 +68,7 @@ func (c *Client) GetAppsNames() (names AppNames, err error) {
 func (c *Client) DeleteApp(name string) (err error) {
 	// we are kinda robbing here
 	// since the server and client are defined in the same package
-	payload := DeleteAppInput{
+	payload := server.DeleteAppInput{
 		Name: name,
 	}
 

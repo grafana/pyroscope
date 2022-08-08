@@ -6,7 +6,9 @@ export function buildRenderURL(
     until: string;
     query: string;
     refreshToken?: string;
-    maxNodes: string | number;
+    maxNodes?: string | number;
+    groupBy?: string;
+    groupByValue?: string;
   },
   fromOverride?: string,
   untilOverride?: string
@@ -30,7 +32,18 @@ export function buildRenderURL(
   if (state.refreshToken) {
     url += `&refreshToken=${state.refreshToken}`;
   }
-  url += `&max-nodes=${state.maxNodes}`;
+
+  if (state.maxNodes) {
+    url += `&max-nodes=${state.maxNodes}`;
+  }
+
+  if (state.groupBy) {
+    url += `&groupBy=${state.groupBy}`;
+  }
+
+  if (state.groupByValue) {
+    url += `&groupByValue=${state.groupByValue}`;
+  }
 
   return url;
 }

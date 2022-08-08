@@ -29,10 +29,10 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
     case 'lock_samples':
       return new ObjectsFormatter(max);
     case 'trace_samples':
-      return new DurationFormatter(max / sampleRate);
+      return new DurationFormatter(max / sampleRate, 'units');
     default:
-      console.warn(`Unsupported unit: '${unit}'. Defaulting to 'samples'`);
-      return new DurationFormatter(max / sampleRate);
+      console.warn(`Unsupported unit: '${unit}'. Defaulting to ''`);
+      return new DurationFormatter(max / sampleRate, ' ');
   }
 }
 
@@ -51,7 +51,10 @@ class DurationFormatter {
     [12, 'year'],
   ];
 
-  constructor(maxDur: number) {
+  units = '';
+
+  constructor(maxDur: number, units?: string) {
+    this.units = units || '';
     // eslint-disable-next-line no-plusplus
     for (let i = 0; i < this.durations.length; i++) {
       const level = this.durations[i];
@@ -81,7 +84,7 @@ class DurationFormatter {
       nStr = '< 0.01';
     }
 
-    return `${nStr} ${this.suffix}${n === 1 ? '' : 's'}`;
+    return `${nStr} ${this.units || `${this.suffix}${n === 1 ? '' : 's'}`}`;
   }
 }
 

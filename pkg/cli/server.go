@@ -37,7 +37,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -93,7 +92,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	}
 
 	diskPressure := health.DiskPressure{
-		Threshold: 512 * bytesize.MB,
+		Threshold: c.MinFreeSpacePercentage,
 		Path:      c.StoragePath,
 	}
 
@@ -119,9 +118,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
-		adminService := admin.NewService(svc.storage)
 		userService := service.NewUserService(svc.database.DB())
-		adminCtrl := admin.NewController(svc.logger, adminService, userService, svc.storage)
+		adminController := admin.NewController(svc.logger, svc.storage, userService, svc.storage)
 		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
@@ -134,7 +132,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 		svc.adminServer, err = admin.NewServer(
 			svc.logger,
-			adminCtrl,
+			adminController,
 			adminHTTPOverUDS,
 		)
 		if err != nil {

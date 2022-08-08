@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.4.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.4.1...@pyroscope/models@0.4.2) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+## [0.4.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.4.0...@pyroscope/models@0.4.1) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+# [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.3.0...@pyroscope/models@0.4.0) (2022-07-29)
+
+
+### Features
+
+* create tag-explorer page for analyzing tag breakdowns ([#1293](https://github.com/pyroscope-io/pyroscope/issues/1293)) ([5456a86](https://github.com/pyroscope-io/pyroscope/commit/5456a866cfa6b3800fb7d359ff55032a84129138))
+
+
+
+
+
 # [0.3.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.2.3...@pyroscope/models@0.3.0) (2022-07-25)
 
 

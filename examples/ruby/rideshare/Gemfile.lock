@@ -5,7 +5,7 @@ GEM
     eventmachine (1.2.7)
     mustermann (1.1.1)
       ruby2_keywords (~> 0.0.1)
-    pyroscope (0.1.1)
+    pyroscope (0.3.0)
     rack (2.2.3)
     rack-protection (2.1.0)
       rack
@@ -25,7 +25,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  pyroscope (~> 0.1.1)
+  pyroscope (~> 0.3.0)
   sinatra (~> 2.1)
   thin (~> 1.8)
 

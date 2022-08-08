@@ -21,6 +21,9 @@ func WithConfig(cb func(cfg **config.Config)) {
 
 				MaxNodesSerialization: 2048,
 				MaxNodesRender:        2048,
+				Database: config.Database{
+					Type: "sqlite3",
+				},
 			},
 		}
 	})

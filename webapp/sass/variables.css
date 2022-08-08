@@ -42,6 +42,7 @@
   --ps-table-row-text-shadow: #000000; /* table selected row text */
 
   --ps-selected-app: #df8b53; /* active selected app color in dropdown */
+  --ps-select-modal-title: #888; /* selected modal title */
 
   --ps-blue-primary: #3b78e7; /* Standard blue for button, instructions text (right) */
   --ps-blue-highlight: #578ae9; /* highlight (hover) blue */
@@ -108,6 +109,7 @@
   --ps-table-highlight-row-text: #ffffff; /* table selected row text */
   --ps-table-row-text-shadow: #ffffff; /* table selected row text */
   --ps-selected-app: #3b78e7; /* active selected app color in dropdown */
+  --ps-select-modal-title: #888; /* selected modal title */
 
   --ps-green-primary: #0bdb79; /* standard green */
   --ps-green-highlight: #5bdc9e; /* highlight (hover) green */

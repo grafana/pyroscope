@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"net/http"
 	"os"
 
@@ -37,11 +39,13 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 
 	as.Handler = r
 
+	httpUtils := httputils.NewDefaultHelper(logger)
 	// Routes
-	r.HandleFunc("/v1/apps", as.ctrl.HandleGetApps).Methods("GET")
-	r.HandleFunc("/v1/apps", as.ctrl.HandleDeleteApp).Methods("DELETE")
-	r.HandleFunc("/v1/users/{username}", as.ctrl.UpdateUserHandler).Methods("PATCH")
-	r.HandleFunc("/v1/storage/cleanup", as.ctrl.StorageCleanupHandler).Methods("PUT")
+
+	r.HandleFunc("/v1/apps", server.NewGetAppNamesHandler(ctrl.storage, httpUtils)).Methods("GET")
+	r.HandleFunc("/v1/apps", server.NewDeleteAppHandler(ctrl.storage, httpUtils)).Methods("DELETE")
+	r.HandleFunc("/v1/users/{username}", ctrl.UpdateUserHandler).Methods("PATCH")
+	r.HandleFunc("/v1/storage/cleanup", ctrl.StorageCleanupHandler).Methods("PUT")
 
 	// Global middlewares
 	r.Use(logginMiddleware)
