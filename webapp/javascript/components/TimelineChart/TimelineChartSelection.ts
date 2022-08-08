@@ -43,6 +43,9 @@ type EventHolderType = {
 
 type EventType = { pageX: number; pageY: number; which?: number };
 
+const handleWidth = 4;
+const handleHeight = 22;
+
 (function ($) {
   function init(plot: PlotType) {
     var selection = {
@@ -79,7 +82,7 @@ type EventType = { pageX: number; pageY: number; which?: number };
 
     function getPlotSelection() {
       // unlike function getSelection() which shows temp selection (it doesnt save any data between rerenders)
-      // this function returns left X and right X coords visible user selection (translates opts.grid.markings to X coords)
+      // this function returns left X and right X coords of visible user selection (translates opts.grid.markings to X coords)
       const o = plot.getOptions();
       const axes = plot.getAxes();
       const plotOffset = plot.getPlotOffset();
@@ -419,8 +422,42 @@ type EventType = { pageX: number; pageY: number; which?: number };
           w = Math.abs(selection.second.x - selection.first.x) - 1,
           h = Math.abs(selection.second.y - selection.first.y) - 1;
 
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x, y, w, h);
+        if (selection.selectingSide) {
+          ctx.fillStyle = o.selection.overlayColor || 'transparent';
+          ctx.fillRect(x, y, w, h);
+          drawHorizontalSelectionLines({
+            ctx,
+            opts: o,
+            leftX: x,
+            rightX: x + w,
+            yMax: h,
+            yMin: 0,
+          });
+          drawVerticalSelectionLines({
+            ctx,
+            opts: o,
+            leftX: x,
+            rightX: x + w,
+            yMax: h,
+            yMin: 0,
+            drawHandles: false,
+          });
+
+          drawRoundedRect(
+            ctx,
+            (selection.selectingSide === 'left' ? x : x + w) -
+              handleWidth / 2 +
+              0.5,
+            h / 2 - handleHeight / 2 - 1,
+            handleWidth,
+            handleHeight,
+            2,
+            o.selection.boundaryColor
+          );
+        } else {
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeRect(x, y, w, h);
+        }
 
         ctx.restore();
       }
@@ -454,10 +491,11 @@ type EventType = { pageX: number; pageY: number; which?: number };
         drawVerticalSelectionLines({
           ctx,
           opts,
-          leftX: left,
-          rightX: right,
+          leftX: left + 0.5,
+          rightX: right - 0.5,
           yMax,
-          yMin,
+          yMin: yMin + 4,
+          drawHandles: true,
         });
       }
     });
@@ -496,6 +534,7 @@ const drawVerticalSelectionLines = ({
   rightX,
   yMax,
   yMin,
+  drawHandles,
 }: {
   ctx: ShamefulAny;
   opts: ShamefulAny;
@@ -503,10 +542,9 @@ const drawVerticalSelectionLines = ({
   rightX: number;
   yMax: number;
   yMin: number;
+  drawHandles: boolean;
 }) => {
   if (leftX && rightX && yMax) {
-    const handleWidth = 4;
-    const handleHeight = 22;
     const lineWidth =
       opts.grid.markings?.[opts.grid.markings?.length - 1].lineWidth || 1;
     const subPixel = lineWidth / 2 || 0;
@@ -523,17 +561,17 @@ const drawVerticalSelectionLines = ({
     ctx.lineTo(leftX + subPixel, yMin);
     ctx.stroke();
 
-    const rectLeftStart = leftX - handleWidth / 2 + subPixel;
-
-    drawRoundedRect(
-      ctx,
-      rectLeftStart,
-      yMax / 2 - handleHeight / 2 + 3,
-      handleWidth,
-      handleHeight,
-      2,
-      opts.selection.boundaryColor
-    );
+    if (drawHandles) {
+      drawRoundedRect(
+        ctx,
+        leftX - handleWidth / 2 + subPixel,
+        yMax / 2 - handleHeight / 2 + 3,
+        handleWidth,
+        handleHeight,
+        2,
+        opts.selection.boundaryColor
+      );
+    }
 
     //right line
     ctx.beginPath();
@@ -548,17 +586,17 @@ const drawVerticalSelectionLines = ({
     ctx.lineTo(rightX + subPixel, yMin);
     ctx.stroke();
 
-    const leftRectFinish = rightX - handleWidth / 2 + subPixel;
-
-    drawRoundedRect(
-      ctx,
-      leftRectFinish,
-      yMax / 2 - handleHeight / 2 + 3,
-      handleWidth,
-      handleHeight,
-      2,
-      opts.selection.boundaryColor
-    );
+    if (drawHandles) {
+      drawRoundedRect(
+        ctx,
+        rightX - handleWidth / 2 + subPixel,
+        yMax / 2 - handleHeight / 2 + 3,
+        handleWidth,
+        handleHeight,
+        2,
+        opts.selection.boundaryColor
+      );
+    }
   }
 };
 
