@@ -165,6 +165,7 @@ function TagExplorerView() {
           handleGroupByTagValueChange={handleGroupByTagValueChange}
         />
         <TimelineChartWrapper
+          selectionType="double"
           mode="multiple"
           timezone={offset === 0 ? 'utc' : 'browser'}
           data-testid="timeline-explore-page"
