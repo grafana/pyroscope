@@ -12,6 +12,7 @@
 
   &.fit-mode-select {
     min-width: 65px;
+    padding: 1px 6px;
   }
 }
 
