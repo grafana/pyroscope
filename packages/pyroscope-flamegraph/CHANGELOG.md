@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.0...@pyroscope/flamegraph@0.18.1) (2022-08-08)
+
+
+### Bug Fixes
+
+* export flamegraph "head" select styles ([#1367](https://github.com/pyroscope-io/pyroscope/issues/1367)) ([7bc8b3e](https://github.com/pyroscope-io/pyroscope/commit/7bc8b3e9d41faf8ac0422764d36406b8b890870b))
+
+
+
+
+
 # [0.18.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.17.3...@pyroscope/flamegraph@0.18.0) (2022-08-05)
 
 
