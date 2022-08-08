@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.28.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.27.1...@pyroscope/webapp@1.28.0) (2022-08-08)
+
+
+### Features
+
+* add loader to tag exlorer page ([#1368](https://github.com/pyroscope-io/pyroscope/issues/1368)) ([16a727d](https://github.com/pyroscope-io/pyroscope/commit/16a727d5f51847114fe360eb70aff1bf9bfd3a9e))
+
+
+
+
+
 ## [1.27.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.27.0...@pyroscope/webapp@1.27.1) (2022-08-08)
 
 **Note:** Version bump only for package @pyroscope/webapp
