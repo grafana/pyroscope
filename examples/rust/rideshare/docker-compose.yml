@@ -1,6 +1,8 @@
-version: '3.9'
+version: '3'
 services:
   us-east:
+    ports:
+      - 5000
     environment:
       - REGION=us-east
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
@@ -8,6 +10,8 @@ services:
       context: .
 
   eu-north:
+    ports:
+      - 5000
     environment:
       - REGION=eu-north
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
@@ -16,6 +20,8 @@ services:
       context: .
 
   ap-south:
+    ports:
+      - 5000
     environment:
       - REGION=ap-south
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040

@@ -1,16 +1,15 @@
 import os
 import time
 import pyroscope
-# from flask import Flask
 from fastapi import FastAPI
 from lib.bike.bike import order_bike
 from lib.car.car import order_car
 from lib.scooter.scooter import order_scooter
 
 pyroscope.configure(
-	app_name       = "ride-sharing-app",
-	server_address = "http://pyroscope:4040",
-	tags           = {
+	application_name = "ride-sharing-app",
+	server_address   = "http://pyroscope:4040",
+	tags             = {
         "region":   f'{os.getenv("REGION")}',
 	}
 )

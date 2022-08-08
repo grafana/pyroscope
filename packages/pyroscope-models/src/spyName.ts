@@ -21,7 +21,7 @@ export const SpyNameOther = [
 export const AllSpyNames = [...SpyNameFirstClass, ...SpyNameOther] as const;
 
 export const SpyNameSchema = z.preprocess((val) => {
-  if (!val) {
+  if (!val || !AllSpyNames.includes(val as typeof AllSpyNames[number])) {
     return 'unknown';
   }
   return val;

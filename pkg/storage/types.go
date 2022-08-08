@@ -53,6 +53,18 @@ type GetLabelValuesByQueryOutput struct {
 	Values []string
 }
 
+type AppInfo struct {
+	Name string
+}
+
+type GetAppsOutput struct {
+	Apps []AppInfo
+}
+
+type DeleteAppInput struct {
+	Name string
+}
+
 type LabelValuesGetter interface {
 	GetValues(ctx context.Context, key string, cb func(v string) bool)
 	GetValuesByQuery(ctx context.Context, in GetLabelValuesByQueryInput) (GetLabelValuesByQueryOutput, error)
@@ -60,6 +72,14 @@ type LabelValuesGetter interface {
 
 type AppNameGetter interface {
 	GetAppNames(ctx context.Context) []string
+}
+
+type AppGetter interface {
+	GetApps(ctx context.Context) (GetAppsOutput, error)
+}
+
+type AppDeleter interface {
+	DeleteApp(ctx context.Context, appName string) error
 }
 
 // Other functions from storage.Storage:

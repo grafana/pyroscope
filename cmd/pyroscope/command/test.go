@@ -63,9 +63,10 @@ profiles it, then merges into a single profile file.
 			if err != nil {
 				return err
 			}
+			//fmt.Println("tempDir", tempDir)
 			defer os.RemoveAll(tempDir)
 
-			fmt.Println("tempDir", tempDir)
+			//fmt.Println("tempDir", tempDir)
 
 			fmt.Println("cdf args")
 			fmt.Println(cfg.Args)
@@ -122,18 +123,17 @@ profiles it, then merges into a single profile file.
 				return err
 			}
 
-			fmt.Println("creating output file", cfg.OutputFile)
 			out, err := os.OpenFile(cfg.OutputFile, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
 				return err
 			}
 
-			fmt.Println("writing to file", cfg.OutputFile)
 			err = merged.Write(out)
 			if err != nil {
 				return err
 			}
 
+			fmt.Println("written to", cfg.OutputFile)
 			return nil
 		}),
 	}
