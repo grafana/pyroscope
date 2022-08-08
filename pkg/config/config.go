@@ -402,4 +402,7 @@ func (r RemoteWriteTarget) String() string {
 }
 
 type Test struct {
+	Args             []string `def:"" desc:""`
+	IgnoreTestErrors bool     `def:"true"`
+	OutputFile       string   `def:"merged.pb.gz"`
 }
