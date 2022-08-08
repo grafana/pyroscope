@@ -10,6 +10,17 @@
     }
   }
 
+  .timelineWrapper,
+  .flamegraphWrapper {
+    min-height: 125px;
+    text-align: center;
+
+    span[role='progressbar'] {
+      display: inline-block;
+      margin-top: 50px;
+    }
+  }
+
   .tableDescription {
     display: flex;
     justify-content: space-between;
