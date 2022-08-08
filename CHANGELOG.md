@@ -1,3 +1,25 @@
+# [0.25.0](https://github.com/pyroscope-io/pyroscope/compare/v0.24.0...v0.25.0) (2022-08-08)
+
+
+### Bug Fixes
+
+* admin controller test compilation ([#1322](https://github.com/pyroscope-io/pyroscope/issues/1322)) ([60299ed](https://github.com/pyroscope-io/pyroscope/commit/60299ed4196241ff185e3a38478527cd2cc59a29))
+
+
+### Features
+
+* add app dropdown footer ([#1340](https://github.com/pyroscope-io/pyroscope/issues/1340)) ([dc07d04](https://github.com/pyroscope-io/pyroscope/commit/dc07d04e28cdd821829eaf211a8543723b3956aa))
+* add tooltip table text for when units is undefined ([#1341](https://github.com/pyroscope-io/pyroscope/issues/1341)) ([a9fd5ac](https://github.com/pyroscope-io/pyroscope/commit/a9fd5ac43f6429c70ccbc70cb8bf89c581e915fb))
+* **api:** Implement delete app functionality as an HTTP endpoint backend [#1223](https://github.com/pyroscope-io/pyroscope/issues/1223)  ([#1239](https://github.com/pyroscope-io/pyroscope/issues/1239)) ([b82f426](https://github.com/pyroscope-io/pyroscope/commit/b82f42625f5ee80fad9701d1abd2e0b059aee46c))
+* configurable disk alert threshold ([#1318](https://github.com/pyroscope-io/pyroscope/issues/1318)) ([7281bd8](https://github.com/pyroscope-io/pyroscope/commit/7281bd8c81aa7fa6a22875c474529b0450f0eb16))
+* create tag-explorer page for analyzing tag breakdowns ([#1293](https://github.com/pyroscope-io/pyroscope/issues/1293)) ([5456a86](https://github.com/pyroscope-io/pyroscope/commit/5456a866cfa6b3800fb7d359ff55032a84129138))
+* enhance tag explorer view ([#1329](https://github.com/pyroscope-io/pyroscope/issues/1329)) ([7d66d75](https://github.com/pyroscope-io/pyroscope/commit/7d66d750ba68d27a5046751221dd51d465a08488))
+* upload any arbitrary data (collapsed/pprof/json) via adhoc ui ([#1327](https://github.com/pyroscope-io/pyroscope/issues/1327)) ([6620888](https://github.com/pyroscope-io/pyroscope/commit/662088820b430abb2e4dcb9270cbaf62771ca601)), closes [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333) [#1333](https://github.com/pyroscope-io/pyroscope/issues/1333)
+* **webapp:** break adhoc ui upload into 2 steps ([#1352](https://github.com/pyroscope-io/pyroscope/issues/1352)) ([9c15298](https://github.com/pyroscope-io/pyroscope/commit/9c15298251048e06a96f738b85f2915326c44f25))
+* **webapp:** persist uploaded data via adhoc ui ([#1351](https://github.com/pyroscope-io/pyroscope/issues/1351)) ([cebefc9](https://github.com/pyroscope-io/pyroscope/commit/cebefc94305ffb98467261b24eb6c65ca5e1a18c))
+
+
+
 # [0.24.0](https://github.com/pyroscope-io/pyroscope/compare/v0.23.0...v0.24.0) (2022-07-28)
 
 
