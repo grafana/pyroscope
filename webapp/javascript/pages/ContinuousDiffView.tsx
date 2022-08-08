@@ -20,7 +20,7 @@ import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
-import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';

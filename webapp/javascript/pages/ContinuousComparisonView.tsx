@@ -12,7 +12,7 @@ import {
   fetchTagValues,
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
-import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
