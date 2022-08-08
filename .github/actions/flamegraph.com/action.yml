@@ -1,0 +1,7 @@
+name: hello-world
+runs:
+  using: docker
+  image: docker://node:16-buster-slim
+  entrypoint: /bin/sh -c
+  args:
+    - env
