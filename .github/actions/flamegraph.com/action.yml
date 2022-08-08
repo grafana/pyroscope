@@ -1,8 +1,12 @@
-name: hello-world
+name:
+  hello-world
+  #runs:
+  #  using: docker
+  #  image:
+  #    docker://node:16-buster-slim
+  #    #  entrypoint: /bin/sh -c
+  #  args:
+  #    - env
 runs:
-  using: docker
-  image:
-    docker://node:16-buster-slim
-    #  entrypoint: /bin/sh -c
-  args:
-    - env
+  using: 'node16'
+  main: 'index.js'
