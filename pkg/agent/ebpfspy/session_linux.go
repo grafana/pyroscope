@@ -267,9 +267,11 @@ func (s *session) walkStack(line *bytes.Buffer, stackId int64, pid uint32, users
 	if stackId < 0 { //todo
 		return
 	}
-	key := unsafe.Pointer(&stackId)
+	stackIdU32 := uint32(stackId)
+	key := unsafe.Pointer(&stackIdU32)
 	stack, err := s.mapStacks.GetValue(key)
 	if err != nil {
+		fmt.Printf("walkStack err %v %v", err, stackIdU32)
 		return
 	}
 	var stackFrames []string

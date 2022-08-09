@@ -8,7 +8,6 @@ package ebpfspy
 import "C"
 import (
 	"fmt"
-	bpf "github.com/aquasecurity/libbpfgo"
 	"unsafe"
 )
 
@@ -35,14 +34,13 @@ func (s *session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 	// try iterating
 	it := s.mapCounts.Iterator()
 	for it.Next() {
-		k := it.Key()
-		allKeys = append(allKeys, k...)
-		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&k[0]))
+		key := it.Key()
+		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
 		v, err := s.mapCounts.GetValue(unsafe.Pointer(ck))
 		if err != nil {
 			return nil, nil, false, err
 		}
-		keys = append(keys, k)
+		keys = append(keys, key)
 		values = append(keys, v)
 	}
 	return keys, values, false, nil
@@ -70,36 +68,42 @@ func (s *session) clearCountsMap(keys [][]byte, batch bool) error {
 
 func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
 	m := s.mapStacks
+	cnt := 0
+	errs := 0
 	if s.roundNumber%3 == 0 { //todo increase, 3- for debugging
-		fmt.Printf("do a full stackmap reset")
+		fmt.Printf("do a full stackmap reset\n")
 		// do a full reset once in a while
 		it := m.Iterator()
-		for it.Next() {
 
-			if err := m.DeleteKey(unsafe.Pointer(&it.Key()[0])); err != nil {
-				return err
+		for it.Next() {
+			key := it.Key()
+			if err := m.DeleteKey(unsafe.Pointer(&key[0])); err != nil {
+				fmt.Printf("error deleting key 1 %v\n", err)
+				//return err
+				errs += 1
+			} else {
+				cnt += 1
 			}
+
 		}
+		fmt.Printf("done a full stackmap reset %d %d\n", cnt, errs)
 		return nil
 	}
-	fmt.Printf("do a known keys stackmap reset")
+	fmt.Printf("do a known keys stackmap reset\n")
 
 	for stackId := range knownKeys {
-		if err := m.DeleteKey(unsafe.Pointer(&stackId)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+		k := stackId
+		if err := m.DeleteKey(unsafe.Pointer(&k)); err != nil {
+			fmt.Printf("error deleting key %v %v", err, stackId)
 
-func clearMap(m *bpf.BPFMap) error {
-	it := m.Iterator()
-	for it.Next() {
-		err := m.DeleteKey(unsafe.Pointer(&it.Key()[0]))
-		if err != nil {
-			return err
+			//return err
+			errs += 1
+		} else {
+			cnt += 1
 		}
 	}
+	fmt.Printf("done known keys stackmap reset %d %d\n", cnt, errs)
+
 	return nil
 }
 
