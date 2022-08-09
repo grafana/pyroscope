@@ -62,7 +62,7 @@ func newSession(pid int, sampleRate uint32) *session {
 		sampleRate:     sampleRate,
 		useComm:        true,
 		useTGIDAsKey:   true,
-		resolveSymbols: false,
+		resolveSymbols: true,
 
 		pidCacheSize: 256,
 		modStat:      make(map[string]*modInfo),
@@ -128,51 +128,84 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 	}
 	keys, values, batch, err := s.getCountsMapValues()
 	knownStacks := map[uint32]bool{}
+	t2 := time.Now()
+
+	type sf struct {
+		pid    uint32
+		count  uint32
+		kStack []byte
+		uStack []byte
+		comm   string
+	}
+	var sfs []sf
 	for i, key := range keys {
 		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
 		value := values[i]
 
 		pid := uint32(ck.pid)
-		kStack := int64(ck.kern_stack)
-		uStack := int64(ck.user_stack)
+		kStackID := int64(ck.kern_stack)
+		uStackID := int64(ck.user_stack)
 		count := binary.LittleEndian.Uint32(value)
 		buf := bytes.NewBuffer(nil)
-
+		comm := ""
 		if s.useComm {
-			comm := C.GoString(&ck.comm[0])
+			comm = C.GoString(&ck.comm[0])
 			buf.Write([]byte(comm))
 			buf.Write([]byte{';'})
 		}
-		s.walkStack(buf, uStack, pid, true)
-		s.walkStack(buf, kStack, pid, false)
+		//todo rewrite so we can measure separately stack.GetValue & sym.resolve, also try to do concurrently
+		uStack := s.getStack(uStackID, knownStacks)
+		kStack := s.getStack(kStackID, knownStacks)
 
-		err = cb(buf.Bytes(), uint64(count))
+		sfs = append(sfs, sf{pid: pid, uStack: uStack, kStack: kStack, count: count, comm: comm})
+
+		cnt++
+	}
+	t3 := time.Now()
+
+	for _, sf := range sfs {
+		buf := bytes.NewBuffer(nil)
+
+		if s.useComm {
+			buf.Write([]byte(sf.comm))
+			buf.Write([]byte{';'})
+		}
+		s.walkStack(buf, sf.uStack, sf.pid, true)
+		s.walkStack(buf, sf.kStack, sf.pid, false)
+		err = cb(buf.Bytes(), uint64(sf.count))
 		if err != nil {
 			return err
 		}
-		if kStack >= 0 {
-			knownStacks[uint32(kStack)] = true
-		}
-		if uStack >= 0 {
-			knownStacks[uint32(uStack)] = true
-		}
-		cnt++
 	}
 
-	t3 := time.Now()
+	t4 := time.Now()
 
 	if err = s.clearCountsMap(keys, batch); err != nil {
 		return err
 	}
+	t5 := time.Now()
 	if err = s.clearStacksMap(knownStacks); err != nil {
 		return err
 	}
-	t2 := time.Now()
-	fmt.Printf("Reset done stacktaces : %d len(symcache): %d all time %s mapreset time %s\n", cnt, s.symCache.pid2Cache.Len(), t2.Sub(t1), t2.Sub(t3))
-	type e struct {
-		m string
-		c int
-	}
+	t6 := time.Now()
+	fmt.Printf("Reset done \n"+
+		"	stacktaces : %d \n"+
+		"	len(symcache): %d \n"+
+		"	all time %v\n"+
+		"		getCountsMapValues time %v\n"+
+		"		getStacks %v\n"+
+		"		walkStack %v\n"+
+		"			clearCountsMap %v\n"+
+		"			clearStacksMap %v\n",
+		cnt,
+		s.symCache.pid2Cache.Len(),
+		t6.Sub(t1),
+		t2.Sub(t1),
+		t3.Sub(t2),
+		t4.Sub(t3),
+		t5.Sub(t4),
+		t6.Sub(t5),
+	)
 
 	var mods []*modInfo
 
@@ -263,15 +296,24 @@ func (s *session) attachPerfEvent() error {
 	return nil
 }
 
-func (s *session) walkStack(line *bytes.Buffer, stackId int64, pid uint32, userspace bool) {
+func (s *session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
 	if stackId < 0 { //todo
-		return
+		return nil
 	}
 	stackIdU32 := uint32(stackId)
 	key := unsafe.Pointer(&stackIdU32)
 	stack, err := s.mapStacks.GetValue(key)
+
 	if err != nil {
-		fmt.Printf("walkStack err %v %x %x\n", err, stackIdU32, stackId)
+		fmt.Printf("getStack err %v %x %x\n", err, stackIdU32, stackId)
+		return nil
+	}
+	knownStacks[stackIdU32] = true
+	return stack
+
+}
+func (s *session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, userspace bool) {
+	if len(stack) == 0 {
 		return
 	}
 	var stackFrames []string
