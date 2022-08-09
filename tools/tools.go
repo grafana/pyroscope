@@ -18,6 +18,7 @@ import (
 	_ "github.com/mattn/goreman"
 	_ "github.com/mgechev/revive"
 	_ "github.com/onsi/ginkgo/v2/ginkgo"
+	_ "github.com/rakyll/pprof-merge"
 	_ "golang.org/x/tools/cmd/godoc"
 	_ "honnef.co/go/tools/cmd/staticcheck"
 )
