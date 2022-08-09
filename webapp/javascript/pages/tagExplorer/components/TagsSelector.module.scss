@@ -1,0 +1,36 @@
+.title {
+  display: inline-block;
+  text-transform: uppercase;
+  padding: 5px;
+  color: var(--ps-select-modal-title);
+  font-weight: 700;
+}
+
+.tags {
+  padding: 0;
+  list-style: none;
+  margin: 0;
+  text-align: left;
+  min-height: 150px;
+
+  li {
+    &.selected {
+      background-color: var(--ps-blue-highlight);
+    }
+
+    input {
+      border: none;
+      padding: 10px 30px;
+      width: 100%;
+      text-align: left;
+    }
+  }
+}
+
+.compareButton {
+  background-color: var(--ps-blue-highlight);
+  border: var(--ps-blue-highlight);
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
