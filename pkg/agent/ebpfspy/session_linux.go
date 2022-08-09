@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -28,11 +29,12 @@ import (
 import "C"
 
 type session struct {
-	pid          int
-	sampleRate   uint32
-	useComm      bool
-	useTGIDAsKey bool
-	pidCacheSize int
+	pid            int
+	sampleRate     uint32
+	useComm        bool
+	useTGIDAsKey   bool
+	pidCacheSize   int
+	resolveSymbols bool
 
 	perfEventFds []int
 
@@ -52,10 +54,11 @@ const btf = "should not be used" // canary to detect we got relocations
 
 func newSession(pid int, sampleRate uint32) *session {
 	return &session{
-		pid:          pid,
-		sampleRate:   sampleRate,
-		useComm:      true,
-		useTGIDAsKey: true,
+		pid:            pid,
+		sampleRate:     sampleRate,
+		useComm:        true,
+		useTGIDAsKey:   true,
+		resolveSymbols: false,
 
 		pidCacheSize: 256,
 	}
@@ -107,9 +110,11 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 	cnt := 0
 
 	it := s.mapCounts.Iterator()
+	var allKeys []byte
 
 	for it.Next() {
 		k := it.Key()
+		allKeys = append(allKeys, k...)
 		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&k[0]))
 		v, err := s.mapCounts.GetValue(unsafe.Pointer(ck))
 		if err != nil {
@@ -137,8 +142,17 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 	}
 
 	t3 := time.Now()
-	clearMap(s.mapCounts)
-	clearMap(s.mapStacks)
+	err := s.mapCounts.DeleteKeyBatch(unsafe.Pointer(&allKeys[0]), uint32(cnt))
+	if err != nil {
+		if err = clearMap(s.mapCounts); err != nil {
+			return err
+		}
+	} else {
+		fmt.Printf("batch deleted %d\n", cnt)
+	}
+	if err = clearMap(s.mapStacks); err != nil {
+		return err
+	}
 	t2 := time.Now()
 	fmt.Printf("Reset done stacktaces : %d len(symcache): %d all time %s mapreset time %s\n", cnt, s.symCache.pid2Cache.Len(), t2.Sub(t1), t2.Sub(t3))
 
@@ -237,9 +251,14 @@ func (s *session) walkStack(line *bytes.Buffer, stackId int64, pid uint32, users
 		if ip == 0 {
 			break
 		}
-		sym := s.symCache.resolveSymbol(pid, ip)
-		if userspace || sym != symbolUnknown {
-			stackFrames = append(stackFrames, sym+";")
+		if s.resolveSymbols {
+			sym := s.symCache.resolveSymbol(pid, ip)
+			if userspace || sym != symbolUnknown {
+				stackFrames = append(stackFrames, sym+";")
+			}
+		} else {
+			stackFrames = append(stackFrames, strconv.FormatInt(int64(ip), 16)+";")
+
 		}
 	}
 	reverse(stackFrames)
@@ -254,14 +273,15 @@ func reverse(s []string) {
 	}
 }
 
-func clearMap(m *bpf.BPFMap) {
+func clearMap(m *bpf.BPFMap) error {
 	it := m.Iterator()
 	for it.Next() {
 		err := m.DeleteKey(unsafe.Pointer(&it.Key()[0]))
 		if err != nil {
-			panic(err) //todo
+			return err
 		}
 	}
+	return nil
 }
 
 //go:embed bpf/profile.bpf.o
