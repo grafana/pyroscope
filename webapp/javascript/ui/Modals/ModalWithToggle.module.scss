@@ -3,10 +3,6 @@
   display: inline-block;
   margin-left: 5px;
 
-  .label {
-    padding-right: 3px;
-  }
-
   .toggle {
     cursor: pointer;
     background-color: var(--ps-ui-element-bg-primary);
@@ -56,6 +52,6 @@
     justify-content: flex-end;
     padding: 12px 10px;
     border-top: 1px solid var(--ps-ui-border);
-    min-height: 16px;
+    min-height: 40px;
   }
 }
