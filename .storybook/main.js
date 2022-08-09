@@ -12,6 +12,7 @@ module.exports = {
   webpackFinal: async (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
+      '@webapp': path.resolve(__dirname, '../webapp/javascript'),
       '@ui': path.resolve(__dirname, '../webapp/javascript/ui'),
       '@utils': path.resolve(__dirname, '../webapp/javascript/util'),
     };
