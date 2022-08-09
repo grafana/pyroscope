@@ -13,3 +13,4 @@ package ebpfspy
 // maybe use map in map or map in array, to avoid clearing map by keys
 // measure stacks.GetValue, sym.resolve separately
 // try concurrent
+// offload demangling to the server?

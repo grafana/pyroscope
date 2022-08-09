@@ -21,7 +21,8 @@ import "C"
 const symbolUnknown = "[unknown]"
 
 type symbolCacheEntry struct {
-	cache unsafe.Pointer
+	cache       unsafe.Pointer
+	roundNumber int
 }
 type pidKey uint32
 
@@ -42,15 +43,20 @@ func newSymbolCache(pidCacheSize int) (*symbolCache, error) {
 	}, nil
 }
 
-func (sc *symbolCache) bccResolve(pid uint32, addr uint64) (string, uint64, string) {
+func (sc *symbolCache) bccResolve(pid uint32, addr uint64, roundNumber int) (string, uint64, string) {
 	symbol := C.struct_bcc_symbol{}
 	var symbolC = (*C.struct_bcc_symbol)(unsafe.Pointer(&symbol))
 	e := sc.getOrCreateCacheEntry(pidKey(pid))
+	staleCheck := false
+	if roundNumber != e.roundNumber {
+		e.roundNumber = roundNumber
+		staleCheck = true
+	}
 	var res C.int
 	if pid == 0 {
-		res = C.bcc_symcache_resolve_no_demangle(e.cache, C.ulong(addr), symbolC)
+		res = C.bcc_symcache_resolve_no_demangle(e.cache, C.ulong(addr), symbolC, C.bool(staleCheck))
 	} else {
-		res = C.bcc_symcache_resolve(e.cache, C.ulong(addr), symbolC)
+		res = C.bcc_symcache_resolve(e.cache, C.ulong(addr), symbolC, C.bool(staleCheck))
 		defer C.bcc_symbol_free_demangle_name(symbolC)
 	}
 
@@ -67,8 +73,8 @@ func (sc *symbolCache) bccResolve(pid uint32, addr uint64) (string, uint64, stri
 	}
 }
 
-func (sc *symbolCache) resolveSymbol(pid uint32, addr uint64) string {
-	name, _, _ := sc.bccResolve(pid, addr)
+func (sc *symbolCache) resolveSymbol(pid uint32, addr uint64, roundNumber int) string {
+	name, _, _ := sc.bccResolve(pid, addr, roundNumber)
 	if name == "" {
 		name = symbolUnknown
 	}

@@ -14,7 +14,7 @@ libs/libbpf: libbpf-src
 
 bcc-src:
 	git clone https://github.com/korniltsev/bcc.git bcc-src
-	cd bcc-src && git checkout 0513776ccccc7eeea9a424b14d1be601993d1a51
+	cd bcc-src && git checkout b9554b585afe18540ba98dde5b667e5b4036f479
 
 libs/bcc-syms: bcc-src
 	cd bcc-src \

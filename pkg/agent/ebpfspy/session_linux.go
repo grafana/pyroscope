@@ -325,7 +325,7 @@ func (s *session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 		}
 		if s.resolveSymbols {
 			//sym := s.symCache.resolveSymbol(pid, ip)
-			name, _, mod := s.symCache.bccResolve(pid, ip)
+			name, _, mod := s.symCache.bccResolve(pid, ip, s.roundNumber)
 			if name == "" {
 				name = symbolUnknown
 			}
