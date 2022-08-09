@@ -61,7 +61,7 @@ func newSession(pid int, sampleRate uint32) *session {
 		sampleRate:     sampleRate,
 		useComm:        true,
 		useTGIDAsKey:   true,
-		resolveSymbols: true,
+		resolveSymbols: false,
 
 		pidCacheSize: 256,
 		modStat:      make(map[string]*modInfo),
