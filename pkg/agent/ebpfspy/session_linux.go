@@ -50,7 +50,7 @@ type session struct {
 
 	modMutex sync.Mutex
 
-	modStat map[string]int
+	modStat map[string]*modInfo
 }
 
 const btf = "should not be used" // canary to detect we got relocations
@@ -64,8 +64,14 @@ func newSession(pid int, sampleRate uint32) *session {
 		resolveSymbols: true,
 
 		pidCacheSize: 256,
-		modStat:      make(map[string]int),
+		modStat:      make(map[string]*modInfo),
 	}
+}
+
+type modInfo struct {
+	mod  string
+	pids map[int]bool
+	cnt  int
 }
 
 func (s *session) Start() error {
@@ -159,21 +165,18 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 		m string
 		c int
 	}
-	type t struct {
-		mod   string
-		count int
-	}
-	var mods []t
 
-	for k, c := range s.modStat {
-		mods = append(mods, t{k, c})
+	var mods []*modInfo
+
+	for _, mi := range s.modStat {
+		mods = append(mods, mi)
 
 	}
 	sort.Slice(mods[:], func(i, j int) bool {
-		return mods[i].count < mods[j].count
+		return mods[i].cnt < mods[j].cnt
 	})
 	for _, it := range mods {
-		fmt.Printf("modstat %10d %s\n", it.count, it.mod)
+		fmt.Printf("modstat %10d %10d %s\n", it.cnt, len(it.pids), it.mod)
 	}
 	fmt.Printf("total %d\n", len(mods))
 	return nil
@@ -276,7 +279,13 @@ func (s *session) walkStack(line *bytes.Buffer, stackId int64, pid uint32, users
 			}
 			sym := name
 			if mod != "" {
-				s.modStat[mod] += 1
+				mi, ok := s.modStat[mod]
+				if !ok {
+					mi = &modInfo{pids: make(map[int]bool), mod: mod}
+					s.modStat[mod] = mi
+				}
+				mi.pids[int(pid)] = true
+				mi.cnt += 1
 			}
 			if userspace || sym != symbolUnknown {
 				stackFrames = append(stackFrames, sym+";")
