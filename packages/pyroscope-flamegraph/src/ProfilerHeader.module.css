@@ -9,6 +9,7 @@
 .navbar > *:not(:first-child) {
   margin-left: 5px;
   margin-right: 5px;
+  height: 100%;
 
   &.fit-mode-select {
     min-width: 65px;
