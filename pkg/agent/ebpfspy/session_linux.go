@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
+	"sort"
 	"strconv"
 	"syscall"
 	"time"
@@ -48,6 +49,8 @@ type session struct {
 	link      *bpf.BPFLink
 
 	modMutex sync.Mutex
+
+	modStat map[string]int
 }
 
 const btf = "should not be used" // canary to detect we got relocations
@@ -58,9 +61,10 @@ func newSession(pid int, sampleRate uint32) *session {
 		sampleRate:     sampleRate,
 		useComm:        true,
 		useTGIDAsKey:   true,
-		resolveSymbols: false,
+		resolveSymbols: true,
 
 		pidCacheSize: 256,
+		modStat:      make(map[string]int),
 	}
 }
 
@@ -88,6 +92,9 @@ func (s *session) Start() error {
 	if err = s.module.BPFLoadObject(); err != nil {
 		return err
 	}
+	if s.prog, err = s.module.GetProgram("do_perf_event"); err != nil {
+		return err
+	}
 	if err = s.findMaps(); err != nil {
 		return err
 	}
@@ -108,22 +115,19 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 
 	t1 := time.Now()
 	cnt := 0
+	for k := range s.modStat {
+		delete(s.modStat, k)
+	}
+	keys, values, batch, err := s.getCountsMapValues()
 
-	it := s.mapCounts.Iterator()
-	var allKeys []byte
+	for i, key := range keys {
+		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
+		value := values[i]
 
-	for it.Next() {
-		k := it.Key()
-		allKeys = append(allKeys, k...)
-		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&k[0]))
-		v, err := s.mapCounts.GetValue(unsafe.Pointer(ck))
-		if err != nil {
-			return err
-		}
 		pid := uint32(ck.pid)
 		kStack := int64(ck.kern_stack)
 		uStack := int64(ck.user_stack)
-		count := binary.LittleEndian.Uint32(v)
+		count := binary.LittleEndian.Uint32(value)
 		buf := bytes.NewBuffer(nil)
 
 		if s.useComm {
@@ -142,23 +146,36 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 	}
 
 	t3 := time.Now()
-	err := s.mapCounts.DeleteKeyBatch(unsafe.Pointer(&allKeys[0]), uint32(cnt))
-	err2 := s.mapStacks.DeleteKeyBatch(unsafe.Pointer(&allKeys[0]), uint32(cnt))
-	fmt.Println("mapstack del", err2)
-	if err != nil {
-		fmt.Println("deleteKeyBatch err ", err)
-		if err = clearMap(s.mapCounts); err != nil {
-			return err
-		}
-	} else {
-		fmt.Printf("batch deleted %d\n", cnt)
+
+	if err = s.clearCountsMap(keys, batch); err != nil {
+		return err
 	}
 	if err = clearMap(s.mapStacks); err != nil {
 		return err
 	}
 	t2 := time.Now()
 	fmt.Printf("Reset done stacktaces : %d len(symcache): %d all time %s mapreset time %s\n", cnt, s.symCache.pid2Cache.Len(), t2.Sub(t1), t2.Sub(t3))
+	type e struct {
+		m string
+		c int
+	}
+	type t struct {
+		mod   string
+		count int
+	}
+	var mods []t
 
+	for k, c := range s.modStat {
+		mods = append(mods, t{k, c})
+
+	}
+	sort.Slice(mods[:], func(i, j int) bool {
+		return mods[i].count < mods[j].count
+	})
+	for _, it := range mods {
+		fmt.Printf("modstat %10d %s\n", it.count, it.mod)
+	}
+	fmt.Printf("total %d\n", len(mods))
 	return nil
 }
 
@@ -179,9 +196,6 @@ func (s *session) findMaps() error {
 		return err
 	}
 	if s.mapStacks, err = s.module.GetMap("stacks"); err != nil {
-		return err
-	}
-	if s.prog, err = s.module.GetProgram("do_perf_event"); err != nil {
 		return err
 	}
 	return nil
@@ -255,7 +269,15 @@ func (s *session) walkStack(line *bytes.Buffer, stackId int64, pid uint32, users
 			break
 		}
 		if s.resolveSymbols {
-			sym := s.symCache.resolveSymbol(pid, ip)
+			//sym := s.symCache.resolveSymbol(pid, ip)
+			name, _, mod := s.symCache.bccResolve(pid, ip)
+			if name == "" {
+				name = symbolUnknown
+			}
+			sym := name
+			if mod != "" {
+				s.modStat[mod] += 1
+			}
 			if userspace || sym != symbolUnknown {
 				stackFrames = append(stackFrames, sym+";")
 			}
@@ -274,17 +296,6 @@ func reverse(s []string) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
-}
-
-func clearMap(m *bpf.BPFMap) error {
-	it := m.Iterator()
-	for it.Next() {
-		err := m.DeleteKey(unsafe.Pointer(&it.Key()[0]))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 //go:embed bpf/profile.bpf.o
