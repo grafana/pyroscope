@@ -902,7 +902,27 @@ export const continuousSlice = createSlice({
     /*      Tag Explorer View      */
     /*******************************/
 
-    builder.addCase(fetchTagExplorerView.pending, () => {});
+    builder.addCase(fetchTagExplorerView.pending, (state) => {
+      switch (state.diffView.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'reloading':
+        case 'loaded': {
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            type: 'loading',
+          };
+        }
+      }
+    });
 
     builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
       state.tagExplorerView = {
