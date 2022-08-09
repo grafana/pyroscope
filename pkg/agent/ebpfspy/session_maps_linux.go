@@ -45,7 +45,7 @@ func (s *session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 		keys = append(keys, k)
 		values = append(keys, v)
 	}
-	return keys, values, true, nil
+	return keys, values, false, nil
 }
 
 func (s *session) clearCountsMap(keys [][]byte, batch bool) error {
