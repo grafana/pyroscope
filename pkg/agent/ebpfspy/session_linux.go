@@ -143,7 +143,10 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 
 	t3 := time.Now()
 	err := s.mapCounts.DeleteKeyBatch(unsafe.Pointer(&allKeys[0]), uint32(cnt))
+	err2 := s.mapStacks.DeleteKeyBatch(unsafe.Pointer(&allKeys[0]), uint32(cnt))
+	fmt.Println("mapstack del", err2)
 	if err != nil {
+		fmt.Println("deleteKeyBatch err ", err)
 		if err = clearMap(s.mapCounts); err != nil {
 			return err
 		}
