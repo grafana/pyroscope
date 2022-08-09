@@ -94,7 +94,7 @@ func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
 	for stackId := range knownKeys {
 		k := stackId
 		if err := m.DeleteKey(unsafe.Pointer(&k)); err != nil {
-			fmt.Printf("error deleting key %v %v", err, stackId)
+			fmt.Printf("error deleting key %v %x\n", err, stackId)
 
 			//return err
 			errs += 1
