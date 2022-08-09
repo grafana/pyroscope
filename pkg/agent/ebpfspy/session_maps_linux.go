@@ -68,6 +68,30 @@ func (s *session) clearCountsMap(keys [][]byte, batch bool) error {
 	return nil
 }
 
+func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
+	m := s.mapStacks
+	if s.roundNumber%3 == 0 { //todo increase, 3- for debugging
+		fmt.Printf("do a full stackmap reset")
+		// do a full reset once in a while
+		it := m.Iterator()
+		for it.Next() {
+
+			if err := m.DeleteKey(unsafe.Pointer(&it.Key()[0])); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	fmt.Printf("do a known keys stackmap reset")
+
+	for stackId := range knownKeys {
+		if err := m.DeleteKey(unsafe.Pointer(&stackId)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func clearMap(m *bpf.BPFMap) error {
 	it := m.Iterator()
 	for it.Next() {

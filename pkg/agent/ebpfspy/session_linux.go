@@ -50,7 +50,8 @@ type session struct {
 
 	modMutex sync.Mutex
 
-	modStat map[string]*modInfo
+	modStat     map[string]*modInfo
+	roundNumber int
 }
 
 const btf = "should not be used" // canary to detect we got relocations
@@ -115,7 +116,8 @@ func (s *session) Start() error {
 }
 
 func (s *session) Reset(cb func([]byte, uint64) error) error {
-	fmt.Println("Reset")
+	s.roundNumber += 1
+	fmt.Println("Reset", s.roundNumber)
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
@@ -125,7 +127,7 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 		delete(s.modStat, k)
 	}
 	keys, values, batch, err := s.getCountsMapValues()
-
+	knownStacks := map[uint32]bool{}
 	for i, key := range keys {
 		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
 		value := values[i]
@@ -148,6 +150,12 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 		if err != nil {
 			return err
 		}
+		if kStack >= 0 {
+			knownStacks[uint32(kStack)] = true
+		}
+		if uStack >= 0 {
+			knownStacks[uint32(uStack)] = true
+		}
 		cnt++
 	}
 
@@ -156,7 +164,7 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 	if err = s.clearCountsMap(keys, batch); err != nil {
 		return err
 	}
-	if err = clearMap(s.mapStacks); err != nil {
+	if err = s.clearStacksMap(knownStacks); err != nil {
 		return err
 	}
 	t2 := time.Now()
