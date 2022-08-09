@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.29.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.28.1...@pyroscope/webapp@1.29.0) (2022-08-08)
+
+
+### Features
+
+* add ProfilerTable arrow color ([#1366](https://github.com/pyroscope-io/pyroscope/issues/1366)) ([be3901d](https://github.com/pyroscope-io/pyroscope/commit/be3901da82fe1fbed54171938f2bef638819319b))
+
+
+
+
+
+## [1.28.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.28.0...@pyroscope/webapp@1.28.1) (2022-08-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.28.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.27.1...@pyroscope/webapp@1.28.0) (2022-08-08)
+
+
+### Features
+
+* add loader to tag exlorer page ([#1368](https://github.com/pyroscope-io/pyroscope/issues/1368)) ([16a727d](https://github.com/pyroscope-io/pyroscope/commit/16a727d5f51847114fe360eb70aff1bf9bfd3a9e))
+
+
+
+
+
+## [1.27.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.27.0...@pyroscope/webapp@1.27.1) (2022-08-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 # [1.27.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.26.0...@pyroscope/webapp@1.27.0) (2022-08-05)
 
 

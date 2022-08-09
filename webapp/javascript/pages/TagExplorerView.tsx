@@ -14,6 +14,7 @@ import TimelineChartWrapper, {
 } from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -56,7 +57,7 @@ function TagExplorerView() {
     }
   }, [query]);
 
-  const { groupByTag, groupByTagValue } = tagExplorerView;
+  const { groupByTag, groupByTagValue, type } = tagExplorerView;
 
   useEffect(() => {
     if (from && until && query && groupByTagValue) {
@@ -164,57 +165,70 @@ function TagExplorerView() {
           handleGroupByTagChange={handleGroupedByTagChange}
           handleGroupByTagValueChange={handleGroupByTagValueChange}
         />
-        <TimelineChartWrapper
-          selectionType="double"
-          mode="multiple"
-          timezone={offset === 0 ? 'utc' : 'browser'}
-          data-testid="timeline-explore-page"
-          id="timeline-chart-explore-page"
-          timelineGroups={filteredGroupsData}
-          // to not "dim" timelines when "All" option is selected
-          activeGroup={
-            groupByTagValue !== appWithoutTagsWhereDropdownOptionName
-              ? groupByTagValue
-              : ''
-          }
-          showTagsLegend={filteredGroupsData.length > 1}
+        <div className={styles.timelineWrapper}>
+          {type === 'loading' ? (
+            <LoadingSpinner />
+          ) : (
+            <TimelineChartWrapper
+              selectionType="double"
+              mode="multiple"
+              timezone={offset === 0 ? 'utc' : 'browser'}
+              data-testid="timeline-explore-page"
+              id="timeline-chart-explore-page"
+              timelineGroups={filteredGroupsData}
+              // to not "dim" timelines when "All" option is selected
+              activeGroup={
+                groupByTagValue !== appWithoutTagsWhereDropdownOptionName
+                  ? groupByTagValue
+                  : ''
+              }
+              showTagsLegend={filteredGroupsData.length > 1}
+              handleGroupByTagValueChange={handleGroupByTagValueChange}
+              onSelect={(from, until) =>
+                dispatch(setDateRange({ from, until }))
+              }
+              height="125px"
+              format="lines"
+            />
+          )}
+        </div>
+      </Box>
+      <Box>
+        <Table
+          appName={appName.unwrapOr('')}
+          whereDropdownItems={whereDropdownItems}
+          groupByTag={groupByTag}
+          groupByTagValue={groupByTagValue}
+          groupsData={filteredGroupsData}
           handleGroupByTagValueChange={handleGroupByTagValueChange}
-          onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
-          height="125px"
-          format="lines"
+          isLoading={type === 'loading'}
         />
       </Box>
       <Box>
-        {appName.isJust && (
-          <Table
-            appName={appName.value}
-            whereDropdownItems={whereDropdownItems}
-            groupByTag={groupByTag}
-            groupByTagValue={groupByTagValue}
-            groupsData={filteredGroupsData}
-            handleGroupByTagValueChange={handleGroupByTagValueChange}
-          />
-        )}
-      </Box>
-      <Box>
-        <FlamegraphRenderer
-          showCredit={false}
-          profile={activeTagProfile}
-          colorMode={colorMode}
-          ExportData={
-            activeTagProfile && (
-              <ExportData
-                flamebearer={activeTagProfile}
-                exportPNG
-                exportJSON
-                exportPprof
-                exportHTML
-                exportFlamegraphDotCom
-                exportFlamegraphDotComFn={exportFlamegraphDotComFn}
-              />
-            )
-          }
-        />
+        <div className={styles.flamegraphWrapper}>
+          {type === 'loading' ? (
+            <LoadingSpinner />
+          ) : (
+            <FlamegraphRenderer
+              showCredit={false}
+              profile={activeTagProfile}
+              colorMode={colorMode}
+              ExportData={
+                activeTagProfile && (
+                  <ExportData
+                    flamebearer={activeTagProfile}
+                    exportPNG
+                    exportJSON
+                    exportPprof
+                    exportHTML
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+                  />
+                )
+              }
+            />
+          )}
+        </div>
       </Box>
     </div>
   );
@@ -234,6 +248,7 @@ function Table({
   groupByTag,
   groupByTagValue,
   groupsData,
+  isLoading,
   handleGroupByTagValueChange,
 }: {
   appName: string;
@@ -241,6 +256,7 @@ function Table({
   groupByTag: string;
   groupByTagValue: string | undefined;
   groupsData: TimelineGroupData[];
+  isLoading: boolean;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
   const [linkTagsSelectModalData, setLinkTagsSelectModalData] = useState(
@@ -346,37 +362,47 @@ function Table({
           </tr>
         </thead>
         <tbody>
-          {groupsData.map(({ tagName, color, data }) => {
-            const mean = calculateMean(data.samples);
+          {isLoading ? (
+            <tr>
+              <td colSpan={6}>
+                <LoadingSpinner />
+              </td>
+            </tr>
+          ) : (
+            groupsData.map(({ tagName, color, data }) => {
+              const mean = calculateMean(data.samples);
 
-            return (
-              <tr
-                className={isTagSelected(tagName) ? styles.activeTagRow : ''}
-                onClick={
-                  // prevent clicking on single "application without tags" group row
-                  tagName !== appName
-                    ? () => handleTableRowClick(tagName)
-                    : undefined
-                }
-                key={tagName}
-              >
-                <td>
-                  <div className={styles.tagName}>
-                    <span
-                      className={styles.tagColor}
-                      style={{ backgroundColor: color?.toString() }}
-                    />
-                    {tagName}
-                  </div>
-                </td>
-                <td>{data.samples.length}</td>
-                <td>{mean.toFixed(2)}</td>
-                <td>{calculateStdDeviation(data.samples, mean).toFixed(2)}</td>
-                <td>{Math.min(...data.samples)}</td>
-                <td>{Math.max(...data.samples)}</td>
-              </tr>
-            );
-          })}
+              return (
+                <tr
+                  className={isTagSelected(tagName) ? styles.activeTagRow : ''}
+                  onClick={
+                    // prevent clicking on single "application without tags" group row
+                    tagName !== appName
+                      ? () => handleTableRowClick(tagName)
+                      : undefined
+                  }
+                  key={tagName}
+                >
+                  <td>
+                    <div className={styles.tagName}>
+                      <span
+                        className={styles.tagColor}
+                        style={{ backgroundColor: color?.toString() }}
+                      />
+                      {tagName}
+                    </div>
+                  </td>
+                  <td>{data.samples.length}</td>
+                  <td>{mean.toFixed(2)}</td>
+                  <td>
+                    {calculateStdDeviation(data.samples, mean).toFixed(2)}
+                  </td>
+                  <td>{Math.min(...data.samples)}</td>
+                  <td>{Math.max(...data.samples)}</td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </>
