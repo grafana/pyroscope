@@ -7,8 +7,7 @@ package ebpfspy
 
 import (
 	"debug/elf"
-	"fmt"
-	"github.com/hashicorp/golang-lru/simplelru"
+	"github.com/pyroscope-io/pyroscope/pkg/util/genericlru"
 	"sync"
 	"unsafe"
 )
@@ -20,31 +19,32 @@ import "C"
 
 const symbolUnknown = "[unknown]"
 
-type symbolCache struct {
-	pid2Cache *simplelru.LRU //todo wrap using generics
-	mutex     sync.Mutex
-}
-
 type symbolCacheEntry struct {
 	cache unsafe.Pointer
 }
+type pidKey uint32
 
-func newSymbolCache(pidCacheSize int) *symbolCache {
-	pid2Cache, _ := simplelru.NewLRU(pidCacheSize, func(pid interface{}, entry interface{}) {
-		fmt.Printf("pid cache evicted %v %v\n", pid, entry)
-		e := entry.(*symbolCacheEntry)
-		C.bcc_free_symcache(e.cache, C.int(pid.(uint32)))
+type symbolCache struct {
+	pid2Cache *genericlru.GenericLRU[pidKey, symbolCacheEntry]
+	mutex     sync.Mutex
+}
+
+func newSymbolCache(pidCacheSize int) (*symbolCache, error) {
+	pid2Cache, err := genericlru.NewGenericLRU[pidKey, symbolCacheEntry](pidCacheSize, func(pid pidKey, e *symbolCacheEntry) {
+		C.bcc_free_symcache(e.cache, C.int(pid))
 	})
+	if err != nil {
+		return nil, err
+	}
 	return &symbolCache{
 		pid2Cache: pid2Cache,
-	}
+	}, nil
 }
 
 func (sc *symbolCache) bccResolve(pid uint32, addr uint64) (string, uint64, string) {
 	symbol := C.struct_bcc_symbol{}
 	var symbolC = (*C.struct_bcc_symbol)(unsafe.Pointer(&symbol))
-
-	e := sc.getOrCreateCacheEntry(pid)
+	e := sc.getOrCreateCacheEntry(pidKey(pid))
 	var res C.int
 	if pid == 0 {
 		res = C.bcc_symcache_resolve_no_demangle(e.cache, C.ulong(addr), symbolC)
@@ -62,12 +62,11 @@ func (sc *symbolCache) bccResolve(pid uint32, addr uint64) (string, uint64, stri
 	if pid == 0 {
 		return C.GoString(symbol.name), uint64(symbol.offset), C.GoString(symbol.module)
 	} else {
-
 		return C.GoString(symbol.demangle_name), uint64(symbol.offset), C.GoString(symbol.module)
 	}
 }
 
-func (sc *symbolCache) sym(pid uint32, addr uint64) string {
+func (sc *symbolCache) resolveSymbol(pid uint32, addr uint64) string {
 	name, _, _ := sc.bccResolve(pid, addr)
 	if name == "" {
 		name = symbolUnknown
@@ -75,11 +74,11 @@ func (sc *symbolCache) sym(pid uint32, addr uint64) string {
 	return name
 }
 
-func (sc *symbolCache) getOrCreateCacheEntry(pid uint32) *symbolCacheEntry {
+func (sc *symbolCache) getOrCreateCacheEntry(pid pidKey) *symbolCacheEntry {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 	if cache, ok := sc.pid2Cache.Get(pid); ok {
-		return cache.(*symbolCacheEntry)
+		return cache
 	}
 	pidC := C.int(pid)
 	if pid == 0 {
@@ -94,16 +93,10 @@ func (sc *symbolCache) getOrCreateCacheEntry(pid uint32) *symbolCacheEntry {
 	return e
 }
 
-func (sc *symbolCache) reset() {
+func (sc *symbolCache) clear() {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 	for _, pid := range sc.pid2Cache.Keys() {
 		sc.pid2Cache.Remove(pid)
 	}
-}
-func (sc *symbolCache) remove(pid uint32) {
-	sc.mutex.Lock()
-	defer sc.mutex.Unlock()
-	fmt.Printf("removing pid %d\n", pid)
-	sc.pid2Cache.Remove(pid)
 }

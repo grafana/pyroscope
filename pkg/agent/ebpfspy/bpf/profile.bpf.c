@@ -2,32 +2,25 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include "profile.bpf.h"
-#define PERF_MAX_STACK_DEPTH         127
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct profile_key_t);
-	__type(value, u64);
-	__uint(max_entries, 16384);//todo sizes
+	__type(value, u32);
+	__uint(max_entries, PROFILE_MAPS_SIZE);
 } counts SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(u64));
-	__uint(max_entries, 16384);//todo sizes
+	__uint(max_entries, PROFILE_MAPS_SIZE);
 } stacks SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(key_size, sizeof(u32));
-    __uint(value_size, sizeof(u32));
-} pid_exits SEC(".maps");
 
 #define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
 #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
 
-struct profile_bss_args args;
+struct profile_bss_args_t args;
 
 SEC("perf_event")
 int do_perf_event(struct bpf_perf_event_data *ctx)
@@ -41,7 +34,7 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 	} else {
 	    key.pid = pid;
 	}
-	u64 *val, one = 1;
+	u32 *val, one = 1;
 
     if (pid == 0) {
         return 0;
@@ -63,17 +56,5 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 	return 0;
 }
 
-SEC("tracepoint/sched/sched_process_exit")
-int sched_process_exit(void *ctx) {
-    u64 id = bpf_get_current_pid_tgid();
-    u32 tgid = id >> 32;
-    u32 pid = id;
-    struct pid_exit_event e = {.pid = pid, .tgid = tgid};
-
-    bpf_get_current_comm(&e.comm, sizeof(e.comm));
-
-	bpf_perf_event_output(ctx, &pid_exits, BPF_F_CURRENT_CPU    , &e, sizeof(e));
-	return 0;
-}
 
 char _license[] SEC("license") = "GPL"; //todo

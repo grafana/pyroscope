@@ -1,6 +1,6 @@
 module github.com/pyroscope-io/pyroscope
 
-go 1.17
+go 1.18
 
 require (
 	github.com/aquasecurity/libbpfgo v0.3.0-libbpf-0.8.0
