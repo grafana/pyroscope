@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, useLocation, Redirect } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
-import OutsideClickHandler from 'react-outside-click-handler';
 
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
@@ -15,7 +14,7 @@ import TimelineChartWrapper, {
 import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
-import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
+import TagsSelector from '@webapp/pages/tagExplorer/components/TagsSelector';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { appendLabelToQuery } from '@webapp/util/query';
@@ -231,14 +230,6 @@ function TagExplorerView() {
   );
 }
 
-const defaultLinkTagsSelectModalData = {
-  baselineTag: '',
-  comparisonTag: '',
-  linkName: '',
-  isModalOpen: false,
-  shouldRedirect: false,
-};
-
 function Table({
   appName,
   whereDropdownItems,
@@ -256,13 +247,6 @@ function Table({
   isLoading: boolean;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
-  const [linkTagsSelectModalData, setLinkTagsSelectModalData] = useState(
-    defaultLinkTagsSelectModalData
-  );
-  const handleOutsideModalClick = () => {
-    setLinkTagsSelectModalData(defaultLinkTagsSelectModalData);
-  };
-
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
 
@@ -274,28 +258,9 @@ function Table({
     }
   };
 
-  const handleLinkModalOpen = (linkName: 'Comparison' | 'Diff') => {
-    setLinkTagsSelectModalData((currState) => ({
-      ...currState,
-      isModalOpen: true,
-      linkName,
-    }));
-  };
-
-  if (linkTagsSelectModalData.shouldRedirect) {
-    return (
-      <Redirect
-        to={
-          (linkTagsSelectModalData.linkName === 'Diff'
-            ? PAGES.COMPARISON_DIFF_VIEW
-            : PAGES.COMPARISON_VIEW) + search
-        }
-      />
-    );
-  }
-
   const getSingleViewSearch = () => {
-    if (!groupByTagValue) return search;
+    if (!groupByTagValue || appWithoutTagsWhereDropdownOptionName)
+      return search;
 
     const searchParams = new URLSearchParams(search);
     searchParams.delete('query');
@@ -320,30 +285,18 @@ function Table({
           >
             Single
           </NavLink>
-          <button
-            className={styles.buttonName}
-            onClick={() => handleLinkModalOpen('Comparison')}
-          >
-            Comparison
-          </button>
-          <button
-            className={styles.buttonName}
-            onClick={() => handleLinkModalOpen('Diff')}
-          >
-            Diff
-          </button>
-          {linkTagsSelectModalData.isModalOpen && (
-            <OutsideClickHandler onOutsideClick={handleOutsideModalClick}>
-              <ViewTagsSelectLinkModal
-                whereDropdownItems={whereDropdownItems}
-                groupByTag={groupByTag}
-                appName={appName}
-                /* eslint-disable-next-line react/jsx-props-no-spreading */
-                {...linkTagsSelectModalData}
-                setLinkTagsSelectModalData={setLinkTagsSelectModalData}
-              />
-            </OutsideClickHandler>
-          )}
+          <TagsSelector
+            linkName="Comparison"
+            whereDropdownItems={whereDropdownItems}
+            groupByTag={groupByTag}
+            appName={appName}
+          />
+          <TagsSelector
+            linkName="Diff"
+            whereDropdownItems={whereDropdownItems}
+            groupByTag={groupByTag}
+            appName={appName}
+          />
         </div>
       </div>
       <table className={styles.tagExplorerTable}>
