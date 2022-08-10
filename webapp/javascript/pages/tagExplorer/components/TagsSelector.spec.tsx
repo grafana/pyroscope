@@ -46,7 +46,7 @@ describe('Component: ViewTagsSelectLinkModal', () => {
     });
 
     // triggers click
-    expect(screen.getByTestId('toggler')).toBeInTheDocument();
+    screen.getByTestId('toggler').click();
     const modalWithToggleEl = screen.getByTestId('modal');
 
     expect(modalWithToggleEl).toBeInTheDocument();
