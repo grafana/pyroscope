@@ -30,6 +30,7 @@ function TagSelector({
   linkName,
   whereDropdownItems,
 }: TagSelectorProps) {
+  const [isModalOpen, setModalOpenStatus] = useState(false);
   const [{ baselineTag, comparisonTag, shouldRedirect }, setSelectedTags] =
     useState(defaultSelectedTags);
   const dispatch = useAppDispatch();
@@ -109,15 +110,19 @@ function TagSelector({
     dispatch(actions.setLeftQuery(brandQuery(leftQuery)));
     dispatch(actions.setRightQuery(brandQuery(rightQuery)));
     setSelectedTags((currState) => ({ ...currState, shouldRedirect: true }));
+    setModalOpenStatus(false);
   };
 
-  const handleOutClick = () => {
+  const handleOutsideClick = () => {
     setSelectedTags(defaultSelectedTags);
+    setModalOpenStatus(false);
   };
 
   return (
     <ModalWithToggle
-      handleOutClick={handleOutClick}
+      isModalOpen={isModalOpen}
+      setModalOpenStatus={setModalOpenStatus}
+      customHandleOutsideClick={handleOutsideClick}
       toggleText={linkName}
       headerEl={`Select Tags For ${linkName}`}
       leftSideEl={renderSide('left', baselineTag, 'baselineTag')}
