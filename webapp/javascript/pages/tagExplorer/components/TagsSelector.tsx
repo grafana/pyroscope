@@ -11,7 +11,7 @@ import styles from './TagsSelector.module.scss';
 
 const emptyTagsTag = 'No tags available';
 
-interface TagSelectorProps {
+export interface TagSelectorProps {
   appName: string;
   groupByTag: string;
   linkName: string;

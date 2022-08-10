@@ -11,15 +11,12 @@ import { configureStore } from '@reduxjs/toolkit';
 import { continuousSlice } from '@webapp/redux/reducers/continuous';
 import { Result } from '@webapp/util/fp';
 import * as appNames from '@webapp/services/appNames';
-import AppSelector, { TOGGLE_BTN_ID } from './index';
-import { APP_SEARCH_INPUT } from './SelectorModal';
+import AppSelector from '.';
 import { MENU_ITEM_ROLE } from './SelectButton';
 
 jest.mock('@webapp/services/appNames');
 
 const { getByTestId, queryByRole, getByRole, findByRole } = screen;
-
-// const MENU_ITEM_ROLE = 'menuitem';
 const mockAppNames = [
   'single',
   'double.cpu',
@@ -59,7 +56,7 @@ describe('AppSelector', () => {
 
     // Initial state
     // the item 'myapp' shouldn't be there
-    getByTestId(TOGGLE_BTN_ID).click();
+    getByTestId('toggler').click();
     expect(
       queryByRole(MENU_ITEM_ROLE, { name: 'myapp' })
     ).not.toBeInTheDocument();
@@ -71,7 +68,7 @@ describe('AppSelector', () => {
     // After some time the item should've been loaded
     // and the 'myapp' menuitem should be there
     expect(await findByRole('progressbar')).not.toBeInTheDocument();
-    getByTestId(TOGGLE_BTN_ID).click();
+    getByTestId('toggler').click();
     getByRole(MENU_ITEM_ROLE, { name: 'myapp' });
   });
 });
@@ -102,7 +99,6 @@ describe('AppSelector', () => {
       },
     });
 
-    getByTestId(TOGGLE_BTN_ID).click();
     // checks that there are 3 groups
     expect(queryByRole(MENU_ITEM_ROLE, { name: 'single' })).toBeInTheDocument();
     expect(queryByRole(MENU_ITEM_ROLE, { name: 'double' })).toBeInTheDocument();
@@ -116,10 +112,10 @@ describe('AppSelector', () => {
     const singleGroupName = 'single';
     fireEvent.click(ui.getByRole(MENU_ITEM_ROLE, { name: singleGroupName }));
     await waitFor(() => {
-      expect(getByTestId(TOGGLE_BTN_ID)).toHaveTextContent(singleGroupName);
+      expect(getByTestId('toggler')).toHaveTextContent(singleGroupName);
     });
 
-    getByTestId(TOGGLE_BTN_ID).click();
+    getByTestId('toggler').click();
 
     // checks if 'tripple' group expands 2 profile types
     fireEvent.click(ui.getByRole(MENU_ITEM_ROLE, { name: 'triple.app' }));
@@ -159,9 +155,7 @@ describe('AppSelector', () => {
       },
     });
 
-    getByTestId(TOGGLE_BTN_ID).click();
-
-    const input = renderUI.getByTestId(APP_SEARCH_INPUT);
+    const input = renderUI.getByTestId('application-search');
     fireEvent.change(input, { target: { value: 'triple.app' } });
 
     // picks groups, which either should be rendered or not
