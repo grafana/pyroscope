@@ -1,12 +1,14 @@
-import React, { useState, ReactNode, useEffect } from 'react';
+import React, { SetStateAction, Dispatch, ReactNode } from 'react';
 import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
 
 import styles from './ModalWithToggle.module.scss';
 
 export interface ModalWithToggleProps {
+  isModalOpen: boolean;
+  setModalOpenStatus: Dispatch<SetStateAction<boolean>>;
+  customHandleOutsideClick?: () => void;
   toggleText: string;
-  handleOutClick?: () => void;
   headerEl: string | ReactNode;
   leftSideEl: ReactNode;
   rightSideEl: ReactNode;
@@ -14,12 +16,13 @@ export interface ModalWithToggleProps {
   noDataEl?: ReactNode;
   modalClassName?: string;
   modalHeight?: string;
-  shouldHideModal?: boolean;
 }
 
 function ModalWithToggle({
+  isModalOpen,
+  setModalOpenStatus,
+  customHandleOutsideClick,
   toggleText,
-  handleOutClick,
   headerEl,
   leftSideEl,
   rightSideEl,
@@ -27,23 +30,9 @@ function ModalWithToggle({
   noDataEl,
   modalClassName,
   modalHeight,
-  shouldHideModal,
 }: ModalWithToggleProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const toggleModal = () => {
-    setIsOpen((v) => !v);
-  };
-
-  useEffect(() => {
-    if (shouldHideModal) {
-      toggleModal();
-    }
-  }, [shouldHideModal]);
-
   const handleOutsideClick = () => {
-    toggleModal();
-    if (handleOutClick) handleOutClick();
+    setModalOpenStatus(false);
   };
 
   return (
@@ -51,12 +40,14 @@ function ModalWithToggle({
       <button
         data-testid="toggler"
         className={styles.toggle}
-        onClick={toggleModal}
+        onClick={() => setModalOpenStatus(true)}
       >
         {toggleText}
       </button>
-      {isOpen && (
-        <OutsideClickHandler onOutsideClick={handleOutsideClick}>
+      {isModalOpen && (
+        <OutsideClickHandler
+          onOutsideClick={customHandleOutsideClick || handleOutsideClick}
+        >
           <div
             className={classnames(styles.modal, modalClassName)}
             data-testid="modal"
@@ -65,9 +56,7 @@ function ModalWithToggle({
               {headerEl}
             </div>
             <div className={styles.modalBody} data-testid="modal-body">
-              {noDataEl ? (
-                noDataEl
-              ) : (
+              {noDataEl || (
                 <>
                   <div
                     className={styles.side}

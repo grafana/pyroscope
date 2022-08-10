@@ -107,6 +107,7 @@ const SelectorModalWithToggler = ({
   appName,
 }: SelectorModalWithTogglerProps) => {
   const [filter, setFilter] = useState('');
+  const [isModalOpen, setModalOpenStatus] = useState(false);
 
   // selected is an array of strings
   //  0 corresponds to string of group / app name selected in the left pane
@@ -142,6 +143,7 @@ const SelectorModalWithToggler = ({
 
     if (filtered.length === 1 || index === 1) {
       selectAppName(filtered?.[0]);
+      setModalOpenStatus(false);
     }
 
     const arr = Array.from(selected);
@@ -159,6 +161,7 @@ const SelectorModalWithToggler = ({
     if (appName && !selected.length && groups.length) {
       if (groups.indexOf(appName) !== -1) {
         setSelected([appName]);
+        setModalOpenStatus(false);
       } else {
         setSelected([getGroupNameFromAppName(groups, appName), appName]);
       }
@@ -181,6 +184,8 @@ const SelectorModalWithToggler = ({
 
   return (
     <ModalWithToggle
+      isModalOpen={isModalOpen}
+      setModalOpenStatus={setModalOpenStatus}
       modalClassName={styles.appSelectorModal}
       modalHeight={listHeight}
       noDataEl={
