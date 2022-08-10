@@ -99,6 +99,8 @@ describe('AppSelector', () => {
       },
     });
 
+    getByTestId('toggler').click();
+
     // checks that there are 3 groups
     expect(queryByRole(MENU_ITEM_ROLE, { name: 'single' })).toBeInTheDocument();
     expect(queryByRole(MENU_ITEM_ROLE, { name: 'double' })).toBeInTheDocument();
@@ -154,6 +156,8 @@ describe('AppSelector', () => {
         },
       },
     });
+
+    getByTestId('toggler').click();
 
     const input = renderUI.getByTestId('application-search');
     fireEvent.change(input, { target: { value: 'triple.app' } });
