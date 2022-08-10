@@ -1,4 +1,5 @@
 import React, { useState, ReactNode } from 'react';
+import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
 
 import styles from './ModalWithToggle.module.scss';
@@ -10,6 +11,9 @@ function ModalWithToggle({
   leftSideEl,
   rightSideEl,
   footerEl,
+  noDataEl,
+  modalClassName,
+  modalHeight,
 }: {
   toggleText: string;
   handleOutClick?: () => void;
@@ -17,6 +21,9 @@ function ModalWithToggle({
   leftSideEl: ReactNode;
   rightSideEl: ReactNode;
   footerEl?: ReactNode;
+  noDataEl?: ReactNode;
+  modalClassName?: string;
+  modalHeight?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -40,11 +47,30 @@ function ModalWithToggle({
       </button>
       {isOpen && (
         <OutsideClickHandler onOutsideClick={handleOutsideClick}>
-          <div data-testid="modal" className={styles.modal}>
+          <div
+            className={classnames(styles.modal, modalClassName)}
+            data-testid="modal"
+          >
             <div className={styles.modalHeader}>{headerEl}</div>
             <div className={styles.modalBody}>
-              <div className={styles.side}>{leftSideEl}</div>
-              <div className={styles.side}>{rightSideEl}</div>
+              {noDataEl ? (
+                noDataEl
+              ) : (
+                <>
+                  <div
+                    className={styles.side}
+                    style={{ ...(modalHeight && { height: modalHeight }) }}
+                  >
+                    {leftSideEl}
+                  </div>
+                  <div
+                    className={styles.side}
+                    style={{ ...(modalHeight && { height: modalHeight }) }}
+                  >
+                    {rightSideEl}
+                  </div>
+                </>
+              )}
             </div>
             <div className={styles.modalFooter}>{footerEl}</div>
           </div>
