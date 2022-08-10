@@ -133,7 +133,7 @@ const handleHeight = 22;
         });
 
         if (dragSide) {
-          setCursor('ew-resize');
+          setCursor('grab');
         } else {
           setCursor('crosshair');
         }
