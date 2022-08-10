@@ -18,6 +18,8 @@ import SelectButton from './SelectButton';
 import styles from './AppSelector.module.scss';
 
 interface AppSelectorProps {
+  // Comparison/Diff View pages provide {onSelectedName} func which
+  // handle propagating query to left/right flamegraphs
   onSelectedName?: (name: Query) => void;
 }
 
@@ -32,8 +34,6 @@ const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
 
   const selectAppName = (name: string) => {
     const appNameQuery = queryFromAppName(name);
-    // Comparison/Diff View pages provide {onSelectedName} func which
-    // handle propagating query to left/right flamegraphs
     if (onSelectedName) {
       onSelectedName(appNameQuery);
     } else {
@@ -184,7 +184,7 @@ const SelectorModalWithToggler = ({
       modalClassName={styles.appSelectorModal}
       modalHeight={listHeight}
       noDataEl={
-        filteredAppNames?.length ? (
+        !filteredAppNames?.length ? (
           <div className={styles.noData}>No Data</div>
         ) : null
       }

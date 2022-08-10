@@ -1,4 +1,4 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useState, ReactNode, useEffect } from 'react';
 import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
 
@@ -30,6 +30,10 @@ function ModalWithToggle({
   const toggleModal = () => {
     setIsOpen((v) => !v);
   };
+
+  useEffect(() => {
+    toggleModal();
+  }, [toggleText]);
 
   const handleOutsideClick = () => {
     toggleModal();
