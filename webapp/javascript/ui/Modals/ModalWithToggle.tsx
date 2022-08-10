@@ -4,6 +4,19 @@ import OutsideClickHandler from 'react-outside-click-handler';
 
 import styles from './ModalWithToggle.module.scss';
 
+export interface ModalWithToggleProps {
+  toggleText: string;
+  handleOutClick?: () => void;
+  headerEl: string | ReactNode;
+  leftSideEl: ReactNode;
+  rightSideEl: ReactNode;
+  footerEl?: ReactNode;
+  noDataEl?: ReactNode;
+  modalClassName?: string;
+  modalHeight?: string;
+  shouldHideModal?: boolean;
+}
+
 function ModalWithToggle({
   toggleText,
   handleOutClick,
@@ -14,17 +27,8 @@ function ModalWithToggle({
   noDataEl,
   modalClassName,
   modalHeight,
-}: {
-  toggleText: string;
-  handleOutClick?: () => void;
-  headerEl: string | ReactNode;
-  leftSideEl: ReactNode;
-  rightSideEl: ReactNode;
-  footerEl?: ReactNode;
-  noDataEl?: ReactNode;
-  modalClassName?: string;
-  modalHeight?: string;
-}) {
+  shouldHideModal,
+}: ModalWithToggleProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleModal = () => {
@@ -32,8 +36,10 @@ function ModalWithToggle({
   };
 
   useEffect(() => {
-    toggleModal();
-  }, [toggleText]);
+    if (shouldHideModal) {
+      toggleModal();
+    }
+  }, [shouldHideModal]);
 
   const handleOutsideClick = () => {
     toggleModal();
@@ -43,7 +49,7 @@ function ModalWithToggle({
   return (
     <div data-testid="modal-with-toggle" className={styles.container}>
       <button
-        data-testid="toggle"
+        data-testid="toggler"
         className={styles.toggle}
         onClick={toggleModal}
       >
@@ -55,8 +61,10 @@ function ModalWithToggle({
             className={classnames(styles.modal, modalClassName)}
             data-testid="modal"
           >
-            <div className={styles.modalHeader}>{headerEl}</div>
-            <div className={styles.modalBody}>
+            <div className={styles.modalHeader} data-testid="modal-header">
+              {headerEl}
+            </div>
+            <div className={styles.modalBody} data-testid="modal-body">
               {noDataEl ? (
                 noDataEl
               ) : (
@@ -76,7 +84,9 @@ function ModalWithToggle({
                 </>
               )}
             </div>
-            <div className={styles.modalFooter}>{footerEl}</div>
+            <div className={styles.modalFooter} data-testid="modal-footer">
+              {footerEl}
+            </div>
           </div>
         </OutsideClickHandler>
       )}
