@@ -44,6 +44,7 @@ tt {
   width: 100%;
   font-size: 14px;
   border: 1px solid var(--ps-ui-border);
+  border-collapse: collapse;
 
   th,
   td {
@@ -139,6 +140,7 @@ tt {
       width: 100%;
       cursor: pointer;
       background-color: transparent;
+      padding: 0.25em 0.375em;
     }
   }
 }
