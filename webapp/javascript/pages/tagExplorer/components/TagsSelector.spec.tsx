@@ -2,16 +2,15 @@ import React from 'react';
 import { Provider } from 'react-redux';
 import { render, screen } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
+import { BrowserRouter } from 'react-router-dom';
 
 import continuousReducer from '@webapp/redux/reducers/continuous';
+import TagsSelector, { TagSelectorProps } from './TagsSelector';
 
 const whereDropdownItems = ['foo', 'bar', 'baz'];
-const groupByTag = 'groupByTagTest';
-const appName = 'appNameTest';
-const baselineTag = 'baselineTagTest';
-const comparisonTag = 'comparisonTagTest';
-const linkName = 'linkNameTest';
-const setLinkTagsSelectModalData = jest.fn((v) => v);
+const groupByTag = 'group-by-tag-test';
+const appName = 'app-name-test';
+const linkName = 'link-name-test';
 
 function createStore(preloadedState: any) {
   const store = configureStore({
@@ -24,50 +23,50 @@ function createStore(preloadedState: any) {
   return store;
 }
 
-describe.skip('Component: ViewTagsSelectLinkModal', () => {
-  const renderComponent = (props: ViewTagsSelectModalProps) => {
+describe('Component: ViewTagsSelectLinkModal', () => {
+  const renderComponent = (props: TagSelectorProps) => {
     render(
       <Provider
         store={createStore({
           continuous: {},
         })}
       >
-        <ViewTagsSelectLinkModal {...props} />
-      </Provider>
+        <TagsSelector {...props} />
+      </Provider>,
+      { wrapper: BrowserRouter }
     );
   };
 
-  it('shoudld render ViewTagsSelectLinkModal with default structure', () => {
+  it('shoudld successfully render ModalWithToggle', () => {
     renderComponent({
-      whereDropdownItems,
-      groupByTag,
       appName,
-      setLinkTagsSelectModalData,
-      baselineTag,
-      comparisonTag,
+      groupByTag,
       linkName,
+      whereDropdownItems,
     });
 
-    const modalElement = screen.getByTestId('link-modal');
+    // triggers click
+    expect(screen.getByTestId('toggler')).toBeInTheDocument();
+    const modalWithToggleEl = screen.getByTestId('modal');
+
+    expect(modalWithToggleEl).toBeInTheDocument();
 
     // static
-    expect(modalElement).toBeInTheDocument();
     expect(
-      screen.getByText('Select Tags For linkNameTest')
+      screen.getByText('Select Tags For link-name-test')
     ).toBeInTheDocument();
     expect(screen.getByText('baseline')).toBeInTheDocument();
     expect(screen.getByText('comparison')).toBeInTheDocument();
     expect(
-      modalElement.querySelector('.modalFooter input')
+      modalWithToggleEl.querySelector('.modalFooter input')
     ).toBeInTheDocument();
-    expect(modalElement.querySelector('.modalFooter input')).toHaveAttribute(
-      'value',
-      'Compare tags'
-    );
+    expect(
+      modalWithToggleEl.querySelector('.modalFooter input')
+    ).toHaveAttribute('value', 'Compare tags');
 
     // dynamic
-    expect(modalElement.querySelectorAll('.tags')).toHaveLength(2);
-    modalElement.querySelectorAll('.tags').forEach((tagList) => {
+    expect(modalWithToggleEl.querySelectorAll('.tags')).toHaveLength(2);
+    modalWithToggleEl.querySelectorAll('.tags').forEach((tagList) => {
       tagList.querySelectorAll('input').forEach((tag, i) => {
         expect(tag).toHaveAttribute('value', whereDropdownItems[i]);
       });
