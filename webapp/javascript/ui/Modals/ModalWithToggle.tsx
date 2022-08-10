@@ -38,6 +38,7 @@ function ModalWithToggle({
   return (
     <div data-testid="modal-with-toggle" className={styles.container}>
       <button
+        type="button"
         data-testid="toggler"
         className={styles.toggle}
         onClick={() => setModalOpenStatus(true)}
