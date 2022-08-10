@@ -1,67 +1,80 @@
 import { css } from '@emotion/css';
-import { languageDefinition } from './fireql';
 import { defaults } from 'lodash';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import type { languages } from 'monaco-editor';
+import { useMount } from 'react-use';
+
 import { ButtonCascader, CascaderOption, CodeEditor, Monaco, useStyles2 } from '@grafana/ui';
 import { GrafanaTheme2, QueryEditorProps } from '@grafana/data';
+
+import { languageDefinition } from './fireql';
 import { DataSource } from './datasource';
-import { defaultQuery, MyDataSourceOptions, ProfileType, Query } from './types';
-import { useMount } from 'react-use';
-import type { languages } from 'monaco-editor';
+import { defaultQuery, MyDataSourceOptions, ProfileTypeMessage, Query } from './types';
 
 type Props = QueryEditorProps<DataSource, Query, MyDataSourceOptions>;
 
 export function QueryEditor(props: Props) {
-  const [profileTypes, setProfileTypes] = useState<CascaderOption[]>([]);
+  const [profileTypes, setProfileTypes] = useState<ProfileTypeMessage[]>([]);
 
   function onProfileTypeChange(value: string[], selectedOptions: CascaderOption[]) {
     if (selectedOptions.length === 0) {
       return;
     }
-    let type = selectedOptions[selectedOptions.length - 1].value as ProfileType;
-    props.onChange({ ...props.query, ProfileType: type });
+    const id = selectedOptions[selectedOptions.length - 1].value as string;
+    props.onChange({ ...props.query, profileTypeId: id });
   }
 
   function onLabelSelectorChange(value: string) {
-    props.onChange({ ...props.query, LabelSelector: value });
+    props.onChange({ ...props.query, labelSelector: value });
   }
 
   useMount(async () => {
     const profileTypes = await props.datasource.getProfileTypes();
-    let mainTypes = new Map<string, CascaderOption>();
+    setProfileTypes(profileTypes);
+  });
 
+  // Turn profileTypes into cascader options
+  const cascaderOptions = useMemo(() => {
+    let mainTypes = new Map<string, CascaderOption>();
     // Classify profile types by name then sample type.
     for (let profileType of profileTypes) {
       if (!mainTypes.has(profileType.name)) {
         mainTypes.set(profileType.name, {
           label: profileType.name,
-          value: profileType,
+          value: profileType.ID,
           children: [],
         });
       }
       mainTypes.get(profileType.name)?.children?.push({
-        label: profileType.sampleType,
-        value: profileType,
+        label: profileType.sample_type,
+        value: profileType.ID,
       });
     }
-    let types = Array.from(mainTypes.values());
-    setProfileTypes(types);
-  });
+    return Array.from(mainTypes.values());
+  }, [profileTypes]);
+
+  const selectedProfileName = useMemo(() => {
+    if (!profileTypes) {
+      return 'Loading';
+    }
+    const profile = profileTypes.find((type) => type.ID === props.query.profileTypeId);
+    if (!profile) {
+      return 'Select a profile type';
+    }
+
+    return profile.name + ' - ' + profile.sample_type;
+  }, [props.query.profileTypeId, profileTypes]);
 
   let query = defaults(props.query, defaultQuery);
-  const selectedProfileName = props.query.ProfileType
-    ? props.query.ProfileType.name + ' - ' + props.query.ProfileType.sampleType
-    : 'Select a profile type';
 
   const styles = useStyles2(getStyles);
   return (
     <div className="gf-form">
-      <ButtonCascader onChange={onProfileTypeChange} options={profileTypes} icon="process">
+      <ButtonCascader onChange={onProfileTypeChange} options={cascaderOptions} icon="process">
         {selectedProfileName}
       </ButtonCascader>
-      {/*<Input onChange={this.onLabelSelectorChange} value={query.LabelSelector} />*/}
       <CodeEditor
-        value={query.LabelSelector}
+        value={query.labelSelector}
         language={langId}
         onBlur={onLabelSelectorChange}
         height={'30px'}
