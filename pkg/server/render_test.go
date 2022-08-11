@@ -1,8 +1,6 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -96,55 +94,3 @@ var _ = Describe("server", func() {
 		})
 	})
 })
-
-var _ = Describe("render merge test", func() {
-	var httpServer *httptest.Server
-	var s *storage.Storage
-	testing.WithConfig(func(cfg **config.Config) {
-		BeforeEach(func() {
-			(*cfg).Server.APIBindAddr = ":10044"
-			var err error
-			s, err = storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
-			Expect(err).ToNot(HaveOccurred())
-			e, _ := exporter.NewExporter(nil, nil)
-			c, _ := New(Config{
-				Configuration:           &(*cfg).Server,
-				Storage:                 s,
-				Ingester:                parser.New(logrus.StandardLogger(), s, e),
-				Logger:                  logrus.New(),
-				MetricsRegisterer:       prometheus.NewRegistry(),
-				ExportedMetricsRegistry: prometheus.NewRegistry(),
-				Notifier:                mockNotifier{},
-				Adhoc:                   mockAdhocServer{},
-			})
-			h, _ := c.serverMux()
-			httpServer = httptest.NewServer(h)
-		})
-		JustAfterEach(func() {
-			s.Close()
-			httpServer.Close()
-		})
-
-		Context("/render", func() {
-			It("handles merge requests", func() {
-				resp, err := http.Post(httpServer.URL+"/merge", "application/json", reqBody(mergeRequest{
-					AppName:  "app.cpu",
-					Profiles: []string{"a", "b"},
-				}))
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-				var merged mergeResponse
-				Expect(json.NewDecoder(resp.Body).Decode(&merged)).ToNot(HaveOccurred())
-				Expect(merged.Validate()).ToNot(HaveOccurred())
-			})
-		})
-	})
-})
-
-func reqBody(v interface{}) io.Reader {
-	var b bytes.Buffer
-	Expect(json.NewEncoder(&b).Encode(v)).ToNot(HaveOccurred())
-	return &b
-}
