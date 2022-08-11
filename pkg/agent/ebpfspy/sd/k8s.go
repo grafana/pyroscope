@@ -85,10 +85,10 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 			ls.Set("k8s-pod-namespace", pod.Namespace)
 			ls.Set("k8s-container-id", cid)
 			ls.Set("k8s-container-name", status.Name)
-			sd.containerID2Labels[status.ContainerID] = ls
+			sd.containerID2Labels[cid] = ls
 		}
 	}
-	fmt.Printf("sd Refresh done %d", len(sd.containerID2Labels))
+	fmt.Printf("sd Refresh done %v\n", sd.containerID2Labels)
 	return nil
 }
 
@@ -98,6 +98,7 @@ func (sd *K8SServiceDiscovery) GetLabels(pid uint32) *spy.Labels {
 		return ls
 	}
 	cid := LookupDockerContainerID(pid)
+
 	if cid == "" {
 		fmt.Printf("k8s sd pid %d resolved to nill\n", pid)
 		sd.pid2Labels[pid] = nil
@@ -105,7 +106,7 @@ func (sd *K8SServiceDiscovery) GetLabels(pid uint32) *spy.Labels {
 	}
 	ls, ok = sd.containerID2Labels[cid]
 	sd.pid2Labels[pid] = ls
-	fmt.Printf("k8s sd pid %d resolved to %v\n", pid, ls)
+	fmt.Printf("k8s sd pid %d resolved to %v\n%v\n", pid, ls, sd.containerID2Labels)
 	return ls
 }
 
@@ -119,23 +120,25 @@ func LookupDockerContainerID(pid uint32) string {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
+	res := ""
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Printf("LookupDockerContainerID %s\n", line)
 		parts := dockerPattern.FindStringSubmatch(line)
 		if parts != nil {
-			return parts[1]
+			res = parts[1]
 		}
 		parts = kubePattern.FindStringSubmatch(line)
 		if parts != nil {
-			return parts[1]
+			res = parts[1]
 		}
 		parts = cgroupV2DockerScope.FindStringSubmatch(line)
 		if parts != nil {
-			return parts[1]
+			res = parts[1]
 		}
 	}
-	return ""
+	fmt.Printf("LookupDockerContainerID %d %s\n", pid, res)
+
+	return res
 }
 
 var (
