@@ -44,8 +44,8 @@ func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscove
 	if !strings.HasPrefix(criVersion, "docker://") {
 		return nil, fmt.Errorf("unknown cri %s", criVersion)
 	}
-	fmt.Println(criVersion)
-	fmt.Printf("%v\n", node)
+	//fmt.Println(criVersion)
+	//fmt.Printf("%v\n", node)
 
 	return &K8SServiceDiscovery{
 		cs:                 clientset,
@@ -58,7 +58,7 @@ func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscove
 func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 	const dockerCIDPrefix = "docker://"
 	//todo make it async - it is io bound?
-	fmt.Printf("sd Refresh prev pidmap size: %d\n", len(sd.pid2Labels))
+	//fmt.Printf("sd Refresh prev pidmap size: %d\n", len(sd.pid2Labels))
 
 	sd.containerID2Labels = map[string]*spy.Labels{}
 	sd.pid2Labels = map[uint32]*spy.Labels{}
@@ -70,15 +70,15 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 	}
 
 	for _, pod := range pods.Items {
-		fmt.Printf("ns: %s pod.Name %s\n", pod.Namespace, pod.Name)
-		fmt.Printf("full pod %+v\n", pod)
+		//fmt.Printf("ns: %s pod.Name %s\n", pod.Namespace, pod.Name)
+		//fmt.Printf("full pod %+v\n", pod)
 		for _, status := range pod.Status.ContainerStatuses {
 			cid := status.ContainerID
 			if !strings.HasPrefix(cid, dockerCIDPrefix) {
 				return fmt.Errorf("unknown container id %s", cid)
 			}
 			cid = strings.TrimPrefix(cid, dockerCIDPrefix)
-			fmt.Printf("     container %s %s\n", cid, status.Name)
+			//fmt.Printf("     container %s %s\n", cid, status.Name)
 			ls := spy.NewLabels()
 			ls.Set("k8s-node", sd.nodeName)
 			ls.Set("k8s-pod-name", pod.Name)
@@ -88,7 +88,7 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 			sd.containerID2Labels[cid] = ls
 		}
 	}
-	fmt.Printf("sd Refresh done %v\n", sd.containerID2Labels)
+	//fmt.Printf("sd Refresh done %v\n", sd.containerID2Labels)
 	return nil
 }
 
@@ -100,20 +100,20 @@ func (sd *K8SServiceDiscovery) GetLabels(pid uint32) *spy.Labels {
 	cid := LookupDockerContainerID(pid)
 
 	if cid == "" {
-		fmt.Printf("k8s sd pid %d resolved to nill\n", pid)
+		//fmt.Printf("k8s sd pid %d resolved to nill\n", pid)
 		sd.pid2Labels[pid] = nil
 		return nil
 	}
 	ls, ok = sd.containerID2Labels[cid]
 	sd.pid2Labels[pid] = ls
-	fmt.Printf("k8s sd pid %d resolved to %v\n%v\n", pid, ls, sd.containerID2Labels)
+	//fmt.Printf("k8s sd pid %d resolved to %v\n%v\n", pid, ls, sd.containerID2Labels)
 	return ls
 }
 
 func LookupDockerContainerID(pid uint32) string {
 	f, err := os.Open(fmt.Sprintf("/proc/%d/cgroup", pid))
 	if err != nil {
-		fmt.Printf("LookupDockerContainerID %v\n", err)
+		//fmt.Printf("LookupDockerContainerID %v\n", err)
 
 		return ""
 	}
@@ -136,7 +136,7 @@ func LookupDockerContainerID(pid uint32) string {
 			res = parts[1]
 		}
 	}
-	fmt.Printf("LookupDockerContainerID %d %s\n", pid, res)
+	//fmt.Printf("LookupDockerContainerID %d %s\n", pid, res)
 
 	return res
 }

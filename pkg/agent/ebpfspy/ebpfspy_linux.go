@@ -58,7 +58,7 @@ func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	err := s.session.Reset(func(name []byte, v uint64, pid uint32) error {
 		var ls *spy.Labels
 		if s.sd != nil {
-			s.sd.GetLabels(pid)
+			ls = s.sd.GetLabels(pid)
 		}
 		return cb(ls, name, v)
 	})
