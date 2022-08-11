@@ -49,7 +49,7 @@ jobs:
           config-file: cypress/cypress.json
         env:
           # keep the server quiet
-          PYROSCOPE_LOG_LEVEL: error
+          PYROSCOPE_LOG_LEVEL: debug
           ENABLED_SPIES: none
 
   cypress-tests-auth:
