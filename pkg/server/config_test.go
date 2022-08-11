@@ -59,7 +59,6 @@ var _ = Describe("server", func() {
 
 					Expect(err).ToNot(HaveOccurred())
 					Expect(actual["APIBindAddr"]).To(Equal((*cfg).Server.APIBindAddr))
-
 				}()
 				Eventually(done, 2).Should(BeClosed())
 			})
