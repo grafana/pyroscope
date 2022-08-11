@@ -21,11 +21,14 @@ type GetInput struct {
 	EndTime   time.Time
 	Key       *segment.Key
 	Query     *flameql.Query
+	// TODO: make this a part of the query
+	GroupBy string
 }
 
 type GetOutput struct {
 	Tree            *tree.Tree
 	Timeline        *segment.Timeline
+	Groups          map[string]*segment.Timeline
 	SpyName         string
 	SampleRate      uint32
 	Count           uint64
@@ -68,8 +71,8 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	logger.Debug("storage.Get")
 	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
 
-	// Profiles can be fetched by ID using query.
-	// If a query includes 'profile_id' matcher others are ignored.
+	// Profiles can be fetched by ID using query – this should be deprecated,
+	// and GetExemplar should be used instead.
 	if gi.Query != nil {
 		out, ok, err := s.tryGetExemplar(ctx, gi)
 		if err != nil {
@@ -88,6 +91,7 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		aggregationType = "sum"
 		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 	)
+	timelines := make(map[string]*segment.Timeline)
 
 	for _, k := range dimensionKeys() {
 		// TODO: refactor, store `Key`s in dimensions
@@ -108,7 +112,16 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 			aggregationType = averageAggregationType
 		}
 
+		timelineKey := "*"
+		if v, ok := parsedKey.Labels()[gi.GroupBy]; ok {
+			timelineKey = v
+		}
+		if _, ok := timelines[timelineKey]; !ok {
+			timelines[timelineKey] = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		}
+
 		timeline.PopulateTimeline(st)
+		timelines[timelineKey].PopulateTimeline(st)
 		lastSegment = st
 
 		trace.Logf(ctx, traceCatGetCallback, "segment_key=%s", key)
@@ -139,6 +152,7 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	return &GetOutput{
 		Tree:            resultTrie,
 		Timeline:        timeline,
+		Groups:          timelines,
 		SpyName:         lastSegment.SpyName(),
 		SampleRate:      lastSegment.SampleRate(),
 		Count:           writesTotal,
@@ -162,41 +176,30 @@ func (s *Storage) tryGetExemplar(ctx context.Context, gi *GetInput) (*GetOutput,
 		return nil, false, nil
 	}
 
-	var (
-		t = tree.New()
-		l = make(map[string]string)
-	)
-	err := s.exemplars.fetch(ctx, gi.Query.AppName, ids, func(e exemplarEntry) error {
-		t.Merge(e.Tree)
-		l = e.Labels
-		return nil
+	m, err := s.MergeExemplars(ctx, MergeExemplarsInput{
+		AppName:    gi.Query.AppName,
+		StartTime:  gi.StartTime,
+		EndTime:    gi.EndTime,
+		ProfileIDs: ids,
 	})
 	if err != nil {
 		return nil, true, err
 	}
 
-	o := GetOutput{
+	out := GetOutput{
+		Tree:  m.Tree,
+		Count: m.Count,
+
 		Timeline: segment.GenerateTimeline(gi.StartTime, gi.EndTime),
-		Tree:     t,
-		// Defaults: actual values should be loaded from the segment metadata.
-		SpyName:         "gospy",
-		Units:           "samples",
-		AggregationType: "sum",
-		SampleRate:      100,
+		Groups:   make(map[string]*segment.Timeline),
+
+		SpyName:         m.SpyName,
+		SampleRate:      m.SampleRate,
+		Units:           m.Units,
+		AggregationType: m.AggregationType,
 	}
 
-	// Exemplar labels map does not contain the app name.
-	l["__name__"] = gi.Query.AppName
-	r, ok := s.segments.Lookup(segment.NewKey(l).Normalized())
-	if ok {
-		seg := r.(*segment.Segment)
-		o.SpyName = seg.SpyName()
-		o.Units = seg.Units()
-		o.SampleRate = seg.SampleRate()
-		o.AggregationType = seg.AggregationType()
-	}
-
-	return &o, true, nil
+	return &out, true, nil
 }
 
 func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.Key {

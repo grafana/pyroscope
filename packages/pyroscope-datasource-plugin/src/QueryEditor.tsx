@@ -3,12 +3,7 @@
 import defaults from 'lodash/defaults';
 
 import React from 'react';
-import {
-  Label,
-  QueryField,
-  TypeaheadInput,
-  TypeaheadOutput,
-} from '@grafana/ui';
+import { Label, QueryField, TypeaheadOutput } from '@grafana/ui';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MyDataSourceOptions, FlamegraphQuery } from './types';
@@ -33,9 +28,7 @@ export const QueryEditor = (props: Props) => {
     props.onChange({ ...query, name: v });
   };
 
-  const onTypeAhead = async (
-    typeahead: TypeaheadInput
-  ): Promise<TypeaheadOutput> => {
+  const onTypeAhead = async (): Promise<TypeaheadOutput> => {
     const appNames = await loadAppNames();
 
     return {

@@ -14,6 +14,8 @@ import '@pyroscope/webapp/sass/profile.scss';
 loadPluginCss({
   light: 'plugins/pyroscope-panel/module.css',
   dark: 'plugins/pyroscope-panel/module.css',
+}).catch(() => {
+  console.error('Failed to load CSS.');
 });
 
 export const plugin = new PanelPlugin<SimpleOptions>(

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import 'react-dom';
 
 import Box from '@webapp/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   selectContinuousState,
@@ -123,6 +123,7 @@ function ComparisonApp() {
               }}
             />
             <FlamegraphRenderer
+              showCredit={false}
               panesOrientation="vertical"
               profile={leftSide}
               data-testid="flamegraph-renderer-left"
@@ -172,6 +173,7 @@ function ComparisonApp() {
               }}
             />
             <FlamegraphRenderer
+              showCredit={false}
               profile={rightSide}
               data-testid="flamegraph-renderer-right"
               panesOrientation="vertical"

@@ -104,7 +104,9 @@ type Server struct {
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error" mapstructure:"badger-log-level"`
 
-	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
+	StoragePath            string  `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
+	MinFreeSpacePercentage float64 `def:"5" desc:"percentage of available disk space at which ingestion requests are discarded. Defaults to 5% but not less than 1GB. Set 0 to disable" mapstructure:"min-free-space-percentage"`
+
 	APIBindAddr     string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
 	BaseURL         string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" mapstructure:"base-url"`
 	BaseURLBindAddr string `def:"" deprecated:"true" desc:"server for debugging base url" mapstructure:"base-url-bind-addr"`
@@ -159,6 +161,7 @@ type Server struct {
 	SelfProfilingTags map[string]string `name:"self-profiling-tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"self-profiling-tags" yaml:"self-profiling-tags"`
 
 	RemoteWrite RemoteWrite `yaml:"remote-write" mapstructure:"remote-write"`
+	RemoteRead  RemoteRead  `yaml:"remote-read" mapstructure:"remote-read"`
 
 	DisableExportToFlamegraphDotCom bool `def:"false" desc:"disable exporting to flamegraph.com in the UI" mapstructure:"disable-export-to-flamegraph-dot-com"`
 }
@@ -362,10 +365,16 @@ type Database struct {
 
 type RemoteWrite struct {
 	Enabled            bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
-	DisableLocalWrites bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
+	DisableLocalWrites bool `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not" mapstructure:"disable-local-writes"`
 
 	// see loadRemoteWriteTargetConfigsFromFile in server.go
 	Targets map[string]RemoteWriteTarget `yaml:"scrape-configs" mapstructure:"-"`
+}
+
+type RemoteRead struct {
+	Enabled   bool   `def:"false" desc:"EXPERIMENTAL! the API will change, use at your own risk. whether to enable remote write or not"`
+	Address   string `desc:"server that implements the pyroscope /render endpoint" mapstructure:"address"`
+	AuthToken string `json:"-" desc:"authorization token used to read profiling data" yaml:"auth-token" mapstructure:"auth-token"`
 }
 
 type RemoteWriteTarget struct {

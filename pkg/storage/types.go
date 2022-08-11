@@ -12,15 +12,19 @@ import (
 )
 
 type Putter interface {
-	Put(ctx context.Context, pi *PutInput) error
+	Put(context.Context, *PutInput) error
 }
 
 type Getter interface {
-	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
+	Get(context.Context, *GetInput) (*GetOutput, error)
 }
 
-type Merger interface {
-	MergeProfiles(ctx context.Context, mi MergeProfilesInput) (o MergeProfilesOutput, err error)
+type ExemplarsGetter interface {
+	GetExemplar(context.Context, GetExemplarInput) (GetExemplarOutput, error)
+}
+
+type ExemplarsMerger interface {
+	MergeExemplars(context.Context, MergeExemplarsInput) (MergeExemplarsOutput, error)
 }
 
 type GetLabelKeysByQueryInput struct {
@@ -49,6 +53,18 @@ type GetLabelValuesByQueryOutput struct {
 	Values []string
 }
 
+type AppInfo struct {
+	Name string
+}
+
+type GetAppsOutput struct {
+	Apps []AppInfo
+}
+
+type DeleteAppInput struct {
+	Name string
+}
+
 type LabelValuesGetter interface {
 	GetValues(ctx context.Context, key string, cb func(v string) bool)
 	GetValuesByQuery(ctx context.Context, in GetLabelValuesByQueryInput) (GetLabelValuesByQueryOutput, error)
@@ -56,6 +72,14 @@ type LabelValuesGetter interface {
 
 type AppNameGetter interface {
 	GetAppNames(ctx context.Context) []string
+}
+
+type AppGetter interface {
+	GetApps(ctx context.Context) (GetAppsOutput, error)
+}
+
+type AppDeleter interface {
+	DeleteApp(ctx context.Context, appName string) error
 }
 
 // Other functions from storage.Storage:

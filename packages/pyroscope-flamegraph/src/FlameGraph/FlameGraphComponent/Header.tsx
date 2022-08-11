@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flamebearer } from '@pyroscope/models';
+import { Flamebearer } from '@pyroscope/models/src';
 import styles from './Header.module.css';
 import { FlamegraphPalette } from './colorPalette';
 import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
@@ -34,6 +34,7 @@ export default function Header(props: HeaderProps) {
     samples: 'CPU time per function',
     lock_nanoseconds: 'time spent waiting on locks per function',
     lock_samples: 'number of contended locks per function',
+    trace_samples: 'aggregated span duration',
     '': '',
   };
 

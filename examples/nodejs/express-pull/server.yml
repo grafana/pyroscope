@@ -4,7 +4,7 @@ scrape-configs:
   - job-name: testing
     enabled-profiles: [cpu, mem]
     static-configs:
-      - application: rideshare
+      - application: nodejs
         spy-name: nodespy
         targets:
           - us-east:3000

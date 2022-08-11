@@ -27,7 +27,7 @@ func NewExportHandler(httpUtils httputils.Utils) http.HandlerFunc {
 		}
 		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(resp.StatusCode)
 		io.Copy(w, resp.Body)
 	}
 }

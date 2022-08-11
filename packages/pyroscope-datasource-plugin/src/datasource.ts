@@ -74,7 +74,7 @@ export class DataSource extends DataSourceApi<
         name: nameFromVar,
         from,
         until,
-      }).then((response: any) => {
+      }).then((response: ShamefulAny) => {
         const frame = new MutableDataFrame({
           refId: query.refId,
           name: nameFromVar,
@@ -98,7 +98,7 @@ export class DataSource extends DataSourceApi<
     return Promise.all(promises).then((data) => ({ data }));
   }
 
-  loadAppNames(): Promise<any> {
+  loadAppNames(): Promise<ShamefulAny> {
     return this.getNames();
   }
 

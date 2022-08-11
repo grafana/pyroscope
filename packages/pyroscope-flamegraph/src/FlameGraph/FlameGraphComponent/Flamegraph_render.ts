@@ -22,7 +22,7 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
-import { createFF, Flamebearer } from '@pyroscope/models';
+import { createFF, Flamebearer, SpyName } from '@pyroscope/models/src';
 import {
   formatPercent,
   getFormatter,
@@ -44,6 +44,7 @@ import {
   getPackageNameFromStackTrace,
 } from './color';
 import type { FlamegraphPalette } from './colorPalette';
+import { isMatch } from '../../search';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
 import Flamegraph from './Flamegraph';
@@ -71,6 +72,7 @@ type CanvasRendererConfig = Flamebearer & {
   pxPerTick: number;
 
   palette: FlamegraphPalette;
+  maxSelf?: number;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
@@ -238,7 +240,9 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
           selectedLevel,
           highlightModeOn,
           isHighlighted,
-          spyName,
+          // keep type narrow https://stackoverflow.com/q/54333982
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          spyName: spyName as SpyName,
           palette,
         };
 
@@ -366,7 +370,7 @@ type getColorCfg = {
   highlightModeOn: boolean;
   isHighlighted: boolean;
   names: string[];
-  spyName: string;
+  spyName: SpyName;
   palette: FlamegraphPalette;
 };
 
@@ -463,7 +467,7 @@ function nodeIsInQuery(
     return false;
   }
 
-  return l2.indexOf(query) >= 0;
+  return isMatch(query, l2);
 }
 
 function getCanvasWidth(canvas: HTMLCanvasElement) {

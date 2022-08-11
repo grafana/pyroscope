@@ -38,6 +38,9 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 
 	s.putTotal.Inc()
 	if pi.Key.HasProfileID() {
+		if err := s.ensureAppSegmentExists(pi); err != nil {
+			return err
+		}
 		return s.exemplars.insert(ctx, pi)
 	}
 

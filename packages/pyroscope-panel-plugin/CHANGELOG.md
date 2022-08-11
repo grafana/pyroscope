@@ -3,6 +3,278 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.49](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.48...@pyroscope/panel-plugin@1.3.49) (2022-08-11)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.48](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.47...@pyroscope/panel-plugin@1.3.48) (2022-08-11)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.47](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.46...@pyroscope/panel-plugin@1.3.47) (2022-08-09)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.46](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.45...@pyroscope/panel-plugin@1.3.46) (2022-08-08)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.45](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.44...@pyroscope/panel-plugin@1.3.45) (2022-08-08)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.44](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.43...@pyroscope/panel-plugin@1.3.44) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.43](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.42...@pyroscope/panel-plugin@1.3.43) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.42](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.41...@pyroscope/panel-plugin@1.3.42) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.41](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.40...@pyroscope/panel-plugin@1.3.41) (2022-08-04)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.40](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.39...@pyroscope/panel-plugin@1.3.40) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.39](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.38...@pyroscope/panel-plugin@1.3.39) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.38](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.37...@pyroscope/panel-plugin@1.3.38) (2022-07-29)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.37](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.36...@pyroscope/panel-plugin@1.3.37) (2022-07-27)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.36](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.35...@pyroscope/panel-plugin@1.3.36) (2022-07-25)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.35](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.34...@pyroscope/panel-plugin@1.3.35) (2022-07-25)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.34](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.33...@pyroscope/panel-plugin@1.3.34) (2022-07-20)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.33](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.32...@pyroscope/panel-plugin@1.3.33) (2022-07-19)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.32](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.31...@pyroscope/panel-plugin@1.3.32) (2022-07-19)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.31](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.30...@pyroscope/panel-plugin@1.3.31) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.30](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.29...@pyroscope/panel-plugin@1.3.30) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.29](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.28...@pyroscope/panel-plugin@1.3.29) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.28](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.27...@pyroscope/panel-plugin@1.3.28) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.27](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.26...@pyroscope/panel-plugin@1.3.27) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.26](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.25...@pyroscope/panel-plugin@1.3.26) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.25](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.24...@pyroscope/panel-plugin@1.3.25) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.24](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.23...@pyroscope/panel-plugin@1.3.24) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.23](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.22...@pyroscope/panel-plugin@1.3.23) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.22](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.21...@pyroscope/panel-plugin@1.3.22) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.21](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.20...@pyroscope/panel-plugin@1.3.21) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.20](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.19...@pyroscope/panel-plugin@1.3.20) (2022-07-12)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.19](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.18...@pyroscope/panel-plugin@1.3.19) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.18](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.17...@pyroscope/panel-plugin@1.3.18) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.17](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.16...@pyroscope/panel-plugin@1.3.17) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
+## [1.3.16](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.15...@pyroscope/panel-plugin@1.3.16) (2022-07-07)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
 ## [1.3.15](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.14...@pyroscope/panel-plugin@1.3.15) (2022-07-06)
 
 **Note:** Version bump only for package @pyroscope/panel-plugin

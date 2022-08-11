@@ -23,14 +23,6 @@ const genericSearchHandler = (p) => (req, res) => {
   res.send('Vehicle found');
 };
 
-function carSearchHandler() {
-  return genericSearchHandler(1);
-}
-
-function scooterSearchHandler() {
-  return genericSearchHandler(0.25);
-}
-
 Pyroscope.init({
   appName: 'nodejs',
   serverAddress: process.env['PYROSCOPE_SERVER'] || 'http://pyroscope:4040',
@@ -43,8 +35,12 @@ Pyroscope.startHeapProfiling();
 app.get('/bike', function bikeSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);
 });
-app.get('/car', carSearchHandler());
-app.get('/scooter', scooterSearchHandler());
+app.get('/car', function carSearchHandler(req, res) {
+  return genericSearchHandler(1)(req, res);
+});
+app.get('/scooter', function scooterSearchHandler(req, res) {
+  return genericSearchHandler(0.25)(req, res);
+});
 
 app.listen(port, () => {
   console.log(

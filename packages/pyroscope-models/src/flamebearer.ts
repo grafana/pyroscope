@@ -1,3 +1,4 @@
+import { SpyName } from './spyName';
 /**
  * @deprecated one should use the Profile model
  */
@@ -16,6 +17,8 @@ export type Flamebearer = {
    */
   levels: number[][];
   numTicks: number;
+  maxSelf: number;
+
   /**
    * Sample Rate, used in text information
    */
@@ -27,15 +30,9 @@ export type Flamebearer = {
     | 'bytes'
     | 'lock_samples'
     | 'lock_nanoseconds'
+    | 'trace_samples'
     | '';
-  spyName:
-    | 'dotneyspy'
-    | 'ebpfspy'
-    | 'gospy'
-    | 'phpspy'
-    | 'pyspy'
-    | 'rbspy'
-    | string;
+  spyName: SpyName;
   // format: 'double' | 'single';
   //  leftTicks?: number;
   //  rightTicks?: number;

@@ -13,6 +13,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 import { Prism } from '@webapp/util/prism';
 import { Query, brandQuery } from '@webapp/models/query';
 import Input from '@webapp/ui/Input';
+import { appendLabelToQuery } from '@webapp/util/query';
 import styles from './TagsBar.module.css';
 
 interface TagsBarProps {
@@ -93,7 +94,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
   const windowWidth = useWindowWidth();
   const [query, setQuery] = useState(initialQuery);
   const codeRef = useRef<HTMLElement>(null);
-  const textareaRef = useRef<any>(null);
+  const textareaRef = useRef<ShamefulAny>(null);
   const [textAreaSize, setTextAreaSize] = useState({ width: 0, height: 0 });
 
   // If query updated upstream, most likely the application changed
@@ -276,22 +277,6 @@ function LabelsSubmenu({
   });
 
   return <Dropdown label="Select Tag">{Items}</Dropdown>;
-}
-
-function appendLabelToQuery(query: string, label: string, labelValue: string) {
-  const case1Regexp = new RegExp(`${label}=.+?(\\}|,)`);
-  if (query.match(case1Regexp)) {
-    return query.replace(case1Regexp, `${label}="${labelValue}"$1`);
-  }
-  if (query.indexOf('{}') !== -1) {
-    return query.replace('}', `${label}="${labelValue}"}`);
-  }
-  if (query.indexOf('}') !== -1) {
-    return query.replace('}', `, ${label}="${labelValue}"}`);
-  }
-
-  console.warn('TODO: handle this case');
-  return query;
 }
 
 // Identifies whether a label is in a query or not

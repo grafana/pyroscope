@@ -1,5 +1,5 @@
 import React, { InputHTMLAttributes, ChangeEvent } from 'react';
-import Input from '@webapp/ui/Input';
+import Input from '../Input';
 import styles from './InputField.module.css';
 
 interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {

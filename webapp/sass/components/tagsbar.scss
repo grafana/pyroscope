@@ -33,7 +33,7 @@
     caret-color: var(--ps-neutral-2);
     color: var(--ps-grey-primary);
     letter-spacing: 0px;
-    font-family: monospace;
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
     font-size: 16px;
     border: 1px solid var(--ps-ui-border);
     padding: 0.25em 0.375em;
@@ -79,7 +79,7 @@
 
     code {
       font-size: 16px;
-      font-family: monospace;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
       background: none;
       border: 1px solid transparent;
       box-shadow: none;

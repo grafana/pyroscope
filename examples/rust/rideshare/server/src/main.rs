@@ -27,8 +27,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get Region from environment variable.
     let region = std::env::var("REGION").unwrap_or_else(|_| "us-east".to_string());
 
+    let app_name = std::env::var("PYROSCOPE_APPLICATION_NAME")
+        .unwrap_or_else(|_| "rust-ride-sharing-app".to_string());
+
+    let auth_token = std::env::var("PYROSCOPE_AUTH_TOKEN")
+        .unwrap_or_else(|_| "".to_string());
+
     // Configure Pyroscope client.
-    let agent = PyroscopeAgent::builder(server_address, "ride-sharing-rust".to_owned())
+    let agent = PyroscopeAgent::builder(server_address, app_name.to_owned())
+        .auth_token(auth_token)
         .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
         .tags(vec![("region", &region)])
         .build()

@@ -100,18 +100,26 @@ func (s *session) Start() error {
 func (s *session) Reset(cb func([]byte, uint64) error) error {
 	var errs error
 	s.cmd.Process.Signal(syscall.SIGINT)
-	stderr, err := io.ReadAll(s.stderr)
-	if err != nil {
-		errs = multierror.Append(errs, err)
+	type stderrRes struct {
+		bs  []byte
+		err error
 	}
-
-	if err := s.cmd.Wait(); err != nil {
-		errs = multierror.Append(errs, fmt.Errorf("%s: %w", stderr, err))
-	}
+	stderrCh := make(chan stderrRes)
+	go func() {
+		bs, err := io.ReadAll(s.stderr)
+		stderrCh <- stderrRes{bs, err}
+	}()
 	for v := range s.ch {
 		if err := cb(v.name, uint64(v.val)); err != nil {
 			errs = multierror.Append(errs, err)
 		}
+	}
+	stderr := <-stderrCh
+	if stderr.err != nil {
+		errs = multierror.Append(errs, stderr.err)
+	}
+	if err := s.cmd.Wait(); err != nil {
+		errs = multierror.Append(errs, fmt.Errorf("%s: %w", string(stderr.bs), err))
 	}
 
 	s.stopMutex.Lock()

@@ -225,5 +225,6 @@
     "startTime": 1634591500,
     "samples": [12, 16, 16, 17],
     "durationDelta": 10
-  }
+  },
+  "groups": {}
 }

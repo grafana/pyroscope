@@ -76,25 +76,9 @@ var _ = Describe("flags", func() {
 				cfg := FlagsStruct{}
 				vpr := viper.New()
 				exampleCommand := &cobra.Command{
-					RunE: func(cmd *cobra.Command, args []string) error {
-						if cfg.Config != "" {
-							// Use config file from the flag.
-							vpr.SetConfigFile(cfg.Config)
-
-							// If a config file is found, read it in.
-							if err := vpr.ReadInConfig(); err == nil {
-								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
-							}
-
-							if err := Unmarshal(vpr, &cfg); err != nil {
-								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
-							}
-
-							fmt.Printf("configuration is %+v \n", cfg)
-						}
-
+					RunE: CreateCmdRunFn(&cfg, vpr, func(cmd *cobra.Command, args []string) error {
 						return nil
-					},
+					}),
 				}
 
 				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
@@ -108,6 +92,44 @@ var _ = Describe("flags", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg.Foo).To(Equal("test-val-1"))
 				Expect(cfg.Foos).To(Equal([]string{"test-val-2", "test-val-3"}))
+				Expect(cfg.Bar).To(Equal(123))
+				Expect(cfg.Baz).To(Equal(10 * time.Hour))
+				Expect(cfg.FooBar).To(Equal("test-val-4"))
+				Expect(cfg.FooFoo).To(Equal(10.23))
+				Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
+				Expect(cfg.FooDur).To(Equal(5*time.Minute + 23*time.Second))
+			})
+
+			It("correctly works with substitutions", func() {
+				os.Setenv("VALUE1", "test-val-1")
+				os.Setenv("VALUE2", "test-val-2")
+				// os.Setenv("VALUE3", "test-val-3")
+				os.Setenv("VALUE4", "123")
+				os.Setenv("VALUE5", "10h")
+				os.Setenv("VALUE6", "test-val-4")
+				os.Setenv("VALUE7", "10.23")
+				os.Setenv("VALUE8", "100mb")
+				os.Setenv("VALUE9", "5m23s")
+				cfg := FlagsStruct{}
+				vpr := viper.New()
+
+				exampleCommand := &cobra.Command{
+					RunE: CreateCmdRunFn(&cfg, vpr, func(cmd *cobra.Command, args []string) error {
+						return nil
+					}),
+				}
+
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				vpr.BindPFlags(exampleCommand.Flags())
+
+				b := bytes.NewBufferString("")
+				exampleCommand.SetOut(b)
+				exampleCommand.SetArgs([]string{fmt.Sprintf("--config=%s", "testdata/substitutions.yml")})
+
+				err := exampleCommand.Execute()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(cfg.Foo).To(Equal("test-val-1"))
+				Expect(cfg.Foos).To(Equal([]string{"test-val-2", ""}))
 				Expect(cfg.Bar).To(Equal(123))
 				Expect(cfg.Baz).To(Equal(10 * time.Hour))
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
@@ -161,26 +183,11 @@ var _ = Describe("flags", func() {
 				var cfg config.Server
 				vpr := viper.New()
 				exampleCommand := &cobra.Command{
-					RunE: func(cmd *cobra.Command, args []string) error {
-						if cfg.Config != "" {
-							// Use config file from the flag.
-							vpr.SetConfigFile(cfg.Config)
-
-							// If a config file is found, read it in.
-							if err := vpr.ReadInConfig(); err == nil {
-								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
-							}
-
-							if err := Unmarshal(vpr, &cfg); err != nil {
-								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
-							}
-
-							Expect(loadScrapeConfigsFromFile(&cfg)).ToNot(HaveOccurred())
-							fmt.Printf("configuration is %+v \n", cfg)
-						}
-
+					RunE: CreateCmdRunFn(&cfg, vpr, func(cmd *cobra.Command, args []string) error {
+						Expect(loadScrapeConfigsFromFile(&cfg)).ToNot(HaveOccurred())
+						fmt.Printf("configuration is %+v \n", cfg)
 						return nil
-					},
+					}),
 				}
 
 				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr, WithSkip("scrape-configs"))
@@ -207,6 +214,7 @@ var _ = Describe("flags", func() {
 					BaseURL:                 "",
 					CacheEvictThreshold:     0.25,
 					CacheEvictVolume:        0.33,
+					MinFreeSpacePercentage:  5,
 					BadgerNoTruncate:        false,
 					DisablePprofEndpoint:    false,
 					EnableExperimentalAdmin: true,

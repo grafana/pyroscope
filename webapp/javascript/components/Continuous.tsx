@@ -18,7 +18,11 @@ export default function Continuous({
   const selectedAppName = useAppSelector(selectApplicationName);
 
   useEffect(() => {
-    dispatch(reloadAppNames());
+    async function run() {
+      await dispatch(reloadAppNames());
+    }
+
+    run();
   }, [dispatch]);
 
   // Pick the first one if there's nothing selected
