@@ -111,6 +111,8 @@ module.exports = {
     'react/destructuring-assignment': 'off',
 
     '@typescript-eslint/switch-exhaustiveness-check': 'error',
+
+    'css-modules/no-undef-class': 'off',
   },
   env: {
     browser: true,
