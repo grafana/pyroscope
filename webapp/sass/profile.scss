@@ -6,12 +6,11 @@
 @use 'components/tagsbar';
 @use 'components/button';
 
-@import '~sanitize.css';
-@import '~sanitize.css/forms.css';
-@import '~sanitize.css/typography.css';
-@import 'common.scss';
-@import 'login.scss';
-
+.pyroscope-app {
+  @import './reset.scss';
+  @import 'common.scss';
+  @import 'login.scss';
+}
 //global color variables
 @import './variables.css';
 

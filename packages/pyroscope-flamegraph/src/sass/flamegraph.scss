@@ -5,6 +5,7 @@
 
 .flamegraph-root {
   @import '../../../../webapp/sass/common';
+  @import '../../../../webapp/sass/reset.scss';
 
   *,
   ::before,
