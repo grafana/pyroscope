@@ -115,11 +115,13 @@ var _ = Describe("server", func() {
 					done := make(chan interface{})
 					go func() {
 						defer GinkgoRecover()
+						defer close(done)
 
 						reg := prometheus.NewRegistry()
 
 						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), reg, new(health.Controller))
 						Expect(err).ToNot(HaveOccurred())
+						defer s.Close()
 						e, _ := exporter.NewExporter(nil, nil)
 						c, _ := New(Config{
 							Configuration:           &(*cfg).Server,
@@ -204,8 +206,6 @@ var _ = Describe("server", func() {
 						} else {
 							Expect(gOut).To(BeNil())
 						}
-
-						close(done)
 					}()
 					Eventually(done, 10).Should(BeClosed())
 				})
