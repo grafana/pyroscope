@@ -80,11 +80,11 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 			cid = strings.TrimPrefix(cid, dockerCIDPrefix)
 			//fmt.Printf("     container %s %s\n", cid, status.Name)
 			ls := spy.NewLabels()
-			ls.Set("k8s-node", sd.nodeName)
-			ls.Set("k8s-pod-name", pod.Name)
-			ls.Set("k8s-pod-namespace", pod.Namespace)
-			ls.Set("k8s-container-id", cid)
-			ls.Set("k8s-container-name", status.Name)
+			ls.Set("k8s_node", sd.nodeName)
+			ls.Set("k8s_pod_name", pod.Name)
+			ls.Set("k8s_pod-namespace", pod.Namespace)
+			ls.Set("k8s_container_id", cid)
+			ls.Set("k8s_container_name", status.Name)
 			sd.containerID2Labels[cid] = ls
 		}
 	}
