@@ -1,0 +1,46 @@
+@import '~sanitize.css';
+@import '~sanitize.css/forms';
+//@import '~sanitize.css/typography';
+
+table {
+  border-collapse: collapse;
+}
+
+/* Document
+ * ========================================================================== */
+
+/**
+ * Add border box sizing in all browsers (opinionated).
+ */
+
+//*,
+//::before,
+//::after {
+//  box-sizing: border-box;
+//}
+//
+///**
+// * 1. Add text decoration inheritance in all browsers (opinionated).
+// * 2. Add vertical alignment inheritance in all browsers (opinionated).
+// */
+//
+//::before,
+//::after {
+//  text-decoration: inherit; /* 1 */
+//  vertical-align: inherit; /* 2 */
+//}
+//
+//table {
+//   border-collapse: collapse;
+//}
+//
+//* {
+//  cursor: default; /* 1 */
+//  line-height: 1.5; /* 2 */
+//  -moz-tab-size: 4; /* 3 */
+//  tab-size: 4; /* 3 */
+//  -webkit-tap-highlight-color: transparent /* 4 */;
+//  -ms-text-size-adjust: 100%; /* 5 */
+//  -webkit-text-size-adjust: 100%; /* 5 */
+//  word-break: break-word; /* 6 */
+//}
