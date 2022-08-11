@@ -98,12 +98,13 @@ describe('E2E Tests', () => {
     params.set('from', t0);
     params.set('until', t4);
 
-    cy.visit(`/explore?${params.toString()}`);
+    cy.visit('/');
+    cy.findByTestId('collapse-sidebar').click();
+    cy.findByTestId('sidebar-explore-page').click();
 
     cy.findByTestId('explore-header');
     cy.findByTestId('timeline-explore-page');
     cy.findByTestId('explore-table');
-    cy.findByTestId('tag-explorer-view').waitForFlamegraphToRender();
   });
 
   it('works with standalone view', () => {
