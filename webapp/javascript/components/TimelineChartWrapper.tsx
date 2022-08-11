@@ -242,6 +242,7 @@ class TimelineChartWrapper extends React.Component<
           />
           {showTagsLegend && (
             <Legend
+              activeGroup={activeGroup}
               groups={timelineGroups}
               handleGroupByTagValueChange={
                 this.props.handleGroupByTagValueChange
