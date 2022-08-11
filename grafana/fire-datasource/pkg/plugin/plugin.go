@@ -6,16 +6,13 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/grafana/grafana-plugin-sdk-go/live"
-	"github.com/prometheus/common/model"
-
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 )
 
 // Make sure FireDatasource implements required interfaces. This is important to do
@@ -70,6 +67,9 @@ func (d *FireDatasource) CallResource(ctx context.Context, req *backend.CallReso
 	if req.Path == "profileTypes" {
 		return d.callProfileTypes(ctx, req, sender)
 	}
+	if req.Path == "series" {
+		return d.callSeries(ctx, req, sender)
+	}
 	return sender.Send(&backend.CallResourceResponse{
 		Status: 404,
 	})
@@ -81,6 +81,22 @@ func (d *FireDatasource) callProfileTypes(ctx context.Context, req *backend.Call
 		return err
 	}
 	data, err := json.Marshal(res.Msg.ProfileTypes)
+	if err != nil {
+		return err
+	}
+	err = sender.Send(&backend.CallResourceResponse{Body: data, Headers: req.Headers, Status: 200})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *FireDatasource) callSeries(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	res, err := d.client.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{}))
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(res.Msg.LabelsSet)
 	if err != nil {
 		return err
 	}
@@ -111,71 +127,6 @@ func (d *FireDatasource) QueryData(ctx context.Context, req *backend.QueryDataRe
 	}
 
 	return response, nil
-}
-
-type queryModel struct {
-	WithStreaming bool `json:"withStreaming"`
-}
-
-func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
-	response := backend.DataResponse{}
-
-	// Unmarshal the JSON into our queryModel.
-	var qm queryModel
-
-	response.Error = json.Unmarshal(query.JSON, &qm)
-	if response.Error != nil {
-		return response
-	}
-
-	// create data frame response.
-	frame := data.NewFrame("response")
-	frame.Meta = &data.FrameMeta{PreferredVisualization: "profile"}
-
-	// todo parse the query from queryModel
-	res, err := d.client.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
-		ProfileTypeID: "memory:inuse_space:bytes:space:bytes",
-		Start:         int64(model.TimeFromUnixNano(time.Now().Add(-1 * time.Hour).UnixNano())),
-		End:           int64(model.TimeFromUnixNano(time.Now().UnixNano())),
-		LabelSelector: "{}",
-	}))
-	if err != nil {
-		response.Error = err
-		return response
-	}
-
-	// todo create data frame response.
-	b, err := json.Marshal(res.Msg)
-	if err != nil {
-		response.Error = err
-		return response
-	}
-	log.DefaultLogger.Info("SelectMergeStacktraces", "result", string(b))
-
-	// add fields.
-	frame.Fields = append(frame.Fields,
-		data.NewField("levels.0", nil, []string{`[0, 4862950000000, 0, 0]`}),
-		data.NewField("levels.1", nil, []string{`[0, 75210000000, 70000000, 6112, 0, 884550000000, 490000000, 5601]`}),
-	)
-
-	// new frame for names
-	// frame.a
-	// If query called with streaming on then return a channel
-	// to subscribe on a client-side and consume updates from a plugin.
-	// Feel free to remove this if you don't need streaming for your datasource.
-	if qm.WithStreaming {
-		channel := live.Channel{
-			Scope:     live.ScopeDatasource,
-			Namespace: pCtx.DataSourceInstanceSettings.UID,
-			Path:      "stream",
-		}
-		frame.SetMeta(&data.FrameMeta{Channel: channel.String()})
-	}
-
-	// add the frames to the response.
-	response.Frames = append(response.Frames, frame)
-
-	return response
 }
 
 // CheckHealth handles health checks sent from Grafana to the plugin.
