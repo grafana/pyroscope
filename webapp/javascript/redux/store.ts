@@ -8,33 +8,30 @@ import {
   PURGE,
   REGISTER,
 } from 'redux-persist';
-import { deserializeError } from 'serialize-error';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
-import rootReducer from './reducers';
 import history from '../util/history';
 
-import viewsReducer from './reducers/views';
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
 import continuousReducer, {
   actions as continuousActions,
 } from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
+import adhocReducer from './reducers/adhoc';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 const reducer = combineReducers({
-  root: rootReducer,
-  views: viewsReducer,
   settings: settingsReducer,
   user: userReducer,
   serviceDiscovery: serviceDiscoveryReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
   continuous: continuousReducer,
+  adhoc: adhocReducer,
 });
 
 // Most times we will display a (somewhat) user friendly message toast
@@ -48,19 +45,26 @@ export const logErrorMiddleware: Middleware = () => (next) => (action) => {
 
 const store = configureStore({
   reducer,
-  middleware: (getDefaultMiddleware) => [
-    ...getDefaultMiddleware({
+  // https://github.com/reduxjs/redux-toolkit/issues/587#issuecomment-824927971
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
       serializableCheck: {
         ignoredActionPaths: ['error'],
 
         // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
         // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredActions: [
+          FLUSH,
+          REHYDRATE,
+          PAUSE,
+          PERSIST,
+          PURGE,
+          REGISTER,
+          'adhoc/uploadFile/pending',
+          'adhoc/uploadFile/fulfilled',
+        ],
       },
-    }),
-
-    logErrorMiddleware,
-  ],
+    }).concat([logErrorMiddleware]),
 });
 
 export const persistor = persistStore(store);
@@ -123,6 +127,18 @@ ReduxQuerySync({
       defaultValue: '1024',
       selector: (state: RootState) => state.continuous.maxNodes,
       action: continuousActions.setMaxNodes,
+    },
+    groupBy: {
+      defaultValue: '',
+      selector: (state: RootState) =>
+        state.continuous.tagExplorerView.groupByTag,
+      action: continuousActions.setTagExplorerViewGroupByTag,
+    },
+    groupByValue: {
+      defaultValue: '',
+      selector: (state: RootState) =>
+        state.continuous.tagExplorerView.groupByTagValue,
+      action: continuousActions.setTagExplorerViewGroupByTagValue,
     },
   },
   initialTruth: 'location',

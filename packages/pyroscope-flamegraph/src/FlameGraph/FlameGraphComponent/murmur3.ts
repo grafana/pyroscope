@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /*
 
 Copyright (c) 2011 Gary Court

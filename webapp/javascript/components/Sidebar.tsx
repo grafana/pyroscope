@@ -1,4 +1,4 @@
-import React, { useMemo, ChangeEvent } from 'react';
+import React, { useMemo } from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -11,6 +11,7 @@ import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
 import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
 import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
+import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
 import Sidebar, {
   MenuItem,
   SidebarHeader,
@@ -26,7 +27,7 @@ import {
   uncollapseSidebar,
   recalculateSidebar,
 } from '@webapp/redux/reducers/ui';
-import useColorMode from '@webapp/hooks/colorMode.hook';
+// import useColorMode from '@webapp/hooks/colorMode.hook';
 import { useLocation, NavLink } from 'react-router-dom';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
@@ -43,7 +44,7 @@ function signOut() {
 
 export function SidebarComponent() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
-  const { changeColorMode, colorMode } = useColorMode();
+  // const { changeColorMode, colorMode } = useColorMode();
   const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
@@ -79,6 +80,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_SINGLE,
           PAGES.ADHOC_COMPARISON,
           PAGES.ADHOC_COMPARISON_DIFF,
+          PAGES.TAG_EXPLORER,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -93,7 +95,8 @@ export function SidebarComponent() {
   const isContinuousActive =
     isRouteActive(PAGES.CONTINOUS_SINGLE_VIEW) ||
     isRouteActive(PAGES.COMPARISON_VIEW) ||
-    isRouteActive(PAGES.COMPARISON_DIFF_VIEW);
+    isRouteActive(PAGES.COMPARISON_DIFF_VIEW) ||
+    isRouteActive(PAGES.TAG_EXPLORER);
   const isAdhocActive =
     isRouteActive(PAGES.ADHOC_SINGLE) ||
     isRouteActive(PAGES.ADHOC_COMPARISON) ||
@@ -173,6 +176,14 @@ export function SidebarComponent() {
                 Continuous Profiling
               </SidebarHeader>
             )}
+            <MenuItem
+              data-testid="sidebar-explore-page"
+              active={isRouteActive(PAGES.TAG_EXPLORER)}
+              icon={<Icon icon={faSearch} />}
+            >
+              Tag explorer
+              <NavLink to={{ pathname: PAGES.TAG_EXPLORER, search }} exact />
+            </MenuItem>
             <MenuItem
               data-testid="sidebar-continuous-single"
               active={isRouteActive(PAGES.CONTINOUS_SINGLE_VIEW)}

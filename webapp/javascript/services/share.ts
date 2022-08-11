@@ -1,7 +1,7 @@
 /* eslint-disable import/prefer-default-export */
 import { Result } from '@webapp/util/fp';
 import type { ZodError } from 'zod';
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 import {
   FlamegraphDotComResponse,
   flamegraphDotComResponseScheme,
@@ -12,11 +12,15 @@ import { request, parseResponse } from './base';
 interface shareWithFlamegraphDotcomProps {
   flamebearer: Profile;
   name?: string;
+  groupByTag?: string;
+  groupByTagValue?: string;
 }
 
 export async function shareWithFlamegraphDotcom({
   flamebearer,
   name,
+  groupByTag,
+  groupByTagValue,
 }: shareWithFlamegraphDotcomProps): Promise<
   Result<FlamegraphDotComResponse, RequestError | ZodError>
 > {
@@ -24,6 +28,8 @@ export async function shareWithFlamegraphDotcom({
     method: 'POST',
     body: JSON.stringify({
       name,
+      groupByTag,
+      groupByTagValue,
       // TODO:
       // use buf.toString
       profile: btoa(JSON.stringify(flamebearer)),

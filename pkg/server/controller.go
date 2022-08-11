@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	contentencoding "github.com/johejo/go-content-encoding"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -27,6 +29,7 @@ import (
 	"gorm.io/gorm"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
+
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
@@ -179,6 +182,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	//  - Auth middleware should never redirect - the logic should be moved to the client side.
 	r := mux.NewRouter()
 
+	r.Use(contentencoding.Decode())
+
 	ctrl.jwtTokenService = service.NewJWTTokenService(
 		[]byte(ctrl.config.Auth.JWTSecret),
 		24*time.Hour*time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays))
@@ -240,21 +245,54 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/settings", ih},
 		{"/settings/{page}", ih},
 		{"/settings/{page}/{subpage}", ih},
-		{"/forbidden", ih}},
+		{"/forbidden", ih},
+		{"/explore", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
+	routes := []route{}
+	if ctrl.config.RemoteRead.Enabled {
+		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
+		if err != nil {
+			logrus.WithError(err).Error("failed to initialize remote read handler")
+		} else {
+			routes = append(routes, []route{
+				{"/render", h},
+				{"/render-diff", h},
+				{"/merge", h},
+				{"/labels", h},
+				{"/label-values", h},
+				{"/export", h},
+			}...)
+		}
+	} else {
+		routes = append(routes, []route{
+			{"/render", ctrl.renderHandler()},
+			{"/render-diff", ctrl.renderDiffHandler()},
+			{"/merge", ctrl.mergeHandler()},
+			{"/labels", ctrl.labelsHandler()},
+			{"/label-values", ctrl.labelValuesHandler()},
+			{"/export", ctrl.exportHandler()},
+		}...)
+	}
+
+	routes = append(routes, []route{
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
+	}...)
+
 	// For these routes server responds with 401.
-	ctrl.addRoutes(r, []route{
-		{"/render", ctrl.renderHandler()},
-		{"/render-diff", ctrl.renderDiffHandler()},
-		{"/merge", ctrl.mergeHandler()},
-		{"/labels", ctrl.labelsHandler()},
-		{"/label-values", ctrl.labelValuesHandler()},
-		{"/export", ctrl.exportHandler()},
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
+	ctrl.addRoutes(r, routes,
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
+
+	appsRouter := apiRouter.PathPrefix("/").Subrouter()
+	appsRouter.Use(
+		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
+		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
+			authz.Role(model.AdminRole),
+		))
+	appsRouter.HandleFunc("/apps", ctrl.getAppsHandler()).Methods("GET")
+	appsRouter.HandleFunc("/apps", ctrl.deleteAppsHandler()).Methods("DELETE")
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
@@ -392,7 +430,10 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	return ctrl.corsMiddleware()(gzhttpMiddleware(handler)), nil
+	h := ctrl.corsMiddleware()(gzhttpMiddleware(handler))
+	h = ctrl.logginMiddleware(h)
+
+	return h, nil
 }
 
 func (ctrl *Controller) Start() error {
@@ -523,4 +564,14 @@ func expectFormats(format string) error {
 	default:
 		return errUnknownFormat
 	}
+}
+
+func (ctrl *Controller) logginMiddleware(next http.Handler) http.Handler {
+	if ctrl.config.LogLevel == "debug" {
+		// log to Stdout using Apache Common Log Format
+		// TODO maybe use JSON?
+		return handlers.LoggingHandler(os.Stdout, next)
+	}
+
+	return next
 }

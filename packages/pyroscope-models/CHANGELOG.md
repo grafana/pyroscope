@@ -3,6 +3,84 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.4.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.4.1...@pyroscope/models@0.4.2) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+## [0.4.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.4.0...@pyroscope/models@0.4.1) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+# [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.3.0...@pyroscope/models@0.4.0) (2022-07-29)
+
+
+### Features
+
+* create tag-explorer page for analyzing tag breakdowns ([#1293](https://github.com/pyroscope-io/pyroscope/issues/1293)) ([5456a86](https://github.com/pyroscope-io/pyroscope/commit/5456a866cfa6b3800fb7d359ff55032a84129138))
+
+
+
+
+
+# [0.3.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.2.3...@pyroscope/models@0.3.0) (2022-07-25)
+
+
+### chore
+
+* **flamegraph/models:** make it mandatory to handle all spyNames ([#1300](https://github.com/pyroscope-io/pyroscope/issues/1300)) ([f7a95a0](https://github.com/pyroscope-io/pyroscope/commit/f7a95a0225c1a39262962a47fd2a1cd493a8333b))
+
+
+### BREAKING CHANGES
+
+* **flamegraph/models:** it will throw an error if spyName is unsupported
+
+
+
+
+
+## [0.2.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.2.2...@pyroscope/models@0.2.3) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+## [0.2.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.2.1...@pyroscope/models@0.2.2) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+## [0.2.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.2.0...@pyroscope/models@0.2.1) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/models
+
+
+
+
+
+# [0.2.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.1.0...@pyroscope/models@0.2.0) (2022-07-11)
+
+
+### Features
+
+* **flamegraph:** Add support for visualizing traces ([#1233](https://github.com/pyroscope-io/pyroscope/issues/1233)) ([b15d094](https://github.com/pyroscope-io/pyroscope/commit/b15d094ebb06592a406b4b73485c0f316c411b08))
+
+
+
+
+
 # [0.1.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/models@0.0.7...@pyroscope/models@0.1.0) (2022-06-27)
 
 

@@ -55,7 +55,7 @@ func PprofToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Flamebe
 		out := &storage.GetOutput{
 			Tree:       t,
 			Units:      units,
-			SpyName:    name,
+			SpyName:    "unknown",
 			SampleRate: sampleRate,
 		}
 		profile := flamebearer.NewProfile(name, out, maxNodes)
@@ -82,7 +82,7 @@ func CollapsedToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Fla
 	}
 	out := &storage.GetOutput{
 		Tree:       t,
-		SpyName:    name,
+		SpyName:    "unknown",
 		SampleRate: 100, // We don't have this information, use the default
 	}
 	profile := flamebearer.NewProfile(name, out, maxNodes)

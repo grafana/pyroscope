@@ -3,7 +3,9 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -159,10 +161,30 @@ func loadConfigFile(cmd *cobra.Command, vpr *viper.Viper) error {
 		return nil
 	}
 	vpr.SetConfigFile(configPath)
-	err := vpr.ReadInConfig()
-	if err == nil || (errors.Is(err, os.ErrNotExist) && !userDefined) {
-		// The default config file can be missing.
+	data, err := ioutil.ReadFile(configPath)
+	if err != nil && errors.Is(err, os.ErrNotExist) && !userDefined {
+		// If user did not specify the config file, and the file does not exist,
+		//   this is okay
 		return nil
 	}
+
+	if err == nil {
+		return vpr.ReadConfig(strings.NewReader(performSubstitutions(data)))
+	}
+
 	return fmt.Errorf("loading configuration file: %w", err)
+}
+
+var digitCheck = regexp.MustCompile(`^[0-9]`)
+
+func performSubstitutions(data []byte) string {
+	// return string(data)
+	return os.Expand(string(data), func(name string) string {
+		// this is here so that $1, $2, etc. work in the config file
+		if digitCheck.MatchString(name) {
+			return "$" + name
+		}
+		s := os.Getenv(name)
+		return s
+	})
 }

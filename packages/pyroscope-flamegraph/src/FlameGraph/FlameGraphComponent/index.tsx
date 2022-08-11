@@ -1,17 +1,23 @@
 /* eslint-disable no-unused-expressions */
 import React, { useCallback, useRef } from 'react';
 import clsx from 'clsx';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faRedo } from '@fortawesome/free-solid-svg-icons/faRedo';
+import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
+import { faHighlighter } from '@fortawesome/free-solid-svg-icons/faHighlighter';
+import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
 import { Maybe } from 'true-myth';
 import debounce from 'lodash.debounce';
-import { Flamebearer } from '@pyroscope/models';
+import { Flamebearer } from '@pyroscope/models/src';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
 import ContextMenuHighlight from './ContextMenuHighlight';
-import Tooltip from './Tooltip';
+import FlamegraphTooltip from '../../Tooltip/FlamegraphTooltip';
 import ContextMenu from './ContextMenu';
+import LogoLink from './LogoLink';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
@@ -23,9 +29,12 @@ interface FlamegraphProps {
   fitMode: ConstructorParameters<typeof Flamegraph>[3];
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
+  showCredit: boolean;
+  selectedItem: Maybe<string>;
 
   onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
+  setActiveItem: (item: { name: string }) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -53,6 +62,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     highlightQuery,
     zoom,
     toolbarVisible,
+    showCredit,
+    setActiveItem,
+    selectedItem,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
@@ -73,7 +85,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
   // to display the flamegraph isolated from the table
-  useResizeObserver(canvasRef, (e) => {
+  useResizeObserver(canvasRef, () => {
     if (flamegraph) {
       debouncedRenderCanvas();
     }
@@ -141,8 +153,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     (x: number, y: number) => {
       const dirty = isDirty();
       const bar = getFlamegraph().xyToBar(x, y);
+      const barName = bar.isJust ? bar.value.name : '';
 
-      const FocusItem = () => {
+      const CollapseItem = () => {
         const hoveredOnValidNode = bar.mapOrElse(
           () => false,
           () => true
@@ -159,19 +172,56 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             disabled={!hoveredOnValidNode}
             onClick={onClick}
           >
-            Focus on this subtree
+            <FontAwesomeIcon icon={faCompressAlt} />
+            Collapse nodes above
+          </MenuItem>
+        );
+      };
+
+      const CopyItem = () => {
+        const onClick = () => {
+          if (!navigator.clipboard) return;
+
+          navigator.clipboard.writeText(barName);
+        };
+
+        return (
+          <MenuItem key="copy" onClick={onClick}>
+            <FontAwesomeIcon icon={faCopy} />
+            Copy function name
+          </MenuItem>
+        );
+      };
+
+      const HighlightSimilarNodesItem = () => {
+        const onClick = () => {
+          setActiveItem({ name: barName });
+        };
+
+        const actionName =
+          selectedItem.isJust && selectedItem.value === barName
+            ? 'Clear highlight'
+            : 'Highlight similar nodes';
+
+        return (
+          <MenuItem key="highlight-similar-nodes" onClick={onClick}>
+            <FontAwesomeIcon icon={faHighlighter} />
+            {actionName}
           </MenuItem>
         );
       };
 
       return [
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
+          <FontAwesomeIcon icon={faRedo} />
           Reset View
         </MenuItem>,
-        FocusItem(),
+        CollapseItem(),
+        CopyItem(),
+        HighlightSimilarNodesItem(),
       ];
     },
-    [flamegraph]
+    [flamegraph, selectedItem]
   );
 
   const constructCanvas = () => {
@@ -245,7 +295,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         setPalette={setPalette}
         toolbarVisible={toolbarVisible}
       />
-
       <div
         data-testid={dataTestId}
         style={{
@@ -261,6 +310,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           onClick={onClick}
         />
       </div>
+      {showCredit ? <LogoLink /> : ''}
       {flamegraph && canvasRef && (
         <Highlight
           barHeight={PX_PER_LEVEL}
@@ -276,10 +326,10 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
       )}
       {flamegraph && (
-        <Tooltip
+        <FlamegraphTooltip
           format={flamebearer.format}
           canvasRef={canvasRef}
-          xyToData={xyToTooltipData as any /* TODO */}
+          xyToData={xyToTooltipData as ShamefulAny}
           numTicks={flamebearer.numTicks}
           sampleRate={flamebearer.sampleRate}
           leftTicks={

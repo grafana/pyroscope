@@ -13,17 +13,17 @@ import store, { persistor } from './redux/store';
 import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
+import TagExplorerView from './pages/TagExplorerView';
 import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
-import AdhocSingle from './pages/AdhocSingle';
-import AdhocComparison from './pages/AdhocComparison';
-import AdhocDiff from './pages/AdhocDiff';
+import AdhocSingle from './pages/adhoc/AdhocSingle';
+import AdhocComparison from './pages/adhoc/AdhocComparison';
+import AdhocDiff from './pages/adhoc/AdhocDiff';
 import ServiceDiscoveryApp from './pages/ServiceDiscovery';
 import ServerNotifications from './components/ServerNotifications';
 import Protected from './components/Protected';
 // since this style is practically all pages
-import '@pyroscope/flamegraph/dist/index.css';
 
 import SignInPage from './pages/IntroPages/SignIn';
 import SignUpPage from './pages/IntroPages/SignUp';
@@ -84,6 +84,13 @@ function App() {
           <Route path={PAGES.SERVICE_DISCOVERY}>
             <Protected>
               <ServiceDiscoveryApp />
+            </Protected>
+          </Route>
+          <Route exact path={PAGES.TAG_EXPLORER}>
+            <Protected>
+              <Continuous>
+                <TagExplorerView />
+              </Continuous>
             </Protected>
           </Route>
           {isAdhocUIEnabled && (

@@ -3,6 +3,297 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.4...@pyroscope/flamegraph@0.18.5) (2022-08-11)
+
+
+### Bug Fixes
+
+* Make trace units be time based ([#1387](https://github.com/pyroscope-io/pyroscope/issues/1387)) ([a567c2c](https://github.com/pyroscope-io/pyroscope/commit/a567c2c1877c462a6a4dceda87455017c1cf7276))
+
+
+
+
+
+## [0.18.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.3...@pyroscope/flamegraph@0.18.4) (2022-08-11)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.18.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.2...@pyroscope/flamegraph@0.18.3) (2022-08-09)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.18.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.1...@pyroscope/flamegraph@0.18.2) (2022-08-08)
+
+
+### Bug Fixes
+
+* make table value say 0 when it is 0 ([#1371](https://github.com/pyroscope-io/pyroscope/issues/1371)) ([30067ad](https://github.com/pyroscope-io/pyroscope/commit/30067ad5da6eec7655d99b19aef0c012be923853))
+
+
+
+
+
+## [0.18.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.0...@pyroscope/flamegraph@0.18.1) (2022-08-08)
+
+
+### Bug Fixes
+
+* export flamegraph "head" select styles ([#1367](https://github.com/pyroscope-io/pyroscope/issues/1367)) ([7bc8b3e](https://github.com/pyroscope-io/pyroscope/commit/7bc8b3e9d41faf8ac0422764d36406b8b890870b))
+
+
+
+
+
+# [0.18.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.17.3...@pyroscope/flamegraph@0.18.0) (2022-08-05)
+
+
+### Features
+
+* enhance tag explorer view ([#1329](https://github.com/pyroscope-io/pyroscope/issues/1329)) ([7d66d75](https://github.com/pyroscope-io/pyroscope/commit/7d66d750ba68d27a5046751221dd51d465a08488))
+
+
+
+
+
+## [0.17.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.17.2...@pyroscope/flamegraph@0.17.3) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.17.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.17.1...@pyroscope/flamegraph@0.17.2) (2022-08-05)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.17.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.17.0...@pyroscope/flamegraph@0.17.1) (2022-08-04)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+# [0.17.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.16.3...@pyroscope/flamegraph@0.17.0) (2022-08-03)
+
+
+### Features
+
+* add tooltip table text for when units is undefined ([#1341](https://github.com/pyroscope-io/pyroscope/issues/1341)) ([a9fd5ac](https://github.com/pyroscope-io/pyroscope/commit/a9fd5ac43f6429c70ccbc70cb8bf89c581e915fb))
+
+
+
+
+
+## [0.16.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.16.2...@pyroscope/flamegraph@0.16.3) (2022-08-03)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.16.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.16.1...@pyroscope/flamegraph@0.16.2) (2022-07-29)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.16.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.16.0...@pyroscope/flamegraph@0.16.1) (2022-07-27)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+# [0.16.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.15.0...@pyroscope/flamegraph@0.16.0) (2022-07-25)
+
+
+### Features
+
+* show functions % of total [units] in Table ([#1288](https://github.com/pyroscope-io/pyroscope/issues/1288)) ([6c71195](https://github.com/pyroscope-io/pyroscope/commit/6c71195295c3ed5591917ff754e670d4220b77d0))
+
+
+
+
+
+# [0.15.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.9...@pyroscope/flamegraph@0.15.0) (2022-07-25)
+
+
+### chore
+
+* **flamegraph/models:** make it mandatory to handle all spyNames ([#1300](https://github.com/pyroscope-io/pyroscope/issues/1300)) ([f7a95a0](https://github.com/pyroscope-io/pyroscope/commit/f7a95a0225c1a39262962a47fd2a1cd493a8333b))
+
+
+### BREAKING CHANGES
+
+* **flamegraph/models:** it will throw an error if spyName is unsupported
+
+
+
+
+
+## [0.14.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.8...@pyroscope/flamegraph@0.14.9) (2022-07-20)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.7...@pyroscope/flamegraph@0.14.8) (2022-07-19)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.6...@pyroscope/flamegraph@0.14.7) (2022-07-19)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.5...@pyroscope/flamegraph@0.14.6) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.4...@pyroscope/flamegraph@0.14.5) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.3...@pyroscope/flamegraph@0.14.4) (2022-07-18)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.2...@pyroscope/flamegraph@0.14.3) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.1...@pyroscope/flamegraph@0.14.2) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.14.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.14.0...@pyroscope/flamegraph@0.14.1) (2022-07-15)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+# [0.14.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.13.0...@pyroscope/flamegraph@0.14.0) (2022-07-15)
+
+
+### Features
+
+* update right-click context menu ([#1259](https://github.com/pyroscope-io/pyroscope/issues/1259)) ([8aea02f](https://github.com/pyroscope-io/pyroscope/commit/8aea02f56320daacfd753d73db6936dcc7cdaef8))
+
+
+
+
+
+# [0.13.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.12.5...@pyroscope/flamegraph@0.13.0) (2022-07-13)
+
+
+### Features
+
+* add new tooltip design ([#1246](https://github.com/pyroscope-io/pyroscope/issues/1246)) ([8345168](https://github.com/pyroscope-io/pyroscope/commit/83451683d131671771b0e97e052068b08bfe35bd))
+
+
+
+
+
+## [0.12.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.12.4...@pyroscope/flamegraph@0.12.5) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.12.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.12.3...@pyroscope/flamegraph@0.12.4) (2022-07-13)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.12.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.12.2...@pyroscope/flamegraph@0.12.3) (2022-07-12)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.12.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.12.1...@pyroscope/flamegraph@0.12.2) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.12.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.12.0...@pyroscope/flamegraph@0.12.1) (2022-07-11)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+# [0.12.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.11.0...@pyroscope/flamegraph@0.12.0) (2022-07-11)
+
+
+### Features
+
+* **flamegraph:** Add support for visualizing traces ([#1233](https://github.com/pyroscope-io/pyroscope/issues/1233)) ([b15d094](https://github.com/pyroscope-io/pyroscope/commit/b15d094ebb06592a406b4b73485c0f316c411b08))
+
+
+
+
+
 # [0.11.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.10.1...@pyroscope/flamegraph@0.11.0) (2022-07-07)
 
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/client/pyroscope"
 	"github.com/sirupsen/logrus"
@@ -36,7 +37,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -92,7 +92,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	}
 
 	diskPressure := health.DiskPressure{
-		Threshold: 512 * bytesize.MB,
+		Threshold: c.MinFreeSpacePercentage,
 		Path:      c.StoragePath,
 	}
 
@@ -118,9 +118,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
-		adminService := admin.NewService(svc.storage)
 		userService := service.NewUserService(svc.database.DB())
-		adminCtrl := admin.NewController(svc.logger, adminService, userService, svc.storage)
+		adminController := admin.NewController(svc.logger, svc.storage, userService, svc.storage)
 		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
@@ -133,7 +132,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 		svc.adminServer, err = admin.NewServer(
 			svc.logger,
-			adminCtrl,
+			adminController,
 			adminHTTPOverUDS,
 		)
 		if err != nil {
@@ -156,6 +155,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	var ingester ingestion.Ingester
 	if !svc.config.RemoteWrite.Enabled || !svc.config.RemoteWrite.DisableLocalWrites {
 		ingester = parser.New(svc.logger, svc.storageQueue, metricsExporter)
+	} else {
+		ingester = ingestion.NewNoopIngester()
 	}
 
 	// If remote write is available, let's write to both local storage and to the remote server
@@ -223,6 +224,11 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
+	}
+
+	if os.Getenv("PYROSCOPE_CONFIG_DEBUG") != "" {
+		fmt.Println("parsed config:")
+		spew.Dump(svc.config)
 	}
 
 	return &svc, nil
@@ -381,7 +387,7 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 		ScrapeConfigs []*sc.Config `yaml:"scrape-configs" mapstructure:"-"`
 	}
 	var s scrapeConfig
-	if err = yaml.Unmarshal(b, &s); err != nil {
+	if err = yaml.Unmarshal([]byte(performSubstitutions(b)), &s); err != nil {
 		return err
 	}
 	// Populate scrape configs.
@@ -406,7 +412,7 @@ func loadRemoteWriteTargetConfigsFromFile(c *config.Server) error {
 	}
 
 	var s cfg
-	if err = yaml.Unmarshal(b, &s); err != nil {
+	if err = yaml.Unmarshal([]byte(performSubstitutions(b)), &s); err != nil {
 		return err
 	}
 

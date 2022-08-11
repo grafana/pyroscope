@@ -12,27 +12,12 @@
 
   &.fit-mode-select {
     min-width: 65px;
+    padding: 1px 6px;
   }
 }
 
 .space-filler {
   flex-grow: 1;
-}
-
-.headerLogo {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: #fff;
-  font-size: 1.2em;
-}
-
-.headerLogo img {
-  display: inline-block;
-}
-
-.headerLogo span {
-  display: inline-block;
 }
 
 .fit-mode-select {

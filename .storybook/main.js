@@ -12,7 +12,11 @@ module.exports = {
   webpackFinal: async (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
+      // Only allow importing ui elements, since at some point we want to move
+      // ui to its own package
+      '@webapp/ui': path.resolve(__dirname, '../webapp/javascript/ui'),
       '@ui': path.resolve(__dirname, '../webapp/javascript/ui'),
+
       '@utils': path.resolve(__dirname, '../webapp/javascript/util'),
     };
     config.resolve.extensions.push('.ts', '.tsx');

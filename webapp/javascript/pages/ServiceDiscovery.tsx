@@ -23,7 +23,11 @@ const ServiceDiscoveryApp = () => {
   const [expandAll, setExpandAll] = useState(true);
 
   useEffect(() => {
-    dispatch(loadTargets());
+    async function run() {
+      await dispatch(loadTargets());
+    }
+
+    run();
   }, []);
 
   function getUpCount(targets: Target[]) {
@@ -66,7 +70,7 @@ const ServiceDiscoveryApp = () => {
           </div>
         ) : (
           Object.keys(data).map((job) => {
-            const children = data[job].map((target, i) => {
+            const children = data[job].map((target) => {
               const targetElem = (
                 /* eslint-disable-next-line react/jsx-props-no-spreading */
                 <TargetComponent {...target} key={target.url} />

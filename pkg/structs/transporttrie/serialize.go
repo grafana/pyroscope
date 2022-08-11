@@ -70,7 +70,7 @@ func IterateRaw(r io.Reader, buf []byte, cb func(k []byte, v int)) error {
 			return err
 		}
 		if nameLen != 0 {
-			copied, err = io.CopyN(b, br, int64(nameLen))
+			copied, err = b.ReadFrom(io.LimitReader(br, int64(nameLen)))
 			if err != nil {
 				return err
 			}

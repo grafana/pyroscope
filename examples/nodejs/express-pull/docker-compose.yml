@@ -34,3 +34,7 @@ services:
     build:
       context: ../
       dockerfile: Dockerfile.load-generator
+    depends_on:
+      - us-east
+      - eu-north
+      - ap-south

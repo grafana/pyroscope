@@ -1,10 +1,8 @@
 @import '@szhsin/react-menu/dist/index.css';
 
 .dropdownMenu {
-  // box-shadow: 0 2px 5px var(--ps-neutral-1);
-
   padding: 0.25rem 0;
-  box-shadow: 0px 2px 6px var(--ps-neutral-1) !important;
+  box-shadow: 0px 2px 6px var(--ps-dropdown-shadow) !important;
   background-color: var(--ps-dropdown-background) !important;
   color: var(--ps-neutral-2) !important;
 

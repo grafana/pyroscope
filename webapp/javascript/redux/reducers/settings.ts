@@ -15,7 +15,7 @@ import {
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
 } from '@webapp/services/apiKeys';
-import type { RootState } from '../store';
+import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 

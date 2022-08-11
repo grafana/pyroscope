@@ -15,4 +15,7 @@ module.exports = {
     // since we use immutablejs in the reducer
     'no-param-reassign': 'off',
   },
+  parserOptions: {
+    tsconfigRootDir: __dirname,
+  },
 };

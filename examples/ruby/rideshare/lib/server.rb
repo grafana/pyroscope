@@ -7,7 +7,7 @@ require_relative 'car/car'
 
 
 Pyroscope.configure do |config|
-  config.app_name = "ride-sharing-app"
+  config.application_name = "ride-sharing-app"
   config.server_address = "http://pyroscope:4040"
   config.tags = {
     "region": ENV["REGION"],

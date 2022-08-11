@@ -106,8 +106,12 @@ func Deserialize(r io.Reader) (*Segment, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	s.populateFromMetadata(mdata)
+
+	// In some cases, there can be no nodes.
+	if br.Buffered() == 0 {
+		return s, nil
+	}
 
 	parents := []*streeNode{nil}
 	for len(parents) > 0 {

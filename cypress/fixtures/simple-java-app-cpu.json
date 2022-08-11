@@ -53,5 +53,10 @@
     "spyName": "javaspy",
     "units": "samples"
   },
-  "timeline": { "startTime": 1632504610, "samples": [991], "durationDelta": 10 }
+  "timeline": {
+    "startTime": 1632504610,
+    "samples": [991],
+    "durationDelta": 10
+  },
+  "groups": {}
 }

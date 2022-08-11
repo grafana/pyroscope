@@ -1,6 +1,7 @@
 /* eslint-disable camelcase */
 import Color from 'color';
 import { scaleLinear } from 'd3-scale';
+import type { SpyName } from '@pyroscope/models/src';
 import murmurhash3_32_gc from './murmur3';
 import type { FlamegraphPalette } from './colorPalette';
 
@@ -71,8 +72,8 @@ export function colorGreyscale(v: number, a: number) {
   return Color.rgb(v, v, v).alpha(a);
 }
 
-// TODO use @pyroscope/models?
-function spyToRegex(spyName: string) {
+function spyToRegex(spyName: SpyName): RegExp {
+  // eslint-disable-next-line default-case
   switch (spyName) {
     case 'dotnetspy':
       return /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/;
@@ -93,21 +94,23 @@ function spyToRegex(spyName: string) {
       return /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/;
     case 'nodespy':
       return /^(\.\/node_modules\/)?(?<packageName>[^/]*)(?<filename>.*\.?(jsx?|tsx?)?):(?<functionName>.*):(?<line_info>.*)$/;
+    case 'tracing':
+      return /^(?<packageName>.+?):.*$/;
     case 'javaspy':
       // TODO: we might want to add ? after groups
       return /^(?<packageName>.+\/)(?<filename>.+\.)(?<functionName>.+)$/;
     case 'pyroscope-rs':
       return /^(?<packageName>[^::]+)/;
-
-    // we don't have enough information
-    default:
+    case 'unknown':
       return /^(?<packageName>.+)$/;
   }
+
+  return /^(?<packageName>.+)$/;
 }
 
 // TODO spy names?
 export function getPackageNameFromStackTrace(
-  spyName: string,
+  spyName: SpyName,
   stackTrace: string
 ) {
   if (stackTrace.length === 0) {
@@ -125,13 +128,13 @@ export function colorBasedOnPackageName(
   palette: FlamegraphPalette,
   name: string
 ) {
-  const hash = murmurhash3_32_gc(name);
+  const hash = murmurhash3_32_gc(name, 0);
   const colorIndex = hash % palette.colors.length;
   const baseClr = palette.colors[colorIndex];
   if (!baseClr) {
     console.warn('Could not calculate color. Defaulting to the first one');
     // We assert to Color since the first position is always available
-    return palette.colors[0] as Color;
+    return palette.colors[0];
   }
 
   return baseClr;
@@ -154,7 +157,7 @@ export function NewDiffColor(
       goodColor.rgb().toString(),
       neutralColor.rgb().toString(),
       badColor.rgb().toString(),
-    ] as any);
+    ] as ShamefulAny);
 
   return (n: number) => {
     // convert to our Color object

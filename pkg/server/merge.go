@@ -4,21 +4,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
-	"github.com/sirupsen/logrus"
+	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type MergeHandler struct {
 	log             *logrus.Logger
-	storage         storage.Merger
+	storage         storage.ExemplarsMerger
 	dir             http.FileSystem
 	stats           StatsReceiver
 	maxNodesDefault int
 	httpUtils       httputils.Utils
+}
+
+type mergeRequest struct {
+	AppName   string   `json:"appName"`
+	StartTime string   `json:"startTime"`
+	EndTime   string   `json:"endTime"`
+	Profiles  []string `json:"profiles"`
+	MaxNodes  int      `json:"maxNodes"`
+
+	// For consistency with render handler: `startTime` and `endTime` take precedence.
+	From  string `json:"from"`
+	Until string `json:"until"`
+}
+
+type mergeResponse struct {
+	flamebearer.FlamebearerProfile
 }
 
 func (ctrl *Controller) mergeHandler() http.HandlerFunc {
@@ -26,7 +45,7 @@ func (ctrl *Controller) mergeHandler() http.HandlerFunc {
 }
 
 //revive:disable:argument-limit TODO(petethepig): we will refactor this later
-func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *MergeHandler {
+func NewMergeHandler(l *logrus.Logger, s storage.ExemplarsMerger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *MergeHandler {
 	return &MergeHandler{
 		log:             l,
 		storage:         s,
@@ -57,10 +76,7 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		maxNodes = req.MaxNodes
 	}
 
-	out, err := mh.storage.MergeProfiles(r.Context(), storage.MergeProfilesInput{
-		AppName:  req.AppName,
-		Profiles: req.Profiles,
-	})
+	out, err := mh.storage.MergeExemplars(r.Context(), mergeExemplarsInputFromMergeRequest(req))
 	if err != nil {
 		mh.httpUtils.WriteInternalServerError(r, w, err, "failed to retrieve data")
 		return
@@ -77,12 +93,11 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					NumTicks: flame.NumTicks,
 					MaxSelf:  flame.MaxSelf,
 				},
-				// Hardcoded values for Go.
 				Metadata: flamebearer.FlamebearerMetadataV1{
 					Format:     string(tree.FormatSingle),
-					SpyName:    "unknown",
-					SampleRate: 100,
-					Units:      "samples",
+					SpyName:    out.SpyName,
+					SampleRate: out.SampleRate,
+					Units:      out.Units,
 				},
 			},
 		},
@@ -90,4 +105,23 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	mh.stats.StatsInc("merge")
 	mh.httpUtils.WriteResponseJSON(r, w, resp)
+}
+
+func mergeExemplarsInputFromMergeRequest(req mergeRequest) storage.MergeExemplarsInput {
+	return storage.MergeExemplarsInput{
+		AppName:    req.AppName,
+		StartTime:  pickTime(req.StartTime, req.From),
+		EndTime:    pickTime(req.EndTime, req.Until),
+		ProfileIDs: req.Profiles,
+	}
+}
+
+func pickTime(primary, fallback string) time.Time {
+	if primary != "" {
+		return attime.Parse(primary)
+	}
+	if fallback != "" {
+		return attime.Parse(fallback)
+	}
+	return time.Time{}
 }

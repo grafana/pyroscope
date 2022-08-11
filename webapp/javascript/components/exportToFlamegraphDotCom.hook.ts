@@ -1,9 +1,13 @@
-import { Profile } from '@pyroscope/models';
+import { Profile } from '@pyroscope/models/src';
 import { shareWithFlamegraphDotcom } from '@webapp/services/share';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import handleError from '@webapp/util/handleError';
 
-export default function useExportToFlamegraphDotCom(flamebearer?: Profile) {
+export default function useExportToFlamegraphDotCom(
+  flamebearer?: Profile,
+  groupByTag?: string,
+  groupByTagValue?: string
+) {
   const dispatch = useAppDispatch();
 
   return async (name?: string) => {
@@ -14,6 +18,9 @@ export default function useExportToFlamegraphDotCom(flamebearer?: Profile) {
     const res = await shareWithFlamegraphDotcom({
       flamebearer,
       name,
+      // or we should add this to name ?
+      groupByTag,
+      groupByTagValue,
     });
 
     if (res.isErr) {

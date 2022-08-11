@@ -1,4 +1,4 @@
-name: JS Tests/Lint/Type-check
+name: JS Tests
 
 on:
   push:
@@ -26,15 +26,12 @@ jobs:
             ${{ runner.os }}-yarn
 
       - name: Install Webapp dependencies
-        run: yarn install
-
-      # build the application before testing
-      # otherwise it won't be able to resolve dependencies
-      - name: build
-        run: yarn build
-
+        run: yarn install --frozen-lockfile
+      - name: Get number of CPU cores
+        id: cpu-cores
+        uses: SimenB/github-actions-cpu-cores@v1
       - name: Run Webapp tests
-        run: yarn run test --coverage
+        run: yarn run test --coverage --max-workers ${{ steps.cpu-cores.outputs.count }}
       - name: Upload codecov coverage
         if: always()
         uses: codecov/codecov-action@v1
@@ -42,12 +39,3 @@ jobs:
           name: js coverage
           fail_ci_if_error: false
           verbose: true
-
-      - name: Run Lint
-        # Use use --quiet so that it only report errors
-        run: yarn lint:quiet
-      - name: Run Format check
-        run: yarn format:check
-
-      - name: Run Type check
-        run: yarn type-check

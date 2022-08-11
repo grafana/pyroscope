@@ -1,4 +1,5 @@
 /* eslint-disable prefer-template */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 import { useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
