@@ -4,7 +4,10 @@
 package ebpfspy
 
 import (
+	"context"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"os"
 	"sync"
 )
 
@@ -14,20 +17,30 @@ type EbpfSpy struct {
 	stop  bool
 
 	session *session
+	sd      sd.ServiceDiscovery
 
 	stopCh chan struct{}
 }
 
 func Start(pid int, _ spy.ProfileType, sampleRate uint32, _ bool) (spy.Spy, error) {
+
 	s := newSession(pid, sampleRate)
 	err := s.Start()
 	if err != nil {
 		return nil, err
 	}
-	return &EbpfSpy{
+	//todo pass logger & ctx here
+
+	res := &EbpfSpy{
 		session: s,
 		stopCh:  make(chan struct{}),
-	}, nil
+	}
+	k8sNode := os.Getenv("PYROSCOPE_K8S_NODE")
+	if k8sNode != "" {
+		res.sd, _ = sd.NewK8ServiceDiscovery(context.TODO(), k8sNode)
+	}
+
+	return res, nil
 }
 
 func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
@@ -39,8 +52,15 @@ func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	}
 
 	s.reset = false
-	err := s.session.Reset(func(name []byte, v uint64) error {
-		return cb(nil, name, v)
+	if s.sd != nil {
+		_ = s.sd.Refresh(context.TODO())
+	}
+	err := s.session.Reset(func(name []byte, v uint64, pid uint32) error {
+		var ls *spy.Labels
+		if s.sd != nil {
+			s.sd.GetLabels(pid)
+		}
+		return cb(ls, name, v)
 	})
 
 	if s.stop {

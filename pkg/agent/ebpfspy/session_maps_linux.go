@@ -7,7 +7,6 @@ package ebpfspy
 
 import "C"
 import (
-	"fmt"
 	"unsafe"
 )
 
@@ -47,16 +46,13 @@ func (s *session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 }
 
 func (s *session) clearCountsMap(keys [][]byte, batch bool) error {
-	fmt.Println("clearCountsMap", len(keys))
 	if len(keys) == 0 {
 		return nil
 	}
 	if batch {
 		// do nothing, already deleted with GetValueAndDeleteBatch in getCountsMapValues
-		fmt.Println("doing nothing, already deleted")
 		return nil
 	}
-	fmt.Println("deleting iter")
 	for _, key := range keys {
 		err := s.mapCounts.DeleteKey(unsafe.Pointer(&key[0]))
 		if err != nil {
@@ -71,39 +67,28 @@ func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
 	cnt := 0
 	errs := 0
 	if s.roundNumber%3 == 0 { //todo increase, 3- for debugging
-		fmt.Printf("do a full stackmap reset\n")
 		// do a full reset once in a while
 		it := m.Iterator()
 
 		for it.Next() {
 			key := it.Key()
 			if err := m.DeleteKey(unsafe.Pointer(&key[0])); err != nil {
-				fmt.Printf("error deleting key 1 %v\n", err)
-				//return err
 				errs += 1
 			} else {
 				cnt += 1
 			}
 
 		}
-		fmt.Printf("done a full stackmap reset %d %d\n", cnt, errs)
 		return nil
 	}
-	fmt.Printf("do a known keys stackmap reset\n")
-
 	for stackId := range knownKeys {
 		k := stackId
 		if err := m.DeleteKey(unsafe.Pointer(&k)); err != nil {
-			fmt.Printf("error deleting key %v %x\n", err, stackId)
-
-			//return err
 			errs += 1
 		} else {
 			cnt += 1
 		}
 	}
-	fmt.Printf("done known keys stackmap reset %d %d\n", cnt, errs)
-
 	return nil
 }
 

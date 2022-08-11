@@ -1,5 +1,0 @@
-profile.bpf.o
-vmlinux.h
-libbpf*
-bcc-src
-libs/

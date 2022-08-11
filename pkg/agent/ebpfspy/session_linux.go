@@ -115,7 +115,7 @@ func (s *session) Start() error {
 	return nil
 }
 
-func (s *session) Reset(cb func([]byte, uint64) error) error {
+func (s *session) Reset(cb func(name []byte, value uint64, pid uint32) error) error {
 	s.roundNumber += 1
 	fmt.Println("Reset", s.roundNumber)
 	s.modMutex.Lock()
@@ -172,7 +172,7 @@ func (s *session) Reset(cb func([]byte, uint64) error) error {
 		}
 		s.walkStack(buf, sf.uStack, sf.pid, true)
 		s.walkStack(buf, sf.kStack, sf.pid, false)
-		err = cb(buf.Bytes(), uint64(sf.count))
+		err = cb(buf.Bytes(), uint64(sf.count), sf.pid)
 		if err != nil {
 			return err
 		}

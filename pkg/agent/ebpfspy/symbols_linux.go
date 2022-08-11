@@ -7,7 +7,6 @@ package ebpfspy
 
 import (
 	"debug/elf"
-	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/util/genericlru"
 	"sync"
 	"unsafe"
@@ -95,8 +94,6 @@ func (sc *symbolCache) getOrCreateCacheEntry(pid pidKey) *symbolCacheEntry {
 	symbolOptC := (*C.struct_bcc_symbol_option)(unsafe.Pointer(&symbolOpt))
 	cache := C.bcc_symcache_new(pidC, symbolOptC)
 	e := &symbolCacheEntry{cache: cache}
-	fmt.Printf("creating new cache for pid %d\n", pid)
-
 	sc.pid2Cache.Add(pid, e)
 	return e
 }
