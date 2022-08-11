@@ -85,6 +85,12 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 			ls.Set("k8s_pod_namespace", pod.Namespace)
 			ls.Set("k8s_container_id", cid)
 			ls.Set("k8s_container_name", status.Name)
+			if v, ok := pod.Labels["app.kubernetes.io/name"]; ok {
+				ls.Set("k8s_app_name", v)
+			}
+			if v, ok := pod.Labels["app.kubernetes.io/version"]; ok {
+				ls.Set("k8s_app_version", v)
+			}
 			sd.containerID2Labels[cid] = ls
 		}
 	}
