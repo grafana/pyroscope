@@ -46,6 +46,9 @@ var _ = Describe("server", func() {
 			h, _ := c.serverMux()
 			httpServer = httptest.NewServer(h)
 		})
+		AfterEach(func() {
+			httpServer.Close()
+		})
 		Context("/render", func() {
 			It("supports name and query parameters", func() {
 				defer httpServer.Close()
@@ -114,6 +117,9 @@ var _ = Describe("render merge test", func() {
 			})
 			h, _ := c.serverMux()
 			httpServer = httptest.NewServer(h)
+		})
+		AfterEach(func() {
+			httpServer.Close()
 		})
 
 		Context("/render", func() {
