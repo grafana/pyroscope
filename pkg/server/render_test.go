@@ -24,11 +24,13 @@ import (
 
 var _ = Describe("server", func() {
 	var httpServer *httptest.Server
+	var s *storage.Storage
 
 	testing.WithConfig(func(cfg **config.Config) {
 		BeforeEach(func() {
 			(*cfg).Server.APIBindAddr = ":10044"
-			s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			var err error
+			s, err = storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 			e, _ := exporter.NewExporter(nil, nil)
 			c, _ := New(Config{
@@ -44,7 +46,8 @@ var _ = Describe("server", func() {
 			h, _ := c.serverMux()
 			httpServer = httptest.NewServer(h)
 		})
-		AfterEach(func() {
+		JustAfterEach(func() {
+			s.Close()
 			httpServer.Close()
 		})
 		Context("/render", func() {
