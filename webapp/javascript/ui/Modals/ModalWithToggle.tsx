@@ -6,7 +6,7 @@ import styles from './ModalWithToggle.module.scss';
 export interface ModalWithToggleProps {
   isModalOpen: boolean;
   setModalOpenStatus: Dispatch<SetStateAction<boolean>>;
-  customHandleOutsideClick?: () => void;
+  customHandleOutsideClick?: (e: MouseEvent) => void;
   toggleText: string;
   headerEl: string | ReactNode;
   leftSideEl: ReactNode;
@@ -17,7 +17,7 @@ export interface ModalWithToggleProps {
   modalHeight?: string;
 }
 
-const TOGGLE_BTN_ID = 'modal-toggler';
+export const TOGGLE_BTN_ID = 'modal-toggler';
 
 function ModalWithToggle({
   isModalOpen,
