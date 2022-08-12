@@ -1,0 +1,44 @@
+.table {
+  width: 100%;
+
+  thead,
+  tbody tr:nth-child(2n) {
+    background-color: var(--ps-neutral-9);
+  }
+
+  tbody {
+    cursor: pointer;
+
+    td {
+      font-weight: initial;
+      text-align: center;
+    }
+
+    tr.activeTagRow {
+      background-color: var(--ps-green-highlight);
+      color: var(--ps-tooltip-text);
+    }
+
+    // should be passed as component to table ui
+    // .tagName {
+    //   display: flex;
+    //   align-items: center;
+
+    //   .tagColor {
+    //     flex-shrink: 0;
+    //     display: inline-block;
+    //     height: 10px;
+    //     width: 10px;
+    //     border-radius: 2px;
+    //     margin-right: 10px;
+    //   }
+    // }
+  }
+
+  td,
+  th {
+    border: 1px solid var(--ps-ui-border);
+    padding: 4px 10px;
+    width: 10%;
+  }
+}
