@@ -12,15 +12,28 @@ export type FlamegraphRendererProps = Omit<
   'showPyroscopeLogo'
 >;
 
+// Module augmentation so that typescript sees our 'custom' element
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace JSX {
+    interface IntrinsicElements {
+      'pyro-flamegraph': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement>,
+        HTMLElement
+      >;
+    }
+  }
+}
+
 // TODO: type props
 export const FlamegraphRenderer = (props: FlamegraphRendererProps) => {
   // Although 'flamegraph' is not a valid HTML element
   // It's used to scope css without affecting specificity
   // For more info see flamegraph.scss
   return (
-    <flamegraph is="div">
+    <pyro-flamegraph is="span">
       {/* eslint-disable-next-line react/jsx-props-no-spreading */}
       <FlameGraphRenderer {...props} {...overrideProps} />
-    </flamegraph>
+    </pyro-flamegraph>
   );
 };
