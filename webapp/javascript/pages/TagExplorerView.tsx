@@ -39,8 +39,8 @@ import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
 
-const getTimelineColor = (index: number): Color =>
-  Color(DefaultPalette.colors[index % (DefaultPalette.colors.length - 1)]);
+const getTimelineColor = (index: number, palette: Color[]): Color =>
+  Color(palette[index % (palette.length - 1)]);
 
 function TagExplorerView() {
   const { offset } = useTimeZone();
@@ -90,7 +90,7 @@ function TagExplorerView() {
             acc.push({
               tagName,
               data,
-              color: getTimelineColor(index),
+              color: getTimelineColor(index, DefaultPalette),
             });
 
             return acc;
