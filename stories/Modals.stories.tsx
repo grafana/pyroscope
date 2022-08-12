@@ -2,6 +2,7 @@ import React from 'react';
 import ShowModal from '@ui/Modals';
 import Button from '@ui/Button';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
+import '../webapp/sass/profile.scss';
 
 const Template: ComponentStory<typeof ShowModal> = ({
   title,

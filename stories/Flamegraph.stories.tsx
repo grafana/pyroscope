@@ -4,6 +4,7 @@ import PyroscopeServerCPU from '../cypress/fixtures/pyroscope.server.cpu.json';
 import SimpleGolangCPU from '../cypress/fixtures/simple-golang-app-cpu.json';
 import Button from '@ui/Button';
 import { ComponentStory } from '@storybook/react';
+import '@pyroscope/flamegraph/dist/index.css';
 
 export default {
   title: '@pyroscope/flamegraph',
