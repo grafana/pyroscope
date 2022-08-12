@@ -258,8 +258,7 @@ function Table({
   };
 
   const getSingleViewSearch = () => {
-    if (!groupByTagValue || appWithoutTagsWhereDropdownOptionName)
-      return search;
+    if (!groupByTagValue || ALL_TAGS) return search;
 
     const searchParams = new URLSearchParams(search);
     searchParams.delete('query');
