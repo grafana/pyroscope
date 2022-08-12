@@ -15,6 +15,7 @@ import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 
 function ContinuousSingleView() {
@@ -99,6 +100,7 @@ function ContinuousSingleView() {
 
   return (
     <div>
+      <PageTitle leftQuery={query} />
       <div className="main-wrapper">
         <Toolbar />
         <Box>

@@ -21,6 +21,7 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import PageTitle from '@webapp/components/PageTitle';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, {
@@ -79,6 +80,11 @@ function ComparisonApp() {
 
   return (
     <div>
+      <PageTitle
+        name="ComparisonApp View"
+        leftQuery={leftQuery}
+        rightQuery={rightQuery}
+      />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar
