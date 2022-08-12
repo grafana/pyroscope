@@ -1,24 +1,10 @@
-# README
+# Rails rideshare example
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+# Pull latest pyroscope image:
+docker pull pyroscope/pyroscope:latest
 
-Things you may want to cover:
+# Run the example project:
+docker-compose up --build
 
-* Ruby version
-
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+# Reset the database (if needed):
+# docker-compose down
