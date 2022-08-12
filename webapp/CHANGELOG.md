@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.30.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.4...@pyroscope/webapp@1.30.0) (2022-08-12)
+
+
+### Features
+
+* **webapp:** update timeline appearance and refactor flot plugins ([#1323](https://github.com/pyroscope-io/pyroscope/issues/1323)) ([9393449](https://github.com/pyroscope-io/pyroscope/commit/9393449fdabd0cb38c4fae87b3ba0ce73251b41d))
+
+
+
+
+
+## [1.29.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.3...@pyroscope/webapp@1.29.4) (2022-08-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.29.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.2...@pyroscope/webapp@1.29.3) (2022-08-11)
 
 **Note:** Version bump only for package @pyroscope/webapp

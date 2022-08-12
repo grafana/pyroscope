@@ -5,12 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/klauspost/compress/gzip"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
-	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -20,6 +14,13 @@ import (
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/klauspost/compress/gzip"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
@@ -114,12 +115,13 @@ var _ = Describe("server", func() {
 					done := make(chan interface{})
 					go func() {
 						defer GinkgoRecover()
+						defer close(done)
 
 						reg := prometheus.NewRegistry()
 
 						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), reg, new(health.Controller))
-
 						Expect(err).ToNot(HaveOccurred())
+						defer s.Close()
 						e, _ := exporter.NewExporter(nil, nil)
 						c, _ := New(Config{
 							Configuration:           &(*cfg).Server,
@@ -133,7 +135,7 @@ var _ = Describe("server", func() {
 						})
 						h, _ := c.serverMux()
 						httpServer := httptest.NewServer(h)
-						defer s.Close()
+						defer httpServer.Close()
 
 						st := testing.ParseTime("2020-01-01-01:01:00")
 						et := testing.ParseTime("2020-01-01-01:01:10")
@@ -204,8 +206,6 @@ var _ = Describe("server", func() {
 						} else {
 							Expect(gOut).To(BeNil())
 						}
-
-						close(done)
 					}()
 					Eventually(done, 10).Should(BeClosed())
 				})

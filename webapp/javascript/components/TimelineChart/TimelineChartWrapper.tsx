@@ -25,6 +25,7 @@ interface Marking {
   from: string;
   to: string;
   color: Color;
+  overlayColor?: string | Color;
 }
 
 type TimelineDataProps =
@@ -67,6 +68,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   timezone: 'browser' | 'utc';
   title?: ReactNode;
+
+  /** selection type 'single' => gray selection, 'double' => color selection */
+  selectionType: 'single' | 'double';
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -92,6 +96,20 @@ class TimelineChartWrapper extends React.Component<
       },
       selection: {
         mode: 'x',
+        // custom selection works for 'single' selection type,
+        // 'double' selection works in old fashion way
+        // we use different props to customize selection appearance
+        selectionType: props.selectionType,
+        overlayColor:
+          props.selectionType === 'double'
+            ? undefined
+            : props?.markings?.['right']?.overlayColor ||
+              props?.markings?.['left']?.overlayColor,
+        boundaryColor:
+          props.selectionType === 'double'
+            ? undefined
+            : props?.markings?.['right']?.color ||
+              props?.markings?.['left']?.color,
       },
       crosshair: {
         mode: 'x',
@@ -119,8 +137,6 @@ class TimelineChartWrapper extends React.Component<
         mode: 'time',
         timezone: 'browser',
         reserveSpace: false,
-        // tickColor: '#E6E6E6',
-        // tickLength: 20,
       },
     };
 
@@ -172,13 +188,22 @@ class TimelineChartWrapper extends React.Component<
       const from = new Date(formatAsOBject(m.from)).getTime();
       const to = new Date(formatAsOBject(m.to)).getTime();
 
-      // We make the sides thicker to indicate the boundary
-      const boundary = { lineWidth: 3, color: m.color.rgb() };
+      // 'double' selection uses built-in Flot selection
+      // built-in Flot selection for 'single' case becomes 'transparent'
+      // to use custom apperance and color for it
+      const boundary = {
+        lineWidth: 1,
+        color:
+          this.props.selectionType === 'double' ? m.color.rgb() : 'transparent',
+      };
 
       return [
         {
           xaxis: { from, to },
-          color: m.color.rgb().alpha(0.35),
+          color:
+            this.props.selectionType === 'double'
+              ? m.overlayColor
+              : 'tranparent',
         },
         { ...boundary, xaxis: { from, to: from } },
         { ...boundary, xaxis: { from: to, to } },

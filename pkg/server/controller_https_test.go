@@ -36,6 +36,7 @@ var _ = Describe("server", func() {
 
 					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
+					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)
 					c, _ := New(Config{
 						Configuration:           &(*cfg).Server,
@@ -76,6 +77,7 @@ var _ = Describe("server", func() {
 
 					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
+					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)
 					c, _ := New(Config{
 						Configuration:           &(*cfg).Server,
