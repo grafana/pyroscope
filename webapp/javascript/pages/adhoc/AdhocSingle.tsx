@@ -67,7 +67,7 @@ function AdhocSingle() {
           <TabPanel>
             <FileUploader
               className={adhocStyles.tabPanel}
-              setFile={async (file) => {
+              setFile={async ({ file }) => {
                 await dispatch(uploadFile({ file, side: 'left' }));
                 setTabIndex(1);
               }}
