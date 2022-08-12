@@ -1,6 +1,6 @@
 import React from 'react';
 
-import type { TimelineGroupData } from '@webapp/components/TimelineChartWrapper';
+import type { TimelineGroupData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import { appWithoutTagsWhereDropdownOptionName } from '@webapp/redux/reducers/continuous';
 import styles from './Legend.module.scss';
 
