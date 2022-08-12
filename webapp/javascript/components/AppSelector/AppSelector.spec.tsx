@@ -68,7 +68,6 @@ describe('AppSelector', () => {
     // After some time the item should've been loaded
     // and the 'myapp' menuitem should be there
     expect(await findByRole('progressbar')).not.toBeInTheDocument();
-    getByTestId('toggler').click();
     getByRole(MENU_ITEM_ROLE, { name: 'myapp' });
   });
 });

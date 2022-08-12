@@ -190,7 +190,9 @@ const SelectorModalWithToggler = ({
       modalHeight={listHeight}
       noDataEl={
         !filteredAppNames?.length ? (
-          <div className={styles.noData}>No Data</div>
+          <div data-testid="app-selector-no-data" className={styles.noData}>
+            No Data
+          </div>
         ) : null
       }
       toggleText={appName || 'Select application'}
