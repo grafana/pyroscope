@@ -3,12 +3,12 @@ import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Button from '@webapp/ui/Button';
 import type { DropzoneOptions } from 'react-dropzone';
-
-// Note: I wanted to use https://fontawesome.com/v6.0/icons/arrow-up-from-bracket?s=solid
-// but it is in fontawesome v6 which is in beta and not released yet.
-import { faArrowAltCircleUp } from '@fortawesome/free-regular-svg-icons/faArrowAltCircleUp';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faFileUpload } from '@fortawesome/free-solid-svg-icons/faFileUpload';
+import classNames from 'classnames/bind';
+import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';
+
+const cx = classNames.bind(styles);
 
 interface Props {
   setFile: (file: File) => void;
@@ -35,35 +35,36 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
     onDrop,
   });
 
+  const descriptionOrFilename = file
+    ? file.name
+    : 'Upload profile in pprof, json, or collapsed format';
+
   return (
     <>
       <section className={`${styles.container} ${className}`}>
         <div {...getRootProps()} className={styles.dragAndDropContainer}>
           <input {...getInputProps()} />
-          {file ? (
-            <div className={styles.subHeadingContainer}>
-              <div className={styles.subHeading}>
-                To analyze another file, drag and drop pprof, json, or collapsed
-                files here or click to select a file
-              </div>
-              <div className={styles.headerMain}> {file.name} </div>
-            </div>
-          ) : (
-            <div>
-              <p className={styles.headerMain}>
-                Drag and drop pprof, json, or collapsed files here
-              </p>
-              <div className={styles.iconContainer}>
-                <FontAwesomeIcon
-                  icon={faArrowAltCircleUp}
-                  className={styles.fileUploadIcon}
-                />
-              </div>
-              <p className={styles.subHeading}>
-                Or click to select a file from your device
-              </p>
-            </div>
-          )}
+          <p className={styles.headerMain}>{descriptionOrFilename}</p>
+          <div className={styles.iconContainer}>
+            <UploadIcon />
+          </div>
+          <p className={styles.uploadBtnPreLabel}>
+            Drag & Drop
+            <span className={styles.uploadBtnPreLabel}>or</span>
+          </p>
+          <div className={styles.uploadBtnWrapper}>
+            <Button
+              kind="primary"
+              className={cx({
+                [styles.uploadButton]: true,
+                [styles.disabled]: !!file,
+              })}
+              icon={faFileUpload}
+              disabled={!!file}
+            >
+              Select a file
+            </Button>
+          </div>
         </div>
       </section>
       <div className={styles.uploadWrapper}>

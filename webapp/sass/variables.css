@@ -74,6 +74,12 @@
   --ps-immutable-linked-border: #eb7b18; /* linked border color */
   --ps-immutable-white: #ffffff; /* white: Use only when it should be white regardless of color mode */
   --ps-immutable-placeholder-text: #333333; /* placeholder text color */
+
+  --ps-upload-profile-area-border: #4d4d4d;
+  --ps-upload-profile-area-bg: #303244;
+  --ps-upload-profile-btn-bg: #272938;
+  --ps-upload-profile-icon: #575a6d;
+  --ps-upload-profile-btn-color: rgba(255, 255, 255, 0.3);
 }
 
 [data-theme='light'],
@@ -114,4 +120,10 @@
   --ps-green-primary: #0bdb79; /* standard green */
   --ps-green-highlight: #5bdc9e; /* highlight (hover) green */
   --ps-green-disabled: #00a757; /* disabled green */
+
+  --ps-upload-profile-area-border: #f8f8f8;
+  --ps-upload-profile-area-bg: #eaeaea;
+  --ps-upload-profile-btn-bg: #cccccc;
+  --ps-upload-profile-icon: #cccccc;
+  --ps-upload-profile-btn-color: rgba(255, 255, 255, 0.3);
 }
