@@ -39,6 +39,9 @@ import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
 
+const getTimelineColor = (index: number, palette: Color[]): Color =>
+  Color(palette[index % (palette.length - 1)]);
+
 function TagExplorerView() {
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
@@ -84,12 +87,10 @@ function TagExplorerView() {
       case 'reloading':
         const groups = Object.entries(tagExplorerView.groups).reduce(
           (acc, [tagName, data], index) => {
-            if (index === 15) return acc;
-
             acc.push({
               tagName,
               data,
-              color: Color(DefaultPalette.colors[index]),
+              color: getTimelineColor(index, DefaultPalette.colors),
             });
 
             return acc;
