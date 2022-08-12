@@ -21,10 +21,10 @@
 
 .modal {
   z-index: 3;
-  width: 400px; // есть скрипт с высотой ?
+  width: 400px;
   position: absolute;
   right: 0;
-  top: calc(100% + 5px); // ?????
+  top: calc(100% + 5px);
   background-color: var(--ps-dropdown-background);
   border: 1px solid var(--ps-ui-border);
   border-radius: 4px;
