@@ -31,7 +31,7 @@ import {
   TagsState,
   fetchTagExplorerView,
   fetchTagExplorerViewProfile,
-  appWithoutTagsWhereDropdownOptionName,
+  ALL_TAGS,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import { calculateMean, calculateStdDeviation } from './math';
@@ -177,11 +177,7 @@ function TagExplorerView() {
               id="timeline-chart-explore-page"
               timelineGroups={filteredGroupsData}
               // to not "dim" timelines when "All" option is selected
-              activeGroup={
-                groupByTagValue !== appWithoutTagsWhereDropdownOptionName
-                  ? groupByTagValue
-                  : ''
-              }
+              activeGroup={groupByTagValue !== ALL_TAGS ? groupByTagValue : ''}
               showTagsLegend={filteredGroupsData.length > 1}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               onSelect={(from, until) =>
@@ -273,7 +269,7 @@ function Table({
     if (value !== groupByTagValue) {
       handleGroupByTagValueChange(value);
     } else {
-      handleGroupByTagValueChange(appWithoutTagsWhereDropdownOptionName);
+      handleGroupByTagValueChange(ALL_TAGS);
     }
   };
 
@@ -463,18 +459,16 @@ function ExploreHeader({
         <Dropdown
           label="select where"
           value={`${selectedTag ? `${selectedTag} = ` : selectedTag} ${
-            selectedTagValue || appWithoutTagsWhereDropdownOptionName
+            selectedTagValue || ALL_TAGS
           }`}
           onItemClick={handleGroupByValueClick}
         >
           {/* always show "All" option */}
-          {[appWithoutTagsWhereDropdownOptionName, ...whereDropdownItems].map(
-            (tagGroupName) => (
-              <MenuItem key={tagGroupName} value={tagGroupName}>
-                {tagGroupName}
-              </MenuItem>
-            )
-          )}
+          {[ALL_TAGS, ...whereDropdownItems].map((tagGroupName) => (
+            <MenuItem key={tagGroupName} value={tagGroupName}>
+              {tagGroupName}
+            </MenuItem>
+          ))}
         </Dropdown>
       </div>
     </div>

@@ -26,7 +26,13 @@ describe('Component: Legend', () => {
     groups: TimelineGroupData[],
     handler: (v: string) => void
   ) => {
-    render(<Legend groups={groups} handleGroupByTagValueChange={handler} />);
+    render(
+      <Legend
+        activeGroup="All"
+        groups={groups}
+        handleGroupByTagValueChange={handler}
+      />
+    );
   };
 
   it('renders tags and colors correctly', () => {
