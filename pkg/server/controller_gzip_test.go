@@ -42,10 +42,12 @@ var _ = Describe("server", func() {
 				done := make(chan interface{})
 				go func(filename string, uncompressed bool) {
 					defer GinkgoRecover()
+					defer close(done)
 
 					(*cfg).Server.APIBindAddr = ":10045"
 					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
+					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)
 					c, _ := New(Config{
 						Configuration:           &(*cfg).Server,
@@ -66,10 +68,8 @@ var _ = Describe("server", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(http.StatusOK))
 					Expect(res.Uncompressed).To(Equal(uncompressed))
-
-					close(done)
 				}(filename, uncompressed)
-				Eventually(done, 2).Should(BeClosed())
+				Eventually(done, 4).Should(BeClosed())
 			},
 			Entry("Should compress assets greater than or equal to threshold", assetAtCompressionThreshold, true),
 			Entry("Should not compress assets less than threshold", assetLtCompressionThreshold, false),
