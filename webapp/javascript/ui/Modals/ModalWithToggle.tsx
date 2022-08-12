@@ -1,7 +1,6 @@
 import React, { SetStateAction, Dispatch, ReactNode } from 'react';
 import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
-
 import styles from './ModalWithToggle.module.scss';
 
 export interface ModalWithToggleProps {
@@ -18,6 +17,8 @@ export interface ModalWithToggleProps {
   modalHeight?: string;
 }
 
+const TOGGLE_BTN_ID = 'modal-toggler';
+
 function ModalWithToggle({
   isModalOpen,
   setModalOpenStatus,
@@ -31,17 +32,20 @@ function ModalWithToggle({
   modalClassName,
   modalHeight,
 }: ModalWithToggleProps) {
-  const handleOutsideClick = () => {
-    setModalOpenStatus(false);
+  const handleOutsideClick = (e: MouseEvent) => {
+    if ((e.target as { id?: string })?.id !== TOGGLE_BTN_ID) {
+      setModalOpenStatus(false);
+    }
   };
 
   return (
     <div data-testid="modal-with-toggle" className={styles.container}>
       <button
+        id={TOGGLE_BTN_ID}
         type="button"
         data-testid="toggler"
         className={styles.toggle}
-        onClick={() => setModalOpenStatus(true)}
+        onClick={() => setModalOpenStatus((v) => !v)}
       >
         {toggleText}
       </button>
