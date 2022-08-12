@@ -41,7 +41,7 @@ import styles from './TagExplorerView.module.scss';
 
 const getTimelineColorFromIndex = (index: number): Color => {
   const maxIndex = DefaultPalette.colors.length - 1;
-  const colorPaletteIndex = index > maxIndex ? index % maxIndex : index;
+  const colorPaletteIndex = index % maxIndex;
 
   return Color(DefaultPalette.colors[colorPaletteIndex]);
 };
