@@ -90,7 +90,7 @@ function TagExplorerView() {
             acc.push({
               tagName,
               data,
-              color: getTimelineColor(index, DefaultPalette),
+              color: getTimelineColor(index, DefaultPalette.colors),
             });
 
             return acc;
