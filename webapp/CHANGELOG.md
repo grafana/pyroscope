@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.31.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.30.1...@pyroscope/webapp@1.31.0) (2022-08-12)
+
+
+### Features
+
+* support high number of series in explore view timeline ([#1384](https://github.com/pyroscope-io/pyroscope/issues/1384)) ([482e23e](https://github.com/pyroscope-io/pyroscope/commit/482e23e52f006a201e40a2b4ff6092e0f246aa03))
+
+
+
+
+
 ## [1.30.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.30.0...@pyroscope/webapp@1.30.1) (2022-08-12)
 
 **Note:** Version bump only for package @pyroscope/webapp
