@@ -3,7 +3,7 @@ import Color from 'color';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import type { TimelineGroupData } from '@webapp/components/TimelineChartWrapper';
+import type { TimelineGroupData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import type { Group } from '@pyroscope/models/src';
 
 import Legend from './Legend';

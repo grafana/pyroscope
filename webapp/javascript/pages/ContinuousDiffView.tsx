@@ -13,14 +13,14 @@ import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook
 import useTimelines, {
   leftColor,
   rightColor,
+  selectionColor,
 } from '@webapp/hooks/timeline.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
-import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
-import InstructionText from '@webapp/components/InstructionText';
+import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
@@ -111,9 +111,20 @@ function ComparisonDiffApp() {
               dispatch(actions.setFromAndUntil({ from, until }));
             }}
             markings={{
-              left: { from: leftFrom, to: leftUntil, color: leftColor },
-              right: { from: rightFrom, to: rightUntil, color: rightColor },
+              left: {
+                from: leftFrom,
+                to: leftUntil,
+                color: leftColor,
+                overlayColor: leftColor.alpha(0.3),
+              },
+              right: {
+                from: rightFrom,
+                to: rightUntil,
+                color: rightColor,
+                overlayColor: rightColor.alpha(0.3),
+              },
             }}
+            selectionType="double"
             timezone={timezone}
             title={
               <TimelineTitle titleKey={diffView.profile?.metadata.units} />
@@ -133,7 +144,6 @@ function ComparisonDiffApp() {
                 dispatch(fetchTagValues({ query, label }));
               }}
             />
-            <InstructionText viewType="diff" viewSide="left" />
             <TimelineChartWrapper
               data-testid="timeline-left"
               key="timeline-chart-left"
@@ -143,8 +153,14 @@ function ComparisonDiffApp() {
                 dispatch(actions.setLeft({ from, until }));
               }}
               markings={{
-                left: { from: leftFrom, to: leftUntil, color: leftColor },
+                left: {
+                  from: leftFrom,
+                  to: leftUntil,
+                  color: selectionColor,
+                  overlayColor: selectionColor.alpha(0.3),
+                },
               }}
+              selectionType="single"
               timezone={timezone}
             />
           </Box>
@@ -160,7 +176,6 @@ function ComparisonDiffApp() {
                 dispatch(fetchTagValues({ query, label }));
               }}
             />
-            <InstructionText viewType="diff" viewSide="right" />
             <TimelineChartWrapper
               data-testid="timeline-right"
               key="timeline-chart-right"
@@ -170,8 +185,14 @@ function ComparisonDiffApp() {
                 dispatch(actions.setRight({ from, until }));
               }}
               markings={{
-                right: { from: rightFrom, to: rightUntil, color: rightColor },
+                right: {
+                  from: rightFrom,
+                  to: rightUntil,
+                  color: selectionColor,
+                  overlayColor: selectionColor.alpha(0.3),
+                },
               }}
+              selectionType="single"
               timezone={timezone}
             />
           </Box>

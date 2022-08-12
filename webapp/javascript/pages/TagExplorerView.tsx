@@ -11,7 +11,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
-} from '@webapp/components/TimelineChartWrapper';
+} from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
@@ -170,6 +170,7 @@ function TagExplorerView() {
             <LoadingSpinner />
           ) : (
             <TimelineChartWrapper
+              selectionType="double"
               mode="multiple"
               timezone={offset === 0 ? 'utc' : 'browser'}
               data-testid="timeline-explore-page"
