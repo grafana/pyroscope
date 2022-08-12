@@ -1,5 +1,6 @@
 # Rails rideshare example
 
+```
 # Pull latest pyroscope image:
 docker pull pyroscope/pyroscope:latest
 
@@ -7,4 +8,5 @@ docker pull pyroscope/pyroscope:latest
 docker-compose up --build
 
 # Reset the database (if needed):
-# docker-compose down
+docker-compose down
+```
