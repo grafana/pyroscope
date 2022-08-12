@@ -1,18 +1,15 @@
 @use '../../sass/mixins/outline' as *;
 
-:global(.flamegraph-root),
-:global(.pyroscope-app) {
-  .input {
-    @include outline;
-    display: inline-block;
-    position: relative;
-    border-radius: 4px;
-    padding: 0.25em 0.375em;
-    border: 1px solid var(--ps-ui-border);
+.input {
+  @include outline;
+  display: inline-block;
+  position: relative;
+  border-radius: 4px;
+  padding: 0.25em 0.375em;
+  border: 1px solid var(--ps-ui-border);
 
-    &[type='search'] {
-      -webkit-appearance: textfield;
-      outline-offset: -2px;
-    }
+  &[type='search'] {
+    -webkit-appearance: textfield;
+    outline-offset: -2px;
   }
 }

@@ -1,51 +1,48 @@
-:global(.flamegraph-root),
-:global(.pyroscope-app) {
-  .button {
+.button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  width: 100%;
+  justify-content: space-between;
+  padding-left: 10px;
+  overflow: hidden;
+  height: 35px;
+
+  & > div {
     display: flex;
-    flex-direction: row;
     align-items: center;
-    flex-shrink: 0;
-    white-space: nowrap;
-    cursor: pointer;
-    border: none;
-    outline: none;
-    width: 100%;
-    justify-content: space-between;
-    padding-left: 10px;
-    overflow: hidden;
-    height: 35px;
-
-    & > div {
-      display: flex;
-      align-items: center;
-    }
-
-    &:hover {
-      background-color: var(--ps-ui-element-bg-highlight);
-    }
-
-    &.isSelected {
-      background-color: var(--ps-blue-primary);
-    }
   }
 
-  .itemIcon {
-    width: 18px !important;
-    display: flex;
-    flex-shrink: 0;
-    margin-right: 10px;
+  &:hover {
+    background-color: var(--ps-ui-element-bg-highlight);
   }
 
-  .pyroscopeLogo {
-    width: 18px;
-    height: 18px;
-    margin-right: 10px;
+  &.isSelected {
+    background-color: var(--ps-blue-primary);
   }
+}
 
-  .appName {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    max-width: 245px;
-  }
+.itemIcon {
+  width: 18px !important;
+  display: flex;
+  flex-shrink: 0;
+  margin-right: 10px;
+}
+
+.pyroscopeLogo {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+}
+
+.appName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 245px;
 }

@@ -6,11 +6,10 @@
 @use 'components/tagsbar';
 @use 'components/button';
 
-.pyroscope-app {
-  @import './reset.scss';
-  @import 'common.scss';
-  @import 'login.scss';
-}
+@import './reset.scss';
+@import 'common.scss';
+@import 'login.scss';
+
 //global color variables
 @import './variables.css';
 

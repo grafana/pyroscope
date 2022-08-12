@@ -15,5 +15,12 @@ export type FlamegraphRendererProps = Omit<
 // TODO: type props
 export const FlamegraphRenderer = (props: FlamegraphRendererProps) => {
   // eslint-disable-next-line react/jsx-props-no-spreading
-  return <FlameGraphRenderer {...props} {...overrideProps} />;
+  // Although 'flamegraph' is not a valid HTML element
+  // It's used to scope css without affecting specificity
+  // For more info see flamegraph.scss
+  return (
+    <flamegraph>
+      <FlameGraphRenderer {...props} {...overrideProps} />
+    </flamegraph>
+  );
 };

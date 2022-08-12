@@ -48,14 +48,11 @@
   }
 }
 
-:global(.flamegraph-root),
-:global(.pyroscope-app) {
-  .search {
-    background: var(--ps-immutable-off-white);
-    color: var(--ps-immutable-placeholder-text);
-    border: 1px solid var(--ps-ui-border);
-    margin: 10px 0 10px 10px;
-  }
+.search {
+  background: var(--ps-immutable-off-white);
+  color: var(--ps-immutable-placeholder-text);
+  border: 1px solid var(--ps-ui-border);
+  margin: 10px 0 10px 10px;
 }
 
 .noData {
