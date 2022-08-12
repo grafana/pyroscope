@@ -282,7 +282,7 @@ export const fetchTagExplorerView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const appWithoutTagsWhereDropdownOptionName = 'All';
+export const ALL_TAGS = 'All';
 export const fetchTagExplorerViewProfile = createAsyncThunk<
   RenderOutput,
   null,
@@ -299,7 +299,7 @@ export const fetchTagExplorerViewProfile = createAsyncThunk<
   const { groupByTag, groupByTagValue } = state.continuous.tagExplorerView;
   // if "All" option is selected we dont need to modify query to fetch profile
   const queryProps =
-    appWithoutTagsWhereDropdownOptionName === groupByTagValue
+    ALL_TAGS === groupByTagValue
       ? { groupBy: groupByTag, query: state.continuous.query }
       : {
           query: appendLabelToQuery(
@@ -646,8 +646,7 @@ export const continuousSlice = createSlice({
     },
     setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTag = action.payload;
-      state.tagExplorerView.groupByTagValue =
-        appWithoutTagsWhereDropdownOptionName;
+      state.tagExplorerView.groupByTagValue = ALL_TAGS;
     },
     setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTagValue = action.payload;

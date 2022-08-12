@@ -1,6 +1,6 @@
 import React from 'react';
 import type { TimelineGroupData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
-import { appWithoutTagsWhereDropdownOptionName } from '@webapp/redux/reducers/continuous';
+import { ALL_TAGS } from '@webapp/redux/reducers/continuous';
 import classNames from 'classnames/bind';
 import styles from './Legend.module.scss';
 
@@ -30,9 +30,7 @@ function Legend({
             })}
             key={tagName}
             onClick={() =>
-              handleGroupByTagValueChange(
-                isSelected ? appWithoutTagsWhereDropdownOptionName : tagName
-              )
+              handleGroupByTagValueChange(isSelected ? ALL_TAGS : tagName)
             }
           >
             <span
