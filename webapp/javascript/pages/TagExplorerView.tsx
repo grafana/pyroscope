@@ -12,7 +12,10 @@ import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@webapp/components/TimelineChart/TimelineChartWrapper';
-import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
+import {
+  FlamegraphRenderer,
+  TimelineSeriesPalette,
+} from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
@@ -90,7 +93,7 @@ function TagExplorerView() {
             acc.push({
               tagName,
               data,
-              color: getTimelineColor(index, DefaultPalette.colors),
+              color: getTimelineColor(index, TimelineSeriesPalette.colors),
             });
 
             return acc;
