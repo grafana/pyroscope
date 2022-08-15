@@ -14,9 +14,20 @@
       text-align: center;
     }
 
-    tr.activeTagRow {
-      background-color: var(--ps-green-highlight);
-      color: var(--ps-tooltip-text);
+    tr {
+      &.activeTagRow {
+        cursor: pointer;
+        background: var(--ps-table-highlight-row-bg) !important;
+        color: var(--ps-table-highlight-row-text);
+      }
+
+      &:not(.rowSelected) {
+        &:hover {
+          cursor: pointer;
+          color: var(--ps-neutral-2);
+          background: var(--ps-ui-element-bg-highlight);
+        }
+      }
     }
 
     // should be passed as component to table ui
