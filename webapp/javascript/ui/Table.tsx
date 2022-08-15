@@ -1,24 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, ReactNode, CSSProperties, RefObject } from 'react';
 import clsx from 'clsx';
 
 import styles from './Table.module.scss';
 
 export interface Cell {
-  // type: 'head' | 'body';
-  // sortable?:
+  value: ReactNode;
+  style?: CSSProperties;
 }
 
 export interface HeadCell {
   name: string;
   label: string;
-  sortable?: boolean;
+  sortable?: number;
+}
+
+export interface BodyRow {
+  'data-row'?: string;
+  isSelected?: boolean;
+  cells?: Cell[];
+  onClick?: () => void;
+  error?: string | ReactNode;
 }
 
 interface Table {
   headRow: HeadCell[];
-  bodyRows: Cell[][];
-  // noDataSmth block/element/text
-  // noData: string;
+  bodyRows: BodyRow[];
 }
 
 // give type
@@ -35,8 +41,7 @@ export const useTable = (
     'desc'
   );
 
-  // give type
-  const updateSortParams = (newSortBy: any) => {
+  const updateSortParams = (newSortBy: string) => {
     let dir = sortByDirection;
 
     if (sortBy === newSortBy) {
@@ -53,11 +58,11 @@ export const useTable = (
 };
 
 interface TableProps {
-  table: Table;
   sortByDirection: string;
   sortBy: string;
-  // give type
-  updateSortParams: any;
+  updateSortParams: (newSortBy: string) => void;
+  table: Table;
+  tableBodyRef?: RefObject<HTMLTableSectionElement>;
 }
 
 function Table(props: TableProps) {
@@ -88,12 +93,20 @@ function Table(props: TableProps) {
         </tr>
       </thead>
       <tbody>
-        {props.table.bodyRows.map((row) => {
+        {props.table.bodyRows.map(({ cells, isSelected, ...rest }) => {
+          // The problem is that when you switch apps or time-range and the function
+          // names stay the same it leads to an issue where rows don't get re-rendered
+          // So we force a rerender each time.
+          const renderID = Math.random();
+
           return (
-            <tr>
-              {row.map((cell: any) => (
-                <td>{cell}</td>
-              ))}
+            <tr key={renderID} {...rest}>
+              {cells &&
+                cells.map((cell: Cell, index: number) => (
+                  <td key={renderID + index} style={cell?.style}>
+                    {cell.value}
+                  </td>
+                ))}
             </tr>
           );
         })}
