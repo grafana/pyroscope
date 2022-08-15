@@ -5,7 +5,7 @@ const defaultAppName = 'Pyroscope';
 export const AppNameContext = React.createContext(defaultAppName);
 
 function getFullTitle(title: string, appName: string) {
-  const finalAppName = appName ? appName : defaultAppName;
+  const finalAppName = appName || defaultAppName;
 
   return `${title} | ${finalAppName}`;
 }
