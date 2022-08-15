@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.31.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.0...@pyroscope/webapp@1.31.1) (2022-08-15)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix its styling ([#1388](https://github.com/pyroscope-io/pyroscope/issues/1388)) ([5788cf9](https://github.com/pyroscope-io/pyroscope/commit/5788cf9943a579acd35de224537016488a98808f))
+
+
+
+
+
 # [1.31.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.30.1...@pyroscope/webapp@1.31.0) (2022-08-12)
 
 
