@@ -72,6 +72,9 @@ func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
 
 		for it.Next() {
 			key := it.Key()
+			//todo maybe we need to call Next here again before deleting
+			//or collect all keys in memory and delete later
+			//https://justin.azoff.dev/blog/bpf_map_get_next_key-pitfalls/
 			if err := m.DeleteKey(unsafe.Pointer(&key[0])); err != nil {
 				errs += 1
 			} else {

@@ -10,7 +10,7 @@ package ebpfspy
 
 // maybe use flags for stacks:  bit 10 - if two different stacks hash into the same stackid - for stackids
 //discard old
-// maybe use map in map or map in array, to avoid clearing map by keys
+// todo maybe use map in array to avoid clearing map by keys
 // measure stacks.GetValue, sym.resolve separately
 // try concurrent
 // offload demangling to the server?
