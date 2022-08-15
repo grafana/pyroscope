@@ -73,6 +73,7 @@ function Table(props: TableProps) {
         [props.className || '']: props?.className,
       })}
       data-testid="table-ui"
+      ref={props?.tableBodyRef}
     >
       <thead>
         <tr>
