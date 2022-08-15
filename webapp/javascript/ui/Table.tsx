@@ -64,6 +64,8 @@ interface TableProps {
   table: Table;
   tableBodyRef?: RefObject<HTMLTableSectionElement>;
   className?: string;
+  // add is loading for tag explorer table
+  isLoading?: boolean;
 }
 
 function Table(props: TableProps) {
