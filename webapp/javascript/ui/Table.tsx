@@ -16,7 +16,7 @@ export interface HeadCell {
 
 export interface BodyRow {
   'data-row'?: string;
-  isSelected?: boolean;
+  isRowSelected?: boolean;
   cells?: Cell[];
   onClick?: () => void;
   error?: string | ReactNode;
@@ -90,7 +90,7 @@ function Table(props: TableProps) {
                 {v.label}
                 <span
                   className={clsx(styles.sortArrow, {
-                    [props.sortByDirection]: props.sortBy === v.name,
+                    [styles[props.sortByDirection]]: props.sortBy === v.name,
                   })}
                 />
               </th>
@@ -99,14 +99,18 @@ function Table(props: TableProps) {
         </tr>
       </thead>
       <tbody>
-        {props.table.bodyRows.map(({ cells, isSelected, ...rest }) => {
+        {props.table.bodyRows.map(({ cells, isRowSelected, ...rest }) => {
           // The problem is that when you switch apps or time-range and the function
           // names stay the same it leads to an issue where rows don't get re-rendered
           // So we force a rerender each time.
           const renderID = Math.random();
 
           return (
-            <tr key={renderID} {...rest}>
+            <tr
+              key={renderID}
+              {...rest}
+              className={clsx({ [styles.isRowSelected]: isRowSelected })}
+            >
               {cells &&
                 cells.map((cell: Cell, index: number) => (
                   <td key={renderID + index} style={cell?.style}>

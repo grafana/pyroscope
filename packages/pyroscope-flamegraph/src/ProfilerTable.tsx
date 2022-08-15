@@ -306,7 +306,7 @@ const getTableBodyRows = ({
     style: CSSProperties
   ): BodyRow => ({
     'data-row': `${x.name};${x.self};${x.total};${x.type}`,
-    isSelected: isRowSelected(x.name),
+    isRowSelected: isRowSelected(x.name),
     onClick: () => handleTableItemClick(x),
     cells: [
       { value: nameCell(x, style) },
@@ -329,7 +329,7 @@ const getTableBodyRows = ({
           color: Color,
           style: CSSProperties
         ): BodyRow => ({
-          isSelected: isRowSelected(x.name),
+          isRowSelected: isRowSelected(x.name),
           onClick: () => handleTableItemClick(x),
           cells: [
             { value: nameCell(x, style) },
@@ -371,7 +371,7 @@ const getTableBodyRows = ({
           color: Color,
           style: CSSProperties
         ): BodyRow => ({
-          isSelected: isRowSelected(x.name),
+          isRowSelected: isRowSelected(x.name),
           onClick: () => handleTableItemClick(x),
           cells: [
             { value: nameCell(x, style) },
@@ -413,7 +413,7 @@ const getTableBodyRows = ({
           color: Color,
           style: CSSProperties
         ): BodyRow => ({
-          isSelected: isRowSelected(x.name),
+          isRowSelected: isRowSelected(x.name),
           onClick: () => handleTableItemClick(x),
           cells: [
             { value: nameCell(x, style) },
