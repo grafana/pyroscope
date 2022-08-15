@@ -10,7 +10,7 @@ will be using [Jaeger](https://www.jaegertracing.io) and [Grafana](https://grafa
 
 To achieve that, we will be using a special label – `profile_id` that is set by the profiler
 dynamically. Our simple application specifies Span ID as a profile ID which establishes
-one-to-one relation between a trace span execution scope and the profiling scope. By default, only the root span gets annotated (the first span created locally), this is done to circumvent the fact that the profiler records only the time spent on CPU. 
+one-to-one relation between a trace span execution scope and the profiling scope. By default, only the root span gets annotated (the first span created locally), this is done to circumvent the fact that the profiler records only the time spent on CPU.
 
 There are a few limitations:
 
@@ -58,4 +58,3 @@ Click on the `pyroscope.profile.url` tag value to open [Pyroscope UI](http://loc
 the span CPU time flamegraph:
 
 ![image](https://user-images.githubusercontent.com/12090599/153314565-c7be8ef6-cd5d-4d0b-9070-83ae8a3a8e8a.png)
-
