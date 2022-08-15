@@ -17,14 +17,19 @@ export interface HeadCell {
 export interface BodyRow {
   'data-row'?: string;
   isRowSelected?: boolean;
+  isRowDisabled?: boolean;
   cells?: Cell[];
   onClick?: () => void;
-  error?: string | ReactNode;
 }
 
 interface Table {
   headRow: HeadCell[];
-  bodyRows: BodyRow[];
+  // either error or rows should be passed
+  bodyRows?: BodyRow[];
+  // todo handle error
+  // or error or bodyRows strict type
+  // we can get
+  error?: { value: string; className: string };
 }
 
 // give type
@@ -75,6 +80,7 @@ function Table(props: TableProps) {
         [props.className || '']: props?.className,
       })}
       data-testid="table-ui"
+      // @ts-ignore
       ref={props?.tableBodyRef}
     >
       <thead>
@@ -102,27 +108,42 @@ function Table(props: TableProps) {
         </tr>
       </thead>
       <tbody>
-        {props.table.bodyRows.map(({ cells, isRowSelected, ...rest }) => {
-          // The problem is that when you switch apps or time-range and the function
-          // names stay the same it leads to an issue where rows don't get re-rendered
-          // So we force a rerender each time.
-          const renderID = Math.random();
+        {props.table?.error ? (
+          <tr className={props.table.error.className}>
+            <td colSpan={props.table.headRow.length}>
+              {props.table.error.value}
+            </td>
+          </tr>
+        ) : (
+          // @ts-ignore
+          props.table.bodyRows.map(
+            ({ cells, isRowSelected, isRowDisabled, ...rest }) => {
+              // The problem is that when you switch apps or time-range and the function
+              // names stay the same it leads to an issue where rows don't get re-rendered
+              // So we force a rerender each time.
+              const renderID = Math.random();
 
-          return (
-            <tr
-              key={renderID}
-              {...rest}
-              className={clsx({ [styles.isRowSelected]: isRowSelected })}
-            >
-              {cells &&
-                cells.map((cell: Cell, index: number) => (
-                  <td key={renderID + index} style={cell?.style}>
-                    {cell.value}
-                  </td>
-                ))}
-            </tr>
-          );
-        })}
+              return (
+                <tr
+                  key={renderID}
+                  {...rest}
+                  className={clsx({
+                    [styles.isRowSelected]: isRowSelected,
+                    // todo: add styles for disabled
+                    [styles.isRowDisabled]: isRowDisabled,
+                  })}
+                >
+                  {cells &&
+                    cells.map((cell: Cell, index: number) => (
+                      <td key={renderID + index} style={cell?.style}>
+                        {cell.value}
+                      </td>
+                    ))}
+                </tr>
+              );
+            }
+          )
+        )}
       </tbody>
     </table>
   );

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-
+import cl from 'classnames';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 
 import Button from '@webapp/ui/Button';
+import TableUI, { useTable } from '@webapp/ui/Table';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   reloadUsers,
@@ -16,7 +17,7 @@ import { selectCurrentUser } from '@webapp/redux/reducers/user';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { type User } from '@webapp/models/users';
 import Input from '@webapp/ui/Input';
-import UserTableItem from './UserTableItem';
+import { getUserTableRows } from './getUserTableRows';
 
 import userStyles from './Users.module.css';
 import tableStyles from '../SettingsTable.module.css';
@@ -83,6 +84,36 @@ function Users() {
       });
   };
 
+  const headRow = [
+    { name: '', label: '', sortable: 0 },
+    { name: '', label: 'Username', sortable: 0 },
+    { name: '', label: 'Email', sortable: 0 },
+    { name: '', label: 'Name', sortable: 0 },
+    { name: '', label: 'Role', sortable: 0 },
+    { name: '', label: 'Updated', sortable: 0 },
+    { name: '', label: '', sortable: 0 },
+  ];
+  const tableProps = useTable(headRow);
+  const tableBodyProps =
+    displayUsers.length > 0
+      ? getUserTableRows(
+          currentUser.id,
+          displayUsers,
+          handleDisableUser,
+          handleDeleteUser
+        )
+      : {
+          error: {
+            value: 'The list is empty',
+            className: userStyles.usersTableEmptyMessage,
+          },
+        };
+
+  const table = {
+    headRow,
+    ...tableBodyProps,
+  };
+
   return (
     <>
       <h2>Users</h2>
@@ -106,41 +137,11 @@ function Users() {
           name="Search user input"
         />
       </div>
-      <table
-        className={[userStyles.usersTable, tableStyles.settingsTable].join(' ')}
-        data-testId="users-table"
-      >
-        <thead>
-          <tr>
-            <td />
-            <th>Username</th>
-            <th>Email</th>
-            <th>Name</th>
-            <th>Role</th>
-            <th>Updated</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {displayUsers.length ? (
-            displayUsers.map((user) => (
-              <UserTableItem
-                user={user}
-                isCurrent={user.id === currentUser.id}
-                key={`userTableItem${user.id}`}
-                onDisable={handleDisableUser}
-                onDelete={handleDeleteUser}
-              />
-            ))
-          ) : (
-            <tr>
-              <td className={userStyles.usersTableEmptyMessage} colSpan={7}>
-                The list is empty
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <TableUI
+        {...tableProps}
+        className={cl(userStyles.usersTable, tableStyles.settingsTable)}
+        table={table}
+      />
     </>
   );
 }

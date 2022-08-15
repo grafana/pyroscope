@@ -7,12 +7,12 @@ import { faToggleOff } from '@fortawesome/free-solid-svg-icons/faToggleOff';
 import { faToggleOn } from '@fortawesome/free-solid-svg-icons/faToggleOn';
 
 import { formatRelative } from 'date-fns';
-import cx from 'classnames';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import { reloadUsers, changeUserRole } from '@webapp/redux/reducers/settings';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
-import { type User } from '@webapp/models/users';
+import type { User, Users } from '@webapp/models/users';
+import type { BodyRow } from '@webapp/ui/Table';
 import styles from './UserTableItem.module.css';
 
 function DisableButton(props: ShamefulAny) {
@@ -68,29 +68,40 @@ function DeleteButton(props: ShamefulAny) {
   );
 }
 
-function UserTableItem(props: ShamefulAny) {
-  const { user, onDisable, isCurrent, onDelete } = props;
-  const { id, isDisabled, fullName, role, updatedAt, email, name } =
-    user as User;
+export function getUserTableRows(
+  currentUserId: number,
+  displayUsers: Users,
+  handleDisableUser: (user: User) => void,
+  handleDeleteUser: (user: User) => void
+): { bodyRows: BodyRow[] } {
+  const bodyRows = displayUsers.reduce((acc, user) => {
+    const { id, isDisabled, fullName, role, updatedAt, email, name } = user;
+    const isCurrent = id === currentUserId;
 
-  return (
-    <tr className={cx({ [styles.disabled]: isDisabled })}>
-      <td>{id}</td>
-      <td>{name}</td>
-      <td>{email}</td>
-      <td>{fullName}</td>
-      <td>{isCurrent ? role : <EditRoleDropdown user={user} />}</td>
-      <td>{formatRelative(new Date(updatedAt), new Date())}</td>
-      <td align="center">
-        {!isCurrent ? (
-          <div className={styles.actions}>
-            <DisableButton user={user} onDisable={onDisable} />
-            <DeleteButton user={user} onDelete={onDelete} />
-          </div>
-        ) : null}
-      </td>
-    </tr>
-  );
+    const row = {
+      isRowDisabled: isDisabled,
+      cells: [
+        { value: id },
+        { value: name },
+        { value: email },
+        { value: fullName },
+        { value: isCurrent ? role : <EditRoleDropdown user={user} /> },
+        { value: formatRelative(new Date(updatedAt), new Date()) },
+        {
+          // todo <td align="center">
+          value: !isCurrent ? (
+            <div className={styles.actions}>
+              <DisableButton user={user} onDisable={handleDisableUser} />
+              <DeleteButton user={user} onDelete={handleDeleteUser} />
+            </div>
+          ) : null,
+        },
+      ],
+    };
+
+    acc.push(row);
+    return acc;
+  }, [] as BodyRow[]);
+
+  return { bodyRows };
 }
-
-export default UserTableItem;
