@@ -640,7 +640,9 @@ export const continuousSlice = createSlice({
       state.until = action.payload.until;
     },
     setQuery(state, action: PayloadAction<Query>) {
-      state.query = action.payload;
+      // TODO: figure out why is being dispatched as undefined
+      state.query = action.payload || '';
+
       state.tagExplorerView.groupByTag = '';
       state.tagExplorerView.groupByTagValue = '';
     },

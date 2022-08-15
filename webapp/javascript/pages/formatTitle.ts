@@ -1,7 +1,8 @@
 import { Query } from '@webapp/models/query';
 
 /**
- * transparently handles the different queries
+ * takes a page name and 2 optional queries
+ * handling it appropriately when they are not preset
  * and returns only the page title if no query is set
  */
 export function formatTitle(

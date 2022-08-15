@@ -31,6 +31,7 @@ import useTimelines, {
 } from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
+import { formatTitle } from './formatTitle';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -81,9 +82,7 @@ function ComparisonApp() {
   return (
     <div>
       <PageTitle
-        name="ComparisonApp View"
-        leftQuery={leftQuery}
-        rightQuery={rightQuery}
+        title={formatTitle('Comparison View', leftQuery, rightQuery)}
       />
       <div className="main-wrapper">
         <Toolbar

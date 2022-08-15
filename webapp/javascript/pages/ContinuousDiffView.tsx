@@ -26,6 +26,7 @@ import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import PageTitle from '@webapp/components/PageTitle';
+import { formatTitle } from './formatTitle';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -93,11 +94,7 @@ function ComparisonDiffApp() {
 
   return (
     <div>
-      <PageTitle
-        name="Diff View"
-        leftQuery={leftQuery}
-        rightQuery={rightQuery}
-      />
+      <PageTitle title={formatTitle('Diff View', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar

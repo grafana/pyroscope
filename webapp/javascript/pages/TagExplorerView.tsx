@@ -39,6 +39,7 @@ import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
+import { formatTitle } from './formatTitle';
 
 function TagExplorerView() {
   const { offset } = useTimeZone();
@@ -155,7 +156,7 @@ function TagExplorerView() {
 
   return (
     <>
-      <PageTitle name="Tag Explorer View" leftQuery={query} />
+      <PageTitle title={formatTitle('Tag Explorer View', query)} />
       <div className={styles.tagExplorerView} data-testid="tag-explorer-view">
         <Toolbar hideTagsBar />
         <Box>
