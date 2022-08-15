@@ -243,7 +243,6 @@
     "redux-promise": "^0.6.0",
     "redux-query-sync": "^0.1.10",
     "redux-thunk": "^2.3.0",
-    "sanitize.css": "^11.0.1",
     "sass-loader": "^9.0.2",
     "serialize-error": "^9.1.0",
     "style-loader": "^3.2.1",

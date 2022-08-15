@@ -4,6 +4,7 @@ import Button from '@ui/Button';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
+import '../webapp/sass/profile.scss';
 
 const Template: ComponentStory<typeof Button> = (args) => (
   <Button {...args}>Button</Button>
