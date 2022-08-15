@@ -1,8 +1,9 @@
-import React, { useRef, RefObject } from 'react';
+import React, { useRef, RefObject, CSSProperties } from 'react';
 import clsx from 'clsx';
 import type Color from 'color';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
+import TableUI, { useTable, BodyRow } from '@webapp/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter } from './format/format';
 import {
@@ -13,7 +14,6 @@ import {
 import { fitIntoTableCell, FitModes } from './fitMode/fitMode';
 import { isMatch } from './search';
 import type { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
-import styles from './ProfilerTable.module.scss';
 
 const zero = (v?: number) => v || 0;
 
@@ -202,9 +202,6 @@ const tableFormatDiff = ((def) => ({
 function Table({
   tableBodyRef,
   flamebearer,
-  updateSortBy,
-  sortBy,
-  sortByDirection,
   viewDiff,
   fitMode,
   handleTableItemClick,
@@ -213,55 +210,39 @@ function Table({
   palette,
 }: ProfilerTableProps) {
   const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
+  const tableProps = useTable(tableFormat);
+  const table = {
+    headRow: tableFormat,
+    bodyRows: getTableBodyRows({
+      flamebearer,
+      sortBy: tableProps.sortBy,
+      sortByDirection: tableProps.sortByDirection,
+      viewDiff,
+      fitMode,
+      handleTableItemClick,
+      highlightQuery,
+      palette,
+      selectedItem,
+    }),
+  };
 
   return (
-    <table
-      className={`flamegraph-table ${styles.table}`}
-      data-testid="table-view"
-    >
-      <thead>
-        <tr>
-          {tableFormat.map((v: typeof tableFormat[number], idx: number) =>
-            !v.sortable ? (
-              // eslint-disable-next-line react/no-array-index-key
-              <th key={idx}>{v.label}</th>
-            ) : (
-              <th
-                // eslint-disable-next-line react/no-array-index-key
-                key={idx}
-                className="sortable"
-                onClick={() => updateSortBy(v.name)}
-              >
-                {v.label}
-                <span
-                  className={clsx('sort-arrow', {
-                    [sortByDirection]: sortBy === v.name,
-                  })}
-                />
-              </th>
-            )
-          )}
-        </tr>
-      </thead>
-      <tbody ref={tableBodyRef}>
-        <TableBody
-          flamebearer={flamebearer}
-          sortBy={sortBy}
-          sortByDirection={sortByDirection}
-          viewDiff={viewDiff}
-          fitMode={fitMode}
-          handleTableItemClick={handleTableItemClick}
-          highlightQuery={highlightQuery}
-          palette={palette}
-          selectedItem={selectedItem}
-        />
-      </tbody>
-    </table>
+    <TableUI
+      {...tableProps}
+      tableBodyRef={tableBodyRef}
+      table={table}
+      className="flamegraph-table"
+    />
   );
 }
 
-// const TableBody = React.memo(
-const TableBody = ({
+interface GetTableBodyRowsProps
+  extends Omit<ProfilerTableProps, 'tableBodyRef'> {
+  sortBy: string;
+  sortByDirection: string;
+}
+
+const getTableBodyRows = ({
   flamebearer,
   sortBy,
   sortByDirection,
@@ -271,40 +252,37 @@ const TableBody = ({
   highlightQuery,
   palette,
   selectedItem,
-}: Omit<ProfilerTableProps, 'updateSortBy' | 'tableBodyRef'>) => {
+}: GetTableBodyRowsProps): BodyRow[] => {
   const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
-  const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
-
+  const tableBodyCells = generateTable(flamebearer).sort(
+    (a, b) => b.total - a.total
+  );
   const m = sortByDirection === 'asc' ? 1 : -1;
+  let sorted: typeof tableBodyCells;
 
-  let sorted: typeof table;
   if (sortBy === 'name') {
-    sorted = table.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
+    sorted = tableBodyCells.sort(
+      (a, b) => m * a[sortBy].localeCompare(b[sortBy])
+    );
   } else {
     switch (sortBy) {
       case 'total':
       case 'self': {
-        sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
+        sorted = tableBodyCells.sort((a, b) => m * (a[sortBy] - b[sortBy]));
         break;
       }
 
       // sorting by all other fields means it must be a double
       default: {
-        sorted = (table as (DoubleCell & { name: string })[]).sort(
+        sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
           (a, b) => m * (a[sortBy] - b[sortBy])
         );
       }
     }
   }
 
-  // The problem is that when you switch apps or time-range and the function
-  //   names stay the same it leads to an issue where rows don't get re-rendered
-  // So we force a rerender each time.
-  const renderID = Math.random();
-
   const formatter = getFormatter(numTicks, sampleRate, units);
-
   const isRowSelected = (name: string) => {
     if (selectedItem.isJust) {
       return name === selectedItem.value;
@@ -313,179 +291,171 @@ const TableBody = ({
     return false;
   };
 
-  const nameCell = (x: { name: string }, style: React.CSSProperties) => (
-    <td>
-      <button className="table-item-button">
-        <span className="color-reference" style={style} />
-        <div className="symbol-name" style={fitIntoTableCell(fitMode)}>
-          {x.name}
-        </div>
-      </button>
-    </td>
+  const nameCell = (x: { name: string }, style: CSSProperties) => (
+    <button className="table-item-button">
+      <span className="color-reference" style={style} />
+      <div className="symbol-name" style={fitIntoTableCell(fitMode)}>
+        {x.name}
+      </div>
+    </button>
   );
 
-  const renderSingleRow = (
+  const getSingleRow = (
     x: SingleCell & { name: string },
     color: Color,
-    style: React.CSSProperties
-  ) => (
-    <tr
-      data-row={`${x.name};${x.self};${x.total};${x.type}`}
-      key={`${x.name}${renderID}`}
-      onClick={() => handleTableItemClick(x)}
-      className={`${isRowSelected(x.name) && styles.rowSelected}`}
-    >
-      {nameCell(x, style)}
-      <td style={backgroundImageStyle(x.self, maxSelf, color)}>
-        {formatter.format(x.self, sampleRate)}
-      </td>
-      <td style={backgroundImageStyle(x.total, numTicks, color)}>
-        {formatter.format(x.total, sampleRate)}
-      </td>
-    </tr>
-  );
+    style: CSSProperties
+  ): BodyRow => ({
+    'data-row': `${x.name};${x.self};${x.total};${x.type}`,
+    isSelected: isRowSelected(x.name),
+    onClick: () => handleTableItemClick(x),
+    cells: [
+      { value: nameCell(x, style) },
+      {
+        value: formatter.format(x.self, sampleRate),
+        style: backgroundImageStyle(x.self, maxSelf, color),
+      },
+      {
+        value: formatter.format(x.total, sampleRate),
+        style: backgroundImageStyle(x.total, numTicks, color),
+      },
+    ],
+  });
 
-  const renderDoubleRow = (function () {
+  const getDoubleRow = (() => {
     switch (viewDiff) {
-      case 'self': {
+      case 'self':
         return (
           x: DoubleCell & { name: string },
           color: Color,
-          style: React.CSSProperties
-        ) => (
-          <tr
-            key={`${x.name}${renderID}`}
-            onClick={() => handleTableItemClick(x)}
-            className={`${isRowSelected(x.name) && styles.rowSelected}`}
-          >
-            {nameCell(x, style)}
-            {/* NOTE: it seems React does not understand multiple backgrounds, have to workaround:  */}
-            {/*   The `style` prop expects a mapping from style properties to values, not a string. */}
-            <td
-              style={backgroundImageDiffStyle(
+          style: CSSProperties
+        ): BodyRow => ({
+          isSelected: isRowSelected(x.name),
+          onClick: () => handleTableItemClick(x),
+          cells: [
+            { value: nameCell(x, style) },
+            {
+              style: backgroundImageDiffStyle(
                 palette,
                 x.selfLeft,
                 x.selfRght,
                 maxSelf,
                 color,
                 'L'
-              )}
-            >
-              <span title={formatter.format(x.selfLeft, sampleRate)}>
-                {formatter.format(x.selfLeft, sampleRate)}
-              </span>
-            </td>
-            <td
-              style={backgroundImageDiffStyle(
+              ),
+              value: (() => (
+                <span title={formatter.format(x.selfLeft, sampleRate)}>
+                  {formatter.format(x.selfLeft, sampleRate)}
+                </span>
+              ))(),
+            },
+            {
+              style: backgroundImageDiffStyle(
                 palette,
                 x.selfLeft,
                 x.selfRght,
                 maxSelf,
                 color,
                 'R'
-              )}
-            >
-              <span title={formatter.format(x.selfRght, sampleRate)}>
-                {formatter.format(x.selfRght, sampleRate)}
-              </span>
-            </td>
-          </tr>
-        );
-      }
-
-      case 'total': {
+              ),
+              value: (
+                <span title={formatter.format(x.selfRght, sampleRate)}>
+                  {formatter.format(x.selfRght, sampleRate)}
+                </span>
+              ),
+            },
+          ],
+        });
+      case 'total':
         return (
           x: DoubleCell & { name: string },
           color: Color,
-          style: React.CSSProperties
-        ) => (
-          <tr
-            key={`${x.name}${renderID}`}
-            onClick={() => handleTableItemClick(x)}
-            className={`${isRowSelected(x.name) && styles.rowSelected}`}
-          >
-            {nameCell(x, style)}
-            <td
-              style={backgroundImageDiffStyle(
+          style: CSSProperties
+        ): BodyRow => ({
+          isSelected: isRowSelected(x.name),
+          onClick: () => handleTableItemClick(x),
+          cells: [
+            { value: nameCell(x, style) },
+            {
+              style: backgroundImageDiffStyle(
                 palette,
                 x.totalLeft,
                 x.totalRght,
                 numTicks / 2,
                 color,
                 'L'
-              )}
-            >
-              <span title={formatter.format(x.totalLeft, sampleRate)}>
-                {formatter.format(x.totalLeft, sampleRate)}
-              </span>
-            </td>
-            <td
-              style={backgroundImageDiffStyle(
+              ),
+              value: (() => (
+                <span title={formatter.format(x.totalLeft, sampleRate)}>
+                  {formatter.format(x.totalLeft, sampleRate)}
+                </span>
+              ))(),
+            },
+            {
+              style: backgroundImageDiffStyle(
                 palette,
                 x.totalLeft,
                 x.totalRght,
                 numTicks / 2,
                 color,
                 'R'
-              )}
-            >
-              <span title={formatter.format(x.totalRght, sampleRate)}>
-                {formatter.format(x.totalRght, sampleRate)}
-              </span>
-            </td>
-          </tr>
-        );
-      }
-
-      case 'diff': {
+              ),
+              value: (() => (
+                <span title={formatter.format(x.totalRght, sampleRate)}>
+                  {formatter.format(x.totalRght, sampleRate)}
+                </span>
+              ))(),
+            },
+          ],
+        });
+      case 'diff':
         return (
           x: DoubleCell & { name: string },
           color: Color,
-          style: React.CSSProperties
-        ) => (
-          <tr
-            key={`${x.name}${renderID}`}
-            onClick={() => handleTableItemClick(x)}
-            className={`${isRowSelected(x.name) && styles.rowSelected}`}
-          >
-            {nameCell(x, style)}
-            <td
-              style={backgroundImageDiffStyle(
+          style: CSSProperties
+        ): BodyRow => ({
+          isSelected: isRowSelected(x.name),
+          onClick: () => handleTableItemClick(x),
+          cells: [
+            { value: nameCell(x, style) },
+            {
+              style: backgroundImageDiffStyle(
                 palette,
                 x.selfLeft,
                 x.selfRght,
                 maxSelf,
                 defaultColor
-              )}
-            >
-              <span title={formatter.format(x.selfDiff, sampleRate)}>
-                {formatter.format(x.selfDiff, sampleRate)}
-              </span>
-            </td>
-            <td
-              style={backgroundImageDiffStyle(
+              ),
+              value: (() => (
+                <span title={formatter.format(x.selfDiff, sampleRate)}>
+                  {formatter.format(x.selfDiff, sampleRate)}
+                </span>
+              ))(),
+            },
+            {
+              style: backgroundImageDiffStyle(
                 palette,
                 x.totalLeft,
                 x.totalRght,
                 numTicks / 2,
                 color
-              )}
-            >
-              <span title={formatter.format(x.totalDiff, sampleRate)}>
-                {formatter.format(x.totalDiff, sampleRate)}
-              </span>
-            </td>
-          </tr>
-        );
-      }
-
-      default: {
-        return () => <div>Unsupported</div>;
-      }
+              ),
+              value: (() => (
+                <span title={formatter.format(x.totalDiff, sampleRate)}>
+                  {formatter.format(x.totalDiff, sampleRate)}
+                </span>
+              ))(),
+            },
+          ],
+        });
+      default:
+        return (): BodyRow => ({
+          // todo
+          error: <div>Unsupported</div>,
+        });
     }
   })();
 
-  const items = sorted
+  return sorted
     .filter((x) => {
       if (!highlightQuery) {
         return true;
@@ -493,7 +463,7 @@ const TableBody = ({
 
       return isMatch(highlightQuery, x.name);
     })
-    .map((x) => {
+    .reduce((acc, x) => {
       const pn = getPackageNameFromStackTrace(spyName, x.name);
       const color = viewDiff
         ? defaultColor
@@ -503,29 +473,17 @@ const TableBody = ({
       };
 
       if (x.type === 'double') {
-        return renderDoubleRow(x, color, style);
+        acc.push(getDoubleRow(x, color, style));
+        return acc;
       }
 
-      return renderSingleRow(x, color, style);
-    });
-
-  return <>{items}</>;
+      acc.push(getSingleRow(x, color, style));
+      return acc;
+    }, [] as BodyRow[]);
 };
 
 export interface ProfilerTableProps {
   flamebearer: Flamebearer;
-  sortByDirection: 'asc' | 'desc';
-  sortBy:
-    | 'name'
-    | 'self'
-    | 'total'
-    | 'selfDiff'
-    | 'totalDiff'
-    | 'selfLeft'
-    | 'selfRght'
-    | 'totalLeft'
-    | 'totalRght';
-  updateSortBy: (s: ProfilerTableProps['sortBy']) => void;
   viewDiff?: 'diff' | 'total' | 'self' | false;
   fitMode: FitModes;
   handleTableItemClick: (tableItem: { name: string }) => void;
@@ -538,9 +496,6 @@ export interface ProfilerTableProps {
 
 export default function ProfilerTable({
   flamebearer,
-  sortByDirection,
-  sortBy,
-  updateSortBy,
   viewDiff,
   fitMode,
   handleTableItemClick,
@@ -555,9 +510,6 @@ export default function ProfilerTable({
       <Table
         tableBodyRef={tableBodyRef}
         flamebearer={flamebearer}
-        updateSortBy={updateSortBy}
-        sortBy={sortBy}
-        sortByDirection={sortByDirection}
         viewDiff={viewDiff}
         fitMode={fitMode}
         highlightQuery={highlightQuery}

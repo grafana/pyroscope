@@ -63,11 +63,17 @@ interface TableProps {
   updateSortParams: (newSortBy: string) => void;
   table: Table;
   tableBodyRef?: RefObject<HTMLTableSectionElement>;
+  className?: string;
 }
 
 function Table(props: TableProps) {
   return (
-    <table className={styles.table} data-testid="table-ui">
+    <table
+      className={clsx(styles.table, {
+        [props.className || '']: props?.className,
+      })}
+      data-testid="table-ui"
+    >
       <thead>
         <tr>
           {props.table.headRow.map((v: any, idx: number) =>
