@@ -3,9 +3,8 @@ import React, { useMemo } from 'react';
 import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
 import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
-// eslint-disable-next-line css-modules/no-unused-class
-import styles from './FileList.module.scss';
 import CheckIcon from './CheckIcon';
+import styles from './FileList.module.scss';
 
 const dateModifiedColName = 'updatedAt';
 const fileNameColName = 'name';
@@ -69,28 +68,26 @@ function FileList(props: FileListProps) {
     selectedProfileId,
   } = props;
 
-  const tableProps = useTableSort(headRow);
+  const { sortBy, sortByDirection, ...rest } = useTableSort(headRow);
   const sortedProfilesIds = useMemo(() => {
-    const m = tableProps.sortByDirection === 'asc' ? 1 : -1;
+    const m = sortByDirection === 'asc' ? 1 : -1;
 
     let sorted: AllProfiles[number][] = [];
 
     if (profiles) {
       const filesInfo = Object.values(profiles);
 
-      switch (tableProps.sortBy) {
+      switch (sortBy) {
         case fileNameColName:
           sorted = filesInfo.sort(
-            (a, b) =>
-              m * a[tableProps.sortBy].localeCompare(b[tableProps.sortBy])
+            (a, b) => m * a[sortBy].localeCompare(b[sortBy])
           );
           break;
         case dateModifiedColName:
           sorted = filesInfo.sort(
             (a, b) =>
               m *
-              (new Date(a[tableProps.sortBy]).getTime() -
-                new Date(b[tableProps.sortBy]).getTime())
+              (new Date(a[sortBy]).getTime() - new Date(b[sortBy]).getTime())
           );
           break;
         default:
@@ -99,22 +96,28 @@ function FileList(props: FileListProps) {
     }
 
     return sorted;
-  }, [profiles, tableProps.sortBy, tableProps.sortByDirection]);
+  }, [profiles, sortBy, sortByDirection]);
 
   const tableBodyProps = profiles
     ? {
+        type: 'filled' as const,
         bodyRows: getBodyRows(
           sortedProfilesIds,
           onProfileSelected,
           selectedProfileId
         ),
       }
-    : { error: { value: '' } };
+    : { type: 'not-filled' as const, value: '' };
 
   return (
     <>
       <div className={`${styles.tableContainer} ${className}`}>
-        <TableUI {...tableProps} table={{ headRow, ...tableBodyProps }} />
+        <TableUI
+          sortBy={sortBy}
+          sortByDirection={sortByDirection}
+          table={{ headRow, ...tableBodyProps }}
+          {...rest}
+        />
       </div>
     </>
   );
