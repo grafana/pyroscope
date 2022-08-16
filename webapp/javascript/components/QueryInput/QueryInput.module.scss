@@ -10,7 +10,7 @@
   position: relative;
 }
 
-.input {
+.input.input {
   flex-grow: 20;
   border-top-right-radius: 0px;
   border-bottom-right-radius: 0px;
@@ -30,7 +30,8 @@
   overflow: hidden;
 }
 
-.highlight {
+// increase specificity to overwrite prism.scss
+.highlight.highlight {
   height: 0;
   width: 0;
   z-index: 1;
