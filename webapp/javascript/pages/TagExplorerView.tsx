@@ -12,10 +12,7 @@ import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@webapp/components/TimelineChart/TimelineChartWrapper';
-import {
-  FlamegraphRenderer,
-  TimelineSeriesPalette,
-} from '@pyroscope/flamegraph/src';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
@@ -41,6 +38,37 @@ import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
+
+const TIMELINE_COLORS = [
+  Color.rgb(115, 191, 105),
+  Color.rgb(244, 213, 152),
+  Color.rgb(112, 219, 237),
+  Color.rgb(174, 162, 224),
+  Color.rgb(224, 117, 45),
+  Color.rgb(191, 27, 0),
+  Color.rgb(229, 168, 226),
+  Color.rgb(183, 219, 171),
+  Color.rgb(229, 172, 14),
+  Color.rgb(10, 80, 161),
+  Color.rgb(97, 77, 147),
+  Color.rgb(100, 176, 200),
+  Color.rgb(150, 45, 130),
+  Color.rgb(214, 131, 206),
+  Color.rgb(63, 104, 51),
+  Color.rgb(150, 115, 2),
+  Color.rgb(5, 43, 81),
+  Color.rgb(63, 43, 91),
+  Color.rgb(153, 68, 10),
+  Color.rgb(88, 20, 12),
+  Color.rgb(224, 249, 215),
+  Color.rgb(252, 234, 202),
+  Color.rgb(207, 250, 255),
+  Color.rgb(249, 226, 210),
+  Color.rgb(252, 226, 222),
+  Color.rgb(186, 223, 244),
+  Color.rgb(249, 217, 249),
+  Color.rgb(222, 218, 247),
+];
 
 const getTimelineColor = (index: number, palette: Color[]): Color =>
   Color(palette[index % (palette.length - 1)]);
@@ -93,7 +121,7 @@ function TagExplorerView() {
             acc.push({
               tagName,
               data,
-              color: getTimelineColor(index, TimelineSeriesPalette.colors),
+              color: getTimelineColor(index, TIMELINE_COLORS),
             });
 
             return acc;
