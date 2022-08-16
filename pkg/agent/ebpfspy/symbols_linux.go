@@ -31,8 +31,8 @@ type symbolCache struct {
 	mutex     sync.Mutex
 }
 
-func newSymbolCache(pidCacheSize int) (*symbolCache, error) {
-	pid2Cache, err := genericlru.NewGenericLRU[pidKey, symbolCacheEntry](pidCacheSize, func(pid pidKey, e *symbolCacheEntry) {
+func newSymbolCache(cacheSize int) (*symbolCache, error) {
+	pid2Cache, err := genericlru.NewGenericLRU[pidKey, symbolCacheEntry](cacheSize, func(pid pidKey, e *symbolCacheEntry) {
 		C.bcc_free_symcache(e.cache, C.int(pid))
 	})
 	if err != nil {

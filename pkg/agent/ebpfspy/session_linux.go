@@ -1,5 +1,4 @@
 //go:build ebpfspy
-// +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF. It is a rough copy of profile.py from BCC tools:
 //
@@ -25,10 +24,10 @@ import (
 //#include "profile.bpf.h"
 import "C"
 
-type session struct {
-	pid          int
-	sampleRate   uint32
-	pidCacheSize int
+type Session struct {
+	pid             int
+	sampleRate      uint32
+	symbolCacheSize int
 
 	perfEventFds []int
 
@@ -48,15 +47,15 @@ type session struct {
 
 const btf = "should not be used" // canary to detect we got relocations
 
-func newSession(pid int, sampleRate uint32) *session {
-	return &session{
-		pid:          pid,
-		sampleRate:   sampleRate,
-		pidCacheSize: 256, //todo config
+func NewSession(pid int, sampleRate uint32, symbolCacheSize int) *Session {
+	return &Session{
+		pid:             pid,
+		sampleRate:      sampleRate,
+		symbolCacheSize: symbolCacheSize,
 	}
 }
 
-func (s *session) Start() error {
+func (s *Session) Start() error {
 	var err error
 	if err = unix.Setrlimit(unix.RLIMIT_MEMLOCK, &unix.Rlimit{
 		Cur: unix.RLIM_INFINITY,
@@ -68,7 +67,7 @@ func (s *session) Start() error {
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
-	if s.symCache, err = newSymbolCache(s.pidCacheSize); err != nil {
+	if s.symCache, err = newSymbolCache(s.symbolCacheSize); err != nil {
 		return err
 	}
 	args := bpf.NewModuleArgs{BPFObjBuff: profileBpf,
@@ -94,7 +93,7 @@ func (s *session) Start() error {
 	return nil
 }
 
-func (s *session) Reset(cb func(name []byte, value uint64, pid uint32) error) error {
+func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) error {
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
@@ -143,7 +142,7 @@ func (s *session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 	return nil
 }
 
-func (s *session) Stop() {
+func (s *Session) Stop() {
 	s.symCache.clear()
 	for fd := range s.perfEventFds {
 		_ = syscall.Close(fd)
@@ -151,7 +150,7 @@ func (s *session) Stop() {
 	s.module.Close()
 }
 
-func (s *session) findMaps() error {
+func (s *Session) findMaps() error {
 	var err error
 	if s.mapArgs, err = s.module.GetMap("args"); err != nil {
 		return err
@@ -164,7 +163,7 @@ func (s *session) findMaps() error {
 	}
 	return nil
 }
-func (s *session) initArgs() error {
+func (s *Session) initArgs() error {
 	var zero uint32
 	var err error
 	var tgidFilter uint32
@@ -183,7 +182,7 @@ func (s *session) initArgs() error {
 	return nil
 }
 
-func (s *session) attachPerfEvent() error {
+func (s *Session) attachPerfEvent() error {
 	var cpus []uint
 	var err error
 	if cpus, err = cpuonline.Get(); err != nil {
@@ -208,7 +207,7 @@ func (s *session) attachPerfEvent() error {
 	return nil
 }
 
-func (s *session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
+func (s *Session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
 	if stackId < 0 { //todo
 		return nil
 	}
@@ -223,7 +222,7 @@ func (s *session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
 	return stack
 
 }
-func (s *session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, userspace bool) {
+func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, userspace bool) {
 	if len(stack) == 0 {
 		return
 	}

@@ -2,7 +2,8 @@
 // +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF. It is a rough copy of profile.py from BCC tools:
-//   https://github.com/iovisor/bcc/blob/master/tools/profile.py
+//
+//	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
 import "C"
@@ -15,7 +16,7 @@ import (
 //#include "profile.bpf.h"
 import "C"
 
-func (s *session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bool, err error) {
+func (s *Session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bool, err error) {
 	// try lookup_and_delete_batch
 	var (
 		mapSize = C.PROFILE_MAPS_SIZE
@@ -45,7 +46,7 @@ func (s *session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 	return keys, values, false, nil
 }
 
-func (s *session) clearCountsMap(keys [][]byte, batch bool) error {
+func (s *Session) clearCountsMap(keys [][]byte, batch bool) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -62,7 +63,7 @@ func (s *session) clearCountsMap(keys [][]byte, batch bool) error {
 	return nil
 }
 
-func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
+func (s *Session) clearStacksMap(knownKeys map[uint32]bool) error {
 	m := s.mapStacks
 	cnt := 0
 	errs := 0
