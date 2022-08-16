@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.32.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.1...@pyroscope/webapp@1.32.0) (2022-08-16)
+
+
+### Features
+
+* **webapp:** set title automatically ([#1397](https://github.com/pyroscope-io/pyroscope/issues/1397)) ([74821ca](https://github.com/pyroscope-io/pyroscope/commit/74821ca0f0e3ebec38c83f83bf54318d931f66f6))
+
+
+
+
+
 ## [1.31.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.0...@pyroscope/webapp@1.31.1) (2022-08-15)
 
 
