@@ -12,6 +12,7 @@ import Sidebar, {
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import { faBaby } from '@fortawesome/free-solid-svg-icons/faBaby';
 import Icon from '@ui/Icon';
+import '../webapp/sass/profile.scss';
 
 export default {
   title: 'Components/Sidebar',

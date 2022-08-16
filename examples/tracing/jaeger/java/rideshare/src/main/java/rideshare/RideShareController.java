@@ -4,6 +4,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
+import org.slf4j.MDC;
 import rideshare.bike.BikeService;
 import rideshare.car.CarService;
 import rideshare.scooter.ScooterService;
@@ -39,11 +40,11 @@ public class RideShareController {
 
     @GetMapping("/bike")
     public String orderBike() {
-        logger.info("orderBike");
         Span span = tracer.spanBuilder("orderBike")
                 .startSpan();
         String res;
         try (Scope s = span.makeCurrent()){
+            logger.info("orderBike");
             bikeService.orderBike(/* searchRadius */ 1);
             res = "<h1>Bike ordered</h1>";
         } catch (Exception th) {
@@ -57,12 +58,12 @@ public class RideShareController {
 
     @GetMapping("/scooter")
     public String orderScooter() {
-        logger.info("orderScooter");
 
         Span span = tracer.spanBuilder("orderScooter")
                 .startSpan();
         String res;
         try (Scope s = span.makeCurrent()){
+            logger.info("orderScooter");
             scooterService.orderScooter(/* searchRadius */ 2);
             res = "<h1>Scooter ordered</h1>";
         } catch (Exception e) {
@@ -76,12 +77,11 @@ public class RideShareController {
 
     @GetMapping("/car")
     public String orderCar() {
-        logger.info("orderCar");
-
         Span span = tracer.spanBuilder("orderCar")
                 .startSpan();
         String res;
         try (Scope s = span.makeCurrent()){
+            logger.info("orderCar");
             carService.orderCar(/* searchRadius */ 3);
             res = "<h1>Car ordered</h1>";
         } catch (Exception e) {
@@ -95,12 +95,12 @@ public class RideShareController {
 
     @GetMapping("/")
     public String env() {
-        logger.info("env");
 
         Span span = tracer.spanBuilder("env")
                 .startSpan();
         String res;
         try (Scope s = span.makeCurrent()) {
+            logger.info("env");
             StringBuilder sb = new StringBuilder();
             for (Map.Entry<String, String> it : System.getenv().entrySet()) {
                 sb.append(it.getKey()).append(" = ").append(it.getValue()).append("<br>\n");

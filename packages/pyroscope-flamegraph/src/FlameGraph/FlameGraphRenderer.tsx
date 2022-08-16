@@ -456,10 +456,7 @@ class FlameGraphRenderer extends React.Component<
     const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
 
     return (
-      <div
-        className="flamegraph-root"
-        data-flamegraph-color-mode={this.props.colorMode || 'dark'}
-      >
+      <div data-flamegraph-color-mode={this.props.colorMode || 'dark'}>
         <div>
           {toolbarVisible && (
             <Toolbar
