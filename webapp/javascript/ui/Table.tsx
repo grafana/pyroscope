@@ -4,21 +4,23 @@ import clsx from 'clsx';
 import styles from './Table.module.scss';
 
 export interface Cell {
-  value: ReactNode;
+  value: ReactNode | string;
   style?: CSSProperties;
+  [k: string]: string | undefined | CSSProperties | ReactNode;
 }
 
 export interface HeadCell {
   name: string;
   label: string;
   sortable?: number;
+  [k: string]: string | number | undefined;
 }
 
 export interface BodyRow {
   'data-row'?: string;
   isRowSelected?: boolean;
   isRowDisabled?: boolean;
-  cells?: Cell[];
+  cells: Cell[];
   onClick?: () => void;
 }
 
@@ -85,25 +87,29 @@ function Table(props: TableProps) {
     >
       <thead>
         <tr>
-          {props.table.headRow.map((v: any, idx: number) =>
-            !v.sortable ? (
-              // eslint-disable-next-line react/no-array-index-key
-              <th key={idx}>{v.label}</th>
-            ) : (
-              <th
+          {props.table.headRow.map(
+            ({ sortable, label, name, ...rest }: any, idx: number) =>
+              !sortable ? (
                 // eslint-disable-next-line react/no-array-index-key
-                key={idx}
-                className={styles.sortable}
-                onClick={() => props.updateSortParams(v.name)}
-              >
-                {v.label}
-                <span
-                  className={clsx(styles.sortArrow, {
-                    [styles[props.sortByDirection]]: props.sortBy === v.name,
-                  })}
-                />
-              </th>
-            )
+                <th key={idx} {...rest}>
+                  {label}
+                </th>
+              ) : (
+                <th
+                  {...rest}
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={idx}
+                  className={styles.sortable}
+                  onClick={() => props.updateSortParams(name)}
+                >
+                  {label}
+                  <span
+                    className={clsx(styles.sortArrow, {
+                      [styles[props.sortByDirection]]: props.sortBy === name,
+                    })}
+                  />
+                </th>
+              )
           )}
         </tr>
       </thead>
@@ -134,11 +140,13 @@ function Table(props: TableProps) {
                   })}
                 >
                   {cells &&
-                    cells.map((cell: Cell, index: number) => (
-                      <td key={renderID + index} style={cell?.style}>
-                        {cell.value}
-                      </td>
-                    ))}
+                    cells.map(
+                      ({ style, value, ...rest }: Cell, index: number) => (
+                        <td key={renderID + index} style={style} {...rest}>
+                          {value}
+                        </td>
+                      )
+                    )}
                 </tr>
               );
             }

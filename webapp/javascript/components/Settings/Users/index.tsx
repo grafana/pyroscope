@@ -109,11 +109,6 @@ function Users() {
           },
         };
 
-  const table = {
-    headRow,
-    ...tableBodyProps,
-  };
-
   return (
     <>
       <h2>Users</h2>
@@ -140,7 +135,7 @@ function Users() {
       <TableUI
         {...tableProps}
         className={cl(userStyles.usersTable, tableStyles.settingsTable)}
-        table={table}
+        table={{ headRow, ...tableBodyProps }}
       />
     </>
   );

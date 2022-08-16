@@ -1,13 +1,14 @@
 import React, { useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
+import { formatDistance, formatRelative } from 'date-fns/fp';
+
 import Button from '@webapp/ui/Button';
 import Icon from '@webapp/ui/Icon';
-
-import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import TableUI, { useTable, BodyRow } from '@webapp/ui/Table';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
-import { useHistory } from 'react-router-dom';
-
-import { formatDistance, formatRelative } from 'date-fns/fp';
+import type { APIKeys } from '@webapp/models/apikeys';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   reloadApiKeys,
   selectAPIKeys,
@@ -15,6 +16,47 @@ import {
 } from '@webapp/redux/reducers/settings';
 import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
 import styles from '../SettingsTable.module.scss';
+
+const getBodyRows = (keys: APIKeys, onDelete: any): BodyRow[] => {
+  const now = new Date();
+
+  const handleDeleteClick = (key: ShamefulAny) => {
+    confirmDelete('this key', () => {
+      onDelete(key);
+    });
+  };
+
+  return keys.reduce((acc, k) => {
+    acc.push({
+      cells: [
+        { value: k.name },
+        { value: k.id },
+        { value: k.role },
+        { value: formatRelative(k.createdAt, now) },
+        {
+          value: k.expiresAt
+            ? `in ${formatDistance(k.expiresAt, now)}`
+            : 'never',
+          title: k?.expiresAt?.toString(),
+        },
+        {
+          value: (
+            <Button
+              type="submit"
+              kind="danger"
+              aria-label="Delete key"
+              onClick={() => handleDeleteClick(k)}
+            >
+              <Icon icon={faTimes} />
+            </Button>
+          ),
+          align: 'center',
+        },
+      ],
+    });
+    return acc;
+  }, [] as BodyRow[]);
+};
 
 const ApiKeys = () => {
   const dispatch = useAppDispatch();
@@ -33,13 +75,21 @@ const ApiKeys = () => {
       });
   };
 
-  const handleDeleteClick = (key: ShamefulAny) => {
-    confirmDelete('this key', () => {
-      onDelete(key);
-    });
-  };
+  const headRow = [
+    { name: '', label: 'Name', sortable: 0 },
+    { name: '', label: 'Role', sortable: 0 },
+    { name: '', label: 'Creation date', sortable: 0 },
+    { name: '', label: 'Expiration date', sortable: 0 },
+    { name: '', label: 'Role', sortable: 0, 'aria-label': 'Actions' },
+  ];
+  // we should skip call for not sortable tables/heads
+  // CHECK FOR EVERY common Table component usage
+  const tableProps = useTable(headRow);
+  // no keys -> no table
+  const tableBodyProps = apiKeys
+    ? { bodyRows: getBodyRows(apiKeys, onDelete) }
+    : { error: { value: '' } };
 
-  const now = new Date();
   return (
     <>
       <h2>API keys</h2>
@@ -53,42 +103,13 @@ const ApiKeys = () => {
           Add Key
         </Button>
       </div>
-      <table className={styles.settingsTable}>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Role</th>
-            <th>Creation date</th>
-            <th>Expiration date</th>
-            <th aria-label="Actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {apiKeys &&
-            apiKeys.map((key) => (
-              <tr key={key.id}>
-                <td>{key.name}</td>
-                <td>{key.role}</td>
-                <td>{formatRelative(key.createdAt, now)}</td>
-                <td title={key?.expiresAt?.toString()}>
-                  {key.expiresAt
-                    ? `in ${formatDistance(key.expiresAt, now)}`
-                    : 'never'}
-                </td>
-                <td align="center">
-                  <Button
-                    type="submit"
-                    kind="danger"
-                    aria-label="Delete key"
-                    onClick={() => handleDeleteClick(key)}
-                  >
-                    <Icon icon={faTimes} />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
+      <TableUI
+        {...tableProps}
+        // todo fix
+        // @ts-ignore
+        table={{ headRow, ...tableBodyProps }}
+        className={styles.settingsTable}
+      />
     </>
   );
 };
