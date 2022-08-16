@@ -135,8 +135,6 @@ COPY scripts ./scripts
 # Alpine's default stack size too small for pyspy, causing exec mode with pyspy to segfault.
 # See https://github.com/pyroscope-io/pyroscope/issues/503
 RUN EMBEDDED_ASSETS_DEPS="" \
-    CGO_CFLAGS="-I./pkg/agent/ebpfspy/bpf/libs/libbpf/include -I./pkg/agent/ebpfspy/bpf/libs/bcc-syms/include" \
-    CGO_LDFLAGS="-L./pkg/agent/ebpfspy/bpf/libs/libbpf/lib64 -L./pkg/agent/ebpfspy/bpf/libs/bcc-syms/lib"\
     CGO_LDFLAGS_ALLOW="-Wl,-z,stack-size=0x200000" \
     EXTRA_LDFLAGS="-linkmode external -extldflags '-static -Wl,-z,stack-size=0x200000'" \
     make build-release
