@@ -15,7 +15,7 @@ import TimelineChartWrapper, {
 import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
-import TableUI, { useTable, BodyRow } from '@webapp/ui/Table';
+import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
 import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -310,7 +310,7 @@ function Table({
   };
 
   const headRow = [
-    // {/* when groupByTag is not selected table represents single "application without tags" group */}
+    // when groupByTag is not selected table represents single "application without tags" group
     {
       name: 'name',
       label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
@@ -323,41 +323,46 @@ function Table({
     { name: 'maxSamples', label: 'max samples', sortable: 0 },
   ];
 
-  const bodyRows = groupsData.reduce((acc, { tagName, color, data }) => {
-    const mean = calculateMean(data.samples);
-    const row = {
-      isRowSelected: isTagSelected(tagName),
-      // prevent clicking on single "application without tags" group row
-      onClick:
-        tagName !== appName ? () => handleTableRowClick(tagName) : undefined,
-      cells: [
-        {
-          value: (
-            <div className={styles.tagName}>
-              <span
-                className={styles.tagColor}
-                style={{ backgroundColor: color?.toString() }}
-              />
-              {tagName}
-            </div>
-          ),
-        },
-        { value: data.samples.length },
-        { value: mean.toFixed(2) },
-        { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
-        { value: Math.min(...data.samples) },
-        { value: Math.max(...data.samples) },
-      ],
-    };
-    acc.push(row);
+  const bodyRows = groupsData.reduce(
+    (acc, { tagName, color, data }): BodyRow[] => {
+      const mean = calculateMean(data.samples);
+      const row = {
+        isRowSelected: isTagSelected(tagName),
+        // prevent clicking on single "application without tags" group row
+        onClick:
+          tagName !== appName ? () => handleTableRowClick(tagName) : undefined,
+        cells: [
+          {
+            value: (
+              <div className={styles.tagName}>
+                <span
+                  className={styles.tagColor}
+                  style={{ backgroundColor: color?.toString() }}
+                />
+                {tagName}
+              </div>
+            ),
+          },
+          { value: data.samples.length },
+          { value: mean.toFixed(2) },
+          { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
+          { value: Math.min(...data.samples) },
+          { value: Math.max(...data.samples) },
+        ],
+      };
+      acc.push(row);
 
-    return acc;
-  }, [] as BodyRow[]);
+      return acc;
+    },
+    [] as BodyRow[]
+  );
   const table = {
     headRow,
-    bodyRows,
+    ...(isLoading
+      ? { type: 'not-filled' as const, value: <LoadingSpinner /> }
+      : { type: 'filled' as const, bodyRows }),
   };
-  const tableProps = useTable(headRow);
+  const tableSortProps = useTableSort(headRow);
 
   return (
     <>
@@ -399,17 +404,9 @@ function Table({
           )}
         </div>
       </div>
-      {/* {isLoading ? (
-            <tr>
-              <td colSpan={6}>
-                <LoadingSpinner />
-              </td>
-            </tr> */}
       <TableUI
-        {...tableProps}
+        {...tableSortProps}
         table={table}
-        // todo
-        isLoading={isLoading}
         className={styles.tagExplorerTable}
       />
     </>

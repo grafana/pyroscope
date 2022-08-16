@@ -3,17 +3,19 @@ import clsx from 'clsx';
 
 import styles from './Table.module.scss';
 
-export interface Cell {
-  value: ReactNode | string;
-  style?: CSSProperties;
-  [k: string]: string | undefined | CSSProperties | ReactNode;
+interface CustomProp {
+  [k: string]: string | CSSProperties | ReactNode | number | undefined;
 }
 
-export interface HeadCell {
+export interface Cell extends CustomProp {
+  value: ReactNode | string;
+  style?: CSSProperties;
+}
+
+interface HeadCell extends CustomProp {
   name: string;
   label: string;
   sortable?: number;
-  [k: string]: string | number | undefined;
 }
 
 export interface BodyRow {
@@ -25,26 +27,28 @@ export interface BodyRow {
   className?: string;
 }
 
-interface Table {
+type TableBodyType =
+  | {
+      type: 'not-filled';
+      value: string | ReactNode;
+      bodyClassName?: string;
+    }
+  | {
+      type: 'filled';
+      bodyRows: BodyRow[];
+    };
+
+type Table = TableBodyType & {
   headRow: HeadCell[];
-  // either error or rows should be passed
-  bodyRows?: BodyRow[];
-  // todo handle error
-  // or error or bodyRows strict type
-  // we can get
-  error?: { value: string; className: string };
+};
+
+interface TableSortProps {
+  sortBy: string;
+  updateSortParams: (v: string) => void;
+  sortByDirection: 'desc' | 'asc';
 }
 
-// rename to useTableSort and call only when sort is needed
-// give type
-// sortable cells by default
-export const useTable = (
-  headRow: HeadCell[]
-): {
-  sortBy: string;
-  updateSortParams: any;
-  sortByDirection: 'desc' | 'asc';
-} => {
+export const useTableSort = (headRow: HeadCell[]): TableSortProps => {
   const [sortBy, updateSortBy] = useState(headRow[0].name);
   const [sortByDirection, setSortByDirection] = useState<'desc' | 'asc'>(
     'desc'
@@ -73,8 +77,6 @@ interface TableProps {
   table: Table;
   tableBodyRef?: RefObject<HTMLTableSectionElement>;
   className?: string;
-  // add is loading for tag explorer table
-  isLoading?: boolean;
 }
 
 function Table(props: TableProps) {
@@ -116,14 +118,11 @@ function Table(props: TableProps) {
         </tr>
       </thead>
       <tbody>
-        {props.table?.error ? (
-          <tr className={props.table.error.className}>
-            <td colSpan={props.table.headRow.length}>
-              {props.table.error.value}
-            </td>
+        {props.table.type === 'not-filled' ? (
+          <tr className={props.table?.bodyClassName}>
+            <td colSpan={props.table.headRow.length}>{props.table.value}</td>
           </tr>
         ) : (
-          // @ts-ignore
           props.table.bodyRows.map(
             ({ cells, isRowSelected, isRowDisabled, className, ...rest }) => {
               // The problem is that when you switch apps or time-range and the function

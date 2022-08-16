@@ -4,7 +4,7 @@ import { formatDistance, formatRelative } from 'date-fns/fp';
 
 import Button from '@webapp/ui/Button';
 import Icon from '@webapp/ui/Icon';
-import TableUI, { useTable, BodyRow } from '@webapp/ui/Table';
+import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 import type { APIKey, APIKeys } from '@webapp/models/apikeys';
@@ -84,7 +84,7 @@ const ApiKeys = () => {
   ];
   // we should skip call for not sortable tables/heads
   // CHECK FOR EVERY common Table component usage
-  const tableProps = useTable(headRow);
+  const tableProps = useTableSort(headRow);
   // no keys -> no table
   const tableBodyProps = apiKeys
     ? { bodyRows: getBodyRows(apiKeys, onDelete) }

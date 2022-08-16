@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import type Color from 'color';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
-import TableUI, { useTable, BodyRow } from '@webapp/ui/Table';
+import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter } from './format/format';
 import {
@@ -210,7 +210,7 @@ function Table({
   palette,
 }: ProfilerTableProps) {
   const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
-  const tableProps = useTable(tableFormat);
+  const tableProps = useTableSort(tableFormat);
   const table = {
     headRow: tableFormat,
     bodyRows: getTableBodyRows({

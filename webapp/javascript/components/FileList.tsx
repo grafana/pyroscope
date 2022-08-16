@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 
 import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
-import TableUI, { useTable, BodyRow } from '@webapp/ui/Table';
+import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './FileList.module.scss';
 import CheckIcon from './CheckIcon';
@@ -69,7 +69,7 @@ function FileList(props: FileListProps) {
     selectedProfileId,
   } = props;
 
-  const tableProps = useTable(headRow);
+  const tableProps = useTableSort(headRow);
   const sortedProfilesIds = useMemo(() => {
     const m = tableProps.sortByDirection === 'asc' ? 1 : -1;
 
@@ -81,8 +81,6 @@ function FileList(props: FileListProps) {
       switch (tableProps.sortBy) {
         case fileNameColName:
           sorted = filesInfo.sort(
-            // add types depend on passed props type
-            // @ts-ignore
             (a, b) =>
               m * a[tableProps.sortBy].localeCompare(b[tableProps.sortBy])
           );
@@ -91,8 +89,6 @@ function FileList(props: FileListProps) {
           sorted = filesInfo.sort(
             (a, b) =>
               m *
-              // add types depend on passed props type
-              // @ts-ignore
               (new Date(a[tableProps.sortBy]).getTime() -
                 new Date(b[tableProps.sortBy]).getTime())
           );
@@ -118,12 +114,7 @@ function FileList(props: FileListProps) {
   return (
     <>
       <div className={`${styles.tableContainer} ${className}`}>
-        <TableUI
-          {...tableProps}
-          // fix types
-          // @ts-ignore
-          table={{ headRow, ...tableBodyProps }}
-        />
+        <TableUI {...tableProps} table={{ headRow, ...tableBodyProps }} />
       </div>
     </>
   );

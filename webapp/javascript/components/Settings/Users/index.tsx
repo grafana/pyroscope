@@ -4,7 +4,7 @@ import cl from 'classnames';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 
 import Button from '@webapp/ui/Button';
-import TableUI, { useTable } from '@webapp/ui/Table';
+import TableUI, { useTableSort } from '@webapp/ui/Table';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   reloadUsers,
@@ -93,7 +93,7 @@ function Users() {
     { name: '', label: 'Updated', sortable: 0 },
     { name: '', label: '', sortable: 0 },
   ];
-  const tableProps = useTable(headRow);
+  const tableProps = useTableSort(headRow);
   const tableBodyProps =
     displayUsers.length > 0
       ? getUserTableRows(
