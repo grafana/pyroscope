@@ -8,6 +8,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func newEBPFSpyCmd(cfg *config.EBPFSpy) *cobra.Command {
+func newEBPFSpyCmd(_ *config.EBPFSpy) *cobra.Command {
 	return nil
 }
