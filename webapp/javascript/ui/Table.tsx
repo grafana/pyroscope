@@ -27,7 +27,7 @@ export interface BodyRow {
   className?: string;
 }
 
-type TableBodyType =
+export type TableBodyType =
   | {
       type: 'not-filled';
       value: string | ReactNode;
@@ -93,7 +93,7 @@ function Table(props: TableProps) {
         <tr>
           {props.table.headRow.map(
             ({ sortable, label, name, ...rest }: any, idx: number) =>
-              !sortable ? (
+              !sortable || props.table.type === 'not-filled' ? (
                 // eslint-disable-next-line react/no-array-index-key
                 <th key={idx} {...rest}>
                   {label}

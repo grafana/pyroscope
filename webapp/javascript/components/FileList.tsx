@@ -113,10 +113,10 @@ function FileList(props: FileListProps) {
     <>
       <div className={`${styles.tableContainer} ${className}`}>
         <TableUI
+          {...rest}
           sortBy={sortBy}
           sortByDirection={sortByDirection}
           table={{ headRow, ...tableBodyProps }}
-          {...rest}
         />
       </div>
     </>

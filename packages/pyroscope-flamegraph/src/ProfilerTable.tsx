@@ -3,7 +3,11 @@ import clsx from 'clsx';
 import type Color from 'color';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
-import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
+import TableUI, {
+  useTableSort,
+  BodyRow,
+  TableBodyType,
+} from '@webapp/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter } from './format/format';
 import {
@@ -210,13 +214,13 @@ function Table({
   palette,
 }: ProfilerTableProps) {
   const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
-  const tableProps = useTableSort(tableFormat);
+  const tableSortProps = useTableSort(tableFormat);
   const table = {
     headRow: tableFormat,
-    bodyRows: getTableBodyRows({
+    ...getTableBody({
       flamebearer,
-      sortBy: tableProps.sortBy,
-      sortByDirection: tableProps.sortByDirection,
+      sortBy: tableSortProps.sortBy,
+      sortByDirection: tableSortProps.sortByDirection,
       viewDiff,
       fitMode,
       handleTableItemClick,
@@ -228,7 +232,7 @@ function Table({
 
   return (
     <TableUI
-      {...tableProps}
+      {...tableSortProps}
       tableBodyRef={tableBodyRef}
       table={table}
       className="flamegraph-table"
@@ -242,7 +246,7 @@ interface GetTableBodyRowsProps
   sortByDirection: string;
 }
 
-const getTableBodyRows = ({
+const getTableBody = ({
   flamebearer,
   sortBy,
   sortByDirection,
@@ -252,7 +256,7 @@ const getTableBodyRows = ({
   highlightQuery,
   palette,
   selectedItem,
-}: GetTableBodyRowsProps): BodyRow[] => {
+}: GetTableBodyRowsProps): TableBodyType => {
   const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
   const tableBodyCells = generateTable(flamebearer).sort(
@@ -328,7 +332,8 @@ const getTableBodyRows = ({
           x: DoubleCell & { name: string },
           color: Color,
           style: CSSProperties
-        ): BodyRow => ({
+        ): BodyRow & { type: 'self' } => ({
+          type: 'self',
           isRowSelected: isRowSelected(x.name),
           onClick: () => handleTableItemClick(x),
           cells: [
@@ -370,7 +375,8 @@ const getTableBodyRows = ({
           x: DoubleCell & { name: string },
           color: Color,
           style: CSSProperties
-        ): BodyRow => ({
+        ): BodyRow & { type: 'total' } => ({
+          type: 'total',
           isRowSelected: isRowSelected(x.name),
           onClick: () => handleTableItemClick(x),
           cells: [
@@ -412,7 +418,8 @@ const getTableBodyRows = ({
           x: DoubleCell & { name: string },
           color: Color,
           style: CSSProperties
-        ): BodyRow => ({
+        ): BodyRow & { type: 'diff' } => ({
+          type: 'diff',
           isRowSelected: isRowSelected(x.name),
           onClick: () => handleTableItemClick(x),
           cells: [
@@ -448,14 +455,13 @@ const getTableBodyRows = ({
           ],
         });
       default:
-        return (): BodyRow => ({
-          // todo
-          error: <div>Unsupported</div>,
+        return (): { type: 'unsupported' } => ({
+          type: 'unsupported',
         });
     }
   })();
 
-  return sorted
+  const rows = sorted
     .filter((x) => {
       if (!highlightQuery) {
         return true;
@@ -473,13 +479,24 @@ const getTableBodyRows = ({
       };
 
       if (x.type === 'double') {
-        acc.push(getDoubleRow(x, color, style));
+        const doubleRow = getDoubleRow(x, color, style);
+
+        if (doubleRow.type === 'unsupported') return acc;
+
+        acc.push(doubleRow);
         return acc;
       }
 
       acc.push(getSingleRow(x, color, style));
       return acc;
     }, [] as BodyRow[]);
+
+  return rows.length > 0
+    ? { bodyRows: rows, type: 'filled' as const }
+    : {
+        value: <div className="unsupported-format">Unsupported</div>,
+        type: 'not-filled' as const,
+      };
 };
 
 export interface ProfilerTableProps {
