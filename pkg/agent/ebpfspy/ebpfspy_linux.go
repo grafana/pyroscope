@@ -35,7 +35,7 @@ func Start(pid int, _ spy.ProfileType, sampleRate uint32, _ bool) (spy.Spy, erro
 		session: s,
 		stopCh:  make(chan struct{}),
 	}
-	k8sNode := os.Getenv("PYROSCOPE_K8S_NODE")
+	k8sNode := os.Getenv("PYROSCOPE_K8S_NODE") // todo arg
 	if k8sNode != "" {
 		res.sd, _ = sd.NewK8ServiceDiscovery(context.TODO(), k8sNode)
 	}

@@ -2,7 +2,8 @@
 // +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF. It is a rough copy of profile.py from BCC tools:
-//   https://github.com/iovisor/bcc/blob/master/tools/profile.py
+//
+//	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
 import (
@@ -70,14 +71,6 @@ func (sc *symbolCache) bccResolve(pid uint32, addr uint64, roundNumber int) (str
 	} else {
 		return C.GoString(symbol.demangle_name), uint64(symbol.offset), C.GoString(symbol.module)
 	}
-}
-
-func (sc *symbolCache) resolveSymbol(pid uint32, addr uint64, roundNumber int) string {
-	name, _, _ := sc.bccResolve(pid, addr, roundNumber)
-	if name == "" {
-		name = symbolUnknown
-	}
-	return name
 }
 
 func (sc *symbolCache) getOrCreateCacheEntry(pid pidKey) *symbolCacheEntry {

@@ -34,18 +34,17 @@ EXTRA_GO_TAGS ?=
 EXTRA_GOBUILD_ARGS ?=
 CGO_CFLAGS ?=
 CGO_LDFLAGS ?=
+EXTRA_CGO_CFLAGS ?=
+EXTRA_CGO_LDFLAGS ?=
 GO_TAGS = $(ENABLED_SPIES)$(EXTRA_GO_TAGS)
 ALPINE_TAG =
 
 ifneq (,$(findstring ebpfspy,$(GO_TAGS)))
-	GO_TAGS := $(GO_TAGS)
-	CGO_CFLAGS := $(CGO_CFLAGS)\
-	 	-I$(shell pwd)/pkg/agent/ebpfspy/bpf/libs/libbpf/include \
-		-I$(shell pwd)/pkg/agent/ebpfspy/bpf/libs/bcc-syms/include
-	CGO_CFLAGS := $(CGO_CFLAGS)
-	CGO_LDFLAGS := $(CGO_LDFLAGS) -lelf -lz -lbpf -lstdc++ -lbcc-syms \
-	 	-L$(shell pwd)/pkg/agent/ebpfspy/bpf/libs/libbpf/lib64 \
-		-L$(shell pwd)/pkg/agent/ebpfspy/bpf/libs/bcc-syms/lib
+	EXTRA_CGO_CFLAGS := $(EXTRA_CGO_CFLAGS) -I$(abspath ./third_party/libbpf/lib/include) \
+		-I$(abspath ./third_party/bcc/lib/include)
+	EXTRA_CGO_LDFLAGS := $(EXTRA_CGO_LDFLAGS)  -L$(abspath ./third_party/libbpf/lib/lib64) -lbpf \
+		-L$(abspath ./third_party/bcc/lib/lib) -lbcc-syms -lstdc++ -lelf -lz
+	THIRD_PARTY_DEPENDENCIES := $(THIRD_PARTY_DEPENDENCIES) build-profile-bpf build-bcc build-libbpf
 endif
 
 ifeq ("$(OS)", "Linux")
@@ -120,7 +119,9 @@ install-go-dependencies: ## installs golang dependencies
 
 .PHONY: build
 build: ## Builds the binary
-	$(GOBUILD) $(EXTRA_GOBUILD_ARGS) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
+	CGO_CFLAGS="$(CGO_CFLAGS) $(EXTRA_CGO_CFLAGS)" \
+		CGO_LDFLAGS="$(CGO_LDFLAGS) $(EXTRA_CGO_LDFLAGS)" \
+		$(GOBUILD) $(EXTRA_GOBUILD_ARGS) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
 
 .PHONY: build-release
 build-release: embedded-assets ## Builds the release build
@@ -149,6 +150,19 @@ build-phpspy-dependencies: ## Builds the PHP dependency
 	cd third_party/phpspy_src && git checkout $(PHPSPY_VERSION)
 	cd third_party/phpspy_src && USE_ZEND=1 make CFLAGS="-DUSE_DIRECT" || $(MAKE) print-deps-error-message
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
+
+.PHONY: build-libbpf
+build-libbpf:
+	$(MAKE) -C third_party/libbpf
+
+.PHONY: build-bcc
+build-bcc:
+	$(MAKE) -C third_party/bcc
+
+.PHONY: build-profile-bpf
+build-profile-bpf: build-libbpf
+	CFLAGS="-I$(abspath ./third_party/libbpf/lib/include)" $(MAKE) -C pkg/agent/ebpfspy/bpf
+
 
 .PHONY: build-third-party-dependencies
 build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES)) ## Builds third party dep
@@ -250,6 +264,9 @@ go-deps-graph: ## Generate the deps graph
 .PHONY: clean
 clean: ## Clean up storage
 	rm -rf tmp/pyroscope-storage
+	$(MAKE) -C third_party/bcc clean
+	$(MAKE) -C third_party/libbpf clean
+	$(MAKE) -C pkg/agent/ebpfspy/bpf clean
 
 .PHONY: update-contributors
 update-contributors: ## Update the contributors

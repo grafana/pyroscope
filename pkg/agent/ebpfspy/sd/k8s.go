@@ -128,8 +128,6 @@ func getContainerIdFromK8S(k8sContainerID string) (string, error) {
 func getContainerIDFromPID(pid uint32) string {
 	f, err := os.Open(fmt.Sprintf("/proc/%d/cgroup", pid))
 	if err != nil {
-		//fmt.Printf("getContainerIDFromPID %v\n", err)
-
 		return ""
 	}
 	defer f.Close()

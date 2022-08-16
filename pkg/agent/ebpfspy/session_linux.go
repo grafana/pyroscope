@@ -2,7 +2,8 @@
 // +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF. It is a rough copy of profile.py from BCC tools:
-//   https://github.com/iovisor/bcc/blob/master/tools/profile.py
+//
+//	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
 import "C"
@@ -10,15 +11,10 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/binary"
-	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
-	"sort"
-	"strconv"
-	"syscall"
-	"time"
-
 	"golang.org/x/sys/unix"
 	"sync"
+	"syscall"
 	"unsafe"
 
 	bpf "github.com/aquasecurity/libbpfgo"
@@ -30,12 +26,9 @@ import (
 import "C"
 
 type session struct {
-	pid            int
-	sampleRate     uint32
-	useComm        bool
-	useTGIDAsKey   bool
-	pidCacheSize   int
-	resolveSymbols bool
+	pid          int
+	sampleRate   uint32
+	pidCacheSize int
 
 	perfEventFds []int
 
@@ -50,7 +43,6 @@ type session struct {
 
 	modMutex sync.Mutex
 
-	modStat     map[string]*modInfo
 	roundNumber int
 }
 
@@ -58,21 +50,10 @@ const btf = "should not be used" // canary to detect we got relocations
 
 func newSession(pid int, sampleRate uint32) *session {
 	return &session{
-		pid:            pid,
-		sampleRate:     sampleRate,
-		useComm:        true,
-		useTGIDAsKey:   true,
-		resolveSymbols: true,
-
-		pidCacheSize: 256,
-		modStat:      make(map[string]*modInfo),
+		pid:          pid,
+		sampleRate:   sampleRate,
+		pidCacheSize: 256, //todo config
 	}
-}
-
-type modInfo struct {
-	mod  string
-	pids map[int]bool
-	cnt  int
 }
 
 func (s *session) Start() error {
@@ -90,7 +71,6 @@ func (s *session) Start() error {
 	if s.symCache, err = newSymbolCache(s.pidCacheSize); err != nil {
 		return err
 	}
-
 	args := bpf.NewModuleArgs{BPFObjBuff: profileBpf,
 		BTFObjPath: btf}
 	if s.module, err = bpf.NewModuleFromBufferArgs(args); err != nil {
@@ -108,7 +88,6 @@ func (s *session) Start() error {
 	if err = s.initArgs(); err != nil {
 		return err
 	}
-
 	if err = s.attachPerfEvent(); err != nil {
 		return err
 	}
@@ -116,19 +95,12 @@ func (s *session) Start() error {
 }
 
 func (s *session) Reset(cb func(name []byte, value uint64, pid uint32) error) error {
-	s.roundNumber += 1
-	fmt.Println("Reset", s.roundNumber)
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
-	t1 := time.Now()
-	cnt := 0
-	for k := range s.modStat {
-		delete(s.modStat, k)
-	}
+	s.roundNumber += 1
 	keys, values, batch, err := s.getCountsMapValues()
 	knownStacks := map[uint32]bool{}
-	t2 := time.Now()
 
 	type sf struct {
 		pid    uint32
@@ -146,80 +118,28 @@ func (s *session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		kStackID := int64(ck.kern_stack)
 		uStackID := int64(ck.user_stack)
 		count := binary.LittleEndian.Uint32(value)
-		buf := bytes.NewBuffer(nil)
-		comm := ""
-		if s.useComm {
-			comm = C.GoString(&ck.comm[0])
-			buf.Write([]byte(comm))
-			buf.Write([]byte{';'})
-		}
-		//todo rewrite so we can measure separately stack.GetValue & sym.resolve, also try to do concurrently
+		comm := C.GoString(&ck.comm[0])
 		uStack := s.getStack(uStackID, knownStacks)
 		kStack := s.getStack(kStackID, knownStacks)
-
 		sfs = append(sfs, sf{pid: pid, uStack: uStack, kStack: kStack, count: count, comm: comm})
-
-		cnt++
 	}
-	t3 := time.Now()
-
-	for _, sf := range sfs {
+	for _, it := range sfs {
 		buf := bytes.NewBuffer(nil)
-
-		if s.useComm {
-			buf.Write([]byte(sf.comm))
-			buf.Write([]byte{';'})
-		}
-		s.walkStack(buf, sf.uStack, sf.pid, true)
-		s.walkStack(buf, sf.kStack, sf.pid, false)
-		err = cb(buf.Bytes(), uint64(sf.count), sf.pid)
+		buf.Write([]byte(it.comm))
+		buf.Write([]byte{';'})
+		s.walkStack(buf, it.uStack, it.pid, true)
+		s.walkStack(buf, it.kStack, it.pid, false)
+		err = cb(buf.Bytes(), uint64(it.count), it.pid)
 		if err != nil {
 			return err
 		}
 	}
-
-	t4 := time.Now()
-
 	if err = s.clearCountsMap(keys, batch); err != nil {
 		return err
 	}
-	t5 := time.Now()
 	if err = s.clearStacksMap(knownStacks); err != nil {
 		return err
 	}
-	t6 := time.Now()
-	fmt.Printf("Reset done \n"+
-		"	stacktaces : %d \n"+
-		"	len(symcache): %d \n"+
-		"	all time %v\n"+
-		"		getCountsMapValues time %v\n"+
-		"		getStacks %v\n"+
-		"		walkStack %v\n"+
-		"			clearCountsMap %v\n"+
-		"			clearStacksMap %v\n",
-		cnt,
-		s.symCache.pid2Cache.Len(),
-		t6.Sub(t1),
-		t2.Sub(t1),
-		t3.Sub(t2),
-		t4.Sub(t3),
-		t5.Sub(t4),
-		t6.Sub(t5),
-	)
-
-	var mods []*modInfo
-
-	for _, mi := range s.modStat {
-		mods = append(mods, mi)
-
-	}
-	sort.Slice(mods[:], func(i, j int) bool {
-		return mods[i].cnt < mods[j].cnt
-	})
-	for _, it := range mods {
-		fmt.Printf("modstat %10d %10d %s\n", it.cnt, len(it.pids), it.mod)
-	}
-	fmt.Printf("total %d\n", len(mods))
 	return nil
 }
 
@@ -253,15 +173,8 @@ func (s *session) initArgs() error {
 	} else {
 		tgidFilter = uint32(s.pid)
 	}
-	b2i := func(b bool) uint8 {
-		if b {
-			return 1
-		}
-		return 0
-	}
 	args := C.struct_profile_bss_args_t{
 		tgid_filter: C.uint(tgidFilter),
-		use_comm:    C.uchar(b2i(s.useComm)),
 	}
 	err = s.mapArgs.UpdateValueFlags(unsafe.Pointer(&zero), unsafe.Pointer(&args), 0)
 	if err != nil {
@@ -304,7 +217,6 @@ func (s *session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
 	stack, err := s.mapStacks.GetValue(key)
 
 	if err != nil {
-		fmt.Printf("getStack err %v %x %x\n", err, stackIdU32, stackId)
 		return nil
 	}
 	knownStacks[stackIdU32] = true
@@ -322,29 +234,14 @@ func (s *session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 		if ip == 0 {
 			break
 		}
-		if s.resolveSymbols {
-			//sym := s.symCache.resolveSymbol(pid, ip)
-			name, _, mod := s.symCache.bccResolve(pid, ip, s.roundNumber)
-			if name == "" {
-				name = symbolUnknown
-			}
-			sym := name
-			if mod != "" {
-				mi, ok := s.modStat[mod]
-				if !ok {
-					mi = &modInfo{pids: make(map[int]bool), mod: mod}
-					s.modStat[mod] = mi
-				}
-				mi.pids[int(pid)] = true
-				mi.cnt += 1
-			}
-			if userspace || sym != symbolUnknown {
-				stackFrames = append(stackFrames, sym+";")
-			}
-		} else {
-			stackFrames = append(stackFrames, strconv.FormatInt(int64(ip), 16)+";")
-
+		sym, _, _ := s.symCache.bccResolve(pid, ip, s.roundNumber)
+		if !userspace && sym == "" {
+			continue
 		}
+		if sym == "" {
+			sym = symbolUnknown
+		}
+		stackFrames = append(stackFrames, sym+";")
 	}
 	reverse(stackFrames)
 	for _, s := range stackFrames {

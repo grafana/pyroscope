@@ -80,8 +80,12 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #            |_|
 FROM alpine:3.12 as ebpf-builder
 RUN apk add cmake make binutils gcc g++ clang musl-dev linux-headers zlib-dev elfutils-dev libelf-static zlib-static git openssh
-ADD pkg/agent/ebpfspy/bpf/Makefile pkg/agent/ebpfspy/bpf/profile.bpf.c pkg/agent/ebpfspy/bpf/profile.bpf.h /ebpfspy/
-RUN cd /ebpfspy && make libs/libbpf libs/bcc-syms profile.bpf.o
+ADD third_party/libbpf/Makefile /build/libbpf/
+RUN make -C /build/libbpf/
+ADD third_party/bcc/Makefile /build/bcc/
+RUN make -C /build/bcc/
+ADD pkg/agent/ebpfspy/bpf/Makefile pkg/agent/ebpfspy/bpf/profile.bpf.c pkg/agent/ebpfspy/bpf/profile.bpf.h /build/profile.bpf/
+RUN CFLAGS=-I/build/libbpf/lib/include make -C /build/profile.bpf
 
 #              _
 #             | |
@@ -113,8 +117,9 @@ COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
 COPY --from=phpspy-builder /var/www/html/third_party/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
-COPY --from=ebpf-builder /ebpfspy/libs pkg/agent/ebpfspy/bpf/libs
-COPY --from=ebpf-builder /ebpfspy/profile.bpf.o pkg/agent/ebpfspy/bpf/profile.bpf.o
+COPY --from=ebpf-builder /build/bcc/lib third_party/bcc/lib
+COPY --from=ebpf-builder /build/libbpf/lib third_party/libbpf/lib
+COPY --from=ebpf-builder /build/profile.bpf/profile.bpf.o pkg/agent/ebpfspy/bpf/profile.bpf.o
 COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
@@ -130,6 +135,8 @@ COPY scripts ./scripts
 # Alpine's default stack size too small for pyspy, causing exec mode with pyspy to segfault.
 # See https://github.com/pyroscope-io/pyroscope/issues/503
 RUN EMBEDDED_ASSETS_DEPS="" \
+    CGO_CFLAGS="-I./pkg/agent/ebpfspy/bpf/libs/libbpf/include -I./pkg/agent/ebpfspy/bpf/libs/bcc-syms/include" \
+    CGO_LDFLAGS="-L./pkg/agent/ebpfspy/bpf/libs/libbpf/lib64 -L./pkg/agent/ebpfspy/bpf/libs/bcc-syms/lib"\
     CGO_LDFLAGS_ALLOW="-Wl,-z,stack-size=0x200000" \
     EXTRA_LDFLAGS="-linkmode external -extldflags '-static -Wl,-z,stack-size=0x200000'" \
     make build-release

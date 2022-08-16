@@ -12,6 +12,9 @@ benchmark/grafana-*
 benchmark/node_modules
 benchmark/*.env
 
-pkg/agent/ebpfspy/bpf/libs
-pkg/agent/ebpfspy/bpf/libbpf-src
-pkg/agent/ebpfspy/bpf/bcc-src
+third_party/bcc/lib
+third_party/bcc/src
+third_party/libbpf/lib
+third_party/libbpf/src
+pkg/agent/ebpfspy/bpf/profile.bpf.o
+pkg/agent/ebpfspy/bpf/vmlinux.h

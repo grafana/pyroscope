@@ -48,9 +48,9 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
     if (arg->tgid_filter != 0 && tgid != arg->tgid_filter) {
         return 0;
     }
-    if (arg->use_comm) {
-	    bpf_get_current_comm(&key.comm, sizeof(key.comm));
-    }
+
+    bpf_get_current_comm(&key.comm, sizeof(key.comm));
+
 	key.kern_stack = bpf_get_stackid(ctx, &stacks, KERN_STACKID_FLAGS);
 	key.user_stack = bpf_get_stackid(ctx, &stacks, USER_STACKID_FLAGS);
 
