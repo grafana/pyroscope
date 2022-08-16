@@ -14,18 +14,6 @@ type node = {
   children: object;
 };
 
-function insert(node: node, name: string, value: number) {
-  // if (name in node.children) {
-  //   node.children[name].value += value;
-  // } else {
-  //   node.children[name] = {
-  //     name,
-  //     value,
-  //     children: {}
-  //   };
-  // }
-}
-
 export function convertPprofToProfile(
   pprofBuf: Uint8Array,
   selectedSampleType: string
@@ -38,7 +26,6 @@ export function convertPprofToProfile(
   };
 
   const pprofProfile = perftools.profiles.Profile.decode(pprofBuf);
-  console.log(pprofProfile);
 
   let sampleTypeIndex = -1;
   for (let i = 0; i < pprofProfile.sampleType.length; i++) {
@@ -140,8 +127,6 @@ export function convertPprofToProfile(
     'single',
     resultFlamebearer.levels
   );
-
-  console.log(resultFlamebearer);
 
   return {
     version: 1,
