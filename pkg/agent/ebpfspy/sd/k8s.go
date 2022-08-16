@@ -22,7 +22,7 @@ type K8SServiceDiscovery struct {
 	pid2Labels         map[uint32]*spy.Labels
 }
 
-var knownContainerIdPrefixes = []string{"docker://", "containerd://"}
+var knownContainerIDPrefixes = []string{"docker://", "containerd://"}
 var knownRuntimes = []string{"docker://", "containerd://"}
 
 func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscovery, error) {
@@ -67,7 +67,7 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 
 	for _, pod := range pods.Items {
 		for _, status := range pod.Status.ContainerStatuses {
-			cid, err := getContainerIdFromK8S(status.ContainerID)
+			cid, err := getContainerIDFromK8S(status.ContainerID)
 			if err != nil {
 				return err
 			}
@@ -114,8 +114,8 @@ func isKnownContainerRuntime(criVersion string) bool {
 	return false
 }
 
-func getContainerIdFromK8S(k8sContainerID string) (string, error) {
-	for _, p := range knownContainerIdPrefixes {
+func getContainerIDFromK8S(k8sContainerID string) (string, error) {
+	for _, p := range knownContainerIDPrefixes {
 		if strings.HasPrefix(k8sContainerID, p) {
 			return strings.TrimPrefix(k8sContainerID, p), nil
 		}
