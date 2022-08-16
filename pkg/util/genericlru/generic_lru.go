@@ -40,7 +40,7 @@ func (l *GenericLRU[K, V]) Keys() (keys []K) {
 	for _, key := range l.lru.Keys() {
 		keys = append(keys, key.(K))
 	}
-	return
+	return keys
 }
 
 func (l *GenericLRU[K, V]) Len() int {
