@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.32.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.0...@pyroscope/webapp@1.32.1) (2022-08-16)
+
+
+### Bug Fixes
+
+* **webapp:** refresh data when (re)submitting query ([#1410](https://github.com/pyroscope-io/pyroscope/issues/1410)) ([3554f84](https://github.com/pyroscope-io/pyroscope/commit/3554f84060ab54836e9ae1f2b49f9174c3e66041)), closes [#1406](https://github.com/pyroscope-io/pyroscope/issues/1406)
+
+
+
+
+
 # [1.32.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.1...@pyroscope/webapp@1.32.0) (2022-08-16)
 
 
