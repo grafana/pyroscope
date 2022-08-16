@@ -25,6 +25,8 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import PageTitle from '@webapp/components/PageTitle';
+import { formatTitle } from './formatTitle';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -92,6 +94,7 @@ function ComparisonDiffApp() {
 
   return (
     <div>
+      <PageTitle title={formatTitle('Diff', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar

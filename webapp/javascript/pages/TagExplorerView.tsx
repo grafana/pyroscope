@@ -34,10 +34,12 @@ import {
   ALL_TAGS,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
+import PageTitle from '@webapp/components/PageTitle';
 import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
+import { formatTitle } from './formatTitle';
 
 const getTimelineColor = (index: number, palette: Color[]): Color =>
   Color(palette[index % (palette.length - 1)]);
@@ -154,80 +156,85 @@ function TagExplorerView() {
   }, [] as string[]);
 
   return (
-    <div className={styles.tagExplorerView} data-testid="tag-explorer-view">
-      <Toolbar hideTagsBar />
-      <Box>
-        <ExploreHeader
-          appName={appName}
-          tags={tags}
-          whereDropdownItems={whereDropdownItems}
-          selectedTag={tagExplorerView.groupByTag}
-          selectedTagValue={tagExplorerView.groupByTagValue}
-          handleGroupByTagChange={handleGroupedByTagChange}
-          handleGroupByTagValueChange={handleGroupByTagValueChange}
-        />
-        <div className={styles.timelineWrapper}>
-          {type === 'loading' ? (
-            <LoadingSpinner />
-          ) : (
-            <TimelineChartWrapper
-              selectionType="double"
-              mode="multiple"
-              timezone={offset === 0 ? 'utc' : 'browser'}
-              data-testid="timeline-explore-page"
-              id="timeline-chart-explore-page"
-              timelineGroups={filteredGroupsData}
-              // to not "dim" timelines when "All" option is selected
-              activeGroup={groupByTagValue !== ALL_TAGS ? groupByTagValue : ''}
-              showTagsLegend={filteredGroupsData.length > 1}
-              handleGroupByTagValueChange={handleGroupByTagValueChange}
-              onSelect={(from, until) =>
-                dispatch(setDateRange({ from, until }))
-              }
-              height="125px"
-              format="lines"
-            />
-          )}
-        </div>
-      </Box>
-      <Box>
-        <Table
-          appName={appName.unwrapOr('')}
-          whereDropdownItems={whereDropdownItems}
-          groupByTag={groupByTag}
-          groupByTagValue={groupByTagValue}
-          groupsData={filteredGroupsData}
-          handleGroupByTagValueChange={handleGroupByTagValueChange}
-          isLoading={type === 'loading'}
-        />
-      </Box>
-      <Box>
-        <div className={styles.flamegraphWrapper}>
-          {type === 'loading' ? (
-            <LoadingSpinner />
-          ) : (
-            <FlamegraphRenderer
-              showCredit={false}
-              profile={activeTagProfile}
-              colorMode={colorMode}
-              ExportData={
-                activeTagProfile && (
-                  <ExportData
-                    flamebearer={activeTagProfile}
-                    exportPNG
-                    exportJSON
-                    exportPprof
-                    exportHTML
-                    exportFlamegraphDotCom
-                    exportFlamegraphDotComFn={exportFlamegraphDotComFn}
-                  />
-                )
-              }
-            />
-          )}
-        </div>
-      </Box>
-    </div>
+    <>
+      <PageTitle title={formatTitle('Tag Explorer View', query)} />
+      <div className={styles.tagExplorerView} data-testid="tag-explorer-view">
+        <Toolbar hideTagsBar />
+        <Box>
+          <ExploreHeader
+            appName={appName}
+            tags={tags}
+            whereDropdownItems={whereDropdownItems}
+            selectedTag={tagExplorerView.groupByTag}
+            selectedTagValue={tagExplorerView.groupByTagValue}
+            handleGroupByTagChange={handleGroupedByTagChange}
+            handleGroupByTagValueChange={handleGroupByTagValueChange}
+          />
+          <div className={styles.timelineWrapper}>
+            {type === 'loading' ? (
+              <LoadingSpinner />
+            ) : (
+              <TimelineChartWrapper
+                selectionType="double"
+                mode="multiple"
+                timezone={offset === 0 ? 'utc' : 'browser'}
+                data-testid="timeline-explore-page"
+                id="timeline-chart-explore-page"
+                timelineGroups={filteredGroupsData}
+                // to not "dim" timelines when "All" option is selected
+                activeGroup={
+                  groupByTagValue !== ALL_TAGS ? groupByTagValue : ''
+                }
+                showTagsLegend={filteredGroupsData.length > 1}
+                handleGroupByTagValueChange={handleGroupByTagValueChange}
+                onSelect={(from, until) =>
+                  dispatch(setDateRange({ from, until }))
+                }
+                height="125px"
+                format="lines"
+              />
+            )}
+          </div>
+        </Box>
+        <Box>
+          <Table
+            appName={appName.unwrapOr('')}
+            whereDropdownItems={whereDropdownItems}
+            groupByTag={groupByTag}
+            groupByTagValue={groupByTagValue}
+            groupsData={filteredGroupsData}
+            handleGroupByTagValueChange={handleGroupByTagValueChange}
+            isLoading={type === 'loading'}
+          />
+        </Box>
+        <Box>
+          <div className={styles.flamegraphWrapper}>
+            {type === 'loading' ? (
+              <LoadingSpinner />
+            ) : (
+              <FlamegraphRenderer
+                showCredit={false}
+                profile={activeTagProfile}
+                colorMode={colorMode}
+                ExportData={
+                  activeTagProfile && (
+                    <ExportData
+                      flamebearer={activeTagProfile}
+                      exportPNG
+                      exportJSON
+                      exportPprof
+                      exportHTML
+                      exportFlamegraphDotCom
+                      exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+                    />
+                  )
+                }
+              />
+            )}
+          </div>
+        </Box>
+      </div>
+    </>
   );
 }
 

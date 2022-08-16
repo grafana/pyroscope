@@ -21,6 +21,7 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import PageTitle from '@webapp/components/PageTitle';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, {
@@ -30,6 +31,7 @@ import useTimelines, {
 } from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
+import { formatTitle } from './formatTitle';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -79,6 +81,7 @@ function ComparisonApp() {
 
   return (
     <div>
+      <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar

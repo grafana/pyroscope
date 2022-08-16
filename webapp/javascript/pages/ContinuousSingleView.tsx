@@ -6,6 +6,7 @@ import Box from '@webapp/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import {
   fetchSingleView,
+  selectQueries,
   setDateRange,
 } from '@webapp/redux/reducers/continuous';
 import useColorMode from '@webapp/hooks/colorMode.hook';
@@ -15,14 +16,17 @@ import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import { formatTitle } from './formatTitle';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
 
-  const { from, until, query, refreshToken, maxNodes } = useAppSelector(
+  const { query } = useAppSelector(selectQueries);
+  const { from, until, refreshToken, maxNodes } = useAppSelector(
     (state) => state.continuous
   );
 
@@ -99,6 +103,7 @@ function ContinuousSingleView() {
 
   return (
     <div>
+      <PageTitle title={formatTitle('Single', query)} />
       <div className="main-wrapper">
         <Toolbar />
         <Box>
