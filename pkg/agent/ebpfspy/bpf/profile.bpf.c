@@ -61,3 +61,5 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 		bpf_map_update_elem(&counts, &key, &one, BPF_NOEXIST);
 	return 0;
 }
+
+char _license[] SEC("license") = "GPL"; //todo

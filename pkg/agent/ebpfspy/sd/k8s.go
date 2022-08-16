@@ -25,7 +25,6 @@ type K8SServiceDiscovery struct {
 }
 
 func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscovery, error) {
-
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
