@@ -20,7 +20,7 @@ import (
 )
 
 func TestIndex(t *testing.T) {
-	a, err := newProfileIndex(32, newHeadMetrics(prometheus.NewRegistry()))
+	a, err := newProfileIndex(16, newHeadMetrics(prometheus.NewRegistry()))
 	require.NoError(t, err)
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
