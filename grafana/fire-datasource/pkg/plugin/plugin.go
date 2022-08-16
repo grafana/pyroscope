@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -91,8 +92,18 @@ func (d *FireDatasource) callProfileTypes(ctx context.Context, req *backend.Call
 	return nil
 }
 
+type SeriesRequestJson struct {
+	Matchers []string `json:"matchers"`
+}
+
 func (d *FireDatasource) callSeries(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
-	res, err := d.client.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{}))
+	parsedUrl, err := url.Parse(req.URL)
+	matchers, ok := parsedUrl.Query()["matchers"]
+	if !ok {
+		matchers = []string{"{}"}
+	}
+
+	res, err := d.client.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{Matchers: matchers}))
 	if err != nil {
 		return err
 	}
