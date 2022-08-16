@@ -39,11 +39,11 @@ import { PAGES } from './constants';
 
 import styles from './TagExplorerView.module.scss';
 
-const TIMELINE_COLORS = [
+const TIMELINE_SERIES_COLORS = [
   Color.rgb(115, 191, 105),
   Color.rgb(244, 213, 152),
-  Color.rgb(112, 219, 237),
   Color.rgb(174, 162, 224),
+  Color.rgb(112, 219, 237),
   Color.rgb(224, 117, 45),
   Color.rgb(191, 27, 0),
   Color.rgb(229, 168, 226),
@@ -121,7 +121,7 @@ function TagExplorerView() {
             acc.push({
               tagName,
               data,
-              color: getTimelineColor(index, TIMELINE_COLORS),
+              color: getTimelineColor(index, TIMELINE_SERIES_COLORS),
             });
 
             return acc;
