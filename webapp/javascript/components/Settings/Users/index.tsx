@@ -20,7 +20,7 @@ import Input from '@webapp/ui/Input';
 import { getUserTableRows } from './getUserTableRows';
 
 import userStyles from './Users.module.css';
-import tableStyles from '../SettingsTable.module.css';
+import tableStyles from '../SettingsTable.module.scss';
 
 function Users() {
   const dispatch = useAppDispatch();

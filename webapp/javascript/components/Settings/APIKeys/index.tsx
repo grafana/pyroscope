@@ -14,7 +14,7 @@ import {
   deleteAPIKey,
 } from '@webapp/redux/reducers/settings';
 import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
-import styles from '../SettingsTable.module.css';
+import styles from '../SettingsTable.module.scss';
 
 const ApiKeys = () => {
   const dispatch = useAppDispatch();
