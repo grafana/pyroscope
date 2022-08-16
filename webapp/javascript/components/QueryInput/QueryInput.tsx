@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWindowWidth } from '@react-hook/window-size';
 import TextareaAutosize from 'react-textarea-autosize';
+import cx from 'classnames';
 
 import { Query, brandQuery } from '@webapp/models/query';
 import { Prism } from '@webapp/util/prism';
@@ -65,10 +66,13 @@ export default function QueryInput({
   return (
     <form
       aria-label="query-input"
-      className="tags-query"
+      className={styles.wrapper}
       onSubmit={onFormSubmit}
     >
-      <pre className="tags-highlighted language-promql" aria-hidden="true">
+      <pre
+        className={cx(styles.highlight, 'language-promql')}
+        aria-hidden="true"
+      >
         <code
           className="language-promql"
           id="highlighting-content"
@@ -79,7 +83,7 @@ export default function QueryInput({
         </code>
       </pre>
       <TextareaAutosize
-        className="tags-input"
+        className={styles.input}
         ref={textareaRef}
         value={query}
         spellCheck="false"
