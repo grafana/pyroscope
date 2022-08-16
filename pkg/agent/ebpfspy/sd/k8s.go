@@ -135,28 +135,34 @@ func getContainerIDFromPID(pid uint32) string {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	res := ""
 	for scanner.Scan() {
 		line := scanner.Text()
-		parts := dockerPattern.FindStringSubmatch(line)
-		if parts != nil {
-			res = parts[1]
-		}
-		parts = kubePattern.FindStringSubmatch(line)
-		if parts != nil {
-			res = parts[1]
-		}
-		parts = cgroupV2DockerScope.FindStringSubmatch(line)
-		if parts != nil {
-			res = parts[1]
+		cid := getContainerIDFromCGroup(line)
+		if cid != "" {
+			return cid
 		}
 	}
-	return res
+	return ""
+}
+
+func getContainerIDFromCGroup(line string) string {
+	parts := dockerPattern.FindStringSubmatch(line)
+	if parts != nil {
+		return parts[1]
+	}
+	parts = kubePattern.FindStringSubmatch(line)
+	if parts != nil {
+		return parts[1]
+	}
+	parts = cgroupV2ScopePattern.FindStringSubmatch(line)
+	if parts != nil {
+		return parts[1]
+	}
+	return ""
 }
 
 var (
-	//todo need containerd & cgroupv2
-	kubePattern         = regexp.MustCompile(`\d+:.+:/kubepods/[^/]+/pod[^/]+/([0-9a-f]{64})`)
-	dockerPattern       = regexp.MustCompile(`\d+:.+:/docker/pod[^/]+/([0-9a-f]{64})`)
-	cgroupV2DockerScope = regexp.MustCompile(`^0::.*/docker-([0-9a-f]{64})\.scope$`)
+	kubePattern          = regexp.MustCompile(`\d+:.+:/kubepods/[^/]+/pod[^/]+/([0-9a-f]{64})`)
+	dockerPattern        = regexp.MustCompile(`\d+:.+:/docker/pod[^/]+/([0-9a-f]{64})`)
+	cgroupV2ScopePattern = regexp.MustCompile(`^0::.*/(?:docker-|cri-containerd-)([0-9a-f]{64})\.scope$`)
 )
