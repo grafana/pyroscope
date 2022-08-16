@@ -13,7 +13,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Run revive action
-        uses: petethepig/revive-action@v5
+        #        uses: petethepig/revive-action@v5
+        uses: morphy2k/revive-action@v2.4.0
         with:
           config: revive.toml
           # same as in the `lint` rule of Makefile
