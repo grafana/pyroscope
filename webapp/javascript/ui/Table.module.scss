@@ -48,6 +48,10 @@
         color: var(--ps-table-highlight-row-text);
       }
 
+      &.isRowDisabled td {
+        text-decoration: line-through;
+      }
+
       &:not(.isRowSelected) {
         &:hover {
           cursor: pointer;
