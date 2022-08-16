@@ -21,6 +21,26 @@ import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
 
+import {
+  FlamegraphRenderer,
+  convertPprofToProfile,
+} from '@pyroscope/flamegraph/src';
+
+function base64ToArrayBuffer(base64: string) {
+  var binaryString = window.atob(base64);
+  var len = binaryString.length;
+  var bytes = new Uint8Array(len);
+  for (var i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+const pprofBuf = base64ToArrayBuffer(`
+SKCe2fq3l7+8FgoECAEQAgoECAMQBFCPvs2MBFoECAMQBGCAreIEIhEIARjPk6+DECIFCAEQgAMQASoICAEQBRgFIAYiEAgCGPOtpoMQIgQIAhA/EAEqCAgCEAcYByAIIhEIAxjf/ZyDECIFCAMQtQEQASoICAMQCRgJIAoiEQgEGPe6qIMQIgUIBBC8ChABKggIBBALGAsgDCIRCAUY7+uogxAiBQgFENEREAEqCAgFEA0YDSAMIhEIBhiHl6mDECIFCAYQ5BYQASoICAYQDhgOIAwiEQgHGNu+qYMQIgUIBxC1GBABKggIBxAPGA8gDCIRCAgY18ipgxAiBQgIEMoZEAEqCAgIEBAYECAMIhEICRj3hrSDECIFCAkQuQEQASoICAkQERgRIBISEhAQEIDQpUwKCQECAwQFBgcICSIcCAoYsPGjhBAiBAgKEA0iBAgLEBciBAgMECYQASoICAoQExgTIBQqCAgLEBUYFSAUKggIDBAWGBYgFCIRCAsY6+GngxAiBQgNEOEBEAEqCAgNEBcYFyAMEgsQARCAreIECAoICyIRCAwY74+vgxAiBQgOEN0CEAEqCAgOEBgYGCAGIhAIDRj3paaDECIECA8QfxABKggIDxAZGBkgGiIRCA4Yl6mpgxAiBQgGEK0UEAESDxAWEIDe82gKBgwNDgcICSIRCA8Yj5WvgxAiBQgQEI4DEAEqCAgQEBsYGyAGIhAIEBjPsKaDECIECBEQSRABKggIERAcGBwgCCIRCBEYi/ucgxAiBQgSEKEBEAEqCAgSEB0YHSAKIhEIEhir8KiDECIFCBMQsRIQASoICBMQHhgeIAwiEQgTGLP8qIMQIgUIFBCBExABKggIFBAfGB8gDCIRCBQY97GpgxAiBQgVEKAXEAEqCAgVECAYICAMIhEIFRjDvqmDECIFCAcQvBgQARISEAMQgIenDgoJDxAREhMUFQgJIhEIFhiPhq+DECIFCBYQ6QEQASoICBYQIRghIAYiFggXGJejpoMQIgQIFxAeIgQIGBBZEAEqCAgXECIYIiAjKggIGBAkGCQgGiIRCBgYu5epgxAiBQgGEOEWEAESDxABEICt4gQKBhYXGAcICSIRCBkYj7GpgxAiBQgZEI4XEAEqCAgZECUYJSAMIhEIGhjDuK+DECIFCBoQ7AMQASoICBoQJhgmICciGAgbGPear4MQIgUIGxCgBCIFCBwQygEQASoICBsQKBgoICcqCAgcECkYKSAnIhEIHBj7yKmDECIFCAgQvxkQARITEAEQgK3iBAoKDxAREhMZGhscCSIRCB0Y55CpgxAiBQgGEL8WEAESDxADEICHpw4KBgwNHQcICRoECAE4ATIAMgdzYW1wbGVzMgVjb3VudDIDY3B1MgtuYW5vc2Vjb25kczIZcnVudGltZS5wdGhyZWFkX2NvbmRfd2FpdDJAL29wdC9ob21lYnJldy9DZWxsYXIvZ28vMS4xNi4xL2xpYmV4ZWMvc3JjL3J1bnRpbWUvc3lzX2Rhcndpbi5nbzIRcnVudGltZS5zZW1hc2xlZXAyPy9vcHQvaG9tZWJyZXcvQ2VsbGFyL2dvLzEuMTYuMS9saWJleGVjL3NyYy9ydW50aW1lL29zX2Rhcndpbi5nbzIRcnVudGltZS5ub3Rlc2xlZXAyPy9vcHQvaG9tZWJyZXcvQ2VsbGFyL2dvLzEuMTYuMS9saWJleGVjL3NyYy9ydW50aW1lL2xvY2tfc2VtYS5nbzINcnVudGltZS5tUGFyazI6L29wdC9ob21lYnJldy9DZWxsYXIvZ28vMS4xNi4xL2xpYmV4ZWMvc3JjL3J1bnRpbWUvcHJvYy5nbzINcnVudGltZS5zdG9wbTIUcnVudGltZS5maW5kcnVubmFibGUyEHJ1bnRpbWUuc2NoZWR1bGUyDnJ1bnRpbWUucGFya19tMg1ydW50aW1lLm1jYWxsMj4vb3B0L2hvbWVicmV3L0NlbGxhci9nby8xLjE2LjEvbGliZXhlYy9zcmMvcnVudGltZS9hc21fYXJtNjQuczIJbWFpbi53b3JrMjYvVXNlcnMvZG1pdHJ5L0Rldi9wcy9weXJvc2NvcGUvZXhhbXBsZXMvZ29sYW5nL21haW4uZ28yEW1haW4uc2xvd0Z1bmN0aW9uMgltYWluLm1haW4yDHJ1bnRpbWUubWFpbjIOcnVudGltZS5rZXZlbnQyD3J1bnRpbWUubmV0cG9sbDJEL29wdC9ob21lYnJldy9DZWxsYXIvZ28vMS4xNi4xL2xpYmV4ZWMvc3JjL3J1bnRpbWUvbmV0cG9sbF9rcXVldWUuZ28yG3J1bnRpbWUucHRocmVhZF9jb25kX3NpZ25hbDIScnVudGltZS5zZW1hd2FrZXVwMhJydW50aW1lLm5vdGV3YWtldXAyDnJ1bnRpbWUuc3RhcnRtMg1ydW50aW1lLndha2VwMhVydW50aW1lLnJlc2V0c3Bpbm5pbmcyDnJ1bnRpbWUud3JpdGUxMg1ydW50aW1lLndyaXRlMkEvb3B0L2hvbWVicmV3L0NlbGxhci9nby8xLjE2LjEvbGliZXhlYy9zcmMvcnVudGltZS90aW1lX25vZmFrZS5nbzIUcnVudGltZS5uZXRwb2xsQnJlYWsyFXJ1bnRpbWUud2FrZU5ldFBvbGxlcjIQcnVudGltZS5tb2R0aW1lcjI6L29wdC9ob21lYnJldy9DZWxsYXIvZ28vMS4xNi4xL2xpYmV4ZWMvc3JjL3J1bnRpbWUvdGltZS5nbzIScnVudGltZS5yZXNldHRpbWVyMhVydW50aW1lLnJlc2V0Rm9yU2xlZXA=
+
+`);
+
 function Settings() {
   const { path, url } = useRouteMatch();
   const currentUser = useAppSelector(selectCurrentUser);
@@ -104,6 +124,12 @@ function Settings() {
             </Route>
             <Route path={`${path}/security`}>
               <Security />
+            </Route>
+            <Route exact path={`${path}/pprof`}>
+              <FlamegraphRenderer
+                profile={convertPprofToProfile(pprofBuf, 'samples')}
+                ExportData={null}
+              />
             </Route>
             <Route exact path={`${path}/users`}>
               <Users />

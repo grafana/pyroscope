@@ -5,6 +5,7 @@ import Flamegraph from './FlameGraph/FlameGraphComponent/Flamegraph';
 import { DefaultPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 import { FlamegraphRenderer } from './FlamegraphRenderer';
 import { convertJaegerTraceToProfile } from './convert/convertJaegerTraceToProfile';
+import { convertPprofToProfile } from './convert/convertPprofToProfile';
 import { diffTwoProfiles } from './convert/diffTwoProfiles';
 
 export {
@@ -13,5 +14,6 @@ export {
   FlamegraphRenderer,
   Box,
   convertJaegerTraceToProfile,
+  convertPprofToProfile,
   diffTwoProfiles,
 };

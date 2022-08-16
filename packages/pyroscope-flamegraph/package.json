@@ -30,5 +30,8 @@
   },
   "devDependencies": {
     "@pyroscope/models": "^0.4.2"
+  },
+  "dependencies": {
+    "pprof": "^3.2.0"
   }
 }
