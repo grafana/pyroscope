@@ -103,7 +103,7 @@ function ContinuousSingleView() {
 
   return (
     <div>
-      <PageTitle title={formatTitle('Single View', query)} />
+      <PageTitle title={formatTitle('Single', query)} />
       <div className="main-wrapper">
         <Toolbar />
         <Box>

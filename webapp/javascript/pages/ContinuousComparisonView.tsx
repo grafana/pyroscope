@@ -81,9 +81,7 @@ function ComparisonApp() {
 
   return (
     <div>
-      <PageTitle
-        title={formatTitle('Comparison View', leftQuery, rightQuery)}
-      />
+      <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar

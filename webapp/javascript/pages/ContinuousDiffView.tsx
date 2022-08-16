@@ -94,7 +94,7 @@ function ComparisonDiffApp() {
 
   return (
     <div>
-      <PageTitle title={formatTitle('Diff View', leftQuery, rightQuery)} />
+      <PageTitle title={formatTitle('Diff', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar
