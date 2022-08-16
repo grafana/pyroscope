@@ -22,6 +22,7 @@ export interface BodyRow {
   isRowDisabled?: boolean;
   cells: Cell[];
   onClick?: () => void;
+  className?: string;
 }
 
 interface Table {
@@ -34,6 +35,7 @@ interface Table {
   error?: { value: string; className: string };
 }
 
+// rename to useTableSort and call only when sort is needed
 // give type
 // sortable cells by default
 export const useTable = (
@@ -123,7 +125,7 @@ function Table(props: TableProps) {
         ) : (
           // @ts-ignore
           props.table.bodyRows.map(
-            ({ cells, isRowSelected, isRowDisabled, ...rest }) => {
+            ({ cells, isRowSelected, isRowDisabled, className, ...rest }) => {
               // The problem is that when you switch apps or time-range and the function
               // names stay the same it leads to an issue where rows don't get re-rendered
               // So we force a rerender each time.
@@ -133,7 +135,7 @@ function Table(props: TableProps) {
                 <tr
                   key={renderID}
                   {...rest}
-                  className={clsx({
+                  className={clsx(className, {
                     [styles.isRowSelected]: isRowSelected,
                     // todo: add styles for disabled
                     [styles.isRowDisabled]: isRowDisabled,

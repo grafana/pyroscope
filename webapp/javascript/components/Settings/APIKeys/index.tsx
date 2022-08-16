@@ -7,7 +7,7 @@ import Icon from '@webapp/ui/Icon';
 import TableUI, { useTable, BodyRow } from '@webapp/ui/Table';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
-import type { APIKeys } from '@webapp/models/apikeys';
+import type { APIKey, APIKeys } from '@webapp/models/apikeys';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   reloadApiKeys,
@@ -20,7 +20,7 @@ import styles from '../SettingsTable.module.scss';
 const getBodyRows = (keys: APIKeys, onDelete: any): BodyRow[] => {
   const now = new Date();
 
-  const handleDeleteClick = (key: ShamefulAny) => {
+  const handleDeleteClick = (key: APIKey) => {
     confirmDelete('this key', () => {
       onDelete(key);
     });
@@ -67,7 +67,7 @@ const ApiKeys = () => {
     dispatch(reloadApiKeys());
   }, []);
 
-  const onDelete = (key: ShamefulAny) => {
+  const onDelete = (key: APIKey) => {
     dispatch(deleteAPIKey(key))
       .unwrap()
       .then(() => {
