@@ -44,7 +44,7 @@ type session struct {
 	module    *bpf.Module
 	mapCounts *bpf.BPFMap
 	mapStacks *bpf.BPFMap
-	mapBSS    *bpf.BPFMap
+	mapArgs   *bpf.BPFMap
 	prog      *bpf.BPFProg
 	link      *bpf.BPFLink
 
@@ -105,7 +105,7 @@ func (s *session) Start() error {
 	if err = s.findMaps(); err != nil {
 		return err
 	}
-	if err = s.initBSS(); err != nil {
+	if err = s.initArgs(); err != nil {
 		return err
 	}
 
@@ -233,7 +233,7 @@ func (s *session) Stop() {
 
 func (s *session) findMaps() error {
 	var err error
-	if s.mapBSS, err = s.module.GetMap(".bss"); err != nil {
+	if s.mapArgs, err = s.module.GetMap("args"); err != nil {
 		return err
 	}
 	if s.mapCounts, err = s.module.GetMap("counts"); err != nil {
@@ -244,7 +244,7 @@ func (s *session) findMaps() error {
 	}
 	return nil
 }
-func (s *session) initBSS() error {
+func (s *session) initArgs() error {
 	var zero uint32
 	var err error
 	var tgidFilter uint32
@@ -260,11 +260,10 @@ func (s *session) initBSS() error {
 		return 0
 	}
 	args := C.struct_profile_bss_args_t{
-		tgid_filter:     C.uint(tgidFilter),
-		use_tgid_as_key: C.uchar(b2i(s.useTGIDAsKey)),
-		use_comm:        C.uchar(b2i(s.useComm)),
+		tgid_filter: C.uint(tgidFilter),
+		use_comm:    C.uchar(b2i(s.useComm)),
 	}
-	err = s.mapBSS.UpdateValueFlags(unsafe.Pointer(&zero), unsafe.Pointer(&args), 0)
+	err = s.mapArgs.UpdateValueFlags(unsafe.Pointer(&zero), unsafe.Pointer(&args), 0)
 	if err != nil {
 		return err
 	}

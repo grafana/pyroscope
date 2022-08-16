@@ -1,3 +1,5 @@
 libbpf*
 bcc-src
 libs/
+profile.bpf.o
+vmlinux.h

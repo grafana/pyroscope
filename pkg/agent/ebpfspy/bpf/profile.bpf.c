@@ -17,10 +17,18 @@ struct {
 	__uint(max_entries, PROFILE_MAPS_SIZE);
 } stacks SEC(".maps");
 
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, u32);
+    __type(value, struct profile_bss_args_t);
+    __uint(max_entries, 1);
+} args SEC(".maps");
+
 #define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
 #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
 
-struct profile_bss_args_t args;
+
 
 SEC("perf_event")
 int do_perf_event(struct bpf_perf_event_data *ctx)
@@ -28,21 +36,19 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
     u64 id = bpf_get_current_pid_tgid();
     u32 tgid = id >> 32;
     u32 pid = id;
-	struct profile_key_t key = {};
-	if (args.use_tgid_as_key) {
-	    key.pid = tgid;
-	} else {
-	    key.pid = pid;
-	}
-	u32 *val, one = 1;
-
+	struct profile_key_t key = { .pid = tgid };
+	u32 *val, one = 1, zero = 0;
+	struct profile_bss_args_t *arg = bpf_map_lookup_elem(&args, &zero);
+    if (!arg) {
+        return 0;
+    }
     if (pid == 0) {
         return 0;
     }
-    if (args.tgid_filter != 0 && tgid != args.tgid_filter) {
+    if (arg->tgid_filter != 0 && tgid != arg->tgid_filter) {
         return 0;
     }
-    if (args.use_comm) {
+    if (arg->use_comm) {
 	    bpf_get_current_comm(&key.comm, sizeof(key.comm));
     }
 	key.kern_stack = bpf_get_stackid(ctx, &stacks, KERN_STACKID_FLAGS);
@@ -55,6 +61,3 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 		bpf_map_update_elem(&counts, &key, &one, BPF_NOEXIST);
 	return 0;
 }
-
-
-char _license[] SEC("license") = "GPL"; //todo

@@ -41,10 +41,10 @@ func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscove
 		return nil, err
 	}
 	criVersion := node.Status.NodeInfo.ContainerRuntimeVersion
+	fmt.Println("node.Status.NodeInfo.ContainerRuntimeVersion", criVersion)
 	if !strings.HasPrefix(criVersion, "docker://") {
 		return nil, fmt.Errorf("unknown cri %s", criVersion)
 	}
-	//fmt.Println(criVersion)
 	//fmt.Printf("%v\n", node)
 
 	return &K8SServiceDiscovery{
