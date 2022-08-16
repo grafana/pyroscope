@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import 'react-dom';
 import { TagsState } from '@webapp/redux/reducers/continuous';
 import Dropdown, {
