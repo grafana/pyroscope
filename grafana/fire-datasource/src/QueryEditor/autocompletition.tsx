@@ -1,59 +1,21 @@
 import type { Monaco, monacoTypes } from '@grafana/ui';
-import {SeriesMessage} from "../types";
+import { SeriesMessage } from '../types';
 
-// export function getCompletionProvider(
-//   monaco: Monaco,
-//   editor: monacoTypes.editor.IStandaloneCodeEditor
-// ): monacoTypes.languages.CompletionItemProvider {
-//   const provideCompletionItems = (
-//     model: monacoTypes.editor.ITextModel,
-//     position: monacoTypes.Position
-//   ): monacoTypes.languages.ProviderResult<monacoTypes.languages.CompletionList> => {
-//     // if the model-id does not match, then this call is from a different editor-instance,
-//     // not "our instance", so return nothing
-//     if (editor.getModel()?.id !== model.id) {
-//       return { suggestions: [] };
-//     }
-//
-//     const { range, offset } = getRangeAndOffset(monaco, model, position);
-//     const situation = getSituation(model.getValue(), offset);
-//     const completionsPromise = situation != null ? getCompletions(situation) : Promise.resolve([]);
-//
-//     return completionsPromise.then((items) => {
-//       // monaco by-default alphabetically orders the items.
-//       // to stop it, we use a number-as-string sortkey,
-//       // so that monaco keeps the order we use
-//       const maxIndexDigits = items.length.toString().length;
-//       const suggestions: monacoTypes.languages.CompletionItem[] = items.map((item, index) => ({
-//         kind: getMonacoCompletionItemKind(item.type, monaco),
-//         label: item.label,
-//         insertText: item.insertText,
-//         detail: item.detail,
-//         documentation: item.documentation,
-//         sortText: index.toString().padStart(maxIndexDigits, '0'), // to force the order we have
-//         range,
-//         command: item.triggerOnInsert
-//           ? {
-//               id: 'editor.action.triggerSuggest',
-//               title: '',
-//             }
-//           : undefined,
-//       }));
-//       return { suggestions };
-//     });
-//   };
-//
-//   return {
-//     triggerCharacters: ['{', ',', '[', '(', '=', '~', ' ', '"'],
-//     provideCompletionItems,
-//   };
-// }
-
+/**
+ * Class that implements CompletionItemProvider interface and allows us to provide suggestion for the Monaco
+ * autocomplete system.
+ *
+ * At this moment we just pass it all the labels/values we get from Fire backend later on we may do something a bit
+ * smarter if there will be lots of labels.
+ */
 export class CompletionProvider implements monacoTypes.languages.CompletionItemProvider {
   triggerCharacters = ['{', ',', '[', '(', '=', '~', ' ', '"'];
-  labels: { [label: string]: Set<string> } = {};
+
+  // We set these directly and ae required for the provider to function.
   monaco: Monaco | undefined;
   editor: monacoTypes.editor.IStandaloneCodeEditor | undefined;
+
+  private labels: { [label: string]: Set<string> } = {};
 
   provideCompletionItems(
     model: monacoTypes.editor.ITextModel,
@@ -72,7 +34,7 @@ export class CompletionProvider implements monacoTypes.languages.CompletionItemP
 
     const { range, offset } = getRangeAndOffset(this.monaco, model, position);
     const situation = getSituation(model.getValue(), offset);
-    const completionItems = situation != null ? this.getCompletions(situation) : [];
+    const completionItems = this.getCompletions(situation);
 
     // monaco by-default alphabetically orders the items.
     // to stop it, we use a number-as-string sortkey,
@@ -82,58 +44,69 @@ export class CompletionProvider implements monacoTypes.languages.CompletionItemP
       kind: getMonacoCompletionItemKind(item.type, this.monaco!),
       label: item.label,
       insertText: item.insertText,
-      detail: item.detail,
-      documentation: item.documentation,
       sortText: index.toString().padStart(maxIndexDigits, '0'), // to force the order we have
       range,
-      command: item.triggerOnInsert
-        ? {
-            id: 'editor.action.triggerSuggest',
-            title: '',
-          }
-        : undefined,
     }));
     return { suggestions };
   }
 
+  /**
+   * We expect the data directly from the request and transform it here. We do some deduplication and turn them into
+   * object for quicker search as we usually need either a list of label names or values or particular label.
+   */
   setSeries(series: SeriesMessage) {
     this.labels = series.reduce((acc, serie) => {
       const seriesLabels = serie.labels.reduce((acc, labelValue) => {
-        acc[labelValue.name] = acc[labelValue.name] || new Set()
-        acc[labelValue.name].add(labelValue.value)
-        return acc
-      }, {} as {[label: string]: Set<string>})
+        acc[labelValue.name] = acc[labelValue.name] || new Set();
+        acc[labelValue.name].add(labelValue.value);
+        return acc;
+      }, {} as { [label: string]: Set<string> });
 
       for (const label of Object.keys(seriesLabels)) {
-        acc[label] = new Set([...(acc[label] || []), ...seriesLabels[label]])
+        acc[label] = new Set([...(acc[label] || []), ...seriesLabels[label]]);
       }
-      return acc
-    }, {} as {[label: string]: Set<string>})
+      return acc;
+    }, {} as { [label: string]: Set<string> });
   }
 
+  /**
+   * Get suggestion based on the situation we are in like whether we should suggest label names or values.
+   * @param situation
+   * @private
+   */
   private getCompletions(situation: Situation): Completion[] {
     if (!Object.keys(this.labels).length) {
       return [];
     }
     switch (situation.type) {
-      case 'EMPTY': {
+      // Not really sure what would make sense to suggest in this case so just leave it
+      case 'UNKNOWN': {
         return [];
       }
-      case 'IN_LABEL_SELECTOR_NO_LABEL_NAME':
-        return Object.keys(this.labels).map(key => {
+      case 'EMPTY': {
+        return Object.keys(this.labels).map((key) => {
           return {
             label: key,
-            insertText: key,
-            type: 'LABEL_NAME'
-          }
+            insertText: `{${key}="`,
+            type: 'LABEL_NAME',
+          };
         });
-      case 'IN_LABEL_SELECTOR_WITH_LABEL_NAME':
-        return Array.from(this.labels[situation.labelName].values()).map(key => {
+      }
+      case 'IN_LABEL_NAME':
+        return Object.keys(this.labels).map((key) => {
           return {
             label: key,
             insertText: key,
-            type: 'LABEL_VALUE'
-          }
+            type: 'LABEL_NAME',
+          };
+        });
+      case 'IN_LABEL_VALUE':
+        return Array.from(this.labels[situation.labelName].values()).map((key) => {
+          return {
+            label: key,
+            insertText: situation.betweenQuotes ? key : `"${key}"`,
+            type: 'LABEL_VALUE',
+          };
         });
       default:
         throw new Error(`Unexpected situation ${situation}`);
@@ -141,6 +114,11 @@ export class CompletionProvider implements monacoTypes.languages.CompletionItemP
   }
 }
 
+/**
+ * Get item kind which is used for icon next to the suggestion.
+ * @param type
+ * @param monaco
+ */
 function getMonacoCompletionItemKind(type: CompletionType, monaco: Monaco): monacoTypes.languages.CompletionItemKind {
   switch (type) {
     case 'LABEL_NAME':
@@ -157,9 +135,6 @@ type Completion = {
   type: CompletionType;
   label: string;
   insertText: string;
-  detail?: string;
-  documentation?: string;
-  triggerOnInsert?: boolean;
 };
 
 export type Label = {
@@ -169,30 +144,67 @@ export type Label = {
 
 export type Situation =
   | {
-      type: 'AT_ROOT';
+      type: 'UNKNOWN';
     }
   | {
       type: 'EMPTY';
     }
   | {
-      type: 'IN_LABEL_SELECTOR_NO_LABEL_NAME';
-      metricName?: string;
+      type: 'IN_LABEL_NAME';
       otherLabels: Label[];
     }
   | {
-      type: 'IN_LABEL_SELECTOR_WITH_LABEL_NAME';
-      metricName?: string;
+      type: 'IN_LABEL_VALUE';
       labelName: string;
       betweenQuotes: boolean;
       otherLabels: Label[];
     };
 
-function getSituation(value: string, offest: number): Situation {
-  // TODO: parse the value
+/**
+ * Figure out where is the cursor and what kind of suggestions are appropriate.
+ * As currently Fire handles just a simple {foo="bar", baz="zyx"} kind of values we can do with simple regex to figure
+ * out where we are with the cursor.
+ * @param text
+ * @param offset
+ */
+function getSituation(text: string, offset: number): Situation {
+  if (text === '') {
+    return {
+      type: 'EMPTY',
+    };
+  }
+
+  // Get all the labels so far in the query so we can do some more filtering.
+  const matches = text.matchAll(/(\w+)="(\w+)"/g);
+  const existingLabels = Array.from(matches).reduce((acc, match) => {
+    const [_, name, value] = match[1];
+    acc.push({ name, value });
+    return acc;
+  }, [] as Label[]);
+
+  // Check if we are editing a label value right now. If so also get name of the label
+  const matchLabelValue = text.substring(0, offset).match(/(\w+)=("?)[^"]*$/);
+  if (matchLabelValue) {
+    return {
+      type: 'IN_LABEL_VALUE',
+      labelName: matchLabelValue[1],
+      betweenQuotes: !!matchLabelValue[2],
+      otherLabels: existingLabels,
+    };
+  }
+
+  // Check if we are editing a label name
+  const matchLabelName = text.substring(0, offset).match(/[{,]\s*[^"]*$/);
+  if (matchLabelName) {
+    return {
+      type: 'IN_LABEL_NAME',
+      otherLabels: existingLabels,
+    };
+  }
+
+  // Will happen only if user writes something that isn't really a label selector
   return {
-    type: 'IN_LABEL_SELECTOR_NO_LABEL_NAME',
-    metricName: 'foo',
-    otherLabels: [],
+    type: 'UNKNOWN',
   };
 }
 
@@ -208,8 +220,7 @@ function getRangeAndOffset(monaco: Monaco, model: monacoTypes.editor.ITextModel,
         })
       : monaco.Range.fromPositions(position);
 
-  // documentation says `position` will be "adjusted" in `getOffsetAt`
-  // i don't know what that means, to be sure i clone it
+  // documentation says `position` will be "adjusted" in `getOffsetAt` so we clone it here just for sure.
   const positionClone = {
     column: position.column,
     lineNumber: position.lineNumber,

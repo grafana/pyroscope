@@ -1,13 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
-import { CodeEditor, Monaco, useStyles2 } from '@grafana/ui';
+import { CodeEditor, Monaco, useStyles2, monacoTypes } from '@grafana/ui';
 import type { languages } from 'monaco-editor';
 import { useAsync } from 'react-use';
 
 import { languageDefinition } from '../fireql';
 import { FireDataSource } from '../datasource';
-import {CompletionProvider} from './autocompletition';
+import { CompletionProvider } from './autocompletition';
 
 interface Props {
   value: string;
@@ -16,25 +16,7 @@ interface Props {
 }
 
 export function LabelsEditor(props: Props) {
-  const providerRef = useRef<CompletionProvider>(new CompletionProvider())
-
-  const seriesResult = useAsync(() => {
-    return props.datasource.getSeries();
-  });
-
-  if (seriesResult.value) {
-    providerRef.current.setSeries(seriesResult.value)
-  }
-
-  const autocompleteDisposeFun = useRef<(() => void) | null>(null);
-  useEffect(() => {
-    // when we unmount, we unregister the autocomplete-function, if it was registered
-    return () => {
-      autocompleteDisposeFun.current?.();
-    };
-  }, []);
-
-
+  const setupAutocompleteFn = useAutocomplete(props.datasource);
   const styles = useStyles2(getStyles);
   return (
     <CodeEditor
@@ -60,14 +42,48 @@ export function LabelsEditor(props: Props) {
       }}
       onBeforeEditorMount={ensureFireQL}
       onEditorDidMount={(editor, monaco) => {
-        providerRef.current.editor = editor
-        providerRef.current.monaco = monaco
-
-        const { dispose } = monaco.languages.registerCompletionItemProvider(langId, providerRef.current);
-        autocompleteDisposeFun.current = dispose;
+        setupAutocompleteFn(editor, monaco);
       }}
     />
   );
+}
+
+/**
+ * Hook that returns function that will set up monaco autocomplete for the label selector
+ * @param datasource
+ */
+function useAutocomplete(datasource: FireDataSource) {
+  // We need the provider ref so we can pass it the label/values data later. This is because we run the call for the
+  // values here but there is additional setup needed for the provider later on. We could run the getSeries() in the
+  // returned function but that is run after the monaco is mounted so would delay the request a bit when it does not
+  // need to.
+  const providerRef = useRef<CompletionProvider>(new CompletionProvider());
+
+  const seriesResult = useAsync(() => {
+    return datasource.getSeries();
+  }, [datasource]);
+
+  if (seriesResult.value) {
+    // When we have the value we will pass it to the CompletionProvider
+    providerRef.current.setSeries(seriesResult.value);
+  }
+
+  const autocompleteDisposeFun = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    // when we unmount, we unregister the autocomplete-function, if it was registered
+    return () => {
+      autocompleteDisposeFun.current?.();
+    };
+  }, []);
+
+  // This should be run in monaco onEditorDidMount
+  return (editor: monacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => {
+    providerRef.current.editor = editor;
+    providerRef.current.monaco = monaco;
+
+    const { dispose } = monaco.languages.registerCompletionItemProvider(langId, providerRef.current);
+    autocompleteDisposeFun.current = dispose;
+  };
 }
 
 // we must only run the setup code once
