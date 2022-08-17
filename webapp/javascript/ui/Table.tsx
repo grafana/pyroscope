@@ -80,26 +80,26 @@ interface TableProps {
 }
 
 function Table({
-  sortByDirection = '',
-  sortBy = '',
-  updateSortParams = () => {},
+  sortByDirection,
+  sortBy,
+  updateSortParams,
   table,
   tableBodyRef,
   className,
 }: TableProps) {
+  const hasSort = sortByDirection && sortBy && updateSortParams;
   return (
     <table
       className={clsx(styles.table, {
         [className || '']: className,
       })}
       data-testid="table-ui"
-      ref={tableBodyRef}
     >
       <thead>
         <tr>
           {table.headRow.map(
             ({ sortable, label, name, ...rest }: any, idx: number) =>
-              !sortable || table.type === 'not-filled' || !sortByDirection ? (
+              !sortable || table.type === 'not-filled' || !hasSort ? (
                 // eslint-disable-next-line react/no-array-index-key
                 <th key={idx} {...rest}>
                   {label}
@@ -123,7 +123,7 @@ function Table({
           )}
         </tr>
       </thead>
-      <tbody>
+      <tbody ref={tableBodyRef}>
         {table.type === 'not-filled' ? (
           <tr className={table?.bodyClassName}>
             <td colSpan={table.headRow.length}>{table.value}</td>

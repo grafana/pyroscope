@@ -22,7 +22,7 @@ function DisableButton(props: { onDisable: (user: User) => void; user: User }) {
 
   return (
     <Button type="button" kind="secondary" onClick={() => onDisable(user)}>
-      <Icon icon={icon} onClick={onDisable} />
+      <Icon icon={icon} />
     </Button>
   );
 }

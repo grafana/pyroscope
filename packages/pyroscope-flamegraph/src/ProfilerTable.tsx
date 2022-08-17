@@ -1,5 +1,4 @@
 import React, { useRef, RefObject, CSSProperties } from 'react';
-import clsx from 'clsx';
 import type Color from 'color';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
@@ -38,6 +37,7 @@ interface DoubleCell {
   totalRght: number;
   totalDiff: number;
 }
+type DoubleSortByKeys = keyof DoubleCell & 'name';
 
 function generateCellSingle(
   ff: typeof singleFF,
@@ -280,7 +280,8 @@ const getTableBody = ({
       // sorting by all other fields means it must be a double
       default: {
         sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
-          (a, b) => m * (a[sortBy] - b[sortBy])
+          (a, b) =>
+            m * (a[sortBy as DoubleSortByKeys] - b[sortBy as DoubleSortByKeys])
         );
       }
     }
