@@ -15,7 +15,7 @@ import TimelineChartWrapper, {
 import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
-import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
+import TableUI, { BodyRow } from '@webapp/ui/Table';
 import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -38,6 +38,7 @@ import { queryToAppName } from '@webapp/models/query';
 import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
+// eslint-disable-next-line css-modules/no-unused-class
 import styles from './TagExplorerView.module.scss';
 
 function TagExplorerView() {
@@ -120,8 +121,8 @@ function TagExplorerView() {
 
   const { groupsData, activeTagProfile } = getGroupsData();
 
-  const handleGroupByTagValueChange = (groupByTagValue: string) => {
-    dispatch(actions.setTagExplorerViewGroupByTagValue(groupByTagValue));
+  const handleGroupByTagValueChange = (v: string) => {
+    dispatch(actions.setTagExplorerViewGroupByTagValue(v));
   };
 
   const handleGroupedByTagChange = (value: string) => {
@@ -184,8 +185,8 @@ function TagExplorerView() {
               }
               showTagsLegend={filteredGroupsData.length > 1}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
-              onSelect={(from, until) =>
-                dispatch(setDateRange({ from, until }))
+              onSelect={(fromV, untilV) =>
+                dispatch(setDateRange({ from: fromV, until: untilV }))
               }
               height="125px"
               format="lines"

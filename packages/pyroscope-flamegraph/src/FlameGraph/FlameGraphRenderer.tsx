@@ -12,7 +12,7 @@ import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
-import ProfilerTable, { ProfilerTableProps } from '../ProfilerTable';
+import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';

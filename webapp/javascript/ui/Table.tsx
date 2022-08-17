@@ -1,6 +1,8 @@
+/* eslint-disable react/jsx-props-no-spreading */
 import React, { useState, ReactNode, CSSProperties, RefObject } from 'react';
 import clsx from 'clsx';
 
+// eslint-disable-next-line css-modules/no-unused-class
 import styles from './Table.module.scss';
 
 interface CustomProp {
@@ -98,7 +100,7 @@ function Table({
       <thead>
         <tr>
           {table.headRow.map(
-            ({ sortable, label, name, ...rest }: any, idx: number) =>
+            ({ sortable, label, name, ...rest }, idx: number) =>
               !sortable || table.type === 'not-filled' || !hasSort ? (
                 // eslint-disable-next-line react/no-array-index-key
                 <th key={idx} {...rest}>
@@ -146,13 +148,11 @@ function Table({
                   })}
                 >
                   {cells &&
-                    cells.map(
-                      ({ style, value, ...rest }: Cell, index: number) => (
-                        <td key={renderID + index} style={style} {...rest}>
-                          {value}
-                        </td>
-                      )
-                    )}
+                    cells.map(({ style, value, ...rest }: Cell) => (
+                      <td key={renderID} style={style} {...rest}>
+                        {value}
+                      </td>
+                    ))}
                 </tr>
               );
             }
