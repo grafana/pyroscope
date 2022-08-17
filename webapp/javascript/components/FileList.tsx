@@ -10,7 +10,12 @@ const dateModifiedColName = 'updatedAt';
 const fileNameColName = 'name';
 const headRow = [
   { name: fileNameColName, label: 'Filename', sortable: 1 },
-  { name: dateModifiedColName, label: 'Date Modified', sortable: 1 },
+  {
+    name: dateModifiedColName,
+    label: 'Date Modified',
+    sortable: 1,
+    default: true,
+  },
 ];
 
 const getBodyRows = (
