@@ -187,13 +187,29 @@ const tableFormatDiffDef: Record<
       | 'totalRght'
       | 'totalDiff';
     label: string;
+    default?: boolean;
   }
 > = {
   name: { sortable: 1, name: 'name', label: 'Location' },
-  selfLeft: { sortable: 1, name: 'selfLeft', label: 'Self (Left)' },
+  selfLeft: {
+    sortable: 1,
+    name: 'selfLeft',
+    label: 'Self (Left)',
+    default: true,
+  },
   selfRght: { sortable: 1, name: 'selfRght', label: 'Self (Right)' },
-  selfDiff: { sortable: 1, name: 'selfDiff', label: 'Self (Diff)' },
-  totalLeft: { sortable: 1, name: 'totalLeft', label: 'Total (Left)' },
+  selfDiff: {
+    sortable: 1,
+    name: 'selfDiff',
+    label: 'Self (Diff)',
+    default: true,
+  },
+  totalLeft: {
+    sortable: 1,
+    name: 'totalLeft',
+    label: 'Total (Left)',
+    default: true,
+  },
   totalRght: { sortable: 1, name: 'totalRght', label: 'Total (Right)' },
   totalDiff: { sortable: 1, name: 'totalDiff', label: 'Total (Diff)' },
 };
