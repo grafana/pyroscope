@@ -1,47 +1,7 @@
 /* eslint-disable */
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
-
-type PlotType = {
-  getPlotOffset: () => any;
-  getOptions: () => any;
-  getAxes: () => any[];
-  getXAxes: () => any[];
-  getYAxes: () => any[];
-  getPlaceholder: () => {
-    trigger: (arg0: string, arg1: any[]) => void;
-    offset: () => {
-      left: number;
-      top: number;
-    };
-  };
-  triggerRedrawOverlay: () => void;
-  width: () => number;
-  height: () => number;
-  clearSelection: (preventEvent: boolean) => void;
-  setSelection: (ranges: any, preventEvent: any) => void;
-  getSelection: () => {} | null;
-  hooks: any;
-};
-
-type CtxType = {
-  save: () => void;
-  translate: (arg0: any, arg1: any) => void;
-  strokeStyle: any;
-  lineWidth: number;
-  lineJoin: any;
-  fillStyle: any;
-  fillRect: (arg0: number, arg1: number, arg2: number, arg3: number) => void;
-  strokeRect: (arg0: number, arg1: number, arg2: number, arg3: number) => void;
-  restore: () => void;
-};
-
-type EventHolderType = {
-  unbind: (arg0: string, arg1: { (e: any): void; (e: any): void }) => void;
-  mousemove: (arg0: (e: EventType) => void) => void;
-  mousedown: (arg0: (e: EventType) => void) => void;
-};
-
-type EventType = { pageX: number; pageY: number; which?: number };
+import { PlotType, CtxType, EventHolderType, EventType } from './types';
+import { clamp } from './utils';
 
 const handleWidth = 4;
 const handleHeight = 22;
@@ -272,10 +232,6 @@ const handleHeight = 22;
             y2: r.yaxis.to,
           },
         ]);
-    }
-
-    function clamp(min: number, value: number, max: number) {
-      return value < min ? min : value > max ? max : value;
     }
 
     function setSelectionPos(pos: { x: number; y: number }, e: EventType) {
