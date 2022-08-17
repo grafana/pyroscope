@@ -15,6 +15,7 @@ import TimelineChartWrapper, {
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import TableUI, { BodyRow } from '@webapp/ui/Table';
 import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -38,6 +39,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
+// eslint-disable-next-line css-modules/no-unused-class
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
 
@@ -153,8 +155,8 @@ function TagExplorerView() {
 
   const { groupsData, activeTagProfile } = getGroupsData();
 
-  const handleGroupByTagValueChange = (groupByTagValue: string) => {
-    dispatch(actions.setTagExplorerViewGroupByTagValue(groupByTagValue));
+  const handleGroupByTagValueChange = (v: string) => {
+    dispatch(actions.setTagExplorerViewGroupByTagValue(v));
   };
 
   const handleGroupedByTagChange = (value: string) => {
@@ -344,6 +346,60 @@ function Table({
     return `?${searchParams.toString()}`;
   };
 
+  const headRow = [
+    // when groupByTag is not selected table represents single "application without tags" group
+    {
+      name: 'name',
+      label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
+      sortable: 0,
+    },
+    { name: 'eventCount', label: 'Event count', sortable: 0 },
+    { name: 'avgSamples', label: 'avg samples', sortable: 0 },
+    { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
+    { name: 'minSamples', label: 'min samples', sortable: 0 },
+    { name: 'maxSamples', label: 'max samples', sortable: 0 },
+  ];
+
+  const bodyRows = groupsData.reduce(
+    (acc, { tagName, color, data }): BodyRow[] => {
+      const mean = calculateMean(data.samples);
+      const row = {
+        isRowSelected: isTagSelected(tagName),
+        // prevent clicking on single "application without tags" group row
+        onClick:
+          tagName !== appName ? () => handleTableRowClick(tagName) : undefined,
+        cells: [
+          {
+            value: (
+              <div className={styles.tagName}>
+                <span
+                  className={styles.tagColor}
+                  style={{ backgroundColor: color?.toString() }}
+                />
+                {tagName}
+              </div>
+            ),
+          },
+          { value: data.samples.length },
+          { value: mean.toFixed(2) },
+          { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
+          { value: Math.min(...data.samples) },
+          { value: Math.max(...data.samples) },
+        ],
+      };
+      acc.push(row);
+
+      return acc;
+    },
+    [] as BodyRow[]
+  );
+  const table = {
+    headRow,
+    ...(isLoading
+      ? { type: 'not-filled' as const, value: <LoadingSpinner /> }
+      : { type: 'filled' as const, bodyRows }),
+  };
+
   return (
     <>
       <div className={styles.tableDescription} data-testid="explore-table">
@@ -373,73 +429,18 @@ function Table({
           {linkTagsSelectModalData.isModalOpen && (
             <OutsideClickHandler onOutsideClick={handleOutsideModalClick}>
               <ViewTagsSelectLinkModal
+                /* eslint-disable-next-line react/jsx-props-no-spreading */
+                {...linkTagsSelectModalData}
                 whereDropdownItems={whereDropdownItems}
                 groupByTag={groupByTag}
                 appName={appName}
-                /* eslint-disable-next-line react/jsx-props-no-spreading */
-                {...linkTagsSelectModalData}
                 setLinkTagsSelectModalData={setLinkTagsSelectModalData}
               />
             </OutsideClickHandler>
           )}
         </div>
       </div>
-      <table className={styles.tagExplorerTable}>
-        <thead>
-          <tr>
-            {/* when groupByTag is not selected table represents single "application without tags" group */}
-            <th>{groupByTag === '' ? 'App' : 'Tag'} name</th>
-            <th>Event count</th>
-            <th>avg samples</th>
-            <th>std deviation samples</th>
-            <th>min samples</th>
-            <th>max samples</th>
-          </tr>
-        </thead>
-        <tbody>
-          {isLoading ? (
-            <tr>
-              <td colSpan={6}>
-                <LoadingSpinner />
-              </td>
-            </tr>
-          ) : (
-            groupsData.map(({ tagName, color, data }) => {
-              const mean = calculateMean(data.samples);
-
-              return (
-                <tr
-                  className={isTagSelected(tagName) ? styles.activeTagRow : ''}
-                  onClick={
-                    // prevent clicking on single "application without tags" group row
-                    tagName !== appName
-                      ? () => handleTableRowClick(tagName)
-                      : undefined
-                  }
-                  key={tagName}
-                >
-                  <td>
-                    <div className={styles.tagName}>
-                      <span
-                        className={styles.tagColor}
-                        style={{ backgroundColor: color?.toString() }}
-                      />
-                      {tagName}
-                    </div>
-                  </td>
-                  <td>{data.samples.length}</td>
-                  <td>{mean.toFixed(2)}</td>
-                  <td>
-                    {calculateStdDeviation(data.samples, mean).toFixed(2)}
-                  </td>
-                  <td>{Math.min(...data.samples)}</td>
-                  <td>{Math.max(...data.samples)}</td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+      <TableUI table={table} className={styles.tagExplorerTable} />
     </>
   );
 }

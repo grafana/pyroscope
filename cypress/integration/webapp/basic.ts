@@ -43,15 +43,15 @@ describe('basic test', () => {
     cy.visit('/');
 
     cy.findByRole('combobox', { name: 'view' }).select('Table');
-    cy.findByTestId('table-view').should('be.visible');
+    cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 
     cy.findByRole('combobox', { name: 'view' }).select('Both');
-    cy.findByTestId('table-view').should('be.visible');
+    cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
     cy.findByRole('combobox', { name: 'view' }).select('Flame');
-    cy.findByTestId('table-view').should('not.exist');
+    cy.findByTestId('table-ui').should('not.exist');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
 
@@ -79,14 +79,14 @@ describe('basic test', () => {
 
     const sortColumn = (columnIndex) =>
       cy
-        .findByTestId('table-view')
+        .findByTestId('table-ui')
         .find(`thead > tr > :nth-child(${columnIndex})`)
         .click();
 
     const getCellContent = (row, column) => {
       const query = `tbody > :nth-child(${row}) > :nth-child(${column.index})`;
       return cy
-        .findByTestId('table-view')
+        .findByTestId('table-ui')
         .find(query)
         .then((cell) => cell[0].innerText);
     };
@@ -98,7 +98,7 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByTestId('table-view')
+    cy.findByTestId('table-ui')
       .find('tbody > tr')
       .then((rows) => {
         const first = 1;
@@ -143,11 +143,11 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByTestId('reset-view').should('not.be.enabled');
+    cy.findByTestId('reset-view').should('be.disabled');
     cy.waitForFlamegraphToRender().click(0, BAR_HEIGHT * 2);
-    cy.findByTestId('reset-view').should('be.visible');
+    cy.findByTestId('reset-view').should('not.be.disabled');
     cy.findByTestId('reset-view').click();
-    cy.findByTestId('reset-view').should('not.be.enabled');
+    cy.findByTestId('reset-view').should('be.disabled');
   });
 
   describe('tooltip', () => {
