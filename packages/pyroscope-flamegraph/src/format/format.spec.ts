@@ -41,11 +41,15 @@ describe('format', () => {
         const df = getFormatter(80, 2, 'trace_samples');
 
         expect(df.format(0, 100)).toBe('0.00 seconds');
-        expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
+        expect(df.format(0.001, 100)).toBe('10.00 μs');
+        expect(df.format(0.01555, 100)).toBe('155.50 μs');
+        expect(df.format(0.1, 100)).toBe('1.00 ms');
+        expect(df.format(9.3, 100)).toBe('93.00 ms');
         expect(df.format(100, 100)).toBe('1.00 second');
         expect(df.format(2000, 100)).toBe('20.00 seconds');
-        expect(df.format(2012.3, 100)).toBe('20.12 seconds');
+        expect(df.format(2012.3, 100)).toBe('20123.00 ms');
         expect(df.format(8000, 100)).toBe('80.00 seconds');
+        expect(df.format(374.12, 100)).toBe('3741200.00 μs');
       });
 
       it('correctly formats duration when maxdur = 80', () => {
