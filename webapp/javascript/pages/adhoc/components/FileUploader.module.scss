@@ -75,3 +75,14 @@
     color: var(--ps-disabled-button-text) !important;
   }
 }
+
+.activeDropdownItem {
+  background-color: var(--ps-ui-element-bg-highlight);
+  color: var(--ps-selected-app);
+}
+
+.dropdowns {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 10px;
+}

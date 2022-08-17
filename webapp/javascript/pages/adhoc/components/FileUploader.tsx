@@ -5,7 +5,7 @@ import Button from '@webapp/ui/Button';
 import type { DropzoneOptions } from 'react-dropzone';
 import { faFileUpload } from '@fortawesome/free-solid-svg-icons/faFileUpload';
 import classNames from 'classnames/bind';
-import Select from '@webapp/ui/Select';
+import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';
 
@@ -117,40 +117,46 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
         </div>
       </section>
       {showLanguageAndUnits && (
-        <>
-          <label htmlFor="spyName-input">
-            Profile language:
-            <Select
-              ariaLabel="view"
-              id="spyName-input"
-              aria-placeholder="This would be used to apply color to the flamegraph"
-              value={spyName}
-              onChange={(e) => setSpyName(e.target.value)}
-            >
-              {Object.keys(spyNames).map((name, index) => (
-                <option key={String(index) + name} value={name}>
-                  {spyNames[name as keyof typeof spyNames]}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label htmlFor="units-input">
-            Profile units:
-            <Select
-              ariaLabel="view"
-              id="units-input"
-              aria-placeholder="This would be used to apply units to the flamegraph"
-              value={units}
-              onChange={(e) => setUnits(e.target.value)}
-            >
-              {Object.keys(availableUnits).map((unit) => (
-                <option key={unit} value={unit}>
-                  {availableUnits[unit as keyof typeof availableUnits]}
-                </option>
-              ))}
-            </Select>
-          </label>
-        </>
+        <div className={styles.dropdowns}>
+          <Dropdown
+            value={`Profile language: ${
+              spyNames[spyName as keyof typeof spyNames]
+            }`}
+            onItemClick={(e) => setSpyName(e.value as string)}
+            label="Profile language"
+          >
+            {Object.keys(spyNames).map((name, index) => (
+              <MenuItem
+                className={cx({
+                  [styles.activeDropdownItem]: spyName === name,
+                })}
+                key={String(index) + name}
+                value={name}
+              >
+                {spyNames[name as keyof typeof spyNames]}
+              </MenuItem>
+            ))}
+          </Dropdown>
+          <Dropdown
+            value={`Profile units: ${
+              availableUnits[units as keyof typeof availableUnits]
+            }`}
+            onItemClick={(e) => setUnits(e.value as string)}
+            label="Profile units"
+          >
+            {Object.keys(availableUnits).map((name, index) => (
+              <MenuItem
+                className={cx({
+                  [styles.activeDropdownItem]: units === name,
+                })}
+                key={String(index) + name}
+                value={name}
+              >
+                {availableUnits[name as keyof typeof availableUnits]}
+              </MenuItem>
+            ))}
+          </Dropdown>
+        </div>
       )}
       <div className={styles.uploadWrapper}>
         <Button kind="primary" disabled={!file} onClick={onUploadClick}>
