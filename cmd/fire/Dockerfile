@@ -1,4 +1,4 @@
-FROM golang:1.18.2 as build
+FROM golang:1.18.5 as build
 
 WORKDIR /src/fire
 
@@ -10,7 +10,7 @@ RUN git config --global url.ssh://git@github.com/.insteadOf https://github.com/
 RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 RUN --mount=type=ssh make clean go/mod go/bin
 
-FROM alpine:3.16.0
+FROM alpine:3.16.2
 
 RUN apk add --no-cache ca-certificates
 
