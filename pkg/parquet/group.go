@@ -93,7 +93,7 @@ func (groupType) NewColumnIndexer(int) parquet.ColumnIndexer {
 	panic("cannot create column indexer from parquet group")
 }
 
-func (groupType) NewDictionary(int, int, []byte) parquet.Dictionary {
+func (groupType) NewDictionary(int, int, encoding.Values) parquet.Dictionary {
 	panic("cannot create dictionary from parquet group")
 }
 
@@ -101,15 +101,19 @@ func (t groupType) NewColumnBuffer(int, int) parquet.ColumnBuffer {
 	panic("cannot create column buffer from parquet group")
 }
 
-func (t groupType) NewPage(int, int, []byte) parquet.Page {
+func (t groupType) NewPage(int, int, encoding.Values) parquet.Page {
 	panic("cannot create page from parquet group")
 }
 
-func (groupType) Encode(_, _ []byte, _ encoding.Encoding) ([]byte, error) {
+func (t groupType) NewValues(_ []byte, _ []uint32) encoding.Values {
+	panic("cannot create values from parquet group")
+}
+
+func (groupType) Encode(_ []byte, _ encoding.Values, _ encoding.Encoding) ([]byte, error) {
 	panic("cannot encode parquet group")
 }
 
-func (groupType) Decode(_, _ []byte, _ encoding.Encoding) ([]byte, error) {
+func (groupType) Decode(_ encoding.Values, _ []byte, _ encoding.Encoding) (encoding.Values, error) {
 	panic("cannot decode parquet group")
 }
 
