@@ -9,6 +9,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
+	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
@@ -107,6 +108,12 @@ func (d *FireDatasource) callSeries(ctx context.Context, req *backend.CallResour
 	if err != nil {
 		return err
 	}
+
+	for _, val := range res.Msg.LabelsSet {
+		withoutPrivate := firemodel.Labels(val.Labels).WithoutPrivateLabels()
+		val.Labels = withoutPrivate
+	}
+
 	data, err := json.Marshal(res.Msg.LabelsSet)
 	if err != nil {
 		return err
