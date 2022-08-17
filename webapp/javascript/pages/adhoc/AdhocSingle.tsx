@@ -17,6 +17,7 @@ import {
   selectedSelectedProfileId,
   selectProfile,
 } from '@webapp/redux/reducers/adhoc';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
 
@@ -26,6 +27,7 @@ function AdhocSingle() {
   const selectedProfileId = useAppSelector(selectedSelectedProfileId('left'));
   const profile = useAppSelector(selectProfile('left'));
   const [tabIndex, setTabIndex] = useState(0);
+  useColorMode();
 
   useEffect(() => {
     dispatch(fetchAllProfiles());

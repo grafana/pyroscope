@@ -21,6 +21,7 @@ import {
   selectDiffProfile,
   uploadFile,
 } from '@webapp/redux/reducers/adhoc';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 import FileUploader from './components/FileUploader';
@@ -29,7 +30,7 @@ function AdhocDiff() {
   const dispatch = useAppDispatch();
   const leftProfileId = useAppSelector(selectProfileId('left'));
   const rightProfileId = useAppSelector(selectProfileId('right'));
-
+  useColorMode();
   const selectedProfileIdLeft = useAppSelector(
     selectedSelectedProfileId('left')
   );
