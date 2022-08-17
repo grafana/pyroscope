@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.19.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.6...@pyroscope/flamegraph@0.19.0) (2022-08-17)
+
+
+### Features
+
+* reuse Table component everywhere ([#1403](https://github.com/pyroscope-io/pyroscope/issues/1403)) ([a79f61b](https://github.com/pyroscope-io/pyroscope/commit/a79f61b39d8ae5b199710e79dc05e9352044b3b4))
+
+
+
+
+
 ## [0.18.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.5...@pyroscope/flamegraph@0.18.6) (2022-08-15)
 
 
