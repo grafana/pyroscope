@@ -4,7 +4,7 @@ import cl from 'classnames';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 
 import Button from '@webapp/ui/Button';
-import TableUI, { useTableSort } from '@webapp/ui/Table';
+import TableUI from '@webapp/ui/Table';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   reloadUsers,
@@ -21,6 +21,16 @@ import { getUserTableRows } from './getUserTableRows';
 
 import userStyles from './Users.module.css';
 import tableStyles from '../SettingsTable.module.scss';
+
+const headRow = [
+  { name: '', label: '', sortable: 0 },
+  { name: '', label: 'Username', sortable: 0 },
+  { name: '', label: 'Email', sortable: 0 },
+  { name: '', label: 'Name', sortable: 0 },
+  { name: '', label: 'Role', sortable: 0 },
+  { name: '', label: 'Updated', sortable: 0 },
+  { name: '', label: '', sortable: 0 },
+];
 
 function Users() {
   const dispatch = useAppDispatch();
@@ -84,29 +94,21 @@ function Users() {
       });
   };
 
-  const headRow = [
-    { name: '', label: '', sortable: 0 },
-    { name: '', label: 'Username', sortable: 0 },
-    { name: '', label: 'Email', sortable: 0 },
-    { name: '', label: 'Name', sortable: 0 },
-    { name: '', label: 'Role', sortable: 0 },
-    { name: '', label: 'Updated', sortable: 0 },
-    { name: '', label: '', sortable: 0 },
-  ];
-  const tableProps = useTableSort(headRow);
   const tableBodyProps =
     displayUsers.length > 0
-      ? getUserTableRows(
-          currentUser.id,
-          displayUsers,
-          handleDisableUser,
-          handleDeleteUser
-        )
+      ? {
+          bodyRows: getUserTableRows(
+            currentUser.id,
+            displayUsers,
+            handleDisableUser,
+            handleDeleteUser
+          ),
+          type: 'filled' as const,
+        }
       : {
-          error: {
-            value: 'The list is empty',
-            className: userStyles.usersTableEmptyMessage,
-          },
+          type: 'not-filled' as const,
+          value: 'The list is empty',
+          bodyClassName: userStyles.usersTableEmptyMessage,
         };
 
   return (
@@ -133,7 +135,6 @@ function Users() {
         />
       </div>
       <TableUI
-        {...tableProps}
         className={cl(userStyles.usersTable, tableStyles.settingsTable)}
         table={{ headRow, ...tableBodyProps }}
       />

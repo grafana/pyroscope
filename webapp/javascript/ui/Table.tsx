@@ -71,29 +71,35 @@ export const useTableSort = (headRow: HeadCell[]): TableSortProps => {
 };
 
 interface TableProps {
-  sortByDirection: string;
-  sortBy: string;
-  updateSortParams: (newSortBy: string) => void;
+  sortByDirection?: string;
+  sortBy?: string;
+  updateSortParams?: (newSortBy: string) => void;
   table: Table;
   tableBodyRef?: RefObject<HTMLTableSectionElement>;
   className?: string;
 }
 
-function Table(props: TableProps) {
+function Table({
+  sortByDirection = '',
+  sortBy = '',
+  updateSortParams = () => {},
+  table,
+  tableBodyRef,
+  className,
+}: TableProps) {
   return (
     <table
       className={clsx(styles.table, {
-        [props.className || '']: props?.className,
+        [className || '']: className,
       })}
       data-testid="table-ui"
-      // @ts-ignore
-      ref={props?.tableBodyRef}
+      ref={tableBodyRef}
     >
       <thead>
         <tr>
-          {props.table.headRow.map(
+          {table.headRow.map(
             ({ sortable, label, name, ...rest }: any, idx: number) =>
-              !sortable || props.table.type === 'not-filled' ? (
+              !sortable || table.type === 'not-filled' || !sortByDirection ? (
                 // eslint-disable-next-line react/no-array-index-key
                 <th key={idx} {...rest}>
                   {label}
@@ -104,12 +110,12 @@ function Table(props: TableProps) {
                   // eslint-disable-next-line react/no-array-index-key
                   key={idx}
                   className={styles.sortable}
-                  onClick={() => props.updateSortParams(name)}
+                  onClick={() => updateSortParams(name)}
                 >
                   {label}
                   <span
                     className={clsx(styles.sortArrow, {
-                      [styles[props.sortByDirection]]: props.sortBy === name,
+                      [styles[sortByDirection]]: sortBy === name,
                     })}
                   />
                 </th>
@@ -118,12 +124,12 @@ function Table(props: TableProps) {
         </tr>
       </thead>
       <tbody>
-        {props.table.type === 'not-filled' ? (
-          <tr className={props.table?.bodyClassName}>
-            <td colSpan={props.table.headRow.length}>{props.table.value}</td>
+        {table.type === 'not-filled' ? (
+          <tr className={table?.bodyClassName}>
+            <td colSpan={table.headRow.length}>{table.value}</td>
           </tr>
         ) : (
-          props.table.bodyRows.map(
+          table.bodyRows?.map(
             ({ cells, isRowSelected, isRowDisabled, className, ...rest }) => {
               // The problem is that when you switch apps or time-range and the function
               // names stay the same it leads to an issue where rows don't get re-rendered

@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import { formatDistance, formatRelative } from 'date-fns/fp';
+import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
+import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 
 import Button from '@webapp/ui/Button';
 import Icon from '@webapp/ui/Icon';
-import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
-import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
-import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
+import TableUI, { BodyRow } from '@webapp/ui/Table';
 import type { APIKey, APIKeys } from '@webapp/models/apikeys';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
@@ -17,7 +17,10 @@ import {
 import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
 import styles from '../SettingsTable.module.scss';
 
-const getBodyRows = (keys: APIKeys, onDelete: any): BodyRow[] => {
+const getBodyRows = (
+  keys: APIKeys,
+  onDelete: (k: APIKey) => void
+): BodyRow[] => {
   const now = new Date();
 
   const handleDeleteClick = (key: APIKey) => {
@@ -58,6 +61,14 @@ const getBodyRows = (keys: APIKeys, onDelete: any): BodyRow[] => {
   }, [] as BodyRow[]);
 };
 
+const headRow = [
+  { name: '', label: 'Name', sortable: 0 },
+  { name: '', label: 'Role', sortable: 0 },
+  { name: '', label: 'Creation date', sortable: 0 },
+  { name: '', label: 'Expiration date', sortable: 0 },
+  { name: '', label: 'Role', 'aria-label': 'Actions', sortable: 0 },
+];
+
 const ApiKeys = () => {
   const dispatch = useAppDispatch();
   const apiKeys = useAppSelector(selectAPIKeys);
@@ -75,20 +86,9 @@ const ApiKeys = () => {
       });
   };
 
-  const headRow = [
-    { name: '', label: 'Name', sortable: 0 },
-    { name: '', label: 'Role', sortable: 0 },
-    { name: '', label: 'Creation date', sortable: 0 },
-    { name: '', label: 'Expiration date', sortable: 0 },
-    { name: '', label: 'Role', sortable: 0, 'aria-label': 'Actions' },
-  ];
-  // we should skip call for not sortable tables/heads
-  // CHECK FOR EVERY common Table component usage
-  const tableProps = useTableSort(headRow);
-  // no keys -> no table
   const tableBodyProps = apiKeys
-    ? { bodyRows: getBodyRows(apiKeys, onDelete) }
-    : { error: { value: '' } };
+    ? { type: 'filled' as const, bodyRows: getBodyRows(apiKeys, onDelete) }
+    : { type: 'not-filled' as const, value: '' };
 
   return (
     <>
@@ -104,9 +104,6 @@ const ApiKeys = () => {
         </Button>
       </div>
       <TableUI
-        {...tableProps}
-        // todo fix
-        // @ts-ignore
         table={{ headRow, ...tableBodyProps }}
         className={styles.settingsTable}
       />

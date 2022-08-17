@@ -74,7 +74,7 @@ export function getUserTableRows(
   displayUsers: Users,
   handleDisableUser: (user: User) => void,
   handleDeleteUser: (user: User) => void
-): { bodyRows: BodyRow[] } {
+): BodyRow[] {
   const bodyRows = displayUsers.reduce((acc, user) => {
     const { id, isDisabled, fullName, role, updatedAt, email, name } = user;
     const isCurrent = id === currentUserId;
@@ -104,5 +104,5 @@ export function getUserTableRows(
     return acc;
   }, [] as BodyRow[]);
 
-  return { bodyRows };
+  return bodyRows;
 }
