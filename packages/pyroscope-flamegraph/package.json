@@ -30,7 +30,6 @@
     "true-myth": "^5.1.2"
   },
   "devDependencies": {
-    "@pyroscope/models": "^0.4.2",
-    "@pyroscope/webapp": "^1.32.2"
+    "@pyroscope/models": "^0.4.2"
   }
 }
