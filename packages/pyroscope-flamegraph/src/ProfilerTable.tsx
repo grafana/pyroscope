@@ -2,6 +2,8 @@ import React, { useRef, RefObject, CSSProperties } from 'react';
 import type Color from 'color';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
+// until ui is moved to its own package this should do it
+// eslint-disable-next-line import/no-extraneous-dependencies
 import TableUI, {
   useTableSort,
   BodyRow,
