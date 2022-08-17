@@ -66,7 +66,7 @@ const SelectButton = ({
       role={MENU_ITEM_ROLE}
       type="button"
       onClick={onClick}
-      className={cx({ button: true, isSelected })}
+      className={cx(styles.button, isSelected && styles.isSelected)}
       title={name}
     >
       <div>

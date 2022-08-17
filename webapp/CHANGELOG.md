@@ -3,6 +3,85 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.32.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.1...@pyroscope/webapp@1.32.2) (2022-08-16)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.32.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.0...@pyroscope/webapp@1.32.1) (2022-08-16)
+
+
+### Bug Fixes
+
+* **webapp:** refresh data when (re)submitting query ([#1410](https://github.com/pyroscope-io/pyroscope/issues/1410)) ([3554f84](https://github.com/pyroscope-io/pyroscope/commit/3554f84060ab54836e9ae1f2b49f9174c3e66041)), closes [#1406](https://github.com/pyroscope-io/pyroscope/issues/1406)
+
+
+
+
+
+# [1.32.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.1...@pyroscope/webapp@1.32.0) (2022-08-16)
+
+
+### Features
+
+* **webapp:** set title automatically ([#1397](https://github.com/pyroscope-io/pyroscope/issues/1397)) ([74821ca](https://github.com/pyroscope-io/pyroscope/commit/74821ca0f0e3ebec38c83f83bf54318d931f66f6))
+
+
+
+
+
+## [1.31.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.0...@pyroscope/webapp@1.31.1) (2022-08-15)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix its styling ([#1388](https://github.com/pyroscope-io/pyroscope/issues/1388)) ([5788cf9](https://github.com/pyroscope-io/pyroscope/commit/5788cf9943a579acd35de224537016488a98808f))
+
+
+
+
+
+# [1.31.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.30.1...@pyroscope/webapp@1.31.0) (2022-08-12)
+
+
+### Features
+
+* support high number of series in explore view timeline ([#1384](https://github.com/pyroscope-io/pyroscope/issues/1384)) ([482e23e](https://github.com/pyroscope-io/pyroscope/commit/482e23e52f006a201e40a2b4ff6092e0f246aa03))
+
+
+
+
+
+## [1.30.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.30.0...@pyroscope/webapp@1.30.1) (2022-08-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.30.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.4...@pyroscope/webapp@1.30.0) (2022-08-12)
+
+
+### Features
+
+* **webapp:** update timeline appearance and refactor flot plugins ([#1323](https://github.com/pyroscope-io/pyroscope/issues/1323)) ([9393449](https://github.com/pyroscope-io/pyroscope/commit/9393449fdabd0cb38c4fae87b3ba0ce73251b41d))
+
+
+
+
+
+## [1.29.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.3...@pyroscope/webapp@1.29.4) (2022-08-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.29.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.2...@pyroscope/webapp@1.29.3) (2022-08-11)
 
 **Note:** Version bump only for package @pyroscope/webapp

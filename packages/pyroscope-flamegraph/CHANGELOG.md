@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.5...@pyroscope/flamegraph@0.18.6) (2022-08-15)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix its styling ([#1388](https://github.com/pyroscope-io/pyroscope/issues/1388)) ([5788cf9](https://github.com/pyroscope-io/pyroscope/commit/5788cf9943a579acd35de224537016488a98808f))
+
+
+
+
+
+## [0.18.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.4...@pyroscope/flamegraph@0.18.5) (2022-08-11)
+
+
+### Bug Fixes
+
+* Make trace units be time based ([#1387](https://github.com/pyroscope-io/pyroscope/issues/1387)) ([a567c2c](https://github.com/pyroscope-io/pyroscope/commit/a567c2c1877c462a6a4dceda87455017c1cf7276))
+
+
+
+
+
 ## [0.18.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.3...@pyroscope/flamegraph@0.18.4) (2022-08-11)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

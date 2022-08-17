@@ -29,7 +29,7 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
     case 'lock_samples':
       return new ObjectsFormatter(max);
     case 'trace_samples':
-      return new DurationFormatter(max / sampleRate, 'units');
+      return new DurationFormatter(max / sampleRate);
     default:
       console.warn(`Unsupported unit: '${unit}'. Defaulting to ''`);
       return new DurationFormatter(max / sampleRate, ' ');

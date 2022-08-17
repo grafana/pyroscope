@@ -2,11 +2,6 @@ const BAR_HEIGHT = 21.5;
 
 // / <reference types="cypress" />
 describe('basic test', () => {
-  it('successfully loads', () => {
-    cy.visit('/');
-    cy.title().should('eq', 'Pyroscope');
-  });
-
   it('changes app via the application dropdown', () => {
     const basePath = Cypress.env('basePath') || '';
     // While the initial values come from the backend

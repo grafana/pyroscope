@@ -66,7 +66,7 @@ const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
   return (
     <div className={styles.container}>
       Application:&nbsp;
-      <button
+      <Button
         id={TOGGLE_BTN_ID}
         data-testid={TOGGLE_BTN_ID}
         className={styles.toggleButton}
@@ -74,7 +74,7 @@ const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
         type="button"
       >
         {appName || 'Select application'}
-      </button>
+      </Button>
       <Button
         aria-label="Refresh Apps"
         icon={faSyncAlt}
