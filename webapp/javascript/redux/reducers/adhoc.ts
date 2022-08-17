@@ -67,8 +67,19 @@ const initialState: AdhocState = {
 
 export const uploadFile = createAsyncThunk(
   'adhoc/uploadFile',
-  async ({ file, ...args }: { file: File } & { side: side }, thunkAPI) => {
-    const res = await upload(file);
+  async (
+    {
+      file,
+      spyName,
+      units,
+      ...args
+    }: { file: File; spyName?: string; units?: string } & { side: side },
+    thunkAPI
+  ) => {
+    const res = await upload(
+      file,
+      spyName && units ? { spyName, units } : undefined
+    );
 
     if (res.isOk) {
       // Since we just uploaded a file, let's reload to see it on the file list

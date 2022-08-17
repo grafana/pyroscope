@@ -108,8 +108,10 @@ function AdhocDiff() {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  setFile={async ({ file }) => {
-                    await dispatch(uploadFile({ file, side: 'left' }));
+                  setFile={async ({ file, spyName, units }) => {
+                    await dispatch(
+                      uploadFile({ file, spyName, units, side: 'left' })
+                    );
                     setTabIndexLeft(1);
                   }}
                 />
@@ -141,8 +143,10 @@ function AdhocDiff() {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  setFile={async ({ file }) => {
-                    await dispatch(uploadFile({ file, side: 'right' }));
+                  setFile={async ({ file, spyName, units }) => {
+                    await dispatch(
+                      uploadFile({ file, spyName, units, side: 'right' })
+                    );
                     setTabIndexRight(1);
                   }}
                 />

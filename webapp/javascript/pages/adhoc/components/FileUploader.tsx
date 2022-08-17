@@ -76,15 +76,11 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
 
   const onUploadClick = () => {
     if (file) {
-      let upload;
-
-      if (showLanguageAndUnits) {
-        upload = { file, spyName, units };
-      } else {
-        upload = { file };
-      }
-
-      onUpload(upload);
+      onUpload({
+        file,
+        spyName: showLanguageAndUnits ? spyName : undefined,
+        units: showLanguageAndUnits ? units : undefined,
+      });
     }
   };
 
