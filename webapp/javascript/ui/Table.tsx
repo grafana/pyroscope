@@ -18,6 +18,7 @@ interface HeadCell extends CustomProp {
   name: string;
   label: string;
   sortable?: number;
+  default?: boolean;
 }
 
 export interface BodyRow {
@@ -51,7 +52,9 @@ interface TableSortProps {
 }
 
 export const useTableSort = (headRow: HeadCell[]): TableSortProps => {
-  const [sortBy, updateSortBy] = useState(headRow[0].name);
+  const defaultSortByCell =
+    headRow.filter((row) => row?.default)[0] || headRow[0];
+  const [sortBy, updateSortBy] = useState(defaultSortByCell.name);
   const [sortByDirection, setSortByDirection] = useState<'desc' | 'asc'>(
     'desc'
   );
@@ -62,7 +65,7 @@ export const useTableSort = (headRow: HeadCell[]): TableSortProps => {
     if (sortBy === newSortBy) {
       dir = dir === 'asc' ? 'desc' : 'asc';
     } else {
-      dir = 'asc';
+      dir = 'desc';
     }
 
     updateSortBy(newSortBy);

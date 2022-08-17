@@ -45,6 +45,12 @@ describe('Hook: useTableSort', () => {
     hook.current.updateSortParams('name');
     expect(hook.current).toMatchObject({
       sortBy: 'name',
+      sortByDirection: 'desc',
+    });
+
+    hook.current.updateSortParams('name');
+    expect(hook.current).toMatchObject({
+      sortBy: 'name',
       sortByDirection: 'asc',
     });
   });

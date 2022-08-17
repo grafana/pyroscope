@@ -167,9 +167,10 @@ const tableFormatSingle: {
   sortable: number;
   name: 'name' | 'self' | 'total';
   label: string;
+  default?: boolean;
 }[] = [
   { sortable: 1, name: 'name', label: 'Location' },
-  { sortable: 1, name: 'self', label: 'Self' },
+  { sortable: 1, name: 'self', label: 'Self', default: true },
   { sortable: 1, name: 'total', label: 'Total' },
 ];
 
