@@ -362,7 +362,6 @@ function Table({
       ? { type: 'not-filled' as const, value: <LoadingSpinner /> }
       : { type: 'filled' as const, bodyRows }),
   };
-  const tableSortProps = useTableSort(headRow);
 
   return (
     <>
@@ -393,22 +392,18 @@ function Table({
           {linkTagsSelectModalData.isModalOpen && (
             <OutsideClickHandler onOutsideClick={handleOutsideModalClick}>
               <ViewTagsSelectLinkModal
+                /* eslint-disable-next-line react/jsx-props-no-spreading */
+                {...linkTagsSelectModalData}
                 whereDropdownItems={whereDropdownItems}
                 groupByTag={groupByTag}
                 appName={appName}
-                /* eslint-disable-next-line react/jsx-props-no-spreading */
-                {...linkTagsSelectModalData}
                 setLinkTagsSelectModalData={setLinkTagsSelectModalData}
               />
             </OutsideClickHandler>
           )}
         </div>
       </div>
-      <TableUI
-        {...tableSortProps}
-        table={table}
-        className={styles.tagExplorerTable}
-      />
+      <TableUI table={table} className={styles.tagExplorerTable} />
     </>
   );
 }

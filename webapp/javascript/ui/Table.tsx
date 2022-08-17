@@ -142,7 +142,6 @@ function Table({
                   {...rest}
                   className={clsx(className, {
                     [styles.isRowSelected]: isRowSelected,
-                    // todo: add styles for disabled
                     [styles.isRowDisabled]: isRowDisabled,
                   })}
                 >

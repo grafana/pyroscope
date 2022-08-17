@@ -22,7 +22,6 @@ function DisableButton(props: { onDisable: (user: User) => void; user: User }) {
 
   return (
     <Button type="button" kind="secondary" onClick={() => onDisable(user)}>
-      {/* @ts-ignore */}
       <Icon icon={icon} onClick={onDisable} />
     </Button>
   );
