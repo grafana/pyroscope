@@ -68,7 +68,7 @@
     width: 100%;
 
     thead,
-    tbody tr:nth-child(2n) {
+    tbody tr:nth-child(2n):not(:hover) {
       background-color: var(--ps-neutral-9);
     }
 

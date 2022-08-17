@@ -21,6 +21,7 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import PageTitle from '@webapp/components/PageTitle';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, {
@@ -30,12 +31,12 @@ import useTimelines, {
 } from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
+import { formatTitle } from './formatTitle';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const { leftFrom, rightFrom, leftUntil, rightUntil } = useAppSelector(
-    selectContinuousState
-  );
+  const { leftFrom, rightFrom, leftUntil, rightUntil, refreshToken } =
+    useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
@@ -53,7 +54,7 @@ function ComparisonApp() {
       return fetchLeftQueryData.abort;
     }
     return undefined;
-  }, [leftFrom, leftUntil, leftQuery]);
+  }, [leftFrom, leftUntil, leftQuery, refreshToken]);
 
   useEffect(() => {
     if (rightQuery) {
@@ -64,7 +65,7 @@ function ComparisonApp() {
       return fetchRightQueryData.abort;
     }
     return undefined;
-  }, [rightFrom, rightUntil, rightQuery]);
+  }, [rightFrom, rightUntil, rightQuery, refreshToken]);
 
   const leftSide = comparisonView.left.profile;
   const rightSide = comparisonView.right.profile;
@@ -79,6 +80,7 @@ function ComparisonApp() {
 
   return (
     <div>
+      <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar
@@ -131,6 +133,9 @@ function ComparisonApp() {
               tags={leftTags}
               onSetQuery={(q) => {
                 dispatch(actions.setLeftQuery(q));
+                if (leftQuery === q) {
+                  dispatch(actions.refresh());
+                }
               }}
               onSelectedLabel={(label, query) => {
                 dispatch(fetchTagValues({ query, label }));
@@ -186,6 +191,9 @@ function ComparisonApp() {
               tags={rightTags}
               onSetQuery={(q) => {
                 dispatch(actions.setRightQuery(q));
+                if (rightQuery === q) {
+                  dispatch(actions.refresh());
+                }
               }}
               onSelectedLabel={(label, query) => {
                 dispatch(fetchTagValues({ query, label }));

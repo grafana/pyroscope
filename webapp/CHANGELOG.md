@@ -3,6 +3,58 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.33.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.3...@pyroscope/webapp@1.33.0) (2022-08-17)
+
+
+### Features
+
+* reuse Table component everywhere ([#1403](https://github.com/pyroscope-io/pyroscope/issues/1403)) ([a79f61b](https://github.com/pyroscope-io/pyroscope/commit/a79f61b39d8ae5b199710e79dc05e9352044b3b4))
+
+
+
+
+
+## [1.32.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.2...@pyroscope/webapp@1.32.3) (2022-08-17)
+
+
+### Bug Fixes
+
+* Add different color palette for Explore Timeline ([#1399](https://github.com/pyroscope-io/pyroscope/issues/1399)) ([5e129e0](https://github.com/pyroscope-io/pyroscope/commit/5e129e0552422ca3b36c85153248c1d8278fc0de))
+
+
+
+
+
+## [1.32.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.1...@pyroscope/webapp@1.32.2) (2022-08-16)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.32.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.0...@pyroscope/webapp@1.32.1) (2022-08-16)
+
+
+### Bug Fixes
+
+* **webapp:** refresh data when (re)submitting query ([#1410](https://github.com/pyroscope-io/pyroscope/issues/1410)) ([3554f84](https://github.com/pyroscope-io/pyroscope/commit/3554f84060ab54836e9ae1f2b49f9174c3e66041)), closes [#1406](https://github.com/pyroscope-io/pyroscope/issues/1406)
+
+
+
+
+
+# [1.32.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.1...@pyroscope/webapp@1.32.0) (2022-08-16)
+
+
+### Features
+
+* **webapp:** set title automatically ([#1397](https://github.com/pyroscope-io/pyroscope/issues/1397)) ([74821ca](https://github.com/pyroscope-io/pyroscope/commit/74821ca0f0e3ebec38c83f83bf54318d931f66f6))
+
+
+
+
+
 ## [1.31.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.0...@pyroscope/webapp@1.31.1) (2022-08-15)
 
 
