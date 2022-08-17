@@ -148,11 +148,14 @@ function Table({
                   })}
                 >
                   {cells &&
-                    cells.map(({ style, value, ...rest }: Cell) => (
-                      <td key={renderID} style={style} {...rest}>
-                        {value}
-                      </td>
-                    ))}
+                    cells.map(
+                      ({ style, value, ...rest }: Cell, index: number) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <td key={renderID + index} style={style} {...rest}>
+                          {value}
+                        </td>
+                      )
+                    )}
                 </tr>
               );
             }

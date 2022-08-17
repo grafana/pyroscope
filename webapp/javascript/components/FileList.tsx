@@ -113,6 +113,7 @@ function FileList(props: FileListProps) {
     <>
       <div className={`${styles.tableContainer} ${className}`}>
         <TableUI
+          /* eslint-disable-next-line react/jsx-props-no-spreading */
           {...rest}
           sortBy={sortBy}
           sortByDirection={sortByDirection}

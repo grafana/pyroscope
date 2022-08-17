@@ -232,6 +232,7 @@ function Table({
 
   return (
     <TableUI
+      /* eslint-disable-next-line react/jsx-props-no-spreading */
       {...tableSortProps}
       tableBodyRef={tableBodyRef}
       table={table}
