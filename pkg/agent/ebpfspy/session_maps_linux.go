@@ -8,6 +8,7 @@ package ebpfspy
 
 import "C"
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -26,10 +27,12 @@ func (s *Session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 		nextKey = C.struct_profile_key_t{}
 	)
 	values, err = s.mapCounts.GetValueAndDeleteBatch(pKeys, nil, unsafe.Pointer(&nextKey), uint32(mapSize))
+	fmt.Printf("getCountsMapValues %d %v\n", len(values), err)
 	if len(values) > 0 {
 		keys = collectBatchValues(allKeys, len(values), keySize)
 		return keys, values, true, nil
 	}
+
 	// batch failed or unsupported or just unlucky and got 0 stack-traces
 	// try iterating
 	it := s.mapCounts.Iterator()
@@ -47,6 +50,7 @@ func (s *Session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 }
 
 func (s *Session) clearCountsMap(keys [][]byte, batch bool) error {
+	fmt.Printf("clearCountsMap %d %v\n", len(keys), batch)
 	if len(keys) == 0 {
 		return nil
 	}

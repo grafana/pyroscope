@@ -10,6 +10,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/binary"
+	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"golang.org/x/sys/unix"
 	"sync"
@@ -109,6 +110,7 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		comm   string
 	}
 	var sfs []sf
+	total := uint32(0)
 	for i, key := range keys {
 		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
 		value := values[i]
@@ -121,6 +123,7 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		uStack := s.getStack(uStackID, knownStacks)
 		kStack := s.getStack(kStackID, knownStacks)
 		sfs = append(sfs, sf{pid: pid, uStack: uStack, kStack: kStack, count: count, comm: comm})
+		total += count
 	}
 	for _, it := range sfs {
 		buf := bytes.NewBuffer(nil)
@@ -129,10 +132,12 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		s.walkStack(buf, it.uStack, it.pid, true)
 		s.walkStack(buf, it.kStack, it.pid, false)
 		err = cb(buf.Bytes(), uint64(it.count), it.pid)
+
 		if err != nil {
 			return err
 		}
 	}
+	fmt.Printf("total value %d samples %d\n", total, len(sfs))
 	if err = s.clearCountsMap(keys, batch); err != nil {
 		return err
 	}
