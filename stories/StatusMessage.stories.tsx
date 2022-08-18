@@ -2,6 +2,7 @@
 import React from 'react';
 import StatusMessage from '@ui/StatusMessage';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
+import '../webapp/sass/profile.scss';
 
 const Template: ComponentStory<typeof StatusMessage> = (args) => (
   <StatusMessage {...args} />

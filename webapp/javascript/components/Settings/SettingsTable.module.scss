@@ -1,0 +1,41 @@
+.settingsTable {
+  margin: 20px 0;
+  width: 100%;
+
+  thead {
+    padding: 15px 0;
+    background-color: var(--ps-ui-foreground);
+
+    th {
+      text-align: left;
+      padding: 10px 20px;
+    }
+  }
+
+  tbody {
+    color: var(--ps-ui-foreground-text);
+
+    tr {
+      &:nth-child(odd) {
+        background-color: var(--ps-neutral-9);
+      }
+
+      &:nth-child(even) {
+        background-color: var(--ps-ui-foreground);
+      }
+    }
+
+    td {
+      border: unset !important;
+      min-width: 50px;
+      text-align: left;
+      padding: 10px 20px;
+      min-width: initial;
+      width: initial;
+    }
+
+    button {
+      padding: 5px 13px;
+    }
+  }
+}

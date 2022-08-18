@@ -1,7 +1,9 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -20,10 +22,13 @@ import (
 
 var _ = Describe("render merge test", func() {
 	var httpServer *httptest.Server
+	var s *storage.Storage
+
 	testing.WithConfig(func(cfg **config.Config) {
 		BeforeEach(func() {
 			(*cfg).Server.APIBindAddr = ":10044"
-			s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			var err error
+			s, err = storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 			e, _ := exporter.NewExporter(nil, nil)
 			c, _ := New(Config{
@@ -40,7 +45,12 @@ var _ = Describe("render merge test", func() {
 			httpServer = httptest.NewServer(h)
 		})
 
-		Context("/render", func() {
+		JustAfterEach(func() {
+			s.Close()
+			httpServer.Close()
+		})
+
+		Context("/merge", func() {
 			It("handles merge requests", func() {
 				defer httpServer.Close()
 
@@ -59,3 +69,9 @@ var _ = Describe("render merge test", func() {
 		})
 	})
 })
+
+func reqBody(v interface{}) io.Reader {
+	var b bytes.Buffer
+	Expect(json.NewEncoder(&b).Encode(v)).ToNot(HaveOccurred())
+	return &b
+}

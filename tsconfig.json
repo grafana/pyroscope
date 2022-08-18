@@ -10,7 +10,8 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "paths": {
-      "@webapp/*": ["./webapp/javascript/*"]
+      "@webapp/*": ["./webapp/javascript/*"],
+      "@ui/*": ["./webapp/javascript/ui/*"]
     },
     "types": ["node"],
     "plugins": [{ "name": "typescript-plugin-css-modules" }],

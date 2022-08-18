@@ -321,7 +321,7 @@ describe.only('positions', () => {
         <FlamegraphRenderer profile={RawProfile} />
       );
 
-      expect(getByTestId('table-view')).toBeInTheDocument();
+      expect(getByTestId('table-ui')).toBeInTheDocument();
       expect(getByTestId('flamegraph-view')).toBeInTheDocument();
       expect(queryByRole('combobox', { name: 'view' })).toBeInTheDocument();
     });
@@ -331,7 +331,7 @@ describe.only('positions', () => {
         <FlamegraphRenderer profile={RawProfile} onlyDisplay="both" />
       );
 
-      expect(getByTestId('table-view')).toBeInTheDocument();
+      expect(getByTestId('table-ui')).toBeInTheDocument();
       expect(getByTestId('flamegraph-view')).toBeInTheDocument();
       expect(queryByRole('combobox', { name: 'view' })).not.toBeInTheDocument();
     });
@@ -342,7 +342,7 @@ describe.only('positions', () => {
       <FlamegraphRenderer profile={RawProfile} onlyDisplay="flamegraph" />
     );
 
-    expect(queryByTestId('table-view')).not.toBeInTheDocument();
+    expect(queryByTestId('table-ui')).not.toBeInTheDocument();
     expect(getByTestId('flamegraph-view')).toBeInTheDocument();
   });
 
@@ -351,7 +351,7 @@ describe.only('positions', () => {
       <FlamegraphRenderer profile={RawProfile} onlyDisplay="table" />
     );
 
-    expect(getByTestId('table-view')).toBeInTheDocument();
+    expect(getByTestId('table-ui')).toBeInTheDocument();
     expect(queryByTestId('flamegraph-view')).not.toBeInTheDocument();
   });
 });

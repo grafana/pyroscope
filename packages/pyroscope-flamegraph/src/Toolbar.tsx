@@ -17,7 +17,7 @@ import Select from '@webapp/ui/Select';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import SharedQueryInput from './SharedQueryInput';
-import styles from './ProfilerHeader.module.css';
+import styles from './Toolbar.module.css';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 
 // arbitrary value
