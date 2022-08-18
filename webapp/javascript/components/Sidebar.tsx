@@ -81,6 +81,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON,
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
+          PAGES.TRACING,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -218,6 +219,15 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
+          <MenuItem
+            data-testid="sidebar-tracing-page"
+            active={isRouteActive(PAGES.TRACING)}
+            // change icon...should be top level menu item or nested ?
+            icon={<Icon icon={faSearch} />}
+          >
+            Tracing page
+            <NavLink to={{ pathname: PAGES.TRACING, search }} exact />
+          </MenuItem>
         </Menu>
       </SidebarContent>
       <SidebarFooter>

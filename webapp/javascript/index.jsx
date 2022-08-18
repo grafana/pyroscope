@@ -15,6 +15,7 @@ import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
 import TagExplorerView from './pages/TagExplorerView';
+import TracingView from './pages/TracingView';
 import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
@@ -92,6 +93,13 @@ function App() {
             <Protected>
               <Continuous>
                 <TagExplorerView />
+              </Continuous>
+            </Protected>
+          </Route>
+          <Route exact path={PAGES.TRACING}>
+            <Protected>
+              <Continuous>
+                <TracingView />
               </Continuous>
             </Protected>
           </Route>
