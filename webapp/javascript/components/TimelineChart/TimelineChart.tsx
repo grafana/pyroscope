@@ -11,7 +11,7 @@ window.$ = jquery;
 
 import ReactFlot from 'react-flot';
 import 'react-flot/flot/jquery.flot.time.min';
-import 'react-flot/flot/jquery.flot.selection.min';
+import './TimelineChartSelection';
 import 'react-flot/flot/jquery.flot.crosshair.min';
 import './TimelineChartPlugin';
 

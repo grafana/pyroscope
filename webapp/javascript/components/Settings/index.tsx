@@ -12,6 +12,7 @@ import cx from 'classnames';
 import { useAppSelector } from '@webapp/redux/hooks';
 import { selectCurrentUser } from '@webapp/redux/reducers/user';
 import { User } from '@webapp/models/users';
+import PageTitle from '@webapp/components/PageTitle';
 import Preferences from './Preferences';
 import Security from './Security';
 import Users from './Users';
@@ -100,22 +101,40 @@ function Settings() {
         <Box className={styles.settingsWrapper}>
           <Switch>
             <Route exact path={path}>
-              <Preferences />
+              <>
+                <PageTitle title="Settings / Preferences" />
+                <Preferences />
+              </>
             </Route>
             <Route path={`${path}/security`}>
-              <Security />
+              <>
+                <PageTitle title="Settings / Security" />
+                <Security />
+              </>
             </Route>
             <Route exact path={`${path}/users`}>
-              <Users />
+              <>
+                <PageTitle title="Settings / Users" />
+                <Users />
+              </>
             </Route>
             <Route exact path={`${path}/users/add`}>
-              <UserAddForm />
+              <>
+                <PageTitle title="Settings / Users / Add" />
+                <UserAddForm />
+              </>
             </Route>
             <Route exact path={`${path}/api-keys`}>
-              <ApiKeys />
+              <>
+                <PageTitle title="Settings / API Keys" />
+                <ApiKeys />
+              </>
             </Route>
             <Route exact path={`${path}/api-keys/add`}>
-              <APIKeyAddForm />
+              <>
+                <PageTitle title="Settings / Add API Key" />
+                <APIKeyAddForm />
+              </>
             </Route>
           </Switch>
         </Box>

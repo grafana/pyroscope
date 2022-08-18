@@ -92,19 +92,19 @@ describe('E2E Tests', () => {
     findFlamegraph(2).waitForFlamegraphToRender();
   });
 
-  // TODO(dogfrogfog): fix when app selector modal and explore tag modal will be combined
-  it.skip('tests /explore view', () => {
+  it('tests /explore view', () => {
     const params = new URLSearchParams();
     params.set('query', appName);
     params.set('from', t0);
     params.set('until', t4);
 
-    cy.visit(`/explore?${params.toString()}`);
+    cy.visit('/');
+    cy.findByTestId('collapse-sidebar').click();
+    cy.findByTestId('sidebar-explore-page').click();
 
     cy.findByTestId('explore-header');
     cy.findByTestId('timeline-explore-page');
     cy.findByTestId('explore-table');
-    cy.findByTestId('tag-explorer-view').waitForFlamegraphToRender();
   });
 
   it('works with standalone view', () => {

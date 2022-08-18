@@ -272,6 +272,7 @@ export function SidebarComponent() {
             </MenuItem>
           )}
           <MenuItem
+            data-testid="collapse-sidebar"
             className={`${styles.collapseIcon} ${
               collapsed ? styles.collapsedIconCollapsed : ''
             }`}
