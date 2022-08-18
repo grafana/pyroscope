@@ -131,6 +131,8 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		buf.Write([]byte{';'})
 		s.walkStack(buf, it.uStack, it.pid, true)
 		s.walkStack(buf, it.kStack, it.pid, false)
+		fmt.Printf("sf  %d %s\n", it.count, string(buf.Bytes()))
+
 		err = cb(buf.Bytes(), uint64(it.count), it.pid)
 
 		if err != nil {
