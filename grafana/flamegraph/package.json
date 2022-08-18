@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "build": "grafana-toolkit plugin:build",
-    "test": "grafana-toolkit plugin:test",
+    "test": "grafana-toolkit plugin:test --watch",
     "dev": "grafana-toolkit plugin:dev",
     "watch": "grafana-toolkit plugin:dev --watch",
     "sign": "grafana-toolkit plugin:sign",
@@ -16,6 +16,9 @@
     "@grafana/data": "latest",
     "@grafana/runtime": "latest",
     "@grafana/toolkit": "latest",
+    "@testing-library/dom": "8.13.0",
+    "@testing-library/react": "12.1.4",
+    "@testing-library/user-event": "14.2.0",
     "@types/lodash": "4.14.181",
     "prettier": "2.6.0",
     "ts-node": "9.1.1"

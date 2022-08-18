@@ -16,51 +16,72 @@
 // OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 // TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 // THIS SOFTWARE.
-
 import { css } from '@emotion/css';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { useWindowSize } from 'react-use';
 
-import { colors, useStyles } from '@grafana/ui';
+import { colors, NO_DATA_COLOR, useStyles2 } from '@grafana/ui';
 
-import  { BAR_BORDER_WIDTH, BAR_TEXT_PADDING_LEFT, COLLAPSE_THRESHOLD, HIDE_THRESHOLD, LABEL_THRESHOLD, NAME_OFFSET, PIXELS_PER_LEVEL, STEP_OFFSET } from '../Constants';
-import { data } from '../Data';
+import { BAR_BORDER_WIDTH, COLLAPSE_THRESHOLD, HIDE_THRESHOLD, LABEL_THRESHOLD, NAME_OFFSET, PIXELS_PER_LEVEL, STEP_OFFSET } from '../constants';
 
-const FlameGraph = () => {
-  const styles = useStyles(getStyles);
-  const levels = data['flamebearer']['levels'];
-  const names = data['flamebearer']['names'];
-  const totalTicks = data['flamebearer']['numTicks'];
+
+type Props = {
+  data: any;
+  topLevelIndex: number;
+  rangeMin: number;
+  rangeMax: number;
+  setTopLevelIndex: (level: number) => void;
+  setRangeMin: (range: number) => void;
+  setRangeMax: (range: number) => void;
+}
+  
+const FlameGraph = ({data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex, setRangeMin, setRangeMax}: Props) => {
+  const styles = useStyles2(getStyles);
+  const levels = data['levels'];
+  const names = data['names'];
+  const totalTicks = data['numTicks'];
 
   const { width: windowWidth } = useWindowSize();
-  const graphRef = useRef<HTMLCanvasElement>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
+  const [bars, setBars] = useState<any>([])
 
   
   // get the x coordinate of the bar i.e. where it starts on the vertical plane
-  const getBarX = useCallback((barTicks: number, pixelsPerTick: number) => {
-    return barTicks * pixelsPerTick;
-  }, []);
+  const getBarX = useCallback((accumulatedTicks: number, pixelsPerTick: number) => {
+    const rangeTicks = totalTicks * rangeMin;
+    return (accumulatedTicks - rangeTicks) * pixelsPerTick;
+  }, [rangeMin, totalTicks]);
 
   const getBarColor = (h: number, l: number) => {
     return `hsl(${h}, 100%, ${l}%)`;
   };
 
+  useEffect(() => {
+    if (levels) {
+      for (const level of levels) {
+        let prev = 0;
+        for (let i = 0; i < level.length; i += STEP_OFFSET) {
+          level[i] += prev;
+          prev = level[i] + level[i + 1];
+        }
+      }
+    }
+  }, [levels]);
+
   const render = useCallback((pixelsPerTick: number) => {
     if (!levels) {return;}
-    const ctx = graphRef.current?.getContext('2d')!;
+    let bars = [];
+    
     const graph = graphRef.current!;
-    graph.height = PIXELS_PER_LEVEL * (levels.length);
-    graph.width = graph.clientWidth;
-    ctx.textBaseline = 'middle';
-    ctx.font = '13px Roboto, sans-serif';
-    ctx.strokeStyle = 'white';
+    graph.style.height = (PIXELS_PER_LEVEL * (levels.length)) + "px";
 
     for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
       const level = levels[levelIndex];
 
       for (let barIndex = 0; barIndex < level.length; barIndex += STEP_OFFSET) {
         const accumulatedBarTicks = level[barIndex];
-        const barX = getBarX(accumulatedBarTicks, pixelsPerTick);
+        let barX = getBarX(accumulatedBarTicks, pixelsPerTick);
+        if (barX + (BAR_BORDER_WIDTH * 2) > graphRef.current!.clientWidth) {continue;}
         const name = names[level[barIndex + NAME_OFFSET]];
         let curBarTicks = level[barIndex + 1];
 
@@ -77,62 +98,80 @@ const FlameGraph = () => {
           }
         }
 
-        const width = curBarTicks * pixelsPerTick - (collapsed ? 0 : BAR_BORDER_WIDTH * 2);
+        let width = curBarTicks * pixelsPerTick;
+        if (barX < 0) {
+          width = barX + width;
+          barX = 0;
+        }
         if (width < HIDE_THRESHOLD) {continue;}
 
-        ctx.beginPath();                
-        ctx.rect(barX + (collapsed ? 0 : BAR_BORDER_WIDTH), levelIndex * PIXELS_PER_LEVEL, width, PIXELS_PER_LEVEL);
+        const style: CSSProperties = {
+          left: barX, top: levelIndex * PIXELS_PER_LEVEL, width: width
+        }
 
-        const intensity = curBarTicks / totalTicks;
+        //  / (rangeMax - rangeMin) here so when you click a bar it will adjust the top (clicked)bar to the most 'intense' color
+        const intensity = Math.min(1, (curBarTicks / totalTicks) / (rangeMax - rangeMin));
         const h = 50 - (50 * intensity);
         const l = 65 + (7 * intensity);
 
         if (!collapsed) {
-          ctx.stroke();
-          ctx.fillStyle = getBarColor(h, l);
+          style['background'] = levelIndex > topLevelIndex - 1 ? getBarColor(h, l) : getBarColor(h, l + 15);
+          style['outline'] = BAR_BORDER_WIDTH + 'px solid ' + colors[55];
+          bars.push(
+            <div key={Math.random()} className={styles.bar} data-x={levelIndex} data-y={barIndex} style={style}>{width >= LABEL_THRESHOLD ? name : ''}</div>
+          )
         } else {
-          ctx.fillStyle = colors[55];
-        }
-        ctx.fill();
-
-        if (!collapsed && width >= LABEL_THRESHOLD) {
-          ctx.save();
-          ctx.clip(); // so text does not overflow
-          ctx.fillStyle = 'black';
-          ctx.fillText(`${name}`, Math.max(barX, 0) + BAR_TEXT_PADDING_LEFT, levelIndex * PIXELS_PER_LEVEL + PIXELS_PER_LEVEL / 2);
-          ctx.restore();
+          style['background'] = NO_DATA_COLOR;
+          bars.push(
+            <div key={Math.random()} className={styles.bar} style={style}></div>
+          )
         }
       }
     }
-  }, [getBarX, levels, names, totalTicks]);
 
-  useEffect(() => {
-    if (levels) {
-      for (const level of levels) {
-        let prev = 0;
-        for (let i = 0; i < level.length; i += STEP_OFFSET) {
-          level[i] += prev;
-          prev = level[i] + level[i + 1];
-        }
-      }
-    }
-  }, [levels]);
+    setBars(bars);
+  }, [levels, getBarX, names, totalTicks, rangeMax, rangeMin, topLevelIndex, styles.bar]);
 
   useEffect(() => {
     if (graphRef.current) {
-      const pixelsPerTick = graphRef.current.clientWidth / totalTicks;
+      const pixelsPerTick = graphRef.current.clientWidth / totalTicks / (rangeMax - rangeMin);
       render(pixelsPerTick);
+
+      graphRef.current.onclick = (e) => {
+        const levelIndex = parseInt((e as any).target?.getAttribute('data-x'), 10);
+        const barIndex = parseInt((e as any).target?.getAttribute('data-y'), 10);
+        
+        if (!isNaN(levelIndex) && !isNaN(barIndex)) {
+          setTopLevelIndex(levelIndex);
+          setRangeMin(levels[levelIndex][barIndex] / totalTicks);
+          setRangeMax((levels[levelIndex][barIndex] + levels[levelIndex][barIndex + 1]) / totalTicks);
+        }
+      };
     }
-  }, [render, totalTicks, windowWidth]);
+  }, [render, levels, names, rangeMin, rangeMax, topLevelIndex, totalTicks, windowWidth, setTopLevelIndex, setRangeMin, setRangeMax]);
 
   return (
-    <canvas className={styles.graph} ref={graphRef} />
+    <div className={styles.graph} ref={graphRef} data-testid="flamegraph">
+      {bars}
+    </div>
   );
 }
 
 const getStyles = () => ({
   graph: css`
-    width: 100%;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Roboto';
+    font-size: 13px;
+    text-indent: 3px;
+    white-space: nowrap;
+  `,
+  bar: css`
+    position: absolute;
+    color: #222;
+    cursor: pointer;
+    height: ${PIXELS_PER_LEVEL}px;
+    overflow: hidden;
   `,
 });
 

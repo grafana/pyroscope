@@ -1835,9 +1835,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@grafana/data@portal:/home/andrej/go/src/github.com/grafana/grafana/packages/grafana-data::locator=grafana-flamegraph-panel%40workspace%3A.":
-  version: 0.0.0-use.local
-  resolution: "@grafana/data@portal:/home/andrej/go/src/github.com/grafana/grafana/packages/grafana-data::locator=grafana-flamegraph-panel%40workspace%3A."
+"@grafana/data@npm:9.0.4":
+  version: 9.0.4
+  resolution: "@grafana/data@npm:9.0.4"
   dependencies:
     "@braintree/sanitize-url": 6.0.0
     "@grafana/schema": 9.0.4
@@ -1858,8 +1858,36 @@ __metadata:
     tslib: 2.4.0
     uplot: 1.6.22
     xss: 1.0.11
+  checksum: f74f94919314cd7a13311e0fb132b40f504b352f854617b482c9cbcdbebffc164d7731487f78cc7fe130bdfbe183f313651fae4a7dd65a7fae5305edd8bd5c39
   languageName: node
-  linkType: soft
+  linkType: hard
+
+"@grafana/data@npm:latest":
+  version: 9.0.7
+  resolution: "@grafana/data@npm:9.0.7"
+  dependencies:
+    "@braintree/sanitize-url": 6.0.0
+    "@grafana/schema": 9.0.7
+    "@types/d3-interpolate": ^1.4.0
+    d3-interpolate: 1.4.0
+    date-fns: 2.28.0
+    eventemitter3: 4.0.7
+    lodash: 4.17.21
+    marked: 4.0.16
+    moment: 2.29.4
+    moment-timezone: 0.5.34
+    ol: 6.14.1
+    papaparse: 5.3.2
+    react: 17.0.2
+    react-dom: 17.0.2
+    regenerator-runtime: 0.13.9
+    rxjs: 7.5.5
+    tslib: 2.4.0
+    uplot: 1.6.22
+    xss: 1.0.11
+  checksum: 14dd8f96c896d79de43286464e756d050df00a58c3d2c71a5a5aff59539463b54212310d2a2b8a61aacdc2c42fe7d4d88038350a60a5a4231a48cce9df32abfc
+  languageName: node
+  linkType: hard
 
 "@grafana/e2e-selectors@npm:9.0.4":
   version: 9.0.4
@@ -1913,6 +1941,15 @@ __metadata:
   dependencies:
     tslib: 2.4.0
   checksum: 3de25f17bf73598d0581afc295c65fd1f477a6b516e7eb5e408024f0decfc4abef3aba5f5b707abb289c0b95ea00c70531bd6464d4beeae996509bc87883e7f2
+  languageName: node
+  linkType: hard
+
+"@grafana/schema@npm:9.0.7":
+  version: 9.0.7
+  resolution: "@grafana/schema@npm:9.0.7"
+  dependencies:
+    tslib: 2.4.0
+  checksum: 174e4c5e9842460f8470ed9b41cf1e5ef33e1fa9bfef30bcc6bd639d5352ee67308dc54acaca0e19e10c2651c881d3436f6c22bd82faf21e5e1e845801b1a4bb
   languageName: node
   linkType: hard
 
@@ -3064,6 +3101,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@testing-library/dom@npm:8.13.0":
+  version: 8.13.0
+  resolution: "@testing-library/dom@npm:8.13.0"
+  dependencies:
+    "@babel/code-frame": ^7.10.4
+    "@babel/runtime": ^7.12.5
+    "@types/aria-query": ^4.2.0
+    aria-query: ^5.0.0
+    chalk: ^4.1.0
+    dom-accessibility-api: ^0.5.9
+    lz-string: ^1.4.4
+    pretty-format: ^27.0.2
+  checksum: 880f1872b9949800d4444e3bdbd03df86d6f41ec7c27136dff1da29e87d2df2d7ee904afcdf895ffce351c25bd12119117eae023354d50e707ad56d43b2ed3ed
+  languageName: node
+  linkType: hard
+
 "@testing-library/dom@npm:>=7":
   version: 8.16.0
   resolution: "@testing-library/dom@npm:8.16.0"
@@ -3077,6 +3130,45 @@ __metadata:
     lz-string: ^1.4.4
     pretty-format: ^27.0.2
   checksum: 37aabbec872522bcb51106ecb700d9be601293e75445084b6cc195921db4b2d06d6bd4c67ad834174c129f2199c39aa540b6d17c296fcbd701dc99fd800afe36
+  languageName: node
+  linkType: hard
+
+"@testing-library/dom@npm:^8.0.0":
+  version: 8.17.1
+  resolution: "@testing-library/dom@npm:8.17.1"
+  dependencies:
+    "@babel/code-frame": ^7.10.4
+    "@babel/runtime": ^7.12.5
+    "@types/aria-query": ^4.2.0
+    aria-query: ^5.0.0
+    chalk: ^4.1.0
+    dom-accessibility-api: ^0.5.9
+    lz-string: ^1.4.4
+    pretty-format: ^27.0.2
+  checksum: e4df091fcf84c9eac4a6ee4c76674c1d562bf98732f0ac8820972d7718ab10397b672b9f082aace3cacd1f610fc77de6e1b6094e67afe1df0443bf22eb9deab2
+  languageName: node
+  linkType: hard
+
+"@testing-library/react@npm:12.1.4":
+  version: 12.1.4
+  resolution: "@testing-library/react@npm:12.1.4"
+  dependencies:
+    "@babel/runtime": ^7.12.5
+    "@testing-library/dom": ^8.0.0
+    "@types/react-dom": "*"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+  checksum: 944c5f8d4abb22c0650c25c7ae499651828c37c0e741ff67a4635d4cd99b307d486dabec05b372aba638bd359d29cd2af97393b5055ea294a201d80b4bc384b8
+  languageName: node
+  linkType: hard
+
+"@testing-library/user-event@npm:14.2.0":
+  version: 14.2.0
+  resolution: "@testing-library/user-event@npm:14.2.0"
+  peerDependencies:
+    "@testing-library/dom": ">=7.21.4"
+  checksum: b34f19bbfe938d03778831b9c083d451c53f983f6f6c0db05a572b71ba5323c4125097bb4b8c97595bc9b946610d2c2f65cf1e113f047eed7a3078f28a1027e2
   languageName: node
   linkType: hard
 
@@ -3500,6 +3592,15 @@ __metadata:
     "@types/webpack": ^4
     "@types/webpack-dev-server": 3
   checksum: b8aecccc7c0aa3d644f832f72b6e5c378c232c8b72c5671f5e39f37364fb46d362b6877ca728f4a136e0af2b341485fad2ed10b1394efa42568284cbb9c61b61
+  languageName: node
+  linkType: hard
+
+"@types/react-dom@npm:*":
+  version: 18.0.6
+  resolution: "@types/react-dom@npm:18.0.6"
+  dependencies:
+    "@types/react": "*"
+  checksum: db571047af1a567631758700b9f7d143e566df939cfe5fbf7535347cc0c726a1cdbb5e3f8566d076e54cf708b6c1166689de194a9ba09ee35efc9e1d45911685
   languageName: node
   linkType: hard
 
@@ -7146,6 +7247,9 @@ __metadata:
     "@grafana/data": latest
     "@grafana/runtime": latest
     "@grafana/toolkit": latest
+    "@testing-library/dom": 8.13.0
+    "@testing-library/react": 12.1.4
+    "@testing-library/user-event": 14.2.0
     "@types/lodash": 4.14.181
     prettier: 2.6.0
     react: 17.0.2
@@ -9306,7 +9410,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"moment@npm:2.x, moment@npm:>= 2.9.0":
+"moment@npm:2.29.4, moment@npm:2.x, moment@npm:>= 2.9.0":
   version: 2.29.4
   resolution: "moment@npm:2.29.4"
   checksum: 0ec3f9c2bcba38dc2451b1daed5daded747f17610b92427bebe1d08d48d8b7bdd8d9197500b072d14e326dd0ccf3e326b9e3d07c5895d3d49e39b6803b76e80e
