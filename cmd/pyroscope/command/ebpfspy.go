@@ -10,11 +10,11 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 )
 
-func newEBPFSpyCmd(cfg *config.EBPFSpy) *cobra.Command {
+func newEBPFSpyCmd(cfg *config.EBPF) *cobra.Command {
 	vpr := newViper()
 	connectCmd := &cobra.Command{
 		Use:   "ebpf [flags]",
-		Short: "todo",
+		Short: "Profile whole system using eBPF sampling profiler",
 		Args:  cobra.NoArgs,
 
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {

@@ -24,7 +24,7 @@ type Config struct {
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
 	Exec      Exec      `skip:"true" mapstructure:",squash"`
 	Connect   Connect   `skip:"true" mapstructure:",squash"`
-	EBPFSpy   EBPFSpy   `skip:"true" mapstructure:",squash"`
+	EBPFSpy   EBPF      `skip:"true" mapstructure:",squash"`
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
 	Admin     Admin     `skip:"true" mapstructure:",squash"`
 	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`

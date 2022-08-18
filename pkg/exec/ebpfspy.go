@@ -21,7 +21,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
-func RunEBPFSpy(cfg *config.EBPFSpy) error {
+func RunEBPFSpy(cfg *config.EBPF) error {
 	if cfg.Pid == -1 && cfg.DetectSubprocesses {
 		return fmt.Errorf("pid -1 can only be used without dectecting subprocesses")
 	}
