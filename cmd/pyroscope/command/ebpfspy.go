@@ -13,7 +13,7 @@ import (
 func newEBPFSpyCmd(cfg *config.EBPFSpy) *cobra.Command {
 	vpr := newViper()
 	connectCmd := &cobra.Command{
-		Use:   "ebpfspy [flags]",
+		Use:   "ebpf [flags]",
 		Short: "todo",
 		Args:  cobra.NoArgs,
 
