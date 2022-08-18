@@ -8,10 +8,18 @@ import {
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { type App } from '@webapp/models/app';
 import Input from '@webapp/ui/Input';
-import AppTableItem from './AppTableItem';
+import TableUI from '@webapp/ui/Table';
+import cl from 'classnames';
 
 import appsStyles from './Apps.module.css';
-import tableStyles from '../SettingsTable.module.css';
+import tableStyles from '../SettingsTable.module.scss';
+import { getAppTableRows } from './getAppTableRows';
+
+const headRow = [
+  { name: '', label: '', sortable: 0 },
+  { name: '', label: 'Name', sortable: 0 },
+  { name: '', label: '', sortable: 0 },
+];
 
 function Apps() {
   const dispatch = useAppDispatch();
@@ -20,7 +28,7 @@ function Apps() {
 
   useEffect(() => {
     dispatch(reloadApps());
-  }, []);
+  });
   const displayApps =
     (apps &&
       apps.filter(
@@ -45,6 +53,18 @@ function Apps() {
       });
   };
 
+  const tableBodyProps =
+    displayApps.length > 0
+      ? {
+          bodyRows: getAppTableRows(displayApps, handleDeleteApp),
+          type: 'filled' as const,
+        }
+      : {
+          type: 'not-filled' as const,
+          value: 'The list is empty',
+          bodyClassName: appsStyles.appsTableEmptyMessage,
+        };
+
   return (
     <>
       <h2>Apps</h2>
@@ -57,34 +77,10 @@ function Apps() {
           name="Search app input"
         />
       </div>
-      <table
-        className={[appsStyles.appsTable, tableStyles.settingsTable].join(' ')}
-        data-testid="apps-table"
-      >
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {displayApps.length ? (
-            displayApps.map((app) => (
-              <AppTableItem
-                app={app}
-                key={`appTableItem${app.name}`}
-                onDelete={handleDeleteApp}
-              />
-            ))
-          ) : (
-            <tr>
-              <td className={appsStyles.appsTableEmptyMessage} colSpan={7}>
-                The list is empty
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <TableUI
+        className={cl(appsStyles.appsTable, tableStyles.settingsTable)}
+        table={{ headRow, ...tableBodyProps }}
+      />
     </>
   );
 }
