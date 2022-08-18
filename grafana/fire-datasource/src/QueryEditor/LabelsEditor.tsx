@@ -7,7 +7,7 @@ import { useAsync } from 'react-use';
 
 import { languageDefinition } from '../fireql';
 import { FireDataSource } from '../datasource';
-import { CompletionProvider } from './autocompletition';
+import { CompletionProvider } from './autocomplete';
 
 interface Props {
   value: string;
