@@ -18447,11 +18447,6 @@ react-flot@^1.3.0:
     deep-equal "^1.0.1"
     jquery "^3.1.1"
 
-react-fps-stats@^0.1.3:
-  version "0.1.4"
-  resolved "https://registry.yarnpkg.com/react-fps-stats/-/react-fps-stats-0.1.4.tgz#a7922267eeaa25cbcb402a1feed2da8d92a92eff"
-  integrity sha512-yEwZCuNnRoTxkss65khAANsisGGhXgdQfET98sBS631qRrvYJuWV2VWx4ndndKN2SNZDNDofAN1LCueBRIikmw==
-
 react-from-dom@^0.6.0:
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/react-from-dom/-/react-from-dom-0.6.1.tgz#6740f5a3d79e0c354703e5c096b8fdfe0db71b0f"
