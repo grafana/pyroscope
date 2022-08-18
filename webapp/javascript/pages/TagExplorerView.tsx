@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, useLocation, Redirect } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
-import OutsideClickHandler from 'react-outside-click-handler';
 
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
@@ -12,10 +11,11 @@ import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@webapp/components/TimelineChart/TimelineChartWrapper';
-import { FlamegraphRenderer, DefaultPalette } from '@pyroscope/flamegraph/src';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
-import ViewTagsSelectLinkModal from '@webapp/pages/tagExplorer/components/ViewTagsSelectLinkModal';
+import TagsSelector from '@webapp/pages/tagExplorer/components/TagsSelector';
+import TableUI, { BodyRow } from '@webapp/ui/Table';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { appendLabelToQuery } from '@webapp/util/query';
@@ -39,8 +39,40 @@ import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
 import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
+// eslint-disable-next-line css-modules/no-unused-class
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
+
+const TIMELINE_SERIES_COLORS = [
+  Color.rgb(115, 191, 105),
+  Color.rgb(244, 213, 152),
+  Color.rgb(174, 162, 224),
+  Color.rgb(112, 219, 237),
+  Color.rgb(224, 117, 45),
+  Color.rgb(191, 27, 0),
+  Color.rgb(229, 168, 226),
+  Color.rgb(183, 219, 171),
+  Color.rgb(229, 172, 14),
+  Color.rgb(10, 80, 161),
+  Color.rgb(97, 77, 147),
+  Color.rgb(100, 176, 200),
+  Color.rgb(150, 45, 130),
+  Color.rgb(214, 131, 206),
+  Color.rgb(63, 104, 51),
+  Color.rgb(150, 115, 2),
+  Color.rgb(5, 43, 81),
+  Color.rgb(63, 43, 91),
+  Color.rgb(153, 68, 10),
+  Color.rgb(88, 20, 12),
+  Color.rgb(224, 249, 215),
+  Color.rgb(252, 234, 202),
+  Color.rgb(207, 250, 255),
+  Color.rgb(249, 226, 210),
+  Color.rgb(252, 226, 222),
+  Color.rgb(186, 223, 244),
+  Color.rgb(249, 217, 249),
+  Color.rgb(222, 218, 247),
+];
 
 const TIMELINE_WRAPPER_ID = 'explore_timeline_wrapper';
 
@@ -95,7 +127,7 @@ function TagExplorerView() {
             acc.push({
               tagName,
               data,
-              color: getTimelineColor(index, DefaultPalette.colors),
+              color: getTimelineColor(index, TIMELINE_SERIES_COLORS),
             });
 
             return acc;
@@ -125,8 +157,8 @@ function TagExplorerView() {
 
   const { groupsData, activeTagProfile } = getGroupsData();
 
-  const handleGroupByTagValueChange = (groupByTagValue: string) => {
-    dispatch(actions.setTagExplorerViewGroupByTagValue(groupByTagValue));
+  const handleGroupByTagValueChange = (v: string) => {
+    dispatch(actions.setTagExplorerViewGroupByTagValue(v));
   };
 
   const handleGroupedByTagChange = (value: string) => {
@@ -245,14 +277,6 @@ function TagExplorerView() {
   );
 }
 
-const defaultLinkTagsSelectModalData = {
-  baselineTag: '',
-  comparisonTag: '',
-  linkName: '',
-  isModalOpen: false,
-  shouldRedirect: false,
-};
-
 function Table({
   appName,
   whereDropdownItems,
@@ -270,13 +294,6 @@ function Table({
   isLoading: boolean;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
 }) {
-  const [linkTagsSelectModalData, setLinkTagsSelectModalData] = useState(
-    defaultLinkTagsSelectModalData
-  );
-  const handleOutsideModalClick = () => {
-    setLinkTagsSelectModalData(defaultLinkTagsSelectModalData);
-  };
-
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
 
@@ -288,28 +305,8 @@ function Table({
     }
   };
 
-  const handleLinkModalOpen = (linkName: 'Comparison' | 'Diff') => {
-    setLinkTagsSelectModalData((currState) => ({
-      ...currState,
-      isModalOpen: true,
-      linkName,
-    }));
-  };
-
-  if (linkTagsSelectModalData.shouldRedirect) {
-    return (
-      <Redirect
-        to={
-          (linkTagsSelectModalData.linkName === 'Diff'
-            ? PAGES.COMPARISON_DIFF_VIEW
-            : PAGES.COMPARISON_VIEW) + search
-        }
-      />
-    );
-  }
-
   const getSingleViewSearch = () => {
-    if (!groupByTagValue) return search;
+    if (!groupByTagValue || ALL_TAGS) return search;
 
     const searchParams = new URLSearchParams(search);
     searchParams.delete('query');
@@ -318,6 +315,60 @@ function Table({
       appendLabelToQuery(`${appName}{}`, groupByTag, groupByTagValue)
     );
     return `?${searchParams.toString()}`;
+  };
+
+  const headRow = [
+    // when groupByTag is not selected table represents single "application without tags" group
+    {
+      name: 'name',
+      label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
+      sortable: 0,
+    },
+    { name: 'eventCount', label: 'Event count', sortable: 0 },
+    { name: 'avgSamples', label: 'avg samples', sortable: 0 },
+    { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
+    { name: 'minSamples', label: 'min samples', sortable: 0 },
+    { name: 'maxSamples', label: 'max samples', sortable: 0 },
+  ];
+
+  const bodyRows = groupsData.reduce(
+    (acc, { tagName, color, data }): BodyRow[] => {
+      const mean = calculateMean(data.samples);
+      const row = {
+        isRowSelected: isTagSelected(tagName),
+        // prevent clicking on single "application without tags" group row
+        onClick:
+          tagName !== appName ? () => handleTableRowClick(tagName) : undefined,
+        cells: [
+          {
+            value: (
+              <div className={styles.tagName}>
+                <span
+                  className={styles.tagColor}
+                  style={{ backgroundColor: color?.toString() }}
+                />
+                {tagName}
+              </div>
+            ),
+          },
+          { value: data.samples.length },
+          { value: mean.toFixed(2) },
+          { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
+          { value: Math.min(...data.samples) },
+          { value: Math.max(...data.samples) },
+        ],
+      };
+      acc.push(row);
+
+      return acc;
+    },
+    [] as BodyRow[]
+  );
+  const table = {
+    headRow,
+    ...(isLoading
+      ? { type: 'not-filled' as const, value: <LoadingSpinner /> }
+      : { type: 'filled' as const, bodyRows }),
   };
 
   return (
@@ -334,88 +385,21 @@ function Table({
           >
             Single
           </NavLink>
-          <button
-            className={styles.buttonName}
-            onClick={() => handleLinkModalOpen('Comparison')}
-          >
-            Comparison
-          </button>
-          <button
-            className={styles.buttonName}
-            onClick={() => handleLinkModalOpen('Diff')}
-          >
-            Diff
-          </button>
-          {linkTagsSelectModalData.isModalOpen && (
-            <OutsideClickHandler onOutsideClick={handleOutsideModalClick}>
-              <ViewTagsSelectLinkModal
-                whereDropdownItems={whereDropdownItems}
-                groupByTag={groupByTag}
-                appName={appName}
-                /* eslint-disable-next-line react/jsx-props-no-spreading */
-                {...linkTagsSelectModalData}
-                setLinkTagsSelectModalData={setLinkTagsSelectModalData}
-              />
-            </OutsideClickHandler>
-          )}
+          <TagsSelector
+            linkName="Comparison"
+            whereDropdownItems={whereDropdownItems}
+            groupByTag={groupByTag}
+            appName={appName}
+          />
+          <TagsSelector
+            linkName="Diff"
+            whereDropdownItems={whereDropdownItems}
+            groupByTag={groupByTag}
+            appName={appName}
+          />
         </div>
       </div>
-      <table className={styles.tagExplorerTable}>
-        <thead>
-          <tr>
-            {/* when groupByTag is not selected table represents single "application without tags" group */}
-            <th>{groupByTag === '' ? 'App' : 'Tag'} name</th>
-            <th>Event count</th>
-            <th>avg samples</th>
-            <th>std deviation samples</th>
-            <th>min samples</th>
-            <th>max samples</th>
-          </tr>
-        </thead>
-        <tbody>
-          {isLoading ? (
-            <tr>
-              <td colSpan={6}>
-                <LoadingSpinner />
-              </td>
-            </tr>
-          ) : (
-            groupsData.map(({ tagName, color, data }) => {
-              const mean = calculateMean(data.samples);
-
-              return (
-                <tr
-                  className={isTagSelected(tagName) ? styles.activeTagRow : ''}
-                  onClick={
-                    // prevent clicking on single "application without tags" group row
-                    tagName !== appName
-                      ? () => handleTableRowClick(tagName)
-                      : undefined
-                  }
-                  key={tagName}
-                >
-                  <td>
-                    <div className={styles.tagName}>
-                      <span
-                        className={styles.tagColor}
-                        style={{ backgroundColor: color?.toString() }}
-                      />
-                      {tagName}
-                    </div>
-                  </td>
-                  <td>{data.samples.length}</td>
-                  <td>{mean.toFixed(2)}</td>
-                  <td>
-                    {calculateStdDeviation(data.samples, mean).toFixed(2)}
-                  </td>
-                  <td>{Math.min(...data.samples)}</td>
-                  <td>{Math.max(...data.samples)}</td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+      <TableUI table={table} className={styles.tagExplorerTable} />
     </>
   );
 }

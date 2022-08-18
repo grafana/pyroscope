@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.33.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.0...@pyroscope/webapp@1.33.1) (2022-08-17)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.33.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.3...@pyroscope/webapp@1.33.0) (2022-08-17)
+
+
+### Features
+
+* reuse Table component everywhere ([#1403](https://github.com/pyroscope-io/pyroscope/issues/1403)) ([a79f61b](https://github.com/pyroscope-io/pyroscope/commit/a79f61b39d8ae5b199710e79dc05e9352044b3b4))
+
+
+
+
+
+## [1.32.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.2...@pyroscope/webapp@1.32.3) (2022-08-17)
+
+
+### Bug Fixes
+
+* Add different color palette for Explore Timeline ([#1399](https://github.com/pyroscope-io/pyroscope/issues/1399)) ([5e129e0](https://github.com/pyroscope-io/pyroscope/commit/5e129e0552422ca3b36c85153248c1d8278fc0de))
+
+
+
+
+
 ## [1.32.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.1...@pyroscope/webapp@1.32.2) (2022-08-16)
 
 **Note:** Version bump only for package @pyroscope/webapp

@@ -37,8 +37,7 @@
   .buttons {
     position: relative;
 
-    a,
-    .buttonName {
+    a {
       cursor: pointer;
       padding: 8px 6px;
       margin-left: 5px;
@@ -50,18 +49,6 @@
 
       &:hover {
         background-color: var(--ps-ui-element-bg-highlight);
-      }
-    }
-
-    .buttonName {
-      position: relative;
-      line-height: initial;
-      padding: 8px 20px 8px 6px;
-
-      &:after {
-        content: '▾';
-        position: absolute;
-        right: 5px;
       }
     }
   }
@@ -81,7 +68,7 @@
     width: 100%;
 
     thead,
-    tbody tr:nth-child(2n) {
+    tbody tr:nth-child(2n):not(:hover) {
       background-color: var(--ps-neutral-9);
     }
 
