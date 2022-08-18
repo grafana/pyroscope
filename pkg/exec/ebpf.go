@@ -21,7 +21,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
-func RunEBPFSpy(cfg *config.EBPF) error {
+func RunEBPF(cfg *config.EBPF) error {
 	if cfg.Pid == -1 && cfg.DetectSubprocesses {
 		return fmt.Errorf("pid -1 can only be used without dectecting subprocesses")
 	}
@@ -50,6 +50,14 @@ func RunEBPFSpy(cfg *config.EBPF) error {
 
 	appName := CheckApplicationName(logger, cfg.ApplicationName, spy.EBPF, []string{})
 
+	var serviceDiscovery sd.ServiceDiscovery = sd.NoopSD{}
+	if cfg.KubernetesNode != "" {
+		serviceDiscovery, err = sd.NewK8ServiceDiscovery(context.TODO(), cfg.KubernetesNode)
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Debug("starting command")
 
 	// The channel buffer capacity should be sufficient to be keep up with
@@ -75,19 +83,13 @@ func RunEBPFSpy(cfg *config.EBPF) error {
 		Logger:           logger,
 	}
 	session, err := agent.NewSessionWithSpyFactory(sc, func(pid int) ([]spy.Spy, error) {
-		s := ebpfspy.NewSession(cfg.Pid, sampleRate, cfg.SymbolCacheSize)
+		s := ebpfspy.NewSession(cfg.Pid, sampleRate, cfg.SymbolCacheSize, serviceDiscovery, cfg.OnlyServices)
 		err := s.Start()
 		if err != nil {
 			return nil, err
 		}
-		var serviceDiscovery sd.ServiceDiscovery
-		if cfg.KubernetesNode != "" {
-			serviceDiscovery, err = sd.NewK8ServiceDiscovery(context.TODO(), cfg.KubernetesNode)
-			if err != nil {
-				return nil, err
-			}
-		}
-		res := ebpfspy.NewEBPFSpy(s, serviceDiscovery)
+
+		res := ebpfspy.NewEBPFSpy(s)
 		return []spy.Spy{res}, nil
 	})
 	if err != nil {

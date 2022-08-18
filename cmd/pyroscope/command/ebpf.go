@@ -18,7 +18,7 @@ func newEBPFSpyCmd(cfg *config.EBPF) *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
-			return exec.RunEBPFSpy(cfg)
+			return exec.RunEBPF(cfg)
 		}),
 	}
 

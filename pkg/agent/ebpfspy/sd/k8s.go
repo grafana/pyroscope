@@ -55,7 +55,6 @@ func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscove
 }
 
 func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
-	//todo make it async - it is io bound?
 	sd.containerID2Labels = map[string]*spy.Labels{}
 	sd.pid2Labels = map[uint32]*spy.Labels{}
 	pods, err := sd.cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{

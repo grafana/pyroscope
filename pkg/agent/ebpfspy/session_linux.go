@@ -8,9 +8,13 @@ package ebpfspy
 import "C"
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/binary"
+	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"golang.org/x/sys/unix"
 	"sync"
 	"syscall"
@@ -25,9 +29,11 @@ import (
 import "C"
 
 type Session struct {
-	pid             int
-	sampleRate      uint32
-	symbolCacheSize int
+	pid              int
+	sampleRate       uint32
+	symbolCacheSize  int
+	serviceDiscovery sd.ServiceDiscovery
+	onlyServices     bool
 
 	perfEventFds []int
 
@@ -47,11 +53,13 @@ type Session struct {
 
 const btf = "should not be used" // canary to detect we got relocations
 
-func NewSession(pid int, sampleRate uint32, symbolCacheSize int) *Session {
+func NewSession(pid int, sampleRate uint32, symbolCacheSize int, serviceDiscovery sd.ServiceDiscovery, onlyServices bool) *Session {
 	return &Session{
-		pid:             pid,
-		sampleRate:      sampleRate,
-		symbolCacheSize: symbolCacheSize,
+		pid:              pid,
+		sampleRate:       sampleRate,
+		symbolCacheSize:  symbolCacheSize,
+		serviceDiscovery: serviceDiscovery,
+		onlyServices:     onlyServices,
 	}
 }
 
@@ -93,13 +101,26 @@ func (s *Session) Start() error {
 	return nil
 }
 
-func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) error {
+func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, pid uint32) error) error {
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
 	s.roundNumber += 1
+
+	refreshResult := make(chan error)
+	go func() {
+		refreshResult <- s.serviceDiscovery.Refresh(context.TODO())
+	}()
+
 	keys, values, batch, err := s.getCountsMapValues()
-	knownStacks := map[uint32]bool{}
+	if err != nil {
+		return err
+	}
+
+	err = <-refreshResult
+	if err != nil {
+		return err
+	}
 
 	type sf struct {
 		pid    uint32
@@ -107,9 +128,10 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		kStack []byte
 		uStack []byte
 		comm   string
+		labels *spy.Labels
 	}
 	var sfs []sf
-	total := uint32(0)
+	knownStacks := map[uint32]bool{}
 	for i, key := range keys {
 		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
 		value := values[i]
@@ -118,11 +140,21 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		kStackID := int64(ck.kern_stack)
 		uStackID := int64(ck.user_stack)
 		count := binary.LittleEndian.Uint32(value)
-		comm := C.GoString(&ck.comm[0])
-		uStack := s.getStack(uStackID, knownStacks)
-		kStack := s.getStack(kStackID, knownStacks)
-		sfs = append(sfs, sf{pid: pid, uStack: uStack, kStack: kStack, count: count, comm: comm})
-		total += count
+		var comm string = C.GoString(&ck.comm[0])
+		if uStackID >= 0 {
+			knownStacks[uint32(uStackID)] = true
+		}
+		if kStackID >= 0 {
+			knownStacks[uint32(kStackID)] = true
+		}
+		labels := s.serviceDiscovery.GetLabels(pid)
+		if labels == nil && s.onlyServices {
+			fmt.Printf("skipping %d %s\n", pid, comm)
+			continue
+		}
+		uStack := s.getStack(uStackID)
+		kStack := s.getStack(kStackID)
+		sfs = append(sfs, sf{pid: pid, uStack: uStack, kStack: kStack, count: count, comm: comm, labels: labels})
 	}
 	for _, it := range sfs {
 		buf := bytes.NewBuffer(nil)
@@ -130,7 +162,8 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		buf.Write([]byte{';'})
 		s.walkStack(buf, it.uStack, it.pid, true)
 		s.walkStack(buf, it.kStack, it.pid, false)
-		err = cb(buf.Bytes(), uint64(it.count), it.pid)
+
+		err = cb(it.labels, buf.Bytes(), uint64(it.count), it.pid)
 		if err != nil {
 			return err
 		}
@@ -209,7 +242,7 @@ func (s *Session) attachPerfEvent() error {
 	return nil
 }
 
-func (s *Session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
+func (s *Session) getStack(stackId int64) []byte {
 	if stackId < 0 {
 		return nil
 	}
@@ -219,7 +252,6 @@ func (s *Session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
 	if err != nil {
 		return nil
 	}
-	knownStacks[stackIdU32] = true
 	return stack
 
 }

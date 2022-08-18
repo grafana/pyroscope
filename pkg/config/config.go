@@ -346,6 +346,7 @@ type EBPF struct {
 	DetectSubprocesses bool   `def:"false" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
 	SymbolCacheSize    int    `def:"256" desc:"max size of symbols cache (1 entry per process)" mapstructure:"symbol-cache-size"`
 	KubernetesNode     string `def:"" desc:"Set to current k8s Node.nodeName for service discovery and labeling" mapstructure:"kubernetes-node"`
+	OnlyServices       bool   `def:"false" desc:"Ignore processes unknown to service discovery" mapstructure:"only-services"`
 }
 
 // TODO how to abstract this better?
