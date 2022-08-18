@@ -3,7 +3,6 @@ import React from 'react';
 
 import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
-import FPSStats from 'react-fps-stats';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -32,15 +31,6 @@ import Forbidden from './pages/IntroPages/Forbidden';
 import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
-
-let showFps = false;
-try {
-  // run this to enable FPS meter:
-  //  window.localStorage.setItem('showFps', true);
-  showFps = window.localStorage.getItem('showFps');
-} catch (e) {
-  console.error(e);
-}
 
 function App() {
   return (
@@ -147,7 +137,6 @@ ReactDOM.render(
         <Notifications />
         <App />
       </Router>
-      {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
     </PersistGate>
   </Provider>,
   document.getElementById('root')
