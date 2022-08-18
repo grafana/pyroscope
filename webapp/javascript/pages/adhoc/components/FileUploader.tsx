@@ -16,7 +16,7 @@ const isJSONFile = (file: File) =>
   file.type === 'application/json' ||
   file.type === 'text/json';
 
-const spyNames = {
+const SPYNAMES = {
   gospy: 'Go',
   pyspy: 'Python',
   phpspy: 'PHP',
@@ -29,10 +29,14 @@ const spyNames = {
   other: 'Other',
 };
 
-const availableUnits = {
+const UNITS = {
   samples: 'Samples',
   objects: 'Objects',
+  goroutines: 'Goroutines',
   bytes: 'Bytes',
+  lock_samples: 'Lock Samples',
+  lock_nanoseconds: 'Lock Nanoseconds',
+  trace_samples: 'Trace Samples',
 };
 
 type UploadArgsType = {
@@ -116,12 +120,12 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
         <div className={styles.dropdowns}>
           <Dropdown
             value={`Profile language: ${
-              spyNames[spyName as keyof typeof spyNames]
+              SPYNAMES[spyName as keyof typeof SPYNAMES]
             }`}
             onItemClick={(e) => setSpyName(e.value as string)}
             label="Profile language"
           >
-            {Object.keys(spyNames).map((name, index) => (
+            {Object.keys(SPYNAMES).map((name, index) => (
               <MenuItem
                 className={cx({
                   [styles.activeDropdownItem]: spyName === name,
@@ -129,18 +133,16 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
                 key={String(index) + name}
                 value={name}
               >
-                {spyNames[name as keyof typeof spyNames]}
+                {SPYNAMES[name as keyof typeof SPYNAMES]}
               </MenuItem>
             ))}
           </Dropdown>
           <Dropdown
-            value={`Profile units: ${
-              availableUnits[units as keyof typeof availableUnits]
-            }`}
+            value={`Profile units: ${UNITS[units as keyof typeof UNITS]}`}
             onItemClick={(e) => setUnits(e.value as string)}
             label="Profile units"
           >
-            {Object.keys(availableUnits).map((name, index) => (
+            {Object.keys(UNITS).map((name, index) => (
               <MenuItem
                 className={cx({
                   [styles.activeDropdownItem]: units === name,
@@ -148,7 +150,7 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
                 key={String(index) + name}
                 value={name}
               >
-                {availableUnits[name as keyof typeof availableUnits]}
+                {UNITS[name as keyof typeof UNITS]}
               </MenuItem>
             ))}
           </Dropdown>
