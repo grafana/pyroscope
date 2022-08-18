@@ -6,7 +6,11 @@ import {
 } from '@webapp/redux/reducers/user';
 import { useHistory, useLocation } from 'react-router-dom';
 
-export default function Protected({ children }: { children: React.ReactNode }) {
+export default function Protected({
+  children,
+}: {
+  children: React.ReactElement | React.ReactElement[];
+}): JSX.Element {
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectCurrentUser);
   const history = useHistory();
@@ -23,5 +27,9 @@ export default function Protected({ children }: { children: React.ReactNode }) {
     }
   }, [dispatch]);
 
-  return !isAuthRequired || currentUser ? children : null;
+  if (!isAuthRequired || currentUser) {
+    return <>{children}</>;
+  }
+
+  return <></>;
 }
