@@ -326,7 +326,7 @@ type Connect struct {
 	Pid int `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
 }
 
-type EBPFSpy struct {
+type EBPF struct {
 	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
 
