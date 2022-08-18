@@ -1,4 +1,5 @@
-import type { Monaco, monacoTypes } from '@grafana/ui';
+import type { Monaco } from '@grafana/ui';
+import { monacoTypes } from '@grafana/ui';
 import { SeriesMessage } from '../types';
 
 /**
