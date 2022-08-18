@@ -36,7 +36,7 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom("org.springframework.cloud:spring-cloud-dependencies:2021.0.3")
-        mavenBom("org.springframework.cloud:spring-cloud-sleuth-otel-dependencies:1.1.0-SNAPSHOT")
+        mavenBom("org.springframework.cloud:spring-cloud-sleuth-otel-dependencies:1.1.0-M7")
     }
 }
 

@@ -3,6 +3,188 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.33.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.1...@pyroscope/webapp@1.33.2) (2022-08-18)
+
+
+### Bug Fixes
+
+* **webapp:** return empty string when range doesn't make sense ([#1419](https://github.com/pyroscope-io/pyroscope/issues/1419)) ([6f69c6f](https://github.com/pyroscope-io/pyroscope/commit/6f69c6f5209a12e1d8c54e962fcba6dc373bd7ff))
+
+
+
+
+
+## [1.33.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.0...@pyroscope/webapp@1.33.1) (2022-08-17)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.33.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.3...@pyroscope/webapp@1.33.0) (2022-08-17)
+
+
+### Features
+
+* reuse Table component everywhere ([#1403](https://github.com/pyroscope-io/pyroscope/issues/1403)) ([a79f61b](https://github.com/pyroscope-io/pyroscope/commit/a79f61b39d8ae5b199710e79dc05e9352044b3b4))
+
+
+
+
+
+## [1.32.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.2...@pyroscope/webapp@1.32.3) (2022-08-17)
+
+
+### Bug Fixes
+
+* Add different color palette for Explore Timeline ([#1399](https://github.com/pyroscope-io/pyroscope/issues/1399)) ([5e129e0](https://github.com/pyroscope-io/pyroscope/commit/5e129e0552422ca3b36c85153248c1d8278fc0de))
+
+
+
+
+
+## [1.32.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.1...@pyroscope/webapp@1.32.2) (2022-08-16)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.32.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.32.0...@pyroscope/webapp@1.32.1) (2022-08-16)
+
+
+### Bug Fixes
+
+* **webapp:** refresh data when (re)submitting query ([#1410](https://github.com/pyroscope-io/pyroscope/issues/1410)) ([3554f84](https://github.com/pyroscope-io/pyroscope/commit/3554f84060ab54836e9ae1f2b49f9174c3e66041)), closes [#1406](https://github.com/pyroscope-io/pyroscope/issues/1406)
+
+
+
+
+
+# [1.32.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.1...@pyroscope/webapp@1.32.0) (2022-08-16)
+
+
+### Features
+
+* **webapp:** set title automatically ([#1397](https://github.com/pyroscope-io/pyroscope/issues/1397)) ([74821ca](https://github.com/pyroscope-io/pyroscope/commit/74821ca0f0e3ebec38c83f83bf54318d931f66f6))
+
+
+
+
+
+## [1.31.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.31.0...@pyroscope/webapp@1.31.1) (2022-08-15)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix its styling ([#1388](https://github.com/pyroscope-io/pyroscope/issues/1388)) ([5788cf9](https://github.com/pyroscope-io/pyroscope/commit/5788cf9943a579acd35de224537016488a98808f))
+
+
+
+
+
+# [1.31.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.30.1...@pyroscope/webapp@1.31.0) (2022-08-12)
+
+
+### Features
+
+* support high number of series in explore view timeline ([#1384](https://github.com/pyroscope-io/pyroscope/issues/1384)) ([482e23e](https://github.com/pyroscope-io/pyroscope/commit/482e23e52f006a201e40a2b4ff6092e0f246aa03))
+
+
+
+
+
+## [1.30.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.30.0...@pyroscope/webapp@1.30.1) (2022-08-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.30.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.4...@pyroscope/webapp@1.30.0) (2022-08-12)
+
+
+### Features
+
+* **webapp:** update timeline appearance and refactor flot plugins ([#1323](https://github.com/pyroscope-io/pyroscope/issues/1323)) ([9393449](https://github.com/pyroscope-io/pyroscope/commit/9393449fdabd0cb38c4fae87b3ba0ce73251b41d))
+
+
+
+
+
+## [1.29.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.3...@pyroscope/webapp@1.29.4) (2022-08-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.29.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.2...@pyroscope/webapp@1.29.3) (2022-08-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.29.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.1...@pyroscope/webapp@1.29.2) (2022-08-09)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.29.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.29.0...@pyroscope/webapp@1.29.1) (2022-08-09)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.29.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.28.1...@pyroscope/webapp@1.29.0) (2022-08-08)
+
+
+### Features
+
+* add ProfilerTable arrow color ([#1366](https://github.com/pyroscope-io/pyroscope/issues/1366)) ([be3901d](https://github.com/pyroscope-io/pyroscope/commit/be3901da82fe1fbed54171938f2bef638819319b))
+
+
+
+
+
+## [1.28.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.28.0...@pyroscope/webapp@1.28.1) (2022-08-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.28.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.27.1...@pyroscope/webapp@1.28.0) (2022-08-08)
+
+
+### Features
+
+* add loader to tag exlorer page ([#1368](https://github.com/pyroscope-io/pyroscope/issues/1368)) ([16a727d](https://github.com/pyroscope-io/pyroscope/commit/16a727d5f51847114fe360eb70aff1bf9bfd3a9e))
+
+
+
+
+
+## [1.27.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.27.0...@pyroscope/webapp@1.27.1) (2022-08-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 # [1.27.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.26.0...@pyroscope/webapp@1.27.0) (2022-08-05)
 
 

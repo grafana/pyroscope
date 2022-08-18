@@ -37,7 +37,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -93,7 +92,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	}
 
 	diskPressure := health.DiskPressure{
-		Threshold: 512 * bytesize.MB,
+		Threshold: c.MinFreeSpacePercentage,
 		Path:      c.StoragePath,
 	}
 

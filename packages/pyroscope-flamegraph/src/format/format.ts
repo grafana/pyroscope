@@ -29,7 +29,7 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
     case 'lock_samples':
       return new ObjectsFormatter(max);
     case 'trace_samples':
-      return new DurationFormatter(max / sampleRate, 'units');
+      return new DurationFormatter(max / sampleRate);
     default:
       console.warn(`Unsupported unit: '${unit}'. Defaulting to ''`);
       return new DurationFormatter(max / sampleRate, ' ');
@@ -78,7 +78,9 @@ class DurationFormatter {
     const n = samples / sampleRate / this.divider;
     let nStr = n.toFixed(2);
 
-    if (n >= 0 && n < 0.01) {
+    if (n === 0) {
+      nStr = '0.00';
+    } else if (n >= 0 && n < 0.01) {
       nStr = '< 0.01';
     } else if (n <= 0 && n > -0.01) {
       nStr = '< 0.01';

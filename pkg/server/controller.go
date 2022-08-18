@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	contentencoding "github.com/johejo/go-content-encoding"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -180,6 +181,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	//  - Make diagnostic endpoints protection configurable.
 	//  - Auth middleware should never redirect - the logic should be moved to the client side.
 	r := mux.NewRouter()
+
+	r.Use(contentencoding.Decode())
 
 	ctrl.jwtTokenService = service.NewJWTTokenService(
 		[]byte(ctrl.config.Auth.JWTSecret),

@@ -8,6 +8,7 @@ import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
 import Footer from '@webapp/components/Footer';
+import PageTitle from '@webapp/components/PageTitle';
 import store, { persistor } from './redux/store';
 
 import ContinuousSingleView from './pages/ContinuousSingleView';
@@ -84,6 +85,7 @@ function App() {
           )}
           <Route path={PAGES.SERVICE_DISCOVERY}>
             <Protected>
+              <PageTitle title="Pull Targets" />
               <ServiceDiscoveryApp />
             </Protected>
           </Route>
@@ -97,6 +99,7 @@ function App() {
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_SINGLE}>
               <Protected>
+                <PageTitle title="Adhoc Single" />
                 <AdhocSingle />
               </Protected>
             </Route>
@@ -104,6 +107,7 @@ function App() {
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_COMPARISON}>
               <Protected>
+                <PageTitle title="Adhoc Comparison" />
                 <AdhocComparison />
               </Protected>
             </Route>
@@ -111,16 +115,23 @@ function App() {
           {isAdhocUIEnabled && (
             <Route path={PAGES.ADHOC_COMPARISON_DIFF}>
               <Protected>
+                <PageTitle title="Adhoc Diff" />
                 <AdhocDiff />
               </Protected>
             </Route>
           )}
           <Route path={PAGES.FORBIDDEN}>
-            <Forbidden />
+            <>
+              <PageTitle title="Forbidden" />
+              <Forbidden />
+            </>
           </Route>
 
           <Route path="*" exact>
-            <NotFound />
+            <>
+              <PageTitle title="Not Found" />
+              <NotFound />
+            </>
           </Route>
         </Switch>
         <Footer />

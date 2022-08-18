@@ -12,9 +12,8 @@ import {
   fetchTagValues,
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
-import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
-import InstructionText from '@webapp/components/InstructionText';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
@@ -22,17 +21,22 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import PageTitle from '@webapp/components/PageTitle';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
-import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
+import useTimelines, {
+  leftColor,
+  rightColor,
+  selectionColor,
+} from '../hooks/timeline.hook';
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
+import { formatTitle } from './formatTitle';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const { leftFrom, rightFrom, leftUntil, rightUntil } = useAppSelector(
-    selectContinuousState
-  );
+  const { leftFrom, rightFrom, leftUntil, rightUntil, refreshToken } =
+    useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
@@ -50,7 +54,7 @@ function ComparisonApp() {
       return fetchLeftQueryData.abort;
     }
     return undefined;
-  }, [leftFrom, leftUntil, leftQuery]);
+  }, [leftFrom, leftUntil, leftQuery, refreshToken]);
 
   useEffect(() => {
     if (rightQuery) {
@@ -61,7 +65,7 @@ function ComparisonApp() {
       return fetchRightQueryData.abort;
     }
     return undefined;
-  }, [rightFrom, rightUntil, rightQuery]);
+  }, [rightFrom, rightUntil, rightQuery, refreshToken]);
 
   const leftSide = comparisonView.left.profile;
   const rightSide = comparisonView.right.profile;
@@ -76,6 +80,7 @@ function ComparisonApp() {
 
   return (
     <div>
+      <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar
@@ -95,8 +100,18 @@ function ComparisonApp() {
               dispatch(actions.setFromAndUntil({ from, until }));
             }}
             markings={{
-              left: { from: leftFrom, to: leftUntil, color: leftColor },
-              right: { from: rightFrom, to: rightUntil, color: rightColor },
+              left: {
+                from: leftFrom,
+                to: leftUntil,
+                color: leftColor,
+                overlayColor: leftColor.alpha(0.3),
+              },
+              right: {
+                from: rightFrom,
+                to: rightUntil,
+                color: rightColor,
+                overlayColor: rightColor.alpha(0.3),
+              },
             }}
             timezone={timezone}
             title={
@@ -104,6 +119,7 @@ function ComparisonApp() {
                 titleKey={isSidesHasSameUnits ? leftSide.metadata.units : ''}
               />
             }
+            selectionType="double"
           />
         </Box>
         <div
@@ -117,6 +133,9 @@ function ComparisonApp() {
               tags={leftTags}
               onSetQuery={(q) => {
                 dispatch(actions.setLeftQuery(q));
+                if (leftQuery === q) {
+                  dispatch(actions.refresh());
+                }
               }}
               onSelectedLabel={(label, query) => {
                 dispatch(fetchTagValues({ query, label }));
@@ -143,15 +162,20 @@ function ComparisonApp() {
                 )
               }
             >
-              <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
                 key="timeline-chart-left"
                 id="timeline-chart-left"
                 data-testid="timeline-left"
                 timelineA={leftTimeline}
                 markings={{
-                  left: { from: leftFrom, to: leftUntil, color: leftColor },
+                  left: {
+                    from: leftFrom,
+                    to: leftUntil,
+                    color: selectionColor,
+                    overlayColor: selectionColor.alpha(0.3),
+                  },
                 }}
+                selectionType="single"
                 onSelect={(from, until) => {
                   dispatch(actions.setLeft({ from, until }));
                 }}
@@ -167,6 +191,9 @@ function ComparisonApp() {
               tags={rightTags}
               onSetQuery={(q) => {
                 dispatch(actions.setRightQuery(q));
+                if (rightQuery === q) {
+                  dispatch(actions.refresh());
+                }
               }}
               onSelectedLabel={(label, query) => {
                 dispatch(fetchTagValues({ query, label }));
@@ -193,15 +220,20 @@ function ComparisonApp() {
                 )
               }
             >
-              <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper
                 key="timeline-chart-right"
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 timelineA={rightTimeline}
                 markings={{
-                  right: { from: rightFrom, to: rightUntil, color: rightColor },
+                  right: {
+                    from: rightFrom,
+                    to: rightUntil,
+                    color: selectionColor,
+                    overlayColor: selectionColor.alpha(0.3),
+                  },
                 }}
+                selectionType="single"
                 onSelect={(from, until) => {
                   dispatch(actions.setRight({ from, until }));
                 }}

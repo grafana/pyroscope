@@ -408,7 +408,7 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 		return nil
 	default:
 		sl.poolMetrics.scrapesFailed.Inc()
-		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
+		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scraping failed")
 		sl.scraper.profile = nil
 		return err
 	}

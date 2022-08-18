@@ -3,6 +3,7 @@ import React from 'react';
 import InputField from '@ui/InputField';
 import Button from '@ui/Button';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
+import '../webapp/sass/profile.scss';
 
 const Template: ComponentStory<typeof InputField> = (args) => (
   <InputField type="password" {...args} />

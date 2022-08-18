@@ -17,8 +17,8 @@ describe('QueryParams', () => {
     };
 
     cy.visit('/');
-    cy.get('.tags-input').clear().type(myTag);
-    cy.get('.tags-query button').click();
+    cy.get(`[aria-label="query-input"] textarea`).clear().type(myTag);
+    cy.get(`[aria-label="query-input"] button`).click();
     validate();
 
     cy.findByTestId('sidebar-continuous-comparison').click();
@@ -28,6 +28,9 @@ describe('QueryParams', () => {
     validate();
 
     cy.findByTestId('sidebar-continuous-single').click();
+    validate();
+
+    cy.findByTestId('sidebar-explore-page').click();
     validate();
   });
 });

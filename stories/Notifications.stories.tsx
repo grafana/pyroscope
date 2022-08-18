@@ -1,6 +1,7 @@
 import React from 'react';
 import Notifications, { store } from '@ui/Notifications';
 import Button from '@ui/Button';
+import '../webapp/sass/profile.scss';
 
 export default {
   title: 'Notifications',

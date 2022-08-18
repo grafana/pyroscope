@@ -39,8 +39,8 @@ describe('Settings page', () => {
     cy.url().should('contain', '/settings/users');
 
     // Two users should be displayed
-    cy.findByTestId('users-table').get('tbody>tr').should('have.length', 2);
-    cy.findByTestId('users-table')
+    cy.findByTestId('table-ui').get('tbody>tr').should('have.length', 2);
+    cy.findByTestId('table-ui')
       .get('tbody > tr:nth-child(1)')
       .should('contain.text', 'admin@localhost');
 
@@ -56,8 +56,8 @@ describe('Settings page', () => {
     cy.url().should('contain', '/settings/users');
 
     // Two users should be displayed
-    cy.findByTestId('users-table').get('tbody>tr').should('have.length', 3);
-    cy.findByTestId('users-table')
+    cy.findByTestId('table-ui').get('tbody>tr').should('have.length', 3);
+    cy.findByTestId('table-ui')
       .get('tbody>tr:nth-child(3)')
       .should('contain.text', 'user@domain.com');
 

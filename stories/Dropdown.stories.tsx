@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import Dropdown, { MenuItem, SubMenu } from '@ui/Dropdown';
+import '../webapp/sass/profile.scss';
 
 const DropdownSelect = (args) => {
   const [country, setCountry] = useState(null);

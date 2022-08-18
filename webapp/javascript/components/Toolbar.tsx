@@ -66,6 +66,11 @@ function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
           tags={tags}
           onSetQuery={(q) => {
             dispatch(actions.setQuery(q));
+
+            // It's the same query, so components' useEffect won't pick up a change
+            if (q === query) {
+              dispatch(actions.refresh());
+            }
           }}
           onSelectedLabel={(label, query) => {
             dispatch(

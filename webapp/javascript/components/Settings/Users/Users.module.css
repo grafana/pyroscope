@@ -12,6 +12,7 @@
   width: 100%;
 }
 
+/* todo: make sure this style works (it doesn't) */
 .usersTableEmptyMessage {
   text-align: center;
   color: var(--ps-ui-foreground-text);

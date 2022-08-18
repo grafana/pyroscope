@@ -1,0 +1,67 @@
+.executeButton {
+  flex-grow: 1;
+  color: var(--ps-immutable-white);
+}
+
+.wrapper {
+  flex-grow: 1;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+}
+
+.input.input {
+  flex-grow: 20;
+  border-top-right-radius: 0px;
+  border-bottom-right-radius: 0px;
+  border-right: none;
+  caret-color: var(--ps-neutral-2);
+  color: var(--ps-grey-primary);
+  letter-spacing: 0px;
+  font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+  font-size: 16px;
+  border: 1px solid var(--ps-ui-border);
+  padding: 0.25em 0.375em;
+  resize: none;
+  word-break: break-all;
+  box-sizing: border-box;
+  line-height: 27px;
+  white-space: break-spaces;
+  overflow: hidden;
+}
+
+// increase specificity to overwrite prism.scss
+.highlight.highlight {
+  height: 0;
+  width: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: inherit !important;
+  position: absolute;
+  top: 0;
+
+  // We use !important so that we can overwrite the classes from
+  // pre[class*="language-"]
+  // which from from prism.scss
+  background: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+
+  code {
+    font-size: 16px;
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+    background: none;
+    border: 1px solid transparent;
+    box-shadow: none;
+    padding: 0.25em 0.375em;
+    margin: 0;
+    line-height: 27px;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    word-break: break-all;
+    white-space: break-spaces;
+    letter-spacing: 0px;
+    border-right: none;
+  }
+}
