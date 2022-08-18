@@ -1,7 +1,7 @@
 /* eslint-disable react/no-access-state-in-setstate */
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
-import React, { ReactNode } from 'react';
+import React, { ReactNode, FC } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
@@ -71,6 +71,10 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
+  exploreTooltip?: {
+    parentSelector: string;
+    component: FC<ShamefulAny>;
+  };
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -233,6 +237,7 @@ class TimelineChartWrapper extends React.Component<
 
       const customFlotOptions = {
         ...flotOptions,
+        exploreTooltip: this.props.exploreTooltip,
         xaxis: {
           ...flotOptions.xaxis,
           autoscaleMargin: null,
