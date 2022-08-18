@@ -10,7 +10,6 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/binary"
-	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"golang.org/x/sys/unix"
 	"sync"
@@ -131,15 +130,11 @@ func (s *Session) Reset(cb func(name []byte, value uint64, pid uint32) error) er
 		buf.Write([]byte{';'})
 		s.walkStack(buf, it.uStack, it.pid, true)
 		s.walkStack(buf, it.kStack, it.pid, false)
-		fmt.Printf("sf  %d %s\n", it.count, string(buf.Bytes()))
-
 		err = cb(buf.Bytes(), uint64(it.count), it.pid)
-
 		if err != nil {
 			return err
 		}
 	}
-	fmt.Printf("total value %d samples %d\n", total, len(sfs))
 	if err = s.clearCountsMap(keys, batch); err != nil {
 		return err
 	}
@@ -215,13 +210,12 @@ func (s *Session) attachPerfEvent() error {
 }
 
 func (s *Session) getStack(stackId int64, knownStacks map[uint32]bool) []byte {
-	if stackId < 0 { //todo
+	if stackId < 0 {
 		return nil
 	}
 	stackIdU32 := uint32(stackId)
 	key := unsafe.Pointer(&stackIdU32)
 	stack, err := s.mapStacks.GetValue(key)
-
 	if err != nil {
 		return nil
 	}

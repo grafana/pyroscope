@@ -6,9 +6,7 @@
 //	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
-import "C"
 import (
-	"fmt"
 	"unsafe"
 )
 
@@ -27,7 +25,6 @@ func (s *Session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 		nextKey = C.struct_profile_key_t{}
 	)
 	values, err = s.mapCounts.GetValueAndDeleteBatch(pKeys, nil, unsafe.Pointer(&nextKey), uint32(mapSize))
-	fmt.Printf("getCountsMapValues %d %v\n", len(values), err)
 	if len(values) > 0 {
 		keys = collectBatchValues(allKeys, len(values), keySize)
 		return keys, values, true, nil
@@ -38,19 +35,19 @@ func (s *Session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bo
 	it := s.mapCounts.Iterator()
 	for it.Next() {
 		key := it.Key()
-		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
-		v, err := s.mapCounts.GetValue(unsafe.Pointer(ck))
+		v, err := s.mapCounts.GetValue(unsafe.Pointer(&key[0]))
 		if err != nil {
 			return nil, nil, false, err
 		}
-		keys = append(keys, key)
-		values = append(keys, v)
+		keyCopy := make([]byte, len(key)) // The slice is valid only until the next call to Next.
+		copy(keyCopy, key)
+		keys = append(keys, keyCopy)
+		values = append(values, v)
 	}
 	return keys, values, false, nil
 }
 
 func (s *Session) clearCountsMap(keys [][]byte, batch bool) error {
-	fmt.Printf("clearCountsMap %d %v\n", len(keys), batch)
 	if len(keys) == 0 {
 		return nil
 	}
@@ -71,21 +68,22 @@ func (s *Session) clearStacksMap(knownKeys map[uint32]bool) error {
 	m := s.mapStacks
 	cnt := 0
 	errs := 0
-	if s.roundNumber%3 == 0 { //todo increase, 3- for debugging
+	if s.roundNumber%10 == 0 {
 		// do a full reset once in a while
 		it := m.Iterator()
-
+		var keys [][]byte
 		for it.Next() {
 			key := it.Key()
-			//todo maybe we need to call Next here again before deleting
-			//or collect all keys in memory and delete later
-			//https://justin.azoff.dev/blog/bpf_map_get_next_key-pitfalls/
+			keyCopy := make([]byte, len(key)) // The slice is valid only until the next call to Next.
+			copy(keyCopy, key)
+			keys = append(keys, keyCopy)
+		}
+		for _, key := range keys {
 			if err := m.DeleteKey(unsafe.Pointer(&key[0])); err != nil {
 				errs += 1
 			} else {
 				cnt += 1
 			}
-
 		}
 		return nil
 	}
