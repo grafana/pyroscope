@@ -21,7 +21,7 @@ func Execute() error {
 		newAdminCmd(&cfg.Admin),
 		newAgentCmd(&cfg.Agent),
 		newConnectCmd(&cfg.Connect),
-		newEBPFSpyCmd(&cfg.EBPFSpy),
+		newEBPFSpyCmd(&cfg.EBPF),
 		newConvertCmd(&cfg.Convert),
 		newDbManagerCmd(&config.CombinedDbManager{DbManager: &cfg.DbManager, Server: &cfg.Server}),
 		newExecCmd(&cfg.Exec),
