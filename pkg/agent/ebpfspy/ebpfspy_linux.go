@@ -25,7 +25,7 @@ func NewEBPFSpy(s *Session) *EbpfSpy {
 }
 
 func Start(pid int, _ spy.ProfileType, sampleRate uint32, _ bool) (spy.Spy, error) {
-	s := NewSession(pid, sampleRate, 256, sd.NoopSD{}, false)
+	s := NewSession(pid, sampleRate, 256, sd.NoopServiceDiscovery{}, false)
 	err := s.Start()
 	if err != nil {
 		return nil, err

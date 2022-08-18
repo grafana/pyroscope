@@ -13,13 +13,13 @@ type ServiceDiscovery interface {
 	GetLabels(pid uint32) *spy.Labels
 }
 
-type NoopSD struct {
+type NoopServiceDiscovery struct {
 }
 
-func (n NoopSD) Refresh(_ context.Context) error {
+func (NoopServiceDiscovery) Refresh(_ context.Context) error {
 	return nil
 }
 
-func (n NoopSD) GetLabels(_ uint32) *spy.Labels {
+func (NoopServiceDiscovery) GetLabels(_ uint32) *spy.Labels {
 	return nil
 }
