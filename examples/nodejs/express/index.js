@@ -28,22 +28,24 @@ function genericSearchHandler(p) {
 Pyroscope.init({
   appName: 'nodejs',
   serverAddress: process.env['PYROSCOPE_SERVER'] || 'http://pyroscope:4040',
+  tags: { region },
 });
 
 Pyroscope.startCpuProfiling();
+Pyroscope.startHeapProfiling();
 
 app.get('/bike', function bikeSearchHandler(req, res) {
-  Pyroscope.tagCall('vehicle', 'bike', () =>
+  Pyroscope.tagWrapper({ vehicle: 'bike' }, () =>
     genericSearchHandler(0.5)(req, res)
   );
 });
 app.get('/car', function carSearchHandler(req, res) {
-  Pyroscope.tagCall('vehicle', 'car', () =>
+  Pyroscope.tagWrapper({ vehicle: 'car' }, () =>
     genericSearchHandler(0.2)(req, res)
   );
 });
 app.get('/scooter', function scooterSearchHandler(req, res) {
-  Pyroscope.tagCall('vehicle', 'scooter', () =>
+  Pyroscope.tagWrapper({ vehicle: 'scooter' }, () =>
     genericSearchHandler(0.1)(req, res)
   );
 });
