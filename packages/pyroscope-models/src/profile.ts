@@ -2,7 +2,15 @@ import { z } from 'zod';
 import { SpyNameSchema } from './spyName';
 
 export const FlamebearerSchema = z.object({
-  names: z.array(z.string()),
+  names: z.array(
+    z.preprocess((n) => {
+      if (!n) {
+        return 'unknown';
+      }
+
+      return n;
+    }, z.string().min(1))
+  ),
   levels: z.array(z.array(z.number())),
   numTicks: z.number(),
   maxSelf: z.number(),
