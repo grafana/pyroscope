@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-hooks';
 
 import { useTableSort } from './Table';
 
@@ -30,7 +30,9 @@ describe('Hook: useTableSort', () => {
     const hook = render();
 
     expect(hook.current.sortByDirection).toBe('desc');
-    hook.current.updateSortParams('self');
+    act(() => {
+      hook.current.updateSortParams('self');
+    });
     expect(hook.current.sortByDirection).toBe('asc');
   });
 
@@ -42,13 +44,17 @@ describe('Hook: useTableSort', () => {
       sortByDirection: 'desc',
     });
 
-    hook.current.updateSortParams('name');
+    act(() => {
+      hook.current.updateSortParams('name');
+    });
     expect(hook.current).toMatchObject({
       sortBy: 'name',
       sortByDirection: 'desc',
     });
 
-    hook.current.updateSortParams('name');
+    act(() => {
+      hook.current.updateSortParams('name');
+    });
     expect(hook.current).toMatchObject({
       sortBy: 'name',
       sortByDirection: 'asc',
