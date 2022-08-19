@@ -33,7 +33,8 @@ describe('Component: ViewTagsSelectLinkModal', () => {
       >
         <TagsSelector {...props} />
       </Provider>,
-      { wrapper: BrowserRouter }
+      // https://github.com/testing-library/react-testing-library/issues/972
+      { wrapper: BrowserRouter as ShamefulAny }
     );
   };
 

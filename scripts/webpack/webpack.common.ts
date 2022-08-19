@@ -65,7 +65,7 @@ export default {
   target: 'web',
 
   entry: {
-    app: path.join(packagePath, 'javascript/index.jsx'),
+    app: path.join(packagePath, 'javascript/index.tsx'),
     styles: path.join(packagePath, 'sass/profile.scss'),
   },
 
