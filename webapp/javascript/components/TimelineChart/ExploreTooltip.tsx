@@ -10,6 +10,7 @@ interface ExploreTooltipProps {
   pageX: number;
   pageY: number;
   align: 'left' | 'right';
+  timeLabel?: string;
 }
 
 const ExploreTooltip: FC<ExploreTooltipProps> = (props) => {
@@ -38,7 +39,7 @@ const ExploreTooltip: FC<ExploreTooltipProps> = (props) => {
         [styles.hidden]: isHidden,
       })}
     >
-      {`x: ${props.pageX}`}
+      {props.timeLabel}
     </div>
   );
 };

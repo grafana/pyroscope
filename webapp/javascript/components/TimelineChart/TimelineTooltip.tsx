@@ -4,12 +4,13 @@
 func-names, 
 @typescript-eslint/no-unsafe-return, 
 @typescript-eslint/no-unsafe-assignment,
-no-undef
+no-undef,
+prefer-destructuring
 */
 import React from 'react';
 import * as ReactDOM from 'react-dom';
 import { PlotType, EventHolderType, EventType } from './types';
-import { clamp } from './utils';
+import { clamp, getFormatLabel } from './utils';
 
 type ContextType = {
   init: (plot: PlotType) => void;
@@ -24,13 +25,14 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 (function ($: JQueryStatic) {
   function init(this: ContextType, plot: PlotType) {
     const exploreTooltip = injectTooltip($);
+    const selection = { active: false, from: -1, to: -1 };
 
     const params = {
       canvasX: -1,
       canvasY: -1,
       pageX: -1,
       pageY: -1,
-      parentSelector: null,
+      xToTime: -1,
     };
 
     function onMouseMove(e: EventType) {
@@ -58,30 +60,81 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       params.pageY = -1;
     }
 
+    function onPlotHover(e: EventType, position: { x: number }, item) {
+      console.log('item', item);
+
+      params.xToTime = position.x;
+    }
+
     plot.hooks.drawOverlay.push(() => {
       const options = plot.getOptions();
-      const canvasWidth = plot.width();
-
       const Tooltip = options?.exploreTooltip;
-
-      const align = params.canvasX > canvasWidth / 2 ? 'left' : 'right';
+      const { xaxis } = plot.getAxes() as ShamefulAny;
 
       if (Tooltip && exploreTooltip?.length) {
+        const align = params.canvasX > plot.width() / 2 ? 'left' : 'right';
+        const timezone = options.xaxis.timezone;
+        const timeLabel = selection.active
+          ? `${getFormatLabel({
+              date: selection.from,
+              xaxis,
+              timezone,
+            })} - ${getFormatLabel({
+              date: selection.to,
+              xaxis,
+              timezone,
+            })}`
+          : getFormatLabel({
+              date: params.xToTime,
+              xaxis,
+              timezone,
+            });
+
         ReactDOM.render(
-          <Tooltip pageX={params.pageX} pageY={params.pageY} align={align} />,
+          <Tooltip
+            pageX={params.pageX}
+            pageY={params.pageY}
+            align={align}
+            timeLabel={timeLabel}
+          />,
           exploreTooltip?.[0]
         );
       }
     });
 
+    const onMouseUp = () => {
+      selection.active = false;
+    };
+
+    const onMouseDown = () => {
+      selection.active = true;
+    };
+
+    const onPlotSelecting = (
+      e: EventType,
+      selectionData: { xaxis: { from: number; to: number } }
+    ) => {
+      selection.from = selectionData?.xaxis?.from || -1;
+      selection.to = selectionData?.xaxis?.to || -1;
+    };
+
     plot.hooks.bindEvents.push((p: PlotType, eventHolder: EventHolderType) => {
       eventHolder.mousemove(onMouseMove);
       eventHolder.mouseleave(onMouseLeave);
+      eventHolder.mouseup(onMouseUp);
+      eventHolder.mousedown(onMouseDown);
+      plot.getPlaceholder().bind('plothover', onPlotHover);
+      // detect plotselecting event from ./TimelineChartSelection.ts
+      plot.getPlaceholder().bind('plotselecting', onPlotSelecting);
     });
 
     plot.hooks.shutdown.push((_: PlotType, eventHolder: EventHolderType) => {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mouseleave', onMouseLeave);
+      eventHolder.unbind('mouseup', onMouseUp);
+      eventHolder.unbind('mousedown', onMouseDown);
+      plot.getPlaceholder().unbind('plothover', onPlotHover);
+      plot.getPlaceholder().unbind('plotselecting', onPlotSelecting);
     });
   }
 

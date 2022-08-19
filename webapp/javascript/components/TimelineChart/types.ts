@@ -10,6 +10,8 @@ export type PlotType = {
       left: number;
       top: number;
     };
+    unbind: (...args: ShamefulAny) => void;
+    bind: (...args: ShamefulAny) => void;
   };
   triggerRedrawOverlay: () => void;
   width: () => number;
@@ -40,6 +42,7 @@ export type EventHolderType = {
   mousemove: (arg0: (e: EventType) => void) => void;
   mousedown: (arg0: (e: EventType) => void) => void;
   mouseleave: (arg0: (e: EventType) => void) => void;
+  mouseup: (arg0: (e: EventType) => void) => void;
 };
 
 export type EventType = { pageX: number; pageY: number; which?: number };
