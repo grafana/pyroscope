@@ -24,6 +24,7 @@ function Apps() {
   const dispatch = useAppDispatch();
   const apps = useAppSelector(selectApps);
   const [search, setSearchField] = useState('');
+  const [appsInProcessing, setAppsInProcessing] = useState([] as string[]);
 
   useEffect(() => {
     dispatch(reloadApps());
@@ -37,10 +38,12 @@ function Apps() {
     [];
 
   const handleDeleteApp = (app: App) => {
+    setAppsInProcessing([...appsInProcessing, app.name]);
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     dispatch(deleteApp(app))
       .unwrap()
       .then(() => {
+        setAppsInProcessing(appsInProcessing.filter((x) => x !== app.name));
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         dispatch(
           addNotification({
@@ -55,7 +58,11 @@ function Apps() {
   const tableBodyProps =
     displayApps.length > 0
       ? {
-          bodyRows: getAppTableRows(displayApps, handleDeleteApp),
+          bodyRows: getAppTableRows(
+            displayApps,
+            appsInProcessing,
+            handleDeleteApp
+          ),
           type: 'filled' as const,
         }
       : {

@@ -5,12 +5,19 @@ import Button from '@webapp/ui/Button';
 import Icon from '@webapp/ui/Icon';
 import { App, Apps } from '@webapp/models/app';
 import type { BodyRow } from '@webapp/ui/Table';
-
 import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+
 import styles from './AppTableItem.module.css';
 
-function DeleteButton(props: { onDelete: (app: App) => void; app: App }) {
-  const { onDelete, app } = props;
+interface IDeleteButtorProps {
+  onDelete: (app: App) => void;
+  isLoading: boolean;
+  app: App;
+}
+
+function DeleteButton(props: IDeleteButtorProps) {
+  const { onDelete, app, isLoading } = props;
 
   const handleDeleteClick = () => {
     confirmDelete('this app', () => {
@@ -18,7 +25,9 @@ function DeleteButton(props: { onDelete: (app: App) => void; app: App }) {
     });
   };
 
-  return (
+  return isLoading ? (
+    <LoadingSpinner />
+  ) : (
     <Button type="button" kind="danger" onClick={handleDeleteClick}>
       <Icon icon={faTimes} />
     </Button>
@@ -27,6 +36,7 @@ function DeleteButton(props: { onDelete: (app: App) => void; app: App }) {
 
 export function getAppTableRows(
   displayApps: Apps,
+  appsInProcessing: string[],
   handleDeleteApp: (app: App) => void
 ): BodyRow[] {
   const bodyRows = displayApps.reduce((acc, app) => {
@@ -38,7 +48,11 @@ export function getAppTableRows(
         {
           value: (
             <div className={styles.actions}>
-              <DeleteButton app={app} onDelete={handleDeleteApp} />
+              <DeleteButton
+                app={app}
+                onDelete={handleDeleteApp}
+                isLoading={appsInProcessing.includes(name)}
+              />
             </div>
           ),
           align: 'center',
