@@ -16,7 +16,6 @@ import tableStyles from '../SettingsTable.module.scss';
 import { getAppTableRows } from './getAppTableRows';
 
 const headRow = [
-  { name: '', label: '', sortable: 0 },
   { name: '', label: 'Name', sortable: 0 },
   { name: '', label: '', sortable: 0 },
 ];
@@ -28,12 +27,12 @@ function Apps() {
 
   useEffect(() => {
     dispatch(reloadApps());
-  });
+  }, []);
+
   const displayApps =
     (apps &&
       apps.filter(
-        (x) =>
-          JSON.stringify(x).toLowerCase().indexOf(search.toLowerCase()) !== -1
+        (x) => x.name.toLowerCase().indexOf(search.toLowerCase()) !== -1
       )) ||
     [];
 
@@ -47,7 +46,7 @@ function Apps() {
           addNotification({
             type: 'success',
             title: 'App has been deleted',
-            message: `App name#${app.name} has been successfully deleted`,
+            message: `App ${app.name} has been successfully deleted`,
           })
         );
       });
