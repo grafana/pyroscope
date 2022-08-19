@@ -60,7 +60,11 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       params.pageY = -1;
     }
 
-    function onPlotHover(e: EventType, position: { x: number }, item) {
+    function onPlotHover(
+      e: EventType,
+      position: { x: number },
+      item: ShamefulAny
+    ) {
       console.log('item', item);
 
       params.xToTime = position.x;
