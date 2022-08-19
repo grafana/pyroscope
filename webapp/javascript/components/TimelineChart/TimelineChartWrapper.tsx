@@ -71,10 +71,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
-  exploreTooltip?: {
-    parentSelector: string;
-    component: FC<ShamefulAny>;
-  };
+  exploreTooltip?: FC<ShamefulAny>;
 };
 
 class TimelineChartWrapper extends React.Component<

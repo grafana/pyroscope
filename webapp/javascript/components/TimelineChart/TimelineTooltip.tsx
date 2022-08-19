@@ -1,4 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, func-names */
+/* eslint-disable 
+@typescript-eslint/no-unsafe-member-access, 
+@typescript-eslint/no-unsafe-call, 
+func-names, 
+@typescript-eslint/no-unsafe-return, 
+@typescript-eslint/no-unsafe-assignment,
+no-undef
+*/
 import React from 'react';
 import * as ReactDOM from 'react-dom';
 import { PlotType, EventHolderType, EventType } from './types';
@@ -16,7 +23,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
 (function ($: JQueryStatic) {
   function init(this: ContextType, plot: PlotType) {
-    this.exploreTooltip = null;
+    const exploreTooltip = injectTooltip($);
 
     const params = {
       canvasX: -1,
@@ -51,34 +58,18 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       params.pageY = -1;
     }
 
-    plot.hooks.draw.push(() => {
-      const o = plot.getOptions();
-
-      const parentSelector = o.exploreTooltip?.parentSelector;
-
-      if (parentSelector) {
-        const tooltipParent = $(`#${TOOLTIP_WRAPPER_ID}`).length
-          ? $(`#${TOOLTIP_WRAPPER_ID}`)
-          : $(`<div id="${TOOLTIP_WRAPPER_ID}" />`);
-
-        const par2 = $(parentSelector);
-
-        this.exploreTooltip = tooltipParent.appendTo(par2);
-      }
-    });
-
     plot.hooks.drawOverlay.push(() => {
       const options = plot.getOptions();
       const canvasWidth = plot.width();
 
-      const Tooltip = options?.exploreTooltip?.component;
+      const Tooltip = options?.exploreTooltip;
 
       const align = params.canvasX > canvasWidth / 2 ? 'left' : 'right';
 
-      if (Tooltip && this?.exploreTooltip?.length) {
+      if (Tooltip && exploreTooltip?.length) {
         ReactDOM.render(
           <Tooltip pageX={params.pageX} pageY={params.pageY} align={align} />,
-          this.exploreTooltip?.[0]
+          exploreTooltip?.[0]
         );
       }
     });
@@ -101,3 +92,13 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
     version: '1.0',
   });
 })(jQuery);
+
+const injectTooltip = ($: JQueryStatic) => {
+  const tooltipParent = $(`#${TOOLTIP_WRAPPER_ID}`).length
+    ? $(`#${TOOLTIP_WRAPPER_ID}`)
+    : $(`<div id="${TOOLTIP_WRAPPER_ID}" />`);
+
+  const par2 = $(`body`);
+
+  return tooltipParent.appendTo(par2);
+};

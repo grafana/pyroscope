@@ -227,10 +227,7 @@ function TagExplorerView() {
                 }
                 height="125px"
                 format="lines"
-                exploreTooltip={{
-                  parentSelector: `#${TIMELINE_WRAPPER_ID}`,
-                  component: ExploreTooltip,
-                }}
+                exploreTooltip={ExploreTooltip}
               />
             )}
           </div>
