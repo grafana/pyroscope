@@ -6,38 +6,13 @@ import type { DropzoneOptions } from 'react-dropzone';
 import { faFileUpload } from '@fortawesome/free-solid-svg-icons/faFileUpload';
 import classNames from 'classnames/bind';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import { SpyNameFirstClass, SpyName } from '@pyroscope/models/src/spyName';
+import { units as possibleUnits, Units } from '@pyroscope/models/src/profile';
+import { humanizeSpyname, isJSONFile, humanizeUnits } from './utils';
 import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';
 
 const cx = classNames.bind(styles);
-
-const isJSONFile = (file: File) =>
-  file.name.match(/\.json$/) ||
-  file.type === 'application/json' ||
-  file.type === 'text/json';
-
-const SPYNAMES = {
-  gospy: 'Go',
-  pyspy: 'Python',
-  phpspy: 'PHP',
-  'pyroscope-rs': 'Rust',
-  rbspy: 'Ruby',
-  javaspy: 'Java',
-  dotnetspy: '.NET',
-  nodespy: 'NodeJS',
-  ebpfspy: 'eBPF',
-  other: 'Other',
-};
-
-const UNITS = {
-  samples: 'Samples',
-  objects: 'Objects',
-  goroutines: 'Goroutines',
-  bytes: 'Bytes',
-  lock_samples: 'Lock Samples',
-  lock_nanoseconds: 'Lock Nanoseconds',
-  trace_samples: 'Trace Samples',
-};
 
 type UploadArgsType = {
   file: File;
@@ -51,8 +26,8 @@ interface Props {
 
 export default function FileUploader({ setFile: onUpload, className }: Props) {
   const [file, setFile] = useState<File>();
-  const [spyName, setSpyName] = useState<string>('gospy');
-  const [units, setUnits] = useState('samples');
+  const [spyName, setSpyName] = useState<SpyName>('gospy');
+  const [units, setUnits] = useState<Units>('samples');
   type onDrop = Required<DropzoneOptions>['onDrop'];
   const onDrop = useCallback<onDrop>(
     (acceptedFiles) => {
@@ -119,13 +94,11 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
       {showLanguageAndUnits && (
         <div className={styles.dropdowns}>
           <Dropdown
-            value={`Profile language: ${
-              SPYNAMES[spyName as keyof typeof SPYNAMES]
-            }`}
-            onItemClick={(e) => setSpyName(e.value as string)}
+            value={`Profile language: ${humanizeSpyname(spyName)}`}
+            onItemClick={(e) => setSpyName(e.value)}
             label="Profile language"
           >
-            {Object.keys(SPYNAMES).map((name, index) => (
+            {SpyNameFirstClass.map((name, index) => (
               <MenuItem
                 className={cx({
                   [styles.activeDropdownItem]: spyName === name,
@@ -133,16 +106,16 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
                 key={String(index) + name}
                 value={name}
               >
-                {SPYNAMES[name as keyof typeof SPYNAMES]}
+                {humanizeSpyname(name)}
               </MenuItem>
             ))}
           </Dropdown>
           <Dropdown
-            value={`Profile units: ${UNITS[units as keyof typeof UNITS]}`}
-            onItemClick={(e) => setUnits(e.value as string)}
+            value={`Profile units: ${humanizeUnits(units)}`}
+            onItemClick={(e) => setUnits(e.value)}
             label="Profile units"
           >
-            {Object.keys(UNITS).map((name, index) => (
+            {(possibleUnits as Units[]).map((name, index) => (
               <MenuItem
                 className={cx({
                   [styles.activeDropdownItem]: units === name,
@@ -150,7 +123,7 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
                 key={String(index) + name}
                 value={name}
               >
-                {UNITS[name as keyof typeof UNITS]}
+                {humanizeUnits(name)}
               </MenuItem>
             ))}
           </Dropdown>
