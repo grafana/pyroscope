@@ -11,7 +11,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/binary"
-	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -149,7 +148,6 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		}
 		labels := s.serviceDiscovery.GetLabels(pid)
 		if labels == nil && s.onlyServices {
-			fmt.Printf("skipping %d %s\n", pid, comm)
 			continue
 		}
 		uStack := s.getStack(uStackID)
