@@ -183,7 +183,7 @@ func getLocationsFromSerializedLocations(
 */
 
 func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	return i.fireDB.Head().SelectProfiles(ctx, req)
+	return i.fireDB.SelectProfiles(ctx, req)
 }
 
 func binaryFieldFromRecord(ar arrow.Record, name string) (*array.Binary, error) {
