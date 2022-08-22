@@ -26,6 +26,7 @@ function Settings() {
 
   const isAdmin = (user?: User) => user && user.role === 'Admin';
   const isExternal = (user?: User) => user && user.isExternal;
+
   return (
     <div className="pyroscope-app">
       <h1>Settings</h1>
