@@ -8,7 +8,7 @@ import classNames from 'classnames/bind';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import { SpyNameFirstClass, SpyName } from '@pyroscope/models/src/spyName';
 import { units as possibleUnits, Units } from '@pyroscope/models/src/profile';
-import { humanizeSpyname, isJSONFile, humanizeUnits } from './utils';
+import { humanizeSpyname, isJSONFile, humanizeUnits } from './humanize';
 import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';
 
