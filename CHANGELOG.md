@@ -1,3 +1,26 @@
+# [0.26.0](https://github.com/pyroscope-io/pyroscope/compare/v0.25.1...v0.26.0) (2022-08-19)
+
+
+### Bug Fixes
+
+* Add different color palette for Explore Timeline ([#1399](https://github.com/pyroscope-io/pyroscope/issues/1399)) ([5e129e0](https://github.com/pyroscope-io/pyroscope/commit/5e129e0552422ca3b36c85153248c1d8278fc0de))
+* **flamegraph:** fix its styling ([#1388](https://github.com/pyroscope-io/pyroscope/issues/1388)) ([5788cf9](https://github.com/pyroscope-io/pyroscope/commit/5788cf9943a579acd35de224537016488a98808f))
+* Make trace units be time based ([#1387](https://github.com/pyroscope-io/pyroscope/issues/1387)) ([a567c2c](https://github.com/pyroscope-io/pyroscope/commit/a567c2c1877c462a6a4dceda87455017c1cf7276))
+* **webapp:** refresh data when (re)submitting query ([#1410](https://github.com/pyroscope-io/pyroscope/issues/1410)) ([3554f84](https://github.com/pyroscope-io/pyroscope/commit/3554f84060ab54836e9ae1f2b49f9174c3e66041)), closes [#1406](https://github.com/pyroscope-io/pyroscope/issues/1406)
+* **webapp:** return empty string when range doesn't make sense ([#1419](https://github.com/pyroscope-io/pyroscope/issues/1419)) ([6f69c6f](https://github.com/pyroscope-io/pyroscope/commit/6f69c6f5209a12e1d8c54e962fcba6dc373bd7ff))
+
+
+### Features
+
+* **adhoc:** support passing custom spyName/unit when uploading ([#1417](https://github.com/pyroscope-io/pyroscope/issues/1417)) ([9cc0f39](https://github.com/pyroscope-io/pyroscope/commit/9cc0f398519f650154c00109633f7bd1b82bc0e8))
+* **ebpf:** pythonless, portable ebpf ([#1314](https://github.com/pyroscope-io/pyroscope/issues/1314)) ([f124c46](https://github.com/pyroscope-io/pyroscope/commit/f124c46c5fb0f7fde13ad28af735d3018ecd393c))
+* reuse Table component everywhere ([#1403](https://github.com/pyroscope-io/pyroscope/issues/1403)) ([a79f61b](https://github.com/pyroscope-io/pyroscope/commit/a79f61b39d8ae5b199710e79dc05e9352044b3b4))
+* support high number of series in explore view timeline ([#1384](https://github.com/pyroscope-io/pyroscope/issues/1384)) ([482e23e](https://github.com/pyroscope-io/pyroscope/commit/482e23e52f006a201e40a2b4ff6092e0f246aa03))
+* **webapp:** set title automatically ([#1397](https://github.com/pyroscope-io/pyroscope/issues/1397)) ([74821ca](https://github.com/pyroscope-io/pyroscope/commit/74821ca0f0e3ebec38c83f83bf54318d931f66f6))
+* **webapp:** update timeline appearance and refactor flot plugins ([#1323](https://github.com/pyroscope-io/pyroscope/issues/1323)) ([9393449](https://github.com/pyroscope-io/pyroscope/commit/9393449fdabd0cb38c4fae87b3ba0ce73251b41d))
+
+
+
 ## [0.25.1](https://github.com/pyroscope-io/pyroscope/compare/v0.25.0...v0.25.1) (2022-08-08)
 
 

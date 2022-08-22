@@ -67,6 +67,7 @@ type ProfileSession struct {
 	disableGCRuns    bool
 	withSubprocesses bool
 	clibIntegration  bool
+	spyFactory       SpyFactory
 	noForkDetection  bool
 	pid              int
 
@@ -88,6 +89,8 @@ type ProfileSession struct {
 	tries         map[string][]*transporttrie.Trie
 }
 
+type SpyFactory func(pid int) ([]spy.Spy, error)
+
 type SessionConfig struct {
 	upstream.Upstream
 	Logger
@@ -104,6 +107,10 @@ type SessionConfig struct {
 }
 
 func NewSession(c SessionConfig) (*ProfileSession, error) {
+	return NewSessionWithSpyFactory(c, NewGenericSpyFactory(c))
+}
+
+func NewSessionWithSpyFactory(c SessionConfig, spyFactory SpyFactory) (*ProfileSession, error) {
 	appName, err := mergeTagsWithAppName(c.AppName, c.Tags)
 	if err != nil {
 		return nil, err
@@ -124,6 +131,7 @@ func NewSession(c SessionConfig) (*ProfileSession, error) {
 		clibIntegration:  c.ClibIntegration,
 		logger:           c.Logger,
 		throttler:        throttle.New(errorThrottlerPeriod),
+		spyFactory:       spyFactory,
 
 		// string is appName, int is index in pids
 		previousTries: make(map[string][]*transporttrie.Trie),
@@ -133,6 +141,27 @@ func NewSession(c SessionConfig) (*ProfileSession, error) {
 	ps.initializeTries(ps.appName)
 
 	return ps, nil
+}
+
+func NewGenericSpyFactory(c SessionConfig) SpyFactory {
+	return func(pid int) ([]spy.Spy, error) {
+		var res []spy.Spy
+
+		sf, err := spy.StartFunc(c.SpyName)
+		if err != nil {
+			return res, err
+		}
+
+		for _, pt := range c.ProfilingTypes {
+			s, err := sf(pid, pt, c.SampleRate, c.DisableGCRuns)
+
+			if err != nil {
+				return res, err
+			}
+			res = append(res, s)
+		}
+		return res, nil
+	}
 }
 
 func addSuffix(name string, ptype spy.ProfileType) (string, error) {
@@ -256,22 +285,7 @@ func (ps *ProfileSession) takeSnapshots() {
 }
 
 func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
-	res := []spy.Spy{}
-
-	sf, err := spy.StartFunc(ps.spyName)
-	if err != nil {
-		return res, err
-	}
-
-	for _, pt := range ps.profileTypes {
-		s, err := sf(pid, pt, ps.sampleRate, ps.disableGCRuns)
-
-		if err != nil {
-			return res, err
-		}
-		res = append(res, s)
-	}
-	return res, nil
+	return ps.spyFactory(pid)
 }
 
 func (ps *ProfileSession) ChangeName(newName string) error {

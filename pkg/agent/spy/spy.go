@@ -26,6 +26,7 @@ const (
 	ProfileAllocSpace   ProfileType = "alloc_space"
 
 	Go     = "gospy"
+	EBPF   = "ebpfspy"
 	Python = "pyspy"
 	Ruby   = "rbspy"
 )
