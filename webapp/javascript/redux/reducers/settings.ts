@@ -27,22 +27,19 @@ enum FetchStatus {
   loaded = 'loaded',
   failed = 'failed',
 }
-type FetchedState<T> = { type: FetchStatus; data?: T };
+type DataWithStatus<T> = { type: FetchStatus; data?: T };
 
-type UsersState = FetchedState<Users>;
-const usersInitialState: UsersState = {
+const usersInitialState: DataWithStatus<Users> = {
   type: FetchStatus.pristine,
   data: undefined,
 };
 
-type ApiKeysState = FetchedState<APIKeys>;
-const apiKeysInitialState: ApiKeysState = {
+const apiKeysInitialState: DataWithStatus<APIKeys> = {
   type: FetchStatus.pristine,
   data: undefined,
 };
 
-type AppsState = FetchedState<Apps>;
-const appsInitialState: AppsState = {
+const appsInitialState: DataWithStatus<Apps> = {
   type: FetchStatus.pristine,
   data: undefined,
 };
