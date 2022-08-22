@@ -152,10 +152,6 @@ export default {
   plugins: [
     // uncomment if you want to see the webpack bundle analysis
     // new BundleAnalyzerPlugin(),
-    new webpack.ProvidePlugin({
-      $: 'jquery',
-      jQuery: 'jquery',
-    }),
     ...pagePlugins,
     new MiniCssExtractPlugin({
       filename: getFilename('css'),
