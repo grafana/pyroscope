@@ -26,7 +26,7 @@ function DeleteButton(props: IDeleteButtorProps) {
   };
 
   return isLoading ? (
-    <LoadingSpinner />
+    <LoadingSpinner className={styles.loadingIcon} />
   ) : (
     <Button type="button" kind="danger" onClick={handleDeleteClick}>
       <Icon icon={faTimes} />

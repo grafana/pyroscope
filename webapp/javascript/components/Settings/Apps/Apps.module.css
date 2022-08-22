@@ -3,6 +3,12 @@
   flex-direction: column;
 }
 
+.tabNameContrainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .searchContainer button {
   padding: 5px 20px;
 }

@@ -351,8 +351,10 @@ export const selectAPIKeys = (state: RootState) => state.settings.apiKeys.data;
 
 export const appsState = (state: RootState) => state.settings.apps;
 export const selectApps = (state: RootState) => state.settings.apps.data;
+export const selectIsLoadingApps = (state: RootState) => {
+  return state.settings.apps.type === FetchStatus.loading;
+};
 
-// TODO: split setting reducers into separate files
 export default combineReducers({
   users: usersSlice.reducer,
   apiKeys: apiKeysSlice.reducer,
