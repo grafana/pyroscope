@@ -10,13 +10,13 @@ import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 
 import styles from './AppTableItem.module.css';
 
-interface IDeleteButtorProps {
+interface DeleteButtorProps {
   onDelete: (app: App) => void;
   isLoading: boolean;
   app: App;
 }
 
-function DeleteButton(props: IDeleteButtorProps) {
+function DeleteButton(props: DeleteButtorProps) {
   const { onDelete, app, isLoading } = props;
 
   const handleDeleteClick = () => {
