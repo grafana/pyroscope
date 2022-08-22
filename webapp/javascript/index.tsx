@@ -31,6 +31,7 @@ import Forbidden from './pages/IntroPages/Forbidden';
 import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
+import './globals';
 
 function App() {
   return (
