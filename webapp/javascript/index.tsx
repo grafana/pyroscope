@@ -5,7 +5,7 @@ import React from 'react';
 
 import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
-import { isAdhocUIEnabled } from '@webapp/util/features';
+import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
 import Footer from '@webapp/components/Footer';
@@ -25,8 +25,6 @@ import AdhocDiff from './pages/adhoc/AdhocDiff';
 import ServiceDiscoveryApp from './pages/ServiceDiscovery';
 import ServerNotifications from './components/ServerNotifications';
 import Protected from './components/Protected';
-// since this style is practically all pages
-
 import SignInPage from './pages/IntroPages/SignIn';
 import SignUpPage from './pages/IntroPages/SignUp';
 import Forbidden from './pages/IntroPages/Forbidden';
@@ -67,13 +65,16 @@ function App() {
               </Continuous>
             </Protected>
           </Route>
-          <Route path={PAGES.SETTINGS}>
-            <Protected>
-              <Continuous>
-                <Settings />
-              </Continuous>
-            </Protected>
-          </Route>
+
+          {isAuthRequired && (
+            <Route path={PAGES.SETTINGS}>
+              <Protected>
+                <Continuous>
+                  <Settings />
+                </Continuous>
+              </Protected>
+            </Route>
+          )}
           <Route path={PAGES.SERVICE_DISCOVERY}>
             <Protected>
               <PageTitle title="Pull Targets" />
