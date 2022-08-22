@@ -31,6 +31,7 @@ export type ShowModalParams = {
   inputLabel?: string;
   inputPlaceholder?: string;
   validationMessage?: string;
+  inputValidator?: (value: string) => string | null;
 };
 
 const ShowModal = async ({
@@ -43,6 +44,7 @@ const ShowModal = async ({
   inputLabel,
   inputPlaceholder,
   validationMessage,
+  inputValidator,
 }: ShowModalParams) => {
   const { isConfirmed, value } = await Swal.fire({
     title,
@@ -52,6 +54,7 @@ const ShowModal = async ({
     inputPlaceholder,
     inputValue,
     validationMessage,
+    inputValidator,
     confirmButtonColor: getButtonStyleFromType(type),
     ...defaultParams,
   });

@@ -20,8 +20,13 @@ function DeleteButton(props: IDeleteButtorProps) {
   const { onDelete, app, isLoading } = props;
 
   const handleDeleteClick = () => {
-    confirmDelete('this app', () => {
-      onDelete(app);
+    confirmDelete({
+      objectName: app.name,
+      objectType: 'app',
+      withConfirmationInput: true,
+      warningMsg:
+        'This action can take significant amount of time and cannot be undone.',
+      onConfirm: () => onDelete(app),
     });
   };
 
