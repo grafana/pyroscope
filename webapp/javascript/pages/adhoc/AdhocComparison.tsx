@@ -19,13 +19,14 @@ import {
   selectShared,
   uploadFile,
 } from '@webapp/redux/reducers/adhoc';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 import FileUploader from './components/FileUploader';
 
 function AdhocComparison() {
   const dispatch = useAppDispatch();
-
+  useColorMode();
   const [tabIndexLeft, setTabIndexLeft] = useState(0);
   const [tabIndexRight, setTabIndexRight] = useState(0);
 
@@ -105,8 +106,10 @@ function AdhocComparison() {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  setFile={async (file) => {
-                    await dispatch(uploadFile({ file, side: 'left' }));
+                  setFile={async ({ file, spyName, units }) => {
+                    await dispatch(
+                      uploadFile({ file, spyName, units, side: 'left' })
+                    );
                     setTabIndexLeft(1);
                   }}
                 />
@@ -139,10 +142,12 @@ function AdhocComparison() {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  setFile={async (file) => {
+                  setFile={async ({ file, spyName, units }) => {
                     await dispatch(
                       uploadFile({
                         file,
+                        spyName,
+                        units,
                         side: 'right',
                       })
                     );

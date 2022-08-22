@@ -8,18 +8,21 @@ export const FlamebearerSchema = z.object({
   maxSelf: z.number(),
 });
 
+export type UnitsType = typeof units[number];
+
+export const units = [
+  'samples',
+  'objects',
+  'goroutines',
+  'bytes',
+  'lock_samples',
+  'lock_nanoseconds',
+  'trace_samples',
+];
+
 // accept the defined units
 // and convert anything else to empty string
-const UnitsSchema = z.preprocess((u) => {
-  const units = [
-    'samples',
-    'objects',
-    'goroutines',
-    'bytes',
-    'lock_samples',
-    'lock_nanoseconds',
-    'trace_samples',
-  ];
+export const UnitsSchema = z.preprocess((u) => {
   if (typeof u === 'string') {
     if (units.includes(u)) {
       return u;
