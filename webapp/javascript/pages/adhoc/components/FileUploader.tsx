@@ -6,8 +6,14 @@ import type { DropzoneOptions } from 'react-dropzone';
 import { faFileUpload } from '@fortawesome/free-solid-svg-icons/faFileUpload';
 import classNames from 'classnames/bind';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
-import { SpyNameFirstClass, SpyName } from '@pyroscope/models/src/spyName';
-import { units as possibleUnits, Units } from '@pyroscope/models/src/profile';
+import {
+  SpyNameFirstClass,
+  SpyNameFirstClassType,
+} from '@pyroscope/models/src/spyName';
+import {
+  units as possibleUnits,
+  UnitsType,
+} from '@pyroscope/models/src/profile';
 import { humanizeSpyname, isJSONFile, humanizeUnits } from './humanize';
 import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';
@@ -26,8 +32,8 @@ interface Props {
 
 export default function FileUploader({ setFile: onUpload, className }: Props) {
   const [file, setFile] = useState<File>();
-  const [spyName, setSpyName] = useState<SpyName>('gospy');
-  const [units, setUnits] = useState<Units>('samples');
+  const [spyName, setSpyName] = useState<SpyNameFirstClassType>('gospy');
+  const [units, setUnits] = useState<UnitsType>('samples');
   type onDrop = Required<DropzoneOptions>['onDrop'];
   const onDrop = useCallback<onDrop>(
     (acceptedFiles) => {
@@ -115,7 +121,7 @@ export default function FileUploader({ setFile: onUpload, className }: Props) {
             onItemClick={(e) => setUnits(e.value)}
             label="Profile units"
           >
-            {(possibleUnits as Units[]).map((name, index) => (
+            {possibleUnits.map((name, index) => (
               <MenuItem
                 className={cx({
                   [styles.activeDropdownItem]: units === name,

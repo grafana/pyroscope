@@ -1,8 +1,8 @@
-/* eslint-disable default-case, @typescript-eslint/switch-exhaustiveness-check, consistent-return */
-import { Units } from '@pyroscope/models/src';
-import { SpyName } from '@pyroscope/models/src/spyName';
+/* eslint-disable default-case, consistent-return */
+import { UnitsType } from '@pyroscope/models/src';
+import { SpyNameFirstClassType } from '@pyroscope/models/src/spyName';
 
-export const humanizeSpyname = (n: SpyName) => {
+export const humanizeSpyname = (n: SpyNameFirstClassType) => {
   switch (n) {
     case 'gospy':
       return 'Go';
@@ -25,7 +25,7 @@ export const humanizeSpyname = (n: SpyName) => {
   }
 };
 
-export const humanizeUnits = (u: Units) => {
+export const humanizeUnits = (u: UnitsType) => {
   switch (u) {
     case 'samples':
       return 'Samples';

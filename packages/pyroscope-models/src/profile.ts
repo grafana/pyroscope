@@ -8,6 +8,8 @@ export const FlamebearerSchema = z.object({
   maxSelf: z.number(),
 });
 
+export type UnitsType = typeof units[number];
+
 export const units = [
   'samples',
   'objects',
