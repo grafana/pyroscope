@@ -20,6 +20,7 @@ export type PlotType = {
   setSelection: (ranges: ShamefulAny, preventEvent: ShamefulAny) => void;
   getSelection: () => ShamefulAny | null;
   hooks: ShamefulAny;
+  getData: () => ShamefulAny[];
 };
 
 export type CtxType = {

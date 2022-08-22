@@ -60,13 +60,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       params.pageY = -1;
     }
 
-    function onPlotHover(
-      e: EventType,
-      position: { x: number },
-      item: ShamefulAny
-    ) {
-      console.log('item', item);
-
+    function onPlotHover(e: EventType, position: { x: number }) {
       params.xToTime = position.x;
     }
 
@@ -74,6 +68,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       const options = plot.getOptions();
       const Tooltip = options?.exploreTooltip;
       const { xaxis } = plot.getAxes() as ShamefulAny;
+      const data = plot.getData();
 
       if (Tooltip && exploreTooltip?.length) {
         const align = params.canvasX > plot.width() / 2 ? 'left' : 'right';
@@ -94,12 +89,45 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
               timezone,
             });
 
+        const values = data?.map(
+          (
+            d: {
+              data: number[][];
+              tagName: string;
+              color: { color: number[] };
+            },
+            i
+          ) => {
+            let closest = null;
+            let color = null;
+            let tagName = String(i);
+
+            if (d?.data?.length && params.xToTime && params.pageX > 0) {
+              color = d?.color?.color;
+              tagName = d.tagName;
+              closest = (d?.data || []).reduce(function (prev, curr) {
+                return Math.abs(curr?.[0] - params.xToTime) <
+                  Math.abs(prev?.[0] - params.xToTime)
+                  ? curr
+                  : prev;
+              });
+            }
+
+            return {
+              closest,
+              color,
+              tagName,
+            };
+          }
+        );
+
         ReactDOM.render(
           <Tooltip
             pageX={params.pageX}
             pageY={params.pageY}
             align={align}
             timeLabel={timeLabel}
+            values={values}
           />,
           exploreTooltip?.[0]
         );

@@ -1,12 +1,35 @@
 .tooltip {
-  width: 450px;
   height: auto;
   display: flex;
+  flex-direction: column;
   position: fixed;
-  background: white;
-  color: black;
+  background-color: var(--ps-dropdown-background);
+  border: 1px solid var(--ps-ui-border);
+  box-shadow: 0px 10px 20px var(--ps-dropdown-shadow);
+  border-radius: 4px;
+  padding: 8px;
 }
 
 .hidden {
   display: none;
+}
+
+.time {
+  color: var(--ps-neutral-2);
+  font-size: 14px;
+}
+
+.valueWrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  color: var(--ps-neutral-2);
+  font-size: 14px;
+}
+
+.valueColor {
+  width: 20px;
+  height: 6px;
+  border-radius: 3px;
+  margin-right: 8px;
 }

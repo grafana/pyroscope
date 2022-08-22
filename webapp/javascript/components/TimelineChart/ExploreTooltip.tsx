@@ -1,16 +1,22 @@
 import React, { useMemo, FC } from 'react';
 import classNames from 'classnames/bind';
+import Color from 'color';
 import styles from './ExploreTooltip.module.scss';
 
 const cx = classNames.bind(styles);
 
-const COMPONENT_WIDTH = 450;
+const COMPONENT_WIDTH = 150;
 
 interface ExploreTooltipProps {
   pageX: number;
   pageY: number;
   align: 'left' | 'right';
   timeLabel?: string;
+  values?: Array<{
+    closest: number[];
+    color: number[];
+    tagName: string;
+  }>;
 }
 
 const ExploreTooltip: FC<ExploreTooltipProps> = (props) => {
@@ -39,7 +45,22 @@ const ExploreTooltip: FC<ExploreTooltipProps> = (props) => {
         [styles.hidden]: isHidden,
       })}
     >
-      {props.timeLabel}
+      <div className={styles.time}>{props.timeLabel}</div>
+      {props.values?.length
+        ? props.values.map((v) => {
+            return (
+              <div key={v?.tagName} className={styles.valueWrapper}>
+                <div
+                  className={styles.valueColor}
+                  style={{
+                    backgroundColor: Color.rgb(v.color).toString(),
+                  }}
+                />
+                <div>{v?.closest?.[1] || '0'}</div>
+              </div>
+            );
+          })
+        : null}
     </div>
   );
 };
