@@ -3,11 +3,13 @@ package firedb
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -135,11 +137,19 @@ type Head struct {
 	tables          []Table
 	delta           *deltaProfiles
 	pprofLabelCache labelCache
+
+	tsBoundary     minMax
+	tsBoundaryLock sync.RWMutex
 }
 
 func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 	h := &Head{
 		ulid: generateULID(),
+
+		tsBoundary: minMax{
+			min: math.MaxInt64,
+			max: 0,
+		},
 	}
 	h.blockPath = filepath.Join(dataPath, "head", h.ulid.String())
 
@@ -268,6 +278,17 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
 		return err
 	}
+
+	h.tsBoundaryLock.Lock()
+	v := model.TimeFromUnixNano(profile.TimeNanos)
+	if v < h.tsBoundary.min {
+		h.tsBoundary.min = v
+	}
+	if v > h.tsBoundary.max {
+		h.tsBoundary.max = v
+	}
+	h.tsBoundaryLock.Unlock()
+
 	h.index.Add(profile, labels, metricName)
 
 	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(profile.Samples) * len(labels)))
@@ -354,6 +375,10 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	}), nil
 }
 
+func (h *Head) InRange(start, end model.Time) bool {
+	return h.tsBoundary.InRange(start, end)
+}
+
 func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
 	var (
 		totalSamples   int64
@@ -374,13 +399,9 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 
 	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "failed to label selector")
+		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
-	selectors = append(selectors, &labels.Matcher{
-		Type:  labels.MatchEqual,
-		Name:  firemodel.LabelNameProfileType,
-		Value: req.Msg.Type.Name + ":" + req.Msg.Type.SampleType + ":" + req.Msg.Type.SampleUnit + ":" + req.Msg.Type.PeriodType + ":" + req.Msg.Type.PeriodUnit,
-	})
+	selectors = append(selectors, firemodel.SelectorFromProfileType(req.Msg.Type))
 
 	result := []*ingestv1.Profile{}
 	names := []string{}
