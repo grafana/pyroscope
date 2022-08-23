@@ -18,7 +18,7 @@ import Select from '@webapp/ui/Select';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import SharedQueryInput from './SharedQueryInput';
-import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
+import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
 
