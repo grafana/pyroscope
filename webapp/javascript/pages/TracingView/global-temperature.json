@@ -1999,12 +1999,12 @@
     {
       "year": 1786,
       "month": 4,
-      "variance": 0.993
+      "variance": 0
     },
     {
       "year": 1786,
       "month": 5,
-      "variance": 0.21
+      "variance": 0
     },
     {
       "year": 1786,
@@ -2014,17 +2014,17 @@
     {
       "year": 1786,
       "month": 7,
-      "variance": 0.979
+      "variance": 0
     },
     {
       "year": 1786,
       "month": 8,
-      "variance": 0.674
+      "variance": 0
     },
     {
       "year": 1786,
       "month": 9,
-      "variance": 0.359
+      "variance": 0
     },
     {
       "year": 1786,
@@ -2044,7 +2044,7 @@
     {
       "year": 1787,
       "month": 1,
-      "variance": 0.369
+      "variance": 0
     },
     {
       "year": 1787,
@@ -2064,12 +2064,12 @@
     {
       "year": 1787,
       "month": 5,
-      "variance": 0.03
+      "variance": 0
     },
     {
       "year": 1787,
       "month": 6,
-      "variance": 0.827
+      "variance": 0
     },
     {
       "year": 1787,
@@ -2109,17 +2109,17 @@
     {
       "year": 1788,
       "month": 2,
-      "variance": 0.557
+      "variance": 0
     },
     {
       "year": 1788,
       "month": 3,
-      "variance": 0.013
+      "variance": 0
     },
     {
       "year": 1788,
       "month": 4,
-      "variance": 0.271
+      "variance": 0
     },
     {
       "year": 1788,
@@ -2129,7 +2129,7 @@
     {
       "year": 1788,
       "month": 6,
-      "variance": 0.289
+      "variance": 0
     },
     {
       "year": 1788,
@@ -2139,7 +2139,7 @@
     {
       "year": 1788,
       "month": 8,
-      "variance": 0.016
+      "variance": 0
     },
     {
       "year": 1788,
@@ -2149,12 +2149,12 @@
     {
       "year": 1788,
       "month": 10,
-      "variance": 0.168
+      "variance": 0
     },
     {
       "year": 1788,
       "month": 11,
-      "variance": 0.07
+      "variance": 0
     },
     {
       "year": 1788,
@@ -2184,7 +2184,7 @@
     {
       "year": 1789,
       "month": 5,
-      "variance": 0.289
+      "variance": 0
     },
     {
       "year": 1789,
@@ -2249,7 +2249,7 @@
     {
       "year": 1790,
       "month": 6,
-      "variance": 0.269
+      "variance": 0
     },
     {
       "year": 1790,
@@ -2259,7 +2259,7 @@
     {
       "year": 1790,
       "month": 8,
-      "variance": 0.102
+      "variance": 0
     },
     {
       "year": 1790,
@@ -2289,7 +2289,7 @@
     {
       "year": 1791,
       "month": 2,
-      "variance": 0.414
+      "variance": 0
     },
     {
       "year": 1791,
@@ -2299,7 +2299,7 @@
     {
       "year": 1791,
       "month": 4,
-      "variance": 0.705
+      "variance": 0
     },
     {
       "year": 1791,
@@ -2334,12 +2334,12 @@
     {
       "year": 1791,
       "month": 11,
-      "variance": 0.092
+      "variance": 0
     },
     {
       "year": 1791,
       "month": 12,
-      "variance": 0.05
+      "variance": 0
     },
     {
       "year": 1792,
@@ -2349,7 +2349,7 @@
     {
       "year": 1792,
       "month": 2,
-      "variance": 0.502
+      "variance": 0
     },
     {
       "year": 1792,
@@ -2369,7 +2369,7 @@
     {
       "year": 1792,
       "month": 6,
-      "variance": 0.103
+      "variance": 0
     },
     {
       "year": 1792,
@@ -2384,7 +2384,7 @@
     {
       "year": 1792,
       "month": 9,
-      "variance": 0.759
+      "variance": 0
     },
     {
       "year": 1792,
@@ -2419,7 +2419,7 @@
     {
       "year": 1793,
       "month": 4,
-      "variance": 0.259
+      "variance": 0
     },
     {
       "year": 1793,
@@ -2444,7 +2444,7 @@
     {
       "year": 1793,
       "month": 9,
-      "variance": 0.101
+      "variance": 0
     },
     {
       "year": 1793,
@@ -2464,22 +2464,22 @@
     {
       "year": 1794,
       "month": 1,
-      "variance": 0.986
+      "variance": 0
     },
     {
       "year": 1794,
       "month": 2,
-      "variance": 0.416
+      "variance": 0
     },
     {
       "year": 1794,
       "month": 3,
-      "variance": 0.295
+      "variance": 0
     },
     {
       "year": 1794,
       "month": 4,
-      "variance": 0.932
+      "variance": 0
     },
     {
       "year": 1794,
@@ -2524,7 +2524,7 @@
     {
       "year": 1795,
       "month": 1,
-      "variance": 0.342
+      "variance": 0
     },
     {
       "year": 1795,
@@ -2534,12 +2534,12 @@
     {
       "year": 1795,
       "month": 3,
-      "variance": 0.425
+      "variance": 0
     },
     {
       "year": 1795,
       "month": 4,
-      "variance": 0.472
+      "variance": 0
     },
     {
       "year": 1795,
@@ -2584,7 +2584,7 @@
     {
       "year": 1796,
       "month": 1,
-      "variance": 0.396
+      "variance": 0
     },
     {
       "year": 1796,
@@ -2604,12 +2604,12 @@
     {
       "year": 1796,
       "month": 5,
-      "variance": 0.006
+      "variance": 0
     },
     {
       "year": 1796,
       "month": 6,
-      "variance": 0.739
+      "variance": 0
     },
     {
       "year": 1796,
@@ -2619,12 +2619,12 @@
     {
       "year": 1796,
       "month": 8,
-      "variance": 0.995
+      "variance": 0
     },
     {
       "year": 1796,
       "month": 9,
-      "variance": 0.074
+      "variance": 0
     },
     {
       "year": 1796,
@@ -2669,7 +2669,7 @@
     {
       "year": 1797,
       "month": 6,
-      "variance": 0.384
+      "variance": 0
     },
     {
       "year": 1797,
@@ -2679,17 +2679,17 @@
     {
       "year": 1797,
       "month": 8,
-      "variance": 0.313
+      "variance": 0
     },
     {
       "year": 1797,
       "month": 9,
-      "variance": 0.546
+      "variance": 0
     },
     {
       "year": 1797,
       "month": 10,
-      "variance": 0.033
+      "variance": 0
     },
     {
       "year": 1797,
@@ -2704,12 +2704,12 @@
     {
       "year": 1798,
       "month": 1,
-      "variance": 0.152
+      "variance": 0
     },
     {
       "year": 1798,
       "month": 2,
-      "variance": 0.089
+      "variance": 0
     },
     {
       "year": 1798,
@@ -2724,7 +2724,7 @@
     {
       "year": 1798,
       "month": 5,
-      "variance": 0.501
+      "variance": 0
     },
     {
       "year": 1798,
@@ -2734,7 +2734,7 @@
     {
       "year": 1798,
       "month": 7,
-      "variance": 0.713
+      "variance": 0
     },
     {
       "year": 1798,
@@ -2779,42 +2779,42 @@
     {
       "year": 1799,
       "month": 4,
-      "variance": 0.408
+      "variance": 0
     },
     {
       "year": 1799,
       "month": 5,
-      "variance": 0.045
+      "variance": 0
     },
     {
       "year": 1799,
       "month": 6,
-      "variance": 0.216
+      "variance": 0
     },
     {
       "year": 1799,
       "month": 7,
-      "variance": 0.555
+      "variance": 0
     },
     {
       "year": 1799,
       "month": 8,
-      "variance": 0.289
+      "variance": 0
     },
     {
       "year": 1799,
       "month": 9,
-      "variance": 0.365
+      "variance": 0
     },
     {
       "year": 1799,
       "month": 10,
-      "variance": 0.358
+      "variance": 0
     },
     {
       "year": 1799,
       "month": 11,
-      "variance": 0.142
+      "variance": 0
     },
     {
       "year": 1799,
@@ -2824,12 +2824,12 @@
     {
       "year": 1800,
       "month": 1,
-      "variance": 0.407
+      "variance": 0
     },
     {
       "year": 1800,
       "month": 2,
-      "variance": 0.599
+      "variance": 0
     },
     {
       "year": 1800,
@@ -2839,7 +2839,7 @@
     {
       "year": 1800,
       "month": 4,
-      "variance": 0.629
+      "variance": 0
     },
     {
       "year": 1800,
@@ -2849,7 +2849,7 @@
     {
       "year": 1800,
       "month": 6,
-      "variance": 0.125
+      "variance": 0
     },
     {
       "year": 1800,
@@ -2940,966 +2940,6 @@
       "year": 1801,
       "month": 12,
       "variance": 0.829
-    },
-    {
-      "year": 1802,
-      "month": 1,
-      "variance": 1.149
-    },
-    {
-      "year": 1802,
-      "month": 2,
-      "variance": -0.244
-    },
-    {
-      "year": 1802,
-      "month": 3,
-      "variance": -0.027
-    },
-    {
-      "year": 1802,
-      "month": 4,
-      "variance": -0.696
-    },
-    {
-      "year": 1802,
-      "month": 5,
-      "variance": -0.699
-    },
-    {
-      "year": 1802,
-      "month": 6,
-      "variance": 1.024
-    },
-    {
-      "year": 1802,
-      "month": 7,
-      "variance": 0.284
-    },
-    {
-      "year": 1802,
-      "month": 8,
-      "variance": 0.278
-    },
-    {
-      "year": 1802,
-      "month": 9,
-      "variance": -0.167
-    },
-    {
-      "year": 1802,
-      "month": 10,
-      "variance": 0.448
-    },
-    {
-      "year": 1802,
-      "month": 11,
-      "variance": -0.717
-    },
-    {
-      "year": 1802,
-      "month": 12,
-      "variance": -0.723
-    },
-    {
-      "year": 1803,
-      "month": 1,
-      "variance": -2.024
-    },
-    {
-      "year": 1803,
-      "month": 2,
-      "variance": -1.719
-    },
-    {
-      "year": 1803,
-      "month": 3,
-      "variance": -0.338
-    },
-    {
-      "year": 1803,
-      "month": 4,
-      "variance": 0.874
-    },
-    {
-      "year": 1803,
-      "month": 5,
-      "variance": 0.57
-    },
-    {
-      "year": 1803,
-      "month": 6,
-      "variance": 0.352
-    },
-    {
-      "year": 1803,
-      "month": 7,
-      "variance": 0.807
-    },
-    {
-      "year": 1803,
-      "month": 8,
-      "variance": 1.587
-    },
-    {
-      "year": 1803,
-      "month": 9,
-      "variance": 0.358
-    },
-    {
-      "year": 1803,
-      "month": 10,
-      "variance": -0.351
-    },
-    {
-      "year": 1803,
-      "month": 11,
-      "variance": -0.394
-    },
-    {
-      "year": 1803,
-      "month": 12,
-      "variance": -1.508
-    },
-    {
-      "year": 1804,
-      "month": 1,
-      "variance": -0.118
-    },
-    {
-      "year": 1804,
-      "month": 2,
-      "variance": -1.185
-    },
-    {
-      "year": 1804,
-      "month": 3,
-      "variance": -0.93
-    },
-    {
-      "year": 1804,
-      "month": 4,
-      "variance": 1.639
-    },
-    {
-      "year": 1804,
-      "month": 5,
-      "variance": 0.799
-    },
-    {
-      "year": 1804,
-      "month": 6,
-      "variance": 0.369
-    },
-    {
-      "year": 1804,
-      "month": 7,
-      "variance": 1.471
-    },
-    {
-      "year": 1804,
-      "month": 8,
-      "variance": 0.792
-    },
-    {
-      "year": 1804,
-      "month": 9,
-      "variance": 0.516
-    },
-    {
-      "year": 1804,
-      "month": 10,
-      "variance": -0.018
-    },
-    {
-      "year": 1804,
-      "month": 11,
-      "variance": 0.841
-    },
-    {
-      "year": 1804,
-      "month": 12,
-      "variance": -1.435
-    },
-    {
-      "year": 1805,
-      "month": 1,
-      "variance": 0.208
-    },
-    {
-      "year": 1805,
-      "month": 2,
-      "variance": -0.57
-    },
-    {
-      "year": 1805,
-      "month": 3,
-      "variance": 0.423
-    },
-    {
-      "year": 1805,
-      "month": 4,
-      "variance": -0.255
-    },
-    {
-      "year": 1805,
-      "month": 5,
-      "variance": -0.236
-    },
-    {
-      "year": 1805,
-      "month": 6,
-      "variance": 0.599
-    },
-    {
-      "year": 1805,
-      "month": 7,
-      "variance": 0.394
-    },
-    {
-      "year": 1805,
-      "month": 8,
-      "variance": 1.454
-    },
-    {
-      "year": 1805,
-      "month": 9,
-      "variance": 0.034
-    },
-    {
-      "year": 1805,
-      "month": 10,
-      "variance": -1.537
-    },
-    {
-      "year": 1805,
-      "month": 11,
-      "variance": -1.693
-    },
-    {
-      "year": 1805,
-      "month": 12,
-      "variance": 0.467
-    },
-    {
-      "year": 1806,
-      "month": 1,
-      "variance": 0.247
-    },
-    {
-      "year": 1806,
-      "month": 2,
-      "variance": -0.394
-    },
-    {
-      "year": 1806,
-      "month": 3,
-      "variance": -0.677
-    },
-    {
-      "year": 1806,
-      "month": 4,
-      "variance": -0.446
-    },
-    {
-      "year": 1806,
-      "month": 5,
-      "variance": 0.139
-    },
-    {
-      "year": 1806,
-      "month": 6,
-      "variance": -1.074
-    },
-    {
-      "year": 1806,
-      "month": 7,
-      "variance": -0.41
-    },
-    {
-      "year": 1806,
-      "month": 8,
-      "variance": 0.735
-    },
-    {
-      "year": 1806,
-      "month": 9,
-      "variance": 0.513
-    },
-    {
-      "year": 1806,
-      "month": 10,
-      "variance": -0.878
-    },
-    {
-      "year": 1806,
-      "month": 11,
-      "variance": -1.023
-    },
-    {
-      "year": 1806,
-      "month": 12,
-      "variance": 0.257
-    },
-    {
-      "year": 1807,
-      "month": 1,
-      "variance": -1.51
-    },
-    {
-      "year": 1807,
-      "month": 2,
-      "variance": 0.904
-    },
-    {
-      "year": 1807,
-      "month": 3,
-      "variance": -0.524
-    },
-    {
-      "year": 1807,
-      "month": 4,
-      "variance": -1.444
-    },
-    {
-      "year": 1807,
-      "month": 5,
-      "variance": -1.962
-    },
-    {
-      "year": 1807,
-      "month": 6,
-      "variance": -0.2
-    },
-    {
-      "year": 1807,
-      "month": 7,
-      "variance": -0.193
-    },
-    {
-      "year": 1807,
-      "month": 8,
-      "variance": -0.071
-    },
-    {
-      "year": 1807,
-      "month": 9,
-      "variance": 0.541
-    },
-    {
-      "year": 1807,
-      "month": 10,
-      "variance": -0.431
-    },
-    {
-      "year": 1807,
-      "month": 11,
-      "variance": -0.246
-    },
-    {
-      "year": 1807,
-      "month": 12,
-      "variance": 0.691
-    },
-    {
-      "year": 1808,
-      "month": 1,
-      "variance": -1.43
-    },
-    {
-      "year": 1808,
-      "month": 2,
-      "variance": -1.041
-    },
-    {
-      "year": 1808,
-      "month": 3,
-      "variance": -1.04
-    },
-    {
-      "year": 1808,
-      "month": 4,
-      "variance": -0.978
-    },
-    {
-      "year": 1808,
-      "month": 5,
-      "variance": -2.043
-    },
-    {
-      "year": 1808,
-      "month": 6,
-      "variance": -0.182
-    },
-    {
-      "year": 1808,
-      "month": 7,
-      "variance": 0.097
-    },
-    {
-      "year": 1808,
-      "month": 8,
-      "variance": -0.768
-    },
-    {
-      "year": 1808,
-      "month": 9,
-      "variance": 0.726
-    },
-    {
-      "year": 1808,
-      "month": 10,
-      "variance": -1.402
-    },
-    {
-      "year": 1808,
-      "month": 11,
-      "variance": -1.84
-    },
-    {
-      "year": 1808,
-      "month": 12,
-      "variance": -2.843
-    },
-    {
-      "year": 1809,
-      "month": 1,
-      "variance": -2.324
-    },
-    {
-      "year": 1809,
-      "month": 2,
-      "variance": -2.283
-    },
-    {
-      "year": 1809,
-      "month": 3,
-      "variance": -1.949
-    },
-    {
-      "year": 1809,
-      "month": 4,
-      "variance": -0.519
-    },
-    {
-      "year": 1809,
-      "month": 5,
-      "variance": -2.022
-    },
-    {
-      "year": 1809,
-      "month": 6,
-      "variance": -0.462
-    },
-    {
-      "year": 1809,
-      "month": 7,
-      "variance": -1.685
-    },
-    {
-      "year": 1809,
-      "month": 8,
-      "variance": -0.924
-    },
-    {
-      "year": 1809,
-      "month": 9,
-      "variance": -1.06
-    },
-    {
-      "year": 1809,
-      "month": 10,
-      "variance": -0.599
-    },
-    {
-      "year": 1809,
-      "month": 11,
-      "variance": -3.131
-    },
-    {
-      "year": 1809,
-      "month": 12,
-      "variance": -1.777
-    },
-    {
-      "year": 1810,
-      "month": 1,
-      "variance": -1.55
-    },
-    {
-      "year": 1810,
-      "month": 2,
-      "variance": -0.625
-    },
-    {
-      "year": 1810,
-      "month": 3,
-      "variance": -0.391
-    },
-    {
-      "year": 1810,
-      "month": 4,
-      "variance": -1.818
-    },
-    {
-      "year": 1810,
-      "month": 5,
-      "variance": -2.22
-    },
-    {
-      "year": 1810,
-      "month": 6,
-      "variance": -1.503
-    },
-    {
-      "year": 1810,
-      "month": 7,
-      "variance": -1.768
-    },
-    {
-      "year": 1810,
-      "month": 8,
-      "variance": -1.755
-    },
-    {
-      "year": 1810,
-      "month": 9,
-      "variance": -2.886
-    },
-    {
-      "year": 1810,
-      "month": 10,
-      "variance": -2.618
-    },
-    {
-      "year": 1810,
-      "month": 11,
-      "variance": -2.3
-    },
-    {
-      "year": 1810,
-      "month": 12,
-      "variance": -1.019
-    },
-    {
-      "year": 1811,
-      "month": 1,
-      "variance": -1.305
-    },
-    {
-      "year": 1811,
-      "month": 2,
-      "variance": -2.629
-    },
-    {
-      "year": 1811,
-      "month": 3,
-      "variance": -2.125
-    },
-    {
-      "year": 1811,
-      "month": 4,
-      "variance": -2.036
-    },
-    {
-      "year": 1811,
-      "month": 5,
-      "variance": -1.85
-    },
-    {
-      "year": 1811,
-      "month": 6,
-      "variance": -1.348
-    },
-    {
-      "year": 1811,
-      "month": 7,
-      "variance": -2.407
-    },
-    {
-      "year": 1811,
-      "month": 8,
-      "variance": -0.483
-    },
-    {
-      "year": 1811,
-      "month": 9,
-      "variance": -1.675
-    },
-    {
-      "year": 1811,
-      "month": 10,
-      "variance": -2.723
-    },
-    {
-      "year": 1811,
-      "month": 11,
-      "variance": -2.595
-    },
-    {
-      "year": 1811,
-      "month": 12,
-      "variance": -0.409
-    },
-    {
-      "year": 1812,
-      "month": 1,
-      "variance": -1.513
-    },
-    {
-      "year": 1812,
-      "month": 2,
-      "variance": -3.022
-    },
-    {
-      "year": 1812,
-      "month": 3,
-      "variance": -3.282
-    },
-    {
-      "year": 1812,
-      "month": 4,
-      "variance": -1.432
-    },
-    {
-      "year": 1812,
-      "month": 5,
-      "variance": -1.848
-    },
-    {
-      "year": 1812,
-      "month": 6,
-      "variance": -1.531
-    },
-    {
-      "year": 1812,
-      "month": 7,
-      "variance": -0.033
-    },
-    {
-      "year": 1812,
-      "month": 8,
-      "variance": 1.206
-    },
-    {
-      "year": 1812,
-      "month": 9,
-      "variance": -1.886
-    },
-    {
-      "year": 1812,
-      "month": 10,
-      "variance": -1.631
-    },
-    {
-      "year": 1812,
-      "month": 11,
-      "variance": -1.686
-    },
-    {
-      "year": 1812,
-      "month": 12,
-      "variance": -2.423
-    },
-    {
-      "year": 1813,
-      "month": 1,
-      "variance": -4.085
-    },
-    {
-      "year": 1813,
-      "month": 2,
-      "variance": -0.951
-    },
-    {
-      "year": 1813,
-      "month": 3,
-      "variance": -3.764
-    },
-    {
-      "year": 1813,
-      "month": 4,
-      "variance": -0.232
-    },
-    {
-      "year": 1813,
-      "month": 5,
-      "variance": -0.002
-    },
-    {
-      "year": 1813,
-      "month": 6,
-      "variance": -0.302
-    },
-    {
-      "year": 1813,
-      "month": 7,
-      "variance": 0.06
-    },
-    {
-      "year": 1813,
-      "month": 8,
-      "variance": -0.788
-    },
-    {
-      "year": 1813,
-      "month": 9,
-      "variance": 0.272
-    },
-    {
-      "year": 1813,
-      "month": 10,
-      "variance": -0.57
-    },
-    {
-      "year": 1813,
-      "month": 11,
-      "variance": 0.685
-    },
-    {
-      "year": 1813,
-      "month": 12,
-      "variance": -1.491
-    },
-    {
-      "year": 1814,
-      "month": 1,
-      "variance": -1.059
-    },
-    {
-      "year": 1814,
-      "month": 2,
-      "variance": -1.529
-    },
-    {
-      "year": 1814,
-      "month": 3,
-      "variance": -2.687
-    },
-    {
-      "year": 1814,
-      "month": 4,
-      "variance": -1.215
-    },
-    {
-      "year": 1814,
-      "month": 5,
-      "variance": -1.954
-    },
-    {
-      "year": 1814,
-      "month": 6,
-      "variance": -0.734
-    },
-    {
-      "year": 1814,
-      "month": 7,
-      "variance": -1.878
-    },
-    {
-      "year": 1814,
-      "month": 8,
-      "variance": -1.197
-    },
-    {
-      "year": 1814,
-      "month": 9,
-      "variance": -1.394
-    },
-    {
-      "year": 1814,
-      "month": 10,
-      "variance": -1.913
-    },
-    {
-      "year": 1814,
-      "month": 11,
-      "variance": 0.602
-    },
-    {
-      "year": 1814,
-      "month": 12,
-      "variance": 2.232
-    },
-    {
-      "year": 1815,
-      "month": 1,
-      "variance": -0.515
-    },
-    {
-      "year": 1815,
-      "month": 2,
-      "variance": -0.945
-    },
-    {
-      "year": 1815,
-      "month": 3,
-      "variance": -1.723
-    },
-    {
-      "year": 1815,
-      "month": 4,
-      "variance": -1.814
-    },
-    {
-      "year": 1815,
-      "month": 5,
-      "variance": -1.607
-    },
-    {
-      "year": 1815,
-      "month": 6,
-      "variance": -2.405
-    },
-    {
-      "year": 1815,
-      "month": 7,
-      "variance": -0.006
-    },
-    {
-      "year": 1815,
-      "month": 8,
-      "variance": -0.667
-    },
-    {
-      "year": 1815,
-      "month": 9,
-      "variance": -0.922
-    },
-    {
-      "year": 1815,
-      "month": 10,
-      "variance": -2.059
-    },
-    {
-      "year": 1815,
-      "month": 11,
-      "variance": -1.985
-    },
-    {
-      "year": 1815,
-      "month": 12,
-      "variance": -2.463
-    },
-    {
-      "year": 1816,
-      "month": 1,
-      "variance": 0.197
-    },
-    {
-      "year": 1816,
-      "month": 2,
-      "variance": -2.509
-    },
-    {
-      "year": 1816,
-      "month": 3,
-      "variance": -1.455
-    },
-    {
-      "year": 1816,
-      "month": 4,
-      "variance": -0.82
-    },
-    {
-      "year": 1816,
-      "month": 5,
-      "variance": -0.814
-    },
-    {
-      "year": 1816,
-      "month": 6,
-      "variance": -1.774
-    },
-    {
-      "year": 1816,
-      "month": 7,
-      "variance": -2.154
-    },
-    {
-      "year": 1816,
-      "month": 8,
-      "variance": -1.326
-    },
-    {
-      "year": 1816,
-      "month": 9,
-      "variance": -1.676
-    },
-    {
-      "year": 1816,
-      "month": 10,
-      "variance": -3.418
-    },
-    {
-      "year": 1816,
-      "month": 11,
-      "variance": -2.011
-    },
-    {
-      "year": 1816,
-      "month": 12,
-      "variance": -2.646
-    },
-    {
-      "year": 1817,
-      "month": 1,
-      "variance": -1.015
-    },
-    {
-      "year": 1817,
-      "month": 2,
-      "variance": 0.451
-    },
-    {
-      "year": 1817,
-      "month": 3,
-      "variance": -0.808
-    },
-    {
-      "year": 1817,
-      "month": 4,
-      "variance": -0.566
-    },
-    {
-      "year": 1817,
-      "month": 5,
-      "variance": -1.952
-    },
-    {
-      "year": 1817,
-      "month": 6,
-      "variance": -2.315
-    },
-    {
-      "year": 1817,
-      "month": 7,
-      "variance": -2.352
-    },
-    {
-      "year": 1817,
-      "month": 8,
-      "variance": -0.479
-    },
-    {
-      "year": 1817,
-      "month": 9,
-      "variance": -3.25
-    },
-    {
-      "year": 1817,
-      "month": 10,
-      "variance": -3.031
-    },
-    {
-      "year": 1817,
-      "month": 11,
-      "variance": -1.459
-    },
-    {
-      "year": 1817,
-      "month": 12,
-      "variance": -3.406
     }
   ]
 }
