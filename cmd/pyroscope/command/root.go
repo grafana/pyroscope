@@ -21,6 +21,7 @@ func Execute() error {
 		newAdminCmd(&cfg.Admin),
 		newAgentCmd(&cfg.Agent),
 		newConnectCmd(&cfg.Connect),
+		newEBPFSpyCmd(&cfg.EBPF),
 		newConvertCmd(&cfg.Convert),
 		newDbManagerCmd(&config.CombinedDbManager{DbManager: &cfg.DbManager, Server: &cfg.Server}),
 		newExecCmd(&cfg.Exec),
@@ -29,6 +30,9 @@ func Execute() error {
 	}
 
 	for _, c := range subcommands {
+		if c == nil {
+			continue
+		}
 		addHelpSubcommand(c)
 		c.HasHelpSubCommands()
 		rootCmd.AddCommand(c)

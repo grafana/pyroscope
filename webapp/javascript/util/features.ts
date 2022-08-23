@@ -1,19 +1,19 @@
-// Features represents the list of UI experimental features
-// This interfaces serves for when we introduce
-// something more sofisticated than simply booleans
-interface Features {
-  enableAdhocUI?: boolean;
-  googleEnabled?: boolean;
-  gitlabEnabled?: boolean;
-  githubEnabled?: boolean;
-  internalAuthEnabled?: boolean;
-  signupEnabled?: boolean;
-  exportToFlamegraphDotComEnabled: boolean;
-}
+import { z } from 'zod';
+
+const featuresSchema = z.object({
+  enableAdhocUI: z.boolean().default(false),
+  googleEnabled: z.boolean().default(false),
+  gitlabEnabled: z.boolean().default(false),
+  githubEnabled: z.boolean().default(false),
+  internalAuthEnabled: z.boolean().default(false),
+  signupEnabled: z.boolean().default(false),
+  isAuthRequired: z.boolean().default(false),
+  exportToFlamegraphDotComEnabled: z.boolean().default(false),
+});
 
 function hasFeatures(
   window: unknown
-): window is typeof window & { features: Features } {
+): window is typeof window & { features: unknown } {
   if (typeof window === 'object') {
     if (window && window.hasOwnProperty('features')) {
       return true;
@@ -23,31 +23,18 @@ function hasFeatures(
   return false;
 }
 
-// Features
-export const isAdhocUIEnabled = hasFeatures(window)
-  ? window.features.enableAdhocUI
-  : true;
+// Parse features at startup
+const features = featuresSchema.parse(
+  hasFeatures(window) ? window.features : {}
+);
 
-export const isGoogleEnabled = hasFeatures(window)
-  ? window.features.googleEnabled
-  : true;
-
-export const isGitlabEnabled = hasFeatures(window)
-  ? window.features.gitlabEnabled
-  : true;
-
-export const isGithubEnabled = hasFeatures(window)
-  ? window.features.githubEnabled
-  : true;
-
-export const isInternalAuthEnabled = hasFeatures(window)
-  ? window.features.internalAuthEnabled
-  : true;
-
-export const isSignupEnabled = hasFeatures(window)
-  ? window.features.signupEnabled
-  : true;
-
-export const isExportToFlamegraphDotComEnabled = hasFeatures(window)
-  ? window.features.exportToFlamegraphDotComEnabled
-  : true;
+// Re-export with more friendly names
+export const isAdhocUIEnabled = features.enableAdhocUI;
+export const isGoogleEnabled = features.googleEnabled;
+export const isGitlabEnabled = features.gitlabEnabled;
+export const isGithubEnabled = features.githubEnabled;
+export const isInternalAuthEnabled = features.internalAuthEnabled;
+export const isSignupEnabled = features.signupEnabled;
+export const isExportToFlamegraphDotComEnabled =
+  features.exportToFlamegraphDotComEnabled;
+export const isAuthRequired = features.isAuthRequired;

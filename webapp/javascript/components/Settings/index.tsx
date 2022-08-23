@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React from 'react';
 import { Switch, Route, useRouteMatch, NavLink } from 'react-router-dom';
 import Box from '@webapp/ui/Box';
@@ -26,8 +24,9 @@ function Settings() {
   const { path, url } = useRouteMatch();
   const currentUser = useAppSelector(selectCurrentUser);
 
-  const isAdmin = (user: User) => user && user.role === 'Admin';
-  const isExternal = (user: User) => user && user.isExternal;
+  const isAdmin = (user?: User) => user && user.role === 'Admin';
+  const isExternal = (user?: User) => user && user.isExternal;
+
   return (
     <div className="pyroscope-app">
       <h1>Settings</h1>

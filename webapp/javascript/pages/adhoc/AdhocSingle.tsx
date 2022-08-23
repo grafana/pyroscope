@@ -17,6 +17,7 @@ import {
   selectedSelectedProfileId,
   selectProfile,
 } from '@webapp/redux/reducers/adhoc';
+import useColorMode from '@webapp/hooks/colorMode.hook';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
 
@@ -26,6 +27,7 @@ function AdhocSingle() {
   const selectedProfileId = useAppSelector(selectedSelectedProfileId('left'));
   const profile = useAppSelector(selectProfile('left'));
   const [tabIndex, setTabIndex] = useState(0);
+  useColorMode();
 
   useEffect(() => {
     dispatch(fetchAllProfiles());
@@ -67,8 +69,10 @@ function AdhocSingle() {
           <TabPanel>
             <FileUploader
               className={adhocStyles.tabPanel}
-              setFile={async (file) => {
-                await dispatch(uploadFile({ file, side: 'left' }));
+              setFile={async ({ file, spyName, units }) => {
+                await dispatch(
+                  uploadFile({ file, spyName, units, side: 'left' })
+                );
                 setTabIndex(1);
               }}
             />

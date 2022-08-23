@@ -3,6 +3,7 @@ module github.com/pyroscope-io/pyroscope
 go 1.18
 
 require (
+	github.com/aquasecurity/libbpfgo v0.3.0-libbpf-0.8.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.44.37
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59

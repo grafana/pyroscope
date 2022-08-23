@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.33.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.6...@pyroscope/webapp@1.33.7) (2022-08-22)
+
+
+### Bug Fixes
+
+* **webapp:** fixes auth ([#1434](https://github.com/pyroscope-io/pyroscope/issues/1434)) ([a70ca26](https://github.com/pyroscope-io/pyroscope/commit/a70ca269eb02983248d34b46bc9bbd9c596a0da6))
+
+
+
+
+
+## [1.33.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.5...@pyroscope/webapp@1.33.6) (2022-08-22)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.33.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.4...@pyroscope/webapp@1.33.5) (2022-08-22)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.33.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.3...@pyroscope/webapp@1.33.4) (2022-08-19)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.33.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.2...@pyroscope/webapp@1.33.3) (2022-08-19)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.33.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.1...@pyroscope/webapp@1.33.2) (2022-08-18)
+
+
+### Bug Fixes
+
+* **webapp:** return empty string when range doesn't make sense ([#1419](https://github.com/pyroscope-io/pyroscope/issues/1419)) ([6f69c6f](https://github.com/pyroscope-io/pyroscope/commit/6f69c6f5209a12e1d8c54e962fcba6dc373bd7ff))
+
+
+
+
+
 ## [1.33.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.0...@pyroscope/webapp@1.33.1) (2022-08-17)
 
 **Note:** Version bump only for package @pyroscope/webapp

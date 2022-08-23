@@ -14,7 +14,8 @@ const uploadResponseSchema = z.object({
 type UploadResponse = z.infer<typeof uploadResponseSchema>;
 
 export async function upload(
-  file: File
+  file: File,
+  fileTypeData?: { spyName: string; units: string }
 ): Promise<
   Result<UploadResponse, FileToBase64Error | RequestError | ZodError>
 > {
@@ -29,6 +30,7 @@ export async function upload(
     body: JSON.stringify({
       filename: file.name,
       profile: b64.value,
+      fileTypeData: fileTypeData || undefined,
     }),
   });
   return parseResponse(response, uploadResponseSchema);

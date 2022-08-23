@@ -11,7 +11,7 @@ import { queryFromAppName } from '@webapp/models/query';
 export default function Continuous({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactElement;
 }) {
   const dispatch = useAppDispatch();
   const appNames = useAppSelector(selectAppNames);

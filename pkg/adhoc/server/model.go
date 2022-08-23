@@ -64,6 +64,8 @@ func (m Model) overrideFields(fb *flamebearer.FlamebearerProfile) error {
 	return nil
 }
 
+// Converter returns a ConverterFn that converts to FlamebearerProfile
+// and overrides any specified fields
 func (m Model) Converter() (ConverterFn, error) {
 	converter, err := m.converter()
 	if err != nil {

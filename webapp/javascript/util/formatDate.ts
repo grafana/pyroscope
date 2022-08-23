@@ -55,7 +55,16 @@ export function readableRange(
 
   const d1 = getUTCdate(parseUnixTime(from), offsetInMinutes);
   const d2 = getUTCdate(parseUnixTime(until), offsetInMinutes);
+
+  if (!isValidDate(d1) || !isValidDate(d2)) {
+    return '';
+  }
+
   return `${format(d1, dateFormat)} - ${format(d2, dateFormat)}`;
+}
+
+function isValidDate(d: Date) {
+  return d instanceof Date && !isNaN(d.getTime());
 }
 
 /**
