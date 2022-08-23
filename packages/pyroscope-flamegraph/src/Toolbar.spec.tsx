@@ -266,18 +266,23 @@ describe('ProfileHeader', () => {
     });
 
     it('updates to HEAD first', () => {
-      userEvent.selectOptions(
-        screen.getByRole('combobox', { name: /fit-mode/ }),
-        screen.getByRole('option', { name: /Head/ })
-      );
+      const toolbar = screen
+        .getByRole('toolbar')
+        .querySelector('.dropdownMenuButton') as HTMLElement;
+
+      toolbar.click();
+      screen.getByTestId('HEAD').click();
+
       expect(updateFitMode).toHaveBeenCalledWith(HeadMode);
     });
 
     it('updates to TAIL first', () => {
-      userEvent.selectOptions(
-        screen.getByRole('combobox', { name: /fit-mode/ }),
-        screen.getByRole('option', { name: /Tail/ })
-      );
+      const toolbar = screen
+        .getByRole('toolbar')
+        .querySelector('.dropdownMenuButton') as HTMLElement;
+
+      toolbar.click();
+      screen.getByTestId('TAIL').click();
 
       expect(updateFitMode).toHaveBeenCalledWith(TailMode);
     });

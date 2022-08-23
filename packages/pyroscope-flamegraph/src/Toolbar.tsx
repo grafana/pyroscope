@@ -262,7 +262,7 @@ function FitMode({
     >
       {options.map(({ key, value }) => (
         <MenuItem key={key} value={value}>
-          <div className={styles.fitModeDropdownMenuItem}>
+          <div className={styles.fitModeDropdownMenuItem} data-testid={value}>
             {key}
             {fitMode === value ? <CheckIcon /> : null}
           </div>
