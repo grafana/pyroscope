@@ -5,7 +5,8 @@ import styles from './ExploreTooltip.module.scss';
 
 const cx = classNames.bind(styles);
 
-const COMPONENT_WIDTH = 150;
+const DEFAULT_COMPONENT_WIDTH = 450;
+const EXPLORE_TOOLTIP_WRAPPER_ID = 'explore_tooltip_wrapper';
 
 interface ExploreTooltipProps {
   pageX: number;
@@ -19,35 +20,40 @@ interface ExploreTooltipProps {
   }>;
 }
 
-const ExploreTooltip: FC<ExploreTooltipProps> = (props) => {
-  const isHidden = useMemo(
-    () => props.pageX < 0 || props.pageY < 0,
-    [props.pageX, props.pageY]
-  );
+const ExploreTooltip: FC<ExploreTooltipProps> = ({
+  pageX,
+  pageY,
+  align,
+  timeLabel,
+  values,
+}) => {
+  const isHidden = useMemo(() => pageX < 0 || pageY < 0, [pageX, pageY]);
 
-  const left = useMemo(
-    () =>
-      props.align === 'right'
-        ? props.pageX + 20
-        : props.pageX - COMPONENT_WIDTH - 20,
-    [props.align, props.pageX]
-  );
+  const left = useMemo(() => {
+    if (!isHidden) {
+      const elem = document.getElementById(
+        EXPLORE_TOOLTIP_WRAPPER_ID
+      )?.offsetWidth;
+
+      return align === 'right'
+        ? pageX + 20
+        : pageX - (elem || DEFAULT_COMPONENT_WIDTH) - 20;
+    }
+    return -1;
+  }, [align, pageX, isHidden]);
 
   return (
     <div
-      style={{
-        width: COMPONENT_WIDTH,
-        top: props.pageY,
-        left,
-      }}
+      style={{ top: pageY, left }}
       className={cx({
         [styles.tooltip]: true,
         [styles.hidden]: isHidden,
       })}
+      id={EXPLORE_TOOLTIP_WRAPPER_ID}
     >
-      <div className={styles.time}>{props.timeLabel}</div>
-      {props.values?.length
-        ? props.values.map((v) => {
+      <div className={styles.time}>{timeLabel}</div>
+      {values?.length
+        ? values.map((v) => {
             return (
               <div key={v?.tagName} className={styles.valueWrapper}>
                 <div
@@ -56,7 +62,8 @@ const ExploreTooltip: FC<ExploreTooltipProps> = (props) => {
                     backgroundColor: Color.rgb(v.color).toString(),
                   }}
                 />
-                <div>{v?.closest?.[1] || '0'}</div>
+                <div>{v?.tagName}:</div>
+                <div className={styles.closest}>{v?.closest?.[1] || '0'}</div>
               </div>
             );
           })

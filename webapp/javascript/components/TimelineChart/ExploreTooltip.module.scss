@@ -1,5 +1,6 @@
 .tooltip {
   height: auto;
+  width: auto;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -32,4 +33,9 @@
   height: 6px;
   border-radius: 3px;
   margin-right: 8px;
+}
+
+.closest {
+  font-weight: bold;
+  margin-left: 8px;
 }
