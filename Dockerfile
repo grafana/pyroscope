@@ -68,6 +68,25 @@ ARG EXTRA_METADATA=""
 
 RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
+
+
+#       _            __
+#      | |          / _|
+#   ___| |__  _ __ | |_
+#  / _ \ '_ \| '_ \|  _|
+# |  __/ |_) | |_) | |
+#  \___|_.__/| .__/|_|
+#            | |
+#            |_|
+FROM alpine:3.12 as ebpf-builder
+RUN apk add cmake make binutils gcc g++ clang musl-dev linux-headers zlib-dev elfutils-dev libelf-static zlib-static git openssh
+ADD third_party/libbpf/Makefile /build/libbpf/
+RUN make -C /build/libbpf/
+ADD third_party/bcc/Makefile /build/bcc/
+RUN make -C /build/bcc/
+ADD pkg/agent/ebpfspy/bpf/Makefile pkg/agent/ebpfspy/bpf/profile.bpf.c pkg/agent/ebpfspy/bpf/profile.bpf.h /build/profile.bpf/
+RUN CFLAGS=-I/build/libbpf/lib/include make -C /build/profile.bpf
+
 #              _
 #             | |
 #   __ _  ___ | | __ _ _ __   __ _
@@ -84,8 +103,8 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 # see https://github.com/pyroscope-io/pyroscope/pull/372 for more context
 FROM pyroscope/golang:1.18.0-alpine3.12 AS go-builder
 
-
-RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
+RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash zlib-dev elfutils-dev libelf-static zlib-static \
+    linux-headers
 RUN apk upgrade binutils
 RUN apk upgrade elfutils
 
@@ -98,6 +117,9 @@ COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
 COPY --from=phpspy-builder /var/www/html/third_party/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
+COPY --from=ebpf-builder /build/bcc/lib third_party/bcc/lib
+COPY --from=ebpf-builder /build/libbpf/lib third_party/libbpf/lib
+COPY --from=ebpf-builder /build/profile.bpf/profile.bpf.o pkg/agent/ebpfspy/bpf/profile.bpf.o
 COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
@@ -159,7 +181,7 @@ LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 WORKDIR /var/lib/pyroscope
 
 RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
-RUN apk add --no-cache bcc-tools python3
+
 RUN ln -s $(which python3) /usr/bin/python
 
 RUN addgroup -S pyroscope && adduser -S pyroscope -G pyroscope

@@ -1,10 +1,11 @@
+import './globals';
+
 import ReactDOM from 'react-dom';
 import React from 'react';
 
 import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
-import FPSStats from 'react-fps-stats';
-import { isAdhocUIEnabled } from '@webapp/util/features';
+import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
 import Footer from '@webapp/components/Footer';
@@ -24,23 +25,12 @@ import AdhocDiff from './pages/adhoc/AdhocDiff';
 import ServiceDiscoveryApp from './pages/ServiceDiscovery';
 import ServerNotifications from './components/ServerNotifications';
 import Protected from './components/Protected';
-// since this style is practically all pages
-
 import SignInPage from './pages/IntroPages/SignIn';
 import SignUpPage from './pages/IntroPages/SignUp';
 import Forbidden from './pages/IntroPages/Forbidden';
 import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
-
-let showFps = false;
-try {
-  // run this to enable FPS meter:
-  //  window.localStorage.setItem('showFps', true);
-  showFps = window.localStorage.getItem('showFps');
-} catch (e) {
-  console.error(e);
-}
 
 function App() {
   return (
@@ -75,13 +65,16 @@ function App() {
               </Continuous>
             </Protected>
           </Route>
-          <Route path={PAGES.SETTINGS}>
-            <Protected>
-              <Continuous>
-                <Settings />
-              </Continuous>
-            </Protected>
-          </Route>
+
+          {isAuthRequired && (
+            <Route path={PAGES.SETTINGS}>
+              <Protected>
+                <Continuous>
+                  <Settings />
+                </Continuous>
+              </Protected>
+            </Route>
+          )}
           <Route path={PAGES.SERVICE_DISCOVERY}>
             <Protected>
               <PageTitle title="Pull Targets" />
@@ -147,7 +140,6 @@ ReactDOM.render(
         <Notifications />
         <App />
       </Router>
-      {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
     </PersistGate>
   </Provider>,
   document.getElementById('root')

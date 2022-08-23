@@ -65,7 +65,7 @@ export default {
   target: 'web',
 
   entry: {
-    app: path.join(packagePath, 'javascript/index.jsx'),
+    app: path.join(packagePath, 'javascript/index.tsx'),
     styles: path.join(packagePath, 'sass/profile.scss'),
   },
 
@@ -152,10 +152,6 @@ export default {
   plugins: [
     // uncomment if you want to see the webpack bundle analysis
     // new BundleAnalyzerPlugin(),
-    new webpack.ProvidePlugin({
-      $: 'jquery',
-      jQuery: 'jquery',
-    }),
     ...pagePlugins,
     new MiniCssExtractPlugin({
       filename: getFilename('css'),

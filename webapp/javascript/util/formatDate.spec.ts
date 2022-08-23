@@ -33,6 +33,10 @@ describe('FormatDate', () => {
         '1640090089000000000',
         '2021-06-21 12:34 PM - 2021-12-21 12:34 PM',
       ],
+
+      // Return nothing when mixing absolute/relative
+      ['1624278889000000000', 'now-1h', ''],
+      ['now-1h', '1624278889000000000', ''],
     ];
 
     test.each(cases)(

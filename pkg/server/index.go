@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/sirupsen/logrus"
 
@@ -21,12 +20,12 @@ type Flags struct {
 	InternalAuthEnabled             bool `json:"internalAuthEnabled"`
 	SignupEnabled                   bool `json:"signupEnabled"`
 	ExportToFlamegraphDotComEnabled bool `json:"exportToFlamegraphDotComEnabled"`
+	IsAuthRequired                  bool `json:"isAuthRequired"`
 }
 
 type IndexHandlerConfig struct {
-	Flags          Flags
-	IsAuthRequired bool
-	BaseURL        string
+	Flags   Flags
+	BaseURL string
 }
 
 type IndexHandler struct {
@@ -49,9 +48,9 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 			InternalAuthEnabled:             ctrl.config.Auth.Internal.Enabled,
 			SignupEnabled:                   ctrl.config.Auth.Internal.SignupEnabled,
 			ExportToFlamegraphDotComEnabled: !ctrl.config.DisableExportToFlamegraphDotCom,
+			IsAuthRequired:                  ctrl.isAuthRequired(),
 		},
-		IsAuthRequired: ctrl.isAuthRequired(),
-		BaseURL:        ctrl.config.BaseURL,
+		BaseURL: ctrl.config.BaseURL,
 	}
 	return NewIndexHandler(ctrl.log, ctrl.dir, ctrl, ctrl.notifier, cfg, ctrl.httpUtils).ServeHTTP
 }
@@ -122,7 +121,6 @@ func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, r *http.Request) 
 		"ExtraMetadata":     extraMetadataStr,
 		"BaseURL":           ih.cfg.BaseURL,
 		"NotificationText":  ih.notifier.NotificationText(),
-		"IsAuthRequired":    strconv.FormatBool(ih.cfg.IsAuthRequired),
 		"Features":          featuresStr,
 	})
 }

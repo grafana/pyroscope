@@ -2,24 +2,35 @@ import { z } from 'zod';
 import { SpyNameSchema } from './spyName';
 
 export const FlamebearerSchema = z.object({
-  names: z.array(z.string()),
+  names: z.array(
+    z.preprocess((n) => {
+      if (!n) {
+        return 'unknown';
+      }
+
+      return n;
+    }, z.string().min(1))
+  ),
   levels: z.array(z.array(z.number())),
   numTicks: z.number(),
   maxSelf: z.number(),
 });
 
+export type UnitsType = typeof units[number];
+
+export const units = [
+  'samples',
+  'objects',
+  'goroutines',
+  'bytes',
+  'lock_samples',
+  'lock_nanoseconds',
+  'trace_samples',
+];
+
 // accept the defined units
 // and convert anything else to empty string
-const UnitsSchema = z.preprocess((u) => {
-  const units = [
-    'samples',
-    'objects',
-    'goroutines',
-    'bytes',
-    'lock_samples',
-    'lock_nanoseconds',
-    'trace_samples',
-  ];
+export const UnitsSchema = z.preprocess((u) => {
   if (typeof u === 'string') {
     if (units.includes(u)) {
       return u;

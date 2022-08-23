@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export type SpyNameFirstClassType = typeof SpyNameFirstClass[number];
+
 export const SpyNameFirstClass = [
   'dotnetspy',
   'ebpfspy',
