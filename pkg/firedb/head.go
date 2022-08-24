@@ -3,21 +3,17 @@ package firedb
 import (
 	"context"
 	"fmt"
-	"math"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
 	"github.com/google/uuid"
-	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -25,20 +21,17 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/prometheus/prometheus/tsdb/fileutil"
+	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
+	"github.com/grafana/fire/pkg/firedb/block"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
-
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func generateULID() ulid.ULID {
-	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
-}
 
 func copySlice[T any](in []T) []T {
 	out := make([]T, len(in))
@@ -97,7 +90,7 @@ type Table interface {
 	Name() string
 	Size() uint64
 	Init(path string) error
-	Flush() (int, error)
+	Flush() (numRows uint64, numRowGroups uint64, err error)
 	Close() error
 }
 
@@ -122,10 +115,14 @@ func HeadWithLogger(l log.Logger) HeadOption {
 type HeadOption func(*Head)
 
 type Head struct {
-	logger    log.Logger
-	metrics   *headMetrics
-	ulid      ulid.ULID
-	blockPath string
+	logger  log.Logger
+	metrics *headMetrics
+
+	headPath  string // path while block is actively appended to
+	localPath string // path once block has been cut
+
+	metaLock sync.RWMutex
+	meta     *block.Meta
 
 	index           *profilesIndex
 	strings         deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
@@ -134,24 +131,25 @@ type Head struct {
 	locations       deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper, *schemav1.LocationPersister]
 	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper, *schemav1.StacktracePersister] // a stacktrace is a slice of location ids
 	profiles        deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper, *schemav1.ProfilePersister]
+	totalSamples    *atomic.Uint64
 	tables          []Table
 	delta           *deltaProfiles
 	pprofLabelCache labelCache
-
-	tsBoundary     minMax
-	tsBoundaryLock sync.RWMutex
 }
+
+const (
+	pathHead          = "head"
+	pathLocal         = "local"
+	defaultFolderMode = 0o755
+)
 
 func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 	h := &Head{
-		ulid: generateULID(),
-
-		tsBoundary: minMax{
-			min: math.MaxInt64,
-			max: 0,
-		},
+		meta:         block.NewMeta(),
+		totalSamples: atomic.NewUint64(0),
 	}
-	h.blockPath = filepath.Join(dataPath, "head", h.ulid.String())
+	h.headPath = filepath.Join(dataPath, pathHead, h.meta.ULID.String())
+	h.localPath = filepath.Join(dataPath, pathLocal, h.meta.ULID.String())
 
 	// execute options
 	for _, o := range opts {
@@ -166,7 +164,7 @@ func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 		h.metrics = newHeadMetrics(nil).setHead(h)
 	}
 
-	if err := os.MkdirAll(h.blockPath, 0o755); err != nil {
+	if err := os.MkdirAll(h.headPath, defaultFolderMode); err != nil {
 		return nil, err
 	}
 
@@ -179,7 +177,7 @@ func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 		&h.profiles,
 	}
 	for _, t := range h.tables {
-		if err := t.Init(h.blockPath); err != nil {
+		if err := t.Init(h.headPath); err != nil {
 			return nil, err
 		}
 	}
@@ -279,19 +277,21 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return err
 	}
 
-	h.tsBoundaryLock.Lock()
+	h.metaLock.Lock()
 	v := model.TimeFromUnixNano(profile.TimeNanos)
-	if v < h.tsBoundary.min {
-		h.tsBoundary.min = v
+	if v < h.meta.MinTime {
+		h.meta.MinTime = v
 	}
-	if v > h.tsBoundary.max {
-		h.tsBoundary.max = v
+	if v > h.meta.MaxTime {
+		h.meta.MaxTime = v
 	}
-	h.tsBoundaryLock.Unlock()
+	h.metaLock.Unlock()
 
 	h.index.Add(profile, labels, metricName)
 
-	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(profile.Samples) * len(labels)))
+	samplesInProfile := len(p.Sample) * len(labels)
+	h.totalSamples.Add(sampleSize)
+	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(samplesInProfile))
 	h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(labels)))
 
 	return nil
@@ -376,7 +376,13 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 }
 
 func (h *Head) InRange(start, end model.Time) bool {
-	return h.tsBoundary.InRange(start, end)
+	h.metaLock.RLock()
+	b := &minMax{
+		min: h.meta.MinTime,
+		max: h.meta.MaxTime,
+	}
+	h.metaLock.RUnlock()
+	return b.InRange(start, end)
 }
 
 func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
@@ -509,24 +515,75 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 }
 
 func (h *Head) Flush(ctx context.Context) error {
-	if err := h.index.WriteTo(ctx, filepath.Join(h.blockPath, "index.tsdb")); err != nil {
-		return errors.Wrap(err, "flushing of index")
+	if len(h.profiles.slice) == 0 {
+		level.Info(h.logger).Log("msg", "head empty - no block written")
+		return nil
 	}
 
-	for _, t := range h.tables {
-		rowCount, err := t.Flush()
+	var (
+		files = make([]block.File, len(h.tables)+1)
+	)
+
+	// write index
+	indexPath := filepath.Join(h.headPath, block.IndexFilename)
+	if err := h.index.WriteTo(ctx, indexPath); err != nil {
+		return errors.Wrap(err, "flushing of index")
+	}
+	files[0].RelPath = block.IndexFilename
+	h.meta.Stats.NumSeries = uint64(h.index.totalSeries.Load())
+	files[0].TSDB = &block.TSDBFile{
+		NumSeries: h.meta.Stats.NumSeries,
+	}
+
+	// add index file size
+	if stat, err := os.Stat(indexPath); err == nil {
+		files[0].SizeBytes = uint64(stat.Size())
+	}
+
+	for idx, t := range h.tables {
+		numRows, numRowGroups, err := t.Flush()
 		if err != nil {
 			return errors.Wrapf(err, "flushing of table %s", t.Name())
 		}
-		h.metrics.rowsWritten.WithLabelValues(t.Name()).Add(float64(rowCount))
+		h.metrics.rowsWritten.WithLabelValues(t.Name()).Add(float64(numRows))
+		files[idx+1].Parquet = &block.ParquetFile{
+			NumRowGroups: numRowGroups,
+			NumRows:      numRows,
+		}
 	}
 
-	for _, t := range h.tables {
+	for idx, t := range h.tables {
 		if err := t.Close(); err != nil {
 			return errors.Wrapf(err, "closing of table %s", t.Name())
 		}
+
+		// add file size
+		files[idx+1].RelPath = t.Name() + block.ParquetSuffix
+		if stat, err := os.Stat(filepath.Join(h.headPath, files[idx+1].RelPath)); err == nil {
+			files[idx+1].SizeBytes = uint64(stat.Size())
+		}
 	}
-	level.Info(h.logger).Log("msg", "head successfully written to block", "block_path", h.blockPath)
+
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].RelPath < files[j].RelPath
+	})
+	h.meta.Files = files
+	h.meta.Stats.NumProfiles = uint64(h.index.totalProfiles.Load())
+	h.meta.Stats.NumSamples = h.totalSamples.Load()
+
+	if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {
+		return err
+	}
+
+	// move block to the local directory
+	if err := os.MkdirAll(filepath.Dir(h.localPath), defaultFolderMode); err != nil {
+		return err
+	}
+	if err := fileutil.Rename(h.headPath, h.localPath); err != nil {
+		return err
+	}
+
+	level.Info(h.logger).Log("msg", "head successfully written to block", "block_path", h.localPath)
 
 	return nil
 }

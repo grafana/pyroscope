@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
-	"strings"
-	"time"
+	"sync"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -22,8 +22,10 @@ import (
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 	"github.com/thanos-io/objstore"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
+	"github.com/grafana/fire/pkg/firedb/block"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	"github.com/grafana/fire/pkg/firedb/tsdb/index"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
@@ -40,7 +42,9 @@ type BlockQuerier struct {
 	logger log.Logger
 
 	bucketReader objstore.BucketReader
-	blocks       []*singleBlockQuerier
+
+	queriers     []*singleBlockQuerier
+	queriersLock sync.RWMutex
 }
 
 func NewBlockQuerier(logger log.Logger, bucketReader objstore.BucketReader) *BlockQuerier {
@@ -53,42 +57,144 @@ func NewBlockQuerier(logger log.Logger, bucketReader objstore.BucketReader) *Blo
 	}
 }
 
-func (b *BlockQuerier) Open() error {
-	ctx := context.Background()
+// generates meta.json by opening block
+func (b *BlockQuerier) reconstructMetaFromBlock(ctx context.Context, ulid ulid.ULID) (metas *block.Meta, err error) {
+	fakeMeta := block.NewMeta()
+	fakeMeta.ULID = ulid
 
-	var entries []string
-	if err := b.bucketReader.Iter(ctx, "", func(path string) error {
-		if strings.HasSuffix(path, objstore.DirDelim) {
-			entries = append(entries, strings.TrimRight(path, objstore.DirDelim))
+	q := newSingleBlockQuerierFromMeta(b.logger, b.bucketReader, fakeMeta)
+	defer q.Close()
+
+	meta, err := q.reconstructMeta(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return meta, nil
+}
+
+func (b *BlockQuerier) BlockMetas(ctx context.Context) (metas []*block.Meta, _ error) {
+	var names []ulid.ULID
+	if err := b.bucketReader.Iter(ctx, "", func(n string) error {
+		ulid, ok := block.IsBlockDir(n)
+		if !ok {
+			return nil
 		}
+		names = append(names, ulid)
 		return nil
 	}); err != nil {
-		return errors.Wrap(err, "unable to list block")
+		return nil, err
 	}
-	sort.Strings(entries)
 
-	blocks := make([]*singleBlockQuerier, 0, len(entries))
-	for _, path := range entries {
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(16)
+	metas = make([]*block.Meta, len(names))
+	for pos := range names {
+		func(pos int) {
+			g.Go(func() error {
+				path := filepath.Join(names[pos].String(), block.MetaFilename)
+				metaReader, err := b.bucketReader.Get(ctx, path)
+				if err != nil {
+					if b.bucketReader.IsObjNotFoundErr(err) {
+						level.Warn(b.logger).Log("msg", block.MetaFilename+" not found in block try to generate it", "block", names[pos].String())
 
-		ulid, err := ulid.Parse(path)
-		if err != nil {
-			return errors.Wrapf(err, "unable to parse block name path=%s", path)
+						meta, err := b.reconstructMetaFromBlock(ctx, names[pos])
+						if err != nil {
+							level.Error(b.logger).Log("msg", "error generating meta for block", "block", names[pos].String(), "err", err)
+							return nil
+						}
+
+						metas[pos] = meta
+						return nil
+					}
+
+					level.Error(b.logger).Log("msg", "error reading block meta", "block", path, "err", err)
+					return nil
+				}
+
+				metas[pos], err = block.Read(metaReader)
+				if err != nil {
+					level.Error(b.logger).Log("msg", "error parsing block meta", "block", path, "err", err)
+					return nil
+				}
+				return nil
+			})
+		}(pos)
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	// sort slice and make sure nils are last
+	sort.Slice(metas, func(i, j int) bool {
+		if metas[i] == nil {
+			return false
 		}
+		if metas[j] == nil {
+			return true
+		}
+		return metas[i].MinTime < metas[j].MinTime
+	})
 
-		q := newSingleBlockQuerier(b.logger, fireobjstore.BucketReaderWithPrefix(b.bucketReader, path), ulid)
-		if err := q.open(ctx); err != nil {
-			level.Error(b.logger).Log("msg", "failed opening block", "path", path, "err", err)
+	// iterate from the end and cut of till the first non-nil
+	var pos int
+	for pos = len(metas) - 1; pos >= 0; pos-- {
+		if metas[pos] != nil {
+			break
+		}
+	}
+
+	return metas[0 : pos+1], nil
+}
+
+// Sync gradually scans the available blcoks. If there are any changes to the
+// last run it will Open/Close new/no longer existing ones.
+func (b *BlockQuerier) Sync(ctx context.Context) error {
+
+	observedMetas, err := b.BlockMetas(ctx)
+	if err != nil {
+		return err
+	}
+
+	// hold write lock to queriers
+	b.queriersLock.Lock()
+
+	// build lookup map
+	var (
+		querierByULID = make(map[ulid.ULID]*singleBlockQuerier)
+	)
+	for pos := range b.queriers {
+		querierByULID[b.queriers[pos].meta.ULID] = b.queriers[pos]
+	}
+
+	// ensure queries has the right length
+	lenQueriers := len(observedMetas)
+	if cap(b.queriers) < lenQueriers {
+		b.queriers = make([]*singleBlockQuerier, lenQueriers)
+	} else {
+		b.queriers = b.queriers[:lenQueriers]
+	}
+
+	for pos, m := range observedMetas {
+
+		q, ok := querierByULID[m.ULID]
+		if ok {
+			b.queriers[pos] = q
+			delete(querierByULID, m.ULID)
 			continue
 		}
-		level.Debug(b.logger).Log("msg", "opened block",
-			"minTime", q.tsBoundary.min.Time().Format(time.RFC3339),
-			"maxTime", q.tsBoundary.max.Time().Format(time.RFC3339),
-			"path", path,
-		)
-		blocks = append(blocks, q)
+
+		b.queriers[pos] = newSingleBlockQuerierFromMeta(b.logger, b.bucketReader, m)
+	}
+	b.queriersLock.Unlock()
+
+	// now close no longer available queries
+	for _, q := range querierByULID {
+		if err := q.Close(); err != nil {
+			return err
+		}
 	}
 
-	b.blocks = blocks
 	return nil
 }
 
@@ -112,10 +218,7 @@ type BlockInfo struct {
 }
 
 func (b *BlockQuerier) BlockInfo() []BlockInfo {
-	result := make([]BlockInfo, len(b.blocks))
-	for idx := range result {
-		result[idx] = b.blocks[idx].Info()
-	}
+	result := make([]BlockInfo, len(b.queriers))
 	return result
 }
 
@@ -124,9 +227,9 @@ func (b *BlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[
 }
 
 func (b *BlockQuerier) profileSelecters() profileSelecters {
-	var result = make(profileSelecters, len(b.blocks))
+	var result = make(profileSelecters, len(b.queriers))
 	for pos := range result {
-		result[pos] = b.blocks[pos]
+		result[pos] = b.queriers[pos]
 	}
 	return result
 }
@@ -136,38 +239,32 @@ type minMax struct {
 }
 
 func (mm *minMax) InRange(start, end model.Time) bool {
-	if start > mm.max {
-		return false
-	}
-	if end < mm.min {
-		return false
-	}
-	return true
+	return block.InRange(mm.min, mm.max, start, end)
 }
 
 type singleBlockQuerier struct {
 	logger       log.Logger
 	bucketReader fireobjstore.BucketReader
-	ulid         ulid.ULID
-	tables       []tableReader
+	meta         *block.Meta
 
-	tsBoundary            minMax
+	tables []tableReader
+
+	openLock              sync.Mutex
 	tsBoundaryPerRowGroup []minMax
-
-	index       *index.Reader
-	strings     parquetReader[string, *schemav1.StringPersister]
-	mappings    parquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
-	functions   parquetReader[*profilev1.Function, *schemav1.FunctionPersister]
-	locations   parquetReader[*profilev1.Location, *schemav1.LocationPersister]
-	stacktraces parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
-	profiles    parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
+	index                 *index.Reader
+	strings               parquetReader[string, *schemav1.StringPersister]
+	mappings              parquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
+	functions             parquetReader[*profilev1.Function, *schemav1.FunctionPersister]
+	locations             parquetReader[*profilev1.Location, *schemav1.LocationPersister]
+	stacktraces           parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
+	profiles              parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
 }
 
-func newSingleBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketReader, ulid ulid.ULID) *singleBlockQuerier {
+func newSingleBlockQuerierFromMeta(logger log.Logger, bucketReader fireobjstore.BucketReader, meta *block.Meta) *singleBlockQuerier {
 	q := &singleBlockQuerier{
 		logger:       logger,
-		bucketReader: bucketReader,
-		ulid:         ulid,
+		bucketReader: fireobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
+		meta:         meta,
 	}
 	q.tables = []tableReader{
 		&q.strings,
@@ -180,22 +277,55 @@ func newSingleBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketRe
 	return q
 }
 
-func (b *singleBlockQuerier) InRange(start, end model.Time) bool {
-	return b.tsBoundary.InRange(start, end)
+func (b *singleBlockQuerier) Close() error {
+	b.openLock.Lock()
+	defer b.openLock.Unlock()
+
+	if b.index != nil {
+		err := b.index.Close()
+		b.index = nil
+		return err
+	}
+	return nil
 }
 
-func (b *singleBlockQuerier) Info() BlockInfo {
-	return BlockInfo{
-		ID:          b.ulid,
-		MinTime:     b.tsBoundary.min,
-		MaxTime:     b.tsBoundary.max,
-		Profiles:    b.profiles.info(),
-		Stacktraces: b.stacktraces.info(),
-		Locations:   b.locations.info(),
-		Mappings:    b.mappings.info(),
-		Functions:   b.functions.info(),
-		Strings:     b.strings.info(),
+func (b *singleBlockQuerier) InRange(start, end model.Time) bool {
+	return b.meta.InRange(start, end)
+}
+
+// reconstructMeta can regenerate a missing metadata file from the parquet structures
+func (b *singleBlockQuerier) reconstructMeta(ctx context.Context) (*block.Meta, error) {
+	tsBoundary, _, err := b.readTSBoundaries(ctx)
+	if err != nil {
+		return nil, err
 	}
+
+	profilesInfo := b.profiles.info()
+	indexInfo := b.index.FileInfo()
+
+	files := []block.File{
+		indexInfo,
+		profilesInfo,
+		b.stacktraces.info(),
+		b.locations.info(),
+		b.mappings.info(),
+		b.functions.info(),
+		b.strings.info(),
+	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].RelPath < files[j].RelPath
+	})
+
+	return &block.Meta{
+		ULID:    b.meta.ULID,
+		MinTime: tsBoundary.min,
+		MaxTime: tsBoundary.max,
+		Version: block.MetaVersion1,
+		Stats: block.BlockStats{
+			NumProfiles: profilesInfo.Parquet.NumRows,
+		},
+		Files: files,
+	}, nil
 }
 
 func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher,
@@ -287,6 +417,10 @@ func (m uniqueIDs[T]) iterator() Iterator[int64] {
 }
 
 func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+	if err := b.open(ctx); err != nil {
+		return nil, err
+	}
+
 	var (
 		totalSamples   int64
 		totalLocations int64
@@ -495,7 +629,11 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 
 }
 
-func (q *singleBlockQuerier) readTSBoundaries() error {
+func (q *singleBlockQuerier) readTSBoundaries(ctx context.Context) (minMax, []minMax, error) {
+	if err := q.open(ctx); err != nil {
+		return minMax{}, nil, err
+	}
+
 	// find minTS and maxTS
 	var columnTimeNanos *parquet.Column
 	for _, c := range q.profiles.file.Root().Columns() {
@@ -505,11 +643,14 @@ func (q *singleBlockQuerier) readTSBoundaries() error {
 		}
 	}
 	if columnTimeNanos == nil {
-		return errors.New("'TimeNanos' column not found")
+		return minMax{}, nil, errors.New("'TimeNanos' column not found")
 	}
 
-	rowGroups := q.profiles.file.RowGroups()
-	q.tsBoundaryPerRowGroup = make([]minMax, len(rowGroups))
+	var (
+		rowGroups             = q.profiles.file.RowGroups()
+		tsBoundary            minMax
+		tsBoundaryPerRowGroup = make([]minMax, len(rowGroups))
+	)
 	for idxRowGroup, rowGroup := range rowGroups {
 		chunks := rowGroup.ColumnChunks()[columnTimeNanos.Index()]
 		columnIndex := chunks.ColumnIndex()
@@ -526,19 +667,19 @@ func (q *singleBlockQuerier) readTSBoundaries() error {
 			}
 		}
 
-		q.tsBoundaryPerRowGroup[idxRowGroup].min = min
-		q.tsBoundaryPerRowGroup[idxRowGroup].max = max
+		tsBoundaryPerRowGroup[idxRowGroup].min = min
+		tsBoundaryPerRowGroup[idxRowGroup].max = max
 
 		// determine the min/max across all row groups
-		if idxRowGroup == 0 || min < q.tsBoundary.min {
-			q.tsBoundary.min = min
+		if idxRowGroup == 0 || min < tsBoundary.min {
+			tsBoundary.min = min
 		}
-		if idxRowGroup == 0 || max > q.tsBoundary.max {
-			q.tsBoundary.max = max
+		if idxRowGroup == 0 || max > tsBoundary.max {
+			tsBoundary.max = max
 		}
 	}
 
-	return nil
+	return tsBoundary, tsBoundaryPerRowGroup, nil
 
 }
 
@@ -558,8 +699,16 @@ func newByteSliceFromBucketReader(bucketReader fireobjstore.BucketReader, path s
 }
 
 func (q *singleBlockQuerier) open(ctx context.Context) error {
+	q.openLock.Lock()
+	defer q.openLock.Unlock()
+
+	// already open
+	if q.index != nil {
+		return nil
+	}
+
 	// open tsdb index
-	indexBytes, err := newByteSliceFromBucketReader(q.bucketReader, "index.tsdb")
+	indexBytes, err := newByteSliceFromBucketReader(q.bucketReader, block.IndexFilename)
 	if err != nil {
 		return errors.Wrap(err, "error reading tsdb index")
 	}
@@ -574,10 +723,6 @@ func (q *singleBlockQuerier) open(ctx context.Context) error {
 		if err := x.open(ctx, q.bucketReader); err != nil {
 			return err
 		}
-	}
-
-	if err := q.readTSBoundaries(); err != nil {
-		return err
 	}
 
 	return nil
@@ -623,7 +768,7 @@ func (r readerAtFromBucketReader) ReadAt(p []byte, off int64) (n int, err error)
 }
 
 func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstore.BucketReader) error {
-	filePath := r.persister.Name() + ".parquet"
+	filePath := r.persister.Name() + block.ParquetSuffix
 	f, size, err := newReaderAtFromBucketReader(ctx, bucketReader, filePath)
 	if err != nil {
 		return errors.Wrapf(err, "opening file '%s'", filePath)
@@ -647,11 +792,14 @@ func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstor
 	return nil
 }
 
-func (r *parquetReader[M, P]) info() TableInfo {
-	return TableInfo{
-		Rows:      uint64(r.file.NumRows()),
-		RowGroups: uint64(len(r.file.RowGroups())),
-		Bytes:     uint64(r.file.Size()),
+func (r *parquetReader[M, P]) info() block.File {
+	return block.File{
+		Parquet: &block.ParquetFile{
+			NumRows:      uint64(r.file.NumRows()),
+			NumRowGroups: uint64(len(r.file.RowGroups())),
+		},
+		SizeBytes: uint64(r.file.Size()),
+		RelPath:   r.persister.Name() + block.ParquetSuffix,
 	}
 }
 
