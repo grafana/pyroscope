@@ -58,6 +58,23 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 	// add the frames to the response.
 	response.Frames = append(response.Frames, frame)
 
+	log.DefaultLogger.Debug("Querying SelectSeries()", "queryModel", qm)
+
+	seriesResp, err := d.client.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+		ProfileTypeID: qm.ProfileTypeID,
+		LabelSelector: qm.LabelSelector,
+		Start:         query.TimeRange.From.UnixMilli(),
+		End:           query.TimeRange.To.UnixMilli(),
+		Step:          query.Interval.Seconds(),
+		// todo add one or more group bys
+		GroupBy: []string{},
+	}))
+	if err != nil {
+		response.Error = err
+		return response
+	}
+	// todo remove me and add the series to the frame.
+	log.DefaultLogger.Debug("Series", seriesResp.Msg.Series)
 	return response
 }
 

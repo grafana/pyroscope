@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
+
+	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 )
 
 // This is where the tests for the datasource backend live.
@@ -92,4 +93,8 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 			},
 		},
 	}, nil
+}
+
+func (f FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+	panic("implement me")
 }
