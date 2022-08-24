@@ -72,7 +72,7 @@ func (b *BlockQuerier) Open() error {
 
 		ulid, err := ulid.Parse(path)
 		if err != nil {
-			return errors.Wrap(err, "unable to parse block name")
+			return errors.Wrapf(err, "unable to parse block name path=%s", path)
 		}
 
 		q := newSingleBlockQuerier(b.logger, fireobjstore.BucketReaderWithPrefix(b.bucketReader, path), ulid)
