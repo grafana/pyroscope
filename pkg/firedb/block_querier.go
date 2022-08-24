@@ -691,6 +691,8 @@ func (p *predicateRepeatedColumnMatches) Execute(ctx context.Context, f *parquet
 		rowNum  int64
 	)
 
+	// nolint:ineffassign
+	// we might use ctx later.
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - predicateRepeatedColumnMatches")
 	defer func() {
 		sp.LogFields(
