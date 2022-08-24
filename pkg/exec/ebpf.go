@@ -52,7 +52,7 @@ func RunEBPF(cfg *config.EBPF) error {
 
 	var serviceDiscovery sd.ServiceDiscovery = sd.NoopServiceDiscovery{}
 	if cfg.KubernetesNode != "" {
-		serviceDiscovery, err = sd.NewK8ServiceDiscovery(context.TODO(), cfg.KubernetesNode)
+		serviceDiscovery, err = sd.NewK8ServiceDiscovery(context.TODO(), logger, cfg.KubernetesNode)
 		if err != nil {
 			return err
 		}
