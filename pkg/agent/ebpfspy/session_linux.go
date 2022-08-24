@@ -164,7 +164,7 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		buf.Write([]byte(it.comm))
 		buf.Write([]byte{';'})
 		s.walkStack(buf, it.uStack, it.pid, true)
-		s.walkStack(buf, it.kStack, it.pid, false)
+		s.walkStack(buf, it.kStack, 0, false)
 
 		err = cb(it.labels, buf.Bytes(), uint64(it.count), it.pid)
 		if err != nil {
