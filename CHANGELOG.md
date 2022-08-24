@@ -1,3 +1,20 @@
+# [0.27.0](https://github.com/pyroscope-io/pyroscope/compare/v0.26.0...v0.27.0) (2022-08-24)
+
+
+### Bug Fixes
+
+* **adhoc:** support malformed profiles ([#1438](https://github.com/pyroscope-io/pyroscope/issues/1438)) ([b24d483](https://github.com/pyroscope-io/pyroscope/commit/b24d4838b88f45992be2e04153e55fde98a1b04a))
+* do not use sampling ticker for resettable spies ([#1429](https://github.com/pyroscope-io/pyroscope/issues/1429)) ([6f279e4](https://github.com/pyroscope-io/pyroscope/commit/6f279e4fbdabc1dd6db650a5a9139e88d07c4070))
+* **ebpf:** ignore pods with empty containerID ([#1437](https://github.com/pyroscope-io/pyroscope/issues/1437)) ([937f9b9](https://github.com/pyroscope-io/pyroscope/commit/937f9b9946e6f7dbe1cf984a6a20000fb09a066c))
+* **webapp:** fixes auth ([#1434](https://github.com/pyroscope-io/pyroscope/issues/1434)) ([a70ca26](https://github.com/pyroscope-io/pyroscope/commit/a70ca269eb02983248d34b46bc9bbd9c596a0da6))
+
+
+### Features
+
+* **webapp:** Add settings/apps page ([#1424](https://github.com/pyroscope-io/pyroscope/issues/1424)) ([f87ce69](https://github.com/pyroscope-io/pyroscope/commit/f87ce69d8af890402d5845f7d3047e393682c934))
+
+
+
 # [0.26.0](https://github.com/pyroscope-io/pyroscope/compare/v0.25.1...v0.26.0) (2022-08-19)
 
 
