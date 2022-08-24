@@ -275,7 +275,7 @@ func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 		}
 		if sym == "" {
 			if module != "" {
-				sym = fmt.Sprintf("[unknown %s+0x%x]", module, offset)
+				sym = fmt.Sprintf("%s+0x%x", module, offset)
 			} else {
 				sym = "[unknown]"
 			}
