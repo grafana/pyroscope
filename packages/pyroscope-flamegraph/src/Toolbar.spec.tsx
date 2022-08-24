@@ -88,7 +88,7 @@ describe('ProfileHeader', () => {
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
-        fitMode={HeadMode}
+        fitMode={TailMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
@@ -271,7 +271,7 @@ describe('ProfileHeader', () => {
         .querySelector('.dropdownMenuButton') as HTMLElement;
 
       toolbar.click();
-      screen.getByTestId('HEAD').click();
+      screen.getByTestId(HeadMode).click();
 
       expect(updateFitMode).toHaveBeenCalledWith(HeadMode);
     });
@@ -282,7 +282,7 @@ describe('ProfileHeader', () => {
         .querySelector('.dropdownMenuButton') as HTMLElement;
 
       toolbar.click();
-      screen.getByTestId('TAIL').click();
+      screen.getByTestId(TailMode).click();
 
       expect(updateFitMode).toHaveBeenCalledWith(TailMode);
     });

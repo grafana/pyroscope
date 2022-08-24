@@ -242,32 +242,49 @@ function FitMode({
   fitMode: ProfileHeaderProps['fitMode'];
   updateFitMode: ProfileHeaderProps['updateFitMode'];
 }) {
-  const isSmall = showMode === 'small';
-  const options = [
-    { key: 'Head', value: HeadMode },
-    { key: 'Tail', value: TailMode },
-  ].map(({ value, key }) => ({
-    value,
-    key: isSmall ? key : `${key} first`,
-  }));
+  let texts = {
+    label: '',
+    [HeadMode]: '',
+    [TailMode]: '',
+  };
+  switch (showMode) {
+    case 'small':
+      texts = {
+        label: 'Fit',
+        [HeadMode]: 'Head',
+        [TailMode]: 'Tail',
+      };
+      break;
+    case 'large':
+      texts = {
+        label: 'Prefer to Fit',
+        [HeadMode]: 'Head first',
+        [TailMode]: 'Tail first',
+      };
+      break;
+    default: {
+      throw new Error('Wrong show mode');
+    }
+  }
+
+  const menuOptions = [HeadMode, TailMode] as FitModes[];
+  const menuItems = menuOptions.map((mode) => (
+    <MenuItem key={mode} value={mode}>
+      <div className={styles.fitModeDropdownMenuItem} data-testid={mode}>
+        {texts[mode]}
+        {fitMode === mode ? <CheckIcon /> : null}
+      </div>
+    </MenuItem>
+  ));
 
   return (
     <Dropdown
-      label={isSmall ? 'Fit' : 'Prefer to Fit'}
-      value={options.find((o) => o.value === fitMode)?.key}
+      label={texts.label}
+      value={texts[fitMode]}
       onItemClick={(event) => updateFitMode(event.value as typeof fitMode)}
-      menuButtonClassName={
-        isSmall ? styles.fitModeSmallDropdown : styles.fitModeBigDropdown
-      }
+      menuButtonClassName={styles[`fit-mode-dropdown-${showMode}`]}
     >
-      {options.map(({ key, value }) => (
-        <MenuItem key={key} value={value}>
-          <div className={styles.fitModeDropdownMenuItem} data-testid={value}>
-            {key}
-            {fitMode === value ? <CheckIcon /> : null}
-          </div>
-        </MenuItem>
-      ))}
+      {menuItems}
     </Dropdown>
   );
 }

@@ -24,26 +24,17 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
       <div
         class="space-filler"
       />
-      <select
-        aria-label="fit-mode"
-        class="select fit-mode-select"
+      <button
+        aria-expanded="false"
+        aria-haspopup="true"
+        class="rc-menu-button dropdownMenuButton fit-mode-dropdown-large"
+        type="button"
       >
-        <option
-          disabled=""
-        >
-          Prefer to Fit
-        </option>
-        <option
-          value="HEAD"
-        >
-          Head first
-        </option>
-        <option
-          value="TAIL"
-        >
-          Tail first
-        </option>
-      </select>
+        Head first
+      </button>
+      <div
+        class="rc-menu-container"
+      />
       <button
         class="button  default undefined"
         data-testid="reset-view"
@@ -186,26 +177,17 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       <div
         class="space-filler"
       />
-      <select
-        aria-label="fit-mode"
-        class="select fit-mode-select"
+      <button
+        aria-expanded="false"
+        aria-haspopup="true"
+        class="rc-menu-button dropdownMenuButton fit-mode-dropdown-small"
+        type="button"
       >
-        <option
-          disabled=""
-        >
-          Fit
-        </option>
-        <option
-          value="HEAD"
-        >
-          Head
-        </option>
-        <option
-          value="TAIL"
-        >
-          Tail
-        </option>
-      </select>
+        Tail
+      </button>
+      <div
+        class="rc-menu-container"
+      />
       <button
         class="button  default undefined"
         data-testid="reset-view"
