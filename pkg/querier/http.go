@@ -276,11 +276,12 @@ func parseQuery(req *http.Request) (string, *commonv1.ProfileType, error) {
 func parseRelativeTime(s string) (time.Duration, error) {
 	s = strings.TrimSpace(s)
 	s = strings.TrimPrefix(s, "now-")
-	d, err := time.ParseDuration(s)
+
+	d, err := model.ParseDuration(s)
 	if err != nil {
 		return 0, err
 	}
-	return d, nil
+	return time.Duration(d), nil
 }
 
 func convertMatchersToString(matchers []*labels.Matcher) string {
