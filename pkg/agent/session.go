@@ -2,7 +2,7 @@ package agent
 
 import (
 	"fmt"
-	logger2 "github.com/pyroscope-io/pyroscope/pkg/agent/logger"
+	logger2 "github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/util/alignedticker"
 	"os"
 	"sync"

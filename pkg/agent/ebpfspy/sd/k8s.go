@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/logger"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -17,7 +17,7 @@ import (
 )
 
 type K8SServiceDiscovery struct {
-	logger             logger.Logger
+	logger             log.Logger
 	cs                 *kubernetes.Clientset
 	nodeName           string
 	containerID2Labels map[string]*spy.Labels
@@ -27,7 +27,7 @@ type K8SServiceDiscovery struct {
 var knownContainerIDPrefixes = []string{"docker://", "containerd://"}
 var knownRuntimes = []string{"docker://", "containerd://"}
 
-func NewK8ServiceDiscovery(ctx context.Context, logger logger.Logger, nodeName string) (ServiceDiscovery, error) {
+func NewK8ServiceDiscovery(ctx context.Context, logger log.Logger, nodeName string) (ServiceDiscovery, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err

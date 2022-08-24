@@ -3,7 +3,7 @@ package main
 import (
 	"C"
 	"fmt"
-	logger2 "github.com/pyroscope-io/pyroscope/pkg/agent/logger"
+	logger2 "github.com/pyroscope-io/pyroscope/pkg/agent/log"
 )
 
 //export TestLogger

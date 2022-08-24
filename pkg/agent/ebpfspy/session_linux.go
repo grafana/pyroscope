@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/logger"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"golang.org/x/sys/unix"
 	"sync"
@@ -30,7 +30,7 @@ import (
 import "C"
 
 type Session struct {
-	logger           logger.Logger
+	logger           log.Logger
 	pid              int
 	sampleRate       uint32
 	symbolCacheSize  int
@@ -55,7 +55,7 @@ type Session struct {
 
 const btf = "should not be used" // canary to detect we got relocations
 
-func NewSession(logger logger.Logger, pid int, sampleRate uint32, symbolCacheSize int, serviceDiscovery sd.ServiceDiscovery, onlyServices bool) *Session {
+func NewSession(logger log.Logger, pid int, sampleRate uint32, symbolCacheSize int, serviceDiscovery sd.ServiceDiscovery, onlyServices bool) *Session {
 	return &Session{
 		logger:           logger,
 		pid:              pid,

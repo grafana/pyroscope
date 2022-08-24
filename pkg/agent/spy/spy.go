@@ -3,7 +3,7 @@ package spy
 
 import (
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/logger"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
@@ -61,7 +61,7 @@ type InitParams struct {
 	ProfileType   ProfileType
 	SampleRate    uint32
 	DisableGCRuns bool
-	Logger        logger.Logger
+	Logger        log.Logger
 }
 type SpyIntitializer func(InitParams) (Spy, error)
 

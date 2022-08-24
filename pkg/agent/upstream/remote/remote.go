@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/logger"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"io"
 	"net/http"
 	"net/url"
@@ -28,7 +28,7 @@ type Remote struct {
 	cfg    RemoteConfig
 	jobs   chan *upstream.UploadJob
 	client *http.Client
-	Logger logger.Logger
+	Logger log.Logger
 
 	done chan struct{}
 	wg   sync.WaitGroup
@@ -41,7 +41,7 @@ type RemoteConfig struct {
 	UpstreamRequestTimeout time.Duration
 }
 
-func New(cfg RemoteConfig, logger logger.Logger) (*Remote, error) {
+func New(cfg RemoteConfig, logger log.Logger) (*Remote, error) {
 	remote := &Remote{
 		cfg:  cfg,
 		jobs: make(chan *upstream.UploadJob, 100),

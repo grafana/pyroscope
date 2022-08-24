@@ -6,7 +6,7 @@ package profiler
 import (
 	"context"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/logger"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -33,7 +33,7 @@ type Config struct {
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
 	AuthToken       string // specify this token when using pyroscope cloud
 	SampleRate      uint32
-	Logger          logger.Logger
+	Logger          log.Logger
 	ProfileTypes    []ProfileType
 	DisableGCRuns   bool // this will disable automatic runtime.GC runs
 }
@@ -51,7 +51,7 @@ func Start(cfg Config) (*Profiler, error) {
 		cfg.SampleRate = types.DefaultSampleRate
 	}
 	if cfg.Logger == nil {
-		cfg.Logger = &logger.NoopLogger{}
+		cfg.Logger = &log.NoopLogger{}
 	}
 
 	// Override the address to use when the environment variable is defined.
