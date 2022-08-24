@@ -83,7 +83,7 @@ func RunEBPF(cfg *config.EBPF) error {
 		Logger:           logger,
 	}
 	session, err := agent.NewSessionWithSpyFactory(sc, func(pid int) ([]spy.Spy, error) {
-		s := ebpfspy.NewSession(cfg.Pid, sampleRate, cfg.SymbolCacheSize, serviceDiscovery, cfg.OnlyServices)
+		s := ebpfspy.NewSession(logger, cfg.Pid, sampleRate, cfg.SymbolCacheSize, serviceDiscovery, cfg.OnlyServices)
 		err := s.Start()
 		if err != nil {
 			return nil, err
