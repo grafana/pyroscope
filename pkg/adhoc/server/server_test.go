@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io/ioutil"
 	"reflect"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -596,3 +597,28 @@ var _ = Describe("Server", func() {
 		})
 	})
 })
+
+var _ = FDescribe("Convert", func() {
+	It("converts malformed pprof", func() {
+		m := Model{
+			Type:    "pprof",
+			Profile: readFile("./testdata/cpu-unknown.pb.gz"),
+		}
+
+		f, err := m.Converter()
+		Expect(err).To(BeNil())
+		Expect(f).ToNot(BeNil())
+
+		b, err := f(m.Profile, "appname", 1024)
+		Expect(err).To(BeNil())
+		Expect(b).ToNot(BeNil())
+	})
+})
+
+func readFile(path string) []byte {
+	f, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
