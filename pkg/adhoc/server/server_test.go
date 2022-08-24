@@ -598,7 +598,7 @@ var _ = Describe("Server", func() {
 	})
 })
 
-var _ = FDescribe("Convert", func() {
+var _ = Describe("Convert", func() {
 	It("converts malformed pprof", func() {
 		m := Model{
 			Type:    "pprof",
