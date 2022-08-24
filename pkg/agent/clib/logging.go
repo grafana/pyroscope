@@ -3,8 +3,7 @@ package main
 import (
 	"C"
 	"fmt"
-
-	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	logger2 "github.com/pyroscope-io/pyroscope/pkg/agent/logger"
 )
 
 //export TestLogger
@@ -21,7 +20,7 @@ func SetLoggerLevel(l int) int {
 	return 0
 }
 
-var logger agent.Logger
+var logger logger2.Logger
 var level int
 
 func init() {

@@ -11,6 +11,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/binary"
+	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -264,12 +265,16 @@ func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 		if ip == 0 {
 			break
 		}
-		sym, _, _ := s.symCache.bccResolve(pid, ip, s.roundNumber)
+		sym, offset, module := s.symCache.bccResolve(pid, ip, s.roundNumber)
 		if !userspace && sym == "" {
 			continue
 		}
 		if sym == "" {
-			sym = symbolUnknown
+			if module != "" {
+				sym = fmt.Sprintf("[unknown %s+0x%x]", module, offset)
+			} else {
+				sym = "[unknown]"
+			}
 		}
 		stackFrames = append(stackFrames, sym+";")
 	}

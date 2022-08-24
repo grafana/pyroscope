@@ -3,6 +3,7 @@ package spy
 
 import (
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/logger"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
@@ -55,7 +56,14 @@ func (t ProfileType) AggregationType() metadata.AggregationType {
 }
 
 // TODO: this interface is not the best as different spies have different arguments
-type SpyIntitializer func(pid int, profileType ProfileType, sampleRate uint32, disableGCRuns bool) (Spy, error)
+type InitParams struct {
+	Pid           int
+	ProfileType   ProfileType
+	SampleRate    uint32
+	DisableGCRuns bool
+	Logger        logger.Logger
+}
+type SpyIntitializer func(InitParams) (Spy, error)
 
 var (
 	supportedSpiesMap map[string]SpyIntitializer
