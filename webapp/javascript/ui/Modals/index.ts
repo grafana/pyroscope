@@ -23,6 +23,7 @@ const defaultParams: Partial<SweetAlertOptions> = {
 
 export type ShowModalParams = {
   title: string;
+  html?: string;
   confirmButtonText: string;
   type: 'danger' | 'normal';
   onConfirm?: ShamefulAny;
@@ -36,6 +37,7 @@ export type ShowModalParams = {
 
 const ShowModal = async ({
   title,
+  html,
   confirmButtonText,
   type,
   onConfirm,
@@ -48,6 +50,7 @@ const ShowModal = async ({
 }: ShowModalParams) => {
   const { isConfirmed, value } = await Swal.fire({
     title,
+    html,
     confirmButtonText,
     input,
     inputLabel,

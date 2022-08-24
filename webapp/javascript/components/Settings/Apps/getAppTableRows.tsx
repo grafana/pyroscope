@@ -24,8 +24,7 @@ function DeleteButton(props: DeleteButtorProps) {
       objectName: app.name,
       objectType: 'app',
       withConfirmationInput: true,
-      warningMsg:
-        'This action can take significant amount of time and cannot be undone.',
+      warningMsg: `Note: This action can take up to ~15 minutes depending on the size of your application and wont' be reflected in the UI until it is complete.`,
       onConfirm: () => onDelete(app),
     });
   };

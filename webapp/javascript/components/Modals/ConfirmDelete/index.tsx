@@ -1,10 +1,10 @@
 import ShowModal, { ShowModalParams } from '@webapp/ui/Modals';
 
 interface ConfirmDeleteProps {
-  objectType?: string;
+  objectType: string;
   objectName: string;
-  warningMsg?: string;
   onConfirm: () => void;
+  warningMsg?: string;
   withConfirmationInput?: boolean;
 }
 
@@ -15,24 +15,21 @@ function confirmDelete({
   withConfirmationInput,
   warningMsg,
 }: ConfirmDeleteProps) {
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   const confirmationInputProps: Partial<ShowModalParams> = withConfirmationInput
     ? {
         input: 'text' as ShowModalParams['input'],
-        inputLabel: `Please type ${objectType} name`,
+        inputLabel: `To confirm deletion enter ${objectType} name below.`,
         inputPlaceholder: objectName,
         inputValidator: (value) =>
           value === objectName ? null : 'Name does not match',
       }
     : {};
 
-  const object = withConfirmationInput
-    ? `${objectName} ${objectType}`
-    : objectName;
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   ShowModal({
-    title: `Are you sure you want to delete ${object}? ${
-      warningMsg ? `\n ${warningMsg}` : ''
+    title: `Delete ${objectType}`,
+    html: `Are you sure you want to delete<br><strong>${objectName}</strong> ?${
+      warningMsg ? `<br><br>${warningMsg}` : ''
     }`,
     confirmButtonText: 'Delete',
     type: 'danger',
