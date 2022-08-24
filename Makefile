@@ -78,6 +78,10 @@ go/mod:
 	GO111MODULE=on go mod download
 	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod download
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod verify
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod tidy
+
 
 .PHONY: plugin/datasource/build
 plugin/datasource/build: $(BIN)/mage
