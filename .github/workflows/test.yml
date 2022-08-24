@@ -103,12 +103,12 @@ jobs:
           registry: us.gcr.io
           username: _json_key
           password: ${{ secrets.GCR_JSON_KEY }}
-      - name: Build & push multi-arch image
+      - name: Fire Build & push multi-arch image
         id: build-push
         run: |
           make docker-image/fire/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
       - name: Grafana Build & push multi-arch image
-        id: build-push
+        id: build-push-grafana
         run: |
           make docker-image/grafana/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
       - name: Deploy to fire-dev-001
