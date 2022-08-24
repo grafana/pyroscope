@@ -198,7 +198,7 @@ func (b *singleBlockQuerier) Info() BlockInfo {
 	}
 }
 
-func (b *singleBlockQuerier) forMatchingProfiles(matchers []*labels.Matcher,
+func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher,
 	fn func(lbs firemodel.Labels, fp model.Fingerprint, sampleIdx int, profile *schemav1.Profile) error,
 ) error {
 
@@ -233,6 +233,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(matchers []*labels.Matcher,
 
 	// get all relevant profile row nums
 	rowNums := b.profiles.rowNumsFor(
+		ctx,
 		repeatedColumnMatches("SeriesRefs", func(rowNum int64, v *parquet.Value) bool {
 			if v.Kind() != parquet.Int64 {
 				panic(fmt.Sprintf("unexpected kind: %s", v.GoString()))
@@ -248,7 +249,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(matchers []*labels.Matcher,
 	)
 
 	// retrieve the full profiles
-	profiles := b.profiles.retrieveRows(rowNums)
+	profiles := b.profiles.retrieveRows(ctx, rowNums)
 	for {
 		p, ok := profiles.Next()
 		if !ok {
@@ -316,7 +317,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		locationsByStacktraceID         = map[int64][]int64{}
 	)
 
-	if err := b.forMatchingProfiles(selectors, func(lbs firemodel.Labels, _ model.Fingerprint, idx int, profile *schemav1.Profile) error {
+	if err := b.forMatchingProfiles(ctx, selectors, func(lbs firemodel.Labels, _ model.Fingerprint, idx int, profile *schemav1.Profile) error {
 		ts := int64(model.TimeFromUnixNano(profile.TimeNanos))
 		// if the timestamp is not matching we skip this profile.
 		if req.Msg.Start > ts || ts > req.Msg.End {
@@ -365,7 +366,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 
 	var (
 		locationIDs = newUniqueIDs[struct{}]()
-		stacktraces = b.stacktraces.retrieveRows(NewSliceIterator(stacktraceIDs))
+		stacktraces = b.stacktraces.retrieveRows(ctx, NewSliceIterator(stacktraceIDs))
 	)
 	for {
 		s, ok := stacktraces.Next()
@@ -389,7 +390,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 	// gather locations
 	var (
 		locationIDsByFunctionID = newUniqueIDs[[]int64]()
-		locations               = b.locations.retrieveRows(locationIDs.iterator())
+		locations               = b.locations.retrieveRows(ctx, locationIDs.iterator())
 	)
 	for {
 		s, ok := locations.Next()
@@ -408,7 +409,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 	// gather functions
 	var (
 		functionIDsByStringID = newUniqueIDs[[]int64]()
-		functions             = b.functions.retrieveRows(locationIDsByFunctionID.iterator())
+		functions             = b.functions.retrieveRows(ctx, locationIDsByFunctionID.iterator())
 	)
 	for {
 		s, ok := functions.Next()
@@ -426,7 +427,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 	var (
 		names   = make([]string, len(functionIDsByStringID))
 		idSlice = make([][]int64, len(functionIDsByStringID))
-		strings = b.strings.retrieveRows(functionIDsByStringID.iterator())
+		strings = b.strings.retrieveRows(ctx, functionIDsByStringID.iterator())
 		idx     = 0
 	)
 	for {
@@ -583,7 +584,7 @@ func (q *singleBlockQuerier) open(ctx context.Context) error {
 }
 
 type Predicate interface {
-	Execute(*parquet.File) Iterator[int64]
+	Execute(context.Context, *parquet.File) Iterator[int64]
 }
 
 type parquetReader[M Models, P schemav1.Persister[M]] struct {
@@ -654,24 +655,14 @@ func (r *parquetReader[M, P]) info() TableInfo {
 	}
 }
 
-type predicateRepeatedInt64ColumnInMap struct {
-	column string
-	value  parquet.Value
-}
-
-func (p *predicateRepeatedInt64ColumnInMap) Execute(f *parquet.File) Iterator[int64] {
-	return nil
-}
-
 type predicateRepeatedColumnMatches struct {
 	column string
 
-	// only one of value and f should be supplied
-	value *parquet.Value
-	f     matchFunc
+	f matchFunc
 }
 
-func (p *predicateRepeatedColumnMatches) Execute(f *parquet.File) Iterator[int64] {
+func (p *predicateRepeatedColumnMatches) Execute(ctx context.Context, f *parquet.File) Iterator[int64] {
+
 	// find leaf column
 	var leafColumn *parquet.Column
 	for _, c := range f.Root().Columns() {
@@ -693,23 +684,24 @@ func (p *predicateRepeatedColumnMatches) Execute(f *parquet.File) Iterator[int64
 		return NewErrIterator[int64](fmt.Errorf("column '%s' not found", p.column))
 	}
 
-	var firstPage = 0
+	var (
+		rowNums []int64
+		pages   = leafColumn.Pages()
+		idx     = 1
+		rowNum  int64
+	)
 
-	// if a value is given, lookup first page it occurs
-	if p.value != nil {
-		formatColumnIndex := f.ColumnIndexes()[leafColumn.Index()]
-		columnIndex := parquet.NewColumnIndex(leafColumn.Type().Kind(), &formatColumnIndex)
-		firstPage = parquet.Search(columnIndex, *p.value, leafColumn.Type())
-		p.f = func(_ int64, v *parquet.Value) bool {
-			return parquet.Equal(*v, *p.value)
-		}
-	}
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - predicateRepeatedColumnMatches")
+	defer func() {
+		sp.LogFields(
+			otlog.String("column_name", p.column),
+			otlog.Int64("column_rows_scanned", rowNum),
+			otlog.Int("column_pages_scanned", idx-1),
+			otlog.Int("column_rows_selected", len(rowNums)),
+		)
+		sp.Finish()
+	}()
 
-	var rowNums []int64
-
-	pages := leafColumn.Pages()
-	var idx = 1
-	var rowNum int64
 	for {
 		page, err := pages.ReadPage()
 		if err == io.EOF {
@@ -718,33 +710,29 @@ func (p *predicateRepeatedColumnMatches) Execute(f *parquet.File) Iterator[int64
 		} else if err != nil {
 			return NewErrIterator[int64](errors.Wrapf(err, "error reading page %d", idx))
 		}
-		if idx >= firstPage {
-			var values = make([]parquet.Value, page.Size())
-			if _, err := page.Values().ReadValues(values); err != io.EOF {
-				return NewErrIterator[int64](errors.Wrapf(err, "error reading values on page %d", idx))
-			}
-			for _, v := range values {
-				if v.Column() < 0 {
-					continue
-				}
+		var values = make([]parquet.Value, page.Size())
+		if _, err := page.Values().ReadValues(values); err != io.EOF {
+			return NewErrIterator[int64](errors.Wrapf(err, "error reading values on page %d", idx))
+		}
+		for _, v := range values {
+			// TODO: When this column is sorted skip the remainder of the page
 
-				// increase row num for each new record
-				// TODO this might not work correctly with multi series profiles
-				if v.RepetitionLevel() == 0 && v.DefinitionLevel() == 1 {
-					rowNum++
-				}
-
-				// matching value
-				if p.f(rowNum-1, &v) {
-					rowNums = append(rowNums, rowNum-1)
-				}
+			if v.Column() < 0 {
+				continue
 			}
-		} else {
-			// if page is skipped still count the rows
-			rowNum += page.NumRows()
+
+			// increase row num for each new record
+			// TODO this might not work correctly with multi series profiles
+			if v.RepetitionLevel() == 0 && v.DefinitionLevel() == 1 {
+				rowNum++
+			}
+
+			// matching value
+			if p.f(rowNum-1, &v) {
+				rowNums = append(rowNums, rowNum-1)
+			}
 		}
 		idx++
-
 	}
 	return NewSliceIterator(rowNums)
 }
@@ -758,7 +746,7 @@ func repeatedColumnMatches(columnName string, matchFn matchFunc) Predicate {
 	}
 }
 
-func (r *parquetReader[M, P]) rowNumsFor(predicates ...Predicate) Iterator[int64] {
+func (r *parquetReader[M, P]) rowNumsFor(ctx context.Context, predicates ...Predicate) Iterator[int64] {
 	if len(predicates) < 1 {
 		return NewErrIterator[int64](errors.New("no predicate given"))
 	}
@@ -766,7 +754,7 @@ func (r *parquetReader[M, P]) rowNumsFor(predicates ...Predicate) Iterator[int64
 		return NewErrIterator[int64](errors.New("more than one predicate not supported currently"))
 	}
 
-	return predicates[0].Execute(r.file)
+	return predicates[0].Execute(ctx, r.file)
 }
 
 type retrieveRowIterator[M any] struct {
@@ -779,6 +767,15 @@ type retrieveRowIterator[M any] struct {
 	row            []parquet.Row
 	rowNumIterator Iterator[int64]
 	err            error
+}
+
+func (r *parquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator Iterator[int64]) Iterator[ResultWithRowNum[M]] {
+	return &retrieveRowIterator[M]{
+		rowGroups:      r.file.RowGroups(),
+		row:            make([]parquet.Row, 1),
+		rowNumIterator: rowNumIterator,
+		reconstruct:    r.persister.Reconstruct,
+	}
 }
 
 func (i *retrieveRowIterator[M]) Err() error {
@@ -866,13 +863,4 @@ func (i *retrieveRowIterator[M]) Close() error {
 type ResultWithRowNum[M any] struct {
 	Result M
 	RowNum int64
-}
-
-func (r *parquetReader[M, P]) retrieveRows(rowNumIterator Iterator[int64]) Iterator[ResultWithRowNum[M]] {
-	return &retrieveRowIterator[M]{
-		rowGroups:      r.file.RowGroups(),
-		row:            make([]parquet.Row, 1),
-		rowNumIterator: rowNumIterator,
-		reconstruct:    r.persister.Reconstruct,
-	}
 }

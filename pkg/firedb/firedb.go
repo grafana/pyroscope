@@ -66,6 +66,8 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 	}
 
 	f.blockQuerier = NewBlockQuerier(logger, objstore.BucketReaderWithPrefix(bucketReader, "head"))
+	// TODO: This will only scan for blocks exactly once, this should happen
+	// more regularly, esp. after running cutting a block and block deletion.
 	if err := f.blockQuerier.Open(); err != nil {
 		return nil, err
 	}
