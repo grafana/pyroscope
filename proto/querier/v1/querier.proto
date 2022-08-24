@@ -9,6 +9,7 @@ service QuerierService {
   rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {}
+  rpc SelectSeries(SelectSeriesRequest) returns (SelectSeriesResponse) {}
 }
 
 message ProfileTypesRequest {}
@@ -53,4 +54,27 @@ message FlameGraph {
 
 message Level {
   repeated int64 values = 1;
+}
+
+message SelectSeriesRequest {
+  string profile_typeID = 1;
+  string label_selector = 2;
+  int64 start = 3; // milliseconds since epoch
+  int64 end = 4; // milliseconds since epoch
+  repeated string group_by = 5;
+  double step = 6; // Query resolution step width in seconds
+}
+
+message SelectSeriesResponse {
+  repeated Series series = 1;
+}
+
+message Series {
+  repeated common.v1.LabelPair labels = 1;
+  repeated Point points = 2;
+}
+
+message Point {
+  double v = 1;
+  int64 t = 2;
 }
