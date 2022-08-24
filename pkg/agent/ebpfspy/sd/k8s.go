@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -16,6 +17,7 @@ import (
 )
 
 type K8SServiceDiscovery struct {
+	logger             log.Logger
 	cs                 *kubernetes.Clientset
 	nodeName           string
 	containerID2Labels map[string]*spy.Labels
@@ -25,7 +27,7 @@ type K8SServiceDiscovery struct {
 var knownContainerIDPrefixes = []string{"docker://", "containerd://"}
 var knownRuntimes = []string{"docker://", "containerd://"}
 
-func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscovery, error) {
+func NewK8ServiceDiscovery(ctx context.Context, logger log.Logger, nodeName string) (ServiceDiscovery, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -47,6 +49,7 @@ func NewK8ServiceDiscovery(ctx context.Context, nodeName string) (ServiceDiscove
 	}
 
 	return &K8SServiceDiscovery{
+		logger:             logger,
 		cs:                 clientset,
 		nodeName:           nodeName,
 		containerID2Labels: map[string]*spy.Labels{},
@@ -63,9 +66,14 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	sd.logger.Debugf("K8SServiceDiscovery#Refresh pods %v", pods)
 
 	for _, pod := range pods.Items {
 		for _, status := range pod.Status.ContainerStatuses {
+			if status.ContainerID == "" {
+				sd.logger.Debugf("Unknown containerID for pod %v, status %v", pod, status)
+				continue
+			}
 			cid, err := getContainerIDFromK8S(status.ContainerID)
 			if err != nil {
 				return err

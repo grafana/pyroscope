@@ -52,7 +52,7 @@ func RunEBPF(cfg *config.EBPF) error {
 
 	var serviceDiscovery sd.ServiceDiscovery = sd.NoopServiceDiscovery{}
 	if cfg.KubernetesNode != "" {
-		serviceDiscovery, err = sd.NewK8ServiceDiscovery(context.TODO(), cfg.KubernetesNode)
+		serviceDiscovery, err = sd.NewK8ServiceDiscovery(context.TODO(), logger, cfg.KubernetesNode)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func RunEBPF(cfg *config.EBPF) error {
 		Logger:           logger,
 	}
 	session, err := agent.NewSessionWithSpyFactory(sc, func(pid int) ([]spy.Spy, error) {
-		s := ebpfspy.NewSession(cfg.Pid, sampleRate, cfg.SymbolCacheSize, serviceDiscovery, cfg.OnlyServices)
+		s := ebpfspy.NewSession(logger, cfg.Pid, sampleRate, cfg.SymbolCacheSize, serviceDiscovery, cfg.OnlyServices)
 		err := s.Start()
 		if err != nil {
 			return nil, err
