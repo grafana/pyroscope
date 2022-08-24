@@ -115,6 +115,10 @@ define docker_buildx
 	docker buildx build $(1) --ssh default --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
 endef
 
+define docker_buildx_grafana
+	docker buildx build $(1) --ssh default --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION)  -t $(IMAGE_PREFIX)grafana-fire:$(IMAGE_TAG) -f grafana/Dockerfile .
+endef
+
 define deploy
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	# Load image into nodes
@@ -131,6 +135,14 @@ docker-image/fire/build:
 .PHONY: docker-image/fire/push
 docker-image/fire/push:
 	$(call docker_buildx,--push)
+
+.PHONY: docker-image/grafana/build
+docker-image/grafana/build:
+	$(call docker_buildx_grafana,--load)
+
+.PHONY: docker-image/grafana/push
+docker-image/grafana/push:
+	$(call docker_buildx_grafana,--push)
 
 define UPDATER_CONFIG_JSON
 {
