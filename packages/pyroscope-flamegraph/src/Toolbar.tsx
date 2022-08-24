@@ -247,6 +247,7 @@ function FitMode({
     [HeadMode]: '',
     [TailMode]: '',
   };
+  let menuButtonClassName = '';
   switch (showMode) {
     case 'small':
       texts = {
@@ -254,6 +255,7 @@ function FitMode({
         [HeadMode]: 'Head',
         [TailMode]: 'Tail',
       };
+      menuButtonClassName = styles.fitModeDropdownSmall;
       break;
     case 'large':
       texts = {
@@ -261,9 +263,10 @@ function FitMode({
         [HeadMode]: 'Head first',
         [TailMode]: 'Tail first',
       };
+      menuButtonClassName = styles.fitModeDropdownLarge;
       break;
     default: {
-      throw new Error('Wrong show mode');
+      throw new Error('Wrong mode');
     }
   }
 
@@ -282,7 +285,7 @@ function FitMode({
       label={texts.label}
       value={texts[fitMode]}
       onItemClick={(event) => updateFitMode(event.value as typeof fitMode)}
-      menuButtonClassName={styles[`fit-mode-dropdown-${showMode}`]}
+      menuButtonClassName={menuButtonClassName}
     >
       {menuItems}
     </Dropdown>

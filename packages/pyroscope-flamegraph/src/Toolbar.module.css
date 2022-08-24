@@ -22,10 +22,10 @@
   width: 100%;
 }
 
-.fit-mode-dropdown-small {
+.fitModeDropdownSmall {
   min-width: 70px;
 }
 
-.fit-mode-dropdown-large {
+.fitModeDropdownLarge {
   min-width: 100px;
 }
