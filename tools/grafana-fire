@@ -34,8 +34,9 @@ docker run $DOCKER_ARGS --rm \
   --name fire-grafana \
   -v "${datasource_provisioning}:/etc/grafana/provisioning/datasources/fire.yaml:ro" \
   -v "$(pwd)"/grafana/fire-datasource/dist:/var/lib/grafana/plugins/fire-datasource \
+  -v "$(pwd)"/grafana/flamegraph/dist:/var/lib/grafana/plugins/flamegraph \
   -e GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel \
   -e GF_DEFAULT_APP_MODE=development \
   -e GF_AUTH_ANONYMOUS_ENABLED=true \
   -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
-  -t -i -p 3000:3000 ctovena/grafana:hackathon-1
+  -t -i -p 3000:3000 aocenas/grafana:explore-experiment
