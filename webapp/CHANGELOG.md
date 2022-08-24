@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.34.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.7...@pyroscope/webapp@1.34.0) (2022-08-24)
+
+
+### Features
+
+* **webapp:** Add settings/apps page ([#1424](https://github.com/pyroscope-io/pyroscope/issues/1424)) ([f87ce69](https://github.com/pyroscope-io/pyroscope/commit/f87ce69d8af890402d5845f7d3047e393682c934))
+
+
+
+
+
 ## [1.33.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.6...@pyroscope/webapp@1.33.7) (2022-08-22)
 
 
