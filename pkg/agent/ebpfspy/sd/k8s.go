@@ -79,16 +79,19 @@ func (sd *K8SServiceDiscovery) Refresh(ctx context.Context) error {
 				return err
 			}
 			ls := spy.NewLabels()
-			ls.Set("k8s_node", sd.nodeName)
-			ls.Set("k8s_pod_name", pod.Name)
-			ls.Set("k8s_pod_namespace", pod.Namespace)
-			ls.Set("k8s_container_id", cid)
-			ls.Set("k8s_container_name", status.Name)
+			ls.Set("node", sd.nodeName)
+			ls.Set("pod", pod.Name)
+			ls.Set("namespace", pod.Namespace)
+			ls.Set("container_id", cid)
+			ls.Set("container_name", status.Name)
 			if v, ok := pod.Labels["app.kubernetes.io/name"]; ok {
-				ls.Set("k8s_app_name", v)
+				ls.Set("app_kubernetes_io_name", v)
 			}
 			if v, ok := pod.Labels["app.kubernetes.io/version"]; ok {
-				ls.Set("k8s_app_version", v)
+				ls.Set("app_kubernetes_io_version", v)
+			}
+			if v, ok := pod.Labels["app.kubernetes.io/instance"]; ok {
+				ls.Set("app_kubernetes_io_instance", v)
 			}
 			sd.containerID2Labels[cid] = ls
 		}
