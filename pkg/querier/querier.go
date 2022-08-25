@@ -195,6 +195,14 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if req.Msg.Start > req.Msg.End {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start must be before end"))
+	}
+
+	if req.Msg.Step == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be non-zero"))
+	}
+
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
 	// we need to request profile from start - step to end since start is inclusive.
 	// The first step starts at start-step to start.
@@ -214,45 +222,49 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	profiles := dedupeProfiles(responses)
-	lbsbuf := make([]byte, 0, 1024)
+	var (
+		profiles  = dedupeProfiles(responses)
+		lbsbuf    = make([]byte, 0, 1024) // buffer to store labels in binary format
+		seriesMap = make(map[string]*querierv1.Series)
+	)
 	sort.Strings(req.Msg.GroupBy)
-	seriesMap := make(map[string]*querierv1.Series)
 
-	for ts := start; ts <= req.Msg.End; ts += stepMs {
-		currentTs := ts + stepMs
-
+	// advance from the start to the end, adding each step results to the map.
+	for start, currentStep := start, start+stepMs; currentStep <= req.Msg.End; start, currentStep = start+stepMs, currentStep+stepMs {
 		for len(profiles) != 0 {
 			profile := profiles[0]
-			if profile.profile.Timestamp > currentTs {
-				break
+			if profile.profile.Timestamp > currentStep {
+				break // no more profiles for the currentStep
 			}
+			lbs := firemodel.Labels(profile.profile.Labels)
 			profiles = profiles[1:]
 			var v int64
+
+			// compute value and labels binary representation
 			for _, s := range profile.profile.Stacktraces {
 				v += s.Value
 			}
-			lbs := firemodel.Labels(profile.profile.Labels)
 			lbsbuf = lbs.BytesWithLabels(lbsbuf, req.Msg.GroupBy...)
 
+			// find or create series
 			series, ok := seriesMap[string(lbsbuf)]
 			if !ok {
 				seriesMap[string(lbsbuf)] = &querierv1.Series{
 					Labels: lbs.WithLabels(req.Msg.GroupBy...),
 					Points: []*querierv1.Point{
-						{V: float64(v), T: currentTs},
+						{V: float64(v), T: currentStep},
 					},
 				}
 				continue
 			}
 
-			if series.Points[len(series.Points)-1].T == currentTs {
+			if series.Points[len(series.Points)-1].T == currentStep {
 				series.Points[len(series.Points)-1].V += float64(v)
 				continue
 			}
 			series.Points = append(series.Points, &querierv1.Point{
 				V: float64(v),
-				T: currentTs,
+				T: currentStep,
 			})
 		}
 	}
