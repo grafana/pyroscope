@@ -8,6 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -22,6 +23,7 @@ type MergeHandler struct {
 	stats           StatsReceiver
 	maxNodesDefault int
 	httpUtils       httputils.Utils
+	historyMgr      history.Manager
 }
 
 type mergeRequest struct {
@@ -41,11 +43,19 @@ type mergeResponse struct {
 }
 
 func (ctrl *Controller) mergeHandler() http.HandlerFunc {
-	return NewMergeHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
+	return NewMergeHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils, ctrl.historyMgr).ServeHTTP
 }
 
 //revive:disable:argument-limit TODO(petethepig): we will refactor this later
-func NewMergeHandler(l *logrus.Logger, s storage.ExemplarsMerger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *MergeHandler {
+func NewMergeHandler(
+	l *logrus.Logger,
+	s storage.ExemplarsMerger,
+	dir http.FileSystem,
+	stats StatsReceiver,
+	maxNodesDefault int,
+	httpUtils httputils.Utils,
+	historyMgr history.Manager,
+) *MergeHandler {
 	return &MergeHandler{
 		log:             l,
 		storage:         s,
@@ -53,6 +63,7 @@ func NewMergeHandler(l *logrus.Logger, s storage.ExemplarsMerger, dir http.FileS
 		stats:           stats,
 		maxNodesDefault: maxNodesDefault,
 		httpUtils:       httpUtils,
+		historyMgr:      historyMgr,
 	}
 }
 

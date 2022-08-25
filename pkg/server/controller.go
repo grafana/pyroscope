@@ -21,6 +21,7 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/sirupsen/logrus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
@@ -84,6 +85,7 @@ type Controller struct {
 	jwtTokenService service.JWTTokenService
 
 	scrapeManager *scrape.Manager
+	historyMgr    history.Manager
 }
 
 type Config struct {
@@ -102,6 +104,7 @@ type Config struct {
 	Adhoc adhocserver.Server
 
 	ScrapeManager *scrape.Manager
+	HistoryMgr    history.Manager
 }
 
 type StatsReceiver interface {
@@ -134,6 +137,10 @@ func New(c Config) (*Controller, error) {
 		}
 	}
 
+	if c.HistoryMgr == nil {
+		c.HistoryMgr = &history.NoopManager{}
+	}
+
 	ctrl := Controller{
 		config:    c.Configuration,
 		log:       c.Logger,
@@ -155,6 +162,7 @@ func New(c Config) (*Controller, error) {
 		adhoc:         c.Adhoc,
 		db:            c.DB,
 		scrapeManager: c.ScrapeManager,
+		historyMgr:    c.HistoryMgr,
 	}
 
 	var err error
@@ -273,6 +281,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			{"/labels", ctrl.labelsHandler()},
 			{"/label-values", ctrl.labelValuesHandler()},
 			{"/export", ctrl.exportHandler()},
+			{"/history", ctrl.historyHandler()},
 		}...)
 	}
 
