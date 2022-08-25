@@ -78,6 +78,10 @@ go/mod:
 	GO111MODULE=on go mod download
 	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod download
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod verify
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod tidy
+
 
 .PHONY: plugin/datasource/build
 plugin/datasource/build: $(BIN)/mage
@@ -85,6 +89,14 @@ plugin/datasource/build: $(BIN)/mage
 	yarn install && yarn build && \
 	$(BIN)/mage -v \
 
+.PHONY: plugin/flamegraph/build
+plugin/flamegraph/build:
+	pushd ./grafana/flamegraph && \
+	yarn install && yarn build
+
+.PHONY: start/grafana
+start/grafana: plugin/datasource/build plugin/flamegraph/build
+	./tools/grafana-fire
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
