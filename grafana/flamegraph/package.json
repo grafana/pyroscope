@@ -16,6 +16,7 @@
     "@grafana/runtime": "9.1.0",
     "@grafana/toolkit": "9.1.0",
     "@testing-library/dom": "8.13.0",
+    "@testing-library/jest-dom": "5.16.4",
     "@testing-library/react": "12.1.4",
     "@testing-library/user-event": "14.2.0",
     "@types/lodash": "4.14.181",

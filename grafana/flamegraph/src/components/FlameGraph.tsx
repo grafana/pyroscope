@@ -21,7 +21,7 @@ import React, { CSSProperties, useCallback, useEffect, useMemo, useRef, useState
 import { useWindowSize } from 'react-use';
 
 import { DataFrame } from '@grafana/data';
-import { colors, NO_DATA_COLOR, useStyles2 } from '@grafana/ui';
+import { colors, fuzzyMatch, useStyles2 } from '@grafana/ui';
 
 import {
   BAR_BORDER_WIDTH,
@@ -38,12 +38,22 @@ type Props = {
   topLevelIndex: number;
   rangeMin: number;
   rangeMax: number;
+  query: string;
   setTopLevelIndex: (level: number) => void;
   setRangeMin: (range: number) => void;
   setRangeMax: (range: number) => void;
 };
 
-const FlameGraph = ({ data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex, setRangeMin, setRangeMax }: Props) => {
+const FlameGraph = ({
+  data,
+  topLevelIndex,
+  rangeMin,
+  rangeMax,
+  query,
+  setTopLevelIndex,
+  setRangeMin,
+  setRangeMax,
+}: Props) => {
   const styles = useStyles2(getStyles);
 
   const levels = useLevels(data);
@@ -57,8 +67,8 @@ const FlameGraph = ({ data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex,
   // get the x coordinate of the bar i.e. where it starts on the vertical plane
   const getBarX = useCallback(
     (accumulatedTicks: number, pixelsPerTick: number) => {
-      const rangeTicks = totalTicks * rangeMin;
-      return (accumulatedTicks - rangeTicks) * pixelsPerTick;
+      // totalTicks * rangeMin is essentially the range of ticks for this bar
+      return (accumulatedTicks - totalTicks * rangeMin) * pixelsPerTick;
     },
     [rangeMin, totalTicks]
   );
@@ -85,28 +95,29 @@ const FlameGraph = ({ data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex,
         return;
       }
       let bars = [];
+      let level, barX, curBarTicks, collapsed, width, name, queryResult, intensity, h, l;
+      let style: CSSProperties;
 
       const graph = graphRef.current!;
       graph.style.height = PIXELS_PER_LEVEL * levels.length + 'px';
 
       for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
-        const level = levels[levelIndex];
+        level = levels[levelIndex];
 
         for (let barIndex = 0; barIndex < level.length; barIndex += STEP_OFFSET) {
-          const accumulatedBarTicks = level[barIndex];
-          let barX = getBarX(accumulatedBarTicks, pixelsPerTick);
+          // level[barIndex] is the accumulated bar ticks
+          barX = getBarX(level[barIndex], pixelsPerTick);
           if (barX + BAR_BORDER_WIDTH * 2 > graphRef.current!.clientWidth) {
             continue;
           }
-          const name = names[level[barIndex + NAME_OFFSET]];
-          let curBarTicks = level[barIndex + 1];
+          curBarTicks = level[barIndex + 1];
 
           // merge very small blocks into big "collapsed" ones for performance
-          const collapsed = curBarTicks * pixelsPerTick <= COLLAPSE_THRESHOLD;
+          collapsed = curBarTicks * pixelsPerTick <= COLLAPSE_THRESHOLD;
           if (collapsed) {
             while (
               barIndex < level.length - STEP_OFFSET &&
-              accumulatedBarTicks + curBarTicks === level[barIndex + STEP_OFFSET] &&
+              level[barIndex] + curBarTicks === level[barIndex + STEP_OFFSET] &&
               level[barIndex + STEP_OFFSET + 1] * pixelsPerTick <= COLLAPSE_THRESHOLD
             ) {
               barIndex += STEP_OFFSET;
@@ -114,7 +125,7 @@ const FlameGraph = ({ data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex,
             }
           }
 
-          let width = curBarTicks * pixelsPerTick;
+          width = curBarTicks * pixelsPerTick;
           if (barX < 0) {
             width = barX + width;
             barX = 0;
@@ -123,19 +134,26 @@ const FlameGraph = ({ data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex,
             continue;
           }
 
-          const style: CSSProperties = {
+          style = {
             left: barX,
             top: levelIndex * PIXELS_PER_LEVEL,
             width: width,
           };
 
           //  / (rangeMax - rangeMin) here so when you click a bar it will adjust the top (clicked)bar to the most 'intense' color
-          const intensity = Math.min(1, curBarTicks / totalTicks / (rangeMax - rangeMin));
-          const h = 50 - 50 * intensity;
-          const l = 65 + 7 * intensity;
+          intensity = Math.min(1, curBarTicks / totalTicks / (rangeMax - rangeMin));
+          h = 50 - 50 * intensity;
+          l = 65 + 7 * intensity;
+
+          name = names[level[barIndex + NAME_OFFSET]];
+          queryResult = query && fuzzyMatch(name.toLowerCase(), query.toLowerCase()).found;
 
           if (!collapsed) {
-            style['background'] = levelIndex > topLevelIndex - 1 ? getBarColor(h, l) : getBarColor(h, l + 15);
+            if (query) {
+              style['background'] = queryResult ? getBarColor(h, l) : colors[55];
+            } else {
+              style['background'] = levelIndex > topLevelIndex - 1 ? getBarColor(h, l) : getBarColor(h, l + 15);
+            }
             style['outline'] = BAR_BORDER_WIDTH + 'px solid ' + colors[55];
             bars.push(
               <div key={Math.random()} className={styles.bar} data-x={levelIndex} data-y={barIndex} style={style}>
@@ -143,7 +161,7 @@ const FlameGraph = ({ data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex,
               </div>
             );
           } else {
-            style['background'] = NO_DATA_COLOR;
+            style['background'] = queryResult ? getBarColor(h, l) : colors[55];
             bars.push(<div key={Math.random()} className={styles.bar} style={style}></div>);
           }
         }
@@ -151,7 +169,7 @@ const FlameGraph = ({ data, topLevelIndex, rangeMin, rangeMax, setTopLevelIndex,
 
       setBars(bars);
     },
-    [levels, getBarX, names, totalTicks, rangeMax, rangeMin, topLevelIndex, styles.bar]
+    [levels, getBarX, names, query, totalTicks, rangeMax, rangeMin, topLevelIndex, styles.bar]
   );
 
   useEffect(() => {
