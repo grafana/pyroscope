@@ -165,7 +165,6 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		buf.Write([]byte{';'})
 		s.walkStack(buf, it.uStack, it.pid, true)
 		s.walkStack(buf, it.kStack, 0, false)
-
 		err = cb(it.labels, buf.Bytes(), uint64(it.count), it.pid)
 		if err != nil {
 			return err
@@ -269,18 +268,19 @@ func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 		if ip == 0 {
 			break
 		}
-		sym, offset, module := s.symCache.bccResolve(pid, ip, s.roundNumber)
-		if !userspace && sym == "" {
+		sym := s.symCache.bccResolve(pid, ip, s.roundNumber)
+		if !userspace && sym.Name == "" {
 			continue
 		}
-		if sym == "" {
-			if module != "" {
-				sym = fmt.Sprintf("%s+0x%x", module, offset)
+		name := sym.Name
+		if sym.Name == "" {
+			if sym.Module != "" {
+				name = fmt.Sprintf("%s+0x%x", sym.Module, sym.Offset)
 			} else {
-				sym = "[unknown]"
+				name = "[unknown]"
 			}
 		}
-		stackFrames = append(stackFrames, sym+";")
+		stackFrames = append(stackFrames, name+";")
 	}
 	reverse(stackFrames)
 	for _, s := range stackFrames {

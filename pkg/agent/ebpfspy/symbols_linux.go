@@ -6,22 +6,16 @@
 //	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
+import "C"
 import (
-	"debug/elf"
+	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/symtab"
 	"github.com/pyroscope-io/pyroscope/pkg/util/genericlru"
 	"sync"
-	"unsafe"
 )
 
-/*
-#include "bcc_syms/bcc_syms.h"
-*/
-import "C"
-
-const symbolUnknown = "[unknown]"
-
 type symbolCacheEntry struct {
-	cache       unsafe.Pointer
+	symbolTable symtab.SymbolTable
 	roundNumber int
 }
 type pidKey uint32
@@ -33,7 +27,7 @@ type symbolCache struct {
 
 func newSymbolCache(cacheSize int) (*symbolCache, error) {
 	pid2Cache, err := genericlru.NewGenericLRU[pidKey, symbolCacheEntry](cacheSize, func(pid pidKey, e *symbolCacheEntry) {
-		C.bcc_free_symcache(e.cache, C.int(pid))
+		e.symbolTable.Close()
 	})
 	if err != nil {
 		return nil, err
@@ -43,34 +37,14 @@ func newSymbolCache(cacheSize int) (*symbolCache, error) {
 	}, nil
 }
 
-func (sc *symbolCache) bccResolve(pid uint32, addr uint64, roundNumber int) (string, uint64, string) {
-	symbol := C.struct_bcc_symbol{}
-	var symbolC = (*C.struct_bcc_symbol)(unsafe.Pointer(&symbol))
+func (sc *symbolCache) bccResolve(pid uint32, addr uint64, roundNumber int) symtab.Symbol {
 	e := sc.getOrCreateCacheEntry(pidKey(pid))
 	staleCheck := false
 	if roundNumber != e.roundNumber {
 		e.roundNumber = roundNumber
 		staleCheck = true
 	}
-	var res C.int
-	if pid == 0 {
-		res = C.bcc_symcache_resolve_no_demangle(e.cache, C.ulong(addr), symbolC, C.bool(staleCheck))
-	} else {
-		res = C.bcc_symcache_resolve(e.cache, C.ulong(addr), symbolC, C.bool(staleCheck))
-		defer C.bcc_symbol_free_demangle_name(symbolC)
-	}
-
-	if res < 0 {
-		if symbol.offset > 0 {
-			return "", uint64(symbol.offset), C.GoString(symbol.module)
-		}
-		return "", addr, ""
-	}
-	if pid == 0 {
-		return C.GoString(symbol.name), uint64(symbol.offset), C.GoString(symbol.module)
-	} else {
-		return C.GoString(symbol.demangle_name), uint64(symbol.offset), C.GoString(symbol.module)
-	}
+	return e.symbolTable.Resolve(addr, staleCheck)
 }
 
 func (sc *symbolCache) getOrCreateCacheEntry(pid pidKey) *symbolCacheEntry {
@@ -79,14 +53,13 @@ func (sc *symbolCache) getOrCreateCacheEntry(pid pidKey) *symbolCacheEntry {
 	if cache, ok := sc.pid2Cache.Get(pid); ok {
 		return cache
 	}
-	pidC := C.int(pid)
-	if pid == 0 {
-		pidC = C.int(-1) // for KSyms
+	var symbolTable symtab.SymbolTable
+	exe := fmt.Sprintf("/proc/%d/exe", pid)
+	symbolTable, err := symtab.NewGoSymbolTable(exe, int(pid), true)
+	if err != nil || symbolTable == nil {
+		symbolTable = symtab.NewBCCSymbolTable(int(pid))
 	}
-	symbolOpt := C.struct_bcc_symbol_option{use_symbol_type: C.uint(1 << elf.STT_FUNC)}
-	symbolOptC := (*C.struct_bcc_symbol_option)(unsafe.Pointer(&symbolOpt))
-	cache := C.bcc_symcache_new(pidC, symbolOptC)
-	e := &symbolCacheEntry{cache: cache}
+	e := &symbolCacheEntry{symbolTable: symbolTable}
 	sc.pid2Cache.Add(pid, e)
 	return e
 }
