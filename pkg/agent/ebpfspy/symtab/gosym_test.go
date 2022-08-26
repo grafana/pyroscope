@@ -1,3 +1,5 @@
+//go:build ebpfspy
+
 package symtab
 
 import (
@@ -26,6 +28,7 @@ func TestGoSymSelfTest(t *testing.T) {
 	if sym.Offset != uint64(ptr) {
 		t.Fatalf("Expected %d got %d", ptr, sym.Offset)
 	}
+	t.FailNow()
 }
 
 func TestPclntab18(t *testing.T) {
@@ -38,5 +41,31 @@ func TestPclntab18(t *testing.T) {
 	expected := uint64(0x4023a0)
 	if textStart != expected {
 		t.Fatalf("expected %d got %d", expected, textStart)
+	}
+}
+
+func BenchmarkGoSym(b *testing.B) {
+	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), false)
+	if len(gosym.tab.symbols) < 1000 {
+		b.FailNow()
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, symbol := range gosym.tab.symbols {
+			gosym.Resolve(symbol.Entry, false)
+		}
+	}
+}
+func BenchmarkBCC(b *testing.B) {
+	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), false)
+	bccsym := NewBCCSymbolTable(os.Getpid())
+	if len(gosym.tab.symbols) < 1000 {
+		b.FailNow()
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, symbol := range gosym.tab.symbols {
+			bccsym.Resolve(symbol.Entry, false)
+		}
 	}
 }

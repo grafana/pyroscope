@@ -1,3 +1,5 @@
+//go:build ebpfspy
+
 package symtab
 
 import (

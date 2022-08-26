@@ -1,3 +1,5 @@
+//go:build ebpfspy
+
 package symtab
 
 import (
@@ -13,7 +15,6 @@ type GoSymbolTable struct {
 	file         string
 	pid          int
 	tab          *SimpleSymbolTable
-	tab2         *gosym.Table
 	bcc          *BCCSymTable
 	withFallBack bool
 }
@@ -95,7 +96,6 @@ func NewGoSymbolTable(file string, pid int, withFallBack bool) (*GoSymbolTable, 
 		pid:          pid,
 		file:         file,
 		tab:          NewSimpleSymbolTable(es),
-		tab2:         table,
 		withFallBack: withFallBack,
 	}
 	return res, err
