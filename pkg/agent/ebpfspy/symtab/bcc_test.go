@@ -18,7 +18,7 @@ func TestGoSymBccFallback(t *testing.T) {
 	if !strings.Contains(res.Name, "malloc") {
 		t.FailNow()
 	}
-	if !strings.Contains(res.Name, "libc.so") {
+	if !strings.Contains(res.Module, "libc.so") {
 		t.FailNow()
 	}
 }
