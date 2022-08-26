@@ -98,7 +98,7 @@ jobs:
       - name: Build image
         run: make docker-image/grafana/build "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
-  build-push-and-deploy-image:
+  build-push:
     if: github.event_name == 'push' && github.repository == 'grafana/fire'
     runs-on: ubuntu-latest
     steps:
@@ -122,18 +122,8 @@ jobs:
         id: build-push
         run: |
           make docker-image/fire/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
-      - name: Grafana Build & push multi-arch image
-        id: build-push-grafana
-        run: |
-          make docker-image/grafana/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
-      - name: Deploy to fire-dev-001
-        run: |
-          git config --global url."https://grafanabot:${{ secrets.GRAFANABOT_PAT }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
-          make docker-image/fire/deploy-dev-001
-        env:
-          GITHUB_TOKEN: ${{ secrets.GRAFANABOT_PAT }}
 
-  build-push-and-deploy-image-grafana:
+  build-push-grafana:
     if: github.event_name == 'push' && github.repository == 'grafana/fire'
     runs-on: ubuntu-latest
     steps:
@@ -157,3 +147,15 @@ jobs:
         id: build-push-grafana
         run: |
           make docker-image/grafana/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+
+  deploy-fire-dev-001:
+    if: github.event_name == 'push' && github.repository == 'grafana/fire'
+    runs-on: ubuntu-latest
+    needs: [build-push, build-push-grafana]
+    steps:
+      - name: Deploy to fire-dev-001
+        run: |
+          git config --global url."https://grafanabot:${{ secrets.GRAFANABOT_PAT }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
+          make docker-image/fire/deploy-dev-001
+        env:
+          GITHUB_TOKEN: ${{ secrets.GRAFANABOT_PAT }}

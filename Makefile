@@ -163,6 +163,11 @@ define UPDATER_CONFIG_JSON
       "file_path": "ksonnet/environments/fire/dev-us-central-0.fire-dev-001/images.libsonnet",
       "jsonnet_key": "fire",
       "jsonnet_value": "$(IMAGE_PREFIX)fire:$(IMAGE_TAG)"
+    },
+	{
+      "file_path": "ksonnet/environments/fire/dev-us-central-0.fire-dev-001/images.libsonnet",
+      "jsonnet_key": "grafana",
+      "jsonnet_value": "$(IMAGE_PREFIX)grafana-fire:$(IMAGE_TAG)"
     }
   ]
 }
