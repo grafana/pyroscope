@@ -25,7 +25,6 @@ func TestGoSymSelfTest(t *testing.T) {
 	if sym.Offset != uint64(ptr) {
 		t.Fatalf("Expected %d got %d", ptr, sym.Offset)
 	}
-	t.FailNow()
 }
 
 func TestPclntab18(t *testing.T) {
