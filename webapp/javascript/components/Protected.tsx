@@ -4,6 +4,7 @@ import {
   loadCurrentUser,
   selectCurrentUser,
 } from '@webapp/redux/reducers/user';
+import { isAuthRequired } from '@webapp/util/features';
 import { useHistory, useLocation } from 'react-router-dom';
 
 export default function Protected({
@@ -15,7 +16,6 @@ export default function Protected({
   const currentUser = useAppSelector(selectCurrentUser);
   const history = useHistory();
   const location = useLocation();
-  const { isAuthRequired } = window as ShamefulAny;
 
   useEffect(() => {
     if (isAuthRequired) {

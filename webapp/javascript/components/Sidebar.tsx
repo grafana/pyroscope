@@ -29,7 +29,7 @@ import {
 } from '@webapp/redux/reducers/ui';
 // import useColorMode from '@webapp/hooks/colorMode.hook';
 import { useLocation, NavLink } from 'react-router-dom';
-import { isAdhocUIEnabled } from '@webapp/util/features';
+import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
@@ -49,8 +49,7 @@ export function SidebarComponent() {
 
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
-  // @todo: use `features` here
-  const authEnabled = (window as ShamefulAny).isAuthRequired;
+  const authEnabled = isAuthRequired;
 
   // the component doesn't seem to support setting up an active item
   // so we must set it up manually
@@ -263,7 +262,7 @@ export function SidebarComponent() {
               Github
             </a>
           </MenuItem>
-          {(window as ShamefulAny).isAuthRequired && (
+          {isAuthRequired && (
             <MenuItem
               onClick={() => signOut()}
               icon={<Icon icon={faSignOutAlt} />}

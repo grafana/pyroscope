@@ -58,16 +58,16 @@ func stopCPUProfile(hz uint32) {
 	custom_pprof.StopCPUProfile()
 }
 
-func Start(_ int, profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
+func Start(params spy.InitParams) (spy.Spy, error) {
 	s := &GoSpy{
 		stopCh:        make(chan struct{}),
 		buf:           &bytes.Buffer{},
-		profileType:   profileType,
-		disableGCRuns: disableGCRuns,
-		sampleRate:    sampleRate,
+		profileType:   params.ProfileType,
+		disableGCRuns: params.DisableGCRuns,
+		sampleRate:    params.SampleRate,
 	}
 	if s.profileType == spy.ProfileCPU {
-		if err := startCPUProfile(s.buf, sampleRate); err != nil {
+		if err := startCPUProfile(s.buf, params.SampleRate); err != nil {
 			return nil, err
 		}
 	}
@@ -81,7 +81,8 @@ func (s *GoSpy) Stop() error {
 }
 
 // TODO: this is not the most elegant solution as it creates global state
-//   the idea here is that we can reuse heap profiles
+//
+//	the idea here is that we can reuse heap profiles
 var (
 	lastProfileMutex     sync.Mutex
 	lastProfile          *tree.Profile

@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.19.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.2...@pyroscope/flamegraph@0.19.3) (2022-08-26)
+
+
+### Bug Fixes
+
+* **flamegraph:** fixed tooltip display with color blind palette ([#1442](https://github.com/pyroscope-io/pyroscope/issues/1442)) ([702ad8b](https://github.com/pyroscope-io/pyroscope/commit/702ad8b937aa05e12e4dc21114c63febd93bf4c2))
+
+
+
+
+
+## [0.19.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.1...@pyroscope/flamegraph@0.19.2) (2022-08-22)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.19.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.0...@pyroscope/flamegraph@0.19.1) (2022-08-22)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 # [0.19.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.18.6...@pyroscope/flamegraph@0.19.0) (2022-08-17)
 
 

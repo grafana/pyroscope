@@ -2,6 +2,8 @@ package agent
 
 import (
 	"fmt"
+	logger2 "github.com/pyroscope-io/pyroscope/pkg/agent/log"
+	"github.com/pyroscope-io/pyroscope/pkg/util/alignedticker"
 	"os"
 	"sync"
 	"time"
@@ -71,15 +73,15 @@ type ProfileSession struct {
 	noForkDetection  bool
 	pid              int
 
-	logger    Logger
+	logger    logger2.Logger
 	throttler *throttle.Throttler
 	stopOnce  sync.Once
 	stopCh    chan struct{}
 	trieMutex sync.Mutex
 
 	// these things do change:
-	appName   string
-	startTime time.Time
+	appName            string
+	startTimeTruncated time.Time
 
 	// these slices / maps keep track of processes, spies, and tries
 	// see comment about multiple dimensions above
@@ -93,7 +95,7 @@ type SpyFactory func(pid int) ([]spy.Spy, error)
 
 type SessionConfig struct {
 	upstream.Upstream
-	Logger
+	logger2.Logger
 	AppName          string
 	Tags             map[string]string
 	ProfilingTypes   []spy.ProfileType
@@ -153,7 +155,14 @@ func NewGenericSpyFactory(c SessionConfig) SpyFactory {
 		}
 
 		for _, pt := range c.ProfilingTypes {
-			s, err := sf(pid, pt, c.SampleRate, c.DisableGCRuns)
+			params := spy.InitParams{
+				Pid:           pid,
+				ProfileType:   pt,
+				SampleRate:    c.SampleRate,
+				DisableGCRuns: c.DisableGCRuns,
+				Logger:        c.Logger,
+			}
+			s, err := sf(params)
 
 			if err != nil {
 				return res, err
@@ -200,86 +209,111 @@ func mergeTagsWithAppName(appName string, tags map[string]string) (string, error
 	return k.Normalized(), nil
 }
 
-// revive:disable-next-line:cognitive-complexity complexity is fine
 func (ps *ProfileSession) takeSnapshots() {
-	ticker := time.NewTicker(time.Second / time.Duration(ps.sampleRate))
-	defer ticker.Stop()
+	var samplingCh <-chan time.Time
+	if ps.areSpiesResettable() {
+		samplingCh = make(chan time.Time) // will never fire
+	} else {
+		ticker := time.NewTicker(time.Second / time.Duration(ps.sampleRate))
+		defer ticker.Stop()
+		samplingCh = ticker.C
+	}
+	uploadTicker := alignedticker.NewAlignedTicker(ps.uploadRate)
+	defer uploadTicker.Stop()
 	for {
 		select {
-		case <-ticker.C:
-			isdueToReset := ps.isDueForReset()
-			// reset the profiler for spies every upload rate(10s), and before uploading, it needs to read profile data every sample rate
-			if isdueToReset {
-				for _, sarr := range ps.spies {
-					for _, s := range sarr {
-						if sr, ok := s.(spy.Resettable); ok {
-							sr.Reset()
-						}
-					}
-				}
-			}
-
-			ps.trieMutex.Lock()
-			pidsToRemove := []int{}
-			for pid, sarr := range ps.spies {
-				for i, s := range sarr {
-					labelsCache := map[string]string{}
-					err := s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64) error {
-						appName := ps.appName
-						if labels != nil {
-							if newAppName, ok := labelsCache[labels.ID()]; ok {
-								appName = newAppName
-							} else {
-								newAppName, err := mergeTagsWithAppName(appName, labels.Tags())
-								if err != nil {
-									return fmt.Errorf("error setting tags: %w", err)
-								}
-								appName = newAppName
-								labelsCache[labels.ID()] = appName
-							}
-						}
-						if len(stack) > 0 {
-							if _, ok := ps.tries[appName]; !ok {
-								ps.initializeTries(appName)
-							}
-							ps.tries[appName][i].Insert(stack, v, true)
-						}
-						return nil
-					})
-					if err != nil {
-						if pid >= 0 && !process.Exists(pid) {
-							ps.logger.Debugf("error taking snapshot: PID %d: process doesn't exist?", pid)
-							pidsToRemove = append(pidsToRemove, pid)
-						} else {
-							ps.throttler.Run(func(skipped int) {
-								if skipped > 0 {
-									ps.logger.Errorf("error taking snapshot: %v, %d messages skipped due to throttling", err, skipped)
-								} else {
-									ps.logger.Errorf("error taking snapshot: %v", err)
-								}
-							})
-						}
-					}
-				}
-			}
-			for _, pid := range pidsToRemove {
-				delete(ps.spies, pid)
-			}
-			ps.trieMutex.Unlock()
-
-			// upload the read data to server and reset the start time
-			if isdueToReset {
-				ps.reset()
-			}
-
+		case endTimeTruncated := <-uploadTicker.C:
+			ps.resetSpies()
+			ps.takeSnapshot()
+			ps.reset(endTimeTruncated)
+		case <-samplingCh:
+			ps.takeSnapshot()
 		case <-ps.stopCh:
-			// stop the spies
-			for _, sarr := range ps.spies {
-				for _, s := range sarr {
-					s.Stop()
+			ps.stopSpies()
+			return
+		}
+	}
+}
+
+func (ps *ProfileSession) stopSpies() {
+	for _, sarr := range ps.spies {
+		for _, s := range sarr {
+			s.Stop()
+		}
+	}
+}
+
+func (ps *ProfileSession) takeSnapshot() {
+	ps.trieMutex.Lock()
+	defer ps.trieMutex.Unlock()
+
+	pidsToRemove := []int{}
+	for pid, sarr := range ps.spies {
+		for i, s := range sarr {
+			labelsCache := map[string]string{}
+			err := s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64) error {
+				appName := ps.appName
+				if labels != nil {
+					if newAppName, ok := labelsCache[labels.ID()]; ok {
+						appName = newAppName
+					} else {
+						newAppName, err := mergeTagsWithAppName(appName, labels.Tags())
+						if err != nil {
+							return fmt.Errorf("error setting tags: %w", err)
+						}
+						appName = newAppName
+						labelsCache[labels.ID()] = appName
+					}
+				}
+				if len(stack) > 0 {
+					if _, ok := ps.tries[appName]; !ok {
+						ps.initializeTries(appName)
+					}
+					ps.tries[appName][i].Insert(stack, v, true)
+				}
+				return nil
+			})
+			if err != nil {
+				if pid >= 0 && !process.Exists(pid) {
+					ps.logger.Debugf("error taking snapshot: PID %d: process doesn't exist?", pid)
+					pidsToRemove = append(pidsToRemove, pid)
+				} else {
+					ps.throttler.Run(func(skipped int) {
+						if skipped > 0 {
+							ps.logger.Errorf("error taking snapshot: %v, %d messages skipped due to throttling", err, skipped)
+						} else {
+							ps.logger.Errorf("error taking snapshot: %v", err)
+						}
+					})
 				}
 			}
-			return
+		}
+	}
+	for _, pid := range pidsToRemove {
+		for _, s := range ps.spies[pid] {
+			s.Stop()
+		}
+		delete(ps.spies, pid)
+	}
+}
+
+func (ps *ProfileSession) areSpiesResettable() bool {
+	for _, sarr := range ps.spies {
+		for _, s := range sarr {
+			if _, ok := s.(spy.Resettable); ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (ps *ProfileSession) resetSpies() {
+	for _, sarr := range ps.spies {
+		for _, s := range sarr {
+			if sr, ok := s.(spy.Resettable); ok {
+				sr.Reset()
+			}
 		}
 	}
 }
@@ -345,7 +379,7 @@ func (ps *ProfileSession) RemoveTags(keys ...string) error {
 }
 
 func (ps *ProfileSession) Start() error {
-	ps.reset()
+	ps.reset(time.Now().Truncate(ps.uploadRate))
 
 	pid := ps.pid
 	spies, err := ps.initializeSpies(pid)
@@ -359,17 +393,9 @@ func (ps *ProfileSession) Start() error {
 	return nil
 }
 
-func (ps *ProfileSession) isDueForReset() bool {
-	// TODO: duration should be either taken from config or ideally passed from server
-	now := time.Now().Truncate(ps.uploadRate)
-	start := ps.startTime.Truncate(ps.uploadRate)
-
-	return !start.Equal(now)
-}
-
 // the difference between stop and reset is that reset stops current session
 // and then instantly starts a new one
-func (ps *ProfileSession) reset() {
+func (ps *ProfileSession) reset(endTimeTruncated time.Time) {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
@@ -383,14 +409,13 @@ func (ps *ProfileSession) reset() {
 		return
 	}
 
-	now := time.Now()
 	// upload the read data to server
-	if !ps.startTime.IsZero() {
-		ps.uploadTries(now)
+	if !ps.startTimeTruncated.IsZero() {
+		ps.uploadTries(endTimeTruncated)
 	}
 
 	// reset the start time
-	ps.startTime = now
+	ps.startTimeTruncated = endTimeTruncated
 
 	if ps.withSubprocesses {
 		ps.addSubprocesses()
@@ -405,18 +430,21 @@ func (ps *ProfileSession) Stop() {
 		// TODO: wait for stopCh consumer to finish!
 		close(ps.stopCh)
 		// before stopping, upload the tries
-		ps.uploadTries(time.Now())
+		if !ps.startTimeTruncated.IsZero() {
+			ps.uploadTries(ps.startTimeTruncated.Add(ps.uploadRate))
+		} // was never started
 	})
 }
 
-func (ps *ProfileSession) uploadTries(now time.Time) {
+func (ps *ProfileSession) uploadTries(endTimeTruncated time.Time) {
 	for name, tarr := range ps.tries {
 		for i, trie := range tarr {
 			profileType := ps.profileTypes[i]
 			skipUpload := false
 
 			if trie != nil {
-				endTime := now.Truncate(ps.uploadRate)
+				endTime := endTimeTruncated
+				startTime := endTime.Add(-ps.uploadRate)
 
 				uploadTrie := trie
 				if profileType.IsCumulative() {
@@ -433,7 +461,7 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 					nameWithSuffix, _ := addSuffix(name, profileType)
 					ps.upstream.Upload(&upstream.UploadJob{
 						Name:            nameWithSuffix,
-						StartTime:       ps.startTime,
+						StartTime:       startTime,
 						EndTime:         endTime,
 						SpyName:         ps.spyName,
 						SampleRate:      ps.sampleRate,

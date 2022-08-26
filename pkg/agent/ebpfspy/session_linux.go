@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"golang.org/x/sys/unix"
 	"sync"
@@ -29,6 +30,7 @@ import (
 import "C"
 
 type Session struct {
+	logger           log.Logger
 	pid              int
 	sampleRate       uint32
 	symbolCacheSize  int
@@ -53,8 +55,9 @@ type Session struct {
 
 const btf = "should not be used" // canary to detect we got relocations
 
-func NewSession(pid int, sampleRate uint32, symbolCacheSize int, serviceDiscovery sd.ServiceDiscovery, onlyServices bool) *Session {
+func NewSession(logger log.Logger, pid int, sampleRate uint32, symbolCacheSize int, serviceDiscovery sd.ServiceDiscovery, onlyServices bool) *Session {
 	return &Session{
+		logger:           logger,
 		pid:              pid,
 		sampleRate:       sampleRate,
 		symbolCacheSize:  symbolCacheSize,
@@ -102,6 +105,7 @@ func (s *Session) Start() error {
 }
 
 func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, pid uint32) error) error {
+	s.logger.Debugf("ebpf session reset")
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
@@ -149,7 +153,6 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		}
 		labels := s.serviceDiscovery.GetLabels(pid)
 		if labels == nil && s.onlyServices {
-			fmt.Printf("skipping %d %s\n", pid, comm)
 			continue
 		}
 		uStack := s.getStack(uStackID)
@@ -161,7 +164,7 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		buf.Write([]byte(it.comm))
 		buf.Write([]byte{';'})
 		s.walkStack(buf, it.uStack, it.pid, true)
-		s.walkStack(buf, it.kStack, it.pid, false)
+		s.walkStack(buf, it.kStack, 0, false)
 
 		err = cb(it.labels, buf.Bytes(), uint64(it.count), it.pid)
 		if err != nil {
@@ -266,12 +269,16 @@ func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 		if ip == 0 {
 			break
 		}
-		sym, _, _ := s.symCache.bccResolve(pid, ip, s.roundNumber)
+		sym, offset, module := s.symCache.bccResolve(pid, ip, s.roundNumber)
 		if !userspace && sym == "" {
 			continue
 		}
 		if sym == "" {
-			sym = symbolUnknown
+			if module != "" {
+				sym = fmt.Sprintf("%s+0x%x", module, offset)
+			} else {
+				sym = "[unknown]"
+			}
 		}
 		stackFrames = append(stackFrames, sym+";")
 	}

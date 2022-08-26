@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React from 'react';
 import { Switch, Route, useRouteMatch, NavLink } from 'react-router-dom';
 import Box from '@webapp/ui/Box';
@@ -8,6 +6,7 @@ import { faKey } from '@fortawesome/free-solid-svg-icons/faKey';
 import { faLock } from '@fortawesome/free-solid-svg-icons/faLock';
 import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
 import { faUserAlt } from '@fortawesome/free-solid-svg-icons/faUserAlt';
+import { faNetworkWired } from '@fortawesome/free-solid-svg-icons/faNetworkWired';
 import cx from 'classnames';
 import { useAppSelector } from '@webapp/redux/hooks';
 import { selectCurrentUser } from '@webapp/redux/reducers/user';
@@ -16,6 +15,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import Preferences from './Preferences';
 import Security from './Security';
 import Users from './Users';
+import Apps from './Apps';
 import ApiKeys from './APIKeys';
 
 import styles from './Settings.module.css';
@@ -26,8 +26,9 @@ function Settings() {
   const { path, url } = useRouteMatch();
   const currentUser = useAppSelector(selectCurrentUser);
 
-  const isAdmin = (user: User) => user && user.role === 'Admin';
-  const isExternal = (user: User) => user && user.isExternal;
+  const isAdmin = (user?: User) => user && user.role === 'Admin';
+  const isExternal = (user?: User) => user && user.isExternal;
+
   return (
     <div className="pyroscope-app">
       <h1>Settings</h1>
@@ -93,6 +94,20 @@ function Settings() {
                   <Icon icon={faKey} /> API keys
                 </NavLink>
               </li>
+              <li>
+                <NavLink
+                  to={`${url}/apps`}
+                  className={(isActive) =>
+                    cx({
+                      [styles.navLink]: true,
+                      [styles.navLinkActive]: isActive,
+                    })
+                  }
+                  data-testid="settings-appstab"
+                >
+                  <Icon icon={faNetworkWired} /> Apps
+                </NavLink>
+              </li>
             </>
           ) : null}
         </ul>
@@ -134,6 +149,12 @@ function Settings() {
               <>
                 <PageTitle title="Settings / Add API Key" />
                 <APIKeyAddForm />
+              </>
+            </Route>
+            <Route exact path={`${path}/apps`}>
+              <>
+                <PageTitle title="Settings / Apps" />
+                <Apps />
               </>
             </Route>
           </Switch>

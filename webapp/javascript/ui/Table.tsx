@@ -4,6 +4,7 @@ import clsx from 'clsx';
 
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './Table.module.scss';
+import LoadingSpinner from './LoadingSpinner';
 
 interface CustomProp {
   [k: string]: string | CSSProperties | ReactNode | number | undefined;
@@ -82,6 +83,7 @@ interface TableProps {
   table: Table;
   tableBodyRef?: RefObject<HTMLTableSectionElement>;
   className?: string;
+  isLoading?: boolean;
 }
 
 function Table({
@@ -91,9 +93,14 @@ function Table({
   table,
   tableBodyRef,
   className,
+  isLoading,
 }: TableProps) {
   const hasSort = sortByDirection && sortBy && updateSortParams;
-  return (
+  return isLoading ? (
+    <div className={styles.loadingSpinner}>
+      <LoadingSpinner />
+    </div>
+  ) : (
     <table
       className={clsx(styles.table, {
         [className || '']: className,

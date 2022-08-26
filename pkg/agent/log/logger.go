@@ -1,4 +1,4 @@
-package agent
+package log
 
 // Logger is an interface that library users can use
 // It is based on logrus, but much smaller — That's because we don't want library users to have to implement
