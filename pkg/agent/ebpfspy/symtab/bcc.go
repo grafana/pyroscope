@@ -47,9 +47,8 @@ func (t *BCCSymTable) Resolve(addr uint64, refresh bool) Symbol {
 	}
 	if t.pid == 0 {
 		return Symbol{C.GoString(symbol.name), C.GoString(symbol.module), uint64(symbol.offset)}
-	} else {
-		return Symbol{C.GoString(symbol.demangle_name), C.GoString(symbol.module), uint64(symbol.offset)}
 	}
+	return Symbol{C.GoString(symbol.demangle_name), C.GoString(symbol.module), uint64(symbol.offset)}
 }
 
 func (t *BCCSymTable) Close() {

@@ -29,7 +29,10 @@ func TestGoSymSelfTest(t *testing.T) {
 }
 
 func TestPclntab18(t *testing.T) {
-	s := "f0 ff ff ff 00 00 01 08 9a 05 00 00 00 00 00 00 bb 00 00 00 00 00 00 00 a0 23 40 00 00 00 00 00 60 00 00 00 00 00 00 00 c0 bb 00 00 00 00 00 00 c0 c3 00 00 00 00 00 00 c0 df 00 00 00 00 00 00"
+	s := "f0 ff ff ff 00 00 01 08 9a 05 00 00 00 00 00 00 " +
+		" bb 00 00 00 00 00 00 00 a0 23 40 00 00 00 00 00" +
+		" 60 00 00 00 00 00 00 00 c0 bb 00 00 00 00 00 00" +
+		" c0 c3 00 00 00 00 00 00 c0 df 00 00 00 00 00 00"
 	bs, _ := hex.DecodeString(strings.ReplaceAll(s, " ", ""))
 	textStart := parseRuntimeTextFromPclntab18(bs)
 	expected := uint64(0x4023a0)
