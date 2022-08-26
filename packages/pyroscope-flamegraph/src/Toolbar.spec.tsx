@@ -266,23 +266,15 @@ describe('ProfileHeader', () => {
     });
 
     it('updates to HEAD first', () => {
-      const toolbar = screen
-        .getByRole('toolbar')
-        .querySelector('.dropdownMenuButton') as HTMLElement;
-
-      toolbar.click();
-      screen.getByTestId(HeadMode).click();
+      screen.getByRole('button', { name: 'Fit Mode' }).click();
+      screen.getByRole('menuitem', { name: /Head/i }).click();
 
       expect(updateFitMode).toHaveBeenCalledWith(HeadMode);
     });
 
     it('updates to TAIL first', () => {
-      const toolbar = screen
-        .getByRole('toolbar')
-        .querySelector('.dropdownMenuButton') as HTMLElement;
-
-      toolbar.click();
-      screen.getByTestId(TailMode).click();
+      screen.getByRole('button', { name: 'Fit Mode' }).click();
+      screen.getByRole('menuitem', { name: /Tail/i }).click();
 
       expect(updateFitMode).toHaveBeenCalledWith(TailMode);
     });

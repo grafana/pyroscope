@@ -27,6 +27,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
       <button
         aria-expanded="false"
         aria-haspopup="true"
+        aria-label="Fit Mode"
         class="rc-menu-button dropdownMenuButton fitModeDropdownLarge"
         type="button"
       >
@@ -180,6 +181,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       <button
         aria-expanded="false"
         aria-haspopup="true"
+        aria-label="Fit Mode"
         class="rc-menu-button dropdownMenuButton fitModeDropdownSmall"
         type="button"
       >

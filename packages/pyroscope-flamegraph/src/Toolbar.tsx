@@ -283,6 +283,7 @@ function FitMode({
   return (
     <Dropdown
       label={texts.label}
+      ariaLabel="Fit Mode"
       value={texts[fitMode]}
       onItemClick={(event) => updateFitMode(event.value as typeof fitMode)}
       menuButtonClassName={menuButtonClassName}
