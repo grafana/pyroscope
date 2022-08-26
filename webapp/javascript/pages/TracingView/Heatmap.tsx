@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 // import Color from 'color';
 // import globalTemperatureJSON from './global-temperature.json';
 
-import './heatmap.scss';
+import styles from './Heatmap.module.scss';
 
 // /api/exemplars/{profile_id} reponse
 const START_TIME = ''; // x start (unix)
@@ -129,8 +129,9 @@ function HeatMap() {
     ));
 
   return (
-    <div ref={heatmapRef} className="heatmap-container">
-      <svg className="heatmap-svg" height={HEATMAP_HEIGHT}>
+    <div ref={heatmapRef} className={styles.heatmapContainer}>
+      <XAxis />
+      <svg className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
         {generateHeatmapGrid()}
         <foreignObject height={HEATMAP_HEIGHT}>
           <canvas
@@ -140,8 +141,21 @@ function HeatMap() {
           />
         </foreignObject>
       </svg>
+      <YAxis />
     </div>
   );
+}
+
+function XAxis() {
+  return (
+    <div className={styles.xaxis} style={{ height: HEATMAP_HEIGHT + 3 }}>
+      {/* x axis values */}
+    </div>
+  );
+}
+
+function YAxis() {
+  return <div className={styles.yaxis}>{/* y axis values */}</div>;
 }
 
 export default HeatMap;

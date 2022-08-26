@@ -1,0 +1,29 @@
+$svg-side-margin: 25px;
+$axis-width: 3px;
+
+.heatmapContainer {
+  position: relative;
+  width: calc(100% - $svg-side-margin * 2);
+  margin: auto;
+
+  .heatmapSvg {
+    width: 100%;
+
+    foreignObject {
+      width: 100%;
+    }
+  }
+
+  .xaxis {
+    left: -$axis-width;
+    position: absolute;
+    // change color
+    border-right: $axis-width solid yellowgreen;
+  }
+
+  .yaxis {
+    width: 100%;
+    // change color
+    border-bottom: $axis-width solid yellowgreen;
+  }
+}
