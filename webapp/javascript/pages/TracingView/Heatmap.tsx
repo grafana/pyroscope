@@ -1,183 +1,145 @@
-import React, { useState, Dispatch, SetStateAction } from 'react';
-import Color from 'color';
-import type { ApexOptions } from 'apexcharts';
-import Chart from 'react-apexcharts';
-import globalTemperatureJSON from './global-temperature.json';
+import React, { useState, useRef, useEffect } from 'react';
+// import Color from 'color';
+// import globalTemperatureJSON from './global-temperature.json';
 
-const getOptions = (setClickedItemCoord: Dispatch<SetStateAction<string>>) => ({
-  // to not edit cells color when hover or active (clicked)
-  states: {
-    hover: {
-      filter: {
-        type: 'none',
-      },
-    },
-    active: {
-      filter: {
-        type: 'none',
-      },
-    },
-  },
-  chart: {
-    toolbar: {
-      show: false,
-    },
-    events: {
-      // todo: fix types
-      // any type is from lib definitions
-      click: (e: any, _: any, config: any) => {
-        const el = e.target;
+import './heatmap.scss';
 
-        // handle empty cells click
-        if (el.getAttribute('val') !== '0') {
-          const seriesIndex = parseInt(el.getAttribute('i'));
-          const dataPointIndex = parseInt(el.getAttribute('j'));
+// /api/exemplars/{profile_id} reponse
+const START_TIME = ''; // x start (unix)
+const END_TIME = ''; // x end (unix)
+const MIN_VALUE = 0; // min heatmap value (for color) should be white color
+const MAX_VALUE = 100; // max heatmap value (for color) should be the darkest color
+const HEATMAP_HEIGHT = 250;
+const VALUE_BUCKETS = 20;
+const TIME_BUCKETS = 120;
+const COLUMNS = (() =>
+  Array(VALUE_BUCKETS)
+    .fill(Array(TIME_BUCKETS).fill(1))
+    .map((col, colIndex) =>
+      col.map((_: number, index: number) =>
+        (index + colIndex) % 2 == 0 ? 'purple' : 'white'
+      )
+    ))();
 
-          setClickedItemCoord(`
-            ${config.globals.seriesNames[seriesIndex]},
-            ${config.globals.labels[dataPointIndex]}
-          `);
-        }
-      },
-    },
-  },
-  dataLabels: {
-    enabled: false,
-  },
-  colors: ['#9C27B0'],
-  tooltip: {
-    enabled: false,
-  },
-  grid: {
-    show: false,
-  },
-  useFillColorAsStroke: true,
-  plotOptions: {
-    heatmap: {
-      radius: 0,
-      useFillColorAsStroke: true,
-    },
-  },
-  yaxis: {
-    axisTicks: {
-      show: true,
-      // add color mode
-      color: Color('grey').toString(),
-      offsetX: 2,
-      offsetY: 1,
-    },
-    axisBorder: {
-      show: true,
-      color: Color('grey').toString(),
-      offsetX: -2,
-    },
-    labels: {
-      // value is buckets
-      formatter: (value: number): string => {
-        return value ? value / 1000 + 'K' : '';
-      },
-      style: {
-        // add color mode
-        colors: Color('white').toString(),
-      },
-    },
-  },
-  xaxis: {
-    tickAmount: 8,
-    labels: {
-      // value is timestamp
-      formatter: (value: string): string => {
-        return value + 'mock time';
-      },
-      style: {
-        // add color mode
-        colors: Color('white').toString(),
-      },
-    },
-    axisTicks: {
-      color: Color('grey').toString(),
-      offsetX: -1,
-    },
-    axisBorder: {
-      color: Color('grey').toString(),
-      offsetX: -1,
-    },
-  },
-});
-
-const getApexSeriesFromMockJson = (): ApexOptions['series'] => {
-  return globalTemperatureJSON.monthlyVariance.reduce(
-    (acc, { year, month, variance }) => {
-      if (acc[month - 1]) {
-        acc[month - 1].data.push({
-          x: year.toString(),
-          y: (variance > 0 ? variance * 10 : 0).toString(),
-        });
-      } else {
-        acc[month - 1] = {
-          name: (month * 1000).toString(),
-          data: [
-            {
-              x: year.toString(),
-              y: (variance > 0 ? variance * 10 : 0).toString(),
-            },
-          ],
-        };
-      }
-      return acc;
-    },
-    new Array(12)
-  );
-};
-
-const oneSeries = {
-  name: '8000', // bucket duration (yaxis)
-  data: [
-    { x: '1', y: '0' }, // x is timestamp, y is number of items in the bucket
-    { x: '2', y: '10' },
-    { x: '3', y: '0' },
-    { x: '4', y: '15' },
-    { x: '5', y: '0' },
-    { x: '6', y: '20' },
-  ],
-};
-const twoSeries = {
-  name: '8500',
-  data: [
-    { x: '1', y: '10' },
-    { x: '2', y: '20' },
-    { x: '3', y: '30' },
-    { x: '4', y: '55' },
-    { x: '5', y: '6' },
-    { x: '6', y: '20' },
-  ],
-};
-const threeSeries = {
-  name: '18500',
-  data: [
-    { x: '1', y: '0' },
-    { x: '2', y: '0' },
-    { x: '3', y: '33' },
-    { x: '4', y: '11' },
-    { x: '5', y: '0' },
-    { x: '6', y: '10' },
-  ],
-};
+type SelectedAreaCoords = Record<'x' | 'y', number> | null;
+let startCoords: SelectedAreaCoords = null;
+let endCoords: SelectedAreaCoords = null;
 
 function HeatMap() {
-  const [lastClickedItem, setLastClickedItem] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const heatmapRef = useRef<HTMLDivElement>(null);
+  const [isSelecting, setSelectingStatus] = useState(false);
+  const [heatmapWidth, setHeatmapWith] = useState(0);
+
+  const startDrawing = (e: MouseEvent) => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const { left, top } = canvas.getBoundingClientRect();
+      setSelectingStatus(true);
+      startCoords = { x: e.clientX - left, y: e.clientY - top };
+    }
+  };
+
+  const endDrawing = (e: MouseEvent) => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const { left, top } = canvas.getBoundingClientRect();
+      setSelectingStatus(false);
+      endCoords = { x: e.clientX - left, y: e.clientY - top };
+    }
+  };
+
+  const drawRect = (e: MouseEvent) => {
+    if (isSelecting && canvasRef.current && startCoords) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+      const { left, top } = canvas.getBoundingClientRect();
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#FF0';
+      ctx.strokeStyle = '#FAD02C';
+      ctx.globalAlpha = 0.5;
+
+      // e.clientX - left/e.clientY - top - coordinates of cursor inside canvas
+      const width = e.clientX - left - startCoords.x;
+      const h = e.clientY - top - startCoords.y;
+
+      ctx.fillRect(startCoords.x, startCoords.y, width, h);
+      ctx.strokeRect(startCoords.x, startCoords.y, width, h);
+    }
+  };
+
+  // add events to draw selected area
+  useEffect(() => {
+    const canvas = document.getElementById('selectionCanvas');
+    if (canvas) {
+      canvas.addEventListener('mousedown', startDrawing);
+      canvas.addEventListener('mousemove', drawRect);
+      canvas.addEventListener('mouseup', endDrawing);
+      canvas.addEventListener('mouseout', endDrawing);
+    }
+
+    return () => {
+      canvas?.removeEventListener('mousedown', startDrawing);
+      canvas?.removeEventListener('mousemove', drawRect);
+      canvas?.addEventListener('mouseup', endDrawing);
+      canvas?.addEventListener('mouseout', endDrawing);
+    };
+  }, [startDrawing, drawRect, endDrawing]);
+
+  // to resize canvas
+  useEffect(() => {
+    if (heatmapRef.current) {
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentBoxSize) {
+            // Firefox implements `contentBoxSize` as a single content rect, rather than an array
+            const contentBoxSize = Array.isArray(entry.contentBoxSize)
+              ? entry.contentBoxSize[0]
+              : entry.contentBoxSize;
+
+            (canvasRef.current as HTMLCanvasElement).width =
+              contentBoxSize.inlineSize;
+            setHeatmapWith(contentBoxSize.inlineSize);
+          }
+        }
+      });
+      resizeObserver.observe(heatmapRef.current);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, []);
+
+  const generateHeatmapGrid = () =>
+    COLUMNS.map((column, colIndex) => (
+      <g key={colIndex}>
+        {column.map((color: string, cellIndex: number) => (
+          <rect
+            fill={color}
+            key={cellIndex}
+            x={cellIndex * (heatmapWidth / TIME_BUCKETS)}
+            y={colIndex * (HEATMAP_HEIGHT / VALUE_BUCKETS)}
+            width={heatmapWidth / TIME_BUCKETS}
+            height={HEATMAP_HEIGHT / VALUE_BUCKETS}
+          />
+        ))}
+      </g>
+    ));
 
   return (
-    <div>
-      <Chart
-        type="heatmap"
-        // series={[oneSeries, twoSeries, threeSeries]}
-        series={getApexSeriesFromMockJson()}
-        options={getOptions(setLastClickedItem)}
-        height={300}
-      />
-      <br />
-      {lastClickedItem && <h4>last clicked item(x, y): {lastClickedItem}</h4>}
+    <div ref={heatmapRef} className="heatmap-container">
+      <svg className="heatmap-svg" height={HEATMAP_HEIGHT}>
+        {generateHeatmapGrid()}
+        <foreignObject height={HEATMAP_HEIGHT}>
+          <canvas
+            id="selectionCanvas"
+            ref={canvasRef}
+            height={HEATMAP_HEIGHT}
+          />
+        </foreignObject>
+      </svg>
     </div>
   );
 }

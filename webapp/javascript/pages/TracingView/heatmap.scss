@@ -1,0 +1,15 @@
+$svg-side-margin: 25px;
+
+.heatmap-container {
+  position: relative;
+  width: calc(100% - $svg-side-margin * 2);
+  margin: auto;
+
+  .heatmap-svg {
+    width: 100%;
+
+    foreignObject {
+      width: 100%;
+    }
+  }
+}
