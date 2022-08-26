@@ -1,5 +1,4 @@
 //go:build ebpfspy
-// +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF. It is a rough copy of profile.py from BCC tools:
 //
