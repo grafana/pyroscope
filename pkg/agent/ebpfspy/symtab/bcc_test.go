@@ -12,7 +12,7 @@ func TestGoSymBccFallback(t *testing.T) {
 	bcc := func() SymbolTable {
 		return NewBCCSymbolTable(os.Getpid())
 	}
-	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), &bcc)
+	gosym, _ := NewGoSymbolTable("/proc/self/exe", &bcc)
 	malloc := testHelperGetMalloc()
 	res := gosym.Resolve(uint64(malloc), false)
 	if !strings.Contains(res.Name, "malloc") {
@@ -23,7 +23,7 @@ func TestGoSymBccFallback(t *testing.T) {
 	}
 }
 func BenchmarkBCC(b *testing.B) {
-	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), nil)
+	gosym, _ := NewGoSymbolTable("/proc/self/exe", nil)
 	bccsym := NewBCCSymbolTable(os.Getpid())
 	if len(gosym.tab.symbols) < 1000 {
 		b.FailNow()

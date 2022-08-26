@@ -17,7 +17,7 @@ type GoSymbolTable struct {
 	fallbackTable SymbolTable
 }
 
-func NewGoSymbolTable(file string, pid int, fallback *func() SymbolTable) (*GoSymbolTable, error) {
+func NewGoSymbolTable(file string, fallback *func() SymbolTable) (*GoSymbolTable, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err

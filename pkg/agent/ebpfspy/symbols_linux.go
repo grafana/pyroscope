@@ -58,7 +58,7 @@ func (sc *symbolCache) getOrCreateCacheEntry(pid pidKey) *symbolCacheEntry {
 	bcc := func() symtab.SymbolTable {
 		return symtab.NewBCCSymbolTable(int(pid))
 	}
-	symbolTable, err := symtab.NewGoSymbolTable(exe, int(pid), &bcc)
+	symbolTable, err := symtab.NewGoSymbolTable(exe, &bcc)
 	if err != nil || symbolTable == nil {
 		symbolTable = bcc()
 	}

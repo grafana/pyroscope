@@ -2,7 +2,6 @@ package symtab
 
 import (
 	"encoding/hex"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,7 +10,7 @@ import (
 func TestGoSymSelfTest(t *testing.T) {
 	var ptr = reflect.ValueOf(TestGoSymSelfTest).Pointer()
 	mod := "/proc/self/exe"
-	symtab, err := NewGoSymbolTable(mod, os.Getpid(), nil)
+	symtab, err := NewGoSymbolTable(mod, nil)
 	if err != nil {
 		t.Fatalf("failed to create symtab %v", err)
 	}
@@ -43,7 +42,7 @@ func TestPclntab18(t *testing.T) {
 }
 
 func BenchmarkGoSym(b *testing.B) {
-	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), nil)
+	gosym, _ := NewGoSymbolTable("/proc/self/exe", nil)
 	if len(gosym.tab.symbols) < 1000 {
 		b.FailNow()
 	}
