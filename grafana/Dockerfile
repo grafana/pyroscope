@@ -5,14 +5,14 @@ ENV NODE_OPTIONS=--max_old_space_size=8000
 WORKDIR /grafana
 
 COPY grafana/fire-datasource/package.json grafana/fire-datasource/README.md grafana/fire-datasource/.prettierrc.js grafana/fire-datasource/tsconfig.json grafana/fire-datasource/yarn.lock  fire-datasource/
-COPY grafana/fire-datasource/src/ fire-datasource/src/
 RUN cd fire-datasource && yarn install
 
 COPY grafana/flamegraph/package.json grafana/flamegraph/README.md  grafana/flamegraph/.prettierrc.js grafana/flamegraph/tsconfig.json grafana/flamegraph/yarn.lock  flamegraph/
-COPY grafana/flamegraph/src/ flamegraph/src/
 RUN cd flamegraph && yarn install
 
 ENV NODE_ENV production
+COPY grafana/fire-datasource/src/ fire-datasource/src/
+COPY grafana/flamegraph/src/ flamegraph/src/
 RUN cd fire-datasource && yarn build
 RUN cd flamegraph && yarn build
 
