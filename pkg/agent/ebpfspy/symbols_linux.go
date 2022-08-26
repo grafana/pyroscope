@@ -55,9 +55,12 @@ func (sc *symbolCache) getOrCreateCacheEntry(pid pidKey) *symbolCacheEntry {
 	}
 	var symbolTable symtab.SymbolTable
 	exe := fmt.Sprintf("/proc/%d/exe", pid)
-	symbolTable, err := symtab.NewGoSymbolTable(exe, int(pid), true)
+	bcc := func() symtab.SymbolTable {
+		return symtab.NewBCCSymbolTable(int(pid))
+	}
+	symbolTable, err := symtab.NewGoSymbolTable(exe, int(pid), &bcc)
 	if err != nil || symbolTable == nil {
-		symbolTable = symtab.NewBCCSymbolTable(int(pid))
+		symbolTable = bcc()
 	}
 	e := &symbolCacheEntry{symbolTable: symbolTable}
 	sc.pid2Cache.Add(pid, e)

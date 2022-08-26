@@ -1,5 +1,3 @@
-//go:build ebpfspy
-
 package symtab
 
 import (
@@ -12,35 +10,14 @@ import (
 )
 
 type GoSymbolTable struct {
-	file         string
-	pid          int
-	tab          *SimpleSymbolTable
-	bcc          *BCCSymTable
-	withFallBack bool
+	file string
+	tab  *SimpleSymbolTable
+	// for non go symbols
+	fallback      *func() SymbolTable
+	fallbackTable SymbolTable
 }
 
-func (g *GoSymbolTable) Resolve(addr uint64, refresh bool) Symbol {
-	sym := g.tab.Resolve(addr)
-
-	if sym != "" {
-		return Symbol{Name: sym, Module: g.file, Offset: addr}
-	}
-	if !g.withFallBack {
-		return Symbol{"", "", addr}
-	}
-	if g.bcc == nil {
-		g.bcc = NewBCCSymbolTable(g.pid)
-	}
-	return g.bcc.Resolve(addr, refresh)
-}
-
-func (g *GoSymbolTable) Close() {
-	if g.bcc != nil {
-		g.bcc.Close()
-	}
-}
-
-func NewGoSymbolTable(file string, pid int, withFallBack bool) (*GoSymbolTable, error) {
+func NewGoSymbolTable(file string, pid int, fallback *func() SymbolTable) (*GoSymbolTable, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -93,12 +70,32 @@ func NewGoSymbolTable(file string, pid int, withFallBack bool) (*GoSymbolTable, 
 		es = append(es, SimpleSymbolTableEntry{Entry: fun.Entry, End: fun.End, Name: fun.Name})
 	}
 	res := &GoSymbolTable{
-		pid:          pid,
-		file:         file,
-		tab:          NewSimpleSymbolTable(es),
-		withFallBack: withFallBack,
+		file:     file,
+		tab:      NewSimpleSymbolTable(es),
+		fallback: fallback,
 	}
 	return res, err
+}
+
+func (g *GoSymbolTable) Resolve(addr uint64, refresh bool) Symbol {
+	sym := g.tab.Resolve(addr)
+
+	if sym != "" {
+		return Symbol{Name: sym, Module: g.file, Offset: addr}
+	}
+	if g.fallback == nil {
+		return Symbol{"", "", addr}
+	}
+	if g.fallbackTable == nil {
+		g.fallbackTable = (*g.fallback)()
+	}
+	return g.fallbackTable.Resolve(addr, refresh)
+}
+
+func (g *GoSymbolTable) Close() {
+	if g.fallbackTable != nil {
+		g.fallbackTable.Close()
+	}
 }
 
 func parseRuntimeTextFromPclntab18(pclntab []byte) uint64 {

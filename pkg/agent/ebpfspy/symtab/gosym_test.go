@@ -13,7 +13,7 @@ import (
 func TestGoSymSelfTest(t *testing.T) {
 	var ptr = reflect.ValueOf(TestGoSymSelfTest).Pointer()
 	mod := "/proc/self/exe"
-	symtab, err := NewGoSymbolTable(mod, os.Getpid(), false)
+	symtab, err := NewGoSymbolTable(mod, os.Getpid(), nil)
 	if err != nil {
 		t.Fatalf("failed to create symtab %v", err)
 	}
@@ -45,7 +45,7 @@ func TestPclntab18(t *testing.T) {
 }
 
 func BenchmarkGoSym(b *testing.B) {
-	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), false)
+	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), nil)
 	if len(gosym.tab.symbols) < 1000 {
 		b.FailNow()
 	}
@@ -53,19 +53,6 @@ func BenchmarkGoSym(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, symbol := range gosym.tab.symbols {
 			gosym.Resolve(symbol.Entry, false)
-		}
-	}
-}
-func BenchmarkBCC(b *testing.B) {
-	gosym, _ := NewGoSymbolTable("/proc/self/exe", os.Getpid(), false)
-	bccsym := NewBCCSymbolTable(os.Getpid())
-	if len(gosym.tab.symbols) < 1000 {
-		b.FailNow()
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		for _, symbol := range gosym.tab.symbols {
-			bccsym.Resolve(symbol.Entry, false)
 		}
 	}
 }
