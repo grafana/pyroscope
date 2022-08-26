@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-// import Color from 'color';
+import Color from 'color';
 // import globalTemperatureJSON from './global-temperature.json';
 
 import styles from './Heatmap.module.scss';
 
-// /api/exemplars/{profile_id} reponse
+// /api/exemplars/{profile_id} mock reponse
 const START_TIME = ''; // x start (unix)
 const END_TIME = ''; // x end (unix)
 const MIN_VALUE = 0; // min heatmap value (for color) should be white color
@@ -12,14 +12,20 @@ const MAX_VALUE = 100; // max heatmap value (for color) should be the darkest co
 const HEATMAP_HEIGHT = 250;
 const VALUE_BUCKETS = 20;
 const TIME_BUCKETS = 120;
-const COLUMNS = (() =>
-  Array(VALUE_BUCKETS)
-    .fill(Array(TIME_BUCKETS).fill(1))
-    .map((col, colIndex) =>
-      col.map((_: number, index: number) =>
-        (index + colIndex) % 2 == 0 ? 'purple' : 'white'
-      )
-    ))();
+const COLUMNS = Array(VALUE_BUCKETS)
+  .fill(Array(TIME_BUCKETS).fill(1))
+  .map((col, colIndex) =>
+    col.map((_: number, index: number) => {
+      const color = Math.random() * 255;
+
+      return {
+        fill:
+          color > 200 ? Color.rgb(10, color, color).toString() : Color('white'),
+        y: colIndex,
+        x: index,
+      };
+    })
+  );
 
 type SelectedAreaCoords = Record<'x' | 'y', number> | null;
 let startCoords: SelectedAreaCoords = null;
@@ -49,6 +55,7 @@ function HeatMap() {
     }
   };
 
+  // draw selection area
   const drawRect = (e: MouseEvent) => {
     if (isSelecting && canvasRef.current && startCoords) {
       const canvas = canvasRef.current;
@@ -70,6 +77,7 @@ function HeatMap() {
   };
 
   // add events to draw selected area
+  // todo: add area selection when cursor goes over heatmap
   useEffect(() => {
     const canvas = document.getElementById('selectionCanvas');
     if (canvas) {
@@ -112,12 +120,37 @@ function HeatMap() {
     }
   }, []);
 
+  // todo: redraw selected area after resize
+  // useEffect(() => {
+  // }, []);
+
+  useEffect(() => {
+    if (startCoords && endCoords) {
+      const cellW = heatmapWidth / TIME_BUCKETS;
+      const cellH = HEATMAP_HEIGHT / VALUE_BUCKETS;
+
+      // if selection area hits element - it's starting point
+      const matrixCoordinates = {
+        xStart: Math.trunc(startCoords.x / cellW),
+        yStart: Math.trunc(startCoords.y / cellH),
+        xEnd: Math.trunc(endCoords.x / cellW),
+        yEnd: Math.trunc(endCoords.y / cellH),
+      };
+
+      console.log(matrixCoordinates);
+    }
+    // escape heatmapWidth dep to redraw selected area after resize
+  }, [startCoords, endCoords, heatmapWidth]);
+
   const generateHeatmapGrid = () =>
     COLUMNS.map((column, colIndex) => (
       <g key={colIndex}>
-        {column.map((color: string, cellIndex: number) => (
+        {column.map(({ fill, x, y }: any, cellIndex: number) => (
           <rect
-            fill={color}
+            data-x={x}
+            data-y={y}
+            onClick={() => console.log(x, y)}
+            fill={fill}
             key={cellIndex}
             x={cellIndex * (heatmapWidth / TIME_BUCKETS)}
             y={colIndex * (HEATMAP_HEIGHT / VALUE_BUCKETS)}
@@ -130,6 +163,8 @@ function HeatMap() {
 
   return (
     <div ref={heatmapRef} className={styles.heatmapContainer}>
+      y coordinates goes from top to bottom
+      <br />
       <XAxis />
       <svg className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
         {generateHeatmapGrid()}
