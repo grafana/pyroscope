@@ -19,10 +19,11 @@ endif
 
 ALL_SPIES = ebpfspy,rbspy,pyspy,dotnetspy,debugspy
 ifeq ("$(OS)", "Linux")
-	ENABLED_SPIES ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
+	ENABLED_SPIES_RELEASE ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
 else
-	ENABLED_SPIES ?= rbspy,pyspy,dotnetspy
+	ENABLED_SPIES_RELEASE ?= rbspy,pyspy,dotnetspy
 endif
+ENABLED_SPIES ?= none
 
 ifeq ("$(OS)", "Linux")
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies build-phpspy-dependencies"
@@ -124,7 +125,7 @@ build: ## Builds the binary
 
 .PHONY: build-release
 build-release: embedded-assets ## Builds the release build
-	EXTRA_GO_TAGS=,embedassets $(MAKE) build
+	EXTRA_GO_TAGS=,embedassets,$(ENABLED_SPIES_RELEASE) $(MAKE) build
 
 .PHONY: build-panel
 build-panel:
