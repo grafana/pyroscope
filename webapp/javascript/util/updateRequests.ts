@@ -13,39 +13,32 @@ export function buildRenderURL(
   fromOverride?: string,
   untilOverride?: string
 ) {
-  let { from, until, query } = state;
+  const url = new URL('render', location.href);
 
-  if (fromOverride) {
-    from = fromOverride;
-  }
+  const params = url.searchParams;
+  params.set('from', fromOverride || state.from);
+  params.set('until', untilOverride || state.until);
+  state.refreshToken && params.set('refreshToken', state.refreshToken);
+  state.maxNodes && params.set('max-nodes', String(state.maxNodes));
+  state.groupBy && params.set('groupBy', state.groupBy);
+  state.groupByValue && params.set('groupByValue', state.groupByValue);
 
-  if (untilOverride) {
-    until = untilOverride;
-  }
+  return url.toString();
+}
 
-  let url = `render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(
-    until
-  )}`;
+export function buildRenderFromQueryIDURL(state: {
+  queryID: string;
+  refreshToken?: string;
+  maxNodes?: string | number;
+}) {
+  const url = new URL('merge', location.href);
 
-  url += `&query=${encodeURIComponent(query)}`;
+  const params = url.searchParams;
+  params.set('queryID', state.queryID);
+  state.refreshToken && params.set('refreshToken', state.refreshToken);
+  state.maxNodes && params.set('max-nodes', String(state.maxNodes));
 
-  if (state.refreshToken) {
-    url += `&refreshToken=${state.refreshToken}`;
-  }
-
-  if (state.maxNodes) {
-    url += `&max-nodes=${state.maxNodes}`;
-  }
-
-  if (state.groupBy) {
-    url += `&groupBy=${state.groupBy}`;
-  }
-
-  if (state.groupByValue) {
-    url += `&groupByValue=${state.groupByValue}`;
-  }
-
-  return url;
+  return url.toString();
 }
 
 // TODO: merge buildRenderURL and buildDiffRenderURL

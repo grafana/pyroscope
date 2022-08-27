@@ -3,8 +3,11 @@ package history
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
@@ -23,21 +26,22 @@ type Entry struct {
 	ID               QueryID
 	Type             EntryType
 	URL              string
-	Referrer         string
+	Referer          string
 	Timestamp        time.Time
+	AppName          string
+	StartTime        time.Time
+	EndTime          time.Time
 	Profiles         []string
-	UserID           uint
+	UserID           string
 	UserEmail        string
 	OrganizationName string
-	Successful       bool
-	Cancelled        bool
 }
 
 func (in *Entry) PopulateFromRequest(req *http.Request) {
 	in.URL = req.URL.String()
-	in.Referrer = req.Header.Get("Referer")
+	in.Referer = req.Header.Get("Referer")
 	if u, ok := model.UserFromContext(req.Context()); ok {
-		in.UserID = u.ID
+		in.UserID = strconv.Itoa(int(u.ID))
 		in.UserEmail = *u.Email
 	}
 }
@@ -46,4 +50,8 @@ type Manager interface {
 	Add(ctx context.Context, entry *Entry) (QueryID, error)
 	Get(ctx context.Context, id QueryID) (*Entry, error)
 	List(ctx context.Context, cursor string) ([]*Entry, string, error)
+}
+
+func GenerateQueryID() QueryID {
+	return QueryID(strings.ReplaceAll(uuid.New().String(), "-", ""))
 }

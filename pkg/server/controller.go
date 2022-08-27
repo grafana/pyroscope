@@ -138,7 +138,7 @@ func New(c Config) (*Controller, error) {
 	}
 
 	if c.HistoryMgr == nil {
-		c.HistoryMgr = &history.NoopManager{}
+		c.HistoryMgr = history.NewMemStoreManager()
 	}
 
 	ctrl := Controller{
@@ -246,6 +246,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/", ih},
 		{"/comparison", ih},
 		{"/comparison-diff", ih},
+		{"/tracing", ih},
 		{"/service-discovery", ih},
 		{"/adhoc-single", ih},
 		{"/adhoc-comparison", ih},
@@ -281,7 +282,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			{"/labels", ctrl.labelsHandler()},
 			{"/label-values", ctrl.labelValuesHandler()},
 			{"/export", ctrl.exportHandler()},
-			{"/history", ctrl.historyHandler()},
 		}...)
 	}
 

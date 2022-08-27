@@ -21,6 +21,7 @@ import userReducer from './reducers/user';
 import continuousReducer, {
   actions as continuousActions,
 } from './reducers/continuous';
+import tracingReducer, { actions as tracingActions } from './reducers/tracing';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import adhocReducer from './reducers/adhoc';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
@@ -31,6 +32,7 @@ const reducer = combineReducers({
   serviceDiscovery: serviceDiscoveryReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
   continuous: continuousReducer,
+  tracing: tracingReducer,
   adhoc: adhocReducer,
 });
 
@@ -112,6 +114,11 @@ ReduxQuerySync({
       defaultvalue: '',
       selector: (state: RootState) => state.continuous.query,
       action: continuousActions.setQuery,
+    },
+    queryID: {
+      defaultvalue: '',
+      selector: (state: RootState) => state.tracing.queryID,
+      action: tracingActions.setQueryID,
     },
     rightQuery: {
       defaultvalue: '',
