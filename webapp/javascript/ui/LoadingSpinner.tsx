@@ -3,10 +3,14 @@ import React from 'react';
 // @ts-ignore
 import Spinner from 'react-svg-spinner';
 
-export default function LoadingSpinner() {
+interface LoadingSpinnerProps {
+  className?: string;
+}
+
+export default function LoadingSpinner({ className }: LoadingSpinnerProps) {
   // TODO ditch the library and create ourselves
   return (
-    <span role="progressbar">
+    <span role="progressbar" className={className}>
       <Spinner color="rgba(255,255,255,0.6)" size="20px" />
     </span>
   );

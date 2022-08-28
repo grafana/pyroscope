@@ -1,11 +1,11 @@
-package server_test
+package server
 
 import (
+	"io/ioutil"
 	"reflect"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
@@ -13,35 +13,35 @@ var _ = Describe("Server", func() {
 	Describe("Detecting format", func() {
 		Context("with a valid pprof type", func() {
 			When("there's only type", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Type: "pprof",
 					}
 				})
 				It("should return pprof as type is be enough to detect the type", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
 				})
 			})
 			When("there's pprof type and json filename", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.json",
 						Type:     "pprof",
 					}
 				})
 				It("should return pprof as type takes precedence over filename", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -49,18 +49,18 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's pprof type and json profile contents", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte(`{"flamebearer":""}`),
 						Type:    "pprof",
 					}
 				})
 				It("should return pprof as type takes precedence over profile contents", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -70,9 +70,9 @@ var _ = Describe("Server", func() {
 
 		Context("with no (valid) type and a valid pprof filename", func() {
 			When("there's pprof filename and json profile contents", func() {
-				var m server.Model
+				var m Model
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.pprof",
 						Profile:  []byte(`{"flamebearer":""}`),
 					}
@@ -80,17 +80,17 @@ var _ = Describe("Server", func() {
 
 				It("should return pprof as filename takes precedence over profile contents", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
 				})
 			})
 			When("there's pprof filename and an unsupported type", func() {
-				var m server.Model
+				var m Model
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.pprof",
 						Type:     "unsupported",
 					}
@@ -98,8 +98,8 @@ var _ = Describe("Server", func() {
 
 				It("should return pprof as unsupported type is ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -109,18 +109,18 @@ var _ = Describe("Server", func() {
 
 		Context("with no (valid) type and filename, a valid pprof profile", func() {
 			When("there's a profile with uncompressed pprof content", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte{0x0a, 0x04},
 					}
 				})
 
 				It("should return pprof", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -128,18 +128,18 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's a profile with compressed pprof content", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte{0x1f, 0x8b},
 					}
 				})
 
 				It("should return pprof", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -147,10 +147,10 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's a profile with compressed pprof content and an unsupported type", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte{0x1f, 0x8b},
 						Type:    "unsupported",
 					}
@@ -158,8 +158,8 @@ var _ = Describe("Server", func() {
 
 				It("should return pprof as unsupported types are ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -167,10 +167,10 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's a profile with compressed pprof content and unsupported filename", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.unsupported",
 						Profile:  []byte{0x1f, 0x8b},
 					}
@@ -178,8 +178,8 @@ var _ = Describe("Server", func() {
 
 				It("should return pprof as unsupported filenames are ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.PprofToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(PprofToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -189,35 +189,35 @@ var _ = Describe("Server", func() {
 
 		Context("with a valid json type", func() {
 			When("there's only type", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Type: "json",
 					}
 				})
 				It("should return json as type is be enough to detect the type", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
 				})
 			})
 			When("there's json type and pprof filename", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.pprof",
 						Type:     "json",
 					}
 				})
 				It("should return json as type takes precedence over filename", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -225,18 +225,18 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's json type and pprof profile contents", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte{0x1f, 0x8b},
 						Type:    "json",
 					}
 				})
 				It("should return json as type takes precedence over profile contents", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -246,9 +246,9 @@ var _ = Describe("Server", func() {
 
 		Context("with no (valid) type and a valid json filename", func() {
 			When("there's json filename and pprof profile contents", func() {
-				var m server.Model
+				var m Model
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.json",
 						Profile:  []byte{0x1f, 0x8b},
 					}
@@ -256,17 +256,17 @@ var _ = Describe("Server", func() {
 
 				It("should return json as filename takes precedence over profile contents", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
 				})
 			})
 			When("there's json filename and an unsupported type", func() {
-				var m server.Model
+				var m Model
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.json",
 						Type:     "unsupported",
 					}
@@ -274,8 +274,8 @@ var _ = Describe("Server", func() {
 
 				It("should return json as unsupported type is ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -285,18 +285,18 @@ var _ = Describe("Server", func() {
 
 		Context("with no (valid) type and filename, a valid json profile", func() {
 			When("there's a profile with json content", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte(`{"flamebearer":""}`),
 					}
 				})
 
 				It("should return json", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -304,10 +304,10 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's a profile with json content and an unsupported type", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte(`{"flamebearer":""}`),
 						Type:    "unsupported",
 					}
@@ -315,8 +315,8 @@ var _ = Describe("Server", func() {
 
 				It("should return json as unsupported types are ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -324,10 +324,10 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's a profile with json content and unsupported filename", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.unsupported",
 						Profile:  []byte(`{"flamebearer":""}`),
 					}
@@ -335,8 +335,8 @@ var _ = Describe("Server", func() {
 
 				It("should return json as unsupported filenames are ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.JSONToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(JSONToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -346,35 +346,35 @@ var _ = Describe("Server", func() {
 
 		Context("with a valid collapsed type", func() {
 			When("there's only type", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Type: "collapsed",
 					}
 				})
 				It("should return collapsed as type is be enough to detect the type", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
 				})
 			})
 			When("there's collapsed type and pprof filename", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.pprof",
 						Type:     "collapsed",
 					}
 				})
 				It("should return collapsed as type takes precedence over filename", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -382,18 +382,18 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's json type and pprof profile contents", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte{0x1f, 0x8b},
 						Type:    "collapsed",
 					}
 				})
 				It("should return collapsed as type takes precedence over profile contents", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -403,9 +403,9 @@ var _ = Describe("Server", func() {
 
 		Context("with no (valid) type and a valid collapsed filename", func() {
 			When("there's collapsed filename and pprof profile contents", func() {
-				var m server.Model
+				var m Model
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.collapsed",
 						Profile:  []byte{0x1f, 0x8b},
 					}
@@ -413,17 +413,17 @@ var _ = Describe("Server", func() {
 
 				It("should return collapsed as filename takes precedence over profile contents", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
 				})
 			})
 			When("there's collapsed filename and an unsupported type", func() {
-				var m server.Model
+				var m Model
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.collapsed",
 						Type:     "unsupported",
 					}
@@ -431,8 +431,8 @@ var _ = Describe("Server", func() {
 
 				It("should return collapsed as unsupported type is ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -440,9 +440,9 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's collapsed text filename and an unsupported type", func() {
-				var m server.Model
+				var m Model
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.collapsed.txt",
 						Type:     "unsupported",
 					}
@@ -450,8 +450,8 @@ var _ = Describe("Server", func() {
 
 				It("should return collapsed as unsupported type is ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -461,18 +461,18 @@ var _ = Describe("Server", func() {
 
 		Context("with no (valid) type and filename, a valid collapsed profile", func() {
 			When("there's a profile with collapsed content", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte("fn1 1\nfn2 2"),
 					}
 				})
 
 				It("should return collapsed", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -480,10 +480,10 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's a profile with collapsed content and an unsupported type", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Profile: []byte("fn1 1\nfn2 2"),
 						Type:    "unsupported",
 					}
@@ -491,8 +491,8 @@ var _ = Describe("Server", func() {
 
 				It("should return collapsed as unsupported types are ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -500,10 +500,10 @@ var _ = Describe("Server", func() {
 			})
 
 			When("there's a profile with collapsed content and unsupported filename", func() {
-				var m server.Model
+				var m Model
 
 				BeforeEach(func() {
-					m = server.Model{
+					m = Model{
 						Filename: "profile.unsupported",
 						Profile:  []byte("fn1 1\nfn2 2"),
 					}
@@ -511,8 +511,8 @@ var _ = Describe("Server", func() {
 
 				It("should return collapsed as unsupported filenames are ignored", func() {
 					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(server.CollapsedToProfileV1).Pointer()
-					f, err := m.Converter()
+					expected := reflect.ValueOf(CollapsedToProfileV1).Pointer()
+					f, err := m.converter()
 					Expect(err).To(BeNil())
 					Expect(f).ToNot(BeNil())
 					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
@@ -521,9 +521,9 @@ var _ = Describe("Server", func() {
 		})
 
 		Context("with an empty model", func() {
-			var m server.Model
+			var m Model
 			It("should return an error", func() {
-				_, err := m.Converter()
+				_, err := m.converter()
 				Expect(err).ToNot(Succeed())
 			})
 		})
@@ -535,7 +535,6 @@ var _ = Describe("Server", func() {
 
 			When("Diff is called with valid and equal base and diff profiles", func() {
 				BeforeEach(func() {
-
 					base = &flamebearer.FlamebearerProfile{
 						Version: 1,
 						FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
@@ -578,7 +577,7 @@ var _ = Describe("Server", func() {
 				})
 
 				It("returns the diff profile", func() {
-					fb, err := server.DiffV1("name", base, diff, 1024)
+					fb, err := DiffV1("name", base, diff, 1024)
 					Expect(err).To(Succeed())
 					Expect(fb.Version).To(Equal(uint(1)))
 					Expect(fb.Metadata.Name).To(Equal("name"))
@@ -598,3 +597,28 @@ var _ = Describe("Server", func() {
 		})
 	})
 })
+
+var _ = Describe("Convert", func() {
+	It("converts malformed pprof", func() {
+		m := Model{
+			Type:    "pprof",
+			Profile: readFile("./testdata/cpu-unknown.pb.gz"),
+		}
+
+		f, err := m.Converter()
+		Expect(err).To(BeNil())
+		Expect(f).ToNot(BeNil())
+
+		b, err := f(m.Profile, "appname", 1024)
+		Expect(err).To(BeNil())
+		Expect(b).ToNot(BeNil())
+	})
+})
+
+func readFile(path string) []byte {
+	f, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}

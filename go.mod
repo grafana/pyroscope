@@ -3,6 +3,7 @@ module github.com/pyroscope-io/pyroscope
 go 1.18
 
 require (
+	github.com/aquasecurity/libbpfgo v0.3.0-libbpf-0.8.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.44.37
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
@@ -30,6 +31,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/iancoleman/strcase v0.2.0
 	github.com/imdario/mergo v0.3.12
+	github.com/johejo/go-content-encoding v0.0.0-20220721183050-9ea4a7717479
 	github.com/josephspurrier/goversioninfo v1.2.0
 	github.com/jsonnet-bundler/jsonnet-bundler v0.4.0
 	github.com/kardianos/service v1.2.0
@@ -120,7 +122,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.3 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/johejo/go-content-encoding v0.0.0-20220721183050-9ea4a7717479 // indirect
 	github.com/joho/godotenv v1.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect

@@ -282,7 +282,7 @@ export const fetchTagExplorerView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const appWithoutTagsWhereDropdownOptionName = 'All';
+export const ALL_TAGS = 'All';
 export const fetchTagExplorerViewProfile = createAsyncThunk<
   RenderOutput,
   null,
@@ -299,7 +299,7 @@ export const fetchTagExplorerViewProfile = createAsyncThunk<
   const { groupByTag, groupByTagValue } = state.continuous.tagExplorerView;
   // if "All" option is selected we dont need to modify query to fetch profile
   const queryProps =
-    appWithoutTagsWhereDropdownOptionName === groupByTagValue
+    ALL_TAGS === groupByTagValue
       ? { groupBy: groupByTag, query: state.continuous.query }
       : {
           query: appendLabelToQuery(
@@ -640,14 +640,15 @@ export const continuousSlice = createSlice({
       state.until = action.payload.until;
     },
     setQuery(state, action: PayloadAction<Query>) {
-      state.query = action.payload;
+      // TODO: figure out why is being dispatched as undefined
+      state.query = action.payload || '';
+
       state.tagExplorerView.groupByTag = '';
       state.tagExplorerView.groupByTagValue = '';
     },
     setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTag = action.payload;
-      state.tagExplorerView.groupByTagValue =
-        appWithoutTagsWhereDropdownOptionName;
+      state.tagExplorerView.groupByTagValue = ALL_TAGS;
     },
     setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
       state.tagExplorerView.groupByTagValue = action.payload;
@@ -902,7 +903,27 @@ export const continuousSlice = createSlice({
     /*      Tag Explorer View      */
     /*******************************/
 
-    builder.addCase(fetchTagExplorerView.pending, () => {});
+    builder.addCase(fetchTagExplorerView.pending, (state) => {
+      switch (state.diffView.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'reloading':
+        case 'loaded': {
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            type: 'loading',
+          };
+        }
+      }
+    });
 
     builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
       state.tagExplorerView = {

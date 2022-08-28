@@ -66,8 +66,8 @@ warningCode = 0
 
 # Custom rules. We use a revive fork available here: https://github.com/pyroscope-io/revive
 # See Makefile `lint` section for how to use the fork
-[rule.byte-array-limit]
-  arguments = [7]
+#[rule.byte-array-limit]
+#  arguments = [7]
 
 # These are pretty much disabled
 [rule.cognitive-complexity]

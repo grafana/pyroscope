@@ -1,25 +1,18 @@
 ## OTel Tracing integration example
 
+Currently this integration is supported for:
+- Go: [OTel Profiling Go](https://github.com/pyroscope-io/otel-profiling-go)
+- Java: [OTel Profiling Java](https://github.com/pyroscope-io/otel-profiling-java)
+
 The example demonstrates how Pyroscope can be used in conjunction with tracing.
 In the example we will instrument a sample application with OpenTelemetry tracer and
 will be using [Jaeger](https://www.jaegertracing.io) and [Grafana](https://grafana.com).
 
 To achieve that, we will be using a special label – `profile_id` that is set by the profiler
 dynamically. Our simple application specifies Span ID as a profile ID which establishes
-one-to-one relation between a trace span execution scope and the profiling scope.
+one-to-one relation between a trace span execution scope and the profiling scope. By default, only the root span gets annotated (the first span created locally), this is done to circumvent the fact that the profiler records only the time spent on CPU.
 
-By default, only the root span gets annotated (the first span created locally), this is done to
-circumvent the fact that the profiler records only the time spent on CPU. Otherwise, all the
-children profiles should be merged to get the full representation of the root span profile.
-
-In practice, the scenario can be different: an arbitrary string can be set as a profile ID.
-The most important feature is that profiles with the same ID are merged by storage upon insert.
-
-Pyroscope handles profiles with `profile_id` label in a very specific way and stores them
-separately from others. As a result, such profiles can not be accessed using regular queries
-that aggregate the data: the very idea of identifiers is to ensure request-level granularity.
-
-There are number of limitations:
+There are a few limitations:
 
 1.  Only Go CPU profiling is fully supported at the moment.
 2.  Due to the very idea of the sampling profilers, spans shorter than the sample interval may
@@ -65,4 +58,3 @@ Click on the `pyroscope.profile.url` tag value to open [Pyroscope UI](http://loc
 the span CPU time flamegraph:
 
 ![image](https://user-images.githubusercontent.com/12090599/153314565-c7be8ef6-cd5d-4d0b-9070-83ae8a3a8e8a.png)
-

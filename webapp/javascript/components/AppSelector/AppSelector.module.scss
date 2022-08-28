@@ -4,36 +4,37 @@
   display: flex;
   align-items: center;
   position: relative;
-}
 
-.toggleButton {
-  cursor: pointer;
-  max-width: 350px;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-  text-align: left;
-  outline: none;
-  display: flex;
-  background-color: var(--ps-ui-element-bg-primary);
-  border: 1px solid var(--ps-ui-border);
-  position: relative;
-  border-radius: 4px;
-  padding-right: 20px;
-  margin-right: 5px;
-
-  &::after {
-    content: '▾';
-    position: absolute;
-    top: 3px;
-    right: 5px;
+  .refreshButton {
+    margin-left: 5px;
   }
 
-  &:hover {
-    background-color: var(--ps-ui-element-bg-highlight);
+  .appSelectorModal {
+    height: auto;
+    width: 600px;
+    right: unset;
+    left: -100px;
   }
-}
 
-.refreshButton {
-  margin-right: 5px;
+  .headerTitle {
+    margin-left: 10px;
+    color: var(--ps-select-modal-title);
+    font-weight: 700;
+    font-size: 0.8em;
+  }
+
+  .search {
+    background: var(--ps-immutable-off-white);
+    color: var(--ps-immutable-placeholder-text);
+    border: 1px solid var(--ps-ui-border);
+    margin: 10px 0 10px 10px;
+  }
+
+  .noData {
+    width: 600px;
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 }

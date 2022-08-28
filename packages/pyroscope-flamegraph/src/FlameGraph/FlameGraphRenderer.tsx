@@ -12,7 +12,7 @@ import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
-import ProfilerTable, { ProfilerTableProps } from '../ProfilerTable';
+import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
@@ -97,8 +97,6 @@ export interface FlamegraphRendererProps {
 interface FlamegraphRendererState {
   /** A dirty flamegraph refers to a flamegraph where its original state can be reset */
   isFlamegraphDirty: boolean;
-  sortBy: ProfilerTableProps['sortBy'];
-  sortByDirection: ProfilerTableProps['sortByDirection'];
 
   view: NonNullable<FlamegraphRendererProps['onlyDisplay']>;
   panesOrientation: NonNullable<FlamegraphRendererProps['panesOrientation']>;
@@ -144,8 +142,6 @@ class FlameGraphRenderer extends React.Component<
 
     this.state = {
       isFlamegraphDirty: false,
-      sortBy: 'self',
-      sortByDirection: 'desc',
       view: this.props.onlyDisplay ? this.props.onlyDisplay : 'both',
       viewDiff: 'diff',
       fitMode: 'HEAD',
@@ -337,19 +333,6 @@ class FlameGraphRenderer extends React.Component<
     return this.state.searchQuery;
   };
 
-  updateSortBy = (newSortBy: FlamegraphRendererState['sortBy']) => {
-    let dir = this.state.sortByDirection;
-    if (this.state.sortBy === newSortBy) {
-      dir = dir === 'asc' ? 'desc' : 'asc';
-    } else {
-      dir = 'desc';
-    }
-    this.setState({
-      sortBy: newSortBy,
-      sortByDirection: dir,
-    });
-  };
-
   // This in fact seems refers to the diff table
   updateViewDiff = (newView: 'total' | 'self' | 'diff') => {
     this.setState({
@@ -407,9 +390,6 @@ class FlameGraphRenderer extends React.Component<
         <ProfilerTable
           data-testid="table-view"
           flamebearer={this.state.flamebearer}
-          sortByDirection={this.state.sortByDirection}
-          sortBy={this.state.sortBy}
-          updateSortBy={this.updateSortBy}
           viewDiff={
             this.state.flamebearer?.format === 'double' && this.state.viewDiff
           }
@@ -456,10 +436,7 @@ class FlameGraphRenderer extends React.Component<
     const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
 
     return (
-      <div
-        className="flamegraph-root"
-        data-flamegraph-color-mode={this.props.colorMode || 'dark'}
-      >
+      <div data-flamegraph-color-mode={this.props.colorMode || 'dark'}>
         <div>
           {toolbarVisible && (
             <Toolbar

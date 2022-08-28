@@ -1,0 +1,24 @@
+.searchContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.tabNameContrainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchContainer button {
+  padding: 5px 20px;
+}
+
+.appsTable {
+  margin: 20px 0;
+  width: 100%;
+}
+
+.appsTableEmptyMessage {
+  text-align: center;
+  color: var(--ps-ui-foreground-text);
+}

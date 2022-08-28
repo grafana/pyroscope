@@ -33,7 +33,7 @@ type PhpSpy struct {
 	pid int
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
+func Start(params spy.InitParams) (spy.Spy, error) {
 	dataBuf := make([]byte, bufferLength)
 	dataPtr := unsafe.Pointer(&dataBuf[0])
 
@@ -44,7 +44,7 @@ func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
 	// TODO: handle this better
 	time.Sleep(1 * time.Second)
 
-	r := C.phpspy_init(C.int(pid), errorPtr, C.int(bufferLength))
+	r := C.phpspy_init(C.int(params.Pid), errorPtr, C.int(bufferLength))
 
 	if r < 0 {
 		return nil, errors.New(string(errorBuf[:-r]))
@@ -55,7 +55,7 @@ func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
 		dataBuf:  dataBuf,
 		errorBuf: errorBuf,
 		errorPtr: errorPtr,
-		pid:      pid,
+		pid:      params.Pid,
 	}, nil
 }
 

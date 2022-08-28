@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
@@ -23,6 +24,11 @@ var (
 
 //revive:disable:line-length-limit We want to keep the base64 example in a single line
 
+type fileTypeDataModel struct {
+	SpyName string `json:"spyName"`
+	Units   string `json:"units"`
+}
+
 // swagger:model
 type Model struct {
 	// Name of the file in which the profile was saved, if any.
@@ -36,10 +42,52 @@ type Model struct {
 	Profile []byte `json:"profile"`
 	// Type of profile, if known (currently supported: pprof, json, collapsed")
 	// example: json
-	Type string `json:"type"`
+	Type         string            `json:"type"`
+	FileTypeData fileTypeDataModel `json:"fileTypeData"`
 }
 
+// overrideFields overrides certain fields if passed
+// use case is for when the user knows best which format data is
+// than our internal heuristics
+func (m Model) overrideFields(fb *flamebearer.FlamebearerProfile) error {
+	// Overwrite fields if available
+	if m.FileTypeData.SpyName != "" {
+		fb.Metadata.SpyName = m.FileTypeData.SpyName
+	}
+
+	// Replace the units if provided
+	if m.FileTypeData.Units != "" {
+		// TODO: dangerous conversion, we should check it's a valid unit
+		fb.Metadata.Units = metadata.Units(m.FileTypeData.Units)
+	}
+
+	return nil
+}
+
+// Converter returns a ConverterFn that converts to FlamebearerProfile
+// and overrides any specified fields
 func (m Model) Converter() (ConverterFn, error) {
+	converter, err := m.converter()
+	if err != nil {
+		return nil, err
+	}
+
+	return func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+		fb, err := converter(b, name, maxNodes)
+		if err != nil {
+			return nil, err
+		}
+
+		err = m.overrideFields(fb)
+		if err != nil {
+			return nil, err
+		}
+
+		return fb, nil
+	}, nil
+}
+
+func (m Model) converter() (ConverterFn, error) {
 	if f, ok := formatConverters[m.Type]; ok {
 		return f, nil
 	}

@@ -3,6 +3,7 @@ import React from 'react';
 import Icon from '@ui/Icon';
 import { ComponentMeta } from '@storybook/react';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
+import '../webapp/sass/profile.scss';
 
 export default {
   title: 'Components/Icon',

@@ -24,6 +24,7 @@ type Config struct {
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
 	Exec      Exec      `skip:"true" mapstructure:",squash"`
 	Connect   Connect   `skip:"true" mapstructure:",squash"`
+	EBPF      EBPF      `skip:"true" mapstructure:",squash"`
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
 	Admin     Admin     `skip:"true" mapstructure:",squash"`
 	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
@@ -325,6 +326,29 @@ type Connect struct {
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
 	Pid int `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
+}
+
+type EBPF struct {
+	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
+
+	// Spy configuration
+	ApplicationName string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
+	SampleRate      uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
+
+	// Remote upstream configuration
+	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+
+	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+
+	Pid                int    `def:"-1" desc:"PID of the process you want to profile. Pass -1 to profile the whole system" mapstructure:"pid"`
+	DetectSubprocesses bool   `def:"false" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	SymbolCacheSize    int    `def:"256" desc:"max size of symbols cache (1 entry per process)" mapstructure:"symbol-cache-size"`
+	KubernetesNode     string `def:"" desc:"Set to current k8s Node.nodeName for service discovery and labeling" mapstructure:"kubernetes-node"`
+	OnlyServices       bool   `def:"false" desc:"Ignore processes unknown to service discovery" mapstructure:"only-services"`
 }
 
 // TODO how to abstract this better?

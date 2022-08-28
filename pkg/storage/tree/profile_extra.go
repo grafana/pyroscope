@@ -120,6 +120,10 @@ func (x *Profile) SampleTypes() []string {
 
 func FindFunctionName(x *Profile, locID uint64) (string, bool) {
 	if loc, ok := FindLocation(x, locID); ok {
+		if len(loc.Line) <= 0 {
+			return "", false
+		}
+
 		if fn, ok := FindFunction(x, loc.Line[0].FunctionId); ok {
 			return x.StringTable[fn.Name], true
 		}
