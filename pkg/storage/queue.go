@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"runtime/debug"
 	"sync"
 
@@ -24,19 +23,9 @@ type IngestionQueue struct {
 }
 
 const (
-	queueFactor = 4
-	maxWorkers  = 64
-
 	defaultQueueSize = 100
+	defaultWorkers   = 1
 )
-
-func numWorkers() int {
-	v := runtime.NumCPU() * queueFactor
-	if v > maxWorkers {
-		return maxWorkers
-	}
-	return v
-}
 
 func NewIngestionQueue(logger logrus.FieldLogger, putter Putter, r prometheus.Registerer, c *Config) *IngestionQueue {
 	queueSize := c.queueSize
@@ -45,7 +34,7 @@ func NewIngestionQueue(logger logrus.FieldLogger, putter Putter, r prometheus.Re
 	}
 	queueWorkers := c.queueWorkers
 	if queueWorkers == 0 {
-		queueWorkers = numWorkers()
+		queueWorkers = defaultWorkers
 	}
 
 	q := IngestionQueue{
