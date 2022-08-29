@@ -126,6 +126,7 @@ class TimelineChartWrapper extends React.Component<
       },
       points: {
         show: false,
+        symbol: () => {}, // function that draw points on the chart
       },
       lines: {
         show: false,
@@ -147,6 +148,7 @@ class TimelineChartWrapper extends React.Component<
             ...flotOptions,
             lines: {
               show: true,
+              lineWidth: 0.8,
             },
             bars: {
               show: false,
