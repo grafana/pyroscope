@@ -47,14 +47,14 @@ func Test_BlockQuerier(t *testing.T) {
 	// no flush the head to disk
 	require.NoError(t, head.Flush(ctx))
 
-	blockPath := filepath.Join(tsdbPath, "head")
+	blockPath := filepath.Join(tsdbPath, pathLocal)
 
 	b, err := filesystem.NewBucket(blockPath)
 	require.NoError(t, err)
 
 	// open resulting block
 	q := NewBlockQuerier(log.NewNopLogger(), b)
-	require.NoError(t, q.Open())
+	require.NoError(t, q.Sync(context.Background()))
 
 	result, err := q.SelectProfiles(ctx, connect.NewRequest(&ingestv1.SelectProfilesRequest{
 		LabelSelector: `{test="label"}`,
