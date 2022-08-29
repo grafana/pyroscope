@@ -71,30 +71,6 @@ export const fetchSingleView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const ALL_TAGS = 'All';
-
-export const reloadAppNames = createAsyncThunk(
-  'names/reloadAppNames',
-  async (_, thunkAPI) => {
-    // TODO, retries?
-    const res = await fetchAppNames();
-
-    if (res.isOk) {
-      return Promise.resolve(res.value);
-    }
-
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to load app names',
-        message: res.error.message,
-      })
-    );
-
-    return Promise.reject(res.error);
-  }
-);
-
 export const tracingSlice = createSlice({
   name: 'tracing',
   initialState,
