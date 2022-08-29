@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, RefObject } from 'react';
 import Color from 'color';
+import cl from 'classnames';
 
 import styles from './Heatmap.module.scss';
 
@@ -184,16 +185,50 @@ function HeatMap() {
   );
 }
 
+const getTicks = (max: number, min: number, ticksCount = 5) => {
+  const step = (max - min) / ticksCount;
+  let ticksArray = [min];
+
+  for (let i = 1; i <= ticksCount; i++) {
+    ticksArray.push(min + step * i);
+  }
+
+  return ticksArray;
+};
+
 function XAxis() {
+  const ticks = getTicks(MAX_VALUE, MIN_VALUE);
+
   return (
-    <div className={styles.xaxis} style={{ height: HEATMAP_HEIGHT + 3 }}>
-      {/* x axis values */}
+    <div className={styles.xAxis} style={{ height: HEATMAP_HEIGHT + 3 }}>
+      {ticks.map((tick) => (
+        <div className={styles.tickContainer} key={tick}>
+          <div className={styles.xTick}></div>
+          <span className={cl(styles.tickValue, styles.xTickValue)}>
+            {tick.toFixed(0)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
 
 function YAxis() {
-  return <div className={styles.yaxis}>{/* y axis values */}</div>;
+  const ticks = getTicks(START_TIME, END_TIME, 7);
+
+  return (
+    <div className={styles.yAxis}>
+      {ticks.map((tick) => (
+        <div className={styles.tickContainer} key={tick}>
+          <div className={styles.yTick}></div>
+          <span className={cl(styles.tickValue, styles.yTickValue)}>
+            {/* units ? */}
+            {new Date(tick).getSeconds()}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default HeatMap;

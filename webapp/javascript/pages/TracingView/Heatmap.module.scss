@@ -1,29 +1,72 @@
-$svg-side-margin: 25px;
+$svg-side-margin: 40px;
 $axis-width: 3px;
 
 .heatmapContainer {
   position: relative;
   width: calc(100% - $svg-side-margin * 2);
-  margin: auto;
+  margin: auto auto $svg-side-margin auto;
 
   .heatmapSvg {
     width: 100%;
+    background-color: var(--ps-immutable-white);
 
     foreignObject {
       width: 100%;
     }
   }
 
-  .xaxis {
+  .xAxis {
     left: -$axis-width;
     position: absolute;
     // change color
     border-right: $axis-width solid yellowgreen;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
   }
 
-  .yaxis {
+  .yAxis {
     width: 100%;
-    // change color
-    border-bottom: $axis-width solid yellowgreen;
+    display: flex;
+    justify-content: space-between;
+    border-top: $axis-width solid yellowgreen;
+  }
+
+  .tickContainer {
+    position: relative;
+
+    .xTick {
+      height: $axis-width;
+      width: 8px;
+      font-size: 14px;
+      text-align: right;
+      margin-left: -8px;
+      background-color: yellowgreen;
+    }
+
+    .yTick {
+      width: $axis-width;
+      left: -$axis-width;
+      height: 8px;
+      background-color: yellowgreen;
+    }
+
+    .tickValue {
+      position: absolute;
+      width: 32px;
+      font-size: 12px;
+    }
+
+    .xTickValue {
+      top: -10px;
+      right: 11px;
+      text-align: right;
+    }
+
+    .yTickValue {
+      margin-left: -$axis-width;
+      text-align: center;
+      left: -11px;
+    }
   }
 }
