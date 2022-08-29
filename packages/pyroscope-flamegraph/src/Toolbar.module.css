@@ -24,8 +24,10 @@
 
 .fitModeDropdownSmall {
   min-width: 70px;
+  margin: 0;
 }
 
 .fitModeDropdownLarge {
   min-width: 100px;
+  margin: 0;
 }
