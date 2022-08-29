@@ -15,7 +15,8 @@ import (
 var cfg struct {
 	verbose bool
 	blocks  struct {
-		path string
+		path               string
+		restoreMissingMeta bool
 	}
 }
 
@@ -32,9 +33,10 @@ func main() {
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
 	blocksCmd := app.Command("blocks", "Operate on Grafana Fire's blocks.")
-	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/head").StringVar(&cfg.blocks.path)
+	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/local").StringVar(&cfg.blocks.path)
 
 	blocksListCmd := blocksCmd.Command("list", "List blocks.")
+	blocksListCmd.Flag("restore-missing-meta", "").Default("false").BoolVar(&cfg.blocks.restoreMissingMeta)
 
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
