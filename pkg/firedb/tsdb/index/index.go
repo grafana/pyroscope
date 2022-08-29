@@ -36,6 +36,7 @@ import (
 	tsdb_enc "github.com/prometheus/prometheus/tsdb/encoding"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 
+	"github.com/grafana/fire/pkg/firedb/block"
 	"github.com/grafana/fire/pkg/firedb/tsdb/encoding"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
@@ -1336,6 +1337,14 @@ func newReader(b ByteSlice, c io.Closer) (*Reader, error) {
 // Version returns the file format version of the underlying index.
 func (r *Reader) Version() int {
 	return r.version
+}
+
+// FileInfo returns some general stats about the underlying file
+func (r *Reader) FileInfo() block.File {
+	return block.File{
+		RelPath:   block.IndexFilename,
+		SizeBytes: uint64(r.Size()),
+	}
 }
 
 // Range marks a byte range.
