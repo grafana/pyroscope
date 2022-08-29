@@ -3,6 +3,7 @@ package firedb
 import (
 	"context"
 	"flag"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/thanos-io/objstore/providers/filesystem"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/fire/pkg/firedb/block"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/objstore"
 )
@@ -65,17 +67,41 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 		return nil, err
 	}
 
-	f.blockQuerier = NewBlockQuerier(logger, objstore.BucketReaderWithPrefix(bucketReader, "head"))
-	// TODO: This will only scan for blocks exactly once, this should happen
-	// more regularly, esp. after running cutting a block and block deletion.
-	if err := f.blockQuerier.Open(); err != nil {
+	f.blockQuerier = NewBlockQuerier(logger, objstore.BucketReaderWithPrefix(bucketReader, pathLocal))
+
+	// do an initial querier sync
+	ctx := context.Background()
+	if err := f.blockQuerier.Sync(ctx); err != nil {
 		return nil, err
 	}
 	return f, nil
 }
 
+func (f *FireDB) LocalDataPath() string {
+	return filepath.Join(f.cfg.DataPath, pathLocal)
+}
+
+func (f *FireDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
+	return f.blockQuerier.BlockMetas(ctx)
+}
+func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
+	if err := f.blockQuerier.Sync(ctx); err != nil {
+		level.Error(f.logger).Log("msg", "sync blocks failed", "err", err)
+	}
+}
+
 func (f *FireDB) loop() {
+	var (
+		blockScanTicker = time.NewTicker(5 * time.Minute)
+		blockScanManual = make(chan struct{}, 1)
+	)
+	defer func() {
+		close(blockScanManual)
+		blockScanTicker.Stop()
+	}()
+
 	for {
+		ctx := context.Background()
 
 		f.headLock.RLock()
 		timeToFlush := f.headFlushTime.Sub(time.Now())
@@ -85,9 +111,13 @@ func (f *FireDB) loop() {
 		case <-f.stopCh:
 			return
 		case <-time.After(timeToFlush):
-			if err := f.Flush(context.TODO()); err != nil {
+			if err := f.Flush(ctx); err != nil {
 				level.Error(f.logger).Log("msg", "flushing head block failed", "err", err)
+				continue
 			}
+			f.runBlockQuerierSync(ctx)
+		case <-blockScanTicker.C:
+			f.runBlockQuerierSync(ctx)
 		}
 	}
 }

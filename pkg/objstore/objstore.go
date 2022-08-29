@@ -3,10 +3,15 @@ package objstore
 import (
 	"context"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/thanos-io/objstore"
 )
+
+type Bucket interface {
+	objstore.Bucket
+}
 
 type BucketReader interface {
 	objstore.BucketReader
@@ -64,4 +69,42 @@ func (b *bucketReaderWithPrefix) IsObjNotFoundErr(err error) bool {
 // Attributes returns information about the specified object.
 func (b *bucketReaderWithPrefix) Attributes(ctx context.Context, name string) (objstore.ObjectAttributes, error) {
 	return b.r.Attributes(ctx, b.prefix(name))
+}
+
+type bucketWithPrefix struct {
+	BucketReader
+
+	b Bucket
+	p string
+}
+
+func BucketWithPrefix(b Bucket, prefix string) Bucket {
+	if !strings.HasSuffix(prefix, objstore.DirDelim) {
+		prefix += objstore.DirDelim
+	}
+
+	return &bucketWithPrefix{
+		BucketReader: BucketReaderWithPrefix(b, prefix),
+		b:            b,
+		p:            prefix,
+	}
+}
+
+func (b *bucketWithPrefix) Close() error {
+	return b.b.Close()
+}
+
+func (b *bucketWithPrefix) Upload(ctx context.Context, name string, r io.Reader) error {
+	return b.b.Upload(ctx, b.prefix(name), r)
+}
+func (b *bucketWithPrefix) Delete(ctx context.Context, name string) error {
+	return b.Delete(ctx, b.prefix(name))
+}
+
+func (b *bucketWithPrefix) Name() string {
+	return filepath.Join(b.b.Name(), b.p)
+}
+
+func (b *bucketWithPrefix) prefix(path string) string {
+	return b.p + path
 }
