@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.3...@pyroscope/flamegraph@0.20.0) (2022-08-30)
+
+
+### Features
+
+* **webapp:** dropdown component for head-first dropdown ([#1435](https://github.com/pyroscope-io/pyroscope/issues/1435)) ([a7d6891](https://github.com/pyroscope-io/pyroscope/commit/a7d6891c8b63d67dc197d7c52812bd946ca688e5))
+
+
+
+
+
 ## [0.19.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.2...@pyroscope/flamegraph@0.19.3) (2022-08-26)
 
 

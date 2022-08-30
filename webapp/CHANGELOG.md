@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.35.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.34.1...@pyroscope/webapp@1.35.0) (2022-08-30)
+
+
+### Features
+
+* **webapp:** dropdown component for head-first dropdown ([#1435](https://github.com/pyroscope-io/pyroscope/issues/1435)) ([a7d6891](https://github.com/pyroscope-io/pyroscope/commit/a7d6891c8b63d67dc197d7c52812bd946ca688e5))
+
+
+
+
+
 ## [1.34.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.34.0...@pyroscope/webapp@1.34.1) (2022-08-26)
 
 **Note:** Version bump only for package @pyroscope/webapp
