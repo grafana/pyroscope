@@ -40,7 +40,6 @@ describe('format', () => {
       it('correctly formats trace samples', () => {
         const df = getFormatter(80, 2, 'trace_samples');
 
-        expect(df.format(0, 100)).toBe('0.00 seconds');
         expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
         expect(df.format(100, 100)).toBe('1.00 second');
         expect(df.format(2000, 100)).toBe('20.00 seconds');
@@ -56,6 +55,72 @@ describe('format', () => {
         expect(df.format(2000, 100)).toBe('0.33 minutes');
         expect(df.format(2012.3, 100)).toBe('0.34 minutes');
         expect(df.format(8000, 100)).toBe('1.33 minutes');
+      });
+
+      it('correctly formats trace_samples duration when maxdur is less than second', () => {
+        const df = getFormatter(10, 100, 'trace_samples');
+
+        expect(df.format(55, 100)).toBe('550.00 ms');
+        expect(df.format(100, 100)).toBe('1000.00 ms');
+        expect(df.format(1.001, 100)).toBe('10.01 ms');
+        expect(df.format(9999, 100)).toBe('99990.00 ms');
+        expect(df.format(0.331, 100)).toBe('3.31 ms');
+        expect(df.format(0.0001, 100)).toBe('< 0.01 ms');
+      });
+
+      it('correctly formats trace_samples duration when maxdur is less than ms', () => {
+        const df = getFormatter(1, 10000, 'trace_samples');
+
+        expect(df.format(0.012, 100)).toBe('120.00 μs');
+        expect(df.format(0, 100)).toBe('0.00 μs');
+        expect(df.format(0.0091, 100)).toBe('91.00 μs');
+        expect(df.format(1.005199, 100)).toBe('10051.99 μs');
+        expect(df.format(1.1, 100)).toBe('11000.00 μs');
+      });
+
+      it('correctly formats trace_samples duration when maxdur is hour', () => {
+        const hour = 3600;
+        let df = getFormatter(hour, 1, 'trace_samples');
+
+        expect(df.format(0, 100)).toBe('0.00 hours');
+        expect(df.format(hour * 100, 100)).toBe('1.00 hour');
+        expect(df.format(0.6 * hour * 100, 100)).toBe('0.60 hours');
+        expect(df.format(0.02 * hour * 100, 100)).toBe('0.02 hours');
+        expect(df.format(0.001 * hour * 100, 100)).toBe('< 0.01 hours');
+        expect(df.format(42.1 * hour * 100, 100)).toBe('42.10 hours');
+      });
+
+      it('correctly formats trace_samples duration when maxdur is day', () => {
+        const day = 24 * 60 * 60;
+        const df = getFormatter(day, 1, 'trace_samples');
+
+        expect(df.format(day * 100, 100)).toBe('1.00 day');
+        expect(df.format(12 * day * 100, 100)).toBe('12.00 days');
+        expect(df.format(2.29 * day * 100, 100)).toBe('2.29 days');
+        expect(df.format(0.11 * day * 100, 100)).toBe('0.11 days');
+        expect(df.format(0.001 * day * 100, 100)).toBe('< 0.01 days');
+      });
+
+      it('correctly formats trace_samples duration when maxdur = month', () => {
+        const month = 30 * 24 * 60 * 60;
+        const df = getFormatter(month, 1, 'trace_samples');
+
+        expect(df.format(month * 100, 100)).toBe('1.00 month');
+        expect(df.format(44 * month * 100, 100)).toBe('44.00 months');
+        expect(df.format(5.142 * month * 100, 100)).toBe('5.14 months');
+        expect(df.format(0.88 * month * 100, 100)).toBe('0.88 months');
+        expect(df.format(0.008 * month * 100, 100)).toBe('< 0.01 months');
+      });
+
+      it('correctly formats trace_samples duration when maxdur = year', () => {
+        const year = 12 * 30 * 24 * 60 * 60;
+        const df = getFormatter(year, 1, 'trace_samples');
+
+        expect(df.format(year * 100, 100)).toBe('1.00 year');
+        expect(df.format(12 * year * 100, 100)).toBe('12.00 years');
+        expect(df.format(3.414 * year * 100, 100)).toBe('3.41 years');
+        expect(df.format(0.12 * year * 100, 100)).toBe('0.12 years');
+        expect(df.format(0.008 * year * 100, 100)).toBe('< 0.01 years');
       });
     });
 

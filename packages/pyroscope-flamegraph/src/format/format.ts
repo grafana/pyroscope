@@ -29,7 +29,7 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
     case 'lock_samples':
       return new ObjectsFormatter(max);
     case 'trace_samples':
-      return new DurationFormatter(max / sampleRate);
+      return new DurationFormatter(max / sampleRate, '', true);
     default:
       console.warn(`Unsupported unit: '${unit}'. Defaulting to ''`);
       return new DurationFormatter(max / sampleRate, ' ');
@@ -40,6 +40,8 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
 //   precalculating divider and suffix and not doing it on each iteration
 class DurationFormatter {
   divider = 1;
+
+  enableSubsecondPrecision = false;
 
   suffix = 'second';
 
@@ -53,7 +55,17 @@ class DurationFormatter {
 
   units = '';
 
-  constructor(maxDur: number, units?: string) {
+  constructor(
+    maxDur: number,
+    units?: string,
+    enableSubsecondPrecision?: boolean
+  ) {
+    if (enableSubsecondPrecision) {
+      this.enableSubsecondPrecision = enableSubsecondPrecision;
+      this.durations = [[1000, 'ms'], [1000, 'second'], ...this.durations];
+      this.suffix = `μs`;
+      maxDur *= 1e6; // Converting seconds to μs
+    }
     this.units = units || '';
     // eslint-disable-next-line no-plusplus
     for (let i = 0; i < this.durations.length; i++) {
@@ -74,7 +86,10 @@ class DurationFormatter {
     }
   }
 
-  format(samples: number, sampleRate: number) {
+  format(samples: number, sampleRate: number): string {
+    if (this.enableSubsecondPrecision) {
+      sampleRate /= 1e6;
+    }
     const n = samples / sampleRate / this.divider;
     let nStr = n.toFixed(2);
 
@@ -86,7 +101,10 @@ class DurationFormatter {
       nStr = '< 0.01';
     }
 
-    return `${nStr} ${this.units || `${this.suffix}${n === 1 ? '' : 's'}`}`;
+    return `${nStr} ${
+      this.units ||
+      `${this.suffix}${n === 1 || this.suffix.length === 2 ? '' : 's'}`
+    }`;
   }
 }
 
