@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.21.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.20.0...@pyroscope/flamegraph@0.21.0) (2022-08-30)
+
+
+### Features
+
+* **flamegraph:** added sub-second units support for trace visualization ([#1418](https://github.com/pyroscope-io/pyroscope/issues/1418)) ([21f6550](https://github.com/pyroscope-io/pyroscope/commit/21f6550bf7e280e7ee272982f9ab521bf30683c6))
+
+
+
+
+
 # [0.20.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.3...@pyroscope/flamegraph@0.20.0) (2022-08-30)
 
 
