@@ -169,9 +169,9 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp := mergeResponse{
 		QueryID: queryID,
 		MergeMetadata: &mergeMetadata{
-			AppName:        req.AppName,
-			StartTime:      req.StartTime,
-			EndTime:        req.EndTime,
+			AppName:        input.AppName,
+			StartTime:      strconv.Itoa(int(input.StartTime.Unix())),
+			EndTime:        strconv.Itoa(int(input.EndTime.Unix())),
 			ProfilesLength: len(req.Profiles),
 		},
 		FlamebearerProfile: flamebearer.FlamebearerProfile{
