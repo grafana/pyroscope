@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
-
+import { format } from 'date-fns';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
@@ -12,18 +12,22 @@ import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
 
+import styles from './TracingSingleView.module.scss';
+import { numberWithCommas } from '@pyroscope/flamegraph/src/format/format';
+
+function formatTime(t: string | undefined): string {
+  return format(new Date(1000 * parseInt(t || '0')), 'yyyy-MM-dd HH:mm:ss');
+}
+
 function TracingSingleView() {
   const dispatch = useAppDispatch();
   const { colorMode } = useColorMode();
 
-  const { queryID, refreshToken, maxNodes } = useAppSelector(
+  const { queryID, refreshToken, maxNodes, singleView } = useAppSelector(
     (state) => state.tracing
   );
 
-  const { singleView } = useAppSelector((state) => state.tracing);
-
   useEffect(() => {
-    console.log(queryID, maxNodes);
     if (queryID && maxNodes) {
       const fetchData = dispatch(fetchSingleView(null));
       return () => fetchData.abort('cancel');
@@ -75,10 +79,34 @@ function TracingSingleView() {
     }
   })();
 
+  const header = singleView.mergeMetadata
+    ? (function (mm) {
+        const { appName, startTime, endTime, profilesLength } = mm;
+        return (
+          <>
+            <div>
+              <strong>App Name:</strong> <span>{appName}</span>
+            </div>
+            <div>
+              <strong>Start Time:</strong> <span>{formatTime(startTime)}</span>
+            </div>
+            <div>
+              <strong>End Time:</strong> <span>{formatTime(endTime)}</span>
+            </div>
+            <div>
+              <strong>Number of Profiles merged:</strong>{' '}
+              <span>{profilesLength}</span>
+            </div>
+          </>
+        );
+      })(singleView.mergeMetadata)
+    : null;
+
   return (
     <div>
       <PageTitle title={formatTitle('Tracing')} />
       <div className="main-wrapper">
+        <Box className={styles.header}>{header}</Box>
         <Box>{flamegraphRenderer}</Box>
       </div>
     </div>

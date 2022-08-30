@@ -1,22 +1,30 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Profile } from '@pyroscope/models/src';
 import { RenderOutput, renderFromQueryID } from '@webapp/services/render';
-import { fetchAppNames } from '@webapp/services/appNames';
 import type { RootState } from '@webapp/redux/store';
 import { RequestAbortedError } from '@webapp/services/base';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 
+type MergeMetadata = {
+  appName: string;
+  startTime: string;
+  endTime: string;
+  profilesLength: number;
+};
+
 type SingleView =
-  | { type: 'pristine'; profile?: Profile }
-  | { type: 'loading'; profile?: Profile }
+  | { type: 'pristine'; profile?: Profile; mergeMetadata?: MergeMetadata }
+  | { type: 'loading'; profile?: Profile; mergeMetadata?: MergeMetadata }
   | {
       type: 'loaded';
       profile: Profile;
+      mergeMetadata: MergeMetadata;
     }
   | {
       type: 'reloading';
       profile: Profile;
+      mergeMetadata: MergeMetadata;
     };
 // TODO
 

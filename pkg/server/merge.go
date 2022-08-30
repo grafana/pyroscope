@@ -40,9 +40,17 @@ type mergeRequest struct {
 	Until string `json:"until"`
 }
 
+type mergeMetadata struct {
+	AppName        string `json:"appName"`
+	StartTime      string `json:"startTime"`
+	EndTime        string `json:"endTime"`
+	ProfilesLength int    `json:"profilesLength"`
+}
+
 type mergeResponse struct {
 	flamebearer.FlamebearerProfile
-	QueryID history.QueryID `json:"queryID"`
+	MergeMetadata *mergeMetadata  `json:"mergeMetadata"`
+	QueryID       history.QueryID `json:"queryID"`
 }
 
 func (ctrl *Controller) mergeHandler() http.HandlerFunc {
@@ -160,6 +168,12 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	flame := out.Tree.FlamebearerStruct(maxNodes)
 	resp := mergeResponse{
 		QueryID: queryID,
+		MergeMetadata: &mergeMetadata{
+			AppName:        req.AppName,
+			StartTime:      req.StartTime,
+			EndTime:        req.EndTime,
+			ProfilesLength: len(req.Profiles),
+		},
 		FlamebearerProfile: flamebearer.FlamebearerProfile{
 			Version: 1,
 			FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{

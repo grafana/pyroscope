@@ -86,20 +86,29 @@ export async function renderFromQueryID(
     return Result.err<RenderOutput, RequestError>(response.error);
   }
 
+  const MergeMetadataSchema = z.object({
+    appName: z.string(),
+    startTime: z.string(),
+    endTime: z.string(),
+    profilesLength: z.number(),
+  });
+
   const parsed = FlamebearerProfileSchema.merge(
     z.object({ timeline: TimelineSchema })
   )
+    .merge(z.object({ mergeMetadata: MergeMetadataSchema }))
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
     .safeParse(response.value);
 
   if (parsed.success) {
     // TODO: strip timeline
     const profile = parsed.data;
-    const { timeline } = parsed.data;
+    const { timeline, mergeMetadata } = parsed.data;
 
     return Result.ok({
       profile,
       timeline,
+      mergeMetadata,
     });
   }
 
