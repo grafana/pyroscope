@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Profile } from '@pyroscope/models/src';
-import { RenderOutput, renderFromQueryID } from '@webapp/services/render';
+import { MergeOutput, mergeWithQueryID } from '@webapp/services/render';
 import type { RootState } from '@webapp/redux/store';
 import { RequestAbortedError } from '@webapp/services/base';
 import { addNotification } from './notifications';
@@ -46,7 +46,7 @@ const initialState: TracingState = {
 };
 
 export const fetchSingleView = createAsyncThunk<
-  RenderOutput,
+  MergeOutput,
   null,
   { state: { tracing: TracingState } }
 >('tracing/singleView', async (_, thunkAPI) => {
@@ -58,7 +58,7 @@ export const fetchSingleView = createAsyncThunk<
   thunkAPI.signal = singleViewAbortController.signal;
 
   const state = thunkAPI.getState();
-  const res = await renderFromQueryID(state.tracing, singleViewAbortController);
+  const res = await mergeWithQueryID(state.tracing, singleViewAbortController);
 
   if (res.isOk) {
     return Promise.resolve(res.value);
@@ -119,6 +119,7 @@ export const tracingSlice = createSlice({
     builder.addCase(fetchSingleView.fulfilled, (state, action) => {
       state.singleView = {
         ...action.payload,
+        mergeMetadata: action.payload.mergeMetadata,
         type: 'loaded',
       };
     });

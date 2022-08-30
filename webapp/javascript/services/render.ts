@@ -64,18 +64,37 @@ export async function renderSingle(
   return Result.err(parsed.error);
 }
 
-interface renderFromQueryIDProps {
+interface mergeWithQueryIDProps {
   queryID: string;
   refreshToken?: string;
   maxNodes: string | number;
 }
 
-export async function renderFromQueryID(
-  props: renderFromQueryIDProps,
+interface MergeMetadata {
+  appName: string;
+  startTime: string;
+  endTime: string;
+  profilesLength: number;
+}
+
+const MergeMetadataSchema = z.object({
+  appName: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  profilesLength: z.number(),
+});
+
+export interface MergeOutput {
+  profile: Profile;
+  mergeMetadata: MergeMetadata;
+}
+
+export async function mergeWithQueryID(
+  props: mergeWithQueryIDProps,
   controller?: {
     signal?: AbortSignal;
   }
-): Promise<Result<RenderOutput, RequestError | ZodError>> {
+): Promise<Result<MergeOutput, RequestError | ZodError>> {
   const url = buildRenderFromQueryIDURL(props);
   // TODO
   const response = await request(`${url}&format=json`, {
@@ -83,15 +102,8 @@ export async function renderFromQueryID(
   });
 
   if (response.isErr) {
-    return Result.err<RenderOutput, RequestError>(response.error);
+    return Result.err<MergeOutput, RequestError>(response.error);
   }
-
-  const MergeMetadataSchema = z.object({
-    appName: z.string(),
-    startTime: z.string(),
-    endTime: z.string(),
-    profilesLength: z.number(),
-  });
 
   const parsed = FlamebearerProfileSchema.merge(
     z.object({ timeline: TimelineSchema })
@@ -103,11 +115,10 @@ export async function renderFromQueryID(
   if (parsed.success) {
     // TODO: strip timeline
     const profile = parsed.data;
-    const { timeline, mergeMetadata } = parsed.data;
+    const { mergeMetadata } = parsed.data;
 
     return Result.ok({
       profile,
-      timeline,
       mergeMetadata,
     });
   }
