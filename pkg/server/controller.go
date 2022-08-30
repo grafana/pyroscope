@@ -138,7 +138,7 @@ func New(c Config) (*Controller, error) {
 	}
 
 	if c.HistoryMgr == nil {
-		c.HistoryMgr = history.NewMemStoreManager()
+		c.HistoryMgr = &history.NoopManager{}
 	}
 
 	ctrl := Controller{
