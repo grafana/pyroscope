@@ -25,3 +25,10 @@ const (
 func (a AggregationType) String() string {
 	return string(a)
 }
+
+type Metadata struct {
+	SpyName         string
+	SampleRate      uint32
+	Units           Units
+	AggregationType AggregationType
+}

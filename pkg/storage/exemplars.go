@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"strconv"
 	"sync"
 	"time"
@@ -375,18 +376,14 @@ func (s *Storage) ensureAppSegmentExists(in *PutInput) error {
 		return fmt.Errorf("segments cache for %v: %w", k, err)
 	}
 	st := r.(*segment.Segment)
-	if !isMetadataEqual(st, in) {
-		st.SetMetadata(in.SpyName, in.SampleRate, in.Units, in.AggregationType)
-		s.segments.Put(k, st)
-	}
+	st.SetMetadata(metadata.Metadata{
+		SpyName:         in.SpyName,
+		SampleRate:      in.SampleRate,
+		Units:           in.Units,
+		AggregationType: in.AggregationType,
+	})
+	s.segments.Put(k, st)
 	return err
-}
-
-func isMetadataEqual(s *segment.Segment, in *PutInput) bool {
-	return in.SpyName == s.SpyName() &&
-		in.AggregationType == s.AggregationType() &&
-		in.SampleRate == s.SampleRate() &&
-		in.Units == s.Units()
 }
 
 func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {

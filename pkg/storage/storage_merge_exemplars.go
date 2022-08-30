@@ -40,10 +40,11 @@ func (s *Storage) MergeExemplars(ctx context.Context, mi MergeExemplarsInput) (o
 	out.Tree = m.tree
 	out.Count = m.count
 	if m.segment != nil {
-		out.SpyName = m.segment.SpyName()
-		out.Units = m.segment.Units()
-		out.SampleRate = m.segment.SampleRate()
-		out.AggregationType = m.segment.AggregationType()
+		md := m.segment.GetMetadata()
+		out.SpyName = md.SpyName
+		out.Units = md.Units
+		out.SampleRate = md.SampleRate
+		out.AggregationType = md.AggregationType
 	}
 
 	if out.Count > 1 && out.AggregationType == metadata.AverageAggregationType {

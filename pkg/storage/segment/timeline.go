@@ -58,9 +58,11 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 }
 
 func (tl *Timeline) PopulateTimeline(s *Segment) {
+	s.m.Lock()
 	if s.root != nil {
 		s.root.populateTimeline(tl, s)
 	}
+	s.m.Unlock()
 }
 
 func (sn streeNode) populateTimeline(tl *Timeline, s *Segment) {
