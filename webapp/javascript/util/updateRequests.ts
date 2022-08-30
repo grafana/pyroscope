@@ -16,6 +16,7 @@ export function buildRenderURL(
   const url = new URL('render', location.href);
 
   const params = url.searchParams;
+  params.set('query', state.query);
   params.set('from', fromOverride || state.from);
   params.set('until', untilOverride || state.until);
   state.refreshToken && params.set('refreshToken', state.refreshToken);
@@ -26,7 +27,7 @@ export function buildRenderURL(
   return url.toString();
 }
 
-export function buildRenderFromQueryIDURL(state: {
+export function buildMergeURLWithQueryID(state: {
   queryID: string;
   refreshToken?: string;
   maxNodes?: string | number;

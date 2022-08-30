@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { ZodError } from 'zod';
 import {
   buildRenderURL,
-  buildRenderFromQueryIDURL,
+  buildMergeURLWithQueryID,
 } from '@webapp/util/updateRequests';
 import { Timeline, TimelineSchema } from '@webapp/models/timeline';
 import type { RequestError } from './base';
