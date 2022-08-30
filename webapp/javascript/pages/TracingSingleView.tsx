@@ -13,10 +13,9 @@ import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
 
 import styles from './TracingSingleView.module.scss';
-import { numberWithCommas } from '@pyroscope/flamegraph/src/format/format';
 
 function formatTime(t: string | undefined): string {
-  return format(new Date(1000 * parseInt(t || '0')), 'yyyy-MM-dd HH:mm:ss');
+  return format(new Date(1000 * parseInt(t || '0', 10)), 'yyyy-MM-dd HH:mm:ss');
 }
 
 function TracingSingleView() {

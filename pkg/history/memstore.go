@@ -22,6 +22,6 @@ func (m *MemStoreManager) Get(_ context.Context, qid QueryID) (*Entry, error) {
 	return m.store[qid], nil
 }
 
-func (m *MemStoreManager) List(_ context.Context, _ string) ([]*Entry, string, error) {
+func (_ *MemStoreManager) List(_ context.Context, _ string) ([]*Entry, string, error) {
 	return []*Entry{}, "", nil
 }
