@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
-	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -60,29 +60,37 @@ type RenderResponse struct {
 }
 
 type RenderHandler struct {
-	log                *logrus.Logger
-	storage            storage.Getter
-	dir                http.FileSystem
-	stats              StatsReceiver
-	maxNodesDefault    int
-	httpUtils          httputils.Utils
-	annotationsService service.AnnotationsService
+	log             *logrus.Logger
+	storage         storage.Getter
+	dir             http.FileSystem
+	stats           StatsReceiver
+	maxNodesDefault int
+	httpUtils       httputils.Utils
+	historyMgr      history.Manager
 }
 
-func (ctrl *Controller) renderHandler(annotationsService service.AnnotationsService) http.HandlerFunc {
-	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils, annotationsService).ServeHTTP
+func (ctrl *Controller) renderHandler() http.HandlerFunc {
+	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils, ctrl.historyMgr).ServeHTTP
 }
 
 //revive:disable:argument-limit TODO(petethepig): we will refactor this later
-func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils, annotationsService service.AnnotationsService) *RenderHandler {
+func NewRenderHandler(
+	l *logrus.Logger,
+	s storage.Getter,
+	dir http.FileSystem,
+	stats StatsReceiver,
+	maxNodesDefault int,
+	httpUtils httputils.Utils,
+	historyMgr history.Manager,
+) *RenderHandler {
 	return &RenderHandler{
-		log:                l,
-		storage:            s,
-		dir:                dir,
-		stats:              stats,
-		maxNodesDefault:    maxNodesDefault,
-		httpUtils:          httpUtils,
-		annotationsService: annotationsService,
+		log:             l,
+		storage:         s,
+		dir:             dir,
+		stats:           stats,
+		maxNodesDefault: maxNodesDefault,
+		httpUtils:       httpUtils,
+		historyMgr:      historyMgr,
 	}
 }
 
