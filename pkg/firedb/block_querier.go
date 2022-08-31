@@ -831,9 +831,7 @@ func (p *predicateRepeatedColumnMatches) Execute(ctx context.Context, f *parquet
 		if _, err := page.Values().ReadValues(values); err != io.EOF {
 			return NewErrIterator[int64](errors.Wrapf(err, "error reading values on page %d", idx))
 		}
-		if closer, ok := page.(io.Closer); ok {
-			closer.Close()
-		}
+
 		for _, v := range values {
 			// TODO: When this column is sorted skip the remainder of the page
 
