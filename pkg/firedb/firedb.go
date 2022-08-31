@@ -3,6 +3,8 @@ package firedb
 import (
 	"context"
 	"flag"
+	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -67,6 +69,10 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 		return nil, err
 	}
 
+	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
+		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
+	}
+
 	f.blockQuerier = NewBlockQuerier(logger, objstore.BucketReaderWithPrefix(bucketReader, pathLocal))
 
 	// do an initial querier sync
@@ -84,6 +90,7 @@ func (f *FireDB) LocalDataPath() string {
 func (f *FireDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
 	return f.blockQuerier.BlockMetas(ctx)
 }
+
 func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
 	if err := f.blockQuerier.Sync(ctx); err != nil {
 		level.Error(f.logger).Log("msg", "sync blocks failed", "err", err)
@@ -155,7 +162,6 @@ type profileSelecter interface {
 type profileSelecters []profileSelecter
 
 func (ps profileSelecters) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-
 	// first check which profileSelecters are in range before executing
 	ps = lo.Filter(ps, func(e profileSelecter, _ int) bool {
 		return e.InRange(
@@ -235,7 +241,7 @@ func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) 
 		}
 
 		// rewrite existing function ids, by building a list of unique slices
-		var functionIDsUniq = make(map[*int32][]int32)
+		functionIDsUniq := make(map[*int32][]int32)
 		for _, profile := range resp.Profiles {
 			for _, sample := range profile.Stacktraces {
 				if len(sample.FunctionIds) == 0 {
@@ -262,7 +268,7 @@ func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) 
 }
 
 func (f *FireDB) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	var sources = append(f.blockQuerier.profileSelecters(), f.Head())
+	sources := append(f.blockQuerier.profileSelecters(), f.Head())
 	return sources.SelectProfiles(ctx, req)
 }
 
