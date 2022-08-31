@@ -9,8 +9,9 @@ $axis-width: 3px;
   .heatmapSvg {
     width: 100%;
     background-color: var(--ps-immutable-white);
+    cursor: crosshair;
 
-    foreignObject {
+    .selectionContainer {
       width: 100%;
     }
   }
@@ -18,7 +19,6 @@ $axis-width: 3px;
   .xAxis {
     left: -$axis-width;
     position: absolute;
-    // change color
     border-right: $axis-width solid yellowgreen;
     display: flex;
     flex-direction: column-reverse;
@@ -67,6 +67,23 @@ $axis-width: 3px;
       margin-left: -$axis-width;
       text-align: center;
       left: -11px;
+    }
+  }
+
+  .selectedAreaBlock {
+    cursor: crosshair;
+    position: absolute;
+    border: 2px solid;
+  }
+
+  .bucketsColors {
+    margin-top: 45px;
+
+    .color {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      margin-right: 3px;
     }
   }
 }
