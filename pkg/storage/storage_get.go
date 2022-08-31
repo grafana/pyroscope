@@ -26,15 +26,18 @@ type GetInput struct {
 }
 
 type GetOutput struct {
-	Tree            *tree.Tree
-	Timeline        *segment.Timeline
-	Groups          map[string]*segment.Timeline
+	Tree     *tree.Tree
+	Timeline *segment.Timeline
+	Groups   map[string]*segment.Timeline
+	Count    uint64
+
+	// TODO: Replace with metadata.Metadata
 	SpyName         string
 	SampleRate      uint32
-	Count           uint64
 	Units           metadata.Units
 	AggregationType metadata.AggregationType
-	Telemetry       map[string]interface{}
+
+	Telemetry map[string]interface{}
 }
 
 const (
@@ -188,10 +191,10 @@ func (s *Storage) tryGetExemplar(ctx context.Context, gi *GetInput) (*GetOutput,
 		Timeline: segment.GenerateTimeline(gi.StartTime, gi.EndTime),
 		Groups:   make(map[string]*segment.Timeline),
 
-		SpyName:         m.SpyName,
-		SampleRate:      m.SampleRate,
-		Units:           m.Units,
-		AggregationType: m.AggregationType,
+		SpyName:         m.Metadata.SpyName,
+		SampleRate:      m.Metadata.SampleRate,
+		Units:           m.Metadata.Units,
+		AggregationType: m.Metadata.AggregationType,
 	}
 
 	return &out, true, nil

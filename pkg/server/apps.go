@@ -2,9 +2,10 @@ package server
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"net/http"
 )
 
 type AppInfo struct {
@@ -15,8 +16,8 @@ type DeleteAppInput struct {
 	Name string `json:"name"`
 }
 
-func (c *Controller) getAppsHandler() http.HandlerFunc {
-	return NewGetAppsHandler(c.storage, c.httpUtils)
+func (ctrl *Controller) getAppsHandler() http.HandlerFunc {
+	return NewGetAppsHandler(ctrl.storage, ctrl.httpUtils)
 }
 
 func NewGetAppsHandler(s storage.AppGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
@@ -38,8 +39,8 @@ func NewGetAppsHandler(s storage.AppGetter, httpUtils httputils.Utils) func(w ht
 	}
 }
 
-func (c *Controller) getAppNames() http.HandlerFunc {
-	return NewGetAppNamesHandler(c.storage, c.httpUtils)
+func (ctrl *Controller) getAppNames() http.HandlerFunc {
+	return NewGetAppNamesHandler(ctrl.storage, ctrl.httpUtils)
 }
 
 func NewGetAppNamesHandler(s storage.AppNameGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
@@ -50,8 +51,8 @@ func NewGetAppNamesHandler(s storage.AppNameGetter, httpUtils httputils.Utils) f
 	}
 }
 
-func (c *Controller) deleteAppsHandler() http.HandlerFunc {
-	return NewDeleteAppHandler(c.storage, c.httpUtils)
+func (ctrl *Controller) deleteAppsHandler() http.HandlerFunc {
+	return NewDeleteAppHandler(ctrl.storage, ctrl.httpUtils)
 }
 
 func NewDeleteAppHandler(s storage.AppDeleter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {

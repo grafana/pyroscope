@@ -14,19 +14,23 @@ import (
 
 type MergeExemplarsInput struct {
 	AppName    string
+	ProfileIDs []string
 	StartTime  time.Time
 	EndTime    time.Time
-	ProfileIDs []string
+
+	// FIXME: Not implemented: parameters are ignored.
+	MinValue            uint64
+	MaxValue            uint64
+	HeatmapTimeBuckets  uint64
+	HeatmapValueBuckets uint64
 }
 
 type MergeExemplarsOutput struct {
-	Tree  *tree.Tree
-	Count uint64
-
-	SpyName         string
-	SampleRate      uint32
-	Units           metadata.Units
-	AggregationType metadata.AggregationType
+	Tree     *tree.Tree
+	Count    uint64
+	Metadata metadata.Metadata
+	// FIXME: Not implemented: the field is never populated.
+	Heatmap *Heatmap
 
 	Telemetry map[string]interface{}
 }
@@ -40,14 +44,10 @@ func (s *Storage) MergeExemplars(ctx context.Context, mi MergeExemplarsInput) (o
 	out.Tree = m.tree
 	out.Count = m.count
 	if m.segment != nil {
-		md := m.segment.GetMetadata()
-		out.SpyName = md.SpyName
-		out.Units = md.Units
-		out.SampleRate = md.SampleRate
-		out.AggregationType = md.AggregationType
+		out.Metadata = m.segment.GetMetadata()
 	}
 
-	if out.Count > 1 && out.AggregationType == metadata.AverageAggregationType {
+	if out.Count > 1 && out.Metadata.AggregationType == metadata.AverageAggregationType {
 		out.Tree = out.Tree.Clone(big.NewRat(1, int64(out.Count)))
 	}
 
