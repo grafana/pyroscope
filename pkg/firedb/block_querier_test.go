@@ -11,15 +11,14 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thanos-io/objstore/providers/filesystem"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 	pprofth "github.com/grafana/fire/pkg/pprof/testhelper"
 )
 
 func Test_BlockQuerier(t *testing.T) {
-
 	tsdbPath := t.TempDir()
 	head, err := NewHead(tsdbPath)
 	require.NoError(t, err)
@@ -102,7 +101,6 @@ func Test_BlockQuerier(t *testing.T) {
 	assert.Equal(t, "my", result.Msg.FunctionNames[profile.Stacktraces[0].FunctionIds[0]])
 	assert.Equal(t, "other", result.Msg.FunctionNames[profile.Stacktraces[0].FunctionIds[1]])
 	assert.Equal(t, "stack", result.Msg.FunctionNames[profile.Stacktraces[0].FunctionIds[2]])
-
 }
 
 func Test_mergeSelectProfilesResponse(t *testing.T) {

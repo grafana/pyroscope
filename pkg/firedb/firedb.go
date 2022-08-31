@@ -14,12 +14,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
-	"github.com/thanos-io/objstore/providers/filesystem"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/fire/pkg/firedb/block"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/objstore"
+	"github.com/grafana/fire/pkg/objstore/client"
+	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 )
 
 type Config struct {
@@ -62,12 +62,16 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 	}
 	f.Service = services.NewBasicService(f.starting, f.running, f.stopping)
 
-	bucketReader, err := filesystem.NewBucket(cfg.DataPath)
+	fs, err := filesystem.NewBucket(cfg.DataPath)
+	if err != nil {
+		return nil, err
+	}
+	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, reg)
 	if err != nil {
 		return nil, err
 	}
 
-	f.blockQuerier = NewBlockQuerier(logger, objstore.BucketReaderWithPrefix(bucketReader, pathLocal))
+	f.blockQuerier = NewBlockQuerier(logger, bucketReader)
 
 	// do an initial querier sync
 	ctx := context.Background()
@@ -84,6 +88,7 @@ func (f *FireDB) LocalDataPath() string {
 func (f *FireDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
 	return f.blockQuerier.BlockMetas(ctx)
 }
+
 func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
 	if err := f.blockQuerier.Sync(ctx); err != nil {
 		level.Error(f.logger).Log("msg", "sync blocks failed", "err", err)
@@ -155,7 +160,6 @@ type profileSelecter interface {
 type profileSelecters []profileSelecter
 
 func (ps profileSelecters) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-
 	// first check which profileSelecters are in range before executing
 	ps = lo.Filter(ps, func(e profileSelecter, _ int) bool {
 		return e.InRange(
@@ -167,6 +171,7 @@ func (ps profileSelecters) SelectProfiles(ctx context.Context, req *connect.Requ
 	results := make([]*ingestv1.SelectProfilesResponse, len(ps))
 
 	g, ctx := errgroup.WithContext(ctx)
+	// todo not sure this help on disk IO
 	g.SetLimit(16)
 
 	query := func(ctx context.Context, pos int) {
@@ -235,7 +240,7 @@ func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) 
 		}
 
 		// rewrite existing function ids, by building a list of unique slices
-		var functionIDsUniq = make(map[*int32][]int32)
+		functionIDsUniq := make(map[*int32][]int32)
 		for _, profile := range resp.Profiles {
 			for _, sample := range profile.Stacktraces {
 				if len(sample.FunctionIds) == 0 {
@@ -262,7 +267,7 @@ func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) 
 }
 
 func (f *FireDB) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	var sources = append(f.blockQuerier.profileSelecters(), f.Head())
+	sources := append(f.blockQuerier.profileSelecters(), f.Head())
 	return sources.SelectProfiles(ctx, req)
 }
 
