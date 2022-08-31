@@ -95,7 +95,7 @@ export async function mergeWithQueryID(
     signal?: AbortSignal;
   }
 ): Promise<Result<MergeOutput, RequestError | ZodError>> {
-  const url = buildRenderFromQueryIDURL(props);
+  const url = buildMergeURLWithQueryID(props);
   // TODO
   const response = await request(`${url}&format=json`, {
     signal: controller?.signal,
