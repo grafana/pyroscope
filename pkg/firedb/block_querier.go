@@ -621,7 +621,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 
 	return connect.NewResponse(&ingestv1.SelectProfilesResponse{
 		Profiles:      result,
-		FunctionNames: []string{},
+		FunctionNames: names,
 	}), err
 }
 
