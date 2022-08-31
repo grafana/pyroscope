@@ -2,9 +2,10 @@ package server
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"net/http"
 )
 
 type AppInfo struct {

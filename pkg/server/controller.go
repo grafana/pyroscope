@@ -79,9 +79,10 @@ type Controller struct {
 	adhoc adhocserver.Server
 
 	// TODO: Should be moved to a separate Login handler/service.
-	authService     service.AuthService
-	userService     service.UserService
-	jwtTokenService service.JWTTokenService
+	authService        service.AuthService
+	userService        service.UserService
+	jwtTokenService    service.JWTTokenService
+	annotationsService service.AnnotationsService
 
 	scrapeManager *scrape.Manager
 }
@@ -190,12 +191,14 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
 	ctrl.userService = service.NewUserService(ctrl.db)
+	annotationsService := service.NewAnnotationsService(ctrl.db)
 
 	apiRouter := router.New(r.PathPrefix("/api").Subrouter(), router.Services{
-		Logger:        ctrl.log,
-		APIKeyService: service.NewAPIKeyService(ctrl.db),
-		AuthService:   ctrl.authService,
-		UserService:   ctrl.userService,
+		Logger:          ctrl.log,
+		APIKeyService:   service.NewAPIKeyService(ctrl.db),
+		AuthService:     ctrl.authService,
+		UserService:     ctrl.userService,
+		AnnotationsCtrl: api.NewAnnotationsCtrl(ctrl.log, annotationsService, httputils.NewDefaultHelper(ctrl.log)),
 	})
 
 	apiRouter.Use(
@@ -206,6 +209,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		apiRouter.RegisterUserHandlers()
 		apiRouter.RegisterAPIKeyHandlers()
 	}
+	apiRouter.RegisterAnnotationsHandlers()
 
 	ingestRouter := r.Path("/ingest").Subrouter()
 	ingestRouter.Use(ctrl.drainMiddleware)
@@ -267,7 +271,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		}
 	} else {
 		routes = append(routes, []route{
-			{"/render", ctrl.renderHandler()},
+			{"/render", ctrl.renderHandler(annotationsService)},
 			{"/render-diff", ctrl.renderDiffHandler()},
 			{"/merge", ctrl.mergeHandler()},
 			{"/labels", ctrl.labelsHandler()},

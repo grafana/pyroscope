@@ -115,7 +115,7 @@ func createAPIKeyTableMigration() *gormigrate.Migration {
 func createAnnotations() *gormigrate.Migration {
 	type annotation struct {
 		ID        uint   `gorm:"primarykey"`
-		AppName   string `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+		AppName   string `gorm:"type:varchar(255);not null;default:null;index:"`
 		Content   string
 		From      *time.Time
 		Until     *time.Time
@@ -123,7 +123,7 @@ func createAnnotations() *gormigrate.Migration {
 	}
 
 	return &gormigrate.Migration{
-		ID: "1661870435",
+		ID: "1661975049",
 		Migrate: func(tx *gorm.DB) error {
 			return tx.AutoMigrate(&annotation{})
 		},

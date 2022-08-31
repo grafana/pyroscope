@@ -3,10 +3,10 @@ package model
 import "time"
 
 type Annotation struct {
-	ID        uint
-	AppName   string
-	Content   string
-	From      time.Time
-	Until     time.Time
-	CreatedAt time.Time
+	ID        uint      `json:"-"`
+	AppName   string    `json:"appName"`
+	Content   string    `json:"content"`
+	From      time.Time `json:"timestamp"`
+	Until     time.Time `json:"-"`
+	CreatedAt time.Time `json:"-"`
 }

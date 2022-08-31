@@ -11,7 +11,9 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -47,31 +49,34 @@ type renderMetadataResponse struct {
 }
 type RenderResponse struct {
 	flamebearer.FlamebearerProfile
-	Metadata renderMetadataResponse `json:"metadata"`
+	Metadata    renderMetadataResponse `json:"metadata"`
+	Annotations []model.Annotation     `json:"annotations"`
 }
 
 type RenderHandler struct {
-	log             *logrus.Logger
-	storage         storage.Getter
-	dir             http.FileSystem
-	stats           StatsReceiver
-	maxNodesDefault int
-	httpUtils       httputils.Utils
+	log                *logrus.Logger
+	storage            storage.Getter
+	dir                http.FileSystem
+	stats              StatsReceiver
+	maxNodesDefault    int
+	httpUtils          httputils.Utils
+	annotationsService service.AnnotationsService
 }
 
-func (ctrl *Controller) renderHandler() http.HandlerFunc {
-	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
+func (ctrl *Controller) renderHandler(annotationsService service.AnnotationsService) http.HandlerFunc {
+	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils, annotationsService).ServeHTTP
 }
 
 //revive:disable:argument-limit TODO(petethepig): we will refactor this later
-func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *RenderHandler {
+func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils, annotationsService service.AnnotationsService) *RenderHandler {
 	return &RenderHandler{
-		log:             l,
-		storage:         s,
-		dir:             dir,
-		stats:           stats,
-		maxNodesDefault: maxNodesDefault,
-		httpUtils:       httpUtils,
+		log:                l,
+		storage:            s,
+		dir:                dir,
+		stats:              stats,
+		maxNodesDefault:    maxNodesDefault,
+		httpUtils:          httpUtils,
+		annotationsService: annotationsService,
 	}
 }
 
@@ -110,7 +115,15 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch p.format {
 	case "json":
 		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
-		res := rh.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
+
+		// Look up annotations
+		annotations, err := rh.annotationsService.FindAnnotationsByTimeRange(r.Context(), appName, p.gi.StartTime, p.gi.EndTime)
+		if err != nil {
+			// TODO(eh-am): maybe we should just return empty annotations?
+			rh.httpUtils.WriteInternalServerError(r, w, err, "failed to load annotations")
+		}
+
+		res := rh.mountRenderResponse(flame, appName, p.gi, p.maxNodes, annotations)
 		rh.httpUtils.WriteResponseJSON(r, w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
@@ -138,7 +151,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Enhance the flamebearer with a few additional fields the UI requires
-func (*RenderHandler) mountRenderResponse(flame flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int) RenderResponse {
+func (*RenderHandler) mountRenderResponse(flame flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int, annotations []model.Annotation) RenderResponse {
 	metadata := renderMetadataResponse{
 		flame.Metadata,
 		appName,
@@ -151,6 +164,7 @@ func (*RenderHandler) mountRenderResponse(flame flamebearer.FlamebearerProfile, 
 	renderResponse := RenderResponse{
 		flame,
 		metadata,
+		annotations,
 	}
 
 	return renderResponse

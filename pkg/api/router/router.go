@@ -22,6 +22,7 @@ type Services struct {
 	api.AuthService
 	api.UserService
 	api.APIKeyService
+	*api.AnnotationsCtrl
 }
 
 func New(m *mux.Router, s Services) *Router {
@@ -29,11 +30,6 @@ func New(m *mux.Router, s Services) *Router {
 		Router:   m,
 		Services: s,
 	}
-}
-
-func (r *Router) RegisterHandlers() {
-	r.RegisterUserHandlers()
-	r.RegisterAPIKeyHandlers()
 }
 
 func (r *Router) RegisterUserHandlers() {
@@ -73,4 +69,19 @@ func (r *Router) RegisterAPIKeyHandlers() {
 
 	x = x.PathPrefix("/{id:[0-9]+}").Subrouter()
 	x.Methods(http.MethodDelete).HandlerFunc(h.DeleteAPIKey)
+}
+
+func (r *Router) RegisterAnnotationsHandlers() {
+	r.Logger.Debug("Registering AnnotationsHandler")
+	x := r.PathPrefix("/annotations").Subrouter()
+	x.Methods(http.MethodPost).HandlerFunc(r.AnnotationsCtrl.CreateHandler)
+	//	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultHelper(r.Logger))
+
+	//	x := r.PathPrefix("/keys").Subrouter()
+	//	x.Use(authorizer.RequireAdminRole())
+	//	x.Methods(http.MethodPost).HandlerFunc(h.CreateAPIKey)
+	//	x.Methods(http.MethodGet).HandlerFunc(h.ListAPIKeys)
+	//
+	//	x = x.PathPrefix("/{id:[0-9]+}").Subrouter()
+	//	x.Methods(http.MethodDelete).HandlerFunc(h.DeleteAPIKey)
 }
