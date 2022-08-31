@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -90,7 +91,7 @@ func (rh *RenderDiffHandler) parseDiffQueryParams(r *http.Request, p *diffParams
 }
 
 func (ctrl *Controller) renderDiffHandler() http.HandlerFunc {
-	return NewRenderDiffHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils).ServeHTTP
+	return NewRenderDiffHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils, ctrl.historyMgr).ServeHTTP
 }
 
 type RenderDiffHandler struct {
@@ -100,10 +101,19 @@ type RenderDiffHandler struct {
 	stats           StatsReceiver
 	maxNodesDefault int
 	httpUtils       httputils.Utils
+	historyMgr      history.Manager
 }
 
 //revive:disable:argument-limit TODO(petethepig): we will refactor this later
-func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int, httpUtils httputils.Utils) *RenderDiffHandler {
+func NewRenderDiffHandler(
+	l *logrus.Logger,
+	s storage.Getter,
+	dir http.FileSystem,
+	stats StatsReceiver,
+	maxNodesDefault int,
+	httpUtils httputils.Utils,
+	historyMgr history.Manager,
+) *RenderDiffHandler {
 	return &RenderDiffHandler{
 		log:             l,
 		storage:         s,
@@ -111,6 +121,7 @@ func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSyste
 		stats:           stats,
 		maxNodesDefault: maxNodesDefault,
 		httpUtils:       httpUtils,
+		historyMgr:      historyMgr,
 	}
 }
 

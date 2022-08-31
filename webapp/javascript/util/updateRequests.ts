@@ -13,64 +13,29 @@ export function buildRenderURL(
   fromOverride?: string,
   untilOverride?: string
 ) {
-  let { from, until, query } = state;
+  const params = new URLSearchParams();
+  params.set('query', state.query);
+  params.set('from', fromOverride || state.from);
+  params.set('until', untilOverride || state.until);
+  state.refreshToken && params.set('refreshToken', state.refreshToken);
+  state.maxNodes && params.set('max-nodes', String(state.maxNodes));
+  state.groupBy && params.set('groupBy', state.groupBy);
+  state.groupByValue && params.set('groupByValue', state.groupByValue);
 
-  if (fromOverride) {
-    from = fromOverride;
-  }
-
-  if (untilOverride) {
-    until = untilOverride;
-  }
-
-  let url = `render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(
-    until
-  )}`;
-
-  url += `&query=${encodeURIComponent(query)}`;
-
-  if (state.refreshToken) {
-    url += `&refreshToken=${state.refreshToken}`;
-  }
-
-  if (state.maxNodes) {
-    url += `&max-nodes=${state.maxNodes}`;
-  }
-
-  if (state.groupBy) {
-    url += `&groupBy=${state.groupBy}`;
-  }
-
-  if (state.groupByValue) {
-    url += `&groupByValue=${state.groupByValue}`;
-  }
-
-  return url;
+  return `/render?${params}`;
 }
 
-// TODO: merge buildRenderURL and buildDiffRenderURL
-export function buildDiffRenderURL(state: {
-  from: string;
-  until: string;
-  leftFrom: string;
-  leftUntil: string;
-  rightFrom: string;
-  rightUntil: string;
+export function buildMergeURLWithQueryID(state: {
+  queryID: string;
   refreshToken?: string;
-  maxNodes: string;
-  query: string;
+  maxNodes?: string | number;
 }) {
-  const { from, until, leftFrom, leftUntil, rightFrom, rightUntil } = state;
-  const urlStr = buildRenderURL(state, from, until);
-  const url = new URL(urlStr, location.href);
-
-  url.pathname = url.pathname.replace('render', 'render-diff');
+  const url = new URL('/merge');
 
   const params = url.searchParams;
-  params.set('leftFrom', leftFrom);
-  params.set('leftUntil', leftUntil);
-  params.set('rightFrom', rightFrom);
-  params.set('rightUntil', rightUntil);
+  params.set('queryID', state.queryID);
+  state.refreshToken && params.set('refreshToken', state.refreshToken);
+  state.maxNodes && params.set('max-nodes', String(state.maxNodes));
 
   return url.toString();
 }

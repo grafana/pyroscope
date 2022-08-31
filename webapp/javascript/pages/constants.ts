@@ -11,6 +11,7 @@ export enum PAGES {
   ADHOC_COMPARISON_DIFF = '/adhoc-comparison-diff',
   FORBIDDEN = '/forbidden',
   TAG_EXPLORER = '/explore',
+  TRACING = '/tracing',
 }
 
 export default {
