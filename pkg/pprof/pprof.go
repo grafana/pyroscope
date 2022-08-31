@@ -66,12 +66,12 @@ func (s *sortedSample) Swap(i, j int) {
 }
 
 // Normalize normalizes the profile by:
-// - Removing all duplicate samples (summing their values).
-// - Removing redundant profile labels (byte => unique of an allocation site)
-//		todo: We should reassess if this was a good choice because by merging duplicate stacktrace samples
-//            we cannot recompute the allocation per site ("bytes") profile label.
-// - Removing empty samples.
-// - Then remove unused references.
+//   - Removing all duplicate samples (summing their values).
+//   - Removing redundant profile labels (byte => unique of an allocation site)
+//     todo: We should reassess if this was a good choice because by merging duplicate stacktrace samples
+//     we cannot recompute the allocation per site ("bytes") profile label.
+//   - Removing empty samples.
+//   - Then remove unused references.
 func (p *Profile) Normalize() {
 	// first we sort the samples location ids.
 	hashes := p.hasher.Hashes(p.Sample)

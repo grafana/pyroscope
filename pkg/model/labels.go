@@ -109,14 +109,13 @@ func (ls Labels) ToPrometheusLabels() labels.Labels {
 }
 
 func (ls Labels) WithoutPrivateLabels() Labels {
-	i := 0
+	res := make([]*commonv1.LabelPair, 0, len(ls))
 	for _, l := range ls {
 		if !strings.HasPrefix(l.Name, "__") {
-			ls[i] = l
-			i++
+			res = append(res, l)
 		}
 	}
-	return ls[:i]
+	return res
 }
 
 // Get returns the value for the label with the given name.

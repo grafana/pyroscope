@@ -17,7 +17,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
-	objstoreclient "github.com/thanos-io/objstore/client"
 	"github.com/thanos-io/thanos/pkg/discovery/dns"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/user"
@@ -33,6 +32,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/fire/pkg/ingester"
+	objstoreclient "github.com/grafana/fire/pkg/objstore/client"
 	"github.com/grafana/fire/pkg/openapiv2"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
@@ -166,8 +166,8 @@ func (f *Fire) initFireDB() (_ services.Service, err error) {
 
 	return f.fireDB, nil
 }
-func (f *Fire) initStorage() (_ services.Service, err error) {
 
+func (f *Fire) initStorage() (_ services.Service, err error) {
 	if cfg := f.Cfg.Storage.BucketConfig; len(cfg) > 0 {
 		b, err := objstoreclient.NewBucket(
 			f.logger,
@@ -182,7 +182,6 @@ func (f *Fire) initStorage() (_ services.Service, err error) {
 	}
 
 	return nil, nil
-
 }
 
 func (f *Fire) initIngester() (_ services.Service, err error) {
