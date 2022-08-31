@@ -199,14 +199,14 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
 	ctrl.userService = service.NewUserService(ctrl.db)
-	annotationsService := service.NewAnnotationsService(ctrl.db)
+	ctrl.annotationsService = service.NewAnnotationsService(ctrl.db)
 
 	apiRouter := router.New(r.PathPrefix("/api").Subrouter(), router.Services{
 		Logger:          ctrl.log,
 		APIKeyService:   service.NewAPIKeyService(ctrl.db),
 		AuthService:     ctrl.authService,
 		UserService:     ctrl.userService,
-		AnnotationsCtrl: api.NewAnnotationsCtrl(ctrl.log, annotationsService, httputils.NewDefaultHelper(ctrl.log)),
+		AnnotationsCtrl: api.NewAnnotationsCtrl(ctrl.log, ctrl.annotationsService, httputils.NewDefaultHelper(ctrl.log)),
 	})
 
 	apiRouter.Use(
@@ -280,7 +280,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		}
 	} else {
 		routes = append(routes, []route{
-			{"/render", ctrl.renderHandler(annotationsService)},
+			{"/render", ctrl.renderHandler()},
 			{"/render-diff", ctrl.renderDiffHandler()},
 			{"/merge", ctrl.mergeHandler()},
 			{"/labels", ctrl.labelsHandler()},

@@ -12,6 +12,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/history"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -60,17 +61,18 @@ type RenderResponse struct {
 }
 
 type RenderHandler struct {
-	log             *logrus.Logger
-	storage         storage.Getter
-	dir             http.FileSystem
-	stats           StatsReceiver
-	maxNodesDefault int
-	httpUtils       httputils.Utils
-	historyMgr      history.Manager
+	log                *logrus.Logger
+	storage            storage.Getter
+	dir                http.FileSystem
+	stats              StatsReceiver
+	maxNodesDefault    int
+	httpUtils          httputils.Utils
+	historyMgr         history.Manager
+	annotationsService service.AnnotationsService
 }
 
 func (ctrl *Controller) renderHandler() http.HandlerFunc {
-	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils, ctrl.historyMgr).ServeHTTP
+	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender, ctrl.httpUtils, ctrl.historyMgr, ctrl.annotationsService).ServeHTTP
 }
 
 //revive:disable:argument-limit TODO(petethepig): we will refactor this later
@@ -82,15 +84,17 @@ func NewRenderHandler(
 	maxNodesDefault int,
 	httpUtils httputils.Utils,
 	historyMgr history.Manager,
+	annotationsService service.AnnotationsService,
 ) *RenderHandler {
 	return &RenderHandler{
-		log:             l,
-		storage:         s,
-		dir:             dir,
-		stats:           stats,
-		maxNodesDefault: maxNodesDefault,
-		httpUtils:       httpUtils,
-		historyMgr:      historyMgr,
+		log:                l,
+		storage:            s,
+		dir:                dir,
+		stats:              stats,
+		maxNodesDefault:    maxNodesDefault,
+		httpUtils:          httpUtils,
+		historyMgr:         historyMgr,
+		annotationsService: annotationsService,
 	}
 }
 
