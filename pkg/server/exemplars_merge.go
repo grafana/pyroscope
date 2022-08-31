@@ -23,8 +23,8 @@ type mergeExemplarsRequest struct {
 
 	MinValue            uint64 `json:"minValue"`
 	MaxValue            uint64 `json:"maxValue"`
-	HeatmapTimeBuckets  uint64 `json:"heatmapTimeBuckets"`
-	HeatmapValueBuckets uint64 `json:"heatmapValueBuckets"`
+	HeatmapTimeBuckets  int64  `json:"heatmapTimeBuckets"`
+	HeatmapValueBuckets int64  `json:"heatmapValueBuckets"`
 
 	// For consistency with render handler: `startTime` and `endTime` take precedence.
 	From  string `json:"from"`

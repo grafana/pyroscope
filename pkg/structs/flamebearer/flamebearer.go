@@ -111,10 +111,10 @@ type FlamebearerHeatmapV1 struct {
 	Values [][]uint64 `json:"values"`
 	// TimeBuckets denote number of bins on X axis.
 	// Length of Values array.
-	TimeBuckets int `json:"timeBuckets"`
+	TimeBuckets int64 `json:"timeBuckets"`
 	// ValueBuckets denote number of bins on Y axis.
 	// Length of any item in the Values array.
-	ValueBuckets int `json:"valueBuckets"`
+	ValueBuckets int64 `json:"valueBuckets"`
 	// StartTime and EndTime indicate boundaries of X axis: [StartTime:EndTime).
 	StartTime int64 `json:"startTime"`
 	EndTime   int64 `json:"endTime"`

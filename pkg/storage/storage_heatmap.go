@@ -11,10 +11,10 @@ type Heatmap struct {
 	Values [][]uint64
 	// TimeBuckets denote number of bins on the X axis.
 	// Length of Values array.
-	TimeBuckets int
+	TimeBuckets int64
 	// ValueBuckets denote number of bins on the Y axis.
 	// Length of any item in the Values array.
-	ValueBuckets int
+	ValueBuckets int64
 
 	// StartTime and EndTime indicate boundaries of the X axis: [StartTime:EndTime).
 	StartTime time.Time

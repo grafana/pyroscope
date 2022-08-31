@@ -19,10 +19,11 @@ type MergeExemplarsInput struct {
 	EndTime    time.Time
 
 	// FIXME: Not implemented: parameters are ignored.
-	MinValue            uint64
-	MaxValue            uint64
-	HeatmapTimeBuckets  uint64
-	HeatmapValueBuckets uint64
+	MinValue uint64
+	MaxValue uint64
+
+	HeatmapTimeBuckets  int64
+	HeatmapValueBuckets int64
 }
 
 type MergeExemplarsOutput struct {

@@ -14,10 +14,11 @@ type QueryExemplarsInput struct {
 	StartTime time.Time
 	EndTime   time.Time
 
-	MinValue            uint64
-	MaxValue            uint64
-	HeatmapTimeBuckets  uint64
-	HeatmapValueBuckets uint64
+	MinValue uint64
+	MaxValue uint64
+
+	HeatmapTimeBuckets  int64
+	HeatmapValueBuckets int64
 }
 
 type QueryExemplarsOutput struct {
@@ -29,7 +30,7 @@ type QueryExemplarsOutput struct {
 	Telemetry map[string]interface{}
 }
 
-func (s *Storage) QueryExemplars(context.Context, QueryExemplarsInput) (QueryExemplarsOutput, error) {
+func (*Storage) QueryExemplars(context.Context, QueryExemplarsInput) (QueryExemplarsOutput, error) {
 	// FIXME: Not implemented.
 	return QueryExemplarsOutput{Tree: tree.New()}, nil
 }
