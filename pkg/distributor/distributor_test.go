@@ -26,13 +26,13 @@ import (
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/testutil"
+	"github.com/grafana/fire/pkg/testhelper"
 )
 
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
 	ing := newFakeIngester(t, false)
-	d, err := New(Config{}, testutil.NewMockRing([]ring.InstanceDesc{
+	d, err := New(Config{}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
 	}, 3), func(addr string) (client.PoolClient, error) {
 		return ing, nil
@@ -84,7 +84,7 @@ func Test_Replication(t *testing.T) {
 			},
 		},
 	})
-	d, err := New(Config{}, testutil.NewMockRing([]ring.InstanceDesc{
+	d, err := New(Config{}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
@@ -107,7 +107,7 @@ func Test_Subservices(t *testing.T) {
 	ing := newFakeIngester(t, false)
 	d, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Second},
-	}, testutil.NewMockRing([]ring.InstanceDesc{
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
 	}, 1), func(addr string) (client.PoolClient, error) {
 		return ing, nil
@@ -138,7 +138,7 @@ type fakeIngester struct {
 	t        testing.TB
 	requests []*pushv1.PushRequest
 	fail     bool
-	testutil.FakePoolClient
+	testhelper.FakePoolClient
 
 	mtx sync.Mutex
 }
