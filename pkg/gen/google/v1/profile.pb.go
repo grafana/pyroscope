@@ -65,9 +65,13 @@ type Profile struct {
 
 	// A description of the samples associated with each Sample.value.
 	// For a cpu profile this might be:
-	//   [["cpu","nanoseconds"]] or [["wall","seconds"]] or [["syscall","count"]]
+	//
+	//	[["cpu","nanoseconds"]] or [["wall","seconds"]] or [["syscall","count"]]
+	//
 	// For a heap profile, this might be:
-	//   [["allocations","count"], ["space","bytes"]],
+	//
+	//	[["allocations","count"], ["space","bytes"]],
+	//
 	// If one of the values represents the number of events represented
 	// by the sample, by convention it should be at index 0 and use
 	// sample_type.unit == "count".
@@ -602,8 +606,9 @@ type Location struct {
 	// preceding entries were inlined.
 	//
 	// E.g., if memcpy() is inlined into printf:
-	//    line[0].function_name == "memcpy"
-	//    line[1].function_name == "printf"
+	//
+	//	line[0].function_name == "memcpy"
+	//	line[1].function_name == "printf"
 	Line []*Line `protobuf:"bytes,4,rep,name=line,proto3" json:"line,omitempty"`
 	// Provides an indication that multiple symbols map to this location's
 	// address, for example due to identical code folding by the linker. In that

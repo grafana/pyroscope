@@ -19,13 +19,13 @@ import (
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/testutil"
+	"github.com/grafana/fire/pkg/testhelper"
 )
 
 func Test_QuerySampleType(t *testing.T) {
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testutil.NewMockRing([]ring.InstanceDesc{
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
@@ -74,7 +74,7 @@ func Test_QueryLabelValues(t *testing.T) {
 	req := connect.NewRequest(&querierv1.LabelValuesRequest{Name: "foo"})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testutil.NewMockRing([]ring.InstanceDesc{
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
@@ -107,7 +107,7 @@ func Test_Series(t *testing.T) {
 	}})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testutil.NewMockRing([]ring.InstanceDesc{
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
@@ -172,7 +172,7 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testutil.NewMockRing([]ring.InstanceDesc{
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
@@ -215,9 +215,102 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	require.Equal(t, int64(1), flame.Msg.Flamegraph.MaxSelf)
 }
 
+func TestSelectSeries(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		in      []*ingestv1.Profile
+		out     []*querierv1.Series
+		groupby []string
+	}{
+		{
+			name: "empty",
+			in:   []*ingestv1.Profile{},
+			out:  []*querierv1.Series{},
+		},
+		{
+			name: "no group",
+			in: []*ingestv1.Profile{
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+			},
+			out: []*querierv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			},
+		},
+		{
+			name:    " group by app",
+			groupby: []string{"app"},
+			in: []*ingestv1.Profile{
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+			},
+			out: []*querierv1.Series{
+				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*querierv1.Point{{T: int64(1000), V: 10}, {T: int64(2000), V: 10}}},
+				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Points: []*querierv1.Point{{T: int64(1000), V: 20}}},
+			},
+		},
+		{
+			name:    " group by missing",
+			groupby: []string{"missing"},
+			in: []*ingestv1.Profile{
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+			},
+			out: []*querierv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			},
+		},
+		{
+			name:    "outside of the range",
+			groupby: []string{},
+			in: []*ingestv1.Profile{
+				{Timestamp: 9000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 10000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 11000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+				{Timestamp: 20000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
+			},
+			out: []*querierv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(9000), V: 10}, {T: int64(10000), V: 10}}},
+			},
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			querier, err := New(Config{
+				PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "1"}, {Addr: "2"}, {Addr: "3"},
+			}, 1), func(addr string) (client.PoolClient, error) {
+				q := newFakeQuerier()
+				q.On("SelectProfiles", mock.Anything, mock.Anything).Once().Return(connect.NewResponse(&ingestv1.SelectProfilesResponse{
+					Profiles: tt.in,
+				}), nil)
+				return q, nil
+			}, log.NewLogfmtLogger(os.Stdout))
+			require.NoError(t, err)
+
+			resp, err := querier.SelectSeries(context.Background(), connect.NewRequest(&querierv1.SelectSeriesRequest{
+				ProfileTypeID: "memory:inuse_space:bytes:space:byte",
+				Step:          float64(1),
+				GroupBy:       tt.groupby,
+				Start:         int64(1000),
+				End:           int64(10000),
+			}))
+			require.NoError(t, err)
+			testhelper.EqualProto(t, tt.out, resp.Msg.Series)
+		})
+	}
+}
+
 type fakeQuerierIngester struct {
 	mock.Mock
-	testutil.FakePoolClient
+	testhelper.FakePoolClient
 }
 
 func newFakeQuerier() *fakeQuerierIngester {

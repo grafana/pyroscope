@@ -31,6 +31,7 @@ type QuerierServiceClient interface {
 	LabelValues(context.Context, *connect_go.Request[v1.LabelValuesRequest]) (*connect_go.Response[v1.LabelValuesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
 }
 
 // NewQuerierServiceClient constructs a client for the querier.v1.QuerierService service. By
@@ -63,6 +64,11 @@ func NewQuerierServiceClient(httpClient connect_go.HTTPClient, baseURL string, o
 			baseURL+"/querier.v1.QuerierService/SelectMergeStacktraces",
 			opts...,
 		),
+		selectSeries: connect_go.NewClient[v1.SelectSeriesRequest, v1.SelectSeriesResponse](
+			httpClient,
+			baseURL+"/querier.v1.QuerierService/SelectSeries",
+			opts...,
+		),
 	}
 }
 
@@ -72,6 +78,7 @@ type querierServiceClient struct {
 	labelValues            *connect_go.Client[v1.LabelValuesRequest, v1.LabelValuesResponse]
 	series                 *connect_go.Client[v1.SeriesRequest, v1.SeriesResponse]
 	selectMergeStacktraces *connect_go.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse]
+	selectSeries           *connect_go.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
 }
 
 // ProfileTypes calls querier.v1.QuerierService.ProfileTypes.
@@ -94,12 +101,18 @@ func (c *querierServiceClient) SelectMergeStacktraces(ctx context.Context, req *
 	return c.selectMergeStacktraces.CallUnary(ctx, req)
 }
 
+// SelectSeries calls querier.v1.QuerierService.SelectSeries.
+func (c *querierServiceClient) SelectSeries(ctx context.Context, req *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error) {
+	return c.selectSeries.CallUnary(ctx, req)
+}
+
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
 	ProfileTypes(context.Context, *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v1.LabelValuesRequest]) (*connect_go.Response[v1.LabelValuesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
 }
 
 // NewQuerierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -129,6 +142,11 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect_go.Hand
 		svc.SelectMergeStacktraces,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/SelectSeries", connect_go.NewUnaryHandler(
+		"/querier.v1.QuerierService/SelectSeries",
+		svc.SelectSeries,
+		opts...,
+	))
 	return "/querier.v1.QuerierService/", mux
 }
 
@@ -149,4 +167,8 @@ func (UnimplementedQuerierServiceHandler) Series(context.Context, *connect_go.Re
 
 func (UnimplementedQuerierServiceHandler) SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeStacktraces is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectSeries is not implemented"))
 }
