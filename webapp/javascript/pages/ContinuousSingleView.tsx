@@ -90,12 +90,14 @@ function ContinuousSingleView() {
       case 'reloading': {
         return {
           data: singleView.timeline,
+          annotations: singleView.annotations,
         };
       }
 
       default: {
         return {
           data: undefined,
+          annotations: [],
         };
       }
     }
@@ -112,6 +114,7 @@ function ContinuousSingleView() {
             data-testid="timeline-single"
             id="timeline-chart-single"
             timelineA={getTimeline()}
+            annotations={getTimeline().annotations}
             onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
             height="125px"
             title={

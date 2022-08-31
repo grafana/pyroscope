@@ -9,6 +9,7 @@ import { formatAsOBject } from '@webapp/util/formatDate';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
+import { Annotation } from '@webapp/models/annotation';
 
 export interface TimelineGroupData {
   data: Group;
@@ -71,6 +72,8 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
+
+  annotations: Annotation[];
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -176,7 +179,10 @@ class TimelineChartWrapper extends React.Component<
   }
 
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
-    if (prevProps.markings !== this.props.markings) {
+    if (
+      prevProps.markings !== this.props.markings ||
+      prevProps.annotations !== this.props.annotations
+    ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
       this.setState({ flotOptions: newFlotOptions });
@@ -210,18 +216,41 @@ class TimelineChartWrapper extends React.Component<
       ];
     };
 
-    const { markings } = this.props;
+    // TODO(eh-am): what these markings refer to?
+    const generateMarkings = () => {
+      const { markings } = this.props;
 
-    if (markings) {
-      return [
-        markings.left && constructMarking(markings.left),
-        markings.right && constructMarking(markings.right),
-      ]
-        .flat()
-        .filter((a) => !!a);
-    }
+      if (markings) {
+        return [
+          markings.left && constructMarking(markings.left),
+          markings.right && constructMarking(markings.right),
+        ]
+          .flat()
+          .filter((a) => !!a);
+      }
 
-    return [];
+      return [];
+    };
+
+    const markingsFromAnnotations = () => {
+      const { annotations } = this.props;
+
+      if (!annotations?.length) {
+        return [];
+      }
+
+      return annotations.map((a) => ({
+        xaxis: {
+          // TODO(eh-am): look this up
+          from: a.timestamp * 1000,
+          to: a.timestamp * 1000,
+        },
+        lineWidth: '2px',
+        color: 'red',
+      }));
+    };
+
+    return generateMarkings().concat(markingsFromAnnotations());
   };
 
   render = () => {

@@ -47,10 +47,16 @@ type renderMetadataResponse struct {
 	Query     string `json:"query"`
 	MaxNodes  int    `json:"maxNodes"`
 }
+
+type annotationsResponse struct {
+	AppName   string `json:"appName"`
+	Content   string `json:"content"`
+	Timestamp int64  `json:"timestamp"`
+}
 type RenderResponse struct {
 	flamebearer.FlamebearerProfile
 	Metadata    renderMetadataResponse `json:"metadata"`
-	Annotations []model.Annotation     `json:"annotations"`
+	Annotations []annotationsResponse  `json:"annotations"`
 }
 
 type RenderHandler struct {
@@ -161,10 +167,18 @@ func (*RenderHandler) mountRenderResponse(flame flamebearer.FlamebearerProfile, 
 		maxNodes,
 	}
 
+	annotationsResp := make([]annotationsResponse, len(annotations))
+	for i, an := range annotations {
+		annotationsResp[i] = annotationsResponse{
+			Content:   an.Content,
+			Timestamp: an.From.Unix(),
+		}
+	}
+
 	renderResponse := RenderResponse{
 		flame,
 		metadata,
-		annotations,
+		annotationsResp,
 	}
 
 	return renderResponse

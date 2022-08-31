@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
@@ -33,7 +34,7 @@ func NewAnnotationsCtrl(log *logrus.Logger, svc AnnotationsService, httpUtils ht
 func (ctrl *AnnotationsCtrl) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	type createParams struct {
 		AppName   string `json:"appName"`
-		Timestamp uint64 `json:"timestamp"`
+		Timestamp int64  `json:"timestamp"`
 		Content   string `json:"content"`
 	}
 	var params createParams
@@ -41,6 +42,10 @@ func (ctrl *AnnotationsCtrl) CreateHandler(w http.ResponseWriter, r *http.Reques
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		ctrl.httpUtils.WriteInternalServerError(r, w, err, "failed to unmarshal JSON")
 		return
+	}
+
+	if params.Timestamp == 0 {
+		params.Timestamp = time.Now().Unix()
 	}
 
 	// TODO: parse parameters
@@ -51,7 +56,7 @@ func (ctrl *AnnotationsCtrl) CreateHandler(w http.ResponseWriter, r *http.Reques
 	//
 	annotation, err := ctrl.svc.CreateAnnotation(r.Context(), service.CreateAnnotationParams{
 		AppName:   params.AppName,
-		Timestamp: attime.Parse(strconv.FormatUint(params.Timestamp, 10)),
+		Timestamp: attime.Parse(strconv.FormatInt(params.Timestamp, 10)),
 		Content:   params.Content,
 	})
 	if err != nil {
