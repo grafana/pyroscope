@@ -48,6 +48,7 @@ func Migrate(db *gorm.DB, c *config.Server) error {
 	return gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		createUserTableMigration(c.Auth.Internal.AdminUser),
 		createAPIKeyTableMigration(),
+		createAnnotations(),
 	}).Migrate()
 }
 
@@ -107,6 +108,27 @@ func createAPIKeyTableMigration() *gormigrate.Migration {
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Migrator().DropTable(&apiKey{})
+		},
+	}
+}
+
+func createAnnotations() *gormigrate.Migration {
+	type annotation struct {
+		ID        uint   `gorm:"primarykey"`
+		AppName   string `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+		Content   string
+		From      *time.Time
+		Until     *time.Time
+		CreatedAt time.Time
+	}
+
+	return &gormigrate.Migration{
+		ID: "1661870435",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&annotation{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable(&annotation{})
 		},
 	}
 }
