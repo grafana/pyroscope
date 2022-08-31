@@ -233,9 +233,7 @@ func (p *Parser) formatStackFrame(x *tree.Profile, fn *tree.Function, line *tree
 }
 
 func unsafeStrToSlice(s string) []byte {
-	r := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	var i *[0x7fff0000]byte = (*[0x7fff0000]byte)(unsafe.Pointer(r.Data))
-	return i[:len(s):len(s)]
+	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
 }
 
 func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
