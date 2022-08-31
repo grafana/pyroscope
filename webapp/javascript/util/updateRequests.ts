@@ -30,12 +30,10 @@ export function buildMergeURLWithQueryID(state: {
   refreshToken?: string;
   maxNodes?: string | number;
 }) {
-  const url = new URL('/merge');
-
-  const params = url.searchParams;
+  const params = new URLSearchParams();
   params.set('queryID', state.queryID);
   state.refreshToken && params.set('refreshToken', state.refreshToken);
   state.maxNodes && params.set('max-nodes', String(state.maxNodes));
 
-  return url.toString();
+  return `/merge?${params}`;
 }
