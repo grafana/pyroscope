@@ -79,7 +79,7 @@ func (u *Upstream) Upload(j *upstream.UploadJob) {
 		profile.PreviousProfile = j.PrevProfile
 	}
 
-	err = u.ingester.Ingest(context.TODO(), &ingestion.IngestInput{
+	err = u.ingester.Ingest(pprof.WithLineNumbersEnabled(context.TODO(), true), &ingestion.IngestInput{
 		Profile: profile,
 		Metadata: ingestion.Metadata{
 			SpyName:   j.SpyName,

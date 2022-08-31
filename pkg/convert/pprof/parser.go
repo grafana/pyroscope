@@ -62,7 +62,7 @@ func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, b
 }
 
 func (p *Parser) Convert(ctx context.Context, startTime, endTime time.Time, profile *tree.Profile) error {
-	return p.iterate(profile, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
+	return p.iterate(ctx, profile, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		if vt.Type >= int64(len(profile.StringTable)) {
 			return false, fmt.Errorf("sample value type is invalid: %d", vt.Type)
 		}
@@ -140,9 +140,9 @@ func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
 	return e.Tree, true
 }
 
-func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
+func (p *Parser) iterate(ctx context.Context, x *tree.Profile, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
 	c := make(tree.LabelsCache)
-	p.readTrees(x, c, tree.NewFinder(x))
+	p.readTrees(ctx, x, c, tree.NewFinder(x))
 	for sampleType, entries := range c {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
 			for h, e := range entries {
@@ -161,7 +161,8 @@ func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Lab
 }
 
 // readTrees generates trees from the profile populating c.
-func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
+func (p *Parser) readTrees(ctx context.Context, x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
+	withLineNumbers := LineNumbersEnabledFromContext(ctx)
 	// SampleType value indexes.
 	indexes := make([]int, 0, len(x.SampleType))
 	// Corresponding type IDs used as the main cache keys.
@@ -197,7 +198,7 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
 				if !ok || x.StringTable[fn.Name] == "" {
 					continue
 				}
-				stack = append(stack, unsafeStrToSlice(x.StringTable[fn.Name]))
+				stack = append(stack, p.formatStackFrame(x, fn, loc.Line[j], withLineNumbers))
 			}
 		}
 		// Insert tree nodes.
@@ -221,8 +222,20 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
 	}
 }
 
+func (p *Parser) formatStackFrame(x *tree.Profile, fn *tree.Function, line *tree.Line, withLineNumbers bool) []byte {
+	if p.spyName == "rbspy" || withLineNumbers {
+		return []byte(fmt.Sprintf("%s:%d - %s",
+			x.StringTable[fn.Filename],
+			line.Line,
+			x.StringTable[fn.Name]))
+	}
+	return unsafeStrToSlice(x.StringTable[fn.Name])
+}
+
 func unsafeStrToSlice(s string) []byte {
-	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
+	r := (*reflect.StringHeader)(unsafe.Pointer(&s))
+	var i *[0x7fff0000]byte = (*[0x7fff0000]byte)(unsafe.Pointer(r.Data))
+	return i[:len(s):len(s)]
 }
 
 func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
