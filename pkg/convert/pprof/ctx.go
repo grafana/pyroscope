@@ -2,7 +2,9 @@ package pprof
 
 import "context"
 
-const ctxPprofLineNumbers = "ctxPprofLineNumbers"
+type ctxPprofLineNumbersKey string
+
+const ctxPprofLineNumbers ctxPprofLineNumbersKey = "ctxPprofLineNumbers"
 
 func WithLineNumbersEnabled(ctx context.Context, v bool) context.Context {
 	return context.WithValue(ctx, ctxPprofLineNumbers, v)
