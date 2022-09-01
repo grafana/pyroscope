@@ -2,6 +2,8 @@ package firedb
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -15,6 +17,21 @@ import (
 	googlev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 )
+
+func TestCreateLocalDir(t *testing.T) {
+	dataPath := t.TempDir()
+	localFile := dataPath + "/local"
+	require.NoError(t, ioutil.WriteFile(localFile, []byte("d"), 0o644))
+	_, err := New(&Config{
+		DataPath: dataPath,
+	}, log.NewNopLogger(), nil)
+	require.Error(t, err)
+	require.NoError(t, os.Remove(localFile))
+	_, err = New(&Config{
+		DataPath: dataPath,
+	}, log.NewNopLogger(), nil)
+	require.NoError(t, err)
+}
 
 var cpuProfileGenerator = func(tsNano int64, t testing.TB) (*googlev1.Profile, string) {
 	p := parseProfile(t, "testdata/profile")
