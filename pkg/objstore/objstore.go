@@ -22,10 +22,10 @@ type Bucket interface {
 
 type BucketReader interface {
 	objstore.BucketReader
-	ReadererAt
+	ReaderAtCreator
 }
 
-type ReadererAt interface {
+type ReaderAtCreator interface {
 	ReaderAt(ctx context.Context, filename string) (ReaderAt, error)
 }
 
