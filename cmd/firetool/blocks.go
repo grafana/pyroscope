@@ -10,10 +10,10 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/olekukonko/tablewriter"
-	"github.com/thanos-io/objstore/providers/filesystem"
 
 	"github.com/grafana/fire/pkg/firedb"
 	"github.com/grafana/fire/pkg/firedb/block"
+	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 )
 
 func fileInfo(f *block.File) string {

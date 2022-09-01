@@ -133,10 +133,10 @@ func cleanUp(logger log.Logger, bkt objstore.Bucket, id ulid.ULID, err error) er
 
 // Delete removes directory that is meant to be block directory.
 // NOTE: Always prefer this method for deleting blocks.
-//  * We have to delete block's files in the certain order (meta.json first and deletion-mark.json last)
-//  to ensure we don't end up with malformed partial blocks. Thanos system handles well partial blocks
-//  only if they don't have meta.json. If meta.json is present Thanos assumes valid block.
-//  * This avoids deleting empty dir (whole bucket) by mistake.
+//   - We have to delete block's files in the certain order (meta.json first and deletion-mark.json last)
+//     to ensure we don't end up with malformed partial blocks. Thanos system handles well partial blocks
+//     only if they don't have meta.json. If meta.json is present Thanos assumes valid block.
+//   - This avoids deleting empty dir (whole bucket) by mistake.
 func Delete(ctx context.Context, logger log.Logger, bkt objstore.Bucket, id ulid.ULID) error {
 	metaFile := path.Join(id.String(), MetaFilename)
 	deletionMarkFile := path.Join(id.String(), DeletionMarkFilename)

@@ -82,7 +82,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 
 	s.lock.RLock()
 
-	var rowsToFlush = len(s.slice) - s.rowsFlushed
+	rowsToFlush := len(s.slice) - s.rowsFlushed
 	if rowsToFlush > maxRowGroupSize {
 		rowsToFlush = maxRowGroupSize
 	}
@@ -92,7 +92,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 		return 0, 0, nil
 	}
 
-	var rows = make([]parquet.Row, rowsToFlush)
+	rows := make([]parquet.Row, rowsToFlush)
 
 	var slicePos int
 	for pos := range rows {
@@ -116,6 +116,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 	s.rowsFlushed += rowsToFlush
 
 	// call myself recursively
+	// todo no tail recursion optimization exist in go, we should refactor to a loop.
 	rowsFlushed, rowGroupsFlushed, err := s.Flush()
 	if err != nil {
 		return 0, 0, err
