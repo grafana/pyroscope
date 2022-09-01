@@ -189,7 +189,11 @@ class TimelineChartWrapper extends React.Component<
   }
 
   plotMarkings = () => {
-    const constructMarking = (m: Selection) => {
+    // FIXME: right now the selection functionality is spread in 2 places
+    // normal markings (function below)
+    // and in the TimelineChartSelection plugin
+    // which is confusing and should be fixed
+    const constructSelection = (m: Selection) => {
       const from = new Date(formatAsOBject(m.from)).getTime();
       const to = new Date(formatAsOBject(m.to)).getTime();
 
@@ -198,29 +202,28 @@ class TimelineChartWrapper extends React.Component<
       // to use custom apperance and color for it
       const boundary = {
         lineWidth: 1,
-        color:
-          this.props.selectionType === 'double' ? m.color.rgb() : 'transparent',
+        color: m.color.rgb(),
       };
 
       return [
         {
           xaxis: { from, to },
           color:
-            this.props.selectionType === 'double'
-              ? m.overlayColor
-              : 'tranparent',
+            this.props.selectionType === 'double' ? m.overlayColor : 'NOOP',
         },
+
+        // A single vertical line indicating boundaries from both sides (left and right)
         { ...boundary, xaxis: { from, to: from } },
         { ...boundary, xaxis: { from: to, to } },
       ];
     };
 
-    const { selection: markings } = this.props;
+    const { selection } = this.props;
 
-    if (markings) {
+    if (selection) {
       return [
-        markings.left && constructMarking(markings.left),
-        markings.right && constructMarking(markings.right),
+        selection.left && constructSelection(selection.left),
+        selection.right && constructSelection(selection.right),
       ]
         .flat()
         .filter((a) => !!a);

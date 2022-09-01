@@ -32,6 +32,7 @@ import useTimelines, {
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
 import { formatTitle } from './formatTitle';
+import Color from 'color';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
