@@ -21,7 +21,7 @@ interface TimelineData {
   color?: string;
 }
 
-interface Marking {
+interface Selection {
   from: string;
   to: string;
   color: Color;
@@ -45,7 +45,7 @@ type MultipleDataProps = {
   timelineGroups: TimelineGroupData[];
   /** if there is active group, the other groups should "dim" themselves */
   activeGroup: string;
-  /** show or hide tags legend, useful forr disabling single timeline legend */
+  /** show or hide legend */
   showTagsLegend: boolean;
   /** to set active tagValue using <Legend /> */
   handleGroupByTagValueChange: (groupByTagValue: string) => void;
@@ -54,7 +54,7 @@ type MultipleDataProps = {
 type TimelineDataProps = SingleDataProps | MultipleDataProps;
 
 type TimelineChartWrapperProps = TimelineDataProps & {
-  /** the id attribute of the element float will use to apply to, it should be unique */
+  /** the id attribute of the element float will use to apply to, it should be globally unique */
   id: string;
 
   ['data-testid']?: string;
@@ -64,9 +64,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   height?: string;
 
   /** refers to the highlighted selection */
-  markings?: {
-    left?: Marking;
-    right?: Marking;
+  selection?: {
+    left?: Selection;
+    right?: Selection;
   };
 
   timezone: 'browser' | 'utc';
@@ -108,13 +108,13 @@ class TimelineChartWrapper extends React.Component<
         overlayColor:
           props.selectionType === 'double'
             ? undefined
-            : props?.markings?.['right']?.overlayColor ||
-              props?.markings?.['left']?.overlayColor,
+            : props?.selection?.['right']?.overlayColor ||
+              props?.selection?.['left']?.overlayColor,
         boundaryColor:
           props.selectionType === 'double'
             ? undefined
-            : props?.markings?.['right']?.color ||
-              props?.markings?.['left']?.color,
+            : props?.selection?.['right']?.color ||
+              props?.selection?.['left']?.color,
       },
       crosshair: {
         mode: 'x',
@@ -181,7 +181,7 @@ class TimelineChartWrapper extends React.Component<
   }
 
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
-    if (prevProps.markings !== this.props.markings) {
+    if (prevProps.selection !== this.props.selection) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
       this.setState({ flotOptions: newFlotOptions });
@@ -189,7 +189,7 @@ class TimelineChartWrapper extends React.Component<
   }
 
   plotMarkings = () => {
-    const constructMarking = (m: Marking) => {
+    const constructMarking = (m: Selection) => {
       const from = new Date(formatAsOBject(m.from)).getTime();
       const to = new Date(formatAsOBject(m.to)).getTime();
 
@@ -215,7 +215,7 @@ class TimelineChartWrapper extends React.Component<
       ];
     };
 
-    const { markings } = this.props;
+    const { selection: markings } = this.props;
 
     if (markings) {
       return [

@@ -113,7 +113,7 @@ function ComparisonDiffApp() {
             onSelect={(from, until) => {
               dispatch(actions.setFromAndUntil({ from, until }));
             }}
-            markings={{
+            selection={{
               left: {
                 from: leftFrom,
                 to: leftUntil,
@@ -158,7 +158,7 @@ function ComparisonDiffApp() {
               onSelect={(from, until) => {
                 dispatch(actions.setLeft({ from, until }));
               }}
-              markings={{
+              selection={{
                 left: {
                   from: leftFrom,
                   to: leftUntil,
@@ -193,7 +193,7 @@ function ComparisonDiffApp() {
               onSelect={(from, until) => {
                 dispatch(actions.setRight({ from, until }));
               }}
-              markings={{
+              selection={{
                 right: {
                   from: rightFrom,
                   to: rightUntil,

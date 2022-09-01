@@ -99,7 +99,7 @@ function ComparisonApp() {
             onSelect={(from, until) => {
               dispatch(actions.setFromAndUntil({ from, until }));
             }}
-            markings={{
+            selection={{
               left: {
                 from: leftFrom,
                 to: leftUntil,
@@ -167,7 +167,7 @@ function ComparisonApp() {
                 id="timeline-chart-left"
                 data-testid="timeline-left"
                 timelineA={leftTimeline}
-                markings={{
+                selection={{
                   left: {
                     from: leftFrom,
                     to: leftUntil,
@@ -225,7 +225,7 @@ function ComparisonApp() {
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 timelineA={rightTimeline}
-                markings={{
+                selection={{
                   right: {
                     from: rightFrom,
                     to: rightUntil,
