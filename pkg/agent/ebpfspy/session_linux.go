@@ -11,8 +11,10 @@ import (
 	"context"
 	_ "embed"
 	"encoding/binary"
+	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"golang.org/x/sys/unix"
 	"sync"
@@ -28,6 +30,7 @@ import (
 import "C"
 
 type Session struct {
+	logger           log.Logger
 	pid              int
 	sampleRate       uint32
 	symbolCacheSize  int
@@ -52,8 +55,9 @@ type Session struct {
 
 const btf = "should not be used" // canary to detect we got relocations
 
-func NewSession(pid int, sampleRate uint32, symbolCacheSize int, serviceDiscovery sd.ServiceDiscovery, onlyServices bool) *Session {
+func NewSession(logger log.Logger, pid int, sampleRate uint32, symbolCacheSize int, serviceDiscovery sd.ServiceDiscovery, onlyServices bool) *Session {
 	return &Session{
+		logger:           logger,
 		pid:              pid,
 		sampleRate:       sampleRate,
 		symbolCacheSize:  symbolCacheSize,
@@ -101,6 +105,7 @@ func (s *Session) Start() error {
 }
 
 func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, pid uint32) error) error {
+	s.logger.Debugf("ebpf session reset")
 	s.modMutex.Lock()
 	defer s.modMutex.Unlock()
 
@@ -159,8 +164,7 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		buf.Write([]byte(it.comm))
 		buf.Write([]byte{';'})
 		s.walkStack(buf, it.uStack, it.pid, true)
-		s.walkStack(buf, it.kStack, it.pid, false)
-
+		s.walkStack(buf, it.kStack, 0, false)
 		err = cb(it.labels, buf.Bytes(), uint64(it.count), it.pid)
 		if err != nil {
 			return err
@@ -264,14 +268,19 @@ func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 		if ip == 0 {
 			break
 		}
-		sym, _, _ := s.symCache.bccResolve(pid, ip, s.roundNumber)
-		if !userspace && sym == "" {
+		sym := s.symCache.bccResolve(pid, ip, s.roundNumber)
+		if !userspace && sym.Name == "" {
 			continue
 		}
-		if sym == "" {
-			sym = symbolUnknown
+		name := sym.Name
+		if sym.Name == "" {
+			if sym.Module != "" {
+				name = fmt.Sprintf("%s+0x%x", sym.Module, sym.Offset)
+			} else {
+				name = "[unknown]"
+			}
 		}
-		stackFrames = append(stackFrames, sym+";")
+		stackFrames = append(stackFrames, name+";")
 	}
 	reverse(stackFrames)
 	for _, s := range stackFrames {

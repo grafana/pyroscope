@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.35.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.2...@pyroscope/webapp@1.35.3) (2022-08-31)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.35.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.1...@pyroscope/webapp@1.35.2) (2022-08-31)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.35.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.0...@pyroscope/webapp@1.35.1) (2022-08-30)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.35.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.34.1...@pyroscope/webapp@1.35.0) (2022-08-30)
+
+
+### Features
+
+* **webapp:** dropdown component for head-first dropdown ([#1435](https://github.com/pyroscope-io/pyroscope/issues/1435)) ([a7d6891](https://github.com/pyroscope-io/pyroscope/commit/a7d6891c8b63d67dc197d7c52812bd946ca688e5))
+
+
+
+
+
+## [1.34.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.34.0...@pyroscope/webapp@1.34.1) (2022-08-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.34.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.7...@pyroscope/webapp@1.34.0) (2022-08-24)
+
+
+### Features
+
+* **webapp:** Add settings/apps page ([#1424](https://github.com/pyroscope-io/pyroscope/issues/1424)) ([f87ce69](https://github.com/pyroscope-io/pyroscope/commit/f87ce69d8af890402d5845f7d3047e393682c934))
+
+
+
+
+
 ## [1.33.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.33.6...@pyroscope/webapp@1.33.7) (2022-08-22)
 
 

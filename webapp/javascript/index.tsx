@@ -32,6 +32,7 @@ import Forbidden from './pages/IntroPages/Forbidden';
 import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
+import TracingSingleView from './pages/TracingSingleView';
 
 function App() {
   return (
@@ -63,6 +64,13 @@ function App() {
             <Protected>
               <Continuous>
                 <ContinuousDiffView />
+              </Continuous>
+            </Protected>
+          </Route>
+          <Route path={PAGES.TRACING}>
+            <Protected>
+              <Continuous>
+                <TracingSingleView />
               </Continuous>
             </Protected>
           </Route>

@@ -1,10 +1,12 @@
 // Package profiler is a public API golang apps should use to send data to pyroscope server. It is intentionally separate from the rest of the code.
-//   The idea is that this API won't change much over time, while all the other code will.
+//
+//	The idea is that this API won't change much over time, while all the other code will.
 package profiler
 
 import (
 	"context"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -31,7 +33,7 @@ type Config struct {
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
 	AuthToken       string // specify this token when using pyroscope cloud
 	SampleRate      uint32
-	Logger          agent.Logger
+	Logger          log.Logger
 	ProfileTypes    []ProfileType
 	DisableGCRuns   bool // this will disable automatic runtime.GC runs
 }
@@ -49,7 +51,7 @@ func Start(cfg Config) (*Profiler, error) {
 		cfg.SampleRate = types.DefaultSampleRate
 	}
 	if cfg.Logger == nil {
-		cfg.Logger = &agent.NoopLogger{}
+		cfg.Logger = &log.NoopLogger{}
 	}
 
 	// Override the address to use when the environment variable is defined.

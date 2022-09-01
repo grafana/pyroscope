@@ -214,27 +214,15 @@ func dropPrefixBatch(db *badger.DB, p []byte, n int) (bool, error) {
 }
 
 func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
-	v, err := cache.get(key) // find the key from cache first
-	if err != nil {
-		return nil, err
-	}
-	if v != nil {
-		return v, nil
-	}
-	v = cache.codec.New(key)
-	cache.lfu.Set(key, v)
-	return v, nil
+	return cache.get(key, true)
 }
 
 func (cache *Cache) Lookup(key string) (interface{}, bool) {
-	v, err := cache.get(key)
-	if v == nil || err != nil {
-		return nil, false
-	}
-	return v, true
+	v, err := cache.get(key, false)
+	return v, v != nil && err == nil
 }
 
-func (cache *Cache) get(key string) (interface{}, error) {
+func (cache *Cache) get(key string, createNotFound bool) (interface{}, error) {
 	cache.metrics.ReadsCounter.Inc()
 	return cache.lfu.GetOrSet(key, func() (interface{}, error) {
 		cache.metrics.MissesCounter.Inc()
@@ -249,11 +237,14 @@ func (cache *Cache) get(key string) (interface{}, error) {
 		})
 
 		switch {
-		case err == nil:
-		case errors.Is(err, badger.ErrKeyNotFound):
-			return nil, nil
 		default:
 			return nil, err
+		case err == nil:
+		case errors.Is(err, badger.ErrKeyNotFound):
+			if createNotFound {
+				return cache.codec.New(key), nil
+			}
+			return nil, nil
 		}
 
 		cache.metrics.DBReads.Observe(float64(len(buf)))

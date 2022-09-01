@@ -19,10 +19,11 @@ endif
 
 ALL_SPIES = ebpfspy,rbspy,pyspy,dotnetspy,debugspy
 ifeq ("$(OS)", "Linux")
-	ENABLED_SPIES ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
+	ENABLED_SPIES_RELEASE ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
 else
-	ENABLED_SPIES ?= rbspy,pyspy,dotnetspy
+	ENABLED_SPIES_RELEASE ?= rbspy,pyspy,dotnetspy
 endif
+ENABLED_SPIES ?= none
 
 ifeq ("$(OS)", "Linux")
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies build-phpspy-dependencies"
@@ -124,7 +125,7 @@ build: ## Builds the binary
 
 .PHONY: build-release
 build-release: embedded-assets ## Builds the release build
-	EXTRA_GO_TAGS=,embedassets $(MAKE) build
+	EXTRA_GO_TAGS=,embedassets,$(ENABLED_SPIES_RELEASE) $(MAKE) build
 
 .PHONY: build-panel
 build-panel:
@@ -306,7 +307,14 @@ print-deps-error-message:
 	@echo ""
 	exit 1
 
+.PHONY: e2e-build
 e2e-build: build assets-release
+
+.PHONY: test-merge
+test-merge:
+	curl --data 'foo;bar 100' http://localhost:4040/ingest?name="foo%7Bprofile_id=id1%7D"
+	curl --data 'foo;baz 200' http://localhost:4040/ingest?name="foo%7Bprofile_id=id2%7D"
+	@echo http://localhost:4040/tracing?queryID=$(shell curl --data '{"appName":"foo", "profiles":["id1", "id2"], "startTime":"now-1h", "endTime":"now"}' http://localhost:4040/merge | jq .queryID | tr -d '"')
 
 help: ## Show this help
 	@egrep '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | sed 's/Makefile://' | awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-z0-9A-Z_-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 }'

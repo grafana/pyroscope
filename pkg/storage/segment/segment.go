@@ -410,28 +410,25 @@ func (s *Segment) WalkNodesToDelete(t *RetentionPolicy, cb func(depth int, t tim
 	return s.root.walkNodesToDelete(t.normalize(), cb)
 }
 
-// TODO: this should be refactored
-func (s *Segment) SetMetadata(spyName string, sampleRate uint32, units metadata.Units, aggregationType metadata.AggregationType) {
-	s.spyName = spyName
-	s.sampleRate = sampleRate
-	s.units = units
-	s.aggregationType = aggregationType
+func (s *Segment) SetMetadata(md metadata.Metadata) {
+	s.m.Lock()
+	s.spyName = md.SpyName
+	s.sampleRate = md.SampleRate
+	s.units = md.Units
+	s.aggregationType = md.AggregationType
+	s.m.Unlock()
 }
 
-func (s *Segment) SpyName() string {
-	return s.spyName
-}
-
-func (s *Segment) SampleRate() uint32 {
-	return s.sampleRate
-}
-
-func (s *Segment) Units() metadata.Units {
-	return s.units
-}
-
-func (s *Segment) AggregationType() metadata.AggregationType {
-	return s.aggregationType
+func (s *Segment) GetMetadata() metadata.Metadata {
+	s.m.Lock()
+	md := metadata.Metadata{
+		SpyName:         s.spyName,
+		SampleRate:      s.sampleRate,
+		Units:           s.units,
+		AggregationType: s.aggregationType,
+	}
+	s.m.Unlock()
+	return md
 }
 
 var zeroTime time.Time

@@ -24,8 +24,10 @@ const getBodyRows = (
   const now = new Date();
 
   const handleDeleteClick = (key: APIKey) => {
-    confirmDelete('this key', () => {
-      onDelete(key);
+    confirmDelete({
+      objectType: 'key',
+      objectName: key.name,
+      onConfirm: () => onDelete(key),
     });
   };
 

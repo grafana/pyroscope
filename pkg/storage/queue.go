@@ -22,7 +22,21 @@ type IngestionQueue struct {
 	discardedTotal prometheus.Counter
 }
 
-func NewIngestionQueue(logger logrus.FieldLogger, putter Putter, r prometheus.Registerer, queueWorkers, queueSize int) *IngestionQueue {
+const (
+	defaultQueueSize = 100
+	defaultWorkers   = 1
+)
+
+func NewIngestionQueue(logger logrus.FieldLogger, putter Putter, r prometheus.Registerer, c *Config) *IngestionQueue {
+	queueSize := c.queueSize
+	if queueSize == 0 {
+		queueSize = defaultQueueSize
+	}
+	queueWorkers := c.queueWorkers
+	if queueWorkers == 0 {
+		queueWorkers = defaultWorkers
+	}
+
 	q := IngestionQueue{
 		logger: logger,
 		putter: putter,

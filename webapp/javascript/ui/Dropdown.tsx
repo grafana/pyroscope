@@ -43,6 +43,8 @@ export interface DropdownProps {
   offsetX?: MenuProps['offsetX'];
   offsetY?: MenuProps['offsetY'];
 
+  ariaLabel?: MenuProps['aria-label'];
+
   menuButton?: JSX.Element;
 }
 
@@ -63,10 +65,12 @@ export default function Dropdown({
   offsetX,
   offsetY,
   menuButtonClassName = '',
+  ariaLabel,
   ...props
 }: DropdownProps) {
   const menuButtonComponent = props.menuButton || (
     <MenuButton
+      aria-label={ariaLabel}
       className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
       disabled={disabled}
       type="button"
@@ -78,6 +82,7 @@ export default function Dropdown({
   return (
     <Menu
       id={id}
+      aria-label={ariaLabel}
       className={cx(className, styles.dropdownMenu)}
       data-testid={props['data-testid']}
       onItemClick={onItemClick}
