@@ -34,7 +34,7 @@ type FlamebearerProfileV1 struct {
 	// Timeline associated to the profile, used for continuous profiling only.
 	Timeline *FlamebearerTimelineV1            `json:"timeline"`
 	Groups   map[string]*FlamebearerTimelineV1 `json:"groups"`
-	Heatmap  *FlamebearerHeatmapV1             `json:"heatmap"`
+	Heatmap  *Heatmap                          `json:"heatmap"`
 	// Number of samples in the left / base profile. Only used in "double" format.
 	LeftTicks uint64 `json:"leftTicks,omitempty"`
 	// Number of samples in the right / diff profile. Only used in "double" format.
@@ -102,7 +102,7 @@ type FlamebearerTimelineV1 struct {
 	Watermarks    map[int]int64 `json:"watermarks"`
 }
 
-type FlamebearerHeatmapV1 struct {
+type Heatmap struct {
 	// Values matrix contain values that indicate count of value occurrences,
 	// satisfying boundaries of X and Y bins: [StartTime:EndTime) and (MinValue:MaxValue].
 	// A value can be accessed via Values[x][y], where:
@@ -254,11 +254,11 @@ func newTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
 	}
 }
 
-func newHeatmap(heatmap *storage.Heatmap) *FlamebearerHeatmapV1 {
+func newHeatmap(heatmap *storage.Heatmap) *Heatmap {
 	if heatmap == nil {
 		return nil
 	}
-	return &FlamebearerHeatmapV1{
+	return &Heatmap{
 		Values:       heatmap.Values,
 		TimeBuckets:  heatmap.TimeBuckets,
 		ValueBuckets: heatmap.ValueBuckets,
