@@ -9,12 +9,24 @@ import (
 	"github.com/thanos-io/objstore"
 )
 
+type ReaderAt interface {
+	io.ReaderAt
+	io.Closer
+	Size() int64
+}
+
 type Bucket interface {
 	objstore.Bucket
+	ReaderAt(ctx context.Context, filename string) (ReaderAt, error)
 }
 
 type BucketReader interface {
 	objstore.BucketReader
+	ReaderAtCreator
+}
+
+type ReaderAtCreator interface {
+	ReaderAt(ctx context.Context, filename string) (ReaderAt, error)
 }
 
 func BucketReaderWithPrefix(r BucketReader, prefix string) BucketReader {
@@ -71,6 +83,10 @@ func (b *bucketReaderWithPrefix) Attributes(ctx context.Context, name string) (o
 	return b.r.Attributes(ctx, b.prefix(name))
 }
 
+func (b *bucketReaderWithPrefix) ReaderAt(ctx context.Context, name string) (ReaderAt, error) {
+	return b.r.ReaderAt(ctx, b.prefix(name))
+}
+
 type bucketWithPrefix struct {
 	BucketReader
 
@@ -97,6 +113,7 @@ func (b *bucketWithPrefix) Close() error {
 func (b *bucketWithPrefix) Upload(ctx context.Context, name string, r io.Reader) error {
 	return b.b.Upload(ctx, b.prefix(name), r)
 }
+
 func (b *bucketWithPrefix) Delete(ctx context.Context, name string) error {
 	return b.Delete(ctx, b.prefix(name))
 }

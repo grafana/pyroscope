@@ -21,7 +21,6 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
-	"github.com/thanos-io/objstore"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -41,13 +40,13 @@ type tableReader interface {
 type BlockQuerier struct {
 	logger log.Logger
 
-	bucketReader objstore.BucketReader
+	bucketReader fireobjstore.BucketReader
 
 	queriers     []*singleBlockQuerier
 	queriersLock sync.RWMutex
 }
 
-func NewBlockQuerier(logger log.Logger, bucketReader objstore.BucketReader) *BlockQuerier {
+func NewBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketReader) *BlockQuerier {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
@@ -150,7 +149,6 @@ func (b *BlockQuerier) BlockMetas(ctx context.Context) (metas []*block.Meta, _ e
 // Sync gradually scans the available blcoks. If there are any changes to the
 // last run it will Open/Close new/no longer existing ones.
 func (b *BlockQuerier) Sync(ctx context.Context) error {
-
 	observedMetas, err := b.BlockMetas(ctx)
 	if err != nil {
 		return err
@@ -160,9 +158,9 @@ func (b *BlockQuerier) Sync(ctx context.Context) error {
 	b.queriersLock.Lock()
 
 	// build lookup map
-	var (
-		querierByULID = make(map[ulid.ULID]*singleBlockQuerier)
-	)
+
+	querierByULID := make(map[ulid.ULID]*singleBlockQuerier)
+
 	for pos := range b.queriers {
 		querierByULID[b.queriers[pos].meta.ULID] = b.queriers[pos]
 	}
@@ -227,7 +225,7 @@ func (b *BlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[
 }
 
 func (b *BlockQuerier) profileSelecters() profileSelecters {
-	var result = make(profileSelecters, len(b.queriers))
+	result := make(profileSelecters, len(b.queriers))
 	for pos := range result {
 		result[pos] = b.queriers[pos]
 	}
@@ -331,7 +329,6 @@ func (b *singleBlockQuerier) reconstructMeta(ctx context.Context) (*block.Meta, 
 func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher,
 	fn func(lbs firemodel.Labels, fp model.Fingerprint, sampleIdx int, profile *schemav1.Profile) error,
 ) error {
-
 	postings, err := PostingsForMatchers(b.index, nil, matchers...)
 	if err != nil {
 		return err
@@ -346,6 +343,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 
 	// get all relevant labels/fingerprints
 	for postings.Next() {
+		// todo we might want to pull series on demand only.
 		fp, err := b.index.Series(postings.At(), &lbls, &chks)
 		if err != nil {
 			return err
@@ -487,7 +485,6 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		}
 
 		return nil
-
 	}); err != nil {
 		return nil, err
 	}
@@ -626,7 +623,6 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		Profiles:      result,
 		FunctionNames: names,
 	}), err
-
 }
 
 func (q *singleBlockQuerier) readTSBoundaries(ctx context.Context) (minMax, []minMax, error) {
@@ -680,7 +676,6 @@ func (q *singleBlockQuerier) readTSBoundaries(ctx context.Context) (minMax, []mi
 	}
 
 	return tsBoundary, tsBoundaryPerRowGroup, nil
-
 }
 
 func newByteSliceFromBucketReader(bucketReader fireobjstore.BucketReader, path string) (index.RealByteSlice, error) {
@@ -737,45 +732,16 @@ type parquetReader[M Models, P schemav1.Persister[M]] struct {
 	file      *parquet.File
 }
 
-func newReaderAtFromBucketReader(ctx context.Context, bucketReader fireobjstore.BucketReader, path string) (io.ReaderAt, int64, error) {
-	r := &readerAtFromBucketReader{
-		ctx:          ctx,
-		bucketReader: bucketReader,
-		path:         path,
-	}
-	size, err := r.Size()
-	return r, size, err
-}
-
-type readerAtFromBucketReader struct {
-	ctx          context.Context
-	bucketReader fireobjstore.BucketReader
-	path         string
-}
-
-func (r readerAtFromBucketReader) Size() (int64, error) {
-	attribs, err := r.bucketReader.Attributes(r.ctx, r.path)
-	return attribs.Size, err
-}
-
-func (r readerAtFromBucketReader) ReadAt(p []byte, off int64) (n int, err error) {
-	reader, err := r.bucketReader.GetRange(r.ctx, r.path, off, int64(len(p)))
-	if err != nil {
-		return -1, err
-	}
-	defer reader.Close()
-	return reader.Read(p)
-}
-
 func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstore.BucketReader) error {
 	filePath := r.persister.Name() + block.ParquetSuffix
-	f, size, err := newReaderAtFromBucketReader(ctx, bucketReader, filePath)
+
+	ra, err := bucketReader.ReaderAt(ctx, filePath)
 	if err != nil {
 		return errors.Wrapf(err, "opening file '%s'", filePath)
 	}
 
 	// first try to open file, this is required otherwise OpenFile panics
-	parquetFile, err := parquet.OpenFile(f, size, parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
+	parquetFile, err := parquet.OpenFile(ra, ra.Size(), parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
 	if err != nil {
 		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
 	}
@@ -784,7 +750,7 @@ func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstor
 	}
 
 	// now open it for real
-	r.file, err = parquet.OpenFile(f, size)
+	r.file, err = parquet.OpenFile(ra, ra.Size())
 	if err != nil {
 		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
 	}
@@ -810,7 +776,6 @@ type predicateRepeatedColumnMatches struct {
 }
 
 func (p *predicateRepeatedColumnMatches) Execute(ctx context.Context, f *parquet.File) Iterator[int64] {
-
 	// find leaf column
 	var leafColumn *parquet.Column
 	for _, c := range f.Root().Columns() {
@@ -839,6 +804,8 @@ func (p *predicateRepeatedColumnMatches) Execute(ctx context.Context, f *parquet
 		rowNum  int64
 	)
 
+	defer pages.Close()
+
 	// nolint:ineffassign
 	// we might use ctx later.
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - predicateRepeatedColumnMatches")
@@ -860,10 +827,11 @@ func (p *predicateRepeatedColumnMatches) Execute(ctx context.Context, f *parquet
 		} else if err != nil {
 			return NewErrIterator[int64](errors.Wrapf(err, "error reading page %d", idx))
 		}
-		var values = make([]parquet.Value, page.Size())
+		values := make([]parquet.Value, page.Size())
 		if _, err := page.Values().ReadValues(values); err != io.EOF {
 			return NewErrIterator[int64](errors.Wrapf(err, "error reading values on page %d", idx))
 		}
+
 		for _, v := range values {
 			// TODO: When this column is sorted skip the remainder of the page
 
@@ -949,9 +917,7 @@ func (i *retrieveRowIterator[M]) nextRowGroup() error {
 }
 
 func (i *retrieveRowIterator[M]) Next() (ResultWithRowNum[M], bool) {
-	var (
-		m ResultWithRowNum[M]
-	)
+	var m ResultWithRowNum[M]
 
 	// get the next row num
 	rowNum, ok := i.rowNumIterator.Next()

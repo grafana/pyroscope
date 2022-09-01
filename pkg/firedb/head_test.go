@@ -280,7 +280,7 @@ func TestHeadProfileTypes(t *testing.T) {
 	}, res.Msg.ProfileTypes)
 }
 
-func mustParseProfileSelector(t *testing.T, selector string) *commonv1.ProfileType {
+func mustParseProfileSelector(t testing.TB, selector string) *commonv1.ProfileType {
 	ps, err := firemodel.ParseProfileTypeSelector(selector)
 	require.NoError(t, err)
 	return ps

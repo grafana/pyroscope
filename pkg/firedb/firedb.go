@@ -16,12 +16,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
-	"github.com/thanos-io/objstore/providers/filesystem"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/fire/pkg/firedb/block"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/objstore"
+	"github.com/grafana/fire/pkg/objstore/client"
+	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 )
 
 type Config struct {
@@ -64,7 +64,11 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 	}
 	f.Service = services.NewBasicService(f.starting, f.running, f.stopping)
 
-	bucketReader, err := filesystem.NewBucket(cfg.DataPath)
+	fs, err := filesystem.NewBucket(cfg.DataPath)
+	if err != nil {
+		return nil, err
+	}
+	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, reg)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +77,7 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
 
-	f.blockQuerier = NewBlockQuerier(logger, objstore.BucketReaderWithPrefix(bucketReader, pathLocal))
+	f.blockQuerier = NewBlockQuerier(logger, bucketReader)
 
 	// do an initial querier sync
 	ctx := context.Background()
@@ -173,6 +177,7 @@ func (ps profileSelecters) SelectProfiles(ctx context.Context, req *connect.Requ
 	results := make([]*ingestv1.SelectProfilesResponse, len(ps))
 
 	g, ctx := errgroup.WithContext(ctx)
+	// todo not sure this help on disk IO
 	g.SetLimit(16)
 
 	query := func(ctx context.Context, pos int) {
