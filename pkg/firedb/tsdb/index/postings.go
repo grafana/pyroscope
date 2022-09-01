@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -72,7 +73,7 @@ func NewUnorderedMemPostings() *MemPostings {
 }
 
 // Symbols returns an iterator over all unique name and value strings, in order.
-func (p *MemPostings) Symbols() StringIter {
+func (p *MemPostings) Symbols() iter.Iterator[string] {
 	p.mtx.RLock()
 
 	// Add all the strings to a map to de-duplicate.
@@ -91,10 +92,10 @@ func (p *MemPostings) Symbols() StringIter {
 	}
 
 	sort.Strings(res)
-	return NewStringListIter(res)
+	return iter.NewSliceIterator(res)
 }
 
-// SortedKeys returns a list of sorted label keys of the postings.
+// SortedKeys returns a list of sorted label keys of the ostings.
 func (p *MemPostings) SortedKeys() []labels.Label {
 	p.mtx.RLock()
 	keys := make([]labels.Label, 0, len(p.m))
@@ -213,7 +214,7 @@ func (p *MemPostings) Get(name, value string) Postings {
 	if lp == nil {
 		return EmptyPostings()
 	}
-	return newListPostings(lp...)
+	return iter.NewSliceSeekIterator(lp)
 }
 
 // All returns a postings list over all documents ever added.
@@ -340,7 +341,7 @@ func (p *MemPostings) Iter(f func(labels.Label, Postings) error) error {
 
 	for n, e := range p.m {
 		for v, p := range e {
-			if err := f(labels.Label{Name: n, Value: v}, newListPostings(p...)); err != nil {
+			if err := f(labels.Label{Name: n, Value: v}, iter.NewSliceSeekIterator(p)); err != nil {
 				return err
 			}
 		}
@@ -393,43 +394,18 @@ func ExpandPostings(p Postings) (res []storage.SeriesRef, err error) {
 }
 
 // Postings provides iterative access over a postings list.
-type Postings interface {
-	// Next advances the iterator and returns true if another value was found.
-	Next() bool
-
-	// Seek advances the iterator to value v or greater and returns
-	// true if a value was found.
-	Seek(v storage.SeriesRef) bool
-
-	// At returns the value at the current iterator position.
-	At() storage.SeriesRef
-
-	// Err returns the last error of the iterator.
-	Err() error
-}
-
-// errPostings is an empty iterator that always errors.
-type errPostings struct {
-	err error
-}
-
-func (e errPostings) Next() bool                  { return false }
-func (e errPostings) Seek(storage.SeriesRef) bool { return false }
-func (e errPostings) At() storage.SeriesRef       { return 0 }
-func (e errPostings) Err() error                  { return e.err }
-
-var emptyPostings = errPostings{}
+type Postings = iter.SeekIterator[storage.SeriesRef, storage.SeriesRef]
 
 // EmptyPostings returns a postings list that's always empty.
 // NOTE: Returning EmptyPostings sentinel when Postings struct has no postings is recommended.
 // It triggers optimized flow in other functions like Intersect, Without etc.
 func EmptyPostings() Postings {
-	return emptyPostings
+	return iter.NewSliceSeekIterator([]storage.SeriesRef(nil))
 }
 
 // ErrPostings returns new postings that immediately error.
 func ErrPostings(err error) Postings {
-	return errPostings{err}
+	return iter.NewErrSeekIterator[storage.SeriesRef, storage.SeriesRef](err)
 }
 
 // Intersect returns a new postings list over the intersection of the
@@ -500,6 +476,14 @@ func (it *intersectPostings) Err() error {
 	for _, p := range it.arr {
 		if p.Err() != nil {
 			return p.Err()
+		}
+	}
+	return nil
+}
+func (it *intersectPostings) Close() error {
+	for _, p := range it.arr {
+		if err := p.Close(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -640,6 +624,10 @@ func (it mergedPostings) Err() error {
 	return it.err
 }
 
+func (it mergedPostings) Close() error {
+	return nil
+}
+
 // Without returns a new postings list that contains all elements from the full list that
 // are not in the drop list.
 func Without(full, drop Postings) Postings {
@@ -726,58 +714,18 @@ func (rp *removedPostings) Err() error {
 	return rp.remove.Err()
 }
 
+func (rp *removedPostings) Close() error {
+	if err := rp.full.Close(); err != nil {
+		return err
+	}
+
+	return rp.remove.Close()
+}
+
 // ListPostings implements the Postings interface over a plain list.
 type ListPostings struct {
 	list []storage.SeriesRef
 	cur  storage.SeriesRef
-}
-
-func NewListPostings(list []storage.SeriesRef) Postings {
-	return newListPostings(list...)
-}
-
-func newListPostings(list ...storage.SeriesRef) *ListPostings {
-	return &ListPostings{list: list}
-}
-
-func (it *ListPostings) At() storage.SeriesRef {
-	return it.cur
-}
-
-func (it *ListPostings) Next() bool {
-	if len(it.list) > 0 {
-		it.cur = it.list[0]
-		it.list = it.list[1:]
-		return true
-	}
-	it.cur = 0
-	return false
-}
-
-func (it *ListPostings) Seek(x storage.SeriesRef) bool {
-	// If the current value satisfies, then return.
-	if it.cur >= x {
-		return true
-	}
-	if len(it.list) == 0 {
-		return false
-	}
-
-	// Do binary search between current position and end.
-	i := sort.Search(len(it.list), func(i int) bool {
-		return it.list[i] >= x
-	})
-	if i < len(it.list) {
-		it.cur = it.list[i]
-		it.list = it.list[i+1:]
-		return true
-	}
-	it.list = nil
-	return false
-}
-
-func (it *ListPostings) Err() error {
-	return nil
 }
 
 // bigEndianPostings implements the Postings interface over a byte stream of
@@ -825,6 +773,10 @@ func (it *bigEndianPostings) Seek(x storage.SeriesRef) bool {
 }
 
 func (it *bigEndianPostings) Err() error {
+	return nil
+}
+
+func (it *bigEndianPostings) Close() error {
 	return nil
 }
 
@@ -901,4 +853,8 @@ func (sp *ShardedPostings) At() storage.SeriesRef {
 // Err returns the last error of the iterator.
 func (sp *ShardedPostings) Err() (err error) {
 	return sp.p.Err()
+}
+
+func (sp *ShardedPostings) Close() error {
+	return nil
 }
