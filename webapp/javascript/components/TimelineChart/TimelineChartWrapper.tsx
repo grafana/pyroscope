@@ -28,27 +28,30 @@ interface Marking {
   overlayColor?: string | Color;
 }
 
-type TimelineDataProps =
-  | {
-      /** timelineA refers to the first (and maybe unique) timeline */
-      timelineA: TimelineData;
-      /** timelineB refers to the second timeline, useful for comparison view */
-      timelineB?: TimelineData;
-      /** to manage strict data type */
-      mode: 'singles';
-    }
-  | {
-      /** timelineGroups refers to group of timelines, useful for explore view */
-      timelineGroups: TimelineGroupData[];
-      /** if there is active group, the other groups should "dim" themselves */
-      activeGroup: string;
-      /** show or hide tags legend, useful forr disabling single timeline legend */
-      showTagsLegend: boolean;
-      /** to set active tagValue using <Legend /> */
-      handleGroupByTagValueChange: (groupByTagValue: string) => void;
-      /** to manage strict data type */
-      mode: 'multiple';
-    };
+type SingleDataProps = {
+  /** used to display at max 2 time series */
+  mode: 'singles';
+  /** timelineA refers to the first (and maybe unique) timeline */
+  timelineA: TimelineData;
+  /** timelineB refers to the second timeline, useful for comparison view */
+  timelineB?: TimelineData;
+};
+
+// Used in Tag Explorer
+type MultipleDataProps = {
+  /** used when displaying multiple time series. original use case is for tag explorer */
+  mode: 'multiple';
+  /** timelineGroups refers to group of timelines, useful for explore view */
+  timelineGroups: TimelineGroupData[];
+  /** if there is active group, the other groups should "dim" themselves */
+  activeGroup: string;
+  /** show or hide tags legend, useful forr disabling single timeline legend */
+  showTagsLegend: boolean;
+  /** to set active tagValue using <Legend /> */
+  handleGroupByTagValueChange: (groupByTagValue: string) => void;
+};
+
+type TimelineDataProps = SingleDataProps | MultipleDataProps;
 
 type TimelineChartWrapperProps = TimelineDataProps & {
   /** the id attribute of the element float will use to apply to, it should be unique */
@@ -82,6 +85,8 @@ class TimelineChartWrapper extends React.Component<
   static defaultProps = {
     format: 'bars',
     mode: 'singles',
+    timezone: 'browser',
+    height: '100px',
   };
 
   constructor(props: TimelineChartWrapperProps) {
@@ -135,7 +140,7 @@ class TimelineChartWrapper extends React.Component<
       },
       xaxis: {
         mode: 'time',
-        timezone: 'browser',
+        timezone: props.timezone,
         reserveSpace: false,
       },
     };
@@ -224,66 +229,62 @@ class TimelineChartWrapper extends React.Component<
     return [];
   };
 
-  render = () => {
+  renderMultiple = (props: MultipleDataProps) => {
     const { flotOptions } = this.state;
+    const { timelineGroups, activeGroup, showTagsLegend } = props;
+    const { id, timezone, onSelect, height } = this.props;
 
-    if (this.props.mode === 'multiple') {
-      const { timelineGroups, activeGroup, showTagsLegend, id, timezone } =
-        this.props;
+    const customFlotOptions = {
+      ...flotOptions,
+      xaxis: {
+        ...flotOptions.xaxis,
+        autoscaleMargin: null,
+        timezone,
+      },
+    };
 
-      const customFlotOptions = {
-        ...flotOptions,
-        xaxis: {
-          ...flotOptions.xaxis,
-          autoscaleMargin: null,
-          timezone: timezone || 'browser',
-        },
-      };
+    const centeredTimelineGroups =
+      timelineGroups &&
+      timelineGroups.map(({ data, color, tagName }) => {
+        return {
+          data: centerTimelineData({ data }),
+          color:
+            activeGroup && activeGroup !== tagName ? color?.fade(0.75) : color,
+        };
+      });
 
-      const centeredTimelineGroups =
-        timelineGroups &&
-        timelineGroups.map(({ data, color, tagName }) => {
-          return {
-            data: centerTimelineData({ data }),
-            color:
-              activeGroup && activeGroup !== tagName
-                ? color?.fade(0.75)
-                : color,
-          };
-        });
-
-      return (
-        <>
-          <TimelineChart
-            onSelect={this.props.onSelect}
-            className={styles.wrapper}
-            // eslint-disable-next-line react/destructuring-assignment
-            data-testid={this.props['data-testid']}
-            id={id}
-            options={customFlotOptions}
-            data={centeredTimelineGroups}
-            width="100%"
-            height={this.props.height || '100px'}
+    return (
+      <>
+        <TimelineChart
+          onSelect={onSelect}
+          className={styles.wrapper}
+          // eslint-disable-next-line react/destructuring-assignment
+          data-testid={this.props['data-testid']}
+          id={id}
+          options={customFlotOptions}
+          data={centeredTimelineGroups}
+          width="100%"
+          height={height}
+        />
+        {showTagsLegend && (
+          <Legend
+            activeGroup={activeGroup}
+            groups={timelineGroups}
+            handleGroupByTagValueChange={props.handleGroupByTagValueChange}
           />
-          {showTagsLegend && (
-            <Legend
-              activeGroup={activeGroup}
-              groups={timelineGroups}
-              handleGroupByTagValueChange={
-                this.props.handleGroupByTagValueChange
-              }
-            />
-          )}
-        </>
-      );
-    }
+        )}
+      </>
+    );
+  };
 
-    const { id, timelineA, timezone, title } = this.props;
+  renderSingle = (props: SingleDataProps) => {
+    const { flotOptions } = this.state;
+    const { timelineA } = props;
+    let { timelineB } = props;
+    const { id, timezone, title } = this.props;
 
     // TODO deep copy
-    let timelineB = this.props.timelineB
-      ? JSON.parse(JSON.stringify(this.props.timelineB))
-      : undefined;
+    timelineB = timelineB ? JSON.parse(JSON.stringify(timelineB)) : undefined;
 
     const customFlotOptions = {
       ...flotOptions,
@@ -293,7 +294,7 @@ class TimelineChartWrapper extends React.Component<
         // both sides making it look more centers
         autoscaleMargin:
           timelineA?.data && timelineA.data.samples.length > 3 ? null : 0.005,
-        timezone: timezone || 'browser',
+        timezone,
       },
     };
 
@@ -344,10 +345,17 @@ class TimelineChartWrapper extends React.Component<
           options={customFlotOptions}
           data={data}
           width="100%"
-          height={this.props.height || '100px'}
+          height={this.props.height}
         />
       </>
     );
+  };
+
+  render = () => {
+    if (this.props.mode === 'multiple') {
+      return this.renderMultiple(this.props);
+    }
+    return this.renderSingle(this.props);
   };
 }
 
