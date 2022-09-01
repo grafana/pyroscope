@@ -3,6 +3,8 @@ package firedb
 import (
 	"context"
 	"flag"
+	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -69,6 +71,10 @@ func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, er
 	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, reg)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
+		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
 
 	f.blockQuerier = NewBlockQuerier(logger, bucketReader)

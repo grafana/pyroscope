@@ -279,6 +279,19 @@
         }
       }
     },
+    "v1Point": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "type": "number",
+          "format": "double"
+        },
+        "t": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "v1ProfileType": {
       "type": "object",
       "properties": {
@@ -361,6 +374,34 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "v1SelectSeriesResponse": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
+    },
+    "v1Series": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Point"
           }
         }
       }
