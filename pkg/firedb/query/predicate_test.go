@@ -69,7 +69,7 @@ func testPredicate(t *testing.T, tc predicateTestCase) {
 	p := InstrumentedPredicate{pred: tc.predicate}
 
 	i := NewColumnIterator(context.TODO(), r.RowGroups(), 0, "test", 100, &p, "")
-	for i.Next() != nil {
+	for i.Next() {
 	}
 
 	require.Equal(t, tc.keptChunks, int(p.KeptColumnChunks.Load()), "keptChunks")

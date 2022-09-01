@@ -8,8 +8,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
-	pq "github.com/segmentio/parquet-go"
+	"github.com/segmentio/parquet-go"
+
+	"github.com/grafana/fire/pkg/iter"
 )
 
 // RowNumber is the sequence of row numbers uniquely identifying a value
@@ -28,6 +31,11 @@ import (
 //
 // Currently supports 6 levels of nesting which should be enough for anybody. :)
 type RowNumber [6]int64
+
+type RowNumberWithDefinitionLevel struct {
+	RowNumber       RowNumber
+	DefinitionLevel int
+}
 
 // EmptyRowNumber creates an empty invalid row number.
 func EmptyRowNumber() RowNumber {
@@ -57,10 +65,10 @@ func CompareRowNumbers(upToDefinitionLevel int, a, b RowNumber) int {
 	return 0
 }
 
-func TruncateRowNumber(definitionLevelToKeep int, t RowNumber) RowNumber {
+func TruncateRowNumber(t RowNumberWithDefinitionLevel) RowNumber {
 	n := EmptyRowNumber()
-	for i := 0; i <= definitionLevelToKeep; i++ {
-		n[i] = t[i]
+	for i := 0; i <= t.DefinitionLevel; i++ {
+		n[i] = t.RowNumber[i]
 	}
 	return n
 }
@@ -114,7 +122,7 @@ type IteratorResult struct {
 	RowNumber RowNumber
 	Entries   []struct {
 		k string
-		v pq.Value
+		v parquet.Value
 	}
 }
 
@@ -126,18 +134,18 @@ func (r *IteratorResult) Append(rr *IteratorResult) {
 	r.Entries = append(r.Entries, rr.Entries...)
 }
 
-func (r *IteratorResult) AppendValue(k string, v pq.Value) {
+func (r *IteratorResult) AppendValue(k string, v parquet.Value) {
 	r.Entries = append(r.Entries, struct {
 		k string
-		v pq.Value
+		v parquet.Value
 	}{k, v})
 }
 
 // ToMap converts the unstructured list of data into a map containing an entry
 // for each column, and the lists of values.  The order of columns is
 // not preseved, but the order of values within each column is.
-func (r *IteratorResult) ToMap() map[string][]pq.Value {
-	m := map[string][]pq.Value{}
+func (r *IteratorResult) ToMap() map[string][]parquet.Value {
+	m := map[string][]parquet.Value{}
 	for _, e := range r.Entries {
 		m[e.k] = append(m[e.k], e.v)
 	}
@@ -146,9 +154,9 @@ func (r *IteratorResult) ToMap() map[string][]pq.Value {
 
 // Columns gets the values for each named column. The order of returned values
 // matches the order of names given. This is more efficient than converting to a map.
-func (r *IteratorResult) Columns(buffer [][]pq.Value, names ...string) [][]pq.Value {
+func (r *IteratorResult) Columns(buffer [][]parquet.Value, names ...string) [][]parquet.Value {
 	if cap(buffer) < len(names) {
-		buffer = make([][]pq.Value, len(names))
+		buffer = make([][]parquet.Value, len(names))
 	}
 	buffer = buffer[:len(names)]
 	for i := range buffer {
@@ -168,15 +176,7 @@ func (r *IteratorResult) Columns(buffer [][]pq.Value, names ...string) [][]pq.Va
 }
 
 // iterator - Every iterator follows this interface and can be composed.
-type Iterator interface {
-	// Next returns nil when done
-	Next() *IteratorResult
-
-	// Like Next but skips over results until reading >= the given location
-	SeekTo(t RowNumber, definitionLevel int) *IteratorResult
-
-	Close()
-}
+type Iterator = iter.SeekIterator[*IteratorResult, RowNumberWithDefinitionLevel]
 
 var columnIteratorPool = sync.Pool{
 	New: func() interface{} {
@@ -190,7 +190,7 @@ func columnIteratorPoolGet(capacity, len int) *columnIteratorBuffer {
 		res.rowNumbers = make([]RowNumber, capacity)
 	}
 	if cap(res.values) < capacity {
-		res.values = make([]pq.Value, capacity)
+		res.values = make([]parquet.Value, capacity)
 	}
 	res.rowNumbers = res.rowNumbers[:len]
 	res.values = res.values[:len]
@@ -200,7 +200,7 @@ func columnIteratorPoolGet(capacity, len int) *columnIteratorBuffer {
 func columnIteratorPoolPut(b *columnIteratorBuffer) {
 	b.values = b.values[:cap(b.values)]
 	for i := range b.values {
-		b.values[i] = pq.Value{}
+		b.values[i] = parquet.Value{}
 	}
 	columnIteratorPool.Put(b)
 }
@@ -209,7 +209,7 @@ var columnIteratorResultPool = sync.Pool{
 	New: func() interface{} {
 		return &IteratorResult{Entries: make([]struct {
 			k string
-			v pq.Value
+			v parquet.Value
 		}, 0, 10)} // For luck
 	},
 }
@@ -230,7 +230,7 @@ func columnIteratorResultPoolPut(r *IteratorResult) {
 // the optional predicate to each chunk, page, and value.  Results are read by calling
 // Next() until it returns nil.
 type ColumnIterator struct {
-	rgs     []pq.RowGroup
+	rgs     []parquet.RowGroup
 	col     int
 	colName string
 	filter  *InstrumentedPredicate
@@ -243,16 +243,19 @@ type ColumnIterator struct {
 
 	curr  *columnIteratorBuffer
 	currN int
+
+	result *IteratorResult
+	err    error
 }
 
 var _ Iterator = (*ColumnIterator)(nil)
 
 type columnIteratorBuffer struct {
 	rowNumbers []RowNumber
-	values     []pq.Value
+	values     []parquet.Value
 }
 
-func NewColumnIterator(ctx context.Context, rgs []pq.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string) *ColumnIterator {
+func NewColumnIterator(ctx context.Context, rgs []parquet.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string) *ColumnIterator {
 	c := &ColumnIterator{
 		rgs:      rgs,
 		col:      column,
@@ -286,7 +289,7 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 	}()
 
 	rn := EmptyRowNumber()
-	buffer := make([]pq.Value, readSize)
+	buffer := make([]parquet.Value, readSize)
 
 	checkSkip := func(numRows int64) bool {
 		seekTo := c.seekTo.Load()
@@ -399,19 +402,26 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 	}
 }
 
+// At returns the current value from the iterator.
+func (c *ColumnIterator) At() *IteratorResult {
+	return c.result
+}
+
 // Next returns the next matching value from the iterator.
 // Returns nil when finished.
-func (c *ColumnIterator) Next() *IteratorResult {
+func (c *ColumnIterator) Next() bool {
 
 	t, v := c.next()
 	if t.Valid() {
-		return c.makeResult(t, v)
+		c.result = c.makeResult(t, v)
+		return true
 	}
 
-	return nil
+	c.result = nil
+	return false
 }
 
-func (c *ColumnIterator) next() (RowNumber, pq.Value) {
+func (c *ColumnIterator) next() (RowNumber, parquet.Value) {
 	// Consume current buffer until exhausted
 	// then read another one from the channel.
 	if c.curr != nil {
@@ -435,33 +445,36 @@ func (c *ColumnIterator) next() (RowNumber, pq.Value) {
 	}
 
 	// Failed to read from the channel, means iterator is exhausted.
-	return EmptyRowNumber(), pq.Value{}
+	return EmptyRowNumber(), parquet.Value{}
 }
 
 // SeekTo moves this iterator to the next result that is greater than
 // or equal to the given row number (and based on the given definition level)
-func (c *ColumnIterator) SeekTo(to RowNumber, d int) *IteratorResult {
+func (c *ColumnIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 	var at RowNumber
-	var v pq.Value
+	var v parquet.Value
 
 	// Because iteration happens in the background, we signal the row
 	// to skip to, and then read until we are at the right spot. The
 	// seek is best-effort and may have no effect if the iteration
 	// already further ahead, and there may already be older data
 	// in the buffer.
-	c.seekTo.Store(to)
-	for at, v = c.next(); at.Valid() && CompareRowNumbers(d, at, to) < 0; {
+	c.seekTo.Store(to.RowNumber)
+	for at, v = c.next(); at.Valid() && CompareRowNumbers(to.DefinitionLevel, at, to.RowNumber) < 0; {
 		at, v = c.next()
 	}
 
 	if at.Valid() {
-		return c.makeResult(at, v)
+		c.result = c.makeResult(at, v)
+		return true
 	}
 
-	return nil
+	c.result = nil
+	return false
+
 }
 
-func (c *ColumnIterator) makeResult(t RowNumber, v pq.Value) *IteratorResult {
+func (c *ColumnIterator) makeResult(t RowNumber, v parquet.Value) *IteratorResult {
 	r := columnIteratorResultPoolGet()
 	r.RowNumber = t
 	if c.selectAs != "" {
@@ -470,8 +483,13 @@ func (c *ColumnIterator) makeResult(t RowNumber, v pq.Value) *IteratorResult {
 	return r
 }
 
-func (c *ColumnIterator) Close() {
+func (c *ColumnIterator) Close() error {
 	close(c.quit)
+	return nil
+}
+
+func (c *ColumnIterator) Err() error {
+	return c.err
 }
 
 // JoinIterator joins two or more iterators for matches at the given definition level.
@@ -482,6 +500,8 @@ type JoinIterator struct {
 	iters           []Iterator
 	peeks           []*IteratorResult
 	pred            GroupPredicate
+
+	result *IteratorResult
 }
 
 var _ Iterator = (*JoinIterator)(nil)
@@ -495,8 +515,11 @@ func NewJoinIterator(definitionLevel int, iters []Iterator, pred GroupPredicate)
 	}
 	return &j
 }
+func (j *JoinIterator) At() *IteratorResult {
+	return j.result
+}
 
-func (j *JoinIterator) Next() *IteratorResult {
+func (j *JoinIterator) Next() bool {
 
 	// Here is the algorithm for joins:  On each pass of the iterators
 	// we remember which ones are pointing at the earliest rows. If all
@@ -515,7 +538,8 @@ func (j *JoinIterator) Next() *IteratorResult {
 
 			if res == nil {
 				// Iterator exhausted, no more joins possible
-				return nil
+				j.result = nil
+				return false
 			}
 
 			c := CompareRowNumbers(j.definitionLevel, res.RowNumber, lowestRowNumber)
@@ -545,34 +569,41 @@ func (j *JoinIterator) Next() *IteratorResult {
 			// Keep group?
 			if j.pred == nil || j.pred.KeepGroup(result) {
 				// Yes
-				return result
+				j.result = result
+				return true
 			}
 		}
 
 		// Skip all iterators to the highest row seen, it's impossible
 		// to find matches before that.
-		j.seekAll(highestRowNumber, j.definitionLevel)
+		j.seekAll(RowNumberWithDefinitionLevel{RowNumber: highestRowNumber, DefinitionLevel: j.definitionLevel})
 	}
 }
 
-func (j *JoinIterator) SeekTo(t RowNumber, d int) *IteratorResult {
-	j.seekAll(t, d)
+func (j *JoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
+	j.seekAll(to)
 	return j.Next()
 }
 
-func (j *JoinIterator) seekAll(t RowNumber, d int) {
-	t = TruncateRowNumber(d, t)
+func (j *JoinIterator) seekAll(to RowNumberWithDefinitionLevel) {
+	to.RowNumber = TruncateRowNumber(to)
 	for iterNum, iter := range j.iters {
-		if j.peeks[iterNum] == nil || CompareRowNumbers(d, j.peeks[iterNum].RowNumber, t) == -1 {
+		if j.peeks[iterNum] == nil || CompareRowNumbers(to.DefinitionLevel, j.peeks[iterNum].RowNumber, to.RowNumber) == -1 {
 			columnIteratorResultPoolPut(j.peeks[iterNum])
-			j.peeks[iterNum] = iter.SeekTo(t, d)
+			if iter.Seek(to) {
+				j.peeks[iterNum] = iter.At()
+			} else {
+				j.peeks[iterNum] = nil
+			}
 		}
 	}
 }
 
 func (j *JoinIterator) peek(iterNum int) *IteratorResult {
 	if j.peeks[iterNum] == nil {
-		j.peeks[iterNum] = j.iters[iterNum].Next()
+		if j.iters[iterNum].Next() {
+			j.peeks[iterNum] = j.iters[iterNum].At()
+		}
 	}
 	return j.peeks[iterNum]
 }
@@ -591,16 +622,31 @@ func (j *JoinIterator) collect(rowNumber RowNumber) *IteratorResult {
 
 			columnIteratorResultPoolPut(j.peeks[i])
 
-			j.peeks[i] = j.iters[i].Next()
+			if j.iters[i].Next() {
+				j.peeks[i] = j.iters[i].At()
+			} else {
+				j.peeks[i] = nil
+			}
 		}
 	}
 	return result
 }
 
-func (j *JoinIterator) Close() {
+func (j *JoinIterator) Close() error {
+	var merr multierror.MultiError
 	for _, i := range j.iters {
-		i.Close()
+		merr.Add(i.Close())
 	}
+	return merr.Err()
+}
+
+func (j *JoinIterator) Err() error {
+	for _, i := range j.iters {
+		if err := i.Err(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // UnionIterator produces all results for all given iterators.  When iterators
@@ -611,6 +657,7 @@ type UnionIterator struct {
 	iters           []Iterator
 	peeks           []*IteratorResult
 	pred            GroupPredicate
+	result          *IteratorResult
 }
 
 var _ Iterator = (*UnionIterator)(nil)
@@ -625,7 +672,10 @@ func NewUnionIterator(definitionLevel int, iters []Iterator, pred GroupPredicate
 	return &j
 }
 
-func (u *UnionIterator) Next() *IteratorResult {
+func (u *UnionIterator) At() *IteratorResult {
+	return u.result
+}
+func (u *UnionIterator) Next() bool {
 
 	// Here is the algorithm for unions:  On each pass of the iterators
 	// we remember which ones are pointing at the earliest same row. The
@@ -667,19 +717,25 @@ func (u *UnionIterator) Next() *IteratorResult {
 				continue
 			}
 
-			return result
+			u.result = result
+			return true
 		}
 
 		// All exhausted
-		return nil
+		u.result = nil
+		return false
 	}
 }
 
-func (u *UnionIterator) SeekTo(t RowNumber, d int) *IteratorResult {
-	t = TruncateRowNumber(d, t)
+func (u *UnionIterator) Seek(to RowNumberWithDefinitionLevel) bool {
+	to.RowNumber = TruncateRowNumber(to)
 	for iterNum, iter := range u.iters {
-		if p := u.peeks[iterNum]; p == nil || CompareRowNumbers(d, p.RowNumber, t) == -1 {
-			u.peeks[iterNum] = iter.SeekTo(t, d)
+		if p := u.peeks[iterNum]; p == nil || CompareRowNumbers(to.DefinitionLevel, p.RowNumber, to.RowNumber) == -1 {
+			if iter.Seek(to) {
+				u.peeks[iterNum] = iter.At()
+			} else {
+				u.peeks[iterNum] = nil
+			}
 		}
 	}
 	return u.Next()
@@ -687,7 +743,9 @@ func (u *UnionIterator) SeekTo(t RowNumber, d int) *IteratorResult {
 
 func (u *UnionIterator) peek(iterNum int) *IteratorResult {
 	if u.peeks[iterNum] == nil {
-		u.peeks[iterNum] = u.iters[iterNum].Next()
+		if u.iters[iterNum].Next() {
+			u.peeks[iterNum] = u.iters[iterNum].At()
+		}
 	}
 	return u.peeks[iterNum]
 }
@@ -706,17 +764,31 @@ func (u *UnionIterator) collect(iterNums []int, rowNumber RowNumber) *IteratorRe
 
 			columnIteratorResultPoolPut(u.peeks[iterNum])
 
-			u.peeks[iterNum] = u.iters[iterNum].Next()
+			if u.iters[iterNum].Next() {
+				u.peeks[iterNum] = u.iters[iterNum].At()
+			}
+
 		}
 	}
 
 	return result
 }
 
-func (u *UnionIterator) Close() {
+func (u *UnionIterator) Err() error {
 	for _, i := range u.iters {
-		i.Close()
+		if err := i.Err(); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func (u *UnionIterator) Close() error {
+	var merr multierror.MultiError
+	for _, i := range u.iters {
+		merr.Add(i.Close())
+	}
+	return merr.Err()
 }
 
 type GroupPredicate interface {
@@ -731,7 +803,7 @@ type GroupPredicate interface {
 type KeyValueGroupPredicate struct {
 	keys   [][]byte
 	vals   [][]byte
-	buffer [][]pq.Value
+	buffer [][]parquet.Value
 }
 
 var _ GroupPredicate = (*KeyValueGroupPredicate)(nil)
@@ -781,11 +853,3 @@ func (a *KeyValueGroupPredicate) KeepGroup(group *IteratorResult) bool {
 	}
 	return true
 }
-
-/*func printGroup(g *iteratorResult) {
-	fmt.Println("---group---")
-	for _, e := range g.entries {
-		fmt.Println("key:", e.k)
-		fmt.Println(" : ", e.v.String())
-	}
-}*/
