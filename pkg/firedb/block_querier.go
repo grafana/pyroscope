@@ -429,6 +429,8 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - SelectProfiles")
 	defer func() {
 		sp.LogFields(
+			otlog.String("block min", b.meta.MinTime.Time().String()),
+			otlog.String("block max", b.meta.MaxTime.Time().String()),
 			otlog.Int64("total_samples", totalSamples),
 			otlog.Int64("total_locations", totalLocations),
 			otlog.Int64("total_profiles", totalProfiles),
