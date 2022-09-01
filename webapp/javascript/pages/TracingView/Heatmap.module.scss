@@ -1,5 +1,4 @@
 $svg-side-margin: 40px;
-$axis-width: 3px;
 
 .heatmapContainer {
   position: relative;
@@ -16,57 +15,27 @@ $axis-width: 3px;
     }
   }
 
-  .xAxis {
-    left: -$axis-width;
+  .yAxis {
+    left: -40px;
     position: absolute;
-    border-right: $axis-width solid yellowgreen;
     display: flex;
     flex-direction: column-reverse;
     justify-content: space-between;
   }
 
-  .yAxis {
+  .xAxis {
     width: 100%;
     display: flex;
     justify-content: space-between;
-    border-top: $axis-width solid yellowgreen;
+    margin-top: 10px;
   }
 
-  .tickContainer {
-    position: relative;
+  .tick {
+    font-size: 14px;
+    text-align: center;
 
-    .xTick {
-      height: $axis-width;
-      width: 8px;
-      font-size: 14px;
+    &.yTick {
       text-align: right;
-      margin-left: -8px;
-      background-color: yellowgreen;
-    }
-
-    .yTick {
-      width: $axis-width;
-      left: -$axis-width;
-      height: 8px;
-      background-color: yellowgreen;
-    }
-
-    .tickValue {
-      position: absolute;
-      width: 32px;
-      font-size: 12px;
-    }
-
-    .xTickValue {
-      top: -10px;
-      right: 11px;
-      text-align: right;
-    }
-
-    .yTickValue {
-      margin-left: -$axis-width;
-      text-align: center;
-      left: -11px;
     }
   }
 

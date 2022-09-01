@@ -1,17 +1,23 @@
 import { useState, useEffect, RefObject } from 'react';
+import Color from 'color';
 
-let startCoords: SelectedAreaCoordsType = null;
-let endCoords: SelectedAreaCoordsType = null;
-let isSelecting = false;
-let selectedAreaToHeatmapRatio = 1;
-export const SELECTED_AREA_BACKGROUND = 'rgb(255, 255, 0, 0.5)';
-export const SELECTED_AREA_BORDER = 'rgba(250, 208, 44, 0.5)';
+export const SELECTED_AREA_BACKGROUND = Color.rgb(255, 255, 0)
+  .alpha(0.5)
+  .toString();
+export const SELECTED_AREA_BORDER = Color.rgb(250, 208, 44)
+  .alpha(0.5)
+  .toString();
 const DEFAULT_SELECTED_COORDINATES = { start: null, end: null };
 
-export type SelectedAreaCoordsType = Record<'x' | 'y', number> | null;
+let startCoords: SelectedAreaCoordsType | null = null;
+let endCoords: SelectedAreaCoordsType | null = null;
+let isSelecting = false;
+let selectedAreaToHeatmapRatio = 1;
+
+export type SelectedAreaCoordsType = Record<'x' | 'y', number>;
 interface SelectedCoordinates {
-  start: SelectedAreaCoordsType;
-  end: SelectedAreaCoordsType;
+  start: SelectedAreaCoordsType | null;
+  end: SelectedAreaCoordsType | null;
 }
 interface UseHeatmapSelectionProps {
   canvasRef: RefObject<HTMLCanvasElement>;
@@ -19,7 +25,6 @@ interface UseHeatmapSelectionProps {
   heatmapH: number;
   timeBuckets: number;
   valueBuckets: number;
-  // columns: number[][], add color detection to this file
   columns: number[][];
 }
 interface UseHeatmapSelection {
@@ -29,8 +34,6 @@ interface UseHeatmapSelection {
   resetSelection: () => void;
 }
 
-// maybe can remove isSelecting, hasSelectedArea
-// and make coord state trigger actions
 export const useHeatmapSelection = ({
   canvasRef,
   heatmapW,

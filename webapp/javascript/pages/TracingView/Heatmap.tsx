@@ -1,18 +1,32 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import useResizeObserver from '@react-hook/resize-observer';
+import Color from 'color';
 import cl from 'classnames';
 
 import {
   useHeatmapSelection,
   SELECTED_AREA_BACKGROUND,
   SELECTED_AREA_BORDER,
+  SelectedAreaCoordsType,
 } from './useHeatmapSelection.hook';
 import * as apiResData from './mockapi';
 
 import styles from './Heatmap.module.scss';
-import Color from 'color';
 
 const HEATMAP_HEIGHT = 250;
 const CANVAS_ID = 'selectionCanvas';
+const BUCKETS_PALETTE = [
+  Color.rgb(202, 240, 248).toString(),
+  Color.rgb(173, 232, 244).toString(),
+  Color.rgb(144, 224, 239).toString(),
+  Color.rgb(108, 213, 234).toString(),
+  Color.rgb(72, 202, 228).toString(),
+  Color.rgb(0, 180, 216).toString(),
+  Color.rgb(0, 150, 199).toString(),
+  Color.rgb(0, 119, 182).toString(),
+  Color.rgb(2, 62, 138).toString(),
+  Color.rgb(3, 4, 94).toString(),
+];
 
 function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,29 +57,14 @@ function Heatmap() {
     columns,
   });
 
-  useEffect(() => {
-    if (heatmapRef.current) {
-      const resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.contentBoxSize) {
-            // Firefox implements `contentBoxSize` as a single content rect, rather than an array
-            const contentBoxSize = Array.isArray(entry.contentBoxSize)
-              ? entry.contentBoxSize[0]
-              : entry.contentBoxSize;
-
-            (canvasRef.current as HTMLCanvasElement).width =
-              contentBoxSize.inlineSize;
-            setHeatmapW(contentBoxSize.inlineSize);
-          }
-        }
-      });
-      resizeObserver.observe(heatmapRef.current);
-
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }
-  }, []);
+  useResizeObserver(heatmapRef.current, (entry: ResizeObserverEntry) => {
+    // Firefox implements `contentBoxSize` as a single content rect, rather than an array
+    const contentBoxSize = Array.isArray(entry.contentBoxSize)
+      ? entry.contentBoxSize[0]
+      : entry.contentBoxSize;
+    (canvasRef.current as HTMLCanvasElement).width = contentBoxSize.inlineSize;
+    setHeatmapW(contentBoxSize.inlineSize);
+  });
 
   const generateHeatmapGrid = useMemo(
     () =>
@@ -93,8 +92,12 @@ function Heatmap() {
   );
 
   return (
-    <div ref={heatmapRef} className={styles.heatmapContainer}>
-      <XAxis minDepth={minDepth} maxDepth={maxDepth} />
+    <div
+      ref={heatmapRef}
+      className={styles.heatmapContainer}
+      data-testid="heatmap-container"
+    >
+      <YAxis minDepth={minDepth} maxDepth={maxDepth} />
       {hasSelectedArea &&
         selectedCoordinates.end &&
         selectedCoordinates.start && (
@@ -115,10 +118,14 @@ function Heatmap() {
           <canvas id={CANVAS_ID} ref={canvasRef} height={HEATMAP_HEIGHT} />
         </foreignObject>
       </svg>
-      <YAxis startTime={startTime} endTime={endTime} />
+      <XAxis startTime={startTime} endTime={endTime} />
       <div className={styles.bucketsColors}>
         {BUCKETS_PALETTE.map((color) => (
-          <div className={styles.color} style={{ backgroundColor: color }} />
+          <div
+            key={color}
+            className={styles.color}
+            style={{ backgroundColor: color }}
+          />
         ))}
       </div>
     </div>
@@ -127,8 +134,8 @@ function Heatmap() {
 
 interface ResizedSelectedArea {
   containerW: number;
-  start: Record<'x' | 'y', number>;
-  end: Record<'x' | 'y', number>;
+  start: SelectedAreaCoordsType;
+  end: SelectedAreaCoordsType;
   resizeRatio: number;
   handleClick: () => void;
 }
@@ -163,35 +170,28 @@ function ResizedSelectedArea({
   );
 }
 
-// maybe reuse Axis component
-function XAxis({ maxDepth, minDepth }: { maxDepth: number; minDepth: number }) {
+function YAxis({ maxDepth, minDepth }: { maxDepth: number; minDepth: number }) {
   const ticks = getTicks(maxDepth, minDepth);
 
   return (
-    <div className={styles.xAxis} style={{ height: HEATMAP_HEIGHT + 3 }}>
+    <div className={styles.yAxis} style={{ height: HEATMAP_HEIGHT }}>
       {ticks.map((tick) => (
-        <div className={styles.tickContainer} key={tick}>
-          <div className={styles.xTick}></div>
-          <span className={cl(styles.tickValue, styles.xTickValue)}>
-            {tick.toFixed(0)}
-          </span>
+        <div className={cl(styles.tick, styles.yTick)} key={tick}>
+          {tick.toFixed(0)}
         </div>
       ))}
     </div>
   );
 }
 
-function YAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
+function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
   const ticks = getTicks(startTime, endTime, 7);
 
   return (
-    <div className={styles.yAxis}>
+    <div className={styles.xAxis}>
       {ticks.map((tick) => (
-        <div className={styles.tickContainer} key={tick}>
-          <div className={styles.yTick}></div>
-          <span className={cl(styles.tickValue, styles.yTickValue)}>
-            {new Date(tick).getSeconds()}
-          </span>
+        <div className={styles.tick} key={tick}>
+          "1"
         </div>
       ))}
     </div>
@@ -208,20 +208,6 @@ const getTicks = (max: number, min: number, ticksCount = 5) => {
 
   return ticksArray;
 };
-
-// add Color colors
-const BUCKETS_PALETTE = [
-  '#caf0f8',
-  '#ade8f4',
-  '#90e0ef',
-  '#6cd5ea',
-  '#48cae4',
-  '#00b4d8',
-  '#0096c7',
-  '#0077b6',
-  '#023e8a',
-  '#03045e',
-];
 
 const getCellColor = (minV: number, v: number): string => {
   const colorIndex = Math.trunc((minV / v) * 10);
