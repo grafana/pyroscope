@@ -42,7 +42,6 @@ func NewBucket(rootDir string) (*Bucket, error) {
 }
 
 func (b *Bucket) ReaderAt(ctx context.Context, filename string) (objstore.ReaderAt, error) {
-	// 	f, err := mmap.Open(filepath.Join(b.rootDir, filename)) ?
 	f, err := os.Open(filepath.Join(b.rootDir, filename))
 	if err != nil {
 		return nil, err
