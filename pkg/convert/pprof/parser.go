@@ -3,43 +3,46 @@ package pprof
 import (
 	"context"
 	"fmt"
-	"io"
-	"reflect"
-	"time"
-	"unsafe"
-
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"io"
+	"time"
 )
 
 type Parser struct {
-	putter        storage.Putter
-	spyName       string
-	labels        map[string]string
-	skipExemplars bool
-	sampleTypes   map[string]*tree.SampleTypeConfig
+	putter              storage.Putter
+	spyName             string
+	labels              map[string]string
+	skipExemplars       bool
+	sampleTypes         map[string]*tree.SampleTypeConfig
+	stackFrameFormatter StackFrameFormatter
 
 	cache             tree.LabelsCache
 	sampleTypesFilter func(string) bool
 }
 
 type ParserConfig struct {
-	Putter        storage.Putter
-	SpyName       string
-	Labels        map[string]string
-	SkipExemplars bool
-	SampleTypes   map[string]*tree.SampleTypeConfig
+	Putter              storage.Putter
+	SpyName             string
+	Labels              map[string]string
+	SkipExemplars       bool
+	SampleTypes         map[string]*tree.SampleTypeConfig
+	StackFrameFormatter StackFrameFormatter
 }
 
 func NewParser(config ParserConfig) *Parser {
+	if config.StackFrameFormatter == nil {
+		config.StackFrameFormatter = &UnsafeFunctionNameFormatter{}
+	}
 	return &Parser{
-		putter:        config.Putter,
-		spyName:       config.SpyName,
-		labels:        config.Labels,
-		sampleTypes:   config.SampleTypes,
-		skipExemplars: config.SkipExemplars,
+		putter:              config.Putter,
+		spyName:             config.SpyName,
+		labels:              config.Labels,
+		sampleTypes:         config.SampleTypes,
+		skipExemplars:       config.SkipExemplars,
+		stackFrameFormatter: config.StackFrameFormatter,
 
 		cache:             make(tree.LabelsCache),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
@@ -62,7 +65,7 @@ func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, b
 }
 
 func (p *Parser) Convert(ctx context.Context, startTime, endTime time.Time, profile *tree.Profile) error {
-	return p.iterate(ctx, profile, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
+	return p.iterate(profile, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		if vt.Type >= int64(len(profile.StringTable)) {
 			return false, fmt.Errorf("sample value type is invalid: %d", vt.Type)
 		}
@@ -140,9 +143,9 @@ func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
 	return e.Tree, true
 }
 
-func (p *Parser) iterate(ctx context.Context, x *tree.Profile, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
+func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
 	c := make(tree.LabelsCache)
-	p.readTrees(ctx, x, c, tree.NewFinder(x))
+	p.readTrees(x, c, tree.NewFinder(x))
 	for sampleType, entries := range c {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
 			for h, e := range entries {
@@ -161,8 +164,7 @@ func (p *Parser) iterate(ctx context.Context, x *tree.Profile, fn func(vt *tree.
 }
 
 // readTrees generates trees from the profile populating c.
-func (p *Parser) readTrees(ctx context.Context, x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
-	withLineNumbers := LineNumbersEnabledFromContext(ctx)
+func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
 	// SampleType value indexes.
 	indexes := make([]int, 0, len(x.SampleType))
 	// Corresponding type IDs used as the main cache keys.
@@ -198,7 +200,8 @@ func (p *Parser) readTrees(ctx context.Context, x *tree.Profile, c tree.LabelsCa
 				if !ok || x.StringTable[fn.Name] == "" {
 					continue
 				}
-				stack = append(stack, p.formatStackFrame(x, fn, loc.Line[j], withLineNumbers))
+				sf := p.stackFrameFormatter.format(x, fn, loc.Line[j])
+				stack = append(stack, sf)
 			}
 		}
 		// Insert tree nodes.
@@ -220,20 +223,6 @@ func (p *Parser) readTrees(ctx context.Context, x *tree.Profile, c tree.LabelsCa
 		}
 		stack = stack[:0]
 	}
-}
-
-func (p *Parser) formatStackFrame(x *tree.Profile, fn *tree.Function, line *tree.Line, withLineNumbers bool) []byte {
-	if p.spyName == "rbspy" || withLineNumbers {
-		return []byte(fmt.Sprintf("%s:%d - %s",
-			x.StringTable[fn.Filename],
-			line.Line,
-			x.StringTable[fn.Name]))
-	}
-	return unsafeStrToSlice(x.StringTable[fn.Name])
-}
-
-func unsafeStrToSlice(s string) []byte {
-	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
 }
 
 func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
