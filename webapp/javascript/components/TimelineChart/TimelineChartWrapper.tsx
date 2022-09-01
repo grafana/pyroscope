@@ -232,40 +232,28 @@ class TimelineChartWrapper extends React.Component<
   renderMultiple = (props: MultipleDataProps) => {
     const { flotOptions } = this.state;
     const { timelineGroups, activeGroup, showTagsLegend } = props;
-    const { id, timezone, onSelect, height } = this.props;
+    const { timezone } = this.props;
 
     const customFlotOptions = {
       ...flotOptions,
-      xaxis: {
-        ...flotOptions.xaxis,
-        autoscaleMargin: null,
-        timezone,
-      },
+      xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
     };
 
-    const centeredTimelineGroups =
-      timelineGroups &&
-      timelineGroups.map(({ data, color, tagName }) => {
+    const centeredTimelineGroups = timelineGroups.map(
+      ({ data, color, tagName }) => {
         return {
           data: centerTimelineData({ data }),
           color:
-            activeGroup && activeGroup !== tagName ? color?.fade(0.75) : color,
+            activeGroup && activeGroup !== tagName
+              ? color?.fade(0.75).string()
+              : color?.string(),
         };
-      });
+      }
+    );
 
     return (
       <>
-        <TimelineChart
-          onSelect={onSelect}
-          className={styles.wrapper}
-          // eslint-disable-next-line react/destructuring-assignment
-          data-testid={this.props['data-testid']}
-          id={id}
-          options={customFlotOptions}
-          data={centeredTimelineGroups}
-          width="100%"
-          height={height}
-        />
+        {this.timelineChart(centeredTimelineGroups, customFlotOptions)}
         {showTagsLegend && (
           <Legend
             activeGroup={activeGroup}
@@ -281,7 +269,7 @@ class TimelineChartWrapper extends React.Component<
     const { flotOptions } = this.state;
     const { timelineA } = props;
     let { timelineB } = props;
-    const { id, timezone, title } = this.props;
+    const { timezone, title } = this.props;
 
     // TODO deep copy
     timelineB = timelineB ? JSON.parse(JSON.stringify(timelineB)) : undefined;
@@ -336,18 +324,26 @@ class TimelineChartWrapper extends React.Component<
     return (
       <>
         {title}
-        <TimelineChart
-          onSelect={this.props.onSelect}
-          className={styles.wrapper}
-          // eslint-disable-next-line react/destructuring-assignment
-          data-testid={this.props['data-testid']}
-          id={id}
-          options={customFlotOptions}
-          data={data}
-          width="100%"
-          height={this.props.height}
-        />
+        {this.timelineChart(data, customFlotOptions)}
       </>
+    );
+  };
+
+  timelineChart = (
+    data: ({ data: number[][]; color?: string } | undefined)[],
+    customFlotOptions: ShamefulAny
+  ) => {
+    return (
+      <TimelineChart
+        onSelect={this.props.onSelect}
+        className={styles.wrapper}
+        data-testid={this.props['data-testid']}
+        id={this.props.id}
+        options={customFlotOptions}
+        data={data}
+        width="100%"
+        height={this.props.height}
+      />
     );
   };
 
