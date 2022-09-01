@@ -258,8 +258,16 @@ func newHeatmap(heatmap *storage.Heatmap) *FlamebearerHeatmapV1 {
 	if heatmap == nil {
 		return nil
 	}
+	values := make([][]uint64, heatmap.TimeBuckets)
+	for i := range heatmap.Values {
+		c := make([]uint64, heatmap.ValueBuckets)
+		for j := range heatmap.Values[i] {
+			c[int(heatmap.ValueBuckets)-j-1] = heatmap.Values[i][j]
+		}
+		values[i] = c
+	}
 	return &FlamebearerHeatmapV1{
-		Values:       heatmap.Values,
+		Values:       values,
 		TimeBuckets:  heatmap.TimeBuckets,
 		ValueBuckets: heatmap.ValueBuckets,
 		StartTime:    heatmap.StartTime.Unix(),
