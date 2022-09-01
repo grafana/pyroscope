@@ -10,7 +10,7 @@ import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { selectQueries, setDateRange } from '@webapp/redux/reducers/continuous';
 import { formatTitle } from '../formatTitle';
-import HeatMap from './Heatmap';
+import Heatmap from './Heatmap';
 import styles from './TracingView.module.scss';
 
 function TracingView() {
@@ -43,7 +43,7 @@ function TracingView() {
         </Box>
         <Box>
           <h3 style={{ textAlign: 'center', marginTop: 0 }}>Heat map</h3>
-          <HeatMap />
+          <Heatmap />
         </Box>
       </div>
     </>
