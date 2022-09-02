@@ -10,7 +10,8 @@ prefer-destructuring
 import React from 'react';
 import * as ReactDOM from 'react-dom';
 import { PlotType, EventHolderType, EventType } from './types';
-import { clamp, getFormatLabel } from './utils';
+import getFormatLabel from './getFormatLabel';
+import clamp from './clamp';
 
 type ContextType = {
   init: (plot: PlotType) => void;

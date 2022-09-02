@@ -1,7 +1,7 @@
 /* eslint-disable */
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
 import { PlotType, CtxType, EventHolderType, EventType } from './types';
-import { clamp } from './utils';
+import clamp from './clamp';
 
 const handleWidth = 4;
 const handleHeight = 22;

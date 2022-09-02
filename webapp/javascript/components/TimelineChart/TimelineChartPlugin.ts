@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { getFormatLabel } from './utils';
+import getFormatLabel from './getFormatLabel';
 
 (function ($) {
   const options = {}; // no options
