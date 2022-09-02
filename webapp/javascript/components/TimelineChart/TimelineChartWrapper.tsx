@@ -202,7 +202,8 @@ class TimelineChartWrapper extends React.Component<
       // to use custom apperance and color for it
       const boundary = {
         lineWidth: 1,
-        color: m.color.rgb(),
+        color:
+          this.props.selectionType === 'double' ? m.color.rgb() : 'transparent',
       };
 
       return [
