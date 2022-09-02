@@ -2,7 +2,6 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-
 fire:
   replicaCount: 1
 
@@ -24,7 +23,6 @@ fire:
   nameOverride: ""
   fullnameOverride: ""
 
-
   serviceAccount:
     # Specifies whether a service account should be created
     create: true
@@ -39,7 +37,8 @@ fire:
   podSecurityContext:
     fsGroup: 10001
 
-  securityContext: {}
+  securityContext:
+    {}
     # capabilities:
     #   drop:
     #   - ALL
@@ -56,7 +55,8 @@ fire:
     port: 7946
     port_name: memberlist
 
-  resources: {}
+  resources:
+    {}
     # We usually recommend not to specify default resources and to leave this as a conscious
     # choice for the user. This also increases chances charts run on environments with little
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -77,7 +77,7 @@ fire:
   persistence:
     enabled: false
     accessModes:
-    - ReadWriteOnce
+      - ReadWriteOnce
     size: 10Gi
     annotations: {}
     # selector:
@@ -85,6 +85,21 @@ fire:
     #     app.kubernetes.io/name: fire
     # subPath: ""
     # existingClaim:
+
+  extraVolumes:
+    []
+    # - name: backup-volume
+    #   emptydir: {}
+
+  extraVolumeMounts:
+    []
+    # - name: testing
+    #   mountPath: /var/lib/testing
+    #   readOnly: false
+    # - name: test-volume
+    #   mountPath: /var/tmp/test-volume
+    #   existingClaim: test-volume
+    #   readOnly: false
 
   tolerations: []
 
