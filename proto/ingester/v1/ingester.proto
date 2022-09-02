@@ -8,6 +8,7 @@ import "push/v1/push.proto";
 service IngesterService {
   rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
   rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
+  rpc LabelNames(LabelNamesRequest) returns (LabelNamesResponse) {}
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc Flush(FlushRequest) returns (FlushResponse) {}
@@ -22,6 +23,12 @@ message LabelValuesRequest {
 }
 
 message LabelValuesResponse {
+  repeated string names = 1;
+}
+
+message LabelNamesRequest {}
+
+message LabelNamesResponse {
   repeated string names = 1;
 }
 

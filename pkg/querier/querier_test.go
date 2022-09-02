@@ -97,6 +97,33 @@ func Test_QueryLabelValues(t *testing.T) {
 	require.Equal(t, []string{"bar", "buzz", "foo"}, out.Msg.Names)
 }
 
+func Test_QueryLabelNames(t *testing.T) {
+	req := connect.NewRequest(&querierv1.LabelNamesRequest{})
+	querier, err := New(Config{
+		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
+		{Addr: "1"},
+		{Addr: "2"},
+		{Addr: "3"},
+	}, 3), func(addr string) (client.PoolClient, error) {
+		q := newFakeQuerier()
+		switch addr {
+		case "1":
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
+		case "2":
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"bar", "buzz"}}), nil)
+		case "3":
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
+		}
+		return q, nil
+	}, log.NewLogfmtLogger(os.Stdout))
+
+	require.NoError(t, err)
+	out, err := querier.LabelNames(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, []string{"bar", "buzz", "foo"}, out.Msg.Names)
+}
+
 func Test_Series(t *testing.T) {
 	foobarlabels := firemodel.NewLabelsBuilder(nil).Set("foo", "bar")
 	foobuzzlabels := firemodel.NewLabelsBuilder(nil).Set("foo", "buzz")
@@ -325,6 +352,21 @@ func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Requ
 	)
 	if args[0] != nil {
 		res = args[0].(*connect.Response[ingestv1.LabelValuesResponse])
+	}
+	if args[1] != nil {
+		err = args.Get(1).(error)
+	}
+	return res, err
+}
+
+func (f *fakeQuerierIngester) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+	var (
+		args = f.Called(ctx, req)
+		res  *connect.Response[ingestv1.LabelNamesResponse]
+		err  error
+	)
+	if args[0] != nil {
+		res = args[0].(*connect.Response[ingestv1.LabelNamesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)

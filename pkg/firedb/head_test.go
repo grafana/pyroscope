@@ -244,6 +244,17 @@ func TestHeadLabelValues(t *testing.T) {
 	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
 }
 
+func TestHeadLabelNames(t *testing.T) {
+	head, err := NewHead(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+
+	res, err := head.LabelNames(context.Background(), connect.NewRequest(&ingestv1.LabelNamesRequest{}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"job", "namespace"}, res.Msg.Names)
+}
+
 func TestHeadSeries(t *testing.T) {
 	head, err := NewHead(t.TempDir())
 	require.NoError(t, err)

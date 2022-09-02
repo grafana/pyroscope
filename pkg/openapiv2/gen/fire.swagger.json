@@ -64,6 +64,17 @@
     }
   },
   "definitions": {
+    "ingesterv1LabelNamesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "ingesterv1LabelValuesResponse": {
       "type": "object",
       "properties": {
@@ -138,6 +149,17 @@
         }
       },
       "additionalProperties": {}
+    },
+    "querierv1LabelNamesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     },
     "querierv1LabelValuesResponse": {
       "type": "object",
