@@ -10,6 +10,7 @@ import './TimelineChartPlugin';
 
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;
+  onClick?: (from: string, until: string) => void;
   className: string;
   ['data-testid']?: string;
 }
@@ -17,6 +18,14 @@ interface TimelineChartProps {
 class TimelineChart extends ReactFlot<TimelineChartProps> {
   componentDidMount() {
     this.draw();
+
+    //    if (this.props.onClick) {
+    $(`#${this.props.id}`).bind('plotclick', (event, pos, item) => {
+      console.log({
+        range: Math.round(pos.x / 1000).toString(),
+      });
+    });
+    // }
 
     // TODO: use ref
     $(`#${this.props.id}`).bind('plotselected', (event, ranges) => {

@@ -122,6 +122,8 @@ class TimelineChartWrapper extends React.Component<
       grid: {
         borderWidth: 1, // outside border of the timelines
         hoverable: true,
+        // TODO(eh-am): put this conditionally
+        clickable: true,
       },
       yaxis: {
         show: false,
