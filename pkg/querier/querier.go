@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -11,9 +12,12 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -91,6 +95,9 @@ func (q *Querier) stopping(_ error) error {
 }
 
 func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes")
+	defer sp.Finish()
+
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]*commonv1.ProfileType, error) {
 		res, err := ic.ProfileTypes(ctx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 		if err != nil {
@@ -122,6 +129,13 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 }
 
 func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues")
+	defer func() {
+		sp.LogFields(
+			otlog.String("name", req.Msg.Name),
+		)
+		sp.Finish()
+	}()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
 		res, err := ic.LabelValues(ctx, connect.NewRequest(&ingestv1.LabelValuesRequest{
 			Name: req.Msg.Name,
@@ -141,6 +155,13 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 }
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
+	defer func() {
+		sp.LogFields(
+			otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
+		)
+		sp.Finish()
+	}()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]*commonv1.Labels, error) {
 		res, err := ic.Series(ctx, connect.NewRequest(&ingestv1.SeriesRequest{
 			Matchers: req.Msg.Matchers,
@@ -165,6 +186,17 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 }
 
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
+	defer func() {
+		sp.LogFields(
+			otlog.String("start", model.Time(req.Msg.Start).Time().String()),
+			otlog.String("end", model.Time(req.Msg.End).Time().String()),
+			otlog.String("selector", req.Msg.LabelSelector),
+			otlog.String("profile_id", req.Msg.ProfileTypeID),
+		)
+		sp.Finish()
+	}()
+
 	profileType, err := firemodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -190,6 +222,18 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 }
 
 func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries")
+	defer func() {
+		sp.LogFields(
+			otlog.String("start", model.Time(req.Msg.Start).Time().String()),
+			otlog.String("end", model.Time(req.Msg.End).Time().String()),
+			otlog.String("selector", req.Msg.LabelSelector),
+			otlog.String("profile_id", req.Msg.ProfileTypeID),
+			otlog.String("group_by", strings.Join(req.Msg.GroupBy, ",")),
+			otlog.Float64("step", req.Msg.Step),
+		)
+		sp.Finish()
+	}()
 	profileType, err := firemodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
