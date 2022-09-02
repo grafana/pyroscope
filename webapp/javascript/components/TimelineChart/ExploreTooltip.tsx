@@ -8,7 +8,7 @@ const cx = classNames.bind(styles);
 const DEFAULT_COMPONENT_WIDTH = 450;
 const EXPLORE_TOOLTIP_WRAPPER_ID = 'explore_tooltip_wrapper';
 
-interface ExploreTooltipProps {
+export interface ExploreTooltipProps {
   pageX: number;
   pageY: number;
   align: 'left' | 'right';

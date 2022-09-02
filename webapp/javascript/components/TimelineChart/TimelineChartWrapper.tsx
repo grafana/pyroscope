@@ -7,6 +7,7 @@ import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import { formatAsOBject } from '@webapp/util/formatDate';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
+import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
 
@@ -71,7 +72,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
-  exploreTooltip?: FC<ShamefulAny>;
+  exploreTooltip?: FC<ExploreTooltipProps>;
 };
 
 class TimelineChartWrapper extends React.Component<
