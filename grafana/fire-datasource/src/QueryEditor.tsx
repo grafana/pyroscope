@@ -31,6 +31,8 @@ export function QueryEditor(props: Props) {
   useMount(async () => {
     const profileTypes = await props.datasource.getProfileTypes();
     setProfileTypes(profileTypes);
+    // todo remove me.
+    console.log(await props.datasource.getLabelNames());
   });
 
   // Turn profileTypes into cascader options

@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
+	"github.com/samber/lo"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
@@ -353,6 +354,21 @@ func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.La
 	}), nil
 }
 
+// LabelValues returns the possible label values for a given label name.
+func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+	values, err := h.index.ix.LabelNames(nil)
+	if err != nil {
+		return nil, err
+	}
+	result := lo.Reject(values, func(name string, _ int) bool {
+		return strings.HasPrefix(name, "__")
+	})
+	sort.Strings(result)
+	return connect.NewResponse(&ingestv1.LabelNamesResponse{
+		Names: result,
+	}), nil
+}
+
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	values, err := h.index.ix.LabelValues(firemodel.LabelNameProfileType, nil)
@@ -520,9 +536,7 @@ func (h *Head) Flush(ctx context.Context) error {
 		return nil
 	}
 
-	var (
-		files = make([]block.File, len(h.tables)+1)
-	)
+	files := make([]block.File, len(h.tables)+1)
 
 	// write index
 	indexPath := filepath.Join(h.headPath, block.IndexFilename)
