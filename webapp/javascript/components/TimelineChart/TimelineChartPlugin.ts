@@ -163,7 +163,7 @@ import { getFormatLabel } from './utils';
 
     function bindEvents(plot, eventHolder) {
       const o = plot.getOptions();
-      // don't initiate logic if there is exploreTooltip in props
+
       if (o.exploreTooltip) {
         return;
       }
@@ -181,7 +181,7 @@ import { getFormatLabel } from './utils';
 
     function shutdown(plot, eventHolder) {
       const o = plot.getOptions();
-      // don't initiate logic if there is exploreTooltip in props
+
       if (o.exploreTooltip) {
         return;
       }
