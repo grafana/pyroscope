@@ -70,6 +70,7 @@ export const store = {
       click: false,
       touch: false,
       showIcon: true,
+      onScreen: true,
     };
 
     libStore.addNotification({
