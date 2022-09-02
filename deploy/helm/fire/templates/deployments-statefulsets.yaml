@@ -83,6 +83,9 @@ spec:
               subPath: config.yaml
             - name: data
               mountPath: /data
+            {{- with .Values.fire.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.fire.resources | nindent 12 }}
       {{- with .Values.fire.nodeSelector }}
@@ -98,6 +101,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+      {{- with .Values.fire.extraVolumes }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
         - name: config
           configMap:
             name: {{ include "fire.fullname" . }}-config
