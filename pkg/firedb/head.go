@@ -517,12 +517,10 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 func (h *Head) Flush(ctx context.Context) error {
 	if len(h.profiles.slice) == 0 {
 		level.Info(h.logger).Log("msg", "head empty - no block written")
-		return nil
+		return os.RemoveAll(h.headPath)
 	}
 
-	var (
-		files = make([]block.File, len(h.tables)+1)
-	)
+	files := make([]block.File, len(h.tables)+1)
 
 	// write index
 	indexPath := filepath.Join(h.headPath, block.IndexFilename)

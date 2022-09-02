@@ -13,6 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
@@ -38,6 +39,7 @@ import (
 
 type tableReader interface {
 	open(ctx context.Context, bucketReader fireobjstore.BucketReader) error
+	io.Closer
 }
 
 type BlockQuerier struct {
@@ -199,6 +201,19 @@ func (b *BlockQuerier) Sync(ctx context.Context) error {
 	return nil
 }
 
+func (b *BlockQuerier) Close() error {
+	b.queriersLock.Lock()
+	defer b.queriersLock.Unlock()
+
+	errs := multierror.New()
+	for pos := range b.queriers {
+		if err := b.queriers[pos].Close(); err != nil {
+			errs.Add(err)
+		}
+	}
+	return errs.Err()
+}
+
 type TableInfo struct {
 	Rows      uint64
 	RowGroups uint64
@@ -281,13 +296,21 @@ func newSingleBlockQuerierFromMeta(logger log.Logger, bucketReader fireobjstore.
 func (b *singleBlockQuerier) Close() error {
 	b.openLock.Lock()
 	defer b.openLock.Unlock()
-
+	errs := multierror.New()
 	if b.index != nil {
 		err := b.index.Close()
 		b.index = nil
-		return err
+		if err != nil {
+			errs.Add(err)
+		}
 	}
-	return nil
+
+	for _, t := range b.tables {
+		if err := t.Close(); err != nil {
+			errs.Add(err)
+		}
+	}
+	return errs.Err()
 }
 
 func (b *singleBlockQuerier) InRange(start, end model.Time) bool {
@@ -824,6 +847,7 @@ func (q *singleBlockQuerier) open(ctx context.Context) error {
 type parquetReader[M Models, P schemav1.Persister[M]] struct {
 	persister P
 	file      *parquet.File
+	reader    fireobjstore.ReaderAt
 }
 
 func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstore.BucketReader) error {
@@ -833,6 +857,7 @@ func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstor
 	if err != nil {
 		return errors.Wrapf(err, "opening file '%s'", filePath)
 	}
+	r.reader = ra
 
 	// first try to open file, this is required otherwise OpenFile panics
 	parquetFile, err := parquet.OpenFile(ra, ra.Size(), parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
@@ -849,6 +874,13 @@ func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstor
 		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
 	}
 
+	return nil
+}
+
+func (r *parquetReader[M, P]) Close() error {
+	if r.reader != nil {
+		return r.reader.Close()
+	}
 	return nil
 }
 
