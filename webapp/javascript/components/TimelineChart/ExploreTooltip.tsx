@@ -62,7 +62,7 @@ const ExploreTooltip: FC<ExploreTooltipProps> = ({
                     backgroundColor: Color.rgb(v.color).toString(),
                   }}
                 />
-                <div>{v?.tagName}:</div>
+                <div>{v.tagName}:</div>
                 <div className={styles.closest}>{v?.closest?.[1] || '0'}</div>
               </div>
             );
