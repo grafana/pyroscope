@@ -12,6 +12,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -149,7 +150,14 @@ func (f *FireDB) running(ctx context.Context) error {
 }
 
 func (f *FireDB) stopping(_ error) error {
-	return f.head.Flush(context.TODO())
+	errs := multierror.New()
+	if err := f.blockQuerier.Close(); err != nil {
+		errs.Add(err)
+	}
+	if err := f.Close(context.Background()); err != nil {
+		errs.Add(err)
+	}
+	return errs.Err()
 }
 
 func (f *FireDB) Head() *Head {
@@ -299,4 +307,8 @@ func (f *FireDB) Flush(ctx context.Context) error {
 		return nil
 	}
 	return oldHead.Flush(ctx)
+}
+
+func (f *FireDB) Close(ctx context.Context) error {
+	return f.head.Flush(ctx)
 }

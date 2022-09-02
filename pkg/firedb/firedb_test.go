@@ -23,12 +23,14 @@ func TestCreateLocalDir(t *testing.T) {
 	localFile := dataPath + "/local"
 	require.NoError(t, ioutil.WriteFile(localFile, []byte("d"), 0o644))
 	_, err := New(&Config{
-		DataPath: dataPath,
+		DataPath:      dataPath,
+		BlockDuration: 30 * time.Minute,
 	}, log.NewNopLogger(), nil)
 	require.Error(t, err)
 	require.NoError(t, os.Remove(localFile))
 	_, err = New(&Config{
-		DataPath: dataPath,
+		DataPath:      dataPath,
+		BlockDuration: 30 * time.Minute,
 	}, log.NewNopLogger(), nil)
 	require.NoError(t, err)
 }
@@ -80,4 +82,35 @@ func BenchmarkDBSelectProfile(b *testing.B) {
 		require.NoError(b, err)
 		require.True(b, len(resp.Msg.Profiles) != 0)
 	}
+}
+
+func TestCloseFile(t *testing.T) {
+	var (
+		dataPath = t.TempDir()
+		end      = time.Unix(0, int64(time.Hour))
+		start    = end.Add(-time.Hour)
+		step     = 15 * time.Second
+	)
+	db, err := New(&Config{
+		DataPath:      dataPath,
+		BlockDuration: 30 * time.Minute,
+	}, log.NewNopLogger(), nil)
+	require.NoError(t, err)
+	require.NoError(t, db.StartAsync(context.Background()))
+	require.NoError(t, db.AwaitRunning(context.Background()))
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step)
+	require.NoError(t, db.Flush(context.Background()))
+	db.runBlockQuerierSync(context.Background())
+	_, err = db.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+		LabelSelector: "{}",
+		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+		Start:         int64(model.TimeFromUnixNano(start.UnixNano())),
+		End:           int64(model.TimeFromUnixNano(end.UnixNano())),
+	}))
+
+	require.NoError(t, err)
+	db.StopAsync()
+	require.NoError(t, db.AwaitTerminated(context.Background()))
+	require.NoError(t, os.RemoveAll(dataPath))
 }
