@@ -56,8 +56,10 @@ function DeleteButton(props: { onDelete: (user: User) => void; user: User }) {
   const { onDelete, user } = props;
 
   const handleDeleteClick = () => {
-    confirmDelete('this user', () => {
-      onDelete(user);
+    confirmDelete({
+      objectName: user.name,
+      objectType: 'user',
+      onConfirm: () => onDelete(user),
     });
   };
 

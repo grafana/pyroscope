@@ -2,10 +2,6 @@
   background-color: var(--ps-ui-foreground);
 }
 
-.popup label {
-  color: var(--ps-neutral-2);
-}
-
 .popup button.button:focus {
   box-shadow: none;
 }

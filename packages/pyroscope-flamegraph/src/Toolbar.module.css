@@ -9,17 +9,25 @@
 .navbar > *:not(:first-child) {
   margin-left: 5px;
   margin-right: 5px;
-
-  &.fit-mode-select {
-    min-width: 65px;
-    padding: 1px 6px;
-  }
 }
 
 .space-filler {
   flex-grow: 1;
 }
 
-.fit-mode-select {
-  min-width: 65px;
+.fitModeDropdownMenuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.fitModeDropdownSmall {
+  min-width: 70px;
+  margin: 0;
+}
+
+.fitModeDropdownLarge {
+  min-width: 100px;
+  margin: 0;
 }

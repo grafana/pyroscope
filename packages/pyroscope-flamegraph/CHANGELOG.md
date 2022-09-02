@@ -3,6 +3,39 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.21.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.20.0...@pyroscope/flamegraph@0.21.0) (2022-08-30)
+
+
+### Features
+
+* **flamegraph:** added sub-second units support for trace visualization ([#1418](https://github.com/pyroscope-io/pyroscope/issues/1418)) ([21f6550](https://github.com/pyroscope-io/pyroscope/commit/21f6550bf7e280e7ee272982f9ab521bf30683c6))
+
+
+
+
+
+# [0.20.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.3...@pyroscope/flamegraph@0.20.0) (2022-08-30)
+
+
+### Features
+
+* **webapp:** dropdown component for head-first dropdown ([#1435](https://github.com/pyroscope-io/pyroscope/issues/1435)) ([a7d6891](https://github.com/pyroscope-io/pyroscope/commit/a7d6891c8b63d67dc197d7c52812bd946ca688e5))
+
+
+
+
+
+## [0.19.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.2...@pyroscope/flamegraph@0.19.3) (2022-08-26)
+
+
+### Bug Fixes
+
+* **flamegraph:** fixed tooltip display with color blind palette ([#1442](https://github.com/pyroscope-io/pyroscope/issues/1442)) ([702ad8b](https://github.com/pyroscope-io/pyroscope/commit/702ad8b937aa05e12e4dc21114c63febd93bf4c2))
+
+
+
+
+
 ## [0.19.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.19.1...@pyroscope/flamegraph@0.19.2) (2022-08-22)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

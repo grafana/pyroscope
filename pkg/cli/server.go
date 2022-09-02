@@ -66,11 +66,6 @@ type serverService struct {
 	group   *errgroup.Group
 }
 
-const (
-	storageQueueWorkers = 1
-	storageQueueSize    = 100
-)
-
 func newServerService(c *config.Server) (*serverService, error) {
 	logLevel, err := logrus.ParseLevel(c.LogLevel)
 	if err != nil {
@@ -97,7 +92,9 @@ func newServerService(c *config.Server) (*serverService, error) {
 	}
 
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
-	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer, svc.healthController)
+
+	storageConfig := storage.NewConfig(svc.config)
+	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
@@ -146,9 +143,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	svc.storageQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer,
-		storageQueueWorkers,
-		storageQueueSize)
+	svc.storageQueue = storage.NewIngestionQueue(svc.logger, svc.storage, prometheus.DefaultRegisterer, storageConfig)
 
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 

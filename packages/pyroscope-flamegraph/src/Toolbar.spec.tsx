@@ -88,7 +88,7 @@ describe('ProfileHeader', () => {
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
-        fitMode={HeadMode}
+        fitMode={TailMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
@@ -266,18 +266,15 @@ describe('ProfileHeader', () => {
     });
 
     it('updates to HEAD first', () => {
-      userEvent.selectOptions(
-        screen.getByRole('combobox', { name: /fit-mode/ }),
-        screen.getByRole('option', { name: /Head/ })
-      );
+      screen.getByRole('button', { name: 'Fit Mode' }).click();
+      screen.getByRole('menuitem', { name: /Head/i }).click();
+
       expect(updateFitMode).toHaveBeenCalledWith(HeadMode);
     });
 
     it('updates to TAIL first', () => {
-      userEvent.selectOptions(
-        screen.getByRole('combobox', { name: /fit-mode/ }),
-        screen.getByRole('option', { name: /Tail/ })
-      );
+      screen.getByRole('button', { name: 'Fit Mode' }).click();
+      screen.getByRole('menuitem', { name: /Tail/i }).click();
 
       expect(updateFitMode).toHaveBeenCalledWith(TailMode);
     });

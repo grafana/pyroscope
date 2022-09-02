@@ -20,6 +20,8 @@ type Config struct {
 	retention             time.Duration
 	retentionExemplars    time.Duration
 	retentionLevels       config.RetentionLevels
+	queueWorkers          int
+	queueSize             int
 
 	NewBadger func(name string, p Prefix, codec cache.Codec) (BadgerDBWithCache, error)
 }
@@ -41,6 +43,8 @@ func NewConfig(server *config.Server) *Config {
 		retentionExemplars:    server.ExemplarsRetention,
 		retentionLevels:       server.RetentionLevels,
 		hideApplications:      server.HideApplications,
+		queueSize:             server.StorageQueueSize,
+		queueWorkers:          server.StorageQueueWorkers,
 		inMemory:              false,
 	}
 }

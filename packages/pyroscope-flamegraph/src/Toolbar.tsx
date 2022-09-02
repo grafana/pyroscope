@@ -14,11 +14,15 @@ import useResizeObserver from '@react-hook/resize-observer';
 import Button from '@webapp/ui/Button';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Select from '@webapp/ui/Select';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
-import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import SharedQueryInput from './SharedQueryInput';
-import styles from './Toolbar.module.css';
+import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
+import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
+
+import styles from './Toolbar.module.css';
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
@@ -239,44 +243,53 @@ function FitMode({
   updateFitMode: ProfileHeaderProps['updateFitMode'];
 }) {
   let texts = {
-    header: '',
-    head: '',
-    tail: '',
+    label: '',
+    [HeadMode]: '',
+    [TailMode]: '',
   };
-
+  let menuButtonClassName = '';
   switch (showMode) {
-    case 'small': {
+    case 'small':
       texts = {
-        header: 'Fit',
-        head: 'Head',
-        tail: 'Tail',
+        label: 'Fit',
+        [HeadMode]: 'Head',
+        [TailMode]: 'Tail',
       };
+      menuButtonClassName = styles.fitModeDropdownSmall;
       break;
-    }
-    case 'large': {
+    case 'large':
       texts = {
-        header: 'Prefer to Fit',
-        head: 'Head first',
-        tail: 'Tail first',
+        label: 'Prefer to Fit',
+        [HeadMode]: 'Head first',
+        [TailMode]: 'Tail first',
       };
+      menuButtonClassName = styles.fitModeDropdownLarge;
       break;
-    }
-
-    default:
+    default: {
       throw new Error('Wrong mode');
+    }
   }
 
+  const menuOptions = [HeadMode, TailMode] as FitModes[];
+  const menuItems = menuOptions.map((mode) => (
+    <MenuItem key={mode} value={mode}>
+      <div className={styles.fitModeDropdownMenuItem} data-testid={mode}>
+        {texts[mode]}
+        {fitMode === mode ? <CheckIcon /> : null}
+      </div>
+    </MenuItem>
+  ));
+
   return (
-    <Select
-      ariaLabel="fit-mode"
-      className={styles['fit-mode-select']}
-      value={fitMode}
-      onChange={(event) => updateFitMode(event.target.value as typeof fitMode)}
+    <Dropdown
+      label={texts.label}
+      ariaLabel="Fit Mode"
+      value={texts[fitMode]}
+      onItemClick={(event) => updateFitMode(event.value as typeof fitMode)}
+      menuButtonClassName={menuButtonClassName}
     >
-      <option disabled>{texts.header}</option>
-      <option value={HeadMode}>{texts.head}</option>
-      <option value={TailMode}>{texts.tail}</option>
-    </Select>
+      {menuItems}
+    </Dropdown>
   );
 }
 

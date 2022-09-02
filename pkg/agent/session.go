@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	logger2 "github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/util/alignedticker"
 	"os"
 	"sync"
@@ -72,7 +73,7 @@ type ProfileSession struct {
 	noForkDetection  bool
 	pid              int
 
-	logger    Logger
+	logger    logger2.Logger
 	throttler *throttle.Throttler
 	stopOnce  sync.Once
 	stopCh    chan struct{}
@@ -94,7 +95,7 @@ type SpyFactory func(pid int) ([]spy.Spy, error)
 
 type SessionConfig struct {
 	upstream.Upstream
-	Logger
+	logger2.Logger
 	AppName          string
 	Tags             map[string]string
 	ProfilingTypes   []spy.ProfileType
@@ -154,7 +155,14 @@ func NewGenericSpyFactory(c SessionConfig) SpyFactory {
 		}
 
 		for _, pt := range c.ProfilingTypes {
-			s, err := sf(pid, pt, c.SampleRate, c.DisableGCRuns)
+			params := spy.InitParams{
+				Pid:           pid,
+				ProfileType:   pt,
+				SampleRate:    c.SampleRate,
+				DisableGCRuns: c.DisableGCRuns,
+				Logger:        c.Logger,
+			}
+			s, err := sf(params)
 
 			if err != nil {
 				return res, err

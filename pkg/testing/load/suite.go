@@ -4,8 +4,6 @@ import (
 	"runtime"
 	"sync"
 	"time"
-
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 type StorageWriteSuite struct {
@@ -18,7 +16,7 @@ type StorageWriteSuite struct {
 
 	seed    int
 	writers int
-	writeFn func(*storage.PutInput)
+	writeFn func(Input)
 }
 
 type StorageWriteSuiteConfig struct {
@@ -29,7 +27,7 @@ type StorageWriteSuiteConfig struct {
 
 	Seed    int
 	Writers int
-	WriteFn func(*storage.PutInput)
+	WriteFn func(Input)
 }
 
 const (
@@ -73,7 +71,12 @@ func NewStorageWriteSuite(c StorageWriteSuiteConfig) *StorageWriteSuite {
 	return &s
 }
 
-func (s *StorageWriteSuite) AddApp(name string, c AppConfig) *StorageWriteSuite {
+func (s *StorageWriteSuite) AddApp(app *App) *StorageWriteSuite {
+	s.apps = append(s.apps, app)
+	return s
+}
+
+func (s *StorageWriteSuite) AddAppWithConfig(name string, c AppConfig) *StorageWriteSuite {
 	s.apps = append(s.apps, NewApp(s.seed, name, c))
 	return s
 }
@@ -89,7 +92,7 @@ func (s *StorageWriteSuite) Stats() Stats {
 }
 
 func (s *StorageWriteSuite) Start() {
-	q := make(chan *storage.PutInput)
+	q := make(chan Input)
 	wg := new(sync.WaitGroup)
 	wg.Add(s.writers)
 	for i := 0; i < s.writers; i++ {
@@ -105,7 +108,7 @@ func (s *StorageWriteSuite) Start() {
 		to := from.Add(s.interval)
 		for i := 0; i < s.sources; i++ {
 			a := s.apps[i%len(s.apps)]
-			q <- a.CreatePutInput(from, to)
+			q <- a.CreateInput(from, to)
 		}
 		from = to
 		s.period -= s.interval

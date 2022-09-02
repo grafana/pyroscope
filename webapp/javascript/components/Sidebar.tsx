@@ -10,6 +10,7 @@ import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
 import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
 import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
+import { faChartLine } from '@fortawesome/free-solid-svg-icons/faChartLine';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
 import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
 import Sidebar, {
@@ -80,6 +81,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON,
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
+          PAGES.TRACING,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -100,6 +102,7 @@ export function SidebarComponent() {
     isRouteActive(PAGES.ADHOC_SINGLE) ||
     isRouteActive(PAGES.ADHOC_COMPARISON) ||
     isRouteActive(PAGES.ADHOC_COMPARISON_DIFF);
+  const isTracingActive = isRouteActive(PAGES.TRACING);
   const isSettingsActive = isRouteActive(PAGES.SETTINGS);
 
   const adhoc = (
@@ -217,6 +220,34 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
+          {isTracingActive ? (
+            <SubMenu
+              title="Tracing Exemplars"
+              icon={<Icon icon={faChartLine} />}
+              active={isTracingActive}
+              defaultOpen={isTracingActive}
+              data-testid="sidebar-continuous"
+            >
+              {collapsed && (
+                <SidebarHeader className={styles.collapsedHeader}>
+                  Tracing Exemplars
+                </SidebarHeader>
+              )}
+              <MenuItem
+                data-testid="sidebar-continuous-single"
+                active={isRouteActive(PAGES.TRACING)}
+                icon={<Icon icon={faWindowMaximize} />}
+              >
+                Single View
+                <NavLink
+                  activeClassName="active-route"
+                  data-testid="sidebar-root"
+                  to={{ pathname: PAGES.TRACING, search }}
+                  exact
+                />
+              </MenuItem>
+            </SubMenu>
+          ) : null}
         </Menu>
       </SidebarContent>
       <SidebarFooter>

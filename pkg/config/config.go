@@ -106,6 +106,8 @@ type Server struct {
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error" mapstructure:"badger-log-level"`
 
 	StoragePath            string  `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
+	StorageQueueSize       int     `desc:"storage queue size" mapstructure:"storage-queue-size"`
+	StorageQueueWorkers    int     `desc:"number of workers handling internal storage queue" mapstructure:"storage-queue-workers"`
 	MinFreeSpacePercentage float64 `def:"5" desc:"percentage of available disk space at which ingestion requests are discarded. Defaults to 5% but not less than 1GB. Set 0 to disable" mapstructure:"min-free-space-percentage"`
 
 	APIBindAddr     string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
