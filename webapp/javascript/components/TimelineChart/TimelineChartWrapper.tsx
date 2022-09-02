@@ -72,7 +72,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
-  exploreTooltip?: FC<ExploreTooltipProps>;
+  onHoverDisplayTooltip?: (
+    data: ExploreTooltipProps
+  ) => FC<ExploreTooltipProps>;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -235,7 +237,7 @@ class TimelineChartWrapper extends React.Component<
 
       const customFlotOptions = {
         ...flotOptions,
-        exploreTooltip: this.props.exploreTooltip,
+        onHoverDisplayTooltip: this.props?.onHoverDisplayTooltip,
         xaxis: {
           ...flotOptions.xaxis,
           autoscaleMargin: null,

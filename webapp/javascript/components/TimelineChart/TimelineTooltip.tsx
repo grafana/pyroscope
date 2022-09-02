@@ -9,6 +9,7 @@ prefer-destructuring
 */
 import React from 'react';
 import * as ReactDOM from 'react-dom';
+import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
 import { PlotType, EventHolderType, EventType } from './types';
 import getFormatLabel from './getFormatLabel';
 import clamp from './clamp';
@@ -18,7 +19,9 @@ type ContextType = {
   options: ShamefulAny;
   name: string;
   version: string;
-  exploreTooltip: ShamefulAny;
+  onHoverDisplayTooltip?: (
+    data: ExploreTooltipProps
+  ) => React.FC<ExploreTooltipProps>;
 };
 
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
@@ -67,11 +70,11 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
     plot.hooks.drawOverlay.push(() => {
       const options = plot.getOptions();
-      const Tooltip = options?.exploreTooltip;
+      const onHoverDisplayTooltip = options?.onHoverDisplayTooltip;
       const { xaxis } = plot.getAxes() as ShamefulAny;
       const data = plot.getData();
 
-      if (Tooltip && exploreTooltip?.length) {
+      if (onHoverDisplayTooltip && exploreTooltip?.length) {
         const align = params.canvasX > plot.width() / 2 ? 'left' : 'right';
         const timezone = options.xaxis.timezone;
         const timeLabel = selection.active
@@ -122,16 +125,18 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           }
         );
 
-        ReactDOM.render(
-          <Tooltip
-            pageX={params.pageX}
-            pageY={params.pageY}
-            align={align}
-            timeLabel={timeLabel}
-            values={values}
-          />,
-          exploreTooltip?.[0]
-        );
+        const Tooltip: React.ReactElement<
+          ExploreTooltipProps,
+          string | React.JSXElementConstructor<ExploreTooltipProps>
+        >[] = onHoverDisplayTooltip({
+          pageX: params.pageX,
+          pageY: params.pageY,
+          timeLabel,
+          values,
+          align,
+        });
+
+        ReactDOM.render(Tooltip, exploreTooltip?.[0]);
       }
     });
 

@@ -164,7 +164,7 @@ import getFormatLabel from './getFormatLabel';
     function bindEvents(plot, eventHolder) {
       const o = plot.getOptions();
 
-      if (o.exploreTooltip) {
+      if (o.onHoverDisplayTooltip) {
         return;
       }
 
@@ -182,7 +182,7 @@ import getFormatLabel from './getFormatLabel';
     function shutdown(plot, eventHolder) {
       const o = plot.getOptions();
 
-      if (o.exploreTooltip) {
+      if (o.onHoverDisplayTooltip) {
         return;
       }
 
