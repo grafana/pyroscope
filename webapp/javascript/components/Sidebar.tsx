@@ -82,6 +82,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
           PAGES.TRACING,
+          PAGES.HEATMAP,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -250,12 +251,12 @@ export function SidebarComponent() {
           ) : null}
           <MenuItem
             data-testid="sidebar-tracing-page"
-            active={isRouteActive(PAGES.TRACING)}
+            active={isRouteActive(PAGES.HEATMAP)}
             // change icon...should be top level menu item or nested ?
             icon={<Icon icon={faSearch} />}
           >
-            Tracing page
-            <NavLink to={{ pathname: PAGES.TRACING, search }} exact />
+            HEATMAP EXAMPLE
+            <NavLink to={{ pathname: PAGES.HEATMAP, search }} exact />
           </MenuItem>
         </Menu>
       </SidebarContent>

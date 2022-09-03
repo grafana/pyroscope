@@ -1,7 +1,9 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import useResizeObserver from '@react-hook/resize-observer';
 import Color from 'color';
 import cl from 'classnames';
+
+import { request } from '../../services/base';
 
 import {
   useHeatmapSelection,
@@ -9,7 +11,7 @@ import {
   SELECTED_AREA_BORDER,
   SelectedAreaCoordsType,
 } from './useHeatmapSelection.hook';
-import * as apiResData from './mockapi';
+import { exemplarsQueryHeatmap } from '../../services/exemplarsTestData';
 
 import styles from './Heatmap.module.scss';
 
@@ -28,10 +30,20 @@ const BUCKETS_PALETTE = [
   Color.rgb(3, 4, 94).toString(),
 ];
 
-function Heatmap() {
+export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
+
+  useEffect(() => {
+    const fe = async () => {
+      const data = await request('api/exemplars:query?query=app{}');
+
+      console.log(data);
+    };
+
+    fe();
+  }, []);
 
   const {
     startTime,
@@ -40,8 +52,8 @@ function Heatmap() {
     maxDepth,
     valueBuckets,
     timeBuckets,
-    columns,
-  } = apiResData;
+    values,
+  } = exemplarsQueryHeatmap;
 
   const {
     selectedCoordinates,
@@ -54,7 +66,7 @@ function Heatmap() {
     heatmapH: HEATMAP_HEIGHT,
     timeBuckets,
     valueBuckets,
-    columns,
+    values,
   });
 
   useResizeObserver(heatmapRef.current, (entry: ResizeObserverEntry) => {
@@ -68,7 +80,7 @@ function Heatmap() {
 
   const generateHeatmapGrid = useMemo(
     () =>
-      columns.map((column, colIndex) => (
+      values.map((column, colIndex) => (
         <g key={colIndex}>
           {column.map((bucketItems: number, rowIndex: number) => (
             <rect
@@ -214,5 +226,3 @@ const getCellColor = (minV: number, v: number): string => {
 
   return BUCKETS_PALETTE[colorIndex];
 };
-
-export default Heatmap;

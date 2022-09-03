@@ -2,7 +2,6 @@ import './globals';
 
 import ReactDOM from 'react-dom';
 import React from 'react';
-
 import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
 import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
@@ -16,7 +15,7 @@ import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
 import TagExplorerView from './pages/TagExplorerView';
-import TracingView from './pages/TracingView';
+import { Heatmap } from './pages/Heatmap/Heatmap';
 import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
@@ -75,6 +74,18 @@ function App() {
             </Protected>
           </Route>
 
+          {/* heatmap component will be integrated in tracing page */}
+          <Route path={PAGES.HEATMAP}>
+            <Protected>
+              <Continuous>
+                <div style={{ padding: 50 }}>
+                  <h3 style={{ textAlign: 'center', marginTop: 0 }}>Heatmap</h3>
+                  <Heatmap />
+                </div>
+              </Continuous>
+            </Protected>
+          </Route>
+
           {isAuthRequired && (
             <Route path={PAGES.SETTINGS}>
               <Protected>
@@ -94,13 +105,6 @@ function App() {
             <Protected>
               <Continuous>
                 <TagExplorerView />
-              </Continuous>
-            </Protected>
-          </Route>
-          <Route exact path={PAGES.TRACING}>
-            <Protected>
-              <Continuous>
-                <TracingView />
               </Continuous>
             </Protected>
           </Route>

@@ -12,6 +12,7 @@ export enum PAGES {
   FORBIDDEN = '/forbidden',
   TAG_EXPLORER = '/explore',
   TRACING = '/tracing',
+  HEATMAP = '/heatmap-example',
 }
 
 export default {

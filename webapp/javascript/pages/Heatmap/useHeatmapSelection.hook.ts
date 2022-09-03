@@ -25,7 +25,7 @@ interface UseHeatmapSelectionProps {
   heatmapH: number;
   timeBuckets: number;
   valueBuckets: number;
-  columns: number[][];
+  values: number[][];
 }
 interface UseHeatmapSelection {
   selectedCoordinates: SelectedCoordinates;
@@ -40,7 +40,7 @@ export const useHeatmapSelection = ({
   heatmapH,
   timeBuckets,
   valueBuckets,
-  columns,
+  values,
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
   const [hasSelectedArea, setHasSelectedArea] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] =
@@ -172,11 +172,11 @@ export const useHeatmapSelection = ({
 
       const x = Math.trunc(startCoords.x / cellW);
       const y = Math.trunc(startCoords.y / cellH);
-      const isEmptyCell = columns[y][x] === 0;
+      const isEmptyCell = values[y][x] === 0;
 
       if (!isEmptyCell) console.log('clicked cell coord: ', { x, y });
     }
-  }, [startCoords, endCoords]);
+  }, [startCoords, endCoords, values]);
 
   return {
     selectedCoordinates,
