@@ -3,8 +3,6 @@ import useResizeObserver from '@react-hook/resize-observer';
 import Color from 'color';
 import cl from 'classnames';
 
-import { request } from '../../services/base';
-
 import {
   useHeatmapSelection,
   SELECTED_AREA_BACKGROUND,
@@ -35,16 +33,6 @@ export function Heatmap() {
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
 
-  useEffect(() => {
-    const fe = async () => {
-      const data = await request('api/exemplars:query?query=app{}');
-
-      console.log(data);
-    };
-
-    fe();
-  }, []);
-
   const {
     startTime,
     endTime,
@@ -69,6 +57,14 @@ export function Heatmap() {
     values,
   });
 
+  // useResizeObserver doesn't work on initial render
+  useEffect(() => {
+    if (heatmapRef.current) {
+      const { width } = heatmapRef.current.getBoundingClientRect();
+      setHeatmapW(width);
+    }
+  }, []);
+
   useResizeObserver(heatmapRef.current, (entry: ResizeObserverEntry) => {
     // Firefox implements `contentBoxSize` as a single content rect, rather than an array
     const contentBoxSize = Array.isArray(entry.contentBoxSize)
@@ -82,18 +78,17 @@ export function Heatmap() {
     () =>
       values.map((column, colIndex) => (
         <g key={colIndex}>
-          {column.map((bucketItems: number, rowIndex: number) => (
+          {column.map((bucketItems: number, rowIndex: number, arr) => (
             <rect
-              data-x={rowIndex}
-              data-y={colIndex}
+              data-items={colIndex}
               fill={
                 bucketItems !== 0
                   ? getCellColor(minDepth, bucketItems)
                   : Color('white').toString()
               }
               key={rowIndex}
-              x={rowIndex * (heatmapW / timeBuckets)}
-              y={colIndex * (HEATMAP_HEIGHT / valueBuckets)}
+              x={colIndex * (heatmapW / timeBuckets)}
+              y={(arr.length - 1 - rowIndex) * (HEATMAP_HEIGHT / valueBuckets)}
               width={heatmapW / timeBuckets}
               height={HEATMAP_HEIGHT / valueBuckets}
             />
