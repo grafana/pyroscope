@@ -12,6 +12,8 @@ import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
 
+import { Heatmap } from '../pages/Heatmap/Heatmap';
+
 import styles from './TracingSingleView.module.scss';
 
 function formatTime(t: string | undefined): string {
@@ -107,6 +109,10 @@ function TracingSingleView() {
       <div className="main-wrapper">
         <Box className={styles.header}>{header}</Box>
         <Box>{flamegraphRenderer}</Box>
+        <Box>
+          <h3 style={{ textAlign: 'center', marginTop: 0 }}>Heatmap</h3>
+          <Heatmap />
+        </Box>
       </div>
     </div>
   );

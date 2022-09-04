@@ -80,7 +80,7 @@ export function Heatmap() {
         <g key={colIndex}>
           {column.map((bucketItems: number, rowIndex: number, arr) => (
             <rect
-              data-items={colIndex}
+              data-items={bucketItems}
               fill={
                 bucketItems !== 0
                   ? getCellColor(minDepth, bucketItems)

@@ -15,7 +15,6 @@ import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
 import TagExplorerView from './pages/TagExplorerView';
-import { Heatmap } from './pages/Heatmap/Heatmap';
 import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
@@ -70,18 +69,6 @@ function App() {
             <Protected>
               <Continuous>
                 <TracingSingleView />
-              </Continuous>
-            </Protected>
-          </Route>
-
-          {/* heatmap component will be integrated in tracing page */}
-          <Route path={PAGES.HEATMAP}>
-            <Protected>
-              <Continuous>
-                <div style={{ padding: 50 }}>
-                  <h3 style={{ textAlign: 'center', marginTop: 0 }}>Heatmap</h3>
-                  <Heatmap />
-                </div>
               </Continuous>
             </Protected>
           </Route>

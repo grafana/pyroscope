@@ -82,7 +82,6 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
           PAGES.TRACING,
-          PAGES.HEATMAP,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -221,7 +220,7 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
-          {isTracingActive ? (
+          {isTracingActive && (
             <SubMenu
               title="Tracing Exemplars"
               icon={<Icon icon={faChartLine} />}
@@ -248,16 +247,7 @@ export function SidebarComponent() {
                 />
               </MenuItem>
             </SubMenu>
-          ) : null}
-          <MenuItem
-            data-testid="sidebar-tracing-page"
-            active={isRouteActive(PAGES.HEATMAP)}
-            // change icon...should be top level menu item or nested ?
-            icon={<Icon icon={faSearch} />}
-          >
-            HEATMAP EXAMPLE
-            <NavLink to={{ pathname: PAGES.HEATMAP, search }} exact />
-          </MenuItem>
+          )}
         </Menu>
       </SidebarContent>
       <SidebarFooter>
