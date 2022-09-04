@@ -83,9 +83,10 @@ export function Heatmap() {
   const generateHeatmapGrid = useMemo(
     () =>
       values.map((column, colIndex) => (
-        <g key={colIndex}>
+        <g role="row" key={colIndex}>
           {column.map((bucketItems: number, rowIndex: number) => (
             <rect
+              role="gridcell"
               data-items={bucketItems}
               fill={
                 bucketItems !== 0
@@ -122,28 +123,36 @@ export function Heatmap() {
             handleClick={resetSelection}
           />
         )}
-      <svg className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
+      <svg role="img" className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
         {generateHeatmapGrid}
         <foreignObject
           className={styles.selectionContainer}
           height={HEATMAP_HEIGHT}
         >
-          <canvas id={CANVAS_ID} ref={canvasRef} height={HEATMAP_HEIGHT} />
+          <canvas
+            data-testid="selection-canvas"
+            id={CANVAS_ID}
+            ref={canvasRef}
+            height={HEATMAP_HEIGHT}
+          />
         </foreignObject>
       </svg>
       <XAxis startTime={startTime} endTime={endTime} />
       <div
         className={styles.bucketsColors}
+        data-testid="legend"
         style={{
           backgroundImage: `linear-gradient(to right, ${Color.rgb(
             color2
           )} , ${Color.rgb(color1)})`,
         }}
       >
-        <span style={{ color: Color.rgb(color1).toString() }}>
+        <span role="textbox" style={{ color: Color.rgb(color1).toString() }}>
           {minDepth - 1}
         </span>
-        <span style={{ color: Color.rgb(color2).toString() }}>{maxDepth}</span>
+        <span role="textbox" style={{ color: Color.rgb(color2).toString() }}>
+          {maxDepth}
+        </span>
       </div>
     </div>
   );
@@ -173,6 +182,7 @@ function ResizedSelectedArea({
 
   return (
     <div
+      data-testid="selection-resizable-canvas"
       onClick={handleClick}
       className={styles.selectedAreaBlock}
       style={{
@@ -193,9 +203,17 @@ function YAxis({ maxDepth, minDepth }: { maxDepth: number; minDepth: number }) {
   const ticks = getTicks(maxDepth, minDepth, 5, 'items');
 
   return (
-    <div className={styles.yAxis} style={{ height: HEATMAP_HEIGHT }}>
+    <div
+      data-testid="y-axis"
+      className={styles.yAxis}
+      style={{ height: HEATMAP_HEIGHT }}
+    >
       {ticks.map((tick) => (
-        <div className={cl(styles.tick, styles.yTick)} key={tick}>
+        <div
+          role="textbox"
+          className={cl(styles.tick, styles.yTick)}
+          key={tick}
+        >
           {tick}
         </div>
       ))}
@@ -207,9 +225,9 @@ function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
   const ticks = getTicks(endTime, startTime, 7, 'time');
 
   return (
-    <div className={styles.xAxis}>
+    <div className={styles.xAxis} data-testid="x-axis">
       {ticks.map((tick) => (
-        <div className={styles.tick} key={tick}>
+        <div role="textbox" className={styles.tick} key={tick}>
           {tick}
         </div>
       ))}
