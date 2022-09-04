@@ -15,18 +15,8 @@ import styles from './Heatmap.module.scss';
 
 const HEATMAP_HEIGHT = 250;
 const CANVAS_ID = 'selectionCanvas';
-const BUCKETS_PALETTE = [
-  Color.rgb(202, 240, 248).toString(),
-  Color.rgb(173, 232, 244).toString(),
-  Color.rgb(144, 224, 239).toString(),
-  Color.rgb(108, 213, 234).toString(),
-  Color.rgb(72, 202, 228).toString(),
-  Color.rgb(0, 180, 216).toString(),
-  Color.rgb(0, 150, 199).toString(),
-  Color.rgb(0, 119, 182).toString(),
-  Color.rgb(2, 62, 138).toString(),
-  Color.rgb(3, 4, 94).toString(),
-];
+const color2 = [202, 240, 248]; // rgb(202, 240, 248)
+const color1 = [3, 4, 94]; // rgb(3, 4, 94)
 
 export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -74,6 +64,22 @@ export function Heatmap() {
     setHeatmapW(contentBoxSize.inlineSize);
   });
 
+  const getColor = useMemo(
+    () =>
+      (x: number): string => {
+        const minL = Math.log10(minDepth);
+        const maxL = Math.log10(maxDepth);
+        const w1 = (Math.log10(x) - minL) / (maxL - minL);
+        var w2 = 1 - w1;
+        return Color.rgb([
+          Math.round(color1[0] * w1 + color2[0] * w2),
+          Math.round(color1[1] * w1 + color2[1] * w2),
+          Math.round(color1[2] * w1 + color2[2] * w2),
+        ]).toString();
+      },
+    [minDepth, maxDepth]
+  );
+
   const generateHeatmapGrid = useMemo(
     () =>
       values.map((column, colIndex) => (
@@ -83,7 +89,7 @@ export function Heatmap() {
               data-items={bucketItems}
               fill={
                 bucketItems !== 0
-                  ? getCellColor(minDepth, bucketItems)
+                  ? getColor(bucketItems)
                   : Color('white').toString()
               }
               key={rowIndex}
@@ -126,15 +132,7 @@ export function Heatmap() {
         </foreignObject>
       </svg>
       <XAxis startTime={startTime} endTime={endTime} />
-      <div className={styles.bucketsColors}>
-        {BUCKETS_PALETTE.map((color) => (
-          <div
-            key={color}
-            className={styles.color}
-            style={{ backgroundColor: color }}
-          />
-        ))}
-      </div>
+      <div className={styles.bucketsColors}></div>
     </div>
   );
 }
@@ -235,10 +233,4 @@ const getTicks = (
   }
 
   return ticksArray;
-};
-
-const getCellColor = (minV: number, v: number): string => {
-  const colorIndex = Math.trunc((minV / v) * 10);
-
-  return BUCKETS_PALETTE[colorIndex];
 };
