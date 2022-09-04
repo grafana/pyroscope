@@ -78,7 +78,7 @@ export function Heatmap() {
     () =>
       values.map((column, colIndex) => (
         <g key={colIndex}>
-          {column.map((bucketItems: number, rowIndex: number, arr) => (
+          {column.map((bucketItems: number, rowIndex: number) => (
             <rect
               data-items={bucketItems}
               fill={
@@ -88,7 +88,7 @@ export function Heatmap() {
               }
               key={rowIndex}
               x={colIndex * (heatmapW / timeBuckets)}
-              y={(arr.length - 1 - rowIndex) * (HEATMAP_HEIGHT / valueBuckets)}
+              y={rowIndex * (HEATMAP_HEIGHT / valueBuckets)}
               width={heatmapW / timeBuckets}
               height={HEATMAP_HEIGHT / valueBuckets}
             />
