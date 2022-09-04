@@ -46,13 +46,14 @@ $svg-side-margin: 40px;
   }
 
   .bucketsColors {
-    margin-top: 45px;
-
-    .color {
-      display: inline-block;
-      width: 15px;
-      height: 15px;
-      margin-right: 3px;
-    }
+    margin-top: 20px;
+    width: 300px;
+    height: 25px;
+    border: 1px solid white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 6px;
+    font-size: 14px;
   }
 }

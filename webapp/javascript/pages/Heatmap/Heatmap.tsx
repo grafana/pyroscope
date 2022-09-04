@@ -110,7 +110,7 @@ export function Heatmap() {
       className={styles.heatmapContainer}
       data-testid="heatmap-container"
     >
-      <YAxis minDepth={minDepth} maxDepth={maxDepth} />
+      <YAxis minDepth={minDepth - 1} maxDepth={maxDepth} />
       {hasSelectedArea &&
         selectedCoordinates.end &&
         selectedCoordinates.start && (
@@ -132,7 +132,19 @@ export function Heatmap() {
         </foreignObject>
       </svg>
       <XAxis startTime={startTime} endTime={endTime} />
-      <div className={styles.bucketsColors}></div>
+      <div
+        className={styles.bucketsColors}
+        style={{
+          backgroundImage: `linear-gradient(to right, ${Color.rgb(
+            color2
+          )} , ${Color.rgb(color1)})`,
+        }}
+      >
+        <span style={{ color: Color.rgb(color1).toString() }}>
+          {minDepth - 1}
+        </span>
+        <span style={{ color: Color.rgb(color2).toString() }}>{maxDepth}</span>
+      </div>
     </div>
   );
 }
