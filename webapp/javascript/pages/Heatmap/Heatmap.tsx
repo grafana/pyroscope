@@ -177,14 +177,16 @@ function ResizedSelectedArea({
   );
 }
 
+type axisFormat = 'items' | 'time';
+
 function YAxis({ maxDepth, minDepth }: { maxDepth: number; minDepth: number }) {
-  const ticks = getTicks(maxDepth, minDepth);
+  const ticks = getTicks(maxDepth, minDepth, 5, 'items');
 
   return (
     <div className={styles.yAxis} style={{ height: HEATMAP_HEIGHT }}>
       {ticks.map((tick) => (
         <div className={cl(styles.tick, styles.yTick)} key={tick}>
-          {tick.toFixed(0)}
+          {tick}
         </div>
       ))}
     </div>
@@ -192,25 +194,44 @@ function YAxis({ maxDepth, minDepth }: { maxDepth: number; minDepth: number }) {
 }
 
 function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
-  const ticks = getTicks(startTime, endTime, 7);
+  const ticks = getTicks(endTime, startTime, 7, 'time');
 
   return (
     <div className={styles.xAxis}>
       {ticks.map((tick) => (
         <div className={styles.tick} key={tick}>
-          "1"
+          {tick}
         </div>
       ))}
     </div>
   );
 }
 
-const getTicks = (max: number, min: number, ticksCount = 5) => {
+const getTicks = (
+  max: number,
+  min: number,
+  ticksCount: number,
+  format: axisFormat
+) => {
+  let formatter;
+  switch (format) {
+    case 'time':
+      formatter = (v: number) => {
+        const date = new Date(v);
+        return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()},${date.getMilliseconds()}`;
+      };
+      break;
+    case 'items':
+      formatter = (v: number) =>
+        v > 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0);
+      break;
+  }
+
   const step = (max - min) / ticksCount;
-  let ticksArray = [min];
+  let ticksArray = [formatter(min)];
 
   for (let i = 1; i <= ticksCount; i++) {
-    ticksArray.push(min + step * i);
+    ticksArray.push(formatter(min + step * i));
   }
 
   return ticksArray;
