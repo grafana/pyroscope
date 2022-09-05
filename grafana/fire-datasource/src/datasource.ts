@@ -1,6 +1,6 @@
 import { DataSourceInstanceSettings } from '@grafana/data';
 import { DataSourceWithBackend } from '@grafana/runtime';
-import {MyDataSourceOptions, Query, ProfileTypeMessage} from './types';
+import { MyDataSourceOptions, Query, ProfileTypeMessage } from './types';
 
 export class DataSource extends DataSourceWithBackend<Query, MyDataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
@@ -9,5 +9,9 @@ export class DataSource extends DataSourceWithBackend<Query, MyDataSourceOptions
 
   async getProfileTypes(): Promise<ProfileTypeMessage[]> {
     return await super.getResource("profileTypes");
+  }
+
+  async getLabelNames(): Promise<string[]> {
+    return await super.getResource("labelNames");
   }
 }
