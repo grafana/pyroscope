@@ -7,6 +7,7 @@ import {
   ControlledMenu,
   useMenuState,
 } from '@szhsin/react-menu';
+import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 
 type ContextType = {
   init: (plot: PlotType) => void;
@@ -31,16 +32,44 @@ function MyElement(props: ContextMenuProps) {
     setOpen(true);
   }, []);
 
+  const [isModalOpen, setModalOpen] = useState(false);
+  const handleOutsideClick = () => setModalOpen(false);
+
+  const modalProps = {
+    isModalOpen: isOpen,
+    setModalOpenStatus: setModalOpen,
+    handleOutsideClick,
+    toggleText: 'toggle text',
+    headerEl: 'header element',
+    leftSideEl: (
+      <ul>
+        <li>1</li>
+        <li>2</li>
+      </ul>
+    ),
+    rightSideEl: (
+      <ul>
+        <li>3</li>
+        <li>4</li>
+      </ul>
+    ),
+    footerEl: 'footer element or string',
+  };
   return (
-    <ControlledMenu
-      isOpen={isOpen}
-      anchorPoint={{ x, y }}
-      onClose={() => setOpen(false)}
-    >
-      <MenuItem key="focus" onClick={() => alert(timestamp)}>
-        Add annotation
-      </MenuItem>
-    </ControlledMenu>
+    <>
+      <ControlledMenu
+        isOpen={isOpen}
+        anchorPoint={{ x, y }}
+        onClose={() => setOpen(false)}
+      >
+        <MenuItem key="focus" onClick={() => setModalOpen(true)}>
+          Add annotation
+        </MenuItem>
+      </ControlledMenu>
+      <div id="my-modal">
+        <ModalWithToggle {...modalProps} />
+      </div>
+    </>
   );
 }
 
