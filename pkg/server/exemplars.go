@@ -15,6 +15,7 @@ func (ctrl *Controller) exemplarsHandler() ExemplarsHandler {
 		ExemplarsGetter:  ctrl.storage,
 		ExemplarsMerger:  ctrl.storage,
 		ExemplarsQuerier: ctrl.storage,
+		HeatmapBuilder:   NoopHeatmapBuilder{},
 	}
 }
 
@@ -28,4 +29,13 @@ type ExemplarsHandler struct {
 	ExemplarsGetter  storage.ExemplarsGetter
 	ExemplarsMerger  storage.ExemplarsMerger
 	ExemplarsQuerier storage.ExemplarsQuerier
+	HeatmapBuilder   HeatmapBuilder
 }
+
+type HeatmapBuilder interface {
+	BuildFromSketch(storage.HeatmapSketch) *storage.Heatmap
+}
+
+type NoopHeatmapBuilder struct{}
+
+func (NoopHeatmapBuilder) BuildFromSketch(storage.HeatmapSketch) *storage.Heatmap { return nil }

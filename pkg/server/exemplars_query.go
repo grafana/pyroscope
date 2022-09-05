@@ -47,7 +47,7 @@ func (h ExemplarsHandler) QueryExemplars(w http.ResponseWriter, r *http.Request)
 		MaxNodes:  p.maxNodes,
 		Metadata:  out.Metadata,
 		Tree:      out.Tree,
-		Heatmap:   out.Heatmap,
+		Heatmap:   h.HeatmapBuilder.BuildFromSketch(out.HeatmapSketch),
 		Telemetry: out.Telemetry,
 	})
 
@@ -78,8 +78,13 @@ func (h ExemplarsHandler) queryExemplarsParamsFromRequest(r *http.Request, p *qu
 
 	p.input.MinValue, _ = strconv.ParseUint(v.Get("minValue"), 10, 64)
 	p.input.MaxValue, _ = strconv.ParseUint(v.Get("maxValue"), 10, 64)
-	p.input.HeatmapTimeBuckets, _ = strconv.ParseInt(v.Get("heatmapTimeBuckets"), 10, 64)
-	p.input.HeatmapValueBuckets, _ = strconv.ParseInt(v.Get("heatmapValueBuckets"), 10, 64)
+	p.input.HeatmapParams = storage.HeatmapParams{
+		StartTime: p.input.StartTime,
+		EndTime:   p.input.EndTime,
+	}
+
+	p.input.HeatmapParams.TimeBuckets, _ = strconv.ParseInt(v.Get("heatmapTimeBuckets"), 10, 64)
+	p.input.HeatmapParams.ValueBuckets, _ = strconv.ParseInt(v.Get("heatmapValueBuckets"), 10, 64)
 
 	p.maxNodes = h.MaxNodesDefault
 	var x int

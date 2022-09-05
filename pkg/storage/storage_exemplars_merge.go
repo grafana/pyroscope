@@ -22,16 +22,14 @@ type MergeExemplarsInput struct {
 	MinValue uint64
 	MaxValue uint64
 
-	HeatmapTimeBuckets  int64
-	HeatmapValueBuckets int64
+	HeatmapParams HeatmapParams
 }
 
 type MergeExemplarsOutput struct {
-	Tree     *tree.Tree
-	Count    uint64
-	Metadata metadata.Metadata
-	// FIXME: Not implemented: the field is never populated.
-	Heatmap *Heatmap
+	Tree          *tree.Tree
+	Count         uint64
+	Metadata      metadata.Metadata
+	HeatmapSketch HeatmapSketch // FIXME: Not implemented: the field is never populated.
 
 	Telemetry map[string]interface{}
 }

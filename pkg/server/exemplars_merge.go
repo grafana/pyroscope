@@ -87,7 +87,7 @@ func (h ExemplarsHandler) MergeExemplars(w http.ResponseWriter, r *http.Request)
 		MaxNodes:  maxNodes,
 		Metadata:  out.Metadata,
 		Tree:      out.Tree,
-		Heatmap:   out.Heatmap,
+		Heatmap:   h.HeatmapBuilder.BuildFromSketch(out.HeatmapSketch),
 		Telemetry: out.Telemetry,
 	})
 
@@ -158,15 +158,21 @@ func (h *ExemplarsHandler) mergeExemplarsRequest(w http.ResponseWriter, r *http.
 }
 
 func mergeExemplarsInputFromMergeExemplarsRequest(req *mergeExemplarsRequest) storage.MergeExemplarsInput {
+	startTime := pickTime(req.StartTime, req.From)
+	endTime := pickTime(req.EndTime, req.Until)
 	return storage.MergeExemplarsInput{
-		AppName:             req.AppName,
-		ProfileIDs:          req.Profiles,
-		StartTime:           pickTime(req.StartTime, req.From),
-		EndTime:             pickTime(req.EndTime, req.Until),
-		MinValue:            req.MinValue,
-		MaxValue:            req.MaxValue,
-		HeatmapTimeBuckets:  req.HeatmapTimeBuckets,
-		HeatmapValueBuckets: req.HeatmapValueBuckets,
+		AppName:    req.AppName,
+		ProfileIDs: req.Profiles,
+		StartTime:  startTime,
+		EndTime:    endTime,
+		MinValue:   req.MinValue,
+		MaxValue:   req.MaxValue,
+		HeatmapParams: storage.HeatmapParams{
+			StartTime:    startTime,
+			EndTime:      endTime,
+			TimeBuckets:  req.HeatmapTimeBuckets,
+			ValueBuckets: req.HeatmapValueBuckets,
+		},
 	}
 }
 
