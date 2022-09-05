@@ -64,5 +64,15 @@ func (ctrl *AnnotationsCtrl) CreateHandler(w http.ResponseWriter, r *http.Reques
 		ctrl.httpUtils.WriteInternalServerError(r, w, err, "failed to create annotation")
 	}
 
-	ctrl.httpUtils.WriteResponseJSON(r, w, annotation)
+	// TODO(eh-am): unify this with render.go
+	type annotationsResponse struct {
+		AppName   string `json:"appName"`
+		Content   string `json:"content"`
+		Timestamp int64  `json:"timestamp"`
+	}
+	annotationsResp := annotationsResponse{
+		Content:   annotation.Content,
+		Timestamp: annotation.From.Unix(),
+	}
+	ctrl.httpUtils.WriteResponseJSON(r, w, annotationsResp)
 }

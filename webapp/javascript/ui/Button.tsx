@@ -26,6 +26,8 @@ export interface ButtonProps {
   className?: string;
 
   id?: string;
+
+  form?: string;
 }
 
 export default function Button({
@@ -38,6 +40,7 @@ export default function Button({
   onClick,
   id,
   className,
+  form,
   ...props
 }: ButtonProps) {
   return (
@@ -48,6 +51,7 @@ export default function Button({
       disabled={disabled}
       onClick={onClick}
       aria-label={props['aria-label']}
+      form={form}
       className={`${styles.button} ${
         grouped ? styles.grouped : ''
       } ${getKindStyles(kind)} ${className}`}

@@ -15,6 +15,8 @@ export interface ModalWithToggleProps {
   noDataEl?: ReactNode;
   modalClassName?: string;
   modalHeight?: string;
+  /** whether to show the button or not TODO(eh-am): refactor into a diff component */
+  showButton?: boolean;
 }
 
 export const TOGGLE_BTN_ID = 'modal-toggler';
@@ -31,6 +33,7 @@ function ModalWithToggle({
   noDataEl,
   modalClassName,
   modalHeight,
+  showButton = true,
 }: ModalWithToggleProps) {
   const handleOutsideClick = (e: MouseEvent) => {
     if ((e.target as { id?: string })?.id !== TOGGLE_BTN_ID) {
@@ -40,15 +43,17 @@ function ModalWithToggle({
 
   return (
     <div data-testid="modal-with-toggle" className={styles.container}>
-      <button
-        id={TOGGLE_BTN_ID}
-        type="button"
-        data-testid="toggler"
-        className={styles.toggle}
-        onClick={() => setModalOpenStatus((v) => !v)}
-      >
-        {toggleText}
-      </button>
+      {showButton && (
+        <button
+          id={TOGGLE_BTN_ID}
+          type="button"
+          data-testid="toggler"
+          className={styles.toggle}
+          onClick={() => setModalOpenStatus((v) => !v)}
+        >
+          {toggleText}
+        </button>
+      )}
       {isModalOpen && (
         <OutsideClickHandler
           onOutsideClick={customHandleOutsideClick || handleOutsideClick}

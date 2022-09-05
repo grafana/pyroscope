@@ -14,11 +14,19 @@ import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import type { Timeline } from '@webapp/models/timeline';
 import { Annotation } from '@webapp/models/annotation';
 import * as tagsService from '@webapp/services/tags';
+import * as annotationsService from '@webapp/services/annotations';
 import { RequestAbortedError } from '@webapp/services/base';
 import { appendLabelToQuery } from '@webapp/util/query';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
+
+type Annotations =
+  | {
+      type: 'pristine';
+      annotations: Annotation[];
+    }
+  | { type: 'submitting'; annotations: Annotation[] };
 
 type SingleView =
   | { type: 'pristine'; profile?: Profile }
@@ -27,13 +35,13 @@ type SingleView =
       type: 'loaded';
       timeline: Timeline;
       profile: Profile;
-      annotations: Annotation[];
+      annotations: Annotations;
     }
   | {
       type: 'reloading';
       timeline: Timeline;
       profile: Profile;
-      annotations: Annotation[];
+      annotations: Annotations;
     };
 
 type TagExplorerView =
@@ -625,6 +633,28 @@ export const reloadAppNames = createAsyncThunk(
   }
 );
 
+// TODO(eh-am): support different views
+export const addAnnotation = createAsyncThunk(
+  'continuous/addAnnotation',
+  async (newAnnotation: annotationsService.NewAnnotation, thunkAPI) => {
+    const res = await annotationsService.addAnnotation(newAnnotation);
+
+    if (res.isOk) {
+      return Promise.resolve(res.value);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to add annotation',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
 export const continuousSlice = createSlice({
   name: 'continuous',
   initialState,
@@ -724,6 +754,10 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchSingleView.fulfilled, (state, action) => {
       state.singleView = {
         ...action.payload,
+        annotations: {
+          type: 'pristine',
+          annotations: action.payload.annotations,
+        },
         type: 'loaded',
       };
     });

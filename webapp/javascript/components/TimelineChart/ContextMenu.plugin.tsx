@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import * as ReactDOM from 'react-dom';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import {
+  addAnnotation,
+  fetchSingleView,
+} from '@webapp/redux/reducers/continuous';
 import { PlotType, EventHolderType, EventType } from './types';
 import {
   Menu,
@@ -8,6 +13,15 @@ import {
   useMenuState,
 } from '@szhsin/react-menu';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
+import Popover, {
+  PopoverHeader,
+  PopoverBody,
+  PopoverFooter,
+} from '@webapp/ui/Popover';
+import Button from '@webapp/ui/Button';
+import InputField from '@webapp/ui/InputField';
+import store, { persistor } from '@webapp/redux/store';
+import { Provider } from 'react-redux';
 
 type ContextType = {
   init: (plot: PlotType) => void;
@@ -27,6 +41,7 @@ interface ContextMenuProps {
 function MyElement(props: ContextMenuProps) {
   const { x, y, timestamp } = props;
   const [isOpen, setOpen] = useState(false);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     setOpen(true);
@@ -35,25 +50,11 @@ function MyElement(props: ContextMenuProps) {
   const [isModalOpen, setModalOpen] = useState(false);
   const handleOutsideClick = () => setModalOpen(false);
 
-  const modalProps = {
-    isModalOpen: isOpen,
-    setModalOpenStatus: setModalOpen,
-    handleOutsideClick,
-    toggleText: 'toggle text',
-    headerEl: 'header element',
-    leftSideEl: (
-      <ul>
-        <li>1</li>
-        <li>2</li>
-      </ul>
-    ),
-    rightSideEl: (
-      <ul>
-        <li>3</li>
-        <li>4</li>
-      </ul>
-    ),
-    footerEl: 'footer element or string',
+  // TODO(eh-am): handle out of bounds positioning
+  const popoverPosition = {
+    left: `${x}px`,
+    top: `${y}px`,
+    position: 'absolute' as const,
   };
   return (
     <>
@@ -66,8 +67,40 @@ function MyElement(props: ContextMenuProps) {
           Add annotation
         </MenuItem>
       </ControlledMenu>
-      <div id="my-modal">
-        <ModalWithToggle {...modalProps} />
+      <div style={popoverPosition}>
+        <Popover isModalOpen={isModalOpen} setModalOpenStatus={setModalOpen}>
+          <PopoverHeader>Add annotation</PopoverHeader>
+          <PopoverBody>
+            <form
+              id="annotation-form"
+              name="annotation-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+
+                const newAnnotation = {
+                  appName: 'myapp',
+                  content: event.target.content.value,
+                  timestamp,
+                };
+                await dispatch(addAnnotation(newAnnotation));
+                await dispatch(fetchSingleView(null));
+              }}
+            >
+              <InputField
+                type="text"
+                label="Text"
+                placeholder=""
+                name="content"
+                required
+              />
+            </form>
+          </PopoverBody>
+          <PopoverFooter>
+            <Button type="submit" kind="secondary" form="annotation-form">
+              Save
+            </Button>
+          </PopoverFooter>
+        </Popover>
       </div>
     </>
   );
@@ -86,7 +119,9 @@ function MyElement(props: ContextMenuProps) {
       ReactDOM.unmountComponentAtNode(containerEl);
 
       ReactDOM.render(
-        <MyElement x={pos.pageX} y={pos.pageY} timestamp={timestamp} />,
+        <Provider store={store}>
+          <MyElement x={pos.pageX} y={pos.pageY} timestamp={timestamp} />
+        </Provider>,
         containerEl
       );
     });

@@ -8,8 +8,8 @@ interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   name: string;
   placeholder?: string;
   type: 'text' | 'password' | 'email' | 'number';
-  value: string;
-  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  value?: string;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   id?: string;
 }
 
@@ -23,6 +23,10 @@ function InputField({
   value,
   id,
 }: IInputFieldProps) {
+  if (!onChange) {
+    onChange = () => {};
+  }
+
   return (
     <div className={`${className || ''} ${styles.inputWrapper}`}>
       <h4>{label}</h4>
