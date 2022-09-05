@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.36.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.0...@pyroscope/webapp@1.36.1) (2022-09-05)
+
+
+### Bug Fixes
+
+* **flamegraph:** table, buttons colors for light mode ([#1458](https://github.com/pyroscope-io/pyroscope/issues/1458)) ([37afd3b](https://github.com/pyroscope-io/pyroscope/commit/37afd3bbdad6b9165143b92dd2312d6b125140f4))
+
+
+
+
+
 # [1.36.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.3...@pyroscope/webapp@1.36.0) (2022-09-02)
 
 
