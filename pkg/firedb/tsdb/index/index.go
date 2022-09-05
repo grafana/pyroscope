@@ -1878,28 +1878,6 @@ func (r *Reader) LabelNames(matchers ...*labels.Matcher) ([]string, error) {
 	return labelNames, nil
 }
 
-// NewStringListIter returns a StringIter for the given sorted list of strings.
-func NewStringListIter(s []string) StringIter {
-	return &stringListIter{l: s}
-}
-
-// symbolsIter implements StringIter.
-type stringListIter struct {
-	l   []string
-	cur string
-}
-
-func (s *stringListIter) Next() bool {
-	if len(s.l) == 0 {
-		return false
-	}
-	s.cur = s.l[0]
-	s.l = s.l[1:]
-	return true
-}
-func (s stringListIter) At() string { return s.cur }
-func (s stringListIter) Err() error { return nil }
-
 // Decoder provides decoding methods for the v1 and v2 index file format.
 //
 // It currently does not contain decoding methods for all entry types but can be extended

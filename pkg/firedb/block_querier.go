@@ -33,6 +33,7 @@ import (
 	"github.com/grafana/fire/pkg/firedb/tsdb/index"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 	fireobjstore "github.com/grafana/fire/pkg/objstore"
 )
@@ -459,11 +460,8 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	)
 
 	// retrieve the full profiles
-	for {
-		result := rowNums.Next()
-		if result == nil {
-			break
-		}
+	for rowNums.Next() {
+		result := rowNums.At()
 
 		series = result.Columns(series, "ID", "TimeNanos", "SeriesRefs")
 		var err error
@@ -491,7 +489,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 		}
 	}
 
-	return nil
+	return rowNums.Err()
 }
 
 type reconstructSamples struct {
@@ -527,12 +525,12 @@ func newUniqueIDs[T any]() uniqueIDs[T] {
 	return uniqueIDs[T](make(map[int64]T))
 }
 
-func (m uniqueIDs[T]) iterator() Iterator[int64] {
+func (m uniqueIDs[T]) iterator() iter.Iterator[int64] {
 	ids := lo.Keys(m)
 	sort.Slice(ids, func(i, j int) bool {
 		return ids[i] < ids[j]
 	})
-	return NewSliceIterator(ids)
+	return iter.NewSliceIterator(ids)
 }
 
 func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
@@ -621,16 +619,10 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 
 	var (
 		locationIDs = newUniqueIDs[struct{}]()
-		stacktraces = b.stacktraces.retrieveRows(ctx, NewSliceIterator(stacktraceIDs))
+		stacktraces = b.stacktraces.retrieveRows(ctx, iter.NewSliceIterator(stacktraceIDs))
 	)
-	for {
-		s, ok := stacktraces.Next()
-		if !ok {
-			if err := stacktraces.Err(); err != nil {
-				return nil, err
-			}
-			break
-		}
+	for stacktraces.Next() {
+		s := stacktraces.At()
 
 		// update locations metrics
 		totalLocations += int64(len(s.Result.LocationIDs))
@@ -641,24 +633,24 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 			locationIDs[int64(locationID)] = struct{}{}
 		}
 	}
+	if err := stacktraces.Err(); err != nil {
+		return nil, err
+	}
 
 	// gather locations
 	var (
 		locationIDsByFunctionID = newUniqueIDs[[]int64]()
 		locations               = b.locations.retrieveRows(ctx, locationIDs.iterator())
 	)
-	for {
-		s, ok := locations.Next()
-		if !ok {
-			if err := locations.Err(); err != nil {
-				return nil, err
-			}
-			break
-		}
+	for locations.Next() {
+		s := locations.At()
 
 		for _, line := range s.Result.Line {
 			locationIDsByFunctionID[int64(line.FunctionId)] = append(locationIDsByFunctionID[int64(line.FunctionId)], s.RowNum)
 		}
+	}
+	if err := locations.Err(); err != nil {
+		return nil, err
 	}
 
 	// gather functions
@@ -666,16 +658,13 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		functionIDsByStringID = newUniqueIDs[[]int64]()
 		functions             = b.functions.retrieveRows(ctx, locationIDsByFunctionID.iterator())
 	)
-	for {
-		s, ok := functions.Next()
-		if !ok {
-			if err := functions.Err(); err != nil {
-				return nil, err
-			}
-			break
-		}
+	for functions.Next() {
+		s := functions.At()
 
 		functionIDsByStringID[s.Result.Name] = append(functionIDsByStringID[s.Result.Name], s.RowNum)
+	}
+	if err := functions.Err(); err != nil {
+		return nil, err
 	}
 
 	// gather strings
@@ -685,17 +674,14 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		strings = b.strings.retrieveRows(ctx, functionIDsByStringID.iterator())
 		idx     = 0
 	)
-	for {
-		s, ok := strings.Next()
-		if !ok {
-			if err := functions.Err(); err != nil {
-				return nil, err
-			}
-			break
-		}
+	for strings.Next() {
+		s := strings.At()
 		names[idx] = s.Result
 		idSlice[idx] = []int64{s.RowNum}
 		idx++
+	}
+	if err := strings.Err(); err != nil {
+		return nil, err
 	}
 
 	// idSlice contains stringIDs and gets rewritten into functionIDs
@@ -914,12 +900,13 @@ type retrieveRowIterator[M any] struct {
 	rowReader            parquet.Rows
 	reconstruct          func(parquet.Row) (uint64, M, error)
 
+	result         ResultWithRowNum[M]
 	row            []parquet.Row
-	rowNumIterator Iterator[int64]
+	rowNumIterator iter.Iterator[int64]
 	err            error
 }
 
-func (r *parquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator Iterator[int64]) Iterator[ResultWithRowNum[M]] {
+func (r *parquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[ResultWithRowNum[M]] {
 	return &retrieveRowIterator[M]{
 		rowGroups:      r.file.RowGroups(),
 		row:            make([]parquet.Row, 1),
@@ -948,60 +935,62 @@ func (i *retrieveRowIterator[M]) nextRowGroup() error {
 	return nil
 }
 
-func (i *retrieveRowIterator[M]) Next() (ResultWithRowNum[M], bool) {
-	var m ResultWithRowNum[M]
+func (i *retrieveRowIterator[M]) At() ResultWithRowNum[M] {
+	return i.result
+}
 
+func (i *retrieveRowIterator[M]) Next() bool {
 	// get the next row num
-	rowNum, ok := i.rowNumIterator.Next()
-	if !ok {
+	if !i.rowNumIterator.Next() {
 		if err := i.rowNumIterator.Err(); err != nil {
 			i.err = errors.Wrap(err, "error from row number iterator")
 		}
-		return m, ok
+		return false
 	}
+	rowNum := i.rowNumIterator.At()
 
 	// ensure we initialise on first iteration
 	if i.rowReader == nil {
 		if err := i.nextRowGroup(); err != nil {
 			i.err = errors.Wrap(err, "getting next row group")
-			return m, false
+			return false
 		}
 	}
 
 	for {
 		if rowNum < i.minRowNum {
 			i.err = fmt.Errorf("row number selected %d is before current row number %d", rowNum, i.minRowNum)
-			return m, false
+			return false
 		}
 
 		if rowNum < i.maxRowNum {
 			if err := i.rowReader.SeekToRow(rowNum - i.minRowNum); err != nil {
 				i.err = errors.Wrapf(err, "seek to row at rowNum=%d", rowNum)
-				return m, false
+				return false
 			}
 
 			_, err := i.rowReader.ReadRows(i.row)
 			if err != nil && err != io.EOF {
 				i.err = errors.Wrapf(err, "reading row at rowNum=%d", rowNum)
-				return m, false
+				return false
 			}
 
-			m.RowNum = rowNum
-			_, m.Result, err = i.reconstruct(i.row[0])
+			i.result.RowNum = rowNum
+			_, i.result.Result, err = i.reconstruct(i.row[0])
 			if err != nil {
 				i.err = errors.Wrapf(err, "error reconstructing row at %d rowgroup (%d) relative=%d", rowNum, i.idxRowGroup, rowNum-i.minRowNum)
-				return m, false
+				return false
 			}
 			break
 		}
 
 		if err := i.nextRowGroup(); err != nil {
 			i.err = errors.Wrap(err, "getting next row group")
-			return m, false
+			return false
 		}
 	}
 
-	return m, true
+	return true
 }
 
 func (i *retrieveRowIterator[M]) Close() error {

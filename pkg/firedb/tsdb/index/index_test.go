@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/prometheus/util/testutil"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -128,7 +129,7 @@ func (m mockIndex) LabelValues(name string) ([]string, error) {
 func (m mockIndex) Postings(name string, values ...string) (Postings, error) {
 	p := []Postings{}
 	for _, value := range values {
-		p = append(p, NewListPostings(m.postings[struct {
+		p = append(p, iter.NewSliceSeekIterator(m.postings[struct {
 			Name  string
 			Value string
 		}{Name: name, Value: value}]))
