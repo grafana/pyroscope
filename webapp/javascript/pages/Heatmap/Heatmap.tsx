@@ -9,19 +9,32 @@ import {
   SELECTED_AREA_BORDER,
   SelectedAreaCoordsType,
 } from './useHeatmapSelection.hook';
-import { exemplarsQueryHeatmap } from '../../services/exemplarsTestData';
+import { getExemplars, Heatmap } from '../../services/exemplars';
+import { heatmapMockData } from '../../services/exemplarsTestData';
 
 import styles from './Heatmap.module.scss';
 
 const HEATMAP_HEIGHT = 250;
 const CANVAS_ID = 'selectionCanvas';
-const color2 = [202, 240, 248]; // rgb(202, 240, 248)
-const color1 = [3, 4, 94]; // rgb(3, 4, 94)
+const COLOR_EMPTY = [22, 22, 22];
+const COLOR_2 = [202, 240, 248];
+const COLOR_1 = [3, 4, 94];
 
 export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
+  const [heatmapData, setHeatmapData] = useState<Heatmap>({} as Heatmap);
+
+  useEffect(() => {
+    const fetchHeatmapData = async () => {
+      const {
+        value: { heatmap },
+      } = await getExemplars({ query: 'app{}' });
+      setHeatmapData(heatmap);
+    };
+    fetchHeatmapData();
+  }, []);
 
   const {
     startTime,
@@ -31,7 +44,9 @@ export function Heatmap() {
     valueBuckets,
     timeBuckets,
     values,
-  } = exemplarsQueryHeatmap;
+    maxValue,
+    minValue,
+  } = { ...heatmapMockData, ...heatmapData };
 
   const {
     selectedCoordinates,
@@ -47,7 +62,6 @@ export function Heatmap() {
     values,
   });
 
-  // useResizeObserver doesn't work on initial render
   useEffect(() => {
     if (heatmapRef.current) {
       const { width } = heatmapRef.current.getBoundingClientRect();
@@ -72,9 +86,9 @@ export function Heatmap() {
         const w1 = (Math.log10(x) - minL) / (maxL - minL);
         var w2 = 1 - w1;
         return Color.rgb([
-          Math.round(color1[0] * w1 + color2[0] * w2),
-          Math.round(color1[1] * w1 + color2[1] * w2),
-          Math.round(color1[2] * w1 + color2[2] * w2),
+          Math.round(COLOR_1[0] * w1 + COLOR_2[0] * w2),
+          Math.round(COLOR_1[1] * w1 + COLOR_2[1] * w2),
+          Math.round(COLOR_1[2] * w1 + COLOR_2[2] * w2),
         ]).toString();
       },
     [minDepth, maxDepth]
@@ -84,18 +98,21 @@ export function Heatmap() {
     () =>
       values.map((column, colIndex) => (
         <g role="row" key={colIndex}>
-          {column.map((bucketItems: number, rowIndex: number) => (
+          {column.map((itemsCount: number, rowIndex: number, itemsCountArr) => (
             <rect
               role="gridcell"
-              data-items={bucketItems}
+              data-items={itemsCount}
               fill={
-                bucketItems !== 0
-                  ? getColor(bucketItems)
-                  : Color('white').toString()
+                itemsCount !== 0
+                  ? getColor(itemsCount)
+                  : Color.rgb(COLOR_EMPTY).toString()
               }
               key={rowIndex}
               x={colIndex * (heatmapW / timeBuckets)}
-              y={rowIndex * (HEATMAP_HEIGHT / valueBuckets)}
+              y={
+                (itemsCountArr.length - 1 - rowIndex) *
+                (HEATMAP_HEIGHT / valueBuckets)
+              }
               width={heatmapW / timeBuckets}
               height={HEATMAP_HEIGHT / valueBuckets}
             />
@@ -111,7 +128,7 @@ export function Heatmap() {
       className={styles.heatmapContainer}
       data-testid="heatmap-container"
     >
-      <YAxis minDepth={minDepth - 1} maxDepth={maxDepth} />
+      <YAxis minValue={minValue} maxValue={maxValue} />
       {hasSelectedArea &&
         selectedCoordinates.end &&
         selectedCoordinates.start && (
@@ -143,15 +160,15 @@ export function Heatmap() {
         data-testid="color-scale"
         style={{
           backgroundImage: `linear-gradient(to right, ${Color.rgb(
-            color2
-          )} , ${Color.rgb(color1)})`,
+            COLOR_1
+          )} , ${Color.rgb(COLOR_2)})`,
         }}
       >
-        <span role="textbox" style={{ color: Color.rgb(color1).toString() }}>
-          {minDepth - 1}
+        <span role="textbox" style={{ color: Color.rgb(COLOR_2).toString() }}>
+          {minValue}
         </span>
-        <span role="textbox" style={{ color: Color.rgb(color2).toString() }}>
-          {maxDepth}
+        <span role="textbox" style={{ color: Color.rgb(COLOR_1).toString() }}>
+          {maxValue}
         </span>
       </div>
     </div>
@@ -199,8 +216,8 @@ function ResizedSelectedArea({
 
 type axisFormat = 'items' | 'time';
 
-function YAxis({ maxDepth, minDepth }: { maxDepth: number; minDepth: number }) {
-  const ticks = getTicks(maxDepth, minDepth, 5, 'items');
+function YAxis({ maxValue, minValue }: { maxValue: number; minValue: number }) {
+  const ticks = getTicks(maxValue, minValue, 5, 'items');
 
   return (
     <div
