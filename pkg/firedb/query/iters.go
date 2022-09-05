@@ -178,6 +178,10 @@ func (r *IteratorResult) Columns(buffer [][]parquet.Value, names ...string) [][]
 // iterator - Every iterator follows this interface and can be composed.
 type Iterator = iter.SeekIterator[*IteratorResult, RowNumberWithDefinitionLevel]
 
+func NewErrIterator(err error) Iterator {
+	return iter.NewErrSeekIterator[*IteratorResult, RowNumberWithDefinitionLevel](err)
+}
+
 var columnIteratorPool = sync.Pool{
 	New: func() interface{} {
 		return &columnIteratorBuffer{}
@@ -253,6 +257,7 @@ var _ Iterator = (*ColumnIterator)(nil)
 type columnIteratorBuffer struct {
 	rowNumbers []RowNumber
 	values     []parquet.Value
+	err        error
 }
 
 func NewColumnIterator(ctx context.Context, rgs []parquet.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string) *ColumnIterator {
@@ -400,7 +405,7 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 						break
 					}
 					if err != nil {
-						// todo: bubble up?
+						c.ch <- &columnIteratorBuffer{err: err}
 						return
 					}
 				}
@@ -445,6 +450,10 @@ func (c *ColumnIterator) next() (RowNumber, parquet.Value) {
 	}
 
 	if v, ok := <-c.ch; ok {
+		if v.err != nil {
+			c.err = v.err
+			return EmptyRowNumber(), parquet.Value{}
+		}
 		// Got next buffer, guaranteed to have at least 1 element
 		c.curr = v
 		c.currN = 0
@@ -829,7 +838,6 @@ func NewKeyValueGroupPredicate(keys, values []string) *KeyValueGroupPredicate {
 // KeepGroup checks if the given group contains all of the requested
 // key/value pairs.
 func (a *KeyValueGroupPredicate) KeepGroup(group *IteratorResult) bool {
-	// printGroup(group)
 	a.buffer = group.Columns(a.buffer, "keys", "values")
 
 	keys, vals := a.buffer[0], a.buffer[1]
