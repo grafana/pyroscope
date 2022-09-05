@@ -26,10 +26,10 @@ interface ExemplarsProps {
   heatmapValueBuckets?: string;
 }
 
-export type Heatmap = z.infer<typeof HeatmapSchema>;
+export type HeatmapType = z.infer<typeof HeatmapSchema>;
 
 interface Response {
-  heatmap: Heatmap;
+  heatmap: HeatmapType;
 }
 
 export async function getExemplars(
@@ -42,11 +42,15 @@ export async function getExemplars(
     (acc, [key, value]) => acc + (acc ? `&${key}=${value}` : `${key}=${value}`),
     ''
   );
+  // TODO(dogfrogfog): match with backend API
   const response = await request(`/api/exemplars:query?${queryString}`, {
     signal: controller?.signal,
   });
 
   if (response.isOk) {
+    console.log('response heatmap:');
+    // @ts-ignore
+    console.log(response.value?.heatmap);
     const parsed = z
       .object({ heatmap: HeatmapSchema })
       .safeParse(response.value);

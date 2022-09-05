@@ -9,8 +9,6 @@ import {
   SELECTED_AREA_BORDER,
   SelectedAreaCoordsType,
 } from './useHeatmapSelection.hook';
-import { getExemplars, Heatmap } from '../../services/exemplars';
-import { heatmapMockData } from '../../services/exemplarsTestData';
 
 import styles from './Heatmap.module.scss';
 
@@ -24,17 +22,18 @@ export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
-  const [heatmapData, setHeatmapData] = useState<Heatmap>({} as Heatmap);
 
-  useEffect(() => {
-    const fetchHeatmapData = async () => {
-      const {
-        value: { heatmap },
-      } = await getExemplars({ query: 'app{}' });
-      setHeatmapData(heatmap);
-    };
-    fetchHeatmapData();
-  }, []);
+  const {
+    selectedCoordinates,
+    selectedAreaToHeatmapRatio,
+    hasSelectedArea,
+    resetSelection,
+    heatmapData,
+  } = useHeatmapSelection({
+    canvasRef,
+    heatmapW,
+    heatmapH: HEATMAP_HEIGHT,
+  });
 
   const {
     startTime,
@@ -46,21 +45,7 @@ export function Heatmap() {
     values,
     maxValue,
     minValue,
-  } = { ...heatmapMockData, ...heatmapData };
-
-  const {
-    selectedCoordinates,
-    selectedAreaToHeatmapRatio,
-    hasSelectedArea,
-    resetSelection,
-  } = useHeatmapSelection({
-    canvasRef,
-    heatmapW,
-    heatmapH: HEATMAP_HEIGHT,
-    timeBuckets,
-    valueBuckets,
-    values,
-  });
+  } = heatmapData;
 
   useEffect(() => {
     if (heatmapRef.current) {
@@ -101,6 +86,8 @@ export function Heatmap() {
           {column.map((itemsCount: number, rowIndex: number, itemsCountArr) => (
             <rect
               role="gridcell"
+              data-x-axis-value=""
+              data-y-axis-value=""
               data-items={itemsCount}
               fill={
                 itemsCount !== 0
@@ -252,18 +239,13 @@ function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
   );
 }
 
-const getTicks = (
-  max: number,
-  min: number,
-  ticksCount: number,
-  format: axisFormat
-) => {
+const getFormatter = (format: axisFormat) => {
   let formatter;
   switch (format) {
     case 'time':
       formatter = (v: number) => {
         const date = new Date(v);
-        return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()},${date.getMilliseconds()}`;
+        return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}:${date.getMilliseconds()}`;
       };
       break;
     case 'items':
@@ -271,6 +253,17 @@ const getTicks = (
         v > 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0);
       break;
   }
+
+  return formatter;
+};
+
+const getTicks = (
+  max: number,
+  min: number,
+  ticksCount: number,
+  format: axisFormat
+) => {
+  let formatter = getFormatter(format);
 
   const step = (max - min) / ticksCount;
   let ticksArray = [formatter(min)];

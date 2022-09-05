@@ -1,6 +1,9 @@
 import { useState, useEffect, RefObject } from 'react';
 import Color from 'color';
 
+import { getExemplars, HeatmapType } from '../../services/exemplars';
+import { heatmapMockData } from '../../services/exemplarsTestData';
+
 export const SELECTED_AREA_BACKGROUND = Color.rgb(255, 255, 0)
   .alpha(0.5)
   .toString();
@@ -23,28 +26,41 @@ interface UseHeatmapSelectionProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   heatmapW: number;
   heatmapH: number;
-  timeBuckets: number;
-  valueBuckets: number;
-  values: number[][];
 }
 interface UseHeatmapSelection {
   selectedCoordinates: SelectedCoordinates;
   hasSelectedArea: boolean;
   selectedAreaToHeatmapRatio: number;
   resetSelection: () => void;
+  heatmapData: HeatmapType;
 }
 
 export const useHeatmapSelection = ({
   canvasRef,
   heatmapW,
   heatmapH,
-  timeBuckets,
-  valueBuckets,
-  values,
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
   const [hasSelectedArea, setHasSelectedArea] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
+  const [heatmapData, setHeatmapData] = useState<HeatmapType>(
+    {} as HeatmapType
+  );
+
+  const getSelectedPointsInfo = () => {
+    // implement
+  };
+
+  useEffect(() => {
+    const fetchHeatmapData = async () => {
+      const {
+        value: { heatmap },
+        // api request
+      } = await getExemplars({ query: 'app{}' });
+      setHeatmapData(heatmap);
+    };
+    fetchHeatmapData();
+  }, []);
 
   const resetSelection = () => {
     setHasSelectedArea(false);
@@ -145,8 +161,8 @@ export const useHeatmapSelection = ({
   useEffect(() => {
     const isClickEvent =
       startCoords?.x == endCoords?.x && startCoords?.y == endCoords?.y;
-    const cellW = heatmapW / timeBuckets;
-    const cellH = heatmapH / valueBuckets;
+    const cellW = heatmapW / heatmapData.timeBuckets;
+    const cellH = heatmapH / heatmapData.valueBuckets;
 
     if (startCoords && endCoords && !isClickEvent) {
       setSelectedCoordinates({
@@ -163,26 +179,27 @@ export const useHeatmapSelection = ({
       console.log('selected matrix coord: ', matrixCoordinates);
     }
 
-    if (startCoords && isClickEvent) {
-      clearRect(canvasRef.current as HTMLCanvasElement);
-      setSelectedCoordinates({
-        start: { x: startCoords.x, y: startCoords.y },
-        end: null,
-      });
+    // if (startCoords && isClickEvent) {
+    //   clearRect(canvasRef.current as HTMLCanvasElement);
+    //   setSelectedCoordinates({
+    //     start: { x: startCoords.x, y: startCoords.y },
+    //     end: null,
+    //   });
 
-      const x = Math.trunc(startCoords.x / cellW);
-      const y = Math.trunc(startCoords.y / cellH);
-      const isEmptyCell = values[y][x] === 0;
+    //   const x = Math.trunc(startCoords.x / cellW);
+    //   const y = Math.trunc(startCoords.y / cellH);
+    //   const isEmptyCell = heatmapData.values[y][x] === 0;
 
-      if (!isEmptyCell) console.log('clicked cell coord: ', { x, y });
-    }
-  }, [startCoords, endCoords, values]);
+    //   if (!isEmptyCell) console.log('clicked cell coord: ', { x, y });
+    // }
+  }, [startCoords, endCoords, heatmapData.values]);
 
   return {
     selectedCoordinates,
     selectedAreaToHeatmapRatio,
     hasSelectedArea,
     resetSelection,
+    heatmapData: { ...heatmapMockData, ...heatmapData },
   };
 };
 
