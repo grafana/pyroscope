@@ -67,6 +67,9 @@ func (d *FireDatasource) CallResource(ctx context.Context, req *backend.CallReso
 	if req.Path == "profileTypes" {
 		return d.callProfileTypes(ctx, req, sender)
 	}
+	if req.Path == "labelNames" {
+		return d.callLabelNames(ctx, req, sender)
+	}
 	if req.Path == "series" {
 		return d.callSeries(ctx, req, sender)
 	}
@@ -97,6 +100,22 @@ func (d *FireDatasource) callSeries(ctx context.Context, req *backend.CallResour
 		return err
 	}
 	data, err := json.Marshal(res.Msg.LabelsSet)
+	if err != nil {
+		return err
+	}
+	err = sender.Send(&backend.CallResourceResponse{Body: data, Headers: req.Headers, Status: 200})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *FireDatasource) callLabelNames(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	res, err := d.client.LabelNames(ctx, connect.NewRequest(&querierv1.LabelNamesRequest{}))
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(res.Msg.Names)
 	if err != nil {
 		return err
 	}

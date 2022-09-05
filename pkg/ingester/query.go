@@ -16,6 +16,11 @@ func (i *Ingester) LabelValues(ctx context.Context, req *connect.Request[ingestv
 	return i.fireDB.Head().LabelValues(ctx, req)
 }
 
+// LabelValues returns the possible label names.
+func (i *Ingester) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+	return i.fireDB.Head().LabelNames(ctx, req)
+}
+
 // ProfileTypes returns the possible profile types.
 func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	return i.fireDB.Head().ProfileTypes(ctx, req)

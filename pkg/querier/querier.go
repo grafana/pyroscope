@@ -154,6 +154,25 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 	}), nil
 }
 
+func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
+	defer sp.Finish()
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
+		res, err := ic.LabelNames(ctx, connect.NewRequest(&ingestv1.LabelNamesRequest{}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Names, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&querierv1.LabelNamesResponse{
+		Names: uniqueSortedStrings(responses),
+	}), nil
+}
+
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer func() {

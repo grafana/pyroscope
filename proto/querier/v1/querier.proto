@@ -7,6 +7,7 @@ import "common/v1/common.proto";
 service QuerierService {
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
   rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
+  rpc LabelNames(LabelNamesRequest) returns (LabelNamesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {}
   rpc SelectSeries(SelectSeriesRequest) returns (SelectSeriesResponse) {}
@@ -23,6 +24,12 @@ message LabelValuesRequest {
 }
 
 message LabelValuesResponse {
+  repeated string names = 1;
+}
+
+message LabelNamesRequest {}
+
+message LabelNamesResponse {
   repeated string names = 1;
 }
 
