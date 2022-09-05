@@ -140,7 +140,7 @@ export function Heatmap() {
       <XAxis startTime={startTime} endTime={endTime} />
       <div
         className={styles.bucketsColors}
-        data-testid="legend"
+        data-testid="color-scale"
         style={{
           backgroundImage: `linear-gradient(to right, ${Color.rgb(
             color2

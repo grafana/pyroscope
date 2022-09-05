@@ -137,7 +137,7 @@ export const useHeatmapSelection = ({
       if (canvasRef.current) {
         canvasRef.current.removeEventListener('mousedown', startDrawing);
         window.removeEventListener('mousemove', handleDrawingEvent);
-        window.addEventListener('mouseup', endDrawing);
+        window.removeEventListener('mouseup', endDrawing);
       }
     };
   }, []);
