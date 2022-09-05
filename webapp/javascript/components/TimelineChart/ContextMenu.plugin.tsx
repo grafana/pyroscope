@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import * as ReactDOM from 'react-dom';
 import { PlotType, EventHolderType, EventType } from './types';
-import { MenuItem, ControlledMenu, useMenuState } from '@szhsin/react-menu';
+import {
+  Menu,
+  MenuItem,
+  ControlledMenu,
+  useMenuState,
+} from '@szhsin/react-menu';
 
 type ContextType = {
   init: (plot: PlotType) => void;
@@ -13,19 +18,28 @@ type ContextType = {
 interface ContextMenuProps {
   x: number;
   y: number;
+
+  /** the timestamp of the clicked item */
+  timestamp: number;
 }
 
 function MyElement(props: ContextMenuProps) {
+  const { x, y, timestamp } = props;
   const [isOpen, setOpen] = useState(false);
+
   useEffect(() => {
     setOpen(true);
   }, []);
 
-  const { x, y } = props;
-  //  return <div>hey</div>;
   return (
-    <ControlledMenu isOpen={isOpen} anchorPoint={{ x, y }}>
-      <MenuItem key="focus">Item 1</MenuItem>
+    <ControlledMenu
+      isOpen={isOpen}
+      anchorPoint={{ x, y }}
+      onClose={() => setOpen(false)}
+    >
+      <MenuItem key="focus" onClick={() => alert(timestamp)}>
+        Add annotation
+      </MenuItem>
     </ControlledMenu>
   );
 }
@@ -33,17 +47,19 @@ function MyElement(props: ContextMenuProps) {
 (function ($: JQueryStatic) {
   function init(this: ContextType, plot: PlotType) {
     const container = inject($);
+    const containerEl = container?.[0];
 
     // TODO(eh-am): fix id
     $(`#timeline-chart-single`).bind('plotclick', (event, pos, item) => {
-      console.log({
-        range: Math.round(pos.x / 1000).toString(),
-      });
+      const timestamp = Math.round(pos.x / 1000);
 
-      console.log({
-        event,
-      });
-      ReactDOM.render(MyElement({ x: 0, y: 0 }), container?.[0]);
+      // unmount any previous menus
+      ReactDOM.unmountComponentAtNode(containerEl);
+
+      ReactDOM.render(
+        <MyElement x={pos.pageX} y={pos.pageY} timestamp={timestamp} />,
+        containerEl
+      );
     });
   }
 
