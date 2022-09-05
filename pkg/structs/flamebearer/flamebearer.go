@@ -34,6 +34,7 @@ type FlamebearerProfileV1 struct {
 	// Timeline associated to the profile, used for continuous profiling only.
 	Timeline *FlamebearerTimelineV1            `json:"timeline"`
 	Groups   map[string]*FlamebearerTimelineV1 `json:"groups"`
+	Heatmap  *Heatmap                          `json:"heatmap"`
 	// Number of samples in the left / base profile. Only used in "double" format.
 	LeftTicks uint64 `json:"leftTicks,omitempty"`
 	// Number of samples in the right / diff profile. Only used in "double" format.
@@ -101,24 +102,80 @@ type FlamebearerTimelineV1 struct {
 	Watermarks    map[int]int64 `json:"watermarks"`
 }
 
+type Heatmap struct {
+	// Values matrix contain values that indicate count of value occurrences,
+	// satisfying boundaries of X and Y bins: [StartTime:EndTime) and (MinValue:MaxValue].
+	// A value can be accessed via Values[x][y], where:
+	//   0 <= x < TimeBuckets, and
+	//   0 <= y < ValueBuckets.
+	Values [][]uint64 `json:"values"`
+	// TimeBuckets denote number of bins on X axis.
+	// Length of Values array.
+	TimeBuckets int64 `json:"timeBuckets"`
+	// ValueBuckets denote number of bins on Y axis.
+	// Length of any item in the Values array.
+	ValueBuckets int64 `json:"valueBuckets"`
+	// StartTime and EndTime indicate boundaries of X axis: [StartTime:EndTime).
+	StartTime int64 `json:"startTime"`
+	EndTime   int64 `json:"endTime"`
+	// MinValue and MaxValue indicate boundaries of Y axis: (MinValue:MaxValue].
+	MinValue uint64 `json:"minValue"`
+	MaxValue uint64 `json:"maxValue"`
+	// MinDepth and MaxDepth indicate boundaries of Z axis: [MinDepth:MaxDepth].
+	// MinDepth is the minimal non-zero value that can be found in Values.
+	MinDepth uint64 `json:"minDepth"`
+	MaxDepth uint64 `json:"maxDepth"`
+}
+
 func NewProfile(name string, output *storage.GetOutput, maxNodes int) FlamebearerProfile {
 	fb := output.Tree.FlamebearerStruct(maxNodes)
 	return FlamebearerProfile{
-		Version: 1,
+		Version:   1,
+		Telemetry: output.Telemetry,
 		FlamebearerProfileV1: FlamebearerProfileV1{
 			Flamebearer: newFlambearer(fb),
-			Metadata:    newMetadata(name, fb.Format, output),
-			Timeline:    NewTimeline(output.Timeline),
+			Timeline:    newTimeline(output.Timeline),
 			Groups:      convertGroups(output.Groups),
+			Metadata: newMetadata(name, fb.Format, metadata.Metadata{
+				SpyName:         output.SpyName,
+				SampleRate:      output.SampleRate,
+				Units:           output.Units,
+				AggregationType: output.AggregationType,
+			}),
 		},
-		Telemetry: output.Telemetry,
+	}
+}
+
+type ProfileConfig struct {
+	Name      string
+	MaxNodes  int
+	Metadata  metadata.Metadata
+	Tree      *tree.Tree
+	Timeline  *segment.Timeline
+	Heatmap   *storage.Heatmap
+	Groups    map[string]*segment.Timeline
+	Telemetry map[string]interface{}
+}
+
+func NewProfileWithConfig(in ProfileConfig) FlamebearerProfile {
+	fb := in.Tree.FlamebearerStruct(in.MaxNodes)
+	return FlamebearerProfile{
+		Version:   1,
+		Telemetry: in.Telemetry,
+		FlamebearerProfileV1: FlamebearerProfileV1{
+			Flamebearer: newFlambearer(fb),
+			Metadata:    newMetadata(in.Name, fb.Format, in.Metadata),
+			Timeline:    newTimeline(in.Timeline),
+			Heatmap:     newHeatmap(in.Heatmap),
+			Groups:      convertGroups(in.Groups),
+		},
 	}
 }
 
 func convertGroups(v map[string]*segment.Timeline) map[string]*FlamebearerTimelineV1 {
 	res := make(map[string]*FlamebearerTimelineV1)
 	for k, v := range v {
-		res[k] = NewTimeline(v)
+		res[k] = newTimeline(v)
 	}
 	return res
 }
@@ -142,9 +199,9 @@ func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes in
 
 	// Figure out the non empty one, since we will use its attributes
 	// Notice that this does not handle when both are empty, since there's nothing todo
-	nonEmptyOne := left
+	output := left
 	if isEmpty(left) {
-		nonEmptyOne = right
+		output = right
 	}
 
 	lt, rt := tree.CombineTree(left.Tree, right.Tree)
@@ -153,10 +210,15 @@ func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes in
 		Version: 1,
 		FlamebearerProfileV1: FlamebearerProfileV1{
 			Flamebearer: newFlambearer(fb),
-			Metadata:    newMetadata(name, fb.Format, nonEmptyOne),
 			Timeline:    nil,
 			LeftTicks:   lt.Samples(),
 			RightTicks:  rt.Samples(),
+			Metadata: newMetadata(name, fb.Format, metadata.Metadata{
+				SpyName:         output.SpyName,
+				SampleRate:      output.SampleRate,
+				Units:           output.Units,
+				AggregationType: output.AggregationType,
+			}),
 		},
 	}, nil
 }
@@ -170,17 +232,17 @@ func newFlambearer(fb *tree.Flamebearer) FlamebearerV1 {
 	}
 }
 
-func newMetadata(name string, format tree.Format, output *storage.GetOutput) FlamebearerMetadataV1 {
+func newMetadata(name string, format tree.Format, md metadata.Metadata) FlamebearerMetadataV1 {
 	return FlamebearerMetadataV1{
 		Name:       name,
 		Format:     string(format),
-		SpyName:    output.SpyName,
-		SampleRate: output.SampleRate,
-		Units:      output.Units,
+		SpyName:    md.SpyName,
+		SampleRate: md.SampleRate,
+		Units:      md.Units,
 	}
 }
 
-func NewTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
+func newTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
 	if timeline == nil {
 		return nil
 	}
@@ -189,6 +251,23 @@ func NewTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
 		Samples:       timeline.Samples,
 		DurationDelta: timeline.DurationDeltaNormalized,
 		Watermarks:    timeline.Watermarks,
+	}
+}
+
+func newHeatmap(heatmap *storage.Heatmap) *Heatmap {
+	if heatmap == nil {
+		return nil
+	}
+	return &Heatmap{
+		Values:       heatmap.Values,
+		TimeBuckets:  heatmap.TimeBuckets,
+		ValueBuckets: heatmap.ValueBuckets,
+		StartTime:    heatmap.StartTime.UnixNano(),
+		EndTime:      heatmap.EndTime.UnixNano(),
+		MinValue:     heatmap.MinValue,
+		MaxValue:     heatmap.MaxValue,
+		MinDepth:     heatmap.MinDepth,
+		MaxDepth:     heatmap.MaxDepth,
 	}
 }
 
