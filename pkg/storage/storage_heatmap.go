@@ -42,6 +42,6 @@ type HeatmapSketch struct {
 }
 
 type HeatmapColumn struct {
-	Maximums []uint64
-	Counts   []uint64
+	Values []uint64
+	Counts []uint64
 }
