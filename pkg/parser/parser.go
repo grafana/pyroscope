@@ -25,5 +25,6 @@ func New(log *logrus.Logger, s storage.Putter, exporter storage.MetricsExporter)
 }
 
 func (p *Parser) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
+	updateMetrics(in)
 	return in.Profile.Parse(ctx, p.putter, p.exporter, in.Metadata)
 }

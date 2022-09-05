@@ -140,6 +140,7 @@ func (s *Service) Start() {
 	case <-timer.C:
 	}
 	s.sendReport()
+	s.sendMetrics()
 	upload := time.NewTicker(uploadFrequency / time.Duration(multiplier))
 	snapshot := time.NewTicker(snapshotFrequency)
 	defer upload.Stop()

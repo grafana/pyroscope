@@ -69,7 +69,7 @@ var _ = Describe("analytics", func() {
 
 					httpServer := httptest.NewServer(myHandler)
 					defer httpServer.Close()
-					url = httpServer.URL + "/api/events"
+					host = httpServer.URL
 
 					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
@@ -107,7 +107,7 @@ var _ = Describe("analytics", func() {
 
 					httpServer := httptest.NewServer(myHandler)
 					defer httpServer.Close()
-					url = httpServer.URL + "/api/events"
+					host = httpServer.URL
 
 					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
