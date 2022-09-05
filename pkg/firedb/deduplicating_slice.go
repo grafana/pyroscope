@@ -72,7 +72,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Close() error {
 	return nil
 }
 
-const maxRowGroupSize = 1000
+const maxRowGroupBytes = 128 * 1024 * 1024
 
 func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups uint64, err error) {
 	// intialise buffer if not existing
@@ -82,9 +82,19 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 
 	s.lock.RLock()
 
-	rowsToFlush := len(s.slice) - s.rowsFlushed
-	if rowsToFlush > maxRowGroupSize {
-		rowsToFlush = maxRowGroupSize
+	var (
+		// average size per row in memory
+		bytesPerRow = int(s.Size()) / len(s.slice)
+
+		// how many rows per RG with average size are fitting in the maxRowGroupBytes
+		maxRows = maxRowGroupBytes / bytesPerRow
+
+		// how many rows of the head still in need of flushing
+		rowsToFlush = len(s.slice) - s.rowsFlushed
+	)
+
+	if rowsToFlush > maxRows {
+		rowsToFlush = maxRows
 	}
 
 	if rowsToFlush == 0 {
