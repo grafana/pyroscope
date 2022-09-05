@@ -22,17 +22,17 @@ import (
 )
 
 func bikeRoute(w http.ResponseWriter, r *http.Request) {
-	bike.OrderBike(1)
+	bike.OrderBike(r.Context(), 1)
 	w.Write([]byte("<h1>Bike ordered</h1>"))
 }
 
 func scooterRoute(w http.ResponseWriter, r *http.Request) {
-	scooter.OrderScooter(2)
+	scooter.OrderScooter(r.Context(), 2)
 	w.Write([]byte("<h1>Scooter ordered</h1>"))
 }
 
 func carRoute(w http.ResponseWriter, r *http.Request) {
-	car.OrderCar(3)
+	car.OrderCar(r.Context(), 3)
 	w.Write([]byte("<h1>Car ordered</h1>"))
 }
 
