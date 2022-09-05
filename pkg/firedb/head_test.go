@@ -252,7 +252,7 @@ func TestHeadLabelNames(t *testing.T) {
 
 	res, err := head.LabelNames(context.Background(), connect.NewRequest(&ingestv1.LabelNamesRequest{}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"job", "namespace"}, res.Msg.Names)
+	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "job", "namespace"}, res.Msg.Names)
 }
 
 func TestHeadSeries(t *testing.T) {
