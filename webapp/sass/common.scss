@@ -45,8 +45,13 @@ tt {
   font-size: 14px;
   border: 1px solid var(--ps-ui-border);
 
+  thead th {
+    color: var(--ps-neutral-2);
+  }
+
   th,
   td {
+    color: var(--ps-neutral-2);
     text-align: right;
     padding: 0px 10px;
 
