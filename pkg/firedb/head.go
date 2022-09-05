@@ -22,7 +22,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
-	"github.com/samber/lo"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
@@ -360,12 +359,9 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1.Lab
 	if err != nil {
 		return nil, err
 	}
-	result := lo.Reject(values, func(name string, _ int) bool {
-		return strings.HasPrefix(name, "__")
-	})
-	sort.Strings(result)
+	sort.Strings(values)
 	return connect.NewResponse(&ingestv1.LabelNamesResponse{
-		Names: result,
+		Names: values,
 	}), nil
 }
 
