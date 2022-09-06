@@ -161,6 +161,12 @@ export type Situation =
       otherLabels: Label[];
     };
 
+const labelNameRegex = /[a-zA-Z_][a-zA-Z0-9_]*/;
+const labelValueRegex = /[^"]*/; // anything except a double quote
+const labelPairsRegex = new RegExp(`(${labelNameRegex.source})="(${labelValueRegex.source})"`, 'g');
+const inLabelValueRegex = new RegExp(`(${labelNameRegex.source})=("?)${labelValueRegex.source}$`);
+const inLabelNameRegex = new RegExp(`[{,]\s*[a-zA-Z0-9_]*$`);
+
 /**
  * Figure out where is the cursor and what kind of suggestions are appropriate.
  * As currently Fire handles just a simple {foo="bar", baz="zyx"} kind of values we can do with simple regex to figure
@@ -175,8 +181,8 @@ function getSituation(text: string, offset: number): Situation {
     };
   }
 
-  // Get all the labels so far in the query so we can do some more filtering.
-  const matches = text.matchAll(/(\w+)="(\w+)"/g);
+  // Get all the labels so far in the query, so we can do some more filtering.
+  const matches = text.matchAll(labelPairsRegex);
   const existingLabels = Array.from(matches).reduce((acc, match) => {
     const [_, name, value] = match[1];
     acc.push({ name, value });
@@ -184,7 +190,7 @@ function getSituation(text: string, offset: number): Situation {
   }, [] as Label[]);
 
   // Check if we are editing a label value right now. If so also get name of the label
-  const matchLabelValue = text.substring(0, offset).match(/(\w+)=("?)[^"]*$/);
+  const matchLabelValue = text.substring(0, offset).match(inLabelValueRegex);
   if (matchLabelValue) {
     return {
       type: 'IN_LABEL_VALUE',
@@ -195,7 +201,7 @@ function getSituation(text: string, offset: number): Situation {
   }
 
   // Check if we are editing a label name
-  const matchLabelName = text.substring(0, offset).match(/[{,]\s*[^"]*$/);
+  const matchLabelName = text.substring(0, offset).match(inLabelNameRegex);
   if (matchLabelName) {
     return {
       type: 'IN_LABEL_NAME',
