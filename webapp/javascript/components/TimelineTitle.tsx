@@ -14,6 +14,7 @@ const unitsToFlamegraphTitle = {
   comparison: 'Comparison Flamegraph',
   diff: 'Baseline vs. Comparison Diff',
   trace_samples: 'Total aggregated span duration',
+  time_range: 'Time range',
   '': '',
 };
 
