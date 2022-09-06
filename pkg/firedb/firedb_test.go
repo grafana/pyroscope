@@ -2,6 +2,7 @@ package firedb
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	googlev1 "github.com/grafana/fire/pkg/gen/google/v1"
@@ -64,24 +66,54 @@ func BenchmarkDBSelectProfile(b *testing.B) {
 	}, log.NewNopLogger(), nil)
 	require.NoError(b, err)
 
-	ingestProfiles(b, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step)
-
-	require.NoError(b, db.Flush(context.Background()))
-
-	db.runBlockQuerierSync(context.Background())
+	ctx := context.Background()
+	g, _ := errgroup.WithContext(ctx)
+	g.SetLimit(16)
+	for j := 0; j < 6; j++ {
+		for i := 0; i < 200; i++ {
+			func(i, j int) {
+				g.Go(func() error {
+					ingestProfiles(b, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+						&commonv1.LabelPair{Name: "namespace", Value: fmt.Sprintf("%d", j)},
+						&commonv1.LabelPair{Name: "pod", Value: fmt.Sprintf("%d", i)},
+					)
+					return nil
+				})
+			}(i, j)
+		}
+	}
+	require.NoError(b, g.Wait())
+	require.NoError(b, db.Flush(ctx))
+	db.runBlockQuerierSync(ctx)
 
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		resp, err := db.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
-			LabelSelector: "{}",
-			Type:          mustParseProfileSelector(b, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
-			Start:         int64(model.TimeFromUnixNano(start.UnixNano())),
-			End:           int64(model.TimeFromUnixNano(end.UnixNano())),
-		}))
-		require.NoError(b, err)
-		require.True(b, len(resp.Msg.Profiles) != 0)
-	}
+
+	benchmarkSelectProfile(`{}`, start, end, db, b)
+	benchmarkSelectProfile(`{}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+	benchmarkSelectProfile(`{namespace="3"}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+	benchmarkSelectProfile(`{namespace="3", pod="100"}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+	benchmarkSelectProfile(`{namespace="3", pod=~".*1"}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+	benchmarkSelectProfile(`{namespace!="3", pod=~".*1"}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+	benchmarkSelectProfile(`{namespace=~"1|4"}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+	benchmarkSelectProfile(`{namespace=~"1|4",pod=~"1.*"}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+	benchmarkSelectProfile(`{namespace=~".*", pod=~"10|20|30"}`, start.Add(15*time.Minute), end.Add(-15*time.Minute), db, b)
+}
+
+func benchmarkSelectProfile(query string, start, end time.Time, db *FireDB, b *testing.B) {
+	b.Helper()
+	b.Run(query, func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			resp, err := db.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+				LabelSelector: query,
+				Type:          mustParseProfileSelector(b, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         int64(model.TimeFromUnixNano(start.UnixNano())),
+				End:           int64(model.TimeFromUnixNano(end.UnixNano())),
+			}))
+			require.NoError(b, err)
+			b.Log(len(resp.Msg.Profiles))
+		}
+	})
 }
 
 func TestCloseFile(t *testing.T) {
