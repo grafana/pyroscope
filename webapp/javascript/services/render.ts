@@ -136,10 +136,10 @@ const HeatmapSchema = z.object({
   maxDepth: z.number(),
   timeBuckets: z.number(),
   valueBuckets: z.number(),
-  values: z.array(z.array(z.number())),
+  values: z.array(z.array(z.number()).nullable()),
 });
 
-export interface getExemplarsProps {
+export interface getHeatmapProps {
   query: string;
   from: string;
   until: string;
@@ -151,16 +151,16 @@ export interface getExemplarsProps {
 }
 
 export type Heatmap = z.infer<typeof HeatmapSchema>;
-export interface ExemplarsOutput {
+export interface HeatmapOutput {
   heatmap: Heatmap;
 }
 
-export async function getExemplars(
-  props: getExemplarsProps,
+export async function getHeatmap(
+  props: getHeatmapProps,
   controller?: {
     signal?: AbortSignal;
   }
-): Promise<Result<ExemplarsOutput, RequestError | ZodError>> {
+): Promise<Result<HeatmapOutput, RequestError | ZodError>> {
   const queryString = Object.entries(props).reduce(
     (acc, [key, value]) => acc + (acc ? `&${key}=${value}` : `${key}=${value}`),
     ''
@@ -183,10 +183,10 @@ export async function getExemplars(
       });
     }
 
-    return Result.err<ExemplarsOutput, RequestError>(response.error);
+    return Result.err<HeatmapOutput, RequestError>(response.error);
   }
 
-  return Result.err<ExemplarsOutput, RequestError>(response.error);
+  return Result.err<HeatmapOutput, RequestError>(response.error);
 }
 
 export type RenderDiffResponse = z.infer<typeof FlamebearerProfileSchema>;

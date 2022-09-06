@@ -84,27 +84,29 @@ export function Heatmap() {
     () =>
       values.map((column, colIndex) => (
         <g role="row" key={colIndex}>
-          {column.map((itemsCount: number, rowIndex: number, itemsCountArr) => (
-            <rect
-              role="gridcell"
-              data-x-axis-value=""
-              data-y-axis-value=""
-              data-items={itemsCount}
-              fill={
-                itemsCount !== 0
-                  ? getColor(itemsCount)
-                  : Color.rgb(COLOR_EMPTY).toString()
-              }
-              key={rowIndex}
-              x={colIndex * (heatmapW / timeBuckets)}
-              y={
-                (itemsCountArr.length - 1 - rowIndex) *
-                (HEATMAP_HEIGHT / valueBuckets)
-              }
-              width={heatmapW / timeBuckets}
-              height={HEATMAP_HEIGHT / valueBuckets}
-            />
-          ))}
+          {column?.map(
+            (itemsCount: number, rowIndex: number, itemsCountArr) => (
+              <rect
+                role="gridcell"
+                data-x-axis-value=""
+                data-y-axis-value=""
+                data-items={itemsCount}
+                fill={
+                  itemsCount !== 0
+                    ? getColor(itemsCount)
+                    : Color.rgb(COLOR_EMPTY).toString()
+                }
+                key={rowIndex}
+                x={colIndex * (heatmapW / timeBuckets)}
+                y={
+                  (itemsCountArr.length - 1 - rowIndex) *
+                  (HEATMAP_HEIGHT / valueBuckets)
+                }
+                width={heatmapW / timeBuckets}
+                height={HEATMAP_HEIGHT / valueBuckets}
+              />
+            )
+          )}
         </g>
       )),
     [heatmapW, timeBuckets, valueBuckets, values]

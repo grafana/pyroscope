@@ -3,9 +3,9 @@ import type { Profile } from '@pyroscope/models/src';
 import {
   MergeOutput,
   mergeWithQueryID,
-  ExemplarsOutput,
-  getExemplars,
-  getExemplarsProps,
+  HeatmapOutput,
+  getHeatmap,
+  getHeatmapProps,
   Heatmap,
 } from '@webapp/services/render';
 import type { RootState } from '@webapp/redux/store';
@@ -109,10 +109,10 @@ export const fetchSingleView = createAsyncThunk<
 });
 
 export const fetchHeatmapSingleView = createAsyncThunk<
-  ExemplarsOutput,
-  getExemplarsProps,
+  HeatmapOutput,
+  getHeatmapProps,
   { state: { tracing: TracingState } }
->('tracing/heatmapSingleView', async (getExemplarsProps, thunkAPI) => {
+>('tracing/heatmapSingleView', async (getHeatmapProps, thunkAPI) => {
   if (heatmapSingleViewAbortController) {
     heatmapSingleViewAbortController.abort();
   }
@@ -120,8 +120,8 @@ export const fetchHeatmapSingleView = createAsyncThunk<
   heatmapSingleViewAbortController = new AbortController();
   thunkAPI.signal = heatmapSingleViewAbortController.signal;
 
-  const res = await getExemplars(
-    getExemplarsProps,
+  const res = await getHeatmap(
+    getHeatmapProps,
     heatmapSingleViewAbortController
   );
 
