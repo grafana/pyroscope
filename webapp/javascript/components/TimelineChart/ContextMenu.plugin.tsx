@@ -2,7 +2,10 @@ import React from 'react';
 import * as ReactDOM from 'react-dom';
 import store from '@webapp/redux/store';
 import { Provider } from 'react-redux';
+import { randomId } from '@webapp/util/randomId';
 import { PlotType } from './types';
+
+const WRAPPER_ID = randomId('contextMenu');
 
 type ContextType = {
   init: (plot: PlotType) => void;
@@ -14,12 +17,18 @@ type ContextType = {
 
 (function ($: JQueryStatic) {
   function init(this: ContextType, plot: PlotType) {
+    // The element we will add the contextMenu
     const container = inject($);
     const containerEl = container?.[0];
+    // The flotjs wrapper
+    const flotEl = plot.getPlaceholder();
+
     const options = plot.getOptions();
 
-    // TODO(eh-am): fix id
-    $(`#timeline-chart-single`).bind('plotclick', (event, pos, item) => {
+    // TODO(eh-am): flot only supports plotclick (left-click)
+    // to support right-click we need to implement it ourselves
+    $(flotEl[0]).bind('plotclick', (event, pos, item) => {
+      // TODO(eh-am): why do we need this conversion?
       const timestamp = Math.round(pos.x / 1000);
       const { ContextMenu } = options;
 
@@ -39,6 +48,7 @@ type ContextType = {
     });
   }
 
+  // TODO(eh-am): add type
   ($ as ShamefulAny).plot.plugins.push({
     init,
     options: {},
@@ -47,15 +57,13 @@ type ContextType = {
   });
 })(jQuery);
 
-// TODO(eh-am): we may have multiple context menus
-const WRAPPER_ID = 'contextmenu_id';
-
 const inject = ($: JQueryStatic) => {
-  const parent = $(`#${WRAPPER_ID}`).length
-    ? $(`#${WRAPPER_ID}`)
-    : $(`<div id="${WRAPPER_ID}" />`);
+  const alreadyInitialized = $(`#${WRAPPER_ID}`).length > 0;
 
-  const par2 = $(`body`);
+  if (alreadyInitialized) {
+    return $(`#${WRAPPER_ID}`);
+  }
 
-  return parent.appendTo(par2);
+  const body = $('body');
+  return $(`<div id="${WRAPPER_ID}" />`).appendTo(body);
 };
