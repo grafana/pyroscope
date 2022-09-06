@@ -42,11 +42,17 @@ func TestIndex(t *testing.T) {
 				sort.Sort(lb2)
 
 				for k := int64(0); k < 10; k++ {
+					id := uuid.New()
 					a.Add(&v1.Profile{
-						ID:         uuid.New(),
-						TimeNanos:  k,
-						SeriesRefs: []model.Fingerprint{model.Fingerprint(lb1.Hash()), model.Fingerprint(lb2.Hash())},
-					}, []firemodel.Labels{lb1, lb2}, "memory")
+						ID:        id,
+						TimeNanos: k,
+						SeriesRef: model.Fingerprint(lb1.Hash()),
+					}, lb1, "memory")
+					a.Add(&v1.Profile{
+						ID:        id,
+						TimeNanos: k,
+						SeriesRef: model.Fingerprint(lb2.Hash()),
+					}, lb2, "memory")
 				}
 			}
 		}()
@@ -59,7 +65,7 @@ func TestIndex(t *testing.T) {
 		labels.MustNewMatcher(labels.MatchEqual, "__name__", "memory"),
 		labels.MustNewMatcher(labels.MatchRegexp, "bar", "[0-9]"),
 		labels.MustNewMatcher(labels.MatchNotEqual, "buzz", "bar"),
-	}, func(lbs firemodel.Labels, fp model.Fingerprint, _ int, profile *v1.Profile) error {
+	}, func(lbs firemodel.Labels, fp model.Fingerprint, profile *v1.Profile) error {
 		total++
 		return nil
 	})
@@ -98,11 +104,17 @@ func TestWriteRead(t *testing.T) {
 		sort.Sort(lb2)
 
 		for k := int64(0); k < 10; k++ {
+			id := uuid.New()
 			a.Add(&v1.Profile{
-				ID:         uuid.New(),
-				TimeNanos:  k,
-				SeriesRefs: []model.Fingerprint{model.Fingerprint(lb1.Hash()), model.Fingerprint(lb2.Hash())},
-			}, []firemodel.Labels{lb1, lb2}, "memory")
+				ID:        id,
+				TimeNanos: k,
+				SeriesRef: model.Fingerprint(lb1.Hash()),
+			}, lb1, "memory")
+			a.Add(&v1.Profile{
+				ID:        id,
+				TimeNanos: k,
+				SeriesRef: model.Fingerprint(lb2.Hash()),
+			}, lb2, "memory")
 		}
 	}
 
