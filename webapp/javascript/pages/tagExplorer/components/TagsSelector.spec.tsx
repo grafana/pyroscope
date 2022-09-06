@@ -70,7 +70,13 @@ describe('Component: ViewTagsSelectLinkModal', () => {
     modalWithToggleEl.querySelectorAll('.tags').forEach((tagList) => {
       tagList.querySelectorAll('input').forEach((tag, i) => {
         expect(tag).toHaveAttribute('value', whereDropdownItems[i]);
+        tag.click();
+        expect(tag.parentElement).toHaveClass('selected');
       });
     });
+
+    //second click
+    screen.getByTestId('toggler').click();
+    expect(modalWithToggleEl).not.toBeInTheDocument();
   });
 });
