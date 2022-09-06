@@ -12,6 +12,7 @@ export enum PAGES {
   FORBIDDEN = '/forbidden',
   TAG_EXPLORER = '/explore',
   TRACING = '/tracing',
+  TRACING_SINGLE_VIEW = '/tracing-single',
 }
 
 export default {

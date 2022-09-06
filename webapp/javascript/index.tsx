@@ -31,6 +31,8 @@ import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
 import TracingSingleView from './pages/TracingSingleView';
+// fix naming
+import TracingSingle from './pages/tracing/TracingSingleView';
 
 function App() {
   return (
@@ -69,6 +71,13 @@ function App() {
             <Protected>
               <Continuous>
                 <TracingSingleView />
+              </Continuous>
+            </Protected>
+          </Route>
+          <Route path={PAGES.TRACING_SINGLE_VIEW}>
+            <Protected>
+              <Continuous>
+                <TracingSingle />
               </Continuous>
             </Protected>
           </Route>

@@ -59,7 +59,9 @@ export function SidebarComponent() {
     if (
       route === PAGES.CONTINOUS_SINGLE_VIEW ||
       route === PAGES.COMPARISON_VIEW ||
-      route === PAGES.ADHOC_COMPARISON
+      route === PAGES.ADHOC_COMPARISON ||
+      route === PAGES.TRACING_SINGLE_VIEW ||
+      route === PAGES.TRACING
     ) {
       return pathname === route;
     }
@@ -82,6 +84,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
           PAGES.TRACING,
+          PAGES.TRACING_SINGLE_VIEW,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -102,7 +105,8 @@ export function SidebarComponent() {
     isRouteActive(PAGES.ADHOC_SINGLE) ||
     isRouteActive(PAGES.ADHOC_COMPARISON) ||
     isRouteActive(PAGES.ADHOC_COMPARISON_DIFF);
-  const isTracingActive = isRouteActive(PAGES.TRACING);
+  const isTracingActive =
+    isRouteActive(PAGES.TRACING) || isRouteActive(PAGES.TRACING_SINGLE_VIEW);
   const isSettingsActive = isRouteActive(PAGES.SETTINGS);
 
   const adhoc = (
@@ -226,7 +230,6 @@ export function SidebarComponent() {
               icon={<Icon icon={faChartLine} />}
               active={isTracingActive}
               defaultOpen={isTracingActive}
-              data-testid="sidebar-continuous"
             >
               {collapsed && (
                 <SidebarHeader className={styles.collapsedHeader}>
@@ -234,14 +237,23 @@ export function SidebarComponent() {
                 </SidebarHeader>
               )}
               <MenuItem
-                data-testid="sidebar-continuous-single"
+                active={isRouteActive(PAGES.TRACING_SINGLE_VIEW)}
+                icon={<Icon icon={faWindowMaximize} />}
+              >
+                Single View /tracing-single
+                <NavLink
+                  activeClassName="active-route"
+                  to={{ pathname: PAGES.TRACING_SINGLE_VIEW, search }}
+                  exact
+                />
+              </MenuItem>
+              <MenuItem
                 active={isRouteActive(PAGES.TRACING)}
                 icon={<Icon icon={faWindowMaximize} />}
               >
                 Single View
                 <NavLink
                   activeClassName="active-route"
-                  data-testid="sidebar-root"
                   to={{ pathname: PAGES.TRACING, search }}
                   exact
                 />
