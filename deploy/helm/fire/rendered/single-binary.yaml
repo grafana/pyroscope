@@ -207,6 +207,7 @@ metadata:
     app.kubernetes.io/component: "all"
 spec:
   serviceName: fire-dev-headless
+  podManagementPolicy: Parallel
   replicas: 1
   selector:
     matchLabels:

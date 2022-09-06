@@ -13,6 +13,7 @@ metadata:
 spec:
 {{- if eq $values.kind "StatefulSet" }}
   serviceName: {{ $values.name }}-headless
+  podManagementPolicy: Parallel
 {{- end }}
 {{- if hasKey $values "replicaCount" }}
   replicas: {{ $values.replicaCount }}
