@@ -1,8 +1,8 @@
 import { useState, useEffect, RefObject } from 'react';
 import Color from 'color';
 
-import { getExemplars, HeatmapType } from '../../services/exemplars';
-import { heatmapMockData } from '../../services/exemplarsTestData';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import { fetchHeatmapSingleView } from '@webapp/redux/reducers/tracing';
 
 export const SELECTED_AREA_BACKGROUND = Color.rgb(255, 255, 0)
   .alpha(0.5)
@@ -32,7 +32,6 @@ interface UseHeatmapSelection {
   hasSelectedArea: boolean;
   selectedAreaToHeatmapRatio: number;
   resetSelection: () => void;
-  heatmapData: HeatmapType;
 }
 
 export const useHeatmapSelection = ({
@@ -40,27 +39,39 @@ export const useHeatmapSelection = ({
   heatmapW,
   heatmapH,
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
+  const dispatch = useAppDispatch();
+  const {
+    heatmapSingleView: { heatmap: heatmapData },
+  } = useAppSelector((state) => state.tracing);
+
   const [hasSelectedArea, setHasSelectedArea] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
-  const [heatmapData, setHeatmapData] = useState<HeatmapType>(
-    {} as HeatmapType
-  );
+
+  const { from, until, query } = useAppSelector((state) => state.continuous);
 
   const getSelectedPointsInfo = () => {
     // implement
   };
 
+  // to fetch initial heatmap data
   useEffect(() => {
-    const fetchHeatmapData = async () => {
-      const {
-        value: { heatmap },
-        // api request
-      } = await getExemplars({ query: 'app{}' });
-      setHeatmapData(heatmap);
-    };
-    fetchHeatmapData();
-  }, []);
+    if (from && until && query) {
+      const fetchData = dispatch(
+        fetchHeatmapSingleView({
+          query,
+          from,
+          until,
+          minValue: 0,
+          maxValue: 1000000000,
+          heatmapTimeBuckets: 128,
+          heatmapValueBuckets: 32,
+        })
+      );
+      return () => fetchData.abort('cancel');
+    }
+    return undefined;
+  }, [from, until, query]);
 
   const resetSelection = () => {
     setHasSelectedArea(false);
@@ -199,7 +210,6 @@ export const useHeatmapSelection = ({
     selectedAreaToHeatmapRatio,
     hasSelectedArea,
     resetSelection,
-    heatmapData: { ...heatmapMockData, ...heatmapData },
   };
 };
 

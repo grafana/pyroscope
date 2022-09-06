@@ -70,6 +70,7 @@ interface mergeWithQueryIDProps {
   maxNodes: string | number;
 }
 
+// z.infer<typeof MergeMetadataSchema> ?
 interface MergeMetadata {
   appName: string;
   startTime: string;
@@ -124,6 +125,68 @@ export async function mergeWithQueryID(
   }
 
   return Result.err(parsed.error);
+}
+
+const HeatmapSchema = z.object({
+  startTime: z.number(),
+  endTime: z.number(),
+  minValue: z.number(),
+  maxValue: z.number(),
+  minDepth: z.number(),
+  maxDepth: z.number(),
+  timeBuckets: z.number(),
+  valueBuckets: z.number(),
+  values: z.array(z.array(z.number())),
+});
+
+export interface getExemplarsProps {
+  query: string;
+  from: string;
+  until: string;
+  minValue: number;
+  maxValue: number;
+  heatmapTimeBuckets: number;
+  heatmapValueBuckets: number;
+  maxNodes?: string;
+}
+
+export type Heatmap = z.infer<typeof HeatmapSchema>;
+export interface ExemplarsOutput {
+  heatmap: Heatmap;
+}
+
+export async function getExemplars(
+  props: getExemplarsProps,
+  controller?: {
+    signal?: AbortSignal;
+  }
+): Promise<Result<ExemplarsOutput, RequestError | ZodError>> {
+  const queryString = Object.entries(props).reduce(
+    (acc, [key, value]) => acc + (acc ? `&${key}=${value}` : `${key}=${value}`),
+    ''
+  );
+  const response = await request(`/api/exemplars:query?${queryString}`, {
+    signal: controller?.signal,
+  });
+
+  if (response.isOk) {
+    const parsed = FlamebearerProfileSchema.merge(
+      z.object({ timeline: TimelineSchema })
+    )
+      .merge(z.object({ heatmap: HeatmapSchema }))
+      .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+      .safeParse(response.value);
+
+    if (parsed.success) {
+      return Result.ok({
+        heatmap: parsed.data.heatmap,
+      });
+    }
+
+    return Result.err<ExemplarsOutput, RequestError>(response.error);
+  }
+
+  return Result.err<ExemplarsOutput, RequestError>(response.error);
 }
 
 export type RenderDiffResponse = z.infer<typeof FlamebearerProfileSchema>;

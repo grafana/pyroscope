@@ -3,6 +3,7 @@ import useResizeObserver from '@react-hook/resize-observer';
 import Color from 'color';
 import cl from 'classnames';
 
+import { useAppSelector } from '@webapp/redux/hooks';
 import {
   useHeatmapSelection,
   SELECTED_AREA_BACKGROUND,
@@ -22,13 +23,13 @@ export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
+  const { heatmapSingleView } = useAppSelector((state) => state.tracing);
 
   const {
     selectedCoordinates,
     selectedAreaToHeatmapRatio,
     hasSelectedArea,
     resetSelection,
-    heatmapData,
   } = useHeatmapSelection({
     canvasRef,
     heatmapW,
@@ -45,7 +46,7 @@ export function Heatmap() {
     values,
     maxValue,
     minValue,
-  } = heatmapData;
+  } = heatmapSingleView.heatmap;
 
   useEffect(() => {
     if (heatmapRef.current) {
@@ -106,7 +107,7 @@ export function Heatmap() {
           ))}
         </g>
       )),
-    [heatmapW, minDepth, maxDepth]
+    [heatmapW, timeBuckets, valueBuckets, values]
   );
 
   return (
@@ -212,11 +213,11 @@ function YAxis({ maxValue, minValue }: { maxValue: number; minValue: number }) {
       className={styles.yAxis}
       style={{ height: HEATMAP_HEIGHT }}
     >
-      {ticks.map((tick) => (
+      {ticks.map((tick, index) => (
         <div
           role="textbox"
           className={cl(styles.tick, styles.yTick)}
-          key={tick}
+          key={tick + index}
         >
           {tick}
         </div>
@@ -230,8 +231,8 @@ function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
 
   return (
     <div className={styles.xAxis} data-testid="x-axis">
-      {ticks.map((tick) => (
-        <div role="textbox" className={styles.tick} key={tick}>
+      {ticks.map((tick, index) => (
+        <div role="textbox" className={styles.tick} key={tick + index}>
           {tick}
         </div>
       ))}

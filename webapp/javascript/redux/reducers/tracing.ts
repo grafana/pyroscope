@@ -1,6 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Profile } from '@pyroscope/models/src';
-import { MergeOutput, mergeWithQueryID } from '@webapp/services/render';
+import {
+  MergeOutput,
+  mergeWithQueryID,
+  ExemplarsOutput,
+  getExemplars,
+  getExemplarsProps,
+  Heatmap,
+} from '@webapp/services/render';
 import type { RootState } from '@webapp/redux/store';
 import { RequestAbortedError } from '@webapp/services/base';
 import { addNotification } from './notifications';
@@ -28,20 +35,42 @@ type SingleView =
     };
 // TODO
 
+const DEFAULT_HEATMAP = {
+  startTime: 0,
+  endTime: 0,
+  minValue: 0,
+  maxValue: 0,
+  minDepth: 0,
+  maxDepth: 0,
+  timeBuckets: 0,
+  valueBuckets: 0,
+  values: [[]],
+};
+type HeatmapSingleView =
+  | { type: 'pristine'; heatmap: Heatmap }
+  | { type: 'loading'; heatmap: Heatmap }
+  | { type: 'loaded'; heatmap: Heatmap }
+  | { type: 'reloading'; heatmap: Heatmap };
 interface TracingState {
   queryID: string;
   maxNodes: string;
   refreshToken?: string;
 
+  heatmapSingleView: HeatmapSingleView;
   singleView: SingleView;
 }
 
 let singleViewAbortController: AbortController | undefined;
+let heatmapSingleViewAbortController: AbortController | undefined;
 
 const initialState: TracingState = {
   queryID: '',
   maxNodes: '1024',
 
+  heatmapSingleView: {
+    type: 'pristine',
+    heatmap: DEFAULT_HEATMAP,
+  },
   singleView: { type: 'pristine' },
 };
 
@@ -59,6 +88,42 @@ export const fetchSingleView = createAsyncThunk<
 
   const state = thunkAPI.getState();
   const res = await mergeWithQueryID(state.tracing, singleViewAbortController);
+
+  if (res.isOk) {
+    return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load single view data',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchHeatmapSingleView = createAsyncThunk<
+  ExemplarsOutput,
+  getExemplarsProps,
+  { state: { tracing: TracingState } }
+>('tracing/heatmapSingleView', async (getExemplarsProps, thunkAPI) => {
+  if (heatmapSingleViewAbortController) {
+    heatmapSingleViewAbortController.abort();
+  }
+
+  heatmapSingleViewAbortController = new AbortController();
+  thunkAPI.signal = heatmapSingleViewAbortController.signal;
+
+  const res = await getExemplars(
+    getExemplarsProps,
+    heatmapSingleViewAbortController
+  );
 
   if (res.isOk) {
     return Promise.resolve(res.value);
@@ -147,6 +212,64 @@ export const tracingSlice = createSlice({
           // it failed to load for the first time, so far all effects it's pristine
           state.singleView = {
             type: 'pristine',
+          };
+        }
+      }
+    });
+
+    builder.addCase(fetchHeatmapSingleView.pending, (state) => {
+      switch (state.heatmapSingleView.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'reloading':
+        case 'loaded': {
+          state.heatmapSingleView = {
+            ...state.heatmapSingleView,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.singleView = { type: 'loading' };
+        }
+      }
+    });
+
+    builder.addCase(fetchHeatmapSingleView.fulfilled, (state, action) => {
+      state.heatmapSingleView = {
+        ...action.payload,
+        heatmap: action.payload.heatmap,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchHeatmapSingleView.rejected, (state, action) => {
+      switch (state.heatmapSingleView.type) {
+        // if previous state is loaded, let's continue displaying data
+        case 'reloading': {
+          let type: HeatmapSingleView['type'] = 'reloading';
+          if (action.meta.rejectedWithValue) {
+            type = (
+              action?.payload as {
+                rejectedWithValue: HeatmapSingleView['type'];
+              }
+            )?.rejectedWithValue;
+          } else if (action.error.message === 'cancel') {
+            type = 'loaded';
+          }
+          state.heatmapSingleView = {
+            ...state.heatmapSingleView,
+            type,
+          };
+          break;
+        }
+
+        default: {
+          // it failed to load for the first time, so far all effects it's pristine
+          state.heatmapSingleView = {
+            type: 'pristine',
+            heatmap: DEFAULT_HEATMAP,
           };
         }
       }
