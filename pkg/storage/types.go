@@ -27,6 +27,10 @@ type ExemplarsMerger interface {
 	MergeExemplars(context.Context, MergeExemplarsInput) (MergeExemplarsOutput, error)
 }
 
+type ExemplarsQuerier interface {
+	QueryExemplars(context.Context, QueryExemplarsInput) (QueryExemplarsOutput, error)
+}
+
 type GetLabelKeysByQueryInput struct {
 	StartTime time.Time
 	EndTime   time.Time

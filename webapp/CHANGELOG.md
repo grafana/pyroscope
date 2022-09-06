@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.36.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.1...@pyroscope/webapp@1.36.2) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.36.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.0...@pyroscope/webapp@1.36.1) (2022-09-05)
+
+
+### Bug Fixes
+
+* **flamegraph:** table, buttons colors for light mode ([#1458](https://github.com/pyroscope-io/pyroscope/issues/1458)) ([37afd3b](https://github.com/pyroscope-io/pyroscope/commit/37afd3bbdad6b9165143b92dd2312d6b125140f4))
+
+
+
+
+
+# [1.36.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.3...@pyroscope/webapp@1.36.0) (2022-09-02)
+
+
+### Features
+
+* **webapp:** display timer for notifications ([#1457](https://github.com/pyroscope-io/pyroscope/issues/1457)) ([b158f38](https://github.com/pyroscope-io/pyroscope/commit/b158f38592b0b1df9c9c1ff025577175075b897e))
+
+
+
+
+
 ## [1.35.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.2...@pyroscope/webapp@1.35.3) (2022-08-31)
 
 **Note:** Version bump only for package @pyroscope/webapp

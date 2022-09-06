@@ -259,7 +259,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.indexHandler()))
 
-	routes := []route{}
+	var routes []route
+	// TODO(kolesnikovae): Consider implementing a middleware.
 	if ctrl.config.RemoteRead.Enabled {
 		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
 		if err != nil {
@@ -268,20 +269,24 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			routes = append(routes, []route{
 				{"/render", h},
 				{"/render-diff", h},
-				{"/merge", h},
 				{"/labels", h},
 				{"/label-values", h},
 				{"/export", h},
+				{"/merge", h},
+				{"/api/exemplars:merge", h},
+				{"/api/exemplars:query", h},
 			}...)
 		}
 	} else {
 		routes = append(routes, []route{
 			{"/render", ctrl.renderHandler()},
 			{"/render-diff", ctrl.renderDiffHandler()},
-			{"/merge", ctrl.mergeHandler()},
 			{"/labels", ctrl.labelsHandler()},
 			{"/label-values", ctrl.labelValuesHandler()},
 			{"/export", ctrl.exportHandler()},
+			{"/merge", ctrl.exemplarsHandler().MergeExemplars},
+			{"/api/exemplars:merge", ctrl.exemplarsHandler().MergeExemplars},
+			{"/api/exemplars:query", ctrl.exemplarsHandler().QueryExemplars},
 		}...)
 	}
 
@@ -294,6 +299,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
 
+	// FIXME: Honor ctrl.config.RemoteRead.Enabled.
 	appsRouter := apiRouter.PathPrefix("/").Subrouter()
 	appsRouter.Use(
 		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
