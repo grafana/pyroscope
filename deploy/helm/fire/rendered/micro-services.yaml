@@ -490,6 +490,7 @@ metadata:
     app.kubernetes.io/component: "ingester"
 spec:
   serviceName: fire-dev-ingester-headless
+  podManagementPolicy: Parallel
   replicas: 3
   selector:
     matchLabels:
