@@ -1,7 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { format } from 'date-fns';
-import { getUTCdate } from '@webapp/util/formatDate';
+import getFormatLabel from './getFormatLabel';
 
 (function ($) {
   const options = {}; // no options
@@ -24,51 +23,28 @@ import { getUTCdate } from '@webapp/util/formatDate';
       width: 0,
     };
 
-    function getFormatLabel(date) {
-      // Format labels in accordance with xaxis tick size
+    const onPlotHover = (target, position) => {
       const { xaxis } = plot.getAxes();
 
-      if (!xaxis) {
-        return '';
-      }
-
-      try {
-        const d = getUTCdate(
-          new Date(date),
-          plotOptions.xaxis.timezone === 'utc'
-            ? 0
-            : new Date().getTimezoneOffset()
-        );
-
-        const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
-
-        if (hours < 12) {
-          return format(d, 'HH:mm:ss');
-        }
-        if (hours > 12 && hours < 24) {
-          return format(d, 'HH:mm');
-        }
-        if (hours > 24) {
-          return format(d, 'MMM do HH:mm');
-        }
-        return format(d, 'MMM do HH:mm');
-      } catch (e) {
-        return '???';
-      }
-    }
-
-    const onPlotHover = (target, position) => {
       this.tooltipY = target.currentTarget.getBoundingClientRect().bottom - 28;
       if (!position.x) return;
       if (!this.selecting) {
         this.selectingFrom = {
-          label: getFormatLabel(position.x),
+          label: getFormatLabel({
+            date: position.x,
+            xaxis,
+            timezone: plotOptions.xaxis.timezone,
+          }),
           x: position.x,
           pageX: position.pageX,
         };
       } else {
         this.selectingTo = {
-          label: getFormatLabel(position.x),
+          label: getFormatLabel({
+            date: position.x,
+            xaxis,
+            timezone: plotOptions.xaxis.timezone,
+          }),
           x: position.x,
           pageX: position.pageX,
         };
@@ -77,6 +53,8 @@ import { getUTCdate } from '@webapp/util/formatDate';
     };
 
     const updateTooltips = () => {
+      const { xaxis } = plot.getAxes();
+
       if (!this.selecting) {
         // If we arn't in selection mode
         this.$tooltip.html(this.selectingFrom.label).show();
@@ -88,12 +66,16 @@ import { getUTCdate } from '@webapp/util/formatDate';
       } else {
         // Render Intersection
         this.$tooltip.html(
-          `${getFormatLabel(
-            Math.min(this.selectingFrom.x, this.selectingTo.x)
-          )} - 
-             ${getFormatLabel(
-               Math.max(this.selectingFrom.x, this.selectingTo.x)
-             )}`
+          `${getFormatLabel({
+            date: Math.min(this.selectingFrom.x, this.selectingTo.x),
+            xaxis,
+            timezone: plotOptions.xaxis.timezone,
+          })} - 
+             ${getFormatLabel({
+               date: Math.max(this.selectingFrom.x, this.selectingTo.x),
+               xaxis,
+               timezone: plotOptions.xaxis.timezone,
+             })}`
         );
 
         // Stick to left selection
@@ -180,6 +162,12 @@ import { getUTCdate } from '@webapp/util/formatDate';
     };
 
     function bindEvents(plot, eventHolder) {
+      const o = plot.getOptions();
+
+      if (o.onHoverDisplayTooltip) {
+        return;
+      }
+
       plot.getPlaceholder().bind('plothover', onPlotHover);
       plot.getPlaceholder().bind('plotselected', onSelected);
 
@@ -192,6 +180,12 @@ import { getUTCdate } from '@webapp/util/formatDate';
     }
 
     function shutdown(plot, eventHolder) {
+      const o = plot.getOptions();
+
+      if (o.onHoverDisplayTooltip) {
+        return;
+      }
+
       plot.getPlaceholder().unbind('plothover', onPlotHover);
       // plot.getPlaceholder().unbind('plotselecting', onSelecting);
       plot.getPlaceholder().unbind('plotselected', onSelected);
