@@ -247,8 +247,11 @@ const getFormatter = (format: axisFormat) => {
   switch (format) {
     case 'time':
       formatter = (v: number) => {
-        const date = new Date(v);
-        return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}:${date.getMilliseconds()}`;
+        const minutes = 0;
+        const seconds = 0;
+        const milliseconds = 0;
+        // TODO(dogfrogfog): parse nanoseconds
+        return v;
       };
       break;
     case 'items':
