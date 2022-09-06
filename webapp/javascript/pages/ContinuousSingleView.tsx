@@ -20,6 +20,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
 import ContextMenu from '@webapp/components/TimelineChart/ContextMenu';
+import { queryToAppName } from '@webapp/models/query';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -91,7 +92,7 @@ function ContinuousSingleView() {
       case 'reloading': {
         return {
           data: singleView.timeline,
-          annotations: singleView.annotations,
+          annotations: singleView.annotations.annotations,
         };
       }
 
@@ -116,7 +117,22 @@ function ContinuousSingleView() {
             id="timeline-chart-single"
             timelineA={getTimeline()}
             annotations={getTimeline().annotations}
-            ContextMenu={ContextMenu}
+            ContextMenu={(props) => {
+              const appName = queryToAppName(query);
+
+              if (appName.isNothing) {
+                return null;
+              }
+
+              return (
+                <ContextMenu
+                  appName={appName.value}
+                  x={props.x}
+                  y={props.y}
+                  timestamp={props.timestamp}
+                />
+              );
+            }}
             onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
             height="125px"
             title={

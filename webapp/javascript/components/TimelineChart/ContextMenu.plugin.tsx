@@ -12,7 +12,13 @@ type ContextType = {
   options: unknown;
   name: string;
   version: string;
-  contextMenu?: React.ReactNode;
+
+  // TODO(eh-am): move this to a plugin property
+  contextMenu?: (props: {
+    timestamp: number;
+    x: number;
+    y: number;
+  }) => React.ReactNode;
 };
 
 (function ($: JQueryStatic) {

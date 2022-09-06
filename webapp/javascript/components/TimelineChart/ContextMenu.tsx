@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import * as ReactDOM from 'react-dom';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import {
   addAnnotation,
@@ -19,10 +20,12 @@ interface ContextMenuProps {
 
   /** timestamp of the clicked item */
   timestamp: number;
+
+  appName: string;
 }
 
 function ContextMenu(props: ContextMenuProps) {
-  const { x, y, timestamp } = props;
+  const { x, y, timestamp, appName } = props;
   const [isOpen, setOpen] = useState(false);
   const dispatch = useAppDispatch();
 
@@ -60,12 +63,14 @@ function ContextMenu(props: ContextMenuProps) {
                 event.preventDefault();
 
                 const newAnnotation = {
-                  appName: 'myapp',
+                  appName,
                   content: event.target.content.value,
                   timestamp,
                 };
                 await dispatch(addAnnotation(newAnnotation));
                 await dispatch(fetchSingleView(null));
+
+                setModalOpen(false);
               }}
             >
               <InputField
@@ -87,5 +92,36 @@ function ContextMenu(props: ContextMenuProps) {
     </>
   );
 }
+
+/**
+ * this Portal adds elements outside the normal flow
+ * we use it so that a ContextMenuItem can create elements outside a ContextMenu
+ * https://stackoverflow.com/a/59154364
+ */
+export const Portal = ({
+  children,
+  className = 'root-portal',
+  el = 'div',
+}: {
+  children: React.ReactNode;
+  className?: string;
+  el?: string;
+}) => {
+  const [container] = React.useState(() => {
+    // This will be executed only on the initial render
+    // https://reactjs.org/docs/hooks-reference.html#lazy-initial-state
+    return document.createElement(el);
+  });
+
+  React.useEffect(() => {
+    container.classList.add(className);
+    document.body.appendChild(container);
+    return () => {
+      document.body.removeChild(container);
+    };
+  }, []);
+
+  return ReactDOM.createPortal(children, container);
+};
 
 export default ContextMenu;

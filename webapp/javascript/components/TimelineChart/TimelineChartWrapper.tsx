@@ -76,7 +76,11 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   annotations: Annotation[];
 
   /** ContextMenu to be used with contextmenu plugin */
-  ContextMenu: ReactNode;
+  ContextMenu: (props: {
+    x: number;
+    y: number;
+    timestamp: number;
+  }) => React.ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
