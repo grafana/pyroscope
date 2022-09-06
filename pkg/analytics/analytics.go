@@ -34,12 +34,13 @@ import (
 )
 
 var (
-	host              = "https://analytics.pyroscope.io"
-	path              = "/api/events"
-	gracePeriod       = 5 * time.Minute
-	uploadFrequency   = 24 * time.Hour
-	snapshotFrequency = 10 * time.Minute
-	multiplier        = 1
+	host                      = "https://analytics.pyroscope.io"
+	path                      = "/api/events"
+	gracePeriod               = 5 * time.Minute
+	oldMetricsUploadFrequency = 24 * time.Hour
+	metricsUploadFrequency    = 1 * time.Hour
+	snapshotFrequency         = 10 * time.Minute
+	multiplier                = 1
 )
 
 type Analytics struct {
@@ -141,15 +142,19 @@ func (s *Service) Start() {
 	}
 	s.sendReport()
 	s.sendMetrics()
-	upload := time.NewTicker(uploadFrequency / time.Duration(multiplier))
-	snapshot := time.NewTicker(snapshotFrequency)
-	defer upload.Stop()
-	defer snapshot.Stop()
+	oldMetricsTicker := time.NewTicker(oldMetricsUploadFrequency / time.Duration(multiplier))
+	metricsTicker := time.NewTicker(metricsUploadFrequency / time.Duration(multiplier))
+	snapshotTicker := time.NewTicker(snapshotFrequency)
+	defer oldMetricsTicker.Stop()
+	defer metricsTicker.Stop()
+	defer snapshotTicker.Stop()
 	for {
 		select {
-		case <-upload.C:
+		case <-oldMetricsTicker.C:
 			s.sendReport()
-		case <-snapshot.C:
+		case <-metricsTicker.C:
+			s.sendMetrics()
+		case <-snapshotTicker.C:
 			s.s.SaveAnalytics(s.getAnalytics())
 		case <-s.stop:
 			return

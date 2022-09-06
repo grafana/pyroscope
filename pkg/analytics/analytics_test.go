@@ -41,7 +41,7 @@ func (*mockStatsProvider) AppsCount() int { return 0 }
 
 var _ = Describe("analytics", func() {
 	gracePeriod = 100 * time.Millisecond
-	uploadFrequency = 200 * time.Millisecond
+	oldMetricsUploadFrequency = 200 * time.Millisecond
 	snapshotFrequency = 200 * time.Millisecond
 
 	testing.WithConfig(func(cfg **config.Config) {
