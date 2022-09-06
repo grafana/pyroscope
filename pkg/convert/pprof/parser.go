@@ -3,43 +3,46 @@ package pprof
 import (
 	"context"
 	"fmt"
-	"io"
-	"reflect"
-	"time"
-	"unsafe"
-
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"io"
+	"time"
 )
 
 type Parser struct {
-	putter        storage.Putter
-	spyName       string
-	labels        map[string]string
-	skipExemplars bool
-	sampleTypes   map[string]*tree.SampleTypeConfig
+	putter              storage.Putter
+	spyName             string
+	labels              map[string]string
+	skipExemplars       bool
+	sampleTypes         map[string]*tree.SampleTypeConfig
+	stackFrameFormatter StackFrameFormatter
 
 	cache             tree.LabelsCache
 	sampleTypesFilter func(string) bool
 }
 
 type ParserConfig struct {
-	Putter        storage.Putter
-	SpyName       string
-	Labels        map[string]string
-	SkipExemplars bool
-	SampleTypes   map[string]*tree.SampleTypeConfig
+	Putter              storage.Putter
+	SpyName             string
+	Labels              map[string]string
+	SkipExemplars       bool
+	SampleTypes         map[string]*tree.SampleTypeConfig
+	StackFrameFormatter StackFrameFormatter
 }
 
 func NewParser(config ParserConfig) *Parser {
+	if config.StackFrameFormatter == nil {
+		config.StackFrameFormatter = &UnsafeFunctionNameFormatter{}
+	}
 	return &Parser{
-		putter:        config.Putter,
-		spyName:       config.SpyName,
-		labels:        config.Labels,
-		sampleTypes:   config.SampleTypes,
-		skipExemplars: config.SkipExemplars,
+		putter:              config.Putter,
+		spyName:             config.SpyName,
+		labels:              config.Labels,
+		sampleTypes:         config.SampleTypes,
+		skipExemplars:       config.SkipExemplars,
+		stackFrameFormatter: config.StackFrameFormatter,
 
 		cache:             make(tree.LabelsCache),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
@@ -197,7 +200,8 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
 				if !ok || x.StringTable[fn.Name] == "" {
 					continue
 				}
-				stack = append(stack, unsafeStrToSlice(x.StringTable[fn.Name]))
+				sf := p.stackFrameFormatter.format(x, fn, loc.Line[j])
+				stack = append(stack, sf)
 			}
 		}
 		// Insert tree nodes.
@@ -219,10 +223,6 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
 		}
 		stack = stack[:0]
 	}
-}
-
-func unsafeStrToSlice(s string) []byte {
-	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
 }
 
 func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
