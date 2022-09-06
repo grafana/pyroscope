@@ -29,7 +29,6 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 (function ($: JQueryStatic) {
   function init(this: ContextType, plot: PlotType) {
     const exploreTooltip = injectTooltip($);
-    const selection = { active: false, from: -1, to: -1 };
 
     const params = {
       canvasX: -1,
@@ -77,21 +76,12 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       if (onHoverDisplayTooltip && exploreTooltip?.length) {
         const align = params.canvasX > plot.width() / 2 ? 'left' : 'right';
         const timezone = options.xaxis.timezone;
-        const timeLabel = selection.active
-          ? `${getFormatLabel({
-              date: selection.from,
-              xaxis,
-              timezone,
-            })} - ${getFormatLabel({
-              date: selection.to,
-              xaxis,
-              timezone,
-            })}`
-          : getFormatLabel({
-              date: params.xToTime,
-              xaxis,
-              timezone,
-            });
+
+        const timeLabel = getFormatLabel({
+          date: params.xToTime,
+          xaxis,
+          timezone,
+        });
 
         const values = data?.map(
           (
@@ -140,39 +130,16 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       }
     });
 
-    const onMouseUp = () => {
-      selection.active = false;
-    };
-
-    const onMouseDown = () => {
-      selection.active = true;
-    };
-
-    const onPlotSelecting = (
-      e: EventType,
-      selectionData: { xaxis: { from: number; to: number } }
-    ) => {
-      selection.from = selectionData?.xaxis?.from || -1;
-      selection.to = selectionData?.xaxis?.to || -1;
-    };
-
     plot.hooks.bindEvents.push((p: PlotType, eventHolder: EventHolderType) => {
       eventHolder.mousemove(onMouseMove);
       eventHolder.mouseleave(onMouseLeave);
-      eventHolder.mouseup(onMouseUp);
-      eventHolder.mousedown(onMouseDown);
       plot.getPlaceholder().bind('plothover', onPlotHover);
-      // detect plotselecting event from ./TimelineChartSelection.ts
-      plot.getPlaceholder().bind('plotselecting', onPlotSelecting);
     });
 
     plot.hooks.shutdown.push((_: PlotType, eventHolder: EventHolderType) => {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mouseleave', onMouseLeave);
-      eventHolder.unbind('mouseup', onMouseUp);
-      eventHolder.unbind('mousedown', onMouseDown);
       plot.getPlaceholder().unbind('plothover', onPlotHover);
-      plot.getPlaceholder().unbind('plotselecting', onPlotSelecting);
     });
   }
 
