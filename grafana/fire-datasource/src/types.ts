@@ -14,12 +14,13 @@ export interface ProfileTypeMessage {
   sample_unit: string;
 }
 
+export type SeriesMessage = Array<{ labels: Array<{ name: string; value: string }> }>;
+
 export const defaultQuery: Partial<Query> = {
-  labelSelector: "{}",
-}
+  labelSelector: '{}',
+};
 
 /**
  * These are options configured for each DataSource instance.
  */
-export interface MyDataSourceOptions extends DataSourceJsonData {
-}
+export interface MyDataSourceOptions extends DataSourceJsonData {}

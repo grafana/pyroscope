@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	v1 "github.com/grafana/fire/pkg/gen/common/v1"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
@@ -74,7 +75,26 @@ func (f FakeClient) LabelValues(ctx context.Context, c *connect.Request[querierv
 }
 
 func (f FakeClient) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
-	panic("implement me")
+	return &connect.Response[querierv1.SeriesResponse]{
+		Msg: &querierv1.SeriesResponse{
+			LabelsSet: []*v1.Labels{{
+				Labels: []*v1.LabelPair{
+					{
+						Name:  "__unit__",
+						Value: "cpu",
+					},
+					{
+						Name:  "instance",
+						Value: "127.0.0.1",
+					},
+					{
+						Name:  "job",
+						Value: "default",
+					},
+				},
+			}},
+		},
+	}, nil
 }
 
 func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
