@@ -12,6 +12,7 @@
   margin: 0;
   text-align: left;
   min-height: 150px;
+  max-height: 440px;
 
   li {
     &.selected {
@@ -23,6 +24,9 @@
       padding: 10px 30px;
       width: 100%;
       text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 }

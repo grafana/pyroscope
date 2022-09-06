@@ -5,6 +5,10 @@
   align-items: center;
 }
 
+.navbar button {
+  color: var(--ps-neutral-2);
+}
+
 /* Give same amount of space between all children */
 .navbar > *:not(:first-child) {
   margin-left: 5px;

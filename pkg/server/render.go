@@ -171,12 +171,12 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Enhance the flamebearer with a few additional fields the UI requires
 func (*RenderHandler) mountRenderResponse(flame flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int, annotations []model.Annotation) RenderResponse {
 	metadata := renderMetadataResponse{
-		flame.Metadata,
-		appName,
-		gi.StartTime.Unix(),
-		gi.EndTime.Unix(),
-		gi.Query.String(),
-		maxNodes,
+		FlamebearerMetadataV1: flame.Metadata,
+		AppName:               appName,
+		StartTime:             gi.StartTime.Unix(),
+		EndTime:               gi.EndTime.Unix(),
+		Query:                 gi.Query.String(),
+		MaxNodes:              maxNodes,
 	}
 
 	annotationsResp := make([]annotationsResponse, len(annotations))
@@ -187,13 +187,11 @@ func (*RenderHandler) mountRenderResponse(flame flamebearer.FlamebearerProfile, 
 		}
 	}
 
-	renderResponse := RenderResponse{
-		flame,
-		metadata,
-		annotationsResp,
+	return RenderResponse{
+		FlamebearerProfile: flame,
+		Metadata:           metadata,
+		Annotations:        annotationsResp,
 	}
-
-	return renderResponse
 }
 
 func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderParams) error {
@@ -234,23 +232,4 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 	p.format = v.Get("format")
 
 	return expectFormats(p.format)
-}
-
-func parseRenderRangeParams(r *http.Request, from, until string) (startTime, endTime time.Time, ok bool) {
-	switch r.Method {
-	case http.MethodGet:
-		fromStr, untilStr := r.URL.Query().Get(from), r.URL.Query().Get(until)
-		startTime, endTime = attime.Parse(fromStr), attime.Parse(untilStr)
-		return startTime, endTime, fromStr != "" || untilStr != ""
-	case http.MethodPost:
-		startTime, endTime = attime.Parse(from), attime.Parse(until)
-		return startTime, endTime, from != "" || until != ""
-	}
-
-	return time.Now(), time.Now(), false
-}
-
-type RenderTreeParams struct {
-	From  string `json:"from"`
-	Until string `json:"until"`
 }

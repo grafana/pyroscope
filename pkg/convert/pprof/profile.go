@@ -139,11 +139,12 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 			sampleTypes = p.SampleTypeConfig
 		}
 		p.parser = NewParser(ParserConfig{
-			SpyName:       md.SpyName,
-			Labels:        md.Key.Labels(),
-			Putter:        putter,
-			SampleTypes:   sampleTypes,
-			SkipExemplars: p.SkipExemplars,
+			SpyName:             md.SpyName,
+			Labels:              md.Key.Labels(),
+			Putter:              putter,
+			SampleTypes:         sampleTypes,
+			SkipExemplars:       p.SkipExemplars,
+			StackFrameFormatter: StackFrameFormatterForSpyName(md.SpyName),
 		})
 
 		if p.PreviousProfile != nil {
