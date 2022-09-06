@@ -97,7 +97,6 @@ const SimpleTree = {
     durationDelta: 10,
   },
 };
-```
 
 export const Flamegraph = () => {
   return (
@@ -110,7 +109,7 @@ export const Flamegraph = () => {
 };
 ```
 
-We recommend wrapping your component around a `Box` to give it some padding.
+We recommend wrapping  a `Box` around your component to give it some padding.
 ```
 <Box>
   <FlamegraphRenderer
