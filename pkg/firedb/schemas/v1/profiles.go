@@ -85,7 +85,7 @@ func (*ProfilePersister) SortingColumns() SortingColumns {
 	return parquet.SortingColumns(
 		parquet.Ascending("SeriesRefs", "list", "element"),
 		parquet.Ascending("TimeNanos"),
-		parquet.Ascending("ID"),
+		parquet.Ascending("Samples", "list", "element", "StacktraceIDs"),
 	)
 }
 
