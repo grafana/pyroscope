@@ -13,6 +13,7 @@ go.work.sum
 .DS_Store
 
 node_modules
+/grafana/flamegraph/coverage/
 
 # Yarn
 **/.yarn/*

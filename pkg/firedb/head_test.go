@@ -244,6 +244,17 @@ func TestHeadLabelValues(t *testing.T) {
 	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
 }
 
+func TestHeadLabelNames(t *testing.T) {
+	head, err := NewHead(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+
+	res, err := head.LabelNames(context.Background(), connect.NewRequest(&ingestv1.LabelNamesRequest{}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "job", "namespace"}, res.Msg.Names)
+}
+
 func TestHeadSeries(t *testing.T) {
 	head, err := NewHead(t.TempDir())
 	require.NoError(t, err)
@@ -280,7 +291,7 @@ func TestHeadProfileTypes(t *testing.T) {
 	}, res.Msg.ProfileTypes)
 }
 
-func mustParseProfileSelector(t *testing.T, selector string) *commonv1.ProfileType {
+func mustParseProfileSelector(t testing.TB, selector string) *commonv1.ProfileType {
 	ps, err := firemodel.ParseProfileTypeSelector(selector)
 	require.NoError(t, err)
 	return ps

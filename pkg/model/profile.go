@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gogo/status"
+	"github.com/prometheus/prometheus/model/labels"
 	"google.golang.org/grpc/codes"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -34,4 +35,13 @@ func ParseProfileTypeSelector(id string) (*commonv1.ProfileType, error) {
 		PeriodType: periodType,
 		PeriodUnit: periodUnit,
 	}, nil
+}
+
+// SelectorFromProfileType builds a *label.Matcher from an profile type struct
+func SelectorFromProfileType(profileType *commonv1.ProfileType) *labels.Matcher {
+	return &labels.Matcher{
+		Type:  labels.MatchEqual,
+		Name:  LabelNameProfileType,
+		Value: profileType.Name + ":" + profileType.SampleType + ":" + profileType.SampleUnit + ":" + profileType.PeriodType + ":" + profileType.PeriodUnit,
+	}
 }

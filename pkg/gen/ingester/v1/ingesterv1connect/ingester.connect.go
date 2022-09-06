@@ -30,6 +30,7 @@ const (
 type IngesterServiceClient interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
 	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
@@ -56,6 +57,11 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 		labelValues: connect_go.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/LabelValues",
+			opts...,
+		),
+		labelNames: connect_go.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
+			httpClient,
+			baseURL+"/ingester.v1.IngesterService/LabelNames",
 			opts...,
 		),
 		profileTypes: connect_go.NewClient[v11.ProfileTypesRequest, v11.ProfileTypesResponse](
@@ -85,6 +91,7 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 type ingesterServiceClient struct {
 	push           *connect_go.Client[v1.PushRequest, v1.PushResponse]
 	labelValues    *connect_go.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
+	labelNames     *connect_go.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
 	profileTypes   *connect_go.Client[v11.ProfileTypesRequest, v11.ProfileTypesResponse]
 	series         *connect_go.Client[v11.SeriesRequest, v11.SeriesResponse]
 	flush          *connect_go.Client[v11.FlushRequest, v11.FlushResponse]
@@ -99,6 +106,11 @@ func (c *ingesterServiceClient) Push(ctx context.Context, req *connect_go.Reques
 // LabelValues calls ingester.v1.IngesterService.LabelValues.
 func (c *ingesterServiceClient) LabelValues(ctx context.Context, req *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error) {
 	return c.labelValues.CallUnary(ctx, req)
+}
+
+// LabelNames calls ingester.v1.IngesterService.LabelNames.
+func (c *ingesterServiceClient) LabelNames(ctx context.Context, req *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error) {
+	return c.labelNames.CallUnary(ctx, req)
 }
 
 // ProfileTypes calls ingester.v1.IngesterService.ProfileTypes.
@@ -125,6 +137,7 @@ func (c *ingesterServiceClient) SelectProfiles(ctx context.Context, req *connect
 type IngesterServiceHandler interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
 	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
@@ -148,6 +161,11 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 	mux.Handle("/ingester.v1.IngesterService/LabelValues", connect_go.NewUnaryHandler(
 		"/ingester.v1.IngesterService/LabelValues",
 		svc.LabelValues,
+		opts...,
+	))
+	mux.Handle("/ingester.v1.IngesterService/LabelNames", connect_go.NewUnaryHandler(
+		"/ingester.v1.IngesterService/LabelNames",
+		svc.LabelNames,
 		opts...,
 	))
 	mux.Handle("/ingester.v1.IngesterService/ProfileTypes", connect_go.NewUnaryHandler(
@@ -182,6 +200,10 @@ func (UnimplementedIngesterServiceHandler) Push(context.Context, *connect_go.Req
 
 func (UnimplementedIngesterServiceHandler) LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.LabelValues is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.LabelNames is not implemented"))
 }
 
 func (UnimplementedIngesterServiceHandler) ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error) {

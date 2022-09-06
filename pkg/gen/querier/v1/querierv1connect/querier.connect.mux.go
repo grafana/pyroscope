@@ -29,6 +29,11 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.LabelValues,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/LabelNames", connect_go.NewUnaryHandler(
+		"/querier.v1.QuerierService/LabelNames",
+		svc.LabelNames,
+		opts...,
+	))
 	mux.Handle("/querier.v1.QuerierService/Series", connect_go.NewUnaryHandler(
 		"/querier.v1.QuerierService/Series",
 		svc.Series,
@@ -37,6 +42,11 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 	mux.Handle("/querier.v1.QuerierService/SelectMergeStacktraces", connect_go.NewUnaryHandler(
 		"/querier.v1.QuerierService/SelectMergeStacktraces",
 		svc.SelectMergeStacktraces,
+		opts...,
+	))
+	mux.Handle("/querier.v1.QuerierService/SelectSeries", connect_go.NewUnaryHandler(
+		"/querier.v1.QuerierService/SelectSeries",
+		svc.SelectSeries,
 		opts...,
 	))
 }

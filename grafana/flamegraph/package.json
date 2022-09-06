@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "build": "grafana-toolkit plugin:build",
-    "test": "grafana-toolkit plugin:test",
+    "test": "grafana-toolkit plugin:test --watch",
     "dev": "grafana-toolkit plugin:dev",
     "watch": "grafana-toolkit plugin:dev --watch",
     "sign": "grafana-toolkit plugin:sign",
@@ -13,21 +13,28 @@
   "author": "Andrej Ocenas",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@grafana/data": "latest",
-    "@grafana/runtime": "latest",
-    "@grafana/toolkit": "latest",
+    "@grafana/runtime": "9.1.0",
+    "@grafana/toolkit": "9.1.0",
+    "@testing-library/dom": "8.13.0",
+    "@testing-library/jest-dom": "5.16.4",
+    "@testing-library/react": "12.1.4",
+    "@testing-library/user-event": "14.2.0",
     "@types/lodash": "4.14.181",
+    "jest-canvas-mock": "2.4.0",
     "prettier": "2.6.0",
-    "ts-node": "9.1.1"
+    "ts-node": "9.1.1",
+    "typescript": "^4.7.4"
   },
   "engines": {
     "node": ">=14"
   },
   "dependencies": {
-    "react": "17.0.2"
+    "@emotion/css": "^11.10.0",
+    "@grafana/data": "9.1.0",
+    "@grafana/ui": "9.1.0",
+    "react": "17.0.2",
+    "react-dom": "17.0.2",
+    "react-use": "^17.4.0"
   },
-  "packageManager": "yarn@3.2.2",
-  "resolutions": {
-    "@grafana/data": "portal:/home/andrej/go/src/github.com/grafana/grafana/packages/grafana-data"
-  }
+  "packageManager": "yarn@3.2.2"
 }

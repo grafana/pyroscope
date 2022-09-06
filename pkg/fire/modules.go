@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/pkg/errors"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -31,6 +32,7 @@ import (
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/fire/pkg/ingester"
+	objstoreclient "github.com/grafana/fire/pkg/objstore/client"
 	"github.com/grafana/fire/pkg/openapiv2"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/util"
@@ -48,6 +50,7 @@ const (
 	Querier      string = "querier"
 	GRPCGateway  string = "grpc-gateway"
 	FireDB       string = "firedb"
+	Storage      string = "storage"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
@@ -164,10 +167,27 @@ func (f *Fire) initFireDB() (_ services.Service, err error) {
 	return f.fireDB, nil
 }
 
+func (f *Fire) initStorage() (_ services.Service, err error) {
+	if cfg := f.Cfg.Storage.BucketConfig; len(cfg) > 0 {
+		b, err := objstoreclient.NewBucket(
+			f.logger,
+			[]byte(cfg),
+			f.reg,
+			"storage",
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to initialise bucket")
+		}
+		f.storageBucket = b
+	}
+
+	return nil, nil
+}
+
 func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.fireDB)
+	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.fireDB, f.storageBucket)
 	if err != nil {
 		return nil, err
 	}

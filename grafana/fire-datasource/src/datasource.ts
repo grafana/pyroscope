@@ -15,4 +15,8 @@ export class FireDataSource extends DataSourceWithBackend<Query, MyDataSourceOpt
     // For now, we send empty matcher to get all the series
     return await super.getResource('series', { matchers: ['{}'] });
   }
+
+  async getLabelNames(): Promise<string[]> {
+    return await super.getResource("labelNames");
+  }
 }

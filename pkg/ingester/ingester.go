@@ -6,8 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"sync"
+	"time"
 
-	"github.com/apache/arrow/go/v8/arrow/memory"
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -15,13 +16,15 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/klauspost/compress/gzip"
-	"github.com/polarsignals/frostdb/query"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/fire/pkg/firedb"
+	"github.com/grafana/fire/pkg/firedb/block"
+	"github.com/grafana/fire/pkg/firedb/shipper"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	fireobjstore "github.com/grafana/fire/pkg/objstore"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -47,7 +50,9 @@ type Ingester struct {
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
 	fireDB            *firedb.FireDB
-	engine            *query.LocalEngine
+
+	shipper     *shipper.Shipper
+	shipperLock sync.Mutex
 }
 
 type ingesterFlusherCompat struct {
@@ -61,15 +66,23 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer, firedb *firedb.FireDB) (*Ingester, error) {
+func New(cfg Config, logger log.Logger, reg prometheus.Registerer, firedb *firedb.FireDB, storageBucket fireobjstore.Bucket) (*Ingester, error) {
 	i := &Ingester{
 		cfg:    cfg,
 		logger: logger,
 		fireDB: firedb,
-		engine: query.NewEngine(
-			memory.DefaultAllocator,
-			nil,
-		),
+	}
+
+	if storageBucket != nil {
+		i.shipper = shipper.New(
+			logger,
+			reg,
+			firedb,
+			fireobjstore.BucketWithPrefix(storageBucket, "firedb"),
+			block.IngesterSource,
+			false,
+			false,
+		)
 	}
 
 	var err error
@@ -105,16 +118,41 @@ func (i *Ingester) starting(ctx context.Context) error {
 	return nil
 }
 
-func (i *Ingester) running(ctx context.Context) error {
-	var serviceError error
-	select {
-	// wait until service is asked to stop
-	case <-ctx.Done():
-	// stop
-	case err := <-i.lifecyclerWatcher.Chan():
-		serviceError = fmt.Errorf("lifecycler failed: %w", err)
+func (i *Ingester) runShipper(ctx context.Context) {
+	i.shipperLock.Lock()
+	defer i.shipperLock.Unlock()
+	if i.shipper == nil {
+		return
 	}
-	return serviceError
+	uploaded, err := i.shipper.Sync(ctx)
+	if err != nil {
+		level.Error(i.logger).Log("msg", "shipper run failed", "err", err)
+	} else {
+		level.Info(i.logger).Log("msg", "shipper finshed", "uploaded_blocks", uploaded)
+	}
+}
+
+func (i *Ingester) running(ctx context.Context) error {
+	// run shipper periodically and at start-up
+	shipperTicker := time.NewTicker(5 * time.Minute)
+	defer shipperTicker.Stop()
+	go func() {
+		i.runShipper(ctx)
+	}()
+
+	for {
+		select {
+
+		case <-ctx.Done(): // wait until service is asked to stop
+			return nil
+
+		case err := <-i.lifecyclerWatcher.Chan(): // handle lifecycler errors
+			return fmt.Errorf("lifecycler failed: %w", err)
+
+		case <-shipperTicker.C: // run shipper loop
+			i.runShipper(ctx)
+		}
+	}
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {

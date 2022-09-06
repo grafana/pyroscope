@@ -1,6 +1,7 @@
 {{- $global := . }}
 {{- range $component, $cfg := (fromYaml (include "fire.components" .)) }}
 {{- with $global }}
+{{-  $values := mustMergeOverwrite (deepCopy .Values.fire ) ($cfg | default dict)}}
 ---
 apiVersion: apps/v1
 kind: {{ $cfg.kind }}
@@ -10,11 +11,11 @@ metadata:
     {{- include "fire.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-{{- if eq $cfg.kind "StatefulSet" }}
-  serviceName: {{ $cfg.name }}-headless
+{{- if eq $values.kind "StatefulSet" }}
+  serviceName: {{ $values.name }}-headless
 {{- end }}
-{{- if hasKey $cfg "replicaCount" }}
-  replicas: {{ $cfg.replicaCount }}
+{{- if hasKey $values "replicaCount" }}
+  replicas: {{ $values.replicaCount }}
 {{- end }}
   selector:
     matchLabels:
@@ -24,7 +25,7 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- with .Values.fire.podAnnotations }}
+        {{- with $values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
@@ -32,34 +33,31 @@ spec:
         app.kubernetes.io/component: {{ $component | quote }}
         name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
     spec:
-      {{- with .Values.fire.imagePullSecrets }}
+      {{- with $values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "fire.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.fire.podSecurityContext | nindent 8 }}
+        {{- toYaml $values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
-            {{- toYaml .Values.fire.securityContext | nindent 12 }}
-          image: "{{ .Values.fire.image.repository }}:{{ .Values.fire.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.fire.image.pullPolicy }}
+            {{- toYaml $values.securityContext | nindent 12 }}
+          image: "{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $values.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "fire.fullname" .}}"
             - "-memberlist.join={{ include "fire.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local."
           {{- if eq $component "agent" }}
-            - "-client.url=http://{{ include "fire.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.fire.service.port }}"
+            - "-client.url=http://{{ include "fire.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
           {{- end }}
             - "-config.file=/etc/fire/config.yaml"
-          {{- range $key, $value := .Values.fire.extraArgs }}
+          {{- range $key, $value := $values.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
-          {{- range $key, $value := $cfg.extraArgs }}
-            - "-{{ $key }}={{ $value }}"
-          {{- end }}
-          {{- with .Values.fire.extraEnvVars }}
+          {{- with $values.extraEnvVars }}
           env:
            {{- range $key, $value := . }}
             - name: {{ $key }}
@@ -67,41 +65,47 @@ spec:
            {{- end }}
           {{- end }}
           ports:
-            - name: {{ .Values.fire.service.port_name }}
-              containerPort: {{ .Values.fire.service.port }}
+            - name: {{ $values.service.port_name }}
+              containerPort: {{ $values.service.port }}
               protocol: TCP
-            - name: {{ .Values.fire.memberlist.port_name }}
-              containerPort: {{ .Values.fire.memberlist.port }}
+            - name: {{ $values.memberlist.port_name }}
+              containerPort: {{ $values.memberlist.port }}
               protocol: TCP
           readinessProbe:
             httpGet:
               path: /ready
-              port: {{ .Values.fire.service.port_name }}
+              port: {{ $values.service.port_name }}
           volumeMounts:
             - name: config
               mountPath: /etc/fire/config.yaml
               subPath: config.yaml
             - name: data
               mountPath: /data
+            {{- with $values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
-            {{- toYaml .Values.fire.resources | nindent 12 }}
-      {{- with .Values.fire.nodeSelector }}
+            {{- toYaml $values.resources | nindent 12 }}
+      {{- with $values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.fire.affinity }}
+      {{- with $values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.fire.tolerations }}
+      {{- with $values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+      {{- with $values.extraVolumes }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
         - name: config
           configMap:
             name: {{ include "fire.fullname" . }}-config
-  {{- $persistence := mustMergeOverwrite (deepCopy .Values.fire.persistence ) ($cfg.persistence | default dict) }}
+  {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
         - name: data
           emptyDir: {}

@@ -35,6 +35,7 @@ import (
 	"github.com/grafana/fire/pkg/firedb"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester"
+	"github.com/grafana/fire/pkg/objstore"
 	"github.com/grafana/fire/pkg/querier"
 	"github.com/grafana/fire/pkg/tracing"
 	"github.com/grafana/fire/pkg/util"
@@ -51,8 +52,15 @@ type Config struct {
 	FireDB       firedb.Config          `yaml:"firedb,omitempty"`
 	Tracing      tracing.Config         `yaml:"tracing"`
 
+	Storage StorageConfig `yaml:"storage"`
+
 	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
 	ConfigFile  string
+}
+
+type StorageConfig struct {
+	// TODO: This is probably to simple and will need needs replacing
+	BucketConfig string `yaml:"bucketConfig,omitempty"`
 }
 
 // RegisterFlags registers flag.
@@ -149,6 +157,8 @@ type Fire struct {
 	pusherClient       pushv1connect.PusherServiceClient
 	fireDB             *firedb.FireDB
 
+	storageBucket objstore.Bucket
+
 	grpcGatewayMux *grpcgw.ServeMux
 }
 
@@ -190,6 +200,7 @@ func New(cfg Config) (*Fire, error) {
 func (f *Fire) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
+	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
@@ -207,7 +218,7 @@ func (f *Fire) setupModuleManager() error {
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
 		Agent:        {Server, GRPCGateway},
-		Ingester:     {Server, MemberlistKV, FireDB},
+		Ingester:     {Server, MemberlistKV, FireDB, Storage},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
 		GRPCGateway:  {Server},
