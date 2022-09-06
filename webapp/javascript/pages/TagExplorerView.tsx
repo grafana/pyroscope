@@ -227,17 +227,13 @@ function TagExplorerView() {
                 }
                 height="125px"
                 format="lines"
-                onHoverDisplayTooltip={(data) =>
-                  (
-                    <ExploreTooltip
-                      pageX={data.pageX}
-                      pageY={data.pageY}
-                      align={data.align}
-                      values={data.values}
-                      timeLabel={data.timeLabel}
-                    />
-                  ) as ShamefulAny
-                }
+                onHoverDisplayTooltip={(data) => (
+                  <ExploreTooltip
+                    values={data.values}
+                    timeLabel={data.timeLabel}
+                    profile={activeTagProfile}
+                  />
+                )}
               />
             )}
           </div>

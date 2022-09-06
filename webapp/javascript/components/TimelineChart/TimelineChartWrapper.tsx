@@ -1,13 +1,15 @@
 /* eslint-disable react/no-access-state-in-setstate */
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
-import React, { ReactNode, FC } from 'react';
+import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import { formatAsOBject } from '@webapp/util/formatDate';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
+import type { ITooltipWrapperProps } from './TooltipWrapper';
+import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
 
@@ -72,9 +74,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
-  onHoverDisplayTooltip?: (
-    data: ExploreTooltipProps
-  ) => FC<ExploreTooltipProps>;
+  onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -228,6 +228,27 @@ class TimelineChartWrapper extends React.Component<
     return [];
   };
 
+  setOnHoverDisplayTooltip = (
+    data: ITooltipWrapperProps & ExploreTooltipProps
+  ) => {
+    const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
+      this.props?.onHoverDisplayTooltip;
+
+    if (TooltipBody) {
+      return (
+        <TooltipWrapper
+          align={data.align}
+          pageY={data.pageY}
+          pageX={data.pageX}
+        >
+          <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+        </TooltipWrapper>
+      );
+    }
+
+    return null;
+  };
+
   render = () => {
     const { flotOptions } = this.state;
 
@@ -237,7 +258,7 @@ class TimelineChartWrapper extends React.Component<
 
       const customFlotOptions = {
         ...flotOptions,
-        onHoverDisplayTooltip: this.props?.onHoverDisplayTooltip,
+        onHoverDisplayTooltip: this.setOnHoverDisplayTooltip,
         xaxis: {
           ...flotOptions.xaxis,
           autoscaleMargin: null,
@@ -293,6 +314,7 @@ class TimelineChartWrapper extends React.Component<
 
     const customFlotOptions = {
       ...flotOptions,
+      onHoverDisplayTooltip: this.setOnHoverDisplayTooltip,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
