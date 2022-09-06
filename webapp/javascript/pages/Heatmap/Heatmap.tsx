@@ -147,15 +147,15 @@ export function Heatmap() {
         data-testid="color-scale"
         style={{
           backgroundImage: `linear-gradient(to right, ${Color.rgb(
-            COLOR_1
-          )} , ${Color.rgb(COLOR_2)})`,
+            COLOR_2
+          )} , ${Color.rgb(COLOR_1)})`,
         }}
       >
-        <span role="textbox" style={{ color: Color.rgb(COLOR_2).toString() }}>
-          {minValue}
-        </span>
         <span role="textbox" style={{ color: Color.rgb(COLOR_1).toString() }}>
-          {maxValue}
+          {minDepth}
+        </span>
+        <span role="textbox" style={{ color: Color.rgb(COLOR_2).toString() }}>
+          {maxDepth}
         </span>
       </div>
     </div>
