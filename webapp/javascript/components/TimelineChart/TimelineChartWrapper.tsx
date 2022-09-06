@@ -252,13 +252,18 @@ class TimelineChartWrapper extends React.Component<
   render = () => {
     const { flotOptions } = this.state;
 
+    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
+      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
+          this.setOnHoverDisplayTooltip(data)
+      : null;
+
     if (this.props.mode === 'multiple') {
       const { timelineGroups, activeGroup, showTagsLegend, id, timezone } =
         this.props;
 
       const customFlotOptions = {
         ...flotOptions,
-        onHoverDisplayTooltip: this.setOnHoverDisplayTooltip,
+        onHoverDisplayTooltip,
         xaxis: {
           ...flotOptions.xaxis,
           autoscaleMargin: null,
@@ -314,7 +319,7 @@ class TimelineChartWrapper extends React.Component<
 
     const customFlotOptions = {
       ...flotOptions,
-      onHoverDisplayTooltip: this.setOnHoverDisplayTooltip,
+      onHoverDisplayTooltip,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
