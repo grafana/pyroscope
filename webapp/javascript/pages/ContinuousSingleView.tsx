@@ -19,6 +19,7 @@ import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
+import ContextMenu from '@webapp/components/TimelineChart/ContextMenu';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -115,6 +116,7 @@ function ContinuousSingleView() {
             id="timeline-chart-single"
             timelineA={getTimeline()}
             annotations={getTimeline().annotations}
+            ContextMenu={ContextMenu}
             onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
             height="125px"
             title={

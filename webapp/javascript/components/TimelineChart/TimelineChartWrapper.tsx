@@ -74,6 +74,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   selectionType: 'single' | 'double';
 
   annotations: Annotation[];
+
+  /** ContextMenu to be used with contextmenu plugin */
+  ContextMenu: ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -309,7 +312,7 @@ class TimelineChartWrapper extends React.Component<
       );
     }
 
-    const { id, timelineA, timezone, title } = this.props;
+    const { id, timelineA, timezone, title, ContextMenu } = this.props;
 
     // TODO deep copy
     let timelineB = this.props.timelineB
@@ -318,6 +321,7 @@ class TimelineChartWrapper extends React.Component<
 
     const customFlotOptions = {
       ...flotOptions,
+      ContextMenu,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
