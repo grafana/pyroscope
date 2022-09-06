@@ -44,13 +44,13 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
       params.canvasX = clamp(
         0,
-        e.pageX - offset.left - plotOffset.left,
-        plot.width()
+        plot.width(),
+        e.pageX - offset.left - plotOffset.left
       );
       params.canvasY = clamp(
         0,
-        e.pageY - offset.top - plotOffset.top,
-        plot.height()
+        plot.height(),
+        e.pageY - offset.top - plotOffset.top
       );
       params.pageX = e.pageX;
       params.pageY = e.pageY;

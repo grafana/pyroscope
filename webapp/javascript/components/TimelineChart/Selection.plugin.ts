@@ -37,7 +37,7 @@ const handleHeight = 22;
     function getCursorPositionX(e: EventType) {
       const plotOffset = plot.getPlotOffset();
       const offset = plot.getPlaceholder().offset();
-      return clamp(0, e.pageX - offset.left - plotOffset.left, plot.width());
+      return clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
     }
 
     function getPlotSelection() {
@@ -238,8 +238,8 @@ const handleHeight = 22;
       var o = plot.getOptions();
       var offset = plot.getPlaceholder().offset();
       var plotOffset = plot.getPlotOffset();
-      pos.x = clamp(0, e.pageX - offset.left - plotOffset.left, plot.width());
-      pos.y = clamp(0, e.pageY - offset.top - plotOffset.top, plot.height());
+      pos.x = clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
+      pos.y = clamp(0, plot.height(), e.pageY - offset.top - plotOffset.top);
 
       if (o.selection.mode == 'y')
         pos.x = pos == selection.first ? 0 : plot.width();
