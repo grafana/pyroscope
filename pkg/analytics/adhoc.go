@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -14,7 +15,8 @@ import (
 )
 
 var (
-	adhocURL        = "https://adhoc.analytics.pyroscope.io/api/adhoc-events"
+	adhocHost       = "https://adhoc.analytics.pyroscope.io"
+	adhocPath       = "/api/adhoc-events"
 	adhocHTTPClient *http.Client
 )
 
@@ -61,6 +63,13 @@ func AdhocReport(eventName string, wg *sync.WaitGroup) {
 		logrus.WithField("err", err).Debug("Error happened when preparing JSON")
 		return
 	}
+
+	if hostOverride := os.Getenv("PYROSCOPE_ANALYTICS_HOST"); hostOverride != "" {
+		adhocHost = hostOverride
+	}
+
+	adhocURL := adhocHost + adhocPath
+
 	resp, err := adhocHTTPClient.Post(adhocURL, "application/json", bytes.NewReader(buf))
 	if err != nil {
 		logrus.WithField("err", err).Debug("Error happened when uploading anonymized usage data")
