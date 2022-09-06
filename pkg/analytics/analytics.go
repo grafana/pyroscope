@@ -90,7 +90,6 @@ type StatsProvider interface {
 }
 
 func NewService(cfg *config.Server, s *storage.Storage, p StatsProvider) *Service {
-
 	if mOverride := os.Getenv("PYROSCOPE_ANALYTICS_MULTIPLIER"); mOverride != "" {
 		multiplier, _ = strconv.Atoi(mOverride)
 		if multiplier < 1 {
