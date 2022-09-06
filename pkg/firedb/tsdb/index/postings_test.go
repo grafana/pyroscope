@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -119,8 +120,8 @@ func BenchmarkMemPostings_ensureOrder(b *testing.B) {
 }
 
 func TestIntersect(t *testing.T) {
-	a := newListPostings(1, 2, 3)
-	b := newListPostings(2, 3, 4)
+	a := iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3})
+	b := iter.NewSliceSeekIterator([]storage.SeriesRef{2, 3, 4})
 
 	cases := []struct {
 		in []Postings
@@ -161,51 +162,51 @@ func TestIntersect(t *testing.T) {
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2, 3, 4, 5),
-				newListPostings(6, 7, 8, 9, 10),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{6, 7, 8, 9, 10}),
 			},
-			res: newListPostings(),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2, 3, 4, 5),
-				newListPostings(4, 5, 6, 7, 8),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{4, 5, 6, 7, 8}),
 			},
-			res: newListPostings(4, 5),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{4, 5}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2, 3, 4, 9, 10),
-				newListPostings(1, 4, 5, 6, 7, 8, 10, 11),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 9, 10}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 4, 5, 6, 7, 8, 10, 11}),
 			},
-			res: newListPostings(1, 4, 10),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 4, 10}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1),
-				newListPostings(0, 1),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{0, 1}),
 			},
-			res: newListPostings(1),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1}),
 			},
-			res: newListPostings(1),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1),
-				newListPostings(),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 			},
-			res: newListPostings(),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 		},
 		{
 			in: []Postings{
-				newListPostings(),
-				newListPostings(),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 			},
-			res: newListPostings(),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 		},
 	}
 
@@ -267,7 +268,7 @@ func TestMultiIntersect(t *testing.T) {
 	for _, c := range cases {
 		ps := make([]Postings, 0, len(c.p))
 		for _, postings := range c.p {
-			ps = append(ps, newListPostings(postings...))
+			ps = append(ps, iter.NewSliceSeekIterator(postings))
 		}
 
 		res, err := ExpandPostings(Intersect(ps...))
@@ -297,10 +298,10 @@ func BenchmarkIntersect(t *testing.B) {
 			d = append(d, storage.SeriesRef(i))
 		}
 
-		i1 := newListPostings(a...)
-		i2 := newListPostings(b...)
-		i3 := newListPostings(c...)
-		i4 := newListPostings(d...)
+		i1 := iter.NewSliceSeekIterator(a)
+		i2 := iter.NewSliceSeekIterator(b)
+		i3 := iter.NewSliceSeekIterator(c)
+		i4 := iter.NewSliceSeekIterator(d)
 
 		bench.ResetTimer()
 		bench.ReportAllocs()
@@ -327,10 +328,10 @@ func BenchmarkIntersect(t *testing.B) {
 			d = append(d, storage.SeriesRef(i))
 		}
 
-		i1 := newListPostings(a...)
-		i2 := newListPostings(b...)
-		i3 := newListPostings(c...)
-		i4 := newListPostings(d...)
+		i1 := iter.NewSliceSeekIterator(a)
+		i2 := iter.NewSliceSeekIterator(b)
+		i3 := iter.NewSliceSeekIterator(c)
+		i4 := iter.NewSliceSeekIterator(d)
 
 		bench.ResetTimer()
 		bench.ReportAllocs()
@@ -351,7 +352,7 @@ func BenchmarkIntersect(t *testing.B) {
 			for j := storage.SeriesRef(1); j < 100; j++ {
 				temp = append(temp, j)
 			}
-			its = append(its, newListPostings(temp...))
+			its = append(its, iter.NewSliceSeekIterator(temp))
 		}
 
 		bench.ResetTimer()
@@ -365,9 +366,9 @@ func BenchmarkIntersect(t *testing.B) {
 }
 
 func TestMultiMerge(t *testing.T) {
-	i1 := newListPostings(1, 2, 3, 4, 5, 6, 1000, 1001)
-	i2 := newListPostings(2, 4, 5, 6, 7, 8, 999, 1001)
-	i3 := newListPostings(1, 2, 5, 6, 7, 8, 1001, 1200)
+	i1 := iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5, 6, 1000, 1001})
+	i2 := iter.NewSliceSeekIterator([]storage.SeriesRef{2, 4, 5, 6, 7, 8, 999, 1001})
+	i3 := iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 5, 6, 7, 8, 1001, 1200})
 
 	res, err := ExpandPostings(Merge(i1, i2, i3))
 	require.NoError(t, err)
@@ -386,16 +387,16 @@ func TestMergedPostings(t *testing.T) {
 		},
 		{
 			in: []Postings{
-				newListPostings(),
-				newListPostings(),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 			},
 			res: EmptyPostings(),
 		},
 		{
 			in: []Postings{
-				newListPostings(),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 			},
-			res: newListPostings(),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 		},
 		{
 			in: []Postings{
@@ -408,46 +409,46 @@ func TestMergedPostings(t *testing.T) {
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2, 3, 4, 5),
-				newListPostings(6, 7, 8, 9, 10),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{6, 7, 8, 9, 10}),
 			},
-			res: newListPostings(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2, 3, 4, 5),
-				newListPostings(4, 5, 6, 7, 8),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{4, 5, 6, 7, 8}),
 			},
-			res: newListPostings(1, 2, 3, 4, 5, 6, 7, 8),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5, 6, 7, 8}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2, 3, 4, 9, 10),
-				newListPostings(1, 4, 5, 6, 7, 8, 10, 11),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 9, 10}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 4, 5, 6, 7, 8, 10, 11}),
 			},
-			res: newListPostings(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2, 3, 4, 9, 10),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 9, 10}),
 				EmptyPostings(),
-				newListPostings(1, 4, 5, 6, 7, 8, 10, 11),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 4, 5, 6, 7, 8, 10, 11}),
 			},
-			res: newListPostings(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2),
-				newListPostings(),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 			},
-			res: newListPostings(1, 2),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
 		},
 		{
 			in: []Postings{
-				newListPostings(1, 2),
+				iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
 				EmptyPostings(),
 			},
-			res: newListPostings(1, 2),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
 		},
 	}
 
@@ -521,8 +522,8 @@ func TestMergedPostingsSeek(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		a := newListPostings(c.a...)
-		b := newListPostings(c.b...)
+		a := iter.NewSliceSeekIterator(c.a)
+		b := iter.NewSliceSeekIterator(c.b)
 
 		p := Merge(a, b)
 
@@ -583,8 +584,8 @@ func TestRemovedPostings(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		a := newListPostings(c.a...)
-		b := newListPostings(c.b...)
+		a := iter.NewSliceSeekIterator(c.a)
+		b := iter.NewSliceSeekIterator(c.b)
 
 		res, err := ExpandPostings(newRemovedPostings(a, b))
 		require.NoError(t, err)
@@ -602,8 +603,8 @@ func TestRemovedNextStackoverflow(t *testing.T) {
 		remove = append(remove, i)
 	}
 
-	flp := newListPostings(full...)
-	rlp := newListPostings(remove...)
+	flp := iter.NewSliceSeekIterator(full)
+	rlp := iter.NewSliceSeekIterator(remove)
 	rp := newRemovedPostings(flp, rlp)
 	gotElem := false
 	for rp.Next() {
@@ -681,8 +682,8 @@ func TestRemovedPostingsSeek(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		a := newListPostings(c.a...)
-		b := newListPostings(c.b...)
+		a := iter.NewSliceSeekIterator(c.a)
+		b := iter.NewSliceSeekIterator(c.b)
 
 		p := newRemovedPostings(a, b)
 
@@ -777,11 +778,11 @@ func TestBigEndian(t *testing.T) {
 func TestIntersectWithMerge(t *testing.T) {
 	// One of the reproducible cases for:
 	// https://github.com/prometheus/prometheus/issues/2616
-	a := newListPostings(21, 22, 23, 24, 25, 30)
+	a := iter.NewSliceSeekIterator([]storage.SeriesRef{21, 22, 23, 24, 25, 30})
 
 	b := Merge(
-		newListPostings(10, 20, 30),
-		newListPostings(15, 26, 30),
+		iter.NewSliceSeekIterator([]storage.SeriesRef{10, 20, 30}),
+		iter.NewSliceSeekIterator([]storage.SeriesRef{15, 26, 30}),
 	)
 
 	p := Intersect(a, b)
@@ -806,39 +807,39 @@ func TestWithoutPostings(t *testing.T) {
 		},
 		{
 			base: EmptyPostings(),
-			drop: newListPostings(1, 2),
+			drop: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
 
 			res: EmptyPostings(),
 		},
 		{
-			base: newListPostings(1, 2),
+			base: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
 			drop: EmptyPostings(),
 
-			res: newListPostings(1, 2),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
 		},
 		{
-			base: newListPostings(),
-			drop: newListPostings(),
+			base: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
+			drop: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 
-			res: newListPostings(),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 		},
 		{
-			base: newListPostings(1, 2, 3),
-			drop: newListPostings(),
+			base: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3}),
+			drop: iter.NewSliceSeekIterator([]storage.SeriesRef{}),
 
-			res: newListPostings(1, 2, 3),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3}),
 		},
 		{
-			base: newListPostings(1, 2, 3),
-			drop: newListPostings(4, 5, 6),
+			base: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3}),
+			drop: iter.NewSliceSeekIterator([]storage.SeriesRef{4, 5, 6}),
 
-			res: newListPostings(1, 2, 3),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3}),
 		},
 		{
-			base: newListPostings(1, 2, 3),
-			drop: newListPostings(3, 4, 5),
+			base: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2, 3}),
+			drop: iter.NewSliceSeekIterator([]storage.SeriesRef{3, 4, 5}),
 
-			res: newListPostings(1, 2),
+			res: iter.NewSliceSeekIterator([]storage.SeriesRef{1, 2}),
 		},
 	}
 
@@ -942,7 +943,7 @@ func TestShardedPostings(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		refs = append(refs, storage.SeriesRef(i))
 	}
-	ps := newListPostings(refs...)
+	ps := iter.NewSliceSeekIterator(refs)
 	shardedPostings := NewShardedPostings(ps, shard, offsets)
 
 	for i := 0; i < 10; i++ {

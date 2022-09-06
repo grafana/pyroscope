@@ -11,6 +11,7 @@ import (
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/fire/pkg/firedb/block"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 )
 
@@ -45,7 +46,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Size() uint64 {
 }
 
 func (s *deduplicatingSlice[M, K, H, P]) Init(path string) error {
-	file, err := os.OpenFile(filepath.Join(path, s.persister.Name()+".parquet"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	file, err := os.OpenFile(filepath.Join(path, s.persister.Name()+block.ParquetSuffix), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}
@@ -53,7 +54,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Init(path string) error {
 
 	// TODO: Reuse parquet.Writer beyond life time of the head.
 	s.writer = parquet.NewWriter(file, s.persister.Schema(),
-		parquet.ColumnPageBuffers(parquet.NewFileBufferPool("", "firedb-parquet-buffers*")),
+		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "firedb-parquet-buffers*")),
 	)
 	s.lookup = make(map[K]int64)
 	return nil
@@ -73,7 +74,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Close() error {
 
 const maxRowGroupSize = 1000
 
-func (s *deduplicatingSlice[M, K, H, P]) Flush() (int, error) {
+func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups uint64, err error) {
 	// intialise buffer if not existing
 	if s.buffer == nil {
 		s.buffer = parquet.NewBuffer(s.persister.Schema(), s.persister.SortingColumns())
@@ -81,17 +82,17 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (int, error) {
 
 	s.lock.RLock()
 
-	var rowsToFlush = len(s.slice) - s.rowsFlushed
+	rowsToFlush := len(s.slice) - s.rowsFlushed
 	if rowsToFlush > maxRowGroupSize {
 		rowsToFlush = maxRowGroupSize
 	}
 
 	if rowsToFlush == 0 {
 		s.lock.RUnlock()
-		return 0, nil
+		return 0, 0, nil
 	}
 
-	var rows = make([]parquet.Row, rowsToFlush)
+	rows := make([]parquet.Row, rowsToFlush)
 
 	var slicePos int
 	for pos := range rows {
@@ -101,27 +102,27 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (int, error) {
 
 	if _, err := s.buffer.WriteRows(rows); err != nil {
 		s.lock.RUnlock()
-		return 0, err
+		return 0, 0, err
 	}
 	s.lock.RUnlock()
 
 	sort.Sort(s.buffer)
 
-	_, err := s.writer.WriteRowGroup(s.buffer)
-	if err != nil {
-		return 0, err
+	if _, err := s.writer.WriteRowGroup(s.buffer); err != nil {
+		return 0, 0, err
 	}
 
 	s.buffer.Reset()
 	s.rowsFlushed += rowsToFlush
 
 	// call myself recursively
-	rowsFlushed, err := s.Flush()
+	// todo no tail recursion optimization exist in go, we should refactor to a loop.
+	rowsFlushed, rowGroupsFlushed, err := s.Flush()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	return rowsFlushed + rowsToFlush, nil
+	return rowsFlushed + uint64(rowsToFlush), rowGroupsFlushed + 1, nil
 }
 
 func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {

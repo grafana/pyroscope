@@ -78,6 +78,10 @@ go/mod:
 	GO111MODULE=on go mod download
 	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod download
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod verify
+	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod tidy
+
 
 .PHONY: plugin/datasource/build
 plugin/datasource/build: $(BIN)/mage
@@ -85,6 +89,14 @@ plugin/datasource/build: $(BIN)/mage
 	yarn install && yarn build && \
 	$(BIN)/mage -v \
 
+.PHONY: plugin/flamegraph/build
+plugin/flamegraph/build:
+	pushd ./grafana/flamegraph && \
+	yarn install && yarn build
+
+.PHONY: start/grafana
+start/grafana: plugin/datasource/build plugin/flamegraph/build
+	./tools/grafana-fire
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -107,6 +119,10 @@ define docker_buildx
 	docker buildx build $(1) --ssh default --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
 endef
 
+define docker_buildx_grafana
+	docker buildx build $(1) --ssh default --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION)  -t $(IMAGE_PREFIX)grafana-fire:$(IMAGE_TAG) -f grafana/Dockerfile .
+endef
+
 define deploy
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	# Load image into nodes
@@ -124,6 +140,14 @@ docker-image/fire/build:
 docker-image/fire/push:
 	$(call docker_buildx,--push)
 
+.PHONY: docker-image/grafana/build
+docker-image/grafana/build:
+	$(call docker_buildx_grafana,--load)
+
+.PHONY: docker-image/grafana/push
+docker-image/grafana/push:
+	$(call docker_buildx_grafana,--push)
+
 define UPDATER_CONFIG_JSON
 {
   "repo_name": "deployment_tools",
@@ -139,6 +163,11 @@ define UPDATER_CONFIG_JSON
       "file_path": "ksonnet/environments/fire/dev-us-central-0.fire-dev-001/images.libsonnet",
       "jsonnet_key": "fire",
       "jsonnet_value": "$(IMAGE_PREFIX)fire:$(IMAGE_TAG)"
+    },
+	{
+      "file_path": "ksonnet/environments/fire/dev-us-central-0.fire-dev-001/images.libsonnet",
+      "jsonnet_key": "grafana",
+      "jsonnet_value": "$(IMAGE_PREFIX)grafana-fire:$(IMAGE_TAG)"
     }
   ]
 }
@@ -160,7 +189,7 @@ $(BIN)/buf: Makefile
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.48.0
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)

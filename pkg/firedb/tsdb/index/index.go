@@ -36,6 +36,7 @@ import (
 	tsdb_enc "github.com/prometheus/prometheus/tsdb/encoding"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 
+	"github.com/grafana/fire/pkg/firedb/block"
 	"github.com/grafana/fire/pkg/firedb/tsdb/encoding"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
@@ -1338,6 +1339,14 @@ func (r *Reader) Version() int {
 	return r.version
 }
 
+// FileInfo returns some general stats about the underlying file
+func (r *Reader) FileInfo() block.File {
+	return block.File{
+		RelPath:   block.IndexFilename,
+		SizeBytes: uint64(r.Size()),
+	}
+}
+
 // Range marks a byte range.
 type Range struct {
 	Start, End int64
@@ -1868,28 +1877,6 @@ func (r *Reader) LabelNames(matchers ...*labels.Matcher) ([]string, error) {
 	sort.Strings(labelNames)
 	return labelNames, nil
 }
-
-// NewStringListIter returns a StringIter for the given sorted list of strings.
-func NewStringListIter(s []string) StringIter {
-	return &stringListIter{l: s}
-}
-
-// symbolsIter implements StringIter.
-type stringListIter struct {
-	l   []string
-	cur string
-}
-
-func (s *stringListIter) Next() bool {
-	if len(s.l) == 0 {
-		return false
-	}
-	s.cur = s.l[0]
-	s.l = s.l[1:]
-	return true
-}
-func (s stringListIter) At() string { return s.cur }
-func (s stringListIter) Err() error { return nil }
 
 // Decoder provides decoding methods for the v1 and v2 index file format.
 //

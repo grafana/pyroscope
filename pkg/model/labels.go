@@ -21,6 +21,8 @@ const (
 	LabelNameUnit        = "__unit__"
 	LabelNamePeriodType  = "__period_type__"
 	LabelNamePeriodUnit  = "__period_unit__"
+
+	labelSep = '\xfe'
 )
 
 // Labels is a sorted set of labels. Order has to be guaranteed upon
@@ -100,6 +102,32 @@ func (ls Labels) HashWithoutLabels(b []byte, names ...string) (uint64, []byte) {
 	return xxhash.Sum64(b), b
 }
 
+// BytesWithLabels is just as Bytes(), but only for labels matching names.
+// 'names' have to be sorted in ascending order.
+// It uses an byte invalid character as a separator and so should not be used for printing.
+func (ls Labels) BytesWithLabels(buf []byte, names ...string) []byte {
+	b := bytes.NewBuffer(buf[:0])
+	b.WriteByte(labelSep)
+	i, j := 0, 0
+	for i < len(ls) && j < len(names) {
+		if names[j] < ls[i].Name {
+			j++
+		} else if ls[i].Name < names[j] {
+			i++
+		} else {
+			if b.Len() > 1 {
+				b.WriteByte(seps[0])
+			}
+			b.WriteString(ls[i].Name)
+			b.WriteByte(seps[0])
+			b.WriteString(ls[i].Value)
+			i++
+			j++
+		}
+	}
+	return b.Bytes()
+}
+
 func (ls Labels) ToPrometheusLabels() labels.Labels {
 	res := make([]labels.Label, len(ls))
 	for i, l := range ls {
@@ -109,14 +137,31 @@ func (ls Labels) ToPrometheusLabels() labels.Labels {
 }
 
 func (ls Labels) WithoutPrivateLabels() Labels {
-	i := 0
+	res := make([]*commonv1.LabelPair, 0, len(ls))
 	for _, l := range ls {
 		if !strings.HasPrefix(l.Name, "__") {
-			ls[i] = l
-			i++
+			res = append(res, l)
 		}
 	}
-	return ls[:i]
+	return res
+}
+
+// WithLabels returns a subset of Labels that matches match with the provided label names.
+func (ls Labels) WithLabels(names ...string) Labels {
+	matchedLabels := Labels{}
+
+	nameSet := make(map[string]struct{}, len(names))
+	for _, n := range names {
+		nameSet[n] = struct{}{}
+	}
+
+	for _, v := range ls {
+		if _, ok := nameSet[v.Name]; ok {
+			matchedLabels = append(matchedLabels, v)
+		}
+	}
+
+	return matchedLabels
 }
 
 // Get returns the value for the label with the given name.
