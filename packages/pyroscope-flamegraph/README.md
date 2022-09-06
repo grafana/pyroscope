@@ -97,7 +97,6 @@ const SimpleTree = {
     durationDelta: 10,
   },
 };
-```
 
 export const Flamegraph = () => {
   return (
