@@ -873,6 +873,10 @@ func (r *parquetReader[M, P]) Close() error {
 	return nil
 }
 
+func (r *parquetReader[M, P]) relPath() string {
+	return r.persister.Name() + block.ParquetSuffix
+}
+
 func (r *parquetReader[M, P]) info() block.File {
 	return block.File{
 		Parquet: &block.ParquetFile{
@@ -880,15 +884,14 @@ func (r *parquetReader[M, P]) info() block.File {
 			NumRowGroups: uint64(len(r.file.RowGroups())),
 		},
 		SizeBytes: uint64(r.file.Size()),
-		RelPath:   r.persister.Name() + block.ParquetSuffix,
+		RelPath:   r.relPath(),
 	}
 }
 
 func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
 	index, _ := query.GetColumnIndexByPath(r.file, columnName)
 	if index == -1 {
-		// TODO - don't panic, error instead
-		panic("column not found in parquet file:" + columnName)
+		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))
 	}
 	return query.NewColumnIterator(ctx, r.file.RowGroups(), index, columnName, 1000, predicate, alias)
 }
