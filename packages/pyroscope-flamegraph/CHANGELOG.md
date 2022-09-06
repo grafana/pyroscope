@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.21.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.21.2...@pyroscope/flamegraph@0.21.3) (2022-09-06)
+
+
+### Bug Fixes
+
+* **flamegraph:** table width ([#1466](https://github.com/pyroscope-io/pyroscope/issues/1466)) ([a60f608](https://github.com/pyroscope-io/pyroscope/commit/a60f608475a9caea0e1910f30d1c663fd38cee96))
+
+
+
+
+
 ## [0.21.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.21.1...@pyroscope/flamegraph@0.21.2) (2022-09-06)
 
 
