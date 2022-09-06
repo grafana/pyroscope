@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.21.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.21.3...@pyroscope/flamegraph@0.21.4) (2022-09-06)
+
+
+### Bug Fixes
+
+* **flamegraph:** add color to tooltip ([#1468](https://github.com/pyroscope-io/pyroscope/issues/1468)) ([1c29ef6](https://github.com/pyroscope-io/pyroscope/commit/1c29ef6328fb4f01389560a4d53f729bbca88ff3))
+
+
+
+
+
 ## [0.21.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.21.2...@pyroscope/flamegraph@0.21.3) (2022-09-06)
 
 
