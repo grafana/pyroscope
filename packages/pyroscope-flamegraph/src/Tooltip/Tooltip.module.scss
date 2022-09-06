@@ -8,6 +8,7 @@
   font-size: 12px;
   visibility: hidden;
   z-index: 2;
+  display: table; /* although this is the default, users may have an overwrite */
 
   &.flamegraphDiffTooltip {
     width: 450px;
