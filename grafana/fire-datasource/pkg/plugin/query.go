@@ -85,7 +85,7 @@ type CustomMeta struct {
 // evaluated later on
 func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktracesResponse]) (*data.Frame, error) {
 	frame := data.NewFrame("response")
-	frame.Meta = &data.FrameMeta{PreferredVisualization: "profile"}
+	frame.Meta = &data.FrameMeta{PreferredVisualization: "flamegraph"}
 
 	levelsField := data.NewField("levels", nil, []string{})
 

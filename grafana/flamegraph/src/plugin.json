@@ -3,6 +3,7 @@
   "name": "Flame Graph",
   "id": "flameGraph",
   "state": "beta",
+  "visualizationType": "flamegraph",
 
   "info": {
     "author": {
