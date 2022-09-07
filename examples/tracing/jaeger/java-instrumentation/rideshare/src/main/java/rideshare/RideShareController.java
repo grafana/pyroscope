@@ -15,17 +15,14 @@ import java.util.Map;
 public class RideShareController {
     Logger logger = LoggerFactory.getLogger(RideShareController.class);
 
-
     @Autowired
     CarService carService;
 
     @Autowired
     ScooterService scooterService;
 
-
     @Autowired
     BikeService bikeService;
-
 
     @GetMapping("/bike")
     public String orderBike() {
@@ -68,5 +65,4 @@ public class RideShareController {
         }
         return sb.toString();
     }
-
 }
