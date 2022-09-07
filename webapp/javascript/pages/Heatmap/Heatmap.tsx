@@ -4,6 +4,7 @@ import Color from 'color';
 import cl from 'classnames';
 
 import { useAppSelector } from '@webapp/redux/hooks';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import {
   useHeatmapSelection,
   SELECTED_AREA_BACKGROUND,
@@ -23,7 +24,9 @@ export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
-  const { heatmapSingleView } = useAppSelector((state) => state.tracing);
+  const {
+    heatmapSingleView: { heatmap: heatmapData, type },
+  } = useAppSelector((state) => state.tracing);
 
   const {
     selectedCoordinates,
@@ -36,18 +39,6 @@ export function Heatmap() {
     heatmapH: HEATMAP_HEIGHT,
   });
 
-  const {
-    startTime,
-    endTime,
-    minDepth,
-    maxDepth,
-    valueBuckets,
-    timeBuckets,
-    values,
-    maxValue,
-    minValue,
-  } = heatmapSingleView.heatmap;
-
   useEffect(() => {
     if (heatmapRef.current) {
       const { width } = heatmapRef.current.getBoundingClientRect();
@@ -56,33 +47,42 @@ export function Heatmap() {
   }, []);
 
   useResizeObserver(heatmapRef.current, (entry: ResizeObserverEntry) => {
-    // Firefox implements `contentBoxSize` as a single content rect, rather than an array
-    const contentBoxSize = Array.isArray(entry.contentBoxSize)
-      ? entry.contentBoxSize[0]
-      : entry.contentBoxSize;
-    (canvasRef.current as HTMLCanvasElement).width = contentBoxSize.inlineSize;
-    setHeatmapW(contentBoxSize.inlineSize);
+    if (canvasRef.current) {
+      // Firefox implements `contentBoxSize` as a single content rect, rather than an array
+      const contentBoxSize = Array.isArray(entry.contentBoxSize)
+        ? entry.contentBoxSize[0]
+        : entry.contentBoxSize;
+
+      (canvasRef.current as HTMLCanvasElement).width =
+        contentBoxSize.inlineSize;
+      setHeatmapW(contentBoxSize.inlineSize);
+    }
   });
 
   const getColor = useMemo(
     () =>
       (x: number): string => {
-        const minL = Math.log10(minDepth);
-        const maxL = Math.log10(maxDepth);
-        const w1 = (Math.log10(x) - minL) / (maxL - minL);
-        var w2 = 1 - w1;
-        return Color.rgb([
-          Math.round(COLOR_1[0] * w1 + COLOR_2[0] * w2),
-          Math.round(COLOR_1[1] * w1 + COLOR_2[1] * w2),
-          Math.round(COLOR_1[2] * w1 + COLOR_2[2] * w2),
-        ]).toString();
+        if (heatmapData) {
+          const minL = Math.log10(heatmapData.minDepth);
+          const maxL = Math.log10(heatmapData.maxDepth);
+          const w1 = (Math.log10(x) - minL) / (maxL - minL);
+          const w2 = 1 - w1;
+
+          return Color.rgb([
+            Math.round(COLOR_1[0] * w1 + COLOR_2[0] * w2),
+            Math.round(COLOR_1[1] * w1 + COLOR_2[1] * w2),
+            Math.round(COLOR_1[2] * w1 + COLOR_2[2] * w2),
+          ]).toString();
+        }
+
+        return '';
       },
-    [minDepth, maxDepth]
+    [heatmapData]
   );
 
   const generateHeatmapGrid = useMemo(
     () =>
-      values.map((column, colIndex) => (
+      heatmapData?.values.map((column, colIndex) => (
         <g role="row" key={colIndex}>
           {column?.map(
             (itemsCount: number, rowIndex: number, itemsCountArr) => (
@@ -97,19 +97,19 @@ export function Heatmap() {
                     : Color.rgb(COLOR_EMPTY).toString()
                 }
                 key={rowIndex}
-                x={colIndex * (heatmapW / timeBuckets)}
+                x={colIndex * (heatmapW / heatmapData.timeBuckets)}
                 y={
                   (itemsCountArr.length - 1 - rowIndex) *
-                  (HEATMAP_HEIGHT / valueBuckets)
+                  (HEATMAP_HEIGHT / heatmapData.valueBuckets)
                 }
-                width={heatmapW / timeBuckets}
-                height={HEATMAP_HEIGHT / valueBuckets}
+                width={heatmapW / heatmapData.timeBuckets}
+                height={HEATMAP_HEIGHT / heatmapData.valueBuckets}
               />
             )
           )}
         </g>
       )),
-    [heatmapW, timeBuckets, valueBuckets, values]
+    [heatmapW, heatmapData]
   );
 
   return (
@@ -118,49 +118,67 @@ export function Heatmap() {
       className={styles.heatmapContainer}
       data-testid="heatmap-container"
     >
-      <YAxis minValue={minValue} maxValue={maxValue} />
-      {hasSelectedArea &&
-        selectedCoordinates.end &&
-        selectedCoordinates.start && (
-          <ResizedSelectedArea
-            start={selectedCoordinates.start}
-            end={selectedCoordinates.end}
-            containerW={heatmapW}
-            resizeRatio={selectedAreaToHeatmapRatio}
-            handleClick={resetSelection}
+      {type !== 'loaded' ? (
+        <LoadingSpinner />
+      ) : (
+        <>
+          <YAxis
+            minValue={heatmapData?.minValue}
+            maxValue={heatmapData?.maxValue}
           />
-        )}
-      <svg role="img" className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
-        {generateHeatmapGrid}
-        <foreignObject
-          className={styles.selectionContainer}
-          height={HEATMAP_HEIGHT}
-        >
-          <canvas
-            data-testid="selection-canvas"
-            id={CANVAS_ID}
-            ref={canvasRef}
-            height={HEATMAP_HEIGHT}
+          {hasSelectedArea &&
+            selectedCoordinates.end &&
+            selectedCoordinates.start && (
+              <ResizedSelectedArea
+                start={selectedCoordinates.start}
+                end={selectedCoordinates.end}
+                containerW={heatmapW}
+                resizeRatio={selectedAreaToHeatmapRatio}
+                handleClick={resetSelection}
+              />
+            )}
+          <svg role="img" className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
+            {generateHeatmapGrid}
+            <foreignObject
+              className={styles.selectionContainer}
+              height={HEATMAP_HEIGHT}
+            >
+              <canvas
+                data-testid="selection-canvas"
+                id={CANVAS_ID}
+                ref={canvasRef}
+                height={HEATMAP_HEIGHT}
+              />
+            </foreignObject>
+          </svg>
+          <XAxis
+            startTime={heatmapData?.startTime}
+            endTime={heatmapData?.endTime}
           />
-        </foreignObject>
-      </svg>
-      <XAxis startTime={startTime} endTime={endTime} />
-      <div
-        className={styles.bucketsColors}
-        data-testid="color-scale"
-        style={{
-          backgroundImage: `linear-gradient(to right, ${Color.rgb(
-            COLOR_2
-          )} , ${Color.rgb(COLOR_1)})`,
-        }}
-      >
-        <span role="textbox" style={{ color: Color.rgb(COLOR_1).toString() }}>
-          {minDepth}
-        </span>
-        <span role="textbox" style={{ color: Color.rgb(COLOR_2).toString() }}>
-          {maxDepth}
-        </span>
-      </div>
+          <div
+            className={styles.bucketsColors}
+            data-testid="color-scale"
+            style={{
+              backgroundImage: `linear-gradient(to right, ${Color.rgb(
+                COLOR_2
+              )} , ${Color.rgb(COLOR_1)})`,
+            }}
+          >
+            <span
+              role="textbox"
+              style={{ color: Color.rgb(COLOR_1).toString() }}
+            >
+              {heatmapData?.minDepth}
+            </span>
+            <span
+              role="textbox"
+              style={{ color: Color.rgb(COLOR_2).toString() }}
+            >
+              {heatmapData?.maxDepth}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -206,8 +224,14 @@ function ResizedSelectedArea({
 
 type axisFormat = 'items' | 'time';
 
-function YAxis({ maxValue, minValue }: { maxValue: number; minValue: number }) {
-  const ticks = getTicks(maxValue, minValue, 5, 'items');
+function YAxis({
+  maxValue,
+  minValue,
+}: {
+  maxValue?: number;
+  minValue?: number;
+}) {
+  const ticks = getTicks(5, 'items', maxValue, minValue);
 
   return (
     <div
@@ -228,8 +252,14 @@ function YAxis({ maxValue, minValue }: { maxValue: number; minValue: number }) {
   );
 }
 
-function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
-  const ticks = getTicks(endTime, startTime, 7, 'time');
+function XAxis({
+  startTime,
+  endTime,
+}: {
+  startTime?: number;
+  endTime?: number;
+}) {
+  const ticks = getTicks(7, 'time', endTime, startTime);
 
   return (
     <div className={styles.xAxis} data-testid="x-axis">
@@ -262,19 +292,23 @@ const getFormatter = (format: axisFormat) => {
 };
 
 const getTicks = (
-  max: number,
-  min: number,
   ticksCount: number,
-  format: axisFormat
+  format: axisFormat,
+  max?: number,
+  min?: number
 ) => {
-  let formatter = getFormatter(format);
+  if (max && min) {
+    let formatter = getFormatter(format);
 
-  const step = (max - min) / ticksCount;
-  let ticksArray = [formatter(min)];
+    const step = (max - min) / ticksCount;
+    let ticksArray = [formatter(min)];
 
-  for (let i = 1; i <= ticksCount; i++) {
-    ticksArray.push(formatter(min + step * i));
+    for (let i = 1; i <= ticksCount; i++) {
+      ticksArray.push(formatter(min + step * i));
+    }
+
+    return ticksArray;
   }
 
-  return ticksArray;
+  return [];
 };

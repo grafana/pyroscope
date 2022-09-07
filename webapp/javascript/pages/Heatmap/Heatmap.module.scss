@@ -4,6 +4,13 @@ $svg-side-margin: 40px;
   position: relative;
   width: calc(100% - $svg-side-margin * 2);
   margin: auto auto $svg-side-margin auto;
+  min-height: 100px;
+
+  span[role='progressbar'] {
+    display: block;
+    text-align: center;
+    padding-top: 45px;
+  }
 
   .heatmapSvg {
     width: 100%;

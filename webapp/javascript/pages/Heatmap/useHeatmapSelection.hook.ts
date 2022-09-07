@@ -94,22 +94,24 @@ export const useHeatmapSelection = ({
   };
 
   const changeTimeRange = (xStart: number, xEnd: number) => {
-    const { startTime, endTime } = heatmapData;
-    const timeForPixel = (endTime - startTime) / heatmapW;
+    if (heatmapData) {
+      const timeForPixel =
+        (heatmapData.endTime - heatmapData.startTime) / heatmapW;
 
-    const smallerX = xStart > xEnd ? xEnd : xStart;
-    const biggerX = xStart > xEnd ? xStart : xEnd;
-    const selectionStartTime = new Date(
-      (timeForPixel * smallerX + startTime) / 1000000
-    );
-    const selectionEndTime = new Date(
-      (timeForPixel * biggerX + startTime) / 1000000
-    );
+      const smallerX = xStart > xEnd ? xEnd : xStart;
+      const biggerX = xStart > xEnd ? xStart : xEnd;
+      const selectionStartTime = new Date(
+        (timeForPixel * smallerX + heatmapData.startTime) / 1000000
+      );
+      const selectionEndTime = new Date(
+        (timeForPixel * biggerX + heatmapData.startTime) / 1000000
+      );
 
-    console.log(
-      selectionStartTime.toLocaleTimeString(),
-      selectionEndTime.toLocaleTimeString()
-    );
+      console.log(
+        selectionStartTime.toLocaleTimeString(),
+        selectionEndTime.toLocaleTimeString()
+      );
+    }
     // dispatch(
     //   fetchHeatmapSingleView({
     //     query,
@@ -199,16 +201,18 @@ export const useHeatmapSelection = ({
   }, [heatmapData, heatmapW]);
 
   useEffect(() => {
-    const isClickEvent =
-      startCoords?.x == endCoords?.x && startCoords?.y == endCoords?.y;
-    const cellW = heatmapW / heatmapData.timeBuckets;
-    const cellH = heatmapH / heatmapData.valueBuckets;
+    if (heatmapData) {
+      const isClickEvent =
+        startCoords?.x == endCoords?.x && startCoords?.y == endCoords?.y;
+      const cellW = heatmapW / heatmapData.timeBuckets;
+      const cellH = heatmapH / heatmapData.valueBuckets;
 
-    if (startCoords && endCoords && !isClickEvent) {
-      setSelectedCoordinates({
-        start: { x: startCoords.x, y: startCoords.y },
-        end: { x: endCoords.x, y: endCoords.y },
-      });
+      if (startCoords && endCoords && !isClickEvent) {
+        setSelectedCoordinates({
+          start: { x: startCoords.x, y: startCoords.y },
+          end: { x: endCoords.x, y: endCoords.y },
+        });
+      }
     }
   }, [startCoords, endCoords, heatmapData]);
 

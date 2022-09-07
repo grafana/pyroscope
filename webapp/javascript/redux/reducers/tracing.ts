@@ -35,20 +35,9 @@ type SingleView =
     };
 // TODO
 
-const DEFAULT_HEATMAP = {
-  startTime: 0,
-  endTime: 0,
-  minValue: 0,
-  maxValue: 0,
-  minDepth: 0,
-  maxDepth: 0,
-  timeBuckets: 0,
-  valueBuckets: 0,
-  values: [[]],
-};
 type HeatmapSingleView =
-  | { type: 'pristine'; heatmap: Heatmap }
-  | { type: 'loading'; heatmap: Heatmap }
+  | { type: 'pristine'; heatmap?: Heatmap }
+  | { type: 'loading'; heatmap?: Heatmap }
   | { type: 'loaded'; heatmap: Heatmap }
   | { type: 'reloading'; heatmap: Heatmap };
 interface TracingState {
@@ -67,10 +56,7 @@ const initialState: TracingState = {
   queryID: '',
   maxNodes: '1024',
 
-  heatmapSingleView: {
-    type: 'pristine',
-    heatmap: DEFAULT_HEATMAP,
-  },
+  heatmapSingleView: { type: 'pristine' },
   singleView: { type: 'pristine' },
 };
 
@@ -217,6 +203,10 @@ export const tracingSlice = createSlice({
       }
     });
 
+    /*********************************/
+    /*      Heatmap Single View      */
+    /*********************************/
+
     builder.addCase(fetchHeatmapSingleView.pending, (state) => {
       switch (state.heatmapSingleView.type) {
         // if we are fetching but there's already data
@@ -239,7 +229,6 @@ export const tracingSlice = createSlice({
     builder.addCase(fetchHeatmapSingleView.fulfilled, (state, action) => {
       state.heatmapSingleView = {
         ...action.payload,
-        heatmap: action.payload.heatmap,
         type: 'loaded',
       };
     });
@@ -269,7 +258,6 @@ export const tracingSlice = createSlice({
           // it failed to load for the first time, so far all effects it's pristine
           state.heatmapSingleView = {
             type: 'pristine',
-            heatmap: DEFAULT_HEATMAP,
           };
         }
       }
