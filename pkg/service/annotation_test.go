@@ -43,7 +43,7 @@ var _ = Describe("AnnotationsService", func() {
 		It("validates parameters", func() {
 			annotation, err := svc.CreateAnnotation(context.Background(), model.CreateAnnotation{})
 
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 			Expect(annotation).To(BeNil())
 		})
 
@@ -56,7 +56,7 @@ var _ = Describe("AnnotationsService", func() {
 
 			BeforeEach(func() {
 				annotation, err := svc.CreateAnnotation(context.Background(), p)
-				Expect(err).To(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(annotation).ToNot(BeNil())
 			})
 
