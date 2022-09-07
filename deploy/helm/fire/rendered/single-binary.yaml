@@ -1,0 +1,287 @@
+---
+# Source: fire/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fire-dev
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: fire/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fire-dev-config
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.yaml: |
+
+    
+    scrape_configs:
+      - job_name: "default"
+        scrape_interval: "5s"
+        static_configs:
+          - targets: [ '127.0.0.1:4100']
+      - job_name: kubernetes-pods-name
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels:
+          - __meta_kubernetes_pod_label_name
+          target_label: __service__
+        - source_labels:
+          - __meta_kubernetes_pod_node_name
+          target_label: __host__
+        - action: drop
+          regex: ''
+          source_labels:
+          - __service__
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - action: replace
+          replacement: $1
+          separator: /
+          source_labels:
+          - __meta_kubernetes_namespace
+          - __service__
+          target_label: job
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_namespace
+          target_label: namespace
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_pod_name
+          target_label: pod
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_pod_container_name
+          target_label: container
+        - replacement: /var/log/pods/*$1/*.log
+          separator: /
+          source_labels:
+          - __meta_kubernetes_pod_uid
+          - __meta_kubernetes_pod_container_name
+          target_label: __path__
+---
+# Source: fire/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: default-fire-dev
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+---
+# Source: fire/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default-fire-dev
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: default-fire-dev
+subjects:
+- kind: ServiceAccount
+  name: fire-dev
+  namespace: default
+---
+# Source: fire/templates/memberlist-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: fire-dev-memberlist
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: memberlist
+      port: 7946
+      protocol: TCP
+      targetPort: 7946
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    # TODO: Ensure only services that offer memberlist register
+    # fire.grafana.com/memberlist: "true"
+---
+# Source: fire/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: fire-dev
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "all"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/component: "all"
+---
+# Source: fire/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: fire-dev-headless
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "all"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/component: "all"
+---
+# Source: fire/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fire-dev
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "all"
+spec:
+  serviceName: fire-dev-headless
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fire
+      app.kubernetes.io/instance: fire-dev
+      app.kubernetes.io/component: "all"
+  template:
+    metadata:
+      annotations:
+        checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
+      labels:
+        app.kubernetes.io/name: fire
+        app.kubernetes.io/instance: fire-dev
+        app.kubernetes.io/component: "all"
+        name: "fire"
+    spec:
+      serviceAccountName: fire-dev
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: "fire"
+          securityContext:
+            {}
+          image: "us.gcr.io/kubernetes-dev/fire:0.0.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=all"
+            - "-memberlist.cluster-label=default-fire-dev"
+            - "-memberlist.join=fire-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/fire/config.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/fire/config.yaml
+              subPath: config.yaml
+            - name: data
+              mountPath: /data
+          resources:
+            {}
+      volumes:
+        - name: config
+          configMap:
+            name: fire-dev-config
+        - name: data
+          emptyDir: {}
+---
+# Source: fire/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "fire-dev-test-connection"
+  labels:
+    helm.sh/chart: fire-0.1.0
+    app.kubernetes.io/name: fire
+    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['fire-dev:4100']
+  restartPolicy: Never

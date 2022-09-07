@@ -187,9 +187,6 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 
 	// sort by fp
 	sort.Slice(pfs, func(i, j int) bool {
-		if pfs[i].fp != pfs[j].fp {
-			return pfs[i].fp < pfs[j].fp
-		}
 		return firemodel.CompareLabelPairs(pfs[i].lbs, pfs[j].lbs) < 0
 	})
 
@@ -220,8 +217,18 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 		if err := writer.AddSeries(storage.SeriesRef(i), s.lbs, s.fp, index.ChunkMeta{
 			MinTime: min,
 			MaxTime: max,
+			// We store the series Index from the head with the series to use when retrieving data from parquet.
+			SeriesIndex: uint32(i),
 		}); err != nil {
 			return err
+		}
+		// also rewrite the seriesRef
+		for _, p := range s.profiles {
+			for j, ref := range p.SeriesRefs {
+				if ref == s.fp {
+					p.SeriesRefs[j] = model.Fingerprint(i)
+				}
+			}
 		}
 	}
 
