@@ -487,7 +487,6 @@ func (c *ColumnIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 
 	c.result = nil
 	return false
-
 }
 
 func (c *ColumnIterator) makeResult(t RowNumber, v parquet.Value) *IteratorResult {
@@ -531,6 +530,7 @@ func NewJoinIterator(definitionLevel int, iters []Iterator, pred GroupPredicate)
 	}
 	return &j
 }
+
 func (j *JoinIterator) At() *IteratorResult {
 	return j.result
 }
@@ -865,5 +865,33 @@ func (a *KeyValueGroupPredicate) KeepGroup(group *IteratorResult) bool {
 			return false
 		}
 	}
+	return true
+}
+
+type RowNumberIterator struct {
+	iter.Iterator[int64]
+}
+
+var _ Iterator = (*RowNumberIterator)(nil)
+
+func (r *RowNumberIterator) Next() bool {
+	return r.Iterator.Next()
+}
+
+func (r *RowNumberIterator) At() *IteratorResult {
+	row := EmptyRowNumber()
+	row[0] = r.Iterator.At()
+	return &IteratorResult{
+		RowNumber: row,
+	}
+}
+
+func (r *RowNumberIterator) Seek(to RowNumberWithDefinitionLevel) bool {
+	// var at *pq.IteratorResult
+
+	// for at = r.Next(); r != nil && pq.CompareRowNumbers(definitionLevel, at.RowNumber, to) < 0; {
+	// 	at = r.Next()
+	// }
+
 	return true
 }

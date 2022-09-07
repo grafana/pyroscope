@@ -31,6 +31,7 @@ import (
 	query "github.com/grafana/fire/pkg/firedb/query"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	"github.com/grafana/fire/pkg/firedb/tsdb/index"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/iter"
@@ -490,6 +491,197 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	}
 
 	return rowNums.Err()
+}
+
+func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMergeRequest) (ProfileSamplesMerger, error) {
+	if err := b.open(ctx); err != nil {
+		return nil, err
+	}
+	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
+	}
+	matchers = append(matchers, firemodel.SelectorFromProfileType(params.Type))
+
+	postings, err := PostingsForMatchers(b.index, nil, matchers...)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		lbls   = make(firemodel.Labels, 0, 6)
+		chks   = make([]index.ChunkMeta, 1)
+		series = make(map[model.Fingerprint]firemodel.Labels)
+	)
+
+	// get all relevant labels/fingerprints
+	for postings.Next() {
+		// todo we might want to pull series on demand only.
+		fp, err := b.index.Series(postings.At(), &lbls, &chks)
+		if err != nil {
+			return nil, err
+		}
+		if lblsExisting, exists := series[model.Fingerprint(fp)]; exists {
+			// Compare to check if there is a clash
+			if firemodel.CompareLabelPairs(lbls, lblsExisting) != 0 {
+				panic("label hash conflict")
+			}
+		} else {
+			series[model.Fingerprint(fp)] = lbls
+			lbls = make(firemodel.Labels, 0, 6)
+		}
+	}
+
+	rowNums := query.NewJoinIterator(
+		0,
+		[]query.Iterator{
+			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(series), "SeriesRefs"),                                       // get all profiles with matching seriesRef
+			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(params.Start.UnixNano(), params.End.UnixNano()), "TimeNanos"), // get all profiles within the time window
+		},
+		nil,
+	)
+
+	return &ProfileSampleMerger{
+		reader: b.profiles,
+		ctx:    ctx,
+		profiles: &ProfileIterator{
+			rowNums: rowNums,
+			series:  series,
+		},
+	}, nil
+}
+
+type ProfileSampleMerger struct {
+	profiles *ProfileIterator
+	reader   parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
+	ctx      context.Context
+}
+
+type ProfileIterator struct {
+	rowNums query.Iterator
+	series  map[model.Fingerprint]firemodel.Labels
+
+	curr   *Profile
+	buffer [][]parquet.Value
+}
+
+func (p *ProfileIterator) Next() bool {
+	if !p.rowNums.Next() {
+		return false
+	}
+	if p.buffer == nil {
+		p.buffer = make([][]parquet.Value, 2)
+		p.curr = &Profile{}
+	}
+	result := p.rowNums.At()
+	p.curr.RowNum = result.RowNumber[0]
+	p.buffer = result.Columns(p.buffer, "SeriesRefs", "TimeNanos")
+	p.curr.Finguerprint = model.Fingerprint(p.buffer[0][0].Int64())
+	p.curr.Labels = p.series[p.curr.Finguerprint]
+	p.curr.Timestamp = model.TimeFromUnixNano(p.buffer[1][0].Int64())
+	return true
+}
+
+func (p *ProfileIterator) At() *Profile {
+	return p.curr
+}
+
+func (p *ProfileIterator) Err() error {
+	return p.rowNums.Err()
+}
+
+func (p *ProfileIterator) Close() error {
+	return p.rowNums.Close()
+}
+
+func (m *ProfileSampleMerger) SelectedProfiles() iter.Iterator[*Profile] {
+	return m.profiles
+}
+
+type StacktraceValueIterator struct {
+	rowNums query.Iterator
+
+	curr   StacktraceValue
+	buffer [][]parquet.Value
+}
+
+func (p *StacktraceValueIterator) Next() bool {
+	if !p.rowNums.Next() {
+		return false
+	}
+	if p.buffer == nil {
+		p.buffer = make([][]parquet.Value, 2)
+	}
+	result := p.rowNums.At()
+	p.buffer = result.Columns(p.buffer, "StacktraceID", "SampleValues")
+	p.curr.StacktraceID = p.buffer[0][0].Int64()
+	return true
+}
+
+func (p *StacktraceValueIterator) At() StacktraceValue {
+	return p.curr
+}
+
+func (p *StacktraceValueIterator) Err() error {
+	return p.rowNums.Err()
+}
+
+func (p *StacktraceValueIterator) Close() error {
+	return p.rowNums.Close()
+}
+
+func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[int64]) iter.Iterator[StacktraceValue] {
+	rowNums := query.NewJoinIterator(
+		0,
+		[]query.Iterator{
+			&query.RowNumberIterator{Iterator: rows},
+			m.reader.columnIter(m.ctx, "Samples.list.element.StacktraceID", nil, "StacktraceID"),
+			m.reader.columnIter(m.ctx, "Samples.list.element.Values.list.element", nil, "SampleValues"),
+		},
+		nil,
+	)
+	return &StacktraceValueIterator{
+		rowNums: rowNums,
+	}
+}
+
+func (m *ProfileSampleMerger) MergeByLabels(rows iter.Iterator[int64], groupBy []string) iter.Iterator[SeriesValue] {
+	return nil
+}
+
+type SelectMergeRequest struct {
+	LabelSelector string
+	Type          *commonv1.ProfileType
+	Start         model.Time
+	End           model.Time
+}
+
+type Profile struct {
+	Labels       firemodel.Labels
+	Finguerprint model.Fingerprint
+	Timestamp    model.Time
+	RowNum       int64
+}
+
+type StacktraceValue struct {
+	StacktraceID int64
+	Value        int64
+}
+
+type SeriesValue struct {
+	Labels       firemodel.Labels
+	Finguerprint model.Fingerprint
+	Value        int64
+}
+
+type ProfileSamplesMerger interface {
+	SelectedProfiles() iter.Iterator[*Profile]
+	MergeByStacktraces(rows iter.Iterator[int64]) iter.Iterator[StacktraceValue]
+	MergeByLabels(rows iter.Iterator[int64], groupBy []string) iter.Iterator[SeriesValue]
+}
+
+type Querier interface {
+	SelectMerge(ctx context.Context, params SelectMergeRequest) (ProfileSamplesMerger, error)
 }
 
 type reconstructSamples struct {
