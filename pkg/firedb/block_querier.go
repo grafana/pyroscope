@@ -413,38 +413,44 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 		return err
 	}
 
+	type labelsInfo struct {
+		fp  model.Fingerprint
+		lbs firemodel.Labels
+	}
+
 	var (
-		lbls      = make(firemodel.Labels, 0, 6)
-		chks      = make([]index.ChunkMeta, 1)
-		lblsPerFP = make(map[model.Fingerprint]firemodel.Labels)
+		lbls = make(firemodel.Labels, 0, 6)
+		chks = make([]index.ChunkMeta, 1)
+		// todo we might want to change the schema to have SeriesRef as uint32
+		lblsPerRef = make(map[int64]labelsInfo)
 	)
 
 	// get all relevant labels/fingerprints
 	for postings.Next() {
-		// todo we might want to pull series on demand only.
 		fp, err := b.index.Series(postings.At(), &lbls, &chks)
 		if err != nil {
 			return err
 		}
-		if lblsExisting, exists := lblsPerFP[model.Fingerprint(fp)]; exists {
+		if lblsExisting, exists := lblsPerRef[int64(chks[0].SeriesIndex)]; exists {
 			// Compare to check if there is a clash
-			if firemodel.CompareLabelPairs(lbls, lblsExisting) != 0 {
+			if firemodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
 				panic("label hash conflict")
 			}
 		} else {
-			lblsPerFP[model.Fingerprint(fp)] = lbls
 			lbls = make(firemodel.Labels, 0, 6)
+			lblsPerRef[int64(chks[0].SeriesIndex)] = labelsInfo{
+				fp:  model.Fingerprint(fp),
+				lbs: lbls,
+			}
 		}
 	}
 
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			b.profiles.columnIter(ctx, "ID", nil, "ID"),                                                                          // get all IDs
-			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(lblsPerFP), ""),                                // get all profiles with matching seriesRef
-			b.profiles.columnIter(ctx, "SeriesRefs.list.element", nil, "SeriesRefs"),                                             // select all seriesRef per profile
+			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(lblsPerRef), "SeriesRefs"),                     // get all profiles with matching seriesRef
 			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"), // get all profiles within the time window
-
+			b.profiles.columnIter(ctx, "ID", nil, "ID"),                                                                          // get all IDs
 			// TODO: Provide option to ignore samples
 			b.profiles.columnIter(ctx, "Samples.list.element.StacktraceID", nil, "StacktraceIDs"),
 			b.profiles.columnIter(ctx, "Samples.list.element.Values.list.element", nil, "SampleValues"),
@@ -474,15 +480,14 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 		samples.buffer = result.Columns(samples.buffer, "StacktraceIDs", "SampleValues")
 
 		for pos, v := range series[2] {
-			fp := model.Fingerprint(v.Int64())
-			lbls, matched := lblsPerFP[fp]
+			labelsInfo, matched := lblsPerRef[v.Int64()]
 			if !matched {
 				continue
 			}
 
 			schemaSamples = samples.samples(pos, schemaSamples)
 
-			if err := fn(lbls, fp, &profile, schemaSamples); err != nil {
+			if err := fn(labelsInfo.lbs, labelsInfo.fp, &profile, schemaSamples); err != nil {
 				return err
 			}
 
