@@ -38,6 +38,36 @@ var _ = Describe("AnnotationsService", func() {
 			Expect(annotation.CreatedAt).ToNot(BeZero())
 			Expect(annotation.UpdatedAt).ToNot(BeZero())
 		})
+
+		When("an annotation already exists", func() {
+			p := service.CreateAnnotationParams{
+				AppName:   "myapp",
+				Content:   "mycontent",
+				Timestamp: time.Now(),
+			}
+
+			BeforeEach(func() {
+				annotation, err := svc.CreateAnnotation(context.Background(), p)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(annotation).ToNot(BeNil())
+			})
+
+			It("upserts", func() {
+				annotation, err := svc.CreateAnnotation(context.Background(), p)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(annotation).ToNot(BeNil())
+
+				annotations, err := svc.FindAnnotationsByTimeRange(
+					context.Background(), "myapp",
+					time.Now().Add(-time.Hour),
+					time.Now())
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(annotations).ToNot(BeEmpty())
+				Expect(len(annotations)).To(Equal(1))
+			})
+		})
+
 	})
 
 	Describe("find annotations", func() {

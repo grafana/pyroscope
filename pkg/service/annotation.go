@@ -30,7 +30,11 @@ func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params Creat
 	u.Timestamp = params.Timestamp
 
 	tx := svc.db.WithContext(ctx)
-	if err := tx.Create(&u).Error; err != nil {
+
+	// Upsert
+	if err := tx.Where(model.Annotation{
+		AppName: params.AppName, Timestamp: params.Timestamp,
+	}).Attrs(u).FirstOrCreate(&u).Error; err != nil {
 		return nil, err
 	}
 
@@ -42,7 +46,6 @@ func (svc AnnotationsService) FindAnnotationsByTimeRange(ctx context.Context, ap
 	tx := svc.db.WithContext(ctx)
 	var u []model.Annotation
 
-	// TODO(eh-am): find timerange
 	if err := tx.Where("app_name = ?", appName).Where("timestamp between ? and ?", startTime, endTime).Find(&u).Error; err != nil {
 		return u, err
 	}
