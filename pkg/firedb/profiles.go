@@ -275,14 +275,8 @@ const (
 
 type profilesHelper struct{}
 
-func (*profilesHelper) key(s *schemav1.Profile) profilesKey {
-	id := s.ID
-	if id == uuid.Nil {
-		id = uuid.New()
-	}
-	return profilesKey{
-		ID: id,
-	}
+func (*profilesHelper) key(s *schemav1.Profile) noKey {
+	return noKey{}
 }
 
 func (*profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
@@ -325,6 +319,9 @@ func (*profilesHelper) clone(p *schemav1.Profile) *schemav1.Profile {
 	return p
 }
 
-type profilesKey struct {
-	ID uuid.UUID
+type noKey struct{}
+
+func isNoKey(a interface{}) bool {
+	_, ok := a.(noKey)
+	return ok
 }
