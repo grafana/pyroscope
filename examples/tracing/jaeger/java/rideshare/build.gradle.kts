@@ -17,7 +17,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.pyroscope:otel:0.9.3-SNAPSHOT") // todo replace with non snapshot before merge
+    implementation("io.pyroscope:otel:0.10.1.3")
     implementation(platform("io.opentelemetry:opentelemetry-bom:1.15.0"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")

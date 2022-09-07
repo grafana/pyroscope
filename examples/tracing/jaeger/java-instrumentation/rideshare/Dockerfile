@@ -11,9 +11,8 @@ RUN ./gradlew --no-daemon
 COPY build.gradle.kts settings.gradle.kts  ./
 RUN ./gradlew getDeps --no-daemon
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.17.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar 
-ADD https://s01.oss.sonatype.org/content/repositories/snapshots/io/pyroscope/otel/0.10.1.2-SNAPSHOT/otel-0.10.1.2-20220907.093035-3.jar pyroscope-otel.jar 
-# todo replace with non snapshot before merge
-
+# ADD https://s01.oss.sonatype.org/content/repositories/snapshots/io/pyroscope/otel/0.10.1.2-SNAPSHOT/otel-0.10.1.2-20220907.093035-3.jar pyroscope-otel.jar
+ADD https://repo1.maven.org/maven2/io/pyroscope/otel/0.10.1.3/otel-0.10.1.3.jar pyroscope-otel.jar
 
 COPY src src
 RUN ./gradlew assemble --no-daemon
