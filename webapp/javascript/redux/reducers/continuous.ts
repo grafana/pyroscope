@@ -926,9 +926,28 @@ export const continuousSlice = createSlice({
     });
 
     builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
+      let data = action.payload;
+      const { groups } = action.payload;
+      const groupNames = Object.keys(groups);
+
+      if (groupNames?.length) {
+        data = {
+          ...data,
+          groups: groupNames
+            .filter((g) => !!g.trim())
+            .reduce(
+              (acc, current) => ({
+                ...acc,
+                [current]: groups[current],
+              }),
+              {}
+            ),
+        };
+      }
+
       state.tagExplorerView = {
         ...state.tagExplorerView,
-        ...action.payload,
+        ...data,
         activeTagProfile: action.payload.profile,
         type: 'loaded',
       };
