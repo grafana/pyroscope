@@ -15,7 +15,7 @@ type ChunkMeta struct {
 	// Bytes stored, rounded to nearest KB
 	KB uint32
 
-	Entries uint32
+	SeriesIndex uint32
 }
 
 func (c ChunkMeta) From() model.Time                 { return model.Time(c.MinTime) }
@@ -99,5 +99,4 @@ func (c ChunkMetas) Finalize() ChunkMetas {
 	// release self to pool; res will be returned instead
 	ChunkMetasPool.Put(c)
 	return res
-
 }
