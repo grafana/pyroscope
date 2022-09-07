@@ -1,23 +1,50 @@
-import type { RefObject } from 'react';
+import React, { RefObject } from 'react';
 import { renderHook } from '@testing-library/react-hooks';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import continuousReducer from '@webapp/redux/reducers/continuous';
+import tracingReducer from '@webapp/redux/reducers/tracing';
 
 import { useHeatmapSelection } from './useHeatmapSelection.hook';
-import { exemplarsQueryHeatmap } from '../../services/exemplarsTestData';
 
 const canvasEl = document.createElement('canvasEl');
 const canvasRef = { current: canvasEl } as RefObject<HTMLCanvasElement>;
 
+function createStore(preloadedState: any) {
+  const store = configureStore({
+    reducer: {
+      continuous: continuousReducer,
+      tracing: tracingReducer,
+    },
+    preloadedState,
+  });
+
+  return store;
+}
+
 describe('Hook: useHeatmapSelection', () => {
   const render = () =>
-    renderHook(() =>
-      useHeatmapSelection({
-        timeBuckets: exemplarsQueryHeatmap.timeBuckets,
-        valueBuckets: exemplarsQueryHeatmap.valueBuckets,
-        values: exemplarsQueryHeatmap.values,
-        canvasRef,
-        heatmapW: 1234,
-        heatmapH: 123,
-      })
+    renderHook(
+      () =>
+        useHeatmapSelection({
+          canvasRef,
+          heatmapW: 1234,
+          heatmapH: 123,
+        }),
+      {
+        wrapper: ({ children }) => (
+          <Provider
+            store={createStore({
+              continuous: {},
+              tracing: {
+                heatmapSingleView: {},
+              },
+            })}
+          >
+            {children}
+          </Provider>
+        ),
+      }
     ).result;
 
   it('should return initial selection values', () => {
