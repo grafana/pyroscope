@@ -247,11 +247,9 @@ const getFormatter = (format: axisFormat) => {
   switch (format) {
     case 'time':
       formatter = (v: number) => {
-        const minutes = 0;
-        const seconds = 0;
-        const milliseconds = 0;
-        // TODO(dogfrogfog): parse nanoseconds
-        return v;
+        const date = new Date(v / 1000000);
+
+        return date.toLocaleTimeString();
       };
       break;
     case 'items':
