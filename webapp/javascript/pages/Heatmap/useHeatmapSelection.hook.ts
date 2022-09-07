@@ -93,15 +93,31 @@ export const useHeatmapSelection = ({
     endCoords = null;
   };
 
-  const changeTimeRange = (from: string, until: string) => {
-    dispatch(
-      fetchHeatmapSingleView({
-        query,
-        from,
-        until,
-        ...DEFAULT_HEATMAP_PARAMS,
-      })
+  const changeTimeRange = (xStart: number, xEnd: number) => {
+    const { startTime, endTime } = heatmapData;
+    const timeForPixel = (endTime - startTime) / heatmapW;
+
+    const smallerX = xStart > xEnd ? xEnd : xStart;
+    const biggerX = xStart > xEnd ? xStart : xEnd;
+    const selectionStartTime = new Date(
+      (timeForPixel * smallerX + startTime) / 1000000
     );
+    const selectionEndTime = new Date(
+      (timeForPixel * biggerX + startTime) / 1000000
+    );
+
+    console.log(
+      selectionStartTime.toLocaleTimeString(),
+      selectionEndTime.toLocaleTimeString()
+    );
+    // dispatch(
+    //   fetchHeatmapSingleView({
+    //     query,
+    //     from: 'wd',
+    //     until: 'wd',
+    //     ...DEFAULT_HEATMAP_PARAMS,
+    //   })
+    // );
   };
 
   const endDrawing = (e: MouseEvent) => {
@@ -138,23 +154,7 @@ export const useHeatmapSelection = ({
       endCoords = { x: xEnd, y: yEnd };
 
       const selectedAreaW = xEnd - startCoords.x;
-
-      // console.log((heatmapData.endTime - heatmapData.startTime) / heatmapData.heatmapTimeBuckets)
-      // console.log({
-      //   start: { x: startCoords.x, y: startCoords.y },
-      //   end: { x: endCoords.x, y: endCoords.y },
-      // })
-      // const matrixCoordinates = {
-      //   xStart: Math.trunc(startCoords.x / cellW),
-      //   yStart: Math.trunc(startCoords.y / cellH),
-      //   xEnd: Math.trunc(endCoords.x / cellW),
-      //   yEnd: Math.trunc(endCoords.y / cellH),
-      // };
-
-      // todo: nanoseconds -> now-smth format
-
-      // a: from, b: until.... match with server
-      changeTimeRange('now-2h', 'now-1h');
+      changeTimeRange(xEnd, startCoords.x);
 
       if (selectedAreaW) {
         selectedAreaToHeatmapRatio = Math.abs(width / (xEnd - startCoords.x));
@@ -196,7 +196,7 @@ export const useHeatmapSelection = ({
         window.removeEventListener('mouseup', endDrawing);
       }
     };
-  }, []);
+  }, [heatmapData, heatmapW]);
 
   useEffect(() => {
     const isClickEvent =
