@@ -14,16 +14,14 @@ func NewAnnotationsService(db *gorm.DB) AnnotationsService {
 	return AnnotationsService{db: db}
 }
 
-type CreateAnnotationParams struct {
-	AppName   string
-	Content   string
-	Timestamp time.Time
-}
-
 // CreateAnnotation creates a single annotation for a given application
 // It does not check if the application has consumed any data
-func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params CreateAnnotationParams) (*model.Annotation, error) {
+func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params model.CreateAnnotation) (*model.Annotation, error) {
 	var u model.Annotation
+
+	if err := params.Validate(); err != nil {
+		return nil, err
+	}
 
 	u.AppName = params.AppName
 	u.Content = params.Content
@@ -32,7 +30,7 @@ func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params Creat
 	tx := svc.db.WithContext(ctx)
 
 	// Upsert
-	if err := tx.Where(model.Annotation{
+	if err := tx.Where(model.CreateAnnotation{
 		AppName: params.AppName, Timestamp: params.Timestamp,
 	}).Attrs(u).FirstOrCreate(&u).Error; err != nil {
 		return nil, err

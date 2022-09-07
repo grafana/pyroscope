@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 )
 
@@ -23,7 +24,7 @@ var _ = Describe("AnnotationsService", func() {
 		It("works", func() {
 			now := time.Now()
 
-			annotation, err := svc.CreateAnnotation(context.Background(), service.CreateAnnotationParams{
+			annotation, err := svc.CreateAnnotation(context.Background(), model.CreateAnnotation{
 				AppName:   "myapp",
 				Content:   "mycontent",
 				Timestamp: now,
@@ -40,7 +41,7 @@ var _ = Describe("AnnotationsService", func() {
 		})
 
 		When("an annotation already exists", func() {
-			p := service.CreateAnnotationParams{
+			p := model.CreateAnnotation{
 				AppName:   "myapp",
 				Content:   "mycontent",
 				Timestamp: time.Now(),
@@ -86,7 +87,7 @@ var _ = Describe("AnnotationsService", func() {
 
 			BeforeEach(func() {
 				now = time.Now()
-				_, err := svc.CreateAnnotation(context.Background(), service.CreateAnnotationParams{
+				_, err := svc.CreateAnnotation(context.Background(), model.CreateAnnotation{
 					AppName:   "myapp",
 					Content:   "mycontent",
 					Timestamp: now,

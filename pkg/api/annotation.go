@@ -9,13 +9,12 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
 )
 
 type AnnotationsService interface {
-	CreateAnnotation(ctx context.Context, params service.CreateAnnotationParams) (*model.Annotation, error)
+	CreateAnnotation(ctx context.Context, params model.CreateAnnotation) (*model.Annotation, error)
 }
 type AnnotationsCtrl struct {
 	log       *logrus.Logger
@@ -48,14 +47,15 @@ func (ctrl *AnnotationsCtrl) CreateHandler(w http.ResponseWriter, r *http.Reques
 		params.Timestamp = time.Now().Unix()
 	}
 
-	annotation, err := ctrl.svc.CreateAnnotation(r.Context(), service.CreateAnnotationParams{
+	annotation, err := ctrl.svc.CreateAnnotation(r.Context(), model.CreateAnnotation{
 		AppName:   params.AppName,
 		Timestamp: attime.Parse(strconv.FormatInt(params.Timestamp, 10)),
 		Content:   params.Content,
 	})
 	if err != nil {
-		// TODO: check parameter error
+		// TODO: check it's user error
 		ctrl.httpUtils.WriteInternalServerError(r, w, err, "failed to create annotation")
+		return
 	}
 
 	// TODO(eh-am): unify this with render.go

@@ -21,7 +21,13 @@ type Annotation struct {
 	UpdatedAt time.Time
 }
 
-func (a Annotation) Validate() error {
+type CreateAnnotation struct {
+	AppName   string
+	Content   string
+	Timestamp time.Time
+}
+
+func (a CreateAnnotation) Validate() error {
 	var err error
 
 	if a.AppName == "" {
