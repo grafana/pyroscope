@@ -639,7 +639,129 @@ func (p *StacktraceValueIterator) Close() error {
 
 func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[int64]) iter.Iterator[StacktraceValue] {
 	file := m.reader.file
+	stacktraceIDCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.StacktraceID")
+	if stacktraceIDCol == -1 {
+		panic("col not found")
+	}
+	valuesCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.Values.list.element")
+	if valuesCol == -1 {
+		panic("col not found")
+	}
+	// todo benchmark to find the right amount of values to read at once.
+	stacktraceValues := make([]parquet.Value, 100)
+	sampleValues := make([]parquet.Value, 1000)
+	// stacktraceAggrValues := map[int64]int64{}
+	for _, rg := range file.RowGroups() {
+		func(stacktraces, values parquet.Pages) {
+			defer stacktraces.Close()
+			defer values.Close()
+			for {
+				start, end := int64(-1), int64(-1)
+				for rows.Next() {
+					fmt.Println(rows.At())
+					if start == -1 {
+						start = rows.At()
+						end = rows.At()
+						continue
+					}
+					if rows.At() == start+1 {
+						end = start + 1
+						continue
+					}
+					break
+				}
+				if start == -1 {
+					return
+				}
+				// stacktraces.SeekToRow(start)
+				// values.SeekToRow(start)
+				for {
+					stacktracePage, err := stacktraces.ReadPage()
+					if err != nil && err != io.EOF {
+						panic(err)
+					}
+					if err == io.EOF {
+						break
+					}
+					valuePage, err := values.ReadPage()
+					if err != nil && err != io.EOF {
+						panic(err)
+					}
+					if err == io.EOF {
+						break
+					}
+					valueReader := valuePage.Slice(start, end).Values()
 
+					stacktraceValueReader := stacktracePage.Slice(start, end).Values()
+					for {
+						// todo we assume the repetition level is equal
+						read, err := stacktraceValueReader.ReadValues(stacktraceValues)
+						if err != nil && err != io.EOF {
+							panic(err)
+						}
+						valuesRead, err := valueReader.ReadValues(sampleValues)
+						if err != nil && err != io.EOF {
+							panic(err)
+						}
+						stacktraceValues = stacktraceValues[:read]
+						sampleValues = sampleValues[:valuesRead]
+						for _, v := range sampleValues {
+							fmt.Println("values:", v.Int64())
+							fmt.Println("r:", v.RepetitionLevel())
+							fmt.Println("d:", v.DefinitionLevel())
+							// fmt.Println("stacktrace:", stacktraceValues[v.RepetitionLevel()].Int64())
+							// fmt.Println("r:", stacktraceValues[v.RepetitionLevel()].RepetitionLevel())
+							// fmt.Println("d:", stacktraceValues[v.RepetitionLevel()].DefinitionLevel())
+
+							// todo benchmark the use of a map vs a slice
+							// stacktraceAggrValues[] += v.Int64()
+						}
+						for _, v := range stacktraceValues {
+							fmt.Println("stacktrace:", v.Int64())
+							fmt.Println("r:", v.RepetitionLevel())
+							fmt.Println("d:", v.DefinitionLevel())
+							// fmt.Println("stacktrace:", stacktraceValues[v.RepetitionLevel()].Int64())
+							// fmt.Println("r:", stacktraceValues[v.RepetitionLevel()].RepetitionLevel())
+							// fmt.Println("d:", stacktraceValues[v.RepetitionLevel()].DefinitionLevel())
+
+							// todo benchmark the use of a map vs a slice
+							// stacktraceAggrValues[] += v.Int64()
+						}
+						if err == io.EOF {
+							break
+						}
+					}
+				}
+
+				// all stracktraces are read, now read values
+
+				// for {
+				// 	page, err := values.ReadPage()
+				// 	if err != nil && err != io.EOF {
+				// 		panic(err)
+				// 	}
+				// 	read, err := page.Slice(start, end).Values().ReadValues(sampleValues)
+				// 	if err != nil && err != io.EOF {
+				// 		panic(err)
+				// 	}
+				// 	sampleValues = sampleValues[:read]
+
+				// 	for _, v := range sampleValues {
+				// 		stacktraceAggrValues[stacktraceId[i]] += v.Int64()
+				// 		fmt.Println("value:", v.Int64())
+				// 		fmt.Println("r:", v.RepetitionLevel())
+				// 		fmt.Println("d:", v.DefinitionLevel())
+				// 		// fmt.Println(stacktraceAggrValues[])
+				// 	}
+				// 	if err == io.EOF {
+				// 		break
+				// 	}
+
+				// }
+
+			}
+		}(rg.ColumnChunks()[stacktraceIDCol].Pages(), rg.ColumnChunks()[valuesCol].Pages())
+	}
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{

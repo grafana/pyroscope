@@ -118,8 +118,26 @@ func TestBlockQuerierMerger(t *testing.T) {
 
 	p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
 	p.ForStacktrace("my", "other").AddSamples(1)
+	p.ForStacktrace("my", "other").AddSamples(3)
 	p.ForStacktrace("my", "other", "stack").AddSamples(3)
+	// require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+	p = pprofth.NewProfileBuilder(int64(30 * time.Second)).CPUProfile()
+	p.ForStacktrace("my", "other").AddSamples(2)
+	p.ForStacktrace("my", "other").AddSamples(6)
+	p.ForStacktrace("my", "other", "stack").AddSamples(6)
+	// require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+	p = pprofth.NewProfileBuilder(int64(35 * time.Second)).MemoryProfile()
+	p.ForStacktrace("my", "other").AddSamples(2, 3, 4, 5)
+	p.ForStacktrace("my", "other").AddSamples(6, 7, 8, 9)
+	p.ForStacktrace("my", "other", "stack").AddSamples(6, 7, 8, 9)
 	require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+
+	p = pprofth.NewProfileBuilder(int64(35 * time.Second)).MemoryProfile()
+	p.ForStacktrace("my", "other").AddSamples(2, 3, 4, 5)
+	p.ForStacktrace("my", "other").AddSamples(6, 7, 8, 9)
+	p.ForStacktrace("my", "other", "stack").AddSamples(6, 7, 8, 9)
+	require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+
 	require.NoError(t, db.Flush(context.Background()))
 
 	b, err := filesystem.NewBucket(filepath.Join(testPath, pathLocal))
@@ -153,7 +171,29 @@ func TestBlockQuerierMerger(t *testing.T) {
 		stacktrace := stacktraceIter.At()
 		fmt.Println(stacktrace)
 	}
-	require.NoError(t, profiles.Close())
+	require.NoError(t, stacktraceIter.Close())
+
+	merger, err = q.queriers[0].SelectMerge(ctx, SelectMergeRequest{
+		LabelSelector: `{}`,
+		Type: &commonv1.ProfileType{
+			Name:       "memory",
+			SampleType: "inuse_space",
+			SampleUnit: "bytes",
+			PeriodType: "space",
+			PeriodUnit: "bytes",
+		},
+		Start: model.TimeFromUnixNano(0),
+		End:   model.TimeFromUnixNano(int64(1 * time.Minute)),
+	})
+	require.NoError(t, err)
+	profiles = merger.SelectedProfiles()
+
+	stacktraceIter = merger.MergeByStacktraces(AllProfile{profiles})
+	for stacktraceIter.Next() {
+		stacktrace := stacktraceIter.At()
+		fmt.Println(stacktrace)
+	}
+	require.NoError(t, stacktraceIter.Close())
 }
 
 type AllProfile struct {
