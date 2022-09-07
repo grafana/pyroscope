@@ -31,7 +31,6 @@ func main() {
 	fmt.Println("schema:", pf.Schema())
 	meta := pf.Metadata()
 	fmt.Println("Num Rows:", meta.NumRows)
-	fmt.Println("Index:", pf.ColumnIndexes())
 	for i, rg := range meta.RowGroups {
 		fmt.Println("\t Row group:", i)
 		fmt.Println("\t\t Row Count:", rg.NumRows)
