@@ -40,6 +40,13 @@ var _ = Describe("AnnotationsService", func() {
 			Expect(annotation.UpdatedAt).ToNot(BeZero())
 		})
 
+		It("validates parameters", func() {
+			annotation, err := svc.CreateAnnotation(context.Background(), model.CreateAnnotation{})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(annotation).To(BeNil())
+		})
+
 		When("an annotation already exists", func() {
 			p := model.CreateAnnotation{
 				AppName:   "myapp",
@@ -49,7 +56,7 @@ var _ = Describe("AnnotationsService", func() {
 
 			BeforeEach(func() {
 				annotation, err := svc.CreateAnnotation(context.Background(), p)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 				Expect(annotation).ToNot(BeNil())
 			})
 
