@@ -22,6 +22,7 @@ type Services struct {
 	api.AuthService
 	api.UserService
 	api.APIKeyService
+	*api.AnnotationsCtrl
 }
 
 func New(m *mux.Router, s Services) *Router {
@@ -73,4 +74,9 @@ func (r *Router) RegisterAPIKeyHandlers() {
 
 	x = x.PathPrefix("/{id:[0-9]+}").Subrouter()
 	x.Methods(http.MethodDelete).HandlerFunc(h.DeleteAPIKey)
+}
+
+func (r *Router) RegisterAnnotationsHandlers() {
+	x := r.PathPrefix("/annotations").Subrouter()
+	x.Methods(http.MethodPost).HandlerFunc(r.AnnotationsCtrl.CreateHandler)
 }
