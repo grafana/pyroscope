@@ -45,8 +45,8 @@ const DEFAULT_HEATMAP_PARAMS = {
 export const useHeatmapSelection = ({
   canvasRef,
   heatmapW,
-  heatmapH,
-}: UseHeatmapSelectionProps): UseHeatmapSelection => {
+}: // heatmapH,
+UseHeatmapSelectionProps): UseHeatmapSelection => {
   const dispatch = useAppDispatch();
   const {
     heatmapSingleView: { heatmap: heatmapData },
@@ -147,7 +147,7 @@ export const useHeatmapSelection = ({
       if (yCursorPosition < 0) {
         yEnd = 0;
       } else if (yCursorPosition > height) {
-        yEnd = parseInt(height.toFixed(0));
+        yEnd = parseInt(height.toFixed(0), 10);
       } else {
         yEnd = yCursorPosition;
       }
@@ -203,9 +203,9 @@ export const useHeatmapSelection = ({
   useEffect(() => {
     if (heatmapData) {
       const isClickEvent =
-        startCoords?.x == endCoords?.x && startCoords?.y == endCoords?.y;
-      const cellW = heatmapW / heatmapData.timeBuckets;
-      const cellH = heatmapH / heatmapData.valueBuckets;
+        startCoords?.x === endCoords?.x && startCoords?.y === endCoords?.y;
+      // const cellW = heatmapW / heatmapData.timeBuckets;
+      // const cellH = heatmapH / heatmapData.valueBuckets;
 
       if (startCoords && endCoords && !isClickEvent) {
         setSelectedCoordinates({

@@ -25,7 +25,7 @@ export function Heatmap() {
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
   const {
-    heatmapSingleView: { heatmap: heatmapData, type },
+    heatmapSingleView: { heatmap: heatmapData },
   } = useAppSelector((state) => state.tracing);
 
   const {
@@ -53,8 +53,7 @@ export function Heatmap() {
         ? entry.contentBoxSize[0]
         : entry.contentBoxSize;
 
-      (canvasRef.current as HTMLCanvasElement).width =
-        contentBoxSize.inlineSize;
+      canvasRef.current.width = contentBoxSize.inlineSize;
       setHeatmapW(contentBoxSize.inlineSize);
     }
   });
@@ -83,6 +82,7 @@ export function Heatmap() {
   const generateHeatmapGrid = useMemo(
     () =>
       heatmapData?.values.map((column, colIndex) => (
+        // eslint-disable-next-line react/no-array-index-key
         <g role="row" key={colIndex}>
           {column?.map(
             (itemsCount: number, rowIndex: number, itemsCountArr) => (
@@ -96,6 +96,7 @@ export function Heatmap() {
                     ? getColor(itemsCount)
                     : Color.rgb(COLOR_EMPTY).toString()
                 }
+                // eslint-disable-next-line react/no-array-index-key
                 key={rowIndex}
                 x={colIndex * (heatmapW / heatmapData.timeBuckets)}
                 y={
@@ -118,13 +119,13 @@ export function Heatmap() {
       className={styles.heatmapContainer}
       data-testid="heatmap-container"
     >
-      {type !== 'loaded' ? (
+      {!heatmapData ? (
         <LoadingSpinner />
       ) : (
         <>
           <YAxis
-            minValue={heatmapData?.minValue}
-            maxValue={heatmapData?.maxValue}
+            minValue={heatmapData.minValue}
+            maxValue={heatmapData.maxValue}
           />
           {hasSelectedArea &&
             selectedCoordinates.end &&
@@ -152,8 +153,8 @@ export function Heatmap() {
             </foreignObject>
           </svg>
           <XAxis
-            startTime={heatmapData?.startTime}
-            endTime={heatmapData?.endTime}
+            startTime={heatmapData.startTime}
+            endTime={heatmapData.endTime}
           />
           <div
             className={styles.bucketsColors}
@@ -168,13 +169,13 @@ export function Heatmap() {
               role="textbox"
               style={{ color: Color.rgb(COLOR_1).toString() }}
             >
-              {heatmapData?.minDepth}
+              {heatmapData.minDepth}
             </span>
             <span
               role="textbox"
               style={{ color: Color.rgb(COLOR_2).toString() }}
             >
-              {heatmapData?.maxDepth}
+              {heatmapData.maxDepth}
             </span>
           </div>
         </>
@@ -213,7 +214,7 @@ function ResizedSelectedArea({
       style={{
         width: w,
         height: h,
-        top: top,
+        top,
         left,
         backgroundColor: SELECTED_AREA_BACKGROUND,
         borderColor: SELECTED_AREA_BORDER,
@@ -224,13 +225,7 @@ function ResizedSelectedArea({
 
 type axisFormat = 'items' | 'time';
 
-function YAxis({
-  maxValue,
-  minValue,
-}: {
-  maxValue?: number;
-  minValue?: number;
-}) {
+function YAxis({ maxValue, minValue }: { maxValue: number; minValue: number }) {
   const ticks = getTicks(5, 'items', maxValue, minValue);
 
   return (
@@ -239,11 +234,11 @@ function YAxis({
       className={styles.yAxis}
       style={{ height: HEATMAP_HEIGHT }}
     >
-      {ticks.map((tick, index) => (
+      {ticks.map((tick) => (
         <div
           role="textbox"
           className={cl(styles.tick, styles.yTick)}
-          key={tick + index}
+          key={tick}
         >
           {tick}
         </div>
@@ -252,19 +247,13 @@ function YAxis({
   );
 }
 
-function XAxis({
-  startTime,
-  endTime,
-}: {
-  startTime?: number;
-  endTime?: number;
-}) {
+function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
   const ticks = getTicks(7, 'time', endTime, startTime);
 
   return (
     <div className={styles.xAxis} data-testid="x-axis">
-      {ticks.map((tick, index) => (
-        <div role="textbox" className={styles.tick} key={tick + index}>
+      {ticks.map((tick) => (
+        <div role="textbox" className={styles.tick} key={tick}>
           {tick}
         </div>
       ))}
@@ -274,6 +263,7 @@ function XAxis({
 
 const getFormatter = (format: axisFormat) => {
   let formatter;
+  // eslint-disable-next-line default-case
   switch (format) {
     case 'time':
       formatter = (v: number) => {
@@ -284,7 +274,7 @@ const getFormatter = (format: axisFormat) => {
       break;
     case 'items':
       formatter = (v: number) =>
-        v > 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0);
+        v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
       break;
   }
 
@@ -294,21 +284,17 @@ const getFormatter = (format: axisFormat) => {
 const getTicks = (
   ticksCount: number,
   format: axisFormat,
-  max?: number,
-  min?: number
+  max: number,
+  min: number
 ) => {
-  if (max && min) {
-    let formatter = getFormatter(format);
+  const formatter = getFormatter(format);
 
-    const step = (max - min) / ticksCount;
-    let ticksArray = [formatter(min)];
+  const step = (max - min) / ticksCount;
+  const ticksArray = [formatter(min)];
 
-    for (let i = 1; i <= ticksCount; i++) {
-      ticksArray.push(formatter(min + step * i));
-    }
-
-    return ticksArray;
+  for (let i = 1; i <= ticksCount; i += 1) {
+    ticksArray.push(formatter(min + step * i));
   }
 
-  return [];
+  return ticksArray;
 };

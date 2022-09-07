@@ -98,7 +98,7 @@ export const fetchHeatmapSingleView = createAsyncThunk<
   HeatmapOutput,
   getHeatmapProps,
   { state: { tracing: TracingState } }
->('tracing/heatmapSingleView', async (getHeatmapProps, thunkAPI) => {
+>('tracing/heatmapSingleView', async (heatmapProps, thunkAPI) => {
   if (heatmapSingleViewAbortController) {
     heatmapSingleViewAbortController.abort();
   }
@@ -106,10 +106,7 @@ export const fetchHeatmapSingleView = createAsyncThunk<
   heatmapSingleViewAbortController = new AbortController();
   thunkAPI.signal = heatmapSingleViewAbortController.signal;
 
-  const res = await getHeatmap(
-    getHeatmapProps,
-    heatmapSingleViewAbortController
-  );
+  const res = await getHeatmap(heatmapProps, heatmapSingleViewAbortController);
 
   if (res.isOk) {
     return Promise.resolve(res.value);
