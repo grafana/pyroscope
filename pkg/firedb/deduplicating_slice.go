@@ -74,65 +74,75 @@ func (s *deduplicatingSlice[M, K, H, P]) Close() error {
 
 const maxRowGroupBytes = 128 * 1024 * 1024
 
+func (s *deduplicatingSlice[M, K, H, P]) maxRowsPerRowGroup() int {
+	var (
+		// average size per row in memory
+		bytesPerRow = int(s.Size()) / len(s.slice)
+
+		// how many rows per RG with average size are fitting in the maxRowGroupBytes, ensure that we at least flush 1 row
+		maxRows = maxRowGroupBytes / bytesPerRow
+	)
+
+	if maxRows <= 0 {
+		return 1
+	}
+
+	return maxRows
+}
+
 func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups uint64, err error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	// intialise buffer if not existing
 	if s.buffer == nil {
 		s.buffer = parquet.NewBuffer(s.persister.Schema(), s.persister.SortingColumns())
 	}
 
-	s.lock.RLock()
-
 	var (
-		// average size per row in memory
-		bytesPerRow = int(s.Size()) / len(s.slice)
+		maxRows = s.maxRowsPerRowGroup()
 
-		// how many rows per RG with average size are fitting in the maxRowGroupBytes
-		maxRows = maxRowGroupBytes / bytesPerRow
-
-		// how many rows of the head still in need of flushing
-		rowsToFlush = len(s.slice) - s.rowsFlushed
+		rowGroupsFlushed int
+		rowsFlushed      int
 	)
 
-	if rowsToFlush > maxRows {
-		rowsToFlush = maxRows
+	for {
+		// how many rows of the head still in need of flushing
+		rowsToFlush := len(s.slice) - s.rowsFlushed
+
+		if rowsToFlush == 0 {
+			break
+		}
+
+		// cap max row size
+		if rowsToFlush > maxRows {
+			rowsToFlush = maxRows
+		}
+
+		rows := make([]parquet.Row, rowsToFlush)
+		var slicePos int
+		for pos := range rows {
+			slicePos = pos + s.rowsFlushed
+			rows[pos] = s.persister.Deconstruct(rows[pos], uint64(slicePos), s.slice[slicePos])
+		}
+
+		s.buffer.Reset()
+		if _, err := s.buffer.WriteRows(rows); err != nil {
+			return 0, 0, err
+		}
+
+		sort.Sort(s.buffer)
+
+		if _, err := s.writer.WriteRowGroup(s.buffer); err != nil {
+			return 0, 0, err
+		}
+
+		s.rowsFlushed += rowsToFlush
+		rowsFlushed += rowsToFlush
+		rowGroupsFlushed++
 	}
 
-	if rowsToFlush == 0 {
-		s.lock.RUnlock()
-		return 0, 0, nil
-	}
-
-	rows := make([]parquet.Row, rowsToFlush)
-
-	var slicePos int
-	for pos := range rows {
-		slicePos = pos + s.rowsFlushed
-		rows[pos] = s.persister.Deconstruct(rows[pos], uint64(slicePos), s.slice[slicePos])
-	}
-
-	if _, err := s.buffer.WriteRows(rows); err != nil {
-		s.lock.RUnlock()
-		return 0, 0, err
-	}
-	s.lock.RUnlock()
-
-	sort.Sort(s.buffer)
-
-	if _, err := s.writer.WriteRowGroup(s.buffer); err != nil {
-		return 0, 0, err
-	}
-
-	s.buffer.Reset()
-	s.rowsFlushed += rowsToFlush
-
-	// call myself recursively
-	// todo no tail recursion optimization exist in go, we should refactor to a loop.
-	rowsFlushed, rowGroupsFlushed, err := s.Flush()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return rowsFlushed + uint64(rowsToFlush), rowGroupsFlushed + 1, nil
+	return uint64(rowsFlushed), uint64(rowGroupsFlushed), nil
 }
 
 func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {
