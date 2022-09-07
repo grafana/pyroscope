@@ -1,1 +1,1 @@
-rootProject.name = "rideshare"
+rootProject.name = "rideshare-manual"
