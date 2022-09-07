@@ -650,7 +650,7 @@ func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[int64]) iter
 	// todo benchmark to find the right amount of values to read at once.
 	stacktraceValues := make([]parquet.Value, 100)
 	sampleValues := make([]parquet.Value, 1000)
-	// stacktraceAggrValues := map[int64]int64{}
+	stacktraceAggrValues := map[int64]int64{}
 	for _, rg := range file.RowGroups() {
 		func(stacktraces, values parquet.Pages) {
 			defer stacktraces.Close()
@@ -673,8 +673,8 @@ func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[int64]) iter
 				if start == -1 {
 					return
 				}
-				// stacktraces.SeekToRow(start)
-				// values.SeekToRow(start)
+				stacktraces.SeekToRow(start)
+				values.SeekToRow(start)
 				for {
 					stacktracePage, err := stacktraces.ReadPage()
 					if err != nil && err != io.EOF {
@@ -705,28 +705,22 @@ func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[int64]) iter
 						}
 						stacktraceValues = stacktraceValues[:read]
 						sampleValues = sampleValues[:valuesRead]
+						i := -1
 						for _, v := range sampleValues {
 							fmt.Println("values:", v.Int64())
 							fmt.Println("r:", v.RepetitionLevel())
 							fmt.Println("d:", v.DefinitionLevel())
-							// fmt.Println("stacktrace:", stacktraceValues[v.RepetitionLevel()].Int64())
-							// fmt.Println("r:", stacktraceValues[v.RepetitionLevel()].RepetitionLevel())
-							// fmt.Println("d:", stacktraceValues[v.RepetitionLevel()].DefinitionLevel())
+							// todo currently this sum all values for the same stacktrace
+							// but different profile.
+							if v.RepetitionLevel() < v.DefinitionLevel() {
+								i++
+							}
+							fmt.Println("stacktrace:", stacktraceValues[i].Int64())
 
 							// todo benchmark the use of a map vs a slice
-							// stacktraceAggrValues[] += v.Int64()
+							stacktraceAggrValues[stacktraceValues[i].Int64()] += v.Int64()
 						}
-						for _, v := range stacktraceValues {
-							fmt.Println("stacktrace:", v.Int64())
-							fmt.Println("r:", v.RepetitionLevel())
-							fmt.Println("d:", v.DefinitionLevel())
-							// fmt.Println("stacktrace:", stacktraceValues[v.RepetitionLevel()].Int64())
-							// fmt.Println("r:", stacktraceValues[v.RepetitionLevel()].RepetitionLevel())
-							// fmt.Println("d:", stacktraceValues[v.RepetitionLevel()].DefinitionLevel())
 
-							// todo benchmark the use of a map vs a slice
-							// stacktraceAggrValues[] += v.Int64()
-						}
 						if err == io.EOF {
 							break
 						}

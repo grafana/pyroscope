@@ -128,14 +128,12 @@ func TestBlockQuerierMerger(t *testing.T) {
 	// require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 	p = pprofth.NewProfileBuilder(int64(35 * time.Second)).MemoryProfile()
 	p.ForStacktrace("my", "other").AddSamples(2, 3, 4, 5)
-	p.ForStacktrace("my", "other").AddSamples(6, 7, 8, 9)
 	p.ForStacktrace("my", "other", "stack").AddSamples(6, 7, 8, 9)
 	require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 
 	p = pprofth.NewProfileBuilder(int64(35 * time.Second)).MemoryProfile()
-	p.ForStacktrace("my", "other").AddSamples(2, 3, 4, 5)
-	p.ForStacktrace("my", "other").AddSamples(6, 7, 8, 9)
-	p.ForStacktrace("my", "other", "stack").AddSamples(6, 7, 8, 9)
+	p.ForStacktrace("my", "other").AddSamples(4, 6, 8, 10)
+	p.ForStacktrace("my", "other", "stack").AddSamples(12, 14, 16, 18)
 	require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 
 	require.NoError(t, db.Flush(context.Background()))
