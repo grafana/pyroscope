@@ -255,9 +255,12 @@ helm/lint: $(BIN)/helm
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeval $(BIN)/helm
+	mkdir -p ./deploy/helm/fire/rendered/
 	$(BIN)/helm template fire-dev ./deploy/helm/fire/ \
+		| tee ./deploy/helm/fire/rendered/single-binary.yaml \
 		| $(BIN)/kubeval --strict
 	$(BIN)/helm template fire-dev ./deploy/helm/fire/ --values deploy/helm/fire/values-micro-services.yaml \
+		| tee ./deploy/helm/fire/rendered/micro-services.yaml \
 		| $(BIN)/kubeval --strict
 
 .PHONY: deploy
