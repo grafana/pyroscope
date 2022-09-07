@@ -514,9 +514,10 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 	}
 
 	var (
-		lbls   = make(firemodel.Labels, 0, 6)
-		chks   = make([]index.ChunkMeta, 1)
-		series = make(map[model.Fingerprint]firemodel.Labels)
+		lbls      = make(firemodel.Labels, 0, 6)
+		chks      = make([]index.ChunkMeta, 1)
+		series    = make(map[model.Fingerprint]firemodel.Labels)
+		seriesRef = make(map[int64]struct{})
 	)
 
 	// get all relevant labels/fingerprints
@@ -526,6 +527,7 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 		if err != nil {
 			return nil, err
 		}
+		seriesRef[int64(chks[0].SeriesIndex)] = struct{}{}
 		if lblsExisting, exists := series[model.Fingerprint(fp)]; exists {
 			// Compare to check if there is a clash
 			if firemodel.CompareLabelPairs(lbls, lblsExisting) != 0 {
@@ -540,7 +542,7 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(series), "SeriesRefs"),                                       // get all profiles with matching seriesRef
+			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(seriesRef), "SeriesRefs"),                                    // get all profiles with matching seriesRef
 			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(params.Start.UnixNano(), params.End.UnixNano()), "TimeNanos"), // get all profiles within the time window
 		},
 		nil,
@@ -636,6 +638,8 @@ func (p *StacktraceValueIterator) Close() error {
 }
 
 func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[int64]) iter.Iterator[StacktraceValue] {
+	file := m.reader.file
+
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
