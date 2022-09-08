@@ -605,173 +605,12 @@ func (m *ProfileSampleMerger) SelectedProfiles() iter.Iterator[*Profile] {
 	return m.profiles
 }
 
-type StacktraceValueIterator struct {
-	rowNums query.Iterator
-
-	curr   StacktraceValue
-	buffer [][]parquet.Value
+func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[*Profile]) (iter.Iterator[StacktraceValue], error) {
+	return mergeSamplesByStacktraces(m.reader.file, rows)
 }
 
-func (p *StacktraceValueIterator) Next() bool {
-	if !p.rowNums.Next() {
-		return false
-	}
-	if p.buffer == nil {
-		p.buffer = make([][]parquet.Value, 2)
-	}
-	result := p.rowNums.At()
-	p.buffer = result.Columns(p.buffer, "StacktraceID", "SampleValues")
-	p.curr.StacktraceID = p.buffer[0][0].Int64()
-	return true
-}
-
-func (p *StacktraceValueIterator) At() StacktraceValue {
-	return p.curr
-}
-
-func (p *StacktraceValueIterator) Err() error {
-	return p.rowNums.Err()
-}
-
-func (p *StacktraceValueIterator) Close() error {
-	return p.rowNums.Close()
-}
-
-func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[int64]) iter.Iterator[StacktraceValue] {
-	file := m.reader.file
-	stacktraceIDCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.StacktraceID")
-	if stacktraceIDCol == -1 {
-		panic("col not found")
-	}
-	valuesCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.Values.list.element")
-	if valuesCol == -1 {
-		panic("col not found")
-	}
-	// todo benchmark to find the right amount of values to read at once.
-	stacktraceValues := make([]parquet.Value, 100)
-	sampleValues := make([]parquet.Value, 1000)
-	stacktraceAggrValues := map[int64]int64{}
-	for _, rg := range file.RowGroups() {
-		func(stacktraces, values parquet.Pages) {
-			defer stacktraces.Close()
-			defer values.Close()
-			for {
-				start, end := int64(-1), int64(-1)
-				for rows.Next() {
-					fmt.Println(rows.At())
-					if start == -1 {
-						start = rows.At()
-						end = rows.At()
-						continue
-					}
-					if rows.At() == start+1 {
-						end = start + 1
-						continue
-					}
-					break
-				}
-				if start == -1 {
-					return
-				}
-				stacktraces.SeekToRow(start)
-				values.SeekToRow(start)
-				for {
-					stacktracePage, err := stacktraces.ReadPage()
-					if err != nil && err != io.EOF {
-						panic(err)
-					}
-					if err == io.EOF {
-						break
-					}
-					valuePage, err := values.ReadPage()
-					if err != nil && err != io.EOF {
-						panic(err)
-					}
-					if err == io.EOF {
-						break
-					}
-					valueReader := valuePage.Slice(start, end).Values()
-
-					stacktraceValueReader := stacktracePage.Slice(start, end).Values()
-					for {
-						// todo we assume the repetition level is equal
-						read, err := stacktraceValueReader.ReadValues(stacktraceValues)
-						if err != nil && err != io.EOF {
-							panic(err)
-						}
-						valuesRead, err := valueReader.ReadValues(sampleValues)
-						if err != nil && err != io.EOF {
-							panic(err)
-						}
-						stacktraceValues = stacktraceValues[:read]
-						sampleValues = sampleValues[:valuesRead]
-						i := -1
-						for _, v := range sampleValues {
-							fmt.Println("values:", v.Int64())
-							fmt.Println("r:", v.RepetitionLevel())
-							fmt.Println("d:", v.DefinitionLevel())
-							// todo currently this sum all values for the same stacktrace
-							// but different profile.
-							if v.RepetitionLevel() < v.DefinitionLevel() {
-								i++
-							}
-							fmt.Println("stacktrace:", stacktraceValues[i].Int64())
-
-							// todo benchmark the use of a map vs a slice
-							stacktraceAggrValues[stacktraceValues[i].Int64()] += v.Int64()
-						}
-
-						if err == io.EOF {
-							break
-						}
-					}
-				}
-
-				// all stracktraces are read, now read values
-
-				// for {
-				// 	page, err := values.ReadPage()
-				// 	if err != nil && err != io.EOF {
-				// 		panic(err)
-				// 	}
-				// 	read, err := page.Slice(start, end).Values().ReadValues(sampleValues)
-				// 	if err != nil && err != io.EOF {
-				// 		panic(err)
-				// 	}
-				// 	sampleValues = sampleValues[:read]
-
-				// 	for _, v := range sampleValues {
-				// 		stacktraceAggrValues[stacktraceId[i]] += v.Int64()
-				// 		fmt.Println("value:", v.Int64())
-				// 		fmt.Println("r:", v.RepetitionLevel())
-				// 		fmt.Println("d:", v.DefinitionLevel())
-				// 		// fmt.Println(stacktraceAggrValues[])
-				// 	}
-				// 	if err == io.EOF {
-				// 		break
-				// 	}
-
-				// }
-
-			}
-		}(rg.ColumnChunks()[stacktraceIDCol].Pages(), rg.ColumnChunks()[valuesCol].Pages())
-	}
-	rowNums := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			&query.RowNumberIterator{Iterator: rows},
-			m.reader.columnIter(m.ctx, "Samples.list.element.StacktraceID", nil, "StacktraceID"),
-			m.reader.columnIter(m.ctx, "Samples.list.element.Values.list.element", nil, "SampleValues"),
-		},
-		nil,
-	)
-	return &StacktraceValueIterator{
-		rowNums: rowNums,
-	}
-}
-
-func (m *ProfileSampleMerger) MergeByLabels(rows iter.Iterator[int64], groupBy []string) iter.Iterator[SeriesValue] {
-	return nil
+func (m *ProfileSampleMerger) MergeByLabels(rows iter.Iterator[*Profile], groupBy []string) (iter.Iterator[SeriesValue], error) {
+	return nil, nil
 }
 
 type SelectMergeRequest struct {
@@ -788,6 +627,10 @@ type Profile struct {
 	RowNum       int64
 }
 
+func (p Profile) RowNumber() int64 {
+	return p.RowNum
+}
+
 type StacktraceValue struct {
 	StacktraceID int64
 	Value        int64
@@ -801,8 +644,8 @@ type SeriesValue struct {
 
 type ProfileSamplesMerger interface {
 	SelectedProfiles() iter.Iterator[*Profile]
-	MergeByStacktraces(rows iter.Iterator[int64]) iter.Iterator[StacktraceValue]
-	MergeByLabels(rows iter.Iterator[int64], groupBy []string) iter.Iterator[SeriesValue]
+	MergeByStacktraces(rows iter.Iterator[*Profile]) (iter.Iterator[StacktraceValue], error)
+	MergeByLabels(rows iter.Iterator[*Profile], groupBy []string) (iter.Iterator[SeriesValue], error)
 }
 
 type Querier interface {

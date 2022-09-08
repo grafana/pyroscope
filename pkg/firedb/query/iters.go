@@ -122,8 +122,9 @@ func (t *RowNumber) Skip(numRows int64) {
 type IteratorResult struct {
 	RowNumber RowNumber
 	Entries   []struct {
-		k string
-		v parquet.Value
+		k        string
+		v        parquet.Value
+		RowValue interface{}
 	}
 }
 
@@ -137,9 +138,10 @@ func (r *IteratorResult) Append(rr *IteratorResult) {
 
 func (r *IteratorResult) AppendValue(k string, v parquet.Value) {
 	r.Entries = append(r.Entries, struct {
-		k string
-		v parquet.Value
-	}{k, v})
+		k        string
+		v        parquet.Value
+		RowValue interface{}
+	}{k, v, nil})
 }
 
 // ToMap converts the unstructured list of data into a map containing an entry
@@ -212,8 +214,9 @@ func columnIteratorPoolPut(b *columnIteratorBuffer) {
 var columnIteratorResultPool = sync.Pool{
 	New: func() interface{} {
 		return &IteratorResult{Entries: make([]struct {
-			k string
-			v parquet.Value
+			k        string
+			v        parquet.Value
+			RowValue interface{}
 		}, 0, 10)} // For luck
 	},
 }
@@ -868,30 +871,44 @@ func (a *KeyValueGroupPredicate) KeepGroup(group *IteratorResult) bool {
 	return true
 }
 
-type RowNumberIterator struct {
-	iter.Iterator[int64]
+type RowGetter interface {
+	RowNumber() int64
 }
 
-var _ Iterator = (*RowNumberIterator)(nil)
-
-func (r *RowNumberIterator) Next() bool {
-	return r.Iterator.Next()
+type RowNumberIterator[T RowGetter] struct {
+	iter.Iterator[T]
+	current *IteratorResult
 }
 
-func (r *RowNumberIterator) At() *IteratorResult {
-	row := EmptyRowNumber()
-	row[0] = r.Iterator.At()
-	return &IteratorResult{
-		RowNumber: row,
+func NewRowNumberIterator[T RowGetter](iter iter.Iterator[T]) *RowNumberIterator[T] {
+	return &RowNumberIterator[T]{
+		Iterator: iter,
+		current: &IteratorResult{
+			RowNumber: EmptyRowNumber(),
+			Entries: []struct {
+				k        string
+				v        pq.Value
+				RowValue interface{}
+			}{
+				{},
+			},
+		},
 	}
 }
 
-func (r *RowNumberIterator) Seek(to RowNumberWithDefinitionLevel) bool {
-	// var at *pq.IteratorResult
+func (r *RowNumberIterator[T]) Next() bool {
+	if !r.Iterator.Next() {
+		return false
+	}
+	r.current.RowNumber[0] = r.Iterator.At().RowNumber()
+	r.current.Entries[0].RowValue = r.Iterator.At()
+	return true
+}
 
-	// for at = r.Next(); r != nil && pq.CompareRowNumbers(definitionLevel, at.RowNumber, to) < 0; {
-	// 	at = r.Next()
-	// }
+func (r *RowNumberIterator[T]) At() *IteratorResult {
+	return r.current
+}
 
+func (r *RowNumberIterator[T]) Seek(to RowNumberWithDefinitionLevel) bool {
 	return true
 }

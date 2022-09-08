@@ -2,6 +2,7 @@ package testhelper
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/common/model"
@@ -67,6 +68,17 @@ func (m *ProfileBuilder) MemoryProfile() *ProfileBuilder {
 		Value: "memory",
 	})
 
+	return m
+}
+
+func (m *ProfileBuilder) WithLabels(lv ...string) *ProfileBuilder {
+	for i := 0; i < len(lv); i += 2 {
+		m.Labels = append(m.Labels, &commonv1.LabelPair{
+			Name:  lv[i],
+			Value: lv[i+1],
+		})
+	}
+	sort.Sort(firemodel.Labels(m.Labels))
 	return m
 }
 
