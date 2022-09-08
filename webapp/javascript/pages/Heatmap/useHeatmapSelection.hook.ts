@@ -86,6 +86,9 @@ export const useHeatmapSelection = ({
   };
 
   const startDrawing = (e: MouseEvent) => {
+    window.addEventListener('mousemove', handleDrawingEvent);
+    window.addEventListener('mouseup', endDrawing);
+
     const canvas = canvasRef.current as HTMLCanvasElement;
     const { left, top } = canvas.getBoundingClientRect();
     setHasSelectedArea(false);
@@ -175,6 +178,8 @@ export const useHeatmapSelection = ({
 
       const selectedAreaW = xEnd - startCoords.x;
       changeTimeRange(startCoords.x, xEnd, startCoords.y, yEnd);
+      window.removeEventListener('mousemove', handleDrawingEvent);
+      window.removeEventListener('mouseup', endDrawing);
 
       if (selectedAreaW) {
         selectedAreaToHeatmapRatio = Math.abs(width / (xEnd - startCoords.x));
@@ -205,8 +210,6 @@ export const useHeatmapSelection = ({
   useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.addEventListener('mousedown', startDrawing);
-      window.addEventListener('mousemove', handleDrawingEvent);
-      window.addEventListener('mouseup', endDrawing);
     }
 
     return () => {
