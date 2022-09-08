@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import React, { useState } from 'react';
 
 import FlameGraph from './FlameGraph';
-import { data } from '../data';
+import { data } from '../../data';
 import { MutableDataFrame } from '@grafana/data';
 import 'jest-canvas-mock';
 
@@ -46,8 +46,8 @@ describe('FlameGraph', () => {
   it('should render correctly', async () => {
     Object.defineProperty(HTMLCanvasElement.prototype, 'clientWidth', { value: 1600 });
     render(<FlameGraphWithProps />);
-    
-    const canvas = screen.getByTestId("flamegraph") as HTMLCanvasElement;
+
+    const canvas = screen.getByTestId('flamegraph') as HTMLCanvasElement;
     const ctx = canvas!.getContext('2d');
     const calls = ctx!.__getDrawCalls();
     expect(calls).toMatchSnapshot();

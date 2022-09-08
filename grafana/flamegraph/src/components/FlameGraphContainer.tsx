@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DataFrame } from '@grafana/data';
 
 import FlameGraphHeader from './FlameGraphHeader';
-import FlameGraph from './FlameGraph';
+import FlameGraph from './FlameGraph/FlameGraph';
 
 type Props = {
   data: DataFrame;

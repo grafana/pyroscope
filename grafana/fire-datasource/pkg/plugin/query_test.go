@@ -53,8 +53,7 @@ func Test_responseToDataFrames(t *testing.T) {
 			},
 		},
 	}
-	frame, err := responseToDataFrames(resp)
-	require.NoError(t, err)
+	frame := responseToDataFrames(resp)
 	require.Equal(t, []string{"func1", "func2", "func3"}, frame.Meta.Custom.(CustomMeta).Names)
 	require.Equal(t, int64(123), frame.Meta.Custom.(CustomMeta).MaxSelf)
 	require.Equal(t, int64(987), frame.Meta.Custom.(CustomMeta).Total)
@@ -62,8 +61,77 @@ func Test_responseToDataFrames(t *testing.T) {
 	require.Equal(t, data.NewField("levels", nil, []string{"[1,2,3,4]", "[5,6,7,8,9]"}), frame.Fields[0])
 }
 
+// This is where the tests for the datasource backend live.
+func Test_levelsToTree(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		levels := []*querierv1.Level{
+			{Values: []int64{0, 100, 0, 0}},
+			{Values: []int64{0, 40, 0, 1, 0, 30, 0, 2}},
+			{Values: []int64{0, 15, 0, 3}},
+		}
+
+		tree := levelsToTree(levels, []string{"root", "func1", "func2", "func1:func3"})
+		require.Equal(t, &ProfileTree{
+			Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
+				{Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
+					{Start: 0, Value: 15, Level: 2, Name: "func1:func3"}},
+				},
+				{Start: 40, Value: 30, Level: 1, Name: "func2"},
+			},
+		}, tree)
+	})
+
+	t.Run("medium", func(t *testing.T) {
+		levels := []*querierv1.Level{
+			{Values: []int64{0, 100, 0, 0}},
+			{Values: []int64{0, 40, 0, 1, 0, 30, 0, 2, 0, 30, 0, 3}},
+			{Values: []int64{0, 20, 0, 4, 50, 10, 0, 5}},
+		}
+
+		tree := levelsToTree(levels, []string{"root", "func1", "func2", "func3", "func1:func4", "func3:func5"})
+		require.Equal(t, &ProfileTree{
+			Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
+				{Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
+					{Start: 0, Value: 20, Level: 2, Name: "func1:func4"}},
+				},
+				{Start: 40, Value: 30, Level: 1, Name: "func2"},
+				{Start: 70, Value: 30, Level: 1, Name: "func3", Nodes: []*ProfileTree{
+					{Start: 70, Value: 10, Level: 2, Name: "func3:func5"}},
+				},
+			},
+		}, tree)
+	})
+}
+
+func Test_treeToNestedDataFrame(t *testing.T) {
+	tree := &ProfileTree{
+		Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
+			{
+				Start: 10, Value: 40, Level: 1, Name: "func1",
+			},
+			{Start: 60, Value: 30, Level: 1, Name: "func2", Nodes: []*ProfileTree{
+				{Start: 61, Value: 15, Level: 2, Name: "func1:func3"},
+			}},
+		},
+	}
+
+	frame := treeToNestedSetDataFrame(tree)
+	require.Equal(t,
+		[]*data.Field{
+			data.NewField("level", nil, []int64{0, 1, 1, 2}),
+			data.NewField("value", nil, []int64{100, 40, 30, 15}),
+			data.NewField("label", nil, []string{"root", "func1", "func2", "func1:func3"}),
+		}, frame.Fields)
+
+}
+
 type FakeClient struct {
 	Req *connect.Request[querierv1.SelectMergeStacktracesRequest]
+}
+
+func (f FakeClient) LabelNames(ctx context.Context, c *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (f FakeClient) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
