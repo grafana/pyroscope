@@ -5,7 +5,7 @@ import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
 
 import type { Profile } from '@pyroscope/models/src';
-import Box from '@webapp/ui/Box';
+import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
@@ -238,7 +238,7 @@ function TagExplorerView() {
             )}
           </div>
         </Box>
-        <Box>
+        <CollapseBox title={`${appName.unwrapOr('')} Descriptive Statistics`}>
           <Table
             appName={appName.unwrapOr('')}
             whereDropdownItems={whereDropdownItems}
@@ -248,7 +248,7 @@ function TagExplorerView() {
             handleGroupByTagValueChange={handleGroupByTagValueChange}
             isLoading={type === 'loading'}
           />
-        </Box>
+        </CollapseBox>
         <Box>
           <div className={styles.flamegraphWrapper}>
             {type === 'loading' ? (
@@ -377,7 +377,6 @@ function Table({
   return (
     <>
       <div className={styles.tableDescription} data-testid="explore-table">
-        <span className={styles.title}>{appName} Descriptive Statistics</span>
         <div className={styles.buttons}>
           <NavLink
             to={{

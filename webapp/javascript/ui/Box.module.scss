@@ -10,3 +10,51 @@
   margin-bottom: 10px;
   padding: 10px;
 }
+
+.collapseBox {
+  @extend .box;
+  margin-bottom: 10px;
+
+  .box {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    height: auto;
+
+    &.collapsedContent {
+      height: 0;
+      margin: 0;
+      padding: 0;
+    }
+  }
+}
+
+.collapseTitle {
+  font-weight: 500;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 5px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &:hover {
+    background-color: var(--ps-ui-border);
+
+    .collapseIcon {
+      display: flex;
+    }
+  }
+}
+
+.collapseIcon {
+  display: none;
+  transition: transform 0.1s;
+
+  &.collapsed {
+    transform: rotate(90deg);
+    display: flex;
+  }
+}
