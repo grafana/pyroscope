@@ -145,6 +145,11 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 	return uint64(rowsFlushed), uint64(rowGroupsFlushed), nil
 }
 
+func (s *deduplicatingSlice[M, K, H, P]) isDeduplicating() bool {
+	var k K
+	return !isNoKey(k)
+}
+
 func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {
 	var (
 		rewritingMap = make(map[int64]int64)
@@ -158,7 +163,21 @@ func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, 
 		}
 	}
 
-	// try to find if element already exists in slice
+	// shortcut if not deduplication is requested
+	if !s.isDeduplicating() {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+
+		for pos := range elems {
+			// increase size of stored data
+			s.slice = append(s.slice, s.helper.clone(elems[pos]))
+			s.size.Add(s.helper.size(elems[pos]))
+		}
+
+		return nil
+	}
+
+	// try to find if element already exists in slice, when supposed to depduplicate
 	s.lock.RLock()
 	for pos := range elems {
 		k := s.helper.key(elems[pos])
