@@ -14,9 +14,9 @@ var (
 )
 
 type Annotation struct {
-	AppName   string `gorm:"type:varchar(255);not null;default:null"`
-	Timestamp time.Time
-	Content   string `gorm:"not null;default:null"`
+	AppName   string    `gorm:"not null;default:null"`
+	Timestamp time.Time `form:"not null;default:null"`
+	Content   string    `gorm:"not null;default:null"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
