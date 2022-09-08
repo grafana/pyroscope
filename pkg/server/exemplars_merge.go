@@ -163,16 +163,16 @@ func (h *ExemplarsHandler) mergeExemplarsRequest(w http.ResponseWriter, r *http.
 }
 
 func mergeExemplarsInputFromMergeExemplarsRequest(req *mergeExemplarsRequest) storage.MergeExemplarsInput {
-	startTime := pickTime(req.StartTime, req.From)
-	endTime := pickTime(req.EndTime, req.Until)
+	startTime := parseTimeFallback(req.StartTime, req.From)
+	endTime := parseTimeFallback(req.EndTime, req.Until)
 	return storage.MergeExemplarsInput{
 		AppName:    req.AppName,
 		ProfileIDs: req.Profiles,
 		StartTime:  startTime,
 		EndTime:    endTime,
 		ExemplarsSelection: storage.ExemplarsSelection{
-			StartTime: attime.Parse(req.SelectionStartTime),
-			EndTime:   attime.Parse(req.SelectionEndTime),
+			StartTime: parseTime(req.SelectionStartTime),
+			EndTime:   parseTime(req.SelectionEndTime),
 			MinValue:  req.MinValue,
 			MaxValue:  req.MaxValue,
 		},
@@ -187,12 +187,19 @@ func mergeExemplarsInputFromMergeExemplarsRequest(req *mergeExemplarsRequest) st
 	}
 }
 
-func pickTime(primary, fallback string) time.Time {
+func parseTimeFallback(primary, fallback string) time.Time {
 	if primary != "" {
 		return attime.Parse(primary)
 	}
 	if fallback != "" {
 		return attime.Parse(fallback)
 	}
-	return time.Time{}
+	return time.Unix(0, 0)
+}
+
+func parseTime(t string) time.Time {
+	if t == "" {
+		return time.Unix(0, 0)
+	}
+	return attime.Parse(t)
 }
