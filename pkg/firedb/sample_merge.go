@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
 	query "github.com/grafana/fire/pkg/firedb/query"
 	"github.com/grafana/fire/pkg/iter"
+	firemodel "github.com/grafana/fire/pkg/model"
 )
 
 func mergeSamplesByStacktraces(file *parquet.File, rows iter.Iterator[*Profile]) (iter.Iterator[StacktraceValue], error) {
@@ -26,7 +28,7 @@ func mergeSamplesByStacktraces(file *parquet.File, rows iter.Iterator[*Profile])
 		[]query.Iterator{
 			query.NewRowNumberIterator(rows),
 			query.NewColumnIterator(context.Background(), file.RowGroups(), stacktraceIDCol, "Samples.list.element.StacktraceID", 1024, nil, "StacktraceID"),
-			query.NewColumnIterator(context.Background(), file.RowGroups(), valuesCol, "Samples.list.element.Values.list.element", 1024, nil, "Value"),
+			query.NewColumnIterator(context.Background(), file.RowGroups(), valuesCol, "Samples.list.element.Values.list.element", 10*1024, nil, "Value"),
 		}, nil,
 	)
 	var series [][]parquet.Value
@@ -46,7 +48,8 @@ func mergeSamplesByStacktraces(file *parquet.File, rows iter.Iterator[*Profile])
 	}, nil
 }
 
-func mergeSamplesByProfile(file *parquet.File, rows iter.Iterator[*Profile]) (iter.Iterator[SeriesValue], error) {
+func mergeSamplesByProfile(file *parquet.File, rows iter.Iterator[*Profile], by ...string) (iter.Iterator[SeriesValue], error) {
+	sort.Strings(by)
 	valuesCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.Values.list.element")
 	if valuesCol == -1 {
 		return nil, fmt.Errorf("no values column found")
@@ -58,19 +61,62 @@ func mergeSamplesByProfile(file *parquet.File, rows iter.Iterator[*Profile]) (it
 			query.NewColumnIterator(context.Background(), file.RowGroups(), valuesCol, "Samples.list.element.Values.list.element", 1024, nil, "Value"),
 		}, nil,
 	)
-	var series [][]parquet.Value
-	stacktraceAggrValues := map[int64]int64{}
+	var pqValues [][]parquet.Value
+	seriesByFingerprint := map[model.Fingerprint]model.Fingerprint{}
+	seriesBy := map[model.Fingerprint]*SeriesValue{}
 	for it.Next() {
 		values := it.At()
 		p := values.Entries[0].RowValue.(*Profile)
-		fmt.Println(p)
-		series = values.Columns(series, "Value")
-		for i := 0; i < len(series[0]); i++ {
-			stacktraceAggrValues[series[0][i].Int64()] += series[1][i].Int64()
+		byFp, ok := seriesByFingerprint[p.Finguerprint]
+		var sv *SeriesValue
+		if !ok {
+			byLabels := p.Labels.WithLabels(by...)
+			byFp = model.Fingerprint(byLabels.Hash())
+			seriesByFingerprint[p.Finguerprint] = byFp
+			sv = &SeriesValue{
+				Labels:       byLabels,
+				Finguerprint: byFp,
+			}
+			seriesBy[byFp] = sv
+		} else {
+			sv = seriesBy[byFp]
+		}
+		pqValues = values.Columns(pqValues, "Value")
+		for i := 0; i < len(pqValues[0]); i++ {
+			sv.Value += pqValues[0][i].Int64()
 		}
 	}
-	// todo
-	return nil, nil
+	series := lo.Values(seriesBy)
+	sort.Slice(series, func(i, j int) bool {
+		return firemodel.CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
+	})
+	return &SeriesValueIterator{series: series}, nil
+}
+
+type SeriesValueIterator struct {
+	series []*SeriesValue
+	cur    *SeriesValue
+}
+
+func (p *SeriesValueIterator) Next() bool {
+	if len(p.series) == 0 {
+		return false
+	}
+	p.cur = p.series[0]
+	p.series = p.series[1:]
+	return true
+}
+
+func (p *SeriesValueIterator) At() SeriesValue {
+	return *p.cur
+}
+
+func (p *SeriesValueIterator) Err() error {
+	return nil
+}
+
+func (p *SeriesValueIterator) Close() error {
+	return nil
 }
 
 type StacktraceValueIterator struct {

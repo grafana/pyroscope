@@ -534,7 +534,9 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 				panic("label hash conflict")
 			}
 		} else {
+			// todo correct series ref
 			series[model.Fingerprint(fp)] = lbls
+			seriesRef[int64(chks[0].SeriesIndex)] = lbls
 			lbls = make(firemodel.Labels, 0, 6)
 		}
 	}
@@ -610,7 +612,7 @@ func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[*Profile]) (
 }
 
 func (m *ProfileSampleMerger) MergeByLabels(rows iter.Iterator[*Profile], groupBy []string) (iter.Iterator[SeriesValue], error) {
-	return nil, nil
+	return mergeSamplesByProfile(m.reader.file, rows, groupBy...)
 }
 
 type SelectMergeRequest struct {
