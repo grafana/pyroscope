@@ -34,6 +34,8 @@ type HeatmapParams struct {
 	// StartTime and EndTime indicate boundaries of the X axis.
 	StartTime time.Time
 	EndTime   time.Time
+	MinValue  uint64
+	MaxValue  uint64
 }
 
 type HeatmapSketch struct {

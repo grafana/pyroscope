@@ -14,17 +14,22 @@ import (
 )
 
 type mergeExemplarsRequest struct {
-	QueryID   history.QueryID
-	AppName   string   `json:"appName"`
-	StartTime string   `json:"startTime"`
-	EndTime   string   `json:"endTime"`
-	Profiles  []string `json:"profiles"`
-	MaxNodes  int      `json:"maxNodes"`
+	QueryID  history.QueryID
+	AppName  string   `json:"appName"`
+	Profiles []string `json:"profiles"`
+	MaxNodes int      `json:"maxNodes"`
 
+	StartTime           string `json:"startTime"`
+	EndTime             string `json:"endTime"`
 	MinValue            uint64 `json:"minValue"`
 	MaxValue            uint64 `json:"maxValue"`
 	HeatmapTimeBuckets  int64  `json:"heatmapTimeBuckets"`
 	HeatmapValueBuckets int64  `json:"heatmapValueBuckets"`
+
+	SelectionStartTime string `json:"selectionStartTime"`
+	SelectionEndTime   string `json:"selectionEndTime"`
+	SelectionMinValue  uint64 `json:"selectionMinValue"`
+	SelectionMaxValue  uint64 `json:"selectionMaxValue"`
 
 	// For consistency with render handler: `startTime` and `endTime` take precedence.
 	From  string `json:"from"`
@@ -158,30 +163,43 @@ func (h *ExemplarsHandler) mergeExemplarsRequest(w http.ResponseWriter, r *http.
 }
 
 func mergeExemplarsInputFromMergeExemplarsRequest(req *mergeExemplarsRequest) storage.MergeExemplarsInput {
-	startTime := pickTime(req.StartTime, req.From)
-	endTime := pickTime(req.EndTime, req.Until)
+	startTime := parseTimeFallback(req.StartTime, req.From)
+	endTime := parseTimeFallback(req.EndTime, req.Until)
 	return storage.MergeExemplarsInput{
 		AppName:    req.AppName,
 		ProfileIDs: req.Profiles,
 		StartTime:  startTime,
 		EndTime:    endTime,
-		MinValue:   req.MinValue,
-		MaxValue:   req.MaxValue,
+		ExemplarsSelection: storage.ExemplarsSelection{
+			StartTime: parseTime(req.SelectionStartTime),
+			EndTime:   parseTime(req.SelectionEndTime),
+			MinValue:  req.MinValue,
+			MaxValue:  req.MaxValue,
+		},
 		HeatmapParams: storage.HeatmapParams{
 			StartTime:    startTime,
 			EndTime:      endTime,
+			MinValue:     req.MinValue,
+			MaxValue:     req.MaxValue,
 			TimeBuckets:  req.HeatmapTimeBuckets,
 			ValueBuckets: req.HeatmapValueBuckets,
 		},
 	}
 }
 
-func pickTime(primary, fallback string) time.Time {
+func parseTimeFallback(primary, fallback string) time.Time {
 	if primary != "" {
 		return attime.Parse(primary)
 	}
 	if fallback != "" {
 		return attime.Parse(fallback)
 	}
-	return time.Time{}
+	return time.Unix(0, 0)
+}
+
+func parseTime(t string) time.Time {
+	if t == "" {
+		return time.Unix(0, 0)
+	}
+	return attime.Parse(t)
 }
