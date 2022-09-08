@@ -19,10 +19,8 @@ type MergeExemplarsInput struct {
 	EndTime    time.Time
 
 	// FIXME: Not implemented: parameters are ignored.
-	MinValue uint64
-	MaxValue uint64
-
-	HeatmapParams HeatmapParams
+	ExemplarsSelection ExemplarsSelection
+	HeatmapParams      HeatmapParams
 }
 
 type MergeExemplarsOutput struct {
@@ -30,8 +28,7 @@ type MergeExemplarsOutput struct {
 	Count         uint64
 	Metadata      metadata.Metadata
 	HeatmapSketch HeatmapSketch // FIXME: Not implemented: the field is never populated.
-
-	Telemetry map[string]interface{}
+	Telemetry     map[string]interface{}
 }
 
 func (s *Storage) MergeExemplars(ctx context.Context, mi MergeExemplarsInput) (out MergeExemplarsOutput, err error) {

@@ -8,6 +8,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type queryExemplarsParams struct {
@@ -76,15 +77,17 @@ func (h ExemplarsHandler) queryExemplarsParamsFromRequest(r *http.Request, p *qu
 	p.input.StartTime = pickTime(v.Get("startTime"), v.Get("from"))
 	p.input.EndTime = pickTime(v.Get("endTime"), v.Get("until"))
 
-	p.input.MinValue, _ = strconv.ParseUint(v.Get("minValue"), 10, 64)
-	p.input.MaxValue, _ = strconv.ParseUint(v.Get("maxValue"), 10, 64)
-	p.input.HeatmapParams = storage.HeatmapParams{
-		StartTime: p.input.StartTime,
-		EndTime:   p.input.EndTime,
-	}
-
+	p.input.HeatmapParams.StartTime = p.input.StartTime
+	p.input.HeatmapParams.EndTime = p.input.EndTime
+	p.input.HeatmapParams.MinValue, _ = strconv.ParseUint(v.Get("minValue"), 10, 64)
+	p.input.HeatmapParams.MaxValue, _ = strconv.ParseUint(v.Get("maxValue"), 10, 64)
 	p.input.HeatmapParams.TimeBuckets, _ = strconv.ParseInt(v.Get("heatmapTimeBuckets"), 10, 64)
 	p.input.HeatmapParams.ValueBuckets, _ = strconv.ParseInt(v.Get("heatmapValueBuckets"), 10, 64)
+
+	p.input.ExemplarsSelection.StartTime = attime.Parse(v.Get("selectionStartTime"))
+	p.input.ExemplarsSelection.EndTime = attime.Parse(v.Get("selectionEndTime"))
+	p.input.ExemplarsSelection.MinValue, _ = strconv.ParseUint(v.Get("selectionMinValue"), 10, 64)
+	p.input.ExemplarsSelection.MaxValue, _ = strconv.ParseUint(v.Get("selectionMaxValue"), 10, 64)
 
 	p.maxNodes = h.MaxNodesDefault
 	var x int

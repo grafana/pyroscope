@@ -14,17 +14,22 @@ import (
 )
 
 type mergeExemplarsRequest struct {
-	QueryID   history.QueryID
-	AppName   string   `json:"appName"`
-	StartTime string   `json:"startTime"`
-	EndTime   string   `json:"endTime"`
-	Profiles  []string `json:"profiles"`
-	MaxNodes  int      `json:"maxNodes"`
+	QueryID  history.QueryID
+	AppName  string   `json:"appName"`
+	Profiles []string `json:"profiles"`
+	MaxNodes int      `json:"maxNodes"`
 
+	StartTime           string `json:"startTime"`
+	EndTime             string `json:"endTime"`
 	MinValue            uint64 `json:"minValue"`
 	MaxValue            uint64 `json:"maxValue"`
 	HeatmapTimeBuckets  int64  `json:"heatmapTimeBuckets"`
 	HeatmapValueBuckets int64  `json:"heatmapValueBuckets"`
+
+	SelectionStartTime string `json:"selectionStartTime"`
+	SelectionEndTime   string `json:"selectionEndTime"`
+	SelectionMinValue  uint64 `json:"selectionMinValue"`
+	SelectionMaxValue  uint64 `json:"selectionMaxValue"`
 
 	// For consistency with render handler: `startTime` and `endTime` take precedence.
 	From  string `json:"from"`
@@ -165,11 +170,17 @@ func mergeExemplarsInputFromMergeExemplarsRequest(req *mergeExemplarsRequest) st
 		ProfileIDs: req.Profiles,
 		StartTime:  startTime,
 		EndTime:    endTime,
-		MinValue:   req.MinValue,
-		MaxValue:   req.MaxValue,
+		ExemplarsSelection: storage.ExemplarsSelection{
+			StartTime: attime.Parse(req.SelectionStartTime),
+			EndTime:   attime.Parse(req.SelectionEndTime),
+			MinValue:  req.MinValue,
+			MaxValue:  req.MaxValue,
+		},
 		HeatmapParams: storage.HeatmapParams{
 			StartTime:    startTime,
 			EndTime:      endTime,
+			MinValue:     req.MinValue,
+			MaxValue:     req.MaxValue,
 			TimeBuckets:  req.HeatmapTimeBuckets,
 			ValueBuckets: req.HeatmapValueBuckets,
 		},
