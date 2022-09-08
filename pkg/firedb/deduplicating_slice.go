@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/fire/pkg/firedb/block"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
+	"github.com/grafana/fire/pkg/util/build"
 )
 
 var int64SlicePool = &sync.Pool{
@@ -55,6 +56,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Init(path string) error {
 	// TODO: Reuse parquet.Writer beyond life time of the head.
 	s.writer = parquet.NewWriter(file, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "firedb-parquet-buffers*")),
+		parquet.CreatedBy("github.com/grafana/fire/"+build.Version),
 	)
 	s.lookup = make(map[K]int64)
 	return nil
