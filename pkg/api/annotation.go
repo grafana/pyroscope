@@ -36,7 +36,7 @@ type CreateParams struct {
 	Content   string `json:"content"`
 }
 
-func (ctrl *AnnotationsHandler) CreateHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Request) {
 	var params CreateParams
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		ctrl.httpUtils.WriteInternalServerError(r, w, err, "failed to unmarshal JSON")
