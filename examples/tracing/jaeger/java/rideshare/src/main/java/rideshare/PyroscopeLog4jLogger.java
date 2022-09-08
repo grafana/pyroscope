@@ -1,6 +1,6 @@
 package rideshare;
 
-import io.pyroscope.javaagent.api.Logger;
+import io.otel.pyroscope.shadow.javaagent.api.Logger;
 import org.slf4j.LoggerFactory;
 
 class PyroscopeLog4jLogger implements Logger {
