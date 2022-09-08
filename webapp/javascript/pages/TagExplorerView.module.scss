@@ -108,3 +108,13 @@
     }
   }
 }
+
+.statiscticsBox {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.tableWrapper {
+  width: calc(100% - 330px);
+}

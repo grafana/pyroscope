@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
-
+import PieChart from '@webapp/pages/tagExplorer/components/PieChart';
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
@@ -239,15 +239,18 @@ function TagExplorerView() {
           </div>
         </Box>
         <Box>
-          <Table
-            appName={appName.unwrapOr('')}
-            whereDropdownItems={whereDropdownItems}
-            groupByTag={groupByTag}
-            groupByTagValue={groupByTagValue}
-            groupsData={filteredGroupsData}
-            handleGroupByTagValueChange={handleGroupByTagValueChange}
-            isLoading={type === 'loading'}
-          />
+          <div className={styles.statiscticsBox}>
+            <Table
+              appName={appName.unwrapOr('')}
+              whereDropdownItems={whereDropdownItems}
+              groupByTag={groupByTag}
+              groupByTagValue={groupByTagValue}
+              groupsData={filteredGroupsData}
+              handleGroupByTagValueChange={handleGroupByTagValueChange}
+              isLoading={type === 'loading'}
+            />
+            <PieChart data={filteredGroupsData} />
+          </div>
         </Box>
         <Box>
           <div className={styles.flamegraphWrapper}>
@@ -330,8 +333,6 @@ function Table({
     { name: 'eventCount', label: 'Event count', sortable: 0 },
     { name: 'avgSamples', label: 'avg samples', sortable: 0 },
     { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
-    { name: 'minSamples', label: 'min samples', sortable: 0 },
-    { name: 'maxSamples', label: 'max samples', sortable: 0 },
   ];
 
   const bodyRows = groupsData.reduce(
@@ -357,8 +358,6 @@ function Table({
           { value: data.samples.length },
           { value: mean.toFixed(2) },
           { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
-          { value: Math.min(...data.samples) },
-          { value: Math.max(...data.samples) },
         ],
       };
       acc.push(row);
@@ -375,7 +374,7 @@ function Table({
   };
 
   return (
-    <>
+    <div className={styles.tableWrapper}>
       <div className={styles.tableDescription} data-testid="explore-table">
         <span className={styles.title}>{appName} Descriptive Statistics</span>
         <div className={styles.buttons}>
@@ -403,7 +402,7 @@ function Table({
         </div>
       </div>
       <TableUI table={table} className={styles.tagExplorerTable} />
-    </>
+    </div>
   );
 }
 
