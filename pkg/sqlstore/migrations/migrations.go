@@ -115,7 +115,7 @@ func createAPIKeyTableMigration() *gormigrate.Migration {
 func createAnnotationsTableMigration() *gormigrate.Migration {
 	type annotation struct {
 		ID        uint   `gorm:"primarykey"`
-		AppName   []byte `gorm:"type:varchar(255);not null;default:null"`
+		AppName   string `gorm:"type:varchar(255);not null;default:null"`
 		Timestamp time.Time
 		Content   string `gorm:"not null;default:null"`
 		CreatedAt time.Time
