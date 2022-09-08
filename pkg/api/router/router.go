@@ -80,5 +80,5 @@ func (r *Router) RegisterAnnotationsHandlers() {
 	h := api.NewAnnotationsHandler(r.Logger, r.AnnotationsService, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/annotations").Subrouter()
-	x.Methods(http.MethodPost).HandlerFunc(h.CreateHandler)
+	x.Methods(http.MethodPost).HandlerFunc(h.CreateAnnotation)
 }

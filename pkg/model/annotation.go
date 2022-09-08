@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	ErrAnnotationInvalidAppName   = errors.New("invalid app name")
-	ErrAnnotationInvalidTimestamp = errors.New("invalid timestamp")
-	ErrAnnotationInvalidContent   = errors.New("invalid content")
+	ErrAnnotationInvalidAppName   = ValidationError{errors.New("invalid app name")}
+	ErrAnnotationInvalidTimestamp = ValidationError{errors.New("invalid timestamp")}
+	ErrAnnotationInvalidContent   = ValidationError{errors.New("invalid content")}
 )
 
 type Annotation struct {

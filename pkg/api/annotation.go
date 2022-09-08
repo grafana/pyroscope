@@ -36,10 +36,10 @@ type CreateParams struct {
 	Content   string `json:"content"`
 }
 
-func (ctrl *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Request) {
+func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Request) {
 	var params CreateParams
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		ctrl.httpUtils.WriteInternalServerError(r, w, err, "failed to unmarshal JSON")
+		h.httpUtils.WriteInternalServerError(r, w, err, "failed to unmarshal JSON")
 		return
 	}
 
@@ -47,14 +47,13 @@ func (ctrl *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.
 		params.Timestamp = time.Now().Unix()
 	}
 
-	annotation, err := ctrl.svc.CreateAnnotation(r.Context(), model.CreateAnnotation{
+	annotation, err := h.svc.CreateAnnotation(r.Context(), model.CreateAnnotation{
 		AppName:   params.AppName,
 		Timestamp: attime.Parse(strconv.FormatInt(params.Timestamp, 10)),
 		Content:   params.Content,
 	})
 	if err != nil {
-		// TODO: check it's user error
-		ctrl.httpUtils.WriteInternalServerError(r, w, err, "failed to create annotation")
+		h.httpUtils.HandleError(r, w, err)
 		return
 	}
 
@@ -69,5 +68,5 @@ func (ctrl *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.
 		Content:   annotation.Content,
 		Timestamp: annotation.Timestamp.Unix(),
 	}
-	ctrl.httpUtils.WriteResponseJSON(r, w, annotationsResp)
+	h.httpUtils.WriteResponseJSON(r, w, annotationsResp)
 }
