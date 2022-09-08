@@ -15,6 +15,7 @@ $svg-side-margin: 40px;
   .heatmapSvg {
     width: 100%;
     cursor: crosshair;
+    background-color: var(--ps-neutral-2);
 
     .selectionContainer {
       width: 100%;
