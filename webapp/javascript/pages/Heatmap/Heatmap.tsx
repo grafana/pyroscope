@@ -10,11 +10,11 @@ import {
   SELECTED_AREA_BACKGROUND,
   SELECTED_AREA_BORDER,
   SelectedAreaCoordsType,
+  HEATMAP_HEIGHT,
 } from './useHeatmapSelection.hook';
 
 import styles from './Heatmap.module.scss';
 
-const HEATMAP_HEIGHT = 250;
 const CANVAS_ID = 'selectionCanvas';
 const COLOR_EMPTY = [22, 22, 22];
 const COLOR_2 = [202, 240, 248];

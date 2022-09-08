@@ -5,8 +5,11 @@ import {
   mergeWithQueryID,
   HeatmapOutput,
   getHeatmap,
-  getHeatmapProps,
+  SelectionProfileOutput,
+  getHeatmapSelectionProfile,
   Heatmap,
+  getHeatmapProps,
+  selectionProfileProps,
 } from '@webapp/services/render';
 import type { RootState } from '@webapp/redux/store';
 import { RequestAbortedError } from '@webapp/services/base';
@@ -36,10 +39,10 @@ type SingleView =
 // TODO
 
 type HeatmapSingleView =
-  | { type: 'pristine'; heatmap?: Heatmap }
-  | { type: 'loading'; heatmap?: Heatmap }
-  | { type: 'loaded'; heatmap: Heatmap }
-  | { type: 'reloading'; heatmap: Heatmap };
+  | { type: 'pristine'; heatmap?: Heatmap; profile?: Profile }
+  | { type: 'loading'; heatmap?: Heatmap; profile?: Profile }
+  | { type: 'loaded'; heatmap: Heatmap; profile: Profile }
+  | { type: 'reloading'; heatmap: Heatmap; profile: Profile };
 interface TracingState {
   queryID: string;
   maxNodes: string;
@@ -51,6 +54,7 @@ interface TracingState {
 
 let singleViewAbortController: AbortController | undefined;
 let heatmapSingleViewAbortController: AbortController | undefined;
+let selectionProfileAbortController: AbortController | undefined;
 
 const initialState: TracingState = {
   queryID: '',
@@ -106,7 +110,45 @@ export const fetchHeatmapSingleView = createAsyncThunk<
   heatmapSingleViewAbortController = new AbortController();
   thunkAPI.signal = heatmapSingleViewAbortController.signal;
 
+  // think of getting params from store
   const res = await getHeatmap(heatmapProps, heatmapSingleViewAbortController);
+
+  if (res.isOk) {
+    return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load single view data',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchSelectionProfile = createAsyncThunk<
+  SelectionProfileOutput,
+  selectionProfileProps,
+  { state: { tracing: TracingState } }
+>('tracing/fetchSelectionProfile', async (selectionProfileProps, thunkAPI) => {
+  if (selectionProfileAbortController) {
+    selectionProfileAbortController.abort();
+  }
+
+  selectionProfileAbortController = new AbortController();
+  thunkAPI.signal = selectionProfileAbortController.signal;
+
+  // think of getting params from store
+  const res = await getHeatmapSelectionProfile(
+    selectionProfileProps,
+    selectionProfileAbortController
+  );
 
   if (res.isOk) {
     return Promise.resolve(res.value);
@@ -218,7 +260,7 @@ export const tracingSlice = createSlice({
         }
 
         default: {
-          state.singleView = { type: 'loading' };
+          state.heatmapSingleView = { type: 'loading' };
         }
       }
     });
@@ -231,6 +273,68 @@ export const tracingSlice = createSlice({
     });
 
     builder.addCase(fetchHeatmapSingleView.rejected, (state, action) => {
+      switch (state.heatmapSingleView.type) {
+        // if previous state is loaded, let's continue displaying data
+        case 'reloading': {
+          let type: HeatmapSingleView['type'] = 'reloading';
+          if (action.meta.rejectedWithValue) {
+            type = (
+              action?.payload as {
+                rejectedWithValue: HeatmapSingleView['type'];
+              }
+            )?.rejectedWithValue;
+          } else if (action.error.message === 'cancel') {
+            type = 'loaded';
+          }
+          state.heatmapSingleView = {
+            ...state.heatmapSingleView,
+            type,
+          };
+          break;
+        }
+
+        default: {
+          // it failed to load for the first time, so far all effects it's pristine
+          state.heatmapSingleView = {
+            type: 'pristine',
+          };
+        }
+      }
+    });
+
+    /**************************************/
+    /*      Heatmap Selection Profile      */
+    /**************************************/
+
+    builder.addCase(fetchSelectionProfile.pending, (state) => {
+      switch (state.heatmapSingleView.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'reloading':
+        case 'loaded': {
+          state.heatmapSingleView = {
+            ...state.heatmapSingleView,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.heatmapSingleView = { type: 'loading' };
+        }
+      }
+    });
+
+    builder.addCase(fetchSelectionProfile.fulfilled, (state, action) => {
+      state.heatmapSingleView = {
+        ...action.payload,
+        // refactor types
+        heatmap: state.heatmapSingleView.heatmap as Heatmap,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchSelectionProfile.rejected, (state, action) => {
       switch (state.heatmapSingleView.type) {
         // if previous state is loaded, let's continue displaying data
         case 'reloading': {

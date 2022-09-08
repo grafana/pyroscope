@@ -153,6 +153,7 @@ export interface getHeatmapProps {
 export type Heatmap = z.infer<typeof HeatmapSchema>;
 export interface HeatmapOutput {
   heatmap: Heatmap;
+  profile: Profile;
 }
 
 export async function getHeatmap(
@@ -161,6 +162,7 @@ export async function getHeatmap(
     signal?: AbortSignal;
   }
 ): Promise<Result<HeatmapOutput, RequestError | ZodError>> {
+  // todo use common builder
   const queryString = Object.entries(props).reduce(
     (acc, [key, value]) => acc + (acc ? `&${key}=${value}` : `${key}=${value}`),
     ''
@@ -173,13 +175,17 @@ export async function getHeatmap(
     const parsed = FlamebearerProfileSchema.merge(
       z.object({ timeline: TimelineSchema })
     )
-      .merge(z.object({ heatmap: HeatmapSchema }))
       .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+      .merge(z.object({ heatmap: HeatmapSchema }))
       .safeParse(response.value);
 
     if (parsed.success) {
+      const profile = parsed.data;
+      const { heatmap } = parsed.data;
+
       return Result.ok({
-        heatmap: parsed.data.heatmap,
+        heatmap,
+        profile,
       });
     }
 
@@ -187,6 +193,53 @@ export async function getHeatmap(
   }
 
   return Result.err<HeatmapOutput, RequestError>(response.error);
+}
+
+export interface SelectionProfileOutput {
+  profile: Profile;
+}
+
+export interface selectionProfileProps {
+  from: string;
+  until: string;
+  query: string;
+  selectionStartTime: number;
+  selectionEndTime: number;
+  selectionMinValue: number;
+  selectionMaxValue: number;
+}
+
+export async function getHeatmapSelectionProfile(
+  props: selectionProfileProps,
+  controller?: {
+    signal?: AbortSignal;
+  }
+): Promise<Result<SelectionProfileOutput, RequestError | ZodError>> {
+  const queryString = Object.entries(props).reduce(
+    (acc, [key, value]) => acc + (acc ? `&${key}=${value}` : `${key}=${value}`),
+    ''
+  );
+  const response = await request(`/api/exemplars:query?${queryString}`, {
+    signal: controller?.signal,
+  });
+
+  if (response.isOk) {
+    const parsed = FlamebearerProfileSchema.merge(
+      z.object({ timeline: TimelineSchema })
+    )
+      .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+      .safeParse(response.value);
+
+    if (parsed.success) {
+      return Result.ok({
+        profile: parsed.data,
+      });
+    }
+
+    return Result.err<SelectionProfileOutput, RequestError>(response.error);
+  }
+
+  return Result.err<SelectionProfileOutput, RequestError>(response.error);
 }
 
 export type RenderDiffResponse = z.infer<typeof FlamebearerProfileSchema>;

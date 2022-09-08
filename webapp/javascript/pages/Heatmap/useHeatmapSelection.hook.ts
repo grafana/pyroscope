@@ -2,8 +2,12 @@ import { useState, useEffect, RefObject } from 'react';
 import Color from 'color';
 
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
-import { fetchHeatmapSingleView } from '@webapp/redux/reducers/tracing';
+import {
+  fetchHeatmapSingleView,
+  fetchSelectionProfile,
+} from '@webapp/redux/reducers/tracing';
 
+export const HEATMAP_HEIGHT = 250;
 export const SELECTED_AREA_BACKGROUND = Color.rgb(255, 255, 0)
   .alpha(0.5)
   .toString();
@@ -45,8 +49,8 @@ const DEFAULT_HEATMAP_PARAMS = {
 export const useHeatmapSelection = ({
   canvasRef,
   heatmapW,
-}: // heatmapH,
-UseHeatmapSelectionProps): UseHeatmapSelection => {
+  heatmapH,
+}: UseHeatmapSelectionProps): UseHeatmapSelection => {
   const dispatch = useAppDispatch();
   const {
     heatmapSingleView: { heatmap: heatmapData },
@@ -93,33 +97,47 @@ UseHeatmapSelectionProps): UseHeatmapSelection => {
     endCoords = null;
   };
 
-  const changeTimeRange = (xStart: number, xEnd: number) => {
+  const changeTimeRange = (
+    xStart: number,
+    xEnd: number,
+    yStart: number,
+    yEnd: number
+  ) => {
     if (heatmapData) {
       const timeForPixel =
         (heatmapData.endTime - heatmapData.startTime) / heatmapW;
+      const valueForPixel =
+        (heatmapData.maxValue - heatmapData.minValue) / heatmapH;
 
+      // refactor
       const smallerX = xStart > xEnd ? xEnd : xStart;
       const biggerX = xStart > xEnd ? xStart : xEnd;
-      const selectionStartTime = new Date(
-        (timeForPixel * smallerX + heatmapData.startTime) / 1000000
-      );
-      const selectionEndTime = new Date(
-        (timeForPixel * biggerX + heatmapData.startTime) / 1000000
-      );
 
-      console.log(
-        selectionStartTime.toLocaleTimeString(),
-        selectionEndTime.toLocaleTimeString()
+      const reversedYStart = HEATMAP_HEIGHT - yStart;
+      const reversedYEnd = HEATMAP_HEIGHT - yEnd;
+      const smallerY =
+        reversedYStart > reversedYEnd ? reversedYEnd : reversedYStart;
+      const biggerY =
+        reversedYStart > reversedYEnd ? reversedYStart : reversedYEnd;
+
+      const selectionMinValue = valueForPixel * smallerY + heatmapData.minValue;
+      const selectionMaxValue = valueForPixel * biggerY + heatmapData.minValue;
+      const selectionStartTime =
+        timeForPixel * smallerX + heatmapData.startTime;
+      const selectionEndTime = timeForPixel * biggerX + heatmapData.startTime;
+
+      dispatch(
+        fetchSelectionProfile({
+          from,
+          until,
+          query,
+          selectionStartTime,
+          selectionEndTime,
+          selectionMinValue,
+          selectionMaxValue,
+        })
       );
     }
-    // dispatch(
-    //   fetchHeatmapSingleView({
-    //     query,
-    //     from: 'wd',
-    //     until: 'wd',
-    //     ...DEFAULT_HEATMAP_PARAMS,
-    //   })
-    // );
   };
 
   const endDrawing = (e: MouseEvent) => {
@@ -156,7 +174,7 @@ UseHeatmapSelectionProps): UseHeatmapSelection => {
       endCoords = { x: xEnd, y: yEnd };
 
       const selectedAreaW = xEnd - startCoords.x;
-      changeTimeRange(xEnd, startCoords.x);
+      changeTimeRange(startCoords.x, xEnd, startCoords.y, yEnd);
 
       if (selectedAreaW) {
         selectedAreaToHeatmapRatio = Math.abs(width / (xEnd - startCoords.x));
