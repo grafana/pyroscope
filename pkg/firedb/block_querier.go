@@ -406,17 +406,17 @@ func (m *mapPredicate[K, V]) KeepValue(v parquet.Value) bool {
 	return exists
 }
 
+type labelsInfo struct {
+	fp  model.Fingerprint
+	lbs firemodel.Labels
+}
+
 func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher, start, end model.Time,
 	fn func(lbs firemodel.Labels, fp model.Fingerprint, profile *schemav1.Profile, samples []schemav1.Sample) error,
 ) error {
 	postings, err := PostingsForMatchers(b.index, nil, matchers...)
 	if err != nil {
 		return err
-	}
-
-	type labelsInfo struct {
-		fp  model.Fingerprint
-		lbs firemodel.Labels
 	}
 
 	var (
@@ -438,11 +438,11 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 				panic("label hash conflict")
 			}
 		} else {
-			lbls = make(firemodel.Labels, 0, 6)
 			lblsPerRef[int64(chks[0].SeriesIndex)] = labelsInfo{
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
+			lbls = make(firemodel.Labels, 0, 6)
 		}
 	}
 
@@ -498,6 +498,80 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	return rowNums.Err()
 }
 
+type ProfileIterator struct {
+	rowNums query.Iterator
+	series  map[int64]labelsInfo
+
+	curr   Profile
+	buffer [][]parquet.Value
+}
+
+func (p *ProfileIterator) Next() bool {
+	if !p.rowNums.Next() {
+		return false
+	}
+	if p.buffer == nil {
+		p.buffer = make([][]parquet.Value, 2)
+	}
+	result := p.rowNums.At()
+	p.curr.RowNum = result.RowNumber[0]
+	p.buffer = result.Columns(p.buffer, "SeriesRefs", "TimeNanos")
+	info := p.series[p.buffer[0][0].Int64()]
+	p.curr.Finguerprint = info.fp
+	p.curr.Labels = info.lbs
+	p.curr.Timestamp = model.TimeFromUnixNano(p.buffer[1][0].Int64())
+	return true
+}
+
+func (p *ProfileIterator) At() Profile {
+	return p.curr
+}
+
+func (p *ProfileIterator) Err() error {
+	return p.rowNums.Err()
+}
+
+func (p *ProfileIterator) Close() error {
+	return p.rowNums.Close()
+}
+
+type Profile struct {
+	Labels       firemodel.Labels
+	Finguerprint model.Fingerprint
+	Timestamp    model.Time
+	RowNum       int64
+}
+
+func (p Profile) RowNumber() int64 {
+	return p.RowNum
+}
+
+type ProfileValue struct {
+	Profile
+	Value int64
+}
+
+type StacktraceValue struct {
+	StacktraceID int64
+	Value        int64
+}
+
+type SelectMergeRequest struct {
+	LabelSelector string
+	Type          *commonv1.ProfileType
+	Start         model.Time
+	End           model.Time
+}
+type Querier interface {
+	SelectMerge(ctx context.Context, params SelectMergeRequest) (ProfileSamplesMerger, error)
+}
+
+type ProfileSamplesMerger interface {
+	SelectedProfiles() iter.Iterator[Profile]
+	MergeByStacktraces(rows iter.Iterator[Profile]) (iter.Iterator[StacktraceValue], error)
+	MergeByProfile(rows iter.Iterator[Profile]) (iter.Iterator[ProfileValue], error)
+}
+
 func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMergeRequest) (ProfileSamplesMerger, error) {
 	if err := b.open(ctx); err != nil {
 		return nil, err
@@ -514,29 +588,27 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 	}
 
 	var (
-		lbls      = make(firemodel.Labels, 0, 6)
-		chks      = make([]index.ChunkMeta, 1)
-		series    = make(map[model.Fingerprint]firemodel.Labels)
-		seriesRef = make(map[int64]struct{})
+		lbls       = make(firemodel.Labels, 0, 6)
+		chks       = make([]index.ChunkMeta, 1)
+		lblsPerRef = make(map[int64]labelsInfo)
 	)
 
 	// get all relevant labels/fingerprints
 	for postings.Next() {
-		// todo we might want to pull series on demand only.
 		fp, err := b.index.Series(postings.At(), &lbls, &chks)
 		if err != nil {
 			return nil, err
 		}
-		seriesRef[int64(chks[0].SeriesIndex)] = struct{}{}
-		if lblsExisting, exists := series[model.Fingerprint(fp)]; exists {
+		if lblsExisting, exists := lblsPerRef[int64(chks[0].SeriesIndex)]; exists {
 			// Compare to check if there is a clash
-			if firemodel.CompareLabelPairs(lbls, lblsExisting) != 0 {
+			if firemodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
 				panic("label hash conflict")
 			}
 		} else {
-			// todo correct series ref
-			series[model.Fingerprint(fp)] = lbls
-			seriesRef[int64(chks[0].SeriesIndex)] = lbls
+			lblsPerRef[int64(chks[0].SeriesIndex)] = labelsInfo{
+				fp:  model.Fingerprint(fp),
+				lbs: lbls,
+			}
 			lbls = make(firemodel.Labels, 0, 6)
 		}
 	}
@@ -544,7 +616,7 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(seriesRef), "SeriesRefs"),                                    // get all profiles with matching seriesRef
+			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(lblsPerRef), "SeriesRefs"),                                   // get all profiles with matching seriesRef
 			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(params.Start.UnixNano(), params.End.UnixNano()), "TimeNanos"), // get all profiles within the time window
 		},
 		nil,
@@ -555,7 +627,7 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 		ctx:    ctx,
 		profiles: &ProfileIterator{
 			rowNums: rowNums,
-			series:  series,
+			series:  lblsPerRef,
 		},
 	}, nil
 }
@@ -566,92 +638,16 @@ type ProfileSampleMerger struct {
 	ctx      context.Context
 }
 
-type ProfileIterator struct {
-	rowNums query.Iterator
-	series  map[model.Fingerprint]firemodel.Labels
-
-	curr   *Profile
-	buffer [][]parquet.Value
-}
-
-func (p *ProfileIterator) Next() bool {
-	if !p.rowNums.Next() {
-		return false
-	}
-	if p.buffer == nil {
-		p.buffer = make([][]parquet.Value, 2)
-		p.curr = &Profile{}
-	}
-	result := p.rowNums.At()
-	p.curr.RowNum = result.RowNumber[0]
-	p.buffer = result.Columns(p.buffer, "SeriesRefs", "TimeNanos")
-	p.curr.Finguerprint = model.Fingerprint(p.buffer[0][0].Int64())
-	p.curr.Labels = p.series[p.curr.Finguerprint]
-	p.curr.Timestamp = model.TimeFromUnixNano(p.buffer[1][0].Int64())
-	return true
-}
-
-func (p *ProfileIterator) At() *Profile {
-	return p.curr
-}
-
-func (p *ProfileIterator) Err() error {
-	return p.rowNums.Err()
-}
-
-func (p *ProfileIterator) Close() error {
-	return p.rowNums.Close()
-}
-
-func (m *ProfileSampleMerger) SelectedProfiles() iter.Iterator[*Profile] {
+func (m *ProfileSampleMerger) SelectedProfiles() iter.Iterator[Profile] {
 	return m.profiles
 }
 
-func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[*Profile]) (iter.Iterator[StacktraceValue], error) {
+func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[Profile]) (iter.Iterator[StacktraceValue], error) {
 	return mergeSamplesByStacktraces(m.reader.file, rows)
 }
 
-func (m *ProfileSampleMerger) MergeByLabels(rows iter.Iterator[*Profile], groupBy []string) (iter.Iterator[SeriesValue], error) {
-	return mergeSamplesByProfile(m.reader.file, rows, groupBy...)
-}
-
-type SelectMergeRequest struct {
-	LabelSelector string
-	Type          *commonv1.ProfileType
-	Start         model.Time
-	End           model.Time
-}
-
-type Profile struct {
-	Labels       firemodel.Labels
-	Finguerprint model.Fingerprint
-	Timestamp    model.Time
-	RowNum       int64
-}
-
-func (p Profile) RowNumber() int64 {
-	return p.RowNum
-}
-
-type StacktraceValue struct {
-	StacktraceID int64
-	Value        int64
-}
-
-type SeriesValue struct {
-	Labels       firemodel.Labels
-	Finguerprint model.Fingerprint
-	Value        int64
-}
-
-type ProfileSamplesMerger interface {
-	SelectedProfiles() iter.Iterator[*Profile]
-	MergeByStacktraces(rows iter.Iterator[*Profile]) (iter.Iterator[StacktraceValue], error)
-	MergeByLabels(rows iter.Iterator[*Profile], groupBy []string) (iter.Iterator[SeriesValue], error)
-}
-
-type Querier interface {
-	SelectMerge(ctx context.Context, params SelectMergeRequest) (ProfileSamplesMerger, error)
+func (m *ProfileSampleMerger) MergeByProfile(rows iter.Iterator[Profile]) (iter.Iterator[ProfileValue], error) {
+	return NewProfileTotalValueIterator(m.reader.file, rows)
 }
 
 type reconstructSamples struct {
