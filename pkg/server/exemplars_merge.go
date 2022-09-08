@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -202,4 +203,19 @@ func parseTime(t string) time.Time {
 		return time.Unix(0, 0)
 	}
 	return attime.Parse(t)
+}
+
+func parseNumber(n string) (uint64, error) {
+	if n == "" {
+		return 0, nil
+	}
+	x, err := strconv.ParseUint(n, 10, 64)
+	if err == nil {
+		return x, nil
+	}
+	f, err := strconv.ParseFloat(n, 64)
+	if err == nil {
+		return uint64(math.Round(f)), nil
+	}
+	return 0, fmt.Errorf("invalid value: expected uint or float: %q", n)
 }
