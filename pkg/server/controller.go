@@ -202,11 +202,11 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ctrl.annotationsService = service.NewAnnotationsService(ctrl.db)
 
 	apiRouter := router.New(r.PathPrefix("/api").Subrouter(), router.Services{
-		Logger:          ctrl.log,
-		APIKeyService:   service.NewAPIKeyService(ctrl.db),
-		AuthService:     ctrl.authService,
-		UserService:     ctrl.userService,
-		AnnotationsCtrl: api.NewAnnotationsCtrl(ctrl.log, ctrl.annotationsService, httputils.NewDefaultHelper(ctrl.log)),
+		Logger:             ctrl.log,
+		APIKeyService:      service.NewAPIKeyService(ctrl.db),
+		AuthService:        ctrl.authService,
+		UserService:        ctrl.userService,
+		AnnotationsService: ctrl.annotationsService,
 	})
 
 	apiRouter.Use(
