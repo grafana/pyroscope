@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
 	query "github.com/grafana/fire/pkg/firedb/query"
 	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
 )
 
-func mergeSamplesByStacktraces(file *parquet.File, rows iter.Iterator[*Profile]) (iter.Iterator[StacktraceValue], error) {
+func mergeSamplesByStacktraces(file *parquet.File, rows iter.Iterator[Profile]) (iter.Iterator[StacktraceValue], error) {
 	stacktraceIDCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.StacktraceID")
 	if stacktraceIDCol == -1 {
 		return nil, fmt.Errorf("no stacktrace id column found")
@@ -48,77 +46,6 @@ func mergeSamplesByStacktraces(file *parquet.File, rows iter.Iterator[*Profile])
 	}, nil
 }
 
-func mergeSamplesByProfile(file *parquet.File, rows iter.Iterator[*Profile], by ...string) (iter.Iterator[SeriesValue], error) {
-	sort.Strings(by)
-	valuesCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.Values.list.element")
-	if valuesCol == -1 {
-		return nil, fmt.Errorf("no values column found")
-	}
-	it := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			query.NewRowNumberIterator(rows),
-			query.NewColumnIterator(context.Background(), file.RowGroups(), valuesCol, "Samples.list.element.Values.list.element", 1024, nil, "Value"),
-		}, nil,
-	)
-	var pqValues [][]parquet.Value
-	seriesByFingerprint := map[model.Fingerprint]model.Fingerprint{}
-	seriesBy := map[model.Fingerprint]*SeriesValue{}
-	for it.Next() {
-		values := it.At()
-		p := values.Entries[0].RowValue.(*Profile)
-		byFp, ok := seriesByFingerprint[p.Finguerprint]
-		var sv *SeriesValue
-		if !ok {
-			byLabels := p.Labels.WithLabels(by...)
-			byFp = model.Fingerprint(byLabels.Hash())
-			seriesByFingerprint[p.Finguerprint] = byFp
-			sv = &SeriesValue{
-				Labels:       byLabels,
-				Finguerprint: byFp,
-			}
-			seriesBy[byFp] = sv
-		} else {
-			sv = seriesBy[byFp]
-		}
-		pqValues = values.Columns(pqValues, "Value")
-		for i := 0; i < len(pqValues[0]); i++ {
-			sv.Value += pqValues[0][i].Int64()
-		}
-	}
-	series := lo.Values(seriesBy)
-	sort.Slice(series, func(i, j int) bool {
-		return firemodel.CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
-	})
-	return &SeriesValueIterator{series: series}, nil
-}
-
-type SeriesValueIterator struct {
-	series []*SeriesValue
-	cur    *SeriesValue
-}
-
-func (p *SeriesValueIterator) Next() bool {
-	if len(p.series) == 0 {
-		return false
-	}
-	p.cur = p.series[0]
-	p.series = p.series[1:]
-	return true
-}
-
-func (p *SeriesValueIterator) At() SeriesValue {
-	return *p.cur
-}
-
-func (p *SeriesValueIterator) Err() error {
-	return nil
-}
-
-func (p *SeriesValueIterator) Close() error {
-	return nil
-}
-
 type StacktraceValueIterator struct {
 	aggregation map[int64]int64
 	sortedIds   []int64
@@ -146,5 +73,56 @@ func (p *StacktraceValueIterator) Err() error {
 }
 
 func (p *StacktraceValueIterator) Close() error {
+	return nil
+}
+
+type ProfileValueIterator struct {
+	pqValues   [][]parquet.Value
+	pqIterator query.Iterator
+	current    ProfileValue
+}
+
+func NewProfileTotalValueIterator(file *parquet.File, rows iter.Iterator[Profile]) (iter.Iterator[ProfileValue], error) {
+	valuesCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.Values.list.element")
+	if valuesCol == -1 {
+		return nil, fmt.Errorf("no values column found")
+	}
+	it := query.NewJoinIterator(
+		0,
+		[]query.Iterator{
+			query.NewRowNumberIterator(rows),
+			query.NewColumnIterator(context.Background(), file.RowGroups(), valuesCol, "Samples.list.element.Values.list.element", 10*1024, nil, "Value"),
+		},
+		nil,
+	)
+	return &ProfileValueIterator{
+		pqIterator: it,
+	}, nil
+}
+
+func (p *ProfileValueIterator) Next() bool {
+	if !p.pqIterator.Next() {
+		return false
+	}
+	values := p.pqIterator.At()
+	p.current.Profile = values.Entries[0].RowValue.(Profile)
+	p.current.Value = 0
+	p.pqValues = values.Columns(p.pqValues, "Value")
+	// sums all values for the current row/profiles
+	for i := 0; i < len(p.pqValues[0]); i++ {
+		p.current.Value += p.pqValues[0][i].Int64()
+	}
+	return true
+}
+
+func (p *ProfileValueIterator) At() ProfileValue {
+	return p.current
+}
+
+func (p *ProfileValueIterator) Err() error {
+	return nil
+}
+
+func (p *ProfileValueIterator) Close() error {
 	return nil
 }
