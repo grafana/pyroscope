@@ -242,7 +242,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
 	metricName := firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
-	labels, seriesRefs := labelsForProfile(p, externalLabels...)
+	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
 	// create a rewriter state
 	rewrites := &rewriter{}
@@ -272,7 +272,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	for idxType := range samplesPerType {
 		profile := &schemav1.Profile{
 			ID:                id,
-			SeriesRef:         seriesRefs[idxType],
+			SeriesFingerprint: seriesFingerprints[idxType],
 			Samples:           samplesPerType[idxType],
 			DropFrames:        p.DropFrames,
 			KeepFrames:        p.KeepFrames,

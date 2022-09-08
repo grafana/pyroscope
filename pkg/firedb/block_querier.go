@@ -406,7 +406,7 @@ func (m *mapPredicate[K, V]) KeepValue(v parquet.Value) bool {
 }
 
 func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher, start, end model.Time,
-	fn func(lbs firemodel.Labels, fp model.Fingerprint, profile *schemav1.Profile, samples []schemav1.Sample) error,
+	fn func(lbs firemodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error,
 ) error {
 	postings, err := PostingsForMatchers(b.index, nil, matchers...)
 	if err != nil {
@@ -419,10 +419,9 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	}
 
 	var (
-		lbls = make(firemodel.Labels, 0, 6)
-		chks = make([]index.ChunkMeta, 1)
-		// todo we might want to change the schema to have SeriesRef as uint32
-		lblsPerRef = make(map[int64]labelsInfo)
+		lbls         = make(firemodel.Labels, 0, 6)
+		chks         = make([]index.ChunkMeta, 1)
+		lblsPerIndex = make(map[uint32]labelsInfo)
 	)
 
 	// get all relevant labels/fingerprints
@@ -431,13 +430,13 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 		if err != nil {
 			return err
 		}
-		if lblsExisting, exists := lblsPerRef[int64(chks[0].SeriesIndex)]; exists {
+		if lblsExisting, exists := lblsPerIndex[chks[0].SeriesIndex]; exists {
 			// Compare to check if there is a clash
 			if firemodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
 				panic("label hash conflict")
 			}
 		} else {
-			lblsPerRef[int64(chks[0].SeriesIndex)] = labelsInfo{
+			lblsPerIndex[chks[0].SeriesIndex] = labelsInfo{
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
@@ -448,7 +447,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesRef", newMapPredicate(lblsPerRef), "SeriesRef"),                                    // get all profiles with matching seriesRef
+			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerIndex), "SeriesIndex"),                              // get all profiles with matching seriesRef
 			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"), // get all profiles within the time window
 			b.profiles.columnIter(ctx, "ID", nil, "ID"),                                                                          // get all IDs
 			// TODO: Provide option to ignore samples
@@ -469,28 +468,27 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	for rowNums.Next() {
 		result := rowNums.At()
 
-		series = result.Columns(series, "ID", "TimeNanos", "SeriesRef")
+		series = result.Columns(series, "ID", "TimeNanos", "SeriesIndex")
 		var err error
 		profile.ID, err = uuid.FromBytes(series[0][0].ByteArray())
 		if err != nil {
 			return err
 		}
 		profile.TimeNanos = series[1][0].Int64()
+		profile.SeriesIndex = series[2][0].Uint32()
 
 		samples.buffer = result.Columns(samples.buffer, "StacktraceIDs", "SampleValues")
 
-		for _, v := range series[2] {
-			labelsInfo, matched := lblsPerRef[v.Int64()]
-			if !matched {
-				continue
-			}
+		labelsInfo, matched := lblsPerIndex[profile.SeriesIndex]
+		if !matched {
+			return nil
+		}
+		profile.SeriesFingerprint = labelsInfo.fp
 
-			schemaSamples = samples.samples(schemaSamples)
+		schemaSamples = samples.samples(schemaSamples)
 
-			if err := fn(labelsInfo.lbs, labelsInfo.fp, &profile, schemaSamples); err != nil {
-				return err
-			}
-
+		if err := fn(labelsInfo.lbs, &profile, schemaSamples); err != nil {
+			return err
 		}
 	}
 
@@ -565,7 +563,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		locationsByStacktraceID         = map[int64][]int64{}
 	)
 
-	if err := b.forMatchingProfiles(ctx, selectors, model.Time(req.Msg.Start), model.Time(req.Msg.End), func(lbs firemodel.Labels, _ model.Fingerprint, profile *schemav1.Profile, samples []schemav1.Sample) error {
+	if err := b.forMatchingProfiles(ctx, selectors, model.Time(req.Msg.Start), model.Time(req.Msg.End), func(lbs firemodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error {
 		ts := int64(model.TimeFromUnixNano(profile.TimeNanos))
 		// if the timestamp is not matching we skip this profile.
 		if req.Msg.Start > ts || ts > req.Msg.End {

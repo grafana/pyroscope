@@ -83,7 +83,7 @@ func newProfileSchema(p *profilev1.Profile, name string) ([]*schemav1.Profile, [
 				Labels:       copySlice(s.Label),
 			}
 		}
-		ps[idxType].SeriesRef = seriesRefs[idxType]
+		ps[idxType].SeriesFingerprint = seriesRefs[idxType]
 	}
 	return ps, labels
 }
