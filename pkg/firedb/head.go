@@ -130,7 +130,7 @@ type Head struct {
 	functions       deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
 	locations       deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper, *schemav1.LocationPersister]
 	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper, *schemav1.StacktracePersister] // a stacktrace is a slice of location ids
-	profiles        deduplicatingSlice[*schemav1.Profile, profilesKey, *profilesHelper, *schemav1.ProfilePersister]
+	profiles        deduplicatingSlice[*schemav1.Profile, noKey, *profilesHelper, *schemav1.ProfilePersister]
 	totalSamples    *atomic.Uint64
 	tables          []Table
 	delta           *deltaProfiles
@@ -193,24 +193,35 @@ func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 	return h, nil
 }
 
-func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([]*schemav1.Sample, error) {
+func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([][]*schemav1.Sample, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+
+	// populate output
 	var (
-		out         = make([]*schemav1.Sample, len(in))
+		out         = make([][]*schemav1.Sample, len(in[0].Value))
 		stacktraces = make([]*schemav1.Stacktrace, len(in))
 	)
+	for idxType := range out {
+		out[idxType] = make([]*schemav1.Sample, len(in))
+	}
 
-	for pos := range in {
+	for idxSample := range in {
 		// populate samples
-		out[pos] = &schemav1.Sample{
-			Values: copySlice(in[pos].Value),
-			Labels: h.pprofLabelCache.rewriteLabels(r.strings, in[pos].Label),
+		labels := h.pprofLabelCache.rewriteLabels(r.strings, in[idxSample].Label)
+		for idxType := range out {
+			out[idxType][idxSample] = &schemav1.Sample{
+				Value:  in[idxSample].Value[idxType],
+				Labels: labels,
+			}
 		}
 
 		// build full stack traces
-		stacktraces[pos] = &schemav1.Stacktrace{
+		stacktraces[idxSample] = &schemav1.Stacktrace{
 			// no copySlice necessary at this point,stacktracesHelper.clone
 			// will copy it, if it is required to be retained.
-			LocationIDs: in[pos].LocationId,
+			LocationIDs: in[idxSample].LocationId,
 		}
 	}
 
@@ -220,8 +231,10 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 	}
 
 	// reference stacktraces
-	for pos := range out {
-		out[pos].StacktraceID = uint64(r.stacktraces[int64(pos)])
+	for idxType := range out {
+		for idxSample := range out[idxType] {
+			out[idxType][idxSample].StacktraceID = uint64(r.stacktraces[int64(idxSample)])
+		}
 	}
 
 	return out, nil
@@ -229,7 +242,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
 	metricName := firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
-	labels, seriesRefs := labelsForProfile(p, externalLabels...)
+	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
 	// create a rewriter state
 	rewrites := &rewriter{}
@@ -250,35 +263,46 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return err
 	}
 
-	samples, err := h.convertSamples(ctx, rewrites, p.Sample)
+	samplesPerType, err := h.convertSamples(ctx, rewrites, p.Sample)
 	if err != nil {
 		return err
 	}
 
-	profile := &schemav1.Profile{
-		ID:                id,
-		SeriesRefs:        seriesRefs,
-		Samples:           samples,
-		DropFrames:        p.DropFrames,
-		KeepFrames:        p.KeepFrames,
-		TimeNanos:         p.TimeNanos,
-		DurationNanos:     p.DurationNanos,
-		Comments:          copySlice(p.Comment),
-		DefaultSampleType: p.DefaultSampleType,
+	var profileIngested bool
+	for idxType := range samplesPerType {
+		profile := &schemav1.Profile{
+			ID:                id,
+			SeriesFingerprint: seriesFingerprints[idxType],
+			Samples:           samplesPerType[idxType],
+			DropFrames:        p.DropFrames,
+			KeepFrames:        p.KeepFrames,
+			TimeNanos:         p.TimeNanos,
+			DurationNanos:     p.DurationNanos,
+			Comments:          copySlice(p.Comment),
+			DefaultSampleType: p.DefaultSampleType,
+		}
+
+		profile = h.delta.computeDelta(profile, labels[idxType])
+
+		if profile == nil {
+			continue
+		}
+
+		if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
+			return err
+		}
+
+		h.index.Add(profile, labels[idxType], metricName)
+
+		profileIngested = true
 	}
 
-	profile, labels = h.delta.computeDelta(profile, labels)
-
-	if len(labels) == 0 {
+	if !profileIngested {
 		return nil
 	}
 
-	if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
-		return err
-	}
-
 	h.metaLock.Lock()
-	v := model.TimeFromUnixNano(profile.TimeNanos)
+	v := model.TimeFromUnixNano(p.TimeNanos)
 	if v < h.meta.MinTime {
 		h.meta.MinTime = v
 	}
@@ -286,8 +310,6 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		h.meta.MaxTime = v
 	}
 	h.metaLock.Unlock()
-
-	h.index.Add(profile, labels, metricName)
 
 	samplesInProfile := len(p.Sample) * len(labels)
 	h.totalSamples.Add(sampleSize)
@@ -437,7 +459,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		h.strings.lock.RUnlock()
 	}()
 
-	err = h.index.forMatchingProfiles(selectors, func(lbs firemodel.Labels, _ model.Fingerprint, idx int, profile *schemav1.Profile) error {
+	err = h.index.forMatchingProfiles(selectors, func(lbs firemodel.Labels, _ model.Fingerprint, profile *schemav1.Profile) error {
 		ts := int64(model.TimeFromUnixNano(profile.TimeNanos))
 		// if the timestamp is not matching we skip this profile.
 		if req.Msg.Start > ts || ts > req.Msg.End {
@@ -453,7 +475,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		}
 		totalSamples += int64(len(profile.Samples))
 		for _, s := range profile.Samples {
-			if s.Values[idx] == 0 {
+			if s.Value == 0 {
 				totalSamples--
 				continue
 			}
@@ -479,7 +501,7 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 			}
 
 			p.Stacktraces = append(p.Stacktraces, &ingestv1.StacktraceSample{
-				Value:       s.Values[idx],
+				Value:       s.Value,
 				FunctionIds: stackTracesIds,
 			})
 		}

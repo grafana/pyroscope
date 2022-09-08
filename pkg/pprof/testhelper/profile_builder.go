@@ -152,8 +152,7 @@ func (m *ProfileBuilder) ForStacktrace(stacktraces ...string) *StacktraceBuilder
 
 func (m *ProfileBuilder) ToModel() (*schemav1.Profile, []firemodel.Labels) {
 	res := &schemav1.Profile{
-		ID:         m.UUID,
-		SeriesRefs: nil,
+		ID: m.UUID,
 
 		DropFrames:        m.DropFrames,
 		KeepFrames:        m.KeepFrames,

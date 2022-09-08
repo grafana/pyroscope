@@ -406,7 +406,7 @@ func (m *mapPredicate[K, V]) KeepValue(v parquet.Value) bool {
 }
 
 func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher, start, end model.Time,
-	fn func(lbs firemodel.Labels, fp model.Fingerprint, profile *schemav1.Profile, samples []schemav1.Sample) error,
+	fn func(lbs firemodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error,
 ) error {
 	postings, err := PostingsForMatchers(b.index, nil, matchers...)
 	if err != nil {
@@ -419,10 +419,9 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	}
 
 	var (
-		lbls = make(firemodel.Labels, 0, 6)
-		chks = make([]index.ChunkMeta, 1)
-		// todo we might want to change the schema to have SeriesRef as uint32
-		lblsPerRef = make(map[int64]labelsInfo)
+		lbls         = make(firemodel.Labels, 0, 6)
+		chks         = make([]index.ChunkMeta, 1)
+		lblsPerIndex = make(map[uint32]labelsInfo)
 	)
 
 	// get all relevant labels/fingerprints
@@ -431,29 +430,29 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 		if err != nil {
 			return err
 		}
-		if lblsExisting, exists := lblsPerRef[int64(chks[0].SeriesIndex)]; exists {
+		if lblsExisting, exists := lblsPerIndex[chks[0].SeriesIndex]; exists {
 			// Compare to check if there is a clash
 			if firemodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
 				panic("label hash conflict")
 			}
 		} else {
-			lbls = make(firemodel.Labels, 0, 6)
-			lblsPerRef[int64(chks[0].SeriesIndex)] = labelsInfo{
+			lblsPerIndex[chks[0].SeriesIndex] = labelsInfo{
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
+			lbls = make(firemodel.Labels, 0, 6)
 		}
 	}
 
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(lblsPerRef), "SeriesRefs"),                     // get all profiles with matching seriesRef
+			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerIndex), "SeriesIndex"),                              // get all profiles with matching seriesRef
 			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"), // get all profiles within the time window
 			b.profiles.columnIter(ctx, "ID", nil, "ID"),                                                                          // get all IDs
 			// TODO: Provide option to ignore samples
 			b.profiles.columnIter(ctx, "Samples.list.element.StacktraceID", nil, "StacktraceIDs"),
-			b.profiles.columnIter(ctx, "Samples.list.element.Values.list.element", nil, "SampleValues"),
+			b.profiles.columnIter(ctx, "Samples.list.element.Value", nil, "SampleValues"),
 		},
 		nil,
 	)
@@ -469,28 +468,27 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	for rowNums.Next() {
 		result := rowNums.At()
 
-		series = result.Columns(series, "ID", "TimeNanos", "SeriesRefs")
+		series = result.Columns(series, "ID", "TimeNanos", "SeriesIndex")
 		var err error
 		profile.ID, err = uuid.FromBytes(series[0][0].ByteArray())
 		if err != nil {
 			return err
 		}
 		profile.TimeNanos = series[1][0].Int64()
+		profile.SeriesIndex = series[2][0].Uint32()
 
 		samples.buffer = result.Columns(samples.buffer, "StacktraceIDs", "SampleValues")
 
-		for pos, v := range series[2] {
-			labelsInfo, matched := lblsPerRef[v.Int64()]
-			if !matched {
-				continue
-			}
+		labelsInfo, matched := lblsPerIndex[profile.SeriesIndex]
+		if !matched {
+			return nil
+		}
+		profile.SeriesFingerprint = labelsInfo.fp
 
-			schemaSamples = samples.samples(pos, schemaSamples)
+		schemaSamples = samples.samples(schemaSamples)
 
-			if err := fn(labelsInfo.lbs, labelsInfo.fp, &profile, schemaSamples); err != nil {
-				return err
-			}
-
+		if err := fn(labelsInfo.lbs, &profile, schemaSamples); err != nil {
+			return err
 		}
 	}
 
@@ -501,25 +499,14 @@ type reconstructSamples struct {
 	buffer [][]parquet.Value
 }
 
-// TODO: This approach is way too simple and might fail if there any null values
-func (s *reconstructSamples) samples(idx int, samples []schemav1.Sample) []schemav1.Sample {
-	bufferStacktraceIDs := s.buffer[0]
-	bufferValues := s.buffer[1]
-
-	if cap(samples) < len(bufferStacktraceIDs) {
-		samples = make([]schemav1.Sample, len(bufferStacktraceIDs))
+func (s *reconstructSamples) samples(samples []schemav1.Sample) []schemav1.Sample {
+	if cap(samples) < len(s.buffer[0]) {
+		samples = make([]schemav1.Sample, len(s.buffer[0]))
 	}
-	samples = samples[:len(bufferStacktraceIDs)]
-
-	valuesPerSample := len(bufferValues) / len(bufferStacktraceIDs)
+	samples = samples[:len(s.buffer[0])]
 	for pos := range samples {
-		samples[pos].StacktraceID = bufferStacktraceIDs[pos].Uint64()
-		if cap(samples[pos].Values) != 1 {
-			samples[pos].Values = make([]int64, 1)
-		} else {
-			samples[pos].Values = samples[pos].Values[:1]
-		}
-		samples[pos].Values[0] = bufferValues[(valuesPerSample*pos)+idx].Int64()
+		samples[pos].StacktraceID = s.buffer[0][pos].Uint64()
+		samples[pos].Value = s.buffer[1][pos].Int64()
 	}
 	return samples
 }
@@ -576,7 +563,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		locationsByStacktraceID         = map[int64][]int64{}
 	)
 
-	if err := b.forMatchingProfiles(ctx, selectors, model.Time(req.Msg.Start), model.Time(req.Msg.End), func(lbs firemodel.Labels, _ model.Fingerprint, profile *schemav1.Profile, samples []schemav1.Sample) error {
+	if err := b.forMatchingProfiles(ctx, selectors, model.Time(req.Msg.Start), model.Time(req.Msg.End), func(lbs firemodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error {
 		ts := int64(model.TimeFromUnixNano(profile.TimeNanos))
 		// if the timestamp is not matching we skip this profile.
 		if req.Msg.Start > ts || ts > req.Msg.End {
@@ -594,13 +581,13 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 		totalSamples += int64(len(samples))
 
 		for _, s := range samples {
-			if s.Values[0] == 0 {
+			if s.Value == 0 {
 				totalSamples--
 				continue
 			}
 
 			sample := &ingestv1.StacktraceSample{
-				Value: s.Values[0],
+				Value: s.Value,
 			}
 
 			p.Stacktraces = append(p.Stacktraces, sample)
