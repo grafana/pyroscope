@@ -44,14 +44,14 @@ func TestIndex(t *testing.T) {
 				for k := int64(0); k < 10; k++ {
 					id := uuid.New()
 					a.Add(&v1.Profile{
-						ID:        id,
-						TimeNanos: k,
-						SeriesRef: model.Fingerprint(lb1.Hash()),
+						ID:                id,
+						TimeNanos:         k,
+						SeriesFingerprint: model.Fingerprint(lb1.Hash()),
 					}, lb1, "memory")
 					a.Add(&v1.Profile{
-						ID:        id,
-						TimeNanos: k,
-						SeriesRef: model.Fingerprint(lb2.Hash()),
+						ID:                id,
+						TimeNanos:         k,
+						SeriesFingerprint: model.Fingerprint(lb2.Hash()),
 					}, lb2, "memory")
 				}
 			}
@@ -106,14 +106,14 @@ func TestWriteRead(t *testing.T) {
 		for k := int64(0); k < 10; k++ {
 			id := uuid.New()
 			a.Add(&v1.Profile{
-				ID:        id,
-				TimeNanos: k,
-				SeriesRef: model.Fingerprint(lb1.Hash()),
+				ID:                id,
+				TimeNanos:         k,
+				SeriesFingerprint: model.Fingerprint(lb1.Hash()),
 			}, lb1, "memory")
 			a.Add(&v1.Profile{
-				ID:        id,
-				TimeNanos: k,
-				SeriesRef: model.Fingerprint(lb2.Hash()),
+				ID:                id,
+				TimeNanos:         k,
+				SeriesFingerprint: model.Fingerprint(lb2.Hash()),
 			}, lb2, "memory")
 		}
 	}

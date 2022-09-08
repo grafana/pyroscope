@@ -86,9 +86,9 @@ func TestStringsRoundTrip(t *testing.T) {
 func newProfiles() []*Profile {
 	return []*Profile{
 		{
-			ID:        uuid.MustParse("00000000-0000-0000-0000-000000000001"),
-			TimeNanos: 1001,
-			SeriesRef: 0xaa,
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			TimeNanos:   1001,
+			SeriesIndex: 0xaa,
 			Samples: []*Sample{
 				{
 					StacktraceID: 0xba,
@@ -106,9 +106,9 @@ func newProfiles() []*Profile {
 			Comments: []int64{},
 		},
 		{
-			ID:        uuid.MustParse("00000000-0000-0000-0000-000000000001"),
-			TimeNanos: 1001,
-			SeriesRef: 0xab,
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			TimeNanos:   1001,
+			SeriesIndex: 0xab,
 			Samples: []*Sample{
 				{
 					StacktraceID: 0xba,
@@ -126,9 +126,9 @@ func newProfiles() []*Profile {
 			Comments: []int64{},
 		},
 		{
-			ID:        uuid.MustParse("00000000-0000-0000-0000-000000000002"),
-			SeriesRef: 0xab,
-			TimeNanos: 1002,
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000002"),
+			SeriesIndex: 0xab,
+			TimeNanos:   1002,
 			Samples: []*Sample{
 				{
 					StacktraceID: 0xbc,
@@ -139,9 +139,9 @@ func newProfiles() []*Profile {
 			Comments: []int64{},
 		},
 		{
-			ID:        uuid.MustParse("00000000-0000-0000-0000-000000000002"),
-			SeriesRef: 0xac,
-			TimeNanos: 1002,
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000002"),
+			SeriesIndex: 0xac,
+			TimeNanos:   1002,
 			Samples: []*Sample{
 				{
 					StacktraceID: 0xbc,

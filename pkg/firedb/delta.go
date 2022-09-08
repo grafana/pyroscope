@@ -38,11 +38,11 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs firemodel.Labels)
 	defer d.mtx.Unlock()
 
 	// we store all series ref so fetching with one work.
-	lastSamples, ok := d.highestSamples[ps.SeriesRef]
+	lastSamples, ok := d.highestSamples[ps.SeriesFingerprint]
 	if !ok {
 		// if we don't have the last profile, we can't compute the delta.
 		// so we remove the delta from the list of labels and profiles.
-		d.highestSamples[ps.SeriesRef] = ps.Samples
+		d.highestSamples[ps.SeriesFingerprint] = ps.Samples
 
 		return nil
 	}
@@ -65,7 +65,7 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs firemodel.Labels)
 		}
 	}
 	ps.Samples = ps.Samples[:i]
-	d.highestSamples[ps.SeriesRef] = highestSamples
+	d.highestSamples[ps.SeriesFingerprint] = highestSamples
 	return ps
 }
 

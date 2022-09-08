@@ -54,15 +54,15 @@ func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, 
 func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs firemodel.Labels, profileName string) {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
-	profiles, ok := pi.profilesPerFP[ps.SeriesRef]
+	profiles, ok := pi.profilesPerFP[ps.SeriesFingerprint]
 	if !ok {
-		lbs := pi.ix.Add(lbs, ps.SeriesRef)
+		lbs := pi.ix.Add(lbs, ps.SeriesFingerprint)
 		profiles = &profileLabels{
 			lbs:      lbs,
-			fp:       ps.SeriesRef,
+			fp:       ps.SeriesFingerprint,
 			profiles: []*schemav1.Profile{ps},
 		}
-		pi.profilesPerFP[ps.SeriesRef] = profiles
+		pi.profilesPerFP[ps.SeriesFingerprint] = profiles
 		pi.totalSeries.Inc()
 		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
@@ -101,7 +101,7 @@ outer:
 			}
 		}
 		for _, p := range profile.profiles {
-			if p.SeriesRef == fp {
+			if p.SeriesFingerprint == fp {
 				if err := fn(profile.lbs, profile.fp, p); err != nil {
 					return err
 				}
@@ -217,10 +217,10 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 		}); err != nil {
 			return err
 		}
-		// also rewrite the seriesRef
+		// also rewrite the SeriesIndex
 		for _, p := range s.profiles {
-			if p.SeriesRef == s.fp {
-				p.SeriesRef = model.Fingerprint(i)
+			if p.SeriesFingerprint == s.fp {
+				p.SeriesIndex = uint32(i)
 			}
 		}
 	}
