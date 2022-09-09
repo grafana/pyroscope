@@ -17,22 +17,23 @@ const WRAPPER_ID = randomId('contextMenu');
     $(flotEl[0]).bind('plotclick', (event, pos, item) => {
       // TODO(eh-am): why do we need this conversion?
       const timestamp = Math.round(pos.x / 1000);
-      const { ContextMenu } = options;
+      // TODO: figure out types
+      //const { ContextMenu } = options;
 
       // unmount any previous menus
       ReactDOM.unmountComponentAtNode(containerEl);
 
       // TODO(eh-am): use portal instead of wrapping of sharing the same store?
       // https://stackoverflow.com/questions/52660770/how-to-communicate-reactdom-render-with-other-reactdom-render
-      if (ContextMenu) {
-        ReactDOM.render(<div>hey</div>, containerEl);
-        //        ReactDOM.render(
-        //          <Provider store={store}>
-        //            <ContextMenu x={pos.pageX} y={pos.pageY} timestamp={timestamp} />
-        //          </Provider>,
-        //          containerEl
-        //        );
-      }
+      //      if (ContextMenu) {
+      ReactDOM.render(<div>hey</div>, containerEl);
+      //        ReactDOM.render(
+      //          <Provider store={store}>
+      //            <ContextMenu x={pos.pageX} y={pos.pageY} timestamp={timestamp} />
+      //          </Provider>,
+      //          containerEl
+      //        );
+      //}
     });
   }
 
