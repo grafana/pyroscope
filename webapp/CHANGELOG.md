@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.38.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.4...@pyroscope/webapp@1.38.0) (2022-09-09)
+
+
+### Features
+
+* **webapp:** Add <CollapseBox /> component ([#1474](https://github.com/pyroscope-io/pyroscope/issues/1474)) ([6595794](https://github.com/pyroscope-io/pyroscope/commit/659579448bdf3e32a77f047aceffa01108d784b3))
+
+
+
+
+
 ## [1.37.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.3...@pyroscope/webapp@1.37.4) (2022-09-08)
 
 **Note:** Version bump only for package @pyroscope/webapp
