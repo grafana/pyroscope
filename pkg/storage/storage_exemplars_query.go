@@ -14,10 +14,15 @@ type QueryExemplarsInput struct {
 	StartTime time.Time
 	EndTime   time.Time
 
-	MinValue uint64
-	MaxValue uint64
+	ExemplarsSelection ExemplarsSelection
+	HeatmapParams      HeatmapParams
+}
 
-	HeatmapParams HeatmapParams
+type ExemplarsSelection struct {
+	StartTime time.Time
+	EndTime   time.Time
+	MinValue  uint64
+	MaxValue  uint64
 }
 
 type QueryExemplarsOutput struct {
@@ -25,8 +30,7 @@ type QueryExemplarsOutput struct {
 	Count         uint64
 	Metadata      metadata.Metadata
 	HeatmapSketch HeatmapSketch
-
-	Telemetry map[string]interface{}
+	Telemetry     map[string]interface{}
 }
 
 func (*Storage) QueryExemplars(context.Context, QueryExemplarsInput) (QueryExemplarsOutput, error) {

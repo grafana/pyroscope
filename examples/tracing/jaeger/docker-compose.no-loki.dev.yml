@@ -8,10 +8,6 @@ services:
       - '16686:16686'
       - '14268:14268'
       - '14250:14250'
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   pyroscope:
     image: 'pyroscope/pyroscope:latest'
@@ -24,10 +20,6 @@ services:
       - ./pyroscope.yaml:/pyroscope.yaml
     command:
       - 'server'
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   grafana:
     image: pyroscope/grafana:dev
@@ -38,10 +30,6 @@ services:
       - 'GF_INSTALL_PLUGINS=pyroscope-panel'
     ports:
       - '3000:3000'
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   us-east:
     env_file:
@@ -51,10 +39,6 @@ services:
     build:
       context: 'go/rideshare'
       dockerfile: Dockerfile
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   eu-north:
     env_file:
@@ -64,10 +48,6 @@ services:
     build:
       context: 'go/rideshare'
       dockerfile: Dockerfile
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   ap-south:
     env_file:
@@ -77,10 +57,6 @@ services:
     build:
       context: 'go/rideshare'
       dockerfile: Dockerfile
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   us-east-java:
     env_file:
@@ -90,10 +66,6 @@ services:
     build:
       context: 'java/rideshare'
       dockerfile: Dockerfile
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   eu-north-java:
     env_file:
@@ -103,10 +75,6 @@ services:
     build:
       context: 'java/rideshare'
       dockerfile: Dockerfile
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   ap-south-java:
     env_file:
@@ -116,23 +84,13 @@ services:
     build:
       context: 'java/rideshare'
       dockerfile: Dockerfile
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   eu-north-java-instrumentation:
     env_file:
       - config.env
-    environment:
-      - REGION=eu-north
     build:
       context: 'java-instrumentation/rideshare'
       dockerfile: Dockerfile
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   load-generator:
     env_file:
@@ -147,10 +105,6 @@ services:
       - ap-south-java
       - eu-north-java
       - us-east-java
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
 
   jaeger-ui:
     build:
@@ -158,12 +112,3 @@ services:
       dockerfile: jaeger-ui/Dockerfile
     ports:
       - '4000:3000'
-
-  loki:
-    image: 'grafana/loki:2.5.0'
-    ports:
-      - '3100:3100'
-    logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'

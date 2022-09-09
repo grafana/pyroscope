@@ -115,6 +115,10 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           }
         );
 
+        if (!values?.length) {
+          return;
+        }
+
         const Tooltip: React.ReactElement<
           ExploreTooltipProps,
           string | React.JSXElementConstructor<ExploreTooltipProps>

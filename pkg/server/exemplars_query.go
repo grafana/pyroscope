@@ -73,18 +73,33 @@ func (h ExemplarsHandler) queryExemplarsParamsFromRequest(r *http.Request, p *qu
 		return fmt.Errorf("query: %w", err)
 	}
 
-	p.input.StartTime = pickTime(v.Get("startTime"), v.Get("from"))
-	p.input.EndTime = pickTime(v.Get("endTime"), v.Get("until"))
+	p.input.StartTime = parseTimeFallback(v.Get("startTime"), v.Get("from"))
+	p.input.EndTime = parseTimeFallback(v.Get("endTime"), v.Get("until"))
 
-	p.input.MinValue, _ = strconv.ParseUint(v.Get("minValue"), 10, 64)
-	p.input.MaxValue, _ = strconv.ParseUint(v.Get("maxValue"), 10, 64)
-	p.input.HeatmapParams = storage.HeatmapParams{
-		StartTime: p.input.StartTime,
-		EndTime:   p.input.EndTime,
+	p.input.HeatmapParams.StartTime = p.input.StartTime
+	p.input.HeatmapParams.EndTime = p.input.EndTime
+	if p.input.HeatmapParams.MinValue, err = parseNumber(v.Get("minValue")); err != nil {
+		return fmt.Errorf("can't parse minValue: %w", err)
+	}
+	if p.input.HeatmapParams.MaxValue, err = parseNumber(v.Get("maxValue")); err != nil {
+		return fmt.Errorf("can't parse maxValue: %w", err)
+	}
+	if p.input.HeatmapParams.TimeBuckets, err = strconv.ParseInt(v.Get("heatmapTimeBuckets"), 10, 64); err != nil {
+		return fmt.Errorf("can't parse heatmapTimeBuckets: %w", err)
+	}
+	if p.input.HeatmapParams.ValueBuckets, err = strconv.ParseInt(v.Get("heatmapValueBuckets"), 10, 64); err != nil {
+		return fmt.Errorf("can't parse heatmapValueBuckets: %w", err)
 	}
 
-	p.input.HeatmapParams.TimeBuckets, _ = strconv.ParseInt(v.Get("heatmapTimeBuckets"), 10, 64)
-	p.input.HeatmapParams.ValueBuckets, _ = strconv.ParseInt(v.Get("heatmapValueBuckets"), 10, 64)
+	// Optional.
+	p.input.ExemplarsSelection.StartTime = parseTime(v.Get("selectionStartTime"))
+	p.input.ExemplarsSelection.EndTime = parseTime(v.Get("selectionEndTime"))
+	if p.input.ExemplarsSelection.MinValue, err = parseNumber(v.Get("selectionMinValue")); err != nil {
+		return fmt.Errorf("can't parse selectionMinValue: %w", err)
+	}
+	if p.input.ExemplarsSelection.MaxValue, err = parseNumber(v.Get("selectionMaxValue")); err != nil {
+		return fmt.Errorf("can't parse selectionMaxValue: %w", err)
+	}
 
 	p.maxNodes = h.MaxNodesDefault
 	var x int
