@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import React, { useState } from 'react';
 
 import FlameGraph from './FlameGraph';
-import { data } from '../../data';
+import { data } from './testData/dataNestedSet';
 import { MutableDataFrame } from '@grafana/data';
 import 'jest-canvas-mock';
 
@@ -14,16 +14,7 @@ describe('FlameGraph', () => {
     const [rangeMax, setRangeMax] = useState(1);
     const [query] = useState('');
 
-    const flameGraphData = new MutableDataFrame({
-      name: 'flamegraph',
-      fields: [{ name: 'levels', values: data.flamebearer.levels.map((l) => JSON.stringify(l)) }],
-    });
-    flameGraphData.meta = {
-      custom: {
-        Names: data.flamebearer.names,
-        Total: data.flamebearer.numTicks,
-      },
-    };
+    const flameGraphData = new MutableDataFrame(data);
 
     return (
       <FlameGraph
