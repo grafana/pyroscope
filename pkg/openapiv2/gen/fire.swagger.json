@@ -301,6 +301,37 @@
         }
       }
     },
+    "v1MergeProfilesStacktracesResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1ProfileSets",
+          "description": "The server replies batch of profiles."
+        },
+        "result": {
+          "$ref": "#/definitions/v1MergeProfilesStacktracesResult",
+          "title": "The list of stracktraces for the profile with their respective value"
+        }
+      }
+    },
+    "v1MergeProfilesStacktracesResult": {
+      "type": "object",
+      "properties": {
+        "stacktraces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1StacktraceSample"
+          },
+          "title": "The list of stracktraces with their respective value"
+        },
+        "functionNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -311,6 +342,23 @@
         "t": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1ProfileSets": {
+      "type": "object",
+      "properties": {
+        "labelsSets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
+          }
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SeriesProfile"
+          }
         }
       }
     },
@@ -383,6 +431,25 @@
         }
       }
     },
+    "v1SelectProfilesRequest": {
+      "type": "object",
+      "properties": {
+        "labelSelector": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1ProfileType"
+        },
+        "start": {
+          "type": "string",
+          "format": "int64"
+        },
+        "end": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "v1SelectProfilesResponse": {
       "type": "object",
       "properties": {
@@ -425,6 +492,20 @@
           "items": {
             "$ref": "#/definitions/v1Point"
           }
+        }
+      }
+    },
+    "v1SeriesProfile": {
+      "type": "object",
+      "properties": {
+        "labelIndex": {
+          "type": "integer",
+          "format": "int32",
+          "title": "The labels index of the series"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

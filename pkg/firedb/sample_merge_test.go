@@ -254,7 +254,7 @@ func TestMergeSampleByProfile(t *testing.T) {
 			require.NoError(t, it.Close())
 			for i := range actual {
 				actual[i].Profile.RowNum = 0
-				actual[i].Profile.Finguerprint = 0
+				actual[i].Profile.Fingerprint = 0
 			}
 
 			testhelper.EqualProto(t, tc.expected, actual)
