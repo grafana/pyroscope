@@ -153,6 +153,7 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 			FormDataContentType: contentType,
 			RawData:             b,
 		}
+		input.Format = ingestion.FormatPprof
 	}
 
 	if input.Profile == nil {
