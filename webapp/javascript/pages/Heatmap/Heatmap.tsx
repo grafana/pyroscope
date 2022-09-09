@@ -6,18 +6,18 @@ import cl from 'classnames';
 import { useAppSelector } from '@webapp/redux/hooks';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import {
-  useHeatmapSelection,
-  SELECTED_AREA_BACKGROUND,
   SelectedAreaCoordsType,
-  HEATMAP_HEIGHT,
+  useHeatmapSelection,
 } from './useHeatmapSelection.hook';
+import {
+  SELECTED_AREA_BACKGROUND,
+  HEATMAP_HEIGHT,
+  COLOR_1,
+  COLOR_2,
+  COLOR_EMPTY,
+} from './constants';
 
 import styles from './Heatmap.module.scss';
-
-const CANVAS_ID = 'selectionCanvas';
-const COLOR_EMPTY = [22, 22, 22];
-const COLOR_2 = [202, 240, 248];
-const COLOR_1 = [3, 4, 94];
 
 export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,7 +143,7 @@ export function Heatmap() {
             >
               <canvas
                 data-testid="selection-canvas"
-                id={CANVAS_ID}
+                id="selectionCanvas"
                 ref={canvasRef}
                 height={HEATMAP_HEIGHT}
               />
@@ -259,7 +259,6 @@ function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
 
 const getFormatter = (format: axisFormat) => {
   let formatter;
-  // eslint-disable-next-line default-case
   switch (format) {
     case 'time':
       formatter = (v: number) => {
@@ -272,6 +271,8 @@ const getFormatter = (format: axisFormat) => {
       formatter = (v: number) =>
         v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
       break;
+    default:
+      formatter = (v: number) => v;
   }
 
   return formatter;

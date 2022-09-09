@@ -1,21 +1,19 @@
 import { useState, useEffect, RefObject } from 'react';
-import Color from 'color';
 
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   fetchHeatmapSingleView,
   fetchSelectionProfile,
 } from '@webapp/redux/reducers/tracing';
+import {
+  HEATMAP_HEIGHT,
+  DEFAULT_HEATMAP_PARAMS,
+  SELECTED_AREA_BACKGROUND,
+} from './constants';
 
-export const HEATMAP_HEIGHT = 250;
-export const SELECTED_AREA_BACKGROUND = Color.rgb(255, 255, 0)
-  .alpha(0.5)
-  .toString();
 const DEFAULT_SELECTED_COORDINATES = { start: null, end: null };
-
 let startCoords: SelectedAreaCoordsType | null = null;
 let endCoords: SelectedAreaCoordsType | null = null;
-let isSelecting = false;
 let selectedAreaToHeatmapRatio = 1;
 
 export type SelectedAreaCoordsType = Record<'x' | 'y', number>;
@@ -34,13 +32,6 @@ interface UseHeatmapSelection {
   selectedAreaToHeatmapRatio: number;
   resetSelection: () => void;
 }
-
-const DEFAULT_HEATMAP_PARAMS = {
-  minValue: 0,
-  maxValue: 1000000000,
-  heatmapTimeBuckets: 128,
-  heatmapValueBuckets: 32,
-};
 
 export const useHeatmapSelection = ({
   canvasRef,
@@ -144,15 +135,11 @@ export const useHeatmapSelection = ({
     const { left, top } = canvas.getBoundingClientRect();
     resetSelection();
 
-    isSelecting = true;
-    document.body.style.userSelect = 'none';
     startCoords = { x: e.clientX - left, y: e.clientY - top };
   };
 
   const endDrawing = (e: MouseEvent) => {
-    document.body.style.userSelect = 'initial';
-
-    if (isSelecting && startCoords) {
+    if (startCoords) {
       const canvas = canvasRef.current as HTMLCanvasElement;
       const { left, top, width, height } = canvas.getBoundingClientRect();
       setHasSelectedArea(true);
@@ -179,7 +166,6 @@ export const useHeatmapSelection = ({
         yEnd = yCursorPosition;
       }
 
-      isSelecting = false;
       endCoords = { x: xEnd, y: yEnd };
 
       const isClickEvent = startCoords.x === xEnd && startCoords.y === yEnd;
@@ -205,7 +191,7 @@ export const useHeatmapSelection = ({
   const handleDrawingEvent = (e: MouseEvent) => {
     const canvas = canvasRef.current as HTMLCanvasElement;
 
-    if (isSelecting && canvas && startCoords) {
+    if (canvas && startCoords) {
       const { left, top } = canvas.getBoundingClientRect();
 
       /**
@@ -249,6 +235,7 @@ export const useHeatmapSelection = ({
     };
   }, [heatmapData, heatmapW]);
 
+  // set coordinates to display resizable selection rectangle (div element)
   useEffect(() => {
     if (heatmapData && startCoords && endCoords) {
       setSelectedCoordinates({
