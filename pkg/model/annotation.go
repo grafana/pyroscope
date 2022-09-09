@@ -27,8 +27,13 @@ type CreateAnnotation struct {
 	Timestamp time.Time
 }
 
-func (a CreateAnnotation) Validate() error {
+// https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/
+func (a *CreateAnnotation) Validate() error {
 	var err error
+
+	if a.Timestamp.IsZero() {
+		a.Timestamp = time.Now()
+	}
 
 	if a.AppName == "" {
 		err = multierror.Append(err, ErrAnnotationInvalidAppName)
@@ -36,10 +41,6 @@ func (a CreateAnnotation) Validate() error {
 
 	if a.Content == "" {
 		err = multierror.Append(err, ErrAnnotationInvalidContent)
-	}
-
-	if a.Timestamp.IsZero() {
-		err = multierror.Append(err, ErrAnnotationInvalidTimestamp)
 	}
 
 	return err
