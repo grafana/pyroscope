@@ -20,6 +20,15 @@ type RectData = {
   label: string;
 };
 
+/**
+ * Compute the pixel coordinates for each bar in a level. We need full level of bars so that we can collapse small bars
+ * into bigger rects.
+ * @param level
+ * @param levelIndex
+ * @param totalTicks
+ * @param rangeMin
+ * @param pixelsPerTick
+ */
 export function getRectDimensionsForLevel(
   level: ItemWithStart[],
   levelIndex: number,
@@ -107,9 +116,15 @@ export function renderRect(
   }
 }
 
+/**
+ * Returns the X position of the bar. totalTicks * rangeMin is to adjust for any current zoom. So if we zoom to a
+ * section of the graph we align and shift the X coordinates accordingly.
+ * @param itemStart
+ * @param totalTicks
+ * @param rangeMin
+ * @param pixelsPerTick
+ */
 export function getBarX(itemStart: number, totalTicks: number, rangeMin: number, pixelsPerTick: number) {
-  // totalTicks * rangeMin is to adjust for any current zoom. So if we zoom to a section of the graph we align and shift
-  // the X coordinates accordingly.
   return (itemStart - totalTicks * rangeMin) * pixelsPerTick;
 }
 

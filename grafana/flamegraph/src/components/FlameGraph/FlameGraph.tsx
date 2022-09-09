@@ -49,9 +49,11 @@ const FlameGraph = ({
   setRangeMax,
 }: Props) => {
   const styles = useStyles2(getStyles);
-
   const totalTicks = data.fields[1].values.get(0);
 
+  // Transform dataFrame with nested set format to array of levels. Each level contains all the bars for a particular
+  // level of the flame graph. We do this temporary as in the end we should be able to render directly by iterating
+  // over the dataFrame rows.
   const levels = useMemo(() => {
     if (!data) {
       return [];
@@ -59,13 +61,12 @@ const FlameGraph = ({
     const dataView = new DataFrameView<Item>(data);
     return nestedSetToLevels(dataView);
   }, [data]);
-  console.log(levels);
-  console.log(data);
 
   const { width: windowWidth } = useWindowSize();
   const graphRef = useRef<HTMLCanvasElement>(null);
 
-  // convert pixel coordinates to bar coordinates in the levels array
+  // Convert pixel coordinates to bar coordinates in the levels array so that we can add mouse events like clicks to
+  // the canvas.
   const convertPixelCoordinatesToBarCoordinates = useCallback(
     (x: number, y: number, pixelsPerTick: number) => {
       const levelIndex = Math.floor(y / PIXELS_PER_LEVEL);
@@ -91,8 +92,11 @@ const FlameGraph = ({
 
       for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
         const level = levels[levelIndex];
+        // Get all the dimensions of the rectangles for the level. We do this by level instead of per rectangle, because
+        // sometimes we collapse multiple bars into single rect.
         const dimensions = getRectDimensionsForLevel(level, levelIndex, totalTicks, rangeMin, pixelsPerTick);
         for (const rect of dimensions) {
+          // Render each rectangle based on the computed dimensions
           renderRect(ctx, rect, totalTicks, rangeMin, rangeMax, query, levelIndex, topLevelIndex);
         }
       }
@@ -105,6 +109,8 @@ const FlameGraph = ({
       const pixelsPerTick = graphRef.current.clientWidth / totalTicks / (rangeMax - rangeMin);
       render(pixelsPerTick);
 
+      // Clicking allows user to "zoom" into the flamegraph. Zooming means the x axis gets smaller so that the clicked
+      // bar takes 100% of the x axis.
       graphRef.current.onclick = (e) => {
         const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
         const { levelIndex, barIndex } = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
@@ -142,7 +148,10 @@ const getStyles = () => ({
   `,
 });
 
-// binary search for a bar in a level
+/**
+ * Binary search for a bar in a level, based on the X pixel coordinate. Useful for detecting which bar did user click
+ * on.
+ */
 const getBarIndex = (
   x: number,
   level: ItemWithStart[],
