@@ -91,11 +91,9 @@ type CustomMeta struct {
 	MaxSelf int64
 }
 
-// responseToDataFrames turns fire response to data.Frame. At this point this transform is very simple, each
-// level being encoded as json string and set as a single value in a single column. Reason for this is that each level
-// can have variable number of values but in data.Frame each column needs to have the same number of values.
-// In addition, Names, Total, MaxSelf is added to Meta.Custom which may not be the best practice so needs to be
-// evaluated later on
+// responseToDataFrames turns fire response to data.Frame. We encode the data into a nested set format where we have
+// [level, value, label] columns and by ordering the items in a depth first traversal order we can recreate the whole
+// tree back.
 func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktracesResponse]) *data.Frame {
 	for index, level := range resp.Msg.Flamegraph.Levels {
 		values, _ := json.Marshal(level.Values)
@@ -105,9 +103,18 @@ func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktrace
 	return treeToNestedSetDataFrame(tree)
 }
 
+// Offset of the bar relative to previous sibling
 const START_OFFSET = 0
+
+// Value or width of the bar
 const VALUE_OFFSET = 1
+
+// Self value of the bar, we don't use it at the moment but will add it to the metadata later.
+// const SELF_OFFSET = 2
+// Index into the names array
 const NAME_OFFSET = 3
+
+// Next bar. Each bar of the profile is represented by 4 number in a flat array.
 const ITEM_OFFSET = 4
 
 type ProfileTree struct {
@@ -118,6 +125,8 @@ type ProfileTree struct {
 	Nodes []*ProfileTree
 }
 
+// levelsToTree converts flamebearer format into a tree. This is needed to then convert it into nested set format
+// dataframe. This should be temporary, and ideally we should get some sort of tree struct directly from Fire API.
 func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 	tree := &ProfileTree{
 		Start: 0,
@@ -129,12 +138,13 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 	parentsStack := []*ProfileTree{tree}
 	currentLevel := 1
 
+	// Cycle through each level
 	for {
 		if currentLevel >= len(levels) {
 			break
 		}
 
-		// If we still have levels to go this should not happen
+		// If we still have levels to go, this should not happen. Something is probably wrong with the flamebearer data.
 		if len(parentsStack) == 0 {
 			log.DefaultLogger.Error("parentsStack is empty but we are not at the the last level", "currentLevel", currentLevel)
 			break
@@ -144,9 +154,10 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 		currentParent := parentsStack[:1][0]
 		parentsStack = parentsStack[1:]
 		itemIndex := 0
-		// cumulative offset as items have just relative to prev item
+		// cumulative offset as items in flamebearer format have just relative to prev item
 		offset := int64(0)
 
+		// Cycle through bar in a level
 		for {
 			if itemIndex >= len(levels[currentLevel].Values) {
 				break
@@ -171,10 +182,11 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 				nextParentsStack = append(nextParentsStack, treeItem)
 				itemIndex += ITEM_OFFSET
 
-				// Update offset for next item
+				// Update offset for next item. This is changing relative offset to absolute one.
 				offset = itemEnd
 			} else {
-				// We went out of parents bounds so lets move to next parent
+				// We went out of parents bounds so lets move to next parent. We will evaluate the same item again, but
+				// we will check if it is a child of the next parent item in line.
 				if len(parentsStack) == 0 {
 					log.DefaultLogger.Error("parentsStack is empty but there are still items in current level", "currentLevel", currentLevel, "itemIndex", itemIndex)
 					break
@@ -191,6 +203,10 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 	return tree
 }
 
+// treeToNestedSetDataFrame walks the tree depth first and adds items into the dataframe. This is a nested set format
+// where by ordering the items in depth first order and knowing the level/depth of each item we can recreate the
+// parent - child relationship without explicitly needing parent/child column and we can later just iterate over the
+// dataFrame to again basically walking depth first over the tree/profile.
 func treeToNestedSetDataFrame(tree *ProfileTree) *data.Frame {
 	frame := data.NewFrame("response")
 	frame.Meta = &data.FrameMeta{PreferredVisualization: "flamegraph"}
