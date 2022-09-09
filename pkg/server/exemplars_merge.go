@@ -205,7 +205,7 @@ func parseTime(t string) time.Time {
 	return attime.Parse(t)
 }
 
-func parseNumber(n string) (uint64, error) {
+func parseNumber(n string, ceil bool) (uint64, error) {
 	if n == "" {
 		return 0, nil
 	}
@@ -215,7 +215,10 @@ func parseNumber(n string) (uint64, error) {
 	}
 	f, err := strconv.ParseFloat(n, 64)
 	if err == nil {
-		return uint64(math.Round(f)), nil
+		if ceil {
+			return uint64(math.Ceil(f)), nil
+		}
+		return uint64(f), nil
 	}
 	return 0, fmt.Errorf("invalid value: expected uint or float: %q", n)
 }
