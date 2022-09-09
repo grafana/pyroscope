@@ -30,7 +30,7 @@ export default function Box(props: BoxProps) {
 }
 
 export interface CollapseBoxProps {
-  // must be non empty
+  /** must be non empty */
   title: string;
   children: React.ReactNode;
 }

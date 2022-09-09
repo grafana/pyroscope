@@ -241,7 +241,7 @@ function TagExplorerView() {
         <CollapseBox
           title={`${appName
             .map((a) => `${a} Descriptive Statistics`)
-            .unwrapOr('')}`}
+            .unwrapOr('Descriptive Statistics')}`}
         >
           <Table
             appName={appName.unwrapOr('')}
