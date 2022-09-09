@@ -17,15 +17,14 @@ import {
   COLOR_EMPTY,
 } from './constants';
 
+// eslint-disable-next-line css-modules/no-unused-class
 import styles from './Heatmap.module.scss';
 
 export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
-  const {
-    heatmapSingleView: { heatmap: heatmapData },
-  } = useAppSelector((state) => state.tracing);
+  const { heatmapSingleView } = useAppSelector((state) => state.tracing);
 
   const {
     selectedCoordinates,
@@ -57,12 +56,13 @@ export function Heatmap() {
     }
   });
 
+  // TODO(dogfrogfog): work on gradient
   const getColor = useMemo(
     () =>
       (x: number): string => {
-        if (heatmapData) {
-          const minL = Math.log10(heatmapData.minDepth);
-          const maxL = Math.log10(heatmapData.maxDepth);
+        if (heatmapSingleView.heatmap) {
+          const minL = Math.log10(heatmapSingleView.heatmap.minDepth);
+          const maxL = Math.log10(heatmapSingleView.heatmap.maxDepth);
           const w1 = (Math.log10(x) - minL) / (maxL - minL);
           const w2 = 1 - w1;
 
@@ -75,40 +75,129 @@ export function Heatmap() {
 
         return '';
       },
-    [heatmapData]
+    [heatmapSingleView.heatmap]
   );
 
-  const generateHeatmapGrid = useMemo(
-    () =>
-      heatmapData?.values.map((column, colIndex) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <g role="row" key={colIndex}>
-          {column?.map(
-            (itemsCount: number, rowIndex: number, itemsCountArr) => (
-              <rect
-                role="gridcell"
-                data-items={itemsCount}
-                fill={
-                  itemsCount !== 0
-                    ? getColor(itemsCount)
-                    : Color.rgb(COLOR_EMPTY).toString()
-                }
-                // eslint-disable-next-line react/no-array-index-key
-                key={rowIndex}
-                x={colIndex * (heatmapW / heatmapData.timeBuckets)}
-                y={
-                  (itemsCountArr.length - 1 - rowIndex) *
-                  (HEATMAP_HEIGHT / heatmapData.valueBuckets)
-                }
-                width={heatmapW / heatmapData.timeBuckets}
-                height={HEATMAP_HEIGHT / heatmapData.valueBuckets}
-              />
-            )
-          )}
-        </g>
-      )),
-    [heatmapW, heatmapData]
-  );
+  // s
+  const heatmapGrid = (() => {
+    switch (heatmapSingleView.type) {
+      case 'loaded':
+      case 'reloading': {
+        return heatmapSingleView.heatmap.values.map((column, colIndex) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <g role="row" key={colIndex}>
+            {column.map(
+              (itemsCount: number, rowIndex: number, itemsCountArr) => (
+                <rect
+                  role="gridcell"
+                  data-items={itemsCount}
+                  fill={
+                    itemsCount !== 0
+                      ? getColor(itemsCount)
+                      : Color.rgb(COLOR_EMPTY).toString()
+                  }
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={rowIndex}
+                  x={
+                    colIndex *
+                    (heatmapW / heatmapSingleView.heatmap.timeBuckets)
+                  }
+                  y={
+                    (itemsCountArr.length - 1 - rowIndex) *
+                    (HEATMAP_HEIGHT / heatmapSingleView.heatmap.valueBuckets)
+                  }
+                  width={heatmapW / heatmapSingleView.heatmap.timeBuckets}
+                  height={
+                    HEATMAP_HEIGHT / heatmapSingleView.heatmap.valueBuckets
+                  }
+                />
+              )
+            )}
+          </g>
+        ));
+      }
+      default: {
+        return null;
+      }
+    }
+  })();
+
+  const heatmapContent = (() => {
+    switch (heatmapSingleView.type) {
+      case 'loaded':
+      case 'reloading':
+        return (
+          <>
+            <Axis
+              axis="y"
+              min={heatmapSingleView.heatmap.minValue}
+              max={heatmapSingleView.heatmap.maxValue}
+              ticksNumber={5}
+            />
+            {hasSelectedArea &&
+              selectedCoordinates.end &&
+              selectedCoordinates.start && (
+                <ResizedSelectedArea
+                  start={selectedCoordinates.start}
+                  end={selectedCoordinates.end}
+                  containerW={heatmapW}
+                  resizeRatio={selectedAreaToHeatmapRatio}
+                  handleClick={resetSelection}
+                />
+              )}
+            <svg
+              role="img"
+              className={styles.heatmapSvg}
+              height={HEATMAP_HEIGHT}
+            >
+              {heatmapGrid}
+              <foreignObject
+                className={styles.selectionContainer}
+                height={HEATMAP_HEIGHT}
+              >
+                <canvas
+                  data-testid="selection-canvas"
+                  id="selectionCanvas"
+                  ref={canvasRef}
+                  height={HEATMAP_HEIGHT}
+                />
+              </foreignObject>
+            </svg>
+            <Axis
+              axis="x"
+              min={heatmapSingleView.heatmap.startTime}
+              max={heatmapSingleView.heatmap.endTime}
+              ticksNumber={7}
+            />
+            <div
+              className={styles.bucketsColors}
+              data-testid="color-scale"
+              style={{
+                backgroundImage: `linear-gradient(to right, ${Color.rgb(
+                  COLOR_2
+                )} , ${Color.rgb(COLOR_1)})`,
+              }}
+            >
+              <span
+                role="textbox"
+                style={{ color: Color.rgb(COLOR_1).toString() }}
+              >
+                {heatmapSingleView.heatmap.minDepth}
+              </span>
+              <span
+                role="textbox"
+                style={{ color: Color.rgb(COLOR_2).toString() }}
+              >
+                {heatmapSingleView.heatmap.maxDepth}
+              </span>
+            </div>
+          </>
+        );
+      default: {
+        return null;
+      }
+    }
+  })();
 
   return (
     <div
@@ -116,66 +205,10 @@ export function Heatmap() {
       className={styles.heatmapContainer}
       data-testid="heatmap-container"
     >
-      {!heatmapData ? (
+      {heatmapSingleView.type === 'loading' ? (
         <LoadingSpinner />
       ) : (
-        <>
-          <YAxis
-            minValue={heatmapData.minValue}
-            maxValue={heatmapData.maxValue}
-          />
-          {hasSelectedArea &&
-            selectedCoordinates.end &&
-            selectedCoordinates.start && (
-              <ResizedSelectedArea
-                start={selectedCoordinates.start}
-                end={selectedCoordinates.end}
-                containerW={heatmapW}
-                resizeRatio={selectedAreaToHeatmapRatio}
-                handleClick={resetSelection}
-              />
-            )}
-          <svg role="img" className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
-            {generateHeatmapGrid}
-            <foreignObject
-              className={styles.selectionContainer}
-              height={HEATMAP_HEIGHT}
-            >
-              <canvas
-                data-testid="selection-canvas"
-                id="selectionCanvas"
-                ref={canvasRef}
-                height={HEATMAP_HEIGHT}
-              />
-            </foreignObject>
-          </svg>
-          <XAxis
-            startTime={heatmapData.startTime}
-            endTime={heatmapData.endTime}
-          />
-          <div
-            className={styles.bucketsColors}
-            data-testid="color-scale"
-            style={{
-              backgroundImage: `linear-gradient(to right, ${Color.rgb(
-                COLOR_2
-              )} , ${Color.rgb(COLOR_1)})`,
-            }}
-          >
-            <span
-              role="textbox"
-              style={{ color: Color.rgb(COLOR_1).toString() }}
-            >
-              {heatmapData.minDepth}
-            </span>
-            <span
-              role="textbox"
-              style={{ color: Color.rgb(COLOR_2).toString() }}
-            >
-              {heatmapData.maxDepth}
-            </span>
-          </div>
-        </>
+        heatmapContent
       )}
     </div>
   );
@@ -219,21 +252,31 @@ function ResizedSelectedArea({
   );
 }
 
-type axisFormat = 'items' | 'time';
+interface AxisProps {
+  axis: 'x' | 'y';
+  min: number;
+  max: number;
+  ticksNumber: number;
+}
 
-function YAxis({ maxValue, minValue }: { maxValue: number; minValue: number }) {
-  const ticks = getTicks(5, 'items', maxValue, minValue);
+const FORMAT_MAP = {
+  x: 'time' as const,
+  y: 'value' as const,
+};
+
+function Axis({ axis, max, min, ticksNumber }: AxisProps) {
+  const ticks = getTicks(FORMAT_MAP[axis], min, max, ticksNumber);
 
   return (
     <div
-      data-testid="y-axis"
-      className={styles.yAxis}
-      style={{ height: HEATMAP_HEIGHT }}
+      data-testid={`${axis}-axis`}
+      className={styles[`${axis}Axis`]}
+      style={axis === 'y' ? { height: HEATMAP_HEIGHT } : {}}
     >
       {ticks.map((tick) => (
         <div
           role="textbox"
-          className={cl(styles.tick, styles.yTick)}
+          className={cl(styles.tick, styles[`${axis}Tick`])}
           key={tick}
         >
           {tick}
@@ -243,21 +286,7 @@ function YAxis({ maxValue, minValue }: { maxValue: number; minValue: number }) {
   );
 }
 
-function XAxis({ startTime, endTime }: { startTime: number; endTime: number }) {
-  const ticks = getTicks(7, 'time', endTime, startTime);
-
-  return (
-    <div className={styles.xAxis} data-testid="x-axis">
-      {ticks.map((tick) => (
-        <div role="textbox" className={styles.tick} key={tick}>
-          {tick}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const getFormatter = (format: axisFormat) => {
+const getFormatter = (format: 'value' | 'time') => {
   let formatter;
   switch (format) {
     case 'time':
@@ -267,7 +296,7 @@ const getFormatter = (format: axisFormat) => {
         return date.toLocaleTimeString();
       };
       break;
-    case 'items':
+    case 'value':
       formatter = (v: number) =>
         v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
       break;
@@ -279,10 +308,10 @@ const getFormatter = (format: axisFormat) => {
 };
 
 const getTicks = (
-  ticksCount: number,
-  format: axisFormat,
+  format: 'value' | 'time',
+  min: number,
   max: number,
-  min: number
+  ticksCount: number
 ) => {
   const formatter = getFormatter(format);
 

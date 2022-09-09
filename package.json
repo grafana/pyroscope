@@ -249,7 +249,6 @@
     "sass-loader": "^9.0.2",
     "serialize-error": "^9.1.0",
     "style-loader": "^3.2.1",
-    "svg-heatmap": "^2.1.0",
     "svg-url-loader": "^7.1.1",
     "sweetalert2": "^11.4.0",
     "sweetalert2-react-content": "^4.2.0",

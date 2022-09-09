@@ -62,32 +62,19 @@ export const useHeatmapSelection = ({
     yEnd: number
   ) => {
     if (heatmapData) {
-      // reuse calculations
       const timeForPixel =
         (heatmapData.endTime - heatmapData.startTime) / heatmapW;
       const valueForPixel =
         (heatmapData.maxValue - heatmapData.minValue) / heatmapH;
 
-      // refactor
-      const smallerX = xStart > xEnd ? xEnd : xStart;
-      const biggerX = xStart > xEnd ? xStart : xEnd;
-
-      const reversedYStart = HEATMAP_HEIGHT - yStart;
-      const reversedYEnd = HEATMAP_HEIGHT - yEnd;
-      const smallerY =
-        reversedYStart > reversedYEnd ? reversedYEnd : reversedYStart;
-      const biggerY =
-        reversedYStart > reversedYEnd ? reversedYStart : reversedYEnd;
-
-      const selectionMinValue = Math.round(
-        valueForPixel * smallerY + heatmapData.minValue
+      const { smaller: smallerX, bigger: biggerX } = sortCoordinates(
+        xStart,
+        xEnd
       );
-      const selectionMaxValue = Math.round(
-        valueForPixel * biggerY + heatmapData.minValue
+      const { smaller: smallerY, bigger: biggerY } = sortCoordinates(
+        HEATMAP_HEIGHT - yStart,
+        HEATMAP_HEIGHT - yEnd
       );
-      const selectionStartTime =
-        timeForPixel * smallerX + heatmapData.startTime;
-      const selectionEndTime = timeForPixel * biggerX + heatmapData.startTime;
 
       dispatch(
         fetchSelectionProfile({
@@ -96,10 +83,14 @@ export const useHeatmapSelection = ({
           query,
           heatmapTimeBuckets: DEFAULT_HEATMAP_PARAMS.heatmapTimeBuckets,
           heatmapValueBuckets: DEFAULT_HEATMAP_PARAMS.heatmapValueBuckets,
-          selectionStartTime,
-          selectionEndTime,
-          selectionMinValue,
-          selectionMaxValue,
+          selectionStartTime: timeForPixel * smallerX + heatmapData.startTime,
+          selectionEndTime: timeForPixel * biggerX + heatmapData.startTime,
+          selectionMinValue: Math.round(
+            valueForPixel * smallerY + heatmapData.minValue
+          ),
+          selectionMaxValue: Math.round(
+            valueForPixel * biggerY + heatmapData.minValue
+          ),
         })
       );
     }
@@ -107,8 +98,11 @@ export const useHeatmapSelection = ({
 
   const handleCellClick = (e: MouseEvent, x: number, y: number) => {
     if (heatmapData) {
-      const cellW = heatmapW / heatmapData.timeBuckets;
-      const cellH = heatmapH / heatmapData.valueBuckets;
+      console.log(e, x, y);
+      // const cellW = heatmapW / heatmapData.timeBuckets;
+      // const cellH = heatmapH / heatmapData.valueBuckets;
+      // const x = Math.trunc(startCoords.x / cellW);
+      // const y = Math.trunc(startCoords.y / cellH);
       // console.log()
       // if (startCoords && isClickEvent) {
       //   clearRect(canvasRef.current as HTMLCanvasElement);
@@ -116,8 +110,7 @@ export const useHeatmapSelection = ({
       //     start: { x: startCoords.x, y: startCoords.y },
       //     end: null,
       //   });
-      //   const x = Math.trunc(startCoords.x / cellW);
-      //   const y = Math.trunc(startCoords.y / cellH);
+
       //   const isEmptyCell = heatmapData.values[y][x] === 0;
       //   if (!isEmptyCell) console.log('clicked cell coord: ', { x, y });
       // }
@@ -272,4 +265,16 @@ const clearRect = (canvas: HTMLCanvasElement) => {
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
+const sortCoordinates = (
+  v1: number,
+  v2: number
+): { smaller: number; bigger: number } => {
+  const isFirstBigger = v1 > v2;
+
+  return {
+    smaller: isFirstBigger ? v2 : v1,
+    bigger: isFirstBigger ? v1 : v2,
+  };
 };

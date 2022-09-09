@@ -31,7 +31,7 @@ import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
 import TracingSingleView from './pages/TracingSingleView';
-// fix naming
+// TODO(dogfrogfog): fix naming
 import TracingSingle from './pages/tracing/TracingSingleView';
 
 function App() {
