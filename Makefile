@@ -160,12 +160,12 @@ define UPDATER_CONFIG_JSON
   ],
   "update_jsonnet_attribute_configs": [
     {
-      "file_path": "ksonnet/environments/fire/dev-us-central-0.fire-dev-001/images.libsonnet",
+      "file_path": "ksonnet/environments/fire/waves/dev.libsonnet",
       "jsonnet_key": "fire",
       "jsonnet_value": "$(IMAGE_PREFIX)fire:$(IMAGE_TAG)"
     },
 	{
-      "file_path": "ksonnet/environments/fire/dev-us-central-0.fire-dev-001/images.libsonnet",
+      "file_path": "ksonnet/environments/fire/waves/dev.libsonnet",
       "jsonnet_key": "grafana",
       "jsonnet_value": "$(IMAGE_PREFIX)grafana-fire:$(IMAGE_TAG)"
     }
@@ -255,9 +255,12 @@ helm/lint: $(BIN)/helm
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeval $(BIN)/helm
+	mkdir -p ./deploy/helm/fire/rendered/
 	$(BIN)/helm template fire-dev ./deploy/helm/fire/ \
+		| tee ./deploy/helm/fire/rendered/single-binary.yaml \
 		| $(BIN)/kubeval --strict
 	$(BIN)/helm template fire-dev ./deploy/helm/fire/ --values deploy/helm/fire/values-micro-services.yaml \
+		| tee ./deploy/helm/fire/rendered/micro-services.yaml \
 		| $(BIN)/kubeval --strict
 
 .PHONY: deploy
