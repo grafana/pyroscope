@@ -31,11 +31,7 @@ export function Heatmap() {
     selectedAreaToHeatmapRatio,
     hasSelectedArea,
     resetSelection,
-  } = useHeatmapSelection({
-    canvasRef,
-    heatmapW,
-    heatmapH: HEATMAP_HEIGHT,
-  });
+  } = useHeatmapSelection({ canvasRef, heatmapW });
 
   useEffect(() => {
     if (heatmapRef.current) {
@@ -78,7 +74,6 @@ export function Heatmap() {
     [heatmapSingleView.heatmap]
   );
 
-  // s
   const heatmapGrid = (() => {
     switch (heatmapSingleView.type) {
       case 'loaded':
@@ -86,7 +81,9 @@ export function Heatmap() {
         return heatmapSingleView.heatmap.values.map((column, colIndex) => (
           // eslint-disable-next-line react/no-array-index-key
           <g role="row" key={colIndex}>
-            {column.map(
+            {/* TODO(dogfrogfog): remove ? after BE returns
+            array of empty values instead of null */}
+            {column?.map(
               (itemsCount: number, rowIndex: number, itemsCountArr) => (
                 <rect
                   role="gridcell"

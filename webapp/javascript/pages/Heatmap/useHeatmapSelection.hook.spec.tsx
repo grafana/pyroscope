@@ -29,7 +29,6 @@ describe('Hook: useHeatmapSelection', () => {
         useHeatmapSelection({
           canvasRef,
           heatmapW: 1234,
-          heatmapH: 123,
         }),
       {
         wrapper: ({ children }) => (

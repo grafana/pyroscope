@@ -24,7 +24,6 @@ interface SelectedCoordinates {
 interface UseHeatmapSelectionProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   heatmapW: number;
-  heatmapH: number;
 }
 interface UseHeatmapSelection {
   selectedCoordinates: SelectedCoordinates;
@@ -36,7 +35,6 @@ interface UseHeatmapSelection {
 export const useHeatmapSelection = ({
   canvasRef,
   heatmapW,
-  heatmapH,
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
   const dispatch = useAppDispatch();
   const {
@@ -65,7 +63,7 @@ export const useHeatmapSelection = ({
       const timeForPixel =
         (heatmapData.endTime - heatmapData.startTime) / heatmapW;
       const valueForPixel =
-        (heatmapData.maxValue - heatmapData.minValue) / heatmapH;
+        (heatmapData.maxValue - heatmapData.minValue) / HEATMAP_HEIGHT;
 
       const { smaller: smallerX, bigger: biggerX } = sortCoordinates(
         xStart,
@@ -98,25 +96,25 @@ export const useHeatmapSelection = ({
 
   const handleCellClick = (e: MouseEvent, x: number, y: number) => {
     if (heatmapData) {
-      console.log(e, x, y);
-      // const cellW = heatmapW / heatmapData.timeBuckets;
-      // const cellH = heatmapH / heatmapData.valueBuckets;
-      // const x = Math.trunc(startCoords.x / cellW);
-      // const y = Math.trunc(startCoords.y / cellH);
-      // console.log()
-      // if (startCoords && isClickEvent) {
-      //   clearRect(canvasRef.current as HTMLCanvasElement);
-      //   setSelectedCoordinates({
-      //     start: { x: startCoords.x, y: startCoords.y },
-      //     end: null,
-      //   });
+      const cellW = heatmapW / heatmapData.timeBuckets;
+      const cellH = HEATMAP_HEIGHT / heatmapData.valueBuckets;
 
-      //   const isEmptyCell = heatmapData.values[y][x] === 0;
-      //   if (!isEmptyCell) console.log('clicked cell coord: ', { x, y });
-      // }
-      // (heatmapData.endTime - heatmapData.startTime) / heatmapW;
-      // const valueForPixel =
-      //   (heatmapData.maxValue - heatmapData.minValue) / heatmapH;
+      const cellMatrixCoordinate = [
+        Math.trunc(x / cellW),
+        Math.trunc((HEATMAP_HEIGHT - y) / cellH),
+      ];
+
+      // set startCoords and endCoords to draw selection rectangle for single cell
+      startCoords = {
+        x: (cellMatrixCoordinate[0] + 1) * cellW,
+        y: HEATMAP_HEIGHT - cellMatrixCoordinate[1] * cellH,
+      };
+      endCoords = {
+        x: cellMatrixCoordinate[0] * cellW,
+        y: HEATMAP_HEIGHT - (cellMatrixCoordinate[1] + 1) * cellH,
+      };
+
+      fetchProfile(startCoords.x, endCoords.x, startCoords.y, endCoords.y);
     }
   };
 
@@ -160,7 +158,6 @@ export const useHeatmapSelection = ({
       }
 
       endCoords = { x: xEnd, y: yEnd };
-
       const isClickEvent = startCoords.x === xEnd && startCoords.y === yEnd;
 
       if (isClickEvent) {
@@ -172,7 +169,7 @@ export const useHeatmapSelection = ({
       window.removeEventListener('mousemove', handleDrawingEvent);
       window.removeEventListener('mouseup', endDrawing);
 
-      const selectedAreaW = xEnd - startCoords.x;
+      const selectedAreaW = endCoords.x - startCoords.x;
       if (selectedAreaW) {
         selectedAreaToHeatmapRatio = Math.abs(width / selectedAreaW);
       } else {

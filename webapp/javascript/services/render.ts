@@ -136,7 +136,9 @@ const HeatmapSchema = z.object({
   maxDepth: z.number(),
   timeBuckets: z.number(),
   valueBuckets: z.number(),
-  values: z.array(z.array(z.number())),
+  // TODO(dogfrogfog): remove .nullable() after BE returns
+  // array of empty values instead of null
+  values: z.array(z.array(z.number()).nullable()),
 });
 
 export interface getHeatmapProps {
