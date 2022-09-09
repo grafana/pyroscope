@@ -19,7 +19,7 @@ func NewAnnotationsService(db *gorm.DB) AnnotationsService {
 func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params model.CreateAnnotation) (*model.Annotation, error) {
 	var u model.Annotation
 
-	if err := params.Validate(); err != nil {
+	if err := params.Parse(); err != nil {
 		return nil, err
 	}
 

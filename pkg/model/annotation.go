@@ -27,8 +27,10 @@ type CreateAnnotation struct {
 	Timestamp time.Time
 }
 
-// https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/
-func (a *CreateAnnotation) Validate() error {
+// Parse parses and validates
+// It adds a default timestamp (to time.Now) if not present
+// And check required fields are set
+func (a *CreateAnnotation) Parse() error {
 	var err error
 
 	if a.Timestamp.IsZero() {

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
@@ -43,10 +42,6 @@ func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if params.Timestamp == 0 {
-		params.Timestamp = time.Now().Unix()
-	}
-
 	annotation, err := h.svc.CreateAnnotation(r.Context(), model.CreateAnnotation{
 		AppName:   params.AppName,
 		Timestamp: attime.Parse(strconv.FormatInt(params.Timestamp, 10)),
@@ -68,5 +63,7 @@ func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Req
 		Content:   annotation.Content,
 		Timestamp: annotation.Timestamp.Unix(),
 	}
+
+	w.WriteHeader(http.StatusCreated)
 	h.httpUtils.WriteResponseJSON(r, w, annotationsResp)
 }

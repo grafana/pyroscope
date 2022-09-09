@@ -35,6 +35,7 @@ func New(m *mux.Router, s Services) *Router {
 func (r *Router) RegisterHandlers() {
 	r.RegisterUserHandlers()
 	r.RegisterAPIKeyHandlers()
+	r.RegisterAnnotationsHandlers()
 }
 
 func (r *Router) RegisterUserHandlers() {

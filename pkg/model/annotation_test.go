@@ -11,8 +11,8 @@ var _ = Describe("Annotation", func() {
 		When("required fields are missing", func() {
 			It("fails with multiple errors", func() {
 				m := model.CreateAnnotation{}
-				Expect(m.Validate()).To(MatchError(model.ErrAnnotationInvalidAppName))
-				Expect(m.Validate()).To(MatchError(model.ErrAnnotationInvalidContent))
+				Expect(m.Parse()).To(MatchError(model.ErrAnnotationInvalidAppName))
+				Expect(m.Parse()).To(MatchError(model.ErrAnnotationInvalidContent))
 			})
 		})
 
@@ -22,7 +22,7 @@ var _ = Describe("Annotation", func() {
 					AppName: "myappname",
 					Content: "mycontent",
 				}
-				Expect(m.Validate()).ToNot(HaveOccurred())
+				Expect(m.Parse()).ToNot(HaveOccurred())
 
 				// Instead of mocking time.Now, it's easier to just assert it's not zero
 				Expect(m.Timestamp).ToNot(BeZero())

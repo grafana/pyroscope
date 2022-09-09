@@ -2,22 +2,85 @@ package api_test
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/sirupsen/logrus"
 )
 
 type mockService struct {
-	createAnnotationResponse func() (*model.CreateAnnotation, error)
+	createAnnotationResponse func() (*model.Annotation, error)
 }
 
-func (m *mockService) CreateAnnotation(ctx context.Context, params model.CreateAnnotation) (*model.CreateAnnotation, error) {
+func (m *mockService) CreateAnnotation(ctx context.Context, params model.CreateAnnotation) (*model.Annotation, error) {
 	return m.createAnnotationResponse()
 }
 
-var _ = Describe("AnnotationCtrl", func() {
-	It("works", func() {
-		Expect(true).To(Equal(true))
+var _ = Describe("AnnotationHandler", func() {
+	var (
+		server *httptest.Server
+		svc    *mockService
+	)
+
+	AfterEach(func() {
+		server.Close()
+	})
+
+	Describe("create annotation", func() {
+		When("all parameters are set", func() {
+			BeforeEach(func() {
+				svc = &mockService{
+					createAnnotationResponse: func() (*model.Annotation, error) {
+						return &model.Annotation{
+							AppName:   "myApp",
+							Content:   "mycontent",
+							Timestamp: time.Unix(1662729099, 0),
+						}, nil
+					},
+				}
+
+				server = httptest.NewServer(newTestRouter(defaultUserCtx, router.Services{
+					Logger:             logrus.StandardLogger(),
+					AnnotationsService: svc,
+				}))
+			})
+
+			It("creates correctly", func() {
+				url := server.URL + "/annotations"
+
+				expectResponse(newRequest(http.MethodPost, url,
+					"annotation/create_request.json"),
+					"annotation/create_response.json",
+					http.StatusCreated)
+			})
+		})
+
+		When("fields are invalid", func() {
+			BeforeEach(func() {
+				svc = &mockService{
+					createAnnotationResponse: func() (*model.Annotation, error) {
+						return nil, model.ValidationError{errors.New("myerror")}
+					},
+				}
+
+				server = httptest.NewServer(newTestRouter(defaultUserCtx, router.Services{
+					Logger:             logrus.StandardLogger(),
+					AnnotationsService: svc,
+				}))
+			})
+			It("returns an error", func() {
+				url := server.URL + "/annotations"
+
+				expectResponse(newRequest(http.MethodPost, url,
+					"annotation/create_request_error.json"),
+					"annotation/create_response_error.json",
+					http.StatusBadRequest)
+			})
+		})
 	})
 })
