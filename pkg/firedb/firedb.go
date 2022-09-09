@@ -2,8 +2,10 @@ package firedb
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -20,7 +22,10 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/fire/pkg/firedb/block"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/iter"
+	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/objstore/client"
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 )
@@ -283,6 +288,159 @@ func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) 
 func (f *FireDB) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
 	sources := append(f.blockQuerier.profileSelecters(), f.Head())
 	return sources.SelectProfiles(ctx, req)
+}
+
+func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
+	r, err := stream.Receive()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+	if r.Request == nil {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
+	}
+	request := r.Request
+	// todo query from head
+
+	// query from blocks
+	batchSize := 2048
+
+	type labelWithIndex struct {
+		firemodel.Labels
+		index int
+	}
+	f.blockQuerier.queriersLock.RLock()
+	queriers := make([]Querier, len(f.blockQuerier.queriers))
+	for i, q := range f.blockQuerier.queriers {
+		queriers[i] = q
+	}
+	f.blockQuerier.queriersLock.RUnlock()
+
+	selectProfileResult := &ingestv1.ProfileSets{
+		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchSize),
+		LabelsSets: make([]*commonv1.Labels, 0, batchSize),
+	}
+	// todo is the iteration order fine for deduping ?
+	// We have order guarantee between head and blocks
+	// what if one head block has been cut.
+	// ingester. A
+	//  	 Head LA 2
+	//  	 Head LA 1
+	//  	 Head LB 2
+	//  	 Head LB 1
+	// cut ingester. B
+	//  	 Head LA 2
+	//  	 Head LA 1
+	//  	 BLOCK LB 2
+	//  	 BLOCK LB 1
+	// We want to order by timestamp then labels.
+	// LA 2, LB 2, LA 1, LB 1
+	for _, q := range queriers {
+		// todo merge all stacktraces.
+		MergeStacktraces(ctx, q, request, batchSize, func(selectedProfiles []Profile) ([]Profile, error) {
+			seriesByFP := map[model.Fingerprint]labelWithIndex{}
+			selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
+			selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
+
+			for _, profile := range selectedProfiles {
+				var ok bool
+				var lblsIdx labelWithIndex
+				lblsIdx, ok = seriesByFP[profile.Fingerprint]
+				if !ok {
+					lblsIdx = labelWithIndex{
+						Labels: profile.Labels,
+						index:  len(selectProfileResult.LabelsSets),
+					}
+					seriesByFP[profile.Fingerprint] = lblsIdx
+					selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &commonv1.Labels{Labels: profile.Labels})
+				}
+				selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
+					LabelIndex: int32(lblsIdx.index),
+					Timestamp:  int64(profile.Timestamp),
+				})
+
+			}
+			// read a batch of profiles and sends it.
+			err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
+				SelectedProfiles: selectProfileResult,
+			})
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+				}
+				return nil, err
+			}
+			// handle response for the batch.
+			selectionResponse, err := stream.Receive()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+				}
+				return nil, err
+			}
+			// todo is this fine ?
+			sel := selectedProfiles[:0]
+			for i := range selectionResponse.Profiles {
+				if selectionResponse.Profiles[i] {
+					sel = append(sel, selectedProfiles[i])
+				}
+			}
+			return sel, nil
+		})
+	}
+
+	return nil
+}
+
+type ProfileSelectorIterator struct {
+	batch   chan []Profile
+	current iter.Iterator[Profile]
+}
+
+func NewProfileSelectorIterator() *ProfileSelectorIterator {
+	return &ProfileSelectorIterator{
+		batch: make(chan []Profile, 1),
+	}
+}
+
+func (it *ProfileSelectorIterator) Push(batch []Profile) {
+	if len(batch) == 0 {
+		return
+	}
+	it.batch <- batch
+}
+
+func (it *ProfileSelectorIterator) Next() bool {
+	if it.current == nil {
+		batch, ok := <-it.batch
+		if !ok {
+			return false
+		}
+		it.current = iter.NewSliceIterator(batch)
+	}
+	if !it.current.Next() {
+		it.current = nil
+		return it.Next()
+	}
+	return true
+}
+
+func (it *ProfileSelectorIterator) At() Profile {
+	if it.current == nil {
+		return Profile{}
+	}
+	return it.current.At()
+}
+
+func (it *ProfileSelectorIterator) Close() error {
+	close(it.batch)
+	return nil
+}
+
+func (it *ProfileSelectorIterator) Err() error {
+	return nil
 }
 
 func (f *FireDB) initHead() (oldHead *Head, err error) {

@@ -245,6 +245,9 @@ func (b *BlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[
 }
 
 func (b *BlockQuerier) profileSelecters() profileSelecters {
+	b.queriersLock.RLock()
+	defer b.queriersLock.RUnlock()
+
 	result := make(profileSelecters, len(b.queriers))
 	for pos := range result {
 		result[pos] = b.queriers[pos]
@@ -517,7 +520,7 @@ func (p *ProfileIterator) Next() bool {
 	p.curr.RowNum = result.RowNumber[0]
 	p.buffer = result.Columns(p.buffer, "SeriesRefs", "TimeNanos")
 	info := p.series[p.buffer[0][0].Int64()]
-	p.curr.Finguerprint = info.fp
+	p.curr.Fingerprint = info.fp
 	p.curr.Labels = info.lbs
 	p.curr.Timestamp = model.TimeFromUnixNano(p.buffer[1][0].Int64())
 	return true
@@ -536,10 +539,10 @@ func (p *ProfileIterator) Close() error {
 }
 
 type Profile struct {
-	Labels       firemodel.Labels
-	Finguerprint model.Fingerprint
-	Timestamp    model.Time
-	RowNum       int64
+	Labels      firemodel.Labels
+	Fingerprint model.Fingerprint
+	Timestamp   model.Time
+	RowNum      int64
 }
 
 func (p Profile) RowNumber() int64 {
@@ -563,7 +566,7 @@ type SelectMergeRequest struct {
 	End           model.Time
 }
 type Querier interface {
-	SelectMerge(ctx context.Context, params SelectMergeRequest) (ProfileSamplesMerger, error)
+	SelectMerge(ctx context.Context, params *ingestv1.SelectProfilesRequest) (ProfileSamplesMerger, error)
 }
 
 type ProfileSamplesMerger interface {
@@ -572,7 +575,7 @@ type ProfileSamplesMerger interface {
 	MergeByProfile(rows iter.Iterator[Profile]) (iter.Iterator[ProfileValue], error)
 }
 
-func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMergeRequest) (ProfileSamplesMerger, error) {
+func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params *ingestv1.SelectProfilesRequest) (ProfileSamplesMerger, error) {
 	if err := b.open(ctx); err != nil {
 		return nil, err
 	}
@@ -616,8 +619,8 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 	rowNums := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(lblsPerRef), "SeriesRefs"),                                   // get all profiles with matching seriesRef
-			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(params.Start.UnixNano(), params.End.UnixNano()), "TimeNanos"), // get all profiles within the time window
+			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(lblsPerRef), "SeriesRefs"),                                                           // get all profiles with matching seriesRef
+			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"), // get all profiles within the time window
 		},
 		nil,
 	)
@@ -630,6 +633,60 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params SelectMerge
 			series:  lblsPerRef,
 		},
 	}, nil
+}
+
+func MergeStacktraces(ctx context.Context, b Querier, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]Profile) ([]Profile, error)) error {
+	merger, err := b.SelectMerge(ctx, params)
+	if err != nil {
+		return err
+	}
+
+	profilesIt := merger.SelectedProfiles()
+	selectionIt := NewProfileSelectorIterator()
+
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// todo send the merge of merge at the end.
+		_, err := merger.MergeByStacktraces(selectionIt)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		defer selectionIt.Close()
+		defer profilesIt.Close()
+
+		profileSelected := make([]Profile, 0, batchSize)
+		for {
+			// build a batch of profiles
+			profileSelected = profileSelected[:0]
+			for profilesIt.Next() {
+				profile := profilesIt.At()
+				profileSelected = append(profileSelected, profile)
+				if len(profileSelected) >= batchSize {
+					break
+				}
+			}
+			if profilesIt.Err() != nil {
+				return profilesIt.Err()
+			}
+			if len(profileSelected) == 0 {
+				return nil
+			}
+			profileSelected, err := fnOnBatch(profileSelected)
+			if err != nil {
+				return err
+			}
+			selectionIt.Push(profileSelected)
+		}
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	return nil
 }
 
 type ProfileSampleMerger struct {

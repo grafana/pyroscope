@@ -16,6 +16,8 @@ service IngesterService {
   // Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
   // but this requires to ensure we have correct timestamp and labels ordering.
   rpc SelectProfiles(SelectProfilesRequest) returns (SelectProfilesResponse) {}
+
+  rpc MergeProfilesStacktraces(stream MergeProfilesStacktracesRequest) returns (stream MergeProfilesStacktracesResponse) {}
 }
 
 message LabelValuesRequest {
@@ -61,6 +63,42 @@ message SelectProfilesResponse {
   repeated Profile profiles = 1;
   repeated string function_names = 2;
 }
+
+message MergeProfilesStacktracesRequest {
+  // The client starts the stream with a request containing the profile type and the labels.
+  SelectProfilesRequest request = 1;
+
+  // On a batch of profiles, the client sends the profiles to keep for merging.
+  repeated bool profiles = 2;
+}
+
+message MergeProfilesStacktracesResult {
+  // The list of stracktraces with their respective value
+  repeated StacktraceSample stacktraces = 1;
+  repeated string function_names = 2;
+}
+
+message MergeProfilesStacktracesResponse {
+
+  // The server replies batch of profiles.
+  ProfileSets selectedProfiles = 1;
+  // The list of stracktraces for the profile with their respective value
+  MergeProfilesStacktracesResult result = 2;
+
+}
+
+message ProfileSets {
+  repeated common.v1.Labels labelsSets = 1;
+  repeated SeriesProfile profiles = 2;
+}
+
+message SeriesProfile {
+  // The labels index of the series
+  int32 labelIndex = 1;
+  // timestamp in milliseconds
+  int64 timestamp = 2;
+}
+
 
 // Profile represents a point in time profile.
 message Profile {
