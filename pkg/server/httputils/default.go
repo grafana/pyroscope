@@ -34,6 +34,16 @@ func (*DefaultImpl) MustJSON(_ *http.Request, w http.ResponseWriter, v interface
 	_, _ = w.Write(resp)
 }
 
+func (*DefaultImpl) mustJSONError(_ *http.Request, w http.ResponseWriter, code int, v interface{}) {
+	resp, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, _ = w.Write(resp)
+}
+
 // HandleError replies to the request with an appropriate message as
 // JSON-encoded body and writes a corresponding message to the log
 // with debug log level.
@@ -99,20 +109,20 @@ func (d *DefaultImpl) ErrorCode(r *http.Request, w http.ResponseWriter, rLogger 
 		e.Errors = []string{err.Error()}
 	}
 
-	w.WriteHeader(code)
 	if rLogger != nil {
 		// Internal errors must not be shown to users but
 		// logged with error log level.
 		rLogger = rLogger.WithError(err).WithField("code", code)
 		msg := strings.ToLower(http.StatusText(code))
 		if code == http.StatusInternalServerError {
+			w.WriteHeader(code)
 			rLogger.Error(msg)
 			return
 		}
 		rLogger.Debug(msg)
 	}
 
-	d.MustJSON(r, w, e)
+	d.mustJSONError(r, w, code, e)
 }
 
 var (
