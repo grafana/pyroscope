@@ -147,13 +147,11 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 
 	case format == "pprof":
 		input.Profile = &pprof.RawProfile{RawData: b}
-		input.Format = ingestion.FormatPprof
 	case strings.Contains(contentType, "multipart/form-data"):
 		input.Profile = &pprof.RawProfile{
 			FormDataContentType: contentType,
 			RawData:             b,
 		}
-		input.Format = ingestion.FormatPprof
 	}
 
 	if input.Profile == nil {
