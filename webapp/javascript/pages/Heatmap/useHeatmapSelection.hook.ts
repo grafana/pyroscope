@@ -11,9 +11,6 @@ export const HEATMAP_HEIGHT = 250;
 export const SELECTED_AREA_BACKGROUND = Color.rgb(255, 255, 0)
   .alpha(0.5)
   .toString();
-export const SELECTED_AREA_BORDER = Color.rgb(250, 208, 44)
-  .alpha(0.5)
-  .toString();
 const DEFAULT_SELECTED_COORDINATES = { start: null, end: null };
 
 let startCoords: SelectedAreaCoordsType | null = null;
@@ -38,7 +35,6 @@ interface UseHeatmapSelection {
   resetSelection: () => void;
 }
 
-// TODO(dogfrogfog): remove when implement
 const DEFAULT_HEATMAP_PARAMS = {
   minValue: 0,
   maxValue: 1000000000,
@@ -61,23 +57,6 @@ export const useHeatmapSelection = ({
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
 
   const { from, until, query } = useAppSelector((state) => state.continuous);
-
-  // to fetch initial heatmap data
-  useEffect(() => {
-    if (from && until && query) {
-      const fetchData = dispatch(
-        fetchHeatmapSingleView({
-          query,
-          from,
-          until,
-          ...DEFAULT_HEATMAP_PARAMS,
-        })
-      );
-      return () => fetchData.abort('cancel');
-    }
-    return undefined;
-  }, [from, until, query]);
-
   const resetSelection = () => {
     setHasSelectedArea(false);
     setSelectedCoordinates(DEFAULT_SELECTED_COORDINATES);
@@ -85,28 +64,14 @@ export const useHeatmapSelection = ({
     endCoords = null;
   };
 
-  const startDrawing = (e: MouseEvent) => {
-    window.addEventListener('mousemove', handleDrawingEvent);
-    window.addEventListener('mouseup', endDrawing);
-
-    const canvas = canvasRef.current as HTMLCanvasElement;
-    const { left, top } = canvas.getBoundingClientRect();
-    setHasSelectedArea(false);
-    setSelectedCoordinates({ start: null, end: null });
-
-    isSelecting = true;
-    document.body.style.userSelect = 'none';
-    startCoords = { x: e.clientX - left, y: e.clientY - top };
-    endCoords = null;
-  };
-
-  const changeTimeRange = (
+  const fetchProfile = (
     xStart: number,
     xEnd: number,
     yStart: number,
     yEnd: number
   ) => {
     if (heatmapData) {
+      // reuse calculations
       const timeForPixel =
         (heatmapData.endTime - heatmapData.startTime) / heatmapW;
       const valueForPixel =
@@ -123,8 +88,12 @@ export const useHeatmapSelection = ({
       const biggerY =
         reversedYStart > reversedYEnd ? reversedYStart : reversedYEnd;
 
-      const selectionMinValue = valueForPixel * smallerY + heatmapData.minValue;
-      const selectionMaxValue = valueForPixel * biggerY + heatmapData.minValue;
+      const selectionMinValue = Math.round(
+        valueForPixel * smallerY + heatmapData.minValue
+      );
+      const selectionMaxValue = Math.round(
+        valueForPixel * biggerY + heatmapData.minValue
+      );
       const selectionStartTime =
         timeForPixel * smallerX + heatmapData.startTime;
       const selectionEndTime = timeForPixel * biggerX + heatmapData.startTime;
@@ -134,6 +103,8 @@ export const useHeatmapSelection = ({
           from,
           until,
           query,
+          heatmapTimeBuckets: DEFAULT_HEATMAP_PARAMS.heatmapTimeBuckets,
+          heatmapValueBuckets: DEFAULT_HEATMAP_PARAMS.heatmapValueBuckets,
           selectionStartTime,
           selectionEndTime,
           selectionMinValue,
@@ -141,6 +112,41 @@ export const useHeatmapSelection = ({
         })
       );
     }
+  };
+
+  const handleCellClick = (e: MouseEvent, x: number, y: number) => {
+    if (heatmapData) {
+      const cellW = heatmapW / heatmapData.timeBuckets;
+      const cellH = heatmapH / heatmapData.valueBuckets;
+      // console.log()
+      // if (startCoords && isClickEvent) {
+      //   clearRect(canvasRef.current as HTMLCanvasElement);
+      //   setSelectedCoordinates({
+      //     start: { x: startCoords.x, y: startCoords.y },
+      //     end: null,
+      //   });
+      //   const x = Math.trunc(startCoords.x / cellW);
+      //   const y = Math.trunc(startCoords.y / cellH);
+      //   const isEmptyCell = heatmapData.values[y][x] === 0;
+      //   if (!isEmptyCell) console.log('clicked cell coord: ', { x, y });
+      // }
+      // (heatmapData.endTime - heatmapData.startTime) / heatmapW;
+      // const valueForPixel =
+      //   (heatmapData.maxValue - heatmapData.minValue) / heatmapH;
+    }
+  };
+
+  const startDrawing = (e: MouseEvent) => {
+    window.addEventListener('mousemove', handleDrawingEvent);
+    window.addEventListener('mouseup', endDrawing);
+
+    const canvas = canvasRef.current as HTMLCanvasElement;
+    const { left, top } = canvas.getBoundingClientRect();
+    resetSelection();
+
+    isSelecting = true;
+    document.body.style.userSelect = 'none';
+    startCoords = { x: e.clientX - left, y: e.clientY - top };
   };
 
   const endDrawing = (e: MouseEvent) => {
@@ -176,13 +182,20 @@ export const useHeatmapSelection = ({
       isSelecting = false;
       endCoords = { x: xEnd, y: yEnd };
 
-      const selectedAreaW = xEnd - startCoords.x;
-      changeTimeRange(startCoords.x, xEnd, startCoords.y, yEnd);
+      const isClickEvent = startCoords.x === xEnd && startCoords.y === yEnd;
+
+      if (isClickEvent) {
+        handleCellClick(e, xEnd, yEnd);
+      } else {
+        fetchProfile(startCoords.x, xEnd, startCoords.y, yEnd);
+      }
+
       window.removeEventListener('mousemove', handleDrawingEvent);
       window.removeEventListener('mouseup', endDrawing);
 
+      const selectedAreaW = xEnd - startCoords.x;
       if (selectedAreaW) {
-        selectedAreaToHeatmapRatio = Math.abs(width / (xEnd - startCoords.x));
+        selectedAreaToHeatmapRatio = Math.abs(width / selectedAreaW);
       } else {
         selectedAreaToHeatmapRatio = 1;
       }
@@ -208,6 +221,21 @@ export const useHeatmapSelection = ({
   };
 
   useEffect(() => {
+    if (from && until && query) {
+      const fetchData = dispatch(
+        fetchHeatmapSingleView({
+          query,
+          from,
+          until,
+          ...DEFAULT_HEATMAP_PARAMS,
+        })
+      );
+      return () => fetchData.abort('cancel');
+    }
+    return undefined;
+  }, [from, until, query]);
+
+  useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.addEventListener('mousedown', startDrawing);
     }
@@ -222,18 +250,11 @@ export const useHeatmapSelection = ({
   }, [heatmapData, heatmapW]);
 
   useEffect(() => {
-    if (heatmapData) {
-      const isClickEvent =
-        startCoords?.x === endCoords?.x && startCoords?.y === endCoords?.y;
-      // const cellW = heatmapW / heatmapData.timeBuckets;
-      // const cellH = heatmapH / heatmapData.valueBuckets;
-
-      if (startCoords && endCoords && !isClickEvent) {
-        setSelectedCoordinates({
-          start: { x: startCoords.x, y: startCoords.y },
-          end: { x: endCoords.x, y: endCoords.y },
-        });
-      }
+    if (heatmapData && startCoords && endCoords) {
+      setSelectedCoordinates({
+        start: { x: startCoords.x, y: startCoords.y },
+        end: { x: endCoords.x, y: endCoords.y },
+      });
     }
   }, [startCoords, endCoords, heatmapData]);
 
@@ -256,10 +277,8 @@ const drawRect = (
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
   ctx.fillStyle = SELECTED_AREA_BACKGROUND;
-  ctx.strokeStyle = SELECTED_AREA_BORDER;
   ctx.globalAlpha = 1;
   ctx.fillRect(x, y, w, h);
-  ctx.strokeRect(x, y, w, h);
 };
 
 const clearRect = (canvas: HTMLCanvasElement) => {

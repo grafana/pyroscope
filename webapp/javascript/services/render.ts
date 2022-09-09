@@ -207,6 +207,8 @@ export interface selectionProfileProps {
   selectionEndTime: number;
   selectionMinValue: number;
   selectionMaxValue: number;
+  heatmapTimeBuckets: number;
+  heatmapValueBuckets: number;
 }
 
 export async function getHeatmapSelectionProfile(

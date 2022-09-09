@@ -8,7 +8,6 @@ import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import {
   useHeatmapSelection,
   SELECTED_AREA_BACKGROUND,
-  SELECTED_AREA_BORDER,
   SelectedAreaCoordsType,
   HEATMAP_HEIGHT,
 } from './useHeatmapSelection.hook';
@@ -88,8 +87,6 @@ export function Heatmap() {
             (itemsCount: number, rowIndex: number, itemsCountArr) => (
               <rect
                 role="gridcell"
-                data-x-axis-value=""
-                data-y-axis-value=""
                 data-items={itemsCount}
                 fill={
                   itemsCount !== 0
@@ -217,7 +214,6 @@ function ResizedSelectedArea({
         top,
         left,
         backgroundColor: SELECTED_AREA_BACKGROUND,
-        borderColor: SELECTED_AREA_BORDER,
       }}
     />
   );
