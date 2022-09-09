@@ -1,27 +1,11 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom';
 import { randomId } from '@webapp/util/randomId';
-import { PlotType } from './types';
 
 const WRAPPER_ID = randomId('contextMenu');
 
-type ContextType = {
-  init: (plot: PlotType) => void;
-  options: unknown;
-  name: string;
-  version: string;
-
-  // TODO(eh-am): move this to a plugin property
-  contextMenu?: (props: {
-    timestamp: number;
-    x: number;
-    y: number;
-  }) => React.ReactNode;
-};
-
 (function ($: JQueryStatic) {
-  function init(this: ContextType, plot: PlotType) {
-    // The element we will add the contextMenu
+  function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
     const container = inject($);
     const containerEl = container?.[0];
     // The flotjs wrapper
@@ -52,8 +36,7 @@ type ContextType = {
     });
   }
 
-  // TODO(eh-am): add type
-  ($ as ShamefulAny).plot.plugins.push({
+  $.plot.plugins.push({
     init,
     options: {},
     name: 'context_menu',
