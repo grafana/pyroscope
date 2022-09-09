@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
-import PieChart from '@webapp/pages/tagExplorer/components/PieChart';
+import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
 import type { Profile } from '@pyroscope/models/src';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
@@ -261,12 +261,7 @@ function TagExplorerView() {
             />
             <div className={styles.pieChartWrapper}>
               {pieChartData?.length ? (
-                <PieChart
-                  id="total-samples-chart"
-                  height="320px"
-                  width="320px"
-                  data={pieChartData}
-                />
+                <TotalSamplesChart filteredGroupsData={filteredGroupsData} />
               ) : (
                 <LoadingSpinner />
               )}

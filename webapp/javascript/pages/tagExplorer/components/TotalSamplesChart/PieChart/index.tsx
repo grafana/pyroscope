@@ -2,11 +2,13 @@ import React from 'react';
 import ReactFlot from 'react-flot';
 import Color from 'color';
 import styles from './styles.module.scss';
+import 'react-flot/flot/jquery.flot.pie';
+import './Interactivity.plugin';
 
-type PieChartDataItem = {
+export type PieChartDataItem = {
   label: string;
   data: number;
-  color: Color | undefined;
+  color: Color | string | undefined;
 };
 
 interface PieChartProps {
@@ -36,6 +38,10 @@ const PieChart = ({ data, width, height, id }: PieChartProps) => {
     },
     legend: {
       show: false,
+    },
+    grid: {
+      hoverable: true,
+      clickable: true,
     },
   };
 
