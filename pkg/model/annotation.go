@@ -1,10 +1,12 @@
 package model
 
 import (
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 )
 
 var (
@@ -39,6 +41,10 @@ func (a *CreateAnnotation) Parse() error {
 
 	if a.AppName == "" {
 		err = multierror.Append(err, ErrAnnotationInvalidAppName)
+	} else {
+		if parseErr := a.handleAppNameQuery(); parseErr != nil {
+			err = multierror.Append(err, parseErr)
+		}
 	}
 
 	if a.Content == "" {
@@ -46,4 +52,24 @@ func (a *CreateAnnotation) Parse() error {
 	}
 
 	return err
+}
+
+func (a *CreateAnnotation) handleAppNameQuery() error {
+	if a.AppName == "" {
+		return ErrAnnotationInvalidAppName
+	} else {
+		// Strip labels
+		key, parseErr := flameql.ParseQuery(a.AppName)
+		if parseErr != nil {
+			return fmt.Errorf("%w: %v", ErrAnnotationInvalidAppName, parseErr)
+		}
+
+		// Handle when only tags are passed
+		if key == nil || key.AppName == "" {
+			return ErrAnnotationInvalidAppName
+		} else {
+			a.AppName = key.AppName
+		}
+	}
+	return nil
 }

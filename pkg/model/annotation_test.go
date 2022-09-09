@@ -28,5 +28,27 @@ var _ = Describe("Annotation", func() {
 				Expect(m.Timestamp).ToNot(BeZero())
 			})
 		})
+
+		When("appName contains tags", func() {
+			It("errors", func() {
+				m := model.CreateAnnotation{
+					AppName: `myappname{my="tag"}`,
+					Content: "mycontent",
+				}
+				Expect(m.Parse()).ToNot(HaveOccurred())
+				Expect(m.AppName).To(Equal("myappname"))
+			})
+		})
+
+		When("appName is a query without name", func() {
+			It("errors", func() {
+				m := model.CreateAnnotation{
+					AppName: `{my="tag"}`,
+					Content: "mycontent",
+				}
+				err := m.Parse()
+				Expect(err).To(MatchError(model.ErrAnnotationInvalidAppName))
+			})
+		})
 	})
 })
