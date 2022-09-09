@@ -39,18 +39,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 40px;
 
   &:hover {
     background-color: var(--ps-ui-border);
-
-    .collapseIcon {
-      display: flex;
-    }
   }
 }
 
 .collapseIcon {
-  display: none;
+  display: flex;
   transition: transform 0.1s;
 
   &.collapsed {

@@ -30,6 +30,7 @@ export default function Box(props: BoxProps) {
 }
 
 export interface CollapseBoxProps {
+  // must be non empty
   title: string;
   children: React.ReactNode;
 }
@@ -44,7 +45,7 @@ export function CollapseBox({ title, children }: CollapseBoxProps) {
         className={styles.collapseTitle}
         aria-hidden
       >
-        {title}
+        <div>{title}</div>
         <FontAwesomeIcon
           className={cx({
             [styles.collapseIcon]: true,

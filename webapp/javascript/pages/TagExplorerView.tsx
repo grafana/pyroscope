@@ -238,7 +238,11 @@ function TagExplorerView() {
             )}
           </div>
         </Box>
-        <CollapseBox title={`${appName.unwrapOr('')} Descriptive Statistics`}>
+        <CollapseBox
+          title={`${appName
+            .map((a) => `${a} Descriptive Statistics`)
+            .unwrapOr('')}`}
+        >
           <Table
             appName={appName.unwrapOr('')}
             whereDropdownItems={whereDropdownItems}
