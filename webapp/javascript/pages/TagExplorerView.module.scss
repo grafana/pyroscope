@@ -1,3 +1,5 @@
+$pieChartWidth: 320px;
+
 .tagExplorerView {
   .header {
     display: flex;
@@ -109,12 +111,20 @@
   }
 }
 
-.statiscticsBox {
+.statisticsBox {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
 }
 
 .tableWrapper {
-  width: calc(100% - 330px);
+  width: calc(100% - ($pieChartWidth + 10px));
+}
+
+.pieChartWrapper {
+  width: $pieChartWidth;
+  height: $pieChartWidth;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

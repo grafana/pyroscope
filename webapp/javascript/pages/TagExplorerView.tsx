@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
@@ -36,7 +36,7 @@ import {
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
 import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
-import { calculateMean, calculateStdDeviation } from './math';
+import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
 
 // eslint-disable-next-line css-modules/no-unused-class
@@ -190,6 +190,16 @@ function TagExplorerView() {
     return acc;
   }, [] as string[]);
 
+  const pieChartData = useMemo(() => {
+    return filteredGroupsData.length
+      ? filteredGroupsData.map((d) => ({
+          label: d.tagName,
+          data: calculateTotal(d.data.samples),
+          color: d.color,
+        }))
+      : [];
+  }, [filteredGroupsData]);
+
   return (
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
@@ -239,7 +249,7 @@ function TagExplorerView() {
           </div>
         </Box>
         <Box>
-          <div className={styles.statiscticsBox}>
+          <div className={styles.statisticsBox}>
             <Table
               appName={appName.unwrapOr('')}
               whereDropdownItems={whereDropdownItems}
@@ -249,7 +259,18 @@ function TagExplorerView() {
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={type === 'loading'}
             />
-            <PieChart data={filteredGroupsData} />
+            <div className={styles.pieChartWrapper}>
+              {pieChartData?.length ? (
+                <PieChart
+                  id="total-samples-chart"
+                  height="320px"
+                  width="320px"
+                  data={pieChartData}
+                />
+              ) : (
+                <LoadingSpinner />
+              )}
+            </div>
           </div>
         </Box>
         <Box>
@@ -330,14 +351,15 @@ function Table({
       label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
       sortable: 0,
     },
-    { name: 'eventCount', label: 'Event count', sortable: 0 },
     { name: 'avgSamples', label: 'avg samples', sortable: 0 },
     { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
+    { name: 'totalSamples', label: 'total samles', sortable: 0 },
   ];
 
   const bodyRows = groupsData.reduce(
     (acc, { tagName, color, data }): BodyRow[] => {
       const mean = calculateMean(data.samples);
+      const total = calculateTotal(data.samples);
       const row = {
         isRowSelected: isTagSelected(tagName),
         // prevent clicking on single "application without tags" group row
@@ -355,9 +377,9 @@ function Table({
               </div>
             ),
           },
-          { value: data.samples.length },
           { value: mean.toFixed(2) },
           { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
+          { value: total },
         ],
       };
       acc.push(row);

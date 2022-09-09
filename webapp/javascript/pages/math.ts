@@ -1,5 +1,9 @@
+export function calculateTotal(arr: number[]) {
+  return arr.reduce((acc, b) => acc + b, 0);
+}
+
 export function calculateMean(arr: number[]) {
-  return arr.reduce((acc, b) => acc + b, 0) / arr.length;
+  return calculateTotal(arr) / arr.length;
 }
 
 export function calculateStdDeviation(array: number[], mean: number) {

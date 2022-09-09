@@ -1,17 +1,29 @@
 import React from 'react';
 import ReactFlot from 'react-flot';
-import { TimelineGroupData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import Color from 'color';
 import styles from './styles.module.scss';
-import { calculateMean } from '../../../math';
 
-const PieChart = ({ data }: { data: TimelineGroupData[] }) => {
+type PieChartDataItem = {
+  label: string;
+  data: number;
+  color: Color | undefined;
+};
+
+interface PieChartProps {
+  data: PieChartDataItem[];
+  width: string;
+  height: string;
+  id: string;
+}
+
+const PieChart = ({ data, width, height, id }: PieChartProps) => {
   const options = {
     series: {
       pie: {
         show: true,
         radius: 1,
         stroke: {
-          width: 1,
+          width: 0.5,
           color: 'var(--ps-ui-foreground)',
         },
         label: {
@@ -27,24 +39,14 @@ const PieChart = ({ data }: { data: TimelineGroupData[] }) => {
     },
   };
 
-  const chartData = data.length
-    ? data.map((d) => ({
-        label: d.tagName,
-        data: calculateMean(d.data.samples),
-        color: d.color,
-      }))
-    : [];
-
-  if (!chartData.length) return null;
-
   return (
     <div className={styles.wrapper}>
       <ReactFlot
-        id="product-chart"
+        id={id}
         options={options}
-        data={chartData}
-        width="320px"
-        height="320px"
+        data={data}
+        width={height}
+        height={width}
       />
     </div>
   );
