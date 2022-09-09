@@ -136,8 +136,9 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Look up annotations
 		annotations, err := rh.annotationsService.FindAnnotationsByTimeRange(r.Context(), appName, p.gi.StartTime, p.gi.EndTime)
 		if err != nil {
-			// TODO(eh-am): maybe we should just return empty annotations?
-			rh.httpUtils.WriteInternalServerError(r, w, err, "failed to load annotations")
+			rh.log.Error(err)
+			// it's better to not show any annotations than falling the entire request
+			annotations = []model.Annotation{}
 		}
 
 		res := rh.mountRenderResponse(flame, appName, p.gi, p.maxNodes, annotations)
