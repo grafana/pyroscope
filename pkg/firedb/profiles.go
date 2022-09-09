@@ -51,25 +51,22 @@ func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, 
 
 // Add a new set of profile to the index.
 // The seriesRef are expected to match the profile labels passed in.
-func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs []firemodel.Labels, profileName string) {
+func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs firemodel.Labels, profileName string) {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
-	for i, fp := range ps.SeriesRefs {
-		profiles, ok := pi.profilesPerFP[fp]
-		if !ok {
-			lbs := pi.ix.Add(lbs[i], fp)
-			profiles = &profileLabels{
-				lbs:      lbs,
-				fp:       fp,
-				profiles: []*schemav1.Profile{ps},
-			}
-			pi.profilesPerFP[fp] = profiles
-			pi.totalSeries.Inc()
-			pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
-			continue
+	profiles, ok := pi.profilesPerFP[ps.SeriesFingerprint]
+	if !ok {
+		lbs := pi.ix.Add(lbs, ps.SeriesFingerprint)
+		profiles = &profileLabels{
+			lbs:      lbs,
+			fp:       ps.SeriesFingerprint,
+			profiles: []*schemav1.Profile{ps},
 		}
-		profiles.profiles = append(profiles.profiles, ps)
+		pi.profilesPerFP[ps.SeriesFingerprint] = profiles
+		pi.totalSeries.Inc()
+		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
+	profiles.profiles = append(profiles.profiles, ps)
 	pi.totalProfiles.Inc()
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
@@ -79,7 +76,7 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs []firemodel.Labels, profi
 // You can use sampleIdx to filter the samples by his position in the returned profile.
 // The returned profile is not sorted.
 func (pi *profilesIndex) forMatchingProfiles(matchers []*labels.Matcher,
-	fn func(lbs firemodel.Labels, fp model.Fingerprint, sampleIdx int, profile *schemav1.Profile) error,
+	fn func(lbs firemodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error,
 ) error {
 	filters, matchers := SplitFiltersAndMatchers(matchers)
 	ids, err := pi.ix.Lookup(matchers, nil)
@@ -104,11 +101,9 @@ outer:
 			}
 		}
 		for _, p := range profile.profiles {
-			for i, seriesRef := range p.SeriesRefs {
-				if seriesRef == fp {
-					if err := fn(profile.lbs, profile.fp, i, p); err != nil {
-						return err
-					}
+			if p.SeriesFingerprint == fp {
+				if err := fn(profile.lbs, profile.fp, p); err != nil {
+					return err
 				}
 			}
 		}
@@ -187,9 +182,6 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 
 	// sort by fp
 	sort.Slice(pfs, func(i, j int) bool {
-		if pfs[i].fp != pfs[j].fp {
-			return pfs[i].fp < pfs[j].fp
-		}
 		return firemodel.CompareLabelPairs(pfs[i].lbs, pfs[j].lbs) < 0
 	})
 
@@ -220,8 +212,16 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 		if err := writer.AddSeries(storage.SeriesRef(i), s.lbs, s.fp, index.ChunkMeta{
 			MinTime: min,
 			MaxTime: max,
+			// We store the series Index from the head with the series to use when retrieving data from parquet.
+			SeriesIndex: uint32(i),
 		}); err != nil {
 			return err
+		}
+		// also rewrite the SeriesIndex
+		for _, p := range s.profiles {
+			if p.SeriesFingerprint == s.fp {
+				p.SeriesIndex = uint32(i)
+			}
 		}
 	}
 
@@ -275,14 +275,8 @@ const (
 
 type profilesHelper struct{}
 
-func (*profilesHelper) key(s *schemav1.Profile) profilesKey {
-	id := s.ID
-	if id == uuid.Nil {
-		id = uuid.New()
-	}
-	return profilesKey{
-		ID: id,
-	}
+func (*profilesHelper) key(s *schemav1.Profile) noKey {
+	return noKey{}
 }
 
 func (*profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
@@ -305,13 +299,13 @@ func (*profilesHelper) setID(oldID, newID uint64, p *schemav1.Profile) uint64 {
 }
 
 func sizeOfSample(s *schemav1.Sample) uint64 {
-	return sampleSize + uint64(len(s.Values)*8)
+	return sampleSize + 8
 }
 
 func (*profilesHelper) size(p *schemav1.Profile) uint64 {
 	size := profileSize
 
-	size += uint64(len(p.SeriesRefs) * 8)
+	size += 8
 	size += uint64(len(p.Comments) * 8)
 
 	for _, s := range p.Samples {
@@ -325,6 +319,9 @@ func (*profilesHelper) clone(p *schemav1.Profile) *schemav1.Profile {
 	return p
 }
 
-type profilesKey struct {
-	ID uuid.UUID
+type noKey struct{}
+
+func isNoKey(a interface{}) bool {
+	_, ok := a.(noKey)
+	return ok
 }
