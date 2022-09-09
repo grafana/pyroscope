@@ -1,3 +1,19 @@
+## [0.28.1](https://github.com/pyroscope-io/pyroscope/compare/v0.28.0...v0.28.1) (2022-09-06)
+
+
+### Bug Fixes
+
+* **flamegraph:** add color to tooltip ([#1468](https://github.com/pyroscope-io/pyroscope/issues/1468)) ([1c29ef6](https://github.com/pyroscope-io/pyroscope/commit/1c29ef6328fb4f01389560a4d53f729bbca88ff3))
+* **flamegraph:** table width ([#1463](https://github.com/pyroscope-io/pyroscope/issues/1463)) ([f19b8ac](https://github.com/pyroscope-io/pyroscope/commit/f19b8ac778452ea86261563aa1d165dbc2d089e7))
+* **flamegraph:** table width ([#1466](https://github.com/pyroscope-io/pyroscope/issues/1466)) ([a60f608](https://github.com/pyroscope-io/pyroscope/commit/a60f608475a9caea0e1910f30d1c663fd38cee96))
+
+
+### Features
+
+* **webapp:** Add tooltip in explore timeline ([#1422](https://github.com/pyroscope-io/pyroscope/issues/1422)) ([b5ce89a](https://github.com/pyroscope-io/pyroscope/commit/b5ce89a680256a7d6ff76e45ec38abc721df9a89))
+
+
+
 # [0.28.0](https://github.com/pyroscope-io/pyroscope/compare/v0.27.0...v0.28.0) (2022-09-06)
 
 

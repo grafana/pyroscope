@@ -7,6 +7,9 @@ import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import { formatAsOBject } from '@webapp/util/formatDate';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
+import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
+import type { ITooltipWrapperProps } from './TooltipWrapper';
+import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
 
@@ -71,6 +74,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
+  onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -224,8 +228,34 @@ class TimelineChartWrapper extends React.Component<
     return [];
   };
 
+  setOnHoverDisplayTooltip = (
+    data: ITooltipWrapperProps & ExploreTooltipProps
+  ) => {
+    const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
+      this.props?.onHoverDisplayTooltip;
+
+    if (TooltipBody) {
+      return (
+        <TooltipWrapper
+          align={data.align}
+          pageY={data.pageY}
+          pageX={data.pageX}
+        >
+          <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+        </TooltipWrapper>
+      );
+    }
+
+    return null;
+  };
+
   render = () => {
     const { flotOptions } = this.state;
+
+    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
+      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
+          this.setOnHoverDisplayTooltip(data)
+      : null;
 
     if (this.props.mode === 'multiple') {
       const { timelineGroups, activeGroup, showTagsLegend, id, timezone } =
@@ -233,6 +263,7 @@ class TimelineChartWrapper extends React.Component<
 
       const customFlotOptions = {
         ...flotOptions,
+        onHoverDisplayTooltip,
         xaxis: {
           ...flotOptions.xaxis,
           autoscaleMargin: null,
@@ -245,6 +276,7 @@ class TimelineChartWrapper extends React.Component<
         timelineGroups.map(({ data, color, tagName }) => {
           return {
             data: centerTimelineData({ data }),
+            tagName,
             color:
               activeGroup && activeGroup !== tagName
                 ? color?.fade(0.75)
@@ -287,6 +319,7 @@ class TimelineChartWrapper extends React.Component<
 
     const customFlotOptions = {
       ...flotOptions,
+      onHoverDisplayTooltip,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to

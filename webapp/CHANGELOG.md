@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.37.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.3...@pyroscope/webapp@1.37.4) (2022-09-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.37.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.2...@pyroscope/webapp@1.37.3) (2022-09-08)
+
+
+### Bug Fixes
+
+* **webapp:** hide tooltip if there's no data ([#1472](https://github.com/pyroscope-io/pyroscope/issues/1472)) ([df4c8cc](https://github.com/pyroscope-io/pyroscope/commit/df4c8cc360877b7100d987513beae905bc735a74))
+
+
+
+
+
+## [1.37.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.1...@pyroscope/webapp@1.37.2) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.37.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.0...@pyroscope/webapp@1.37.1) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.37.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.3...@pyroscope/webapp@1.37.0) (2022-09-06)
+
+
+### Features
+
+* **webapp:** Add tooltip in explore timeline ([#1422](https://github.com/pyroscope-io/pyroscope/issues/1422)) ([b5ce89a](https://github.com/pyroscope-io/pyroscope/commit/b5ce89a680256a7d6ff76e45ec38abc721df9a89))
+
+
+
+
+
+## [1.36.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.2...@pyroscope/webapp@1.36.3) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.36.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.1...@pyroscope/webapp@1.36.2) (2022-09-06)
 
 **Note:** Version bump only for package @pyroscope/webapp

@@ -121,6 +121,19 @@ services:
       options:
         loki-url: 'http://localhost:3100/loki/api/v1/push'
 
+  eu-north-java-instrumentation:
+    env_file:
+      - config.env
+    environment:
+      - REGION=eu-north
+    build:
+      context: 'java-instrumentation/rideshare'
+      dockerfile: Dockerfile
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
+
   load-generator:
     env_file:
       - config.env

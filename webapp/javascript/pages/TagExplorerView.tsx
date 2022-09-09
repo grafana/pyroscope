@@ -35,6 +35,7 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
+import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
 import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
@@ -72,6 +73,8 @@ const TIMELINE_SERIES_COLORS = [
   Color.rgb(249, 217, 249),
   Color.rgb(222, 218, 247),
 ];
+
+const TIMELINE_WRAPPER_ID = 'explore_timeline_wrapper';
 
 const getTimelineColor = (index: number, palette: Color[]): Color =>
   Color(palette[index % (palette.length - 1)]);
@@ -202,7 +205,7 @@ function TagExplorerView() {
             handleGroupByTagChange={handleGroupedByTagChange}
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
-          <div className={styles.timelineWrapper}>
+          <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
             {type === 'loading' ? (
               <LoadingSpinner />
             ) : (
@@ -224,6 +227,13 @@ function TagExplorerView() {
                 }
                 height="125px"
                 format="lines"
+                onHoverDisplayTooltip={(data) => (
+                  <ExploreTooltip
+                    values={data.values}
+                    timeLabel={data.timeLabel}
+                    profile={activeTagProfile}
+                  />
+                )}
               />
             )}
           </div>

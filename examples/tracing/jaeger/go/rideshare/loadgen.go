@@ -22,6 +22,7 @@ var hosts = []string{
 	"us-east-java",
 	"eu-north-java",
 	"ap-south-java",
+	"eu-north-java-instrumentation",
 }
 
 var vehicles = []string{

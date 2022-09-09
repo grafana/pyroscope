@@ -9,7 +9,7 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    // maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") //todo replace when otel is not shnapshot
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
     maven("https://repo.spring.io/snapshot")
     maven("https://repo.spring.io/milestone")
     maven("https://repo.spring.io/release")
@@ -17,8 +17,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.pyroscope:agent:0.9.1")
-    implementation("io.pyroscope:otel:0.10.1")
+    implementation("io.pyroscope:otel:0.10.1.3")
     implementation(platform("io.opentelemetry:opentelemetry-bom:1.15.0"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")
