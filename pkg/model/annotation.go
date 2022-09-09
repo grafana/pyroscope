@@ -57,19 +57,20 @@ func (a *CreateAnnotation) Parse() error {
 func (a *CreateAnnotation) handleAppNameQuery() error {
 	if a.AppName == "" {
 		return ErrAnnotationInvalidAppName
-	} else {
-		// Strip labels
-		key, parseErr := flameql.ParseQuery(a.AppName)
-		if parseErr != nil {
-			return fmt.Errorf("%w: %v", ErrAnnotationInvalidAppName, parseErr)
-		}
-
-		// Handle when only tags are passed
-		if key == nil || key.AppName == "" {
-			return ErrAnnotationInvalidAppName
-		} else {
-			a.AppName = key.AppName
-		}
 	}
+
+	// Strip labels
+	key, parseErr := flameql.ParseQuery(a.AppName)
+	if parseErr != nil {
+		return fmt.Errorf("%w: %v", ErrAnnotationInvalidAppName, parseErr)
+	}
+
+	// Handle when only tags are passed
+	if key == nil || key.AppName == "" {
+		return ErrAnnotationInvalidAppName
+	}
+
+	a.AppName = key.AppName
+
 	return nil
 }
