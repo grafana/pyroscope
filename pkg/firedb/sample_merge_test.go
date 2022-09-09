@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// todo fix random panic (race ? test shuffle ?)
 func TestMergeSampleByStacktraces(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

@@ -29,6 +29,8 @@ func mergeSamplesByStacktraces(file *parquet.File, rows iter.Iterator[Profile]) 
 			query.NewColumnIterator(context.Background(), file.RowGroups(), valuesCol, "Samples.list.element.Values.list.element", 10*1024, nil, "Value"),
 		}, nil,
 	)
+	defer it.Close()
+
 	var series [][]parquet.Value
 	stacktraceAggrValues := map[int64]int64{}
 	for it.Next() {
@@ -124,5 +126,5 @@ func (p *ProfileValueIterator) Err() error {
 }
 
 func (p *ProfileValueIterator) Close() error {
-	return nil
+	return p.pqIterator.Close()
 }

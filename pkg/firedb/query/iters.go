@@ -883,16 +883,6 @@ type RowNumberIterator[T RowGetter] struct {
 func NewRowNumberIterator[T RowGetter](iter iter.Iterator[T]) *RowNumberIterator[T] {
 	return &RowNumberIterator[T]{
 		Iterator: iter,
-		current: &IteratorResult{
-			RowNumber: EmptyRowNumber(),
-			Entries: []struct {
-				k        string
-				v        pq.Value
-				RowValue interface{}
-			}{
-				{},
-			},
-		},
 	}
 }
 
@@ -900,8 +890,16 @@ func (r *RowNumberIterator[T]) Next() bool {
 	if !r.Iterator.Next() {
 		return false
 	}
-	r.current.RowNumber[0] = r.Iterator.At().RowNumber()
-	r.current.Entries[0].RowValue = r.Iterator.At()
+	r.current = columnIteratorResultPoolGet()
+	r.current.Reset()
+	r.current.RowNumber = RowNumber{r.Iterator.At().RowNumber(), -1, -1, -1, -1, -1}
+	r.current.Entries = append(r.current.Entries, struct {
+		k        string
+		v        pq.Value
+		RowValue interface{}
+	}{
+		RowValue: r.Iterator.At(),
+	})
 	return true
 }
 
