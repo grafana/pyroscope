@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/fire/pkg/firedb/block"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
+	"github.com/grafana/fire/pkg/util/build"
 )
 
 var int64SlicePool = &sync.Pool{
@@ -55,6 +56,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Init(path string) error {
 	// TODO: Reuse parquet.Writer beyond life time of the head.
 	s.writer = parquet.NewWriter(file, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "firedb-parquet-buffers*")),
+		parquet.CreatedBy("github.com/grafana/fire/"+build.Version),
 	)
 	s.lookup = make(map[K]int64)
 	return nil
@@ -72,7 +74,10 @@ func (s *deduplicatingSlice[M, K, H, P]) Close() error {
 	return nil
 }
 
-const maxRowGroupBytes = 128 * 1024 * 1024
+const (
+	maxBufferRowCount = 100_000 // 2 ^ 16
+	maxRowGroupBytes  = 128 * 1024 * 1024
+)
 
 func (s *deduplicatingSlice[M, K, H, P]) maxRowsPerRowGroup() int {
 	var (
@@ -96,7 +101,11 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 
 	// intialise buffer if not existing
 	if s.buffer == nil {
-		s.buffer = parquet.NewBuffer(s.persister.Schema(), s.persister.SortingColumns())
+		s.buffer = parquet.NewBuffer(
+			s.persister.Schema(),
+			s.persister.SortingColumns(),
+			parquet.ColumnBufferCapacity(maxBufferRowCount),
+		)
 	}
 
 	var (
@@ -114,9 +123,13 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 			break
 		}
 
-		// cap max row size
+		// cap max row size by bytes
 		if rowsToFlush > maxRows {
 			rowsToFlush = maxRows
+		}
+		// cap max row size by buffer
+		if rowsToFlush > maxBufferRowCount {
+			rowsToFlush = maxBufferRowCount
 		}
 
 		rows := make([]parquet.Row, rowsToFlush)
@@ -145,6 +158,11 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 	return uint64(rowsFlushed), uint64(rowGroupsFlushed), nil
 }
 
+func (s *deduplicatingSlice[M, K, H, P]) isDeduplicating() bool {
+	var k K
+	return !isNoKey(k)
+}
+
 func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {
 	var (
 		rewritingMap = make(map[int64]int64)
@@ -158,7 +176,21 @@ func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, 
 		}
 	}
 
-	// try to find if element already exists in slice
+	// shortcut if not deduplication is requested
+	if !s.isDeduplicating() {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+
+		for pos := range elems {
+			// increase size of stored data
+			s.slice = append(s.slice, s.helper.clone(elems[pos]))
+			s.size.Add(s.helper.size(elems[pos]))
+		}
+
+		return nil
+	}
+
+	// try to find if element already exists in slice, when supposed to depduplicate
 	s.lock.RLock()
 	for pos := range elems {
 		k := s.helper.key(elems[pos])

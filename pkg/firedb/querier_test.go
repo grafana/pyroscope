@@ -40,11 +40,17 @@ func TestQueryIndex(t *testing.T) {
 		sort.Sort(lb2)
 
 		for k := int64(0); k < 10; k++ {
+			id := uuid.New()
 			a.Add(&v1.Profile{
-				ID:         uuid.New(),
-				TimeNanos:  k,
-				SeriesRefs: []model.Fingerprint{model.Fingerprint(lb1.Hash()), model.Fingerprint(lb2.Hash())},
-			}, []firemodel.Labels{lb1, lb2}, "memory")
+				ID:                id,
+				TimeNanos:         k,
+				SeriesFingerprint: model.Fingerprint(lb1.Hash()),
+			}, lb1, "memory")
+			a.Add(&v1.Profile{
+				ID:                id,
+				TimeNanos:         k,
+				SeriesFingerprint: model.Fingerprint(lb2.Hash()),
+			}, lb2, "memory")
 		}
 	}
 
