@@ -94,7 +94,7 @@ export const useHeatmapSelection = ({
     }
   };
 
-  const handleCellClick = (e: MouseEvent, x: number, y: number) => {
+  const handleCellClick = (x: number, y: number) => {
     if (heatmapData) {
       const cellW = heatmapW / heatmapData.timeBuckets;
       const cellH = HEATMAP_HEIGHT / heatmapData.valueBuckets;
@@ -103,6 +103,13 @@ export const useHeatmapSelection = ({
         Math.trunc(x / cellW),
         Math.trunc((HEATMAP_HEIGHT - y) / cellH),
       ];
+
+      if (
+        heatmapData.values[cellMatrixCoordinate[0]][cellMatrixCoordinate[1]] ===
+        0
+      ) {
+        return;
+      }
 
       // set startCoords and endCoords to draw selection rectangle for single cell
       startCoords = {
@@ -161,7 +168,7 @@ export const useHeatmapSelection = ({
       const isClickEvent = startCoords.x === xEnd && startCoords.y === yEnd;
 
       if (isClickEvent) {
-        handleCellClick(e, xEnd, yEnd);
+        handleCellClick(xEnd, yEnd);
       } else {
         fetchProfile(startCoords.x, xEnd, startCoords.y, yEnd);
       }

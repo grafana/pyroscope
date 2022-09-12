@@ -52,7 +52,6 @@ export function Heatmap() {
     }
   });
 
-  // TODO(dogfrogfog): work on gradient
   const getColor = useMemo(
     () =>
       (x: number): string => {
@@ -81,9 +80,7 @@ export function Heatmap() {
         return heatmapSingleView.heatmap.values.map((column, colIndex) => (
           // eslint-disable-next-line react/no-array-index-key
           <g role="row" key={colIndex}>
-            {/* TODO(dogfrogfog): remove ? after BE returns
-            array of empty values instead of null */}
-            {column?.map(
+            {column.map(
               (itemsCount: number, rowIndex: number, itemsCountArr) => (
                 <rect
                   role="gridcell"
