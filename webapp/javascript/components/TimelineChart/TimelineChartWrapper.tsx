@@ -239,13 +239,41 @@ class TimelineChartWrapper extends React.Component<
     return [];
   };
 
+  setOnHoverDisplayTooltip = (
+    data: ITooltipWrapperProps & ExploreTooltipProps
+  ) => {
+    const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
+      this.props?.onHoverDisplayTooltip;
+
+    if (TooltipBody) {
+      return (
+        <TooltipWrapper
+          align={data.align}
+          pageY={data.pageY}
+          pageX={data.pageX}
+        >
+          <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+        </TooltipWrapper>
+      );
+    }
+
+    return null;
+  };
+
   renderMultiple = (props: MultipleDataProps) => {
     const { flotOptions } = this.state;
     const { timelineGroups, activeGroup, showTagsLegend } = props;
     const { timezone } = this.props;
 
+    // TODO: unify with renderSingle
+    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
+      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
+          this.setOnHoverDisplayTooltip(data)
+      : null;
+
     const customFlotOptions = {
       ...flotOptions,
+      onHoverDisplayTooltip,
       xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
     };
 
@@ -283,6 +311,12 @@ class TimelineChartWrapper extends React.Component<
 
     // TODO deep copy
     timelineB = timelineB ? JSON.parse(JSON.stringify(timelineB)) : undefined;
+
+    // TODO: unify with renderMultiple
+    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
+      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
+          this.setOnHoverDisplayTooltip(data)
+      : null;
 
     const customFlotOptions = {
       ...flotOptions,
