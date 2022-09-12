@@ -60,7 +60,6 @@ export function SidebarComponent() {
       route === PAGES.CONTINOUS_SINGLE_VIEW ||
       route === PAGES.COMPARISON_VIEW ||
       route === PAGES.ADHOC_COMPARISON ||
-      route === PAGES.TRACING_SINGLE_VIEW ||
       route === PAGES.TRACING
     ) {
       return pathname === route;
@@ -84,7 +83,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
           PAGES.TRACING,
-          PAGES.TRACING_SINGLE_VIEW,
+          PAGES.TRACING_EXEMPLARS_SINGLE,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -106,7 +105,8 @@ export function SidebarComponent() {
     isRouteActive(PAGES.ADHOC_COMPARISON) ||
     isRouteActive(PAGES.ADHOC_COMPARISON_DIFF);
   const isTracingActive =
-    isRouteActive(PAGES.TRACING) || isRouteActive(PAGES.TRACING_SINGLE_VIEW);
+    isRouteActive(PAGES.TRACING) ||
+    isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE);
   const isSettingsActive = isRouteActive(PAGES.SETTINGS);
 
   const adhoc = (
@@ -237,13 +237,13 @@ export function SidebarComponent() {
                 </SidebarHeader>
               )}
               <MenuItem
-                active={isRouteActive(PAGES.TRACING_SINGLE_VIEW)}
+                active={isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE)}
                 icon={<Icon icon={faWindowMaximize} />}
               >
-                Single View /tracing-single
+                Single exemplars
                 <NavLink
                   activeClassName="active-route"
-                  to={{ pathname: PAGES.TRACING_SINGLE_VIEW, search }}
+                  to={{ pathname: PAGES.TRACING_EXEMPLARS_SINGLE, search }}
                   exact
                 />
               </MenuItem>

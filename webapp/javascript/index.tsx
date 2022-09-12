@@ -31,8 +31,7 @@ import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
 import TracingSingleView from './pages/TracingSingleView';
-// TODO(dogfrogfog): fix naming
-import TracingSingle from './pages/tracing/TracingSingleView';
+import ExemplarsSingleView from './pages/tracing/ExemplarsSingleView';
 
 function App() {
   return (
@@ -74,10 +73,10 @@ function App() {
               </Continuous>
             </Protected>
           </Route>
-          <Route path={PAGES.TRACING_SINGLE_VIEW}>
+          <Route path={PAGES.TRACING_EXEMPLARS_SINGLE}>
             <Protected>
               <Continuous>
-                <TracingSingle />
+                <ExemplarsSingleView />
               </Continuous>
             </Protected>
           </Route>

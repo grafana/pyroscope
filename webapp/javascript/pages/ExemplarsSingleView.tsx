@@ -6,15 +6,15 @@ import { selectQueries } from '@webapp/redux/reducers/continuous';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
-import { Heatmap } from '@webapp/pages/Heatmap/Heatmap';
+import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import { formatTitle } from '../formatTitle';
+import { formatTitle } from './formatTitle';
 
-import styles from './TracingSingleView.module.scss';
+import styles from './ExemplarsSingleView.module.scss';
 
-function TracingSingleView() {
+function ExemplarsSingleView() {
   const { colorMode } = useColorMode();
   const { query } = useAppSelector(selectQueries);
   const { heatmapSingleView } = useAppSelector((state) => state.tracing);
@@ -67,4 +67,4 @@ function TracingSingleView() {
   );
 }
 
-export default TracingSingleView;
+export default ExemplarsSingleView;

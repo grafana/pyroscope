@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 
-import { Heatmap } from './Heatmap';
+import { Heatmap } from '.';
 // import { exemplarsQueryHeatmap } from '../../services/exemplarsTestData';
 
 jest.mock('./useHeatmapSelection.hook', () => ({
