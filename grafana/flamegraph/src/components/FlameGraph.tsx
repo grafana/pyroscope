@@ -140,7 +140,7 @@ const FlameGraph = ({
     graph.height = PIXELS_PER_LEVEL * (levels.length);
     graph.width = graph.clientWidth;
     ctx.textBaseline = 'middle';
-    ctx.font = '13px Roboto, sans-serif';
+    ctx.font = '13.5px Roboto Mono, monospace';
     ctx.strokeStyle = 'white';
 
     for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
