@@ -10,7 +10,7 @@ export interface PieChartTooltipProps {
 const PieChartTooltip = (props: PieChartTooltipProps) => {
   return (
     <div className={styles.wrapper}>
-      <div>{props?.label || 'Unnamed'}</div>
+      <div>{props?.label || ' '}</div>
       <div>
         Total samples: <span className={styles.bold}>{props?.value}</span>
       </div>
