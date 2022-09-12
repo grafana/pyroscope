@@ -31,7 +31,6 @@ import (
 	query "github.com/grafana/fire/pkg/firedb/query"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/iter"
@@ -191,6 +190,10 @@ func (b *BlockQuerier) Sync(ctx context.Context) error {
 
 		b.queriers[pos] = newSingleBlockQuerierFromMeta(b.logger, b.bucketReader, m)
 	}
+	// ensure queriers are in ascending order.
+	sort.Slice(b.queriers, func(i, j int) bool {
+		return b.queriers[i].meta.MinTime < b.queriers[j].meta.MinTime
+	})
 	b.queriersLock.Unlock()
 
 	// now close no longer available queries
@@ -497,74 +500,92 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 			return err
 		}
 	}
+
+	return rowNums.Err()
 }
 
-return rowNums.Err()
+type Profile interface {
+	Timestamp() model.Time
+	Fingerprint() model.Fingerprint
+	Labels() firemodel.Labels
 }
 
-func MergeStacktraces(ctx context.Context, b Querier, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]query.Profile) ([]query.Profile, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
-	merger, err := b.SelectMerge(ctx, params)
-	if err != nil {
-		return nil, err
-	}
+type Keep []bool
 
-	profilesIt := merger.SelectedProfiles()
-
-	defer profilesIt.Close()
-
-	batch := make([]query.Profile, 0, batchSize)
-	selection := []query.Profile{}
-Outer:
-	for {
-		// build a batch of profiles
-		batch = batch[:0]
-		for profilesIt.Next() {
-			profile := profilesIt.At()
-			batch = append(batch, profile)
-			if len(batch) >= batchSize {
-				break
-			}
-		}
-		if profilesIt.Err() != nil {
-			return nil, profilesIt.Err()
-		}
-		if len(batch) == 0 {
-			break Outer
-		}
-		selected, err := fnOnBatch(batch)
-		if err != nil {
-			return nil, err
-		}
-		for _, profile := range selected {
-			selection = append(selection, profile)
-		}
-	}
-	sort.Slice(selection, func(i, j int) bool {
-		return selection[i].RowNum < selection[j].RowNum
-	})
-	return merger.MergeByStacktraces(iter.NewSliceIterator(selection))
-}
-
-type StacktraceValue struct {
-	StacktraceID int64
-	Value        int64
-}
-
-type SelectMergeRequest struct {
-	LabelSelector string
-	Type          *commonv1.ProfileType
-	Start         model.Time
-	End           model.Time
-}
 type Querier interface {
 	InRange(start, end model.Time) bool
-	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[query.Profile], error)
-	MergeByStacktraces(ctx context.Context, rows iter.Iterator[query.Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
+	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
+	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
+	// Mostly used for GRPC streaming.
+	BatchMergeStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error)
 	// Legacy
 	SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error)
 }
 
-func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[query.Profile], error) {
+type BlockProfile struct {
+	labels firemodel.Labels
+	fp     model.Fingerprint
+	ts     model.Time
+	RowNum int64
+}
+
+func (p BlockProfile) RowNumber() int64 {
+	return p.RowNum
+}
+
+func (p BlockProfile) Labels() firemodel.Labels {
+	return p.labels
+}
+
+func (p BlockProfile) Timestamp() model.Time {
+	return p.ts
+}
+
+func (p BlockProfile) Fingerprint() model.Fingerprint {
+	return p.fp
+}
+
+type BlockSeriesIterator struct {
+	rowNums query.Iterator
+
+	curr   BlockProfile
+	buffer [][]parquet.Value
+}
+
+func NewBlockSeriesIterator(rowNums query.Iterator, fp model.Fingerprint, lbs firemodel.Labels) *BlockSeriesIterator {
+	return &BlockSeriesIterator{
+		rowNums: rowNums,
+		curr:    BlockProfile{fp: fp, labels: lbs},
+	}
+}
+
+func (p *BlockSeriesIterator) Next() bool {
+	if !p.rowNums.Next() {
+		return false
+	}
+	if p.buffer == nil {
+		p.buffer = make([][]parquet.Value, 2)
+	}
+	result := p.rowNums.At()
+	p.curr.RowNum = result.RowNumber[0]
+	p.buffer = result.Columns(p.buffer, "TimeNanos")
+	p.curr.ts = model.TimeFromUnixNano(p.buffer[0][0].Int64())
+	return true
+}
+
+func (p *BlockSeriesIterator) At() Profile {
+	return p.curr
+}
+
+func (p *BlockSeriesIterator) Err() error {
+	return p.rowNums.Err()
+}
+
+func (p *BlockSeriesIterator) Close() error {
+	return p.rowNums.Close()
+}
+
+func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	if err := b.open(ctx); err != nil {
 		return nil, err
 	}
@@ -607,35 +628,32 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		}
 	}
 
-	iters := make([]iter.Iterator[query.Profile], 0, len(seriesRef))
+	iters := make([]iter.Iterator[Profile], 0, len(seriesRef))
 	for _, ref := range seriesRef {
 		info := lblsPerRef[ref]
-		iters = append(iters, query.NewSeriesIterator(
+		iters = append(iters, NewBlockSeriesIterator(
 			query.NewJoinIterator(
 				0,
 				[]query.Iterator{
-					b.profiles.columnIter(ctx, "SeriesRefs.list.element", query.NewEqualInt64Predicate(ref), ""),
+					b.profiles.columnIter(ctx, "SeriesIndex", query.NewEqualInt64Predicate(ref), ""),
 					b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
 				},
 				nil,
 			), info.fp, info.lbs))
 	}
 
-	return query.NewSortIterator(iters), nil
+	return iter.NewSortProfileIterator(iters), nil
 }
 
-func MergeStacktraces(ctx context.Context, b Querier, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]query.Profile) ([]query.Profile, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
-	merger, err := b.SelectMerge(ctx, params)
+func (b *singleBlockQuerier) BatchMergeStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
+	profilesIt, err := b.SelectMatchingProfiles(ctx, params)
 	if err != nil {
 		return nil, err
 	}
-
-	profilesIt := merger.SelectedProfiles()
-
 	defer profilesIt.Close()
 
-	batch := make([]query.Profile, 0, batchSize)
-	selection := []query.Profile{}
+	batch := make([]Profile, 0, batchSize)
+	selection := []Profile{}
 Outer:
 	for {
 		// build a batch of profiles
@@ -653,18 +671,21 @@ Outer:
 		if len(batch) == 0 {
 			break Outer
 		}
-		selected, err := fnOnBatch(batch)
+		keep, err := fnOnBatch(batch)
 		if err != nil {
 			return nil, err
 		}
-		for _, profile := range selected {
-			selection = append(selection, profile)
+		for i, k := range keep {
+			if k {
+				selection = append(selection, batch[i])
+			}
 		}
 	}
+	// ensure we reads by RowNum order.
 	sort.Slice(selection, func(i, j int) bool {
-		return selection[i].RowNum < selection[j].RowNum
+		return selection[i].(BlockProfile).RowNum < selection[j].(BlockProfile).RowNum
 	})
-	return merger.MergeByStacktraces(iter.NewSliceIterator(selection))
+	return b.MergeByStacktraces(ctx, iter.NewSliceIterator(selection))
 }
 
 type reconstructSamples struct {

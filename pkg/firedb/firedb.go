@@ -22,7 +22,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/fire/pkg/firedb/block"
-	query "github.com/grafana/fire/pkg/firedb/query"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
@@ -314,22 +313,17 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		firemodel.Labels
 		index int
 	}
-	f.blockQuerier.queriersLock.RLock()
-	queriers := make([]Querier, len(f.blockQuerier.queriers))
-	for i, q := range f.blockQuerier.queriers {
-		queriers[i] = q
-	}
-	f.blockQuerier.queriersLock.RUnlock()
+
+	queriers := f.querierFor(model.Time(request.Start), model.Time(request.End))
 
 	selectProfileResult := &ingestv1.ProfileSets{
 		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchSize),
 		LabelsSets: make([]*commonv1.Labels, 0, batchSize),
 	}
-	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers)+1)
+	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
 
 	for _, q := range queriers {
-		// todo merge all stacktraces.
-		res, err := MergeStacktraces(ctx, q, request, batchSize, func(selectedProfiles []query.Profile) ([]query.Profile, error) {
+		res, err := q.BatchMergeStacktraces(ctx, request, batchSize, func(selectedProfiles []Profile) (Keep, error) {
 			seriesByFP := map[model.Fingerprint]labelWithIndex{}
 			selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
 			selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
@@ -337,18 +331,18 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 			for _, profile := range selectedProfiles {
 				var ok bool
 				var lblsIdx labelWithIndex
-				lblsIdx, ok = seriesByFP[profile.Fingerprint]
+				lblsIdx, ok = seriesByFP[profile.Fingerprint()]
 				if !ok {
 					lblsIdx = labelWithIndex{
-						Labels: profile.Labels,
+						Labels: profile.Labels(),
 						index:  len(selectProfileResult.LabelsSets),
 					}
-					seriesByFP[profile.Fingerprint] = lblsIdx
-					selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &commonv1.Labels{Labels: profile.Labels})
+					seriesByFP[profile.Fingerprint()] = lblsIdx
+					selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &commonv1.Labels{Labels: profile.Labels()})
 				}
 				selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
 					LabelIndex: int32(lblsIdx.index),
-					Timestamp:  int64(profile.Timestamp),
+					Timestamp:  int64(profile.Timestamp()),
 				})
 
 			}
@@ -370,19 +364,22 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 				}
 				return nil, err
 			}
-			// todo is this fine ?
-			sel := selectedProfiles[:0]
-			for i := range selectionResponse.Profiles {
-				if selectionResponse.Profiles[i] {
-					sel = append(sel, selectedProfiles[i])
-				}
-			}
-			return sel, nil
+			return Keep(selectionResponse.Profiles), nil
 		})
 		if err != nil {
 			return err
 		}
 		result = append(result, res)
+	}
+
+	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
+		Result: mergeBatchMergeStacktraces(result...),
+	})
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
 	}
 
 	return nil
