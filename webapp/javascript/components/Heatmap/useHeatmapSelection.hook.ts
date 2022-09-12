@@ -57,7 +57,8 @@ export const useHeatmapSelection = ({
     xStart: number,
     xEnd: number,
     yStart: number,
-    yEnd: number
+    yEnd: number,
+    isClickOnYBottomEdge?: boolean
   ) => {
     if (heatmapData) {
       const timeForPixel =
@@ -74,6 +75,11 @@ export const useHeatmapSelection = ({
         HEATMAP_HEIGHT - yEnd
       );
 
+      // to fetch correct profiles when clicking on edge cells
+      const selectionMinValue = Math.round(
+        valueForPixel * smallerY + heatmapData.minValue
+      );
+
       dispatch(
         fetchSelectionProfile({
           from,
@@ -83,9 +89,9 @@ export const useHeatmapSelection = ({
           heatmapValueBuckets: DEFAULT_HEATMAP_PARAMS.heatmapValueBuckets,
           selectionStartTime: timeForPixel * smallerX + heatmapData.startTime,
           selectionEndTime: timeForPixel * biggerX + heatmapData.startTime,
-          selectionMinValue: Math.round(
-            valueForPixel * smallerY + heatmapData.minValue
-          ),
+          selectionMinValue: isClickOnYBottomEdge
+            ? selectionMinValue - 1
+            : selectionMinValue,
           selectionMaxValue: Math.round(
             valueForPixel * biggerY + heatmapData.minValue
           ),
@@ -121,7 +127,13 @@ export const useHeatmapSelection = ({
         y: HEATMAP_HEIGHT - (cellMatrixCoordinate[1] + 1) * cellH,
       };
 
-      fetchProfile(startCoords.x, endCoords.x, startCoords.y, endCoords.y);
+      fetchProfile(
+        startCoords.x,
+        endCoords.x,
+        startCoords.y,
+        endCoords.y,
+        startCoords.y === HEATMAP_HEIGHT
+      );
     }
   };
 
