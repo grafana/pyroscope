@@ -115,11 +115,12 @@ var _ = Describe("Exemplars retrieval", func() {
 				Expect(o.EndTime).Should(BeTemporally("~", et, time.Second))
 
 				Expect(o.Labels).To(Equal(map[string]string{"span_name": "foo"}))
-
-				Expect(o.SpyName).To(Equal("debugspy"))
-				Expect(o.SampleRate).To(Equal(uint32(100)))
-				Expect(o.Units).To(Equal(metadata.SamplesUnits))
-				Expect(o.AggregationType).To(Equal(metadata.AverageAggregationType))
+				Expect(o.Metadata).To(Equal(metadata.Metadata{
+					SpyName:         "debugspy",
+					SampleRate:      uint32(100),
+					Units:           metadata.SamplesUnits,
+					AggregationType: metadata.AverageAggregationType,
+				}))
 			})
 		})
 
@@ -152,10 +153,12 @@ var _ = Describe("Exemplars retrieval", func() {
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(4)))
 				Expect(o.Count).To(Equal(uint64(2)))
-				Expect(o.SpyName).To(Equal("debugspy"))
-				Expect(o.SampleRate).To(Equal(uint32(100)))
-				Expect(o.Units).To(Equal(metadata.SamplesUnits))
-				Expect(o.AggregationType).To(Equal(metadata.AverageAggregationType))
+				Expect(o.Metadata).To(Equal(metadata.Metadata{
+					SpyName:         "debugspy",
+					SampleRate:      uint32(100),
+					Units:           metadata.SamplesUnits,
+					AggregationType: metadata.AverageAggregationType,
+				}))
 			})
 		})
 	})

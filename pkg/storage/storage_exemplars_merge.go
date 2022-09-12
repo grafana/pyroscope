@@ -14,21 +14,21 @@ import (
 
 type MergeExemplarsInput struct {
 	AppName    string
+	ProfileIDs []string
 	StartTime  time.Time
 	EndTime    time.Time
-	ProfileIDs []string
+
+	// FIXME: Not implemented: parameters are ignored.
+	ExemplarsSelection ExemplarsSelection
+	HeatmapParams      HeatmapParams
 }
 
 type MergeExemplarsOutput struct {
-	Tree  *tree.Tree
-	Count uint64
-
-	SpyName         string
-	SampleRate      uint32
-	Units           metadata.Units
-	AggregationType metadata.AggregationType
-
-	Telemetry map[string]interface{}
+	Tree          *tree.Tree
+	Count         uint64
+	Metadata      metadata.Metadata
+	HeatmapSketch HeatmapSketch // FIXME: Not implemented: the field is never populated.
+	Telemetry     map[string]interface{}
 }
 
 func (s *Storage) MergeExemplars(ctx context.Context, mi MergeExemplarsInput) (out MergeExemplarsOutput, err error) {
@@ -40,14 +40,10 @@ func (s *Storage) MergeExemplars(ctx context.Context, mi MergeExemplarsInput) (o
 	out.Tree = m.tree
 	out.Count = m.count
 	if m.segment != nil {
-		md := m.segment.GetMetadata()
-		out.SpyName = md.SpyName
-		out.Units = md.Units
-		out.SampleRate = md.SampleRate
-		out.AggregationType = md.AggregationType
+		out.Metadata = m.segment.GetMetadata()
 	}
 
-	if out.Count > 1 && out.AggregationType == metadata.AverageAggregationType {
+	if out.Count > 1 && out.Metadata.AggregationType == metadata.AverageAggregationType {
 		out.Tree = out.Tree.Clone(big.NewRat(1, int64(out.Count)))
 	}
 

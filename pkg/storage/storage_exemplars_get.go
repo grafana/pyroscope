@@ -20,11 +20,7 @@ type GetExemplarOutput struct {
 	Labels    map[string]string
 	StartTime time.Time
 	EndTime   time.Time
-
-	SpyName         string
-	SampleRate      uint32
-	Units           metadata.Units
-	AggregationType metadata.AggregationType
+	Metadata  metadata.Metadata
 
 	Telemetry map[string]interface{}
 }
@@ -48,11 +44,7 @@ func (s *Storage) GetExemplar(ctx context.Context, gi GetExemplarInput) (out Get
 	}
 
 	if m.segment != nil {
-		md := m.segment.GetMetadata()
-		out.SpyName = md.SpyName
-		out.Units = md.Units
-		out.SampleRate = md.SampleRate
-		out.AggregationType = md.AggregationType
+		out.Metadata = m.segment.GetMetadata()
 	}
 
 	return out, nil

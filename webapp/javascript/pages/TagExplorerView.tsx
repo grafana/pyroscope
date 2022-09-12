@@ -5,7 +5,7 @@ import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
 
 import type { Profile } from '@pyroscope/models/src';
-import Box from '@webapp/ui/Box';
+import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
@@ -35,6 +35,7 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
+import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
 import { calculateMean, calculateStdDeviation } from './math';
 import { PAGES } from './constants';
 
@@ -72,6 +73,8 @@ const TIMELINE_SERIES_COLORS = [
   Color.rgb(249, 217, 249),
   Color.rgb(222, 218, 247),
 ];
+
+const TIMELINE_WRAPPER_ID = 'explore_timeline_wrapper';
 
 const getTimelineColor = (index: number, palette: Color[]): Color =>
   Color(palette[index % (palette.length - 1)]);
@@ -202,7 +205,7 @@ function TagExplorerView() {
             handleGroupByTagChange={handleGroupedByTagChange}
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
-          <div className={styles.timelineWrapper}>
+          <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
             {type === 'loading' ? (
               <LoadingSpinner />
             ) : (
@@ -224,11 +227,22 @@ function TagExplorerView() {
                 }
                 height="125px"
                 format="lines"
+                onHoverDisplayTooltip={(data) => (
+                  <ExploreTooltip
+                    values={data.values}
+                    timeLabel={data.timeLabel}
+                    profile={activeTagProfile}
+                  />
+                )}
               />
             )}
           </div>
         </Box>
-        <Box>
+        <CollapseBox
+          title={`${appName
+            .map((a) => `${a} Tag Breakdown`)
+            .unwrapOr('Tag Breakdown')}`}
+        >
           <Table
             appName={appName.unwrapOr('')}
             whereDropdownItems={whereDropdownItems}
@@ -238,7 +252,7 @@ function TagExplorerView() {
             handleGroupByTagValueChange={handleGroupByTagValueChange}
             isLoading={type === 'loading'}
           />
-        </Box>
+        </CollapseBox>
         <Box>
           <div className={styles.flamegraphWrapper}>
             {type === 'loading' ? (
@@ -367,7 +381,6 @@ function Table({
   return (
     <>
       <div className={styles.tableDescription} data-testid="explore-table">
-        <span className={styles.title}>{appName} Descriptive Statistics</span>
         <div className={styles.buttons}>
           <NavLink
             to={{

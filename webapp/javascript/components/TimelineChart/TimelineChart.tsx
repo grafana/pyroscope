@@ -4,9 +4,10 @@ import React from 'react';
 
 import ReactFlot from 'react-flot';
 import 'react-flot/flot/jquery.flot.time.min';
-import './TimelineChartSelection';
+import './Selection.plugin';
 import 'react-flot/flot/jquery.flot.crosshair.min';
 import './TimelineChartPlugin';
+import './Tooltip.plugin';
 
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;

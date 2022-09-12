@@ -3,8 +3,9 @@ package rideshare;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
-import io.pyroscope.labels.LabelsSet;
-import io.pyroscope.labels.Pyroscope;
+
+import io.otel.pyroscope.shadow.labels.LabelsSet;
+import io.otel.pyroscope.shadow.labels.Pyroscope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,7 +63,7 @@ public class OrderService {
             // this is just for demonstration purposes to show how performance impacts show up in the
             // flamegraph
             boolean force_mutex_lock = Instant.now().atZone(ZoneOffset.UTC).getMinute() % 2 == 0;
-            if (System.getenv("REGION").equals("eu-north") && force_mutex_lock) {
+            if ("eu-north".equals(System.getenv("REGION")) && force_mutex_lock) {
                 mutexLock(searchRadius);
             }
         } finally {

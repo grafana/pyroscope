@@ -3,6 +3,117 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.38.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.1...@pyroscope/webapp@1.38.2) (2022-09-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.38.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.0...@pyroscope/webapp@1.38.1) (2022-09-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.38.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.4...@pyroscope/webapp@1.38.0) (2022-09-09)
+
+
+### Features
+
+* **webapp:** Add <CollapseBox /> component ([#1474](https://github.com/pyroscope-io/pyroscope/issues/1474)) ([6595794](https://github.com/pyroscope-io/pyroscope/commit/659579448bdf3e32a77f047aceffa01108d784b3))
+
+
+
+
+
+## [1.37.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.3...@pyroscope/webapp@1.37.4) (2022-09-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.37.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.2...@pyroscope/webapp@1.37.3) (2022-09-08)
+
+
+### Bug Fixes
+
+* **webapp:** hide tooltip if there's no data ([#1472](https://github.com/pyroscope-io/pyroscope/issues/1472)) ([df4c8cc](https://github.com/pyroscope-io/pyroscope/commit/df4c8cc360877b7100d987513beae905bc735a74))
+
+
+
+
+
+## [1.37.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.1...@pyroscope/webapp@1.37.2) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.37.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.0...@pyroscope/webapp@1.37.1) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.37.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.3...@pyroscope/webapp@1.37.0) (2022-09-06)
+
+
+### Features
+
+* **webapp:** Add tooltip in explore timeline ([#1422](https://github.com/pyroscope-io/pyroscope/issues/1422)) ([b5ce89a](https://github.com/pyroscope-io/pyroscope/commit/b5ce89a680256a7d6ff76e45ec38abc721df9a89))
+
+
+
+
+
+## [1.36.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.2...@pyroscope/webapp@1.36.3) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.36.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.1...@pyroscope/webapp@1.36.2) (2022-09-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.36.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.36.0...@pyroscope/webapp@1.36.1) (2022-09-05)
+
+
+### Bug Fixes
+
+* **flamegraph:** table, buttons colors for light mode ([#1458](https://github.com/pyroscope-io/pyroscope/issues/1458)) ([37afd3b](https://github.com/pyroscope-io/pyroscope/commit/37afd3bbdad6b9165143b92dd2312d6b125140f4))
+
+
+
+
+
+# [1.36.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.3...@pyroscope/webapp@1.36.0) (2022-09-02)
+
+
+### Features
+
+* **webapp:** display timer for notifications ([#1457](https://github.com/pyroscope-io/pyroscope/issues/1457)) ([b158f38](https://github.com/pyroscope-io/pyroscope/commit/b158f38592b0b1df9c9c1ff025577175075b897e))
+
+
+
+
+
 ## [1.35.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.35.2...@pyroscope/webapp@1.35.3) (2022-08-31)
 
 **Note:** Version bump only for package @pyroscope/webapp

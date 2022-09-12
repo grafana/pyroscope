@@ -1,3 +1,40 @@
+## [0.28.1](https://github.com/pyroscope-io/pyroscope/compare/v0.28.0...v0.28.1) (2022-09-06)
+
+
+### Bug Fixes
+
+* **flamegraph:** add color to tooltip ([#1468](https://github.com/pyroscope-io/pyroscope/issues/1468)) ([1c29ef6](https://github.com/pyroscope-io/pyroscope/commit/1c29ef6328fb4f01389560a4d53f729bbca88ff3))
+* **flamegraph:** table width ([#1463](https://github.com/pyroscope-io/pyroscope/issues/1463)) ([f19b8ac](https://github.com/pyroscope-io/pyroscope/commit/f19b8ac778452ea86261563aa1d165dbc2d089e7))
+* **flamegraph:** table width ([#1466](https://github.com/pyroscope-io/pyroscope/issues/1466)) ([a60f608](https://github.com/pyroscope-io/pyroscope/commit/a60f608475a9caea0e1910f30d1c663fd38cee96))
+
+
+### Features
+
+* **webapp:** Add tooltip in explore timeline ([#1422](https://github.com/pyroscope-io/pyroscope/issues/1422)) ([b5ce89a](https://github.com/pyroscope-io/pyroscope/commit/b5ce89a680256a7d6ff76e45ec38abc721df9a89))
+
+
+
+# [0.28.0](https://github.com/pyroscope-io/pyroscope/compare/v0.27.0...v0.28.0) (2022-09-06)
+
+
+### Bug Fixes
+
+* ebpf rename labels ([#1441](https://github.com/pyroscope-io/pyroscope/issues/1441)) ([a0359dd](https://github.com/pyroscope-io/pyroscope/commit/a0359dd1afa164decaecbe17922254fa41a7338d))
+* **flamegraph:** fixed tooltip display with color blind palette ([#1442](https://github.com/pyroscope-io/pyroscope/issues/1442)) ([702ad8b](https://github.com/pyroscope-io/pyroscope/commit/702ad8b937aa05e12e4dc21114c63febd93bf4c2))
+* **flamegraph:** table, buttons colors for light mode ([#1458](https://github.com/pyroscope-io/pyroscope/issues/1458)) ([37afd3b](https://github.com/pyroscope-io/pyroscope/commit/37afd3bbdad6b9165143b92dd2312d6b125140f4))
+* pprof parser formatting for rbspy ([#1454](https://github.com/pyroscope-io/pyroscope/issues/1454)) ([ca93c31](https://github.com/pyroscope-io/pyroscope/commit/ca93c310eec2a8cf83be8a5ee3cc0aa374e6d975))
+
+
+### Features
+
+* concurrent storage put ([#1304](https://github.com/pyroscope-io/pyroscope/issues/1304)) ([ec5f8b6](https://github.com/pyroscope-io/pyroscope/commit/ec5f8b66c8a49e7d53767e43564ba25b59628ba5))
+* ebpf go symbols - resolve from .gopclntab ([#1447](https://github.com/pyroscope-io/pyroscope/issues/1447)) ([ae78c42](https://github.com/pyroscope-io/pyroscope/commit/ae78c42802f56c36d4fee80a9ddd2cd446d541a2))
+* **flamegraph:** added sub-second units support for trace visualization ([#1418](https://github.com/pyroscope-io/pyroscope/issues/1418)) ([21f6550](https://github.com/pyroscope-io/pyroscope/commit/21f6550bf7e280e7ee272982f9ab521bf30683c6))
+* **webapp:** display timer for notifications ([#1457](https://github.com/pyroscope-io/pyroscope/issues/1457)) ([b158f38](https://github.com/pyroscope-io/pyroscope/commit/b158f38592b0b1df9c9c1ff025577175075b897e))
+* **webapp:** dropdown component for head-first dropdown ([#1435](https://github.com/pyroscope-io/pyroscope/issues/1435)) ([a7d6891](https://github.com/pyroscope-io/pyroscope/commit/a7d6891c8b63d67dc197d7c52812bd946ca688e5))
+
+
+
 # [0.27.0](https://github.com/pyroscope-io/pyroscope/compare/v0.26.0...v0.27.0) (2022-08-24)
 
 

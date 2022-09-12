@@ -11,7 +11,6 @@ You can disable this with a flag or an environment variable
 	pyroscope server -analytics-opt-out
 	...
 	PYROSCOPE_ANALYTICS_OPT_OUT=true pyroscope server
-
 */
 package analytics
 
@@ -20,8 +19,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,10 +34,13 @@ import (
 )
 
 var (
-	url               = "https://analytics.pyroscope.io/api/events"
-	gracePeriod       = 5 * time.Minute
-	uploadFrequency   = 24 * time.Hour
-	snapshotFrequency = 10 * time.Minute
+	host                      = "https://analytics.pyroscope.io"
+	path                      = "/api/events"
+	gracePeriod               = 5 * time.Minute
+	oldMetricsUploadFrequency = 24 * time.Hour
+	metricsUploadFrequency    = 1 * time.Hour
+	snapshotFrequency         = 10 * time.Minute
+	multiplier                = 1
 )
 
 type Analytics struct {
@@ -86,6 +90,13 @@ type StatsProvider interface {
 }
 
 func NewService(cfg *config.Server, s *storage.Storage, p StatsProvider) *Service {
+	if mOverride := os.Getenv("PYROSCOPE_ANALYTICS_MULTIPLIER"); mOverride != "" {
+		multiplier, _ = strconv.Atoi(mOverride)
+		if multiplier < 1 {
+			multiplier = 1
+		}
+	}
+
 	return &Service{
 		cfg:  cfg,
 		s:    s,
@@ -122,22 +133,27 @@ func (s *Service) Start() {
 		logrus.WithError(err).Debug("failed to load analytics data")
 	}
 
-	timer := time.NewTimer(gracePeriod)
+	timer := time.NewTimer(gracePeriod / time.Duration(multiplier))
 	select {
 	case <-s.stop:
 		return
 	case <-timer.C:
 	}
 	s.sendReport()
-	upload := time.NewTicker(uploadFrequency)
-	snapshot := time.NewTicker(snapshotFrequency)
-	defer upload.Stop()
-	defer snapshot.Stop()
+	s.sendMetrics()
+	oldMetricsTicker := time.NewTicker(oldMetricsUploadFrequency / time.Duration(multiplier))
+	metricsTicker := time.NewTicker(metricsUploadFrequency / time.Duration(multiplier))
+	snapshotTicker := time.NewTicker(snapshotFrequency)
+	defer oldMetricsTicker.Stop()
+	defer metricsTicker.Stop()
+	defer snapshotTicker.Stop()
 	for {
 		select {
-		case <-upload.C:
+		case <-oldMetricsTicker.C:
 			s.sendReport()
-		case <-snapshot.C:
+		case <-metricsTicker.C:
+			s.sendMetrics()
+		case <-snapshotTicker.C:
 			s.s.SaveAnalytics(s.getAnalytics())
 		case <-s.stop:
 			return
@@ -146,8 +162,9 @@ func (s *Service) Start() {
 }
 
 // TODO: reflection is always tricky to work with. Maybe long term we should just put all counters
-//   in one map (map[string]int), and put all gauges in another map(map[string]int) and then
-//   for gauges we would override old values and for counters we would sum the values up.
+//
+//	in one map (map[string]int), and put all gauges in another map(map[string]int) and then
+//	for gauges we would override old values and for counters we would sum the values up.
 func (*Service) rebaseAnalytics(base *Analytics, current *Analytics) *Analytics {
 	rebased := &(*current)
 	vRebased := reflect.ValueOf(rebased).Elem()
@@ -238,6 +255,12 @@ func (s *Service) sendReport() {
 		logrus.WithField("err", err).Error("Error happened when preparing JSON")
 		return
 	}
+
+	if hostOverride := os.Getenv("PYROSCOPE_ANALYTICS_HOST"); hostOverride != "" {
+		host = hostOverride
+	}
+
+	url := host + path
 	resp, err := s.httpClient.Post(url, "application/json", bytes.NewReader(buf))
 	if err != nil {
 		logrus.WithField("err", err).Error("Error happened when uploading anonymized usage data")

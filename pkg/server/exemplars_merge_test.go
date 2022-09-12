@@ -54,7 +54,7 @@ var _ = Describe("render merge test", func() {
 			It("handles merge requests", func() {
 				defer httpServer.Close()
 
-				resp, err := http.Post(httpServer.URL+"/merge", "application/json", reqBody(mergeRequest{
+				resp, err := http.Post(httpServer.URL+"/merge", "application/json", reqBody(mergeExemplarsRequest{
 					AppName:  "app.cpu",
 					Profiles: []string{"a", "b"},
 				}))
@@ -62,7 +62,7 @@ var _ = Describe("render merge test", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-				var merged mergeResponse
+				var merged mergeExemplarsResponse
 				Expect(json.NewDecoder(resp.Body).Decode(&merged)).ToNot(HaveOccurred())
 				Expect(merged.Validate()).ToNot(HaveOccurred())
 			})

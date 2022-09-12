@@ -42,8 +42,8 @@ func checkDriverAvailability(n int64) {
 
 }
 
-func FindNearestVehicle(searchRadius int64, vehicle string) {
-	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("vehicle", vehicle), func(ctx context.Context) {
+func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string) {
+	pyroscope.TagWrapper(ctx, pyroscope.Labels("vehicle", vehicle), func(ctx context.Context) {
 		var i int64 = 0
 
 		startTime := time.Now()

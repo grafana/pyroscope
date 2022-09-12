@@ -249,7 +249,7 @@ web-bootstrap: install-web-dependencies
 
 .PHONY: dev
 dev: install-web-dependencies ## Start webpack and pyroscope server. Use this one for working on pyroscope
-	goreman -exit-on-error -f scripts/dev-procfile start
+	PYROSCOPE_ANALYTICS_OPT_OUT=true goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc
 godoc: ## Generate godoc
