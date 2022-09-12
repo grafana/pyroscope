@@ -281,6 +281,7 @@ class TimelineChartWrapper extends React.Component<
     const customFlotOptions = {
       ...flotOptions,
       onHoverDisplayTooltip,
+      ContextMenu: this.props.ContextMenu,
       xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
     };
 
