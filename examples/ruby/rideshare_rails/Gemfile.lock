@@ -74,6 +74,7 @@ GEM
       reline (>= 0.2.7)
     digest (3.1.0)
     erubi (1.10.0)
+    ffi (1.15.5)
     globalid (1.0.0)
       activesupport (>= 5.0)
     i18n (1.10.0)
@@ -113,7 +114,10 @@ GEM
       racc (~> 1.4)
     puma (5.6.4)
       nio4r (~> 2.0)
-    pyroscope (0.2.0)
+    pyroscope (0.5.1)
+      ffi
+    pyroscope (0.5.1-x86_64-darwin)
+      ffi
     racc (1.6.0)
     rack (2.2.3)
     rack-test (1.1.0)
@@ -172,7 +176,7 @@ PLATFORMS
 DEPENDENCIES
   debug
   puma (~> 5.0)
-  pyroscope (~> 0.2.0)
+  pyroscope (~> 0.5.1)
   rails (~> 7.0.2, >= 7.0.2.3)
   sprockets-rails
   sqlite3 (~> 1.4)
