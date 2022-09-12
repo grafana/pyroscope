@@ -1,4 +1,4 @@
-package parquetquery
+package query
 
 import (
 	"bytes"
@@ -122,7 +122,6 @@ func (p *SubstringPredicate) KeepValue(v pq.Value) bool {
 }
 
 func (p *SubstringPredicate) KeepPage(page pq.Page) bool {
-
 	// If a dictionary column then ensure at least one matching
 	// value exists in the dictionary
 	dict := page.Dictionary()
@@ -152,7 +151,6 @@ func NewIntBetweenPredicate(min, max int64) *IntBetweenPredicate {
 }
 
 func (p *IntBetweenPredicate) KeepColumnChunk(c pq.ColumnChunk) bool {
-
 	if ci := c.ColumnIndex(); ci != nil {
 		for i := 0; i < ci.NumPages(); i++ {
 			min := ci.MinValue(i).Int64()
@@ -175,6 +173,39 @@ func (p *IntBetweenPredicate) KeepValue(v pq.Value) bool {
 func (p *IntBetweenPredicate) KeepPage(page pq.Page) bool {
 	if min, max, ok := page.Bounds(); ok {
 		return p.max >= min.Int64() && p.min <= max.Int64()
+	}
+	return true
+}
+
+type EqualInt64Predicate int64
+
+func NewEqualInt64Predicate(value int64) EqualInt64Predicate {
+	return EqualInt64Predicate(value)
+}
+
+func (p EqualInt64Predicate) KeepColumnChunk(c pq.ColumnChunk) bool {
+	if ci := c.ColumnIndex(); ci != nil {
+		for i := 0; i < ci.NumPages(); i++ {
+			min := ci.MinValue(i).Int64()
+			max := ci.MaxValue(i).Int64()
+			if int64(p) >= min && int64(p) <= max {
+				return true
+			}
+		}
+		return false
+	}
+
+	return true
+}
+
+func (p EqualInt64Predicate) KeepValue(v pq.Value) bool {
+	vv := v.Int64()
+	return int64(p) <= vv && vv <= int64(p)
+}
+
+func (p EqualInt64Predicate) KeepPage(page pq.Page) bool {
+	if min, max, ok := page.Bounds(); ok {
+		return int64(p) >= min.Int64() && int64(p) <= max.Int64()
 	}
 	return true
 }

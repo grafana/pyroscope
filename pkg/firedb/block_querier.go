@@ -241,16 +241,18 @@ func (b *BlockQuerier) BlockInfo() []BlockInfo {
 }
 
 func (b *BlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	return b.profileSelecters().SelectProfiles(ctx, req)
+	return b.queriersFor(model.Time(req.Msg.Start), model.Time(req.Msg.End)).SelectProfiles(ctx, req)
 }
 
-func (b *BlockQuerier) profileSelecters() profileSelecters {
+func (b *BlockQuerier) queriersFor(start, end model.Time) Queriers {
 	b.queriersLock.RLock()
 	defer b.queriersLock.RUnlock()
 
-	result := make(profileSelecters, len(b.queriers))
-	for pos := range result {
-		result[pos] = b.queriers[pos]
+	result := make(Queriers, 0, len(b.queriers))
+	for _, q := range b.queriers {
+		if q.InRange(start, end) {
+			result = append(result, q)
+		}
 	}
 	return result
 }
@@ -501,59 +503,6 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	return rowNums.Err()
 }
 
-type ProfileIterator struct {
-	rowNums query.Iterator
-	series  map[int64]labelsInfo
-
-	curr   Profile
-	buffer [][]parquet.Value
-}
-
-func (p *ProfileIterator) Next() bool {
-	if !p.rowNums.Next() {
-		return false
-	}
-	if p.buffer == nil {
-		p.buffer = make([][]parquet.Value, 2)
-	}
-	result := p.rowNums.At()
-	p.curr.RowNum = result.RowNumber[0]
-	p.buffer = result.Columns(p.buffer, "SeriesRefs", "TimeNanos")
-	info := p.series[p.buffer[0][0].Int64()]
-	p.curr.Fingerprint = info.fp
-	p.curr.Labels = info.lbs
-	p.curr.Timestamp = model.TimeFromUnixNano(p.buffer[1][0].Int64())
-	return true
-}
-
-func (p *ProfileIterator) At() Profile {
-	return p.curr
-}
-
-func (p *ProfileIterator) Err() error {
-	return p.rowNums.Err()
-}
-
-func (p *ProfileIterator) Close() error {
-	return p.rowNums.Close()
-}
-
-type Profile struct {
-	Labels      firemodel.Labels
-	Fingerprint model.Fingerprint
-	Timestamp   model.Time
-	RowNum      int64
-}
-
-func (p Profile) RowNumber() int64 {
-	return p.RowNum
-}
-
-type ProfileValue struct {
-	Profile
-	Value int64
-}
-
 type StacktraceValue struct {
 	StacktraceID int64
 	Value        int64
@@ -566,16 +515,14 @@ type SelectMergeRequest struct {
 	End           model.Time
 }
 type Querier interface {
-	SelectMerge(ctx context.Context, params *ingestv1.SelectProfilesRequest) (ProfileSamplesMerger, error)
+	InRange(start, end model.Time) bool
+	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[query.Profile], error)
+	MergeByStacktraces(ctx context.Context, rows iter.Iterator[query.Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
+	// Legacy
+	SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error)
 }
 
-type ProfileSamplesMerger interface {
-	SelectedProfiles() iter.Iterator[Profile]
-	MergeByStacktraces(rows iter.Iterator[Profile]) (iter.Iterator[StacktraceValue], error)
-	MergeByProfile(rows iter.Iterator[Profile]) (iter.Iterator[ProfileValue], error)
-}
-
-func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params *ingestv1.SelectProfilesRequest) (ProfileSamplesMerger, error) {
+func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[query.Profile], error) {
 	if err := b.open(ctx); err != nil {
 		return nil, err
 	}
@@ -594,6 +541,7 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params *ingestv1.S
 		lbls       = make(firemodel.Labels, 0, 6)
 		chks       = make([]index.ChunkMeta, 1)
 		lblsPerRef = make(map[int64]labelsInfo)
+		seriesRef  = []int64{}
 	)
 
 	// get all relevant labels/fingerprints
@@ -612,99 +560,69 @@ func (b *singleBlockQuerier) SelectMerge(ctx context.Context, params *ingestv1.S
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
+			seriesRef = append(seriesRef, int64(chks[0].SeriesIndex))
 			lbls = make(firemodel.Labels, 0, 6)
 		}
 	}
 
-	rowNums := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesRefs.list.element", newMapPredicate(lblsPerRef), "SeriesRefs"),                                                           // get all profiles with matching seriesRef
-			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"), // get all profiles within the time window
-		},
-		nil,
-	)
+	iters := make([]iter.Iterator[query.Profile], 0, len(seriesRef))
+	for _, ref := range seriesRef {
+		info := lblsPerRef[ref]
+		iters = append(iters, query.NewSeriesIterator(
+			query.NewJoinIterator(
+				0,
+				[]query.Iterator{
+					b.profiles.columnIter(ctx, "SeriesRefs.list.element", query.NewEqualInt64Predicate(ref), ""),
+					b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+				},
+				nil,
+			), info.fp, info.lbs))
+	}
 
-	return &ProfileSampleMerger{
-		reader: b.profiles,
-		ctx:    ctx,
-		profiles: &ProfileIterator{
-			rowNums: rowNums,
-			series:  lblsPerRef,
-		},
-	}, nil
+	return query.NewSortIterator(iters), nil
 }
 
-func MergeStacktraces(ctx context.Context, b Querier, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]Profile) ([]Profile, error)) error {
+func MergeStacktraces(ctx context.Context, b Querier, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]query.Profile) ([]query.Profile, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	merger, err := b.SelectMerge(ctx, params)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	profilesIt := merger.SelectedProfiles()
-	selectionIt := NewProfileSelectorIterator()
 
-	g, _ := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		// todo send the merge of merge at the end.
-		_, err := merger.MergeByStacktraces(selectionIt)
+	defer profilesIt.Close()
+
+	batch := make([]query.Profile, 0, batchSize)
+	selection := []query.Profile{}
+Outer:
+	for {
+		// build a batch of profiles
+		batch = batch[:0]
+		for profilesIt.Next() {
+			profile := profilesIt.At()
+			batch = append(batch, profile)
+			if len(batch) >= batchSize {
+				break
+			}
+		}
+		if profilesIt.Err() != nil {
+			return nil, profilesIt.Err()
+		}
+		if len(batch) == 0 {
+			break Outer
+		}
+		selected, err := fnOnBatch(batch)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return nil
-	})
-
-	g.Go(func() error {
-		defer selectionIt.Close()
-		defer profilesIt.Close()
-
-		profileSelected := make([]Profile, 0, batchSize)
-		for {
-			// build a batch of profiles
-			profileSelected = profileSelected[:0]
-			for profilesIt.Next() {
-				profile := profilesIt.At()
-				profileSelected = append(profileSelected, profile)
-				if len(profileSelected) >= batchSize {
-					break
-				}
-			}
-			if profilesIt.Err() != nil {
-				return profilesIt.Err()
-			}
-			if len(profileSelected) == 0 {
-				return nil
-			}
-			profileSelected, err := fnOnBatch(profileSelected)
-			if err != nil {
-				return err
-			}
-			selectionIt.Push(profileSelected)
+		for _, profile := range selected {
+			selection = append(selection, profile)
 		}
-	})
-
-	if err := g.Wait(); err != nil {
-		return err
 	}
-	return nil
-}
-
-type ProfileSampleMerger struct {
-	profiles *ProfileIterator
-	reader   parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
-	ctx      context.Context
-}
-
-func (m *ProfileSampleMerger) SelectedProfiles() iter.Iterator[Profile] {
-	return m.profiles
-}
-
-func (m *ProfileSampleMerger) MergeByStacktraces(rows iter.Iterator[Profile]) (iter.Iterator[StacktraceValue], error) {
-	return mergeSamplesByStacktraces(m.reader.file, rows)
-}
-
-func (m *ProfileSampleMerger) MergeByProfile(rows iter.Iterator[Profile]) (iter.Iterator[ProfileValue], error) {
-	return NewProfileTotalValueIterator(m.reader.file, rows)
+	sort.Slice(selection, func(i, j int) bool {
+		return selection[i].RowNum < selection[j].RowNum
+	})
+	return merger.MergeByStacktraces(iter.NewSliceIterator(selection))
 }
 
 type reconstructSamples struct {

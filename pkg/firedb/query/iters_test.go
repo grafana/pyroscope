@@ -1,4 +1,4 @@
-package parquetquery
+package query
 
 import (
 	"context"
@@ -129,7 +129,6 @@ func TestColumnIterator(t *testing.T) {
 			}
 
 			require.Equal(t, tc.err, i.Err())
-
 		})
 	}
 }

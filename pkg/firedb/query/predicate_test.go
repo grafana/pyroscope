@@ -1,4 +1,4 @@
-package parquetquery
+package query
 
 import (
 	"bytes"
@@ -11,7 +11,6 @@ import (
 )
 
 func TestSubstringPredicate(t *testing.T) {
-
 	// Normal case - all chunks/pages/values inspected
 	testPredicate(t, predicateTestCase{
 		predicate:  NewSubstringPredicate("b"),
