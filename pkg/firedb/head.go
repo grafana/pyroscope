@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/grafana/fire/pkg/firedb/block"
+	query "github.com/grafana/fire/pkg/firedb/query"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
@@ -495,6 +496,10 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		Profiles:      result,
 		FunctionNames: names,
 	}), err
+}
+
+func (h *Head) MergeStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]query.Profile) ([]query.Profile, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
+	return nil, nil
 }
 
 func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {

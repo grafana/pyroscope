@@ -22,9 +22,9 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/fire/pkg/firedb/block"
+	query "github.com/grafana/fire/pkg/firedb/query"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/objstore/client"
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
@@ -171,23 +171,18 @@ func (f *FireDB) Head() *Head {
 	return f.head
 }
 
-type profileSelecter interface {
-	SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error)
-	InRange(start, end model.Time) bool
-}
+type Queriers []Querier
 
-type profileSelecters []profileSelecter
-
-func (ps profileSelecters) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
+func (qs Queriers) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
 	// first check which profileSelecters are in range before executing
-	ps = lo.Filter(ps, func(e profileSelecter, _ int) bool {
+	qs = lo.Filter(qs, func(e Querier, _ int) bool {
 		return e.InRange(
 			model.Time(req.Msg.Start),
 			model.Time(req.Msg.End),
 		)
 	})
 
-	results := make([]*ingestv1.SelectProfilesResponse, len(ps))
+	results := make([]*ingestv1.SelectProfilesResponse, len(qs))
 
 	g, ctx := errgroup.WithContext(ctx)
 	// todo not sure this help on disk IO
@@ -195,7 +190,7 @@ func (ps profileSelecters) SelectProfiles(ctx context.Context, req *connect.Requ
 
 	query := func(ctx context.Context, pos int) {
 		g.Go(func() error {
-			resp, err := ps[pos].SelectProfiles(ctx, req)
+			resp, err := qs[pos].SelectProfiles(ctx, req)
 			if err != nil {
 				return err
 			}
@@ -205,7 +200,7 @@ func (ps profileSelecters) SelectProfiles(ctx context.Context, req *connect.Requ
 		})
 	}
 
-	for pos := range ps {
+	for pos := range qs {
 		query(ctx, pos)
 	}
 
@@ -286,8 +281,18 @@ func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) 
 }
 
 func (f *FireDB) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	sources := append(f.blockQuerier.profileSelecters(), f.Head())
-	return sources.SelectProfiles(ctx, req)
+	return f.querierFor(model.Time(req.Msg.Start), model.Time(req.Msg.End)).SelectProfiles(ctx, req)
+}
+
+func (f *FireDB) querierFor(start, end model.Time) Queriers {
+	blocks := f.blockQuerier.queriersFor(start, end)
+	if f.Head().InRange(start, end) {
+		res := make(Queriers, 0, len(blocks)+1)
+		res = append(res, f.Head())
+		res = append(res, blocks...)
+		return res
+	}
+	return blocks
 }
 
 func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
@@ -302,9 +307,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
 	}
 	request := r.Request
-	// todo query from head
 
-	// query from blocks
 	batchSize := 2048
 
 	type labelWithIndex struct {
@@ -322,24 +325,11 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchSize),
 		LabelsSets: make([]*commonv1.Labels, 0, batchSize),
 	}
-	// todo is the iteration order fine for deduping ?
-	// We have order guarantee between head and blocks
-	// what if one head block has been cut.
-	// ingester. A
-	//  	 Head LA 2
-	//  	 Head LA 1
-	//  	 Head LB 2
-	//  	 Head LB 1
-	// cut ingester. B
-	//  	 Head LA 2
-	//  	 Head LA 1
-	//  	 BLOCK LB 2
-	//  	 BLOCK LB 1
-	// We want to order by timestamp then labels.
-	// LA 2, LB 2, LA 1, LB 1
+	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers)+1)
+
 	for _, q := range queriers {
 		// todo merge all stacktraces.
-		MergeStacktraces(ctx, q, request, batchSize, func(selectedProfiles []Profile) ([]Profile, error) {
+		res, err := MergeStacktraces(ctx, q, request, batchSize, func(selectedProfiles []query.Profile) ([]query.Profile, error) {
 			seriesByFP := map[model.Fingerprint]labelWithIndex{}
 			selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
 			selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
@@ -389,57 +379,12 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 			}
 			return sel, nil
 		})
-	}
-
-	return nil
-}
-
-type ProfileSelectorIterator struct {
-	batch   chan []Profile
-	current iter.Iterator[Profile]
-}
-
-func NewProfileSelectorIterator() *ProfileSelectorIterator {
-	return &ProfileSelectorIterator{
-		batch: make(chan []Profile, 1),
-	}
-}
-
-func (it *ProfileSelectorIterator) Push(batch []Profile) {
-	if len(batch) == 0 {
-		return
-	}
-	it.batch <- batch
-}
-
-func (it *ProfileSelectorIterator) Next() bool {
-	if it.current == nil {
-		batch, ok := <-it.batch
-		if !ok {
-			return false
+		if err != nil {
+			return err
 		}
-		it.current = iter.NewSliceIterator(batch)
+		result = append(result, res)
 	}
-	if !it.current.Next() {
-		it.current = nil
-		return it.Next()
-	}
-	return true
-}
 
-func (it *ProfileSelectorIterator) At() Profile {
-	if it.current == nil {
-		return Profile{}
-	}
-	return it.current.At()
-}
-
-func (it *ProfileSelectorIterator) Close() error {
-	close(it.batch)
-	return nil
-}
-
-func (it *ProfileSelectorIterator) Err() error {
 	return nil
 }
 

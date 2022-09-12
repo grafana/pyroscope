@@ -1,4 +1,4 @@
-package parquetquery
+package query
 
 import (
 	"strings"
