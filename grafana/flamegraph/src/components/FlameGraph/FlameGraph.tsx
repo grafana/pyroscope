@@ -73,7 +73,7 @@ const FlameGraph = ({
       const barIndex = getBarIndex(x, levels[levelIndex], pixelsPerTick, totalTicks, rangeMin);
       return { levelIndex, barIndex };
     },
-    [getBarIndex, levels, totalTicks, rangeMin]
+    [levels, totalTicks, rangeMin]
   );
 
   const render = useCallback(
