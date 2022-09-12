@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
 import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
 import type { Profile } from '@pyroscope/models/src';
-import Box from '@webapp/ui/Box';
+import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import TimelineChartWrapper, {
@@ -190,16 +190,6 @@ function TagExplorerView() {
     return acc;
   }, [] as string[]);
 
-  const pieChartData = useMemo(() => {
-    return filteredGroupsData.length
-      ? filteredGroupsData.map((d) => ({
-          label: d.tagName,
-          data: calculateTotal(d.data.samples),
-          color: d.color,
-        }))
-      : [];
-  }, [filteredGroupsData]);
-
   return (
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
@@ -248,7 +238,11 @@ function TagExplorerView() {
             )}
           </div>
         </Box>
-        <Box>
+        <CollapseBox
+          title={`${appName
+            .map((a) => `${a} Tag Breakdown`)
+            .unwrapOr('Tag Breakdown')}`}
+        >
           <div className={styles.statisticsBox}>
             <Table
               appName={appName.unwrapOr('')}
@@ -260,14 +254,14 @@ function TagExplorerView() {
               isLoading={type === 'loading'}
             />
             <div className={styles.pieChartWrapper}>
-              {pieChartData?.length ? (
+              {filteredGroupsData?.length ? (
                 <TotalSamplesChart filteredGroupsData={filteredGroupsData} />
               ) : (
                 <LoadingSpinner />
               )}
             </div>
           </div>
-        </Box>
+        </CollapseBox>
         <Box>
           <div className={styles.flamegraphWrapper}>
             {type === 'loading' ? (
@@ -348,7 +342,7 @@ function Table({
     },
     { name: 'avgSamples', label: 'avg samples', sortable: 0 },
     { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
-    { name: 'totalSamples', label: 'total samles', sortable: 0 },
+    { name: 'totalSamples', label: 'total samples', sortable: 0 },
   ];
 
   const bodyRows = groupsData.reduce(
@@ -393,7 +387,6 @@ function Table({
   return (
     <div className={styles.tableWrapper}>
       <div className={styles.tableDescription} data-testid="explore-table">
-        <span className={styles.title}>{appName} Descriptive Statistics</span>
         <div className={styles.buttons}>
           <NavLink
             to={{
