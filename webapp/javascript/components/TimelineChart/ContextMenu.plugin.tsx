@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import store from '@webapp/redux/store';
 
 // Pre calculated once
-// TODO: does this work with multiple contextMenus?
+// TODO(eh-am): does this work with multiple contextMenus?
 const WRAPPER_ID = randomId('contextMenu');
 
 export interface ContextMenuProps {
@@ -25,24 +25,24 @@ export interface ContextMenuProps {
     event: unknown,
     pos: { x: number; pageX: number; pageY: number }
   ) {
-    // TODO: precalculate these somehow?
     const container = inject($);
     const containerEl = container?.[0];
-
-    // TODO(eh-am): why do we need this conversion?
-    const timestamp = Math.round(pos.x / 1000);
-
-    // TODO(eh-am): improve typing
-    const ContextMenu = (globalPlot.getOptions() as ShamefulAny)
-      .ContextMenu as React.FC<ContextMenuProps>;
 
     // unmount any previous menus
     ReactDOM.unmountComponentAtNode(containerEl);
 
-    // TODO(eh-am): use portal instead of wrapping of sharing the same store?
-    // https://stackoverflow.com/questions/52660770/how-to-communicate-reactdom-render-with-other-reactdom-render
+    // TODO(eh-am): improve typing
+    const ContextMenu = (globalPlot.getOptions() as ShamefulAny).ContextMenu as
+      | React.FC<ContextMenuProps>
+      | undefined;
+
     if (ContextMenu) {
-      // TODO(eh-am): we need to add a Provider
+      // TODO(eh-am): why do we need this conversion?
+      const timestamp = Math.round(pos.x / 1000);
+
+      // Add a Provider (reux) so that we can communicate with the main app via actions
+      // idea from https://stackoverflow.com/questions/52660770/how-to-communicate-reactdom-render-with-other-reactdom-render
+      // TODO(eh-am): add a global Context too?
       ReactDOM.render(
         <Provider store={store}>
           <ContextMenu click={{ ...pos }} timestamp={timestamp} />
@@ -72,7 +72,12 @@ export interface ContextMenuProps {
     if (plot.hooks?.shutdown) {
       plot.hooks.shutdown.push(function () {
         flotEl.unbind('plotclick', onClick);
-        // TODO(eh-am): get rid of contextMenu wrapper in the DOM?
+
+        const container = inject($);
+        const containerEl = container?.[0];
+
+        // unmount any previous menus
+        ReactDOM.unmountComponentAtNode(containerEl);
       });
     }
   }

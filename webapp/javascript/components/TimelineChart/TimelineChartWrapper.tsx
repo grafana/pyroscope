@@ -76,7 +76,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
-  ContextMenu?: React.FC<ContextMenuProps>;
+  ContextMenu?: React.ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -272,6 +272,7 @@ class TimelineChartWrapper extends React.Component<
       const customFlotOptions = {
         ...flotOptions,
         onHoverDisplayTooltip,
+        ContextMenu: this.props.ContextMenu,
         xaxis: {
           ...flotOptions.xaxis,
           autoscaleMargin: null,
@@ -328,6 +329,7 @@ class TimelineChartWrapper extends React.Component<
     const customFlotOptions = {
       ...flotOptions,
       onHoverDisplayTooltip,
+      ContextMenu: this.props.ContextMenu,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
