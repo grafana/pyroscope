@@ -1,3 +1,5 @@
+// we only need this import for its side effects (ie importing flot types)
+// eslint-disable-next-line import/no-unresolved
 import 'flot';
 
 // @types/flot only exposes plotOptions

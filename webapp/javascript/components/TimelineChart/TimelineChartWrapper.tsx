@@ -12,7 +12,6 @@ import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
-import { ContextMenuProps } from './ContextMenu.plugin';
 
 export interface TimelineGroupData {
   data: Group;
