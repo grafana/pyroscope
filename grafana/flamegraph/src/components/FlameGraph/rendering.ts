@@ -119,13 +119,13 @@ export function renderRect(
 /**
  * Returns the X position of the bar. totalTicks * rangeMin is to adjust for any current zoom. So if we zoom to a
  * section of the graph we align and shift the X coordinates accordingly.
- * @param itemStart
+ * @param offset
  * @param totalTicks
  * @param rangeMin
  * @param pixelsPerTick
  */
-export function getBarX(itemStart: number, totalTicks: number, rangeMin: number, pixelsPerTick: number) {
-  return (itemStart - totalTicks * rangeMin) * pixelsPerTick;
+export function getBarX(offset: number, totalTicks: number, rangeMin: number, pixelsPerTick: number) {
+  return (offset - totalTicks * rangeMin) * pixelsPerTick;
 }
 
 function getBarColor(h: number, l: number) {

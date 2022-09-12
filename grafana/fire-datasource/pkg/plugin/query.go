@@ -37,7 +37,7 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 		response.Error = err
 		return response
 	}
-	frame := responseToDataFrames(resp)
+	frame := responseToDataFrames(resp, qm.ProfileTypeID)
 
 	// If query called with streaming on then return a channel
 	// to subscribe on a client-side and consume updates from a plugin.
@@ -85,22 +85,16 @@ func makeRequest(qm queryModel, query backend.DataQuery) *connect.Request[querie
 	}
 }
 
-type CustomMeta struct {
-	Names   []string
-	Total   int64
-	MaxSelf int64
-}
-
 // responseToDataFrames turns fire response to data.Frame. We encode the data into a nested set format where we have
 // [level, value, label] columns and by ordering the items in a depth first traversal order we can recreate the whole
 // tree back.
-func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktracesResponse]) *data.Frame {
+func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktracesResponse], profileTypeID string) *data.Frame {
 	for index, level := range resp.Msg.Flamegraph.Levels {
 		values, _ := json.Marshal(level.Values)
 		log.DefaultLogger.Debug(fmt.Sprintf("------- %d %s \n", index, values))
 	}
 	tree := levelsToTree(resp.Msg.Flamegraph.Levels, resp.Msg.Flamegraph.Names)
-	return treeToNestedSetDataFrame(tree)
+	return treeToNestedSetDataFrame(tree, profileTypeID)
 }
 
 // Offset of the bar relative to previous sibling
@@ -203,11 +197,15 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 	return tree
 }
 
+type CustomMeta struct {
+	ProfileTypeID string
+}
+
 // treeToNestedSetDataFrame walks the tree depth first and adds items into the dataframe. This is a nested set format
 // where by ordering the items in depth first order and knowing the level/depth of each item we can recreate the
 // parent - child relationship without explicitly needing parent/child column and we can later just iterate over the
 // dataFrame to again basically walking depth first over the tree/profile.
-func treeToNestedSetDataFrame(tree *ProfileTree) *data.Frame {
+func treeToNestedSetDataFrame(tree *ProfileTree, profileTypeID string) *data.Frame {
 	frame := data.NewFrame("response")
 	frame.Meta = &data.FrameMeta{PreferredVisualization: "flamegraph"}
 
@@ -221,6 +219,9 @@ func treeToNestedSetDataFrame(tree *ProfileTree) *data.Frame {
 		valueField.Append(tree.Value)
 		labelField.Append(tree.Name)
 	})
+	frame.Meta.Custom = CustomMeta{
+		ProfileTypeID: profileTypeID,
+	}
 	return frame
 }
 
