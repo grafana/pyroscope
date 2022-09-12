@@ -5,13 +5,13 @@ import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
-import { formatAsOBject } from '@webapp/util/formatDate';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
 import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
+import { markingsFromAnnotations, markingsFromSelection } from './markings';
 
 export interface TimelineGroupData {
   data: Group;
@@ -28,7 +28,7 @@ interface Selection {
   from: string;
   to: string;
   color: Color;
-  overlayColor?: string | Color;
+  overlayColor: Color;
 }
 
 type SingleDataProps = {
@@ -201,70 +201,15 @@ class TimelineChartWrapper extends React.Component<
   }
 
   plotMarkings = () => {
-    // FIXME: right now the selection functionality is spread in 2 places
-    // normal markings (function below)
-    // and in the TimelineChartSelection plugin
-    // which is confusing and should be fixed
-    const constructSelection = (m: Selection) => {
-      const from = new Date(formatAsOBject(m.from)).getTime();
-      const to = new Date(formatAsOBject(m.to)).getTime();
+    const selectionMarkings = markingsFromSelection(
+      this.props.selectionType,
+      this.props.selection?.left,
+      this.props.selection?.right
+    );
 
-      // 'double' selection uses built-in Flot selection
-      // built-in Flot selection for 'single' case becomes 'transparent'
-      // to use custom apperance and color for it
-      const boundary = {
-        lineWidth: 1,
-        color:
-          this.props.selectionType === 'double' ? m.color.rgb() : 'transparent',
-      };
+    const annotationsMarkings = markingsFromAnnotations(this.props.annotations);
 
-      return [
-        {
-          xaxis: { from, to },
-          color:
-            this.props.selectionType === 'double' ? m.overlayColor : 'NOOP',
-        },
-
-        // A single vertical line indicating boundaries from both sides (left and right)
-        { ...boundary, xaxis: { from, to: from } },
-        { ...boundary, xaxis: { from: to, to } },
-      ];
-    };
-
-    const markingsFromAnnotations = () => {
-      const { annotations } = this.props;
-
-      if (!annotations?.length) {
-        return [];
-      }
-
-      return annotations.map((a) => ({
-        xaxis: {
-          // TODO(eh-am): look this up
-          from: a.timestamp * 1000,
-          to: a.timestamp * 1000,
-        },
-        lineWidth: '2px',
-        color: Color('#2ecc40'),
-      }));
-    };
-
-    const markingsFromSelection = () => {
-      const { selection } = this.props;
-
-      if (selection) {
-        return [
-          selection.left && constructSelection(selection.left),
-          selection.right && constructSelection(selection.right),
-        ]
-          .flat()
-          .filter((a) => !!a);
-      }
-
-      return [];
-    };
-
-    return markingsFromSelection().concat(markingsFromAnnotations());
+    return selectionMarkings.concat(annotationsMarkings);
   };
 
   setOnHoverDisplayTooltip = (
