@@ -281,10 +281,9 @@ class TimelineChartWrapper extends React.Component<
       ({ data, color, tagName }) => {
         return {
           data: centerTimelineData({ data }),
+          tagName,
           color:
-            activeGroup && activeGroup !== tagName
-              ? color?.fade(0.75).string()
-              : color?.string(),
+            activeGroup && activeGroup !== tagName ? color?.fade(0.75) : color,
         };
       }
     );
