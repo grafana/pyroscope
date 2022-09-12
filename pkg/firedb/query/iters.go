@@ -3,6 +3,7 @@ package query
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"sync"
@@ -875,12 +876,13 @@ type RowGetter interface {
 	RowNumber() int64
 }
 
-type RowNumberIterator[T RowGetter] struct {
+type RowNumberIterator[T any] struct {
 	iter.Iterator[T]
 	current *IteratorResult
+	err     error
 }
 
-func NewRowNumberIterator[T RowGetter](iter iter.Iterator[T]) *RowNumberIterator[T] {
+func NewRowNumberIterator[T any](iter iter.Iterator[T]) *RowNumberIterator[T] {
 	return &RowNumberIterator[T]{
 		Iterator: iter,
 	}
@@ -892,7 +894,14 @@ func (r *RowNumberIterator[T]) Next() bool {
 	}
 	r.current = columnIteratorResultPoolGet()
 	r.current.Reset()
-	r.current.RowNumber = RowNumber{r.Iterator.At().RowNumber(), -1, -1, -1, -1, -1}
+	rowGetter, ok := any(r.Iterator.At()).(RowGetter)
+	if !ok {
+		if r.err == nil {
+			r.err = fmt.Errorf("row number iterator: %T does not implement RowGetter", r.Iterator.At())
+		}
+		return false
+	}
+	r.current.RowNumber = RowNumber{rowGetter.RowNumber(), -1, -1, -1, -1, -1}
 	r.current.Entries = append(r.current.Entries, struct {
 		k        string
 		v        pq.Value
@@ -905,6 +914,13 @@ func (r *RowNumberIterator[T]) Next() bool {
 
 func (r *RowNumberIterator[T]) At() *IteratorResult {
 	return r.current
+}
+
+func (r *RowNumberIterator[T]) Err() error {
+	if r.err != nil {
+		return r.err
+	}
+	return r.Iterator.Err()
 }
 
 func (r *RowNumberIterator[T]) Seek(to RowNumberWithDefinitionLevel) bool {

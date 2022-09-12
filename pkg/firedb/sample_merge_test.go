@@ -135,7 +135,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			q := NewBlockQuerier(log.NewNopLogger(), b)
 			require.NoError(t, q.Sync(context.Background()))
 
-			merger, err := q.queriers[0].SelectMerge(ctx, &ingesterv1.SelectProfilesRequest{
+			stacktraces, err := q.queriers[0].BatchMergeStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
 				Type: &commonv1.ProfileType{
 					Name:       "process_cpu",
@@ -146,12 +146,132 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				},
 				Start: int64(model.TimeFromUnixNano(0)),
 				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
-			})
+			}, 1024, keepAll)
 			require.NoError(t, err)
-			profiles := merger.SelectedProfiles()
-			stacktraces, err := merger.MergeByStacktraces(profiles)
-			require.NoError(t, err)
+
 			testhelper.EqualProto(t, tc.expected, stacktraces)
+		})
+	}
+}
+
+func keepAll(ps []Profile) (Keep, error) {
+	res := make([]bool, len(ps))
+	for i := range res {
+		res[i] = true
+	}
+	return res, nil
+}
+
+func TestMergeBatchResponse(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		in       []*ingestv1.MergeProfilesStacktracesResult
+		expected *ingestv1.MergeProfilesStacktracesResult
+	}{
+		{
+			name: "empty",
+			in:   []*ingestv1.MergeProfilesStacktracesResult{},
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces:   nil,
+				FunctionNames: nil,
+			},
+		},
+		{
+			name: "single",
+			in: []*ingestv1.MergeProfilesStacktracesResult{
+				{
+					Stacktraces: []*ingestv1.StacktraceSample{
+						{
+							FunctionIds: []int32{0, 1},
+							Value:       1,
+						},
+						{
+							FunctionIds: []int32{0, 1, 2},
+							Value:       3,
+						},
+					},
+					FunctionNames: []string{"my", "other", "stack"},
+				},
+			},
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
+					{
+						FunctionIds: []int32{0, 1},
+						Value:       1,
+					},
+					{
+						FunctionIds: []int32{0, 1, 2},
+						Value:       3,
+					},
+				},
+				FunctionNames: []string{"my", "other", "stack"},
+			},
+		},
+		{
+			name: "multiple",
+			in: []*ingestv1.MergeProfilesStacktracesResult{
+				{
+					Stacktraces: []*ingestv1.StacktraceSample{
+						{
+							FunctionIds: []int32{0, 1},
+							Value:       1,
+						},
+						{
+							FunctionIds: []int32{0, 1, 2},
+							Value:       3,
+						},
+						{
+							FunctionIds: []int32{3},
+							Value:       4,
+						},
+					},
+					FunctionNames: []string{"my", "other", "stack", "foo"},
+				},
+				{
+					Stacktraces: []*ingestv1.StacktraceSample{
+						{
+							FunctionIds: []int32{0, 1},
+							Value:       1,
+						},
+						{
+							FunctionIds: []int32{0, 1, 2},
+							Value:       3,
+						},
+						{
+							FunctionIds: []int32{3},
+							Value:       5,
+						},
+					},
+					FunctionNames: []string{"my", "other", "stack", "bar"},
+				},
+			},
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
+					{
+						FunctionIds: []int32{0, 1},
+						Value:       2,
+					},
+					{
+						FunctionIds: []int32{0, 1, 2},
+						Value:       6,
+					},
+					{
+						FunctionIds: []int32{3},
+						Value:       4,
+					},
+					{
+						FunctionIds: []int32{4},
+						Value:       5,
+					},
+				},
+				FunctionNames: []string{"my", "other", "stack", "foo", "bar"},
+			},
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			res := mergeBatchMergeStacktraces(tc.in...)
+			testhelper.EqualProto(t, tc.expected, res)
 		})
 	}
 }
