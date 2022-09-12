@@ -123,6 +123,12 @@ class TimelineChartWrapper extends React.Component<
       grid: {
         borderWidth: 1, // outside border of the timelines
         hoverable: true,
+
+        // For the contextMenu plugin to work. From the docs:
+        // > If you set “clickable” to true, the plot will listen for click events
+        //   on the plot area and fire a “plotclick” event on the placeholder with
+        //   a position and a nearby data item object as parameters.
+        clickable: true,
       },
       yaxis: {
         show: false,
