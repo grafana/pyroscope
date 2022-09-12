@@ -244,6 +244,13 @@ function TagExplorerView() {
             .unwrapOr('Tag Breakdown')}`}
         >
           <div className={styles.statisticsBox}>
+            <div className={styles.pieChartWrapper}>
+              {filteredGroupsData?.length ? (
+                <TotalSamplesChart filteredGroupsData={filteredGroupsData} />
+              ) : (
+                <LoadingSpinner />
+              )}
+            </div>
             <Table
               appName={appName.unwrapOr('')}
               whereDropdownItems={whereDropdownItems}
@@ -253,13 +260,6 @@ function TagExplorerView() {
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={type === 'loading'}
             />
-            <div className={styles.pieChartWrapper}>
-              {filteredGroupsData?.length ? (
-                <TotalSamplesChart filteredGroupsData={filteredGroupsData} />
-              ) : (
-                <LoadingSpinner />
-              )}
-            </div>
           </div>
         </CollapseBox>
         <Box>
