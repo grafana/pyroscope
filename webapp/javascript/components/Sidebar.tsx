@@ -240,7 +240,7 @@ export function SidebarComponent() {
                 active={isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE)}
                 icon={<Icon icon={faWindowMaximize} />}
               >
-                Single exemplars
+                Exemplars
                 <NavLink
                   activeClassName="active-route"
                   to={{ pathname: PAGES.TRACING_EXEMPLARS_SINGLE, search }}
