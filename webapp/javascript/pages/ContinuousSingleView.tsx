@@ -102,11 +102,11 @@ function ContinuousSingleView() {
   };
 
   // TODO(eh-am): remove this
-  const annotationsCount = 100;
+  const annotationsCount = 10;
   // Generate one annotation every minute
   const annotations = Array.from(Array(annotationsCount).keys()).map((i) => {
     return {
-      timestamp: new Date(Date.now() - 1000 * 60 * i).getTime() / 1000,
+      timestamp: new Date(Date.now() - 1000 * 60 * 10 * i).getTime() / 1000,
       content: `annotation #${i}`,
     };
   });
@@ -129,6 +129,11 @@ function ContinuousSingleView() {
             }
             annotations={annotations}
             selectionType="single"
+            onHoverDisplayTooltip={(props) => {
+              if (props.values[0].closest[1]) {
+                return <div>{props.timeLabel}</div>;
+              }
+            }}
           />
         </Box>
         <Box>{flamegraphRenderer}</Box>

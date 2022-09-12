@@ -10,6 +10,7 @@ import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/Explo
 import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
+import Annotation from './Annotation';
 import styles from './TimelineChartWrapper.module.css';
 import { markingsFromAnnotations, markingsFromSelection } from './markings';
 
@@ -80,7 +81,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
 
   /** list of annotations timestamp, to be rendered as markings */
-  annotations?: { timestamp: number }[];
+  annotations?: { timestamp: number; content: string }[];
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -215,17 +216,42 @@ class TimelineChartWrapper extends React.Component<
   setOnHoverDisplayTooltip = (
     data: ITooltipWrapperProps & ExploreTooltipProps
   ) => {
+    const tooltipContent = [];
+
     const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
       this.props?.onHoverDisplayTooltip;
 
     if (TooltipBody) {
+      tooltipContent.push(
+        <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+      );
+    }
+
+    // convert to the format we are expecting
+    const annotations =
+      this.props.annotations?.map((a) => ({
+        ...a,
+        timestamp: a.timestamp * 1000,
+      })) || [];
+
+    if (this.props.annotations) {
+      tooltipContent.push(
+        <Annotation
+          values={data.values}
+          timeLabel={data.timeLabel}
+          annotations={annotations}
+        />
+      );
+    }
+
+    if (tooltipContent.length) {
       return (
         <TooltipWrapper
           align={data.align}
           pageY={data.pageY}
           pageX={data.pageX}
         >
-          <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+          {tooltipContent.map((tooltipBody) => tooltipBody)}
         </TooltipWrapper>
       );
     }
@@ -239,10 +265,9 @@ class TimelineChartWrapper extends React.Component<
     const { timezone } = this.props;
 
     // TODO: unify with renderSingle
-    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
-      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
-          this.setOnHoverDisplayTooltip(data)
-      : null;
+    const onHoverDisplayTooltip = (
+      data: ITooltipWrapperProps & ExploreTooltipProps
+    ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
       ...flotOptions,
@@ -285,10 +310,9 @@ class TimelineChartWrapper extends React.Component<
     timelineB = timelineB ? JSON.parse(JSON.stringify(timelineB)) : undefined;
 
     // TODO: unify with renderMultiple
-    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
-      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
-          this.setOnHoverDisplayTooltip(data)
-      : null;
+    const onHoverDisplayTooltip = (
+      data: ITooltipWrapperProps & ExploreTooltipProps
+    ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
       ...flotOptions,
