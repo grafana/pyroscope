@@ -17,7 +17,7 @@
 // TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 // THIS SOFTWARE.
 import { css } from '@emotion/css';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWindowSize } from 'react-use';
 
 import { DataFrame } from '@grafana/data';
@@ -33,6 +33,8 @@ import {
   PIXELS_PER_LEVEL,
   STEP_OFFSET,
 } from '../constants';
+import FlameGraphTooltip, { getTooltipData } from './FlameGraphTooltip';
+import { TooltipData } from './types';
 
 type Props = {
   data: DataFrame;
@@ -60,15 +62,19 @@ const FlameGraph = ({
   const levels = useLevels(data);
   const names = data.meta!.custom!.Names;
   const totalTicks = data.meta!.custom!.Total;
+  const profileTypeId = data.meta!.custom!.ProfileTypeID;
 
   const { width: windowWidth } = useWindowSize();
   const graphRef = useRef<HTMLCanvasElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipData, setTooltipData] = useState<TooltipData>();
+  const [showTooltip, setShowTooltip] = useState(false);
 
   // get the x coordinate of the bar i.e. where it starts on the vertical plane
   const getBarX = useCallback(
-    (accumulatedTicks: number, pixelsPerTick: number) => {
+    (offset: number, pixelsPerTick: number) => {
       // totalTicks * rangeMin is essentially the range of ticks for this bar
-      return (accumulatedTicks - totalTicks * rangeMin) * pixelsPerTick;
+      return (offset - totalTicks * rangeMin) * pixelsPerTick;
     },
     [rangeMin, totalTicks]
   );
@@ -135,7 +141,7 @@ const FlameGraph = ({
     if (!levels) {return;}
     const ctx = graphRef.current?.getContext('2d')!;
     const graph = graphRef.current!;
-    let level, barX, curBarTicks, collapsed, width, name, queryResult, intensity, h, l;
+    let level, barX, total, collapsed, width, name, queryResult, intensity, h, l;
     
     graph.height = PIXELS_PER_LEVEL * (levels.length);
     graph.width = graph.clientWidth;
@@ -149,29 +155,29 @@ const FlameGraph = ({
       for (let barIndex = 0; barIndex < level.length; barIndex += STEP_OFFSET) {
         // level[barIndex] is the accumulated bar ticks
         barX = getBarX(level[barIndex], pixelsPerTick);
-        curBarTicks = level[barIndex + 1];
+        total = level[barIndex + 1];
 
         // merge very small blocks into big "collapsed" ones for performance
-        collapsed = curBarTicks * pixelsPerTick <= COLLAPSE_THRESHOLD;
+        collapsed = total * pixelsPerTick <= COLLAPSE_THRESHOLD;
         if (collapsed) {
           while (
             barIndex < level.length - STEP_OFFSET &&
-            level[barIndex] + curBarTicks === level[barIndex + STEP_OFFSET] &&
+            level[barIndex] + total === level[barIndex + STEP_OFFSET] &&
             level[barIndex + STEP_OFFSET + 1] * pixelsPerTick <= COLLAPSE_THRESHOLD
           ) {
             barIndex += STEP_OFFSET;
-            curBarTicks += level[barIndex + 1];
+            total += level[barIndex + 1];
           }
         }
 
-        width = curBarTicks * pixelsPerTick - (collapsed ? 0 : BAR_BORDER_WIDTH * 2);
+        width = total * pixelsPerTick - (collapsed ? 0 : BAR_BORDER_WIDTH * 2);
         if (width < HIDE_THRESHOLD) {continue;}
 
         ctx.beginPath();                
         ctx.rect(barX + (collapsed ? 0 : BAR_BORDER_WIDTH), levelIndex * PIXELS_PER_LEVEL, width, PIXELS_PER_LEVEL);
 
         //  / (rangeMax - rangeMin) here so when you click a bar it will adjust the top (clicked)bar to the most 'intense' color
-        intensity = Math.min(1, (curBarTicks / totalTicks) / (rangeMax - rangeMin));
+        intensity = Math.min(1, (total / totalTicks) / (rangeMax - rangeMin));
         h = 50 - (50 * intensity);
         l = 65 + (7 * intensity);
 
@@ -205,7 +211,7 @@ const FlameGraph = ({
   useEffect(() => {
     if (graphRef.current) {
       const pixelsPerTick = graphRef.current.clientWidth / totalTicks / (rangeMax - rangeMin);
-      render(pixelsPerTick);        
+      render(pixelsPerTick);       
 
       graphRef.current.onclick = (e) => {
         const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
@@ -217,10 +223,34 @@ const FlameGraph = ({
           setRangeMax((levels[levelIndex][barIndex] + levels[levelIndex][barIndex + 1]) / totalTicks);
         }
       };
+
+      graphRef.current!.onmousemove = (e) => {
+        if (tooltipRef.current) {
+          setShowTooltip(false);
+          const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
+          const {levelIndex, barIndex} = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
+
+          if (!isNaN(levelIndex) && !isNaN(barIndex)) {
+            if (barIndex !== -1) {
+              tooltipRef.current.style.left = (e.clientX + 10) + "px";
+              tooltipRef.current.style.top = (e.clientY + 40) + "px";
+              
+              const tooltipData = getTooltipData(profileTypeId, names, levels, totalTicks, levelIndex, barIndex); 
+              setTooltipData(tooltipData);
+              setShowTooltip(true);
+            }
+          }
+        }
+      }
+
+      graphRef.current!.onmouseleave = () => {
+        setShowTooltip(false);
+      };
     }
   }, [
     render,
     convertPixelCoordinatesToBarCoordinates,
+    profileTypeId,
     levels,
     names,
     rangeMin,
@@ -234,7 +264,15 @@ const FlameGraph = ({
   ]);
 
   return (
-    <canvas className={styles.graph} ref={graphRef}  data-testid="flamegraph"/>
+    <>
+      <canvas className={styles.graph} ref={graphRef}  data-testid="flamegraph"/>
+      
+      <FlameGraphTooltip
+        tooltipRef={tooltipRef}
+        tooltipData={tooltipData!}
+        showTooltip={showTooltip}
+      />
+    </>
   );
 };
 

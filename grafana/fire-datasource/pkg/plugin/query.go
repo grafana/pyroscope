@@ -37,7 +37,7 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 		response.Error = err
 		return response
 	}
-	frame, err := responseToDataFrames(resp)
+	frame, err := responseToDataFrames(resp, qm.ProfileTypeID)
 	if err != nil {
 		response.Error = err
 		return response
@@ -90,9 +90,10 @@ func makeRequest(qm queryModel, query backend.DataQuery) *connect.Request[querie
 }
 
 type CustomMeta struct {
-	Names   []string
-	Total   int64
-	MaxSelf int64
+	Names         []string
+	Total         int64
+	MaxSelf       int64
+	ProfileTypeID string
 }
 
 // responseToDataFrames turns fire response to data.Frame. At this point this transform is very simple, each
@@ -100,7 +101,7 @@ type CustomMeta struct {
 // can have variable number of values but in data.Frame each column needs to have the same number of values.
 // In addition, Names, Total, MaxSelf is added to Meta.Custom which may not be the best practice so needs to be
 // evaluated later on
-func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktracesResponse]) (*data.Frame, error) {
+func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktracesResponse], profileTypeID string) (*data.Frame, error) {
 	frame := data.NewFrame("response")
 	frame.Meta = &data.FrameMeta{PreferredVisualization: "flamegraph"}
 
@@ -115,9 +116,10 @@ func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktrace
 	}
 	frame.Fields = []*data.Field{levelsField}
 	frame.Meta.Custom = CustomMeta{
-		Names:   resp.Msg.Flamegraph.Names,
-		Total:   resp.Msg.Flamegraph.Total,
-		MaxSelf: resp.Msg.Flamegraph.MaxSelf,
+		Names:         resp.Msg.Flamegraph.Names,
+		Total:         resp.Msg.Flamegraph.Total,
+		MaxSelf:       resp.Msg.Flamegraph.MaxSelf,
+		ProfileTypeID: profileTypeID,
 	}
 	return frame, nil
 }
