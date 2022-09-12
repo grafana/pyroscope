@@ -374,7 +374,7 @@ class TimelineChartWrapper extends React.Component<
   };
 
   timelineChart = (
-    data: ({ data: number[][]; color?: string } | undefined)[],
+    data: ({ data: number[][]; color?: string | Color } | undefined)[],
     customFlotOptions: ShamefulAny
   ) => {
     return (
