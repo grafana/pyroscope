@@ -53,13 +53,14 @@ func Test_responseToDataFrames(t *testing.T) {
 			},
 		},
 	}
-	frame, err := responseToDataFrames(resp)
+	frame, err := responseToDataFrames(resp, "memory:alloc_objects:count:space:bytes")
 	require.NoError(t, err)
 	require.Equal(t, []string{"func1", "func2", "func3"}, frame.Meta.Custom.(CustomMeta).Names)
 	require.Equal(t, int64(123), frame.Meta.Custom.(CustomMeta).MaxSelf)
 	require.Equal(t, int64(987), frame.Meta.Custom.(CustomMeta).Total)
 	require.Equal(t, 1, len(frame.Fields))
 	require.Equal(t, data.NewField("levels", nil, []string{"[1,2,3,4]", "[5,6,7,8,9]"}), frame.Fields[0])
+	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
 }
 
 type FakeClient struct {
@@ -71,6 +72,10 @@ func (f FakeClient) ProfileTypes(ctx context.Context, c *connect.Request[querier
 }
 
 func (f FakeClient) LabelValues(ctx context.Context, c *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
+	panic("implement me")
+}
+
+func (f FakeClient) LabelNames(context.Context, *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
 	panic("implement me")
 }
 
