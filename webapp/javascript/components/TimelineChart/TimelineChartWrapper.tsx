@@ -78,6 +78,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
+
+  /** list of annotations timestamp, to be rendered as markings */
+  annotations?: { timestamp: number }[];
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -187,7 +190,10 @@ class TimelineChartWrapper extends React.Component<
   }
 
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
-    if (prevProps.selection !== this.props.selection) {
+    if (
+      prevProps.selection !== this.props.selection ||
+      prevProps.annotations !== this.props.annotations
+    ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
       this.setState({ flotOptions: newFlotOptions });
