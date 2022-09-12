@@ -19,12 +19,12 @@ var (
 	})
 	sampleField = fireparquet.Group{
 		fireparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("Values", parquet.List(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
+		fireparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 		fireparquet.NewGroupField("Labels", pprofLabels),
 	}
 	profilesSchema = parquet.NewSchema("Profile", fireparquet.Group{
 		fireparquet.NewGroupField("ID", parquet.UUID()),
-		fireparquet.NewGroupField("SeriesRefs", parquet.List(parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked))),
+		fireparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		fireparquet.NewGroupField("Samples", parquet.List(sampleField)),
 		fireparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
 		fireparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
@@ -38,7 +38,7 @@ var (
 
 type Sample struct {
 	StacktraceID uint64             `parquet:",delta"`
-	Values       []int64            `parquet:",list"`
+	Value        int64              `parquet:",delta"`
 	Labels       []*profilev1.Label `parquet:",list"`
 }
 
@@ -46,8 +46,15 @@ type Profile struct {
 	// A unique UUID per ingested profile
 	ID uuid.UUID `parquet:",uuid"`
 
-	// SeriesRefs reference the underlying series in the TSDB index
-	SeriesRefs []model.Fingerprint `parquet:",list"`
+	// SeriesIndex references the underlying series and is generated when
+	// writing the TSDB index. The SeriesIndex is different from block to
+	// block.
+	SeriesIndex uint32 `parquet:",delta"`
+
+	// SeriesFingerprint references the underlying series and is purely based
+	// on the label values. The value is consistent for the same label set (so
+	// also between different blocks).
+	SeriesFingerprint model.Fingerprint `parquet:"-"`
 
 	// The set of samples recorded in this profile.
 	Samples []*Sample `parquet:",list"`
@@ -83,9 +90,9 @@ func (*ProfilePersister) Schema() *parquet.Schema {
 
 func (*ProfilePersister) SortingColumns() SortingColumns {
 	return parquet.SortingColumns(
-		parquet.Ascending("SeriesRefs", "list", "element"),
+		parquet.Ascending("SeriesIndex"),
 		parquet.Ascending("TimeNanos"),
-		parquet.Ascending("Samples", "list", "element", "StacktraceIDs"),
+		parquet.Ascending("Samples", "list", "element", "StacktraceID"),
 	)
 }
 

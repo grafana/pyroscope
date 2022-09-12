@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/prometheus/common/model"
 	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,18 +86,18 @@ func TestStringsRoundTrip(t *testing.T) {
 func newProfiles() []*Profile {
 	return []*Profile{
 		{
-			ID:         uuid.MustParse("00000000-0000-0000-0000-000000000001"),
-			TimeNanos:  1001,
-			SeriesRefs: []model.Fingerprint{0xaa, 0xab},
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			TimeNanos:   1001,
+			SeriesIndex: 0xaa,
 			Samples: []*Sample{
 				{
 					StacktraceID: 0xba,
-					Values:       []int64{0xca, 0xcc},
+					Value:        0xca,
 					Labels:       []*profilev1.Label{},
 				},
 				{
 					StacktraceID: 0xbb,
-					Values:       []int64{0xca, 0xcc},
+					Value:        0xca,
 					Labels: []*profilev1.Label{
 						{Key: 0xda, Str: 0xea},
 					},
@@ -107,13 +106,46 @@ func newProfiles() []*Profile {
 			Comments: []int64{},
 		},
 		{
-			ID:         uuid.MustParse("00000000-0000-0000-0000-000000000002"),
-			SeriesRefs: []model.Fingerprint{0xab, 0xac},
-			TimeNanos:  1002,
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			TimeNanos:   1001,
+			SeriesIndex: 0xab,
+			Samples: []*Sample{
+				{
+					StacktraceID: 0xba,
+					Value:        0xcc,
+					Labels:       []*profilev1.Label{},
+				},
+				{
+					StacktraceID: 0xbb,
+					Value:        0xcc,
+					Labels: []*profilev1.Label{
+						{Key: 0xda, Str: 0xea},
+					},
+				},
+			},
+			Comments: []int64{},
+		},
+		{
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000002"),
+			SeriesIndex: 0xab,
+			TimeNanos:   1002,
 			Samples: []*Sample{
 				{
 					StacktraceID: 0xbc,
-					Values:       []int64{0xcd, 0xce},
+					Value:        0xcd,
+					Labels:       []*profilev1.Label{},
+				},
+			},
+			Comments: []int64{},
+		},
+		{
+			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000002"),
+			SeriesIndex: 0xac,
+			TimeNanos:   1002,
+			Samples: []*Sample{
+				{
+					StacktraceID: 0xbc,
+					Value:        0xce,
 					Labels:       []*profilev1.Label{},
 				},
 			},
