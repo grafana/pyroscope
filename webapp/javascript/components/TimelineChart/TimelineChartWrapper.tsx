@@ -245,7 +245,7 @@ class TimelineChartWrapper extends React.Component<
           to: a.timestamp * 1000,
         },
         lineWidth: '2px',
-        color: 'red',
+        color: Color('#2ecc40'),
       }));
     };
 
