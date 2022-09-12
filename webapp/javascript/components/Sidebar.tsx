@@ -60,7 +60,8 @@ export function SidebarComponent() {
       route === PAGES.CONTINOUS_SINGLE_VIEW ||
       route === PAGES.COMPARISON_VIEW ||
       route === PAGES.ADHOC_COMPARISON ||
-      route === PAGES.TRACING
+      route === PAGES.TRACING_EXEMPLARS_SINGLE ||
+      route === PAGES.TRACING_EXEMPLARS_MERGE
     ) {
       return pathname === route;
     }
@@ -82,7 +83,7 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON,
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
-          PAGES.TRACING,
+          PAGES.TRACING_EXEMPLARS_MERGE,
           PAGES.TRACING_EXEMPLARS_SINGLE,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
@@ -105,7 +106,7 @@ export function SidebarComponent() {
     isRouteActive(PAGES.ADHOC_COMPARISON) ||
     isRouteActive(PAGES.ADHOC_COMPARISON_DIFF);
   const isTracingActive =
-    isRouteActive(PAGES.TRACING) ||
+    isRouteActive(PAGES.TRACING_EXEMPLARS_MERGE) ||
     isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE);
   const isSettingsActive = isRouteActive(PAGES.SETTINGS);
 
@@ -248,13 +249,13 @@ export function SidebarComponent() {
                 />
               </MenuItem>
               <MenuItem
-                active={isRouteActive(PAGES.TRACING)}
+                active={isRouteActive(PAGES.TRACING_EXEMPLARS_MERGE)}
                 icon={<Icon icon={faWindowMaximize} />}
               >
-                Single View
+                Merge Exemplars
                 <NavLink
                   activeClassName="active-route"
-                  to={{ pathname: PAGES.TRACING, search }}
+                  to={{ pathname: PAGES.TRACING_EXEMPLARS_MERGE, search }}
                   exact
                 />
               </MenuItem>

@@ -31,7 +31,7 @@ import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
 import TracingSingleView from './pages/TracingSingleView';
-import ExemplarsSingleView from './pages/tracing/ExemplarsSingleView';
+import ExemplarsSingleView from './pages/ExemplarsSingleView';
 
 function App() {
   return (
@@ -66,7 +66,7 @@ function App() {
               </Continuous>
             </Protected>
           </Route>
-          <Route path={PAGES.TRACING}>
+          <Route path={PAGES.TRACING_EXEMPLARS_MERGE}>
             <Protected>
               <Continuous>
                 <TracingSingleView />
