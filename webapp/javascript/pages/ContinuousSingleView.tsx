@@ -101,6 +101,16 @@ function ContinuousSingleView() {
     }
   };
 
+  // TODO(eh-am): remove this
+  const annotationsCount = 100;
+  // Generate one annotation every minute
+  const annotations = Array.from(Array(annotationsCount).keys()).map((i) => {
+    return {
+      timestamp: new Date(Date.now() - 1000 * 60 * i).getTime() / 1000,
+      content: `annotation #${i}`,
+    };
+  });
+
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
@@ -117,6 +127,7 @@ function ContinuousSingleView() {
             title={
               <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
             }
+            annotations={annotations}
             selectionType="single"
           />
         </Box>

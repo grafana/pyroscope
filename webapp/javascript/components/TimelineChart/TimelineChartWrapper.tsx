@@ -231,18 +231,40 @@ class TimelineChartWrapper extends React.Component<
       ];
     };
 
-    const { selection } = this.props;
+    const markingsFromAnnotations = () => {
+      const { annotations } = this.props;
 
-    if (selection) {
-      return [
-        selection.left && constructSelection(selection.left),
-        selection.right && constructSelection(selection.right),
-      ]
-        .flat()
-        .filter((a) => !!a);
-    }
+      if (!annotations?.length) {
+        return [];
+      }
 
-    return [];
+      return annotations.map((a) => ({
+        xaxis: {
+          // TODO(eh-am): look this up
+          from: a.timestamp * 1000,
+          to: a.timestamp * 1000,
+        },
+        lineWidth: '2px',
+        color: 'red',
+      }));
+    };
+
+    const markingsFromSelection = () => {
+      const { selection } = this.props;
+
+      if (selection) {
+        return [
+          selection.left && constructSelection(selection.left),
+          selection.right && constructSelection(selection.right),
+        ]
+          .flat()
+          .filter((a) => !!a);
+      }
+
+      return [];
+    };
+
+    return markingsFromSelection().concat(markingsFromAnnotations());
   };
 
   setOnHoverDisplayTooltip = (
