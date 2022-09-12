@@ -12,6 +12,7 @@ import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
+import { ContextMenuProps } from './ContextMenu.plugin';
 
 export interface TimelineGroupData {
   data: Group;
@@ -75,6 +76,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
+  ContextMenu?: React.FC<ContextMenuProps>;
 };
 
 class TimelineChartWrapper extends React.Component<

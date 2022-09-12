@@ -1,5 +1,4 @@
 import 'flot';
-//import * as flot from 'flot';
 
 // @types/flot only exposes plotOptions
 // but flot in fact exposes more parameters to us
