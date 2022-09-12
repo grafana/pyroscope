@@ -1,6 +1,10 @@
 import React from 'react';
 import ReactFlot from 'react-flot';
 import Color from 'color';
+import TooltipWrapper, {
+  ITooltipWrapperProps,
+} from '@webapp/components/TimelineChart/TooltipWrapper';
+import { PieChartTooltipProps } from '../PieChartTooltip';
 import styles from './styles.module.scss';
 import 'react-flot/flot/jquery.flot.pie';
 import './Interactivity.plugin';
@@ -16,23 +20,47 @@ interface PieChartProps {
   width: string;
   height: string;
   id: string;
+  onHoverTooltip?: React.FC<PieChartTooltipProps>;
 }
 
-const PieChart = ({ data, width, height, id }: PieChartProps) => {
+const setOnHoverDisplayTooltip = (
+  data: PieChartTooltipProps & ITooltipWrapperProps,
+  onHoverTooltip: React.FC<PieChartTooltipProps>
+) => {
+  const TooltipBody = onHoverTooltip;
+
+  if (TooltipBody) {
+    return (
+      <TooltipWrapper align={data.align} pageY={data.pageY} pageX={data.pageX}>
+        <TooltipBody
+          value={data.value}
+          label={data.label}
+          percent={data.percent}
+        />
+      </TooltipWrapper>
+    );
+  }
+
+  return null;
+};
+
+const PieChart = ({
+  data,
+  width,
+  height,
+  id,
+  onHoverTooltip,
+}: PieChartProps) => {
   const options = {
     series: {
       pie: {
         show: true,
         radius: 1,
         stroke: {
-          width: 0.5,
-          color: 'var(--ps-ui-foreground)',
+          width: 0,
         },
         label: {
-          show: true,
-          radius: 0.7,
-          formatter: (name: string) => name,
-          threshold: 0,
+          show: false,
         },
       },
     },
@@ -41,8 +69,12 @@ const PieChart = ({ data, width, height, id }: PieChartProps) => {
     },
     grid: {
       hoverable: true,
-      clickable: true,
+      clickable: false,
     },
+    pieChartTooltip: onHoverTooltip
+      ? (tooltipData: PieChartTooltipProps & ITooltipWrapperProps) =>
+          setOnHoverDisplayTooltip(tooltipData, onHoverTooltip)
+      : null,
   };
 
   return (
