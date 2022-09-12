@@ -68,7 +68,7 @@ function constructSelection(
   return [
     {
       xaxis: { from, to },
-      color: selectionType === 'double' ? m.overlayColor : Color('NOOP'),
+      color: selectionType === 'double' ? m.overlayColor : Color('transparent'),
     },
 
     // A single vertical line indicating boundaries from both sides (left and right)
@@ -85,14 +85,13 @@ export function markingsFromSelection(
   left?: Selection,
   right?: Selection
 ): FlotMarkings {
-  const res: FlotMarkings = [];
+  let res: FlotMarkings = [];
 
   if (left) {
-    res.concat(constructSelection(left, selectionType));
+    res = res.concat(constructSelection(left, selectionType));
   }
   if (right) {
-    res.concat(constructSelection(right, selectionType));
+    res = res.concat(constructSelection(right, selectionType));
   }
-
   return res;
 }
