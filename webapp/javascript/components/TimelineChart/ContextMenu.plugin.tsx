@@ -12,7 +12,7 @@ export interface ContextMenuProps {
   click: {
     /** The X position in the window where the click originated */
     pageX: number;
-    /** The X position in the window where the click originated */
+    /** The Y position in the window where the click originated */
     pageY: number;
   };
   timestamp: number;
