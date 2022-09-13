@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.38.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.4...@pyroscope/webapp@1.38.5) (2022-09-13)
+
+
+### Bug Fixes
+
+* **webapp:** CollapseBox overflow ([#1490](https://github.com/pyroscope-io/pyroscope/issues/1490)) ([0af9f1d](https://github.com/pyroscope-io/pyroscope/commit/0af9f1d0ec3f18f2b4cb366eb0b8afda3e2e8de5))
+
+
+
+
+
 ## [1.38.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.3...@pyroscope/webapp@1.38.4) (2022-09-12)
 
 **Note:** Version bump only for package @pyroscope/webapp
