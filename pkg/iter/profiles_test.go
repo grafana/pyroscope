@@ -65,3 +65,5 @@ func TestSortProfiles(t *testing.T) {
 		{labels: cLabels, timestamp: 3},
 	}, actual)
 }
+
+// todo test timedRangeIterator

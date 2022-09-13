@@ -605,7 +605,6 @@ func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectPr
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		defer selection.Close()
-	Outer:
 		for {
 			// build a batch of profiles
 			batch = batch[:0]
@@ -620,7 +619,7 @@ func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectPr
 				return profilesIt.Err()
 			}
 			if len(batch) == 0 {
-				break Outer
+				return nil
 			}
 			keep, err := fnOnBatch(batch)
 			if err != nil {
@@ -634,7 +633,6 @@ func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectPr
 			}
 			selection.Push(selected)
 		}
-		return nil
 	})
 	var res *ingestv1.MergeProfilesStacktracesResult
 	g.Go(func() error {
@@ -652,6 +650,7 @@ func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectPr
 type ProfileSelectorIterator struct {
 	batch   chan []Profile
 	current iter.Iterator[Profile]
+	once    sync.Once
 }
 
 func NewProfileSelectorIterator() *ProfileSelectorIterator {
@@ -690,7 +689,9 @@ func (it *ProfileSelectorIterator) At() Profile {
 }
 
 func (it *ProfileSelectorIterator) Close() error {
-	close(it.batch)
+	it.once.Do(func() {
+		close(it.batch)
+	})
 	return nil
 }
 

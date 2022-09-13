@@ -126,6 +126,7 @@ func (it *TimeRangedIterator[T]) Next() bool {
 		if it.At().Timestamp() > it.max {
 			return false
 		}
+		return true
 	}
-	return true
+	return false
 }

@@ -201,6 +201,8 @@ func (f *Fire) initServer() (services.Service, error) {
 	prometheus.MustRegister(version.NewCollector("fire"))
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("fire_", f.reg)
+	// todo figure why this is locking the bidi stream
+	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
 		return nil, err
