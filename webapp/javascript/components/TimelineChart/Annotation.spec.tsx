@@ -56,17 +56,21 @@ describe('AnnotationTooltipBody', () => {
     it('renders the closest annotation', () => {
       const annotations = [
         {
-          timestamp: 1663000000,
+          timestamp: 1663000010,
           content: 'annotation 1',
         },
+        {
+          timestamp: 1663000009,
+          content: 'annotation closest',
+        },
       ];
-      const values = [{ closest: [1663000000 + THRESHOLD - 1] }];
+      const values = [{ closest: [1663000000] }];
 
       render(
         <AnnotationTooltipBody values={values} annotations={annotations} />
       );
 
-      expect(screen.queryByText(/annotation 1/i)).toBeInTheDocument();
+      expect(screen.queryByText(/annotation closest/i)).toBeInTheDocument();
     });
   });
 });

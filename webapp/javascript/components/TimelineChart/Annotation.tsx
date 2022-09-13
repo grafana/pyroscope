@@ -62,13 +62,21 @@ function getClosestTimestamp(values?: { closest: number[] }[]): Maybe<number> {
   return Maybe.of(values[0].closest[0]);
 }
 
+// TODO(eh-am): threshold does not account for different time ranges
+// we need to scale based on resolution (1 hour, 3 hours etc)
 function getClosestAnnotation(
   annotations: { timestamp: number; content: string }[],
   timestamp: number
 ) {
-  const f = annotations.find(
-    (a) => Math.abs(a.timestamp - timestamp) < THRESHOLD
-  );
+  // Create a score based on how distant it is from the timestamp
+  // Then get the first value (the closest to the timestamp)
+  const f = annotations
+    .map((a) => ({
+      ...a,
+      score: Math.abs(a.timestamp - timestamp),
+    }))
+    .filter((a) => a.score < THRESHOLD)
+    .sort((a, b) => a.score - b.score);
 
-  return Maybe.of(f);
+  return Maybe.of(f[0]);
 }
