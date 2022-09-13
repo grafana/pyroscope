@@ -123,8 +123,8 @@ $pieChartWidth: 320px;
 
 .pieChartWrapper {
   width: $pieChartWidth;
-  height: $pieChartWidth;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 47px;
 }
