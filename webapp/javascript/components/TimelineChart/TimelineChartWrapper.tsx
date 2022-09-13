@@ -216,14 +216,18 @@ class TimelineChartWrapper extends React.Component<
   setOnHoverDisplayTooltip = (
     data: ITooltipWrapperProps & ExploreTooltipProps
   ) => {
-    const tooltipContent = [];
+    let tooltipContent = [];
 
     const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
       this.props?.onHoverDisplayTooltip;
 
     if (TooltipBody) {
       tooltipContent.push(
-        <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+        <TooltipBody
+          key="explore-body"
+          values={data.values}
+          timeLabel={data.timeLabel}
+        />
       );
     }
 
@@ -234,14 +238,16 @@ class TimelineChartWrapper extends React.Component<
         timestamp: a.timestamp * 1000,
       })) || [];
 
+    // if available, only render annotation
+    // so that the tooltip is not bloated
     if (this.props.annotations) {
-      tooltipContent.push(
+      tooltipContent = [
         <Annotation
+          key="annotations"
           values={data.values}
-          timeLabel={data.timeLabel}
           annotations={annotations}
-        />
-      );
+        />,
+      ];
     }
 
     if (tooltipContent.length) {
