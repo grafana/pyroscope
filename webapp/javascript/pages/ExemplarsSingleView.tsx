@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import useColorMode from '@webapp/hooks/colorMode.hook';
-import { useAppSelector } from '@webapp/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { selectQueries } from '@webapp/redux/reducers/continuous';
+import { fetchExemplarsSingleView } from '@webapp/redux/reducers/tracing';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { formatTitle } from './formatTitle';
 
@@ -18,6 +20,23 @@ function ExemplarsSingleView() {
   const { colorMode } = useColorMode();
   const { query } = useAppSelector(selectQueries);
   const { exemplarsSingleView } = useAppSelector((state) => state.tracing);
+  const { from, until } = useAppSelector((state) => state.continuous);
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (from && until && query) {
+      const fetchData = dispatch(
+        fetchExemplarsSingleView({
+          query,
+          from,
+          until,
+          ...DEFAULT_HEATMAP_PARAMS,
+        })
+      );
+      return () => fetchData.abort('cancel');
+    }
+    return undefined;
+  }, [from, until, query]);
 
   const flamegraphRenderer = (() => {
     switch (exemplarsSingleView.type) {

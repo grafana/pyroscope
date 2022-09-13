@@ -1,15 +1,8 @@
 import { useState, useEffect, RefObject } from 'react';
 
-import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
-import {
-  fetchExemplarsSingleView,
-  fetchSelectionProfile,
-} from '@webapp/redux/reducers/tracing';
-import {
-  HEATMAP_HEIGHT,
-  DEFAULT_HEATMAP_PARAMS,
-  SELECTED_AREA_BACKGROUND,
-} from './constants';
+import { useAppSelector } from '@webapp/redux/hooks';
+import { HEATMAP_HEIGHT, SELECTED_AREA_BACKGROUND } from './constants';
+import { useHeatmapProfile } from './useHeatmapProfile.hook';
 
 const DEFAULT_SELECTED_COORDINATES = { start: null, end: null };
 let startCoords: SelectedAreaCoordsType | null = null;
@@ -36,16 +29,15 @@ export const useHeatmapSelection = ({
   canvasRef,
   heatmapW,
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
-  const dispatch = useAppDispatch();
   const {
     exemplarsSingleView: { heatmap: heatmapData },
   } = useAppSelector((state) => state.tracing);
+  const { fetchProfile } = useHeatmapProfile({ heatmapData, heatmapW });
 
   const [hasSelectedArea, setHasSelectedArea] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
 
-  const { from, until, query } = useAppSelector((state) => state.continuous);
   const resetSelection = () => {
     setHasSelectedArea(false);
     setSelectedCoordinates(DEFAULT_SELECTED_COORDINATES);
@@ -53,78 +45,28 @@ export const useHeatmapSelection = ({
     endCoords = null;
   };
 
-  const fetchProfile = (
-    xStart: number,
-    xEnd: number,
-    yStart: number,
-    yEnd: number,
-    isClickOnYBottomEdge?: boolean
-  ) => {
-    if (heatmapData) {
-      const timeForPixel =
-        (heatmapData.endTime - heatmapData.startTime) / heatmapW;
-      const valueForPixel =
-        (heatmapData.maxValue - heatmapData.minValue) / HEATMAP_HEIGHT;
-
-      const { smaller: smallerX, bigger: biggerX } = sortCoordinates(
-        xStart,
-        xEnd
-      );
-      const { smaller: smallerY, bigger: biggerY } = sortCoordinates(
-        HEATMAP_HEIGHT - yStart,
-        HEATMAP_HEIGHT - yEnd
-      );
-
-      // to fetch correct profiles when clicking on edge cells
-      const selectionMinValue = Math.round(
-        valueForPixel * smallerY + heatmapData.minValue
-      );
-
-      dispatch(
-        fetchSelectionProfile({
-          from,
-          until,
-          query,
-          heatmapTimeBuckets: DEFAULT_HEATMAP_PARAMS.heatmapTimeBuckets,
-          heatmapValueBuckets: DEFAULT_HEATMAP_PARAMS.heatmapValueBuckets,
-          selectionStartTime: timeForPixel * smallerX + heatmapData.startTime,
-          selectionEndTime: timeForPixel * biggerX + heatmapData.startTime,
-          selectionMinValue: isClickOnYBottomEdge
-            ? selectionMinValue - 1
-            : selectionMinValue,
-          selectionMaxValue: Math.round(
-            valueForPixel * biggerY + heatmapData.minValue
-          ),
-        })
-      );
-    }
-  };
-
   const handleCellClick = (x: number, y: number) => {
     if (heatmapData) {
       const cellW = heatmapW / heatmapData.timeBuckets;
       const cellH = HEATMAP_HEIGHT / heatmapData.valueBuckets;
 
-      const cellMatrixCoordinate = [
+      const matrixCoords = [
         Math.trunc(x / cellW),
         Math.trunc((HEATMAP_HEIGHT - y) / cellH),
       ];
 
-      if (
-        heatmapData.values[cellMatrixCoordinate[0]][cellMatrixCoordinate[1]] ===
-        0
-      ) {
+      if (heatmapData.values[matrixCoords[0]][matrixCoords[1]] === 0) {
         return;
       }
 
       // set startCoords and endCoords to draw selection rectangle for single cell
       startCoords = {
-        x: (cellMatrixCoordinate[0] + 1) * cellW,
-        y: HEATMAP_HEIGHT - cellMatrixCoordinate[1] * cellH,
+        x: (matrixCoords[0] + 1) * cellW,
+        y: HEATMAP_HEIGHT - matrixCoords[1] * cellH,
       };
       endCoords = {
-        x: cellMatrixCoordinate[0] * cellW,
-        y: HEATMAP_HEIGHT - (cellMatrixCoordinate[1] + 1) * cellH,
+        x: matrixCoords[0] * cellW,
+        y: HEATMAP_HEIGHT - (matrixCoords[1] + 1) * cellH,
       };
 
       fetchProfile(
@@ -216,21 +158,6 @@ export const useHeatmapSelection = ({
   };
 
   useEffect(() => {
-    if (from && until && query) {
-      const fetchData = dispatch(
-        fetchExemplarsSingleView({
-          query,
-          from,
-          until,
-          ...DEFAULT_HEATMAP_PARAMS,
-        })
-      );
-      return () => fetchData.abort('cancel');
-    }
-    return undefined;
-  }, [from, until, query]);
-
-  useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.addEventListener('mousedown', startDrawing);
     }
@@ -281,16 +208,4 @@ const clearRect = (canvas: HTMLCanvasElement) => {
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-};
-
-const sortCoordinates = (
-  v1: number,
-  v2: number
-): { smaller: number; bigger: number } => {
-  const isFirstBigger = v1 > v2;
-
-  return {
-    smaller: isFirstBigger ? v2 : v1,
-    bigger: isFirstBigger ? v1 : v2,
-  };
 };
