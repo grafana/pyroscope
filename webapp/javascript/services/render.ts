@@ -320,7 +320,25 @@ export async function renderExplore(
     z.object({ timeline: TimelineSchema })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
-    .merge(z.object({ groups: GroupsSchema }))
+    .merge(
+      z.object({
+        groups: z.preprocess((groups) => {
+          const groupNames = Object.keys(groups as Groups);
+
+          return groupNames.length
+            ? groupNames
+                .filter((g) => !!g.trim())
+                .reduce(
+                  (acc, current) => ({
+                    ...acc,
+                    [current]: (groups as Groups)[current],
+                  }),
+                  {}
+                )
+            : groups;
+        }, GroupsSchema),
+      })
+    )
     .safeParse(response.value);
 
   if (parsed.success) {

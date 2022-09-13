@@ -84,11 +84,15 @@ func (h ExemplarsHandler) queryExemplarsParamsFromRequest(r *http.Request, p *qu
 	if p.input.HeatmapParams.MaxValue, err = parseNumber(v.Get("maxValue")); err != nil {
 		return fmt.Errorf("can't parse maxValue: %w", err)
 	}
-	if p.input.HeatmapParams.TimeBuckets, err = strconv.ParseInt(v.Get("heatmapTimeBuckets"), 10, 64); err != nil {
-		return fmt.Errorf("can't parse heatmapTimeBuckets: %w", err)
+	if heatmapTimeBuckets := v.Get("heatmapTimeBuckets"); heatmapTimeBuckets != "" {
+		if p.input.HeatmapParams.TimeBuckets, err = strconv.ParseInt(heatmapTimeBuckets, 10, 64); err != nil {
+			return fmt.Errorf("can't parse heatmapTimeBuckets: %w", err)
+		}
 	}
-	if p.input.HeatmapParams.ValueBuckets, err = strconv.ParseInt(v.Get("heatmapValueBuckets"), 10, 64); err != nil {
-		return fmt.Errorf("can't parse heatmapValueBuckets: %w", err)
+	if heatmapValueBuckets := v.Get("heatmapValueBuckets"); heatmapValueBuckets != "" {
+		if p.input.HeatmapParams.ValueBuckets, err = strconv.ParseInt(heatmapValueBuckets, 10, 64); err != nil {
+			return fmt.Errorf("can't parse heatmapValueBuckets: %w", err)
+		}
 	}
 
 	// Optional.
