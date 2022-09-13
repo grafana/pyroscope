@@ -1,8 +1,8 @@
 import { useState, useEffect, RefObject } from 'react';
 
-import { useAppSelector } from '@webapp/redux/hooks';
-import { HEATMAP_HEIGHT, SELECTED_AREA_BACKGROUND } from './constants';
-import { useHeatmapProfile } from './useHeatmapProfile.hook';
+import type { Heatmap } from '@webapp/services/render';
+import { HEATMAP_HEIGHT } from './constants';
+import { clearRect, drawRect, getSelectionData } from './utils';
 
 const DEFAULT_SELECTED_COORDINATES = { start: null, end: null };
 let startCoords: SelectedAreaCoordsType | null = null;
@@ -17,6 +17,13 @@ interface SelectedCoordinates {
 interface UseHeatmapSelectionProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   heatmapW: number;
+  heatmap: Heatmap;
+  onSelection: (
+    minV: number,
+    maxV: number,
+    startT: number,
+    endT: number
+  ) => void;
 }
 interface UseHeatmapSelection {
   selectedCoordinates: SelectedCoordinates;
@@ -28,12 +35,9 @@ interface UseHeatmapSelection {
 export const useHeatmapSelection = ({
   canvasRef,
   heatmapW,
+  heatmap,
+  onSelection,
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
-  const {
-    exemplarsSingleView: { heatmap: heatmapData },
-  } = useAppSelector((state) => state.tracing);
-  const { fetchProfile } = useHeatmapProfile({ heatmapData, heatmapW });
-
   const [hasSelectedArea, setHasSelectedArea] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
@@ -46,37 +50,47 @@ export const useHeatmapSelection = ({
   };
 
   const handleCellClick = (x: number, y: number) => {
-    if (heatmapData) {
-      const cellW = heatmapW / heatmapData.timeBuckets;
-      const cellH = HEATMAP_HEIGHT / heatmapData.valueBuckets;
+    const cellW = heatmapW / heatmap.timeBuckets;
+    const cellH = HEATMAP_HEIGHT / heatmap.valueBuckets;
 
-      const matrixCoords = [
-        Math.trunc(x / cellW),
-        Math.trunc((HEATMAP_HEIGHT - y) / cellH),
-      ];
+    const matrixCoords = [
+      Math.trunc(x / cellW),
+      Math.trunc((HEATMAP_HEIGHT - y) / cellH),
+    ];
 
-      if (heatmapData.values[matrixCoords[0]][matrixCoords[1]] === 0) {
-        return;
-      }
-
-      // set startCoords and endCoords to draw selection rectangle for single cell
-      startCoords = {
-        x: (matrixCoords[0] + 1) * cellW,
-        y: HEATMAP_HEIGHT - matrixCoords[1] * cellH,
-      };
-      endCoords = {
-        x: matrixCoords[0] * cellW,
-        y: HEATMAP_HEIGHT - (matrixCoords[1] + 1) * cellH,
-      };
-
-      fetchProfile(
-        startCoords.x,
-        endCoords.x,
-        startCoords.y,
-        endCoords.y,
-        startCoords.y === HEATMAP_HEIGHT
-      );
+    if (heatmap.values[matrixCoords[0]][matrixCoords[1]] === 0) {
+      return;
     }
+
+    // set startCoords and endCoords to draw selection rectangle for single cell
+    startCoords = {
+      x: (matrixCoords[0] + 1) * cellW,
+      y: HEATMAP_HEIGHT - matrixCoords[1] * cellH,
+    };
+    endCoords = {
+      x: matrixCoords[0] * cellW,
+      y: HEATMAP_HEIGHT - (matrixCoords[1] + 1) * cellH,
+    };
+
+    const {
+      selectionMinValue,
+      selectionMaxValue,
+      selectionStartTime,
+      selectionEndTime,
+    } = getSelectionData(
+      heatmap,
+      heatmapW,
+      startCoords,
+      endCoords,
+      startCoords.y === HEATMAP_HEIGHT
+    );
+
+    onSelection(
+      selectionMinValue,
+      selectionMaxValue,
+      selectionStartTime,
+      selectionEndTime
+    );
   };
 
   const startDrawing = (e: MouseEvent) => {
@@ -124,7 +138,19 @@ export const useHeatmapSelection = ({
       if (isClickEvent) {
         handleCellClick(xEnd, yEnd);
       } else {
-        fetchProfile(startCoords.x, xEnd, startCoords.y, yEnd);
+        const {
+          selectionMinValue,
+          selectionMaxValue,
+          selectionStartTime,
+          selectionEndTime,
+        } = getSelectionData(heatmap, heatmapW, startCoords, endCoords);
+
+        onSelection(
+          selectionMinValue,
+          selectionMaxValue,
+          selectionStartTime,
+          selectionEndTime
+        );
       }
 
       window.removeEventListener('mousemove', handleDrawingEvent);
@@ -169,17 +195,17 @@ export const useHeatmapSelection = ({
         window.removeEventListener('mouseup', endDrawing);
       }
     };
-  }, [heatmapData, heatmapW]);
+  }, [heatmap, heatmapW]);
 
   // set coordinates to display resizable selection rectangle (div element)
   useEffect(() => {
-    if (heatmapData && startCoords && endCoords) {
+    if (startCoords && endCoords) {
       setSelectedCoordinates({
         start: { x: startCoords.x, y: startCoords.y },
         end: { x: endCoords.x, y: endCoords.y },
       });
     }
-  }, [startCoords, endCoords, heatmapData]);
+  }, [startCoords, endCoords]);
 
   return {
     selectedCoordinates,
@@ -187,25 +213,4 @@ export const useHeatmapSelection = ({
     hasSelectedArea,
     resetSelection,
   };
-};
-
-const drawRect = (
-  canvas: HTMLCanvasElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-) => {
-  clearRect(canvas);
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-
-  ctx.fillStyle = SELECTED_AREA_BACKGROUND;
-  ctx.globalAlpha = 1;
-  ctx.fillRect(x, y, w, h);
-};
-
-const clearRect = (canvas: HTMLCanvasElement) => {
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
 };

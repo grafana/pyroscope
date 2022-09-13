@@ -3,7 +3,10 @@ import React, { useEffect } from 'react';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { selectQueries } from '@webapp/redux/reducers/continuous';
-import { fetchExemplarsSingleView } from '@webapp/redux/reducers/tracing';
+import {
+  fetchExemplarsSingleView,
+  fetchSelectionProfile,
+} from '@webapp/redux/reducers/tracing';
 import Box from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
@@ -38,6 +41,27 @@ function ExemplarsSingleView() {
     return undefined;
   }, [from, until, query]);
 
+  const handleHeatmapSelection = (
+    minValue: number,
+    maxValue: number,
+    startTime: number,
+    endTime: number
+  ) => {
+    dispatch(
+      fetchSelectionProfile({
+        from,
+        until,
+        query,
+        heatmapTimeBuckets: DEFAULT_HEATMAP_PARAMS.heatmapTimeBuckets,
+        heatmapValueBuckets: DEFAULT_HEATMAP_PARAMS.heatmapValueBuckets,
+        selectionMinValue: minValue,
+        selectionMaxValue: maxValue,
+        selectionStartTime: startTime,
+        selectionEndTime: endTime,
+      })
+    );
+  };
+
   const flamegraphRenderer = (() => {
     switch (exemplarsSingleView.type) {
       case 'loaded':
@@ -71,6 +95,28 @@ function ExemplarsSingleView() {
     }
   })();
 
+  const heatmap = (() => {
+    switch (exemplarsSingleView.type) {
+      case 'loaded':
+      case 'reloading': {
+        return (
+          <Heatmap
+            heatmap={exemplarsSingleView.heatmap}
+            onSelection={handleHeatmapSelection}
+          />
+        );
+      }
+
+      default: {
+        return (
+          <div className={styles.spinnerWrapper}>
+            <LoadingSpinner />
+          </div>
+        );
+      }
+    }
+  })();
+
   return (
     <div>
       <PageTitle title={formatTitle('Tracing single', query)} />
@@ -78,7 +124,7 @@ function ExemplarsSingleView() {
         <Toolbar />
         <Box>
           <p className={styles.heatmapTitle}>Heatmap</p>
-          <Heatmap />
+          {heatmap}
         </Box>
         <Box>{flamegraphRenderer}</Box>
       </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 
 import { Heatmap } from '.';
-// import { exemplarsQueryHeatmap } from '../../services/exemplarsTestData';
+import { heatmapMockData } from '../../services/exemplarsTestData';
 
 jest.mock('./useHeatmapSelection.hook', () => ({
   ...jest.requireActual('./useHeatmapSelection.hook'),
@@ -13,10 +13,13 @@ jest.mock('./useHeatmapSelection.hook', () => ({
   }),
 }));
 
-// TODO(dogfrogfog): refactor
-describe.skip('Component: Heatmap', () => {
+const renderHeatmap = () => {
+  render(<Heatmap heatmap={heatmapMockData} onSelection={() => ({})} />);
+};
+
+describe('Component: Heatmap', () => {
   it('should have all main elements', () => {
-    render(<Heatmap />);
+    renderHeatmap();
 
     expect(screen.getByTestId('heatmap-container')).toBeInTheDocument();
     expect(screen.getByTestId('y-axis')).toBeInTheDocument();
@@ -27,7 +30,7 @@ describe.skip('Component: Heatmap', () => {
   });
 
   it('should have correct x-axis', () => {
-    render(<Heatmap />);
+    renderHeatmap();
 
     const xAxisTicks = within(screen.getByTestId('x-axis')).getAllByRole(
       'textbox'
@@ -36,7 +39,7 @@ describe.skip('Component: Heatmap', () => {
   });
 
   it('should have correct y-axis', () => {
-    render(<Heatmap />);
+    renderHeatmap();
 
     const xAxisTicks = within(screen.getByTestId('y-axis')).getAllByRole(
       'textbox'
@@ -45,12 +48,12 @@ describe.skip('Component: Heatmap', () => {
   });
 
   it('should have correct color scale', () => {
-    render(<Heatmap />);
+    renderHeatmap();
 
     const [minTextEl, maxTextEl] = within(
       screen.getByTestId('color-scale')
     ).getAllByRole('textbox');
-    // expect(minTextEl.textContent).toBe(`${exemplarsQueryHeatmap.minDepth - 1}`);
-    // expect(maxTextEl.textContent).toBe(`${exemplarsQueryHeatmap.maxDepth}`);
+    expect(minTextEl.textContent).toBe(heatmapMockData.minDepth.toString());
+    expect(maxTextEl.textContent).toBe(heatmapMockData.maxDepth.toString());
   });
 });
