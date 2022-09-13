@@ -2,7 +2,6 @@ import './globals';
 
 import ReactDOM from 'react-dom';
 import React from 'react';
-
 import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
 import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
@@ -32,6 +31,7 @@ import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
 import TracingSingleView from './pages/TracingSingleView';
+import ExemplarsSingleView from './pages/ExemplarsSingleView';
 
 function App() {
   return (
@@ -66,10 +66,17 @@ function App() {
               </Continuous>
             </Protected>
           </Route>
-          <Route path={PAGES.TRACING}>
+          <Route path={PAGES.TRACING_EXEMPLARS_MERGE}>
             <Protected>
               <Continuous>
                 <TracingSingleView />
+              </Continuous>
+            </Protected>
+          </Route>
+          <Route path={PAGES.TRACING_EXEMPLARS_SINGLE}>
+            <Protected>
+              <Continuous>
+                <ExemplarsSingleView />
               </Continuous>
             </Protected>
           </Route>

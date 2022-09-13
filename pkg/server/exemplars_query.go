@@ -78,10 +78,10 @@ func (h ExemplarsHandler) queryExemplarsParamsFromRequest(r *http.Request, p *qu
 
 	p.input.HeatmapParams.StartTime = p.input.StartTime
 	p.input.HeatmapParams.EndTime = p.input.EndTime
-	if p.input.HeatmapParams.MinValue, err = parseNumber(v.Get("minValue")); err != nil {
+	if p.input.HeatmapParams.MinValue, err = parseNumber(v.Get("minValue"), false); err != nil {
 		return fmt.Errorf("can't parse minValue: %w", err)
 	}
-	if p.input.HeatmapParams.MaxValue, err = parseNumber(v.Get("maxValue")); err != nil {
+	if p.input.HeatmapParams.MaxValue, err = parseNumber(v.Get("maxValue"), true); err != nil {
 		return fmt.Errorf("can't parse maxValue: %w", err)
 	}
 	if heatmapTimeBuckets := v.Get("heatmapTimeBuckets"); heatmapTimeBuckets != "" {
@@ -95,14 +95,18 @@ func (h ExemplarsHandler) queryExemplarsParamsFromRequest(r *http.Request, p *qu
 		}
 	}
 
-	// Optional.
 	p.input.ExemplarsSelection.StartTime = parseTime(v.Get("selectionStartTime"))
 	p.input.ExemplarsSelection.EndTime = parseTime(v.Get("selectionEndTime"))
-	if p.input.ExemplarsSelection.MinValue, err = parseNumber(v.Get("selectionMinValue")); err != nil {
+	if p.input.ExemplarsSelection.MinValue, err = parseNumber(v.Get("selectionMinValue"), false); err != nil {
 		return fmt.Errorf("can't parse selectionMinValue: %w", err)
 	}
-	if p.input.ExemplarsSelection.MaxValue, err = parseNumber(v.Get("selectionMaxValue")); err != nil {
+	if p.input.ExemplarsSelection.MaxValue, err = parseNumber(v.Get("selectionMaxValue"), true); err != nil {
 		return fmt.Errorf("can't parse selectionMaxValue: %w", err)
+	}
+
+	if p.input.HeatmapParams.TimeBuckets == 0 && p.input.HeatmapParams.ValueBuckets == 0 {
+		p.input.StartTime = p.input.ExemplarsSelection.StartTime
+		p.input.EndTime = p.input.ExemplarsSelection.EndTime
 	}
 
 	p.maxNodes = h.MaxNodesDefault

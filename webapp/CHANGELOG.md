@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.39.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.6...@pyroscope/webapp@1.39.0) (2022-09-13)
+
+
+### Features
+
+* **webapp:** Add tracing page with heatmap ([#1433](https://github.com/pyroscope-io/pyroscope/issues/1433)) ([587379a](https://github.com/pyroscope-io/pyroscope/commit/587379aa5067521f38bc892c364ccff6e1d35b28))
+
+
+
+
+
+## [1.38.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.5...@pyroscope/webapp@1.38.6) (2022-09-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.38.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.4...@pyroscope/webapp@1.38.5) (2022-09-13)
+
+
+### Bug Fixes
+
+* **webapp:** CollapseBox overflow ([#1490](https://github.com/pyroscope-io/pyroscope/issues/1490)) ([0af9f1d](https://github.com/pyroscope-io/pyroscope/commit/0af9f1d0ec3f18f2b4cb366eb0b8afda3e2e8de5))
+
+
+
+
+
+## [1.38.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.3...@pyroscope/webapp@1.38.4) (2022-09-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.38.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.2...@pyroscope/webapp@1.38.3) (2022-09-12)
 
 **Note:** Version bump only for package @pyroscope/webapp

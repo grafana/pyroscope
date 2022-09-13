@@ -59,7 +59,9 @@ export function SidebarComponent() {
     if (
       route === PAGES.CONTINOUS_SINGLE_VIEW ||
       route === PAGES.COMPARISON_VIEW ||
-      route === PAGES.ADHOC_COMPARISON
+      route === PAGES.ADHOC_COMPARISON ||
+      route === PAGES.TRACING_EXEMPLARS_SINGLE ||
+      route === PAGES.TRACING_EXEMPLARS_MERGE
     ) {
       return pathname === route;
     }
@@ -81,7 +83,8 @@ export function SidebarComponent() {
           PAGES.ADHOC_COMPARISON,
           PAGES.ADHOC_COMPARISON_DIFF,
           PAGES.TAG_EXPLORER,
-          PAGES.TRACING,
+          PAGES.TRACING_EXEMPLARS_MERGE,
+          PAGES.TRACING_EXEMPLARS_SINGLE,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -102,7 +105,9 @@ export function SidebarComponent() {
     isRouteActive(PAGES.ADHOC_SINGLE) ||
     isRouteActive(PAGES.ADHOC_COMPARISON) ||
     isRouteActive(PAGES.ADHOC_COMPARISON_DIFF);
-  const isTracingActive = isRouteActive(PAGES.TRACING);
+  const isTracingActive =
+    isRouteActive(PAGES.TRACING_EXEMPLARS_MERGE) ||
+    isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE);
   const isSettingsActive = isRouteActive(PAGES.SETTINGS);
 
   const adhoc = (
@@ -220,13 +225,12 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
-          {isTracingActive ? (
+          {isTracingActive && (
             <SubMenu
               title="Tracing Exemplars"
               icon={<Icon icon={faChartLine} />}
               active={isTracingActive}
               defaultOpen={isTracingActive}
-              data-testid="sidebar-continuous"
             >
               {collapsed && (
                 <SidebarHeader className={styles.collapsedHeader}>
@@ -234,20 +238,29 @@ export function SidebarComponent() {
                 </SidebarHeader>
               )}
               <MenuItem
-                data-testid="sidebar-continuous-single"
-                active={isRouteActive(PAGES.TRACING)}
+                active={isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE)}
                 icon={<Icon icon={faWindowMaximize} />}
               >
-                Single View
+                Exemplars
                 <NavLink
                   activeClassName="active-route"
-                  data-testid="sidebar-root"
-                  to={{ pathname: PAGES.TRACING, search }}
+                  to={{ pathname: PAGES.TRACING_EXEMPLARS_SINGLE, search }}
+                  exact
+                />
+              </MenuItem>
+              <MenuItem
+                active={isRouteActive(PAGES.TRACING_EXEMPLARS_MERGE)}
+                icon={<Icon icon={faWindowMaximize} />}
+              >
+                Merge Exemplars
+                <NavLink
+                  activeClassName="active-route"
+                  to={{ pathname: PAGES.TRACING_EXEMPLARS_MERGE, search }}
                   exact
                 />
               </MenuItem>
             </SubMenu>
-          ) : null}
+          )}
         </Menu>
       </SidebarContent>
       <SidebarFooter>

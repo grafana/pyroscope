@@ -82,6 +82,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** list of annotations timestamp, to be rendered as markings */
   annotations?: { timestamp: number; content: string }[];
+  ContextMenu?: React.ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -132,6 +133,12 @@ class TimelineChartWrapper extends React.Component<
       grid: {
         borderWidth: 1, // outside border of the timelines
         hoverable: true,
+
+        // For the contextMenu plugin to work. From the docs:
+        // > If you set “clickable” to true, the plot will listen for click events
+        //   on the plot area and fire a “plotclick” event on the placeholder with
+        //   a position and a nearby data item object as parameters.
+        clickable: true,
       },
       yaxis: {
         show: false,
@@ -282,6 +289,7 @@ class TimelineChartWrapper extends React.Component<
     const customFlotOptions = {
       ...flotOptions,
       onHoverDisplayTooltip,
+      ContextMenu: this.props.ContextMenu,
       xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
     };
 
@@ -327,6 +335,7 @@ class TimelineChartWrapper extends React.Component<
     const customFlotOptions = {
       ...flotOptions,
       onHoverDisplayTooltip,
+      ContextMenu: this.props.ContextMenu,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
