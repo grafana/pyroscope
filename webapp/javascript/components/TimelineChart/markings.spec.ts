@@ -1,5 +1,31 @@
 import Color from 'color';
-import { markingsFromSelection } from './markings';
+import {
+  ANNOTATION_COLOR,
+  ANNOTATION_WIDTH,
+  markingsFromAnnotations,
+  markingsFromSelection,
+} from './markings';
+
+describe('markingsFromAnnotations', () => {
+  it('works', () => {
+    const timestamp = 1663000000;
+    const annotations = [
+      {
+        timestamp,
+      },
+    ];
+    expect(markingsFromAnnotations(annotations)).toStrictEqual([
+      {
+        lineWidth: ANNOTATION_WIDTH,
+        color: ANNOTATION_COLOR,
+        xaxis: {
+          from: timestamp * 1000,
+          to: timestamp * 1000,
+        },
+      },
+    ]);
+  });
+});
 
 // Tests are definitely confusing, but that's due to the nature of the implementation
 // TODO: refactor implementatino

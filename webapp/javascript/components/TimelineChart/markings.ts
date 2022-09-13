@@ -1,6 +1,10 @@
 import { formatAsOBject } from '@webapp/util/formatDate';
 import Color from 'color';
 
+// Same green as button
+export const ANNOTATION_COLOR = Color('#2ecc40');
+export const ANNOTATION_WIDTH = '2px';
+
 type FlotMarkings = {
   xaxis: {
     from: number;
@@ -19,10 +23,6 @@ type FlotMarkings = {
 export function markingsFromAnnotations(
   annotations?: { timestamp: number }[]
 ): FlotMarkings {
-  // Same green as button
-  const ANNOTATION_COLOR = Color('#2ecc40');
-  const ANNOTATION_WIDTH = '2px';
-
   if (!annotations?.length) {
     return [];
   }
