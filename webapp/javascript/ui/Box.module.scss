@@ -20,13 +20,13 @@
     border: none;
     border-radius: 0;
     padding-bottom: 0;
-    overflow: hidden;
     height: auto;
 
     &.collapsedContent {
       height: 0;
       margin: 0;
       padding: 0;
+      overflow: hidden;
     }
   }
 }
