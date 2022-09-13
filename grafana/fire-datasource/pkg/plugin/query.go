@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -97,10 +96,6 @@ func makeRequest(qm queryModel, query backend.DataQuery) *connect.Request[querie
 // [level, value, label] columns and by ordering the items in a depth first traversal order we can recreate the whole
 // tree back.
 func responseToDataFrames(resp *connect.Response[querierv1.SelectMergeStacktracesResponse], profileTypeID string) *data.Frame {
-	for index, level := range resp.Msg.Flamegraph.Levels {
-		values, _ := json.Marshal(level.Values)
-		log.DefaultLogger.Debug(fmt.Sprintf("------- %d %s \n", index, values))
-	}
 	tree := levelsToTree(resp.Msg.Flamegraph.Levels, resp.Msg.Flamegraph.Names)
 	return treeToNestedSetDataFrame(tree, profileTypeID)
 }
