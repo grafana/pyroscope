@@ -210,7 +210,7 @@ class TimelineChartWrapper extends React.Component<
 
     const annotationsMarkings = markingsFromAnnotations(this.props.annotations);
 
-    return selectionMarkings.concat(annotationsMarkings);
+    return [...selectionMarkings, ...annotationsMarkings];
   };
 
   setOnHoverDisplayTooltip = (

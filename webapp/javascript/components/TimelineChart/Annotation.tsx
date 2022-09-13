@@ -1,16 +1,17 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
-import type { ExploreTooltipProps } from './ExploreTooltip';
 
 // TODO(eh-am): what are these units?
-const THRESHOLD = 10000;
+export const THRESHOLD = 10000;
 
-// TODO: fix types
-export default function Annotations(
-  props: ExploreTooltipProps & {
-    annotations: { timestamp: number; content: string }[];
-  }
-) {
+interface AnnotationTooltipBodyProps {
+  /** list of flotjs datapoints being hovered. we only use the first one */
+  values?: { closest: number[] }[];
+  /** list of annotations */
+  annotations: { timestamp: number; content: string }[];
+}
+
+export default function Annotations(props: AnnotationTooltipBodyProps) {
   if (!props.annotations?.length) {
     return null;
   }
@@ -33,16 +34,14 @@ function AnnotationComponent({
   content: string;
 }) {
   return (
-    <div>
+    <section>
       <div>timestamp: {timestamp}</div>
       <div>content: {content}</div>
-    </div>
+    </section>
   );
 }
 
-function getClosestTimestamp(
-  values: ExploreTooltipProps['values']
-): Maybe<number> {
+function getClosestTimestamp(values?: { closest: number[] }[]): Maybe<number> {
   if (!values) {
     return Maybe.nothing();
   }
