@@ -8,7 +8,7 @@ import (
 
 var stacktracesSchema = parquet.NewSchema("Stacktrace", fireparquet.Group{
 	fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-	fireparquet.NewGroupField("LocationIDs", parquet.List(parquet.Uint(64))),
+	fireparquet.NewGroupField("LocationIDs", parquet.List(parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked))),
 })
 
 type Stacktrace struct {
