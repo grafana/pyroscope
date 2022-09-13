@@ -3,87 +3,90 @@ import React, { LegacyRef } from 'react';
 
 import { useStyles, Tooltip } from '@grafana/ui';
 
-import { NAME_OFFSET } from '../constants';
-import { TooltipData, SampleUnit } from './types';
+import { TooltipData, SampleUnit } from '../types';
 
 type Props = {
-  tooltipRef: LegacyRef<HTMLDivElement>,
-  tooltipData: TooltipData,
-  showTooltip: boolean,
+  tooltipRef: LegacyRef<HTMLDivElement>;
+  tooltipData: TooltipData;
+  showTooltip: boolean;
 };
 
-const FlameGraphTooltip = ({tooltipRef, tooltipData, showTooltip}: Props) => {
+const FlameGraphTooltip = ({ tooltipRef, tooltipData, showTooltip }: Props) => {
   const styles = useStyles(getStyles);
-  
+
   return (
     <div ref={tooltipRef} className={styles.tooltip}>
-      {tooltipData &&
-        <Tooltip 
+      {tooltipData && (
+        <Tooltip
           content={
             <div>
               <div className={styles.name}>{tooltipData.name}</div>
-              <div>{tooltipData.percentTitle}: <b>{tooltipData.percentValue}%</b></div>
-              <div>{tooltipData.unitTitle}: <b>{tooltipData.unitValue}</b></div>
-              <div>Samples: <b>{tooltipData.samples}</b></div>
+              <div>
+                {tooltipData.percentTitle}: <b>{tooltipData.percentValue}%</b>
+              </div>
+              <div>
+                {tooltipData.unitTitle}: <b>{tooltipData.unitValue}</b>
+              </div>
+              <div>
+                Samples: <b>{tooltipData.samples}</b>
+              </div>
             </div>
-          } 
-          placement={'right'} 
+          }
+          placement={'right'}
           show={showTooltip}
         >
           <span></span>
         </Tooltip>
-      }
+      )}
     </div>
-  )
-}
+  );
+};
 
-export const getTooltipData = (profileTypeId: string, names: any, levels: any, totalTicks: number, levelIndex: any, barIndex: any): TooltipData => {
-  let samples = levels[levelIndex][barIndex + 1];
+export const getTooltipData = (
+  profileTypeId: string,
+  label: string,
+  value: number,
+  totalTicks: number
+): TooltipData => {
+  let samples = value;
   let percentTitle = '';
   let unitTitle = '';
   let unitValue = '';
 
   const sampleUnit = profileTypeId?.split(':').length === 5 ? profileTypeId.split(':')[2] : '';
-  const name = `${names[levels[levelIndex][barIndex + NAME_OFFSET]]}`;
   const percent = Math.round(10000 * (samples / totalTicks)) / 100;
 
   switch (sampleUnit) {
     case SampleUnit.Bytes:
-      unitValue = getUnitValue(
-        samples, 
-        [
-          { divider: 1024, suffix: 'KB'},
-          { divider: 1024, suffix: 'MB'},
-          { divider: 1024, suffix: 'GB'},
-          { divider: 1024, suffix: 'PT'},
-        ],
-      );
+      unitValue = getUnitValue(samples, [
+        { divider: 1024, suffix: 'KB' },
+        { divider: 1024, suffix: 'MB' },
+        { divider: 1024, suffix: 'GB' },
+        { divider: 1024, suffix: 'PT' },
+      ]);
       percentTitle = '% of total RAM';
       unitTitle = 'RAM';
       break;
 
     case SampleUnit.Count:
-      unitValue = getUnitValue(
-        samples, 
-        [
-          { divider: 1000, suffix: 'K'},
-          { divider: 1000, suffix: 'M'},
-          { divider: 1000, suffix: 'G'},
-          { divider: 1000, suffix: 'T'},
-        ],
-      );
+      unitValue = getUnitValue(samples, [
+        { divider: 1000, suffix: 'K' },
+        { divider: 1000, suffix: 'M' },
+        { divider: 1000, suffix: 'G' },
+        { divider: 1000, suffix: 'T' },
+      ]);
       percentTitle = '% of total objects';
       unitTitle = 'Allocated objects';
       break;
 
-    case SampleUnit.Nanoseconds:      
+    case SampleUnit.Nanoseconds:
       unitValue = getUnitValue(
         // convert nanoseconds to seconds
-        samples / 1000000000, 
+        samples / 1000000000,
         [
-          { divider: 60, suffix: 'minutes'},
-          { divider: 60, suffix: 'hours'},
-          { divider: 24, suffix: 'days'},
+          { divider: 60, suffix: 'minutes' },
+          { divider: 60, suffix: 'hours' },
+          { divider: 24, suffix: 'days' },
         ],
         'seconds'
       );
@@ -92,13 +95,13 @@ export const getTooltipData = (profileTypeId: string, names: any, levels: any, t
   }
 
   return {
-    name: name,
+    name: label,
     percentTitle: percentTitle,
     percentValue: percent,
     unitTitle: unitTitle,
     unitValue: unitValue,
-    samples: samples.toLocaleString()
-  }
+    samples: samples.toLocaleString(),
+  };
 };
 
 const getUnitValue = (samples: number, units: any, fallbackSuffix = '') => {
@@ -125,7 +128,7 @@ const getUnitValue = (samples: number, units: any, fallbackSuffix = '') => {
   unitValue += ' ' + (suffix !== '' ? suffix : fallbackSuffix);
 
   return unitValue;
-}
+};
 
 const getStyles = () => ({
   tooltip: css`

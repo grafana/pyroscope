@@ -20,6 +20,7 @@
     "@testing-library/react": "12.1.4",
     "@testing-library/user-event": "14.2.0",
     "@types/lodash": "4.14.181",
+    "@typescript-eslint/eslint-plugin": "^5.36.2",
     "jest-canvas-mock": "2.4.0",
     "prettier": "2.6.0",
     "ts-node": "9.1.1",
