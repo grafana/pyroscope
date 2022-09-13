@@ -161,7 +161,7 @@ export const fetchSelectionProfile = createAsyncThunk<
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
-      title: 'Failed to load single view data',
+      title: 'Failed to load profile',
       message: res.error.message,
     })
   );
