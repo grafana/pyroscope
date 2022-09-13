@@ -53,7 +53,7 @@ export interface ContextMenuProps {
   }
 
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
-    // update closure
+    // update closure so that onClick can access the plot instance
     globalPlot = plot;
 
     const flotEl = plot.getPlaceholder();
