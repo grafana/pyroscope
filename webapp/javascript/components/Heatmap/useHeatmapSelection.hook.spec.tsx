@@ -36,7 +36,7 @@ describe('Hook: useHeatmapSelection', () => {
             store={createStore({
               continuous: {},
               tracing: {
-                heatmapSingleView: {},
+                exemplarsSingleView: {},
               },
             })}
           >

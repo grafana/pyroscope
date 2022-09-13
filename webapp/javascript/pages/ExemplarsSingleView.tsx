@@ -17,21 +17,21 @@ import styles from './ExemplarsSingleView.module.scss';
 function ExemplarsSingleView() {
   const { colorMode } = useColorMode();
   const { query } = useAppSelector(selectQueries);
-  const { heatmapSingleView } = useAppSelector((state) => state.tracing);
+  const { exemplarsSingleView } = useAppSelector((state) => state.tracing);
 
   const flamegraphRenderer = (() => {
-    switch (heatmapSingleView.type) {
+    switch (exemplarsSingleView.type) {
       case 'loaded':
       case 'reloading': {
         return (
           <FlamegraphRenderer
             showCredit={false}
-            profile={heatmapSingleView.profile}
+            profile={exemplarsSingleView.profile}
             colorMode={colorMode}
             onlyDisplay="flamegraph"
             ExportData={
               <ExportData
-                flamebearer={heatmapSingleView.profile}
+                flamebearer={exemplarsSingleView.profile}
                 exportPNG
                 exportJSON
                 exportPprof

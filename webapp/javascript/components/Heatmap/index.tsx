@@ -24,7 +24,7 @@ export function Heatmap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
-  const { heatmapSingleView } = useAppSelector((state) => state.tracing);
+  const { exemplarsSingleView } = useAppSelector((state) => state.tracing);
 
   const {
     selectedCoordinates,
@@ -55,9 +55,9 @@ export function Heatmap() {
   const getColor = useMemo(
     () =>
       (x: number): string => {
-        if (heatmapSingleView.heatmap) {
-          const minL = Math.log10(heatmapSingleView.heatmap.minDepth);
-          const maxL = Math.log10(heatmapSingleView.heatmap.maxDepth);
+        if (exemplarsSingleView.heatmap) {
+          const minL = Math.log10(exemplarsSingleView.heatmap.minDepth);
+          const maxL = Math.log10(exemplarsSingleView.heatmap.maxDepth);
           const w1 = (Math.log10(x) - minL) / (maxL - minL);
           const w2 = 1 - w1;
 
@@ -70,14 +70,14 @@ export function Heatmap() {
 
         return '';
       },
-    [heatmapSingleView.heatmap]
+    [exemplarsSingleView.heatmap]
   );
 
   const heatmapGrid = (() => {
-    switch (heatmapSingleView.type) {
+    switch (exemplarsSingleView.type) {
       case 'loaded':
       case 'reloading': {
-        return heatmapSingleView.heatmap.values.map((column, colIndex) => (
+        return exemplarsSingleView.heatmap.values.map((column, colIndex) => (
           // eslint-disable-next-line react/no-array-index-key
           <g role="row" key={colIndex}>
             {column.map(
@@ -94,15 +94,15 @@ export function Heatmap() {
                   key={rowIndex}
                   x={
                     colIndex *
-                    (heatmapW / heatmapSingleView.heatmap.timeBuckets)
+                    (heatmapW / exemplarsSingleView.heatmap.timeBuckets)
                   }
                   y={
                     (itemsCountArr.length - 1 - rowIndex) *
-                    (HEATMAP_HEIGHT / heatmapSingleView.heatmap.valueBuckets)
+                    (HEATMAP_HEIGHT / exemplarsSingleView.heatmap.valueBuckets)
                   }
-                  width={heatmapW / heatmapSingleView.heatmap.timeBuckets}
+                  width={heatmapW / exemplarsSingleView.heatmap.timeBuckets}
                   height={
-                    HEATMAP_HEIGHT / heatmapSingleView.heatmap.valueBuckets
+                    HEATMAP_HEIGHT / exemplarsSingleView.heatmap.valueBuckets
                   }
                 />
               )
@@ -117,15 +117,15 @@ export function Heatmap() {
   })();
 
   const heatmapContent = (() => {
-    switch (heatmapSingleView.type) {
+    switch (exemplarsSingleView.type) {
       case 'loaded':
       case 'reloading':
         return (
           <>
             <Axis
               axis="y"
-              min={heatmapSingleView.heatmap.minValue}
-              max={heatmapSingleView.heatmap.maxValue}
+              min={exemplarsSingleView.heatmap.minValue}
+              max={exemplarsSingleView.heatmap.maxValue}
               ticksNumber={5}
             />
             {hasSelectedArea &&
@@ -159,8 +159,8 @@ export function Heatmap() {
             </svg>
             <Axis
               axis="x"
-              min={heatmapSingleView.heatmap.startTime}
-              max={heatmapSingleView.heatmap.endTime}
+              min={exemplarsSingleView.heatmap.startTime}
+              max={exemplarsSingleView.heatmap.endTime}
               ticksNumber={7}
             />
             <div
@@ -176,13 +176,13 @@ export function Heatmap() {
                 role="textbox"
                 style={{ color: Color.rgb(COLOR_1).toString() }}
               >
-                {heatmapSingleView.heatmap.minDepth}
+                {exemplarsSingleView.heatmap.minDepth}
               </span>
               <span
                 role="textbox"
                 style={{ color: Color.rgb(COLOR_2).toString() }}
               >
-                {heatmapSingleView.heatmap.maxDepth}
+                {exemplarsSingleView.heatmap.maxDepth}
               </span>
             </div>
           </>
@@ -199,7 +199,7 @@ export function Heatmap() {
       className={styles.heatmapContainer}
       data-testid="heatmap-container"
     >
-      {heatmapSingleView.type === 'loading' ? (
+      {exemplarsSingleView.type === 'loading' ? (
         <LoadingSpinner />
       ) : (
         heatmapContent

@@ -2,7 +2,7 @@ import { useState, useEffect, RefObject } from 'react';
 
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
-  fetchHeatmapSingleView,
+  fetchExemplarsSingleView,
   fetchSelectionProfile,
 } from '@webapp/redux/reducers/tracing';
 import {
@@ -38,7 +38,7 @@ export const useHeatmapSelection = ({
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
   const dispatch = useAppDispatch();
   const {
-    heatmapSingleView: { heatmap: heatmapData },
+    exemplarsSingleView: { heatmap: heatmapData },
   } = useAppSelector((state) => state.tracing);
 
   const [hasSelectedArea, setHasSelectedArea] = useState(false);
@@ -218,7 +218,7 @@ export const useHeatmapSelection = ({
   useEffect(() => {
     if (from && until && query) {
       const fetchData = dispatch(
-        fetchHeatmapSingleView({
+        fetchExemplarsSingleView({
           query,
           from,
           until,

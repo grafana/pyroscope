@@ -70,7 +70,6 @@ interface mergeWithQueryIDProps {
   maxNodes: string | number;
 }
 
-// z.infer<typeof MergeMetadataSchema> ?
 interface MergeMetadata {
   appName: string;
   startTime: string;
@@ -162,12 +161,15 @@ export async function getHeatmap(
     signal?: AbortSignal;
   }
 ): Promise<Result<HeatmapOutput, RequestError | ZodError>> {
-  // todo use common builder
-  const queryString = Object.entries(props).reduce(
-    (acc, [key, value]) => acc + (acc ? `&${key}=${value}` : `${key}=${value}`),
-    ''
-  );
-  const response = await request(`/api/exemplars:query?${queryString}`, {
+  const params = new URLSearchParams({
+    ...props,
+    minValue: props.minValue.toString(),
+    maxValue: props.maxValue.toString(),
+    heatmapTimeBuckets: props.heatmapTimeBuckets.toString(),
+    heatmapValueBuckets: props.heatmapValueBuckets.toString(),
+  });
+
+  const response = await request(`/api/exemplars:query?${params}`, {
     signal: controller?.signal,
   });
 
@@ -217,11 +219,17 @@ export async function getHeatmapSelectionProfile(
     signal?: AbortSignal;
   }
 ): Promise<Result<SelectionProfileOutput, RequestError | ZodError>> {
-  const queryString = Object.entries(props).reduce(
-    (acc, [key, value]) => acc + (acc ? `&${key}=${value}` : `${key}=${value}`),
-    ''
-  );
-  const response = await request(`/api/exemplars:query?${queryString}`, {
+  const params = new URLSearchParams({
+    ...props,
+    selectionStartTime: props.selectionStartTime.toString(),
+    selectionEndTime: props.selectionEndTime.toString(),
+    selectionMinValue: props.selectionMinValue.toString(),
+    selectionMaxValue: props.selectionMaxValue.toString(),
+    heatmapTimeBuckets: props.heatmapTimeBuckets.toString(),
+    heatmapValueBuckets: props.heatmapValueBuckets.toString(),
+  });
+
+  const response = await request(`/api/exemplars:query?${params}`, {
     signal: controller?.signal,
   });
 
