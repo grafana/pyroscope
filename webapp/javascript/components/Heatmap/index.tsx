@@ -67,7 +67,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         }
 
         // from 0 to 1
-        const colorIndex = 1 - (x - heatmap.minDepth) / heatmap.maxDepth;
+        const colorIndex = (x - heatmap.minDepth) / heatmap.maxDepth;
 
         return interpolateViridis(colorIndex);
       },
@@ -144,18 +144,18 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         className={styles.bucketsColors}
         data-testid="color-scale"
         style={{
-          backgroundImage: `linear-gradient(to right, ${VIRIDIS_COLORS[0]} , ${VIRIDIS_COLORS[1]}, ${VIRIDIS_COLORS[2]}, ${VIRIDIS_COLORS[3]}, ${VIRIDIS_COLORS[4]})`,
+          backgroundImage: `linear-gradient(to right, ${VIRIDIS_COLORS[4]} , ${VIRIDIS_COLORS[3]}, ${VIRIDIS_COLORS[2]}, ${VIRIDIS_COLORS[1]}, ${VIRIDIS_COLORS[0]})`,
         }}
       >
         <span
           role="textbox"
-          style={{ color: Color.rgb(VIRIDIS_COLORS[4]).toString() }}
+          style={{ color: Color.rgb(VIRIDIS_COLORS[0]).toString() }}
         >
           {heatmap.minDepth}
         </span>
         <span
           role="textbox"
-          style={{ color: Color.rgb(VIRIDIS_COLORS[0]).toString() }}
+          style={{ color: Color.rgb(VIRIDIS_COLORS[4]).toString() }}
         >
           {heatmap.maxDepth}
         </span>
