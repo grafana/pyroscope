@@ -1,6 +1,16 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Profile } from '@pyroscope/models/src';
-import { MergeOutput, mergeWithQueryID } from '@webapp/services/render';
+import {
+  MergeOutput,
+  mergeWithQueryID,
+  HeatmapOutput,
+  getHeatmap,
+  SelectionProfileOutput,
+  getHeatmapSelectionProfile,
+  Heatmap,
+  getHeatmapProps,
+  selectionProfileProps,
+} from '@webapp/services/render';
 import type { RootState } from '@webapp/redux/store';
 import { RequestAbortedError } from '@webapp/services/base';
 import { addNotification } from './notifications';
@@ -28,20 +38,29 @@ type SingleView =
     };
 // TODO
 
+type ExemplarsSingleView =
+  | { type: 'pristine'; heatmap?: Heatmap; profile?: Profile }
+  | { type: 'loading'; heatmap?: Heatmap; profile?: Profile }
+  | { type: 'loaded'; heatmap: Heatmap; profile: Profile }
+  | { type: 'reloading'; heatmap: Heatmap; profile: Profile };
 interface TracingState {
   queryID: string;
   maxNodes: string;
   refreshToken?: string;
 
+  exemplarsSingleView: ExemplarsSingleView;
   singleView: SingleView;
 }
 
 let singleViewAbortController: AbortController | undefined;
+let exemplarsSingleViewAbortController: AbortController | undefined;
+let selectionProfileAbortController: AbortController | undefined;
 
 const initialState: TracingState = {
   queryID: '',
   maxNodes: '1024',
 
+  exemplarsSingleView: { type: 'pristine' },
   singleView: { type: 'pristine' },
 };
 
@@ -72,6 +91,79 @@ export const fetchSingleView = createAsyncThunk<
     addNotification({
       type: 'danger',
       title: 'Failed to load single view data',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchExemplarsSingleView = createAsyncThunk<
+  HeatmapOutput,
+  getHeatmapProps,
+  { state: { tracing: TracingState } }
+>('tracing/exemplarsSingleView', async (heatmapProps, thunkAPI) => {
+  if (exemplarsSingleViewAbortController) {
+    exemplarsSingleViewAbortController.abort();
+  }
+
+  exemplarsSingleViewAbortController = new AbortController();
+  thunkAPI.signal = exemplarsSingleViewAbortController.signal;
+
+  // think of getting params from store
+  const res = await getHeatmap(
+    heatmapProps,
+    exemplarsSingleViewAbortController
+  );
+
+  if (res.isOk) {
+    return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load heatmap',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchSelectionProfile = createAsyncThunk<
+  SelectionProfileOutput,
+  selectionProfileProps,
+  { state: { tracing: TracingState } }
+>('tracing/fetchSelectionProfile', async (selectionProfileProps, thunkAPI) => {
+  if (selectionProfileAbortController) {
+    selectionProfileAbortController.abort();
+  }
+
+  selectionProfileAbortController = new AbortController();
+  thunkAPI.signal = selectionProfileAbortController.signal;
+
+  const res = await getHeatmapSelectionProfile(
+    selectionProfileProps,
+    selectionProfileAbortController
+  );
+
+  if (res.isOk) {
+    return Promise.resolve(res.value);
+  }
+
+  if (res.isErr && res.error instanceof RequestAbortedError) {
+    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load profile',
       message: res.error.message,
     })
   );
@@ -146,6 +238,124 @@ export const tracingSlice = createSlice({
         default: {
           // it failed to load for the first time, so far all effects it's pristine
           state.singleView = {
+            type: 'pristine',
+          };
+        }
+      }
+    });
+
+    /***********************************/
+    /*      Exemplars Single View      */
+    /***********************************/
+
+    builder.addCase(fetchExemplarsSingleView.pending, (state) => {
+      switch (state.exemplarsSingleView.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'reloading':
+        case 'loaded': {
+          state.exemplarsSingleView = {
+            ...state.exemplarsSingleView,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.exemplarsSingleView = { type: 'loading' };
+        }
+      }
+    });
+
+    builder.addCase(fetchExemplarsSingleView.fulfilled, (state, action) => {
+      state.exemplarsSingleView = {
+        ...action.payload,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchExemplarsSingleView.rejected, (state, action) => {
+      switch (state.exemplarsSingleView.type) {
+        // if previous state is loaded, let's continue displaying data
+        case 'reloading': {
+          let type: ExemplarsSingleView['type'] = 'reloading';
+          if (action.meta.rejectedWithValue) {
+            type = (
+              action?.payload as {
+                rejectedWithValue: ExemplarsSingleView['type'];
+              }
+            )?.rejectedWithValue;
+          } else if (action.error.message === 'cancel') {
+            type = 'loaded';
+          }
+          state.exemplarsSingleView = {
+            ...state.exemplarsSingleView,
+            type,
+          };
+          break;
+        }
+
+        default: {
+          // it failed to load for the first time, so far all effects it's pristine
+          state.exemplarsSingleView = {
+            type: 'pristine',
+          };
+        }
+      }
+    });
+
+    /**************************************/
+    /*      Heatmap Selection Profile      */
+    /**************************************/
+
+    builder.addCase(fetchSelectionProfile.pending, (state) => {
+      switch (state.exemplarsSingleView.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'reloading':
+        case 'loaded': {
+          state.exemplarsSingleView = {
+            ...state.exemplarsSingleView,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.exemplarsSingleView = { type: 'loading' };
+        }
+      }
+    });
+
+    builder.addCase(fetchSelectionProfile.fulfilled, (state, action) => {
+      state.exemplarsSingleView.type = 'loaded';
+      state.exemplarsSingleView.profile = action.payload.profile;
+    });
+
+    builder.addCase(fetchSelectionProfile.rejected, (state, action) => {
+      switch (state.exemplarsSingleView.type) {
+        // if previous state is loaded, let's continue displaying data
+        case 'reloading': {
+          let type: ExemplarsSingleView['type'] = 'reloading';
+          if (action.meta.rejectedWithValue) {
+            type = (
+              action?.payload as {
+                rejectedWithValue: ExemplarsSingleView['type'];
+              }
+            )?.rejectedWithValue;
+          } else if (action.error.message === 'cancel') {
+            type = 'loaded';
+          }
+          state.exemplarsSingleView = {
+            ...state.exemplarsSingleView,
+            type,
+          };
+          break;
+        }
+
+        default: {
+          // it failed to load for the first time, so far all effects it's pristine
+          state.exemplarsSingleView = {
             type: 'pristine',
           };
         }
