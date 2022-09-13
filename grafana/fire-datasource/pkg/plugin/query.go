@@ -134,7 +134,7 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 		Start: 0,
 		Value: levels[0].Values[VALUE_OFFSET],
 		Level: 0,
-		Name:  names[levels[0].Values[NAME_OFFSET]],
+		Name:  names[levels[0].Values[0]],
 	}
 
 	parentsStack := []*ProfileTree{tree}

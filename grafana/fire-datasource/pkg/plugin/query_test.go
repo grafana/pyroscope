@@ -46,8 +46,8 @@ func Test_profileToDataFrame(t *testing.T) {
 			Flamegraph: &querierv1.FlameGraph{
 				Names: []string{"func1", "func2", "func3"},
 				Levels: []*querierv1.Level{
-					{Values: []int64{1, 2, 3, 4}},
-					{Values: []int64{5, 6, 7, 8, 9}},
+					{Values: []int64{0, 20, 0, 0}},
+					{Values: []int64{0, 10, 0, 1, 0, 5, 0, 2}},
 				},
 				Total:   987,
 				MaxSelf: 123,
@@ -55,11 +55,10 @@ func Test_profileToDataFrame(t *testing.T) {
 		},
 	}
 	frame := responseToDataFrames(resp, "memory:alloc_objects:count:space:bytes")
-	require.Equal(t, []string{"func1", "func2", "func3"}, frame.Meta.Custom.(CustomMeta).Names)
-	require.Equal(t, int64(123), frame.Meta.Custom.(CustomMeta).MaxSelf)
-	require.Equal(t, int64(987), frame.Meta.Custom.(CustomMeta).Total)
-	require.Equal(t, 1, len(frame.Fields))
-	require.Equal(t, data.NewField("levels", nil, []string{"[1,2,3,4]", "[5,6,7,8,9]"}), frame.Fields[0])
+	require.Equal(t, 3, len(frame.Fields))
+	require.Equal(t, data.NewField("level", nil, []int64{0, 1, 1}), frame.Fields[0])
+	require.Equal(t, data.NewField("value", nil, []int64{20, 10, 5}), frame.Fields[1])
+	require.Equal(t, data.NewField("label", nil, []string{"func1", "func2", "func3"}), frame.Fields[2])
 	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
 }
 
