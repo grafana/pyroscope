@@ -124,7 +124,7 @@ export const fetchHeatmapSingleView = createAsyncThunk<
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
-      title: 'Failed to load single view data',
+      title: 'Failed to load heatmap',
       message: res.error.message,
     })
   );
