@@ -3,6 +3,7 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 export interface Query extends DataQuery {
   labelSelector: string;
   profileTypeId: string;
+  queryType: 'metrics' | 'profile' | 'both';
 }
 
 export interface ProfileTypeMessage {
@@ -18,6 +19,7 @@ export type SeriesMessage = Array<{ labels: Array<{ name: string; value: string 
 
 export const defaultQuery: Partial<Query> = {
   labelSelector: '{}',
+  queryType: 'both',
 };
 
 /**
