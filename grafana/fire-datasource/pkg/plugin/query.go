@@ -21,6 +21,11 @@ type queryModel struct {
 	LabelSelector string `json:"labelSelector"`
 }
 
+// These constants need to match the ones in the frontend.
+const queryTypeProfile = "profile"
+const queryTypeMetrics = "metrics"
+const queryTypeBoth = "both"
+
 // query processes single Fire query transforming the response to data.Frame packaged in DataResponse
 func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	var qm queryModel
@@ -32,44 +37,47 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 		return response
 	}
 
-	log.DefaultLogger.Debug("Querying SelectMergeStacktraces()", "queryModel", qm)
-
-	resp, err := d.client.SelectMergeStacktraces(ctx, makeRequest(qm, query))
-	if err != nil {
-		response.Error = err
-		return response
-	}
-	frame := responseToDataFrames(resp, qm.ProfileTypeID)
-
-	// If query called with streaming on then return a channel
-	// to subscribe on a client-side and consume updates from a plugin.
-	// Feel free to remove this if you don't need streaming for your datasource.
-	if qm.WithStreaming {
-		channel := live.Channel{
-			Scope:     live.ScopeDatasource,
-			Namespace: pCtx.DataSourceInstanceSettings.UID,
-			Path:      "stream",
+	if query.QueryType == queryTypeMetrics || query.QueryType == queryTypeBoth {
+		seriesResp, err := d.client.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+			ProfileTypeID: qm.ProfileTypeID,
+			LabelSelector: qm.LabelSelector,
+			Start:         query.TimeRange.From.UnixMilli(),
+			End:           query.TimeRange.To.UnixMilli(),
+			Step:          query.Interval.Seconds(),
+			// todo add one or more group bys
+			GroupBy: []string{},
+		}))
+		if err != nil {
+			response.Error = err
+			return response
 		}
-		frame.SetMeta(&data.FrameMeta{Channel: channel.String()})
+
+		// add the frames to the response.
+		response.Frames = append(response.Frames, seriesToDataFrame(seriesResp, qm.ProfileTypeID))
 	}
 
-	seriesResp, err := d.client.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
-		ProfileTypeID: qm.ProfileTypeID,
-		LabelSelector: qm.LabelSelector,
-		Start:         query.TimeRange.From.UnixMilli(),
-		End:           query.TimeRange.To.UnixMilli(),
-		Step:          query.Interval.Seconds(),
-		// todo add one or more group bys
-		GroupBy: []string{},
-	}))
-	if err != nil {
-		response.Error = err
-		return response
-	}
+	if query.QueryType == queryTypeProfile || query.QueryType == queryTypeBoth {
+		log.DefaultLogger.Debug("Querying SelectMergeStacktraces()", "queryModel", qm)
+		resp, err := d.client.SelectMergeStacktraces(ctx, makeRequest(qm, query))
+		if err != nil {
+			response.Error = err
+			return response
+		}
+		frame := responseToDataFrames(resp, qm.ProfileTypeID)
+		response.Frames = append(response.Frames, frame)
 
-	// add the frames to the response.
-	response.Frames = append(response.Frames, seriesToDataFrame(seriesResp, qm.ProfileTypeID))
-	response.Frames = append(response.Frames, frame)
+		// If query called with streaming on then return a channel
+		// to subscribe on a client-side and consume updates from a plugin.
+		// Feel free to remove this if you don't need streaming for your datasource.
+		if qm.WithStreaming {
+			channel := live.Channel{
+				Scope:     live.ScopeDatasource,
+				Namespace: pCtx.DataSourceInstanceSettings.UID,
+				Path:      "stream",
+			}
+			frame.SetMeta(&data.FrameMeta{Channel: channel.String()})
+		}
+	}
 
 	return response
 }
