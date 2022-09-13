@@ -15,6 +15,11 @@ describe('FlameGraph', () => {
     const [query] = useState('');
 
     const flameGraphData = new MutableDataFrame(data);
+    flameGraphData.meta = {
+      custom: {
+        ProfileTypeID: 'cpu:foo:bar'
+      }
+    }
 
     return (
       <FlameGraph
