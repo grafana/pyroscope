@@ -373,7 +373,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	}
 
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-		Result: mergeBatchMergeStacktraces(result...),
+		Result: firemodel.MergeBatchMergeStacktraces(result...),
 	})
 	if err != nil {
 		if errors.Is(err, io.EOF) {

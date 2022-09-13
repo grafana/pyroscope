@@ -220,23 +220,26 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
-		res, err := ic.SelectProfiles(ctx, connect.NewRequest(&ingestv1.SelectProfilesRequest{
-			LabelSelector: req.Msg.LabelSelector,
-			Start:         req.Msg.Start,
-			End:           req.Msg.End,
-			Type:          profileType,
-		}))
-		if err != nil {
-			return nil, err
-		}
-		return res.Msg, nil
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (BidiClientMergeProfilesStacktraces, error) {
+		bidi := ic.MergeProfilesStacktraces(ctx)
+		return bidi, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: req.Msg.LabelSelector,
+				Start:         req.Msg.Start,
+				End:           req.Msg.End,
+				Type:          profileType,
+			},
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	st, err := dedupe(responses)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: NewFlameGraph(newTree(mergeStacktraces(dedupeProfiles(responses)))),
+		Flamegraph: NewFlameGraph(newTree(st)),
 	}), nil
 }
 
