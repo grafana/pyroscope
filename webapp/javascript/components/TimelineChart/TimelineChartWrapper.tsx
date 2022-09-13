@@ -241,13 +241,17 @@ class TimelineChartWrapper extends React.Component<
     // if available, only render annotation
     // so that the tooltip is not bloated
     if (this.props.annotations) {
-      tooltipContent = [
-        <Annotation
-          key="annotations"
-          values={data.values}
-          annotations={annotations}
-        />,
-      ];
+      if (this.props.mode === 'singles') {
+        tooltipContent = [
+          <Annotation
+            key="annotations"
+            durationDelta={this.props.timelineA.data?.durationDelta}
+            values={data.values}
+            annotations={annotations}
+            pointOffset={data.pointOffset}
+          />,
+        ];
+      }
     }
 
     if (tooltipContent.length) {

@@ -4,21 +4,27 @@ import { format } from 'date-fns';
 import styles from './Annotation.module.scss';
 
 // TODO(eh-am): what are these units?
-export const THRESHOLD = 10000;
+export const THRESHOLD = 3;
 
 interface AnnotationTooltipBodyProps {
   /** list of flotjs datapoints being hovered. we only use the first one */
   values?: { closest: number[] }[];
   /** list of annotations */
   annotations: { timestamp: number; content: string }[];
+
+  /** given a timestamp, it returns the offset within the canvas */
+  pointOffset: (coords: { x: number }) => { left: number };
 }
 
 export default function Annotations(props: AnnotationTooltipBodyProps) {
   if (!props.annotations?.length) {
     return null;
   }
+
   return getClosestTimestamp(props.values)
-    .andThen((closest) => getClosestAnnotation(props.annotations, closest))
+    .andThen((closest) =>
+      getClosestAnnotation(props.annotations, closest, props.pointOffset)
+    )
     .map((annotation) => (
       <AnnotationComponent
         timestamp={annotation.timestamp}
@@ -62,18 +68,19 @@ function getClosestTimestamp(values?: { closest: number[] }[]): Maybe<number> {
   return Maybe.of(values[0].closest[0]);
 }
 
-// TODO(eh-am): threshold does not account for different time ranges
-// we need to scale based on resolution (1 hour, 3 hours etc)
 function getClosestAnnotation(
   annotations: { timestamp: number; content: string }[],
-  timestamp: number
+  timestamp: number,
+  pointOffset: AnnotationTooltipBodyProps['pointOffset']
 ) {
+  const timestampLeft = pointOffset({ x: timestamp }).left;
+
   // Create a score based on how distant it is from the timestamp
   // Then get the first value (the closest to the timestamp)
   const f = annotations
     .map((a) => ({
       ...a,
-      score: Math.abs(a.timestamp - timestamp),
+      score: Math.abs(pointOffset({ x: a.timestamp }).left - timestampLeft),
     }))
     .filter((a) => a.score < THRESHOLD)
     .sort((a, b) => a.score - b.score);
