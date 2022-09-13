@@ -31,7 +31,7 @@ export interface ContextMenuProps {
       ReactDOM.unmountComponentAtNode(containerEl);
 
       // TODO(eh-am): improve typing
-      const ContextMenu = plot.getOptions().ContextMenu as
+      const ContextMenu = (plot.getOptions() as ShamefulAny).ContextMenu as
         | React.FC<ContextMenuProps>
         | undefined;
 
