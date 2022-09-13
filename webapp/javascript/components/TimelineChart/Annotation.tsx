@@ -1,5 +1,7 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
+import { format } from 'date-fns';
+import styles from './Annotation.module.scss';
 
 // TODO(eh-am): what are these units?
 export const THRESHOLD = 10000;
@@ -33,10 +35,13 @@ function AnnotationComponent({
   timestamp: number;
   content: string;
 }) {
+  // TODO: these don't account for timezone
   return (
     <section>
-      <div>timestamp: {timestamp}</div>
-      <div>content: {content}</div>
+      <header className={styles.header}>
+        {format(timestamp, 'yyyy-MM-dd hh:mm aa')}
+      </header>
+      <div>{content}</div>
     </section>
   );
 }
