@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
@@ -51,11 +53,6 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 		frame.SetMeta(&data.FrameMeta{Channel: channel.String()})
 	}
 
-	// add the frames to the response.
-	response.Frames = append(response.Frames, frame)
-
-	log.DefaultLogger.Debug("Querying SelectSeries()", "queryModel", qm)
-
 	seriesResp, err := d.client.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
 		ProfileTypeID: qm.ProfileTypeID,
 		LabelSelector: qm.LabelSelector,
@@ -69,8 +66,11 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 		response.Error = err
 		return response
 	}
-	// todo remove me and add the series to the frame.
-	log.DefaultLogger.Debug("Series", seriesResp.Msg.Series)
+
+	// add the frames to the response.
+	response.Frames = append(response.Frames, seriesToDataFrame(seriesResp, qm.ProfileTypeID))
+	response.Frames = append(response.Frames, frame)
+
 	return response
 }
 
@@ -241,4 +241,38 @@ func walkTree(tree *ProfileTree, fn func(tree *ProfileTree)) {
 			stack = stack[1:]
 		}
 	}
+}
+
+func seriesToDataFrame(seriesResp *connect.Response[querierv1.SelectSeriesResponse], profileTypeID string) *data.Frame {
+	frame := data.NewFrame("series")
+	frame.Meta = &data.FrameMeta{PreferredVisualization: "graph"}
+
+	fields := data.Fields{}
+	timeField := data.NewField("time", nil, []time.Time{})
+	fields = append(fields, timeField)
+
+	for index, series := range seriesResp.Msg.Series {
+		label := ""
+		if len(series.Labels) > 0 {
+			label = series.Labels[0].Name
+		} else {
+			parts := strings.Split(profileTypeID, ":")
+			if len(parts) == 5 {
+				label = parts[1] // sample type e.g. cpu, goroutine, alloc_objects
+			}
+		}
+		valueField := data.NewField(label, nil, []float64{})
+
+		for _, point := range series.Points {
+			if index == 0 {
+				timeField.Append(time.UnixMilli(point.T))
+			}
+			valueField.Append(point.V)
+		}
+
+		fields = append(fields, valueField)
+	}
+
+	frame.Fields = fields
+	return frame
 }
