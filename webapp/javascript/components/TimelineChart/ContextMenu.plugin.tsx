@@ -19,42 +19,37 @@ export interface ContextMenuProps {
 }
 
 (function ($: JQueryStatic) {
-  let globalPlot: jquery.flot.plot;
-
-  function onClick(
-    event: unknown,
-    pos: { x: number; pageX: number; pageY: number }
-  ) {
-    const container = inject($);
-    const containerEl = container?.[0];
-
-    // unmount any previous menus
-    ReactDOM.unmountComponentAtNode(containerEl);
-
-    // TODO(eh-am): improve typing
-    const ContextMenu = (globalPlot.getOptions() as ShamefulAny).ContextMenu as
-      | React.FC<ContextMenuProps>
-      | undefined;
-
-    if (ContextMenu) {
-      // TODO(eh-am): why do we need this conversion?
-      const timestamp = Math.round(pos.x / 1000);
-
-      // Add a Provider (reux) so that we can communicate with the main app via actions
-      // idea from https://stackoverflow.com/questions/52660770/how-to-communicate-reactdom-render-with-other-reactdom-render
-      // TODO(eh-am): add a global Context too?
-      ReactDOM.render(
-        <Provider store={store}>
-          <ContextMenu click={{ ...pos }} timestamp={timestamp} />
-        </Provider>,
-        containerEl
-      );
-    }
-  }
-
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
-    // update closure so that onClick can access the plot instance
-    globalPlot = plot;
+    function onClick(
+      event: unknown,
+      pos: { x: number; pageX: number; pageY: number }
+    ) {
+      const container = inject($);
+      const containerEl = container?.[0];
+
+      // unmount any previous menus
+      ReactDOM.unmountComponentAtNode(containerEl);
+
+      // TODO(eh-am): improve typing
+      const ContextMenu = plot.getOptions().ContextMenu as
+        | React.FC<ContextMenuProps>
+        | undefined;
+
+      if (ContextMenu) {
+        // TODO(eh-am): why do we need this conversion?
+        const timestamp = Math.round(pos.x / 1000);
+
+        // Add a Provider (reux) so that we can communicate with the main app via actions
+        // idea from https://stackoverflow.com/questions/52660770/how-to-communicate-reactdom-render-with-other-reactdom-render
+        // TODO(eh-am): add a global Context too?
+        ReactDOM.render(
+          <Provider store={store}>
+            <ContextMenu click={{ ...pos }} timestamp={timestamp} />
+          </Provider>,
+          containerEl
+        );
+      }
+    }
 
     const flotEl = plot.getPlaceholder();
 
