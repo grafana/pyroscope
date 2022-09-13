@@ -22,11 +22,10 @@ import styles from './Heatmap.module.scss';
 interface HeatmapProps {
   heatmap: Heatmap;
   onSelection: (
-    xS: number,
-    xE: number,
-    yS: number,
-    yE: number,
-    isYBottomEdge?: boolean
+    minV: number,
+    maxV: number,
+    startT: number,
+    endT: number
   ) => void;
 }
 
