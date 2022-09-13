@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import useResizeObserver from '@react-hook/resize-observer';
 import Color from 'color';
 import cl from 'classnames';
+import { interpolateViridis } from 'd3-scale-chromatic';
 
 import type { Heatmap } from '@webapp/services/render';
 import {
@@ -11,9 +12,7 @@ import {
 import {
   SELECTED_AREA_BACKGROUND,
   HEATMAP_HEIGHT,
-  COLOR_1,
-  COLOR_2,
-  COLOR_EMPTY,
+  VIRIDIS_COLORS,
 } from './constants';
 
 // eslint-disable-next-line css-modules/no-unused-class
@@ -63,16 +62,14 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
   const getColor = useMemo(
     () =>
       (x: number): string => {
-        const minL = Math.log10(heatmap.minDepth);
-        const maxL = Math.log10(heatmap.maxDepth);
-        const w1 = (Math.log10(x) - minL) / (maxL - minL);
-        const w2 = 1 - w1;
+        if (x === 0) {
+          return Color.rgb(22, 22, 22).toString();
+        }
 
-        return Color.rgb([
-          Math.round(COLOR_1[0] * w1 + COLOR_2[0] * w2),
-          Math.round(COLOR_1[1] * w1 + COLOR_2[1] * w2),
-          Math.round(COLOR_1[2] * w1 + COLOR_2[2] * w2),
-        ]).toString();
+        // from 0 to 1
+        const colorIndex = 1 - (x - heatmap.minDepth) / heatmap.maxDepth;
+
+        return interpolateViridis(colorIndex);
       },
     [heatmap]
   );
@@ -85,11 +82,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
           <rect
             role="gridcell"
             data-items={itemsCount}
-            fill={
-              itemsCount !== 0
-                ? getColor(itemsCount)
-                : Color.rgb(COLOR_EMPTY).toString()
-            }
+            fill={getColor(itemsCount)}
             // eslint-disable-next-line react/no-array-index-key
             key={rowIndex}
             x={colIndex * (heatmapW / heatmap.timeBuckets)}
@@ -151,15 +144,19 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         className={styles.bucketsColors}
         data-testid="color-scale"
         style={{
-          backgroundImage: `linear-gradient(to right, ${Color.rgb(
-            COLOR_2
-          )} , ${Color.rgb(COLOR_1)})`,
+          backgroundImage: `linear-gradient(to right, ${VIRIDIS_COLORS[0]} , ${VIRIDIS_COLORS[1]}, ${VIRIDIS_COLORS[2]}, ${VIRIDIS_COLORS[3]}, ${VIRIDIS_COLORS[4]})`,
         }}
       >
-        <span role="textbox" style={{ color: Color.rgb(COLOR_1).toString() }}>
+        <span
+          role="textbox"
+          style={{ color: Color.rgb(VIRIDIS_COLORS[4]).toString() }}
+        >
           {heatmap.minDepth}
         </span>
-        <span role="textbox" style={{ color: Color.rgb(COLOR_2).toString() }}>
+        <span
+          role="textbox"
+          style={{ color: Color.rgb(VIRIDIS_COLORS[0]).toString() }}
+        >
           {heatmap.maxDepth}
         </span>
       </div>
