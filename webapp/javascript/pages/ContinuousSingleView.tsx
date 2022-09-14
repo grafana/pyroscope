@@ -129,11 +129,6 @@ function ContinuousSingleView() {
             }
             annotations={annotations}
             selectionType="single"
-            onHoverDisplayTooltip={(props) => {
-              if (props.values[0].closest[1]) {
-                return <div>{props.timeLabel}</div>;
-              }
-            }}
           />
         </Box>
         <Box>{flamegraphRenderer}</Box>
