@@ -7,6 +7,3 @@ export const AnnotationSchema = z.object({
 });
 
 export type Annotation = z.infer<typeof AnnotationSchema>;
-
-export const AnnotationsSchema = z.array(AnnotationSchema);
-export type Annotations = z.infer<typeof AnnotationsSchema>;

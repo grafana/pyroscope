@@ -12,6 +12,7 @@ import {
   buildMergeURLWithQueryID,
 } from '@webapp/util/updateRequests';
 import { Timeline, TimelineSchema } from '@webapp/models/timeline';
+import { Annotation, AnnotationSchema } from '@webapp/models/annotation';
 import type { RequestError } from './base';
 import { request, parseResponse } from './base';
 
@@ -19,6 +20,7 @@ export interface RenderOutput {
   profile: Profile;
   timeline: Timeline;
   groups?: Groups;
+  annotations: Annotation[];
 }
 
 interface renderSingleProps {
@@ -45,7 +47,10 @@ export async function renderSingle(
   }
 
   const parsed = FlamebearerProfileSchema.merge(
-    z.object({ timeline: TimelineSchema })
+    z.object({
+      timeline: TimelineSchema,
+      annotations: z.array(AnnotationSchema),
+    })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
     .safeParse(response.value);
@@ -53,11 +58,12 @@ export async function renderSingle(
   if (parsed.success) {
     // TODO: strip timeline
     const profile = parsed.data;
-    const { timeline } = parsed.data;
+    const { timeline, annotations } = parsed.data;
 
     return Result.ok({
       profile,
       timeline,
+      annotations,
     });
   }
 

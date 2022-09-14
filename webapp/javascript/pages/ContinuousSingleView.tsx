@@ -8,6 +8,7 @@ import {
   fetchSingleView,
   selectQueries,
   setDateRange,
+  selectAnnotationsOrDefault,
 } from '@webapp/redux/reducers/continuous';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
@@ -31,6 +32,7 @@ function ContinuousSingleView() {
   );
 
   const { singleView } = useAppSelector((state) => state.continuous);
+  const annotations = useAppSelector(selectAnnotationsOrDefault);
 
   useEffect(() => {
     if (from && until && query && maxNodes) {
@@ -102,14 +104,14 @@ function ContinuousSingleView() {
   };
 
   // TODO(eh-am): remove this
-  const annotationsCount = 10;
-  // Generate one annotation every minute
-  const annotations = Array.from(Array(annotationsCount).keys()).map((i) => {
-    return {
-      timestamp: new Date(Date.now() - 1000 * 60 * 10 * i).getTime() / 1000,
-      content: `annotation #${i}`,
-    };
-  });
+  //  const annotationsCount = 10;
+  //  // Generate one annotation every minute
+  //  const annotations = Array.from(Array(annotationsCount).keys()).map((i) => {
+  //    return {
+  //      timestamp: new Date(Date.now() - 1000 * 60 * 10 * i).getTime() / 1000,
+  //      content: `annotation #${i}`,
+  //    };
+  //  });
 
   return (
     <div>

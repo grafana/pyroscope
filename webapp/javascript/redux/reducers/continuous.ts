@@ -12,6 +12,7 @@ import { fetchAppNames } from '@webapp/services/appNames';
 import type { AppNames } from '@webapp/models/appNames';
 import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import type { Timeline } from '@webapp/models/timeline';
+import type { Annotation } from '@webapp/models/annotation';
 import * as tagsService from '@webapp/services/tags';
 import { RequestAbortedError } from '@webapp/services/base';
 import { appendLabelToQuery } from '@webapp/util/query';
@@ -26,11 +27,13 @@ type SingleView =
       type: 'loaded';
       timeline: Timeline;
       profile: Profile;
+      annotations: Annotation[];
     }
   | {
       type: 'reloading';
       timeline: Timeline;
       profile: Profile;
+      annotations: Annotation[];
     };
 
 type TagExplorerView =
@@ -1064,4 +1067,12 @@ export const selectQueries = (state: RootState) => {
     rightQuery: brandQuery(state.continuous.rightQuery || ''),
     query: brandQuery(state.continuous.query),
   };
+};
+
+// TODO: accept a side (continuous / leftside)
+export const selectAnnotationsOrDefault = (state: RootState) => {
+  if ('annotations' in state.continuous.singleView) {
+    return state.continuous.singleView.annotations;
+  }
+  return [];
 };
