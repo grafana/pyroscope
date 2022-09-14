@@ -543,16 +543,17 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 
 	defer rows.Close()
 
-	h.stacktraces.lock.RLock()
-	h.locations.lock.RLock()
-	h.functions.lock.RLock()
-	h.strings.lock.RLock()
-	defer func() {
-		h.stacktraces.lock.RUnlock()
-		h.locations.lock.RUnlock()
-		h.functions.lock.RUnlock()
-		h.strings.lock.RUnlock()
-	}()
+	// TODO: YOLO Enable me again
+	//h.stacktraces.lock.RLock()
+	//h.locations.lock.RLock()
+	//h.functions.lock.RLock()
+	//h.strings.lock.RLock()
+	//defer func() {
+	//	h.stacktraces.lock.RUnlock()
+	//	h.locations.lock.RUnlock()
+	//	h.functions.lock.RUnlock()
+	//	h.strings.lock.RUnlock()
+	//}()
 
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
