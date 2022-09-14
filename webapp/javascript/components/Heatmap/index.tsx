@@ -161,14 +161,16 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         {HEATMAP_COLORS.map((color, index) => (
           <div className={styles.colorLabelContainer}>
             {index % 3 === 0 && (
-              <span className={styles.label}>{getLegendLabel(index)}</span>
+              <span role="textbox" className={styles.label}>
+                {getLegendLabel(index)}
+              </span>
             )}
             <div
               className={styles.color}
               style={{
                 backgroundColor: color.toString(),
               }}
-            ></div>
+            />
           </div>
         ))}
       </div>
