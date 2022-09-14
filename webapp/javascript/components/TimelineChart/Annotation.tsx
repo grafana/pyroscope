@@ -53,19 +53,13 @@ function AnnotationComponent({
 }
 
 function getClosestTimestamp(values?: { closest: number[] }[]): Maybe<number> {
-  if (!values) {
-    return Maybe.nothing();
+  const val = values?.[0].closest[0];
+
+  if (val) {
+    return Maybe.of(val);
   }
-  if (!values[0]) {
-    return Maybe.nothing();
-  }
-  if (!values[0].closest) {
-    return Maybe.nothing();
-  }
-  if (!values[0].closest[0]) {
-    return Maybe.nothing();
-  }
-  return Maybe.of(values[0].closest[0]);
+
+  return Maybe.nothing();
 }
 
 function getClosestAnnotation(
