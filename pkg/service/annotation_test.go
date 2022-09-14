@@ -61,7 +61,11 @@ var _ = Describe("AnnotationsService", func() {
 			})
 
 			It("upserts", func() {
-				annotation, err := svc.CreateAnnotation(context.Background(), p)
+				annotation, err := svc.CreateAnnotation(context.Background(), model.CreateAnnotation{
+					AppName:   p.AppName,
+					Timestamp: p.Timestamp,
+					Content:   "mycontent updated",
+				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(annotation).ToNot(BeNil())
 
@@ -70,6 +74,7 @@ var _ = Describe("AnnotationsService", func() {
 					time.Now().Add(-time.Hour),
 					time.Now())
 
+				Expect(annotations[0].Content).To(Equal("mycontent updated"))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(annotations).ToNot(BeEmpty())
 				Expect(len(annotations)).To(Equal(1))
