@@ -25,7 +25,7 @@ type responseFromIngesters[T interface{}] struct {
 	response T
 }
 
-type IngesterFn[T interface{}] func(IngesterQueryClient) (T, error)
+type IngesterFn[T interface{}] func(context.Context, IngesterQueryClient) (T, error)
 
 // IngesterQuerier helps with querying the ingesters.
 type IngesterQuerier struct {
@@ -60,7 +60,7 @@ func forGivenIngesters[T any](ctx context.Context, q *IngesterQuerier, replicati
 			return nil, err
 		}
 
-		resp, err := f(client.(IngesterQueryClient))
+		resp, err := f(ctx, client.(IngesterQueryClient))
 		if err != nil {
 			return nil, err
 		}

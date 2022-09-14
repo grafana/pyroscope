@@ -154,6 +154,132 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 	}
 }
 
+func TestHeadMergeSampleByStacktraces(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		in       func() []*pprofth.ProfileBuilder
+		expected *ingestv1.MergeProfilesStacktracesResult
+	}{
+		{
+			name: "single profile",
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
+				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktrace("my", "other").AddSamples(3)
+				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+				ps = append(ps, p)
+				return
+			},
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
+					{
+						FunctionIds: []int32{0, 1},
+						Value:       4,
+					},
+					{
+						FunctionIds: []int32{0, 1, 2},
+						Value:       3,
+					},
+				},
+				FunctionNames: []string{"my", "other", "stack"},
+			},
+		},
+		{
+			name: "multiple profiles",
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				for i := 0; i < 3000; i++ {
+					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
+						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
+					p.ForStacktrace("my", "other").AddSamples(1)
+					p.ForStacktrace("my", "other").AddSamples(3)
+					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+					ps = append(ps, p)
+				}
+				return
+			},
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
+					{
+						FunctionIds: []int32{0, 1},
+						Value:       12000,
+					},
+					{
+						FunctionIds: []int32{0, 1, 2},
+						Value:       9000,
+					},
+				},
+				FunctionNames: []string{"my", "other", "stack"},
+			},
+		},
+		{
+			name: "filtering multiple profiles",
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				for i := 0; i < 3000; i++ {
+					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
+						MemoryProfile().WithLabels("series", fmt.Sprintf("%d", i))
+					p.ForStacktrace("my", "other").AddSamples(1, 2, 3, 4)
+					p.ForStacktrace("my", "other").AddSamples(3, 2, 3, 4)
+					p.ForStacktrace("my", "other", "stack").AddSamples(3, 3, 3, 3)
+					ps = append(ps, p)
+				}
+				for i := 0; i < 3000; i++ {
+					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
+						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
+					p.ForStacktrace("my", "other").AddSamples(1)
+					p.ForStacktrace("my", "other").AddSamples(3)
+					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+					ps = append(ps, p)
+				}
+				return
+			},
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
+					{
+						FunctionIds: []int32{0, 1},
+						Value:       12000,
+					},
+					{
+						FunctionIds: []int32{0, 1, 2},
+						Value:       9000,
+					},
+				},
+				FunctionNames: []string{"my", "other", "stack"},
+			},
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testPath := t.TempDir()
+			db, err := New(&Config{
+				DataPath:      testPath,
+				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+			}, log.NewNopLogger(), nil)
+			require.NoError(t, err)
+			ctx := context.Background()
+
+			for _, p := range tc.in() {
+				require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+			}
+
+			stacktraces, err := db.head.BatchMergeStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
+				LabelSelector: `{}`,
+				Type: &commonv1.ProfileType{
+					Name:       "process_cpu",
+					SampleType: "cpu",
+					SampleUnit: "nanoseconds",
+					PeriodType: "cpu",
+					PeriodUnit: "nanoseconds",
+				},
+				Start: int64(model.TimeFromUnixNano(0)),
+				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
+			}, 1024, keepAll)
+			require.NoError(t, err)
+
+			testhelper.EqualProto(t, tc.expected, stacktraces)
+		})
+	}
+}
+
 func keepAll(ps []Profile) (Keep, error) {
 	res := make([]bool, len(ps))
 	for i := range res {
