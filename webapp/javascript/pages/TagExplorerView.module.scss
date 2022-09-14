@@ -1,4 +1,4 @@
-$pieChartWidth: 320px;
+$pieChartWidth: 220px;
 
 .tagExplorerView {
   .header {
@@ -90,6 +90,8 @@ $pieChartWidth: 320px;
       .tagName {
         display: flex;
         align-items: center;
+        flex-wrap: nowrap;
+        flex-direction: row;
 
         .tagColor {
           flex-shrink: 0;
@@ -98,6 +100,15 @@ $pieChartWidth: 320px;
           width: 10px;
           border-radius: 2px;
           margin-right: 10px;
+        }
+
+        .bold {
+          font-weight: bold;
+          white-space: nowrap;
+        }
+
+        .label {
+          text-align: left;
         }
       }
     }

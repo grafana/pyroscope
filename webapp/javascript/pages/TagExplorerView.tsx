@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
@@ -345,10 +345,19 @@ function Table({
     { name: 'totalSamples', label: 'total samples', sortable: 0 },
   ];
 
+  const groupsTotal = useMemo(
+    () =>
+      groupsData.reduce((acc, current) => {
+        return acc + calculateTotal(current.data.samples);
+      }, 0),
+    [groupsData]
+  );
+
   const bodyRows = groupsData.reduce(
     (acc, { tagName, color, data }): BodyRow[] => {
       const mean = calculateMean(data.samples);
       const total = calculateTotal(data.samples);
+      const percentage = (total / groupsTotal) * 100;
       const row = {
         isRowSelected: isTagSelected(tagName),
         // prevent clicking on single "application without tags" group row
@@ -362,7 +371,12 @@ function Table({
                   className={styles.tagColor}
                   style={{ backgroundColor: color?.toString() }}
                 />
-                {tagName}
+                <span className={styles.label}>
+                  {tagName}
+                  <span className={styles.bold}>
+                    &nbsp;{`(${percentage.toFixed(2)}%)`}
+                  </span>
+                </span>
               </div>
             ),
           },

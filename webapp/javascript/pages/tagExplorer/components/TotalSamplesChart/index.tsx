@@ -23,8 +23,8 @@ const TotalSamplesChart = ({ filteredGroupsData }: TotalSamplesChartProps) => {
     <PieChart
       data={pieChartData}
       id="total-samples-chart"
-      height="320px"
-      width="320px"
+      height="220px"
+      width="220px"
       onHoverTooltip={(data: PieChartTooltipProps) => (
         <PieChartTooltip
           label={data.label}
