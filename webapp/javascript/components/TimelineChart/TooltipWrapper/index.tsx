@@ -5,7 +5,6 @@ import styles from './styles.module.scss';
 const cx = classNames.bind(styles);
 
 const EXPLORE_TOOLTIP_WRAPPER_ID = 'explore_tooltip_wrapper';
-const DEFAULT_COMPONENT_WIDTH = 450;
 
 export interface ITooltipWrapperProps {
   pageX: number;
@@ -22,22 +21,14 @@ const TooltipWrapper = ({
 }: ITooltipWrapperProps) => {
   const isHidden = useMemo(() => pageX < 0 || pageY < 0, [pageX, pageY]);
 
-  const left = useMemo(() => {
-    if (!isHidden) {
-      const elem = document.getElementById(
-        EXPLORE_TOOLTIP_WRAPPER_ID
-      )?.offsetWidth;
-
-      return align === 'right'
-        ? pageX + 20
-        : pageX - (elem || DEFAULT_COMPONENT_WIDTH) - 20;
-    }
-    return -1;
-  }, [align, pageX, isHidden]);
+  const style =
+    align === 'right'
+      ? { top: pageY, left: pageX + 20, right: 'auto' }
+      : { top: pageY, left: 'auto', right: window.innerWidth - (pageX - 20) };
 
   return (
     <div
-      style={{ top: pageY, left }}
+      style={style}
       className={cx({
         [styles.tooltip]: true,
         [styles.hidden]: isHidden,
