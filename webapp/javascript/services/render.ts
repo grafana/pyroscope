@@ -49,7 +49,14 @@ export async function renderSingle(
   const parsed = FlamebearerProfileSchema.merge(
     z.object({
       timeline: TimelineSchema,
-      annotations: z.array(AnnotationSchema),
+
+      // Default to empty array if not present
+      annotations: z.preprocess((a) => {
+        if (!a) {
+          return [];
+        }
+        return a;
+      }, z.array(AnnotationSchema)),
     })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
