@@ -23,7 +23,7 @@ func Test_query(t *testing.T) {
 
 	dataQuery := backend.DataQuery{
 		RefID:         "A",
-		QueryType:     "",
+		QueryType:     queryTypeBoth,
 		MaxDataPoints: 0,
 		Interval:      0,
 		TimeRange: backend.TimeRange{
@@ -33,10 +33,29 @@ func Test_query(t *testing.T) {
 		JSON: []byte(`{"profileTypeId":"foo:bar","labelSelector":"{app=\\\"baz\\\"}"}`),
 	}
 
-	resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
-	require.Nil(t, resp.Error)
-	require.Equal(t, 1, len(resp.Frames))
-	require.Equal(t, data.NewField("levels", nil, []string{"[1,2,3,4]", "[5,6]", "[7,8,9]"}), resp.Frames[0].Fields[0])
+	t.Run("query both", func(t *testing.T) {
+		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 2, len(resp.Frames))
+		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[1].Fields[0])
+	})
+
+	t.Run("query profile", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeProfile
+		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 1, len(resp.Frames))
+		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[0].Fields[0])
+	})
+
+	t.Run("query metrics", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeMetrics
+		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 1, len(resp.Frames))
+		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+	})
 }
 
 // This is where the tests for the datasource backend live.
@@ -46,8 +65,8 @@ func Test_profileToDataFrame(t *testing.T) {
 			Flamegraph: &querierv1.FlameGraph{
 				Names: []string{"func1", "func2", "func3"},
 				Levels: []*querierv1.Level{
-					{Values: []int64{1, 2, 3, 4}},
-					{Values: []int64{5, 6, 7, 8, 9}},
+					{Values: []int64{0, 20, 0, 0}},
+					{Values: []int64{0, 10, 0, 1, 0, 5, 0, 2}},
 				},
 				Total:   987,
 				MaxSelf: 123,
@@ -55,11 +74,10 @@ func Test_profileToDataFrame(t *testing.T) {
 		},
 	}
 	frame := responseToDataFrames(resp, "memory:alloc_objects:count:space:bytes")
-	require.Equal(t, []string{"func1", "func2", "func3"}, frame.Meta.Custom.(CustomMeta).Names)
-	require.Equal(t, int64(123), frame.Meta.Custom.(CustomMeta).MaxSelf)
-	require.Equal(t, int64(987), frame.Meta.Custom.(CustomMeta).Total)
-	require.Equal(t, 1, len(frame.Fields))
-	require.Equal(t, data.NewField("levels", nil, []string{"[1,2,3,4]", "[5,6,7,8,9]"}), frame.Fields[0])
+	require.Equal(t, 3, len(frame.Fields))
+	require.Equal(t, data.NewField("level", nil, []int64{0, 1, 1}), frame.Fields[0])
+	require.Equal(t, data.NewField("value", nil, []int64{20, 10, 5}), frame.Fields[1])
+	require.Equal(t, data.NewField("label", nil, []string{"func1", "func2", "func3"}), frame.Fields[2])
 	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
 }
 
@@ -197,11 +215,11 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 	return &connect.Response[querierv1.SelectMergeStacktracesResponse]{
 		Msg: &querierv1.SelectMergeStacktracesResponse{
 			Flamegraph: &querierv1.FlameGraph{
-				Names: []string{"foo", "bar"},
+				Names: []string{"foo", "bar", "baz"},
 				Levels: []*querierv1.Level{
-					{Values: []int64{1, 2, 3, 4}},
-					{Values: []int64{5, 6}},
-					{Values: []int64{7, 8, 9}},
+					{Values: []int64{0, 10, 0, 0}},
+					{Values: []int64{0, 9, 0, 1}},
+					{Values: []int64{0, 8, 8, 2}},
 				},
 				Total:   100,
 				MaxSelf: 56,
@@ -211,5 +229,14 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 }
 
 func (f FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
-	panic("implement me")
+	return &connect.Response[querierv1.SelectSeriesResponse]{
+		Msg: &querierv1.SelectSeriesResponse{
+			Series: []*querierv1.Series{
+				{
+					Labels: []*v1.LabelPair{{Name: "foo", Value: "bar"}},
+					Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}},
+				},
+			},
+		},
+	}, nil
 }
