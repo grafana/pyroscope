@@ -12,7 +12,7 @@ import {
 import {
   SELECTED_AREA_BACKGROUND,
   HEATMAP_HEIGHT,
-  VIRIDIS_COLORS,
+  HEATMAP_COLORS,
 } from './constants';
 
 // eslint-disable-next-line css-modules/no-unused-class
@@ -73,6 +73,21 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
       },
     [heatmap]
   );
+
+  const getLegendLabel = (index: number): string => {
+    switch (index) {
+      case 0:
+        return heatmap.maxDepth.toString();
+      case 3:
+        return Math.round(
+          (heatmap.maxDepth - heatmap.minDepth) / 2 + heatmap.minDepth
+        ).toString();
+      case 6:
+        return heatmap.minDepth.toString();
+      default:
+        return '';
+    }
+  };
 
   const heatmapGrid = (() =>
     heatmap.values.map((column, colIndex) => (
@@ -140,25 +155,20 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         max={heatmap.endTime}
         ticksNumber={7}
       />
-      <div
-        className={styles.bucketsColors}
-        data-testid="color-scale"
-        style={{
-          backgroundImage: `linear-gradient(to right, ${VIRIDIS_COLORS[4]} , ${VIRIDIS_COLORS[3]}, ${VIRIDIS_COLORS[2]}, ${VIRIDIS_COLORS[1]}, ${VIRIDIS_COLORS[0]})`,
-        }}
-      >
-        <span
-          role="textbox"
-          style={{ color: Color.rgb(VIRIDIS_COLORS[0]).toString() }}
-        >
-          {heatmap.minDepth}
-        </span>
-        <span
-          role="textbox"
-          style={{ color: Color.rgb(VIRIDIS_COLORS[4]).toString() }}
-        >
-          {heatmap.maxDepth}
-        </span>
+      <div className={styles.legend} data-testid="color-scale">
+        {HEATMAP_COLORS.map((color, index) => (
+          <div className={styles.colorLabelContainer}>
+            {index % 3 === 0 && (
+              <span className={styles.label}>{getLegendLabel(index)}</span>
+            )}
+            <div
+              className={styles.color}
+              style={{
+                backgroundColor: color.toString(),
+              }}
+            ></div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -196,7 +206,7 @@ function ResizedSelectedArea({
         height: h,
         top,
         left,
-        backgroundColor: SELECTED_AREA_BACKGROUND,
+        backgroundColor: SELECTED_AREA_BACKGROUND.toString(),
       }}
     />
   );
