@@ -58,9 +58,8 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs firemodel.Labels, profile
 	if !ok {
 		lbs := pi.ix.Add(lbs, ps.SeriesFingerprint)
 		profiles = &profileLabels{
-			lbs:      lbs,
-			fp:       ps.SeriesFingerprint,
-			profiles: []*schemav1.Profile{ps},
+			lbs: lbs,
+			fp:  ps.SeriesFingerprint,
 		}
 		pi.profilesPerFP[ps.SeriesFingerprint] = profiles
 		pi.totalSeries.Inc()
