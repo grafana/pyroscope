@@ -103,16 +103,6 @@ function ContinuousSingleView() {
     }
   };
 
-  // TODO(eh-am): remove this
-  //  const annotationsCount = 10;
-  //  // Generate one annotation every minute
-  //  const annotations = Array.from(Array(annotationsCount).keys()).map((i) => {
-  //    return {
-  //      timestamp: new Date(Date.now() - 1000 * 60 * 10 * i).getTime() / 1000,
-  //      content: `annotation #${i}`,
-  //    };
-  //  });
-
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
