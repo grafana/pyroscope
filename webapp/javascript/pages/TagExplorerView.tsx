@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
-
+import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
 import type { Profile } from '@pyroscope/models/src';
 import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
@@ -36,7 +36,7 @@ import {
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
 import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
-import { calculateMean, calculateStdDeviation } from './math';
+import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
 
 // eslint-disable-next-line css-modules/no-unused-class
@@ -271,15 +271,24 @@ function TagExplorerView() {
             .map((a) => `${a} Tag Breakdown`)
             .unwrapOr('Tag Breakdown')}`}
         >
-          <Table
-            appName={appName.unwrapOr('')}
-            whereDropdownItems={whereDropdownItems}
-            groupByTag={groupByTag}
-            groupByTagValue={groupByTagValue}
-            groupsData={filteredGroupsData}
-            handleGroupByTagValueChange={handleGroupByTagValueChange}
-            isLoading={type === 'loading'}
-          />
+          <div className={styles.statisticsBox}>
+            <div className={styles.pieChartWrapper}>
+              {filteredGroupsData?.length ? (
+                <TotalSamplesChart filteredGroupsData={filteredGroupsData} />
+              ) : (
+                <LoadingSpinner />
+              )}
+            </div>
+            <Table
+              appName={appName.unwrapOr('')}
+              whereDropdownItems={whereDropdownItems}
+              groupByTag={groupByTag}
+              groupByTagValue={groupByTagValue}
+              groupsData={filteredGroupsData}
+              handleGroupByTagValueChange={handleGroupByTagValueChange}
+              isLoading={type === 'loading'}
+            />
+          </div>
         </CollapseBox>
         <Box>
           <div className={styles.flamegraphWrapper}>
@@ -359,16 +368,24 @@ function Table({
       label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
       sortable: 0,
     },
-    { name: 'eventCount', label: 'Event count', sortable: 0 },
     { name: 'avgSamples', label: 'avg samples', sortable: 0 },
     { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
-    { name: 'minSamples', label: 'min samples', sortable: 0 },
-    { name: 'maxSamples', label: 'max samples', sortable: 0 },
+    { name: 'totalSamples', label: 'total samples', sortable: 0 },
   ];
+
+  const groupsTotal = useMemo(
+    () =>
+      groupsData.reduce((acc, current) => {
+        return acc + calculateTotal(current.data.samples);
+      }, 0),
+    [groupsData]
+  );
 
   const bodyRows = groupsData.reduce(
     (acc, { tagName, color, data }): BodyRow[] => {
       const mean = calculateMean(data.samples);
+      const total = calculateTotal(data.samples);
+      const percentage = (total / groupsTotal) * 100;
       const row = {
         isRowSelected: isTagSelected(tagName),
         // prevent clicking on single "application without tags" group row
@@ -382,15 +399,18 @@ function Table({
                   className={styles.tagColor}
                   style={{ backgroundColor: color?.toString() }}
                 />
-                {tagName}
+                <span className={styles.label}>
+                  {tagName}
+                  <span className={styles.bold}>
+                    &nbsp;{`(${percentage.toFixed(2)}%)`}
+                  </span>
+                </span>
               </div>
             ),
           },
-          { value: data.samples.length },
           { value: mean.toFixed(2) },
           { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
-          { value: Math.min(...data.samples) },
-          { value: Math.max(...data.samples) },
+          { value: total },
         ],
       };
       acc.push(row);
@@ -407,7 +427,7 @@ function Table({
   };
 
   return (
-    <>
+    <div className={styles.tableWrapper}>
       <div className={styles.tableDescription} data-testid="explore-table">
         <div className={styles.buttons}>
           <NavLink
@@ -434,7 +454,7 @@ function Table({
         </div>
       </div>
       <TableUI table={table} className={styles.tagExplorerTable} />
-    </>
+    </div>
   );
 }
 

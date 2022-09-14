@@ -1,3 +1,5 @@
+$pieChartWidth: 220px;
+
 .tagExplorerView {
   .header {
     display: flex;
@@ -88,6 +90,8 @@
       .tagName {
         display: flex;
         align-items: center;
+        flex-wrap: nowrap;
+        flex-direction: row;
 
         .tagColor {
           flex-shrink: 0;
@@ -96,6 +100,15 @@
           width: 10px;
           border-radius: 2px;
           margin-right: 10px;
+        }
+
+        .bold {
+          font-weight: bold;
+          white-space: nowrap;
+        }
+
+        .label {
+          text-align: left;
         }
       }
     }
@@ -107,4 +120,22 @@
       width: 10%;
     }
   }
+}
+
+.statisticsBox {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.tableWrapper {
+  width: calc(100% - ($pieChartWidth + 10px));
+}
+
+.pieChartWrapper {
+  width: $pieChartWidth;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 47px;
 }
