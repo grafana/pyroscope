@@ -13,7 +13,7 @@ interface AnnotationTooltipBodyProps {
   annotations: { timestamp: number; content: string }[];
 
   /** given a timestamp, it returns the offset within the canvas */
-  pointOffset: (coords: { x: number }) => { left: number };
+  pointOffset: jquery.flot.plot['pointOffset'];
 }
 
 export default function Annotations(props: AnnotationTooltipBodyProps) {
@@ -77,14 +77,19 @@ function getClosestAnnotation(
     return Maybe.nothing<typeof annotations[number]>();
   }
 
-  const timestampLeft = pointOffset({ x: timestamp }).left;
+  // pointOffset requires a y position, even though we don't use it
+  const dummyY = -1;
+
+  const timestampLeft = pointOffset({ x: timestamp, y: dummyY }).left;
 
   // Create a score based on how distant it is from the timestamp
   // Then get the first value (the closest to the timestamp)
   const f = annotations
     .map((a) => ({
       ...a,
-      score: Math.abs(pointOffset({ x: a.timestamp }).left - timestampLeft),
+      score: Math.abs(
+        pointOffset({ x: a.timestamp, y: dummyY }).left - timestampLeft
+      ),
     }))
     .filter((a) => a.score < THRESHOLD)
     .sort((a, b) => a.score - b.score);
