@@ -74,7 +74,12 @@ export function QueryEditor(props: Props) {
         <ButtonCascader onChange={onProfileTypeChange} options={cascaderOptions} buttonProps={{ variant: 'secondary' }}>
           {selectedProfileName}
         </ButtonCascader>
-        <LabelsEditor value={query.labelSelector} onChange={onLabelSelectorChange} datasource={props.datasource} />
+        <LabelsEditor
+          value={query.labelSelector}
+          onChange={onLabelSelectorChange}
+          datasource={props.datasource}
+          onRunQuery={props.onRunQuery}
+        />
       </EditorRow>
       <EditorRow>
         <QueryOptions
