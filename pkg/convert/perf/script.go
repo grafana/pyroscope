@@ -28,7 +28,7 @@ func NewScriptParser(buf []byte) *ScriptParser {
 func (p *ScriptParser) nextLine() ([]byte, error) {
 	if p.lineIndex < len(p.lines) {
 		ret := p.lines[p.lineIndex]
-		p.lineIndex += 1
+		p.lineIndex++
 		return ret, nil
 	}
 	return nil, io.EOF
@@ -94,39 +94,37 @@ func IsPerfScript(buf []byte) bool {
 	return err == nil
 }
 
-func parseEventStart(line []byte) (comm []byte, pid int, tid int, err error) {
+func parseEventStart(line []byte) ([]byte, int, int, error) {
 	res := reEventStart.FindSubmatch(line)
 	if res == nil {
-		err = errEventStartRegexMismatch
-		return
+		return nil, 0, 0, errEventStartRegexMismatch
 	}
-
-	comm = res[1]
-	pid, err = strconv.Atoi(string(res[2]))
+	comm := res[1]
+	tid := 0
+	pid, err := strconv.Atoi(string(res[2]))
 	if err != nil {
-		return
+		return nil, 0, 0, err
 	}
 	if res[3] != nil {
 		tid, err = strconv.Atoi(string(res[3]))
 		if err != nil {
-			return
+			return nil, 0, 0, err
 		}
 	}
-	return
+	return comm, pid, tid, nil
 }
 
 func parseEventEnd(line []byte) bool {
 	return len(line) == 0
 }
 
-func parseStackFrame(line []byte) (adr, sym, mod []byte, err error) {
+func parseStackFrame(line []byte) ([]byte, []byte, []byte, error) {
 	res := reStackFrame.FindSubmatch(line)
 	if res == nil {
-		err = errStackFrameRegexMismatch
-		return
+		return nil, nil, nil, errStackFrameRegexMismatch
 	}
-	adr = res[1]
-	sym = res[2]
-	mod = res[3]
-	return
+	adr := res[1]
+	sym := res[2]
+	mod := res[3]
+	return adr, sym, mod, nil
 }
