@@ -523,6 +523,8 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 }
 
 func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Head")
+	defer sp.Finish()
 	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
@@ -532,6 +534,9 @@ func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.Sele
 }
 
 func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Head")
+	defer sp.Finish()
+
 	stacktraceSamples := map[uint64]*ingestv1.StacktraceSample{}
 	names := []string{}
 	functions := map[int64]int{}
