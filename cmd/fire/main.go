@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/grafana/fire/pkg/cfg"
 	"github.com/grafana/fire/pkg/fire"
@@ -12,6 +13,12 @@ import (
 )
 
 func main() {
+
+	// collect block and mutex contention profiles
+	// TODO: Configuration variable?
+	runtime.SetMutexProfileFraction(10)
+	runtime.SetBlockProfileRate(10)
+
 	var config fire.Config
 	if err := cfg.DynamicUnmarshal(&config, os.Args[1:], flag.CommandLine); err != nil {
 		fmt.Fprintf(os.Stderr, "failed parsing config: %v\n", err)
