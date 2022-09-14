@@ -70,7 +70,7 @@ func TestIndex(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
-	require.Equal(t, 2*10*10*10+20, total)
+	require.Equal(t, 2*10*10*10, total)
 	require.Equal(t, 10*10*10, len(a.allProfiles()))
 
 	names, err := a.ix.LabelNames(nil)
