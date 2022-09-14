@@ -11,13 +11,18 @@ const mockAnnotations = [
 
 describe('AnnotationTooltipBody', () => {
   it('return null when theres no annotation', () => {
-    render(<AnnotationTooltipBody annotations={[]} />);
+    render(<AnnotationTooltipBody annotations={[]} pointOffset={jest.fn()} />);
 
     expect(screen.queryByRole('section')).toBeNull();
   });
 
   it('return nothing when theres no timestamp', () => {
-    render(<AnnotationTooltipBody annotations={mockAnnotations} />);
+    render(
+      <AnnotationTooltipBody
+        annotations={mockAnnotations}
+        pointOffset={jest.fn()}
+      />
+    );
 
     expect(screen.queryByRole('section')).toBeNull();
   });
@@ -25,13 +30,26 @@ describe('AnnotationTooltipBody', () => {
   it('return nothing when no annotation match', () => {
     const annotations = [
       {
-        timestamp: 1663000000,
+        timestamp: 0,
         content: 'annotation 1',
       },
     ];
-    const values = [{ closest: [annotations[0].timestamp + THRESHOLD + 1] }];
+    const values = [{ closest: [0] }];
 
-    render(<AnnotationTooltipBody annotations={annotations} values={values} />);
+    const pointOffset = jest.fn();
+
+    // reference position
+    pointOffset.mockReturnValueOnce({ left: 100 });
+    // our annotation position, point is to be outside the threshold
+    pointOffset.mockReturnValueOnce({ left: 100 + THRESHOLD });
+
+    render(
+      <AnnotationTooltipBody
+        annotations={annotations}
+        values={values}
+        pointOffset={pointOffset}
+      />
+    );
 
     expect(screen.queryByRole('section')).toBeNull();
   });
@@ -45,29 +63,60 @@ describe('AnnotationTooltipBody', () => {
         },
       ];
       const values = [{ closest: [1663000000] }];
+      const pointOffset = jest.fn();
+
+      // reference position
+      pointOffset.mockReturnValueOnce({ left: 100 });
+      // our annotation position
+      pointOffset.mockReturnValueOnce({ left: 99 });
 
       render(
-        <AnnotationTooltipBody values={values} annotations={annotations} />
+        <AnnotationTooltipBody
+          values={values}
+          annotations={annotations}
+          pointOffset={pointOffset}
+        />
       );
 
       expect(screen.queryByText(/annotation 1/i)).toBeInTheDocument();
     });
 
     it('renders the closest annotation', () => {
-      const annotations = [
-        {
-          timestamp: 1663000010,
-          content: 'annotation 1',
-        },
-        {
-          timestamp: 1663000009,
-          content: 'annotation closest',
-        },
-      ];
+      const furthestAnnotation = {
+        timestamp: 1663000010,
+        content: 'annotation 1',
+      };
+      const closestAnnotation = {
+        timestamp: 1663000009,
+        content: 'annotation closest',
+      };
+      const annotations = [furthestAnnotation, closestAnnotation];
       const values = [{ closest: [1663000000] }];
+      const pointOffset = jest.fn();
+
+      pointOffset.mockImplementation((a) => {
+        // our reference point
+        if (a.x === values[0].closest[0]) {
+          return { left: 98 };
+        }
+
+        // furthest
+        if (a.x === furthestAnnotation.timestamp) {
+          return { left: 100 };
+        }
+
+        // closest
+        if (a.x === closestAnnotation.timestamp) {
+          return { left: 99 };
+        }
+      });
 
       render(
-        <AnnotationTooltipBody values={values} annotations={annotations} />
+        <AnnotationTooltipBody
+          values={values}
+          annotations={annotations}
+          pointOffset={pointOffset}
+        />
       );
 
       expect(screen.queryByText(/annotation closest/i)).toBeInTheDocument();

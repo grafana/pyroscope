@@ -73,6 +73,10 @@ function getClosestAnnotation(
   timestamp: number,
   pointOffset: AnnotationTooltipBodyProps['pointOffset']
 ) {
+  if (!annotations.length) {
+    return Maybe.nothing<typeof annotations[number]>();
+  }
+
   const timestampLeft = pointOffset({ x: timestamp }).left;
 
   // Create a score based on how distant it is from the timestamp
