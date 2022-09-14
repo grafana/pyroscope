@@ -5,6 +5,7 @@ package querier
 
 import (
 	"container/heap"
+	"fmt"
 
 	"github.com/grafana/dskit/multierror"
 
@@ -40,6 +41,7 @@ type SkipIterator interface {
 
 func dedupe(responses []responseFromIngesters[BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
 	iters := make([]SkipIterator, 0, len(responses))
+	fmt.Println("len responses", len(responses))
 	for _, resp := range responses {
 		iters = append(iters, NewStreamProfileIterator(resp))
 	}
@@ -82,17 +84,33 @@ type StreamProfileIterator struct {
 	currIdx      int
 	keep         []bool
 	result       *ingestv1.MergeProfilesStacktracesResult
+	keepSent     bool
+	keepTotal    int
 }
 
 func NewStreamProfileIterator(r responseFromIngesters[BidiClientMergeProfilesStacktraces]) SkipIterator {
 	return &StreamProfileIterator{
 		bidi:         r.response,
 		ingesterAddr: r.addr,
+		keepSent:     true,
 	}
 }
 
 func (s *StreamProfileIterator) Next() bool {
 	if s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1 {
+
+		if !s.keepSent {
+			fmt.Println("error: keep not sent currIdx", s.currIdx, " p len", len(s.curr.Profiles), "addr", s.ingesterAddr)
+			err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+				Profiles: s.keep,
+			})
+			if err != nil {
+				s.err = err
+				fmt.Println(err)
+				return false
+			}
+		}
+		fmt.Println("asking for a new batch", s.currIdx, "addr", s.ingesterAddr)
 
 		resp, err := s.bidi.Receive()
 		if err != nil {
@@ -113,6 +131,8 @@ func (s *StreamProfileIterator) Next() bool {
 			s.keep[i] = false
 		}
 		s.currIdx = 0
+		s.keepSent = false
+		s.keepTotal = 0
 		return true
 	}
 	s.currIdx++
@@ -121,25 +141,36 @@ func (s *StreamProfileIterator) Next() bool {
 
 func (s *StreamProfileIterator) Skip() {
 	s.keep[s.currIdx] = false
+	s.keepTotal++
 	if s.currIdx == len(s.curr.Profiles)-1 {
 		err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 			Profiles: s.keep,
 		})
 		if err != nil {
 			s.err = err
+			fmt.Println(err)
+			return
 		}
+		s.keepSent = true
+		fmt.Println("replied keeps", s.currIdx, " p len", len(s.curr.Profiles), "addr", s.ingesterAddr)
 	}
 }
 
 func (s *StreamProfileIterator) Keep() {
 	s.keep[s.currIdx] = true
+	s.keepTotal++
 	if s.currIdx == len(s.curr.Profiles)-1 {
 		err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 			Profiles: s.keep,
 		})
 		if err != nil {
 			s.err = err
+			fmt.Println(err)
+			return
 		}
+		s.keepSent = true
+		fmt.Println("replied keeps", s.currIdx, " p len", len(s.curr.Profiles), "addr", s.ingesterAddr)
+
 	}
 }
 

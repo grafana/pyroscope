@@ -302,6 +302,8 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		}
 		return err
 	}
+	fmt.Println("receive first request")
+
 	if r.Request == nil {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
 	}
@@ -322,7 +324,9 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	}
 	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
 
-	for _, q := range queriers {
+	for i, q := range queriers {
+		fmt.Println("starting merge q:", i)
+
 		res, err := q.BatchMergeStacktraces(ctx, request, batchSize, func(selectedProfiles []Profile) (Keep, error) {
 			seriesByFP := map[model.Fingerprint]labelWithIndex{}
 			selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
@@ -346,6 +350,8 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 				})
 
 			}
+			fmt.Println("sending potential profiles:", len(selectProfileResult.Profiles))
+
 			// read a batch of profiles and sends it.
 			err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 				SelectedProfiles: selectProfileResult,
@@ -356,6 +362,8 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 				}
 				return nil, err
 			}
+			fmt.Println("waiting selection of profiles:", len(selectProfileResult.Profiles))
+
 			// handle response for the batch.
 			selectionResponse, err := stream.Receive()
 			if err != nil {
@@ -364,6 +372,8 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 				}
 				return nil, err
 			}
+			fmt.Println("received selection of profiles:", len(selectionResponse.Profiles))
+
 			return Keep(selectionResponse.Profiles), nil
 		})
 		if err != nil {

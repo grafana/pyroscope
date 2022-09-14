@@ -465,7 +465,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 		},
 		nil,
 	)
-
+	defer rowNums.Close()
 	var (
 		samples       reconstructSamples
 		profile       schemav1.Profile

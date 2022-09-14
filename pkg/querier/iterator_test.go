@@ -140,4 +140,27 @@ func TestDedupeBidi(t *testing.T) {
 		{Ts: 5, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
 		{Ts: 6, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
 	})
+	res, err = dedupe([]responseFromIngesters[BidiClientMergeProfilesStacktraces]{
+		{
+			response: newFakeBidiClient([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*commonv1.Labels{{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
+					Profiles: []*ingestv1.SeriesProfile{
+						{LabelIndex: 0, Timestamp: 1},
+						{LabelIndex: 0, Timestamp: 2},
+						{LabelIndex: 0, Timestamp: 4},
+					},
+				},
+				{
+					LabelsSets: []*commonv1.Labels{{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
+					Profiles: []*ingestv1.SeriesProfile{
+						{LabelIndex: 0, Timestamp: 5},
+						{LabelIndex: 0, Timestamp: 6},
+					},
+				},
+			}),
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
 }

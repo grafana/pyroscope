@@ -1,6 +1,7 @@
 package querier
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -139,8 +140,8 @@ func (q *Querier) PrometheusQueryRangeHandler(w http.ResponseWriter, r *http.Req
 		Type:          ptype,
 	})
 
-	responses, err := forAllIngesters(r.Context(), q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
-		res, err := ic.SelectProfiles(r.Context(), selectReq)
+	responses, err := forAllIngesters(r.Context(), q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
+		res, err := ic.SelectProfiles(childCtx, selectReq)
 		if err != nil {
 			return nil, err
 		}

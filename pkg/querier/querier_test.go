@@ -2,6 +2,7 @@ package querier
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -11,8 +12,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -420,4 +423,54 @@ func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[i
 	}
 
 	return res, err
+}
+
+func TestDedupeLive(t *testing.T) {
+	clients, err := createClients(context.Background())
+	require.NoError(t, err)
+	st, err := dedupe(clients)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(st))
+}
+
+func createClients(ctx context.Context) ([]responseFromIngesters[BidiClientMergeProfilesStacktraces], error) {
+	var clients []responseFromIngesters[BidiClientMergeProfilesStacktraces]
+	for i := 1; i < 6; i++ {
+		addr := fmt.Sprintf("localhost:4%d00", i)
+		c, err := clientpool.PoolFactory(addr)
+		if err != nil {
+			return nil, err
+		}
+		res, err := c.Check(ctx, &grpc_health_v1.HealthCheckRequest{
+			Service: ingestv1.IngesterService_ServiceDesc.ServiceName,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if res.Status != grpc_health_v1.HealthCheckResponse_SERVING {
+			return nil, fmt.Errorf("ingester %s is not serving", addr)
+		}
+		bidi := c.(IngesterQueryClient).MergeProfilesStacktraces(ctx)
+		profileType, err := firemodel.ParseProfileTypeSelector("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
+		if err != nil {
+			return nil, err
+		}
+		now := time.Now()
+		err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: "{}",
+				Type:          profileType,
+				Start:         int64(model.TimeFromUnixNano(now.Add(-15 * time.Minute).UnixNano())),
+				End:           int64(model.TimeFromUnixNano(now.UnixNano())),
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, responseFromIngesters[BidiClientMergeProfilesStacktraces]{
+			response: bidi,
+			addr:     addr,
+		})
+	}
+	return clients, nil
 }
