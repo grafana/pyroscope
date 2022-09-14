@@ -13,7 +13,7 @@ export const drawRect = (
   clearRect(canvas);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
-  ctx.fillStyle = SELECTED_AREA_BACKGROUND;
+  ctx.fillStyle = SELECTED_AREA_BACKGROUND.toString();
   ctx.globalAlpha = 1;
   ctx.fillRect(x, y, w, h);
 };
@@ -42,6 +42,17 @@ interface SelectionData {
   selectionStartTime: number;
   selectionEndTime: number;
 }
+
+// TODO(dogfrogfog): extend calculating data
+export const getTimeDataByXCoord = (
+  heatmap: Heatmap,
+  heatmapW: number,
+  x: number
+) => {
+  const timeForPixel = (heatmap.endTime - heatmap.startTime) / heatmapW;
+
+  return x * timeForPixel + heatmap.startTime;
+};
 
 export const getSelectionData = (
   heatmap: Heatmap,
@@ -75,4 +86,43 @@ export const getSelectionData = (
     selectionStartTime: timeForPixel * smallerX + heatmap.startTime,
     selectionEndTime: timeForPixel * biggerX + heatmap.startTime,
   };
+};
+
+export const getFormatter = (format: 'value' | 'time') => {
+  let formatter;
+  switch (format) {
+    case 'time':
+      formatter = (v: number) => {
+        const date = new Date(v / 1000000);
+
+        return date.toLocaleTimeString();
+      };
+      break;
+    case 'value':
+      formatter = (v: number) =>
+        v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
+      break;
+    default:
+      formatter = (v: number) => v;
+  }
+
+  return formatter;
+};
+
+export const getTicks = (
+  format: 'value' | 'time',
+  min: number,
+  max: number,
+  ticksCount: number
+) => {
+  const formatter = getFormatter(format);
+
+  const step = (max - min) / ticksCount;
+  const ticksArray = [formatter(min)];
+
+  for (let i = 1; i <= ticksCount; i += 1) {
+    ticksArray.push(formatter(min + step * i));
+  }
+
+  return ticksArray;
 };

@@ -9,11 +9,13 @@ import {
   SelectedAreaCoordsType,
   useHeatmapSelection,
 } from './useHeatmapSelection.hook';
+import HeatmapTooltip from './HeatmapTooltip';
 import {
   SELECTED_AREA_BACKGROUND,
   HEATMAP_HEIGHT,
   HEATMAP_COLORS,
 } from './constants';
+import { getTicks } from './utils';
 
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './Heatmap.module.scss';
@@ -170,6 +172,11 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
           </div>
         ))}
       </div>
+      <HeatmapTooltip
+        canvasRef={canvasRef}
+        heatmapW={heatmapW}
+        heatmap={heatmap}
+      />
     </div>
   );
 }
@@ -245,42 +252,3 @@ function Axis({ axis, max, min, ticksNumber }: AxisProps) {
     </div>
   );
 }
-
-const getFormatter = (format: 'value' | 'time') => {
-  let formatter;
-  switch (format) {
-    case 'time':
-      formatter = (v: number) => {
-        const date = new Date(v / 1000000);
-
-        return date.toLocaleTimeString();
-      };
-      break;
-    case 'value':
-      formatter = (v: number) =>
-        v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
-      break;
-    default:
-      formatter = (v: number) => v;
-  }
-
-  return formatter;
-};
-
-const getTicks = (
-  format: 'value' | 'time',
-  min: number,
-  max: number,
-  ticksCount: number
-) => {
-  const formatter = getFormatter(format);
-
-  const step = (max - min) / ticksCount;
-  const ticksArray = [formatter(min)];
-
-  for (let i = 1; i <= ticksCount; i += 1) {
-    ticksArray.push(formatter(min + step * i));
-  }
-
-  return ticksArray;
-};
