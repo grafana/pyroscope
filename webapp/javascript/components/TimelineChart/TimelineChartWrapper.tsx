@@ -252,7 +252,6 @@ class TimelineChartWrapper extends React.Component<
         tooltipContent = [
           <Annotation
             key="annotations"
-            durationDelta={this.props.timelineA.data?.durationDelta}
             values={data.values}
             annotations={annotations}
             pointOffset={data.pointOffset}

@@ -129,7 +129,9 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           values,
           align,
           // TODO(eh-am): fix type
-          pointOffset: plot.pointOffset,
+          pointOffset: (plot as unknown as jquery.flot.plot).pointOffset.bind(
+            this
+          ),
         });
 
         ReactDOM.render(Tooltip, exploreTooltip?.[0]);
