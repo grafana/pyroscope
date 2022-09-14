@@ -60,7 +60,7 @@ const PieChart = ({
           width: 0,
         },
         label: {
-          show: 'true',
+          show: true,
           radius: 0.7,
           threshold: 0.17,
           formatter: (label: string) => label,
