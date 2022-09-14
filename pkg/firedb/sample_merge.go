@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
@@ -13,6 +14,8 @@ import (
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
+	defer sp.Finish()
 	it := query.NewJoinIterator(
 		0,
 		[]query.Iterator{

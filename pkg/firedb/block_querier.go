@@ -586,6 +586,8 @@ func (p *BlockSeriesIterator) Close() error {
 }
 
 func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Block")
+	defer sp.Finish()
 	if err := b.open(ctx); err != nil {
 		return nil, err
 	}
@@ -989,6 +991,13 @@ func newByteSliceFromBucketReader(bucketReader fireobjstore.BucketReader, path s
 }
 
 func (q *singleBlockQuerier) open(ctx context.Context) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - open")
+	defer func() {
+		sp.LogFields(
+			otlog.String("block_ulid", q.meta.ULID.String()),
+		)
+		sp.Finish()
+	}()
 	q.openLock.Lock()
 	defer q.openLock.Unlock()
 

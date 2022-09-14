@@ -16,6 +16,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
@@ -295,6 +297,9 @@ func (f *FireDB) querierFor(start, end model.Time) Queriers {
 }
 
 func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesStacktraces")
+	defer sp.Finish()
+
 	r, err := stream.Receive()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -302,13 +307,17 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		}
 		return err
 	}
-	fmt.Println("receive first request")
 
 	if r.Request == nil {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
 	}
 	request := r.Request
-
+	sp.LogFields(
+		otlog.String("start", model.Time(request.Start).Time().String()),
+		otlog.String("end", model.Time(request.End).Time().String()),
+		otlog.String("selector", request.LabelSelector),
+		otlog.String("profile_id", request.Type.ID),
+	)
 	batchSize := 2048
 
 	type labelWithIndex struct {
@@ -324,10 +333,15 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	}
 	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
 
-	for i, q := range queriers {
-		fmt.Println("starting merge q:", i)
-
+	for _, q := range queriers {
 		res, err := q.BatchMergeStacktraces(ctx, request, batchSize, func(selectedProfiles []Profile) (Keep, error) {
+			sp, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - NewBatch")
+			sp.LogFields(
+				otlog.Int("batch_len", len(selectedProfiles)),
+				otlog.Int("batch_requested_size", batchSize),
+			)
+			defer sp.Finish()
+
 			seriesByFP := map[model.Fingerprint]labelWithIndex{}
 			selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
 			selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
@@ -350,20 +364,27 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 				})
 
 			}
-			fmt.Println("sending potential profiles:", len(selectProfileResult.Profiles))
+			if err := func() error {
+				sp, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Sending batch")
+				defer sp.Finish()
 
-			// read a batch of profiles and sends it.
-			err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-				SelectedProfiles: selectProfileResult,
-			})
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return nil, connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+				// read a batch of profiles and sends it.
+				err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
+					SelectedProfiles: selectProfileResult,
+				})
+				if err != nil {
+					if errors.Is(err, io.EOF) {
+						return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+					}
+					return err
 				}
+				return nil
+			}(); err != nil {
 				return nil, err
 			}
-			fmt.Println("waiting selection of profiles:", len(selectProfileResult.Profiles))
 
+			sp2, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Receive selection")
+			defer sp2.Finish()
 			// handle response for the batch.
 			selectionResponse, err := stream.Receive()
 			if err != nil {
@@ -372,7 +393,6 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 				}
 				return nil, err
 			}
-			fmt.Println("received selection of profiles:", len(selectionResponse.Profiles))
 
 			return Keep(selectionResponse.Profiles), nil
 		})
