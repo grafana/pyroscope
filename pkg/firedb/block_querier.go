@@ -517,7 +517,7 @@ type Querier interface {
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
 	// Mostly used for GRPC streaming.
-	BatchMergeStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error)
+	BatchMergeStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error)
 	// Legacy
 	SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error)
 }
@@ -647,7 +647,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	return iter.NewSortProfileIterator(iters), nil
 }
 
-func (b *singleBlockQuerier) BatchMergeStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
+func (b *singleBlockQuerier) BatchMergeStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	profilesIt, err := b.SelectMatchingProfiles(ctx, params)
 	if err != nil {
 		return nil, err
@@ -673,7 +673,7 @@ Outer:
 		if len(batch) == 0 {
 			break Outer
 		}
-		keep, err := fnOnBatch(batch)
+		keep, err := fnOnBatch(ctx, batch)
 		if err != nil {
 			return nil, err
 		}
