@@ -598,7 +598,7 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 	}, nil
 }
 
-func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func([]Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
+func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	profilesIt, err := h.SelectMatchingProfiles(ctx, req)
 	if err != nil {
 		return nil, err
@@ -626,7 +626,7 @@ func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectPr
 			if len(batch) == 0 {
 				return nil
 			}
-			keep, err := fnOnBatch(batch)
+			keep, err := fnOnBatch(ctx, batch)
 			if err != nil {
 				return err
 			}

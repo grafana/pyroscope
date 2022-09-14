@@ -280,7 +280,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 	}
 }
 
-func keepAll(ps []Profile) (Keep, error) {
+func keepAll(_ context.Context, ps []Profile) (Keep, error) {
 	res := make([]bool, len(ps))
 	for i := range res {
 		res[i] = true

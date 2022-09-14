@@ -334,8 +334,8 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
 
 	for _, q := range queriers {
-		res, err := q.BatchMergeStacktraces(ctx, request, batchSize, func(selectedProfiles []Profile) (Keep, error) {
-			sp, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - NewBatch")
+		res, err := q.BatchMergeStacktraces(ctx, request, batchSize, func(ctx context.Context, selectedProfiles []Profile) (Keep, error) {
+			sp, ctx := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - NewBatch")
 			sp.LogFields(
 				otlog.Int("batch_len", len(selectedProfiles)),
 				otlog.Int("batch_requested_size", batchSize),
@@ -364,27 +364,22 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 				})
 
 			}
-			if err := func() error {
-				sp, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Sending batch")
-				defer sp.Finish()
+			sp2, ctx := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Sending batch")
+			defer sp2.Finish()
 
-				// read a batch of profiles and sends it.
-				err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-					SelectedProfiles: selectProfileResult,
-				})
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
-					}
-					return err
+			// read a batch of profiles and sends it.
+			err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
+				SelectedProfiles: selectProfileResult,
+			})
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
 				}
-				return nil
-			}(); err != nil {
 				return nil, err
 			}
 
-			sp2, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Receive selection")
-			defer sp2.Finish()
+			sp3, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Receive selection")
+			defer sp3.Finish()
 			// handle response for the batch.
 			selectionResponse, err := stream.Receive()
 			if err != nil {
