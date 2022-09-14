@@ -22,7 +22,6 @@ func TestParseEventStart(t *testing.T) {
 				if rTid != tid {
 					t.Errorf("tid %v != %v", rTid, tid)
 				}
-
 				return
 			}
 			if err == nil {
@@ -65,20 +64,34 @@ func TestParseStackFrame(t *testing.T) {
 			}
 		})
 	}
-	test("        ffffffffb37b3618 __cgroup_account_cputime+0x28 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb37b3618", "__cgroup_account_cputime+0x28", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb37105ed update_curr+0x10d (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb37105ed", "update_curr+0x10d", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb3712293 dequeue_entity+0x23 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb3712293", "dequeue_entity+0x23", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb3712773 dequeue_task_fair+0xb3 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb3712773", "dequeue_task_fair+0xb3", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb36ff7e2 dequeue_task+0x42 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb36ff7e2", "dequeue_task+0x42", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb4408753 __schedule+0x3e3 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb4408753", "__schedule+0x3e3", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb440982c schedule+0x5c (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb440982c", "schedule+0x5c", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb379d3f8 futex_wait_queue+0x78 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379d3f8", "futex_wait_queue+0x78", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb379daba futex_wait+0x15a (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379daba", "futex_wait+0x15a", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb379a2f8 do_futex+0x138 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379a2f8", "do_futex+0x138", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb379a7c8 __x64_sys_futex+0x78 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379a7c8", "__x64_sys_futex+0x78", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb43f916c do_syscall_64+0x5c (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb43f916c", "do_syscall_64+0x5c", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("        ffffffffb460009b entry_SYSCALL_64_after_hwframe+0x63 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb460009b", "entry_SYSCALL_64_after_hwframe+0x63", "/lib/modules/5.19.0/build/vmlinux", true)
-	test("                   91197 __GI___strncasecmp_l_sse2+0x1547 (/usr/lib/x86_64-linux-gnu/libc.so.6)\n", "91197", "__GI___strncasecmp_l_sse2+0x1547", "/usr/lib/x86_64-linux-gnu/libc.so.6", true)
+	test("        ffffffffb37b3618 __cgroup_account_cputime+0x28 (/lib/modules/5.19.0/build/vmlinux)\n",
+		"ffffffffb37b3618", "__cgroup_account_cputime+0x28", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb37105ed update_curr+0x10d (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb37105ed",
+		"update_curr+0x10d", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb3712293 dequeue_entity+0x23 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb3712293",
+		"dequeue_entity+0x23", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb3712773 dequeue_task_fair+0xb3 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb3712773",
+		"dequeue_task_fair+0xb3", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb36ff7e2 dequeue_task+0x42 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb36ff7e2",
+		"dequeue_task+0x42", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb4408753 __schedule+0x3e3 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb4408753",
+		"__schedule+0x3e3", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb440982c schedule+0x5c (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb440982c",
+		"schedule+0x5c", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb379d3f8 futex_wait_queue+0x78 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379d3f8",
+		"futex_wait_queue+0x78", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb379daba futex_wait+0x15a (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379daba",
+		"futex_wait+0x15a", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb379a2f8 do_futex+0x138 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379a2f8",
+		"do_futex+0x138", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb379a7c8 __x64_sys_futex+0x78 (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb379a7c8",
+		"__x64_sys_futex+0x78", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb43f916c do_syscall_64+0x5c (/lib/modules/5.19.0/build/vmlinux)\n", "ffffffffb43f916c",
+		"do_syscall_64+0x5c", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("        ffffffffb460009b entry_SYSCALL_64_after_hwframe+0x63 (/lib/modules/5.19.0/build/vmlinux)\n",
+		"ffffffffb460009b", "entry_SYSCALL_64_after_hwframe+0x63", "/lib/modules/5.19.0/build/vmlinux", true)
+	test("                   91197 __GI___strncasecmp_l_sse2+0x1547 (/usr/lib/x86_64-linux-gnu/libc.so.6)\n",
+		"91197", "__GI___strncasecmp_l_sse2+0x1547", "/usr/lib/x86_64-linux-gnu/libc.so.6", true)
 	test("                  3fa48f [unknown] ([unknown])\n", "3fa48f", "[unknown]", "[unknown]", true)
 	test("java 12688 [002] 6544038.708352: cpu-clock:", "", "", "", false)
 	test("V8 WorkerThread 25607 4794564.109216: cycles:", "", "", "", false)
@@ -131,7 +144,6 @@ func TestParseSingleEvent(t *testing.T) {
 			t.Fatalf("expected %s got %s", string(expected[i]), string(stack[i]))
 		}
 	}
-
 }
 
 func TestMultipleEvents(t *testing.T) {
@@ -169,5 +181,4 @@ func TestMultipleEvents(t *testing.T) {
 		[]byte("run_builtin+0x70"),
 		[]byte("do_syscall_64+0x69"),
 	}, events[1])
-
 }
