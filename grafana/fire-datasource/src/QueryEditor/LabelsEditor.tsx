@@ -3,7 +3,7 @@ import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { CodeEditor, Monaco, useStyles2, monacoTypes } from '@grafana/ui';
 import type { languages } from 'monaco-editor';
-import { useAsync } from 'react-use';
+import { useAsync, useLatest } from 'react-use';
 
 import { languageDefinition } from '../fireql';
 import { FireDataSource } from '../datasource';
@@ -11,42 +11,82 @@ import { CompletionProvider } from './autocomplete';
 
 interface Props {
   value: string;
-  onChange: (val: string) => void;
   datasource: FireDataSource;
+  onChange: (val: string) => void;
+  onRunQuery: (value: string) => void;
 }
 
 export function LabelsEditor(props: Props) {
   const setupAutocompleteFn = useAutocomplete(props.datasource);
   const styles = useStyles2(getStyles);
+
+  const onRunQueryRef = useLatest(props.onRunQuery);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   return (
-    <CodeEditor
-      value={props.value}
-      language={langId}
-      onBlur={props.onChange}
-      height={'30px'}
-      containerStyles={styles.queryField}
-      monacoOptions={{
-        folding: false,
-        fontSize: 14,
-        lineNumbers: 'off',
-        overviewRulerLanes: 0,
-        renderLineHighlight: 'none',
-        scrollbar: {
-          vertical: 'hidden',
-          verticalScrollbarSize: 8, // used as "padding-right"
-          horizontal: 'hidden',
-          horizontalScrollbarSize: 0,
-        },
-        scrollBeyondLastLine: false,
-        wordWrap: 'on',
-      }}
-      onBeforeEditorMount={ensureFireQL}
-      onEditorDidMount={(editor, monaco) => {
-        setupAutocompleteFn(editor, monaco);
-      }}
-    />
+    <div
+      // NOTE: we will be setting inline-style-width/height on this element
+      ref={containerRef}
+    >
+      <CodeEditor
+        value={props.value}
+        language={langId}
+        onBlur={props.onChange}
+        containerStyles={styles.queryField}
+        monacoOptions={{
+          folding: false,
+          fontSize: 14,
+          lineNumbers: 'off',
+          overviewRulerLanes: 0,
+          renderLineHighlight: 'none',
+          scrollbar: {
+            vertical: 'hidden',
+            verticalScrollbarSize: 8, // used as "padding-right"
+            horizontal: 'hidden',
+            horizontalScrollbarSize: 0,
+          },
+          scrollBeyondLastLine: false,
+          wordWrap: 'on',
+          padding: {
+            top: 5,
+            bottom: 6,
+          },
+        }}
+        onBeforeEditorMount={ensureFireQL}
+        onEditorDidMount={(editor, monaco) => {
+          setupAutocompleteFn(editor, monaco);
+
+          const updateElementHeight = () => {
+            const containerDiv = containerRef.current;
+            if (containerDiv !== null) {
+              const pixelHeight = editor.getContentHeight();
+              containerDiv.style.height = `${pixelHeight + EDITOR_HEIGHT_OFFSET}px`;
+              containerDiv.style.width = '100%';
+              const pixelWidth = containerDiv.clientWidth;
+              editor.layout({ width: pixelWidth, height: pixelHeight });
+            }
+          };
+
+          editor.onDidContentSizeChange(updateElementHeight);
+          updateElementHeight();
+
+          editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
+            onRunQueryRef.current(editor.getValue());
+          });
+        }}
+      />
+    </div>
   );
 }
+
+// this number was chosen by testing various values. it might be necessary
+// because of the width of the border, not sure.
+//it needs to do 2 things:
+// 1. when the editor is single-line, it should make the editor height be visually correct
+// 2. when the editor is multi-line, the editor should not be "scrollable" (meaning,
+//    you do a scroll-movement in the editor, and it will scroll the content by a couple pixels
+//    up & down. this we want to avoid)
+const EDITOR_HEIGHT_OFFSET = 2;
 
 /**
  * Hook that returns function that will set up monaco autocomplete for the label selector
