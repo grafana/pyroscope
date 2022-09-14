@@ -72,7 +72,12 @@ export function QueryEditor(props: Props) {
       <ButtonCascader onChange={onProfileTypeChange} options={cascaderOptions} icon="process">
         {selectedProfileName}
       </ButtonCascader>
-      <LabelsEditor value={query.labelSelector} onChange={onLabelSelectorChange} datasource={props.datasource} />
+      <LabelsEditor
+        value={query.labelSelector}
+        onChange={onLabelSelectorChange}
+        datasource={props.datasource}
+        onRunQuery={props.onRunQuery}
+      />
     </div>
   );
 }
