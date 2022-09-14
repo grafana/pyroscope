@@ -43,12 +43,12 @@ function AnnotationComponent({
 }) {
   // TODO: these don't account for timezone
   return (
-    <section className={styles.wrapper}>
+    <div className={styles.wrapper}>
       <header className={styles.header}>
         {format(timestamp, 'yyyy-MM-dd hh:mm aa')}
       </header>
       <div className={styles.body}>{content}</div>
-    </section>
+    </div>
   );
 }
 

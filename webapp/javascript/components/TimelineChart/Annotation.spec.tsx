@@ -11,20 +11,22 @@ const mockAnnotations = [
 
 describe('AnnotationTooltipBody', () => {
   it('return null when theres no annotation', () => {
-    render(<AnnotationTooltipBody annotations={[]} pointOffset={jest.fn()} />);
+    const { container } = render(
+      <AnnotationTooltipBody annotations={[]} pointOffset={jest.fn()} />
+    );
 
-    expect(screen.queryByRole('section')).toBeNull();
+    expect(container.querySelector('div')).toBeNull();
   });
 
   it('return nothing when theres no timestamp', () => {
-    render(
+    const { container } = render(
       <AnnotationTooltipBody
         annotations={mockAnnotations}
         pointOffset={jest.fn()}
       />
     );
 
-    expect(screen.queryByRole('section')).toBeNull();
+    expect(container.querySelector('div')).toBeNull();
   });
 
   it('return nothing when no annotation match', () => {
@@ -43,7 +45,7 @@ describe('AnnotationTooltipBody', () => {
     // our annotation position, point is to be outside the threshold
     pointOffset.mockReturnValueOnce({ left: 100 + THRESHOLD });
 
-    render(
+    const { container } = render(
       <AnnotationTooltipBody
         annotations={annotations}
         values={values}
@@ -51,7 +53,7 @@ describe('AnnotationTooltipBody', () => {
       />
     );
 
-    expect(screen.queryByRole('section')).toBeNull();
+    expect(container.querySelector('div')).toBeNull();
   });
 
   describe('rendering annotation', () => {
