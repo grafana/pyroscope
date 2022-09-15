@@ -9,19 +9,22 @@ import (
 )
 
 type Config struct {
-	badgerLogLevel        logrus.Level
-	badgerNoTruncate      bool
-	badgerBasePath        string
-	cacheEvictThreshold   float64
-	cacheEvictVolume      float64
-	maxNodesSerialization int
-	hideApplications      []string
-	inMemory              bool
-	retention             time.Duration
-	retentionExemplars    time.Duration
-	retentionLevels       config.RetentionLevels
-	queueWorkers          int
-	queueSize             int
+	badgerLogLevel          logrus.Level
+	badgerNoTruncate        bool
+	badgerBasePath          string
+	cacheEvictThreshold     float64
+	cacheEvictVolume        float64
+	maxNodesSerialization   int
+	hideApplications        []string
+	inMemory                bool
+	retention               time.Duration
+	retentionExemplars      time.Duration
+	retentionLevels         config.RetentionLevels
+	queueWorkers            int
+	queueSize               int
+	exemplarsBatchSize      int
+	exemplarsBatchQueueSize int
+	exemplarsBatchDuration  time.Duration
 
 	NewBadger func(name string, p Prefix, codec cache.Codec) (BadgerDBWithCache, error)
 }
@@ -33,19 +36,22 @@ func NewConfig(server *config.Server) *Config {
 		level = l
 	}
 	return &Config{
-		badgerLogLevel:        level,
-		badgerBasePath:        server.StoragePath,
-		badgerNoTruncate:      server.BadgerNoTruncate,
-		cacheEvictThreshold:   server.CacheEvictThreshold,
-		cacheEvictVolume:      server.CacheEvictVolume,
-		maxNodesSerialization: server.MaxNodesSerialization,
-		retention:             server.Retention,
-		retentionExemplars:    server.ExemplarsRetention,
-		retentionLevels:       server.RetentionLevels,
-		hideApplications:      server.HideApplications,
-		queueSize:             server.StorageQueueSize,
-		queueWorkers:          server.StorageQueueWorkers,
-		inMemory:              false,
+		badgerLogLevel:          level,
+		badgerBasePath:          server.StoragePath,
+		badgerNoTruncate:        server.BadgerNoTruncate,
+		cacheEvictThreshold:     server.CacheEvictThreshold,
+		cacheEvictVolume:        server.CacheEvictVolume,
+		maxNodesSerialization:   server.MaxNodesSerialization,
+		retention:               server.Retention,
+		retentionExemplars:      server.ExemplarsRetention,
+		retentionLevels:         server.RetentionLevels,
+		hideApplications:        server.HideApplications,
+		queueSize:               server.StorageQueueSize,
+		queueWorkers:            server.StorageQueueWorkers,
+		exemplarsBatchSize:      server.ExemplarsBatchSize,
+		exemplarsBatchQueueSize: server.ExemplarsBatchQueueSize,
+		exemplarsBatchDuration:  server.ExemplarsBatchDuration,
+		inMemory:                false,
 	}
 }
 
