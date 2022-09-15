@@ -7,15 +7,18 @@ import { useStyles2 } from '@grafana/ui';
 import { Stack } from './Stack';
 
 interface EditorRowProps {
-  children: React.ReactNode
+  children: React.ReactNode;
+  stackProps?: Partial<React.ComponentProps<typeof Stack>>;
 }
 
-export const EditorRow: React.FC<EditorRowProps> = ({ children }) => {
+export const EditorRow: React.FC<EditorRowProps> = ({ children, stackProps }) => {
   const styles = useStyles2(getStyles);
 
   return (
     <div className={styles.root}>
-      <Stack gap={2}>{children}</Stack>
+      <Stack gap={2} {...stackProps}>
+        {children}
+      </Stack>
     </div>
   );
 };

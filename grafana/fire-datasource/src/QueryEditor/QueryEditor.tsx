@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { useMount } from 'react-use';
 
 import { ButtonCascader, CascaderOption } from '@grafana/ui';
-import {CoreApp, QueryEditorProps} from '@grafana/data';
+import { CoreApp, QueryEditorProps } from '@grafana/data';
 
 import { FireDataSource } from '../datasource';
 import { defaultQuery, MyDataSourceOptions, ProfileTypeMessage, Query } from '../types';
@@ -70,7 +70,7 @@ export function QueryEditor(props: Props) {
 
   return (
     <EditorRows>
-      <EditorRow>
+      <EditorRow stackProps={{ wrap: false, gap: 1 }}>
         <ButtonCascader onChange={onProfileTypeChange} options={cascaderOptions} buttonProps={{ variant: 'secondary' }}>
           {selectedProfileName}
         </ButtonCascader>
@@ -99,5 +99,5 @@ function normalizeQuery(query: Query, app?: CoreApp) {
     // This will also be a default when having 'both' query and adding it from explore to dashboard
     normalized.queryType = 'profile';
   }
-  return normalized
+  return normalized;
 }
