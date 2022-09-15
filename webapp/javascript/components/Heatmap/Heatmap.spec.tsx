@@ -53,7 +53,6 @@ describe('Component: Heatmap', () => {
     const [maxTextEl, midTextEl, minTextEl] = within(
       screen.getByTestId('color-scale')
     ).getAllByRole('textbox');
-    console.log(minTextEl, midTextEl, maxTextEl);
     expect(maxTextEl.textContent).toBe(heatmapMockData.maxDepth.toString());
     expect(midTextEl.textContent).toBe('11539');
     expect(minTextEl.textContent).toBe(heatmapMockData.minDepth.toString());
