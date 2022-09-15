@@ -12,6 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: cloud-compatibility-check
-        run: .github/cloud-compatibility-check.sh
+        run: .github/cloud-compatibility-check.rb
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
