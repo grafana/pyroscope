@@ -5,13 +5,14 @@ import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
-import { formatAsOBject } from '@webapp/util/formatDate';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
 import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
+import Annotation from './Annotation';
 import styles from './TimelineChartWrapper.module.css';
+import { markingsFromAnnotations, markingsFromSelection } from './markings';
 
 export interface TimelineGroupData {
   data: Group;
@@ -28,7 +29,7 @@ interface Selection {
   from: string;
   to: string;
   color: Color;
-  overlayColor?: string | Color;
+  overlayColor: Color;
 }
 
 type SingleDataProps = {
@@ -78,6 +79,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
+
+  /** list of annotations timestamp, to be rendered as markings */
+  annotations?: { timestamp: number; content: string }[];
   ContextMenu?: React.ReactNode;
 };
 
@@ -194,7 +198,10 @@ class TimelineChartWrapper extends React.Component<
   }
 
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
-    if (prevProps.selection !== this.props.selection) {
+    if (
+      prevProps.selection !== this.props.selection ||
+      prevProps.annotations !== this.props.annotations
+    ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
       this.setState({ flotOptions: newFlotOptions });
@@ -202,64 +209,65 @@ class TimelineChartWrapper extends React.Component<
   }
 
   plotMarkings = () => {
-    // FIXME: right now the selection functionality is spread in 2 places
-    // normal markings (function below)
-    // and in the TimelineChartSelection plugin
-    // which is confusing and should be fixed
-    const constructSelection = (m: Selection) => {
-      const from = new Date(formatAsOBject(m.from)).getTime();
-      const to = new Date(formatAsOBject(m.to)).getTime();
+    const selectionMarkings = markingsFromSelection(
+      this.props.selectionType,
+      this.props.selection?.left,
+      this.props.selection?.right
+    );
 
-      // 'double' selection uses built-in Flot selection
-      // built-in Flot selection for 'single' case becomes 'transparent'
-      // to use custom apperance and color for it
-      const boundary = {
-        lineWidth: 1,
-        color:
-          this.props.selectionType === 'double' ? m.color.rgb() : 'transparent',
-      };
+    const annotationsMarkings = markingsFromAnnotations(this.props.annotations);
 
-      return [
-        {
-          xaxis: { from, to },
-          color:
-            this.props.selectionType === 'double' ? m.overlayColor : 'NOOP',
-        },
-
-        // A single vertical line indicating boundaries from both sides (left and right)
-        { ...boundary, xaxis: { from, to: from } },
-        { ...boundary, xaxis: { from: to, to } },
-      ];
-    };
-
-    const { selection } = this.props;
-
-    if (selection) {
-      return [
-        selection.left && constructSelection(selection.left),
-        selection.right && constructSelection(selection.right),
-      ]
-        .flat()
-        .filter((a) => !!a);
-    }
-
-    return [];
+    return [...selectionMarkings, ...annotationsMarkings];
   };
 
   setOnHoverDisplayTooltip = (
     data: ITooltipWrapperProps & ExploreTooltipProps
   ) => {
+    let tooltipContent = [];
+
     const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
       this.props?.onHoverDisplayTooltip;
 
     if (TooltipBody) {
+      tooltipContent.push(
+        <TooltipBody
+          key="explore-body"
+          values={data.values}
+          timeLabel={data.timeLabel}
+        />
+      );
+    }
+
+    // convert to the format we are expecting
+    const annotations =
+      this.props.annotations?.map((a) => ({
+        ...a,
+        timestamp: a.timestamp * 1000,
+      })) || [];
+
+    // if available, only render annotation
+    // so that the tooltip is not bloated
+    if (this.props.annotations) {
+      if (this.props.mode === 'singles' && data.pointOffset) {
+        tooltipContent = [
+          <Annotation
+            key="annotations"
+            values={data.values}
+            annotations={annotations}
+            pointOffset={data.pointOffset}
+          />,
+        ];
+      }
+    }
+
+    if (tooltipContent.length) {
       return (
         <TooltipWrapper
           align={data.align}
           pageY={data.pageY}
           pageX={data.pageX}
         >
-          <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+          {tooltipContent.map((tooltipBody) => tooltipBody)}
         </TooltipWrapper>
       );
     }
@@ -273,10 +281,9 @@ class TimelineChartWrapper extends React.Component<
     const { timezone } = this.props;
 
     // TODO: unify with renderSingle
-    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
-      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
-          this.setOnHoverDisplayTooltip(data)
-      : null;
+    const onHoverDisplayTooltip = (
+      data: ITooltipWrapperProps & ExploreTooltipProps
+    ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
       ...flotOptions,
@@ -320,10 +327,9 @@ class TimelineChartWrapper extends React.Component<
     timelineB = timelineB ? JSON.parse(JSON.stringify(timelineB)) : undefined;
 
     // TODO: unify with renderMultiple
-    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
-      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
-          this.setOnHoverDisplayTooltip(data)
-      : null;
+    const onHoverDisplayTooltip = (
+      data: ITooltipWrapperProps & ExploreTooltipProps
+    ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
       ...flotOptions,

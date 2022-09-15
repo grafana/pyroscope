@@ -1,0 +1,15 @@
+.wrapper {
+  overflow: hidden;
+  max-width: 300px;
+  max-height: 125px; // same height as the canvas
+}
+
+.body {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header {
+  font-size: 10px;
+}

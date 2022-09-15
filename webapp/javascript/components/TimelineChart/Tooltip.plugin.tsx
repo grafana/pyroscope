@@ -129,6 +129,10 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           timeLabel,
           values,
           align,
+          // TODO(eh-am): fix type
+          pointOffset: (plot as unknown as jquery.flot.plot).pointOffset.bind(
+            this
+          ),
         });
 
         ReactDOM.render(Tooltip, exploreTooltip?.[0]);

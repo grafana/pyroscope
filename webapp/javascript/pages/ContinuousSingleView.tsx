@@ -8,6 +8,7 @@ import {
   fetchSingleView,
   selectQueries,
   setDateRange,
+  selectAnnotationsOrDefault,
 } from '@webapp/redux/reducers/continuous';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
@@ -31,6 +32,7 @@ function ContinuousSingleView() {
   );
 
   const { singleView } = useAppSelector((state) => state.continuous);
+  const annotations = useAppSelector(selectAnnotationsOrDefault);
 
   useEffect(() => {
     if (from && until && query && maxNodes) {
@@ -117,6 +119,7 @@ function ContinuousSingleView() {
             title={
               <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
             }
+            annotations={annotations}
             selectionType="single"
           />
         </Box>
