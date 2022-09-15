@@ -36,6 +36,9 @@ func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params model
 			{Name: "app_name"},
 			{Name: "timestamp"},
 		},
+		// Update fields we care about
+		DoUpdates: clause.AssignmentColumns([]string{"app_name", "timestamp", "content"}),
+		// Update updateAt fields
 		UpdateAll: true,
 	}).Create(&u).Error; err != nil {
 		return nil, err
