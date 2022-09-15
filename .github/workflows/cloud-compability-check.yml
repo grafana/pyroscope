@@ -1,6 +1,11 @@
 name: Cloud Compatibility Check
+
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
   cloud_compability_check:
     runs-on: ubuntu-latest
