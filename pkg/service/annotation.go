@@ -30,10 +30,11 @@ func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params model
 	tx := svc.db.WithContext(ctx)
 
 	// Upsert
-	if err := tx.Where(model.CreateAnnotation{
-		AppName: params.AppName, Timestamp: params.Timestamp,
-	}).Attrs(u).FirstOrCreate(&u).Error; err != nil {
-		return nil, err
+	if tx.Where(model.CreateAnnotation{
+		AppName:   params.AppName,
+		Timestamp: params.Timestamp,
+	}).Updates(&u).RowsAffected == 0 {
+		return &u, tx.Create(&u).Error
 	}
 
 	return &u, nil
