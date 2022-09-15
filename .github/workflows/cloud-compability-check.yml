@@ -15,3 +15,4 @@ jobs:
         run: .github/cloud-compatibility-check.rb
         env:
           GITHUB_TOKEN: ${{ secrets.CLOUD_COMPAT_CHECK_GITHUB_TOKEN }}
+          GITHUB_SHA: '${{ github.sha }}'
