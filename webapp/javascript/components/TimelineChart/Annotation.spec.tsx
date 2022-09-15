@@ -2,27 +2,13 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import AnnotationTooltipBody, { THRESHOLD } from './Annotation';
 
-const mockAnnotations = [
-  {
-    timestamp: 1663000000,
-    content: 'annotation 1',
-  },
-];
-
 describe('AnnotationTooltipBody', () => {
   it('return null when theres no annotation', () => {
     const { container } = render(
-      <AnnotationTooltipBody annotations={[]} pointOffset={jest.fn()} />
-    );
-
-    expect(container.querySelector('div')).toBeNull();
-  });
-
-  it('return nothing when theres no timestamp', () => {
-    const { container } = render(
       <AnnotationTooltipBody
-        annotations={mockAnnotations}
-        pointOffset={jest.fn()}
+        annotations={[]}
+        coordsToCanvasPos={jest.fn()}
+        canvasX={0}
       />
     );
 
@@ -36,20 +22,18 @@ describe('AnnotationTooltipBody', () => {
         content: 'annotation 1',
       },
     ];
-    const values = [{ closest: [0] }];
-
-    const pointOffset = jest.fn();
+    const coordsToCanvasPos = jest.fn();
 
     // reference position
-    pointOffset.mockReturnValueOnce({ left: 100 });
+    coordsToCanvasPos.mockReturnValueOnce({ left: 100 });
     // our annotation position, point is to be outside the threshold
-    pointOffset.mockReturnValueOnce({ left: 100 + THRESHOLD });
+    coordsToCanvasPos.mockReturnValueOnce({ left: 100 + THRESHOLD });
 
     const { container } = render(
       <AnnotationTooltipBody
         annotations={annotations}
-        values={values}
-        pointOffset={pointOffset}
+        coordsToCanvasPos={coordsToCanvasPos}
+        canvasX={200}
       />
     );
 
@@ -64,19 +48,16 @@ describe('AnnotationTooltipBody', () => {
           content: 'annotation 1',
         },
       ];
-      const values = [{ closest: [1663000000] }];
-      const pointOffset = jest.fn();
+      const coordsToCanvasPos = jest.fn();
 
       // reference position
-      pointOffset.mockReturnValueOnce({ left: 100 });
-      // our annotation position
-      pointOffset.mockReturnValueOnce({ left: 99 });
+      coordsToCanvasPos.mockReturnValueOnce({ left: 100 });
 
       render(
         <AnnotationTooltipBody
-          values={values}
           annotations={annotations}
-          pointOffset={pointOffset}
+          coordsToCanvasPos={coordsToCanvasPos}
+          canvasX={100}
         />
       );
 
@@ -94,15 +75,10 @@ describe('AnnotationTooltipBody', () => {
       };
       const annotations = [furthestAnnotation, closestAnnotation];
       const values = [{ closest: [1663000000] }];
-      const pointOffset = jest.fn();
+      const coordsToCanvasPos = jest.fn();
 
-      pointOffset.mockImplementation((a) => {
+      coordsToCanvasPos.mockImplementation((a) => {
         // our reference point
-        if (a.x === values[0].closest[0]) {
-          return { left: 98 };
-        }
-
-        // furthest
         if (a.x === furthestAnnotation.timestamp) {
           return { left: 100 };
         }
@@ -115,9 +91,9 @@ describe('AnnotationTooltipBody', () => {
 
       render(
         <AnnotationTooltipBody
-          values={values}
           annotations={annotations}
-          pointOffset={pointOffset}
+          coordsToCanvasPos={coordsToCanvasPos}
+          canvasX={98}
         />
       );
 
