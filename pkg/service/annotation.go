@@ -6,6 +6,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AnnotationsService struct{ db *gorm.DB }
@@ -29,12 +30,14 @@ func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params model
 
 	tx := svc.db.WithContext(ctx)
 
-	// Upsert
-	if tx.Where(model.CreateAnnotation{
-		AppName:   params.AppName,
-		Timestamp: params.Timestamp,
-	}).Updates(&u).RowsAffected == 0 {
-		return &u, tx.Create(&u).Error
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "app_name"},
+			{Name: "timestamp"},
+		},
+		UpdateAll: true,
+	}).Create(&u).Error; err != nil {
+		return nil, err
 	}
 
 	return &u, nil
