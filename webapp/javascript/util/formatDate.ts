@@ -107,3 +107,16 @@ export const getUTCdate = (date: Date, offsetInMinutes: number): Date =>
   offsetInMinutes === 0
     ? new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000)
     : date;
+
+export const getTimelineFormatDate = (date: Date, hours: number) => {
+  if (hours < 12) {
+    return format(date, 'HH:mm:ss');
+  }
+  if (hours >= 12 && hours <= 24) {
+    return format(date, 'HH:mm');
+  }
+  if (hours > 24) {
+    return format(date, 'MMM do HH:mm');
+  }
+  return format(date, 'MMM do HH:mm');
+};

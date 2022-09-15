@@ -16,8 +16,6 @@ interface HeatmapTooltipProps {
   heatmap: Heatmap;
 }
 
-const formatter = getFormatter('time');
-
 function HeatmapTooltip({
   dataSourceElRef,
   heatmapW,
@@ -27,6 +25,8 @@ function HeatmapTooltip({
   const [tooltipParams, setTooltipParams] = useState<
     { pageX: number; pageY: number; time: string } | undefined
   >();
+
+  const formatter = getFormatter('time', heatmap.startTime, heatmap.endTime);
 
   const onMouseOut = () => {
     window.removeEventListener('mousemove', memoizedOnMouseMove);
