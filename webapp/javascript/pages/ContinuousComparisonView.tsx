@@ -166,6 +166,7 @@ function ComparisonApp() {
                 key="timeline-chart-left"
                 id="timeline-chart-left"
                 data-testid="timeline-left"
+                selectionWithHandler
                 timelineA={leftTimeline}
                 selection={{
                   left: {
@@ -225,6 +226,7 @@ function ComparisonApp() {
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 timelineA={rightTimeline}
+                selectionWithHandler
                 selection={{
                   right: {
                     from: rightFrom,
