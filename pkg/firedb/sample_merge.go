@@ -111,7 +111,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	)
 	for strings.Next() {
 		s := strings.At()
-		names[idx] = s.Result
+		names[idx] = s.Result.String
 		idSlice[idx] = []int64{s.RowNum}
 		idx++
 	}

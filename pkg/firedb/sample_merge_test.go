@@ -284,54 +284,38 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 	}
 }
 
-func BenchmarkSelectBlockProfiles(b *testing.B) {
-	testPath := b.TempDir()
-	db, err := New(&Config{
-		DataPath:      testPath,
-		BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, log.NewNopLogger(), nil)
-	require.NoError(b, err)
-	ctx := context.Background()
+// func BenchmarkSelectBlockProfiles(b *testing.B) {
+// 	fs, err := filesystem.NewBucket("./testdata/")
+// 	require.NoError(b, err)
 
-	for i := 0; i < 100; i++ {
-		for j := 0; j < 60; i++ {
-			p := pprofth.NewProfileBuilder(int64(time.Duration(j)*time.Second)).
-				MemoryProfile().WithLabels("series", fmt.Sprintf("%d", i))
-			p.ForStacktrace("my", "other").AddSamples(1, 2, 3, 4)
-			p.ForStacktrace("my", "other").AddSamples(3, 2, 3, 4)
-			p.ForStacktrace("my", "other", "stack").AddSamples(3, 3, 3, 3)
-			require.NoError(b, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
-		}
-	}
-	require.NoError(b, db.Flush(context.Background()))
+// 	q, err := newSingleBlockQuerier(log.NewLogfmtLogger(os.Stdout), fs, "./testdata/01GD0EKBP0DENYEFVS5SB0K9WG/")
+// 	require.NoError(b, err)
+// 	profiles, err := q.SelectMatchingProfiles(context.TODO(), &ingesterv1.SelectProfilesRequest{
+// 		LabelSelector: `{namespace="fire-dev-001",container="querier"}`,
+// 		Type: &commonv1.ProfileType{
+// 			Name:       "process_cpu",
+// 			SampleType: "cpu",
+// 			SampleUnit: "nanoseconds",
+// 			PeriodType: "cpu",
+// 			PeriodUnit: "nanoseconds",
+// 		},
+// 		Start: q.meta.TSDBBlockMeta().MinTime,
+// 		End:   q.meta.TSDBBlockMeta().MaxTime,
+// 	})
+// 	var profilesSlice []Profile
+// 	for profiles.Next() {
+// 		profilesSlice = append(profilesSlice, profiles.At())
+// 	}
+// 	require.NoError(b, profiles.Err())
+// 	b.ResetTimer()
+// 	b.ReportAllocs()
 
-	fs, err := filesystem.NewBucket(filepath.Join(testPath, pathLocal))
-	require.NoError(b, err)
-
-	// open resulting block
-	q := NewBlockQuerier(log.NewNopLogger(), fs)
-	require.NoError(b, q.Sync(context.Background()))
-
-	for i := 0; i < b.N; i++ {
-		profiles, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
-			LabelSelector: `{series="10"}`,
-			Type: &commonv1.ProfileType{
-				Name:       "process_cpu",
-				SampleType: "cpu",
-				SampleUnit: "nanoseconds",
-				PeriodType: "cpu",
-				PeriodUnit: "nanoseconds",
-			},
-			Start: int64(model.TimeFromUnixNano(0)),
-			End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
-		})
-		require.NoError(b, err)
-		for profiles.Next() {
-		}
-		require.NoError(b, profiles.Err())
-		require.NoError(b, profiles.Close())
-	}
-}
+// 	for i := 0; i < b.N; i++ {
+// 		require.NoError(b, err)
+// 		_, err = q.MergeByStacktraces(context.TODO(), iter.NewSliceIterator(profilesSlice))
+// 		require.NoError(b, err)
+// 	}
+// }
 
 // func TestMergeSampleByProfile(t *testing.T) {
 // 	for _, tc := range []struct {

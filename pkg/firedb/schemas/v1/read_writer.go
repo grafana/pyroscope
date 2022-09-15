@@ -12,8 +12,12 @@ type SortingColumns interface {
 	parquet.WriterOption
 }
 
-type Persister[T any] interface {
+type PersisterName interface {
 	Name() string
+}
+
+type Persister[T any] interface {
+	PersisterName
 	Schema() *parquet.Schema
 	Deconstruct(parquet.Row, uint64, T) parquet.Row
 	Reconstruct(parquet.Row) (uint64, T, error)
@@ -54,9 +58,7 @@ func (*ReadWriter[T, P]) ReadParquetFile(file io.ReaderAt) ([]T, error) {
 	)
 	defer reader.Close()
 
-	var (
-		rows = make([]parquet.Row, reader.NumRows())
-	)
+	rows := make([]parquet.Row, reader.NumRows())
 	if _, err := reader.ReadRows(rows); err != nil {
 		return nil, err
 	}
