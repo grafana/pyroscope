@@ -458,9 +458,9 @@ func createClients(ctx context.Context) ([]responseFromIngesters[BidiClientMerge
 		now := time.Now()
 		err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 			Request: &ingestv1.SelectProfilesRequest{
-				LabelSelector: `{namespace="fire-dev-001",container="querier"}`,
+				LabelSelector: `{namespace="fire-dev-001"}`,
 				Type:          profileType,
-				Start:         int64(model.TimeFromUnixNano(now.Add(-15 * time.Minute).UnixNano())),
+				Start:         int64(model.TimeFromUnixNano(now.Add(-30 * time.Minute).UnixNano())),
 				End:           int64(model.TimeFromUnixNano(now.UnixNano())),
 			},
 		})

@@ -82,8 +82,10 @@ message MergeProfilesStacktracesResponse {
 
   // The server replies batch of profiles.
   ProfileSets selectedProfiles = 1;
+  // Signal no more profiles to merge and the next message will be the result.
+  bool done = 2;
   // The list of stracktraces for the profile with their respective value
-  MergeProfilesStacktracesResult result = 2;
+  MergeProfilesStacktracesResult result = 3;
 
 }
 

@@ -6,9 +6,7 @@ import (
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 )
 
-var (
-	functionsSchema = parquet.SchemaOf(&profilev1.Function{})
-)
+var functionsSchema = parquet.SchemaOf(&profilev1.Function{})
 
 type FunctionPersister struct{}
 

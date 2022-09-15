@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
@@ -36,7 +37,7 @@ type ProfileWithLabels struct {
 type SkipIterator interface {
 	Skip()
 	Keep()
-	Result() *ingestv1.MergeProfilesStacktracesResult
+	Result() (*ingestv1.MergeProfilesStacktracesResult, error)
 	iter.Iterator[ProfileWithLabels]
 }
 
@@ -54,8 +55,23 @@ func dedupe(ctx context.Context, responses []responseFromIngesters[BidiClientMer
 	}
 
 	results := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(iters))
+	var lock sync.Mutex
+	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range iters {
-		results = append(results, iter.Result())
+		iter := iter
+		g.Go(func() error {
+			result, err := iter.Result()
+			if err != nil {
+				return err
+			}
+			lock.Lock()
+			results = append(results, result)
+			lock.Unlock()
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return mergeResult(results), nil
 }
@@ -101,31 +117,34 @@ func NewStreamProfileIterator(ctx context.Context, r responseFromIngesters[BidiC
 func (s *StreamProfileIterator) Next() bool {
 	if s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1 {
 		if !s.keepSent {
+			start := time.Now()
 			sp, _ := opentracing.StartSpanFromContext(s.ctx, "keep - send")
 			err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Profiles: s.keep,
 			})
 			sp.Finish()
+			fmt.Println("\ttime for sending", time.Since(start))
 			if err != nil {
 				s.err = err
 				fmt.Println(err)
 				return false
 			}
 		}
+		start := time.Now()
 		sp, _ := opentracing.StartSpanFromContext(s.ctx, "receive - batch")
 		resp, err := s.bidi.Receive()
 		sp.Finish()
-
+		fmt.Println("time for received", time.Since(start))
 		if err != nil {
 			s.err = err
 			return false
 		}
-		if resp.Result != nil {
-			s.result = resp.Result
-		}
-		if resp.SelectedProfiles == nil || len(resp.SelectedProfiles.Profiles) == 0 {
+
+		if resp.SelectedProfiles == nil || len(resp.SelectedProfiles.Profiles) == 0 || resp.Done {
 			return false
 		}
+		fmt.Printf("total received %d\n", len(resp.SelectedProfiles.Profiles))
+
 		s.curr = resp.SelectedProfiles
 		if len(s.curr.Profiles) != cap(s.keep) {
 			s.keep = make([]bool, len(s.curr.Profiles))
@@ -160,8 +179,15 @@ func (s *StreamProfileIterator) At() ProfileWithLabels {
 	}
 }
 
-func (s *StreamProfileIterator) Result() *ingestv1.MergeProfilesStacktracesResult {
-	return s.result
+func (s *StreamProfileIterator) Result() (*ingestv1.MergeProfilesStacktracesResult, error) {
+	resp, err := s.bidi.Receive()
+	if err != nil {
+		return nil, err
+	}
+	if err := s.bidi.CloseReceive(); err != nil {
+		s.err = err
+	}
+	return resp.Result, nil
 }
 
 func (s *StreamProfileIterator) Err() error {
@@ -171,9 +197,6 @@ func (s *StreamProfileIterator) Err() error {
 func (s *StreamProfileIterator) Close() error {
 	var errs multierror.MultiError
 	if err := s.bidi.CloseSend(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.bidi.CloseReceive(); err != nil {
 		errs = append(errs, err)
 	}
 	return errs.Err()

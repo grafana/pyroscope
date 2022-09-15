@@ -368,12 +368,11 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 
 			}
 			sp2, ctx := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Sending batch")
-			defer sp2.Finish()
-
 			// read a batch of profiles and sends it.
 			err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 				SelectedProfiles: selectProfileResult,
 			})
+			sp2.Finish()
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil, connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
@@ -397,7 +396,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		if err != nil {
 			return err
 		}
-		// fire the merge as soon as possible.
+		// Merge async the result.
 		g.Go(func() error {
 			merge, err := q.MergeByStacktraces(ctx, res)
 			if err != nil {
@@ -408,6 +407,13 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 			result = append(result, merge)
 			return nil
 		})
+	}
+
+	// signal the end of the profile streaming.
+	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
+		Done: true,
+	}); err != nil {
+		return err
 	}
 
 	if err := g.Wait(); err != nil {

@@ -545,48 +545,49 @@ func (p BlockProfile) Fingerprint() model.Fingerprint {
 	return p.fp
 }
 
-type BlockSeriesIterator struct {
-	rowNums query.Iterator
+// type BlockSeriesIterator struct {
+// 	profiles iter.Iterator[BlockProfile]
 
-	curr   BlockProfile
-	buffer [][]parquet.Value
-}
+// 	curr   BlockProfile
+// 	buffer [][]parquet.Value
+// }
 
-func NewBlockSeriesIterator(rowNums query.Iterator, fp model.Fingerprint, lbs firemodel.Labels) *BlockSeriesIterator {
-	return &BlockSeriesIterator{
-		rowNums: rowNums,
-		curr:    BlockProfile{fp: fp, labels: lbs},
-	}
-}
+// func NewBlockSeriesIterator(profiles iter.Iterator[BlockProfile], fp model.Fingerprint, lbs firemodel.Labels) *BlockSeriesIterator {
+// 	return &BlockSeriesIterator{
+// 		profiles: profiles,
+// 		curr:     BlockProfile{fp: fp, labels: lbs},
+// 	}
+// }
 
-func (p *BlockSeriesIterator) Next() bool {
-	if !p.rowNums.Next() {
-		return false
-	}
-	if p.buffer == nil {
-		p.buffer = make([][]parquet.Value, 2)
-	}
-	result := p.rowNums.At()
-	p.curr.RowNum = result.RowNumber[0]
-	p.buffer = result.Columns(p.buffer, "TimeNanos")
-	p.curr.ts = model.TimeFromUnixNano(p.buffer[0][0].Int64())
-	return true
-}
+// func (p *BlockSeriesIterator) Next() bool {
+// 	if !p.profiles.Next() {
+// 		return false
+// 	}
+// 	// if p.buffer == nil {
+// 	// 	p.buffer = make([][]parquet.Value, 2)
+// 	// }
+// 	// result := p.profiles.At()
+// 	// p.curr.RowNum = result.RowNumber[0]
+// 	// p.buffer = result.Columns(p.buffer, "TimeNanos")
+// 	// p.curr.ts = model.TimeFromUnixNano(p.buffer[0][0].Int64())
+// 	p.curr = p.profiles.At().(BlockProfile)
+// 	return true
+// }
 
-func (p *BlockSeriesIterator) At() Profile {
-	return p.curr
-}
+// func (p *BlockSeriesIterator) At() Profile {
+// 	return p.curr
+// }
 
-func (p *BlockSeriesIterator) Err() error {
-	return p.rowNums.Err()
-}
+// func (p *BlockSeriesIterator) Err() error {
+// 	return p.profiles.Err()
+// }
 
-func (p *BlockSeriesIterator) Close() error {
-	return p.rowNums.Close()
-}
+// func (p *BlockSeriesIterator) Close() error {
+// 	return p.profiles.Close()
+// }
 
 func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Block")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Block")
 	defer sp.Finish()
 	if err := b.open(ctx); err != nil {
 		return nil, err
@@ -606,7 +607,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		lbls       = make(firemodel.Labels, 0, 6)
 		chks       = make([]index.ChunkMeta, 1)
 		lblsPerRef = make(map[int64]labelsInfo)
-		seriesRef  = []int64{}
+		// seriesRef  = []int64{}
 	)
 
 	// get all relevant labels/fingerprints
@@ -625,29 +626,52 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
-			seriesRef = append(seriesRef, int64(chks[0].SeriesIndex))
+			// seriesRef = append(seriesRef, int64(chks[0].SeriesIndex))
 			lbls = make(firemodel.Labels, 0, 6)
 		}
 	}
+	pIt := query.NewJoinIterator(
+		0,
+		[]query.Iterator{
+			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerRef), "SeriesIndex"),
+			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		},
+		nil,
+	)
+	iters := make([]iter.Iterator[Profile], 0, len(lblsPerRef))
+	buf := make([][]parquet.Value, 2)
+	defer pIt.Close()
 
-	iters := make([]iter.Iterator[Profile], 0, len(seriesRef))
-	for _, ref := range seriesRef {
-		info := lblsPerRef[ref]
-		iters = append(iters, NewBlockSeriesIterator(
-			query.NewJoinIterator(
-				0,
-				[]query.Iterator{
-					b.profiles.columnIter(ctx, "SeriesIndex", query.NewEqualInt64Predicate(ref), ""),
-					b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
-				},
-				nil,
-			), info.fp, info.lbs))
+	currSeriesIndex := int64(-1)
+	var currentSeriesSlice []Profile
+	for pIt.Next() {
+		res := pIt.At()
+		buf = res.Columns(buf, "SeriesIndex", "TimeNanos")
+		seriesIndex := buf[0][0].Int64()
+		if seriesIndex != currSeriesIndex {
+			currSeriesIndex++
+			if len(currentSeriesSlice) > 0 {
+				iters = append(iters, iter.NewSliceIterator(currentSeriesSlice))
+			}
+			currentSeriesSlice = make([]Profile, 0, 100)
+		}
+		currentSeriesSlice = append(currentSeriesSlice, BlockProfile{
+			labels: lblsPerRef[seriesIndex].lbs,
+			fp:     lblsPerRef[seriesIndex].fp,
+			ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
+			RowNum: res.RowNumber[0],
+		})
+	}
+	if len(currentSeriesSlice) > 0 {
+		iters = append(iters, iter.NewSliceIterator(currentSeriesSlice))
 	}
 
 	return iter.NewSortProfileIterator(iters), nil
 }
 
 func (b *singleBlockQuerier) FilterMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (iter.Iterator[Profile], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "FilterMatchingProfiles - Block")
+	defer sp.Finish()
 	profilesIt, err := b.SelectMatchingProfiles(ctx, params)
 	if err != nil {
 		return nil, err
@@ -656,10 +680,12 @@ func (b *singleBlockQuerier) FilterMatchingProfiles(ctx context.Context, params 
 
 	batch := make([]Profile, 0, batchSize)
 	selection := []Profile{}
+	var batchIndex int
 Outer:
 	for {
 		// build a batch of profiles
 		batch = batch[:0]
+		sp.LogFields(otlog.Int("new batch", batchIndex))
 		for profilesIt.Next() {
 			profile := profilesIt.At()
 			batch = append(batch, profile)
@@ -673,6 +699,7 @@ Outer:
 		if len(batch) == 0 {
 			break Outer
 		}
+		sp.LogFields(otlog.Int("batchSize", len(batch)))
 		keep, err := fnOnBatch(ctx, batch)
 		if err != nil {
 			return nil, err
@@ -1111,6 +1138,13 @@ func (r *parquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator i
 		reconstruct:    r.persister.Reconstruct,
 	}
 }
+
+// func (r *parquetReader[M, P]) retrieveGenericRows(ctx context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[M] {
+// 	g := parquet.NewGenericReader[M](nil)
+
+// 	g.SeekToRow(1)
+// 	g.Read()
+// }
 
 func (i *retrieveRowIterator[M]) Err() error {
 	return i.err

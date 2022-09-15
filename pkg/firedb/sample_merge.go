@@ -44,6 +44,8 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 			}
 		}
 	}
+	sp2, ctx := opentracing.StartSpanFromContext(ctx, "Merge Symbolization - Block")
+	defer sp2.Finish()
 	// gather stacktraces
 	stacktraceIDs := lo.Keys(stacktraceAggrValues)
 	sort.Slice(stacktraceIDs, func(i, j int) bool {
