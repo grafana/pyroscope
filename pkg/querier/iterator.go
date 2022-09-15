@@ -5,19 +5,20 @@ package querier
 
 import (
 	"container/heap"
+	"context"
 	"fmt"
+	"sync"
 
 	"github.com/grafana/dskit/multierror"
+	"github.com/opentracing/opentracing-go"
+	"golang.org/x/sync/errgroup"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
-var (
-	_ = iter.Iterator[ProfileWithLabels]((*StreamProfileIterator)(nil))
-	_ = iter.Iterator[ProfileWithLabels]((*DedupeProfileIterator)(nil))
-)
+var _ = iter.Iterator[ProfileWithLabels]((*StreamProfileIterator)(nil))
 
 type BidiClientMergeProfilesStacktraces interface {
 	Send(*ingestv1.MergeProfilesStacktracesRequest) error
@@ -39,11 +40,10 @@ type SkipIterator interface {
 	iter.Iterator[ProfileWithLabels]
 }
 
-func dedupe(responses []responseFromIngesters[BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
+func dedupe(ctx context.Context, responses []responseFromIngesters[BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
 	iters := make([]SkipIterator, 0, len(responses))
-	fmt.Println("len responses", len(responses))
 	for _, resp := range responses {
-		iters = append(iters, NewStreamProfileIterator(resp))
+		iters = append(iters, NewStreamProfileIterator(ctx, resp))
 	}
 	it := NewDedupeProfileIterator(iters)
 	defer it.Close()
@@ -86,33 +86,36 @@ type StreamProfileIterator struct {
 	result       *ingestv1.MergeProfilesStacktracesResult
 	keepSent     bool
 	keepTotal    int
+	ctx          context.Context
 }
 
-func NewStreamProfileIterator(r responseFromIngesters[BidiClientMergeProfilesStacktraces]) SkipIterator {
+func NewStreamProfileIterator(ctx context.Context, r responseFromIngesters[BidiClientMergeProfilesStacktraces]) SkipIterator {
 	return &StreamProfileIterator{
 		bidi:         r.response,
 		ingesterAddr: r.addr,
 		keepSent:     true,
+		ctx:          ctx,
 	}
 }
 
 func (s *StreamProfileIterator) Next() bool {
 	if s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1 {
-
 		if !s.keepSent {
-			fmt.Println("error: keep not sent currIdx", s.currIdx, " p len", len(s.curr.Profiles), "addr", s.ingesterAddr)
+			sp, _ := opentracing.StartSpanFromContext(s.ctx, "keep - send")
 			err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Profiles: s.keep,
 			})
+			sp.Finish()
 			if err != nil {
 				s.err = err
 				fmt.Println(err)
 				return false
 			}
 		}
-		fmt.Println("asking for a new batch", s.currIdx, "addr", s.ingesterAddr)
-
+		sp, _ := opentracing.StartSpanFromContext(s.ctx, "receive - batch")
 		resp, err := s.bidi.Receive()
+		sp.Finish()
+
 		if err != nil {
 			s.err = err
 			return false
@@ -142,36 +145,11 @@ func (s *StreamProfileIterator) Next() bool {
 func (s *StreamProfileIterator) Skip() {
 	s.keep[s.currIdx] = false
 	s.keepTotal++
-	if s.currIdx == len(s.curr.Profiles)-1 {
-		err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
-			Profiles: s.keep,
-		})
-		if err != nil {
-			s.err = err
-			fmt.Println(err)
-			return
-		}
-		s.keepSent = true
-		fmt.Println("replied keeps", s.currIdx, " p len", len(s.curr.Profiles), "addr", s.ingesterAddr)
-	}
 }
 
 func (s *StreamProfileIterator) Keep() {
 	s.keep[s.currIdx] = true
 	s.keepTotal++
-	if s.currIdx == len(s.curr.Profiles)-1 {
-		err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
-			Profiles: s.keep,
-		})
-		if err != nil {
-			s.err = err
-			fmt.Println(err)
-			return
-		}
-		s.keepSent = true
-		fmt.Println("replied keeps", s.currIdx, " p len", len(s.curr.Profiles), "addr", s.ingesterAddr)
-
-	}
 }
 
 func (s *StreamProfileIterator) At() ProfileWithLabels {
@@ -230,39 +208,49 @@ func (h ProfileIteratorHeap) Less(i, j int) bool {
 type DedupeProfileIterator struct {
 	heap *ProfileIteratorHeap
 	errs []error
-	curr ProfileWithLabels
 
-	tuples []tuple
-}
-
-type tuple struct {
-	ProfileWithLabels
-	SkipIterator
+	tuples []SkipIterator
 }
 
 // NewDedupeProfileIterator creates a new an iterator of ProfileWithLabels while
 // iterating it removes duplicate Profile by ID across the set of iterators, but not within.
-func NewDedupeProfileIterator(its []SkipIterator) iter.Iterator[ProfileWithLabels] {
+func NewDedupeProfileIterator(its []SkipIterator) *DedupeProfileIterator {
 	heap := make(ProfileIteratorHeap, 0, len(its))
 	res := &DedupeProfileIterator{
 		heap:   &heap,
-		tuples: make([]tuple, 0, len(its)),
+		tuples: make([]SkipIterator, 0, len(its)),
 	}
-	for _, iter := range its {
-		res.requeue(iter, false)
-	}
+	res.requeue(its...)
 	return res
 }
 
-func (i *DedupeProfileIterator) requeue(ei iter.Iterator[ProfileWithLabels], advanced bool) {
-	if advanced || ei.Next() {
-		heap.Push(i.heap, ei)
-		return
+func (i *DedupeProfileIterator) requeue(eis ...SkipIterator) {
+	g, _ := errgroup.WithContext(context.Background())
+	topush := make(chan SkipIterator)
+
+	for _, ei := range eis {
+		ei := ei
+		g.Go(func() error {
+			if ei.Next() {
+				topush <- ei
+				return nil
+			}
+			ei.Close()
+			return ei.Err()
+		})
 	}
-	ei.Close()
-	if err := ei.Err(); err != nil {
-		i.errs = append(i.errs, err)
-	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for ei := range topush {
+			heap.Push(i.heap, ei)
+		}
+	}()
+
+	i.errs = append(i.errs, g.Wait())
+	close(topush)
+	wg.Wait()
 }
 
 func (i *DedupeProfileIterator) Next() bool {
@@ -270,7 +258,6 @@ func (i *DedupeProfileIterator) Next() bool {
 		return false
 	}
 	if i.heap.Len() == 1 {
-		i.curr = i.heap.Peek().At()
 		i.heap.Peek().Keep()
 		if !i.heap.Peek().Next() {
 			i.heap.Pop()
@@ -281,42 +268,30 @@ func (i *DedupeProfileIterator) Next() bool {
 	for i.heap.Len() > 0 {
 		next := i.heap.Peek()
 		value := next.At()
-		if len(i.tuples) > 0 && (i.tuples[0].Timestamp != value.Timestamp || firemodel.CompareLabelPairs(i.tuples[0].Labels, value.Labels) != 0) {
+		if len(i.tuples) > 0 && (i.tuples[0].At().Timestamp != value.Timestamp || firemodel.CompareLabelPairs(i.tuples[0].At().Labels, value.Labels) != 0) {
 			break
 		}
 		heap.Pop(i.heap)
-		i.tuples = append(i.tuples, tuple{
-			ProfileWithLabels: value,
-			SkipIterator:      next,
-		})
+		i.tuples = append(i.tuples, next)
 	}
 	// shortcut if we have a single tuple.
 	if len(i.tuples) == 1 {
-		i.curr = i.tuples[0].ProfileWithLabels
-		i.tuples[0].SkipIterator.Keep()
-		i.requeue(i.tuples[0].SkipIterator, false)
+		i.tuples[0].Keep()
+		i.requeue(i.tuples[0])
 		i.tuples = i.tuples[:0]
 		return true
 	}
 
 	// todo: we might want to pick based on ingester addr.
-	t := i.tuples[0]
-	t.SkipIterator.Keep()
-	i.requeue(t.SkipIterator, false)
-	i.curr = t.ProfileWithLabels
-
+	i.tuples[0].Keep()
 	// skip the rest.
 	for _, t := range i.tuples[1:] {
-		t.SkipIterator.Skip()
-		i.requeue(t.SkipIterator, false)
+		t.Skip()
 	}
+	i.requeue(i.tuples...)
 	i.tuples = i.tuples[:0]
 
 	return true
-}
-
-func (i *DedupeProfileIterator) At() ProfileWithLabels {
-	return i.curr
 }
 
 func (i *DedupeProfileIterator) Err() error {

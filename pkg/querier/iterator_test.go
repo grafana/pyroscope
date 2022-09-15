@@ -1,6 +1,7 @@
 package querier
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -114,7 +115,7 @@ func TestDedupeBidi(t *testing.T) {
 			},
 		},
 	})
-	res, err := dedupe([]responseFromIngesters[BidiClientMergeProfilesStacktraces]{
+	res, err := dedupe(context.Background(), []responseFromIngesters[BidiClientMergeProfilesStacktraces]{
 		{
 			response: resp1,
 		},
@@ -140,7 +141,7 @@ func TestDedupeBidi(t *testing.T) {
 		{Ts: 5, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
 		{Ts: 6, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
 	})
-	res, err = dedupe([]responseFromIngesters[BidiClientMergeProfilesStacktraces]{
+	res, err = dedupe(context.Background(), []responseFromIngesters[BidiClientMergeProfilesStacktraces]{
 		{
 			response: newFakeBidiClient([]*ingestv1.ProfileSets{
 				{

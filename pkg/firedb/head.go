@@ -24,7 +24,6 @@ import (
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
 	"github.com/grafana/fire/pkg/firedb/block"
@@ -598,7 +597,7 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 	}, nil
 }
 
-func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (*ingestv1.MergeProfilesStacktracesResult, error) {
+func (h *Head) FilterMatchingProfiles(ctx context.Context, req *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (iter.Iterator[Profile], error) {
 	profilesIt, err := h.SelectMatchingProfiles(ctx, req)
 	if err != nil {
 		return nil, err
@@ -606,50 +605,36 @@ func (h *Head) BatchMergeStacktraces(ctx context.Context, req *ingestv1.SelectPr
 	defer profilesIt.Close()
 
 	batch := make([]Profile, 0, batchSize)
-	selection := NewProfileSelectorIterator()
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		defer selection.Close()
-		for {
-			// build a batch of profiles
-			batch = batch[:0]
-			for profilesIt.Next() {
-				profile := profilesIt.At()
-				batch = append(batch, profile)
-				if len(batch) >= batchSize {
-					break
-				}
-			}
-			if profilesIt.Err() != nil {
-				return profilesIt.Err()
-			}
-			if len(batch) == 0 {
-				return nil
-			}
-			keep, err := fnOnBatch(ctx, batch)
-			if err != nil {
-				return err
-			}
-			selected := make([]Profile, 0, len(keep))
-			for i, k := range keep {
-				if k {
-					selected = append(selected, batch[i])
-				}
-			}
-			selection.Push(selected)
-		}
-	})
-	var res *ingestv1.MergeProfilesStacktracesResult
-	g.Go(func() error {
-		res, err = h.MergeByStacktraces(ctx, selection)
-		return err
-	})
+	selection := []Profile{}
 
-	if err := g.Wait(); err != nil {
-		return nil, err
+	for {
+		// build a batch of profiles
+		batch = batch[:0]
+		for profilesIt.Next() {
+			profile := profilesIt.At()
+			batch = append(batch, profile)
+			if len(batch) >= batchSize {
+				break
+			}
+		}
+		if profilesIt.Err() != nil {
+			return nil, profilesIt.Err()
+		}
+		if len(batch) == 0 {
+			break
+		}
+		keep, err := fnOnBatch(ctx, batch)
+		if err != nil {
+			return nil, err
+		}
+		for i, k := range keep {
+			if k {
+				selection = append(selection, batch[i])
+			}
+		}
 	}
 
-	return res, nil
+	return iter.NewSliceIterator(selection), nil
 }
 
 type ProfileSelectorIterator struct {

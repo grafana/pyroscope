@@ -332,9 +332,12 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		LabelsSets: make([]*commonv1.Labels, 0, batchSize),
 	}
 	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
+	var lock sync.Mutex
+	g, ctx := errgroup.WithContext(ctx)
 
 	for _, q := range queriers {
-		res, err := q.BatchMergeStacktraces(ctx, request, batchSize, func(ctx context.Context, selectedProfiles []Profile) (Keep, error) {
+		q := q
+		res, err := q.FilterMatchingProfiles(ctx, request, batchSize, func(ctx context.Context, selectedProfiles []Profile) (Keep, error) {
 			sp, ctx := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - NewBatch")
 			sp.LogFields(
 				otlog.Int("batch_len", len(selectedProfiles)),
@@ -394,7 +397,21 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		if err != nil {
 			return err
 		}
-		result = append(result, res)
+		// fire the merge as soon as possible.
+		g.Go(func() error {
+			merge, err := q.MergeByStacktraces(ctx, res)
+			if err != nil {
+				return err
+			}
+			lock.Lock()
+			defer lock.Unlock()
+			result = append(result, merge)
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
