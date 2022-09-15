@@ -12,7 +12,7 @@ export interface ExploreTooltipProps {
     tagName: string;
   }>;
   profile?: Profile;
-  pointOffset?: jquery.flot.plot['pointOffset'];
+  coordsToCanvasPos?: jquery.flot.axis['p2c'];
 }
 
 const ExploreTooltip: FC<ExploreTooltipProps> = ({

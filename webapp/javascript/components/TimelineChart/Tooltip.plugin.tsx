@@ -108,10 +108,6 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
               });
             }
 
-            //            console.log({
-            //              canvasX: params.canvasX,
-            //            });
-
             return {
               closest,
               color,
@@ -134,11 +130,11 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           values,
           align,
           canvasX: params.canvasX,
+
           // TODO(eh-am): fix type
-          //          pointOffset: (plot as unknown as jquery.flot.plot).pointOffset.bind(
-          //            this
-          //          ),
-          pointOffset: (plot as unknown as jquery.flot.plot).p2c.bind(this),
+          coordsToCanvasPos: (plot as unknown as jquery.flot.plot).p2c.bind(
+            this
+          ),
         });
 
         ReactDOM.render(Tooltip, exploreTooltip?.[0]);

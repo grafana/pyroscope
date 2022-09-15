@@ -248,14 +248,14 @@ class TimelineChartWrapper extends React.Component<
     // if available, only render annotation
     // so that the tooltip is not bloated
     if (this.props.annotations) {
-      if (this.props.mode === 'singles' && data.pointOffset) {
+      if (this.props.mode === 'singles' && data.coordsToCanvasPos) {
         tooltipContent = [
           <Annotation
             key="annotations"
             values={data.values}
             canvasX={data.canvasX}
             annotations={annotations}
-            pointOffset={data.pointOffset}
+            coordsToCanvasPos={data.coordsToCanvasPos}
           />,
         ];
       }
