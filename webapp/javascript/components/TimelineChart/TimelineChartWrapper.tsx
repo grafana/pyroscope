@@ -253,6 +253,7 @@ class TimelineChartWrapper extends React.Component<
           <Annotation
             key="annotations"
             values={data.values}
+            canvasX={data.canvasX}
             annotations={annotations}
             pointOffset={data.pointOffset}
           />,

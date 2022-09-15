@@ -14,6 +14,9 @@ interface AnnotationTooltipBodyProps {
 
   /** given a timestamp, it returns the offset within the canvas */
   pointOffset: jquery.flot.plot['pointOffset'];
+
+  /* where in the canvas */
+  canvasX: number;
 }
 
 export default function Annotations(props: AnnotationTooltipBodyProps) {
@@ -23,7 +26,12 @@ export default function Annotations(props: AnnotationTooltipBodyProps) {
 
   return getClosestTimestamp(props.values)
     .andThen((closest) =>
-      getClosestAnnotation(props.annotations, closest, props.pointOffset)
+      getClosestAnnotation(
+        props.annotations,
+        closest,
+        props.pointOffset,
+        props.canvasX
+      )
     )
     .map((annotation) => (
       <AnnotationComponent
@@ -53,7 +61,7 @@ function AnnotationComponent({
 }
 
 function getClosestTimestamp(values?: { closest: number[] }[]): Maybe<number> {
-  const val = values?.[0].closest[0];
+  const val = values?.[0].closest?.[0];
 
   if (val) {
     return Maybe.of(val);
@@ -65,7 +73,8 @@ function getClosestTimestamp(values?: { closest: number[] }[]): Maybe<number> {
 function getClosestAnnotation(
   annotations: { timestamp: number; content: string }[],
   timestamp: number,
-  pointOffset: AnnotationTooltipBodyProps['pointOffset']
+  pointOffset: AnnotationTooltipBodyProps['pointOffset'],
+  canvasX: number
 ) {
   if (!annotations.length) {
     return Maybe.nothing<typeof annotations[number]>();
@@ -82,11 +91,26 @@ function getClosestAnnotation(
     .map((a) => ({
       ...a,
       score: Math.abs(
-        pointOffset({ x: a.timestamp, y: dummyY }).left - timestampLeft
+        //        pointOffset({ x: a.timestamp, y: dummyY }).left - timestampLeft
+        pointOffset({ x: a.timestamp, y: dummyY }).left - canvasX
       ),
     }))
     .filter((a) => a.score < THRESHOLD)
     .sort((a, b) => a.score - b.score);
+
+  //  console.log({
+  //    timestampLeft,
+  //  });
+  //
+  //  console.log(annotations);
+  //
+  //  console.log('reference', timestamp);
+  //  console.log('closest', f?.[0].timestamp);
+  //  console.log('diff', f?.[0].timestamp - timestamp);
+  console.log('canvasX', canvasX);
+  console.log(
+    annotations.map((a) => pointOffset({ x: a.timestamp, y: dummyY }).left)
+  );
 
   return Maybe.of(f[0]);
 }
