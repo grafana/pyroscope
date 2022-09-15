@@ -15,9 +15,9 @@ puts "triggering a run"
 system "curl \
 -X POST \
 -H \"Accept: application/vnd.github+json\" \
--H \"Authorization: Bearer $GITHUB_TOKEN\" \
+-H \"Authorization: Bearer #{ENV["GITHUB_TOKEN"]}\" \
 https://api.github.com/repos/pyroscope-io/cloudstorage/actions/workflows/34992245/dispatches \
--d '{\"ref\":\"main\",\"inputs\":{\"gitRef\":\"main\"}'"
+-d '{\"ref\":\"main\",\"inputs\":{\"gitRef\":\"#{ENV["GITHUB_REF"] || "main"}\"}'"
 
 # TODO: this logic is prone to race conditions, consider improving
 run_id = nil
