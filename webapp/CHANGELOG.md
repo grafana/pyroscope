@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.40.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.40.0...@pyroscope/webapp@1.40.1) (2022-09-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.40.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.39.1...@pyroscope/webapp@1.40.0) (2022-09-14)
+
+
+### Features
+
+* **webapp:** Add Explore Page piechart ([#1477](https://github.com/pyroscope-io/pyroscope/issues/1477)) ([c421b42](https://github.com/pyroscope-io/pyroscope/commit/c421b4225baaa7543b22185c3b26fcf48a60a024))
+
+
+
+
+
+## [1.39.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.39.0...@pyroscope/webapp@1.39.1) (2022-09-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 # [1.39.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.6...@pyroscope/webapp@1.39.0) (2022-09-13)
 
 

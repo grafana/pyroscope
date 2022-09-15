@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
-
+import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
 import type { Profile } from '@pyroscope/models/src';
 import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
@@ -36,7 +36,7 @@ import {
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
 import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
-import { calculateMean, calculateStdDeviation } from './math';
+import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
 
 // eslint-disable-next-line css-modules/no-unused-class
@@ -44,26 +44,54 @@ import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
 
 const TIMELINE_SERIES_COLORS = [
+  Color.rgb(242, 204, 12),
   Color.rgb(115, 191, 105),
+  Color.rgb(138, 184, 255),
+  Color.rgb(255, 120, 10),
+  Color.rgb(242, 73, 92),
+  Color.rgb(87, 148, 242),
+  Color.rgb(184, 119, 217),
+  Color.rgb(112, 93, 160),
+  Color.rgb(55, 135, 45),
+  Color.rgb(250, 222, 42),
+  Color.rgb(68, 126, 188),
+  Color.rgb(193, 92, 23),
+  Color.rgb(137, 15, 2),
+  Color.rgb(10, 67, 124),
+  Color.rgb(109, 31, 98),
+  Color.rgb(88, 68, 119),
+  Color.rgb(183, 219, 171),
   Color.rgb(244, 213, 152),
-  Color.rgb(174, 162, 224),
   Color.rgb(112, 219, 237),
+  Color.rgb(249, 186, 143),
+  Color.rgb(242, 145, 145),
+  Color.rgb(130, 181, 216),
+  Color.rgb(229, 168, 226),
+  Color.rgb(174, 162, 224),
+  Color.rgb(98, 158, 81),
+  Color.rgb(229, 172, 14),
+  Color.rgb(100, 176, 200),
   Color.rgb(224, 117, 45),
   Color.rgb(191, 27, 0),
-  Color.rgb(229, 168, 226),
-  Color.rgb(183, 219, 171),
-  Color.rgb(229, 172, 14),
   Color.rgb(10, 80, 161),
-  Color.rgb(97, 77, 147),
-  Color.rgb(100, 176, 200),
   Color.rgb(150, 45, 130),
+  Color.rgb(97, 77, 147),
+  Color.rgb(154, 196, 138),
+  Color.rgb(242, 201, 109),
+  Color.rgb(101, 197, 219),
+  Color.rgb(249, 147, 78),
+  Color.rgb(234, 100, 96),
+  Color.rgb(81, 149, 206),
   Color.rgb(214, 131, 206),
+  Color.rgb(128, 110, 183),
   Color.rgb(63, 104, 51),
   Color.rgb(150, 115, 2),
-  Color.rgb(5, 43, 81),
-  Color.rgb(63, 43, 91),
+  Color.rgb(47, 87, 94),
   Color.rgb(153, 68, 10),
   Color.rgb(88, 20, 12),
+  Color.rgb(5, 43, 81),
+  Color.rgb(81, 23, 73),
+  Color.rgb(63, 43, 91),
   Color.rgb(224, 249, 215),
   Color.rgb(252, 234, 202),
   Color.rgb(207, 250, 255),
@@ -243,15 +271,24 @@ function TagExplorerView() {
             .map((a) => `${a} Tag Breakdown`)
             .unwrapOr('Tag Breakdown')}`}
         >
-          <Table
-            appName={appName.unwrapOr('')}
-            whereDropdownItems={whereDropdownItems}
-            groupByTag={groupByTag}
-            groupByTagValue={groupByTagValue}
-            groupsData={filteredGroupsData}
-            handleGroupByTagValueChange={handleGroupByTagValueChange}
-            isLoading={type === 'loading'}
-          />
+          <div className={styles.statisticsBox}>
+            <div className={styles.pieChartWrapper}>
+              {filteredGroupsData?.length ? (
+                <TotalSamplesChart filteredGroupsData={filteredGroupsData} />
+              ) : (
+                <LoadingSpinner />
+              )}
+            </div>
+            <Table
+              appName={appName.unwrapOr('')}
+              whereDropdownItems={whereDropdownItems}
+              groupByTag={groupByTag}
+              groupByTagValue={groupByTagValue}
+              groupsData={filteredGroupsData}
+              handleGroupByTagValueChange={handleGroupByTagValueChange}
+              isLoading={type === 'loading'}
+            />
+          </div>
         </CollapseBox>
         <Box>
           <div className={styles.flamegraphWrapper}>
@@ -331,16 +368,24 @@ function Table({
       label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
       sortable: 0,
     },
-    { name: 'eventCount', label: 'Event count', sortable: 0 },
     { name: 'avgSamples', label: 'avg samples', sortable: 0 },
     { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
-    { name: 'minSamples', label: 'min samples', sortable: 0 },
-    { name: 'maxSamples', label: 'max samples', sortable: 0 },
+    { name: 'totalSamples', label: 'total samples', sortable: 0 },
   ];
+
+  const groupsTotal = useMemo(
+    () =>
+      groupsData.reduce((acc, current) => {
+        return acc + calculateTotal(current.data.samples);
+      }, 0),
+    [groupsData]
+  );
 
   const bodyRows = groupsData.reduce(
     (acc, { tagName, color, data }): BodyRow[] => {
       const mean = calculateMean(data.samples);
+      const total = calculateTotal(data.samples);
+      const percentage = (total / groupsTotal) * 100;
       const row = {
         isRowSelected: isTagSelected(tagName),
         // prevent clicking on single "application without tags" group row
@@ -354,15 +399,18 @@ function Table({
                   className={styles.tagColor}
                   style={{ backgroundColor: color?.toString() }}
                 />
-                {tagName}
+                <span className={styles.label}>
+                  {tagName}
+                  <span className={styles.bold}>
+                    &nbsp;{`(${percentage.toFixed(2)}%)`}
+                  </span>
+                </span>
               </div>
             ),
           },
-          { value: data.samples.length },
           { value: mean.toFixed(2) },
           { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
-          { value: Math.min(...data.samples) },
-          { value: Math.max(...data.samples) },
+          { value: total },
         ],
       };
       acc.push(row);
@@ -379,7 +427,7 @@ function Table({
   };
 
   return (
-    <>
+    <div className={styles.tableWrapper}>
       <div className={styles.tableDescription} data-testid="explore-table">
         <div className={styles.buttons}>
           <NavLink
@@ -406,7 +454,7 @@ function Table({
         </div>
       </div>
       <TableUI table={table} className={styles.tagExplorerTable} />
-    </>
+    </div>
   );
 }
 
