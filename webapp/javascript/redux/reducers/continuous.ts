@@ -1031,7 +1031,9 @@ export const selectIsLoadingData = (state: RootState) => {
     loadingStates.includes(state.continuous.diffView.type) ||
     // Timeline Sides
     loadingStates.includes(state.continuous.leftTimeline.type) ||
-    loadingStates.includes(state.continuous.rightTimeline.type)
+    loadingStates.includes(state.continuous.rightTimeline.type) ||
+    // Exemplars
+    loadingStates.includes(state.tracing.exemplarsSingleView.type)
   );
 };
 

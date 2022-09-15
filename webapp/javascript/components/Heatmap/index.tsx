@@ -9,11 +9,13 @@ import {
   SelectedAreaCoordsType,
   useHeatmapSelection,
 } from './useHeatmapSelection.hook';
+import HeatmapTooltip from './HeatmapTooltip';
 import {
   SELECTED_AREA_BACKGROUND,
   HEATMAP_HEIGHT,
-  VIRIDIS_COLORS,
+  HEATMAP_COLORS,
 } from './constants';
+import { getTicks } from './utils';
 
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './Heatmap.module.scss';
@@ -73,6 +75,21 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
       },
     [heatmap]
   );
+
+  const getLegendLabel = (index: number): string => {
+    switch (index) {
+      case 0:
+        return heatmap.maxDepth.toString();
+      case 3:
+        return Math.round(
+          (heatmap.maxDepth - heatmap.minDepth) / 2 + heatmap.minDepth
+        ).toString();
+      case 6:
+        return heatmap.minDepth.toString();
+      default:
+        return '';
+    }
+  };
 
   const heatmapGrid = (() =>
     heatmap.values.map((column, colIndex) => (
@@ -140,26 +157,28 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         max={heatmap.endTime}
         ticksNumber={7}
       />
-      <div
-        className={styles.bucketsColors}
-        data-testid="color-scale"
-        style={{
-          backgroundImage: `linear-gradient(to right, ${VIRIDIS_COLORS[4]} , ${VIRIDIS_COLORS[3]}, ${VIRIDIS_COLORS[2]}, ${VIRIDIS_COLORS[1]}, ${VIRIDIS_COLORS[0]})`,
-        }}
-      >
-        <span
-          role="textbox"
-          style={{ color: Color.rgb(VIRIDIS_COLORS[0]).toString() }}
-        >
-          {heatmap.minDepth}
-        </span>
-        <span
-          role="textbox"
-          style={{ color: Color.rgb(VIRIDIS_COLORS[4]).toString() }}
-        >
-          {heatmap.maxDepth}
-        </span>
+      <div className={styles.legend} data-testid="color-scale">
+        {HEATMAP_COLORS.map((color, index) => (
+          <div key={color.toString()} className={styles.colorLabelContainer}>
+            {index % 3 === 0 && (
+              <span role="textbox" className={styles.label}>
+                {getLegendLabel(index)}
+              </span>
+            )}
+            <div
+              className={styles.color}
+              style={{
+                backgroundColor: color.toString(),
+              }}
+            />
+          </div>
+        ))}
       </div>
+      <HeatmapTooltip
+        dataSourceElRef={canvasRef}
+        heatmapW={heatmapW}
+        heatmap={heatmap}
+      />
     </div>
   );
 }
@@ -191,12 +210,13 @@ function ResizedSelectedArea({
       data-testid="selection-resizable-canvas"
       onClick={handleClick}
       className={styles.selectedAreaBlock}
+      id="selectionArea"
       style={{
         width: w,
         height: h,
         top,
         left,
-        backgroundColor: SELECTED_AREA_BACKGROUND,
+        backgroundColor: SELECTED_AREA_BACKGROUND.toString(),
       }}
     />
   );
@@ -235,42 +255,3 @@ function Axis({ axis, max, min, ticksNumber }: AxisProps) {
     </div>
   );
 }
-
-const getFormatter = (format: 'value' | 'time') => {
-  let formatter;
-  switch (format) {
-    case 'time':
-      formatter = (v: number) => {
-        const date = new Date(v / 1000000);
-
-        return date.toLocaleTimeString();
-      };
-      break;
-    case 'value':
-      formatter = (v: number) =>
-        v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
-      break;
-    default:
-      formatter = (v: number) => v;
-  }
-
-  return formatter;
-};
-
-const getTicks = (
-  format: 'value' | 'time',
-  min: number,
-  max: number,
-  ticksCount: number
-) => {
-  const formatter = getFormatter(format);
-
-  const step = (max - min) / ticksCount;
-  const ticksArray = [formatter(min)];
-
-  for (let i = 1; i <= ticksCount; i += 1) {
-    ticksArray.push(formatter(min + step * i));
-  }
-
-  return ticksArray;
-};
