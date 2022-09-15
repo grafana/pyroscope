@@ -1,4 +1,4 @@
-name: Homebrew
+name: Cloud Compatibility Check
 on:
   workflow_dispatch:
 jobs:
