@@ -136,8 +136,8 @@ func createAnnotationsTableMigration() *gormigrate.Migration {
 
 func addIndexesUniqueTableMigration() *gormigrate.Migration {
 	type annotation struct {
-		AppName   string    `gorm:"index:annotation,unique;not null;default:null"`
-		Timestamp time.Time `gorm:"index:annotation,unique;not null;default:null"`
+		AppName   string    `gorm:"index:idx_appname_timestamp,unique;not null;default:null"`
+		Timestamp time.Time `gorm:"index:idx_appname_timestamp,unique;not null;default:null"`
 	}
 
 	return &gormigrate.Migration{
@@ -146,8 +146,7 @@ func addIndexesUniqueTableMigration() *gormigrate.Migration {
 			return tx.AutoMigrate(&annotation{})
 		},
 		Rollback: func(tx *gorm.DB) error {
-			// TODO(eh-am): implement
-			return nil
+			return tx.Migrator().DropIndex(&annotation{}, "idx_appname_timestamp")
 		},
 	}
 }
