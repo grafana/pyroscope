@@ -29,7 +29,7 @@ const (
 
 	defaultExemplarsBatchQueueSize = 5
 	defaultExemplarsBatchSize      = 10 << 10 // 10K
-	defaultExemplarBatchDuration   = time.Second * 5
+	defaultExemplarsBatchDuration  = time.Second * 5
 )
 
 type exemplars struct {
@@ -89,7 +89,7 @@ func (e *exemplars) exemplarsBatchDuration() time.Duration {
 	if e.config.exemplarsBatchDuration != 0 {
 		return e.config.exemplarsBatchDuration
 	}
-	return defaultExemplarBatchDuration
+	return defaultExemplarsBatchDuration
 }
 
 func (e *exemplars) newExemplarsBatch() *exemplarsBatch {
