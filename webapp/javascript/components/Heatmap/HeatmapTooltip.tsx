@@ -11,20 +11,27 @@ import type { Heatmap } from '@webapp/services/render';
 import { getTimeDataByXCoord, getFormatter } from './utils';
 
 interface HeatmapTooltipProps {
-  canvasRef: RefObject<HTMLCanvasElement>;
+  dataSourceElRef: RefObject<HTMLCanvasElement>;
   heatmapW: number;
   heatmap: Heatmap;
 }
 
 const formatter = getFormatter('time');
 
-function HeatmapTooltip({ canvasRef, heatmapW, heatmap }: HeatmapTooltipProps) {
+function HeatmapTooltip({
+  dataSourceElRef,
+  heatmapW,
+  heatmap,
+}: HeatmapTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipParams, setTooltipParams] = useState<
     { pageX: number; pageY: number; time: string } | undefined
   >();
 
-  const onMouseOut = () => setTooltipParams(undefined);
+  const onMouseOut = () => {
+    window.removeEventListener('mousemove', memoizedOnMouseMove);
+    setTooltipParams(undefined);
+  };
 
   const memoizedOnMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -46,29 +53,38 @@ function HeatmapTooltip({ canvasRef, heatmapW, heatmap }: HeatmapTooltipProps) {
     [tooltipRef, setTooltipParams, heatmapW, heatmap]
   );
 
+  // to show tooltip when move mouse over selected area
+  const handleWindowMouseMove = (e: MouseEvent) => {
+    if (
+      (e.target as HTMLCanvasElement).id !== 'selectionCanvas' &&
+      (e.target as HTMLCanvasElement).id !== 'selectionArea'
+    ) {
+      onMouseOut();
+    } else {
+      memoizedOnMouseMove(e);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    window.addEventListener('mousemove', handleWindowMouseMove);
+  };
+
   useEffect(() => {
     // use closure to "cache" the current dataSourceRef(canvas/table) reference
     // so that when cleaning up, it points to a valid canvas
     // (otherwise it would be null)
-    const dataSourceEl = canvasRef.current;
+    const dataSourceEl = dataSourceElRef.current;
     if (!dataSourceEl) {
       return () => {};
     }
 
-    dataSourceEl.addEventListener(
-      'mousemove',
-      memoizedOnMouseMove as EventListener
-    );
-    dataSourceEl.addEventListener('mouseout', onMouseOut);
+    dataSourceEl.addEventListener('mouseenter', handleMouseEnter);
 
     return () => {
-      dataSourceEl.removeEventListener(
-        'mousemove',
-        memoizedOnMouseMove as EventListener
-      );
-      dataSourceEl.removeEventListener('mouseout', onMouseOut);
+      dataSourceEl.removeEventListener('mouseenter', handleMouseEnter);
+      onMouseOut();
     };
-  }, [canvasRef.current, memoizedOnMouseMove]);
+  }, [dataSourceElRef.current, memoizedOnMouseMove]);
 
   return (
     <div data-testid="heatmap-tooltip" ref={tooltipRef}>

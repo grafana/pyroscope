@@ -159,7 +159,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
       />
       <div className={styles.legend} data-testid="color-scale">
         {HEATMAP_COLORS.map((color, index) => (
-          <div className={styles.colorLabelContainer}>
+          <div key={color.toString()} className={styles.colorLabelContainer}>
             {index % 3 === 0 && (
               <span role="textbox" className={styles.label}>
                 {getLegendLabel(index)}
@@ -175,7 +175,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         ))}
       </div>
       <HeatmapTooltip
-        canvasRef={canvasRef}
+        dataSourceElRef={canvasRef}
         heatmapW={heatmapW}
         heatmap={heatmap}
       />
@@ -210,6 +210,7 @@ function ResizedSelectedArea({
       data-testid="selection-resizable-canvas"
       onClick={handleClick}
       className={styles.selectedAreaBlock}
+      id="selectionArea"
       style={{
         width: w,
         height: h,
