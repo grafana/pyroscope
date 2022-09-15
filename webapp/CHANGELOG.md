@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.42.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.41.0...@pyroscope/webapp@1.42.0) (2022-09-15)
+
+
+### Features
+
+* **webapp:** annotations UI ([#1489](https://github.com/pyroscope-io/pyroscope/issues/1489)) ([0e57137](https://github.com/pyroscope-io/pyroscope/commit/0e571379e1bb4f99bfdb9c3a22d1b2827128e3a5))
+
+
+
+
+
 # [1.41.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.40.1...@pyroscope/webapp@1.41.0) (2022-09-15)
 
 
