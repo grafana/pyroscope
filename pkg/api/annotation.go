@@ -15,6 +15,7 @@ import (
 
 type AnnotationsService interface {
 	CreateAnnotation(ctx context.Context, params model.CreateAnnotation) (*model.Annotation, error)
+	FindAnnotationsByTimeRange(ctx context.Context, appName string, startTime time.Time, endTime time.Time) ([]model.Annotation, error)
 }
 type AnnotationsHandler struct {
 	logger    logrus.FieldLogger

@@ -10,11 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -67,7 +67,7 @@ type RenderHandler struct {
 	maxNodesDefault    int
 	httpUtils          httputils.Utils
 	historyMgr         history.Manager
-	annotationsService service.AnnotationsService
+	annotationsService api.AnnotationsService
 }
 
 func (ctrl *Controller) renderHandler() http.HandlerFunc {
@@ -83,7 +83,7 @@ func NewRenderHandler(
 	maxNodesDefault int,
 	httpUtils httputils.Utils,
 	historyMgr history.Manager,
-	annotationsService service.AnnotationsService,
+	annotationsService api.AnnotationsService,
 ) *RenderHandler {
 	return &RenderHandler{
 		log:                l,
