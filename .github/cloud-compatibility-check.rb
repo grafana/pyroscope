@@ -2,6 +2,12 @@
 
 require 'json'
 
+system "curl \
+--silent \
+-H \"Accept: application/vnd.github+json\" \
+-H \"Authorization: Bearer #{ENV["GITHUB_TOKEN"]}\" \
+https://api.github.com/repos/pyroscope-io/cloudstorage/actions/workflows/34992245/runs"
+
 latest_run = JSON.parse(`curl \
   --silent \
   -H "Accept: application/vnd.github+json" \
