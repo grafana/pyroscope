@@ -30,6 +30,7 @@ func (svc AnnotationsService) CreateAnnotation(ctx context.Context, params model
 
 	tx := svc.db.WithContext(ctx)
 
+	// Upsert
 	if err := tx.Clauses(clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "app_name"},
