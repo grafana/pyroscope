@@ -598,6 +598,8 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 }
 
 func (h *Head) FilterMatchingProfiles(ctx context.Context, req *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (iter.Iterator[Profile], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "FilterMatchingProfiles - Head")
+	defer sp.Finish()
 	profilesIt, err := h.SelectMatchingProfiles(ctx, req)
 	if err != nil {
 		return nil, err

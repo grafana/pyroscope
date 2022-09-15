@@ -308,6 +308,10 @@
           "$ref": "#/definitions/v1ProfileSets",
           "description": "The server replies batch of profiles."
         },
+        "done": {
+          "type": "boolean",
+          "description": "Signal no more profiles to merge and the next message will be the result."
+        },
         "result": {
           "$ref": "#/definitions/v1MergeProfilesStacktracesResult",
           "title": "The list of stracktraces for the profile with their respective value"
@@ -505,7 +509,8 @@
         },
         "timestamp": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "timestamp in milliseconds"
         }
       }
     },

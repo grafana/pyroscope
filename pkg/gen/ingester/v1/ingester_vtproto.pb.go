@@ -1091,7 +1091,17 @@ func (m *MergeProfilesStacktracesResponse) MarshalToSizedBufferVT(dAtA []byte) (
 		i -= size
 		i = encodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x1a
+	}
+	if m.Done {
+		i--
+		if m.Done {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x10
 	}
 	if m.SelectedProfiles != nil {
 		size, err := m.SelectedProfiles.MarshalToSizedBufferVT(dAtA[:i])
@@ -1665,6 +1675,9 @@ func (m *MergeProfilesStacktracesResponse) SizeVT() (n int) {
 	if m.SelectedProfiles != nil {
 		l = m.SelectedProfiles.SizeVT()
 		n += 1 + l + sov(uint64(l))
+	}
+	if m.Done {
+		n += 2
 	}
 	if m.Result != nil {
 		l = m.Result.SizeVT()
@@ -3143,6 +3156,26 @@ func (m *MergeProfilesStacktracesResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			iNdEx = postIndex
 		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Done", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Done = bool(v != 0)
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
 			}
