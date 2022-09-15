@@ -22,6 +22,10 @@ func (m *mockService) CreateAnnotation(ctx context.Context, params model.CreateA
 	return m.createAnnotationResponse(params)
 }
 
+func (m *mockService) FindAnnotationsByTimeRange(ctx context.Context, appName string, startTime time.Time, endTime time.Time) ([]model.Annotation, error) {
+	return []model.Annotation{}, nil
+}
+
 var _ = Describe("AnnotationHandler", func() {
 	var (
 		server *httptest.Server
