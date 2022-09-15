@@ -16,8 +16,8 @@ var (
 )
 
 type Annotation struct {
-	AppName   string    `gorm:"index:annotation,unique;not null;default:null"`
-	Timestamp time.Time `gorm:"index:annotation,unique;not null;default:null"`
+	AppName   string    `gorm:"index:idx_appname_timestamp,unique;not null;default:null"`
+	Timestamp time.Time `gorm:"index:idx_appname_timestamp,unique;not null;default:null"`
 	Content   string    `gorm:"not null;default:null"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
