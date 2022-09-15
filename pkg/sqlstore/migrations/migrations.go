@@ -49,6 +49,7 @@ func Migrate(db *gorm.DB, c *config.Server) error {
 		createUserTableMigration(c.Auth.Internal.AdminUser),
 		createAPIKeyTableMigration(),
 		createAnnotationsTableMigration(),
+		addIndexesUniqueTableMigration(),
 	}).Migrate()
 }
 
@@ -129,6 +130,24 @@ func createAnnotationsTableMigration() *gormigrate.Migration {
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Migrator().DropTable(&annotation{})
+		},
+	}
+}
+
+func addIndexesUniqueTableMigration() *gormigrate.Migration {
+	type annotation struct {
+		AppName   string    `gorm:"index:annotation,unique;not null;default:null"`
+		Timestamp time.Time `gorm:"index:annotation,unique;not null;default:null"`
+	}
+
+	return &gormigrate.Migration{
+		ID: "1663269650",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&annotation{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			// TODO(eh-am): implement
+			return nil
 		},
 	}
 }
