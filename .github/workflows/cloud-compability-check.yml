@@ -14,4 +14,4 @@ jobs:
       - name: cloud-compatibility-check
         run: .github/cloud-compatibility-check.rb
         env:
-          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CLOUD_COMPAT_CHECK_GITHUB_TOKEN }}
