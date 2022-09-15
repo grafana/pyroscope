@@ -18,7 +18,6 @@ const FlameGraphHeader = ({ query, setTopLevelIndex, setRangeMin, setRangeMax, s
     <div className={styles.header}>
       <div className={styles.search}>
         <Input
-          id="query"
           value={query || ''}
           onChange={(v) => {
             setQuery(v.currentTarget.value);

@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 )
 
@@ -22,7 +23,7 @@ func Test_query(t *testing.T) {
 
 	dataQuery := backend.DataQuery{
 		RefID:         "A",
-		QueryType:     "",
+		QueryType:     queryTypeBoth,
 		MaxDataPoints: 0,
 		Interval:      0,
 		TimeRange: backend.TimeRange{
@@ -32,34 +33,142 @@ func Test_query(t *testing.T) {
 		JSON: []byte(`{"profileTypeId":"foo:bar","labelSelector":"{app=\\\"baz\\\"}"}`),
 	}
 
-	resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
-	require.Nil(t, resp.Error)
-	require.Equal(t, 1, len(resp.Frames))
-	require.Equal(t, data.NewField("levels", nil, []string{"[1,2,3,4]", "[5,6]", "[7,8,9]"}), resp.Frames[0].Fields[0])
+	t.Run("query both", func(t *testing.T) {
+		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 2, len(resp.Frames))
+		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[1].Fields[0])
+	})
+
+	t.Run("query profile", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeProfile
+		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 1, len(resp.Frames))
+		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[0].Fields[0])
+	})
+
+	t.Run("query metrics", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeMetrics
+		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 1, len(resp.Frames))
+		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+	})
 }
 
 // This is where the tests for the datasource backend live.
-func Test_responseToDataFrames(t *testing.T) {
+func Test_profileToDataFrame(t *testing.T) {
 	resp := &connect.Response[querierv1.SelectMergeStacktracesResponse]{
 		Msg: &querierv1.SelectMergeStacktracesResponse{
 			Flamegraph: &querierv1.FlameGraph{
 				Names: []string{"func1", "func2", "func3"},
 				Levels: []*querierv1.Level{
-					{Values: []int64{1, 2, 3, 4}},
-					{Values: []int64{5, 6, 7, 8, 9}},
+					{Values: []int64{0, 20, 0, 0}},
+					{Values: []int64{0, 10, 0, 1, 0, 5, 0, 2}},
 				},
 				Total:   987,
 				MaxSelf: 123,
 			},
 		},
 	}
-	frame, err := responseToDataFrames(resp)
-	require.NoError(t, err)
-	require.Equal(t, []string{"func1", "func2", "func3"}, frame.Meta.Custom.(CustomMeta).Names)
-	require.Equal(t, int64(123), frame.Meta.Custom.(CustomMeta).MaxSelf)
-	require.Equal(t, int64(987), frame.Meta.Custom.(CustomMeta).Total)
-	require.Equal(t, 1, len(frame.Fields))
-	require.Equal(t, data.NewField("levels", nil, []string{"[1,2,3,4]", "[5,6,7,8,9]"}), frame.Fields[0])
+	frame := responseToDataFrames(resp, "memory:alloc_objects:count:space:bytes")
+	require.Equal(t, 3, len(frame.Fields))
+	require.Equal(t, data.NewField("level", nil, []int64{0, 1, 1}), frame.Fields[0])
+	require.Equal(t, data.NewField("value", nil, []int64{20, 10, 5}), frame.Fields[1])
+	require.Equal(t, data.NewField("label", nil, []string{"func1", "func2", "func3"}), frame.Fields[2])
+	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
+}
+
+// This is where the tests for the datasource backend live.
+func Test_levelsToTree(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		levels := []*querierv1.Level{
+			{Values: []int64{0, 100, 0, 0}},
+			{Values: []int64{0, 40, 0, 1, 0, 30, 0, 2}},
+			{Values: []int64{0, 15, 0, 3}},
+		}
+
+		tree := levelsToTree(levels, []string{"root", "func1", "func2", "func1:func3"})
+		require.Equal(t, &ProfileTree{
+			Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
+				{Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
+					{Start: 0, Value: 15, Level: 2, Name: "func1:func3"}},
+				},
+				{Start: 40, Value: 30, Level: 1, Name: "func2"},
+			},
+		}, tree)
+	})
+
+	t.Run("medium", func(t *testing.T) {
+		levels := []*querierv1.Level{
+			{Values: []int64{0, 100, 0, 0}},
+			{Values: []int64{0, 40, 0, 1, 0, 30, 0, 2, 0, 30, 0, 3}},
+			{Values: []int64{0, 20, 0, 4, 50, 10, 0, 5}},
+		}
+
+		tree := levelsToTree(levels, []string{"root", "func1", "func2", "func3", "func1:func4", "func3:func5"})
+		require.Equal(t, &ProfileTree{
+			Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
+				{Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
+					{Start: 0, Value: 20, Level: 2, Name: "func1:func4"}},
+				},
+				{Start: 40, Value: 30, Level: 1, Name: "func2"},
+				{Start: 70, Value: 30, Level: 1, Name: "func3", Nodes: []*ProfileTree{
+					{Start: 70, Value: 10, Level: 2, Name: "func3:func5"}},
+				},
+			},
+		}, tree)
+	})
+}
+
+func Test_treeToNestedDataFrame(t *testing.T) {
+	tree := &ProfileTree{
+		Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
+			{
+				Start: 10, Value: 40, Level: 1, Name: "func1",
+			},
+			{Start: 60, Value: 30, Level: 1, Name: "func2", Nodes: []*ProfileTree{
+				{Start: 61, Value: 15, Level: 2, Name: "func1:func3"},
+			}},
+		},
+	}
+
+	frame := treeToNestedSetDataFrame(tree, "memory:alloc_objects:count:space:bytes")
+	require.Equal(t,
+		[]*data.Field{
+			data.NewField("level", nil, []int64{0, 1, 1, 2}),
+			data.NewField("value", nil, []int64{100, 40, 30, 15}),
+			data.NewField("label", nil, []string{"root", "func1", "func2", "func1:func3"}),
+		}, frame.Fields)
+	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
+
+}
+
+func Test_seriesToDataFrame(t *testing.T) {
+	resp := &connect.Response[querierv1.SelectSeriesResponse]{
+		Msg: &querierv1.SelectSeriesResponse{
+			Series: []*querierv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			},
+		},
+	}
+	frame := seriesToDataFrame(resp, "process_cpu:samples:count:cpu:nanoseconds")
+	require.Equal(t, 2, len(frame.Fields))
+	require.Equal(t, data.NewField("time", nil, []time.Time{time.UnixMilli(1000), time.UnixMilli(2000)}), frame.Fields[0])
+	require.Equal(t, data.NewField("samples", nil, []float64{30, 10}), frame.Fields[1])
+
+	// with a label pair, the value field should name itself with a label pair name and not the profile type
+	resp = &connect.Response[querierv1.SelectSeriesResponse]{
+		Msg: &querierv1.SelectSeriesResponse{
+			Series: []*querierv1.Series{
+				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			},
+		},
+	}
+	frame = seriesToDataFrame(resp, "process_cpu:samples:count:cpu:nanoseconds")
+	require.Equal(t, data.NewField("app", nil, []float64{30, 10}), frame.Fields[1])
 }
 
 type FakeClient struct {
@@ -71,6 +180,10 @@ func (f FakeClient) ProfileTypes(ctx context.Context, c *connect.Request[querier
 }
 
 func (f FakeClient) LabelValues(ctx context.Context, c *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
+	panic("implement me")
+}
+
+func (f FakeClient) LabelNames(context.Context, *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
 	panic("implement me")
 }
 
@@ -102,11 +215,11 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 	return &connect.Response[querierv1.SelectMergeStacktracesResponse]{
 		Msg: &querierv1.SelectMergeStacktracesResponse{
 			Flamegraph: &querierv1.FlameGraph{
-				Names: []string{"foo", "bar"},
+				Names: []string{"foo", "bar", "baz"},
 				Levels: []*querierv1.Level{
-					{Values: []int64{1, 2, 3, 4}},
-					{Values: []int64{5, 6}},
-					{Values: []int64{7, 8, 9}},
+					{Values: []int64{0, 10, 0, 0}},
+					{Values: []int64{0, 9, 0, 1}},
+					{Values: []int64{0, 8, 8, 2}},
 				},
 				Total:   100,
 				MaxSelf: 56,
@@ -116,5 +229,14 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 }
 
 func (f FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
-	panic("implement me")
+	return &connect.Response[querierv1.SelectSeriesResponse]{
+		Msg: &querierv1.SelectSeriesResponse{
+			Series: []*querierv1.Series{
+				{
+					Labels: []*v1.LabelPair{{Name: "foo", Value: "bar"}},
+					Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}},
+				},
+			},
+		},
+	}, nil
 }
