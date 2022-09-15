@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import React, { useState } from 'react';
 
 import FlameGraph from './FlameGraph';
-import { data } from '../data';
+import { data } from './testData/dataNestedSet';
 import { MutableDataFrame } from '@grafana/data';
 import 'jest-canvas-mock';
 
@@ -14,16 +14,12 @@ describe('FlameGraph', () => {
     const [rangeMax, setRangeMax] = useState(1);
     const [query] = useState('');
 
-    const flameGraphData = new MutableDataFrame({
-      name: 'flamegraph',
-      fields: [{ name: 'levels', values: data.flamebearer.levels.map((l) => JSON.stringify(l)) }],
-    });
+    const flameGraphData = new MutableDataFrame(data);
     flameGraphData.meta = {
       custom: {
-        Names: data.flamebearer.names,
-        Total: data.flamebearer.numTicks,
-      },
-    };
+        ProfileTypeID: 'cpu:foo:bar'
+      }
+    }
 
     return (
       <FlameGraph
@@ -46,8 +42,8 @@ describe('FlameGraph', () => {
   it('should render correctly', async () => {
     Object.defineProperty(HTMLCanvasElement.prototype, 'clientWidth', { value: 1600 });
     render(<FlameGraphWithProps />);
-    
-    const canvas = screen.getByTestId("flamegraph") as HTMLCanvasElement;
+
+    const canvas = screen.getByTestId('flamegraph') as HTMLCanvasElement;
     const ctx = canvas!.getContext('2d');
     const calls = ctx!.__getDrawCalls();
     expect(calls).toMatchSnapshot();
