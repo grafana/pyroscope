@@ -278,7 +278,7 @@ type singleBlockQuerier struct {
 	openLock              sync.Mutex
 	tsBoundaryPerRowGroup []minMax
 	index                 *index.Reader
-	strings               parquetReader[string, *schemav1.StringPersister]
+	strings               parquetReader[*schemav1.StoredString, *schemav1.StringPersister]
 	mappings              parquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
 	functions             parquetReader[*profilev1.Function, *schemav1.FunctionPersister]
 	locations             parquetReader[*profilev1.Location, *schemav1.LocationPersister]
@@ -301,6 +301,27 @@ func newSingleBlockQuerierFromMeta(logger log.Logger, bucketReader fireobjstore.
 		&q.profiles,
 	}
 	return q
+}
+
+func newSingleBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketReader, path string) (*singleBlockQuerier, error) {
+	meta, _, err := block.MetaFromDir(path)
+	if err != nil {
+		return nil, err
+	}
+	q := &singleBlockQuerier{
+		logger:       logger,
+		bucketReader: fireobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
+		meta:         meta,
+	}
+	q.tables = []tableReader{
+		&q.strings,
+		&q.mappings,
+		&q.functions,
+		&q.locations,
+		&q.stacktraces,
+		&q.profiles,
+	}
+	return q, nil
 }
 
 func (b *singleBlockQuerier) Close() error {
@@ -890,7 +911,7 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 	)
 	for strings.Next() {
 		s := strings.At()
-		names[idx] = s.Result
+		names[idx] = s.Result.String
 		idSlice[idx] = []int64{s.RowNum}
 		idx++
 	}
@@ -1054,7 +1075,7 @@ func (q *singleBlockQuerier) open(ctx context.Context) error {
 	return nil
 }
 
-type parquetReader[M Models, P schemav1.Persister[M]] struct {
+type parquetReader[M Models, P schemav1.PersisterName] struct {
 	persister P
 	file      *parquet.File
 	reader    fireobjstore.ReaderAt
@@ -1121,11 +1142,11 @@ type retrieveRowIterator[M any] struct {
 	idxRowGroup          int
 	minRowNum, maxRowNum int64
 	rowGroups            []parquet.RowGroup
-	rowReader            parquet.Rows
+	reader               *parquet.GenericReader[M]
 	reconstruct          func(parquet.Row) (uint64, M, error)
 
 	result         ResultWithRowNum[M]
-	row            []parquet.Row
+	row            []M
 	rowNumIterator iter.Iterator[int64]
 	err            error
 }
@@ -1133,26 +1154,18 @@ type retrieveRowIterator[M any] struct {
 func (r *parquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[ResultWithRowNum[M]] {
 	return &retrieveRowIterator[M]{
 		rowGroups:      r.file.RowGroups(),
-		row:            make([]parquet.Row, 1),
+		row:            make([]M, 1),
 		rowNumIterator: rowNumIterator,
-		reconstruct:    r.persister.Reconstruct,
 	}
 }
-
-// func (r *parquetReader[M, P]) retrieveGenericRows(ctx context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[M] {
-// 	g := parquet.NewGenericReader[M](nil)
-
-// 	g.SeekToRow(1)
-// 	g.Read()
-// }
 
 func (i *retrieveRowIterator[M]) Err() error {
 	return i.err
 }
 
 func (i *retrieveRowIterator[M]) nextRowGroup() error {
-	if i.rowReader != nil {
-		if err := i.rowReader.Close(); err != nil {
+	if i.reader != nil {
+		if err := i.reader.Close(); err != nil {
 			return errors.Wrap(err, "closing row group")
 		}
 		i.idxRowGroup++
@@ -1162,7 +1175,7 @@ func (i *retrieveRowIterator[M]) nextRowGroup() error {
 	}
 	i.minRowNum = i.maxRowNum
 	i.maxRowNum += i.rowGroups[i.idxRowGroup].NumRows()
-	i.rowReader = i.rowGroups[i.idxRowGroup].Rows()
+	i.reader = parquet.NewGenericRowGroupReader[M](i.rowGroups[i.idxRowGroup])
 	return nil
 }
 
@@ -1181,7 +1194,7 @@ func (i *retrieveRowIterator[M]) Next() bool {
 	rowNum := i.rowNumIterator.At()
 
 	// ensure we initialise on first iteration
-	if i.rowReader == nil {
+	if i.reader == nil {
 		if err := i.nextRowGroup(); err != nil {
 			i.err = errors.Wrap(err, "getting next row group")
 			return false
@@ -1193,38 +1206,37 @@ func (i *retrieveRowIterator[M]) Next() bool {
 			i.err = fmt.Errorf("row number selected %d is before current row number %d", rowNum, i.minRowNum)
 			return false
 		}
-
-		if rowNum < i.maxRowNum {
-			if err := i.rowReader.SeekToRow(rowNum - i.minRowNum); err != nil {
-				i.err = errors.Wrapf(err, "seek to row at rowNum=%d", rowNum)
-				return false
-			}
-
-			_, err := i.rowReader.ReadRows(i.row)
-			if err != nil && err != io.EOF {
-				i.err = errors.Wrapf(err, "reading row at rowNum=%d", rowNum)
-				return false
-			}
-
-			i.result.RowNum = rowNum
-			_, i.result.Result, err = i.reconstruct(i.row[0])
-			if err != nil {
-				i.err = errors.Wrapf(err, "error reconstructing row at %d rowgroup (%d) relative=%d", rowNum, i.idxRowGroup, rowNum-i.minRowNum)
-				return false
-			}
-			break
-		}
-
-		if err := i.nextRowGroup(); err != nil {
-			i.err = errors.Wrap(err, "getting next row group")
+		if err := i.reader.SeekToRow(rowNum - i.minRowNum); err != nil {
+			i.err = errors.Wrapf(err, "seek to row at rowNum=%d", rowNum)
 			return false
 		}
+		_, err := i.reader.Read(i.row)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				if err := i.nextRowGroup(); err != nil {
+					if errors.Is(err, io.EOF) {
+						continue
+					}
+					i.err = errors.Wrap(err, "getting next row group")
+					return false
+				}
+				continue
+			}
+			i.err = errors.Wrapf(err, "reading row at rowNum=%d", rowNum)
+			return false
+		}
+		break
 	}
 
+	i.result.RowNum = rowNum
+	i.result.Result = i.row[0]
 	return true
 }
 
 func (i *retrieveRowIterator[M]) Close() error {
+	if i.reader != nil {
+		return i.reader.Close()
+	}
 	return nil
 }
 
