@@ -1,0 +1,6 @@
+*/grafana/
+*/.github/
+**/bin/
+*/deploy/
+*/.vscode/
+**/data/

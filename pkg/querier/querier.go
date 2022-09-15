@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -228,19 +229,24 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	g, ctx := errgroup.WithContext(ctx)
 	for _, r := range responses {
-		if err := r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
-			Request: &ingestv1.SelectProfilesRequest{
-				LabelSelector: req.Msg.LabelSelector,
-				Start:         req.Msg.Start,
-				End:           req.Msg.End,
-				Type:          profileType,
-			},
-		}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
+		r := r
+		g.Go(func() error {
+			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
+				Request: &ingestv1.SelectProfilesRequest{
+					LabelSelector: req.Msg.LabelSelector,
+					Start:         req.Msg.Start,
+					End:           req.Msg.End,
+					Type:          profileType,
+				},
+			})
+		})
 	}
-	st, err := dedupe(responses)
+	if err := g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	st, err := dedupe(ctx, responses)
 	if err != nil {
 		return nil, err
 	}

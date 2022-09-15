@@ -428,7 +428,7 @@ func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[i
 func TestDedupeLive(t *testing.T) {
 	clients, err := createClients(context.Background())
 	require.NoError(t, err)
-	st, err := dedupe(clients)
+	st, err := dedupe(context.Background(), clients)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(st))
 }
@@ -458,7 +458,7 @@ func createClients(ctx context.Context) ([]responseFromIngesters[BidiClientMerge
 		now := time.Now()
 		err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 			Request: &ingestv1.SelectProfilesRequest{
-				LabelSelector: "{}",
+				LabelSelector: `{namespace="fire-dev-001",container="querier"}`,
 				Type:          profileType,
 				Start:         int64(model.TimeFromUnixNano(now.Add(-15 * time.Minute).UnixNano())),
 				End:           int64(model.TimeFromUnixNano(now.UnixNano())),

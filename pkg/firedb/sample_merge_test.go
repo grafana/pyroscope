@@ -135,7 +135,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			q := NewBlockQuerier(log.NewNopLogger(), b)
 			require.NoError(t, q.Sync(context.Background()))
 
-			stacktraces, err := q.queriers[0].BatchMergeStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
+			profiles, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
 				Type: &commonv1.ProfileType{
 					Name:       "process_cpu",
@@ -146,7 +146,10 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				},
 				Start: int64(model.TimeFromUnixNano(0)),
 				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
-			}, 1024, keepAll)
+			})
+			require.NoError(t, err)
+
+			stacktraces, err := q.queriers[0].MergeByStacktraces(ctx, profiles)
 			require.NoError(t, err)
 
 			testhelper.EqualProto(t, tc.expected, stacktraces)
@@ -260,8 +263,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			for _, p := range tc.in() {
 				require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 			}
-
-			stacktraces, err := db.head.BatchMergeStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
+			profiles, err := db.head.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
 				Type: &commonv1.ProfileType{
 					Name:       "process_cpu",
@@ -272,7 +274,9 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				},
 				Start: int64(model.TimeFromUnixNano(0)),
 				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
-			}, 1024, keepAll)
+			})
+			require.NoError(t, err)
+			stacktraces, err := db.head.MergeByStacktraces(ctx, profiles)
 			require.NoError(t, err)
 
 			testhelper.EqualProto(t, tc.expected, stacktraces)
