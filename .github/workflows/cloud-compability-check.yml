@@ -1,0 +1,12 @@
+name: Homebrew
+on:
+  workflow_dispatch:
+jobs:
+  cloud_compability_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: cloud-compatibility-check
+        run: .github/scripts/cloud-compatibility-check.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
