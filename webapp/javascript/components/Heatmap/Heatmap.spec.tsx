@@ -50,10 +50,11 @@ describe('Component: Heatmap', () => {
   it('should have correct color scale', () => {
     renderHeatmap();
 
-    const [minTextEl, maxTextEl] = within(
+    const [maxTextEl, midTextEl, minTextEl] = within(
       screen.getByTestId('color-scale')
     ).getAllByRole('textbox');
-    expect(minTextEl.textContent).toBe(heatmapMockData.minDepth.toString());
     expect(maxTextEl.textContent).toBe(heatmapMockData.maxDepth.toString());
+    expect(midTextEl.textContent).toBe('11539');
+    expect(minTextEl.textContent).toBe(heatmapMockData.minDepth.toString());
   });
 });

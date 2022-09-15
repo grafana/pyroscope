@@ -7,7 +7,7 @@ import {
 import { request, parseResponse } from './base';
 
 export async function fetchTags(query: string) {
-  const response = await request(`labels?query=${query}`);
+  const response = await request(`/labels?query=${query}`);
   return parseResponse<Tags>(response, TagsSchema);
 }
 
