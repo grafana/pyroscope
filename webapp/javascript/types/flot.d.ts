@@ -11,5 +11,9 @@ declare global {
     interface plugin {
       init(plot: plotInitPluginParams): void;
     }
+
+    interface plot {
+      p2c(point: point): canvasPoint;
+    }
   }
 }
