@@ -44,9 +44,12 @@ function HeatmapTooltip({
       const xCursorPosition = e.pageX - left;
       const time = getTimeDataByXCoord(heatmap, heatmapW, xCursorPosition);
 
+      // to fix tooltip on window edge
+      const maxPageX = window.innerWidth - 130;
+
       setTooltipParams({
-        pageX: e.pageX,
-        pageY: e.pageY,
+        pageX: e.pageX < maxPageX ? e.pageX - 10 : maxPageX,
+        pageY: e.pageY + 10,
         time: formatter(time).toString(),
       });
     },
