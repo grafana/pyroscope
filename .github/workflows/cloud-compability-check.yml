@@ -12,7 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: cloud-compatibility-check
-        run: .github/cloud-compatibility-check.rb
+        run: .github/cloud-compatibility-check.rb $(git rev-parse HEAD)
         env:
           GITHUB_TOKEN: ${{ secrets.CLOUD_COMPAT_CHECK_GITHUB_TOKEN }}
-          GITHUB_SHA: '${{ github.sha }}'

@@ -23,7 +23,7 @@ system "curl \
 -H \"Accept: application/vnd.github+json\" \
 -H \"Authorization: Bearer #{ENV["GITHUB_TOKEN"]}\" \
 https://api.github.com/repos/pyroscope-io/cloudstorage/actions/workflows/34992245/dispatches \
--d '{\"ref\":\"main\",\"inputs\":{\"gitRef\":\"#{ENV["GITHUB_SHA"] || "main"}\"}'"
+-d '{\"ref\":\"main\",\"inputs\":{\"gitRef\":\"#{ARGV.first || "main"}\"}'"
 
 # TODO: this logic is prone to race conditions, consider improving
 run_id = nil
