@@ -15,4 +15,4 @@ jobs:
         run: .github/cloud-compatibility-check.rb
         env:
           GITHUB_TOKEN: ${{ secrets.CLOUD_COMPAT_CHECK_GITHUB_TOKEN }}
-          GITHUB_REF_NAME: ${{ github.head_ref || github.ref_name }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
