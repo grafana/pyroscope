@@ -1,0 +1,34 @@
+.container {
+  position: relative;
+  display: inline-block;
+  margin-left: 5px;
+}
+
+.modal {
+  z-index: 3;
+  position: relative;
+
+  padding: 15px;
+
+  background-color: var(--ps-dropdown-background);
+  border: 1px solid var(--ps-ui-border);
+  border-radius: 4px;
+  box-shadow: 0px 2px 6px var(--ps-dropdown-shadow);
+
+  .modalHeader {
+    padding: 12px 0;
+  }
+
+  .modalBody {
+    display: flex;
+    border-top: 1px solid var(--ps-ui-border);
+  }
+
+  .modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 10px;
+    border-top: 1px solid var(--ps-ui-border);
+    min-height: 40px;
+  }
+}
