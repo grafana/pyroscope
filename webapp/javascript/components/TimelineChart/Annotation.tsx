@@ -8,6 +8,8 @@ import styles from './Annotation.module.scss';
 export const THRESHOLD = 3;
 
 interface AnnotationTooltipBodyProps {
+  key?: React.ReactElement['key'];
+
   /** list of annotations */
   annotations: { timestamp: number; content: string }[];
 
