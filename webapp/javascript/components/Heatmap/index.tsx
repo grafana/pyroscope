@@ -4,7 +4,7 @@ import Color from 'color';
 import cl from 'classnames';
 import { interpolateViridis } from 'd3-scale-chromatic';
 
-import type { Heatmap } from '@webapp/services/render';
+import type { Heatmap as HeatmapType } from '@webapp/services/render';
 import {
   SelectedAreaCoordsType,
   useHeatmapSelection,
@@ -21,7 +21,7 @@ import { getTicks } from './utils';
 import styles from './Heatmap.module.scss';
 
 interface HeatmapProps {
-  heatmap: Heatmap;
+  heatmap: HeatmapType;
   onSelection: (
     minV: number,
     maxV: number,
