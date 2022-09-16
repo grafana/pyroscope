@@ -520,6 +520,65 @@ var _ = Describe("Server", func() {
 			})
 		})
 
+		Context("perf script", func() {
+			When("detect by content", func() {
+				var m Model
+
+				BeforeEach(func() {
+					m = Model{
+						Profile: []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
+					}
+				})
+
+				It("should return perf_script", func() {
+					// We want to compare functions, which is not ideal.
+					expected := reflect.ValueOf(PerfScriptToProfileV1).Pointer()
+					f, err := m.converter()
+					Expect(err).To(BeNil())
+					Expect(f).ToNot(BeNil())
+					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
+				})
+			})
+			When("detect by .txt extension and content", func() {
+				var m Model
+
+				BeforeEach(func() {
+					m = Model{
+						Filename: "foo.txt",
+						Profile:  []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
+					}
+				})
+
+				It("should return perf_script", func() {
+					// We want to compare functions, which is not ideal.
+					expected := reflect.ValueOf(PerfScriptToProfileV1).Pointer()
+					f, err := m.converter()
+					Expect(err).To(BeNil())
+					Expect(f).ToNot(BeNil())
+					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
+				})
+			})
+			When("detect by .perf_script extension", func() {
+				var m Model
+
+				BeforeEach(func() {
+					m = Model{
+						Filename: "foo.perf_script",
+						Profile:  []byte("foo;bar 239"),
+					}
+				})
+
+				It("should return perf_script", func() {
+					// We want to compare functions, which is not ideal.
+					expected := reflect.ValueOf(PerfScriptToProfileV1).Pointer()
+					f, err := m.converter()
+					Expect(err).To(BeNil())
+					Expect(f).ToNot(BeNil())
+					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
+				})
+			})
+		})
+
 		Context("with an empty model", func() {
 			var m Model
 			It("should return an error", func() {

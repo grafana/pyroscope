@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/perf"
 	"sort"
 	"strconv"
 	"time"
@@ -79,6 +80,25 @@ func CollapsedToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Fla
 			return nil, fmt.Errorf("unable to parse sample value: %w", err)
 		}
 		t.Insert(line[:i], value)
+	}
+	out := &storage.GetOutput{
+		Tree:       t,
+		SpyName:    "unknown",
+		SampleRate: 100, // We don't have this information, use the default
+	}
+	profile := flamebearer.NewProfile(name, out, maxNodes)
+	return &profile, nil
+}
+
+func PerfScriptToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+	t := tree.New()
+	p := perf.NewScriptParser(b)
+	events, err := p.ParseEvents()
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range events {
+		t.InsertStack(e, 1)
 	}
 	out := &storage.GetOutput{
 		Tree:       t,

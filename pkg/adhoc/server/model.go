@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/perf"
 	"path"
 	"reflect"
 	"strings"
@@ -15,9 +16,10 @@ type ConverterFn func(b []byte, name string, maxNodes int) (*flamebearer.Flamebe
 
 var (
 	formatConverters = map[string]ConverterFn{
-		"json":      JSONToProfileV1,
-		"pprof":     PprofToProfileV1,
-		"collapsed": CollapsedToProfileV1,
+		"json":        JSONToProfileV1,
+		"pprof":       PprofToProfileV1,
+		"collapsed":   CollapsedToProfileV1,
+		"perf_script": PerfScriptToProfileV1,
 	}
 	errTooShort = errors.New("profile is too short")
 )
@@ -96,6 +98,9 @@ func (m Model) converter() (ConverterFn, error) {
 		return f, nil
 	}
 	if ext == "txt" {
+		if perf.IsPerfScript(m.Profile) {
+			return formatConverters["perf_script"], nil
+		}
 		return formatConverters["collapsed"], nil
 	}
 	if len(m.Profile) < 2 {
@@ -119,6 +124,9 @@ func (m Model) converter() (ConverterFn, error) {
 		if !unicode.IsPrint(rune(b)) && !unicode.IsSpace(rune(b)) {
 			return formatConverters["pprof"], nil
 		}
+	}
+	if perf.IsPerfScript(m.Profile) {
+		return formatConverters["perf_script"], nil
 	}
 	return formatConverters["collapsed"], nil
 }
