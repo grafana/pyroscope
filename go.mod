@@ -29,7 +29,7 @@ require (
 	github.com/prometheus/prometheus v1.8.2-0.20220315145411-881111fec433
 	github.com/pyroscope-io/pyroscope v0.18.0
 	github.com/samber/lo v1.25.0
-	github.com/segmentio/parquet-go v0.0.0-20220831210521-f812768dfa62
+	github.com/segmentio/parquet-go v0.0.0-20220914222423-67dbe8d21ca5
 	github.com/stretchr/testify v1.8.0
 	github.com/thanos-io/objstore v0.0.0-20220809103346-8ef1f215e2bf
 	github.com/thanos-io/thanos v0.27.0

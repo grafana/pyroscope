@@ -278,10 +278,10 @@ type singleBlockQuerier struct {
 	openLock              sync.Mutex
 	tsBoundaryPerRowGroup []minMax
 	index                 *index.Reader
-	strings               parquetReader[*schemav1.StoredString, *schemav1.StringPersister]
-	mappings              parquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
-	functions             parquetReader[*profilev1.Function, *schemav1.FunctionPersister]
-	locations             parquetReader[*profilev1.Location, *schemav1.LocationPersister]
+	strings               inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]
+	functions             inMemoryparquetReader[*profilev1.Function, *schemav1.FunctionPersister]
+	locations             inMemoryparquetReader[*profilev1.Location, *schemav1.LocationPersister]
+	mappings              inMemoryparquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
 	stacktraces           parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
 	profiles              parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
 }
@@ -315,7 +315,6 @@ func newSingleBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketRe
 	}
 	q.tables = []tableReader{
 		&q.strings,
-		&q.mappings,
 		&q.functions,
 		&q.locations,
 		&q.stacktraces,
@@ -879,7 +878,6 @@ func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Re
 	)
 	for locations.Next() {
 		s := locations.At()
-
 		for _, line := range s.Result.Line {
 			locationIDsByFunctionID[int64(line.FunctionId)] = append(locationIDsByFunctionID[int64(line.FunctionId)], s.RowNum)
 		}
@@ -1244,3 +1242,139 @@ type ResultWithRowNum[M any] struct {
 	Result M
 	RowNum int64
 }
+
+type inMemoryparquetReader[M Models, P schemav1.PersisterName] struct {
+	persister P
+	file      *parquet.File
+	reader    fireobjstore.ReaderAt
+	cache     []M
+}
+
+func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstore.BucketReader) error {
+	filePath := r.persister.Name() + block.ParquetSuffix
+
+	ra, err := bucketReader.ReaderAt(ctx, filePath)
+	if err != nil {
+		return errors.Wrapf(err, "opening file '%s'", filePath)
+	}
+	r.reader = ra
+
+	// first try to open file, this is required otherwise OpenFile panics
+	parquetFile, err := parquet.OpenFile(ra, ra.Size(), parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
+	if err != nil {
+		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
+	}
+	if parquetFile.NumRows() == 0 {
+		return fmt.Errorf("error parquet file '%s' contains no rows", filePath)
+	}
+
+	// now open it for real
+	r.file, err = parquet.OpenFile(ra, ra.Size())
+	if err != nil {
+		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
+	}
+
+	// read all rows into memory
+	r.cache = make([]M, r.file.NumRows())
+	var read int
+	for _, rg := range r.file.RowGroups() {
+		reader := parquet.NewGenericRowGroupReader[M](rg)
+		for {
+			n, err := reader.Read(r.cache[read:])
+			read += n
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return errors.Wrapf(err, "reading row group from parquet file '%s'", filePath)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *inMemoryparquetReader[M, P]) close() error {
+	if r.reader != nil {
+		return r.reader.Close()
+	}
+	return nil
+}
+
+func (r *inMemoryparquetReader[M, P]) NumRows() int64 {
+	return r.file.NumRows()
+}
+
+func (r *inMemoryparquetReader[M, P]) Close() error {
+	if r.reader != nil {
+		return r.reader.Close()
+	}
+	return nil
+}
+
+func (r *inMemoryparquetReader[M, P]) relPath() string {
+	return r.persister.Name() + block.ParquetSuffix
+}
+
+func (r *inMemoryparquetReader[M, P]) info() block.File {
+	return block.File{
+		Parquet: &block.ParquetFile{
+			NumRows:      uint64(r.file.NumRows()),
+			NumRowGroups: uint64(len(r.file.RowGroups())),
+		},
+		SizeBytes: uint64(r.file.Size()),
+		RelPath:   r.relPath(),
+	}
+}
+
+func (r *inMemoryparquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[ResultWithRowNum[M]] {
+	return &cacheIterator[M]{
+		cache:          r.cache,
+		rowNumIterator: rowNumIterator,
+	}
+}
+
+type cacheIterator[M any] struct {
+	cache          []M
+	rowNumIterator iter.Iterator[int64]
+}
+
+func (c *cacheIterator[M]) Next() bool {
+	if !c.rowNumIterator.Next() {
+		return false
+	}
+	if c.rowNumIterator.At() >= int64(len(c.cache)) {
+		return false
+	}
+	return true
+}
+
+func (c *cacheIterator[M]) At() ResultWithRowNum[M] {
+	return ResultWithRowNum[M]{
+		Result: c.cache[c.rowNumIterator.At()],
+		RowNum: c.rowNumIterator.At(),
+	}
+}
+
+func (c *cacheIterator[M]) Err() error {
+	return nil
+}
+
+func (c *cacheIterator[M]) Close() error {
+	return nil
+}
+
+// func (r *parquetReader[M, P]) relPath() string {
+// 	return r.persister.Name() + block.ParquetSuffix
+// }
+
+// func (r *parquetReader[M, P]) info() block.File {
+// 	return block.File{
+// 		Parquet: &block.ParquetFile{
+// 			NumRows:      uint64(r.file.NumRows()),
+// 			NumRowGroups: uint64(len(r.file.RowGroups())),
+// 		},
+// 		SizeBytes: uint64(r.file.Size()),
+// 		RelPath:   r.relPath(),
+// 	}
+// }

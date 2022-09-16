@@ -6,12 +6,9 @@ package querier
 import (
 	"container/heap"
 	"context"
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/opentracing/opentracing-go"
 	"golang.org/x/sync/errgroup"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -101,7 +98,6 @@ type StreamProfileIterator struct {
 	keep         []bool
 	result       *ingestv1.MergeProfilesStacktracesResult
 	keepSent     bool
-	keepTotal    int
 	ctx          context.Context
 }
 
@@ -117,24 +113,15 @@ func NewStreamProfileIterator(ctx context.Context, r responseFromIngesters[BidiC
 func (s *StreamProfileIterator) Next() bool {
 	if s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1 {
 		if !s.keepSent {
-			start := time.Now()
-			sp, _ := opentracing.StartSpanFromContext(s.ctx, "keep - send")
 			err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Profiles: s.keep,
 			})
-			sp.Finish()
-			fmt.Println("\ttime for sending", time.Since(start))
 			if err != nil {
 				s.err = err
-				fmt.Println(err)
 				return false
 			}
 		}
-		start := time.Now()
-		sp, _ := opentracing.StartSpanFromContext(s.ctx, "receive - batch")
 		resp, err := s.bidi.Receive()
-		sp.Finish()
-		fmt.Println("time for received", time.Since(start))
 		if err != nil {
 			s.err = err
 			return false
@@ -143,8 +130,6 @@ func (s *StreamProfileIterator) Next() bool {
 		if resp.SelectedProfiles == nil || len(resp.SelectedProfiles.Profiles) == 0 || resp.Done {
 			return false
 		}
-		fmt.Printf("total received %d\n", len(resp.SelectedProfiles.Profiles))
-
 		s.curr = resp.SelectedProfiles
 		if len(s.curr.Profiles) != cap(s.keep) {
 			s.keep = make([]bool, len(s.curr.Profiles))
@@ -154,7 +139,6 @@ func (s *StreamProfileIterator) Next() bool {
 		}
 		s.currIdx = 0
 		s.keepSent = false
-		s.keepTotal = 0
 		return true
 	}
 	s.currIdx++
@@ -163,12 +147,10 @@ func (s *StreamProfileIterator) Next() bool {
 
 func (s *StreamProfileIterator) Skip() {
 	s.keep[s.currIdx] = false
-	s.keepTotal++
 }
 
 func (s *StreamProfileIterator) Keep() {
 	s.keep[s.currIdx] = true
-	s.keepTotal++
 }
 
 func (s *StreamProfileIterator) At() ProfileWithLabels {
@@ -195,6 +177,7 @@ func (s *StreamProfileIterator) Err() error {
 }
 
 func (s *StreamProfileIterator) Close() error {
+	// Only close the Send side since we need to get the final result.
 	var errs multierror.MultiError
 	if err := s.bidi.CloseSend(); err != nil {
 		errs = append(errs, err)
