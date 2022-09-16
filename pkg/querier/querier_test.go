@@ -2,7 +2,6 @@ package querier
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -12,10 +11,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
-	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/health/grpc_health_v1"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -170,67 +167,72 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 		Start:         0,
 		End:           2,
 	})
-	profileType, err := firemodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
-	require.NoError(t, err)
-	names := []string{"foo", "bar", "buzz"}
-	p1, p2, p3 := &ingestv1.Profile{
-		ID:        "1",
-		Type:      profileType,
-		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
-		Timestamp: 1,
-		Stacktraces: []*ingestv1.StacktraceSample{
-			{FunctionIds: []int32{1}, Value: 1},
-		},
-	}, &ingestv1.Profile{
-		ID:        "2",
-		Type:      profileType,
-		Labels:    []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
-		Timestamp: 2,
-		Stacktraces: []*ingestv1.StacktraceSample{
-			{FunctionIds: []int32{2}, Value: 1},
-		},
-	},
-		&ingestv1.Profile{
-			ID:        "3",
-			Type:      profileType,
-			Labels:    []*commonv1.LabelPair{{Name: "app", Value: "fuzz"}},
-			Timestamp: 3,
-			Stacktraces: []*ingestv1.StacktraceSample{
-				{FunctionIds: []int32{0}, Value: 1},
+	bidi1 := newFakeBidiClient([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*commonv1.Labels{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+				},
 			},
-		}
-
+			Profiles: []*ingestv1.SeriesProfile{
+				{Timestamp: 1, LabelIndex: 0},
+				{Timestamp: 2, LabelIndex: 1},
+				{Timestamp: 2, LabelIndex: 0},
+			},
+		},
+	})
+	bidi2 := newFakeBidiClient([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*commonv1.Labels{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+				},
+			},
+			Profiles: []*ingestv1.SeriesProfile{
+				{Timestamp: 1, LabelIndex: 1},
+				{Timestamp: 1, LabelIndex: 0},
+				{Timestamp: 2, LabelIndex: 1},
+			},
+		},
+	})
+	bidi3 := newFakeBidiClient([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*commonv1.Labels{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+				},
+			},
+			Profiles: []*ingestv1.SeriesProfile{
+				{Timestamp: 1, LabelIndex: 1},
+				{Timestamp: 1, LabelIndex: 0},
+				{Timestamp: 2, LabelIndex: 0},
+			},
+		},
+	})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
-	}, 1), func(addr string) (client.PoolClient, error) {
+	}, 3), func(addr string) (client.PoolClient, error) {
 		q := newFakeQuerier()
 		switch addr {
 		case "1":
-			q.On("SelectProfiles", mock.Anything, mock.Anything).Once().Return(connect.NewResponse(&ingestv1.SelectProfilesResponse{
-				Profiles: []*ingestv1.Profile{
-					p1, p2, p3,
-				},
-				FunctionNames: names,
-			}), nil)
+			q.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi1)
 		case "2":
-			q.On("SelectProfiles", mock.Anything, mock.Anything).Once().Return(connect.NewResponse(&ingestv1.SelectProfilesResponse{
-				Profiles: []*ingestv1.Profile{
-					p1, p2,
-				},
-				FunctionNames: names,
-			}), nil)
-
+			q.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi2)
 		case "3":
-			q.On("SelectProfiles", mock.Anything, mock.Anything).Once().Return(connect.NewResponse(&ingestv1.SelectProfilesResponse{
-				Profiles: []*ingestv1.Profile{
-					p2, p3,
-				},
-				FunctionNames: names,
-			}), nil)
+			q.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi3)
 		}
 		return q, nil
 	}, log.NewLogfmtLogger(os.Stdout))
@@ -240,9 +242,18 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 
 	sort.Strings(flame.Msg.Flamegraph.Names)
 	require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Msg.Flamegraph.Names)
-	require.Equal(t, []int64{0, 3, 0, 0}, flame.Msg.Flamegraph.Levels[0].Values)
-	require.Equal(t, int64(3), flame.Msg.Flamegraph.Total)
-	require.Equal(t, int64(1), flame.Msg.Flamegraph.MaxSelf)
+	require.Equal(t, []int64{0, 2, 0, 0}, flame.Msg.Flamegraph.Levels[0].Values)
+	require.Equal(t, int64(2), flame.Msg.Flamegraph.Total)
+	require.Equal(t, int64(2), flame.Msg.Flamegraph.MaxSelf)
+	var selected []testProfile
+	selected = append(selected, bidi1.kept...)
+	selected = append(selected, bidi2.kept...)
+	selected = append(selected, bidi3.kept...)
+	sort.Slice(selected, func(i, j int) bool {
+		return selected[i].Ts < selected[j].Ts
+	})
+	require.Len(t, selected, 4)
+	require.Equal(t, nil, selected)
 }
 
 func TestSelectSeries(t *testing.T) {
@@ -425,52 +436,128 @@ func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[i
 	return res, err
 }
 
-func TestDedupeLive(t *testing.T) {
-	clients, err := createClients(context.Background())
-	require.NoError(t, err)
-	st, err := dedupe(context.Background(), clients)
-	require.NoError(t, err)
-	require.Equal(t, 2, len(st))
+type testProfile struct {
+	Ts     int64
+	Labels *commonv1.Labels
 }
 
-func createClients(ctx context.Context) ([]responseFromIngesters[BidiClientMergeProfilesStacktraces], error) {
-	var clients []responseFromIngesters[BidiClientMergeProfilesStacktraces]
-	for i := 1; i < 6; i++ {
-		addr := fmt.Sprintf("localhost:4%d00", i)
-		c, err := clientpool.PoolFactory(addr)
-		if err != nil {
-			return nil, err
-		}
-		res, err := c.Check(ctx, &grpc_health_v1.HealthCheckRequest{
-			Service: ingestv1.IngesterService_ServiceDesc.ServiceName,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if res.Status != grpc_health_v1.HealthCheckResponse_SERVING {
-			return nil, fmt.Errorf("ingester %s is not serving", addr)
-		}
-		bidi := c.(IngesterQueryClient).MergeProfilesStacktraces(ctx)
-		profileType, err := firemodel.ParseProfileTypeSelector("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
-		if err != nil {
-			return nil, err
-		}
-		now := time.Now()
-		err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
-			Request: &ingestv1.SelectProfilesRequest{
-				LabelSelector: `{namespace="fire-dev-001"}`,
-				Type:          profileType,
-				Start:         int64(model.TimeFromUnixNano(now.Add(-30 * time.Minute).UnixNano())),
-				End:           int64(model.TimeFromUnixNano(now.UnixNano())),
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		clients = append(clients, responseFromIngesters[BidiClientMergeProfilesStacktraces]{
-			response: bidi,
-			addr:     addr,
-		})
-	}
-	return clients, nil
+type fakeBidiClient struct {
+	profiles chan *ingestv1.ProfileSets
+	batches  []*ingestv1.ProfileSets
+	kept     []testProfile
+	cur      *ingestv1.ProfileSets
 }
+
+func newFakeBidiClient(batches []*ingestv1.ProfileSets) *fakeBidiClient {
+	res := &fakeBidiClient{
+		profiles: make(chan *ingestv1.ProfileSets, 1),
+	}
+	res.profiles <- batches[0]
+	batches = batches[1:]
+	res.batches = batches
+	return res
+}
+
+func (f *fakeBidiClient) Send(in *ingestv1.MergeProfilesStacktracesRequest) error {
+	if in.Request != nil {
+		return nil
+	}
+	for i, b := range in.Profiles {
+		if b {
+			f.kept = append(f.kept, testProfile{
+				Ts:     f.cur.Profiles[i].Timestamp,
+				Labels: f.cur.LabelsSets[f.cur.Profiles[i].LabelIndex],
+			})
+		}
+	}
+	if len(f.batches) == 0 {
+		close(f.profiles)
+		return nil
+	}
+	f.profiles <- f.batches[0]
+	f.batches = f.batches[1:]
+	return nil
+}
+
+func (f *fakeBidiClient) Receive() (*ingestv1.MergeProfilesStacktracesResponse, error) {
+	profiles := <-f.profiles
+	if profiles == nil {
+		return &ingestv1.MergeProfilesStacktracesResponse{
+			Result: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
+					{FunctionIds: []int32{0, 1, 2}, Value: 1},
+				},
+				FunctionNames: []string{"foo", "bar", "buzz"},
+			},
+		}, nil
+	}
+	f.cur = profiles
+	return &ingestv1.MergeProfilesStacktracesResponse{
+		SelectedProfiles: profiles,
+	}, nil
+}
+func (f *fakeBidiClient) CloseSend() error    { return nil }
+func (f *fakeBidiClient) CloseReceive() error { return nil }
+
+func (f *fakeQuerierIngester) MergeProfilesStacktraces(ctx context.Context) BidiClientMergeProfilesStacktraces {
+	var (
+		args = f.Called(ctx)
+		res  BidiClientMergeProfilesStacktraces
+	)
+	if args[0] != nil {
+		res = args[0].(BidiClientMergeProfilesStacktraces)
+	}
+
+	return res
+}
+
+// The code below can be useful for testing deduping directly to a cluster.
+// func TestDedupeLive(t *testing.T) {
+// 	clients, err := createClients(context.Background())
+// 	require.NoError(t, err)
+// 	st, err := dedupe(context.Background(), clients)
+// 	require.NoError(t, err)
+// 	require.Equal(t, 2, len(st))
+// }
+
+// func createClients(ctx context.Context) ([]responseFromIngesters[BidiClientMergeProfilesStacktraces], error) {
+// 	var clients []responseFromIngesters[BidiClientMergeProfilesStacktraces]
+// 	for i := 1; i < 6; i++ {
+// 		addr := fmt.Sprintf("localhost:4%d00", i)
+// 		c, err := clientpool.PoolFactory(addr)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		res, err := c.Check(ctx, &grpc_health_v1.HealthCheckRequest{
+// 			Service: ingestv1.IngesterService_ServiceDesc.ServiceName,
+// 		})
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		if res.Status != grpc_health_v1.HealthCheckResponse_SERVING {
+// 			return nil, fmt.Errorf("ingester %s is not serving", addr)
+// 		}
+// 		bidi := c.(IngesterQueryClient).MergeProfilesStacktraces(ctx)
+// 		profileType, err := firemodel.ParseProfileTypeSelector("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		now := time.Now()
+// 		err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+// 			Request: &ingestv1.SelectProfilesRequest{
+// 				LabelSelector: `{namespace="fire-dev-001"}`,
+// 				Type:          profileType,
+// 				Start:         int64(model.TimeFromUnixNano(now.Add(-30 * time.Minute).UnixNano())),
+// 				End:           int64(model.TimeFromUnixNano(now.UnixNano())),
+// 			},
+// 		})
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		clients = append(clients, responseFromIngesters[BidiClientMergeProfilesStacktraces]{
+// 			response: bidi,
+// 			addr:     addr,
+// 		})
+// 	}
+// 	return clients, nil
+// }
