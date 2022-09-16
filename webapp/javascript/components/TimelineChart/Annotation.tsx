@@ -2,6 +2,7 @@ import React from 'react';
 import { Maybe } from 'true-myth';
 import { format } from 'date-fns';
 import { Annotation } from '@webapp/models/annotation';
+import { getUTCdate, timezoneToOffset } from '@webapp/util/formatDate';
 import styles from './Annotation.module.scss';
 
 // TODO(eh-am): what are these units?
@@ -16,6 +17,8 @@ interface AnnotationTooltipBodyProps {
 
   /* where in the canvas the mouse is */
   canvasX: number;
+
+  timezone: 'browser' | 'utc';
 }
 
 export default function Annotations(props: AnnotationTooltipBodyProps) {
@@ -30,6 +33,7 @@ export default function Annotations(props: AnnotationTooltipBodyProps) {
   )
     .map((annotation: Annotation) => (
       <AnnotationComponent
+        timezone={props.timezone}
         timestamp={annotation.timestamp}
         content={annotation.content}
       />
@@ -40,15 +44,20 @@ export default function Annotations(props: AnnotationTooltipBodyProps) {
 function AnnotationComponent({
   timestamp,
   content,
+  timezone,
 }: {
   timestamp: number;
   content: string;
+  timezone: AnnotationTooltipBodyProps['timezone'];
 }) {
   // TODO: these don't account for timezone
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
-        {format(timestamp, 'yyyy-MM-dd hh:mm aa')}
+        {format(
+          getUTCdate(new Date(timestamp), timezoneToOffset(timezone)),
+          'yyyy-MM-dd HH:mm'
+        )}
       </header>
       <div className={styles.body}>{content}</div>
     </div>
