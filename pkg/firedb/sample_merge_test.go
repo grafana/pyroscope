@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -15,8 +17,6 @@ import (
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 	pprofth "github.com/grafana/fire/pkg/pprof/testhelper"
 	"github.com/grafana/fire/pkg/testhelper"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMergeSampleByStacktraces(t *testing.T) {
@@ -306,6 +306,25 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 // 		_, err = q.resolveSymbols(context.Background(), stacktraceAggrValues)
 // 		require.NoError(b, err)
 // 	}
+// }
+// func newSingleBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketReader, path string) (*singleBlockQuerier, error) {
+// 	meta, _, err := block.MetaFromDir(path)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	q := &singleBlockQuerier{
+// 		logger:       logger,
+// 		bucketReader: fireobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
+// 		meta:         meta,
+// 	}
+// 	q.tables = []tableReader{
+// 		&q.strings,
+// 		&q.functions,
+// 		&q.locations,
+// 		&q.stacktraces,
+// 		&q.profiles,
+// 	}
+// 	return q, nil
 // }
 
 // func TestMergeSampleByProfile(t *testing.T) {
