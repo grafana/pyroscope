@@ -34,7 +34,7 @@ var _ = Describe("AnnotationsService", func() {
 			Expect(annotation).ToNot(BeNil())
 			Expect(annotation.AppName).To(Equal("myapp"))
 			Expect(annotation.Content).To(Equal("mycontent"))
-			Expect(annotation.Timestamp).To(Equal(now))
+			Expect(annotation.Timestamp.Unix()).To(Equal(now.Unix()))
 
 			Expect(annotation.CreatedAt).ToNot(BeZero())
 			Expect(annotation.UpdatedAt).ToNot(BeZero())
