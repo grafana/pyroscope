@@ -31,7 +31,7 @@ func TestSchemaMatch(t *testing.T) {
 	require.Equal(t, strings.Replace(stacktracesStructSchema.String(), "message storedStacktrace", "message Stacktrace", 1), stacktracesSchema.String())
 
 	stringsStructSchema := parquet.SchemaOf(&StoredString{})
-	require.Equal(t, strings.Replace(stringsStructSchema.String(), "message storedString", "message String", 1), stringsSchema.String())
+	require.Equal(t, strings.Replace(stringsStructSchema.String(), "message StoredString", "message String", 1), stringsSchema.String())
 }
 
 func newStacktraces() []*Stacktrace {

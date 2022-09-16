@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -151,7 +152,12 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 
 			stacktraces, err := q.queriers[0].MergeByStacktraces(ctx, profiles)
 			require.NoError(t, err)
-
+			sort.Slice(tc.expected.Stacktraces, func(i, j int) bool {
+				return len(tc.expected.Stacktraces[i].FunctionIds) < len(tc.expected.Stacktraces[j].FunctionIds)
+			})
+			sort.Slice(stacktraces.Stacktraces, func(i, j int) bool {
+				return len(stacktraces.Stacktraces[i].FunctionIds) < len(stacktraces.Stacktraces[j].FunctionIds)
+			})
 			testhelper.EqualProto(t, tc.expected, stacktraces)
 		})
 	}
@@ -279,6 +285,12 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			stacktraces, err := db.head.MergeByStacktraces(ctx, profiles)
 			require.NoError(t, err)
 
+			sort.Slice(tc.expected.Stacktraces, func(i, j int) bool {
+				return len(tc.expected.Stacktraces[i].FunctionIds) < len(tc.expected.Stacktraces[j].FunctionIds)
+			})
+			sort.Slice(stacktraces.Stacktraces, func(i, j int) bool {
+				return len(stacktraces.Stacktraces[i].FunctionIds) < len(stacktraces.Stacktraces[j].FunctionIds)
+			})
 			testhelper.EqualProto(t, tc.expected, stacktraces)
 		})
 	}

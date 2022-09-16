@@ -112,6 +112,7 @@ func NewStreamProfileIterator(ctx context.Context, r responseFromIngesters[BidiC
 
 func (s *StreamProfileIterator) Next() bool {
 	if s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1 {
+		// ensure we send keep before reading next batch.
 		if !s.keepSent {
 			err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Profiles: s.keep,
@@ -127,13 +128,14 @@ func (s *StreamProfileIterator) Next() bool {
 			return false
 		}
 
-		if resp.SelectedProfiles == nil || len(resp.SelectedProfiles.Profiles) == 0 || resp.Done {
+		if resp.SelectedProfiles == nil || len(resp.SelectedProfiles.Profiles) == 0 {
 			return false
 		}
 		s.curr = resp.SelectedProfiles
-		if len(s.curr.Profiles) != cap(s.keep) {
+		if len(s.curr.Profiles) > cap(s.keep) {
 			s.keep = make([]bool, len(s.curr.Profiles))
 		}
+		s.keep = s.keep[:len(s.curr.Profiles)]
 		for i := range s.keep {
 			s.keep[i] = false
 		}

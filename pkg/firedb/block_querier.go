@@ -510,15 +510,13 @@ type Profile interface {
 	Labels() firemodel.Labels
 }
 
-type Keep []bool
-
 type Querier interface {
 	InRange(start, end model.Time) bool
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
-	// Mostly used for GRPC streaming.
-	FilterMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (iter.Iterator[Profile], error)
-	// Legacy
+	// Sorts profiles for retrieval.
+	Sort([]Profile) []Profile
+	// Deprecated: Use SelectMatchingProfiles instead.
 	SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error)
 }
 
@@ -545,47 +543,6 @@ func (p BlockProfile) Fingerprint() model.Fingerprint {
 	return p.fp
 }
 
-// type BlockSeriesIterator struct {
-// 	profiles iter.Iterator[BlockProfile]
-
-// 	curr   BlockProfile
-// 	buffer [][]parquet.Value
-// }
-
-// func NewBlockSeriesIterator(profiles iter.Iterator[BlockProfile], fp model.Fingerprint, lbs firemodel.Labels) *BlockSeriesIterator {
-// 	return &BlockSeriesIterator{
-// 		profiles: profiles,
-// 		curr:     BlockProfile{fp: fp, labels: lbs},
-// 	}
-// }
-
-// func (p *BlockSeriesIterator) Next() bool {
-// 	if !p.profiles.Next() {
-// 		return false
-// 	}
-// 	// if p.buffer == nil {
-// 	// 	p.buffer = make([][]parquet.Value, 2)
-// 	// }
-// 	// result := p.profiles.At()
-// 	// p.curr.RowNum = result.RowNumber[0]
-// 	// p.buffer = result.Columns(p.buffer, "TimeNanos")
-// 	// p.curr.ts = model.TimeFromUnixNano(p.buffer[0][0].Int64())
-// 	p.curr = p.profiles.At().(BlockProfile)
-// 	return true
-// }
-
-// func (p *BlockSeriesIterator) At() Profile {
-// 	return p.curr
-// }
-
-// func (p *BlockSeriesIterator) Err() error {
-// 	return p.profiles.Err()
-// }
-
-// func (p *BlockSeriesIterator) Close() error {
-// 	return p.profiles.Close()
-// }
-
 func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Block")
 	defer sp.Finish()
@@ -607,7 +564,6 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		lbls       = make(firemodel.Labels, 0, 6)
 		chks       = make([]index.ChunkMeta, 1)
 		lblsPerRef = make(map[int64]labelsInfo)
-		// seriesRef  = []int64{}
 	)
 
 	// get all relevant labels/fingerprints
@@ -626,7 +582,6 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
-			// seriesRef = append(seriesRef, int64(chks[0].SeriesIndex))
 			lbls = make(firemodel.Labels, 0, 6)
 		}
 	}
@@ -669,52 +624,12 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	return iter.NewSortProfileIterator(iters), nil
 }
 
-func (b *singleBlockQuerier) FilterMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (iter.Iterator[Profile], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "FilterMatchingProfiles - Block")
-	defer sp.Finish()
-	profilesIt, err := b.SelectMatchingProfiles(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	defer profilesIt.Close()
-
-	batch := make([]Profile, 0, batchSize)
-	selection := []Profile{}
-	var batchIndex int
-Outer:
-	for {
-		// build a batch of profiles
-		batch = batch[:0]
-		sp.LogFields(otlog.Int("new batch", batchIndex))
-		for profilesIt.Next() {
-			profile := profilesIt.At()
-			batch = append(batch, profile)
-			if len(batch) >= batchSize {
-				break
-			}
-		}
-		if profilesIt.Err() != nil {
-			return nil, profilesIt.Err()
-		}
-		if len(batch) == 0 {
-			break Outer
-		}
-		sp.LogFields(otlog.Int("batchSize", len(batch)))
-		keep, err := fnOnBatch(ctx, batch)
-		if err != nil {
-			return nil, err
-		}
-		for i, k := range keep {
-			if k {
-				selection = append(selection, batch[i])
-			}
-		}
-	}
-	// ensure we reads by RowNum order.
-	sort.Slice(selection, func(i, j int) bool {
-		return selection[i].(BlockProfile).RowNum < selection[j].(BlockProfile).RowNum
+func (b *singleBlockQuerier) Sort(in []Profile) []Profile {
+	// Sort by RowNumber to avoid seeking back and forth in the file.
+	sort.Slice(in, func(i, j int) bool {
+		return in[i].(BlockProfile).RowNum < in[j].(BlockProfile).RowNum
 	})
-	return iter.NewSliceIterator(selection), nil
+	return in
 }
 
 type reconstructSamples struct {

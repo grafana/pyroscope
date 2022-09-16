@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/fire/pkg/firedb/block"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/objstore/client"
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
@@ -281,6 +282,7 @@ func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) 
 	return result
 }
 
+// Deprecated
 func (f *FireDB) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
 	return f.querierFor(model.Time(req.Msg.Start), model.Time(req.Msg.End)).SelectProfiles(ctx, req)
 }
@@ -318,87 +320,31 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		otlog.String("selector", request.LabelSelector),
 		otlog.String("profile_id", request.Type.ID),
 	)
-	batchSize := 2048
-
-	type labelWithIndex struct {
-		firemodel.Labels
-		index int
-	}
 
 	queriers := f.querierFor(model.Time(request.Start), model.Time(request.End))
 
-	selectProfileResult := &ingestv1.ProfileSets{
-		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchSize),
-		LabelsSets: make([]*commonv1.Labels, 0, batchSize),
-	}
 	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
 	var lock sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 
+	// Start streaming profiles from all stores in order.
+	// This allows the client to dedupe in order.
 	for _, q := range queriers {
 		q := q
-		res, err := q.FilterMatchingProfiles(ctx, request, batchSize, func(ctx context.Context, selectedProfiles []Profile) (Keep, error) {
-			sp, ctx := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - NewBatch")
-			sp.LogFields(
-				otlog.Int("batch_len", len(selectedProfiles)),
-				otlog.Int("batch_requested_size", batchSize),
-			)
-			defer sp.Finish()
-
-			seriesByFP := map[model.Fingerprint]labelWithIndex{}
-			selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
-			selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
-
-			for _, profile := range selectedProfiles {
-				var ok bool
-				var lblsIdx labelWithIndex
-				lblsIdx, ok = seriesByFP[profile.Fingerprint()]
-				if !ok {
-					lblsIdx = labelWithIndex{
-						Labels: profile.Labels(),
-						index:  len(selectProfileResult.LabelsSets),
-					}
-					seriesByFP[profile.Fingerprint()] = lblsIdx
-					selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &commonv1.Labels{Labels: profile.Labels()})
-				}
-				selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
-					LabelIndex: int32(lblsIdx.index),
-					Timestamp:  int64(profile.Timestamp()),
-				})
-
-			}
-			sp2, ctx := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Sending batch")
-			// read a batch of profiles and sends it.
-			err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-				SelectedProfiles: selectProfileResult,
-			})
-			sp2.Finish()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return nil, connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
-				}
-				return nil, err
-			}
-
-			sp3, _ := opentracing.StartSpanFromContext(ctx, "BatchMergeStacktraces - Receive selection")
-			defer sp3.Finish()
-			// handle response for the batch.
-			selectionResponse, err := stream.Receive()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return nil, connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
-				}
-				return nil, err
-			}
-
-			return Keep(selectionResponse.Profiles), nil
-		})
+		profiles, err := q.SelectMatchingProfiles(ctx, request)
 		if err != nil {
 			return err
 		}
-		// Merge async the result.
+		// send batches of profiles to client and filter via bidi stream.
+		selectedProfiles, err := filterProfiles(ctx, profiles, 2048, stream)
+		if err != nil {
+			return err
+		}
+		// Sort profiles for better read locality.
+		selectedProfiles = q.Sort(selectedProfiles)
+		// Merge async the result so we can continue streaming profiles.
 		g.Go(func() error {
-			merge, err := q.MergeByStacktraces(ctx, res)
+			merge, err := q.MergeByStacktraces(ctx, iter.NewSliceIterator(selectedProfiles))
 			if err != nil {
 				return err
 			}
@@ -409,10 +355,9 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		})
 	}
 
-	// signal the end of the profile streaming.
-	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-		Done: true,
-	}); err != nil {
+	// Signals the end of the profile streaming by sending an empty request.
+	// This allows the client to not block other streaming ingesters.
+	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 		return err
 	}
 
@@ -420,6 +365,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		return err
 	}
 
+	// sends the final result to the client.
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: firemodel.MergeBatchMergeStacktraces(result...),
 	})
@@ -431,6 +377,82 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	}
 
 	return nil
+}
+
+// filterProfiles sends profiles to the client and filters them via the bidi stream.
+func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchProfileSize int, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) ([]Profile, error) {
+	type labelWithIndex struct {
+		firemodel.Labels
+		index int
+	}
+	selection := []Profile{}
+	selectProfileResult := &ingestv1.ProfileSets{
+		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
+		LabelsSets: make([]*commonv1.Labels, 0, batchProfileSize),
+	}
+	if err := iter.ReadBatchIterator(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
+		sp, _ := opentracing.StartSpanFromContext(ctx, "Filtering batch")
+		sp.LogFields(
+			otlog.Int("batch_len", len(batch)),
+			otlog.Int("batch_requested_size", batchProfileSize),
+		)
+		defer sp.Finish()
+
+		seriesByFP := map[model.Fingerprint]labelWithIndex{}
+		selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
+		selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
+
+		for _, profile := range batch {
+			var ok bool
+			var lblsIdx labelWithIndex
+			lblsIdx, ok = seriesByFP[profile.Fingerprint()]
+			if !ok {
+				lblsIdx = labelWithIndex{
+					Labels: profile.Labels(),
+					index:  len(selectProfileResult.LabelsSets),
+				}
+				seriesByFP[profile.Fingerprint()] = lblsIdx
+				selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &commonv1.Labels{Labels: profile.Labels()})
+			}
+			selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
+				LabelIndex: int32(lblsIdx.index),
+				Timestamp:  int64(profile.Timestamp()),
+			})
+
+		}
+		sp.LogFields(otlog.String("msg", "sending batch to client"))
+		// read a batch of profiles and sends it.
+		err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
+			SelectedProfiles: selectProfileResult,
+		})
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+			}
+			return err
+		}
+		sp.LogFields(otlog.String("msg", "batch sent to client"))
+
+		sp.LogFields(otlog.String("msg", "reading selection from client"))
+		// handle response for the batch.
+		selectionResponse, err := stream.Receive()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+			}
+			return err
+		}
+		sp.LogFields(otlog.String("msg", "selection received"))
+		for i, k := range selectionResponse.Profiles {
+			if k {
+				selection = append(selection, batch[i])
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return selection, nil
 }
 
 func (f *FireDB) initHead() (oldHead *Head, err error) {
