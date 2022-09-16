@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.42.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.1...@pyroscope/webapp@1.42.2) (2022-09-16)
+
+
+### Bug Fixes
+
+* **webapp:** show annotations tooltip only when hovering close to the marker ([#1510](https://github.com/pyroscope-io/pyroscope/issues/1510)) ([e8bdf4a](https://github.com/pyroscope-io/pyroscope/commit/e8bdf4abbff10efcdc317aea09d45ecd795e2f42))
+
+
+
+
+
 ## [1.42.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.0...@pyroscope/webapp@1.42.1) (2022-09-16)
 
 
