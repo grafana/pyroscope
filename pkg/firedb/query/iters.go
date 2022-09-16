@@ -13,7 +13,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/segmentio/parquet-go"
-	pq "github.com/segmentio/parquet-go"
 
 	"github.com/grafana/fire/pkg/iter"
 )
@@ -332,7 +331,7 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 			}
 		}
 
-		func(col pq.ColumnChunk) {
+		func(col parquet.ColumnChunk) {
 			pgs := col.Pages()
 			defer func() {
 				if err := pgs.Close(); err != nil {
@@ -907,7 +906,7 @@ func (r *RowNumberIterator[T]) Next() bool {
 	r.current.RowNumber = RowNumber{rowGetter.RowNumber(), -1, -1, -1, -1, -1}
 	r.current.Entries = append(r.current.Entries, struct {
 		k        string
-		v        pq.Value
+		v        parquet.Value
 		RowValue interface{}
 	}{
 		RowValue: r.Iterator.At(),

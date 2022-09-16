@@ -290,29 +290,20 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 
 // 	q, err := newSingleBlockQuerier(log.NewLogfmtLogger(os.Stdout), fs, "./testdata/01GD0EKBP0DENYEFVS5SB0K9WG/")
 // 	require.NoError(b, err)
-// 	profiles, err := q.SelectMatchingProfiles(context.TODO(), &ingesterv1.SelectProfilesRequest{
-// 		LabelSelector: `{namespace="fire-dev-001",container="querier"}`,
-// 		Type: &commonv1.ProfileType{
-// 			Name:       "process_cpu",
-// 			SampleType: "cpu",
-// 			SampleUnit: "nanoseconds",
-// 			PeriodType: "cpu",
-// 			PeriodUnit: "nanoseconds",
-// 		},
-// 		Start: q.meta.TSDBBlockMeta().MinTime,
-// 		End:   q.meta.TSDBBlockMeta().MaxTime,
-// 	})
-// 	var profilesSlice []Profile
-// 	for profiles.Next() {
-// 		profilesSlice = append(profilesSlice, profiles.At())
+// 	require.NoError(b, q.open(context.TODO()))
+
+// 	stacktraceAggrValues := map[int64]*ingestv1.StacktraceSample{}
+// 	for i := 0; i < 1000; i++ {
+// 		stacktraceAggrValues[int64(i)] = &ingestv1.StacktraceSample{
+// 			Value: 1,
+// 		}
 // 	}
-// 	require.NoError(b, profiles.Err())
 // 	b.ResetTimer()
 // 	b.ReportAllocs()
 
 // 	for i := 0; i < b.N; i++ {
 // 		require.NoError(b, err)
-// 		_, err = q.MergeByStacktraces(context.TODO(), iter.NewSliceIterator(profilesSlice))
+// 		_, err = q.resolveSymbols(context.Background(), stacktraceAggrValues)
 // 		require.NoError(b, err)
 // 	}
 // }

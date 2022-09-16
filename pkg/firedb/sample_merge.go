@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
@@ -28,7 +29,6 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 
 	var series [][]parquet.Value
 	stacktraceAggrValues := map[int64]*ingestv1.StacktraceSample{}
-	locationsByStacktraceID := map[int64][]int64{}
 
 	for it.Next() {
 		values := it.At()
@@ -44,10 +44,16 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 			}
 		}
 	}
-	sp2, ctx := opentracing.StartSpanFromContext(ctx, "Merge Symbolization - Block")
-	defer sp2.Finish()
+	return b.resolveSymbols(ctx, stacktraceAggrValues)
+}
+
+func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrByID map[int64]*ingestv1.StacktraceSample) (*ingestv1.MergeProfilesStacktracesResult, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "ResolveSymbols - Block")
+	defer sp.Finish()
+	locationsByStacktraceID := map[int64][]uint64{}
+
 	// gather stacktraces
-	stacktraceIDs := lo.Keys(stacktraceAggrValues)
+	stacktraceIDs := lo.Keys(stacktraceAggrByID)
 	sort.Slice(stacktraceIDs, func(i, j int) bool {
 		return stacktraceIDs[i] < stacktraceIDs[j]
 	})
@@ -56,22 +62,19 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 		locationIDs = newUniqueIDs[struct{}]()
 		stacktraces = b.stacktraces.retrieveRows(ctx, iter.NewSliceIterator(stacktraceIDs))
 	)
+
 	for stacktraces.Next() {
 		s := stacktraces.At()
 
-		// // update locations metrics
-		// totalLocations += int64(len(s.Result.LocationIDs))
-
-		locationsByStacktraceID[s.RowNum] = make([]int64, len(s.Result.LocationIDs))
-		for idx, locationID := range s.Result.LocationIDs {
-			locationsByStacktraceID[s.RowNum][idx] = int64(locationID)
+		locationsByStacktraceID[s.RowNum] = s.Result.LocationIDs
+		for _, locationID := range s.Result.LocationIDs {
 			locationIDs[int64(locationID)] = struct{}{}
 		}
 	}
 	if err := stacktraces.Err(); err != nil {
 		return nil, err
 	}
-
+	sp.LogFields(otlog.Int("stacktraces", len(stacktraceIDs)))
 	// gather locations
 	var (
 		locationIDsByFunctionID = newUniqueIDs[[]int64]()
@@ -146,69 +149,18 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	}
 
 	// write correct string ID into each sample
-	for stacktraceID, samples := range stacktraceAggrValues {
+	for stacktraceID, samples := range stacktraceAggrByID {
 		locationIDs := locationsByStacktraceID[stacktraceID]
 
 		functionIDs := make([]int32, len(locationIDs))
 		for idx := range functionIDs {
-			functionIDs[idx] = nameIDbyLocationID[locationIDs[idx]]
+			functionIDs[idx] = nameIDbyLocationID[int64(locationIDs[idx])]
 		}
 		samples.FunctionIds = functionIDs
 	}
 
 	return &ingestv1.MergeProfilesStacktracesResult{
-		Stacktraces:   lo.Values(stacktraceAggrValues),
+		Stacktraces:   lo.Values(stacktraceAggrByID),
 		FunctionNames: names,
 	}, nil
 }
-
-// type ProfileValueIterator struct {
-// 	pqValues   [][]parquet.Value
-// 	pqIterator query.Iterator
-// 	current    ProfileValue
-// }
-
-// func NewProfileTotalValueIterator(file *parquet.File, rows iter.Iterator[Profile]) (iter.Iterator[ProfileValue], error) {
-// 	valuesCol, _ := query.GetColumnIndexByPath(file, "Samples.list.element.Values.list.element")
-// 	if valuesCol == -1 {
-// 		return nil, fmt.Errorf("no values column found")
-// 	}
-// 	it := query.NewJoinIterator(
-// 		0,
-// 		[]query.Iterator{
-// 			query.NewRowNumberIterator(rows),
-// 			query.NewColumnIterator(context.Background(), file.RowGroups(), valuesCol, "Samples.list.element.Values.list.element", 10*1024, nil, "Value"),
-// 		},
-// 		nil,
-// 	)
-// 	return &ProfileValueIterator{
-// 		pqIterator: it,
-// 	}, nil
-// }
-
-// func (p *ProfileValueIterator) Next() bool {
-// 	if !p.pqIterator.Next() {
-// 		return false
-// 	}
-// 	values := p.pqIterator.At()
-// 	p.current.Profile = values.Entries[0].RowValue.(Profile)
-// 	p.current.Value = 0
-// 	p.pqValues = values.Columns(p.pqValues, "Value")
-// 	// sums all values for the current row/profiles
-// 	for i := 0; i < len(p.pqValues[0]); i++ {
-// 		p.current.Value += p.pqValues[0][i].Int64()
-// 	}
-// 	return true
-// }
-
-// func (p *ProfileValueIterator) At() ProfileValue {
-// 	return p.current
-// }
-
-// func (p *ProfileValueIterator) Err() error {
-// 	return nil
-// }
-
-// func (p *ProfileValueIterator) Close() error {
-// 	return p.pqIterator.Close()
-// }
