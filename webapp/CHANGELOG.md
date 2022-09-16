@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.42.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.0...@pyroscope/webapp@1.42.1) (2022-09-16)
+
+
+### Bug Fixes
+
+* **webapp:** annotation doesn't have a weird marking anymore ([#1512](https://github.com/pyroscope-io/pyroscope/issues/1512)) ([20abd58](https://github.com/pyroscope-io/pyroscope/commit/20abd58350a0fd729ac13cb2537c1f7b424178c8))
+
+
+
+
+
 # [1.42.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.41.0...@pyroscope/webapp@1.42.0) (2022-09-15)
 
 
