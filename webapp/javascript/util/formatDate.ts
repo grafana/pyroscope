@@ -1,6 +1,5 @@
 /* eslint-disable no-underscore-dangle */
 import { add, format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
 
 const multiplierMapping = new Map(
   Object.entries({
