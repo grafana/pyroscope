@@ -303,26 +303,6 @@ func newSingleBlockQuerierFromMeta(logger log.Logger, bucketReader fireobjstore.
 	return q
 }
 
-func newSingleBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketReader, path string) (*singleBlockQuerier, error) {
-	meta, _, err := block.MetaFromDir(path)
-	if err != nil {
-		return nil, err
-	}
-	q := &singleBlockQuerier{
-		logger:       logger,
-		bucketReader: fireobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
-		meta:         meta,
-	}
-	q.tables = []tableReader{
-		&q.strings,
-		&q.functions,
-		&q.locations,
-		&q.stacktraces,
-		&q.profiles,
-	}
-	return q, nil
-}
-
 func (b *singleBlockQuerier) Close() error {
 	b.openLock.Lock()
 	defer b.openLock.Unlock()
