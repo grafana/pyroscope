@@ -597,46 +597,8 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 	}, nil
 }
 
-func (h *Head) FilterMatchingProfiles(ctx context.Context, req *ingestv1.SelectProfilesRequest, batchSize int, fnOnBatch func(context.Context, []Profile) (Keep, error)) (iter.Iterator[Profile], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "FilterMatchingProfiles - Head")
-	defer sp.Finish()
-	profilesIt, err := h.SelectMatchingProfiles(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer profilesIt.Close()
-
-	batch := make([]Profile, 0, batchSize)
-	selection := []Profile{}
-
-	for {
-		// build a batch of profiles
-		batch = batch[:0]
-		for profilesIt.Next() {
-			profile := profilesIt.At()
-			batch = append(batch, profile)
-			if len(batch) >= batchSize {
-				break
-			}
-		}
-		if profilesIt.Err() != nil {
-			return nil, profilesIt.Err()
-		}
-		if len(batch) == 0 {
-			break
-		}
-		keep, err := fnOnBatch(ctx, batch)
-		if err != nil {
-			return nil, err
-		}
-		for i, k := range keep {
-			if k {
-				selection = append(selection, batch[i])
-			}
-		}
-	}
-
-	return iter.NewSliceIterator(selection), nil
+func (h *Head) Sort(in []Profile) []Profile {
+	return in
 }
 
 type ProfileSelectorIterator struct {

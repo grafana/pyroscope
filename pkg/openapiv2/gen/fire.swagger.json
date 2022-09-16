@@ -306,11 +306,7 @@
       "properties": {
         "selectedProfiles": {
           "$ref": "#/definitions/v1ProfileSets",
-          "description": "The server replies batch of profiles."
-        },
-        "done": {
-          "type": "boolean",
-          "description": "Signal no more profiles to merge and the next message will be the result."
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
         },
         "result": {
           "$ref": "#/definitions/v1MergeProfilesStacktracesResult",
