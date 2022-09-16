@@ -379,8 +379,13 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	return nil
 }
 
+type BidiServerMergeProfilesStacktraces interface {
+	Send(*ingestv1.MergeProfilesStacktracesResponse) error
+	Receive() (*ingestv1.MergeProfilesStacktracesRequest, error)
+}
+
 // filterProfiles sends profiles to the client and filters them via the bidi stream.
-func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchProfileSize int, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) ([]Profile, error) {
+func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchProfileSize int, stream BidiServerMergeProfilesStacktraces) ([]Profile, error) {
 	type labelWithIndex struct {
 		firemodel.Labels
 		index int
@@ -390,7 +395,7 @@ func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchP
 		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
 		LabelsSets: make([]*commonv1.Labels, 0, batchProfileSize),
 	}
-	if err := iter.ReadBatchIterator(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
+	if err := iter.ReadBatch(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
 		sp, _ := opentracing.StartSpanFromContext(ctx, "Filtering batch")
 		sp.LogFields(
 			otlog.Int("batch_len", len(batch)),

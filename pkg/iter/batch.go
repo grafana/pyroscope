@@ -2,9 +2,10 @@ package iter
 
 import "context"
 
-// ReadBatchIterator reads profiles from the iterator in batches and call fn.
+// ReadBatch reads profiles from the iterator in batches and call fn.
 // If fn returns an error, the iteration is stopped and the error is returned.
-func ReadBatchIterator[T any](ctx context.Context, iterator Iterator[T], batchSize int, fn func(context.Context, []T) error) error {
+// The array passed in fn is reused between calls, so it should be copied if needed.
+func ReadBatch[T any](ctx context.Context, iterator Iterator[T], batchSize int, fn func(context.Context, []T) error) error {
 	defer iterator.Close()
 	batch := make([]T, 0, batchSize)
 	for {
