@@ -264,6 +264,7 @@ class TimelineChartWrapper extends React.Component<
           tooltipContent = [
             <Annotation
               key="annotation"
+              annotations={annotations}
               canvasX={data.canvasX}
               coordsToCanvasPos={data.coordsToCanvasPos}
             />,
