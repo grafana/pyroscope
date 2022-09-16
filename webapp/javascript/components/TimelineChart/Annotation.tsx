@@ -1,19 +1,21 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
 import { format } from 'date-fns';
+import { Annotation } from '@webapp/models/annotation';
 import styles from './Annotation.module.scss';
 
 // TODO(eh-am): what are these units?
 export const THRESHOLD = 3;
 
 interface AnnotationTooltipBodyProps {
-  /** list of flotjs datapoints being hovered. we only use the first one */
-  values?: { closest: number[] }[];
   /** list of annotations */
   annotations: { timestamp: number; content: string }[];
 
   /** given a timestamp, it returns the offset within the canvas */
-  pointOffset: jquery.flot.plot['pointOffset'];
+  coordsToCanvasPos: jquery.flot.axis['p2c'];
+
+  /* where in the canvas the mouse is */
+  canvasX: number;
 }
 
 export default function Annotations(props: AnnotationTooltipBodyProps) {
@@ -21,11 +23,12 @@ export default function Annotations(props: AnnotationTooltipBodyProps) {
     return null;
   }
 
-  return getClosestTimestamp(props.values)
-    .andThen((closest) =>
-      getClosestAnnotation(props.annotations, closest, props.pointOffset)
-    )
-    .map((annotation) => (
+  return getClosestAnnotation(
+    props.annotations,
+    props.coordsToCanvasPos,
+    props.canvasX
+  )
+    .map((annotation: Annotation) => (
       <AnnotationComponent
         timestamp={annotation.timestamp}
         content={annotation.content}
@@ -52,21 +55,11 @@ function AnnotationComponent({
   );
 }
 
-function getClosestTimestamp(values?: { closest: number[] }[]): Maybe<number> {
-  const val = values?.[0].closest[0];
-
-  if (val) {
-    return Maybe.of(val);
-  }
-
-  return Maybe.nothing();
-}
-
 function getClosestAnnotation(
   annotations: { timestamp: number; content: string }[],
-  timestamp: number,
-  pointOffset: AnnotationTooltipBodyProps['pointOffset']
-) {
+  coordsToCanvasPos: AnnotationTooltipBodyProps['coordsToCanvasPos'],
+  canvasX: number
+): Maybe<typeof annotations[number]> {
   if (!annotations.length) {
     return Maybe.nothing<typeof annotations[number]>();
   }
@@ -74,15 +67,13 @@ function getClosestAnnotation(
   // pointOffset requires a y position, even though we don't use it
   const dummyY = -1;
 
-  const timestampLeft = pointOffset({ x: timestamp, y: dummyY }).left;
-
   // Create a score based on how distant it is from the timestamp
   // Then get the first value (the closest to the timestamp)
   const f = annotations
     .map((a) => ({
       ...a,
       score: Math.abs(
-        pointOffset({ x: a.timestamp, y: dummyY }).left - timestampLeft
+        coordsToCanvasPos({ x: a.timestamp, y: dummyY }).left - canvasX
       ),
     }))
     .filter((a) => a.score < THRESHOLD)

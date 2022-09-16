@@ -250,18 +250,31 @@ class TimelineChartWrapper extends React.Component<
         timestamp: a.timestamp * 1000,
       })) || [];
 
-    // if available, only render annotation
-    // so that the tooltip is not bloated
     if (this.props.annotations) {
-      if (this.props.mode === 'singles' && data.pointOffset) {
-        tooltipContent = [
-          <Annotation
-            key="annotations"
-            values={data.values}
-            annotations={annotations}
-            pointOffset={data.pointOffset}
-          />,
-        ];
+      if (
+        this.props.mode === 'singles' &&
+        data.coordsToCanvasPos &&
+        data.canvasX
+      ) {
+        const an = Annotation({
+          annotations,
+          canvasX: data.canvasX,
+          coordsToCanvasPos: data.coordsToCanvasPos,
+        });
+
+        // if available, only render annotation
+        // so that the tooltip is not bloated
+        if (an) {
+          // Rerender as tsx to make use of key
+          tooltipContent = [
+            <Annotation
+              key="annotation"
+              annotations={annotations}
+              canvasX={data.canvasX}
+              coordsToCanvasPos={data.coordsToCanvasPos}
+            />,
+          ];
+        }
       }
     }
 
