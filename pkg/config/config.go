@@ -110,6 +110,10 @@ type Server struct {
 	StorageQueueWorkers    int     `desc:"number of workers handling internal storage queue" mapstructure:"storage-queue-workers"`
 	MinFreeSpacePercentage float64 `def:"5" desc:"percentage of available disk space at which ingestion requests are discarded. Defaults to 5% but not less than 1GB. Set 0 to disable" mapstructure:"min-free-space-percentage"`
 
+	ExemplarsBatchQueueSize int           `deprecated:"true" mapstructure:"exemplars-batch-queue-size"`
+	ExemplarsBatchDuration  time.Duration `deprecated:"true" mapstructure:"exemplars-batch-duration"`
+	ExemplarsBatchSize      int           `deprecated:"true" mapstructure:"exemplars-batch-size"`
+
 	APIBindAddr     string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
 	BaseURL         string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" mapstructure:"base-url"`
 	BaseURLBindAddr string `def:"" deprecated:"true" desc:"server for debugging base url" mapstructure:"base-url-bind-addr"`

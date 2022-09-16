@@ -27,9 +27,9 @@ const (
 	exemplarTimestampPrefix Prefix = "t:"
 	exemplarsCurrentFormat         = 2
 
-	exemplarBatches       = 5
-	exemplarsPerBatch     = 10 << 10 // 10K
-	exemplarBatchDuration = time.Second * 5
+	defaultExemplarsBatchQueueSize = 5
+	defaultExemplarsBatchSize      = 10 << 10 // 10K
+	defaultExemplarsBatchDuration  = time.Second * 5
 )
 
 type exemplars struct {
@@ -51,10 +51,11 @@ var (
 )
 
 type exemplarsBatch struct {
-	entries map[string]*exemplarEntry
-	config  *Config
-	metrics *metrics
-	dicts   BadgerDBWithCache
+	batchSize int
+	entries   map[string]*exemplarEntry
+	config    *Config
+	metrics   *metrics
+	dicts     BadgerDBWithCache
 }
 
 type exemplarEntry struct {
@@ -70,12 +71,35 @@ type exemplarEntry struct {
 	Tree      *tree.Tree
 }
 
+func (e *exemplars) exemplarsQueueSize() int {
+	if e.config.exemplarsBatchQueueSize != 0 {
+		return e.config.exemplarsBatchQueueSize
+	}
+	return defaultExemplarsBatchQueueSize
+}
+
+func (e *exemplars) exemplarsBatchSize() int {
+	if e.config.exemplarsBatchSize != 0 {
+		return e.config.exemplarsBatchSize
+	}
+	return defaultExemplarsBatchSize
+}
+
+func (e *exemplars) exemplarsBatchDuration() time.Duration {
+	if e.config.exemplarsBatchDuration != 0 {
+		return e.config.exemplarsBatchDuration
+	}
+	return defaultExemplarsBatchDuration
+}
+
 func (e *exemplars) newExemplarsBatch() *exemplarsBatch {
+	batchSize := e.exemplarsBatchSize()
 	return &exemplarsBatch{
-		metrics: e.metrics,
-		config:  e.config,
-		dicts:   e.dicts,
-		entries: make(map[string]*exemplarEntry, exemplarsPerBatch),
+		batchSize: batchSize,
+		metrics:   e.metrics,
+		config:    e.config,
+		dicts:     e.dicts,
+		entries:   make(map[string]*exemplarEntry, batchSize),
 	}
 }
 
@@ -88,7 +112,7 @@ func (s *Storage) initExemplarsStorage(db BadgerDBWithCache) {
 		db:      db,
 	}
 
-	e.batches = make(chan *exemplarsBatch, exemplarBatches)
+	e.batches = make(chan *exemplarsBatch, e.exemplarsQueueSize())
 	e.currentBatch = e.newExemplarsBatch()
 
 	s.exemplars = &e
@@ -96,7 +120,7 @@ func (s *Storage) initExemplarsStorage(db BadgerDBWithCache) {
 
 	go func() {
 		retentionTicker := time.NewTicker(s.retentionTaskInterval)
-		batchFlushTicker := time.NewTicker(exemplarBatchDuration)
+		batchFlushTicker := time.NewTicker(e.exemplarsBatchDuration())
 		defer func() {
 			batchFlushTicker.Stop()
 			retentionTicker.Stop()
@@ -387,7 +411,7 @@ func (s *Storage) ensureAppSegmentExists(in *PutInput) error {
 }
 
 func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {
-	if len(b.entries) == exemplarsPerBatch {
+	if len(b.entries) == b.batchSize {
 		return errBatchIsFull
 	}
 	profileID, ok := input.Key.ProfileID()
