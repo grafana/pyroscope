@@ -205,6 +205,13 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	}), nil
 }
 
+type BidiClientMergeProfilesStacktraces interface {
+	Send(*ingestv1.MergeProfilesStacktracesRequest) error
+	Receive() (*ingestv1.MergeProfilesStacktracesResponse, error)
+	CloseSend() error
+	CloseReceive() error
+}
+
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	defer func() {
@@ -223,13 +230,13 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	}
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(_ context.Context, ic IngesterQueryClient) (BidiClientMergeProfilesStacktraces, error) {
 		// we plan to use those streams to merge profiles
-		// so we use the main context here
+		// so we use the main context here otherwise will be canceled
 		return ic.MergeProfilesStacktraces(ctx), nil
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	// send the first initial request to all ingesters
+	// send the first initial request to all ingesters.
 	g, ctx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
@@ -247,7 +254,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err := g.Wait(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	st, err := dedupe(ctx, responses)
+	st, err := selectMergeStacktraces(ctx, responses)
 	if err != nil {
 		return nil, err
 	}
