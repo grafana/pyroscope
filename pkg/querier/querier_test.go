@@ -250,10 +250,19 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	selected = append(selected, bidi2.kept...)
 	selected = append(selected, bidi3.kept...)
 	sort.Slice(selected, func(i, j int) bool {
+		if selected[i].Ts == selected[j].Ts {
+			return firemodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+		}
 		return selected[i].Ts < selected[j].Ts
 	})
 	require.Len(t, selected, 4)
-	require.Equal(t, nil, selected)
+	require.Equal(t,
+		[]testProfile{
+			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+		}, selected)
 }
 
 func TestSelectSeries(t *testing.T) {

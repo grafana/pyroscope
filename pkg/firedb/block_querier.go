@@ -1258,18 +1258,3 @@ func (c *cacheIterator[M]) Err() error {
 func (c *cacheIterator[M]) Close() error {
 	return nil
 }
-
-// func (r *parquetReader[M, P]) relPath() string {
-// 	return r.persister.Name() + block.ParquetSuffix
-// }
-
-// func (r *parquetReader[M, P]) info() block.File {
-// 	return block.File{
-// 		Parquet: &block.ParquetFile{
-// 			NumRows:      uint64(r.file.NumRows()),
-// 			NumRowGroups: uint64(len(r.file.RowGroups())),
-// 		},
-// 		SizeBytes: uint64(r.file.Size()),
-// 		RelPath:   r.relPath(),
-// 	}
-// }
