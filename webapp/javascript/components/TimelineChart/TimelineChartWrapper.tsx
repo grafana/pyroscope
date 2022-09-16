@@ -76,6 +76,10 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   timezone: 'browser' | 'utc';
   title?: ReactNode;
 
+  /** whether to show a selection with grabbable handle
+   * ATTENTION: it only works with a single selection */
+  selectionWithHandler?: boolean;
+
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
@@ -109,6 +113,7 @@ class TimelineChartWrapper extends React.Component<
         right: 0,
       },
       selection: {
+        selectionWithHandler: props.selectionWithHandler || false,
         mode: 'x',
         // custom selection works for 'single' selection type,
         // 'double' selection works in old fashion way

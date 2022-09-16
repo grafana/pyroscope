@@ -155,6 +155,7 @@ function ComparisonDiffApp() {
               key="timeline-chart-left"
               id="timeline-chart-left"
               timelineA={leftTimeline}
+              selectionWithHandler
               onSelect={(from, until) => {
                 dispatch(actions.setLeft({ from, until }));
               }}
@@ -189,6 +190,7 @@ function ComparisonDiffApp() {
               data-testid="timeline-right"
               key="timeline-chart-right"
               id="timeline-chart-right"
+              selectionWithHandler
               timelineA={rightTimeline}
               onSelect={(from, until) => {
                 dispatch(actions.setRight({ from, until }));
