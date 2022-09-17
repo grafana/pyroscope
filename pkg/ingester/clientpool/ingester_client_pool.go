@@ -1,6 +1,7 @@
 package clientpool
 
 import (
+	"context"
 	"flag"
 	"io"
 	"time"
@@ -12,9 +13,17 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
+	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/fire/pkg/util"
 )
+
+type BidiClientMergeProfilesStacktraces interface {
+	Send(*ingestv1.MergeProfilesStacktracesRequest) error
+	Receive() (*ingestv1.MergeProfilesStacktracesResponse, error)
+	CloseRequest() error
+	CloseResponse() error
+}
 
 // PoolConfig is config for creating a Pool.
 type PoolConfig struct {
@@ -59,4 +68,8 @@ type ingesterPoolClient struct {
 	ingesterv1connect.IngesterServiceClient
 	grpc_health_v1.HealthClient
 	io.Closer
+}
+
+func (c *ingesterPoolClient) MergeProfilesStacktraces(ctx context.Context) BidiClientMergeProfilesStacktraces {
+	return c.IngesterServiceClient.MergeProfilesStacktraces(ctx)
 }

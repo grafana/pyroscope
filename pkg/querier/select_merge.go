@@ -1,8 +1,5 @@
 package querier
 
-// This file implements iterator.Interface specifics to querier code.
-// If you want to use for other types, we should move those to generics.
-
 import (
 	"container/heap"
 	"context"
@@ -12,6 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/ingester/clientpool"
 	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
@@ -37,7 +35,7 @@ type StacktraceMergeIterator interface {
 
 type stacktraceMergeIterator struct {
 	ctx          context.Context
-	bidi         BidiClientMergeProfilesStacktraces
+	bidi         clientpool.BidiClientMergeProfilesStacktraces
 	ingesterAddr string
 
 	err      error
@@ -51,7 +49,7 @@ type stacktraceMergeIterator struct {
 
 // NewStacktraceMergeIterator return a new iterator that merges stacktraces of profile.
 // Merging or querying stacktraces is expensive, we only merge the stacktraces of the profiles that are kept.
-func NewStacktraceMergeIterator(ctx context.Context, r responseFromIngesters[BidiClientMergeProfilesStacktraces]) StacktraceMergeIterator {
+func NewStacktraceMergeIterator(ctx context.Context, r responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) StacktraceMergeIterator {
 	return &stacktraceMergeIterator{
 		bidi:         r.response,
 		ingesterAddr: r.addr,
@@ -116,7 +114,7 @@ func (s *stacktraceMergeIterator) Result() (*ingestv1.MergeProfilesStacktracesRe
 	if err != nil {
 		return nil, err
 	}
-	if err := s.bidi.CloseReceive(); err != nil {
+	if err := s.bidi.CloseResponse(); err != nil {
 		s.err = err
 	}
 	return resp.Result, nil
@@ -129,7 +127,7 @@ func (s *stacktraceMergeIterator) Err() error {
 func (s *stacktraceMergeIterator) Close() error {
 	// Only close the Send side since we need to get the final result.
 	var errs multierror.MultiError
-	if err := s.bidi.CloseSend(); err != nil {
+	if err := s.bidi.CloseRequest(); err != nil {
 		errs = append(errs, err)
 	}
 	return errs.Err()
@@ -234,7 +232,7 @@ func requeueAsync(h heap.Interface, eis ...StacktraceMergeIterator) error {
 }
 
 // selectMergeStacktraces selects the  profile from each ingester by deduping them and request merges of stacktraces of them.
-func selectMergeStacktraces(ctx context.Context, responses []responseFromIngesters[BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
+func selectMergeStacktraces(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
 	iters := make([]StacktraceMergeIterator, 0, len(responses))
 	for _, resp := range responses {
 		iters = append(iters, NewStacktraceMergeIterator(ctx, resp))

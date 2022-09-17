@@ -205,13 +205,6 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	}), nil
 }
 
-type BidiClientMergeProfilesStacktraces interface {
-	Send(*ingestv1.MergeProfilesStacktracesRequest) error
-	Receive() (*ingestv1.MergeProfilesStacktracesResponse, error)
-	CloseSend() error
-	CloseReceive() error
-}
-
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	defer func() {
@@ -228,7 +221,10 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(_ context.Context, ic IngesterQueryClient) (BidiClientMergeProfilesStacktraces, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(_ context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
 		// we plan to use those streams to merge profiles
 		// so we use the main context here otherwise will be canceled
 		return ic.MergeProfilesStacktraces(ctx), nil
@@ -237,7 +233,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
 		g.Go(func() error {
@@ -254,7 +250,9 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err := g.Wait(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	st, err := selectMergeStacktraces(ctx, responses)
+
+	// merge all profiles
+	st, err := selectMergeStacktraces(gCtx, responses)
 	if err != nil {
 		return nil, err
 	}
