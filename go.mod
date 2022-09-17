@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/apache/arrow/go/v8 v8.0.1
-	github.com/bufbuild/connect-go v0.1.0
+	github.com/bufbuild/connect-go v0.4.1-0.20220914044445-cce7065d23ae
 	github.com/bufbuild/connect-grpchealth-go v0.1.0
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/drone/envsubst v1.0.3

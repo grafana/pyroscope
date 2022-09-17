@@ -243,8 +243,8 @@ github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnweb
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
 github.com/boombuler/barcode v1.0.0/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
 github.com/bshuster-repo/logrus-logstash-hook v0.4.1/go.mod h1:zsTqEiSzDgAa/8GZR7E1qaXrhYNDKBYy5/dWPTIflbk=
-github.com/bufbuild/connect-go v0.1.0 h1:LxjZl0psAeiFuy3PIKoZpmixo3P6Dd+pLoy3QYVEAS0=
-github.com/bufbuild/connect-go v0.1.0/go.mod h1:4efZ2eXFENwd4p7tuLaL9m0qtTsCOzuBvrohvRGevDM=
+github.com/bufbuild/connect-go v0.4.1-0.20220914044445-cce7065d23ae h1:mKWP/b4ih0sM9UpzI8adIt/ymqBlKmFoJAyIY9dfoJ0=
+github.com/bufbuild/connect-go v0.4.1-0.20220914044445-cce7065d23ae/go.mod h1:ZEtBnQ7J/m7bvWOW+H8T/+hKQCzPVfhhhICuvtcnjlI=
 github.com/bufbuild/connect-grpchealth-go v0.1.0 h1:r3HMBCXkqocR7z1ET98kteRE5K4B84lP9XMCRQXIGmw=
 github.com/bufbuild/connect-grpchealth-go v0.1.0/go.mod h1:Vm0Mk9/DurVa0pThTknZTXTzzfNio6EDpU64SP4JONc=
 github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=

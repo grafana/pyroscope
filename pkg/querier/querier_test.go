@@ -445,6 +445,9 @@ func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[i
 	return res, err
 }
 
+// func (f *fakeQuerierIngester) MergeProfilesStacktraces(ctx context.Context) *connect.BidiStreamForClient[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse] {
+// }
+
 type testProfile struct {
 	Ts     int64
 	Labels *commonv1.Labels
@@ -505,16 +508,16 @@ func (f *fakeBidiClient) Receive() (*ingestv1.MergeProfilesStacktracesResponse, 
 		SelectedProfiles: profiles,
 	}, nil
 }
-func (f *fakeBidiClient) CloseSend() error    { return nil }
-func (f *fakeBidiClient) CloseReceive() error { return nil }
+func (f *fakeBidiClient) CloseRequest() error  { return nil }
+func (f *fakeBidiClient) CloseResponse() error { return nil }
 
-func (f *fakeQuerierIngester) MergeProfilesStacktraces(ctx context.Context) BidiClientMergeProfilesStacktraces {
+func (f *fakeQuerierIngester) MergeProfilesStacktraces(ctx context.Context) clientpool.BidiClientMergeProfilesStacktraces {
 	var (
 		args = f.Called(ctx)
-		res  BidiClientMergeProfilesStacktraces
+		res  clientpool.BidiClientMergeProfilesStacktraces
 	)
 	if args[0] != nil {
-		res = args[0].(BidiClientMergeProfilesStacktraces)
+		res = args[0].(clientpool.BidiClientMergeProfilesStacktraces)
 	}
 
 	return res

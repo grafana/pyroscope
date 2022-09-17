@@ -9,6 +9,7 @@ import (
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/ingester/clientpool"
 	"github.com/grafana/fire/pkg/testhelper"
 )
 
@@ -56,7 +57,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 			},
 		},
 	})
-	res, err := selectMergeStacktraces(context.Background(), []responseFromIngesters[BidiClientMergeProfilesStacktraces]{
+	res, err := selectMergeStacktraces(context.Background(), []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]{
 		{
 			response: resp1,
 		},
@@ -82,7 +83,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 		{Ts: 5, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
 		{Ts: 6, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}}},
 	})
-	res, err = selectMergeStacktraces(context.Background(), []responseFromIngesters[BidiClientMergeProfilesStacktraces]{
+	res, err = selectMergeStacktraces(context.Background(), []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]{
 		{
 			response: newFakeBidiClient([]*ingestv1.ProfileSets{
 				{

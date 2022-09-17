@@ -202,7 +202,7 @@ func (f *Fire) initServer() (services.Service, error) {
 	prometheus.MustRegister(version.NewCollector("fire"))
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("fire_", f.reg)
-	// todo figure why this is locking the bidi stream
+	// TODO(cyril) figure why this is locking the bidi stream see https://github.com/grafana/fire/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 
 	serv, err := server.New(f.Cfg.Server)
@@ -222,7 +222,8 @@ func (f *Fire) initServer() (services.Service, error) {
 		}
 		return svs
 	}
-	// sounds like logging is the problem.
+
+	// sounds like logging is the problem. see https://github.com/grafana/fire/issues/231
 	defaultHTTPMiddleware := []middleware.Interface{
 		middleware.Tracer{
 			RouteMatcher: f.Server.HTTP,
@@ -240,6 +241,7 @@ func (f *Fire) initServer() (services.Service, error) {
 		// },
 	}
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
+
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
 	// Best effort to propagate the org ID from the start.
 	f.Server.HTTPServer.Handler = func(next http.Handler) http.Handler {
