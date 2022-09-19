@@ -20,7 +20,7 @@ import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
-import ContextMenu from './continuous/contextMenu';
+import ContextMenu from './continuous/contextMenu/ContextMenu';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();

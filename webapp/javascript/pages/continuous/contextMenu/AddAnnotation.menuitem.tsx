@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { MenuItem, ControlledMenu, applyStatics } from '@webapp/ui/Menu';
-import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
+import React, { useState } from 'react';
+import { MenuItem, applyStatics } from '@webapp/ui/Menu';
 import {
   Popover,
   PopoverBody,
@@ -80,29 +79,4 @@ function AddAnnotation(props: AddAnnotationProps) {
 // https://github.com/pyroscope-io/pyroscope/issues/1525
 applyStatics(MenuItem)(AddAnnotation);
 
-function ContextMenu(props: ContextMenuProps) {
-  const { click } = props;
-  const [isOpen, setOpen] = useState(false);
-
-  // https://github.com/szhsin/react-menu/issues/2#issuecomment-719166062
-  useEffect(() => {
-    setOpen(true);
-  }, []);
-
-  return (
-    <>
-      <ControlledMenu
-        isOpen={isOpen}
-        anchorPoint={{ x: click.pageX, y: click.pageY }}
-        onClose={() => setOpen(false)}
-      >
-        <AddAnnotation
-          container={props.containerEl}
-          popoverAnchorPoint={{ x: click.pageX, y: click.pageY }}
-        />
-      </ControlledMenu>
-    </>
-  );
-}
-
-export default ContextMenu;
+export default AddAnnotation;
