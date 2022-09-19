@@ -28,7 +28,7 @@ COPY go.sum ./
 
 RUN cd grafana/fire-datasource && go mod verify && go install github.com/magefile/mage@v1.13.0 && mage -v
 
-FROM aocenas/grafana:explore-experiment@sha256:9896753df5d3a3ae960dbec8370de27b257ef39b14a44f8bd30bbd8daa24870b
+FROM aocenas/grafana:explore-experiment-2
 
 ENV GF_DEFAULT_APP_MODE=development
 
