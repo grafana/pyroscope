@@ -18,7 +18,7 @@
 // THIS SOFTWARE.
 import { css } from '@emotion/css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useWindowSize } from 'react-use';
+import { useMeasure } from 'react-use';
 
 import { DataFrame, DataFrameView } from '@grafana/data';
 import { useStyles2 } from '@grafana/ui';
@@ -65,7 +65,7 @@ const FlameGraph = ({
     return nestedSetToLevels(dataView);
   }, [data]);
 
-  const { width: windowWidth } = useWindowSize();
+  const [sizeRef, { width: wrapperWidth }] = useMeasure<HTMLDivElement>();
   const graphRef = useRef<HTMLCanvasElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipData, setTooltipData] = useState<TooltipData>();
@@ -117,8 +117,8 @@ const FlameGraph = ({
 
   useEffect(() => {
     if (graphRef.current) {
-      const pixelsPerTick =
-        (graphRef.current.clientWidth * window.devicePixelRatio) / totalTicks / (rangeMax - rangeMin);
+      graphRef.current.style.width = wrapperWidth + 'px';
+      const pixelsPerTick = (wrapperWidth * window.devicePixelRatio) / totalTicks / (rangeMax - rangeMin);
       render(pixelsPerTick);
 
       // Clicking allows user to "zoom" into the flamegraph. Zooming means the x axis gets smaller so that the clicked
@@ -169,7 +169,7 @@ const FlameGraph = ({
     rangeMax,
     topLevelIndex,
     totalTicks,
-    windowWidth,
+    wrapperWidth,
     setTopLevelIndex,
     setRangeMin,
     setRangeMax,
@@ -177,10 +177,10 @@ const FlameGraph = ({
   ]);
 
   return (
-    <>
+    <div ref={sizeRef}>
       <canvas className={styles.graph} ref={graphRef} data-testid="flamegraph" />
       <FlameGraphTooltip tooltipRef={tooltipRef} tooltipData={tooltipData!} showTooltip={showTooltip} />
-    </>
+    </div>
   );
 };
 
