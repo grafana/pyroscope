@@ -38,6 +38,7 @@ type Props = {
   setTopLevelIndex: (level: number) => void;
   setRangeMin: (range: number) => void;
   setRangeMax: (range: number) => void;
+  style?: React.CSSProperties;
 };
 
 const FlameGraph = ({

@@ -7,6 +7,13 @@ import { data } from './testData/dataNestedSet';
 import { MutableDataFrame } from '@grafana/data';
 import 'jest-canvas-mock';
 
+jest.mock('react-use', () => ({
+  useMeasure: () => {
+    const ref = React.useRef();
+    return [ref, { width: 1600 }];
+  },
+}));
+
 describe('FlameGraph', () => {
   const FlameGraphWithProps = () => {
     const [topLevelIndex, setTopLevelIndex] = useState(0);
@@ -17,9 +24,9 @@ describe('FlameGraph', () => {
     const flameGraphData = new MutableDataFrame(data);
     flameGraphData.meta = {
       custom: {
-        ProfileTypeID: 'cpu:foo:bar'
-      }
-    }
+        ProfileTypeID: 'cpu:foo:bar',
+      },
+    };
 
     return (
       <FlameGraph
@@ -40,7 +47,6 @@ describe('FlameGraph', () => {
   });
 
   it('should render correctly', async () => {
-    Object.defineProperty(HTMLCanvasElement.prototype, 'clientWidth', { value: 1600 });
     render(<FlameGraphWithProps />);
 
     const canvas = screen.getByTestId('flamegraph') as HTMLCanvasElement;
