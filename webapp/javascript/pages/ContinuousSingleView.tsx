@@ -9,6 +9,7 @@ import {
   selectQueries,
   setDateRange,
   selectAnnotationsOrDefault,
+  addAnnotation,
 } from '@webapp/redux/reducers/continuous';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
@@ -111,6 +112,15 @@ function ContinuousSingleView() {
       <AddAnnotationMenuItem
         container={props.containerEl}
         popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
+        onCreateAnnotation={(content) => {
+          return dispatch(
+            addAnnotation({
+              appName: query,
+              timestamp: props.timestamp,
+              content,
+            })
+          ).unwrap();
+        }}
       />
     </ContextMenu>
   );

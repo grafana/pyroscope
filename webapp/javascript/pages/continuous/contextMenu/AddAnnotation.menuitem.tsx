@@ -9,6 +9,7 @@ import {
 import Button from '@webapp/ui/Button';
 import { UncontrolledInputField } from '@webapp/ui/InputField';
 import { Portal, PortalProps } from '@webapp/ui/Portal';
+import { NewAnnotation } from '@webapp/services/annotations';
 
 interface AddAnnotationProps {
   /** where to put the popover in the DOM */
@@ -19,11 +20,14 @@ interface AddAnnotationProps {
     x: number;
     y: number;
   };
+
+  onCreateAnnotation: (content: NewAnnotation['content']) => Promise<unknown>;
 }
 
 function AddAnnotation(props: AddAnnotationProps) {
-  const { container, popoverAnchorPoint } = props;
+  const { container, popoverAnchorPoint, onCreateAnnotation } = props;
   const [isPopoverOpen, setPopoverOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   return (
     <>
@@ -41,18 +45,23 @@ function AddAnnotation(props: AddAnnotationProps) {
             <form
               id="annotation-form"
               name="annotation-form"
-              onSubmit={async (event) => {
+              onSubmit={(event) => {
                 event.preventDefault();
 
-                console.log('submitted form with value', {
-                  value: event.target.content.value,
-                });
+                setIsSaving(true);
 
-                // TODO
-                // dispatch
-                // wait for event to be handled
-                // close modal
-                setPopoverOpen(false);
+                // TODO(eh-am): validation
+                // Keep popover open if there has been an error
+                // TODO(eh-am): clicking on the notification will close this
+                onCreateAnnotation(event.target.content.value as string)
+                  .then(() => {
+                    // TODO(eh-am): this triggers the following warning
+                    // Warning: Can't perform a React state update on an unmounted component. This is a no-op, but it indicates a memory leak in your application. To fix, cancel all subscriptions and asynchronous tasks in a useEffect cleanup function.
+                    setPopoverOpen(false);
+                  })
+                  .catch(() => {
+                    setIsSaving(false);
+                  });
               }}
             >
               <UncontrolledInputField
