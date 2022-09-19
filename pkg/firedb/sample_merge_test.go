@@ -15,6 +15,7 @@ import (
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/iter"
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 	pprofth "github.com/grafana/fire/pkg/pprof/testhelper"
 	"github.com/grafana/fire/pkg/testhelper"
@@ -292,6 +293,247 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				return len(stacktraces.Stacktraces[i].FunctionIds) < len(stacktraces.Stacktraces[j].FunctionIds)
 			})
 			testhelper.EqualProto(t, tc.expected, stacktraces)
+		})
+	}
+}
+
+func TestMergeSampleByLabels(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		in       func() []*pprofth.ProfileBuilder
+		expected []*commonv1.Series
+		by       []string
+	}{
+		{
+			name: "single profile",
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
+				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktrace("my", "other").AddSamples(3)
+				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+				ps = append(ps, p)
+				return
+			},
+			expected: []*commonv1.Series{
+				{
+					Labels: []*commonv1.LabelPair{},
+					Points: []*commonv1.Point{{T: 15000, V: 7}},
+				},
+			},
+		},
+		{
+			name: "multiple profiles",
+			by:   []string{"foo"},
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+				return
+			},
+			expected: []*commonv1.Series{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}},
+					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 30000, V: 1}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "buzz"}},
+					Points: []*commonv1.Point{{T: 15000, V: 1}},
+				},
+			},
+		},
+		{
+			name: "multiple profile no by",
+			by:   []string{},
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+				return
+			},
+			expected: []*commonv1.Series{
+				{
+					Labels: []*commonv1.LabelPair{},
+					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 15000, V: 1}, {T: 30000, V: 1}},
+				},
+			},
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testPath := t.TempDir()
+			db, err := New(&Config{
+				DataPath:      testPath,
+				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+			}, log.NewNopLogger(), nil)
+			require.NoError(t, err)
+			ctx := context.Background()
+
+			for _, p := range tc.in() {
+				require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+			}
+
+			require.NoError(t, db.Flush(context.Background()))
+
+			b, err := filesystem.NewBucket(filepath.Join(testPath, pathLocal))
+			require.NoError(t, err)
+
+			// open resulting block
+			q := NewBlockQuerier(log.NewNopLogger(), b)
+			require.NoError(t, q.Sync(context.Background()))
+
+			profileIt, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
+				LabelSelector: `{}`,
+				Type: &commonv1.ProfileType{
+					Name:       "process_cpu",
+					SampleType: "cpu",
+					SampleUnit: "nanoseconds",
+					PeriodType: "cpu",
+					PeriodUnit: "nanoseconds",
+				},
+				Start: int64(model.TimeFromUnixNano(0)),
+				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
+			})
+			require.NoError(t, err)
+			profiles, err := iter.Slice(profileIt)
+			require.NoError(t, err)
+
+			q.queriers[0].Sort(profiles)
+			series, err := q.queriers[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
+			require.NoError(t, err)
+
+			testhelper.EqualProto(t, tc.expected, series)
+		})
+	}
+}
+
+func TestHeadMergeSampleByLabels(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		in       func() []*pprofth.ProfileBuilder
+		expected []*commonv1.Series
+		by       []string
+	}{
+		{
+			name: "single profile",
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
+				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktrace("my", "other").AddSamples(3)
+				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+				ps = append(ps, p)
+				return
+			},
+			expected: []*commonv1.Series{
+				{
+					Labels: []*commonv1.LabelPair{},
+					Points: []*commonv1.Point{{T: 15000, V: 7}},
+				},
+			},
+		},
+		{
+			name: "multiple profiles",
+			by:   []string{"foo"},
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+				return
+			},
+			expected: []*commonv1.Series{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}},
+					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 30000, V: 1}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "buzz"}},
+					Points: []*commonv1.Point{{T: 15000, V: 1}},
+				},
+			},
+		},
+		{
+			name: "multiple profile no by",
+			by:   []string{},
+			in: func() (ps []*pprofth.ProfileBuilder) {
+				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+
+				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
+				p.ForStacktrace("my", "other").AddSamples(1)
+				ps = append(ps, p)
+				return
+			},
+			expected: []*commonv1.Series{
+				{
+					Labels: []*commonv1.LabelPair{},
+					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 15000, V: 1}, {T: 30000, V: 1}},
+				},
+			},
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testPath := t.TempDir()
+			db, err := New(&Config{
+				DataPath:      testPath,
+				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+			}, log.NewNopLogger(), nil)
+			require.NoError(t, err)
+			ctx := context.Background()
+
+			for _, p := range tc.in() {
+				require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+			}
+
+			profileIt, err := db.Head().SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
+				LabelSelector: `{}`,
+				Type: &commonv1.ProfileType{
+					Name:       "process_cpu",
+					SampleType: "cpu",
+					SampleUnit: "nanoseconds",
+					PeriodType: "cpu",
+					PeriodUnit: "nanoseconds",
+				},
+				Start: int64(model.TimeFromUnixNano(0)),
+				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
+			})
+			require.NoError(t, err)
+			profiles, err := iter.Slice(profileIt)
+			require.NoError(t, err)
+
+			db.Head().Sort(profiles)
+			series, err := db.Head().MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
+			require.NoError(t, err)
+
+			testhelper.EqualProto(t, tc.expected, series)
 		})
 	}
 }

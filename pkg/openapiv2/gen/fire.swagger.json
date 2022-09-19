@@ -301,6 +301,22 @@
         }
       }
     },
+    "v1MergeProfilesLabelsResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1ProfileSets",
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Series"
+          },
+          "title": "The list of series for the profile with their respective value"
+        }
+      }
+    },
     "v1MergeProfilesStacktracesResponse": {
       "type": "object",
       "properties": {

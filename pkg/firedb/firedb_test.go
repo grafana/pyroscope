@@ -185,7 +185,10 @@ func TestFilterProfiles(t *testing.T) {
 		keep: [][]bool{{}, {true}, {true}},
 		t:    t,
 	}
-	filtered, err := filterProfiles(ctx, in, 5, bidi)
+	filtered, err := filterProfiles[
+		BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest],
+		*ingestv1.MergeProfilesStacktracesResponse,
+		*ingestv1.MergeProfilesStacktracesRequest](ctx, in, 5, bidi)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(filtered))
 	require.Equal(t, 3, len(bidi.profilesSent))

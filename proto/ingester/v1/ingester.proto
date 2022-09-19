@@ -18,6 +18,7 @@ service IngesterService {
   rpc SelectProfiles(SelectProfilesRequest) returns (SelectProfilesResponse) {}
 
   rpc MergeProfilesStacktraces(stream MergeProfilesStacktracesRequest) returns (stream MergeProfilesStacktracesResponse) {}
+  rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
 }
 
 message LabelValuesRequest {
@@ -115,4 +116,25 @@ message Profile {
 message StacktraceSample {
   repeated int32 function_ids = 1;
   int64 value = 2;
+}
+
+message MergeProfilesLabelsRequest {
+  // The client starts the stream with a request containing the profile type and the labels.
+  SelectProfilesRequest request = 1;
+
+  // The labels to merge by
+  repeated string by = 2;
+
+  // On a batch of profiles, the client sends the profiles to keep for merging.
+  repeated bool profiles = 3;
+}
+
+
+
+message MergeProfilesLabelsResponse {
+  // The server replies batch of profiles.
+  // A last message without profiles signals the next message will be the result of the merge.
+  ProfileSets selectedProfiles = 1;
+  // The list of series for the profile with their respective value
+  repeated common.v1.Series series = 2;
 }

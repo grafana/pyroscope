@@ -82,6 +82,14 @@ func (p Profile) Timestamp() model.Time {
 	return model.TimeFromUnixNano(p.TimeNanos)
 }
 
+func (p Profile) Total() int64 {
+	var total int64
+	for _, sample := range p.Samples {
+		total += sample.Value
+	}
+	return total
+}
+
 type ProfilePersister struct{}
 
 func (*ProfilePersister) Name() string {
