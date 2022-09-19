@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.42.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.3...@pyroscope/webapp@1.42.4) (2022-09-19)
+
+
+### Bug Fixes
+
+* **webapp:** format annotation using timezone ([#1522](https://github.com/pyroscope-io/pyroscope/issues/1522)) ([bc68da3](https://github.com/pyroscope-io/pyroscope/commit/bc68da3757154656fe8a799a8170928686305f68))
+
+
+
+
+
 ## [1.42.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.2...@pyroscope/webapp@1.42.3) (2022-09-16)
 
 **Note:** Version bump only for package @pyroscope/webapp
