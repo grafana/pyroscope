@@ -75,7 +75,7 @@ const FlameGraph = ({
   // the canvas.
   const convertPixelCoordinatesToBarCoordinates = useCallback(
     (x: number, y: number, pixelsPerTick: number) => {
-      const levelIndex = Math.floor(y / PIXELS_PER_LEVEL);
+      const levelIndex = Math.floor(y / (PIXELS_PER_LEVEL / window.devicePixelRatio));
       const barIndex = getBarIndex(x, levels[levelIndex], pixelsPerTick, totalTicks, rangeMin);
       return { levelIndex, barIndex };
     },
@@ -90,10 +90,15 @@ const FlameGraph = ({
       const ctx = graphRef.current?.getContext('2d')!;
       const graph = graphRef.current!;
 
-      graph.height = PIXELS_PER_LEVEL * levels.length;
-      graph.width = graph.clientWidth;
+      const width = graph.clientWidth;
+      const height = PIXELS_PER_LEVEL * levels.length;
+      graph.width = Math.round(width * window.devicePixelRatio);
+      graph.height = Math.round(height * window.devicePixelRatio);
+      graph.style.width = `${width}px`;
+      graph.style.height = `${height}px`;
+
       ctx.textBaseline = 'middle';
-      ctx.font = '13.5px Roboto Mono, monospace';
+      ctx.font = '15px monospace';
       ctx.strokeStyle = 'white';
 
       for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
@@ -112,13 +117,15 @@ const FlameGraph = ({
 
   useEffect(() => {
     if (graphRef.current) {
-      const pixelsPerTick = graphRef.current.clientWidth / totalTicks / (rangeMax - rangeMin);
+      const pixelsPerTick =
+        (graphRef.current.clientWidth * window.devicePixelRatio) / totalTicks / (rangeMax - rangeMin);
       render(pixelsPerTick);
 
       // Clicking allows user to "zoom" into the flamegraph. Zooming means the x axis gets smaller so that the clicked
       // bar takes 100% of the x axis.
       graphRef.current.onclick = (e) => {
-        const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
+        const pixelsPerTick =
+          (graphRef.current!.clientWidth * window.devicePixelRatio) / totalTicks / (rangeMax - rangeMin);
         const { levelIndex, barIndex } = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
         if (barIndex === -1) {
           return;
@@ -135,12 +142,12 @@ const FlameGraph = ({
           setShowTooltip(false);
           const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
           const { levelIndex, barIndex } = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
-          const bar = levels[levelIndex][barIndex]
+          const bar = levels[levelIndex][barIndex];
 
           if (!isNaN(levelIndex) && !isNaN(barIndex)) {
             if (barIndex !== -1) {
               tooltipRef.current.style.left = e.clientX + 10 + 'px';
-              tooltipRef.current.style.top = e.clientY + 40 + 'px';
+              tooltipRef.current.style.top = e.clientY + 'px';
 
               const tooltipData = getTooltipData(profileTypeId, bar.label, bar.value, totalTicks);
               setTooltipData(tooltipData);
