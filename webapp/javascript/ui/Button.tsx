@@ -26,6 +26,7 @@ export interface ButtonProps {
   className?: string;
 
   id?: string;
+  form?: React.ButtonHTMLAttributes<HTMLButtonElement>['form'];
 }
 
 export default function Button({
@@ -38,6 +39,7 @@ export default function Button({
   onClick,
   id,
   className,
+  form,
   ...props
 }: ButtonProps) {
   return (
@@ -47,6 +49,7 @@ export default function Button({
       data-testid={props['data-testid']}
       disabled={disabled}
       onClick={onClick}
+      form={form}
       aria-label={props['aria-label']}
       className={`${styles.button} ${
         grouped ? styles.grouped : ''

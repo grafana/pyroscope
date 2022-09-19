@@ -3,38 +3,41 @@ import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
 import styles from './Popover.module.scss';
 
-export interface ModalWithToggleProps {
+export interface PopoverProps {
   isModalOpen: boolean;
   setModalOpenStatus: Dispatch<SetStateAction<boolean>>;
-  customHandleOutsideClick?: (e: MouseEvent) => void;
   children: ReactNode;
-  modalClassName?: string;
-  modalHeight?: string;
+  className?: string;
 
-  // TODO(eh-am): type
-  anchor?: React.MutableRefObject<HTMLElement>;
+  /** where to position the popover on the page */
+  anchorPoint: {
+    x: number;
+    y: number;
+  };
 }
 
 export function Popover({
   isModalOpen,
   setModalOpenStatus,
-  modalClassName,
+  className,
   children,
-  anchor,
-}: ModalWithToggleProps) {
-  const anchorRect = anchor?.current?.getBoundingClientRect();
-  //  console.log(anchor);
-  //  console.log(anchor?.current);
-  //  console.log(anchor?.current?.getBoundingClientRect());
+  anchorPoint,
+}: PopoverProps) {
+  // TODO(eh-am): handle out of bounds positioning
+  const popoverPosition = {
+    left: `${anchorPoint.x}px`,
+    top: `${anchorPoint.y}px`,
+    position: 'absolute' as const,
+  };
 
   return (
-    <div className={styles.container}>
-      {isModalOpen && (
-        <div className={classnames(styles.modal, modalClassName)}>
-          {children}
-        </div>
-      )}
-    </div>
+    <OutsideClickHandler onOutsideClick={() => setModalOpenStatus(false)}>
+      <div className={styles.container} style={popoverPosition}>
+        {isModalOpen && (
+          <div className={classnames(styles.modal, className)}>{children}</div>
+        )}
+      </div>
+    </OutsideClickHandler>
   );
 }
 

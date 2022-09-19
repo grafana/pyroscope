@@ -38,4 +38,30 @@ function InputField({
   );
 }
 
+// TODO: unify with InputField
+interface UncontrolledInputFieldProps
+  extends InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  className?: string;
+  name: string;
+  placeholder?: string;
+  type: 'text' | 'password' | 'email' | 'number';
+}
+
+function UncontrolledInputField({
+  label,
+  className,
+  name,
+  placeholder,
+  type,
+}: UncontrolledInputFieldProps) {
+  return (
+    <div className={`${className || ''} ${styles.inputWrapper}`}>
+      <h4>{label}</h4>
+      <input type={type} placeholder={placeholder} name={name} />
+    </div>
+  );
+}
+
+export { UncontrolledInputField };
 export default InputField;
