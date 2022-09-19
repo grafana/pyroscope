@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MenuItem, ControlledMenu } from '@szhsin/react-menu';
+import { MenuItem, ControlledMenu, applyStatics } from '@webapp/ui/Menu';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
 import {
   Popover,
@@ -9,8 +9,7 @@ import {
 } from '@webapp/ui/Popover';
 import Button from '@webapp/ui/Button';
 import { UncontrolledInputField } from '@webapp/ui/InputField';
-import { applyStatics } from '@szhsin/react-menu';
-import Portal, { PortalProps } from '@mui/base/Portal';
+import { Portal, PortalProps } from '@webapp/ui/Portal';
 
 interface AddAnnotationProps {
   /** where to put the popover in the DOM */
