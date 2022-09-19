@@ -597,6 +597,61 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 	}, nil
 }
 
+func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Head")
+	defer sp.Finish()
+
+	labelsByFingerprint := map[model.Fingerprint]string{}
+	seriesByLabels := map[string]*commonv1.Series{}
+	labelBuf := make([]byte, 0, 1024)
+	defer rows.Close()
+
+	for rows.Next() {
+		p, ok := rows.At().(ProfileWithLabels)
+		if !ok {
+			return nil, errors.New("expected ProfileWithLabels")
+		}
+		labelsByString, ok := labelsByFingerprint[p.fp]
+		if !ok {
+			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
+			labelsByString = string(labelBuf)
+			labelsByFingerprint[p.fp] = labelsByString
+			if _, ok := seriesByLabels[labelsByString]; !ok {
+				seriesByLabels[labelsByString] = &commonv1.Series{
+					Labels: p.Labels().WithLabels(by...),
+					Points: []*commonv1.Point{
+						{
+							T: int64(p.Timestamp()),
+							V: float64(p.Total()),
+						},
+					},
+				}
+				continue
+			}
+		}
+		series := seriesByLabels[labelsByString]
+		series.Points = append(series.Points, &commonv1.Point{
+			T: int64(p.Timestamp()),
+			V: float64(p.Total()),
+		})
+
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	result := lo.Values(seriesByLabels)
+	sort.Slice(result, func(i, j int) bool {
+		return firemodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+	})
+	// we have to sort the points in each series because labels reduction may have changed the order
+	for _, s := range result {
+		sort.Slice(s.Points, func(i, j int) bool {
+			return s.Points[i].T < s.Points[j].T
+		})
+	}
+	return result, nil
+}
+
 func (h *Head) Sort(in []Profile) []Profile {
 	return in
 }

@@ -38,6 +38,7 @@ type IngesterServiceClient interface {
 	// but this requires to ensure we have correct timestamp and labels ordering.
 	SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error)
 	MergeProfilesStacktraces(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
+	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -90,6 +91,11 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 			baseURL+"/ingester.v1.IngesterService/MergeProfilesStacktraces",
 			opts...,
 		),
+		mergeProfilesLabels: connect_go.NewClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse](
+			httpClient,
+			baseURL+"/ingester.v1.IngesterService/MergeProfilesLabels",
+			opts...,
+		),
 	}
 }
 
@@ -103,6 +109,7 @@ type ingesterServiceClient struct {
 	flush                    *connect_go.Client[v11.FlushRequest, v11.FlushResponse]
 	selectProfiles           *connect_go.Client[v11.SelectProfilesRequest, v11.SelectProfilesResponse]
 	mergeProfilesStacktraces *connect_go.Client[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
+	mergeProfilesLabels      *connect_go.Client[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
@@ -145,6 +152,11 @@ func (c *ingesterServiceClient) MergeProfilesStacktraces(ctx context.Context) *c
 	return c.mergeProfilesStacktraces.CallBidiStream(ctx)
 }
 
+// MergeProfilesLabels calls ingester.v1.IngesterService.MergeProfilesLabels.
+func (c *ingesterServiceClient) MergeProfilesLabels(ctx context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse] {
+	return c.mergeProfilesLabels.CallBidiStream(ctx)
+}
+
 // IngesterServiceHandler is an implementation of the ingester.v1.IngesterService service.
 type IngesterServiceHandler interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
@@ -157,6 +169,7 @@ type IngesterServiceHandler interface {
 	// but this requires to ensure we have correct timestamp and labels ordering.
 	SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error)
 	MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error
+	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -206,6 +219,11 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 		svc.MergeProfilesStacktraces,
 		opts...,
 	))
+	mux.Handle("/ingester.v1.IngesterService/MergeProfilesLabels", connect_go.NewBidiStreamHandler(
+		"/ingester.v1.IngesterService/MergeProfilesLabels",
+		svc.MergeProfilesLabels,
+		opts...,
+	))
 	return "/ingester.v1.IngesterService/", mux
 }
 
@@ -242,4 +260,8 @@ func (UnimplementedIngesterServiceHandler) SelectProfiles(context.Context, *conn
 
 func (UnimplementedIngesterServiceHandler) MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesStacktraces is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) MergeProfilesLabels(context.Context, *connect_go.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error {
+	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesLabels is not implemented"))
 }

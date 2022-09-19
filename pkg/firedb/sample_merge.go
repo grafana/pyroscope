@@ -6,12 +6,15 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
 	query "github.com/grafana/fire/pkg/firedb/query"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/iter"
+	firemodel "github.com/grafana/fire/pkg/model"
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
@@ -163,4 +166,65 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 		Stacktraces:   lo.Values(stacktraceAggrByID),
 		FunctionNames: names,
 	}, nil
+}
+
+func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
+	defer sp.Finish()
+	it := query.NewJoinIterator(
+		0,
+		[]query.Iterator{
+			query.NewRowNumberIterator(rows),
+			b.profiles.columnIter(ctx, "Samples.list.element.Value", nil, "Value"),
+		}, nil,
+	)
+	defer it.Close()
+
+	labelsByFingerprint := map[model.Fingerprint]string{}
+	seriesByLabels := map[string]*commonv1.Series{}
+	labelBuf := make([]byte, 0, 1024)
+
+	for it.Next() {
+		values := it.At()
+		p := values.Entries[0].RowValue.(Profile)
+		var total int64
+		for _, e := range values.Entries[1:] {
+			total += e.V.Int64()
+		}
+		labelsByString, ok := labelsByFingerprint[p.Fingerprint()]
+		if !ok {
+			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
+			labelsByString = string(labelBuf)
+			labelsByFingerprint[p.Fingerprint()] = labelsByString
+			if _, ok := seriesByLabels[labelsByString]; !ok {
+				seriesByLabels[labelsByString] = &commonv1.Series{
+					Labels: p.Labels().WithLabels(by...),
+					Points: []*commonv1.Point{
+						{
+							T: int64(p.Timestamp()),
+							V: float64(total),
+						},
+					},
+				}
+				continue
+			}
+		}
+		series := seriesByLabels[labelsByString]
+		series.Points = append(series.Points, &commonv1.Point{
+			T: int64(p.Timestamp()),
+			V: float64(total),
+		})
+	}
+
+	result := lo.Values(seriesByLabels)
+	sort.Slice(result, func(i, j int) bool {
+		return firemodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+	})
+	// we have to sort the points in each series because labels reduction may have changed the order
+	for _, s := range result {
+		sort.Slice(s.Points, func(i, j int) bool {
+			return s.Points[i].T < s.Points[j].T
+		})
+	}
+	return result, nil
 }

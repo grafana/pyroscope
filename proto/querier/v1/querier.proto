@@ -73,15 +73,5 @@ message SelectSeriesRequest {
 }
 
 message SelectSeriesResponse {
-  repeated Series series = 1;
-}
-
-message Series {
-  repeated common.v1.LabelPair labels = 1;
-  repeated Point points = 2;
-}
-
-message Point {
-  double v = 1;
-  int64 t = 2;
+  repeated common.v1.Series series = 1;
 }

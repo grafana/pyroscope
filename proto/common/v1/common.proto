@@ -22,3 +22,13 @@ message Labels {
   // LabelPair is the key value pairs to identify the corresponding profile
   repeated LabelPair labels = 1;
 }
+
+message Series {
+  repeated LabelPair labels = 1;
+  repeated Point points = 2;
+}
+
+message Point {
+  double v = 1;
+  int64 t = 2;
+}

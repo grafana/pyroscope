@@ -39,6 +39,10 @@ func (i *Ingester) MergeProfilesStacktraces(ctx context.Context, stream *connect
 	return i.fireDB.MergeProfilesStacktraces(ctx, stream)
 }
 
+func (i *Ingester) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
+	return i.fireDB.MergeProfilesLabels(ctx, stream)
+}
+
 func binaryFieldFromRecord(ar arrow.Record, name string) (*array.Binary, error) {
 	indices := ar.Schema().FieldIndices(name)
 	if len(indices) != 1 {

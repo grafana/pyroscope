@@ -124,7 +124,7 @@ type IteratorResult struct {
 	RowNumber RowNumber
 	Entries   []struct {
 		k        string
-		v        parquet.Value
+		V        parquet.Value
 		RowValue interface{}
 	}
 }
@@ -140,7 +140,7 @@ func (r *IteratorResult) Append(rr *IteratorResult) {
 func (r *IteratorResult) AppendValue(k string, v parquet.Value) {
 	r.Entries = append(r.Entries, struct {
 		k        string
-		v        parquet.Value
+		V        parquet.Value
 		RowValue interface{}
 	}{k, v, nil})
 }
@@ -151,7 +151,7 @@ func (r *IteratorResult) AppendValue(k string, v parquet.Value) {
 func (r *IteratorResult) ToMap() map[string][]parquet.Value {
 	m := map[string][]parquet.Value{}
 	for _, e := range r.Entries {
-		m[e.k] = append(m[e.k], e.v)
+		m[e.k] = append(m[e.k], e.V)
 	}
 	return m
 }
@@ -170,7 +170,7 @@ func (r *IteratorResult) Columns(buffer [][]parquet.Value, names ...string) [][]
 	for _, e := range r.Entries {
 		for i := range names {
 			if e.k == names[i] {
-				buffer[i] = append(buffer[i], e.v)
+				buffer[i] = append(buffer[i], e.V)
 				break
 			}
 		}
@@ -216,7 +216,7 @@ var columnIteratorResultPool = sync.Pool{
 	New: func() interface{} {
 		return &IteratorResult{Entries: make([]struct {
 			k        string
-			v        parquet.Value
+			V        parquet.Value
 			RowValue interface{}
 		}, 0, 10)} // For luck
 	},
@@ -906,7 +906,7 @@ func (r *RowNumberIterator[T]) Next() bool {
 	r.current.RowNumber = RowNumber{rowGetter.RowNumber(), -1, -1, -1, -1, -1}
 	r.current.Entries = append(r.current.Entries, struct {
 		k        string
-		v        parquet.Value
+		V        parquet.Value
 		RowValue interface{}
 	}{
 		RowValue: r.Iterator.At(),
