@@ -20,6 +20,7 @@ import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
+import ContextMenu from './continuous/contextMenu';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -121,6 +122,7 @@ function ContinuousSingleView() {
             }
             annotations={annotations}
             selectionType="single"
+            ContextMenu={ContextMenu}
           />
         </Box>
         <Box>{flamegraphRenderer}</Box>

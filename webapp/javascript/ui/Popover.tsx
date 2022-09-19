@@ -23,9 +23,9 @@ export function Popover({
   anchor,
 }: ModalWithToggleProps) {
   const anchorRect = anchor?.current?.getBoundingClientRect();
-  console.log(anchor);
-  console.log(anchor?.current);
-  console.log(anchor?.current?.getBoundingClientRect());
+  //  console.log(anchor);
+  //  console.log(anchor?.current);
+  //  console.log(anchor?.current?.getBoundingClientRect());
 
   return (
     <div className={styles.container}>

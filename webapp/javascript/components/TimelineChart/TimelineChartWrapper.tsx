@@ -86,7 +86,13 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** list of annotations timestamp, to be rendered as markings */
   annotations?: { timestamp: number; content: string }[];
-  ContextMenu?: React.ReactNode;
+
+  /** What element to render when clicking */
+  ContextMenu?: (props: {
+    x: number;
+    y: number;
+    timestamp: number;
+  }) => React.ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
