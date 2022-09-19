@@ -18,9 +18,11 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
+import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
+import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -104,6 +106,15 @@ function ContinuousSingleView() {
     }
   };
 
+  const contextMenu = (props: ContextMenuProps) => (
+    <ContextMenu position={props.click}>
+      <AddAnnotationMenuItem
+        container={props.containerEl}
+        popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
+      />
+    </ContextMenu>
+  );
+
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
@@ -122,7 +133,7 @@ function ContinuousSingleView() {
             }
             annotations={annotations}
             selectionType="single"
-            ContextMenu={ContextMenu}
+            ContextMenu={contextMenu}
           />
         </Box>
         <Box>{flamegraphRenderer}</Box>

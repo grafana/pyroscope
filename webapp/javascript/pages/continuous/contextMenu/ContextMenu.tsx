@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { ControlledMenu } from '@webapp/ui/Menu';
-import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
-import AddAnnotationMenuItem from './AddAnnotation.menuitem';
+import { ContextMenuProps as PluginContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
+
+interface ContextMenuProps {
+  /** position */
+  position: PluginContextMenuProps['click'];
+
+  /** must be not empty */
+  children: React.ReactNode;
+}
 
 function ContextMenu(props: ContextMenuProps) {
-  const { click } = props;
+  const { position, children } = props;
   const [isOpen, setOpen] = useState(false);
 
   // https://github.com/szhsin/react-menu/issues/2#issuecomment-719166062
@@ -16,13 +23,10 @@ function ContextMenu(props: ContextMenuProps) {
     <>
       <ControlledMenu
         isOpen={isOpen}
-        anchorPoint={{ x: click.pageX, y: click.pageY }}
+        anchorPoint={{ x: position.pageX, y: position.pageY }}
         onClose={() => setOpen(false)}
       >
-        <AddAnnotationMenuItem
-          container={props.containerEl}
-          popoverAnchorPoint={{ x: click.pageX, y: click.pageY }}
-        />
+        {children}
       </ControlledMenu>
     </>
   );
