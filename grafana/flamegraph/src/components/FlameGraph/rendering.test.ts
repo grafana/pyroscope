@@ -8,9 +8,9 @@ describe('getRectDimensionsForLevel', () => {
     expect(result).toEqual([
       {
         width: 999,
-        height: 18,
+        height: 22,
         x: 0,
-        y: 18,
+        y: 22,
         collapsed: false,
         ticks: 100,
         label: '1',
@@ -26,9 +26,9 @@ describe('getRectDimensionsForLevel', () => {
     ];
     const result = getRectDimensionsForLevel(level, 2, 100, 0, 10);
     expect(result).toEqual([
-      { width: 999, height: 18, x: 0, y: 36, collapsed: false, ticks: 100, label: '1' },
-      { width: 499, height: 18, x: 1000, y: 36, collapsed: false, ticks: 50, label: '2' },
-      { width: 499, height: 18, x: 1500, y: 36, collapsed: false, ticks: 50, label: '3' },
+      { width: 999, height: 22, x: 0, y: 44, collapsed: false, ticks: 100, label: '1' },
+      { width: 499, height: 22, x: 1000, y: 44, collapsed: false, ticks: 50, label: '2' },
+      { width: 499, height: 22, x: 1500, y: 44, collapsed: false, ticks: 50, label: '3' },
     ]);
   });
 
@@ -40,8 +40,8 @@ describe('getRectDimensionsForLevel', () => {
     ];
     const result = getRectDimensionsForLevel(level, 2, 100, 0, 1);
     expect(result).toEqual([
-      { width: 99, height: 18, x: 0, y: 36, collapsed: false, ticks: 100, label: '1' },
-      { width: 3, height: 18, x: 100, y: 36, collapsed: true, ticks: 3, label: '2' },
+      { width: 99, height: 22, x: 0, y: 44, collapsed: false, ticks: 100, label: '1' },
+      { width: 3, height: 22, x: 100, y: 44, collapsed: true, ticks: 3, label: '2' },
     ]);
   });
 });
