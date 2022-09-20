@@ -40,9 +40,6 @@ type IngesterServiceClient interface {
 	ProfileTypes(ctx context.Context, in *ProfileTypesRequest, opts ...grpc.CallOption) (*ProfileTypesResponse, error)
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
 	Flush(ctx context.Context, in *FlushRequest, opts ...grpc.CallOption) (*FlushResponse, error)
-	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
-	// but this requires to ensure we have correct timestamp and labels ordering.
-	SelectProfiles(ctx context.Context, in *SelectProfilesRequest, opts ...grpc.CallOption) (*SelectProfilesResponse, error)
 	MergeProfilesStacktraces(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeProfilesStacktracesClient, error)
 	MergeProfilesLabels(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeProfilesLabelsClient, error)
 }
@@ -103,15 +100,6 @@ func (c *ingesterServiceClient) Series(ctx context.Context, in *SeriesRequest, o
 func (c *ingesterServiceClient) Flush(ctx context.Context, in *FlushRequest, opts ...grpc.CallOption) (*FlushResponse, error) {
 	out := new(FlushResponse)
 	err := c.cc.Invoke(ctx, "/ingester.v1.IngesterService/Flush", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ingesterServiceClient) SelectProfiles(ctx context.Context, in *SelectProfilesRequest, opts ...grpc.CallOption) (*SelectProfilesResponse, error) {
-	out := new(SelectProfilesResponse)
-	err := c.cc.Invoke(ctx, "/ingester.v1.IngesterService/SelectProfiles", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -190,9 +178,6 @@ type IngesterServiceServer interface {
 	ProfileTypes(context.Context, *ProfileTypesRequest) (*ProfileTypesResponse, error)
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
 	Flush(context.Context, *FlushRequest) (*FlushResponse, error)
-	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
-	// but this requires to ensure we have correct timestamp and labels ordering.
-	SelectProfiles(context.Context, *SelectProfilesRequest) (*SelectProfilesResponse, error)
 	MergeProfilesStacktraces(IngesterService_MergeProfilesStacktracesServer) error
 	MergeProfilesLabels(IngesterService_MergeProfilesLabelsServer) error
 	mustEmbedUnimplementedIngesterServiceServer()
@@ -219,9 +204,6 @@ func (UnimplementedIngesterServiceServer) Series(context.Context, *SeriesRequest
 }
 func (UnimplementedIngesterServiceServer) Flush(context.Context, *FlushRequest) (*FlushResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Flush not implemented")
-}
-func (UnimplementedIngesterServiceServer) SelectProfiles(context.Context, *SelectProfilesRequest) (*SelectProfilesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SelectProfiles not implemented")
 }
 func (UnimplementedIngesterServiceServer) MergeProfilesStacktraces(IngesterService_MergeProfilesStacktracesServer) error {
 	return status.Errorf(codes.Unimplemented, "method MergeProfilesStacktraces not implemented")
@@ -350,24 +332,6 @@ func _IngesterService_Flush_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IngesterService_SelectProfiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SelectProfilesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(IngesterServiceServer).SelectProfiles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/ingester.v1.IngesterService/SelectProfiles",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IngesterServiceServer).SelectProfiles(ctx, req.(*SelectProfilesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _IngesterService_MergeProfilesStacktraces_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(IngesterServiceServer).MergeProfilesStacktraces(&ingesterServiceMergeProfilesStacktracesServer{stream})
 }
@@ -450,10 +414,6 @@ var IngesterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Flush",
 			Handler:    _IngesterService_Flush_Handler,
-		},
-		{
-			MethodName: "SelectProfiles",
-			Handler:    _IngesterService_SelectProfiles_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -953,60 +913,6 @@ func (m *SelectProfilesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error)
 		i = encodeVarint(dAtA, i, uint64(len(m.LabelSelector)))
 		i--
 		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *SelectProfilesResponse) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *SelectProfilesResponse) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *SelectProfilesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.FunctionNames) > 0 {
-		for iNdEx := len(m.FunctionNames) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.FunctionNames[iNdEx])
-			copy(dAtA[i:], m.FunctionNames[iNdEx])
-			i = encodeVarint(dAtA, i, uint64(len(m.FunctionNames[iNdEx])))
-			i--
-			dAtA[i] = 0x12
-		}
-	}
-	if len(m.Profiles) > 0 {
-		for iNdEx := len(m.Profiles) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Profiles[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0xa
-		}
 	}
 	return len(dAtA) - i, nil
 }
@@ -1782,30 +1688,6 @@ func (m *SelectProfilesRequest) SizeVT() (n int) {
 	}
 	if m.End != 0 {
 		n += 1 + sov(uint64(m.End))
-	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
-	return n
-}
-
-func (m *SelectProfilesResponse) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if len(m.Profiles) > 0 {
-		for _, e := range m.Profiles {
-			l = e.SizeVT()
-			n += 1 + l + sov(uint64(l))
-		}
-	}
-	if len(m.FunctionNames) > 0 {
-		for _, s := range m.FunctionNames {
-			l = len(s)
-			n += 1 + l + sov(uint64(l))
-		}
 	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
@@ -2917,123 +2799,6 @@ func (m *SelectProfilesRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *SelectProfilesResponse) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: SelectProfilesResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SelectProfilesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Profiles", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Profiles = append(m.Profiles, &Profile{})
-			if err := m.Profiles[len(m.Profiles)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FunctionNames", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.FunctionNames = append(m.FunctionNames, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

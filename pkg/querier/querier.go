@@ -25,6 +25,7 @@ import (
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -324,15 +325,28 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	result := rangeSeries(it, start, req.Msg.End, stepMs)
+	if it.Err() != nil {
+		return nil, connect.NewError(connect.CodeInternal, it.Err())
+	}
+
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: result,
+	}), nil
+}
+
+// rangeSeries aggregates series into buckets of the given steps.
+// All profiles from the same buckets are summed together into a single point.
+func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*commonv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*commonv1.Series)
 
 	if !it.Next() {
-		return connect.NewResponse(&querierv1.SelectSeriesResponse{}), it.Err()
+		return nil
 	}
 	// advance from the start to the end, adding each step results to the map.
 Outer:
-	for start, currentStep := start, start+stepMs; currentStep <= req.Msg.End; start, currentStep = start+stepMs, currentStep+stepMs {
+	for start, currentStep := start, start+step; currentStep <= end; start, currentStep = start+step, currentStep+step {
 		for {
 			if it.At().ts > currentStep {
 				break // no more profiles for the currentStep
@@ -372,9 +386,7 @@ Outer:
 	sort.Slice(series, func(i, j int) bool {
 		return firemodel.CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
 	})
-	return connect.NewResponse(&querierv1.SelectSeriesResponse{
-		Series: series,
-	}), nil
+	return series
 }
 
 func uniqueSortedStrings(responses []responseFromIngesters[[]string]) []string {

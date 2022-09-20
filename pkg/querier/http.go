@@ -1,7 +1,6 @@
 package querier
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -15,12 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
@@ -94,101 +91,6 @@ func (q *Querier) RenderHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ExportToFlamebearer(res.Msg.Flamegraph, profileType)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-type queryData struct {
-	ResultType parser.ValueType `json:"resultType"`
-	Result     parser.Value     `json:"result"`
-}
-
-type prometheusResponse struct {
-	Status string    `json:"status"`
-	Data   queryData `json:"data"`
-}
-
-func (q *Querier) PrometheusQueryRangeHandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	start, err := parseTime(r.FormValue("start"))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid start: %s", err.Error()), http.StatusBadRequest)
-		return
-	}
-	end, err := parseTime(r.FormValue("end"))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid end: %s", err.Error()), http.StatusBadRequest)
-		return
-	}
-	if end.Before(start) {
-		http.Error(w, "end timestamp must not be before start time", http.StatusBadRequest)
-		return
-	}
-	selector, ptype, err := parseQuery(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	selectReq := connect.NewRequest(&ingestv1.SelectProfilesRequest{
-		Start:         int64(model.TimeFromUnixNano(start.UnixNano())),
-		End:           int64(model.TimeFromUnixNano(end.UnixNano())),
-		LabelSelector: selector,
-		Type:          ptype,
-	})
-
-	responses, err := forAllIngesters(r.Context(), q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
-		res, err := ic.SelectProfiles(childCtx, selectReq)
-		if err != nil {
-			return nil, err
-		}
-		return res.Msg, nil
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	profiles := dedupeProfiles(responses)
-	series := map[uint64]*promql.Series{}
-	for _, profile := range profiles {
-		lbs := firemodel.Labels(profile.profile.Labels).WithoutPrivateLabels()
-
-		point := promql.Point{
-			T: profile.profile.Timestamp,
-		}
-		for _, s := range profile.profile.Stacktraces {
-			point.V += float64(s.Value)
-		}
-		s, ok := series[lbs.Hash()]
-		if !ok {
-			series[lbs.Hash()] = &promql.Series{
-				Metric: lbs.ToPrometheusLabels(),
-				Points: []promql.Point{point},
-			}
-			continue
-		}
-		s.Points = append(s.Points, point)
-	}
-
-	matrix := make(promql.Matrix, 0, len(series))
-
-	for _, s := range series {
-		matrix = append(matrix, *s)
-	}
-
-	result := prometheusResponse{
-		Status: "success",
-		Data: queryData{
-			ResultType: parser.ValueTypeMatrix,
-			Result:     matrix,
-		},
-	}
-
-	if err := json.NewEncoder(w).Encode(result); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

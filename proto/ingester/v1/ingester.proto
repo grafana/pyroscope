@@ -12,11 +12,6 @@ service IngesterService {
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc Flush(FlushRequest) returns (FlushResponse) {}
-
-  // Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
-  // but this requires to ensure we have correct timestamp and labels ordering.
-  rpc SelectProfiles(SelectProfilesRequest) returns (SelectProfilesResponse) {}
-
   rpc MergeProfilesStacktraces(stream MergeProfilesStacktracesRequest) returns (stream MergeProfilesStacktracesResponse) {}
   rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
 }
@@ -59,12 +54,6 @@ message SelectProfilesRequest {
   int64 start = 3;
   int64 end = 4;
 }
-
-message SelectProfilesResponse {
-  repeated Profile profiles = 1;
-  repeated string function_names = 2;
-}
-
 message MergeProfilesStacktracesRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
