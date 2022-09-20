@@ -126,7 +126,7 @@ const FlameGraph = ({
       // bar takes 100% of the x axis.
       graphRef.current.onclick = (e) => {
         const pixelsPerTick =
-          (graphRef.current!.clientWidth * window.devicePixelRatio) / totalTicks / (rangeMax - rangeMin);
+          (graphRef.current!.clientWidth) / totalTicks / (rangeMax - rangeMin);
         const { levelIndex, barIndex } = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
         if (barIndex === -1) {
           return;
@@ -218,7 +218,7 @@ const getBarIndex = (
       );
 
       if (startOfBar <= x && startOfNextBar >= x) {
-        return startOfNextBar - startOfBar > COLLAPSE_THRESHOLD ? midIndex : -1;
+        return midIndex;
       }
 
       if (startOfBar > x) {
