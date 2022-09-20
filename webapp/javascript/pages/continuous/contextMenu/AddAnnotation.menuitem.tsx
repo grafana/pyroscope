@@ -45,7 +45,6 @@ function AddAnnotation(props: AddAnnotationProps) {
     timezone,
   } = props;
   const [isPopoverOpen, setPopoverOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const {
     register,
     handleSubmit,
@@ -79,18 +78,7 @@ function AddAnnotation(props: AddAnnotationProps) {
               id="annotation-form"
               name="annotation-form"
               onSubmit={handleSubmit((d) => {
-                // Keep popover open if there has been an error
-                // TODO(eh-am): clicking on the notification will close this
-                onCreateAnnotation(d.content)
-                  .then(() => {
-                    console.log('on then');
-                    // TODO(eh-am): this triggers the following warning
-                    // Warning: Can't perform a React state update on an unmounted component. This is a no-op, but it indicates a memory leak in your application. To fix, cancel all subscriptions and asynchronous tasks in a useEffect cleanup function.
-                    setPopoverOpen(false);
-                  })
-                  .catch(() => {
-                    setIsSaving(false);
-                  });
+                onCreateAnnotation(d.content);
               })}
             >
               <TextField

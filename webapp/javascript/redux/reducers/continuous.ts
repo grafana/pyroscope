@@ -87,21 +87,6 @@ type ComparisonView = {
     | { type: 'failed'; profile?: Profile };
 };
 
-type t = {
-  type:
-    | (Pick<ContinuousState, 'comparisonView'> & {
-        side: Pick<ContinuousState['comparisonView'], 'left' | 'right'>;
-      })
-    | (Pick<ContinuousState, 'diffView2'> & {
-        side: Pick<ContinuousState['diffView2'], 'left' | 'right'>;
-      })
-    | Pick<ContinuousState, 'singleView'>;
-};
-
-const a: t = {
-  type: 'comparisonView',
-};
-
 type DiffView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
@@ -178,7 +163,6 @@ let comparisonSideAbortControllerLeft: AbortController | undefined;
 let comparisonSideAbortControllerRight: AbortController | undefined;
 let tagExplorerViewAbortController: AbortController | undefined;
 let tagExplorerViewProfileAbortController: AbortController | undefined;
-let newAnnotationAbortController = new AbortController();
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -655,12 +639,6 @@ export const reloadAppNames = createAsyncThunk(
 export const addAnnotation = createAsyncThunk(
   'continuous/addAnnotation',
   async (newAnnotation: annotationsService.NewAnnotation, thunkAPI) => {
-    //    if (newAnnotationAbortController) {
-    //      newAnnotationAbortController.abort();
-    //    }
-    //
-    //    singleViewAbortController = new AbortController();
-    thunkAPI.signal = newAnnotationAbortController.signal;
     const res = await annotationsService.addAnnotation(newAnnotation);
 
     if (res.isOk) {
