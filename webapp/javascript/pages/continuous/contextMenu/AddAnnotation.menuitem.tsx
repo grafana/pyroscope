@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
 import { MenuItem, applyStatics } from '@webapp/ui/Menu';
 import {
@@ -9,15 +10,18 @@ import {
 import { format } from 'date-fns';
 import { getUTCdate, timezoneToOffset } from '@webapp/util/formatDate';
 import Button from '@webapp/ui/Button';
-import { UncontrolledInputField } from '@webapp/ui/InputField';
 import { Portal, PortalProps } from '@webapp/ui/Portal';
 import { NewAnnotation } from '@webapp/services/annotations';
+import * as z from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import TextField from '@webapp/ui/Form/TextField';
 
 interface AddAnnotationProps {
   /** where to put the popover in the DOM */
   container: PortalProps['container'];
 
-  /** where to put the popover */
+  /** where to position the popover */
   popoverAnchorPoint: {
     x: number;
     y: number;
@@ -27,6 +31,10 @@ interface AddAnnotationProps {
   timestamp: number;
   timezone: 'browser' | 'utc';
 }
+
+const newAnnotationFormSchema = z.object({
+  content: z.string().min(1, { message: 'Required' }),
+});
 
 function AddAnnotation(props: AddAnnotationProps) {
   const {
@@ -38,6 +46,13 @@ function AddAnnotation(props: AddAnnotationProps) {
   } = props;
   const [isPopoverOpen, setPopoverOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(newAnnotationFormSchema),
+  });
 
   return (
     <>
@@ -55,15 +70,10 @@ function AddAnnotation(props: AddAnnotationProps) {
             <form
               id="annotation-form"
               name="annotation-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-
-                setIsSaving(true);
-
-                // TODO(eh-am): validation
+              onSubmit={handleSubmit((d) => {
                 // Keep popover open if there has been an error
                 // TODO(eh-am): clicking on the notification will close this
-                onCreateAnnotation(event.target.content.value as string)
+                onCreateAnnotation(d.content)
                   .then(() => {
                     console.log('on then');
                     // TODO(eh-am): this triggers the following warning
@@ -73,18 +83,17 @@ function AddAnnotation(props: AddAnnotationProps) {
                   .catch(() => {
                     setIsSaving(false);
                   });
-              }}
+              })}
             >
-              <UncontrolledInputField
-                type="text"
+              <TextField
+                {...register('content')}
                 label="Content"
-                name="content"
-                inputVariant="light"
+                variant="light"
+                errorMessage={errors.content?.message}
               />
-              <UncontrolledInputField
-                type="text"
+              <TextField
                 label="Time"
-                name="timestamp"
+                type="text"
                 readOnly
                 value={format(
                   getUTCdate(

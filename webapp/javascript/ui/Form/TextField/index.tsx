@@ -16,7 +16,13 @@ function TextField(
   props: TextFieldProps,
   ref: React.ForwardedRef<HTMLInputElement>
 ) {
-  const { className, label, errorMessage, variant = 'dark' } = props;
+  const {
+    className,
+    label,
+    errorMessage,
+    variant = 'dark',
+    ...inputProps
+  } = props;
 
   return (
     <div className={cx(className, styles.wrapper)}>
@@ -29,7 +35,7 @@ function TextField(
             className,
             variant === 'light' && styles.light
           )}
-          {...props}
+          {...inputProps}
         />
       </label>
       <ValidationError message={errorMessage} />
