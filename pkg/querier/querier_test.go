@@ -167,7 +167,7 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 		Start:         0,
 		End:           2,
 	})
-	bidi1 := newFakeBidiClient([]*ingestv1.ProfileSets{
+	bidi1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
 			LabelsSets: []*commonv1.Labels{
 				{
@@ -184,7 +184,7 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 			},
 		},
 	})
-	bidi2 := newFakeBidiClient([]*ingestv1.ProfileSets{
+	bidi2 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
 			LabelsSets: []*commonv1.Labels{
 				{
@@ -201,7 +201,7 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 			},
 		},
 	})
-	bidi3 := newFakeBidiClient([]*ingestv1.ProfileSets{
+	bidi3 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
 			LabelsSets: []*commonv1.Labels{
 				{
@@ -434,15 +434,15 @@ type testProfile struct {
 	Labels *commonv1.Labels
 }
 
-type fakeBidiClient struct {
+type fakeBidiClientStacktraces struct {
 	profiles chan *ingestv1.ProfileSets
 	batches  []*ingestv1.ProfileSets
 	kept     []testProfile
 	cur      *ingestv1.ProfileSets
 }
 
-func newFakeBidiClient(batches []*ingestv1.ProfileSets) *fakeBidiClient {
-	res := &fakeBidiClient{
+func newFakeBidiClientStacktraces(batches []*ingestv1.ProfileSets) *fakeBidiClientStacktraces {
+	res := &fakeBidiClientStacktraces{
 		profiles: make(chan *ingestv1.ProfileSets, 1),
 	}
 	res.profiles <- batches[0]
@@ -451,7 +451,7 @@ func newFakeBidiClient(batches []*ingestv1.ProfileSets) *fakeBidiClient {
 	return res
 }
 
-func (f *fakeBidiClient) Send(in *ingestv1.MergeProfilesStacktracesRequest) error {
+func (f *fakeBidiClientStacktraces) Send(in *ingestv1.MergeProfilesStacktracesRequest) error {
 	if in.Request != nil {
 		return nil
 	}
@@ -472,7 +472,7 @@ func (f *fakeBidiClient) Send(in *ingestv1.MergeProfilesStacktracesRequest) erro
 	return nil
 }
 
-func (f *fakeBidiClient) Receive() (*ingestv1.MergeProfilesStacktracesResponse, error) {
+func (f *fakeBidiClientStacktraces) Receive() (*ingestv1.MergeProfilesStacktracesResponse, error) {
 	profiles := <-f.profiles
 	if profiles == nil {
 		return &ingestv1.MergeProfilesStacktracesResponse{
@@ -489,8 +489,64 @@ func (f *fakeBidiClient) Receive() (*ingestv1.MergeProfilesStacktracesResponse, 
 		SelectedProfiles: profiles,
 	}, nil
 }
-func (f *fakeBidiClient) CloseRequest() error  { return nil }
-func (f *fakeBidiClient) CloseResponse() error { return nil }
+func (f *fakeBidiClientStacktraces) CloseRequest() error  { return nil }
+func (f *fakeBidiClientStacktraces) CloseResponse() error { return nil }
+
+type fakeBidiClientSeries struct {
+	profiles chan *ingestv1.ProfileSets
+	batches  []*ingestv1.ProfileSets
+	kept     []testProfile
+	cur      *ingestv1.ProfileSets
+
+	result []*commonv1.Series
+}
+
+func newFakeBidiClientSeries(batches []*ingestv1.ProfileSets, result ...*commonv1.Series) *fakeBidiClientSeries {
+	res := &fakeBidiClientSeries{
+		profiles: make(chan *ingestv1.ProfileSets, 1),
+	}
+	res.profiles <- batches[0]
+	batches = batches[1:]
+	res.batches = batches
+	res.result = result
+	return res
+}
+
+func (f *fakeBidiClientSeries) Send(in *ingestv1.MergeProfilesLabelsRequest) error {
+	if in.Request != nil {
+		return nil
+	}
+	for i, b := range in.Profiles {
+		if b {
+			f.kept = append(f.kept, testProfile{
+				Ts:     f.cur.Profiles[i].Timestamp,
+				Labels: f.cur.LabelsSets[f.cur.Profiles[i].LabelIndex],
+			})
+		}
+	}
+	if len(f.batches) == 0 {
+		close(f.profiles)
+		return nil
+	}
+	f.profiles <- f.batches[0]
+	f.batches = f.batches[1:]
+	return nil
+}
+
+func (f *fakeBidiClientSeries) Receive() (*ingestv1.MergeProfilesLabelsResponse, error) {
+	profiles := <-f.profiles
+	if profiles == nil {
+		return &ingestv1.MergeProfilesLabelsResponse{
+			Series: f.result,
+		}, nil
+	}
+	f.cur = profiles
+	return &ingestv1.MergeProfilesLabelsResponse{
+		SelectedProfiles: profiles,
+	}, nil
+}
+func (f *fakeBidiClientSeries) CloseRequest() error  { return nil }
+func (f *fakeBidiClientSeries) CloseResponse() error { return nil }
 
 func (f *fakeQuerierIngester) MergeProfilesStacktraces(ctx context.Context) clientpool.BidiClientMergeProfilesStacktraces {
 	var (
