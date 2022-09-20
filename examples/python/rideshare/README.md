@@ -126,6 +126,10 @@ We have been beta testing this feature with several different companies and some
 - Tagging different parts of their testing suites
 - Etc...
 
+### Live Demo
+
+Feel free to check out the [live demo](https://demo.pyroscope.io/explore?query=rideshare-app-python.cpu%7B%7D&groupBy=region&groupByValue=All) of this example on our demo page.
+
 ### Future Roadmap
 
 We would love for you to try out this example and see what ways you can adapt this to your python application. Continuous profiling has become an increasingly popular tool for the monitoring and debugging of performance issues (arguably the fourth pillar of observability).
