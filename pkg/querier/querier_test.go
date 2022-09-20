@@ -269,13 +269,13 @@ func TestSelectSeries(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
 		in      []*ingestv1.Profile
-		out     []*querierv1.Series
+		out     []*commonv1.Series
 		groupby []string
 	}{
 		{
 			name: "empty",
 			in:   []*ingestv1.Profile{},
-			out:  []*querierv1.Series{},
+			out:  []*commonv1.Series{},
 		},
 		{
 			name: "no group",
@@ -285,8 +285,8 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 				{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 			},
-			out: []*querierv1.Series{
-				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			out: []*commonv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
 			},
 		},
 		{
@@ -298,9 +298,9 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 				{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 			},
-			out: []*querierv1.Series{
-				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*querierv1.Point{{T: int64(1000), V: 10}, {T: int64(2000), V: 10}}},
-				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Points: []*querierv1.Point{{T: int64(1000), V: 20}}},
+			out: []*commonv1.Series{
+				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*commonv1.Point{{T: int64(1000), V: 10}, {T: int64(2000), V: 10}}},
+				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Points: []*commonv1.Point{{T: int64(1000), V: 20}}},
 			},
 		},
 		{
@@ -312,8 +312,8 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 				{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 			},
-			out: []*querierv1.Series{
-				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			out: []*commonv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
 			},
 		},
 		{
@@ -325,8 +325,8 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 11000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 				{Timestamp: 20000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
 			},
-			out: []*querierv1.Series{
-				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(9000), V: 10}, {T: int64(10000), V: 10}}},
+			out: []*commonv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{T: int64(9000), V: 10}, {T: int64(10000), V: 10}}},
 			},
 		},
 	} {

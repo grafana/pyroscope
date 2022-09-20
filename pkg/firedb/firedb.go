@@ -470,7 +470,7 @@ func (f *FireDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiSt
 	return nil
 }
 
-type BidiServerMerge[Res *ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse, Req *ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest] interface {
+type BidiServerMerge[Res any, Req any] interface {
 	Send(Res) error
 	Receive() (Req, error)
 }
