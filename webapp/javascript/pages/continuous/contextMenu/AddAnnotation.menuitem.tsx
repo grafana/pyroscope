@@ -50,9 +50,17 @@ function AddAnnotation(props: AddAnnotationProps) {
     register,
     handleSubmit,
     formState: { errors },
+    setFocus,
   } = useForm({
     resolver: zodResolver(newAnnotationFormSchema),
   });
+
+  // Focus on the only input
+  React.useEffect(() => {
+    if (isPopoverOpen) {
+      setFocus('content');
+    }
+  }, [setFocus, isPopoverOpen]);
 
   return (
     <>
