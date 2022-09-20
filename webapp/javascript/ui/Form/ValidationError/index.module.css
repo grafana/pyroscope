@@ -2,6 +2,6 @@
   color: var(--ps-neutral-2);
   font-weight: bold;
   background-color: var(--ps-red-primary);
-  margin: 1em 0;
-  padding: 1em;
+  margin: 8px 0;
+  padding: 2px 8px;
 }
