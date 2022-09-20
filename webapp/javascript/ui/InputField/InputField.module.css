@@ -6,13 +6,3 @@
   width: 30%;
   min-width: 150px;
 }
-
-.uncontrolledInputFieldWrapper {
-  margin-bottom: 8px;
-
-  /* so that each has its own line */
-  label,
-  input {
-    display: block;
-  }
-}
