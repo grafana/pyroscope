@@ -23,7 +23,7 @@ import { useMeasure } from 'react-use';
 import { DataFrame, DataFrameView } from '@grafana/data';
 import { useStyles2 } from '@grafana/ui';
 
-import { COLLAPSE_THRESHOLD, PIXELS_PER_LEVEL } from '../../constants';
+import { PIXELS_PER_LEVEL } from '../../constants';
 import { getBarX, getRectDimensionsForLevel, renderRect } from './rendering';
 import { Item, ItemWithStart, nestedSetToLevels } from './dataTransform';
 import FlameGraphTooltip, { getTooltipData } from './FlameGraphTooltip';
@@ -99,7 +99,7 @@ const FlameGraph = ({
       graph.style.height = `${height}px`;
 
       ctx.textBaseline = 'middle';
-      ctx.font = '15px monospace';
+      ctx.font = (12 * window.devicePixelRatio) + 'px monospace';
       ctx.strokeStyle = 'white';
 
       for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
