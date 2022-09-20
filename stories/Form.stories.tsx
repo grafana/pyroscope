@@ -3,7 +3,6 @@ import React from 'react';
 import { ComponentMeta } from '@storybook/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-//import TextField from '@webapp/ui/Form/TextField';
 import TextField from '../webapp/javascript/ui/Form/TextField';
 import Button from '../webapp/javascript/ui/Button';
 import * as z from 'zod';
@@ -28,14 +27,18 @@ export function ExampleForm() {
 
   return (
     <form onSubmit={handleSubmit((d) => alert(JSON.stringify(d)))}>
-      <TextField label="Name" {...register('name')} />
-      {errors.name?.message && <p>{errors.name?.message}</p>}
+      <TextField
+        {...register('name')}
+        label="Name"
+        errorMessage={errors.name?.message}
+      />
+
       <TextField
         label="Age"
         type="number"
         {...register('age', { valueAsNumber: true })}
+        errorMessage={errors.age?.message}
       />
-      {errors.age?.message && <p>{errors.age?.message}</p>}
 
       <Button type="submit" kind="secondary">
         Submit
