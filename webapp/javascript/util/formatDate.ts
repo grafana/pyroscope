@@ -120,3 +120,14 @@ export const getTimelineFormatDate = (date: Date, hours: number) => {
   }
   return format(date, 'MMM do HH:mm');
 };
+
+export function timezoneToOffset(timezone: 'utc' | 'browser'): number {
+  if (timezone === 'utc') {
+    return 0;
+  }
+
+  // Use browser's
+  // FIXME: this does not account for arbitrary timezones
+  // eg one that is not the user's browser
+  return new Date().getTimezoneOffset();
+}

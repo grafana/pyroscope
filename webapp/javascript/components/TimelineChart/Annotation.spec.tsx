@@ -6,6 +6,7 @@ describe('AnnotationTooltipBody', () => {
   it('return null when theres no annotation', () => {
     const { container } = render(
       <AnnotationTooltipBody
+        timezone="utc"
         annotations={[]}
         coordsToCanvasPos={jest.fn()}
         canvasX={0}
@@ -31,6 +32,7 @@ describe('AnnotationTooltipBody', () => {
 
     const { container } = render(
       <AnnotationTooltipBody
+        timezone="utc"
         annotations={annotations}
         coordsToCanvasPos={coordsToCanvasPos}
         canvasX={200}
@@ -55,6 +57,7 @@ describe('AnnotationTooltipBody', () => {
 
       render(
         <AnnotationTooltipBody
+          timezone="utc"
           annotations={annotations}
           coordsToCanvasPos={coordsToCanvasPos}
           canvasX={100}
@@ -91,6 +94,7 @@ describe('AnnotationTooltipBody', () => {
 
       render(
         <AnnotationTooltipBody
+          timezone="utc"
           annotations={annotations}
           coordsToCanvasPos={coordsToCanvasPos}
           canvasX={98}

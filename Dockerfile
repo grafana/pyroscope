@@ -203,6 +203,8 @@ RUN mkdir -p \
 
 COPY scripts/packages/server.yml "/etc/pyroscope/server.yml"
 COPY --from=go-builder --chmod=0777 /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
+# we use this in cloud
+COPY --from=js-builder /opt/pyroscope/webapp/public/standalone.html /standalone.html
 
 RUN apk add bash-completion
 RUN pyroscope completion bash > /usr/share/bash-completion/completions/pyroscope

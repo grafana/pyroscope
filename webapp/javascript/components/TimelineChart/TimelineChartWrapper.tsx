@@ -231,6 +231,7 @@ class TimelineChartWrapper extends React.Component<
   setOnHoverDisplayTooltip = (
     data: ITooltipWrapperProps & ExploreTooltipProps
   ) => {
+    const { timezone } = this.props;
     let tooltipContent = [];
 
     const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
@@ -260,6 +261,7 @@ class TimelineChartWrapper extends React.Component<
         data.canvasX
       ) {
         const an = Annotation({
+          timezone,
           annotations,
           canvasX: data.canvasX,
           coordsToCanvasPos: data.coordsToCanvasPos,
@@ -272,6 +274,7 @@ class TimelineChartWrapper extends React.Component<
           tooltipContent = [
             <Annotation
               key="annotation"
+              timezone={timezone}
               annotations={annotations}
               canvasX={data.canvasX}
               coordsToCanvasPos={data.coordsToCanvasPos}
