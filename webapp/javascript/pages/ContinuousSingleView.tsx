@@ -20,7 +20,10 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
-import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import {
+  isExportToFlamegraphDotComEnabled,
+  isAnnotationsEnabled,
+} from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
@@ -107,25 +110,30 @@ function ContinuousSingleView() {
     }
   };
 
-  const contextMenu = (props: ContextMenuProps) => (
-    <ContextMenu position={props.click}>
-      <AddAnnotationMenuItem
-        container={props.containerEl}
-        popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
-        timestamp={props.timestamp}
-        timezone={offset === 0 ? 'utc' : 'browser'}
-        onCreateAnnotation={(content) => {
-          return dispatch(
-            addAnnotation({
-              appName: query,
-              timestamp: props.timestamp,
-              content,
-            })
-          ).unwrap();
-        }}
-      />
-    </ContextMenu>
-  );
+  const contextMenu = (props: ContextMenuProps) => {
+    if (!isAnnotationsEnabled) {
+      return null;
+    }
+    return (
+      <ContextMenu position={props.click}>
+        <AddAnnotationMenuItem
+          container={props.containerEl}
+          popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
+          timestamp={props.timestamp}
+          timezone={offset === 0 ? 'utc' : 'browser'}
+          onCreateAnnotation={(content) => {
+            dispatch(
+              addAnnotation({
+                appName: query,
+                timestamp: props.timestamp,
+                content,
+              })
+            );
+          }}
+        />
+      </ContextMenu>
+    );
+  };
 
   return (
     <div>

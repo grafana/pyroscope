@@ -27,7 +27,7 @@ interface AddAnnotationProps {
     y: number;
   };
 
-  onCreateAnnotation: (content: NewAnnotation['content']) => Promise<unknown>;
+  onCreateAnnotation: (content: NewAnnotation['content']) => void;
   timestamp: number;
   timezone: 'browser' | 'utc';
 }
