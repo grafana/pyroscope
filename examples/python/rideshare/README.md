@@ -99,12 +99,14 @@ From the flamegraph we can see that for the `eu-north` tag the biggest performan
 ## Comparing two time periods
 
 Using Pyroscope's "comparison view" we can actually select two different queries and compare the resulting flamegraphs:
-- Left flamegraph: query 1
-- Right flamegraph: query 2
+- Left flamegraph: { region != "eu-north", ... }
+- Right flamegraph: { region = "eu-north", ... }
 
-When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `find_nearest_vehicle()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
-![find_nearest_vehicle_comparison](https://user-images.githubusercontent.com/23323466/191320589-36dd55b7-c702-4dbc-a56d-63e3425268ac.png)
+When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `find_nearest_vehicle()` function where it takes:
+- Left flamegraph: **22% of CPU** when `{ region != "eu-north", ... }`
+- right flamgraph: **82% of CPU** when `{ region != "eu-north", ... }`
 
+![python_pop_out_library_comparison_00](https://user-images.githubusercontent.com/23323466/191374975-d374db02-4cb1-48d5-bc1a-6194193a9f09.png)
 
 ## Visualizing Diff Between Two Flamegraphs
 
