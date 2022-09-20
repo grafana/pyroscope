@@ -83,7 +83,7 @@ function AddAnnotation(props: AddAnnotationProps) {
             >
               <TextField
                 {...register('content')}
-                label="Content"
+                label="Description"
                 variant="light"
                 errorMessage={errors.content?.message}
               />
