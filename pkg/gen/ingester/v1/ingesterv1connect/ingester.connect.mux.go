@@ -49,11 +49,6 @@ func RegisterIngesterServiceHandler(mux *mux.Router, svc IngesterServiceHandler,
 		svc.Flush,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/SelectProfiles", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/SelectProfiles",
-		svc.SelectProfiles,
-		opts...,
-	))
 	mux.Handle("/ingester.v1.IngesterService/MergeProfilesStacktraces", connect_go.NewBidiStreamHandler(
 		"/ingester.v1.IngesterService/MergeProfilesStacktraces",
 		svc.MergeProfilesStacktraces,

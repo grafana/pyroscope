@@ -279,6 +279,11 @@ func requeueAsync(h heap.Interface, eis ...MergeIterator) error {
 	return multiErr.Err()
 }
 
+type stacktraces struct {
+	locations []string
+	value     int64
+}
+
 // selectMergeStacktraces selects the  profile from each ingester by deduping them and request merges of stacktraces of them.
 func selectMergeStacktraces(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
 	mergeResults := make([]MergeResult[*ingestv1.MergeProfilesStacktracesResult], len(responses))

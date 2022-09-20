@@ -34,9 +34,6 @@ type IngesterServiceClient interface {
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
 	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
-	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
-	// but this requires to ensure we have correct timestamp and labels ordering.
-	SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error)
 	MergeProfilesStacktraces(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
 	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
 }
@@ -81,11 +78,6 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 			baseURL+"/ingester.v1.IngesterService/Flush",
 			opts...,
 		),
-		selectProfiles: connect_go.NewClient[v11.SelectProfilesRequest, v11.SelectProfilesResponse](
-			httpClient,
-			baseURL+"/ingester.v1.IngesterService/SelectProfiles",
-			opts...,
-		),
 		mergeProfilesStacktraces: connect_go.NewClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/MergeProfilesStacktraces",
@@ -107,7 +99,6 @@ type ingesterServiceClient struct {
 	profileTypes             *connect_go.Client[v11.ProfileTypesRequest, v11.ProfileTypesResponse]
 	series                   *connect_go.Client[v11.SeriesRequest, v11.SeriesResponse]
 	flush                    *connect_go.Client[v11.FlushRequest, v11.FlushResponse]
-	selectProfiles           *connect_go.Client[v11.SelectProfilesRequest, v11.SelectProfilesResponse]
 	mergeProfilesStacktraces *connect_go.Client[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
 	mergeProfilesLabels      *connect_go.Client[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
 }
@@ -142,11 +133,6 @@ func (c *ingesterServiceClient) Flush(ctx context.Context, req *connect_go.Reque
 	return c.flush.CallUnary(ctx, req)
 }
 
-// SelectProfiles calls ingester.v1.IngesterService.SelectProfiles.
-func (c *ingesterServiceClient) SelectProfiles(ctx context.Context, req *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error) {
-	return c.selectProfiles.CallUnary(ctx, req)
-}
-
 // MergeProfilesStacktraces calls ingester.v1.IngesterService.MergeProfilesStacktraces.
 func (c *ingesterServiceClient) MergeProfilesStacktraces(ctx context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse] {
 	return c.mergeProfilesStacktraces.CallBidiStream(ctx)
@@ -165,9 +151,6 @@ type IngesterServiceHandler interface {
 	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
 	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
-	// Todo(ctovena) we might want to batch stream profiles & symbolization instead of sending them all at once.
-	// but this requires to ensure we have correct timestamp and labels ordering.
-	SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error)
 	MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error
 	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error
 }
@@ -209,11 +192,6 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 		svc.Flush,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/SelectProfiles", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/SelectProfiles",
-		svc.SelectProfiles,
-		opts...,
-	))
 	mux.Handle("/ingester.v1.IngesterService/MergeProfilesStacktraces", connect_go.NewBidiStreamHandler(
 		"/ingester.v1.IngesterService/MergeProfilesStacktraces",
 		svc.MergeProfilesStacktraces,
@@ -252,10 +230,6 @@ func (UnimplementedIngesterServiceHandler) Series(context.Context, *connect_go.R
 
 func (UnimplementedIngesterServiceHandler) Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.Flush is not implemented"))
-}
-
-func (UnimplementedIngesterServiceHandler) SelectProfiles(context.Context, *connect_go.Request[v11.SelectProfilesRequest]) (*connect_go.Response[v11.SelectProfilesResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.SelectProfiles is not implemented"))
 }
 
 func (UnimplementedIngesterServiceHandler) MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error {
