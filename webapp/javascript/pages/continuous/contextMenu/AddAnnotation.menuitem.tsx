@@ -6,6 +6,8 @@ import {
   PopoverFooter,
   PopoverHeader,
 } from '@webapp/ui/Popover';
+import { format } from 'date-fns';
+import { getUTCdate, timezoneToOffset } from '@webapp/util/formatDate';
 import Button from '@webapp/ui/Button';
 import { UncontrolledInputField } from '@webapp/ui/InputField';
 import { Portal, PortalProps } from '@webapp/ui/Portal';
@@ -22,10 +24,18 @@ interface AddAnnotationProps {
   };
 
   onCreateAnnotation: (content: NewAnnotation['content']) => Promise<unknown>;
+  timestamp: number;
+  timezone: 'browser' | 'utc';
 }
 
 function AddAnnotation(props: AddAnnotationProps) {
-  const { container, popoverAnchorPoint, onCreateAnnotation } = props;
+  const {
+    container,
+    popoverAnchorPoint,
+    onCreateAnnotation,
+    timestamp,
+    timezone,
+  } = props;
   const [isPopoverOpen, setPopoverOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -70,6 +80,19 @@ function AddAnnotation(props: AddAnnotationProps) {
                 label="Content"
                 name="content"
                 inputVariant="light"
+              />
+              <UncontrolledInputField
+                type="text"
+                label="Time"
+                name="timestamp"
+                readOnly
+                value={format(
+                  getUTCdate(
+                    new Date(timestamp * 1000),
+                    timezoneToOffset(timezone)
+                  ),
+                  'yyyy-MM-dd HH:mm'
+                )}
               />
             </form>
           </PopoverBody>

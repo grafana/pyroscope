@@ -8,6 +8,8 @@
 }
 
 .uncontrolledInputFieldWrapper {
+  margin-bottom: 8px;
+
   /* so that each has its own line */
   label,
   input {

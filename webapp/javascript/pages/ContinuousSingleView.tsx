@@ -112,6 +112,8 @@ function ContinuousSingleView() {
       <AddAnnotationMenuItem
         container={props.containerEl}
         popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
+        timestamp={props.timestamp}
+        timezone={offset === 0 ? 'utc' : 'browser'}
         onCreateAnnotation={(content) => {
           return dispatch(
             addAnnotation({

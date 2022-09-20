@@ -48,6 +48,8 @@ interface UncontrolledInputFieldProps
   placeholder?: string;
   type: 'text' | 'password' | 'email' | 'number';
   inputVariant?: UndebouncedInputProps['variant'];
+  readOnly?: UndebouncedInputProps['readOnly'];
+  value?: string;
 }
 
 function UncontrolledInputField({
@@ -57,6 +59,8 @@ function UncontrolledInputField({
   placeholder,
   type,
   inputVariant,
+  readOnly,
+  value,
 }: UncontrolledInputFieldProps) {
   return (
     <div className={cx(className, styles.uncontrolledInputFieldWrapper)}>
@@ -66,7 +70,9 @@ function UncontrolledInputField({
           type={type}
           placeholder={placeholder}
           name={name}
+          readOnly={readOnly}
           variant={inputVariant}
+          value={value}
         />
       </label>
     </div>

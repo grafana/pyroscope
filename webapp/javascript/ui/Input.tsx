@@ -61,6 +61,7 @@ export interface UndebouncedInputProps {
   value?: string | number;
   htmlId?: string;
   variant?: 'dark' | 'light';
+  readOnly?: HTMLInputElement['readOnly'];
 }
 function UndebouncedInput({
   className,
@@ -71,6 +72,7 @@ function UndebouncedInput({
   value,
   htmlId,
   variant = 'dark',
+  readOnly,
 }: UndebouncedInputProps) {
   return (
     <input
@@ -84,6 +86,7 @@ function UndebouncedInput({
       placeholder={placeholder}
       onChange={onChange}
       value={value}
+      readOnly={readOnly}
       id={htmlId}
     />
   );
