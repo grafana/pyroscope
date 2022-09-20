@@ -87,38 +87,35 @@ Profiling is most effective for applications that contain tags. The first step w
 
 ![vehicle_tag_breakdown](https://user-images.githubusercontent.com/23323466/191306637-a601f463-a247-4588-a285-639424a08b87.png)
 
-![ap_south_vs_eu_north](https://user-images.githubusercontent.com/23323466/191305331-3849d1b9-23d9-4493-a99b-5169be58bfc7.png)
+![image](https://user-images.githubusercontent.com/23323466/191319887-8fff2605-dc74-48ba-b0b7-918e3c95ed91.png)
 
 The benefit of using Pyroscope, is that by tagging both `region` and `vehicle` and looking at the Tag Explorer page we can hypothesize:
 
 - Something is wrong with the `/car` endpoint code where `car` vehicle tag is consuming **68% of CPU**
 - Something is wrong with one of our regions where `eu-north` region tag is consuming **54% of CPU**
 
-To analyze this we can go directly to the comparison page using the comparison dropdown.
-
-## Narrowing in on the Issue Using Tags
-
-Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
-
-We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period.
-![python_second_slide_05](https://user-images.githubusercontent.com/23323466/135805908-ae9a1650-51fc-457a-8c47-0b56e8538b08.jpg)
+From the flamegraph we can see that for the `eu-north` tag the biggest performance impact comes from the `find_nearest_vehicle()` function which consumes close to **68% of cpu**. To analyze this we can go directly to the comparison page using the comparison dropdown.
 
 ## Comparing two time periods
 
-Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flamegraphs. The pink section on the left timeline results in the left flamegraph, and the blue section on the right represents the right flamegraph.
+Using Pyroscope's "comparison view" we can actually select two different queries and compare the resulting flamegraphs:
+- Left flamegraph: query 1
+- Right flamegraph: query 2
 
-When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
-![python_third_slide_05](https://user-images.githubusercontent.com/23323466/135805969-55fdee40-fe0c-412d-9ec0-0bbc6a748ed4.jpg)
+When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `find_nearest_vehicle()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
+![find_nearest_vehicle_comparison](https://user-images.githubusercontent.com/23323466/191320589-36dd55b7-c702-4dbc-a56d-63e3425268ac.png)
+
 
 ## Visualizing Diff Between Two Flamegraphs
 
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
-![python_fourth_slide_05](https://user-images.githubusercontent.com/23323466/135805986-594ffa3b-e735-4f91-875d-4f76fdff2b60.jpg)
+![find_nearest_vehicle_diff](https://user-images.githubusercontent.com/23323466/191320888-b49eb7de-06d5-4e6b-b9ac-198d7c9e2fcf.png)
+
 
 ### More use cases
 
 We have been beta testing this feature with several different companies and some of the ways that we've seen companies tag their performance data:
-
+- Linking profiles with trace data
 - Tagging controllers
 - Tagging regions
 - Tagging jobs from a redis / sidekiq / rabbitmq queue
