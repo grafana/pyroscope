@@ -1,5 +1,6 @@
 import React, { Ref, ChangeEvent } from 'react';
 import { DebounceInput } from 'react-debounce-input';
+import cx from 'classnames';
 import styles from './Input.module.scss';
 
 interface InputProps {
@@ -50,3 +51,42 @@ const Input = React.forwardRef(
 );
 
 export default Input;
+
+export interface UndebouncedInputProps {
+  className?: string;
+  type: 'search' | 'text' | 'password' | 'email' | 'number';
+  name: string;
+  placeholder?: string;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  value?: string | number;
+  htmlId?: string;
+  variant?: 'dark' | 'light';
+}
+function UndebouncedInput({
+  className,
+  type,
+  name,
+  placeholder,
+  onChange,
+  value,
+  htmlId,
+  variant = 'dark',
+}: UndebouncedInputProps) {
+  return (
+    <input
+      className={cx(
+        styles.input,
+        className,
+        variant === 'light' && styles.light
+      )}
+      type={type}
+      name={name}
+      placeholder={placeholder}
+      onChange={onChange}
+      value={value}
+      id={htmlId}
+    />
+  );
+}
+
+export { UndebouncedInput };

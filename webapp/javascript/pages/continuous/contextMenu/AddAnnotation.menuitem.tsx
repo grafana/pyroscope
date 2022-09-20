@@ -55,6 +55,7 @@ function AddAnnotation(props: AddAnnotationProps) {
                 // TODO(eh-am): clicking on the notification will close this
                 onCreateAnnotation(event.target.content.value as string)
                   .then(() => {
+                    console.log('on then');
                     // TODO(eh-am): this triggers the following warning
                     // Warning: Can't perform a React state update on an unmounted component. This is a no-op, but it indicates a memory leak in your application. To fix, cancel all subscriptions and asynchronous tasks in a useEffect cleanup function.
                     setPopoverOpen(false);
@@ -68,7 +69,7 @@ function AddAnnotation(props: AddAnnotationProps) {
                 type="text"
                 label="Content"
                 name="content"
-                required
+                inputVariant="light"
               />
             </form>
           </PopoverBody>

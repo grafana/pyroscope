@@ -34,7 +34,9 @@ export function Popover({
     <OutsideClickHandler onOutsideClick={() => setModalOpenStatus(false)}>
       <div className={styles.container} style={popoverPosition}>
         {isModalOpen && (
-          <div className={classnames(styles.modal, className)}>{children}</div>
+          <div className={classnames(styles.popover, className)}>
+            {children}
+          </div>
         )}
       </div>
     </OutsideClickHandler>
@@ -46,13 +48,13 @@ interface PopoverMemberProps {
 }
 
 export function PopoverHeader({ children }: PopoverMemberProps) {
-  return <div className={styles.modalHeader}>{children}</div>;
+  return <div className={styles.header}>{children}</div>;
 }
 
 export function PopoverBody({ children }: PopoverMemberProps) {
-  return <div className={styles.modalBody}>{children}</div>;
+  return <div className={styles.body}>{children}</div>;
 }
 
 export function PopoverFooter({ children }: PopoverMemberProps) {
-  return <div className={styles.modalFooter}>{children}</div>;
+  return <div className={styles.footer}>{children}</div>;
 }

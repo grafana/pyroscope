@@ -1,5 +1,6 @@
 import React, { InputHTMLAttributes, ChangeEvent } from 'react';
-import Input from '../Input';
+import cx from 'classnames';
+import Input, { UndebouncedInput, UndebouncedInputProps } from '../Input';
 import styles from './InputField.module.css';
 
 interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -46,6 +47,7 @@ interface UncontrolledInputFieldProps
   name: string;
   placeholder?: string;
   type: 'text' | 'password' | 'email' | 'number';
+  inputVariant?: UndebouncedInputProps['variant'];
 }
 
 function UncontrolledInputField({
@@ -54,11 +56,19 @@ function UncontrolledInputField({
   name,
   placeholder,
   type,
+  inputVariant,
 }: UncontrolledInputFieldProps) {
   return (
-    <div className={`${className || ''} ${styles.inputWrapper}`}>
-      <h4>{label}</h4>
-      <input type={type} placeholder={placeholder} name={name} />
+    <div className={cx(className, styles.uncontrolledInputFieldWrapper)}>
+      <label>
+        {label}
+        <UndebouncedInput
+          type={type}
+          placeholder={placeholder}
+          name={name}
+          variant={inputVariant}
+        />
+      </label>
     </div>
   );
 }
