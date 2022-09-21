@@ -1,4 +1,11 @@
-import React, { SetStateAction, Dispatch, ReactNode } from 'react';
+import React, {
+  useLayoutEffect,
+  SetStateAction,
+  Dispatch,
+  ReactNode,
+  useRef,
+  useState,
+} from 'react';
 import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
 import styles from './Popover.module.scss';
@@ -23,16 +30,42 @@ export function Popover({
   children,
   anchorPoint,
 }: PopoverProps) {
-  // TODO(eh-am): handle out of bounds positioning
-  const popoverPosition = {
-    left: `${anchorPoint.x}px`,
-    top: `${anchorPoint.y}px`,
-    position: 'absolute' as const,
-  };
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState<React.CSSProperties>({
+    display: 'hidden',
+  });
+
+  useLayoutEffect(() => {
+    if (isModalOpen && popoverRef.current) {
+      const popoverWidth = popoverRef.current.clientWidth;
+      const windowWidth = window.innerWidth;
+      const anchorPointX = anchorPoint.x;
+      const threshold = 30;
+
+      if (anchorPointX + popoverWidth + threshold >= windowWidth) {
+        setPopoverPosition({
+          left: `${anchorPoint.x - popoverWidth}px`,
+          top: `${anchorPoint.y}px`,
+          position: 'absolute' as const,
+        });
+      } else {
+        // position to the right
+        setPopoverPosition({
+          left: `${anchorPoint.x}px`,
+          top: `${anchorPoint.y}px`,
+          position: 'absolute' as const,
+        });
+      }
+    }
+  }, [isModalOpen]);
 
   return (
     <OutsideClickHandler onOutsideClick={() => setModalOpenStatus(false)}>
-      <div className={styles.container} style={popoverPosition}>
+      <div
+        className={styles.container}
+        style={popoverPosition}
+        ref={popoverRef}
+      >
         {isModalOpen && (
           <div className={classnames(styles.popover, className)}>
             {children}
