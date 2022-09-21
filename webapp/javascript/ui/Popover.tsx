@@ -37,25 +37,12 @@ export function Popover({
 
   useLayoutEffect(() => {
     if (isModalOpen && popoverRef.current) {
-      const popoverWidth = popoverRef.current.clientWidth;
-      const windowWidth = window.innerWidth;
-      const anchorPointX = anchorPoint.x;
-      const threshold = 30;
-
-      if (anchorPointX + popoverWidth + threshold >= windowWidth) {
-        setPopoverPosition({
-          left: `${anchorPoint.x - popoverWidth}px`,
-          top: `${anchorPoint.y}px`,
-          position: 'absolute' as const,
-        });
-      } else {
-        // position to the right
-        setPopoverPosition({
-          left: `${anchorPoint.x}px`,
-          top: `${anchorPoint.y}px`,
-          position: 'absolute' as const,
-        });
-      }
+      const pos = getPopoverPosition(
+        popoverRef.current.clientWidth,
+        window.innerWidth,
+        anchorPoint
+      );
+      setPopoverPosition(pos);
     }
   }, [isModalOpen]);
 
@@ -76,6 +63,31 @@ export function Popover({
   );
 }
 
+function getPopoverPosition(
+  popoverWidth: number,
+  windowWidth: number,
+  anchorPoint: PopoverProps['anchorPoint']
+) {
+  const threshold = 30;
+  const defaultProps = {
+    top: `${anchorPoint.y}px`,
+    position: 'absolute' as const,
+  };
+
+  if (anchorPoint.x + popoverWidth + threshold >= windowWidth) {
+    // position to the left
+    return {
+      ...defaultProps,
+      left: `${anchorPoint.x - popoverWidth}px`,
+    };
+  }
+
+  // position to the right
+  return {
+    ...defaultProps,
+    left: `${anchorPoint.x}px`,
+  };
+}
 interface PopoverMemberProps {
   children: ReactNode;
 }
