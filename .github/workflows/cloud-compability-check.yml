@@ -3,8 +3,6 @@ name: Cloud Compatibility Check
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   cloud_compability_check:
