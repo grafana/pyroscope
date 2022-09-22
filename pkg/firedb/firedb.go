@@ -396,7 +396,7 @@ func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchP
 		LabelsSets: make([]*commonv1.Labels, 0, batchProfileSize),
 	}
 	if err := iter.ReadBatch(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
-		sp, _ := opentracing.StartSpanFromContext(ctx, "Filtering batch")
+		sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles - Filtering batch")
 		sp.LogFields(
 			otlog.Int("batch_len", len(batch)),
 			otlog.Int("batch_requested_size", batchProfileSize),
