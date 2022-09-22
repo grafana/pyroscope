@@ -248,7 +248,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		})
 	}
 
-	// Signals the end of the profile streaming by sending an empty request.
+	// Signals the end of the profile streaming by sending an empty response.
 	// This allows the client to not block other streaming ingesters.
 	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 		return err
@@ -380,7 +380,7 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 		LabelsSets: make([]*commonv1.Labels, 0, batchProfileSize),
 	}
 	if err := iter.ReadBatch(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
-		sp, _ := opentracing.StartSpanFromContext(ctx, "Filtering batch")
+		sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles - Filtering batch")
 		sp.LogFields(
 			otlog.Int("batch_len", len(batch)),
 			otlog.Int("batch_requested_size", batchProfileSize),
