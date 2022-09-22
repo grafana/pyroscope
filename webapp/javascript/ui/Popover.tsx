@@ -1,10 +1,10 @@
 import React, {
+  useRef,
+  useState,
   useLayoutEffect,
   SetStateAction,
   Dispatch,
   ReactNode,
-  useRef,
-  useState,
 } from 'react';
 import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';

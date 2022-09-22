@@ -6,7 +6,7 @@ from bike.bike import order_bike
 from car.car import order_car
 from scooter.scooter import order_scooter
 
-app_name = os.getenv("PYROSCOPE_APPLICATION_NAME", "django-ride-sharing-app")
+app_name = os.getenv("PYROSCOPE_APPLICATION_NAME", "flask-ride-sharing-app")
 server_addr = os.getenv("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
 auth_token = os.getenv("PYROSCOPE_AUTH_TOKEN", "")
 
