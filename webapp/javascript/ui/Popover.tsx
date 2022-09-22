@@ -68,13 +68,14 @@ function getPopoverPosition(
   windowWidth: number,
   anchorPoint: PopoverProps['anchorPoint']
 ) {
-  const threshold = 30;
+  // Give some room between popover end and the window edge
+  const marginToWindowEdge = 30;
   const defaultProps = {
     top: `${anchorPoint.y}px`,
     position: 'absolute' as const,
   };
 
-  if (anchorPoint.x + popoverWidth + threshold >= windowWidth) {
+  if (anchorPoint.x + popoverWidth + marginToWindowEdge >= windowWidth) {
     // position to the left
     return {
       ...defaultProps,
