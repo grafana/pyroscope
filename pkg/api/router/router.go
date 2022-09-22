@@ -39,7 +39,7 @@ func (r *Router) RegisterHandlers() {
 }
 
 func (r *Router) RegisterUserHandlers() {
-	h := api.NewUserHandler(r.Logger, r.UserService, httputils.NewDefaultHelper(r.Logger))
+	h := api.NewUserHandler(r.UserService, httputils.NewDefaultHelper(r.Logger))
 	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/users").Subrouter()

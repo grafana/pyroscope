@@ -1,0 +1,326 @@
+package convert
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"path"
+	"reflect"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+	"unicode"
+
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/perf"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+)
+
+// ProfileFile represents content to be converted to flamebearer.
+type ProfileFile struct {
+	// Name of the file in which the profile was saved. Optional.
+	// example: pyroscope.server.cpu-2022-01-23T14:31:43Z.json
+	Name string
+	// Type of profile. Optional.
+	Type     ProfileFileType
+	TypeData ProfileFileTypeData
+	// Raw profile bytes. Required, min length 2.
+	Profile []byte
+}
+
+type ProfileFileType string
+
+type ProfileFileTypeData struct {
+	SpyName string
+	Units   metadata.Units
+}
+
+const (
+	ProfileFileTypeJSON       ProfileFileType = "json"
+	ProfileFileTypePprof      ProfileFileType = "pprof"
+	ProfileFileTypeCollapsed  ProfileFileType = "collapsed"
+	ProfileFileTypePerfScript ProfileFileType = "perf_script"
+)
+
+type ConverterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
+
+var formatConverters = map[ProfileFileType]ConverterFn{
+	ProfileFileTypeJSON:       JSONToProfile,
+	ProfileFileTypePprof:      PprofToProfile,
+	ProfileFileTypeCollapsed:  CollapsedToProfile,
+	ProfileFileTypePerfScript: PerfScriptToProfile,
+}
+
+func ConverterToFormat(f ConverterFn) ProfileFileType {
+	switch reflect.ValueOf(f).Pointer() {
+	case reflect.ValueOf(JSONToProfile).Pointer():
+		return ProfileFileTypeJSON
+	case reflect.ValueOf(PprofToProfile).Pointer():
+		return ProfileFileTypePprof
+	case reflect.ValueOf(CollapsedToProfile).Pointer():
+		return ProfileFileTypeCollapsed
+	case reflect.ValueOf(PerfScriptToProfile).Pointer():
+		return ProfileFileTypePerfScript
+	}
+	return "unknown"
+}
+
+// TODO(kolesnikovae): ConverterFn is never used lazily.
+//   It makes sense to simplify the API to just:
+//     Parse(ProfileFile) (*flamebearer.FlamebearerProfile, error)
+//
+// TODO(kolesnikovae): Consider simpler (but more reliable) logic for
+//  format identification with fallbacks: from the most strict format to
+//  the loosest one. An example sequence:
+//    pprof, json, collapsed, perf.
+
+// Converter returns a ConverterFn that converts to FlamebearerProfile
+// and overrides any specified fields
+func Converter(p ProfileFile) (ConverterFn, error) {
+	convertFn, err := converter(p)
+	if err != nil {
+		return nil, err
+	}
+	return func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+		fb, err := convertFn(b, name, maxNodes)
+		if err != nil {
+			return nil, err
+		}
+		// Overwrite fields if available
+		if p.TypeData.SpyName != "" {
+			fb.Metadata.SpyName = p.TypeData.SpyName
+		}
+		// Replace the units if provided
+		if p.TypeData.Units != "" {
+			fb.Metadata.Units = p.TypeData.Units
+		}
+		return fb, nil
+	}, nil
+}
+
+func converter(p ProfileFile) (ConverterFn, error) {
+	if f, ok := formatConverters[p.Type]; ok {
+		return f, nil
+	}
+	ext := strings.TrimPrefix(path.Ext(p.Name), ".")
+	if f, ok := formatConverters[ProfileFileType(ext)]; ok {
+		return f, nil
+	}
+	if ext == "txt" {
+		if perf.IsPerfScript(p.Profile) {
+			return PerfScriptToProfile, nil
+		}
+		return CollapsedToProfile, nil
+	}
+	if len(p.Profile) < 2 {
+		return nil, errors.New("profile is too short")
+	}
+	if p.Profile[0] == '{' {
+		return JSONToProfile, nil
+	}
+	if p.Profile[0] == '\x1f' && p.Profile[1] == '\x8b' {
+		// gzip magic number, assume pprof
+		return PprofToProfile, nil
+	}
+	// Unclear whether it's uncompressed pprof or collapsed, let's check if all the bytes are printable
+	// This will be slow for collapsed format, but should be fast enough for pprof, which is the most usual case,
+	// but we have a reasonable upper bound just in case.
+	// TODO(abeaumont): This won't work with collapsed format with non-ascii encodings.
+	for i, b := range p.Profile {
+		if i == 100 {
+			break
+		}
+		if !unicode.IsPrint(rune(b)) && !unicode.IsSpace(rune(b)) {
+			return PprofToProfile, nil
+		}
+	}
+	if perf.IsPerfScript(p.Profile) {
+		return PerfScriptToProfile, nil
+	}
+	return CollapsedToProfile, nil
+}
+
+func JSONToProfile(b []byte, name string, _ int) (*flamebearer.FlamebearerProfile, error) {
+	var profile flamebearer.FlamebearerProfile
+	if err := json.Unmarshal(b, &profile); err != nil {
+		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
+	}
+	if err := profile.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid profile: %w", err)
+	}
+	if name != "" {
+		profile.Metadata.Name = name
+	}
+	return &profile, nil
+}
+
+func PprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+	p, err := convert.ParsePprof(bytes.NewReader(b))
+	if err != nil {
+		return nil, fmt.Errorf("parsing pprof: %w", err)
+	}
+	// TODO(abeaumont): Support multiple sample types
+	for _, stype := range p.SampleTypes() {
+		sampleRate := uint32(100)
+		units := metadata.SamplesUnits
+		if c, ok := tree.DefaultSampleTypeMapping[stype]; ok {
+			units = c.Units
+			if c.Sampled && p.Period > 0 {
+				sampleRate = uint32(time.Second / time.Duration(p.Period))
+			}
+		}
+		t := tree.New()
+		p.Get(stype, func(_labels *spy.Labels, name []byte, val int) error {
+			t.Insert(name, uint64(val))
+			return nil
+		})
+
+		out := &storage.GetOutput{
+			Tree:       t,
+			Units:      units,
+			SpyName:    "unknown",
+			SampleRate: sampleRate,
+		}
+		profile := flamebearer.NewProfile(name, out, maxNodes)
+		return &profile, nil
+	}
+	return nil, errors.New("no supported sample type found")
+}
+
+func CollapsedToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+	t := tree.New()
+	for _, line := range bytes.Split(b, []byte("\n")) {
+		if len(line) == 0 {
+			continue
+		}
+		i := bytes.LastIndexByte(line, ' ')
+		if i < 0 {
+			return nil, errors.New("unable to find stacktrace and value separator")
+		}
+		value, err := strconv.ParseUint(string(line[i+1:]), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse sample value: %w", err)
+		}
+		t.Insert(line[:i], value)
+	}
+	out := &storage.GetOutput{
+		Tree:       t,
+		SpyName:    "unknown",
+		SampleRate: 100, // We don't have this information, use the default
+	}
+	profile := flamebearer.NewProfile(name, out, maxNodes)
+	return &profile, nil
+}
+
+func PerfScriptToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+	t := tree.New()
+	p := perf.NewScriptParser(b)
+	events, err := p.ParseEvents()
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range events {
+		t.InsertStack(e, 1)
+	}
+	out := &storage.GetOutput{
+		Tree:       t,
+		SpyName:    "unknown",
+		SampleRate: 100, // We don't have this information, use the default
+	}
+	profile := flamebearer.NewProfile(name, out, maxNodes)
+	return &profile, nil
+}
+
+// Diff takes two single profiles and generates a diff V1 profile
+func Diff(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes int) (flamebearer.FlamebearerProfile, error) {
+	var fb flamebearer.FlamebearerProfile
+	bt, err := profileToTree(*base)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
+	}
+	dt, err := profileToTree(*diff)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
+	}
+	bOut := &storage.GetOutput{
+		Units:      base.Metadata.Units,
+		SampleRate: base.Metadata.SampleRate,
+		SpyName:    base.Metadata.SpyName,
+		Tree:       bt,
+	}
+	dOut := &storage.GetOutput{
+		Units:      diff.Metadata.Units,
+		SampleRate: diff.Metadata.SampleRate,
+		SpyName:    diff.Metadata.SpyName,
+		Tree:       dt,
+	}
+
+	// If we didn't get an explicit name, try to infer one from base or diff profiles
+	for _, n := range []string{base.Metadata.Name, diff.Metadata.Name} {
+		if name != "" {
+			break
+		}
+		name = n
+	}
+
+	return flamebearer.NewCombinedProfile(name, bOut, dOut, maxNodes)
+}
+
+func profileToTree(fb flamebearer.FlamebearerProfile) (*tree.Tree, error) {
+	if fb.Metadata.Format != string(tree.FormatSingle) {
+		return nil, fmt.Errorf("unsupported flamebearer format %s", fb.Metadata.Format)
+	}
+	if fb.Version != 1 {
+		return nil, fmt.Errorf("unsupported flamebearer version %d", fb.Version)
+	}
+	return flamebearerV1ToTree(fb.Flamebearer)
+}
+
+func flamebearerV1ToTree(fb flamebearer.FlamebearerV1) (*tree.Tree, error) {
+	t := tree.New()
+	deltaDecoding(fb.Levels, 0, 4)
+	for i, l := range fb.Levels {
+		if i == 0 {
+			// Skip the first level: it'll contain the root ("total") node..
+			continue
+		}
+		for j := 0; j < len(l); j += 4 {
+			self := l[j+2]
+			if self > 0 {
+				t.InsertStackString(buildStack(fb, i, j), uint64(self))
+			}
+		}
+	}
+	return t, nil
+}
+
+func deltaDecoding(levels [][]int, start, step int) {
+	for _, l := range levels {
+		prev := 0
+		for i := start; i < len(l); i += step {
+			delta := l[i] + l[i+1]
+			l[i] += prev
+			prev += delta
+		}
+	}
+}
+
+func buildStack(fb flamebearer.FlamebearerV1, level, idx int) []string {
+	// The stack will contain names in the range [1, level].
+	// Level 0 is not included as its the root ("total") node.
+	stack := make([]string, level)
+	stack[level-1] = fb.Names[fb.Levels[level][idx+3]]
+	x := fb.Levels[level][idx]
+	for i := level - 1; i > 0; i-- {
+		j := sort.Search(len(fb.Levels[i])/4, func(j int) bool { return fb.Levels[i][j*4] > x }) - 1
+		stack[i-1] = fb.Names[fb.Levels[i][j*4+3]]
+		x = fb.Levels[i][j*4]
+	}
+	return stack
+}

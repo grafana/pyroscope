@@ -127,6 +127,8 @@ type Heatmap struct {
 	MaxDepth uint64 `json:"maxDepth"`
 }
 
+// TODO(kolesnikovae): Decouple flamebearer from storage.GetOutput.
+
 func NewProfile(name string, output *storage.GetOutput, maxNodes int) FlamebearerProfile {
 	fb := output.Tree.FlamebearerStruct(maxNodes)
 	return FlamebearerProfile{

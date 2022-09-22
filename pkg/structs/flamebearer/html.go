@@ -12,6 +12,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 )
 
+// TODO(kolesnikovae): Refactor to ./convert?
+
 // FlamebearerToStandaloneHTML converts and writes a flamebearer into HTML
 // TODO cache template creation and whatnot?
 func FlamebearerToStandaloneHTML(fb *FlamebearerProfile, dir http.FileSystem, w io.Writer) error {
