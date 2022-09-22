@@ -14,11 +14,18 @@ import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import type { Timeline } from '@webapp/models/timeline';
 import type { Annotation } from '@webapp/models/annotation';
 import * as tagsService from '@webapp/services/tags';
+import * as annotationsService from '@webapp/services/annotations';
 import { RequestAbortedError } from '@webapp/services/base';
 import { appendLabelToQuery } from '@webapp/util/query';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
+
+type NewAnnotationState =
+  | {
+      type: 'pristine';
+    }
+  | { type: 'saving' };
 
 type SingleView =
   | { type: 'pristine'; profile?: Profile }
@@ -135,6 +142,7 @@ interface ContinuousState {
   diffView2: DiffView2;
   comparisonView: ComparisonView;
   tagExplorerView: TagExplorerView;
+  newAnnotation: NewAnnotationState;
   tags: Tags;
 
   appNames:
@@ -182,6 +190,8 @@ const initialState: ContinuousState = {
     type: 'pristine',
     groups: {},
   },
+  newAnnotation: { type: 'pristine' },
+
   appNames: {
     type: 'loaded',
     data: [],
@@ -625,6 +635,30 @@ export const reloadAppNames = createAsyncThunk(
   }
 );
 
+// TODO(eh-am): support different views
+export const addAnnotation = createAsyncThunk(
+  'continuous/addAnnotation',
+  async (newAnnotation: annotationsService.NewAnnotation, thunkAPI) => {
+    const res = await annotationsService.addAnnotation(newAnnotation);
+
+    if (res.isOk) {
+      return Promise.resolve({
+        annotation: res.value,
+      });
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to add annotation',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
 export const continuousSlice = createSlice({
   name: 'continuous',
   initialState,
@@ -997,6 +1031,27 @@ export const continuousSlice = createSlice({
     });
     builder.addCase(reloadAppNames.rejected, (state) => {
       state.appNames = { type: 'failed', data: state.appNames.data };
+    });
+
+    /*****************/
+    /*  Annotation   */
+    /*****************/
+    builder.addCase(addAnnotation.fulfilled, (state, action) => {
+      // TODO(eh-am): allow arbitrary views
+      if ('annotations' in state.singleView) {
+        // TODO(eh-am): dedup
+        state.singleView.annotations = [
+          ...state.singleView.annotations,
+          action.payload.annotation,
+        ];
+      }
+      state.newAnnotation = { type: 'pristine' };
+    });
+    builder.addCase(addAnnotation.pending, (state) => {
+      state.newAnnotation = { type: 'saving' };
+    });
+    builder.addCase(addAnnotation.rejected, (state) => {
+      state.newAnnotation = { type: 'pristine' };
     });
   },
 });

@@ -13,6 +13,7 @@ import TimelineChart from './TimelineChart';
 import Annotation from './Annotation';
 import styles from './TimelineChartWrapper.module.css';
 import { markingsFromAnnotations, markingsFromSelection } from './markings';
+import { ContextMenuProps } from './ContextMenu.plugin';
 
 export interface TimelineGroupData {
   data: Group;
@@ -86,7 +87,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** list of annotations timestamp, to be rendered as markings */
   annotations?: { timestamp: number; content: string }[];
-  ContextMenu?: React.ReactNode;
+
+  /** What element to render when clicking */
+  ContextMenu?: (props: ContextMenuProps) => React.ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<

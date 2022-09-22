@@ -16,6 +16,7 @@ export interface ContextMenuProps {
     pageY: number;
   };
   timestamp: number;
+  containerEl: HTMLElement;
 }
 
 (function ($: JQueryStatic) {
@@ -35,7 +36,7 @@ export interface ContextMenuProps {
         | React.FC<ContextMenuProps>
         | undefined;
 
-      if (ContextMenu) {
+      if (ContextMenu && containerEl) {
         // TODO(eh-am): why do we need this conversion?
         const timestamp = Math.round(pos.x / 1000);
 
@@ -44,7 +45,11 @@ export interface ContextMenuProps {
         // TODO(eh-am): add a global Context too?
         ReactDOM.render(
           <Provider store={store}>
-            <ContextMenu click={{ ...pos }} timestamp={timestamp} />
+            <ContextMenu
+              click={{ ...pos }}
+              containerEl={containerEl}
+              timestamp={timestamp}
+            />
           </Provider>,
           containerEl
         );
