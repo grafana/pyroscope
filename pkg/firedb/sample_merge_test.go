@@ -317,7 +317,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			expected: []*commonv1.Series{
 				{
 					Labels: []*commonv1.LabelPair{},
-					Points: []*commonv1.Point{{T: 15000, V: 7}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 7}},
 				},
 			},
 		},
@@ -341,11 +341,11 @@ func TestMergeSampleByLabels(t *testing.T) {
 			expected: []*commonv1.Series{
 				{
 					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}},
-					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 30000, V: 1}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 				{
 					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "buzz"}},
-					Points: []*commonv1.Point{{T: 15000, V: 1}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 1}},
 				},
 			},
 		},
@@ -369,7 +369,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			expected: []*commonv1.Series{
 				{
 					Labels: []*commonv1.LabelPair{},
-					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 15000, V: 1}, {T: 30000, V: 1}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 			},
 		},
@@ -442,7 +442,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			expected: []*commonv1.Series{
 				{
 					Labels: []*commonv1.LabelPair{},
-					Points: []*commonv1.Point{{T: 15000, V: 7}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 7}},
 				},
 			},
 		},
@@ -466,11 +466,11 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			expected: []*commonv1.Series{
 				{
 					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}},
-					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 30000, V: 1}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 				{
 					Labels: []*commonv1.LabelPair{{Name: "foo", Value: "buzz"}},
-					Points: []*commonv1.Point{{T: 15000, V: 1}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 1}},
 				},
 			},
 		},
@@ -494,7 +494,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			expected: []*commonv1.Series{
 				{
 					Labels: []*commonv1.LabelPair{},
-					Points: []*commonv1.Point{{T: 15000, V: 1}, {T: 15000, V: 1}, {T: 30000, V: 1}},
+					Points: []*commonv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 			},
 		},

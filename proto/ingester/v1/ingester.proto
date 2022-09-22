@@ -118,8 +118,6 @@ message MergeProfilesLabelsRequest {
   repeated bool profiles = 3;
 }
 
-
-
 message MergeProfilesLabelsResponse {
   // The server replies batch of profiles.
   // A last message without profiles signals the next message will be the result of the merge.

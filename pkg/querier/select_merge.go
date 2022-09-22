@@ -428,8 +428,8 @@ func (s *seriesIterator) Next() bool {
 	}
 	p := s.point[0]
 	s.point = s.point[1:]
-	s.curr.Ts = p.T
-	s.curr.Value = p.V
+	s.curr.Ts = p.Timestamp
+	s.curr.Value = p.Value
 	return true
 }
 

@@ -318,13 +318,14 @@
     "v1Point": {
       "type": "object",
       "properties": {
-        "v": {
+        "value": {
           "type": "number",
           "format": "double"
         },
-        "t": {
+        "timestamp": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "Milliseconds unix timestamp"
         }
       }
     },

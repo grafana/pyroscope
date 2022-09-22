@@ -134,7 +134,7 @@ func TestSelectMergeByLabels(t *testing.T) {
 		},
 	}, &commonv1.Series{
 		Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}},
-		Points: []*commonv1.Point{{T: 1, V: 1.0}, {T: 2, V: 2.0}},
+		Points: []*commonv1.Point{{Timestamp: 1, Value: 1.0}, {Timestamp: 2, Value: 2.0}},
 	})
 	resp2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
@@ -154,7 +154,7 @@ func TestSelectMergeByLabels(t *testing.T) {
 		},
 	}, &commonv1.Series{
 		Labels: foobarlabels,
-		Points: []*commonv1.Point{{T: 3, V: 3.0}, {T: 4, V: 4.0}},
+		Points: []*commonv1.Point{{Timestamp: 3, Value: 3.0}, {Timestamp: 4, Value: 4.0}},
 	})
 	resp3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
@@ -166,7 +166,7 @@ func TestSelectMergeByLabels(t *testing.T) {
 		},
 	}, &commonv1.Series{
 		Labels: foobarlabels,
-		Points: []*commonv1.Point{{T: 5, V: 5.0}, {T: 6, V: 6.0}},
+		Points: []*commonv1.Point{{Timestamp: 5, Value: 5.0}, {Timestamp: 6, Value: 6.0}},
 	})
 
 	res, err := selectMergeSeries(context.Background(), []responseFromIngesters[clientpool.BidiClientMergeProfilesLabels]{

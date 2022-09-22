@@ -520,8 +520,8 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 					Labels: p.Labels().WithLabels(by...),
 					Points: []*commonv1.Point{
 						{
-							T: int64(p.Timestamp()),
-							V: float64(p.Total()),
+							Timestamp: int64(p.Timestamp()),
+							Value:     float64(p.Total()),
 						},
 					},
 				}
@@ -530,8 +530,8 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 		}
 		series := seriesByLabels[labelsByString]
 		series.Points = append(series.Points, &commonv1.Point{
-			T: int64(p.Timestamp()),
-			V: float64(p.Total()),
+			Timestamp: int64(p.Timestamp()),
+			Value:     float64(p.Total()),
 		})
 
 	}
@@ -545,7 +545,7 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 	// we have to sort the points in each series because labels reduction may have changed the order
 	for _, s := range result {
 		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].T < s.Points[j].T
+			return s.Points[i].Timestamp < s.Points[j].Timestamp
 		})
 	}
 	return result, nil

@@ -358,7 +358,7 @@ Outer:
 				seriesMap[it.At().LabelsHash] = &commonv1.Series{
 					Labels: it.At().Lbs,
 					Points: []*commonv1.Point{
-						{V: it.At().Value, T: currentStep},
+						{Value: it.At().Value, Timestamp: currentStep},
 					},
 				}
 				if !it.Next() {
@@ -367,8 +367,8 @@ Outer:
 				continue
 			}
 			// Aggregate point if it is in the current step.
-			if series.Points[len(series.Points)-1].T == currentStep {
-				series.Points[len(series.Points)-1].V += it.At().Value
+			if series.Points[len(series.Points)-1].Timestamp == currentStep {
+				series.Points[len(series.Points)-1].Value += it.At().Value
 				if !it.Next() {
 					break Outer
 				}
@@ -376,8 +376,8 @@ Outer:
 			}
 			// Next step is missing
 			series.Points = append(series.Points, &commonv1.Point{
-				V: it.At().Value,
-				T: currentStep,
+				Value:     it.At().Value,
+				Timestamp: currentStep,
 			})
 			if !it.Next() {
 				break Outer

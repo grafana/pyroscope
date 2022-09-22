@@ -274,14 +274,14 @@ func (m *Point) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.T != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.T))
+	if m.Timestamp != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Timestamp))
 		i--
 		dAtA[i] = 0x10
 	}
-	if m.V != 0 {
+	if m.Value != 0 {
 		i -= 8
-		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.V))))
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Value))))
 		i--
 		dAtA[i] = 0x9
 	}
@@ -403,11 +403,11 @@ func (m *Point) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.V != 0 {
+	if m.Value != 0 {
 		n += 9
 	}
-	if m.T != 0 {
-		n += 1 + sov(uint64(m.T))
+	if m.Timestamp != 0 {
+		n += 1 + sov(uint64(m.Timestamp))
 	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
@@ -1014,7 +1014,7 @@ func (m *Point) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 1 {
-				return fmt.Errorf("proto: wrong wireType = %d for field V", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
 			var v uint64
 			if (iNdEx + 8) > l {
@@ -1022,12 +1022,12 @@ func (m *Point) UnmarshalVT(dAtA []byte) error {
 			}
 			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
 			iNdEx += 8
-			m.V = float64(math.Float64frombits(v))
+			m.Value = float64(math.Float64frombits(v))
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field T", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
 			}
-			m.T = 0
+			m.Timestamp = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -1037,7 +1037,7 @@ func (m *Point) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.T |= int64(b&0x7F) << shift
+				m.Timestamp |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
