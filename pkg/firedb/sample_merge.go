@@ -201,8 +201,8 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 					Labels: p.Labels().WithLabels(by...),
 					Points: []*commonv1.Point{
 						{
-							T: int64(p.Timestamp()),
-							V: float64(total),
+							Timestamp: int64(p.Timestamp()),
+							Value:     float64(total),
 						},
 					},
 				}
@@ -211,8 +211,8 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 		}
 		series := seriesByLabels[labelsByString]
 		series.Points = append(series.Points, &commonv1.Point{
-			T: int64(p.Timestamp()),
-			V: float64(total),
+			Timestamp: int64(p.Timestamp()),
+			Value:     float64(total),
 		})
 	}
 
@@ -223,7 +223,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	// we have to sort the points in each series because labels reduction may have changed the order
 	for _, s := range result {
 		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].T < s.Points[j].T
+			return s.Points[i].Timestamp < s.Points[j].Timestamp
 		})
 	}
 	return result, nil
