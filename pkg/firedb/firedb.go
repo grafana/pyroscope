@@ -355,7 +355,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 		})
 	}
 
-	// Signals the end of the profile streaming by sending an empty request.
+	// Signals the end of the profile streaming by sending an empty response.
 	// This allows the client to not block other streaming ingesters.
 	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 		return err
