@@ -1,4 +1,11 @@
-import React, { SetStateAction, Dispatch, ReactNode } from 'react';
+import React, {
+  useRef,
+  useState,
+  useLayoutEffect,
+  SetStateAction,
+  Dispatch,
+  ReactNode,
+} from 'react';
 import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
 import styles from './Popover.module.scss';
@@ -23,16 +30,29 @@ export function Popover({
   children,
   anchorPoint,
 }: PopoverProps) {
-  // TODO(eh-am): handle out of bounds positioning
-  const popoverPosition = {
-    left: `${anchorPoint.x}px`,
-    top: `${anchorPoint.y}px`,
-    position: 'absolute' as const,
-  };
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState<React.CSSProperties>({
+    display: 'hidden',
+  });
+
+  useLayoutEffect(() => {
+    if (isModalOpen && popoverRef.current) {
+      const pos = getPopoverPosition(
+        popoverRef.current.clientWidth,
+        window.innerWidth,
+        anchorPoint
+      );
+      setPopoverPosition(pos);
+    }
+  }, [isModalOpen]);
 
   return (
     <OutsideClickHandler onOutsideClick={() => setModalOpenStatus(false)}>
-      <div className={styles.container} style={popoverPosition}>
+      <div
+        className={styles.container}
+        style={popoverPosition}
+        ref={popoverRef}
+      >
         {isModalOpen && (
           <div className={classnames(styles.popover, className)}>
             {children}
@@ -43,6 +63,32 @@ export function Popover({
   );
 }
 
+function getPopoverPosition(
+  popoverWidth: number,
+  windowWidth: number,
+  anchorPoint: PopoverProps['anchorPoint']
+) {
+  // Give some room between popover end and the window edge
+  const marginToWindowEdge = 30;
+  const defaultProps = {
+    top: `${anchorPoint.y}px`,
+    position: 'absolute' as const,
+  };
+
+  if (anchorPoint.x + popoverWidth + marginToWindowEdge >= windowWidth) {
+    // position to the left
+    return {
+      ...defaultProps,
+      left: `${anchorPoint.x - popoverWidth}px`,
+    };
+  }
+
+  // position to the right
+  return {
+    ...defaultProps,
+    left: `${anchorPoint.x}px`,
+  };
+}
 interface PopoverMemberProps {
   children: ReactNode;
 }
