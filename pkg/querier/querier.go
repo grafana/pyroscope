@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -98,8 +99,8 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]*commonv1.ProfileType, error) {
-		res, err := ic.ProfileTypes(ctx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*commonv1.ProfileType, error) {
+		res, err := ic.ProfileTypes(childCtx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 		if err != nil {
 			return nil, err
 		}
@@ -136,8 +137,8 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 		)
 		sp.Finish()
 	}()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelValues(ctx, connect.NewRequest(&ingestv1.LabelValuesRequest{
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
+		res, err := ic.LabelValues(childCtx, connect.NewRequest(&ingestv1.LabelValuesRequest{
 			Name: req.Msg.Name,
 		}))
 		if err != nil {
@@ -157,8 +158,8 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelNames(ctx, connect.NewRequest(&ingestv1.LabelNamesRequest{}))
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
+		res, err := ic.LabelNames(childCtx, connect.NewRequest(&ingestv1.LabelNamesRequest{}))
 		if err != nil {
 			return nil, err
 		}
@@ -181,8 +182,8 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		)
 		sp.Finish()
 	}()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) ([]*commonv1.Labels, error) {
-		res, err := ic.Series(ctx, connect.NewRequest(&ingestv1.SeriesRequest{
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*commonv1.Labels, error) {
+		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
 			Matchers: req.Msg.Matchers,
 		}))
 		if err != nil {
@@ -220,23 +221,43 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
-		res, err := ic.SelectProfiles(ctx, connect.NewRequest(&ingestv1.SelectProfilesRequest{
-			LabelSelector: req.Msg.LabelSelector,
-			Start:         req.Msg.Start,
-			End:           req.Msg.End,
-			Type:          profileType,
-		}))
-		if err != nil {
-			return nil, err
-		}
-		return res.Msg, nil
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(_ context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+		// we plan to use those streams to merge profiles
+		// so we use the main context here otherwise will be canceled
+		return ic.MergeProfilesStacktraces(ctx), nil
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	// send the first initial request to all ingesters.
+	g, gCtx := errgroup.WithContext(ctx)
+	for _, r := range responses {
+		r := r
+		g.Go(func() error {
+			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
+				Request: &ingestv1.SelectProfilesRequest{
+					LabelSelector: req.Msg.LabelSelector,
+					Start:         req.Msg.Start,
+					End:           req.Msg.End,
+					Type:          profileType,
+				},
+			})
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// merge all profiles
+	st, err := selectMergeStacktraces(gCtx, responses)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: NewFlameGraph(newTree(mergeStacktraces(dedupeProfiles(responses)))),
+		Flamegraph: NewFlameGraph(newTree(st)),
 	}), nil
 }
 
@@ -270,8 +291,8 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	// we need to request profile from start - step to end since start is inclusive.
 	// The first step starts at start-step to start.
 	start := req.Msg.Start - stepMs
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
-		res, err := ic.SelectProfiles(ctx, connect.NewRequest(&ingestv1.SelectProfilesRequest{
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
+		res, err := ic.SelectProfiles(childCtx, connect.NewRequest(&ingestv1.SelectProfilesRequest{
 			LabelSelector: req.Msg.LabelSelector,
 			Start:         start,
 			End:           req.Msg.End,

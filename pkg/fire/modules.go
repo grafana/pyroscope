@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/thanos-io/thanos/pkg/discovery/dns"
+	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/user"
 	"golang.org/x/net/http2"
@@ -201,6 +202,9 @@ func (f *Fire) initServer() (services.Service, error) {
 	prometheus.MustRegister(version.NewCollector("fire"))
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("fire_", f.reg)
+	// TODO(cyril) figure why this is locking the bidi stream see https://github.com/grafana/fire/issues/231
+	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
+
 	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
 		return nil, err
@@ -218,6 +222,25 @@ func (f *Fire) initServer() (services.Service, error) {
 		}
 		return svs
 	}
+
+	// sounds like logging is the problem. see https://github.com/grafana/fire/issues/231
+	defaultHTTPMiddleware := []middleware.Interface{
+		middleware.Tracer{
+			RouteMatcher: f.Server.HTTP,
+		},
+		// middleware.Log{
+		// 	Log:                   f.Server.Log,
+		// 	LogRequestAtInfoLevel: f.Cfg.Server.LogRequestAtInfoLevel,
+		// },
+		// middleware.Instrument{
+		// 	RouteMatcher:     router,
+		// 	Duration:         requestDuration,
+		// 	RequestBodySize:  receivedMessageSize,
+		// 	ResponseBodySize: sentMessageSize,
+		// 	InflightRequests: inflightRequests,
+		// },
+	}
+	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
 	// Best effort to propagate the org ID from the start.

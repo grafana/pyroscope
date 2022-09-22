@@ -9,6 +9,7 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/ingester/clientpool"
 )
 
 type IngesterQueryClient interface {
@@ -17,6 +18,7 @@ type IngesterQueryClient interface {
 	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
 	SelectProfiles(context.Context, *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error)
 	Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
+	MergeProfilesStacktraces(context.Context) clientpool.BidiClientMergeProfilesStacktraces
 }
 
 type responseFromIngesters[T interface{}] struct {
@@ -24,7 +26,7 @@ type responseFromIngesters[T interface{}] struct {
 	response T
 }
 
-type IngesterFn[T interface{}] func(IngesterQueryClient) (T, error)
+type IngesterFn[T interface{}] func(context.Context, IngesterQueryClient) (T, error)
 
 // IngesterQuerier helps with querying the ingesters.
 type IngesterQuerier struct {
@@ -59,7 +61,7 @@ func forGivenIngesters[T any](ctx context.Context, q *IngesterQuerier, replicati
 			return nil, err
 		}
 
-		resp, err := f(client.(IngesterQueryClient))
+		resp, err := f(ctx, client.(IngesterQueryClient))
 		if err != nil {
 			return nil, err
 		}

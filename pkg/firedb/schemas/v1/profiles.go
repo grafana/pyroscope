@@ -78,6 +78,10 @@ type Profile struct {
 	DefaultSampleType int64 `parquet:",optional"`
 }
 
+func (p Profile) Timestamp() model.Time {
+	return model.TimeFromUnixNano(p.TimeNanos)
+}
+
 type ProfilePersister struct{}
 
 func (*ProfilePersister) Name() string {

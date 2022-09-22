@@ -1,8 +1,9 @@
-package parquetquery
+package query
 
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"sync"
@@ -10,8 +11,8 @@ import (
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"github.com/segmentio/parquet-go"
-	pq "github.com/segmentio/parquet-go"
 
 	"github.com/grafana/fire/pkg/iter"
 )
@@ -122,8 +123,9 @@ func (t *RowNumber) Skip(numRows int64) {
 type IteratorResult struct {
 	RowNumber RowNumber
 	Entries   []struct {
-		k string
-		v parquet.Value
+		k        string
+		v        parquet.Value
+		RowValue interface{}
 	}
 }
 
@@ -137,9 +139,10 @@ func (r *IteratorResult) Append(rr *IteratorResult) {
 
 func (r *IteratorResult) AppendValue(k string, v parquet.Value) {
 	r.Entries = append(r.Entries, struct {
-		k string
-		v parquet.Value
-	}{k, v})
+		k        string
+		v        parquet.Value
+		RowValue interface{}
+	}{k, v, nil})
 }
 
 // ToMap converts the unstructured list of data into a map containing an entry
@@ -212,8 +215,9 @@ func columnIteratorPoolPut(b *columnIteratorBuffer) {
 var columnIteratorResultPool = sync.Pool{
 	New: func() interface{} {
 		return &IteratorResult{Entries: make([]struct {
-			k string
-			v parquet.Value
+			k        string
+			v        parquet.Value
+			RowValue interface{}
 		}, 0, 10)} // For luck
 	},
 }
@@ -279,7 +283,7 @@ func NewColumnIterator(ctx context.Context, rgs []parquet.RowGroup, column int, 
 func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 	defer close(c.ch)
 
-	span, ctx2 := opentracing.StartSpanFromContext(ctx, "columnIterator.iterate", opentracing.Tags{
+	span, _ := opentracing.StartSpanFromContext(ctx, "columnIterator.iterate", opentracing.Tags{
 		"columnIndex": c.col,
 		"column":      c.colName,
 	})
@@ -327,7 +331,7 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 			}
 		}
 
-		func(col pq.ColumnChunk) {
+		func(col parquet.ColumnChunk) {
 			pgs := col.Pages()
 			defer func() {
 				if err := pgs.Close(); err != nil {
@@ -335,13 +339,15 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 				}
 			}()
 			for {
-				span2, _ := opentracing.StartSpanFromContext(ctx2, "columnIterator.iterate.ReadPage")
 				pg, err := pgs.ReadPage()
-				span2.Finish()
-
 				if pg == nil || err == io.EOF {
 					break
 				}
+				span.LogFields(
+					log.String("msg", "reading page"),
+					log.Int64("page_num_values", pg.NumValues()),
+					log.Int64("page_size", pg.Size()),
+				)
 				if err != nil {
 					return
 				}
@@ -487,7 +493,6 @@ func (c *ColumnIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 
 	c.result = nil
 	return false
-
 }
 
 func (c *ColumnIterator) makeResult(t RowNumber, v parquet.Value) *IteratorResult {
@@ -531,6 +536,7 @@ func NewJoinIterator(definitionLevel int, iters []Iterator, pred GroupPredicate)
 	}
 	return &j
 }
+
 func (j *JoinIterator) At() *IteratorResult {
 	return j.result
 }
@@ -865,5 +871,60 @@ func (a *KeyValueGroupPredicate) KeepGroup(group *IteratorResult) bool {
 			return false
 		}
 	}
+	return true
+}
+
+type RowGetter interface {
+	RowNumber() int64
+}
+
+type RowNumberIterator[T any] struct {
+	iter.Iterator[T]
+	current *IteratorResult
+	err     error
+}
+
+func NewRowNumberIterator[T any](iter iter.Iterator[T]) *RowNumberIterator[T] {
+	return &RowNumberIterator[T]{
+		Iterator: iter,
+	}
+}
+
+func (r *RowNumberIterator[T]) Next() bool {
+	if !r.Iterator.Next() {
+		return false
+	}
+	r.current = columnIteratorResultPoolGet()
+	r.current.Reset()
+	rowGetter, ok := any(r.Iterator.At()).(RowGetter)
+	if !ok {
+		if r.err == nil {
+			r.err = fmt.Errorf("row number iterator: %T does not implement RowGetter", r.Iterator.At())
+		}
+		return false
+	}
+	r.current.RowNumber = RowNumber{rowGetter.RowNumber(), -1, -1, -1, -1, -1}
+	r.current.Entries = append(r.current.Entries, struct {
+		k        string
+		v        parquet.Value
+		RowValue interface{}
+	}{
+		RowValue: r.Iterator.At(),
+	})
+	return true
+}
+
+func (r *RowNumberIterator[T]) At() *IteratorResult {
+	return r.current
+}
+
+func (r *RowNumberIterator[T]) Err() error {
+	if r.err != nil {
+		return r.err
+	}
+	return r.Iterator.Err()
+}
+
+func (r *RowNumberIterator[T]) Seek(to RowNumberWithDefinitionLevel) bool {
 	return true
 }
