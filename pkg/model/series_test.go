@@ -22,31 +22,31 @@ func TestMergeSeries(t *testing.T) {
 			name: "merge two series",
 			in: [][]*commonv1.Series{
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{T: 1, V: 1}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{T: 2, V: 2}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 2, Value: 2}}},
 				},
 			},
 			out: []*commonv1.Series{
-				{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{T: 1, V: 1}, {T: 2, V: 2}}},
+				{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
 			},
 		},
 		{
 			name: "merge multiple series",
 			in: [][]*commonv1.Series{
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{T: 1, V: 1}}},
-					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{T: 1, V: 1}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}}},
+					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{T: 2, V: 2}}},
-					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{T: 3, V: 3}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 2, Value: 2}}},
+					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{Timestamp: 3, Value: 3}}},
 				},
 			},
 			out: []*commonv1.Series{
-				{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{T: 1, V: 1}, {T: 2, V: 2}}},
-				{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{T: 1, V: 1}, {T: 3, V: 3}}},
+				{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
+				{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 3, Value: 3}}},
 			},
 		},
 	} {

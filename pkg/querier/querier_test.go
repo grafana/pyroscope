@@ -290,7 +290,7 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 2, LabelIndex: 0},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{V: 1, T: 1}, {V: 2, T: 2}}})
+	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
 	bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
 			LabelsSets: []*commonv1.Labels{
@@ -307,7 +307,7 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 2, LabelIndex: 1},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{V: 1, T: 1}, {V: 2, T: 2}}})
+	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
 	bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
 			LabelsSets: []*commonv1.Labels{
@@ -324,7 +324,7 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 2, LabelIndex: 0},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{V: 1, T: 1}, {V: 2, T: 2}}})
+	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
@@ -348,7 +348,7 @@ func TestSelectSeries(t *testing.T) {
 	require.NoError(t, err)
 	// Only 2 results are used since the 3rd not required because of replication.
 	testhelper.EqualProto(t, []*commonv1.Series{
-		{Labels: foobarlabels, Points: []*commonv1.Point{{V: 2, T: 1}, {V: 4, T: 2}}},
+		{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
 	}, res.Msg.Series)
 	var selected []testProfile
 	selected = append(selected, bidi1.kept...)
@@ -603,11 +603,11 @@ func TestRangeSeries(t *testing.T) {
 			out: []*commonv1.Series{
 				{
 					Points: []*commonv1.Point{
-						{T: 1, V: 2},
-						{T: 2, V: 2},
-						{T: 3, V: 3},
-						{T: 4, V: 4},
-						{T: 5, V: 5},
+						{Timestamp: 1, Value: 2},
+						{Timestamp: 2, Value: 2},
+						{Timestamp: 3, Value: 3},
+						{Timestamp: 4, Value: 4},
+						{Timestamp: 5, Value: 5},
 					},
 				},
 			},
@@ -629,18 +629,18 @@ func TestRangeSeries(t *testing.T) {
 				{
 					Labels: foobarlabels,
 					Points: []*commonv1.Point{
-						{T: 1, V: 1},
-						{T: 2, V: 1},
-						{T: 4, V: 4},
-						{T: 5, V: 5},
+						{Timestamp: 1, Value: 1},
+						{Timestamp: 2, Value: 1},
+						{Timestamp: 4, Value: 4},
+						{Timestamp: 5, Value: 5},
 					},
 				},
 				{
 					Labels: foobuzzlabels,
 					Points: []*commonv1.Point{
-						{T: 1, V: 1},
-						{T: 3, V: 2},
-						{T: 4, V: 8},
+						{Timestamp: 1, Value: 1},
+						{Timestamp: 3, Value: 2},
+						{Timestamp: 4, Value: 8},
 					},
 				},
 			},
