@@ -325,7 +325,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	result := rangeSeries(it, start, req.Msg.End, stepMs)
+	result := rangeSeries(it, req.Msg.Start, req.Msg.End, stepMs)
 	if it.Err() != nil {
 		return nil, connect.NewError(connect.CodeInternal, it.Err())
 	}
@@ -335,8 +335,9 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	}), nil
 }
 
-// rangeSeries aggregates series into buckets of the given steps.
-// All profiles from the same buckets are summed together into a single point.
+// rangeSeries aggregates profiles into series.
+// Series contains points spaced by step from start to end.
+// Profiles from the same step are aggregated into one point.
 func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*commonv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*commonv1.Series)
@@ -346,16 +347,16 @@ func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*comm
 	}
 	// advance from the start to the end, adding each step results to the map.
 Outer:
-	for start, currentStep := start, start+step; currentStep <= end; start, currentStep = start+step, currentStep+step {
+	for currentStep := start; currentStep <= end; currentStep += step {
 		for {
-			if it.At().ts > currentStep {
+			if it.At().Ts > currentStep {
 				break // no more profiles for the currentStep
 			}
 			// find or create series
 			series, ok := seriesMap[it.At().LabelsHash]
 			if !ok {
 				seriesMap[it.At().LabelsHash] = &commonv1.Series{
-					Labels: it.At().lbs,
+					Labels: it.At().Lbs,
 					Points: []*commonv1.Point{
 						{V: it.At().Value, T: currentStep},
 					},
@@ -365,7 +366,7 @@ Outer:
 				}
 				continue
 			}
-
+			// Aggregate point if it is in the current step.
 			if series.Points[len(series.Points)-1].T == currentStep {
 				series.Points[len(series.Points)-1].V += it.At().Value
 				if !it.Next() {
@@ -373,6 +374,7 @@ Outer:
 				}
 				continue
 			}
+			// Next step is missing
 			series.Points = append(series.Points, &commonv1.Point{
 				V: it.At().Value,
 				T: currentStep,

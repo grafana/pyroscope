@@ -3,15 +3,12 @@ package querier
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/gogo/status"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -20,14 +17,6 @@ import (
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
-)
-
-var (
-	minTime = time.Unix(math.MinInt64/1000+62135596801, 0).UTC()
-	maxTime = time.Unix(math.MaxInt64/1000-62135596801, 999999999).UTC()
-
-	minTimeFormatted = minTime.Format(time.RFC3339Nano)
-	maxTimeFormatted = maxTime.Format(time.RFC3339Nano)
 )
 
 // LabelValuesHandler only returns the label values for the given label name.
@@ -94,29 +83,6 @@ func (q *Querier) RenderHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func parseTime(s string) (time.Time, error) {
-	if t, err := strconv.ParseFloat(s, 64); err == nil {
-		s, ns := math.Modf(t)
-		ns = math.Round(ns*1000) / 1000
-		return time.Unix(int64(s), int64(ns*float64(time.Second))).UTC(), nil
-	}
-	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return t, nil
-	}
-
-	// Stdlib's time parser can only handle 4 digit years. As a workaround until
-	// that is fixed we want to at least support our own boundary times.
-	// Context: https://github.com/prometheus/client_golang/issues/614
-	// Upstream issue: https://github.com/golang/go/issues/20555
-	switch s {
-	case minTimeFormatted:
-		return minTime, nil
-	case maxTimeFormatted:
-		return maxTime, nil
-	}
-	return time.Time{}, errors.Errorf("cannot parse %q to a valid timestamp", s)
 }
 
 // render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu

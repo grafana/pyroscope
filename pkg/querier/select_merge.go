@@ -57,9 +57,10 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 	keepSent bool // keepSent is true if we have sent the keep request to the ingester.
 }
 
-// NewStacktraceMergeIterator return a new iterator that merges stacktraces of profile.
-// Merging or querying stacktraces is expensive, we only merge the stacktraces of the profiles that are kept.
-func NewStacktraceMergeIterator[
+// NewMergeIterator return a new iterator that stream profiles and allows to filter them using `Keep` to keep
+// only a subset of the profiles for an aggregation result.
+// Merging or querying profiles sample values is expensive, we only merge the sample of the profiles that are kept.
+func NewMergeIterator[
 	R any,
 	Req Request,
 	Res Response,
@@ -79,7 +80,7 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 		// the iterator only need to precise profile to keep, not the ones to drop.
 		if !s.keepSent {
 			var err error
-			switch bidi := BidiClientMerge[Req, Res](s.bidi).(type) {
+			switch bidi := (s.bidi).(type) {
 			case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
 				err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 					Profiles: s.keep,
@@ -95,7 +96,7 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 			}
 		}
 		var selectedProfiles *ingestv1.ProfileSets
-		switch bidi := BidiClientMerge[Req, Res](s.bidi).(type) {
+		switch bidi := (s.bidi).(type) {
 		case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
 			res, err := bidi.Receive()
 			if err != nil {
@@ -146,7 +147,7 @@ func (s *mergeIterator[R, Req, Res]) At() ProfileWithLabels {
 
 func (s *mergeIterator[R, Req, Res]) Result() (R, error) {
 	var result R
-	switch bidi := BidiClientMerge[Req, Res](s.bidi).(type) {
+	switch bidi := (s.bidi).(type) {
 	case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
 		res, err := bidi.Receive()
 		if err != nil {
@@ -289,7 +290,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 	mergeResults := make([]MergeResult[*ingestv1.MergeProfilesStacktracesResult], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	for i, resp := range responses {
-		it := NewStacktraceMergeIterator[*ingestv1.MergeProfilesStacktracesResult](
+		it := NewMergeIterator[*ingestv1.MergeProfilesStacktracesResult](
 			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]]{
 				addr:     resp.addr,
 				response: resp.response,
@@ -343,18 +344,18 @@ func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktraces
 }
 
 type ProfileValue struct {
-	ts         int64
-	lbs        []*commonv1.LabelPair
+	Ts         int64
+	Lbs        []*commonv1.LabelPair
 	LabelsHash uint64
 	Value      float64
 }
 
 func (p ProfileValue) Labels() firemodel.Labels {
-	return p.lbs
+	return p.Lbs
 }
 
 func (p ProfileValue) Timestamp() model.Time {
-	return model.Time(p.ts)
+	return model.Time(p.Ts)
 }
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
@@ -362,7 +363,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 	mergeResults := make([]MergeResult[[]*commonv1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	for i, resp := range responses {
-		it := NewStacktraceMergeIterator[[]*commonv1.Series](
+		it := NewMergeIterator[[]*commonv1.Series](
 			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]]{
 				addr:     resp.addr,
 				response: resp.response,
@@ -415,7 +416,7 @@ func newSeriesIterator(lbs []*commonv1.LabelPair, points []*commonv1.Point) *ser
 		point: points,
 
 		curr: ProfileValue{
-			lbs:        lbs,
+			Lbs:        lbs,
 			LabelsHash: firemodel.Labels(lbs).Hash(),
 		},
 	}
@@ -427,7 +428,7 @@ func (s *seriesIterator) Next() bool {
 	}
 	p := s.point[0]
 	s.point = s.point[1:]
-	s.curr.ts = p.T
+	s.curr.Ts = p.T
 	s.curr.Value = p.V
 	return true
 }

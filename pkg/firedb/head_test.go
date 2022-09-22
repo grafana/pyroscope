@@ -91,16 +91,6 @@ func newProfileFoo() *profilev1.Profile {
 	}
 }
 
-func newEmptyProfile() *profilev1.Profile {
-	p := newProfileBar()
-	for _, s := range p.Sample {
-		for i := range s.Value {
-			s.Value[i] = 0
-		}
-	}
-	return p
-}
-
 func newProfileBar() *profilev1.Profile {
 	baseTable := append([]string{""}, valueTypeStrings...)
 	baseTableLen := int64(len(baseTable)) + 0
