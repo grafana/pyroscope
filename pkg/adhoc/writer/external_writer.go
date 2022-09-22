@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/webapp"
@@ -97,7 +98,20 @@ func (w *externalWriter) write(name string, out *storage.GetOutput) error {
 			return fmt.Errorf("could not write the collapsed file: %w", err)
 		}
 	case "html":
-		fb := flamebearer.NewProfile(filename, out, w.maxNodesRender)
+		fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
+			Name:      filename,
+			MaxNodes:  w.maxNodesRender,
+			Tree:      out.Tree,
+			Timeline:  out.Timeline,
+			Groups:    out.Groups,
+			Telemetry: out.Telemetry,
+			Metadata: metadata.Metadata{
+				SpyName:         out.SpyName,
+				SampleRate:      out.SampleRate,
+				Units:           out.Units,
+				AggregationType: out.AggregationType,
+			},
+		})
 		if err := flamebearer.FlamebearerToStandaloneHTML(&fb, w.assetsDir, f); err != nil {
 			return fmt.Errorf("could not write the standalone HTML file: %w", err)
 		}

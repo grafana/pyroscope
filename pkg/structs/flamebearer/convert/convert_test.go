@@ -54,8 +54,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte(`{"flamebearer":""}`),
-						Type:    "pprof",
+						Data: []byte(`{"flamebearer":""}`),
+						Type: "pprof",
 					}
 				})
 				It("should return pprof as type takes precedence over profile contents", func() {
@@ -74,8 +74,8 @@ var _ = Describe("Server", func() {
 				var m ProfileFile
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "profile.pprof",
-						Profile: []byte(`{"flamebearer":""}`),
+						Name: "profile.pprof",
+						Data: []byte(`{"flamebearer":""}`),
 					}
 				})
 
@@ -114,7 +114,7 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte{0x0a, 0x04},
+						Data: []byte{0x0a, 0x04},
 					}
 				})
 
@@ -133,7 +133,7 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte{0x1f, 0x8b},
+						Data: []byte{0x1f, 0x8b},
 					}
 				})
 
@@ -152,8 +152,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte{0x1f, 0x8b},
-						Type:    "unsupported",
+						Data: []byte{0x1f, 0x8b},
+						Type: "unsupported",
 					}
 				})
 
@@ -172,8 +172,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "profile.unsupported",
-						Profile: []byte{0x1f, 0x8b},
+						Name: "profile.unsupported",
+						Data: []byte{0x1f, 0x8b},
 					}
 				})
 
@@ -230,8 +230,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte{0x1f, 0x8b},
-						Type:    "json",
+						Data: []byte{0x1f, 0x8b},
+						Type: "json",
 					}
 				})
 				It("should return json as type takes precedence over profile contents", func() {
@@ -250,8 +250,8 @@ var _ = Describe("Server", func() {
 				var m ProfileFile
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "profile.json",
-						Profile: []byte{0x1f, 0x8b},
+						Name: "profile.json",
+						Data: []byte{0x1f, 0x8b},
 					}
 				})
 
@@ -290,7 +290,7 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte(`{"flamebearer":""}`),
+						Data: []byte(`{"flamebearer":""}`),
 					}
 				})
 
@@ -309,8 +309,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte(`{"flamebearer":""}`),
-						Type:    "unsupported",
+						Data: []byte(`{"flamebearer":""}`),
+						Type: "unsupported",
 					}
 				})
 
@@ -329,8 +329,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "profile.unsupported",
-						Profile: []byte(`{"flamebearer":""}`),
+						Name: "profile.unsupported",
+						Data: []byte(`{"flamebearer":""}`),
 					}
 				})
 
@@ -387,8 +387,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte{0x1f, 0x8b},
-						Type:    "collapsed",
+						Data: []byte{0x1f, 0x8b},
+						Type: "collapsed",
 					}
 				})
 				It("should return collapsed as type takes precedence over profile contents", func() {
@@ -407,8 +407,8 @@ var _ = Describe("Server", func() {
 				var m ProfileFile
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "profile.collapsed",
-						Profile: []byte{0x1f, 0x8b},
+						Name: "profile.collapsed",
+						Data: []byte{0x1f, 0x8b},
 					}
 				})
 
@@ -466,7 +466,7 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte("fn1 1\nfn2 2"),
+						Data: []byte("fn1 1\nfn2 2"),
 					}
 				})
 
@@ -485,8 +485,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte("fn1 1\nfn2 2"),
-						Type:    "unsupported",
+						Data: []byte("fn1 1\nfn2 2"),
+						Type: "unsupported",
 					}
 				})
 
@@ -505,8 +505,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "profile.unsupported",
-						Profile: []byte("fn1 1\nfn2 2"),
+						Name: "profile.unsupported",
+						Data: []byte("fn1 1\nfn2 2"),
 					}
 				})
 
@@ -527,7 +527,7 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Profile: []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
+						Data: []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
 					}
 				})
 
@@ -545,8 +545,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "foo.txt",
-						Profile: []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
+						Name: "foo.txt",
+						Data: []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
 					}
 				})
 
@@ -564,8 +564,8 @@ var _ = Describe("Server", func() {
 
 				BeforeEach(func() {
 					m = ProfileFile{
-						Name:    "foo.perf_script",
-						Profile: []byte("foo;bar 239"),
+						Name: "foo.perf_script",
+						Data: []byte("foo;bar 239"),
 					}
 				})
 
@@ -661,15 +661,15 @@ var _ = Describe("Server", func() {
 var _ = Describe("Convert", func() {
 	It("converts malformed pprof", func() {
 		m := ProfileFile{
-			Type:    "pprof",
-			Profile: readFile("./testdata/cpu-unknown.pb.gz"),
+			Type: "pprof",
+			Data: readFile("./testdata/cpu-unknown.pb.gz"),
 		}
 
 		f, err := converter(m)
 		Expect(err).To(BeNil())
 		Expect(f).ToNot(BeNil())
 
-		b, err := f(m.Profile, "appname", 1024)
+		b, err := f(m.Data, "appname", 1024)
 		Expect(err).To(BeNil())
 		Expect(b).ToNot(BeNil())
 	})

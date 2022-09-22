@@ -18,16 +18,16 @@ import (
 
 type AdhocService interface {
 	// GetProfileByID retrieves profile with the given ID.
-	GetProfileByID(ctx context.Context, id string) (model.AdhocProfile, error)
+	GetProfileByID(ctx context.Context, id string) (*flamebearer.FlamebearerProfile, error)
 	// GetAllProfiles lists all the known profiles.
 	GetAllProfiles(context.Context) ([]model.AdhocProfile, error)
 	// GetProfileDiffByID retrieves two profiles identified by their IDs and builds the profile diff.
-	GetProfileDiffByID(context.Context, model.GetAdhocProfileDiffByIDParams) (model.AdhocProfile, error)
-	// CreateProfile stores the profile provided and returns the entity created.
-	CreateProfile(context.Context, model.CreateAdhocProfileParams) (model.AdhocProfile, error)
-	// BuildProfileDiff takes two profiles and creates the difference flamegraph.
+	GetProfileDiffByID(context.Context, model.GetAdhocProfileDiffByIDParams) (*flamebearer.FlamebearerProfile, error)
+	// UploadProfile stores the profile provided and returns the entity created.
+	UploadProfile(context.Context, model.UploadAdhocProfileParams) (p *flamebearer.FlamebearerProfile, id string, err error)
+	// CreateProfileDiff takes two profiles and creates the difference flamegraph.
 	// Implementation details: the result is not stored and never requested.
-	BuildProfileDiff(context.Context, model.BuildAdhocProfileDiffParams) (model.AdhocProfile, error)
+	CreateProfileDiff(context.Context, model.CreateAdhocProfileDiffParams) (*flamebearer.FlamebearerProfile, error)
 }
 
 type AdhocHandler struct {
@@ -75,9 +75,9 @@ type adhocUploadResponse struct {
 
 func flamebearerFileFromAdhocRequest(req adhocUploadRequest) convert.ProfileFile {
 	return convert.ProfileFile{
-		Name:    req.Filename,
-		Profile: req.Profile,
-		Type:    convert.ProfileFileType(req.Type),
+		Name: req.Filename,
+		Data: req.Profile,
+		Type: convert.ProfileFileType(req.Type),
 		TypeData: convert.ProfileFileTypeData{
 			SpyName: req.TypeData.SpyName,
 			Units:   metadata.Units(req.TypeData.Units),
@@ -100,7 +100,7 @@ func (h AdhocHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		h.httpUtils.HandleError(r, w, err)
 		return
 	}
-	h.httpUtils.MustJSON(r, w, p.Profile)
+	h.httpUtils.MustJSON(r, w, p)
 }
 
 func (h AdhocHandler) ListProfiles(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +125,7 @@ func (h AdhocHandler) GetProfileDiff(w http.ResponseWriter, r *http.Request) {
 		h.httpUtils.HandleError(r, w, err)
 		return
 	}
-	h.httpUtils.MustJSON(r, w, p.Profile)
+	h.httpUtils.MustJSON(r, w, p)
 }
 
 func (h AdhocHandler) Upload(w http.ResponseWriter, r *http.Request) {
@@ -135,17 +135,17 @@ func (h AdhocHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		h.httpUtils.HandleError(r, w, httputils.JSONError{Err: err})
 		return
 	}
-	params := model.CreateAdhocProfileParams{
+	params := model.UploadAdhocProfileParams{
 		Profile: flamebearerFileFromAdhocRequest(req),
 	}
-	p, err := h.adhocService.CreateProfile(r.Context(), params)
+	p, id, err := h.adhocService.UploadProfile(r.Context(), params)
 	if err != nil {
 		h.httpUtils.HandleError(r, w, err)
 		return
 	}
 	h.httpUtils.MustJSON(r, w, adhocUploadResponse{
-		ID:          p.ID,
-		Flamebearer: p.Profile,
+		ID:          id,
+		Flamebearer: p,
 	})
 }
 
@@ -156,14 +156,14 @@ func (h AdhocHandler) UploadDiff(w http.ResponseWriter, r *http.Request) {
 		h.httpUtils.HandleError(r, w, httputils.JSONError{Err: err})
 		return
 	}
-	params := model.BuildAdhocProfileDiffParams{
+	params := model.CreateAdhocProfileDiffParams{
 		Diff: req.Diff,
 		Base: req.Base,
 	}
-	diff, err := h.adhocService.BuildProfileDiff(r.Context(), params)
+	p, err := h.adhocService.CreateProfileDiff(r.Context(), params)
 	if err != nil {
 		h.httpUtils.HandleError(r, w, err)
 		return
 	}
-	h.httpUtils.MustJSON(r, w, diff.Profile)
+	h.httpUtils.MustJSON(r, w, p)
 }

@@ -30,7 +30,7 @@ type ProfileFile struct {
 	Type     ProfileFileType
 	TypeData ProfileFileTypeData
 	// Raw profile bytes. Required, min length 2.
-	Profile []byte
+	Data []byte
 }
 
 type ProfileFileType string
@@ -70,14 +70,22 @@ func ConverterToFormat(f ConverterFn) ProfileFileType {
 	return "unknown"
 }
 
-// TODO(kolesnikovae): ConverterFn is never used lazily.
-//   It makes sense to simplify the API to just:
-//     Parse(ProfileFile) (*flamebearer.FlamebearerProfile, error)
-//
-// TODO(kolesnikovae): Consider simpler (but more reliable) logic for
-//  format identification with fallbacks: from the most strict format to
-//  the loosest one. An example sequence:
-//    pprof, json, collapsed, perf.
+func FlamebearerFromFile(f ProfileFile, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+	convertFn, err := Converter(f)
+	if err != nil {
+		return nil, errors.New(
+			"unable to detect the profile format based on the type, " +
+				"the filename and its contents. Currently supported formats are " +
+				"pprof's protobuf profile, perf, pyroscope's JSON format and collapsed formats")
+	}
+	fb, err := convertFn(f.Data, f.Name, maxNodes)
+	if err != nil {
+		return nil, errors.New(
+			"unable to convert the profile to the internal format. " +
+				"The profile was detected as " + string(ConverterToFormat(convertFn)))
+	}
+	return fb, nil
+}
 
 // Converter returns a ConverterFn that converts to FlamebearerProfile
 // and overrides any specified fields
@@ -103,6 +111,10 @@ func Converter(p ProfileFile) (ConverterFn, error) {
 	}, nil
 }
 
+// TODO(kolesnikovae): Consider simpler (but more reliable) logic for
+//  format identification with fallbacks: from the most strict format to
+//  the loosest one. An example sequence:
+//    pprof, json, collapsed, perf.
 func converter(p ProfileFile) (ConverterFn, error) {
 	if f, ok := formatConverters[p.Type]; ok {
 		return f, nil
@@ -112,18 +124,18 @@ func converter(p ProfileFile) (ConverterFn, error) {
 		return f, nil
 	}
 	if ext == "txt" {
-		if perf.IsPerfScript(p.Profile) {
+		if perf.IsPerfScript(p.Data) {
 			return PerfScriptToProfile, nil
 		}
 		return CollapsedToProfile, nil
 	}
-	if len(p.Profile) < 2 {
+	if len(p.Data) < 2 {
 		return nil, errors.New("profile is too short")
 	}
-	if p.Profile[0] == '{' {
+	if p.Data[0] == '{' {
 		return JSONToProfile, nil
 	}
-	if p.Profile[0] == '\x1f' && p.Profile[1] == '\x8b' {
+	if p.Data[0] == '\x1f' && p.Data[1] == '\x8b' {
 		// gzip magic number, assume pprof
 		return PprofToProfile, nil
 	}
@@ -131,7 +143,7 @@ func converter(p ProfileFile) (ConverterFn, error) {
 	// This will be slow for collapsed format, but should be fast enough for pprof, which is the most usual case,
 	// but we have a reasonable upper bound just in case.
 	// TODO(abeaumont): This won't work with collapsed format with non-ascii encodings.
-	for i, b := range p.Profile {
+	for i, b := range p.Data {
 		if i == 100 {
 			break
 		}
@@ -139,7 +151,7 @@ func converter(p ProfileFile) (ConverterFn, error) {
 			return PprofToProfile, nil
 		}
 	}
-	if perf.IsPerfScript(p.Profile) {
+	if perf.IsPerfScript(p.Data) {
 		return PerfScriptToProfile, nil
 	}
 	return CollapsedToProfile, nil

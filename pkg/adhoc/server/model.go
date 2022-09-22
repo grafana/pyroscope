@@ -2,12 +2,12 @@ package server
 
 import (
 	"errors"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/perf"
 	"path"
 	"reflect"
 	"strings"
 	"unicode"
 
+	"github.com/pyroscope-io/pyroscope/pkg/convert/perf"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )

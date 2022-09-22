@@ -10,7 +10,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
-	"github.com/sirupsen/logrus"
 )
 
 type AnnotationsService interface {
@@ -18,14 +17,12 @@ type AnnotationsService interface {
 	FindAnnotationsByTimeRange(ctx context.Context, appName string, startTime time.Time, endTime time.Time) ([]model.Annotation, error)
 }
 type AnnotationsHandler struct {
-	logger    logrus.FieldLogger
 	svc       AnnotationsService
 	httpUtils httputils.Utils
 }
 
-func NewAnnotationsHandler(logger logrus.FieldLogger, svc AnnotationsService, httpUtils httputils.Utils) *AnnotationsHandler {
+func NewAnnotationsHandler(svc AnnotationsService, httpUtils httputils.Utils) *AnnotationsHandler {
 	return &AnnotationsHandler{
-		logger:    logger,
 		svc:       svc,
 		httpUtils: httpUtils,
 	}

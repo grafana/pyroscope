@@ -1,17 +1,21 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer/convert"
 )
 
+var (
+	ErrAdhocProfileNotFound = NotFoundError{errors.New("profile not found")}
+)
+
 // AdhocProfile describes a profile that is controlled by AdhocService.
 type AdhocProfile struct {
 	ID        string
 	Name      string
-	Profile   *flamebearer.FlamebearerProfile
 	UpdatedAt time.Time
 }
 
@@ -20,11 +24,11 @@ type GetAdhocProfileDiffByIDParams struct {
 	DiffID string
 }
 
-type CreateAdhocProfileParams struct {
+type UploadAdhocProfileParams struct {
 	Profile convert.ProfileFile
 }
 
-type BuildAdhocProfileDiffParams struct {
+type CreateAdhocProfileDiffParams struct {
 	Base *flamebearer.FlamebearerProfile
 	Diff *flamebearer.FlamebearerProfile
 }
