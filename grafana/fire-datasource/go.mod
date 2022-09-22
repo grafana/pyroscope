@@ -3,7 +3,7 @@ module github.com/grafana/fire/grafana/fire-datasource
 go 1.18
 
 require (
-	github.com/bufbuild/connect-go v0.3.0
+	github.com/bufbuild/connect-go v0.4.1-0.20220914044445-cce7065d23ae
 	github.com/grafana/fire v0.0.0-00010101000000-000000000000
 	github.com/grafana/grafana-plugin-sdk-go v0.139.0
 	github.com/stretchr/testify v1.8.0

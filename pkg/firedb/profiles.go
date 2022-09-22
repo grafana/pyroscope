@@ -15,6 +15,7 @@ import (
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	"github.com/grafana/fire/pkg/firedb/tsdb"
 	"github.com/grafana/fire/pkg/firedb/tsdb/index"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -109,6 +110,90 @@ outer:
 
 	}
 	return nil
+}
+
+func (pi *profilesIndex) SelectProfiles(matchers []*labels.Matcher, start, end model.Time) (iter.Iterator[Profile], error) {
+	filters, matchers := SplitFiltersAndMatchers(matchers)
+	ids, err := pi.ix.Lookup(matchers, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	pi.mutex.RLock()
+	defer pi.mutex.RUnlock()
+
+	iters := make([]iter.Iterator[Profile], 0, len(ids))
+outer:
+	for _, fp := range ids {
+		profile, ok := pi.profilesPerFP[fp]
+		if !ok {
+			// If a profile labels is missing here, it has already been flushed
+			// and is supposed to be picked up from storage by querier
+			continue
+		}
+		for _, filter := range filters {
+			if !filter.Matches(profile.lbs.Get(filter.Name)) {
+				continue outer
+			}
+		}
+		iters = append(iters,
+			NewSeriesIterator(
+				profile.lbs,
+				profile.fp,
+				iter.NewTimeRangedIterator(iter.NewSliceIterator(profile.profiles), start, end),
+			),
+		)
+	}
+	return iter.NewSortProfileIterator(iters), nil
+}
+
+type ProfileWithLabels struct {
+	*schemav1.Profile
+	lbs firemodel.Labels
+	fp  model.Fingerprint
+}
+
+func (p ProfileWithLabels) Timestamp() model.Time {
+	return model.TimeFromUnixNano(p.Profile.TimeNanos)
+}
+
+func (p ProfileWithLabels) Fingerprint() model.Fingerprint {
+	return p.fp
+}
+
+func (p ProfileWithLabels) Labels() firemodel.Labels {
+	return p.lbs
+}
+
+type SeriesIterator struct {
+	iter.Iterator[*schemav1.Profile]
+	curr ProfileWithLabels
+	fp   model.Fingerprint
+	lbs  firemodel.Labels
+}
+
+func NewSeriesIterator(labels firemodel.Labels, fingerprint model.Fingerprint, it iter.Iterator[*schemav1.Profile]) *SeriesIterator {
+	return &SeriesIterator{
+		Iterator: it,
+		fp:       fingerprint,
+		lbs:      labels,
+	}
+}
+
+func (it *SeriesIterator) Next() bool {
+	if !it.Iterator.Next() {
+		return false
+	}
+	it.curr = ProfileWithLabels{
+		Profile: it.Iterator.At(),
+		lbs:     it.lbs,
+		fp:      it.fp,
+	}
+	return true
+}
+
+func (it *SeriesIterator) At() Profile {
+	return it.curr
 }
 
 // forMatchingLabels iterates through all matching label sets and calls f for each labels set.

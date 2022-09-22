@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
+	"github.com/samber/lo"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
@@ -30,6 +31,7 @@ import (
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -60,7 +62,7 @@ func (t idConversionTable) rewriteUint64(idx *uint64) {
 }
 
 type Models interface {
-	*schemav1.Profile | *schemav1.Stacktrace | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string
+	*schemav1.Profile | *schemav1.Stacktrace | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string | *schemav1.StoredString
 }
 
 // rewriter contains slices to rewrite the per profile reference into per head references.
@@ -517,6 +519,138 @@ func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1
 		Profiles:      result,
 		FunctionNames: names,
 	}), err
+}
+
+func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Head")
+	defer sp.Finish()
+	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
+	}
+	selectors = append(selectors, firemodel.SelectorFromProfileType(params.Type))
+	return h.index.SelectProfiles(selectors, model.Time(params.Start), model.Time(params.End))
+}
+
+func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Head")
+	defer sp.Finish()
+
+	stacktraceSamples := map[uint64]*ingestv1.StacktraceSample{}
+	names := []string{}
+	functions := map[int64]int{}
+
+	defer rows.Close()
+
+	h.stacktraces.lock.RLock()
+	h.locations.lock.RLock()
+	h.functions.lock.RLock()
+	h.strings.lock.RLock()
+	defer func() {
+		h.stacktraces.lock.RUnlock()
+		h.locations.lock.RUnlock()
+		h.functions.lock.RUnlock()
+		h.strings.lock.RUnlock()
+	}()
+
+	for rows.Next() {
+		p, ok := rows.At().(ProfileWithLabels)
+		if !ok {
+			return nil, errors.New("expected ProfileWithLabels")
+		}
+		for _, s := range p.Samples {
+			if s.Value == 0 {
+				continue
+			}
+			existing, ok := stacktraceSamples[s.StacktraceID]
+			if ok {
+				existing.Value += s.Value
+				continue
+			}
+			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
+			fnIds := make([]int32, 0, 2*len(locs))
+			for _, loc := range locs {
+				for _, line := range h.locations.slice[loc].Line {
+					fnNameID := h.functions.slice[line.FunctionId].Name
+					pos, ok := functions[fnNameID]
+					if !ok {
+						functions[fnNameID] = len(names)
+						fnIds = append(fnIds, int32(len(names)))
+						names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
+						continue
+					}
+					fnIds = append(fnIds, int32(pos))
+				}
+			}
+			stacktraceSamples[s.StacktraceID] = &ingestv1.StacktraceSample{
+				FunctionIds: fnIds,
+				Value:       s.Value,
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return &ingestv1.MergeProfilesStacktracesResult{
+		Stacktraces:   lo.Values(stacktraceSamples),
+		FunctionNames: names,
+	}, nil
+}
+
+func (h *Head) Sort(in []Profile) []Profile {
+	return in
+}
+
+type ProfileSelectorIterator struct {
+	batch   chan []Profile
+	current iter.Iterator[Profile]
+	once    sync.Once
+}
+
+func NewProfileSelectorIterator() *ProfileSelectorIterator {
+	return &ProfileSelectorIterator{
+		batch: make(chan []Profile, 1),
+	}
+}
+
+func (it *ProfileSelectorIterator) Push(batch []Profile) {
+	if len(batch) == 0 {
+		return
+	}
+	it.batch <- batch
+}
+
+func (it *ProfileSelectorIterator) Next() bool {
+	if it.current == nil {
+		batch, ok := <-it.batch
+		if !ok {
+			return false
+		}
+		it.current = iter.NewSliceIterator(batch)
+	}
+	if !it.current.Next() {
+		it.current = nil
+		return it.Next()
+	}
+	return true
+}
+
+func (it *ProfileSelectorIterator) At() Profile {
+	if it.current == nil {
+		return ProfileWithLabels{}
+	}
+	return it.current.At()
+}
+
+func (it *ProfileSelectorIterator) Close() error {
+	it.once.Do(func() {
+		close(it.batch)
+	})
+	return nil
+}
+
+func (it *ProfileSelectorIterator) Err() error {
+	return nil
 }
 
 func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {

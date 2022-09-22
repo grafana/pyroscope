@@ -15,7 +15,6 @@ import (
 
 // This test ensures that the structs that are stored and the used schema matches
 func TestSchemaMatch(t *testing.T) {
-
 	// TODO: Unfortunately the upstream schema doesn't correctly produce a
 	// schema of a List of a struct pointer. This replaces this in the schema
 	// comparison, because this has no affect to our construct/reconstruct code
@@ -31,8 +30,8 @@ func TestSchemaMatch(t *testing.T) {
 	stacktracesStructSchema := parquet.SchemaOf(&storedStacktrace{})
 	require.Equal(t, strings.Replace(stacktracesStructSchema.String(), "message storedStacktrace", "message Stacktrace", 1), stacktracesSchema.String())
 
-	stringsStructSchema := parquet.SchemaOf(&storedString{})
-	require.Equal(t, strings.Replace(stringsStructSchema.String(), "message storedString", "message String", 1), stringsSchema.String())
+	stringsStructSchema := parquet.SchemaOf(&StoredString{})
+	require.Equal(t, strings.Replace(stringsStructSchema.String(), "message StoredString", "message String", 1), stringsSchema.String())
 }
 
 func newStacktraces() []*Stacktrace {

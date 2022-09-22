@@ -6,14 +6,12 @@ import (
 	fireparquet "github.com/grafana/fire/pkg/parquet"
 )
 
-var (
-	stringsSchema = parquet.NewSchema("String", fireparquet.Group{
-		fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("String", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
-	})
-)
+var stringsSchema = parquet.NewSchema("String", fireparquet.Group{
+	fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+	fireparquet.NewGroupField("String", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
+})
 
-type storedString struct {
+type StoredString struct {
 	ID     uint64 `parquet:",delta"`
 	String string `parquet:",dict"`
 }
@@ -36,7 +34,7 @@ func (*StringPersister) SortingColumns() SortingColumns {
 }
 
 func (*StringPersister) Deconstruct(row parquet.Row, id uint64, s string) parquet.Row {
-	var stored storedString
+	var stored StoredString
 	stored.ID = id
 	stored.String = s
 	row = stringsSchema.Deconstruct(row, &stored)
@@ -44,7 +42,7 @@ func (*StringPersister) Deconstruct(row parquet.Row, id uint64, s string) parque
 }
 
 func (*StringPersister) Reconstruct(row parquet.Row) (id uint64, s string, err error) {
-	var stored storedString
+	var stored StoredString
 	if err := stringsSchema.Reconstruct(&stored, row); err != nil {
 		return 0, "", err
 	}
