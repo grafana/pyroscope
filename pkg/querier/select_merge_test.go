@@ -15,7 +15,10 @@ import (
 	"github.com/grafana/fire/pkg/testhelper"
 )
 
-var foobarlabels = []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}
+var (
+	foobarlabels  = firemodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "bar"}})
+	foobuzzlabels = firemodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "buzz"}})
+)
 
 func TestSelectMergeStacktraces(t *testing.T) {
 	resp1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
@@ -195,11 +198,11 @@ func TestSelectMergeByLabels(t *testing.T) {
 	values, err := iter.Slice(res)
 	require.NoError(t, err)
 	require.Equal(t, []ProfileValue{
-		{ts: 1, Value: 1.0, lbs: foobarlabels, LabelsHash: firemodel.Labels(foobarlabels).Hash()},
-		{ts: 2, Value: 2.0, lbs: foobarlabels, LabelsHash: firemodel.Labels(foobarlabels).Hash()},
-		{ts: 3, Value: 3.0, lbs: foobarlabels, LabelsHash: firemodel.Labels(foobarlabels).Hash()},
-		{ts: 4, Value: 4.0, lbs: foobarlabels, LabelsHash: firemodel.Labels(foobarlabels).Hash()},
-		{ts: 5, Value: 5.0, lbs: foobarlabels, LabelsHash: firemodel.Labels(foobarlabels).Hash()},
-		{ts: 6, Value: 6.0, lbs: foobarlabels, LabelsHash: firemodel.Labels(foobarlabels).Hash()},
+		{Ts: 1, Value: 1.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+		{Ts: 2, Value: 2.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+		{Ts: 3, Value: 3.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+		{Ts: 4, Value: 4.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+		{Ts: 5, Value: 5.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+		{Ts: 6, Value: 6.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 	}, values)
 }

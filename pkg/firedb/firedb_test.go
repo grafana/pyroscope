@@ -9,14 +9,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/google/uuid"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	googlev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
@@ -38,21 +36,6 @@ func TestCreateLocalDir(t *testing.T) {
 		BlockDuration: 30 * time.Minute,
 	}, log.NewNopLogger(), nil)
 	require.NoError(t, err)
-}
-
-var cpuProfileGenerator = func(tsNano int64, t testing.TB) (*googlev1.Profile, string) {
-	p := parseProfile(t, "testdata/profile")
-	p.TimeNanos = tsNano
-	return p, "process_cpu"
-}
-
-func ingestProfiles(b testing.TB, db *FireDB, generator func(tsNano int64, t testing.TB) (*googlev1.Profile, string), from, to int64, step time.Duration, externalLabels ...*commonv1.LabelPair) {
-	b.Helper()
-	for i := from; i <= to; i += int64(step) {
-		p, name := generator(i, b)
-		require.NoError(b, db.Head().Ingest(
-			context.Background(), p, uuid.New(), append(externalLabels, &commonv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
-	}
 }
 
 type fakeBidiServerMergeProfilesStacktraces struct {

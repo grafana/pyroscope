@@ -18,6 +18,7 @@ import (
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/testhelper"
 )
@@ -266,96 +267,107 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 }
 
 func TestSelectSeries(t *testing.T) {
-	// for _, tt := range []struct {
-	// 	name    string
-	// 	in      []*ingestv1.Profile
-	// 	out     []*commonv1.Series
-	// 	groupby []string
-	// }{
-	// 	{
-	// 		name: "empty",
-	// 		in:   []*ingestv1.Profile{},
-	// 		out:  []*commonv1.Series{},
-	// 	},
-	// 	{
-	// 		name: "no group",
-	// 		in: []*ingestv1.Profile{
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 		},
-	// 		out: []*commonv1.Series{
-	// 			{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
-	// 		},
-	// 	},
-	// 	{
-	// 		name:    " group by app",
-	// 		groupby: []string{"app"},
-	// 		in: []*ingestv1.Profile{
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 		},
-	// 		out: []*commonv1.Series{
-	// 			{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*commonv1.Point{{T: int64(1000), V: 10}, {T: int64(2000), V: 10}}},
-	// 			{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Points: []*commonv1.Point{{T: int64(1000), V: 20}}},
-	// 		},
-	// 	},
-	// 	{
-	// 		name:    " group by missing",
-	// 		groupby: []string{"missing"},
-	// 		in: []*ingestv1.Profile{
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 1000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 2000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 		},
-	// 		out: []*commonv1.Series{
-	// 			{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
-	// 		},
-	// 	},
-	// 	{
-	// 		name:    "outside of the range",
-	// 		groupby: []string{},
-	// 		in: []*ingestv1.Profile{
-	// 			{Timestamp: 9000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 10000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 11000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 			{Timestamp: 20000, Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Stacktraces: []*ingestv1.StacktraceSample{{Value: 10}}},
-	// 		},
-	// 		out: []*commonv1.Series{
-	// 			{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{T: int64(9000), V: 10}, {T: int64(10000), V: 10}}},
-	// 		},
-	// 	},
-	// } {
-	// 	tt := tt
-	// 	t.Run(tt.name, func(t *testing.T) {
-	// 		querier, err := New(Config{
-	// 			PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	// 		}, testhelper.NewMockRing([]ring.InstanceDesc{
-	// 			{Addr: "1"}, {Addr: "2"}, {Addr: "3"},
-	// 		}, 1), func(addr string) (client.PoolClient, error) {
-	// 			q := newFakeQuerier()
-	// 			q.On("SelectProfiles", mock.Anything, mock.Anything).Once().Return(connect.NewResponse(&ingestv1.SelectProfilesResponse{
-	// 				Profiles: tt.in,
-	// 			}), nil)
-	// 			return q, nil
-	// 		}, log.NewLogfmtLogger(os.Stdout))
-	// 		require.NoError(t, err)
-
-	// 		resp, err := querier.SelectSeries(context.Background(), connect.NewRequest(&querierv1.SelectSeriesRequest{
-	// 			ProfileTypeID: "memory:inuse_space:bytes:space:byte",
-	// 			Step:          float64(1),
-	// 			GroupBy:       tt.groupby,
-	// 			Start:         int64(1000),
-	// 			End:           int64(10000),
-	// 		}))
-	// 		require.NoError(t, err)
-	// 		testhelper.EqualProto(t, tt.out, resp.Msg.Series)
-	// 	})
-	// }
+	req := connect.NewRequest(&querierv1.SelectSeriesRequest{
+		LabelSelector: `{app="foo"}`,
+		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
+		Start:         0,
+		End:           2,
+		Step:          0.001,
+	})
+	bidi1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*commonv1.Labels{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+				},
+			},
+			Profiles: []*ingestv1.SeriesProfile{
+				{Timestamp: 1, LabelIndex: 0},
+				{Timestamp: 2, LabelIndex: 1},
+				{Timestamp: 2, LabelIndex: 0},
+			},
+		},
+	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{V: 1, T: 1}, {V: 2, T: 2}}})
+	bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*commonv1.Labels{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+				},
+			},
+			Profiles: []*ingestv1.SeriesProfile{
+				{Timestamp: 1, LabelIndex: 1},
+				{Timestamp: 1, LabelIndex: 0},
+				{Timestamp: 2, LabelIndex: 1},
+			},
+		},
+	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{V: 1, T: 1}, {V: 2, T: 2}}})
+	bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*commonv1.Labels{
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+				},
+				{
+					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+				},
+			},
+			Profiles: []*ingestv1.SeriesProfile{
+				{Timestamp: 1, LabelIndex: 1},
+				{Timestamp: 1, LabelIndex: 0},
+				{Timestamp: 2, LabelIndex: 0},
+			},
+		},
+	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{V: 1, T: 1}, {V: 2, T: 2}}})
+	querier, err := New(Config{
+		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
+		{Addr: "1"},
+		{Addr: "2"},
+		{Addr: "3"},
+	}, 3), func(addr string) (client.PoolClient, error) {
+		q := newFakeQuerier()
+		switch addr {
+		case "1":
+			q.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi1)
+		case "2":
+			q.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi2)
+		case "3":
+			q.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi3)
+		}
+		return q, nil
+	}, log.NewLogfmtLogger(os.Stdout))
+	require.NoError(t, err)
+	res, err := querier.SelectSeries(context.Background(), req)
+	require.NoError(t, err)
+	// Only 2 results are used since the 3rd not required because of replication.
+	testhelper.EqualProto(t, []*commonv1.Series{
+		{Labels: foobarlabels, Points: []*commonv1.Point{{V: 2, T: 1}, {V: 4, T: 2}}},
+	}, res.Msg.Series)
+	var selected []testProfile
+	selected = append(selected, bidi1.kept...)
+	selected = append(selected, bidi2.kept...)
+	selected = append(selected, bidi3.kept...)
+	sort.Slice(selected, func(i, j int) bool {
+		if selected[i].Ts == selected[j].Ts {
+			return firemodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+		}
+		return selected[i].Ts < selected[j].Ts
+	})
+	require.Len(t, selected, 4)
+	require.Equal(t,
+		[]testProfile{
+			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+		}, selected)
 }
 
 type fakeQuerierIngester struct {
@@ -570,6 +582,76 @@ func (f *fakeQuerierIngester) MergeProfilesLabels(ctx context.Context) clientpoo
 	}
 
 	return res
+}
+
+func TestRangeSeries(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   []ProfileValue
+		out  []*commonv1.Series
+	}{
+		{
+			name: "single series",
+			in: []ProfileValue{
+				{Ts: 1, Value: 1},
+				{Ts: 1, Value: 1},
+				{Ts: 2, Value: 2},
+				{Ts: 3, Value: 3},
+				{Ts: 4, Value: 4},
+				{Ts: 5, Value: 5},
+			},
+			out: []*commonv1.Series{
+				{
+					Points: []*commonv1.Point{
+						{T: 1, V: 2},
+						{T: 2, V: 2},
+						{T: 3, V: 3},
+						{T: 4, V: 4},
+						{T: 5, V: 5},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple series",
+			in: []ProfileValue{
+				{Ts: 1, Value: 1, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+				{Ts: 1, Value: 1, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 2, Value: 1, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+				{Ts: 3, Value: 1, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 3, Value: 1, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 4, Value: 4, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 4, Value: 4, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 4, Value: 4, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+				{Ts: 5, Value: 5, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+			},
+			out: []*commonv1.Series{
+				{
+					Labels: foobarlabels,
+					Points: []*commonv1.Point{
+						{T: 1, V: 1},
+						{T: 2, V: 1},
+						{T: 4, V: 4},
+						{T: 5, V: 5},
+					},
+				},
+				{
+					Labels: foobuzzlabels,
+					Points: []*commonv1.Point{
+						{T: 1, V: 1},
+						{T: 3, V: 2},
+						{T: 4, V: 8},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := iter.NewSliceIterator(tc.in)
+			out := rangeSeries(in, 1, 5, 1)
+			testhelper.EqualProto(t, tc.out, out)
+		})
+	}
 }
 
 // The code below can be useful for testing deduping directly to a cluster.
