@@ -15,6 +15,9 @@ interface InputProps {
   htmlId?: string;
 }
 
+/**
+ * @deprecated use TextField instead
+ */
 const Input = React.forwardRef(
   (
     {

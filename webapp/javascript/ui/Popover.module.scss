@@ -1,0 +1,29 @@
+.container {
+  position: relative;
+  display: inline-block;
+}
+
+.popover {
+  z-index: 3;
+  position: relative;
+
+  background-color: var(--ps-dropdown-background);
+  border: 1px solid var(--ps-ui-border);
+  border-radius: 4px;
+  box-shadow: 0px 2px 6px var(--ps-dropdown-shadow);
+}
+
+.header {
+  padding: 12px 8px;
+}
+.body {
+  display: flex;
+  border-top: 1px solid var(--ps-ui-border);
+  padding: 12px 8px;
+}
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 8px;
+  border-top: 1px solid var(--ps-ui-border);
+}

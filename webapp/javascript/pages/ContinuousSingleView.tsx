@@ -9,6 +9,7 @@ import {
   selectQueries,
   setDateRange,
   selectAnnotationsOrDefault,
+  addAnnotation,
 } from '@webapp/redux/reducers/continuous';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
@@ -18,8 +19,14 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
-import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
+import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
+import {
+  isExportToFlamegraphDotComEnabled,
+  isAnnotationsEnabled,
+} from '@webapp/util/features';
 import { formatTitle } from './formatTitle';
+import ContextMenu from './continuous/contextMenu/ContextMenu';
+import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -103,6 +110,31 @@ function ContinuousSingleView() {
     }
   };
 
+  const contextMenu = (props: ContextMenuProps) => {
+    if (!isAnnotationsEnabled) {
+      return null;
+    }
+    return (
+      <ContextMenu position={props.click}>
+        <AddAnnotationMenuItem
+          container={props.containerEl}
+          popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
+          timestamp={props.timestamp}
+          timezone={offset === 0 ? 'utc' : 'browser'}
+          onCreateAnnotation={(content) => {
+            dispatch(
+              addAnnotation({
+                appName: query,
+                timestamp: props.timestamp,
+                content,
+              })
+            );
+          }}
+        />
+      </ContextMenu>
+    );
+  };
+
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
@@ -121,6 +153,7 @@ function ContinuousSingleView() {
             }
             annotations={annotations}
             selectionType="single"
+            ContextMenu={contextMenu}
           />
         </Box>
         <Box>{flamegraphRenderer}</Box>

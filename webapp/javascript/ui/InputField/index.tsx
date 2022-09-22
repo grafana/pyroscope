@@ -13,6 +13,9 @@ interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   id?: string;
 }
 
+/**
+ * @deprecated use TextField instead
+ */
 function InputField({
   label,
   className,
