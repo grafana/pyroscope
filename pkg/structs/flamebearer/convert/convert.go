@@ -16,7 +16,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/perf"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
@@ -180,15 +179,17 @@ func PprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.Flamebear
 			t.Insert(name, uint64(val))
 			return nil
 		})
-
-		out := &storage.GetOutput{
-			Tree:       t,
-			Units:      units,
-			SpyName:    "unknown",
-			SampleRate: sampleRate,
-		}
-		profile := flamebearer.NewProfile(name, out, maxNodes)
-		return &profile, nil
+		fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
+			Tree:     t,
+			Name:     name,
+			MaxNodes: maxNodes,
+			Metadata: metadata.Metadata{
+				SpyName:    "unknown",
+				SampleRate: sampleRate,
+				Units:      units,
+			},
+		})
+		return &fb, nil
 	}
 	return nil, errors.New("no supported sample type found")
 }
@@ -209,13 +210,16 @@ func CollapsedToProfile(b []byte, name string, maxNodes int) (*flamebearer.Flame
 		}
 		t.Insert(line[:i], value)
 	}
-	out := &storage.GetOutput{
-		Tree:       t,
-		SpyName:    "unknown",
-		SampleRate: 100, // We don't have this information, use the default
-	}
-	profile := flamebearer.NewProfile(name, out, maxNodes)
-	return &profile, nil
+	fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
+		Name:     name,
+		Tree:     t,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    "unknown",
+			SampleRate: 100, // We don't have this information, use the default
+		},
+	})
+	return &fb, nil
 }
 
 func PerfScriptToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
@@ -228,13 +232,16 @@ func PerfScriptToProfile(b []byte, name string, maxNodes int) (*flamebearer.Flam
 	for _, e := range events {
 		t.InsertStack(e, 1)
 	}
-	out := &storage.GetOutput{
-		Tree:       t,
-		SpyName:    "unknown",
-		SampleRate: 100, // We don't have this information, use the default
-	}
-	profile := flamebearer.NewProfile(name, out, maxNodes)
-	return &profile, nil
+	fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
+		Name:     name,
+		Tree:     t,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    "unknown",
+			SampleRate: 100, // We don't have this information, use the default
+		},
+	})
+	return &fb, nil
 }
 
 // Diff takes two single profiles and generates a diff V1 profile
@@ -248,28 +255,27 @@ func Diff(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes int)
 	if err != nil {
 		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
 	}
-	bOut := &storage.GetOutput{
-		Units:      base.Metadata.Units,
-		SampleRate: base.Metadata.SampleRate,
-		SpyName:    base.Metadata.SpyName,
-		Tree:       bt,
+	baseProfile := flamebearer.ProfileConfig{
+		Name:     name,
+		Tree:     bt,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    base.Metadata.SpyName,
+			SampleRate: base.Metadata.SampleRate,
+			Units:      base.Metadata.Units,
+		},
 	}
-	dOut := &storage.GetOutput{
-		Units:      diff.Metadata.Units,
-		SampleRate: diff.Metadata.SampleRate,
-		SpyName:    diff.Metadata.SpyName,
-		Tree:       dt,
+	diffProfile := flamebearer.ProfileConfig{
+		Name:     name,
+		Tree:     dt,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    diff.Metadata.SpyName,
+			SampleRate: diff.Metadata.SampleRate,
+			Units:      diff.Metadata.Units,
+		},
 	}
-
-	// If we didn't get an explicit name, try to infer one from base or diff profiles
-	for _, n := range []string{base.Metadata.Name, diff.Metadata.Name} {
-		if name != "" {
-			break
-		}
-		name = n
-	}
-
-	return flamebearer.NewCombinedProfile(name, bOut, dOut, maxNodes)
+	return flamebearer.NewCombinedProfile(baseProfile, diffProfile)
 }
 
 func profileToTree(fb flamebearer.FlamebearerProfile) (*tree.Tree, error) {

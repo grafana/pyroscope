@@ -14,6 +14,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
@@ -154,7 +155,35 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	combined, err := flamebearer.NewCombinedProfile("diff", leftOut, rightOut, params.MaxNodes)
+	leftProfile := flamebearer.ProfileConfig{
+		Name:     "diff",
+		MaxNodes: params.MaxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    leftOut.SpyName,
+			SampleRate: leftOut.SampleRate,
+			Units:      leftOut.Units,
+		},
+		Tree:      leftOut.Tree,
+		Timeline:  leftOut.Timeline,
+		Groups:    leftOut.Groups,
+		Telemetry: leftOut.Telemetry,
+	}
+
+	rightProfile := flamebearer.ProfileConfig{
+		Name:     "diff",
+		MaxNodes: params.MaxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    rightOut.SpyName,
+			SampleRate: rightOut.SampleRate,
+			Units:      rightOut.Units,
+		},
+		Tree:      rightOut.Tree,
+		Timeline:  rightOut.Timeline,
+		Groups:    rightOut.Groups,
+		Telemetry: rightOut.Telemetry,
+	}
+
+	combined, err := flamebearer.NewCombinedProfile(leftProfile, rightProfile)
 	if err != nil {
 		rh.httpUtils.WriteInvalidParameterError(r, w, err)
 		return

@@ -43,7 +43,7 @@ func (h ExemplarsHandler) QueryExemplars(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	flame := flamebearer.NewProfileWithConfig(flamebearer.ProfileConfig{
+	flame := flamebearer.NewProfile(flamebearer.ProfileConfig{
 		MaxNodes:  p.maxNodes,
 		Metadata:  out.Metadata,
 		Tree:      out.Tree,

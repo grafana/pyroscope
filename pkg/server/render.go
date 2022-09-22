@@ -16,6 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
@@ -131,7 +132,20 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch p.format {
 	case "json":
-		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
+		flame := flamebearer.NewProfile(flamebearer.ProfileConfig{
+			Name:      filename,
+			MaxNodes:  p.maxNodes,
+			Tree:      out.Tree,
+			Timeline:  out.Timeline,
+			Groups:    out.Groups,
+			Telemetry: out.Telemetry,
+			Metadata: metadata.Metadata{
+				SpyName:         out.SpyName,
+				SampleRate:      out.SampleRate,
+				Units:           out.Units,
+				AggregationType: out.AggregationType,
+			},
+		})
 
 		// Look up annotations
 		annotations, err := rh.annotationsService.FindAnnotationsByTimeRange(r.Context(), appName, p.gi.StartTime, p.gi.EndTime)
@@ -159,7 +173,20 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		collapsed := out.Tree.Collapsed()
 		rh.httpUtils.WriteResponseFile(r, w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
-		res := flamebearer.NewProfile(filename, out, p.maxNodes)
+		res := flamebearer.NewProfile(flamebearer.ProfileConfig{
+			Name:      filename,
+			MaxNodes:  p.maxNodes,
+			Tree:      out.Tree,
+			Timeline:  out.Timeline,
+			Groups:    out.Groups,
+			Telemetry: out.Telemetry,
+			Metadata: metadata.Metadata{
+				SpyName:         out.SpyName,
+				SampleRate:      out.SampleRate,
+				Units:           out.Units,
+				AggregationType: out.AggregationType,
+			},
+		})
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&res, rh.dir, w); err != nil {
 			rh.httpUtils.WriteJSONEncodeError(r, w, err)
