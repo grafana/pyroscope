@@ -14,8 +14,8 @@ import (
 	"unicode"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/perf"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
@@ -172,8 +172,8 @@ func JSONToProfile(b []byte, name string, _ int) (*flamebearer.FlamebearerProfil
 }
 
 func PprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
-	p, err := convert.ParsePprof(bytes.NewReader(b))
-	if err != nil {
+	var p tree.Profile
+	if err := pprof.Decode(bytes.NewReader(b), &p); err != nil {
 		return nil, fmt.Errorf("parsing pprof: %w", err)
 	}
 	// TODO(abeaumont): Support multiple sample types

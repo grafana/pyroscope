@@ -57,7 +57,6 @@ var _ = Describe("server", func() {
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),
 						Notifier:                mockNotifier{},
-						Adhoc:                   mockAdhocServer{},
 					})
 					c.dir = http.Dir(tempAssetDir.Path)
 					h, _ := c.getHandler()

@@ -21,7 +21,6 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
-	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -194,16 +193,10 @@ func newServerService(c *config.Server) (*serverService, error) {
 		defaultMetricsRegistry)
 
 	svc.controller, err = server.New(server.Config{
-		Configuration: svc.config,
-		Storage:       svc.storage,
-		Ingester:      ingester,
-		Notifier:      svc.healthController,
-		Adhoc: adhocserver.New(
-			svc.logger,
-			svc.config.AdhocDataPath,
-			svc.config.MaxNodesRender,
-			!svc.config.NoAdhocUI,
-		),
+		Configuration:           svc.config,
+		Storage:                 svc.storage,
+		Ingester:                ingester,
+		Notifier:                svc.healthController,
 		Logger:                  svc.logger,
 		MetricsRegisterer:       defaultMetricsRegistry,
 		ExportedMetricsRegistry: exportedMetricsRegistry,

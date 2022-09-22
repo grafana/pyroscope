@@ -201,12 +201,12 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// fallthrough to default, to maintain existing behaviour
 		fallthrough
 	default:
-		metadata := renderMetadataResponse{FlamebearerMetadataV1: combined.Metadata}
-		rh.enhanceWithCustomFields(&metadata, params)
+		md := renderMetadataResponse{FlamebearerMetadataV1: combined.Metadata}
+		rh.enhanceWithCustomFields(&md, params)
 
 		res := RenderDiffResponse{
 			FlamebearerProfile: &combined,
-			Metadata:           metadata,
+			Metadata:           md,
 		}
 
 		rh.httpUtils.WriteResponseJSON(r, w, res)
@@ -264,7 +264,7 @@ func (rh *RenderDiffHandler) loadTree(ctx context.Context, gi *storage.GetInput,
 
 // add custom fields to renderMetadataResponse
 // original motivation is to add custom {start,end}Time calculated dynamically
-func (rh *RenderDiffHandler) enhanceWithCustomFields(metadata *renderMetadataResponse, params diffParams) {
+func (rh *RenderDiffHandler) enhanceWithCustomFields(md *renderMetadataResponse, params diffParams) {
 	var diffAppName string
 
 	if params.Left.Query.AppName == params.Right.Query.AppName {
@@ -275,9 +275,9 @@ func (rh *RenderDiffHandler) enhanceWithCustomFields(metadata *renderMetadataRes
 
 	startTime, endTime := rh.findStartEndTime(params.Left, params.Right)
 
-	metadata.AppName = diffAppName
-	metadata.StartTime = startTime.Unix()
-	metadata.EndTime = endTime.Unix()
+	md.AppName = diffAppName
+	md.StartTime = startTime.Unix()
+	md.EndTime = endTime.Unix()
 	// TODO: add missing fields
 }
 

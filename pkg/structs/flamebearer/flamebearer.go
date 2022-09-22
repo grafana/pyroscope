@@ -235,20 +235,20 @@ func newTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
 	}
 }
 
-func newHeatmap(heatmap *heatmap.Heatmap) *Heatmap {
-	if heatmap == nil {
+func newHeatmap(h *heatmap.Heatmap) *Heatmap {
+	if h == nil {
 		return nil
 	}
 	return &Heatmap{
-		Values:       heatmap.Values,
-		TimeBuckets:  heatmap.TimeBuckets,
-		ValueBuckets: heatmap.ValueBuckets,
-		StartTime:    heatmap.StartTime.UnixNano(),
-		EndTime:      heatmap.EndTime.UnixNano(),
-		MinValue:     heatmap.MinValue,
-		MaxValue:     heatmap.MaxValue,
-		MinDepth:     heatmap.MinDepth,
-		MaxDepth:     heatmap.MaxDepth,
+		Values:       h.Values,
+		TimeBuckets:  h.TimeBuckets,
+		ValueBuckets: h.ValueBuckets,
+		StartTime:    h.StartTime.UnixNano(),
+		EndTime:      h.EndTime.UnixNano(),
+		MinValue:     h.MinValue,
+		MaxValue:     h.MaxValue,
+		MinDepth:     h.MinDepth,
+		MaxDepth:     h.MaxDepth,
 	}
 }
 

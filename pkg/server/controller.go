@@ -79,6 +79,7 @@ type Controller struct {
 	userService        service.UserService
 	jwtTokenService    service.JWTTokenService
 	annotationsService service.AnnotationsService
+	signupDefaultRole  model.Role
 
 	scrapeManager *scrape.Manager
 	historyMgr    history.Manager
@@ -86,7 +87,7 @@ type Controller struct {
 
 type Config struct {
 	Configuration *config.Server
-	*logrus.Logger
+	Logger        *logrus.Logger
 	// TODO(kolesnikovae): Ideally, Storage should be decomposed.
 	*storage.Storage
 	ingestion.Ingester
@@ -158,9 +159,11 @@ func New(c Config) (*Controller, error) {
 	}
 
 	var err error
-	ctrl.dir, err = webapp.Assets()
-	if err != nil {
+	if ctrl.dir, err = webapp.Assets(); err != nil {
 		return nil, err
+	}
+	if ctrl.signupDefaultRole, err = model.ParseRole(c.Configuration.Auth.SignupDefaultRole); err != nil {
+		return nil, fmt.Errorf("default signup role is invalid: %w", err)
 	}
 
 	return &ctrl, nil
@@ -199,7 +202,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		UserService:        ctrl.userService,
 		AnnotationsService: ctrl.annotationsService,
 		AdhocService: service.NewAdhocService(
-			ctrl.config.MaxNodesSerialization,
+			ctrl.config.MaxNodesSerialization, //
 			ctrl.config.AdhocDataPath),
 	})
 

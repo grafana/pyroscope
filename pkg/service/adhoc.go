@@ -177,6 +177,6 @@ func (svc *AdhocService) loadProfile(p model.AdhocProfile) (*flamebearer.Flamebe
 	return converter(b, p.Name, svc.maxNodes)
 }
 
-func (svc *AdhocService) generateHash(name string) string {
+func (*AdhocService) generateHash(name string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(name)))
 }

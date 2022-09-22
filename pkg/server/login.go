@@ -93,7 +93,7 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		FullName: req.FullName,
 		Password: string(req.Password),
-		Role:     ctrl.config.Auth.SignupDefaultRole,
+		Role:     ctrl.signupDefaultRole,
 	})
 	ctrl.httpUtils.HandleError(r, w, err)
 }
@@ -253,7 +253,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 			user, err = ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
 				Name:       u.Name,
 				Email:      model.String(u.Email),
-				Role:       ctrl.config.Auth.SignupDefaultRole,
+				Role:       ctrl.signupDefaultRole,
 				Password:   model.MustRandomPassword(),
 				IsExternal: true,
 				// TODO(kolesnikovae): Specify the user source (oauth-provider, ldap, etc).
