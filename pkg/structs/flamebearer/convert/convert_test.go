@@ -637,7 +637,7 @@ var _ = Describe("Server", func() {
 				})
 
 				It("returns the diff profile", func() {
-					fb, err := Diff("name", base, diff, 1024)
+					fb, err := flamebearer.Diff("name", base, diff, 1024)
 					Expect(err).To(Succeed())
 					Expect(fb.Version).To(Equal(uint(1)))
 					Expect(fb.Metadata.Name).To(Equal("name"))

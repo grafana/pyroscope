@@ -108,7 +108,7 @@ func (svc *AdhocService) GetProfileDiffByID(_ context.Context, params model.GetA
 	if err != nil {
 		return nil, fmt.Errorf("unable to process left profile: %w", err)
 	}
-	dfb, err := svc.loadProfile(bp)
+	dfb, err := svc.loadProfile(dp)
 	if err != nil {
 		return nil, fmt.Errorf("unable to process right profile: %w", err)
 	}
@@ -120,7 +120,7 @@ func (svc *AdhocService) GetProfileDiffByID(_ context.Context, params model.GetA
 			break
 		}
 	}
-	fb, err := convert.Diff(name, bfb, dfb, svc.maxNodes)
+	fb, err := flamebearer.Diff(name, bfb, dfb, svc.maxNodes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate a diff profile: %w", err)
 	}
@@ -149,7 +149,7 @@ func (svc *AdhocService) UploadProfile(_ context.Context, params model.UploadAdh
 }
 
 func (svc *AdhocService) CreateProfileDiff(_ context.Context, params model.CreateAdhocProfileDiffParams) (*flamebearer.FlamebearerProfile, error) {
-	fb, err := convert.Diff("", params.Base, params.Diff, svc.maxNodes)
+	fb, err := flamebearer.Diff("", params.Base, params.Diff, svc.maxNodes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate a diff profile: %w", err)
 	}

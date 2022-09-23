@@ -3,6 +3,7 @@ package flamebearer
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/heatmap"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
@@ -297,4 +298,91 @@ func (fb FlamebearerProfileV1) Validate() error {
 
 func isEmpty(p ProfileConfig) bool {
 	return p.Metadata.SampleRate == 0 || p.Tree == nil || p.Tree.Samples() == 0
+}
+
+// Diff takes two single profiles and generates a diff profile
+func Diff(name string, base, diff *FlamebearerProfile, maxNodes int) (FlamebearerProfile, error) {
+	var fb FlamebearerProfile
+	bt, err := profileToTree(*base)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
+	}
+	dt, err := profileToTree(*diff)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
+	}
+	baseProfile := ProfileConfig{
+		Name:     name,
+		Tree:     bt,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    base.Metadata.SpyName,
+			SampleRate: base.Metadata.SampleRate,
+			Units:      base.Metadata.Units,
+		},
+	}
+	diffProfile := ProfileConfig{
+		Name:     name,
+		Tree:     dt,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    diff.Metadata.SpyName,
+			SampleRate: diff.Metadata.SampleRate,
+			Units:      diff.Metadata.Units,
+		},
+	}
+	return NewCombinedProfile(baseProfile, diffProfile)
+}
+
+func profileToTree(fb FlamebearerProfile) (*tree.Tree, error) {
+	if fb.Metadata.Format != string(tree.FormatSingle) {
+		return nil, fmt.Errorf("unsupported flamebearer format %s", fb.Metadata.Format)
+	}
+	if fb.Version != 1 {
+		return nil, fmt.Errorf("unsupported flamebearer version %d", fb.Version)
+	}
+	return flamebearerV1ToTree(fb.Flamebearer)
+}
+
+func flamebearerV1ToTree(fb FlamebearerV1) (*tree.Tree, error) {
+	t := tree.New()
+	deltaDecoding(fb.Levels, 0, 4)
+	for i, l := range fb.Levels {
+		if i == 0 {
+			// Skip the first level: it'll contain the root ("total") node..
+			continue
+		}
+		for j := 0; j < len(l); j += 4 {
+			self := l[j+2]
+			if self > 0 {
+				t.InsertStackString(buildStack(fb, i, j), uint64(self))
+			}
+		}
+	}
+	return t, nil
+}
+
+func deltaDecoding(levels [][]int, start, step int) {
+	for _, l := range levels {
+		prev := 0
+		for i := start; i < len(l); i += step {
+			delta := l[i] + l[i+1]
+			l[i] += prev
+			prev += delta
+		}
+	}
+}
+
+func buildStack(fb FlamebearerV1, level, idx int) []string {
+	// The stack will contain names in the range [1, level].
+	// Level 0 is not included as its the root ("total") node.
+	stack := make([]string, level)
+	stack[level-1] = fb.Names[fb.Levels[level][idx+3]]
+	x := fb.Levels[level][idx]
+	for i := level - 1; i > 0; i-- {
+		j := sort.Search(len(fb.Levels[i])/4, func(j int) bool { return fb.Levels[i][j*4] > x }) - 1
+		stack[i-1] = fb.Names[fb.Levels[i][j*4+3]]
+		x = fb.Levels[i][j*4]
+	}
+	return stack
 }
