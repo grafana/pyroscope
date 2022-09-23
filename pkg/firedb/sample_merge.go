@@ -69,9 +69,10 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	for stacktraces.Next() {
 		s := stacktraces.At()
 
-		locationsByStacktraceID[s.RowNum] = s.Result.LocationIDs
-		for _, locationID := range s.Result.LocationIDs {
+		locationsByStacktraceID[s.RowNum] = make([]uint64, len(s.Result.LocationIDs))
+		for i, locationID := range s.Result.LocationIDs {
 			locationIDs[int64(locationID)] = struct{}{}
+			locationsByStacktraceID[s.RowNum][i] = locationID
 		}
 	}
 	if err := stacktraces.Err(); err != nil {

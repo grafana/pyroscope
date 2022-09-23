@@ -8,12 +8,15 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -118,9 +121,15 @@ type HeadOption func(*Head)
 type Head struct {
 	logger  log.Logger
 	metrics *headMetrics
+	stopCh  chan struct{}
+	wg      sync.WaitGroup
 
 	headPath  string // path while block is actively appended to
 	localPath string // path once block has been cut
+
+	flushCh chan struct{} // this channel is closed once the Head should be flushed, should be used externally
+
+	flushForcedTimer *time.Timer // this timer will fire after the maximum
 
 	metaLock sync.RWMutex
 	meta     *block.Meta
@@ -144,13 +153,18 @@ const (
 	defaultFolderMode = 0o755
 )
 
-func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
+func NewHead(cfg *Config, opts ...HeadOption) (*Head, error) {
 	h := &Head{
+		stopCh: make(chan struct{}),
+
 		meta:         block.NewMeta(),
 		totalSamples: atomic.NewUint64(0),
+
+		flushCh:          make(chan struct{}),
+		flushForcedTimer: time.NewTimer(cfg.BlockDuration),
 	}
-	h.headPath = filepath.Join(dataPath, pathHead, h.meta.ULID.String())
-	h.localPath = filepath.Join(dataPath, pathLocal, h.meta.ULID.String())
+	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
+	h.localPath = filepath.Join(cfg.DataPath, pathLocal, h.meta.ULID.String())
 
 	// execute options
 	for _, o := range opts {
@@ -191,7 +205,52 @@ func NewHead(dataPath string, opts ...HeadOption) (*Head, error) {
 	h.delta = newDeltaProfiles()
 
 	h.pprofLabelCache.init()
+
+	h.wg.Add(1)
+	go h.loop()
+
 	return h, nil
+}
+
+func (h *Head) Size() uint64 {
+	var size uint64
+	// TODO: Estimate size of TSDB index
+	for _, t := range h.tables {
+		size += t.Size()
+	}
+
+	return size
+}
+
+func (h *Head) loop() {
+	defer h.wg.Done()
+
+	tick := time.NewTicker(5 * time.Second)
+	defer func() {
+		tick.Stop()
+		h.flushForcedTimer.Stop()
+	}()
+
+	for {
+		select {
+		case <-h.flushForcedTimer.C:
+			level.Debug(h.logger).Log("msg", "max block duration reached, flush to disk")
+			close(h.flushCh)
+			return
+		case <-tick.C:
+			if currentSize := h.Size(); currentSize > maxBlockBytes {
+				level.Debug(h.logger).Log(
+					"msg", "max block bytes reached, flush to disk",
+					"max_size", humanize.Bytes(maxBlockBytes),
+					"current_head_size", humanize.Bytes(currentSize),
+				)
+				close(h.flushCh)
+				return
+			}
+		case <-h.stopCh:
+			return
+		}
+	}
 }
 
 func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([][]*schemav1.Sample, error) {
@@ -636,6 +695,20 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	return connect.NewResponse(response), nil
 }
 
+// Flush closes the head and writes data to disk
+func (h *Head) Close() error {
+	close(h.stopCh)
+
+	var merr multierror.MultiError
+	for _, t := range h.tables {
+		merr.Add(t.Close())
+	}
+
+	h.wg.Wait()
+	return merr.Err()
+}
+
+// Flush closes the head and writes data to disk
 func (h *Head) Flush(ctx context.Context) error {
 	if len(h.profiles.slice) == 0 {
 		level.Info(h.logger).Log("msg", "head empty - no block written")
