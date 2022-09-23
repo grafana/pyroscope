@@ -56,7 +56,7 @@ var formatConverters = map[ProfileFileType]ConverterFn{
 }
 
 func FlamebearerFromFile(f ProfileFile, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
-	convertFn, err := Converter(f)
+	convertFn, _, err := Converter(f)
 	if err != nil {
 		return nil, err
 	}
@@ -65,10 +65,10 @@ func FlamebearerFromFile(f ProfileFile, maxNodes int) (*flamebearer.FlamebearerP
 
 // Converter returns a ConverterFn that converts to
 // FlamebearerProfile and overrides any specified fields.
-func Converter(p ProfileFile) (ConverterFn, error) {
+func Converter(p ProfileFile) (ConverterFn, ProfileFileType, error) {
 	convertFn, err := converter(p)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	return func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 		fb, err := convertFn(b, name, maxNodes)
@@ -85,12 +85,11 @@ func Converter(p ProfileFile) (ConverterFn, error) {
 			fb.Metadata.Units = p.TypeData.Units
 		}
 		return fb, nil
-	}, nil
+	}, converterToFormat(convertFn), nil
 }
 
-// FIXME(kolesnikovae):
-//  Note that converterToFormat works only for converter output,
-//  Converter wraps the returned function into anonymous one.
+// Note that converterToFormat works only for converter output,
+// Converter wraps the returned function into anonymous one.
 func converterToFormat(f ConverterFn) ProfileFileType {
 	switch reflect.ValueOf(f).Pointer() {
 	case reflect.ValueOf(JSONToProfile).Pointer():

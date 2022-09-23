@@ -169,14 +169,7 @@ func (svc *AdhocService) loadProfile(p model.AdhocProfile) (*flamebearer.Flamebe
 	if err != nil {
 		return nil, fmt.Errorf("unable to read profile: %w", err)
 	}
-	converter, err := convert.Converter(convert.ProfileFile{
-		Name: fileName,
-		Data: b,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("unable to handle the profile format: %w", err)
-	}
-	return converter(b, p.Name, svc.maxNodes)
+	return convert.FlamebearerFromFile(convert.ProfileFile{Name: fileName, Data: b}, svc.maxNodes)
 }
 
 func (*AdhocService) generateHash(name string) string {
