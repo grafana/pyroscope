@@ -4,6 +4,7 @@ import React, { LegacyRef } from 'react';
 import { useStyles, Tooltip } from '@grafana/ui';
 
 import { TooltipData, SampleUnit } from '../types';
+import { Field, getDisplayProcessor, GrafanaTheme2 } from '@grafana/data';
 
 type Props = {
   tooltipRef: LegacyRef<HTMLDivElement>;
@@ -43,53 +44,36 @@ const FlameGraphTooltip = ({ tooltipRef, tooltipData, showTooltip }: Props) => {
 };
 
 export const getTooltipData = (
-  profileTypeId: string,
+  field: Field,
   label: string,
   value: number,
-  totalTicks: number
+  totalTicks: number,
+  theme: GrafanaTheme2
 ): TooltipData => {
   let samples = value;
   let percentTitle = '';
   let unitTitle = '';
-  let unitValue = '';
 
-  const sampleUnit = profileTypeId?.split(':').length === 5 ? profileTypeId.split(':')[2] : '';
+  const unit = field.config.unit;
+  const processor = getDisplayProcessor({ field, theme });
+  const displayValue = processor(value, 2);
   const percent = Math.round(10000 * (samples / totalTicks)) / 100;
+  let unitValue = displayValue.text + displayValue.suffix
 
-  switch (sampleUnit) {
+  switch (unit) {
     case SampleUnit.Bytes:
-      unitValue = getUnitValue(samples, [
-        { divider: 1024, suffix: 'KB' },
-        { divider: 1024, suffix: 'MB' },
-        { divider: 1024, suffix: 'GB' },
-        { divider: 1024, suffix: 'PT' },
-      ]);
-      percentTitle = '% of total RAM';
+      percentTitle = '% of total';
       unitTitle = 'RAM';
       break;
 
-    case SampleUnit.Count:
-      unitValue = getUnitValue(samples, [
-        { divider: 1000, suffix: 'K' },
-        { divider: 1000, suffix: 'M' },
-        { divider: 1000, suffix: 'G' },
-        { divider: 1000, suffix: 'T' },
-      ]);
-      percentTitle = '% of total objects';
-      unitTitle = 'Allocated objects';
+    case SampleUnit.None:
+      percentTitle = '% of total';
+      unitTitle = 'Count';
+      // Remove unit suffix
+      unitValue = displayValue.text
       break;
 
     case SampleUnit.Nanoseconds:
-      unitValue = getUnitValue(
-        // convert nanoseconds to seconds
-        samples / 1000000000,
-        [
-          { divider: 60, suffix: 'minutes' },
-          { divider: 60, suffix: 'hours' },
-          { divider: 24, suffix: 'days' },
-        ],
-        'seconds'
-      );
       percentTitle = '% of total time';
       unitTitle = 'Time';
   }
@@ -99,7 +83,7 @@ export const getTooltipData = (
     percentTitle: percentTitle,
     percentValue: percent,
     unitTitle: unitTitle,
-    unitValue: unitValue,
+    unitValue,
     samples: samples.toLocaleString(),
   };
 };
