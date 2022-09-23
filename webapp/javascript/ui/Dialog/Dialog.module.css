@@ -19,6 +19,10 @@
   background-color: #222;
 
   max-width: 500px;
+  max-height: calc(100% - 64px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
@@ -29,6 +33,7 @@
 
 .body {
   padding: 15px 20px 10px;
+  overflow-y: auto;
 }
 
 .footer {

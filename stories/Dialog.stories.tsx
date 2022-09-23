@@ -26,7 +26,7 @@ export function dialog() {
         }}
       >
         <>
-          <DialogHeader>I am the Header</DialogHeader>
+          <DialogHeader closeable>I am the Header</DialogHeader>
           <DialogBody>
             <p>I am the body</p>
             <p>
