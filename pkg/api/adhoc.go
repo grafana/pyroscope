@@ -103,17 +103,17 @@ func (h AdhocHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	h.httpUtils.MustJSON(r, w, p)
 }
 
-func (h AdhocHandler) ListProfiles(w http.ResponseWriter, r *http.Request) {
-	p, err := h.adhocService.GetAllProfiles(r.Context())
+func (h AdhocHandler) GetProfiles(w http.ResponseWriter, r *http.Request) {
+	profiles, err := h.adhocService.GetAllProfiles(r.Context())
 	if err != nil {
 		h.httpUtils.HandleError(r, w, err)
 		return
 	}
-	profiles := make([]adhocProfile, len(p))
-	for i := range p {
-		profiles[i] = adhocProfileFromModel(p[i])
+	resp := make(map[string]adhocProfile, len(profiles))
+	for _, p := range profiles {
+		resp[p.ID] = adhocProfileFromModel(p)
 	}
-	h.httpUtils.MustJSON(r, w, profiles)
+	h.httpUtils.MustJSON(r, w, resp)
 }
 
 func (h AdhocHandler) GetProfileDiff(w http.ResponseWriter, r *http.Request) {

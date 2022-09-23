@@ -89,7 +89,7 @@ func (r *Router) RegisterAdhocHandlers() {
 	h := api.NewAdhocHandler(r.AdhocService, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/adhoc/v1").Subrouter()
-	x.Methods(http.MethodGet).PathPrefix("/profiles").HandlerFunc(h.ListProfiles)
+	x.Methods(http.MethodGet).PathPrefix("/profiles").HandlerFunc(h.GetProfiles)
 	x.Methods(http.MethodGet).PathPrefix("/profile/{id:[0-9a-f]+}").HandlerFunc(h.GetProfile)
 	x.Methods(http.MethodGet).PathPrefix("/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}").HandlerFunc(h.GetProfileDiff)
 	x.Methods(http.MethodPost).PathPrefix("/upload").HandlerFunc(h.Upload)
