@@ -39,9 +39,11 @@ func NewErrIterator[A any](err error) Iterator[A] {
 func (i *errIterator[A]) Err() error {
 	return i.err
 }
+
 func (*errIterator[A]) At() (a A) {
 	return a
 }
+
 func (*errIterator[A]) Next() bool {
 	return false
 }
@@ -78,6 +80,7 @@ func NewSliceIterator[A any](s []A) Iterator[A] {
 func (i *sliceIterator[A]) Err() error {
 	return nil
 }
+
 func (i *sliceIterator[A]) Next() bool {
 	if len(i.list) > 0 {
 		i.cur = i.list[0]
@@ -129,4 +132,13 @@ func (i *sliceIterator[A]) At() A {
 
 func (i *sliceIterator[A]) Close() error {
 	return nil
+}
+
+func Slice[T any](it Iterator[T]) ([]T, error) {
+	var result []T
+	defer it.Close()
+	for it.Next() {
+		result = append(result, it.At())
+	}
+	return result, it.Err()
 }

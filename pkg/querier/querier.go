@@ -25,6 +25,7 @@ import (
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
@@ -291,74 +292,103 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	// we need to request profile from start - step to end since start is inclusive.
 	// The first step starts at start-step to start.
 	start := req.Msg.Start - stepMs
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*ingestv1.SelectProfilesResponse, error) {
-		res, err := ic.SelectProfiles(childCtx, connect.NewRequest(&ingestv1.SelectProfilesRequest{
-			LabelSelector: req.Msg.LabelSelector,
-			Start:         start,
-			End:           req.Msg.End,
-			Type:          profileType,
-		}))
-		if err != nil {
-			return nil, err
-		}
-		return res.Msg, nil
+	sort.Strings(req.Msg.GroupBy)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(_ context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
+		return ic.MergeProfilesLabels(ctx), nil
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	var (
-		profiles  = dedupeProfiles(responses)
-		lbsbuf    = make([]byte, 0, 1024) // buffer to store labels in binary format
-		seriesMap = make(map[string]*querierv1.Series)
-	)
-	sort.Strings(req.Msg.GroupBy)
+	// send the first initial request to all ingesters.
+	g, gCtx := errgroup.WithContext(ctx)
+	for _, r := range responses {
+		r := r
+		g.Go(func() error {
+			return r.response.Send(&ingestv1.MergeProfilesLabelsRequest{
+				Request: &ingestv1.SelectProfilesRequest{
+					LabelSelector: req.Msg.LabelSelector,
+					Start:         start,
+					End:           req.Msg.End,
+					Type:          profileType,
+				},
+				By: req.Msg.GroupBy,
+			})
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	it, err := selectMergeSeries(gCtx, responses)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	result := rangeSeries(it, req.Msg.Start, req.Msg.End, stepMs)
+	if it.Err() != nil {
+		return nil, connect.NewError(connect.CodeInternal, it.Err())
+	}
 
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: result,
+	}), nil
+}
+
+// rangeSeries aggregates profiles into series.
+// Series contains points spaced by step from start to end.
+// Profiles from the same step are aggregated into one point.
+func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*commonv1.Series {
+	defer it.Close()
+	seriesMap := make(map[uint64]*commonv1.Series)
+
+	if !it.Next() {
+		return nil
+	}
 	// advance from the start to the end, adding each step results to the map.
-	for start, currentStep := start, start+stepMs; currentStep <= req.Msg.End; start, currentStep = start+stepMs, currentStep+stepMs {
-		for len(profiles) != 0 {
-			profile := profiles[0]
-			if profile.profile.Timestamp > currentStep {
+Outer:
+	for currentStep := start; currentStep <= end; currentStep += step {
+		for {
+			if it.At().Ts > currentStep {
 				break // no more profiles for the currentStep
 			}
-			lbs := firemodel.Labels(profile.profile.Labels)
-			profiles = profiles[1:]
-			var v int64
-
-			// compute value and labels binary representation
-			for _, s := range profile.profile.Stacktraces {
-				v += s.Value
-			}
-			lbsbuf = lbs.BytesWithLabels(lbsbuf, req.Msg.GroupBy...)
-
 			// find or create series
-			series, ok := seriesMap[string(lbsbuf)]
+			series, ok := seriesMap[it.At().LabelsHash]
 			if !ok {
-				seriesMap[string(lbsbuf)] = &querierv1.Series{
-					Labels: lbs.WithLabels(req.Msg.GroupBy...),
-					Points: []*querierv1.Point{
-						{V: float64(v), T: currentStep},
+				seriesMap[it.At().LabelsHash] = &commonv1.Series{
+					Labels: it.At().Lbs,
+					Points: []*commonv1.Point{
+						{Value: it.At().Value, Timestamp: currentStep},
 					},
+				}
+				if !it.Next() {
+					break Outer
 				}
 				continue
 			}
-
-			if series.Points[len(series.Points)-1].T == currentStep {
-				series.Points[len(series.Points)-1].V += float64(v)
+			// Aggregate point if it is in the current step.
+			if series.Points[len(series.Points)-1].Timestamp == currentStep {
+				series.Points[len(series.Points)-1].Value += it.At().Value
+				if !it.Next() {
+					break Outer
+				}
 				continue
 			}
-			series.Points = append(series.Points, &querierv1.Point{
-				V: float64(v),
-				T: currentStep,
+			// Next step is missing
+			series.Points = append(series.Points, &commonv1.Point{
+				Value:     it.At().Value,
+				Timestamp: currentStep,
 			})
+			if !it.Next() {
+				break Outer
+			}
 		}
 	}
 	series := lo.Values(seriesMap)
 	sort.Slice(series, func(i, j int) bool {
 		return firemodel.CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
 	})
-	return connect.NewResponse(&querierv1.SelectSeriesResponse{
-		Series: series,
-	}), nil
+	return series
 }
 
 func uniqueSortedStrings(responses []responseFromIngesters[[]string]) []string {

@@ -31,12 +31,12 @@ func (i *Ingester) Series(ctx context.Context, req *connect.Request[ingestv1.Ser
 	return i.fireDB.Head().Series(ctx, req)
 }
 
-func (i *Ingester) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	return i.fireDB.SelectProfiles(ctx, req)
-}
-
 func (i *Ingester) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
 	return i.fireDB.MergeProfilesStacktraces(ctx, stream)
+}
+
+func (i *Ingester) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
+	return i.fireDB.MergeProfilesLabels(ctx, stream)
 }
 
 func binaryFieldFromRecord(ar arrow.Record, name string) (*array.Binary, error) {
