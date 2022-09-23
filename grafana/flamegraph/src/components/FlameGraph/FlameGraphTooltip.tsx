@@ -1,10 +1,10 @@
 import { css } from '@emotion/css';
 import React, { LegacyRef } from 'react';
 
-import { useStyles, Tooltip } from '@grafana/ui';
+import { useStyles, Tooltip, getTheme } from '@grafana/ui';
 
 import { TooltipData, SampleUnit } from '../types';
-import { Field, getDisplayProcessor, GrafanaTheme2 } from '@grafana/data';
+import { createTheme, Field, getDisplayProcessor, GrafanaTheme2 } from '@grafana/data';
 
 type Props = {
   tooltipRef: LegacyRef<HTMLDivElement>;
@@ -43,22 +43,16 @@ const FlameGraphTooltip = ({ tooltipRef, tooltipData, showTooltip }: Props) => {
   );
 };
 
-export const getTooltipData = (
-  field: Field,
-  label: string,
-  value: number,
-  totalTicks: number,
-  theme: GrafanaTheme2
-): TooltipData => {
+export const getTooltipData = (field: Field, label: string, value: number, totalTicks: number): TooltipData => {
   let samples = value;
   let percentTitle = '';
   let unitTitle = '';
 
   const unit = field.config.unit;
-  const processor = getDisplayProcessor({ field, theme });
+  const processor = getDisplayProcessor({ field, theme: createTheme() /* theme does not matter for us here */ });
   const displayValue = processor(value, 2);
   const percent = Math.round(10000 * (samples / totalTicks)) / 100;
-  let unitValue = displayValue.text + displayValue.suffix
+  let unitValue = displayValue.text + displayValue.suffix;
 
   switch (unit) {
     case SampleUnit.Bytes:
@@ -70,7 +64,7 @@ export const getTooltipData = (
       percentTitle = '% of total';
       unitTitle = 'Count';
       // Remove unit suffix
-      unitValue = displayValue.text
+      unitValue = displayValue.text;
       break;
 
     case SampleUnit.Nanoseconds:
@@ -86,32 +80,6 @@ export const getTooltipData = (
     unitValue,
     samples: samples.toLocaleString(),
   };
-};
-
-const getUnitValue = (samples: number, units: any, fallbackSuffix = '') => {
-  let unitValue: string;
-  let suffix = '';
-
-  for (let unit of units) {
-    if (samples >= unit.divider) {
-      suffix = unit.suffix;
-      samples = samples / unit.divider;
-    } else {
-      break;
-    }
-  }
-
-  unitValue = samples.toString();
-  if (unitValue.toString().includes('.')) {
-    const afterDot = unitValue.toString().split('.')[1];
-    if (afterDot.length > 2) {
-      unitValue = samples.toFixed(2);
-    }
-  }
-
-  unitValue += ' ' + (suffix !== '' ? suffix : fallbackSuffix);
-
-  return unitValue;
 };
 
 const getStyles = () => ({
