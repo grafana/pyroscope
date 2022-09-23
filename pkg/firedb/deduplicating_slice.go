@@ -22,6 +22,12 @@ var int64SlicePool = &sync.Pool{
 	},
 }
 
+var defaultParquetConfig = &ParquetConfig{
+	MaxBufferRowCount: 100_000,
+	MaxRowGroupBytes:  128 * 1024 * 1024,
+	MaxBlockBytes:     10 * 128 * 1024 * 1024,
+}
+
 type deduplicatingSlice[M Models, K comparable, H Helper[M, K], P schemav1.Persister[M]] struct {
 	slice  []M
 	size   atomic.Uint64
@@ -32,6 +38,7 @@ type deduplicatingSlice[M Models, K comparable, H Helper[M, K], P schemav1.Persi
 	helper    H
 
 	file   *os.File
+	cfg    *ParquetConfig
 	writer *parquet.Writer
 
 	buffer      *parquet.Buffer
@@ -46,7 +53,8 @@ func (s *deduplicatingSlice[M, K, H, P]) Size() uint64 {
 	return s.size.Load()
 }
 
-func (s *deduplicatingSlice[M, K, H, P]) Init(path string) error {
+func (s *deduplicatingSlice[M, K, H, P]) Init(path string, cfg *ParquetConfig) error {
+	s.cfg = cfg
 	file, err := os.OpenFile(filepath.Join(path, s.persister.Name()+block.ParquetSuffix), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
@@ -74,26 +82,20 @@ func (s *deduplicatingSlice[M, K, H, P]) Close() error {
 	return nil
 }
 
-const (
-	maxBufferRowCount = 100_000                   // 2 ^ 16
-	maxRowGroupBytes  = uint64(128 * 1024 * 1024) // This is the maximum row group size in bytes that the raw data uses in memory.
-	maxBlockBytes     = 10 * maxRowGroupBytes     // This is the size of all parquet tables in memory after which a new block is cut
-)
-
 func (s *deduplicatingSlice[M, K, H, P]) maxRowsPerRowGroup() int {
 	var (
 		// average size per row in memory
 		bytesPerRow = s.Size() / uint64(len(s.slice))
 
 		// how many rows per RG with average size are fitting in the maxRowGroupBytes, ensure that we at least flush 1 row
-		maxRows = int(maxRowGroupBytes / bytesPerRow)
+		maxRows = s.cfg.MaxRowGroupBytes / bytesPerRow
 	)
 
 	if maxRows <= 0 {
 		return 1
 	}
 
-	return maxRows
+	return int(maxRows)
 }
 
 func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups uint64, err error) {
@@ -105,7 +107,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 		s.buffer = parquet.NewBuffer(
 			s.persister.Schema(),
 			s.persister.SortingColumns(),
-			parquet.ColumnBufferCapacity(maxBufferRowCount),
+			parquet.ColumnBufferCapacity(s.cfg.MaxBufferRowCount),
 		)
 	}
 
@@ -129,8 +131,9 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 			rowsToFlush = maxRows
 		}
 		// cap max row size by buffer
-		if rowsToFlush > maxBufferRowCount {
-			rowsToFlush = maxBufferRowCount
+		if rowsToFlush > s.cfg.MaxBufferRowCount {
+			rowsToFlush = s.cfg.MaxBufferRowCount
+
 		}
 
 		rows := make([]parquet.Row, rowsToFlush)
