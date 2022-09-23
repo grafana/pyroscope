@@ -58,7 +58,7 @@ var _ = Describe("pprof parsing", func() {
 	})
 
 	Context("JS", func() {
-		It("can parses CPU profile", func() {
+		It("can parse CPU profile", func() {
 			p, err := readPprofFixture("testdata/nodejs-wall.pb.gz")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -141,6 +141,13 @@ var _ = Describe("pprof parsing", func() {
 			Expect(input.Val.Samples()).To(Equal(uint64(8357762)))
 			Expect(input.Key.Normalized()).To(Equal("app.inuse_space{foo=bar}"))
 			Expect(input.Val.String()).To(ContainSubstring("node:internal/net:isIPv6:35;:test:0 555360"))
+		})
+	})
+
+	Context("pprof", func() {
+		It("can parse uncompressed protobuf", func() {
+			_, err := readPprofFixture("testdata/heap.pb")
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
