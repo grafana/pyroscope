@@ -16,6 +16,7 @@
   box-shadow: 0px 16px 16px -16px rgba(0, 0, 0, 0.35);
   border-radius: 5px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  /* TODO(eh-am): support light background */
   background-color: #222;
 
   max-width: 500px;
@@ -41,10 +42,6 @@
   position: absolute;
   right: 8px;
   top: 8px;
-}
-
-.modalContent {
-  padding: 0 20px 20px;
 }
 
 .backdrop {

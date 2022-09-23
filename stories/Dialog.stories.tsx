@@ -20,7 +20,7 @@ export function dialog() {
 
   return (
     <>
-      <button onClick={() => setOpen(!open)}>toggle modal</button>
+      <Button onClick={() => setOpen(!open)}>Open Modal</Button>
       <Dialog
         open={open}
         onClose={() => {

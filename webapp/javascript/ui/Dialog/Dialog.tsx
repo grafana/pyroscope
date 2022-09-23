@@ -19,7 +19,7 @@ type DialogHeaderProps = { children: ReactNode } & (
 );
 export const DialogHeader = React.forwardRef(
   (props: DialogHeaderProps, ref?: Ref<HTMLInputElement>) => {
-    const { children, closeable, onClose } = props;
+    const { children, closeable } = props;
     return (
       <div className={styles.header} ref={ref}>
         {children}
@@ -27,7 +27,7 @@ export const DialogHeader = React.forwardRef(
           <Button
             aria-label="Close"
             icon={faTimes}
-            onClick={onClose}
+            onClick={() => props.onClose()}
             noBox
             className={styles.closeButton}
           />
