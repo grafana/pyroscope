@@ -26,7 +26,9 @@ export function dialog() {
         }}
       >
         <>
-          <DialogHeader closeable>I am the Header</DialogHeader>
+          <DialogHeader closeable onClose={() => setOpen(false)}>
+            I am the Header
+          </DialogHeader>
           <DialogBody>
             <p>I am the body</p>
             <p>

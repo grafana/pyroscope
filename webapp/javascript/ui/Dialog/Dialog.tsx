@@ -1,6 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { Ref, ReactNode } from 'react';
 import ModalUnstyled from '@mui/base/ModalUnstyled';
+import Button from '@ui/Button';
+import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import styles from './Dialog.module.css';
 
 const Backdrop = React.forwardRef<
@@ -11,11 +13,10 @@ const Backdrop = React.forwardRef<
   return <div className={styles.backdrop} ref={ref} {...other} />;
 });
 
-interface DialogHeaderProps {
-  children: ReactNode;
-  closeable?: boolean;
-  onClose?: () => void;
-}
+type DialogHeaderProps = { children: ReactNode } & (
+  | { closeable: true; onClose: () => void }
+  | { closeable?: false }
+);
 export const DialogHeader = React.forwardRef(
   (props: DialogHeaderProps, ref?: Ref<HTMLInputElement>) => {
     const { children, closeable, onClose } = props;
@@ -23,10 +24,12 @@ export const DialogHeader = React.forwardRef(
       <div className={styles.header} ref={ref}>
         {children}
         {closeable ? (
-          <button
+          <Button
             aria-label="Close"
-            className={styles.closeButton}
+            icon={faTimes}
             onClick={onClose}
+            noBox
+            className={styles.closeButton}
           />
         ) : null}
       </div>

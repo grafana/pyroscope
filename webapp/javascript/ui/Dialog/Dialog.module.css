@@ -23,6 +23,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .header {
@@ -43,25 +44,9 @@
 }
 
 .closeButton {
-  border: none;
-  padding: 0;
-  width: 34px;
-  height: 34px;
-  cursor: pointer;
-  position: relative;
-}
-
-.closeButton::after {
-  /* useful to visualize hit area: */
-  /* background-color: red; */
-  width: 34px;
-  height: 34px;
-  line-height: 34px;
-  font-size: 1.5em;
   position: absolute;
-  content: '\00d7';
-  top: -4px;
-  right: -10px;
+  right: 8px;
+  top: 8px;
 }
 
 .modalContent {
