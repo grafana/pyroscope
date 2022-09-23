@@ -138,6 +138,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, log.NewNopLogger(), nil)
 	require.NoError(t, err)
+	defer require.NoError(t, db.Head().Close())
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
 		&commonv1.LabelPair{Name: "namespace", Value: "my-namespace"},
