@@ -37,7 +37,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         class="rc-menu-container"
       />
       <button
-        class="button  default undefined"
+        class="button default"
         data-testid="reset-view"
         disabled=""
         id="reset"
@@ -61,7 +61,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         Reset View
       </button>
       <button
-        class="button  default undefined"
+        class="button default"
         disabled=""
         type="button"
       >
@@ -86,7 +86,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         class="btn-group viz-switch"
       >
         <button
-          class="button grouped default undefined"
+          class="button grouped default"
           type="button"
         >
           <svg
@@ -107,7 +107,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           Table
         </button>
         <button
-          class="button grouped primary undefined"
+          class="button grouped primary"
           type="button"
         >
           <svg
@@ -128,7 +128,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           Both
         </button>
         <button
-          class="button grouped default undefined"
+          class="button grouped default"
           type="button"
         >
           <svg
@@ -191,7 +191,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         class="rc-menu-container"
       />
       <button
-        class="button  default undefined"
+        class="button default"
         data-testid="reset-view"
         disabled=""
         id="reset"
@@ -215,7 +215,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         Reset
       </button>
       <button
-        class="button  default undefined"
+        class="button default"
         disabled=""
         type="button"
       >

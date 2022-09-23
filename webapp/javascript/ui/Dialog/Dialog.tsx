@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { Ref, ReactNode } from 'react';
 import ModalUnstyled from '@mui/base/ModalUnstyled';
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import styles from './Dialog.module.css';
 
