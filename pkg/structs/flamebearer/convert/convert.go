@@ -56,39 +56,16 @@ var formatConverters = map[ProfileFileType]ConverterFn{
 	ProfileFileTypePerfScript: PerfScriptToProfile,
 }
 
-func ConverterToFormat(f ConverterFn) ProfileFileType {
-	switch reflect.ValueOf(f).Pointer() {
-	case reflect.ValueOf(JSONToProfile).Pointer():
-		return ProfileFileTypeJSON
-	case reflect.ValueOf(PprofToProfile).Pointer():
-		return ProfileFileTypePprof
-	case reflect.ValueOf(CollapsedToProfile).Pointer():
-		return ProfileFileTypeCollapsed
-	case reflect.ValueOf(PerfScriptToProfile).Pointer():
-		return ProfileFileTypePerfScript
-	}
-	return "unknown"
-}
-
 func FlamebearerFromFile(f ProfileFile, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 	convertFn, err := Converter(f)
 	if err != nil {
-		return nil, errors.New(
-			"unable to detect the profile format based on the type, " +
-				"the filename and its contents. Currently supported formats are " +
-				"pprof's protobuf profile, perf, pyroscope's JSON format and collapsed formats")
+		return nil, err
 	}
-	fb, err := convertFn(f.Data, f.Name, maxNodes)
-	if err != nil {
-		return nil, errors.New(
-			"unable to convert the profile to the internal format. " +
-				"The profile was detected as " + string(ConverterToFormat(convertFn)))
-	}
-	return fb, nil
+	return convertFn(f.Data, f.Name, maxNodes)
 }
 
-// Converter returns a ConverterFn that converts to FlamebearerProfile
-// and overrides any specified fields
+// Converter returns a ConverterFn that converts to
+// FlamebearerProfile and overrides any specified fields.
 func Converter(p ProfileFile) (ConverterFn, error) {
 	convertFn, err := converter(p)
 	if err != nil {
@@ -97,7 +74,8 @@ func Converter(p ProfileFile) (ConverterFn, error) {
 	return func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 		fb, err := convertFn(b, name, maxNodes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to process the profile. The profile was detected as %q: %w",
+				converterToFormat(convertFn), err)
 		}
 		// Overwrite fields if available
 		if p.TypeData.SpyName != "" {
@@ -111,9 +89,26 @@ func Converter(p ProfileFile) (ConverterFn, error) {
 	}, nil
 }
 
-// TODO(kolesnikovae): Consider simpler (but more reliable) logic for
-//  format identification with fallbacks: from the most strict format to
-//  the loosest one. An example sequence:
+// FIXME(kolesnikovae):
+//  Note that converterToFormat works only for converter output,
+//  Converter wraps the returned function into anonymous one.
+func converterToFormat(f ConverterFn) ProfileFileType {
+	switch reflect.ValueOf(f).Pointer() {
+	case reflect.ValueOf(JSONToProfile).Pointer():
+		return ProfileFileTypeJSON
+	case reflect.ValueOf(PprofToProfile).Pointer():
+		return ProfileFileTypePprof
+	case reflect.ValueOf(CollapsedToProfile).Pointer():
+		return ProfileFileTypeCollapsed
+	case reflect.ValueOf(PerfScriptToProfile).Pointer():
+		return ProfileFileTypePerfScript
+	}
+	return "unknown"
+}
+
+// TODO(kolesnikovae):
+//  Consider simpler (but more reliable) logic for format identification
+//  with fallbacks: from the most strict format to the loosest one, e.g:
 //    pprof, json, collapsed, perf.
 func converter(p ProfileFile) (ConverterFn, error) {
 	if f, ok := formatConverters[p.Type]; ok {
