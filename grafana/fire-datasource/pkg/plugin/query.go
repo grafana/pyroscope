@@ -22,8 +22,11 @@ type queryModel struct {
 
 // These constants need to match the ones in the frontend.
 const queryTypeProfile = "profile"
-const queryTypeMetrics = "metrics"
-const queryTypeBoth = "both"
+
+const (
+	queryTypeMetrics = "metrics"
+	queryTypeBoth    = "both"
+)
 
 // query processes single Fire query transforming the response to data.Frame packaged in DataResponse
 func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
@@ -268,9 +271,9 @@ func seriesToDataFrame(seriesResp *connect.Response[querierv1.SelectSeriesRespon
 
 		for _, point := range series.Points {
 			if index == 0 {
-				timeField.Append(time.UnixMilli(point.T))
+				timeField.Append(time.UnixMilli(point.Timestamp))
 			}
-			valueField.Append(point.V)
+			valueField.Append(point.Value)
 		}
 
 		fields = append(fields, valueField)

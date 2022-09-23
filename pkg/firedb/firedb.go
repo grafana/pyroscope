@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -170,118 +172,6 @@ func (f *FireDB) Head() *Head {
 
 type Queriers []Querier
 
-func (qs Queriers) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	// first check which profileSelecters are in range before executing
-	qs = lo.Filter(qs, func(e Querier, _ int) bool {
-		return e.InRange(
-			model.Time(req.Msg.Start),
-			model.Time(req.Msg.End),
-		)
-	})
-
-	results := make([]*ingestv1.SelectProfilesResponse, len(qs))
-
-	g, ctx := errgroup.WithContext(ctx)
-	// todo not sure this help on disk IO
-	g.SetLimit(16)
-
-	query := func(ctx context.Context, pos int) {
-		g.Go(func() error {
-			resp, err := qs[pos].SelectProfiles(ctx, req)
-			if err != nil {
-				return err
-			}
-
-			results[pos] = resp.Msg
-			return nil
-		})
-	}
-
-	for pos := range qs {
-		query(ctx, pos)
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	return connect.NewResponse(mergeSelectProfilesResponse(results...)), nil
-}
-
-func mergeSelectProfilesResponse(responses ...*ingestv1.SelectProfilesResponse) *ingestv1.SelectProfilesResponse {
-	var (
-		result    *ingestv1.SelectProfilesResponse
-		posByName map[string]int32
-	)
-
-	for _, resp := range responses {
-		// skip empty results
-		if resp == nil || len(resp.Profiles) == 0 {
-			continue
-		}
-
-		// first non-empty result result
-		if result == nil {
-			result = resp
-			continue
-		}
-
-		// build up the lookup map the first time
-		if posByName == nil {
-			posByName = make(map[string]int32)
-			for idx, n := range result.FunctionNames {
-				posByName[n] = int32(idx)
-			}
-		}
-
-		// lookup and add missing functionNames
-		var (
-			rewrite = make([]int32, len(resp.FunctionNames))
-			ok      bool
-		)
-		for idx, n := range resp.FunctionNames {
-			rewrite[idx], ok = posByName[n]
-			if ok {
-				continue
-			}
-
-			// need to add functionName to list
-			rewrite[idx] = int32(len(result.FunctionNames))
-			result.FunctionNames = append(result.FunctionNames, n)
-		}
-
-		// rewrite existing function ids, by building a list of unique slices
-		functionIDsUniq := make(map[*int32][]int32)
-		for _, profile := range resp.Profiles {
-			for _, sample := range profile.Stacktraces {
-				if len(sample.FunctionIds) == 0 {
-					continue
-				}
-				functionIDsUniq[&sample.FunctionIds[0]] = sample.FunctionIds
-			}
-		}
-		// now rewrite those ids in slices
-		for _, slice := range functionIDsUniq {
-			for idx, functionID := range slice {
-				slice[idx] = rewrite[functionID]
-			}
-		}
-		result.Profiles = append(result.Profiles, resp.Profiles...)
-	}
-
-	// ensure nil will always be the empty response
-	if result == nil {
-		result = &ingestv1.SelectProfilesResponse{}
-	}
-
-	return result
-}
-
-// Deprecated
-func (f *FireDB) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	return f.querierFor(model.Time(req.Msg.Start), model.Time(req.Msg.End)).SelectProfiles(ctx, req)
-}
-
 func (f *FireDB) querierFor(start, end model.Time) Queriers {
 	blocks := f.blockQuerier.queriersFor(start, end)
 	if f.Head().InRange(start, end) {
@@ -331,7 +221,10 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 			return err
 		}
 		// send batches of profiles to client and filter via bidi stream.
-		selectedProfiles, err := filterProfiles(ctx, profiles, 2048, stream)
+		selectedProfiles, err := filterProfiles[
+			BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest],
+			*ingestv1.MergeProfilesStacktracesResponse,
+			*ingestv1.MergeProfilesStacktracesRequest](ctx, profiles, 2048, stream)
 		if err != nil {
 			return err
 		}
@@ -374,17 +267,108 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	return nil
 }
 
-type BidiServerMergeProfilesStacktraces interface {
-	Send(*ingestv1.MergeProfilesStacktracesResponse) error
-	Receive() (*ingestv1.MergeProfilesStacktracesRequest, error)
+func (f *FireDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesLabels")
+	defer sp.Finish()
+
+	r, err := stream.Receive()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+
+	if r.Request == nil {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
+	}
+	request := r.Request
+	by := r.By
+	sort.Strings(by)
+	sp.LogFields(
+		otlog.String("start", model.Time(request.Start).Time().String()),
+		otlog.String("end", model.Time(request.End).Time().String()),
+		otlog.String("selector", request.LabelSelector),
+		otlog.String("profile_id", request.Type.ID),
+		otlog.String("by", strings.Join(by, ",")),
+	)
+
+	queriers := f.querierFor(model.Time(request.Start), model.Time(request.End))
+	result := make([][]*commonv1.Series, 0, len(queriers))
+	g, ctx := errgroup.WithContext(ctx)
+	s := lo.Synchronize()
+	// Start streaming profiles from all stores in order.
+	// This allows the client to dedupe in order.
+	for _, q := range queriers {
+		q := q
+		profiles, err := q.SelectMatchingProfiles(ctx, request)
+		if err != nil {
+			return err
+		}
+		// send batches of profiles to client and filter via bidi stream.
+		selectedProfiles, err := filterProfiles[
+			BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest],
+			*ingestv1.MergeProfilesLabelsResponse,
+			*ingestv1.MergeProfilesLabelsRequest](ctx, profiles, 2048, stream)
+		if err != nil {
+			return err
+		}
+		// Sort profiles for better read locality.
+		selectedProfiles = q.Sort(selectedProfiles)
+		// Merge async the result so we can continue streaming profiles.
+		g.Go(func() error {
+			merge, err := q.MergeByLabels(ctx, iter.NewSliceIterator(selectedProfiles), by...)
+			if err != nil {
+				return err
+			}
+			s.Do(func() {
+				result = append(result, merge)
+			})
+
+			return nil
+		})
+	}
+
+	// Signals the end of the profile streaming by sending an empty request.
+	// This allows the client to not block other streaming ingesters.
+	if err := stream.Send(&ingestv1.MergeProfilesLabelsResponse{}); err != nil {
+		return err
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	// sends the final result to the client.
+	err = stream.Send(&ingestv1.MergeProfilesLabelsResponse{
+		Series: firemodel.MergeSeries(result...),
+	})
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+
+	return nil
+}
+
+type BidiServerMerge[Res any, Req any] interface {
+	Send(Res) error
+	Receive() (Req, error)
+}
+
+type labelWithIndex struct {
+	firemodel.Labels
+	index int
 }
 
 // filterProfiles sends profiles to the client and filters them via the bidi stream.
-func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchProfileSize int, stream BidiServerMergeProfilesStacktraces) ([]Profile, error) {
-	type labelWithIndex struct {
-		firemodel.Labels
-		index int
-	}
+func filterProfiles[B BidiServerMerge[Res, Req],
+	Res *ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse,
+	Req *ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest](
+	ctx context.Context, profiles iter.Iterator[Profile], batchProfileSize int, stream B,
+) ([]Profile, error) {
 	selection := []Profile{}
 	selectProfileResult := &ingestv1.ProfileSets{
 		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
@@ -421,10 +405,19 @@ func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchP
 
 		}
 		sp.LogFields(otlog.String("msg", "sending batch to client"))
+		var err error
+		switch s := BidiServerMerge[Res, Req](stream).(type) {
+		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
+			err = s.Send(&ingestv1.MergeProfilesStacktracesResponse{
+				SelectedProfiles: selectProfileResult,
+			})
+		case BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest]:
+			err = s.Send(&ingestv1.MergeProfilesLabelsResponse{
+				SelectedProfiles: selectProfileResult,
+			})
+		}
 		// read a batch of profiles and sends it.
-		err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-			SelectedProfiles: selectProfileResult,
-		})
+
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
@@ -434,8 +427,21 @@ func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchP
 		sp.LogFields(otlog.String("msg", "batch sent to client"))
 
 		sp.LogFields(otlog.String("msg", "reading selection from client"))
+
 		// handle response for the batch.
-		selectionResponse, err := stream.Receive()
+		var selected []bool
+		switch s := BidiServerMerge[Res, Req](stream).(type) {
+		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
+			selectionResponse, err := s.Receive()
+			if err == nil {
+				selected = selectionResponse.Profiles
+			}
+		case BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest]:
+			selectionResponse, err := s.Receive()
+			if err == nil {
+				selected = selectionResponse.Profiles
+			}
+		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
@@ -443,7 +449,7 @@ func filterProfiles(ctx context.Context, profiles iter.Iterator[Profile], batchP
 			return err
 		}
 		sp.LogFields(otlog.String("msg", "selection received"))
-		for i, k := range selectionResponse.Profiles {
+		for i, k := range selected {
 			if k {
 				selection = append(selection, batch[i])
 			}

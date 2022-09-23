@@ -5,16 +5,16 @@ import (
 	"context"
 
 	"github.com/grafana/dskit/multierror"
+	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 	"github.com/grafana/fire/pkg/iter"
 	firemodel "github.com/grafana/fire/pkg/model"
 )
-
-var _ = iter.Iterator[ProfileWithLabels]((*stacktraceMergeIterator)(nil))
 
 type ProfileWithLabels struct {
 	Timestamp int64
@@ -22,20 +22,32 @@ type ProfileWithLabels struct {
 	IngesterAddr string
 }
 
-// StacktraceMergeIterator is an iterator of profiles for merging stacktraces.
-// While iterating through Profiles you can use Keep() to mark the current profile to include
-// in the final stacktraces merge result.
-// You can also use At() to get the current profile.
-// Result should only be called after the iterator is exhausted.
-type StacktraceMergeIterator interface {
-	iter.Iterator[ProfileWithLabels]
-	Keep()
-	Result() (*ingestv1.MergeProfilesStacktracesResult, error)
+type BidiClientMerge[Req any, Res any] interface {
+	Send(Req) error
+	Receive() (Res, error)
+	CloseRequest() error
+	CloseResponse() error
 }
 
-type stacktraceMergeIterator struct {
+type Request interface {
+	*ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest
+}
+
+type Response interface {
+	*ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse
+}
+
+type MergeResult[R any] interface {
+	Result() (R, error)
+}
+type MergeIterator interface {
+	iter.Iterator[ProfileWithLabels]
+	Keep()
+}
+
+type mergeIterator[R any, Req Request, Res Response] struct {
 	ctx          context.Context
-	bidi         clientpool.BidiClientMergeProfilesStacktraces
+	bidi         BidiClientMerge[Req, Res]
 	ingesterAddr string
 
 	err      error
@@ -43,14 +55,18 @@ type stacktraceMergeIterator struct {
 	currIdx  int
 	keep     []bool
 	keepSent bool // keepSent is true if we have sent the keep request to the ingester.
-
-	result *ingestv1.MergeProfilesStacktracesResult
 }
 
-// NewStacktraceMergeIterator return a new iterator that merges stacktraces of profile.
-// Merging or querying stacktraces is expensive, we only merge the stacktraces of the profiles that are kept.
-func NewStacktraceMergeIterator(ctx context.Context, r responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) StacktraceMergeIterator {
-	return &stacktraceMergeIterator{
+// NewMergeIterator return a new iterator that stream profiles and allows to filter them using `Keep` to keep
+// only a subset of the profiles for an aggregation result.
+// Merging or querying profiles sample values is expensive, we only merge the sample of the profiles that are kept.
+func NewMergeIterator[
+	R any,
+	Req Request,
+	Res Response,
+](ctx context.Context, r responseFromIngesters[BidiClientMerge[Req, Res]],
+) *mergeIterator[R, Req, Res] {
+	return &mergeIterator[R, Req, Res]{
 		bidi:         r.response,
 		ingesterAddr: r.addr,
 		keepSent:     true, // at the start we don't send a keep request.
@@ -58,29 +74,49 @@ func NewStacktraceMergeIterator(ctx context.Context, r responseFromIngesters[cli
 	}
 }
 
-func (s *stacktraceMergeIterator) Next() bool {
+func (s *mergeIterator[R, Req, Res]) Next() bool {
 	if s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1 {
 		// ensure we send keep before reading next batch.
 		// the iterator only need to precise profile to keep, not the ones to drop.
 		if !s.keepSent {
-			err := s.bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
-				Profiles: s.keep,
-			})
+			var err error
+			switch bidi := (s.bidi).(type) {
+			case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
+				err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+					Profiles: s.keep,
+				})
+			case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
+				err = bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
+					Profiles: s.keep,
+				})
+			}
 			if err != nil {
 				s.err = err
 				return false
 			}
 		}
-		resp, err := s.bidi.Receive()
-		if err != nil {
-			s.err = err
-			return false
+		var selectedProfiles *ingestv1.ProfileSets
+		switch bidi := (s.bidi).(type) {
+		case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
+			res, err := bidi.Receive()
+			if err != nil {
+				s.err = err
+				return false
+			}
+			selectedProfiles = res.SelectedProfiles
+		case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
+			res, err := bidi.Receive()
+			if err != nil {
+				s.err = err
+				return false
+			}
+			selectedProfiles = res.SelectedProfiles
 		}
 
-		if resp.SelectedProfiles == nil || len(resp.SelectedProfiles.Profiles) == 0 {
+		if selectedProfiles == nil || len(selectedProfiles.Profiles) == 0 {
 			return false
 		}
-		s.curr = resp.SelectedProfiles
+		s.curr = selectedProfiles
 		if len(s.curr.Profiles) > cap(s.keep) {
 			s.keep = make([]bool, len(s.curr.Profiles))
 		}
@@ -97,11 +133,11 @@ func (s *stacktraceMergeIterator) Next() bool {
 	return true
 }
 
-func (s *stacktraceMergeIterator) Keep() {
+func (s *mergeIterator[R, Req, Res]) Keep() {
 	s.keep[s.currIdx] = true
 }
 
-func (s *stacktraceMergeIterator) At() ProfileWithLabels {
+func (s *mergeIterator[R, Req, Res]) At() ProfileWithLabels {
 	return ProfileWithLabels{
 		Timestamp:    s.curr.Profiles[s.currIdx].Timestamp,
 		Labels:       s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels,
@@ -109,22 +145,35 @@ func (s *stacktraceMergeIterator) At() ProfileWithLabels {
 	}
 }
 
-func (s *stacktraceMergeIterator) Result() (*ingestv1.MergeProfilesStacktracesResult, error) {
-	resp, err := s.bidi.Receive()
-	if err != nil {
-		return nil, err
+func (s *mergeIterator[R, Req, Res]) Result() (R, error) {
+	var result R
+	switch bidi := (s.bidi).(type) {
+	case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
+		res, err := bidi.Receive()
+		if err != nil {
+			s.err = err
+			return result, err
+		}
+		result = any(res.Result).(R)
+	case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
+		res, err := bidi.Receive()
+		if err != nil {
+			s.err = err
+			return result, err
+		}
+		result = any(res.Series).(R)
 	}
 	if err := s.bidi.CloseResponse(); err != nil {
 		s.err = err
 	}
-	return resp.Result, nil
+	return result, nil
 }
 
-func (s *stacktraceMergeIterator) Err() error {
+func (s *mergeIterator[R, Req, Res]) Err() error {
 	return s.err
 }
 
-func (s *stacktraceMergeIterator) Close() error {
+func (s *mergeIterator[R, Req, Res]) Close() error {
 	// Only close the Send side since we need to get the final result.
 	var errs multierror.MultiError
 	if err := s.bidi.CloseRequest(); err != nil {
@@ -134,15 +183,15 @@ func (s *stacktraceMergeIterator) Close() error {
 }
 
 // ProfileIteratorHeap is a heap that sorts profiles by timestamp then labels at the top.
-type ProfileIteratorHeap []StacktraceMergeIterator
+type ProfileIteratorHeap []MergeIterator
 
 func (h ProfileIteratorHeap) Len() int { return len(h) }
 func (h ProfileIteratorHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
-func (h ProfileIteratorHeap) Peek() StacktraceMergeIterator { return h[0] }
+func (h ProfileIteratorHeap) Peek() MergeIterator { return h[0] }
 func (h *ProfileIteratorHeap) Push(x interface{}) {
-	*h = append(*h, x.(StacktraceMergeIterator))
+	*h = append(*h, x.(MergeIterator))
 }
 
 func (h *ProfileIteratorHeap) Pop() interface{} {
@@ -160,15 +209,15 @@ func (h ProfileIteratorHeap) Less(i, j int) bool {
 	return p1.Timestamp < p2.Timestamp
 }
 
-func newProfilesHeap(its []StacktraceMergeIterator) *ProfileIteratorHeap {
+func newProfilesHeap(its []MergeIterator) *ProfileIteratorHeap {
 	heap := make(ProfileIteratorHeap, 0, len(its))
 	return &heap
 }
 
 // skipDuplicates iterates through the iterator and skip duplicates.
-func skipDuplicates(its []StacktraceMergeIterator) error {
+func skipDuplicates(its []MergeIterator) error {
 	profilesHeap := newProfilesHeap(its)
-	tuples := make([]StacktraceMergeIterator, 0, len(its))
+	tuples := make([]MergeIterator, 0, len(its))
 
 	if err := requeueAsync(profilesHeap, its...); err != nil {
 		return err
@@ -207,7 +256,7 @@ func skipDuplicates(its []StacktraceMergeIterator) error {
 
 // requeueAsync multiple iterators, in parallel, it will only requeue iterators that are not done.
 // It will close the iterators that are done.
-func requeueAsync(h heap.Interface, eis ...StacktraceMergeIterator) error {
+func requeueAsync(h heap.Interface, eis ...MergeIterator) error {
 	sync := lo.Synchronize()
 	errs := make([]chan error, len(eis))
 	for i, ei := range eis {
@@ -231,11 +280,23 @@ func requeueAsync(h heap.Interface, eis ...StacktraceMergeIterator) error {
 	return multiErr.Err()
 }
 
+type stacktraces struct {
+	locations []string
+	value     int64
+}
+
 // selectMergeStacktraces selects the  profile from each ingester by deduping them and request merges of stacktraces of them.
 func selectMergeStacktraces(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
-	iters := make([]StacktraceMergeIterator, 0, len(responses))
-	for _, resp := range responses {
-		iters = append(iters, NewStacktraceMergeIterator(ctx, resp))
+	mergeResults := make([]MergeResult[*ingestv1.MergeProfilesStacktracesResult], len(responses))
+	iters := make([]MergeIterator, len(responses))
+	for i, resp := range responses {
+		it := NewMergeIterator[*ingestv1.MergeProfilesStacktracesResult](
+			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]]{
+				addr:     resp.addr,
+				response: resp.response,
+			})
+		iters[i] = it
+		mergeResults[i] = it
 	}
 
 	if err := skipDuplicates(iters); err != nil {
@@ -246,7 +307,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 	results := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(iters))
 	s := lo.Synchronize()
 	g, _ := errgroup.WithContext(ctx)
-	for _, iter := range iters {
+	for _, iter := range mergeResults {
 		iter := iter
 		g.Go(func() error {
 			result, err := iter.Result()
@@ -280,4 +341,106 @@ func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktraces
 		})
 	}
 	return result
+}
+
+type ProfileValue struct {
+	Ts         int64
+	Lbs        []*commonv1.LabelPair
+	LabelsHash uint64
+	Value      float64
+}
+
+func (p ProfileValue) Labels() firemodel.Labels {
+	return p.Lbs
+}
+
+func (p ProfileValue) Timestamp() model.Time {
+	return model.Time(p.Ts)
+}
+
+// selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
+func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
+	mergeResults := make([]MergeResult[[]*commonv1.Series], len(responses))
+	iters := make([]MergeIterator, len(responses))
+	for i, resp := range responses {
+		it := NewMergeIterator[[]*commonv1.Series](
+			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]]{
+				addr:     resp.addr,
+				response: resp.response,
+			})
+		iters[i] = it
+		mergeResults[i] = it
+	}
+
+	if err := skipDuplicates(iters); err != nil {
+		return nil, err
+	}
+
+	// Collects the results in parallel.
+	results := make([][]*commonv1.Series, 0, len(iters))
+	s := lo.Synchronize()
+	g, _ := errgroup.WithContext(ctx)
+	for _, iter := range mergeResults {
+		iter := iter
+		g.Go(func() error {
+			result, err := iter.Result()
+			if err != nil {
+				return err
+			}
+			s.Do(func() {
+				results = append(results, result)
+			})
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	series := firemodel.MergeSeries(results...)
+	seriesIters := make([]iter.Iterator[ProfileValue], 0, len(series))
+	for _, s := range series {
+		s := s
+		seriesIters = append(seriesIters, newSeriesIterator(s.Labels, s.Points))
+	}
+	return iter.NewSortProfileIterator(seriesIters), nil
+}
+
+type seriesIterator struct {
+	point []*commonv1.Point
+
+	curr ProfileValue
+}
+
+func newSeriesIterator(lbs []*commonv1.LabelPair, points []*commonv1.Point) *seriesIterator {
+	return &seriesIterator{
+		point: points,
+
+		curr: ProfileValue{
+			Lbs:        lbs,
+			LabelsHash: firemodel.Labels(lbs).Hash(),
+		},
+	}
+}
+
+func (s *seriesIterator) Next() bool {
+	if len(s.point) == 0 {
+		return false
+	}
+	p := s.point[0]
+	s.point = s.point[1:]
+	s.curr.Ts = p.Timestamp
+	s.curr.Value = p.Value
+	return true
+}
+
+func (s *seriesIterator) At() ProfileValue {
+	return s.curr
+}
+
+func (s *seriesIterator) Err() error {
+	return nil
+}
+
+func (s *seriesIterator) Close() error {
+	return nil
 }

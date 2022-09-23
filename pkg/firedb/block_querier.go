@@ -8,7 +8,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
@@ -31,6 +30,7 @@ import (
 	query "github.com/grafana/fire/pkg/firedb/query"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	"github.com/grafana/fire/pkg/firedb/tsdb/index"
+	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	"github.com/grafana/fire/pkg/iter"
@@ -241,10 +241,6 @@ type BlockInfo struct {
 func (b *BlockQuerier) BlockInfo() []BlockInfo {
 	result := make([]BlockInfo, len(b.queriers))
 	return result
-}
-
-func (b *BlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	return b.queriersFor(model.Time(req.Msg.Start), model.Time(req.Msg.End)).SelectProfiles(ctx, req)
 }
 
 func (b *BlockQuerier) queriersFor(start, end model.Time) Queriers {
@@ -514,10 +510,10 @@ type Querier interface {
 	InRange(start, end model.Time) bool
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
+	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error)
+
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile
-	// Deprecated: Use SelectMatchingProfiles instead.
-	SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error)
 }
 
 type BlockProfile struct {
@@ -660,207 +656,6 @@ func (m uniqueIDs[T]) iterator() iter.Iterator[int64] {
 		return ids[i] < ids[j]
 	})
 	return iter.NewSliceIterator(ids)
-}
-
-func (b *singleBlockQuerier) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	if err := b.open(ctx); err != nil {
-		return nil, err
-	}
-
-	var (
-		totalSamples   int64
-		totalLocations int64
-		totalProfiles  int64
-	)
-	// nolint:ineffassign
-	// we might use ctx later.
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - SelectProfiles")
-	defer func() {
-		sp.LogFields(
-			otlog.String("block_ulid", b.meta.ULID.String()),
-			otlog.String("block_min", b.meta.MinTime.Time().String()),
-			otlog.String("block_max", b.meta.MaxTime.Time().String()),
-			otlog.Int64("total_samples", totalSamples),
-			otlog.Int64("total_locations", totalLocations),
-			otlog.Int64("total_profiles", totalProfiles),
-		)
-		sp.Finish()
-	}()
-
-	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
-	}
-	selectors = append(selectors, firemodel.SelectorFromProfileType(req.Msg.Type))
-
-	var (
-		result []*ingestv1.Profile
-
-		stackTraceSamplesByStacktraceID = map[int64][]*ingestv1.StacktraceSample{}
-		locationsByStacktraceID         = map[int64][]int64{}
-	)
-
-	if err := b.forMatchingProfiles(ctx, selectors, model.Time(req.Msg.Start), model.Time(req.Msg.End), func(lbs firemodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error {
-		ts := int64(model.TimeFromUnixNano(profile.TimeNanos))
-		// if the timestamp is not matching we skip this profile.
-		if req.Msg.Start > ts || ts > req.Msg.End {
-			return nil
-		}
-
-		totalProfiles++
-		p := &ingestv1.Profile{
-			ID:          profile.ID.String(),
-			Type:        req.Msg.Type,
-			Labels:      lbs,
-			Timestamp:   ts,
-			Stacktraces: make([]*ingestv1.StacktraceSample, 0, len(samples)),
-		}
-		totalSamples += int64(len(samples))
-
-		for _, s := range samples {
-			if s.Value == 0 {
-				totalSamples--
-				continue
-			}
-
-			sample := &ingestv1.StacktraceSample{
-				Value: s.Value,
-			}
-
-			p.Stacktraces = append(p.Stacktraces, sample)
-			stackTraceSamplesByStacktraceID[int64(s.StacktraceID)] = append(stackTraceSamplesByStacktraceID[int64(s.StacktraceID)], sample)
-		}
-
-		if len(p.Stacktraces) > 0 {
-			result = append(result, p)
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	// gather stacktraces
-	stacktraceIDs := lo.Keys(stackTraceSamplesByStacktraceID)
-	sort.Slice(stacktraceIDs, func(i, j int) bool {
-		return stacktraceIDs[i] < stacktraceIDs[j]
-	})
-
-	var (
-		locationIDs = newUniqueIDs[struct{}]()
-		stacktraces = b.stacktraces.retrieveRows(ctx, iter.NewSliceIterator(stacktraceIDs))
-	)
-	for stacktraces.Next() {
-		s := stacktraces.At()
-
-		// update locations metrics
-		totalLocations += int64(len(s.Result.LocationIDs))
-
-		locationsByStacktraceID[s.RowNum] = make([]int64, len(s.Result.LocationIDs))
-		for idx, locationID := range s.Result.LocationIDs {
-			locationsByStacktraceID[s.RowNum][idx] = int64(locationID)
-			locationIDs[int64(locationID)] = struct{}{}
-		}
-	}
-	if err := stacktraces.Err(); err != nil {
-		return nil, err
-	}
-
-	// gather locations
-	var (
-		locationIDsByFunctionID = newUniqueIDs[[]int64]()
-		locations               = b.locations.retrieveRows(ctx, locationIDs.iterator())
-	)
-	for locations.Next() {
-		s := locations.At()
-		for _, line := range s.Result.Line {
-			locationIDsByFunctionID[int64(line.FunctionId)] = append(locationIDsByFunctionID[int64(line.FunctionId)], s.RowNum)
-		}
-	}
-	if err := locations.Err(); err != nil {
-		return nil, err
-	}
-
-	// gather functions
-	var (
-		functionIDsByStringID = newUniqueIDs[[]int64]()
-		functions             = b.functions.retrieveRows(ctx, locationIDsByFunctionID.iterator())
-	)
-	for functions.Next() {
-		s := functions.At()
-
-		functionIDsByStringID[s.Result.Name] = append(functionIDsByStringID[s.Result.Name], s.RowNum)
-	}
-	if err := functions.Err(); err != nil {
-		return nil, err
-	}
-
-	// gather strings
-	var (
-		names   = make([]string, len(functionIDsByStringID))
-		idSlice = make([][]int64, len(functionIDsByStringID))
-		strings = b.strings.retrieveRows(ctx, functionIDsByStringID.iterator())
-		idx     = 0
-	)
-	for strings.Next() {
-		s := strings.At()
-		names[idx] = s.Result.String
-		idSlice[idx] = []int64{s.RowNum}
-		idx++
-	}
-	if err := strings.Err(); err != nil {
-		return nil, err
-	}
-
-	// idSlice contains stringIDs and gets rewritten into functionIDs
-	for nameID := range idSlice {
-		var functionIDs []int64
-		for _, stringID := range idSlice[nameID] {
-			functionIDs = append(functionIDs, functionIDsByStringID[stringID]...)
-		}
-		idSlice[nameID] = functionIDs
-	}
-
-	// idSlice contains functionIDs and gets rewritten into locationIDs
-	for nameID := range idSlice {
-		var locationIDs []int64
-		for _, functionID := range idSlice[nameID] {
-			locationIDs = append(locationIDs, locationIDsByFunctionID[functionID]...)
-		}
-		idSlice[nameID] = locationIDs
-	}
-
-	// write a map locationID two nameID
-	nameIDbyLocationID := make(map[int64]int32)
-	for nameID := range idSlice {
-		for _, locationID := range idSlice[nameID] {
-			nameIDbyLocationID[locationID] = int32(nameID)
-		}
-	}
-
-	// write correct string ID into each sample
-	for stacktraceID, samples := range stackTraceSamplesByStacktraceID {
-		locationIDs := locationsByStacktraceID[stacktraceID]
-
-		functionIDs := make([]int32, len(locationIDs))
-		for idx := range functionIDs {
-			functionIDs[idx] = nameIDbyLocationID[locationIDs[idx]]
-		}
-
-		// now set all a samples up with the functionIDs slice
-		for _, sample := range samples {
-			sample.FunctionIds = functionIDs
-		}
-	}
-
-	sort.Slice(result, func(i, j int) bool {
-		return firemodel.CompareProfile(result[i], result[j]) < 0
-	})
-
-	return connect.NewResponse(&ingestv1.SelectProfilesResponse{
-		Profiles:      result,
-		FunctionNames: names,
-	}), err
 }
 
 func (q *singleBlockQuerier) readTSBoundaries(ctx context.Context) (minMax, []minMax, error) {

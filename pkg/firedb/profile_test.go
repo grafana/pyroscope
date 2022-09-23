@@ -65,7 +65,7 @@ func TestIndex(t *testing.T) {
 		labels.MustNewMatcher(labels.MatchEqual, "__name__", "memory"),
 		labels.MustNewMatcher(labels.MatchRegexp, "bar", "[0-9]"),
 		labels.MustNewMatcher(labels.MatchNotEqual, "buzz", "bar"),
-	}, func(lbs firemodel.Labels, fp model.Fingerprint, profile *v1.Profile) error {
+	}, func(_ firemodel.Labels, _ model.Fingerprint, _ *v1.Profile) error {
 		total++
 		return nil
 	})

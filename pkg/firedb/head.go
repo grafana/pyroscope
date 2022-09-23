@@ -18,7 +18,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -480,106 +479,6 @@ func (h *Head) InRange(start, end model.Time) bool {
 	return b.InRange(start, end)
 }
 
-func (h *Head) SelectProfiles(ctx context.Context, req *connect.Request[ingestv1.SelectProfilesRequest]) (*connect.Response[ingestv1.SelectProfilesResponse], error) {
-	var (
-		totalSamples   int64
-		totalLocations int64
-		totalProfiles  int64
-	)
-	// nolint:ineffassign
-	// we might use ctx later.
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Head - SelectProfiles")
-	defer func() {
-		sp.LogFields(
-			otlog.Int64("total_samples", totalSamples),
-			otlog.Int64("total_locations", totalLocations),
-			otlog.Int64("total_profiles", totalProfiles),
-		)
-		sp.Finish()
-	}()
-
-	selectors, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
-	}
-	selectors = append(selectors, firemodel.SelectorFromProfileType(req.Msg.Type))
-
-	result := []*ingestv1.Profile{}
-	names := []string{}
-	stackTraces := map[uint64][]int32{}
-	functions := map[int64]int{}
-
-	h.stacktraces.lock.RLock()
-	h.locations.lock.RLock()
-	h.functions.lock.RLock()
-	h.strings.lock.RLock()
-	defer func() {
-		h.stacktraces.lock.RUnlock()
-		h.locations.lock.RUnlock()
-		h.functions.lock.RUnlock()
-		h.strings.lock.RUnlock()
-	}()
-
-	err = h.index.forMatchingProfiles(selectors, func(lbs firemodel.Labels, _ model.Fingerprint, profile *schemav1.Profile) error {
-		ts := int64(model.TimeFromUnixNano(profile.TimeNanos))
-		// if the timestamp is not matching we skip this profile.
-		if req.Msg.Start > ts || ts > req.Msg.End {
-			return nil
-		}
-		totalProfiles++
-		p := &ingestv1.Profile{
-			ID:          profile.ID.String(),
-			Type:        req.Msg.Type,
-			Labels:      lbs,
-			Timestamp:   ts,
-			Stacktraces: make([]*ingestv1.StacktraceSample, 0, len(profile.Samples)),
-		}
-		totalSamples += int64(len(profile.Samples))
-		for _, s := range profile.Samples {
-			if s.Value == 0 {
-				totalSamples--
-				continue
-			}
-			stackTracesIds, ok := stackTraces[s.StacktraceID]
-			if !ok {
-				locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
-				totalLocations += int64(len(locs))
-				stackTracesIds = make([]int32, 0, 2*len(locs))
-				for _, loc := range locs {
-					for _, line := range h.locations.slice[loc].Line {
-						fnNameID := h.functions.slice[line.FunctionId].Name
-						pos, ok := functions[fnNameID]
-						if !ok {
-							functions[fnNameID] = len(names)
-							stackTracesIds = append(stackTracesIds, int32(len(names)))
-							names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
-							continue
-						}
-						stackTracesIds = append(stackTracesIds, int32(pos))
-					}
-				}
-				stackTraces[s.StacktraceID] = stackTracesIds
-			}
-
-			p.Stacktraces = append(p.Stacktraces, &ingestv1.StacktraceSample{
-				Value:       s.Value,
-				FunctionIds: stackTracesIds,
-			})
-		}
-		if len(p.Stacktraces) > 0 {
-			result = append(result, p)
-		}
-		return nil
-	})
-	sort.Slice(result, func(i, j int) bool {
-		return firemodel.CompareProfile(result[i], result[j]) < 0
-	})
-	return connect.NewResponse(&ingestv1.SelectProfilesResponse{
-		Profiles:      result,
-		FunctionNames: names,
-	}), err
-}
-
 func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Head")
 	defer sp.Finish()
@@ -654,6 +553,61 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 		Stacktraces:   lo.Values(stacktraceSamples),
 		FunctionNames: names,
 	}, nil
+}
+
+func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Head")
+	defer sp.Finish()
+
+	labelsByFingerprint := map[model.Fingerprint]string{}
+	seriesByLabels := map[string]*commonv1.Series{}
+	labelBuf := make([]byte, 0, 1024)
+	defer rows.Close()
+
+	for rows.Next() {
+		p, ok := rows.At().(ProfileWithLabels)
+		if !ok {
+			return nil, errors.New("expected ProfileWithLabels")
+		}
+		labelsByString, ok := labelsByFingerprint[p.fp]
+		if !ok {
+			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
+			labelsByString = string(labelBuf)
+			labelsByFingerprint[p.fp] = labelsByString
+			if _, ok := seriesByLabels[labelsByString]; !ok {
+				seriesByLabels[labelsByString] = &commonv1.Series{
+					Labels: p.Labels().WithLabels(by...),
+					Points: []*commonv1.Point{
+						{
+							Timestamp: int64(p.Timestamp()),
+							Value:     float64(p.Total()),
+						},
+					},
+				}
+				continue
+			}
+		}
+		series := seriesByLabels[labelsByString]
+		series.Points = append(series.Points, &commonv1.Point{
+			Timestamp: int64(p.Timestamp()),
+			Value:     float64(p.Total()),
+		})
+
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	result := lo.Values(seriesByLabels)
+	sort.Slice(result, func(i, j int) bool {
+		return firemodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+	})
+	// we have to sort the points in each series because labels reduction may have changed the order
+	for _, s := range result {
+		sort.Slice(s.Points, func(i, j int) bool {
+			return s.Points[i].Timestamp < s.Points[j].Timestamp
+		})
+	}
+	return result, nil
 }
 
 func (h *Head) Sort(in []Profile) []Profile {
