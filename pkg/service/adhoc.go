@@ -140,7 +140,9 @@ func (svc *AdhocService) UploadProfile(_ context.Context, params model.UploadAdh
 	// Remove extension, since we will store a json file
 	filename := strings.TrimSuffix(params.Profile.Name, filepath.Ext(params.Profile.Name))
 	// TODO(eh-am): maybe we should use whatever the user has sent us?
-	// TODO(kolesnikovae): I agree that we should store the original user input.
+	// TODO(kolesnikovae): I agree that we should store the original
+	//   user input, however, it's pretty problematic to change without
+	//   violation of the backward compatibility.
 	filename = fmt.Sprintf("%s-%s.json", filename, now.Format("2006-01-02-15-04-05"))
 	if _, err = svc.adhocWriter.Write(filename, *fb); err != nil {
 		return nil, "", fmt.Errorf("unable to write profile to the data directory: %w", err)
