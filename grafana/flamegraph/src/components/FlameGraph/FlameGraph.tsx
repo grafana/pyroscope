@@ -20,8 +20,8 @@ import { css } from '@emotion/css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMeasure } from 'react-use';
 
-import {DataFrame, DataFrameView, FieldType} from '@grafana/data';
-import {useStyles2, useTheme2} from '@grafana/ui';
+import { DataFrame, DataFrameView, FieldType } from '@grafana/data';
+import { useStyles2 } from '@grafana/ui';
 
 import { PIXELS_PER_LEVEL } from '../../constants';
 import { getBarX, getRectDimensionsForLevel, renderRect } from './rendering';
@@ -52,9 +52,9 @@ const FlameGraph = ({
   setRangeMax,
 }: Props) => {
   const styles = useStyles2(getStyles);
-  const theme = useTheme2();
   const totalTicks = data.fields[1].values.get(0);
-  const valueField = data.fields.find(f => f.name === 'value') ?? data.fields.find(f => f.type === FieldType.number);
+  const valueField =
+    data.fields.find((f) => f.name === 'value') ?? data.fields.find((f) => f.type === FieldType.number);
 
   // Transform dataFrame with nested set format to array of levels. Each level contains all the bars for a particular
   // level of the flame graph. We do this temporary as in the end we should be able to render directly by iterating
@@ -100,7 +100,7 @@ const FlameGraph = ({
       graph.style.height = `${height}px`;
 
       ctx.textBaseline = 'middle';
-      ctx.font = (12 * window.devicePixelRatio) + 'px monospace';
+      ctx.font = 12 * window.devicePixelRatio + 'px monospace';
       ctx.strokeStyle = 'white';
 
       for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
@@ -126,8 +126,7 @@ const FlameGraph = ({
       // Clicking allows user to "zoom" into the flamegraph. Zooming means the x axis gets smaller so that the clicked
       // bar takes 100% of the x axis.
       graphRef.current.onclick = (e) => {
-        const pixelsPerTick =
-          (graphRef.current!.clientWidth) / totalTicks / (rangeMax - rangeMin);
+        const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
         const { levelIndex, barIndex } = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
         if (barIndex === -1) {
           return;
@@ -151,7 +150,7 @@ const FlameGraph = ({
               tooltipRef.current.style.left = e.clientX + 10 + 'px';
               tooltipRef.current.style.top = e.clientY + 'px';
 
-              const tooltipData = getTooltipData(valueField!, bar.label, bar.value, totalTicks, theme);
+              const tooltipData = getTooltipData(valueField!, bar.label, bar.value, totalTicks);
               setTooltipData(tooltipData);
               setShowTooltip(true);
             }
@@ -176,7 +175,6 @@ const FlameGraph = ({
     setRangeMin,
     setRangeMax,
     valueField,
-    theme,
   ]);
 
   return (
