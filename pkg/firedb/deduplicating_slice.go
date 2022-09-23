@@ -75,17 +75,18 @@ func (s *deduplicatingSlice[M, K, H, P]) Close() error {
 }
 
 const (
-	maxBufferRowCount = 100_000 // 2 ^ 16
-	maxRowGroupBytes  = 128 * 1024 * 1024
+	maxBufferRowCount = 100_000                   // 2 ^ 16
+	maxRowGroupBytes  = uint64(128 * 1024 * 1024) // This is the maximum row group size in bytes that the raw data uses in memory.
+	maxBlockBytes     = 10 * maxRowGroupBytes     // This is the size of all parquet tables in memory after which a new block is cut
 )
 
 func (s *deduplicatingSlice[M, K, H, P]) maxRowsPerRowGroup() int {
 	var (
 		// average size per row in memory
-		bytesPerRow = int(s.Size()) / len(s.slice)
+		bytesPerRow = s.Size() / uint64(len(s.slice))
 
 		// how many rows per RG with average size are fitting in the maxRowGroupBytes, ensure that we at least flush 1 row
-		maxRows = maxRowGroupBytes / bytesPerRow
+		maxRows = int(maxRowGroupBytes / bytesPerRow)
 	)
 
 	if maxRows <= 0 {

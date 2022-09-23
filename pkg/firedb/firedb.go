@@ -50,10 +50,11 @@ type FireDB struct {
 	logger log.Logger
 	stopCh chan struct{}
 
-	headLock      sync.RWMutex
-	head          *Head
-	headMetrics   *headMetrics
-	headFlushTime time.Time
+	headLock    sync.RWMutex
+	head        *Head
+	headMetrics *headMetrics
+
+	headFlushTimer time.Timer
 
 	blockQuerier *BlockQuerier
 }
@@ -105,31 +106,25 @@ func (f *FireDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
 
 func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
 	if err := f.blockQuerier.Sync(ctx); err != nil {
-		level.Error(f.logger).Log("msg", "sync blocks failed", "err", err)
+		level.Error(f.logger).Log("msg", "sync of blocks failed", "err", err)
 	}
 }
 
 func (f *FireDB) loop() {
 	var (
 		blockScanTicker = time.NewTicker(5 * time.Minute)
-		blockScanManual = make(chan struct{}, 1)
 	)
 	defer func() {
-		close(blockScanManual)
 		blockScanTicker.Stop()
 	}()
 
 	for {
 		ctx := context.Background()
 
-		f.headLock.RLock()
-		timeToFlush := f.headFlushTime.Sub(time.Now())
-		f.headLock.RUnlock()
-
 		select {
 		case <-f.stopCh:
 			return
-		case <-time.After(timeToFlush):
+		case <-f.Head().flushCh:
 			if err := f.Flush(ctx); err != nil {
 				level.Error(f.logger).Log("msg", "flushing head block failed", "err", err)
 				continue
@@ -464,8 +459,7 @@ func (f *FireDB) initHead() (oldHead *Head, err error) {
 	f.headLock.Lock()
 	defer f.headLock.Unlock()
 	oldHead = f.head
-	f.headFlushTime = time.Now().UTC().Truncate(f.cfg.BlockDuration).Add(f.cfg.BlockDuration)
-	f.head, err = NewHead(f.cfg.DataPath, headWithMetrics(f.headMetrics), HeadWithLogger(f.logger))
+	f.head, err = NewHead(f.cfg, headWithMetrics(f.headMetrics), HeadWithLogger(f.logger))
 	if err != nil {
 		return oldHead, err
 	}
