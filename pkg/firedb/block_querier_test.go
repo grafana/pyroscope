@@ -18,10 +18,15 @@ import (
 	pprofth "github.com/grafana/fire/pkg/pprof/testhelper"
 )
 
-func Test_BlockQuerier(t *testing.T) {
-	tsdbPath := t.TempDir()
-	head, err := NewHead(tsdbPath)
+func newTestHead(t testing.TB) *Head {
+	dataPath := t.TempDir()
+	head, err := NewHead(&Config{DataPath: dataPath})
 	require.NoError(t, err)
+	return head
+}
+
+func Test_BlockQuerier(t *testing.T) {
+	head := newTestHead(t)
 
 	ctx := context.Background()
 
@@ -46,9 +51,7 @@ func Test_BlockQuerier(t *testing.T) {
 	// no flush the head to disk
 	require.NoError(t, head.Flush(ctx))
 
-	blockPath := filepath.Join(tsdbPath, pathLocal)
-
-	b, err := filesystem.NewBucket(blockPath)
+	b, err := filesystem.NewBucket(filepath.Dir(head.localPath))
 	require.NoError(t, err)
 
 	// open resulting block
