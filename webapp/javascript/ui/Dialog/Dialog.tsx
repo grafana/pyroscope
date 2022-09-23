@@ -80,3 +80,11 @@ export function Dialog(props: DialogProps) {
     </ModalUnstyled>
   );
 }
+
+export default function DialogActions({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <div className={styles.dialogActions}>{children}</div>;
+}

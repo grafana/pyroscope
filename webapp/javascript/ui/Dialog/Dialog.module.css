@@ -37,12 +37,6 @@
   overflow-y: auto;
 }
 
-.footer {
-  padding: 15px 20px 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-}
-
 .closeButton {
   position: absolute;
   right: 8px;
@@ -62,4 +56,19 @@
   left: 0;
   background-color: rgba(0, 0, 0, 0.5);
   -webkit-tap-highlight-color: transparent;
+}
+
+.footer {
+  padding: 15px 20px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.dialogActions {
+  align-self: end;
+}
+.dialogActions > *:not(:last-child) {
+  margin-right: 8px;
+  align-self: end;
 }

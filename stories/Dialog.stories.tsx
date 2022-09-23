@@ -6,7 +6,9 @@ import {
   DialogHeader,
   DialogBody,
 } from '../webapp/javascript/ui/Dialog';
+import Button from '../webapp/javascript/ui/Button';
 import '../webapp/sass/profile.scss';
+import DialogActions from '../webapp/javascript/ui/Dialog/Dialog';
 
 export default {
   title: 'Components/Dialog',
@@ -46,7 +48,14 @@ export function dialog() {
               sapien, vel fringilla risus porta at.
             </p>
           </DialogBody>
-          <DialogFooter>I am the Footer</DialogFooter>
+          <DialogFooter>
+            <DialogActions>
+              <Button onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={() => setOpen(false)} kind="secondary">
+                Ok
+              </Button>
+            </DialogActions>
+          </DialogFooter>
         </>
       </Dialog>
     </>
