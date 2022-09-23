@@ -34,6 +34,34 @@ export const DialogHeader = React.forwardRef(
   }
 );
 
+interface DialogFooterProps {
+  children: ReactNode;
+}
+export const DialogFooter = React.forwardRef(
+  (props: DialogFooterProps, ref?: Ref<HTMLInputElement>) => {
+    const { children } = props;
+    return (
+      <div className={styles.footer} ref={ref}>
+        {children}
+      </div>
+    );
+  }
+);
+
+interface DialogBodyProps {
+  children: ReactNode;
+}
+export const DialogBody = React.forwardRef(
+  (props: DialogBodyProps, ref?: Ref<HTMLInputElement>) => {
+    const { children } = props;
+    return (
+      <div className={styles.body} ref={ref}>
+        {children}
+      </div>
+    );
+  }
+);
+
 type DialogProps = Exclude<
   React.ComponentProps<typeof ModalUnstyled>,
   'components'

@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { ComponentMeta } from '@storybook/react';
-import { Dialog, DialogHeader } from '../webapp/javascript/ui/Dialog';
+import {
+  Dialog,
+  DialogFooter,
+  DialogHeader,
+  DialogBody,
+} from '../webapp/javascript/ui/Dialog';
 import '../webapp/sass/profile.scss';
 
 export default {
@@ -20,7 +25,27 @@ export function dialog() {
           setOpen(false);
         }}
       >
-        <DialogHeader>I am a Header</DialogHeader>
+        <>
+          <DialogHeader>I am the Header</DialogHeader>
+          <DialogBody>
+            <p>I am the body</p>
+            <p>
+              Phasellus at tellus iaculis nunc ornare porttitor vel at dolor.
+              Donec ornare diam sit amet eros posuere, quis vestibulum nunc
+              tempus. Vestibulum ante ipsum primis in faucibus orci luctus et
+              ultrices posuere cubilia curae; Etiam ullamcorper luctus gravida.
+              Quisque vitae euismod diam. Maecenas vulputate et massa hendrerit
+              dignissim. Donec consequat nisi eu nisl laoreet tincidunt. Nullam
+              dignissim ornare efficitur. Suspendisse at mollis dolor.
+              Suspendisse luctus tellus ut metus pretium, sed blandit elit
+              sagittis. Praesent arcu urna, consequat vel vehicula mattis,
+              viverra nec erat. Vestibulum mattis vehicula arcu, quis iaculis
+              dui elementum quis. In in massa tortor. Nullam volutpat nunc
+              sapien, vel fringilla risus porta at.
+            </p>
+          </DialogBody>
+          <DialogFooter>I am the Footer</DialogFooter>
+        </>
       </Dialog>
     </>
   );
