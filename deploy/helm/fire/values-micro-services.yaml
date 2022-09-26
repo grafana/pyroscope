@@ -39,4 +39,4 @@ fire:
           memory: 12Gi
         requests:
           memory: 6Gi
-          cpu: 500m
+          cpu: 1
