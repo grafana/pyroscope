@@ -81,10 +81,6 @@ export function Dialog(props: DialogProps) {
   );
 }
 
-export default function DialogActions({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function DialogActions({ children }: { children: React.ReactNode }) {
   return <div className={styles.dialogActions}>{children}</div>;
 }
