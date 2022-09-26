@@ -33,6 +33,13 @@
   display: flex;
 }
 
+/* reset immediate headers */
+.header > h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+}
 .body {
   padding: 15px 20px 10px;
   overflow-y: auto;

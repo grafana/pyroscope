@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, RefObject } from 'react';
 import useResizeObserver from '@react-hook/resize-observer';
 import Color from 'color';
 import cl from 'classnames';
@@ -33,14 +33,17 @@ interface HeatmapProps {
 export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
+  const resizedSelectedAreaRef = useRef<HTMLDivElement>(null);
   const [heatmapW, setHeatmapW] = useState(0);
 
-  const {
-    selectedCoordinates,
-    selectedAreaToHeatmapRatio,
-    hasSelectedArea,
-    resetSelection,
-  } = useHeatmapSelection({ canvasRef, heatmapW, heatmap, onSelection });
+  const { selectedCoordinates, selectedAreaToHeatmapRatio, resetSelection } =
+    useHeatmapSelection({
+      canvasRef,
+      resizedSelectedAreaRef,
+      heatmapW,
+      heatmap,
+      onSelection,
+    });
 
   useEffect(() => {
     if (heatmapRef.current) {
@@ -126,17 +129,14 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         max={heatmap.maxValue}
         ticksNumber={5}
       />
-      {hasSelectedArea &&
-        selectedCoordinates.end &&
-        selectedCoordinates.start && (
-          <ResizedSelectedArea
-            start={selectedCoordinates.start}
-            end={selectedCoordinates.end}
-            containerW={heatmapW}
-            resizeRatio={selectedAreaToHeatmapRatio}
-            handleClick={resetSelection}
-          />
-        )}
+      <ResizedSelectedArea
+        resizedSelectedAreaRef={resizedSelectedAreaRef}
+        start={selectedCoordinates.start || { x: 0, y: 0 }}
+        end={selectedCoordinates.end || { x: 0, y: 0 }}
+        containerW={heatmapW}
+        resizeRatio={selectedAreaToHeatmapRatio}
+        handleClick={resetSelection}
+      />
       <svg role="img" className={styles.heatmapSvg} height={HEATMAP_HEIGHT}>
         {heatmapGrid}
         <foreignObject
@@ -184,6 +184,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
 }
 
 interface ResizedSelectedArea {
+  resizedSelectedAreaRef: RefObject<HTMLDivElement>;
   containerW: number;
   start: SelectedAreaCoordsType;
   end: SelectedAreaCoordsType;
@@ -192,6 +193,7 @@ interface ResizedSelectedArea {
 }
 
 function ResizedSelectedArea({
+  resizedSelectedAreaRef,
   containerW,
   start,
   end,
@@ -207,6 +209,7 @@ function ResizedSelectedArea({
 
   return (
     <div
+      ref={resizedSelectedAreaRef}
       data-testid="selection-resizable-canvas"
       onClick={handleClick}
       className={styles.selectedAreaBlock}

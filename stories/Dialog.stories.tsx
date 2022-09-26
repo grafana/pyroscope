@@ -5,10 +5,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogBody,
+  DialogActions,
 } from '../webapp/javascript/ui/Dialog';
 import Button from '../webapp/javascript/ui/Button';
 import '../webapp/sass/profile.scss';
-import DialogActions from '../webapp/javascript/ui/Dialog/Dialog';
 
 export default {
   title: 'Components/Dialog',
@@ -22,6 +22,7 @@ export function dialog() {
     <>
       <Button onClick={() => setOpen(!open)}>Open Modal</Button>
       <Dialog
+        aria-labelledby="dialog-header"
         open={open}
         onClose={() => {
           setOpen(false);
@@ -29,7 +30,7 @@ export function dialog() {
       >
         <>
           <DialogHeader closeable onClose={() => setOpen(false)}>
-            I am the Header
+            <h3 id="dialog-header">I am the Header</h3>
           </DialogHeader>
           <DialogBody>
             <p>I am the body</p>
@@ -51,7 +52,13 @@ export function dialog() {
           <DialogFooter>
             <DialogActions>
               <Button onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)} kind="secondary">
+              <Button
+                autoFocus
+                onClick={() => {
+                  setOpen(false);
+                }}
+                kind="secondary"
+              >
                 Ok
               </Button>
             </DialogActions>

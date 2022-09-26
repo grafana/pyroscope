@@ -4,3 +4,8 @@
 // However that does not happen when inlining
 @import './sanitize.css/sanitize';
 @import './sanitize.css/forms';
+
+:focus-visible {
+  /* sanitize uses dotted, let's use the browser's default */
+  outline: revert !important;
+}

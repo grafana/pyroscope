@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.43.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.5...@pyroscope/webapp@1.43.6) (2022-09-26)
+
+
+### Bug Fixes
+
+* heatmap bug fixes ([#1545](https://github.com/pyroscope-io/pyroscope/issues/1545)) ([3218c62](https://github.com/pyroscope-io/pyroscope/commit/3218c6295383fa608bfe6fed40501949d1189708))
+
+
+
+
+
+## [1.43.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.4...@pyroscope/webapp@1.43.5) (2022-09-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.43.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.3...@pyroscope/webapp@1.43.4) (2022-09-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.43.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.2...@pyroscope/webapp@1.43.3) (2022-09-26)
 
 **Note:** Version bump only for package @pyroscope/webapp

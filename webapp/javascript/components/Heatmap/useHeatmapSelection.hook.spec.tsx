@@ -9,7 +9,9 @@ import { useHeatmapSelection } from './useHeatmapSelection.hook';
 import { heatmapMockData } from '@webapp/api/exemplarsTestData';
 
 const canvasEl = document.createElement('canvasEl');
+const divEl = document.createElement('div');
 const canvasRef = { current: canvasEl } as RefObject<HTMLCanvasElement>;
+const resizedSelectedAreaRef = { current: divEl } as RefObject<HTMLDivElement>;
 
 function createStore(preloadedState: any) {
   const store = configureStore({
@@ -29,6 +31,7 @@ describe('Hook: useHeatmapSelection', () => {
       () =>
         useHeatmapSelection({
           canvasRef,
+          resizedSelectedAreaRef,
           heatmapW: 1234,
           heatmap: heatmapMockData,
           onSelection: () => ({}),
@@ -55,7 +58,6 @@ describe('Hook: useHeatmapSelection', () => {
     expect(current).toMatchObject({
       selectedCoordinates: { start: null, end: null },
       selectedAreaToHeatmapRatio: 1,
-      hasSelectedArea: false,
       resetSelection: expect.any(Function),
     });
   });

@@ -3,6 +3,7 @@ import React, { Ref, ReactNode } from 'react';
 import ModalUnstyled from '@mui/base/ModalUnstyled';
 import Button from '@webapp/ui/Button';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
+import cx from 'classnames';
 import styles from './Dialog.module.css';
 
 const Backdrop = React.forwardRef<
@@ -13,15 +14,15 @@ const Backdrop = React.forwardRef<
   return <div className={styles.backdrop} ref={ref} {...other} />;
 });
 
-type DialogHeaderProps = { children: ReactNode } & (
+type DialogHeaderProps = { children: ReactNode; className?: string } & (
   | { closeable: true; onClose: () => void }
   | { closeable?: false }
 );
 export const DialogHeader = React.forwardRef(
   (props: DialogHeaderProps, ref?: Ref<HTMLInputElement>) => {
-    const { children, closeable } = props;
+    const { children, className, closeable } = props;
     return (
-      <div className={styles.header} ref={ref}>
+      <div className={cx(styles.header, className)} ref={ref}>
         {children}
         {closeable ? (
           <Button
@@ -39,12 +40,13 @@ export const DialogHeader = React.forwardRef(
 
 interface DialogFooterProps {
   children: ReactNode;
+  className?: string;
 }
 export const DialogFooter = React.forwardRef(
   (props: DialogFooterProps, ref?: Ref<HTMLInputElement>) => {
-    const { children } = props;
+    const { children, className } = props;
     return (
-      <div className={styles.footer} ref={ref}>
+      <div className={cx(styles.footer, className)} ref={ref}>
         {children}
       </div>
     );
@@ -53,12 +55,13 @@ export const DialogFooter = React.forwardRef(
 
 interface DialogBodyProps {
   children: ReactNode;
+  className?: string;
 }
 export const DialogBody = React.forwardRef(
   (props: DialogBodyProps, ref?: Ref<HTMLInputElement>) => {
-    const { children } = props;
+    const { children, className } = props;
     return (
-      <div className={styles.body} ref={ref}>
+      <div className={cx(styles.body, className)} ref={ref}>
         {children}
       </div>
     );
@@ -68,23 +71,30 @@ export const DialogBody = React.forwardRef(
 type DialogProps = Exclude<
   React.ComponentProps<typeof ModalUnstyled>,
   'components'
->;
+> & {
+  className?: string;
+  /** The header ID */
+  ['aria-labelledby']: string;
+};
 export function Dialog(props: DialogProps) {
+  const { className } = props;
   return (
     <ModalUnstyled
       {...props}
       components={{ Backdrop }}
-      className={styles.modal}
+      className={cx(styles.modal, className)}
     >
-      <div className={styles.modalContainer}>{props.children}</div>
+      <div
+        aria-modal="true"
+        aria-labelledby={props['aria-labelledby']}
+        className={styles.modalContainer}
+      >
+        {props.children}
+      </div>
     </ModalUnstyled>
   );
 }
 
-export default function DialogActions({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function DialogActions({ children }: { children: React.ReactNode }) {
   return <div className={styles.dialogActions}>{children}</div>;
 }

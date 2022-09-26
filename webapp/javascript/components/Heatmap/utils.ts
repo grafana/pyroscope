@@ -1,8 +1,8 @@
 import type { Heatmap } from '@webapp/api/render';
 
+import { getTimelineFormatDate } from '@webapp/util/formatDate';
 import { SELECTED_AREA_BACKGROUND, HEATMAP_HEIGHT } from './constants';
 import type { SelectedAreaCoordsType } from './useHeatmapSelection.hook';
-import { getTimelineFormatDate } from '@webapp/util/formatDate';
 
 export const drawRect = (
   canvas: HTMLCanvasElement,

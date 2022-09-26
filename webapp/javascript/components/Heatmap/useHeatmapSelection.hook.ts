@@ -16,6 +16,7 @@ interface SelectedCoordinates {
 }
 interface UseHeatmapSelectionProps {
   canvasRef: RefObject<HTMLCanvasElement>;
+  resizedSelectedAreaRef: RefObject<HTMLDivElement>;
   heatmapW: number;
   heatmap: Heatmap;
   onSelection: (
@@ -27,23 +28,21 @@ interface UseHeatmapSelectionProps {
 }
 interface UseHeatmapSelection {
   selectedCoordinates: SelectedCoordinates;
-  hasSelectedArea: boolean;
   selectedAreaToHeatmapRatio: number;
   resetSelection: () => void;
 }
 
 export const useHeatmapSelection = ({
   canvasRef,
+  resizedSelectedAreaRef,
   heatmapW,
   heatmap,
   onSelection,
 }: UseHeatmapSelectionProps): UseHeatmapSelection => {
-  const [hasSelectedArea, setHasSelectedArea] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
 
   const resetSelection = () => {
-    setHasSelectedArea(false);
     setSelectedCoordinates(DEFAULT_SELECTED_COORDINATES);
     startCoords = null;
     endCoords = null;
@@ -108,7 +107,6 @@ export const useHeatmapSelection = ({
     if (startCoords) {
       const canvas = canvasRef.current as HTMLCanvasElement;
       const { left, top, width, height } = canvas.getBoundingClientRect();
-      setHasSelectedArea(true);
       clearRect(canvas);
 
       const xCursorPosition = e.clientX - left;
@@ -188,12 +186,27 @@ export const useHeatmapSelection = ({
       canvasRef.current.addEventListener('mousedown', startDrawing);
     }
 
+    if (resizedSelectedAreaRef.current) {
+      resizedSelectedAreaRef.current.addEventListener(
+        'mousedown',
+        startDrawing
+      );
+    }
+
     return () => {
       if (canvasRef.current) {
         canvasRef.current.removeEventListener('mousedown', startDrawing);
-        window.removeEventListener('mousemove', handleDrawingEvent);
-        window.removeEventListener('mouseup', endDrawing);
       }
+
+      if (resizedSelectedAreaRef.current) {
+        resizedSelectedAreaRef.current.removeEventListener(
+          'mousedown',
+          startDrawing
+        );
+      }
+
+      window.removeEventListener('mousemove', handleDrawingEvent);
+      window.removeEventListener('mouseup', endDrawing);
     };
   }, [heatmap, heatmapW]);
 
@@ -210,7 +223,6 @@ export const useHeatmapSelection = ({
   return {
     selectedCoordinates,
     selectedAreaToHeatmapRatio,
-    hasSelectedArea,
     resetSelection,
   };
 };
