@@ -7,12 +7,36 @@ fire:
     querier:
       kind: Deployment
       replicaCount: 3
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
     distributor:
       kind: Deployment
       replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 500m
     agent:
       kind: Deployment
       replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 128Mi
+          cpu: 50m
     ingester:
       kind: StatefulSet
       replicaCount: 3
+      resources:
+        limits:
+          memory: 12Gi
+        requests:
+          memory: 6Gi
+          cpu: 1
