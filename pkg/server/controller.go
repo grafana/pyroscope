@@ -279,6 +279,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 				{"/merge", h},
 				{"/api/exemplars:merge", h},
 				{"/api/exemplars:query", h},
+				{"/api/annotations", h},
 			}...)
 		}
 	} else {
