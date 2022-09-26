@@ -217,7 +217,9 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		apiRouter.RegisterUserHandlers()
 		apiRouter.RegisterAPIKeyHandlers()
 	}
-	apiRouter.RegisterAnnotationsHandlers()
+	if !ctrl.config.RemoteWrite.Enabled {
+		apiRouter.RegisterAnnotationsHandlers()
+	}
 
 	ingestRouter := r.Path("/ingest").Subrouter()
 	ingestRouter.Use(ctrl.drainMiddleware)
@@ -279,8 +281,14 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 				{"/merge", h},
 				{"/api/exemplars:merge", h},
 				{"/api/exemplars:query", h},
-				{"/api/annotations", h},
 			}...)
+
+			// FIXME: This doesn't honor the same credentials as passed via remoteWrite
+			if ctrl.config.RemoteWrite.Enabled {
+				routes = append(routes, []route{
+					{"/api/annotations", h},
+				}...)
+			}
 		}
 	} else {
 		routes = append(routes, []route{
