@@ -47,7 +47,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 type FireDB struct {
 	services.Service
 
-	cfg    *Config
+	cfg    Config
 	reg    prometheus.Registerer
 	logger log.Logger
 	stopCh chan struct{}
@@ -61,7 +61,7 @@ type FireDB struct {
 	blockQuerier *BlockQuerier
 }
 
-func New(cfg *Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, error) {
+func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, error) {
 	headMetrics := newHeadMetrics(reg)
 	f := &FireDB{
 		cfg:         cfg,
@@ -113,9 +113,7 @@ func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
 }
 
 func (f *FireDB) loop() {
-	var (
-		blockScanTicker = time.NewTicker(5 * time.Minute)
-	)
+	blockScanTicker := time.NewTicker(5 * time.Minute)
 	defer func() {
 		blockScanTicker.Stop()
 	}()

@@ -15,7 +15,7 @@ import (
 
 func newTestHead(t testing.TB) *Head {
 	dataPath := t.TempDir()
-	head, err := NewHead(&Config{DataPath: dataPath})
+	head, err := NewHead(Config{DataPath: dataPath})
 	require.NoError(t, err)
 	return head
 }
