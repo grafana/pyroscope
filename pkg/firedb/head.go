@@ -93,7 +93,7 @@ type Helper[M Models, K comparable] interface {
 type Table interface {
 	Name() string
 	Size() uint64
-	Init(path string) error
+	Init(path string, cfg *ParquetConfig) error
 	Flush() (numRows uint64, numRowGroups uint64, err error)
 	Close() error
 }
@@ -135,6 +135,7 @@ type Head struct {
 	meta     *block.Meta
 
 	index           *profilesIndex
+	parquetConfig   *ParquetConfig
 	strings         deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
 	mappings        deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
 	functions       deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
@@ -161,10 +162,16 @@ func NewHead(cfg Config, opts ...HeadOption) (*Head, error) {
 		totalSamples: atomic.NewUint64(0),
 
 		flushCh:          make(chan struct{}),
-		flushForcedTimer: time.NewTimer(cfg.BlockDuration),
+		flushForcedTimer: time.NewTimer(cfg.MaxBlockDuration),
+
+		parquetConfig: defaultParquetConfig,
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
 	h.localPath = filepath.Join(cfg.DataPath, pathLocal, h.meta.ULID.String())
+
+	if cfg.Parquet != nil {
+		h.parquetConfig = cfg.Parquet
+	}
 
 	// execute options
 	for _, o := range opts {
@@ -192,7 +199,7 @@ func NewHead(cfg Config, opts ...HeadOption) (*Head, error) {
 		&h.profiles,
 	}
 	for _, t := range h.tables {
-		if err := t.Init(h.headPath); err != nil {
+		if err := t.Init(h.headPath, h.parquetConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -238,10 +245,10 @@ func (h *Head) loop() {
 			close(h.flushCh)
 			return
 		case <-tick.C:
-			if currentSize := h.Size(); currentSize > maxBlockBytes {
+			if currentSize := h.Size(); currentSize > h.parquetConfig.MaxBlockBytes {
 				level.Debug(h.logger).Log(
 					"msg", "max block bytes reached, flush to disk",
-					"max_size", humanize.Bytes(maxBlockBytes),
+					"max_size", humanize.Bytes(h.parquetConfig.MaxBlockBytes),
 					"current_head_size", humanize.Bytes(currentSize),
 				)
 				close(h.flushCh)

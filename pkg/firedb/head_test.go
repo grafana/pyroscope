@@ -18,6 +18,25 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 )
 
+func newTestHead(t testing.TB) *testHead {
+	dataPath := t.TempDir()
+	head, err := NewHead(&Config{DataPath: dataPath})
+	require.NoError(t, err)
+	return &testHead{Head: head, t: t}
+}
+
+type testHead struct {
+	*Head
+	t testing.TB
+}
+
+func (t *testHead) Flush(ctx context.Context) error {
+	defer func() {
+		t.t.Logf("flushing head of block %v", t.Head.meta.ULID)
+	}()
+	return t.Head.Flush(ctx)
+}
+
 func parseProfile(t testing.TB, path string) *profilev1.Profile {
 	f, err := os.Open(path)
 	require.NoError(t, err, "failed opening profile: ", path)
