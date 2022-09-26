@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer/convert"
 )
 
@@ -26,9 +25,4 @@ type GetAdhocProfileDiffByIDParams struct {
 
 type UploadAdhocProfileParams struct {
 	Profile convert.ProfileFile
-}
-
-type CreateAdhocProfileDiffParams struct {
-	Base *flamebearer.FlamebearerProfile
-	Diff *flamebearer.FlamebearerProfile
 }

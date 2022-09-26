@@ -93,5 +93,4 @@ func (r *Router) RegisterAdhocHandlers() {
 	x.Methods(http.MethodGet).PathPrefix("/profile/{id:[0-9a-f]+}").HandlerFunc(h.GetProfile)
 	x.Methods(http.MethodGet).PathPrefix("/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}").HandlerFunc(h.GetProfileDiff)
 	x.Methods(http.MethodPost).PathPrefix("/upload").HandlerFunc(h.Upload)
-	x.Methods(http.MethodPost).PathPrefix("/upload-diff/").HandlerFunc(h.UploadDiff)
 }

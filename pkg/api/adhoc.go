@@ -25,9 +25,6 @@ type AdhocService interface {
 	GetProfileDiffByID(context.Context, model.GetAdhocProfileDiffByIDParams) (*flamebearer.FlamebearerProfile, error)
 	// UploadProfile stores the profile provided and returns the entity created.
 	UploadProfile(context.Context, model.UploadAdhocProfileParams) (p *flamebearer.FlamebearerProfile, id string, err error)
-	// CreateProfileDiff takes two profiles and creates the difference flamegraph.
-	// Implementation details: the result is not stored and never requested.
-	CreateProfileDiff(context.Context, model.CreateAdhocProfileDiffParams) (*flamebearer.FlamebearerProfile, error)
 }
 
 type AdhocHandler struct {
@@ -147,23 +144,4 @@ func (h AdhocHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		ID:          id,
 		Flamebearer: p,
 	})
-}
-
-func (h AdhocHandler) UploadDiff(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, h.maxBodySize)
-	var req buildProfileDiffRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.httpUtils.HandleError(r, w, httputils.JSONError{Err: err})
-		return
-	}
-	params := model.CreateAdhocProfileDiffParams{
-		Diff: req.Diff,
-		Base: req.Base,
-	}
-	p, err := h.adhocService.CreateProfileDiff(r.Context(), params)
-	if err != nil {
-		h.httpUtils.HandleError(r, w, err)
-		return
-	}
-	h.httpUtils.MustJSON(r, w, p)
 }

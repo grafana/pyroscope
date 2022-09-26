@@ -150,14 +150,6 @@ func (svc *AdhocService) UploadProfile(_ context.Context, params model.UploadAdh
 	return fb, svc.generateHash(filename), nil
 }
 
-func (svc *AdhocService) CreateProfileDiff(_ context.Context, params model.CreateAdhocProfileDiffParams) (*flamebearer.FlamebearerProfile, error) {
-	fb, err := flamebearer.Diff("", params.Base, params.Diff, svc.maxNodes)
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate a diff profile: %w", err)
-	}
-	return &fb, nil
-}
-
 func (svc *AdhocService) loadProfile(p model.AdhocProfile) (*flamebearer.FlamebearerProfile, error) {
 	fileName := filepath.Join(svc.dataDir, p.Name)
 	f, err := os.Open(fileName)

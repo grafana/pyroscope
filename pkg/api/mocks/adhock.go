@@ -36,21 +36,6 @@ func (m *MockAdhocService) EXPECT() *MockAdhocServiceMockRecorder {
 	return m.recorder
 }
 
-// CreateProfileDiff mocks base method.
-func (m *MockAdhocService) CreateProfileDiff(arg0 context.Context, arg1 model.CreateAdhocProfileDiffParams) (*flamebearer.FlamebearerProfile, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateProfileDiff", arg0, arg1)
-	ret0, _ := ret[0].(*flamebearer.FlamebearerProfile)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateProfileDiff indicates an expected call of CreateProfileDiff.
-func (mr *MockAdhocServiceMockRecorder) CreateProfileDiff(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProfileDiff", reflect.TypeOf((*MockAdhocService)(nil).CreateProfileDiff), arg0, arg1)
-}
-
 // GetAllProfiles mocks base method.
 func (m *MockAdhocService) GetAllProfiles(arg0 context.Context) ([]model.AdhocProfile, error) {
 	m.ctrl.T.Helper()
