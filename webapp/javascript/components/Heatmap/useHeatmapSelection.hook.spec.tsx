@@ -6,7 +6,7 @@ import continuousReducer from '@webapp/redux/reducers/continuous';
 import tracingReducer from '@webapp/redux/reducers/tracing';
 
 import { useHeatmapSelection } from './useHeatmapSelection.hook';
-import { heatmapMockData } from '../../services/exemplarsTestData';
+import { heatmapMockData } from '@webapp/api/exemplarsTestData';
 
 const canvasEl = document.createElement('canvasEl');
 const canvasRef = { current: canvasEl } as RefObject<HTMLCanvasElement>;
