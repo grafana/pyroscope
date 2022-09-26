@@ -50,10 +50,10 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 			GroupBy: []string{},
 		}))
 		if err != nil {
+			log.DefaultLogger.Error("Querying SelectSeries()", "err", err)
 			response.Error = err
 			return response
 		}
-
 		// add the frames to the response.
 		response.Frames = append(response.Frames, seriesToDataFrame(seriesResp, qm.ProfileTypeID))
 	}
@@ -62,6 +62,7 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 		log.DefaultLogger.Debug("Querying SelectMergeStacktraces()", "queryModel", qm)
 		resp, err := d.client.SelectMergeStacktraces(ctx, makeRequest(qm, query))
 		if err != nil {
+			log.DefaultLogger.Error("Querying SelectMergeStacktraces()", "err", err)
 			response.Error = err
 			return response
 		}
