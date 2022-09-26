@@ -1,6 +1,7 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-common-types';
+import cx from 'classnames';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
@@ -27,6 +28,9 @@ export interface ButtonProps {
 
   id?: string;
   form?: React.ButtonHTMLAttributes<HTMLButtonElement>['form'];
+
+  /** disable a box around it */
+  noBox?: boolean;
 }
 
 export default function Button({
@@ -40,6 +44,7 @@ export default function Button({
   id,
   className,
   form,
+  noBox,
   ...props
 }: ButtonProps) {
   return (
@@ -51,9 +56,14 @@ export default function Button({
       onClick={onClick}
       form={form}
       aria-label={props['aria-label']}
-      className={`${styles.button} ${
-        grouped ? styles.grouped : ''
-      } ${getKindStyles(kind)} ${className}`}
+      className={cx(
+        styles.button,
+        grouped ? styles.grouped : '',
+        getKindStyles(kind),
+        className,
+        noBox && styles.noBox,
+        !icon && styles.noIcon
+      )}
     >
       {icon ? (
         <FontAwesomeIcon
