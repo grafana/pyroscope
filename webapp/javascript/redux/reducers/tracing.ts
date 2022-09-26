@@ -10,9 +10,9 @@ import {
   Heatmap,
   getHeatmapProps,
   selectionProfileProps,
-} from '@webapp/services/render';
+} from '@webapp/api/render';
 import type { RootState } from '@webapp/redux/store';
-import { RequestAbortedError } from '@webapp/services/base';
+import { RequestAbortedError } from '@webapp/api/base';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 

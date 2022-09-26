@@ -34,9 +34,9 @@ import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
+import { PAGES } from '@webapp/pages/constants';
+import { mountURL } from '@webapp/api/base';
 import styles from './Sidebar.module.css';
-import { PAGES } from '../pages/constants';
-import { mountURL } from '../services/base';
 
 function signOut() {
   // By visiting /logout we're clearing jwtCookie

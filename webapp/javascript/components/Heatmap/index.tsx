@@ -4,7 +4,7 @@ import Color from 'color';
 import cl from 'classnames';
 import { interpolateViridis } from 'd3-scale-chromatic';
 
-import type { Heatmap as HeatmapType } from '@webapp/services/render';
+import type { Heatmap as HeatmapType } from '@webapp/api/render';
 import {
   SelectedAreaCoordsType,
   useHeatmapSelection,

@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 
 import TooltipWrapper from '@webapp/components/TimelineChart/TooltipWrapper';
-import type { Heatmap } from '@webapp/services/render';
+import type { Heatmap } from '@webapp/api/render';
 import { getTimeDataByXCoord, getFormatter } from './utils';
 
 interface HeatmapTooltipProps {

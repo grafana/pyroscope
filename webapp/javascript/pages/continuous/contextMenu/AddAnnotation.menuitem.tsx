@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { getUTCdate, timezoneToOffset } from '@webapp/util/formatDate';
 import Button from '@webapp/ui/Button';
 import { Portal, PortalProps } from '@webapp/ui/Portal';
-import { NewAnnotation } from '@webapp/services/annotations';
+import { NewAnnotation } from '@webapp/api/annotations';
 import * as z from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

@@ -6,7 +6,7 @@ import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
   editMyUser as editMyUserAPI,
-} from '@webapp/services/users';
+} from '@webapp/api/users';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';

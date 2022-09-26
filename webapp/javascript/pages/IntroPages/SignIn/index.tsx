@@ -5,7 +5,7 @@ import Icon from '@webapp/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
-import { logIn } from '@webapp/services/users';
+import { logIn } from '@webapp/api/users';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
 import {
   isGithubEnabled,

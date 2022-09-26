@@ -7,15 +7,15 @@ import {
   RenderOutput,
   RenderExploreOutput,
   RenderDiffResponse,
-} from '@webapp/services/render';
-import { fetchAppNames } from '@webapp/services/appNames';
+} from '@webapp/api/render';
+import { fetchAppNames } from '@webapp/api/appNames';
 import type { AppNames } from '@webapp/models/appNames';
 import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import type { Timeline } from '@webapp/models/timeline';
 import type { Annotation } from '@webapp/models/annotation';
-import * as tagsService from '@webapp/services/tags';
-import * as annotationsService from '@webapp/services/annotations';
-import { RequestAbortedError } from '@webapp/services/base';
+import * as tagsService from '@webapp/api/tags';
+import * as annotationsService from '@webapp/api/annotations';
+import { RequestAbortedError } from '@webapp/api/base';
 import { appendLabelToQuery } from '@webapp/util/query';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';

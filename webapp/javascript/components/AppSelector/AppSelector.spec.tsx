@@ -10,11 +10,11 @@ import {
 import { configureStore } from '@reduxjs/toolkit';
 import { continuousSlice } from '@webapp/redux/reducers/continuous';
 import { Result } from '@webapp/util/fp';
-import * as appNames from '@webapp/services/appNames';
+import * as appNames from '@webapp/api/appNames';
 import AppSelector from '.';
 import { MENU_ITEM_ROLE } from './SelectButton';
 
-jest.mock('@webapp/services/appNames');
+jest.mock('@webapp/api/appNames');
 
 const { getByTestId, queryByRole, getByRole, findByRole } = screen;
 const mockAppNames = [

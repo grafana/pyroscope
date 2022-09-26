@@ -1,4 +1,4 @@
-import type { RequestError, RequestNotOkError } from '@webapp/services/base';
+import type { RequestError, RequestNotOkError } from '@webapp/api/base';
 import { ZodError } from 'zod';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { useAppDispatch } from '@webapp/redux/hooks';

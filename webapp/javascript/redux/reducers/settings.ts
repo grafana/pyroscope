@@ -10,13 +10,13 @@ import {
   disableUser as disableUserAPI,
   changeUserRole as changeUserRoleAPI,
   deleteUser as deleteUserAPI,
-} from '@webapp/services/users';
+} from '@webapp/api/users';
 import {
   fetchAPIKeys,
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
-} from '@webapp/services/apiKeys';
-import { fetchApps, deleteApp as deleteAppAPI } from '@webapp/services/apps';
+} from '@webapp/api/apiKeys';
+import { fetchApps, deleteApp as deleteAppAPI } from '@webapp/api/apps';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';

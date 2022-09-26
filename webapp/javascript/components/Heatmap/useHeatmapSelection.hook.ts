@@ -1,6 +1,6 @@
 import { useState, useEffect, RefObject } from 'react';
 
-import type { Heatmap } from '@webapp/services/render';
+import type { Heatmap } from '@webapp/api/render';
 import { HEATMAP_HEIGHT } from './constants';
 import { clearRect, drawRect, getSelectionData } from './utils';
 

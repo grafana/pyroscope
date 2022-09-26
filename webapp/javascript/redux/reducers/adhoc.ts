@@ -1,11 +1,6 @@
 import { Profile } from '@pyroscope/models/src';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import {
-  upload,
-  retrieve,
-  retrieveAll,
-  retrieveDiff,
-} from '@webapp/services/adhoc';
+import { upload, retrieve, retrieveAll, retrieveDiff } from '@webapp/api/adhoc';
 import type { RootState } from '@webapp/redux/store';
 import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';

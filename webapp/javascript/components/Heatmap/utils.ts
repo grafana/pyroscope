@@ -1,4 +1,4 @@
-import type { Heatmap } from '@webapp/services/render';
+import type { Heatmap } from '@webapp/api/render';
 
 import { SELECTED_AREA_BACKGROUND, HEATMAP_HEIGHT } from './constants';
 import type { SelectedAreaCoordsType } from './useHeatmapSelection.hook';

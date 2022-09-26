@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
 import { useAppDispatch } from '@webapp/redux/hooks';
-import { signUp, logIn } from '@webapp/services/users';
+import { signUp, logIn } from '@webapp/api/users';
 import { loadCurrentUser } from '@webapp/redux/reducers/user';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
 import { isSignupEnabled } from '@webapp/util/features';

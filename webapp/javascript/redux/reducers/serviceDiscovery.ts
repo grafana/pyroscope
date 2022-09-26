@@ -1,5 +1,5 @@
 import { Target } from '@webapp/models/targets';
-import { fetchTargets } from '@webapp/services/serviceDiscovery';
+import { fetchTargets } from '@webapp/api/serviceDiscovery';
 import { createSlice } from '@reduxjs/toolkit';
 import { addNotification } from './notifications';
 import type { RootState } from '../store';
