@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.43.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.4...@pyroscope/webapp@1.43.5) (2022-09-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.43.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.3...@pyroscope/webapp@1.43.4) (2022-09-26)
 
 **Note:** Version bump only for package @pyroscope/webapp
