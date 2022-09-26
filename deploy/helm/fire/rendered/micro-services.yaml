@@ -328,7 +328,11 @@ spec:
             - name: data
               mountPath: /data
           resources:
-            {}
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
       volumes:
         - name: config
           configMap:
@@ -398,7 +402,11 @@ spec:
             - name: data
               mountPath: /data
           resources:
-            {}
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 256Mi
       volumes:
         - name: config
           configMap:
@@ -468,7 +476,11 @@ spec:
             - name: data
               mountPath: /data
           resources:
-            {}
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
       volumes:
         - name: config
           configMap:
@@ -540,7 +552,11 @@ spec:
             - name: data
               mountPath: /data
           resources:
-            {}
+            limits:
+              memory: 12Gi
+            requests:
+              cpu: 500m
+              memory: 6Gi
       volumes:
         - name: config
           configMap:
