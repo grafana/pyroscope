@@ -51,7 +51,6 @@ export default function Button({
   autoFocus,
   ...props
 }: ButtonProps) {
-  // eslint-disable jsx-a11y/no-autofocus
   return (
     <button
       id={id}
