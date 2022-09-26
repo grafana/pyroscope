@@ -1,0 +1,58 @@
+{
+  "fire": {
+    "components": {
+      "agent": {
+        "kind": "Deployment",
+        "replicaCount": 1,
+        "resources": {
+          "limits": {
+            "memory": "512Mi"
+          },
+          "requests": {
+            "cpu": "50m",
+            "memory": "128Mi"
+          }
+        }
+      },
+      "distributor": {
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "ingester": {
+        "kind": "StatefulSet",
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "12Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "6Gi"
+          }
+        }
+      },
+      "querier": {
+        "kind": "Deployment",
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "256Mi"
+          }
+        }
+      }
+    }
+  }
+}

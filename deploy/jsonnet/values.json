@@ -1,0 +1,53 @@
+{
+  "fire": {
+    "affinity": {},
+    "components": {},
+    "config": "scrape_configs:\n  - job_name: \"default\"\n    scrape_interval: \"5s\"\n    static_configs:\n      - targets: [ '127.0.0.1:4100']\n  - job_name: kubernetes-pods-name\n    kubernetes_sd_configs:\n    - role: pod\n    relabel_configs:\n    - source_labels:\n      - __meta_kubernetes_pod_label_name\n      target_label: __service__\n    - source_labels:\n      - __meta_kubernetes_pod_node_name\n      target_label: __host__\n    - action: drop\n      regex: ''\n      source_labels:\n      - __service__\n    - action: labelmap\n      regex: __meta_kubernetes_pod_label_(.+)\n    - action: replace\n      replacement: $1\n      separator: /\n      source_labels:\n      - __meta_kubernetes_namespace\n      - __service__\n      target_label: job\n    - action: replace\n      source_labels:\n      - __meta_kubernetes_namespace\n      target_label: namespace\n    - action: replace\n      source_labels:\n      - __meta_kubernetes_pod_name\n      target_label: pod\n    - action: replace\n      source_labels:\n      - __meta_kubernetes_pod_container_name\n      target_label: container\n    - replacement: /var/log/pods/*$1/*.log\n      separator: /\n      source_labels:\n      - __meta_kubernetes_pod_uid\n      - __meta_kubernetes_pod_container_name\n      target_label: __path__\n",
+    "extraArgs": {
+      "log.level": "debug"
+    },
+    "extraEnvVars": null,
+    "extraLabels": {},
+    "extraVolumeMounts": [],
+    "extraVolumes": [],
+    "fullnameOverride": "",
+    "image": {
+      "pullPolicy": "IfNotPresent",
+      "repository": "us.gcr.io/kubernetes-dev/fire",
+      "tag": ""
+    },
+    "imagePullSecrets": [],
+    "memberlist": {
+      "port": 7946,
+      "port_name": "memberlist"
+    },
+    "nameOverride": "",
+    "nodeSelector": {},
+    "persistence": {
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "annotations": {},
+      "enabled": false,
+      "size": "10Gi"
+    },
+    "podAnnotations": {},
+    "podSecurityContext": {
+      "fsGroup": 10001
+    },
+    "replicaCount": 1,
+    "resources": {},
+    "securityContext": {},
+    "service": {
+      "port": 4100,
+      "port_name": "http",
+      "type": "ClusterIP"
+    },
+    "serviceAccount": {
+      "annotations": {},
+      "create": true,
+      "name": ""
+    },
+    "tolerations": []
+  }
+}
