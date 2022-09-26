@@ -25,6 +25,7 @@ import (
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	fireobjstore "github.com/grafana/fire/pkg/objstore"
+	"github.com/grafana/fire/pkg/tenant"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -156,7 +157,12 @@ func (i *Ingester) running(ctx context.Context) error {
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	level.Debug(i.logger).Log("msg", "message received by ingester push", "request_headers: ", fmt.Sprintf("%+v", req.Header()))
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	logger := log.With(i.logger, "tenant", tenantID)
+	level.Debug(logger).Log("msg", "message received by ingester push")
 
 	for _, series := range req.Msg.Series {
 		for _, sample := range series.Samples {

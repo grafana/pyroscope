@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/flagext"
@@ -37,6 +38,7 @@ import (
 	"github.com/grafana/fire/pkg/ingester"
 	"github.com/grafana/fire/pkg/objstore"
 	"github.com/grafana/fire/pkg/querier"
+	"github.com/grafana/fire/pkg/tenant"
 	"github.com/grafana/fire/pkg/tracing"
 	"github.com/grafana/fire/pkg/util"
 )
@@ -160,6 +162,8 @@ type Fire struct {
 	storageBucket objstore.Bucket
 
 	grpcGatewayMux *grpcgw.ServeMux
+
+	auth connect.Option
 }
 
 func New(cfg Config) (*Fire, error) {
@@ -191,9 +195,13 @@ func New(cfg Config) (*Fire, error) {
 	if err != nil {
 		return nil, err
 	}
-	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
-	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient, cfg.AgentConfig.ClientConfig.URL.String())
+	fire.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.AuthEnabled))
 
+	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
+	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient,
+		cfg.AgentConfig.ClientConfig.URL.String(),
+		fire.auth,
+	)
 	return fire, nil
 }
 
