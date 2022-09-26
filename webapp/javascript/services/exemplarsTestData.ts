@@ -1,10 +1,10 @@
 export const heatmapMockData = {
-  endTime: 1659642600000,
+  endTime: 1859642600000000,
   maxDepth: 23077,
   maxValue: 110,
   minDepth: 1,
   minValue: 1,
-  startTime: 1659642000000,
+  startTime: 1659642000000000,
   timeBuckets: 60,
   valueBuckets: 32,
   values: [
