@@ -13,25 +13,22 @@ import (
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
 )
 
-func newTestHead(t testing.TB) *Head {
-	dataPath := t.TempDir()
-	head, err := NewHead(Config{DataPath: dataPath})
-	require.NoError(t, err)
-	return head
-}
-
 func TestInMemoryReader(t *testing.T) {
 	path := t.TempDir()
 	st := deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]{}
-	require.NoError(t, st.Init(path))
+	require.NoError(t, st.Init(path, &ParquetConfig{
+		MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount / 1024,
+		MaxRowGroupBytes:  defaultParquetConfig.MaxRowGroupBytes / 1024,
+		MaxBlockBytes:     defaultParquetConfig.MaxBlockBytes,
+	}))
 	rewrites := &rewriter{}
 	rgCount := 5
-	for i := 0; i < rgCount*maxBufferRowCount; i++ {
+	for i := 0; i < rgCount*st.cfg.MaxBufferRowCount; i++ {
 		require.NoError(t, st.ingest(context.Background(), []string{fmt.Sprintf("foobar %d", i)}, rewrites))
 	}
 	numRows, numRg, err := st.Flush()
 	require.NoError(t, err)
-	require.Equal(t, uint64(rgCount*maxBufferRowCount), numRows)
+	require.Equal(t, uint64(rgCount*st.cfg.MaxBufferRowCount), numRows)
 	require.Equal(t, uint64(rgCount), numRg)
 	require.NoError(t, st.Close())
 	reader := inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]{}

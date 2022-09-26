@@ -35,13 +35,21 @@ import (
 )
 
 type Config struct {
-	DataPath      string
-	BlockDuration time.Duration
+	DataPath         string
+	MaxBlockDuration time.Duration // Blocks are generally cut once they reach 1000M of memory size, this will setup an upper limit to the duration of data that a block has that is cut by the ingester.
+
+	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determiend by fire itself. Currently they are solely used for test cases
+}
+
+type ParquetConfig struct {
+	MaxBufferRowCount int
+	MaxRowGroupBytes  uint64 // This is the maximum row group size in bytes that the raw data uses in memory.
+	MaxBlockBytes     uint64 // This is the size of all parquet tables in memory after which a new block is cut
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataPath, "firedb.data-path", "./data", "Directory used for local storage.")
-	f.DurationVar(&cfg.BlockDuration, "firedb.block-duration", 30*time.Minute, "Block duration.")
+	f.DurationVar(&cfg.MaxBlockDuration, "firedb.max-block-duration", 3*time.Hour, "Upper limit to the duration of a Fire block.")
 }
 
 type FireDB struct {

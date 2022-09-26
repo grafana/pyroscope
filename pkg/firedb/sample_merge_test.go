@@ -118,8 +118,8 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
 			db, err := New(Config{
-				DataPath:      testPath,
-				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+				DataPath:         testPath,
+				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)
 			require.NoError(t, err)
 			ctx := context.Background()
@@ -261,8 +261,8 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
 			db, err := New(Config{
-				DataPath:      testPath,
-				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+				DataPath:         testPath,
+				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)
 			require.NoError(t, err)
 			ctx := context.Background()
@@ -378,8 +378,8 @@ func TestMergeSampleByLabels(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
 			db, err := New(Config{
-				DataPath:      testPath,
-				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+				DataPath:         testPath,
+				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)
 			require.NoError(t, err)
 			ctx := context.Background()
@@ -503,8 +503,8 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
 			db, err := New(Config{
-				DataPath:      testPath,
-				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+				DataPath:         testPath,
+				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)
 			require.NoError(t, err)
 			ctx := context.Background()
