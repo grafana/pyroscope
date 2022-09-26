@@ -202,7 +202,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		UserService:        ctrl.userService,
 		AnnotationsService: ctrl.annotationsService,
 		AdhocService: service.NewAdhocService(
-			ctrl.config.MaxNodesSerialization, //
+			ctrl.config.MaxNodesRender,
 			ctrl.config.AdhocDataPath),
 	})
 
