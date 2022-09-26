@@ -14,9 +14,10 @@ $border-radius: 4px;
   &[type='submit'] {
     -webkit-appearance: button;
   }
+}
 
-  /* when we have an icon only button */
-  //min-width: 48px;
+.noIcon {
+  min-width: 48px;
 }
 
 .noBox {

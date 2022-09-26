@@ -61,7 +61,8 @@ export default function Button({
         grouped ? styles.grouped : '',
         getKindStyles(kind),
         className,
-        noBox && styles.noBox
+        noBox && styles.noBox,
+        !icon && styles.noIcon
       )}
     >
       {icon ? (
