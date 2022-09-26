@@ -1,10 +1,10 @@
 import { css } from '@emotion/css';
 import React, { LegacyRef } from 'react';
 
-import { useStyles, Tooltip, getTheme } from '@grafana/ui';
+import { useStyles, Tooltip } from '@grafana/ui';
 
 import { TooltipData, SampleUnit } from '../types';
-import { createTheme, Field, getDisplayProcessor, GrafanaTheme2 } from '@grafana/data';
+import { createTheme, Field, getDisplayProcessor } from '@grafana/data';
 
 type Props = {
   tooltipRef: LegacyRef<HTMLDivElement>;
