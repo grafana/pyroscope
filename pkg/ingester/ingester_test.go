@@ -62,8 +62,8 @@ prefix: ""`), reg, "storage")
 	require.NoError(t, err)
 
 	ing, err := New(defaultIngesterTestConfig(t), firedb.Config{
-		DataPath:      dbPath,
-		BlockDuration: 30 * time.Hour,
+		DataPath:         dbPath,
+		MaxBlockDuration: 30 * time.Hour,
 	}, logger, reg, fs)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
