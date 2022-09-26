@@ -28,6 +28,10 @@ datasources:
   - name: Fire
     type: grafana-fire-datasource
     url: ${FIRE_URL}
+    jsonData:
+      httpHeaderName1: "X-Scope-OrgID"
+    secureJsonData:
+      httpHeaderValue1: "anonymous"
 EOF
 
 docker run $DOCKER_ARGS --rm \
@@ -39,4 +43,4 @@ docker run $DOCKER_ARGS --rm \
   -e GF_DEFAULT_APP_MODE=development \
   -e GF_AUTH_ANONYMOUS_ENABLED=true \
   -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
-  -t -i -p 3000:3000 aocenas/grafana:explore-experiment
+  -t -i -p 3000:3000 aocenas/grafana:explore-experiment-2
