@@ -210,6 +210,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 				}
 				droppedTargets = append(droppedTargets, &Target{
 					Target:               scrape.NewTarget(lbls, origLabels, params),
+					tenantID:             tg.tenantID,
 					labels:               lbls,
 					scrapeClient:         tg.scrapeClient,
 					pusherClientProvider: tg.pusherClientProvider,
@@ -232,6 +233,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 				targets = append(targets, &Target{
 					Target:               scrape.NewTarget(lbls, origLabels, params),
 					labels:               lbls,
+					tenantID:             tg.tenantID,
 					scrapeClient:         tg.scrapeClient,
 					pusherClientProvider: tg.pusherClientProvider,
 					interval:             interval,

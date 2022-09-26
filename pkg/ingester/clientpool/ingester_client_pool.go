@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
@@ -46,9 +47,9 @@ func (cfg *PoolConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.RemoteTimeout, prefix+".health-check-timeout", 5*time.Second, "Timeout for ingester client healthcheck RPCs.")
 }
 
-func NewPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger) *ring_client.Pool {
+func NewPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
 	if factory == nil {
-		factory = PoolFactory
+		factory = PoolFactoryFn(options...)
 	}
 	poolCfg := ring_client.PoolConfig{
 		CheckInterval:      cfg.ClientCleanupPeriod,
@@ -59,16 +60,18 @@ func NewPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory
 	return ring_client.NewPool("ingester", poolCfg, ring_client.NewRingServiceDiscovery(ring), factory, clientsMetric, logger)
 }
 
-func PoolFactory(addr string) (ring_client.PoolClient, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+func PoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
+	return func(addr string) (ring_client.PoolClient, error) {
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		return &ingesterPoolClient{
+			IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+addr, options...),
+			HealthClient:          grpc_health_v1.NewHealthClient(conn),
+			Closer:                conn,
+		}, nil
 	}
-	return &ingesterPoolClient{
-		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+addr),
-		HealthClient:          grpc_health_v1.NewHealthClient(conn),
-		Closer:                conn,
-	}, nil
 }
 
 type ingesterPoolClient struct {
