@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/fire/pkg/tenant"
 	"github.com/parca-dev/parca/pkg/config"
 	parcaconfig "github.com/parca-dev/parca/pkg/config"
 	commonconfig "github.com/prometheus/common/config"
@@ -15,6 +14,8 @@ import (
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
+
+	"github.com/grafana/fire/pkg/tenant"
 )
 
 type Config struct {

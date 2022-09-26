@@ -157,7 +157,7 @@ type Fire struct {
 	ring               *ring.Ring
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
-	fireDB             *firedb.FireDB
+	// fireDB             *firedb.FireDB
 
 	storageBucket objstore.Bucket
 
@@ -213,7 +213,6 @@ func (f *Fire) setupModuleManager() error {
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
 	mm.RegisterModule(Ingester, f.initIngester)
-	mm.RegisterModule(FireDB, f.initFireDB)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
 	mm.RegisterModule(Querier, f.initQuerier)
@@ -226,7 +225,7 @@ func (f *Fire) setupModuleManager() error {
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
 		Agent:        {Server, GRPCGateway},
-		Ingester:     {Server, MemberlistKV, FireDB, Storage},
+		Ingester:     {Server, MemberlistKV, Storage},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
 		GRPCGateway:  {Server},

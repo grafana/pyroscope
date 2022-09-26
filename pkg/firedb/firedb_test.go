@@ -33,13 +33,13 @@ func TestCreateLocalDir(t *testing.T) {
 	dataPath := t.TempDir()
 	localFile := dataPath + "/local"
 	require.NoError(t, ioutil.WriteFile(localFile, []byte("d"), 0o644))
-	_, err := New(&Config{
+	_, err := New(Config{
 		DataPath:      dataPath,
 		BlockDuration: 30 * time.Minute,
 	}, log.NewNopLogger(), nil)
 	require.Error(t, err)
 	require.NoError(t, os.Remove(localFile))
-	_, err = New(&Config{
+	_, err = New(Config{
 		DataPath:      dataPath,
 		BlockDuration: 30 * time.Minute,
 	}, log.NewNopLogger(), nil)
@@ -133,7 +133,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		step    = 15 * time.Second
 	)
 
-	db, err := New(&Config{
+	db, err := New(Config{
 		DataPath:      testDir,
 		BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, log.NewNopLogger(), nil)

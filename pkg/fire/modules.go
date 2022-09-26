@@ -25,7 +25,6 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
-	"github.com/grafana/fire/pkg/firedb"
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
@@ -49,7 +48,6 @@ const (
 	MemberlistKV string = "memberlist-kv"
 	Querier      string = "querier"
 	GRPCGateway  string = "grpc-gateway"
-	FireDB       string = "firedb"
 	Storage      string = "storage"
 
 	// RuntimeConfig            string = "runtime-config"
@@ -153,15 +151,6 @@ func (f *Fire) initRing() (_ services.Service, err error) {
 	return f.ring, nil
 }
 
-func (f *Fire) initFireDB() (_ services.Service, err error) {
-	f.fireDB, err = firedb.New(&f.Cfg.FireDB, f.logger, f.reg)
-	if err != nil {
-		return nil, err
-	}
-
-	return f.fireDB, nil
-}
-
 func (f *Fire) initStorage() (_ services.Service, err error) {
 	if cfg := f.Cfg.Storage.BucketConfig; len(cfg) > 0 {
 		b, err := objstoreclient.NewBucket(
@@ -182,7 +171,7 @@ func (f *Fire) initStorage() (_ services.Service, err error) {
 func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	ingester, err := ingester.New(f.Cfg.Ingester, f.logger, f.reg, f.fireDB, f.storageBucket)
+	ingester, err := ingester.New(f.Cfg.Ingester, f.Cfg.FireDB, f.logger, f.reg, f.storageBucket)
 	if err != nil {
 		return nil, err
 	}

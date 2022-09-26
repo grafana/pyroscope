@@ -117,7 +117,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(&Config{
+			db, err := New(Config{
 				DataPath:      testPath,
 				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)
@@ -260,7 +260,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(&Config{
+			db, err := New(Config{
 				DataPath:      testPath,
 				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)
@@ -377,7 +377,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(&Config{
+			db, err := New(Config{
 				DataPath:      testPath,
 				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)
@@ -502,7 +502,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(&Config{
+			db, err := New(Config{
 				DataPath:      testPath,
 				BlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, log.NewNopLogger(), nil)

@@ -153,7 +153,7 @@ const (
 	defaultFolderMode = 0o755
 )
 
-func NewHead(cfg *Config, opts ...HeadOption) (*Head, error) {
+func NewHead(cfg Config, opts ...HeadOption) (*Head, error) {
 	h := &Head{
 		stopCh: make(chan struct{}),
 
