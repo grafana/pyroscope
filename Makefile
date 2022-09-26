@@ -262,6 +262,12 @@ helm/check: $(BIN)/kubeval $(BIN)/helm
 	$(BIN)/helm template fire-dev ./deploy/helm/fire/ --values deploy/helm/fire/values-micro-services.yaml \
 		| tee ./deploy/helm/fire/rendered/micro-services.yaml \
 		| $(BIN)/kubeval --strict
+	cat deploy/helm/fire/values-micro-services.yaml \
+		| go run ./tools/yaml-to-json \
+		> ./deploy/jsonnet/values-micro-services.json
+	cat deploy/helm/fire/values.yaml \
+		| go run ./tools/yaml-to-json \
+		> ./deploy/jsonnet/values.json
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
