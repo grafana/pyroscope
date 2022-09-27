@@ -24,27 +24,69 @@ $svg-side-margin: 40px;
   }
 
   .yAxis {
-    left: -35px;
+    left: -40px;
+    width: 40px;
     position: absolute;
     display: flex;
-    flex-direction: column-reverse;
-    justify-content: space-between;
+
+    .tickValues {
+      margin: -10px 0px;
+      width: 30px;
+    }
   }
 
   .xAxis {
     width: 100%;
     display: flex;
+    flex-direction: column-reverse;
+
+    .tickValues {
+      flex-direction: row;
+      margin: 0 -25px;
+    }
+
+    .ticksContainer {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      width: 100%;
+      height: 10px;
+      margin-left: 0;
+
+      .tick {
+        width: 1px;
+        height: 8px;
+      }
+    }
+  }
+
+  .tickValues {
+    display: flex;
+    flex-direction: column-reverse;
     justify-content: space-between;
-    margin-top: 10px;
+
+    .tickValue {
+      font-size: 12px;
+      text-align: center;
+
+      &.yTickValue {
+        text-align: right;
+      }
+    }
+  }
+
+  .ticksContainer {
+    margin-left: 2px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 8px;
   }
 
   .tick {
-    font-size: 12px;
-    text-align: center;
-
-    &.yTick {
-      text-align: right;
-    }
+    height: 1px;
+    background-color: var(--ps-neutral-2);
   }
 
   .selectedAreaBlock {

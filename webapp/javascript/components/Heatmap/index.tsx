@@ -246,15 +246,22 @@ function Axis({ axis, max, min, ticksNumber }: AxisProps) {
       className={styles[`${axis}Axis`]}
       style={axis === 'y' ? { height: HEATMAP_HEIGHT } : {}}
     >
-      {ticks.map((tick) => (
-        <div
-          role="textbox"
-          className={cl(styles.tick, styles[`${axis}Tick`])}
-          key={tick}
-        >
-          {tick}
-        </div>
-      ))}
+      <div className={styles.tickValues}>
+        {ticks.map((tick) => (
+          <div
+            role="textbox"
+            className={cl(styles.tickValue, styles[`${axis}TickValue`])}
+            key={tick}
+          >
+            {tick}
+          </div>
+        ))}
+      </div>
+      <div className={styles.ticksContainer}>
+        {ticks.map((tick) => (
+          <div className={styles.tick} key={tick}></div>
+        ))}
+      </div>
     </div>
   );
 }
