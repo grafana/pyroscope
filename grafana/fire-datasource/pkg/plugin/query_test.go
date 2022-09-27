@@ -93,8 +93,10 @@ func Test_levelsToTree(t *testing.T) {
 		tree := levelsToTree(levels, []string{"root", "func1", "func2", "func1:func3"})
 		require.Equal(t, &ProfileTree{
 			Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
-				{Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
-					{Start: 0, Value: 15, Level: 2, Name: "func1:func3"}},
+				{
+					Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
+						{Start: 0, Value: 15, Level: 2, Name: "func1:func3"},
+					},
 				},
 				{Start: 40, Value: 30, Level: 1, Name: "func2"},
 			},
@@ -111,12 +113,16 @@ func Test_levelsToTree(t *testing.T) {
 		tree := levelsToTree(levels, []string{"root", "func1", "func2", "func3", "func1:func4", "func3:func5"})
 		require.Equal(t, &ProfileTree{
 			Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
-				{Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
-					{Start: 0, Value: 20, Level: 2, Name: "func1:func4"}},
+				{
+					Start: 0, Value: 40, Level: 1, Name: "func1", Nodes: []*ProfileTree{
+						{Start: 0, Value: 20, Level: 2, Name: "func1:func4"},
+					},
 				},
 				{Start: 40, Value: 30, Level: 1, Name: "func2"},
-				{Start: 70, Value: 30, Level: 1, Name: "func3", Nodes: []*ProfileTree{
-					{Start: 70, Value: 10, Level: 2, Name: "func3:func5"}},
+				{
+					Start: 70, Value: 30, Level: 1, Name: "func3", Nodes: []*ProfileTree{
+						{Start: 70, Value: 10, Level: 2, Name: "func3:func5"},
+					},
 				},
 			},
 		}, tree)
@@ -143,14 +149,13 @@ func Test_treeToNestedDataFrame(t *testing.T) {
 			data.NewField("label", nil, []string{"root", "func1", "func2", "func1:func3"}),
 		}, frame.Fields)
 	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
-
 }
 
 func Test_seriesToDataFrame(t *testing.T) {
 	resp := &connect.Response[querierv1.SelectSeriesResponse]{
 		Msg: &querierv1.SelectSeriesResponse{
-			Series: []*querierv1.Series{
-				{Labels: []*commonv1.LabelPair{}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			Series: []*commonv1.Series{
+				{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
 			},
 		},
 	}
@@ -162,8 +167,8 @@ func Test_seriesToDataFrame(t *testing.T) {
 	// with a label pair, the value field should name itself with a label pair name and not the profile type
 	resp = &connect.Response[querierv1.SelectSeriesResponse]{
 		Msg: &querierv1.SelectSeriesResponse{
-			Series: []*querierv1.Series{
-				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}}},
+			Series: []*commonv1.Series{
+				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
 			},
 		},
 	}
@@ -231,10 +236,10 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 func (f FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
 	return &connect.Response[querierv1.SelectSeriesResponse]{
 		Msg: &querierv1.SelectSeriesResponse{
-			Series: []*querierv1.Series{
+			Series: []*commonv1.Series{
 				{
 					Labels: []*v1.LabelPair{{Name: "foo", Value: "bar"}},
-					Points: []*querierv1.Point{{T: int64(1000), V: 30}, {T: int64(2000), V: 10}},
+					Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}},
 				},
 			},
 		},

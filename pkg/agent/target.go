@@ -26,6 +26,7 @@ import (
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	"github.com/grafana/fire/pkg/tenant"
 )
 
 var (
@@ -34,8 +35,9 @@ var (
 )
 
 type TargetGroup struct {
-	jobName string
-	config  ScrapeConfig
+	jobName  string
+	config   ScrapeConfig
+	tenantID string
 
 	logger               log.Logger
 	scrapeClient         *http.Client
@@ -47,7 +49,7 @@ type TargetGroup struct {
 	droppedTargets []*Target
 }
 
-func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pusherClientProvider PusherClientProvider, logger log.Logger) *TargetGroup {
+func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pusherClientProvider PusherClientProvider, tenantID string, logger log.Logger) *TargetGroup {
 	scrapeClient, err := commonconfig.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating HTTP client", "err", err)
@@ -61,6 +63,7 @@ func NewTargetGroup(ctx context.Context, jobName string, cfg ScrapeConfig, pushe
 		pusherClientProvider: pusherClientProvider,
 		ctx:                  ctx,
 		activeTargets:        map[uint64]*Target{},
+		tenantID:             tenantID,
 	}
 }
 
@@ -112,6 +115,7 @@ Outer:
 type Target struct {
 	*scrape.Target
 	labels             labels.Labels
+	tenantID           string
 	mtx                sync.RWMutex
 	lastError          error
 	lastScrape         time.Time
@@ -212,6 +216,12 @@ func (t *Target) scrape(ctx context.Context) {
 		},
 	}
 	req.Series = append(req.Series, series)
+	// Inject the tenant ID into the context.
+	// With a http pusher the interceptor will add the tenant ID to the request headers.
+	// When directly pushing distributors, the tenant ID will already be in the context.
+	if t.tenantID != "" {
+		ctx = tenant.InjectTenantID(ctx, t.tenantID)
+	}
 	if _, err := t.pusherClientProvider().Push(ctx, connect.NewRequest(req)); err != nil {
 		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)
 	}

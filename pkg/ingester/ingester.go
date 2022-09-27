@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -19,12 +18,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/fire/pkg/firedb"
-	"github.com/grafana/fire/pkg/firedb/block"
-	"github.com/grafana/fire/pkg/firedb/shipper"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	fireobjstore "github.com/grafana/fire/pkg/objstore"
+	"github.com/grafana/fire/pkg/tenant"
 	"github.com/grafana/fire/pkg/util"
 )
 
@@ -44,15 +42,19 @@ func (cfg *Config) Validate() error {
 type Ingester struct {
 	services.Service
 
-	cfg    Config
-	logger log.Logger
+	cfg      Config
+	dbConfig firedb.Config
+	logger   log.Logger
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
-	fireDB            *firedb.FireDB
 
-	shipper     *shipper.Shipper
-	shipperLock sync.Mutex
+	storageBucket fireobjstore.Bucket
+
+	instances    map[string]*instance
+	instancesMtx sync.RWMutex
+
+	reg prometheus.Registerer
 }
 
 type ingesterFlusherCompat struct {
@@ -66,23 +68,14 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer, firedb *firedb.FireDB, storageBucket fireobjstore.Bucket) (*Ingester, error) {
+func New(cfg Config, dbConfig firedb.Config, logger log.Logger, reg prometheus.Registerer, storageBucket fireobjstore.Bucket) (*Ingester, error) {
 	i := &Ingester{
-		cfg:    cfg,
-		logger: logger,
-		fireDB: firedb,
-	}
-
-	if storageBucket != nil {
-		i.shipper = shipper.New(
-			logger,
-			reg,
-			firedb,
-			fireobjstore.BucketWithPrefix(storageBucket, "firedb"),
-			block.IngesterSource,
-			false,
-			false,
-		)
+		cfg:           cfg,
+		logger:        logger,
+		reg:           reg,
+		instances:     map[string]*instance{},
+		dbConfig:      dbConfig,
+		storageBucket: storageBucket,
 	}
 
 	var err error
@@ -118,90 +111,126 @@ func (i *Ingester) starting(ctx context.Context) error {
 	return nil
 }
 
-func (i *Ingester) runShipper(ctx context.Context) {
-	i.shipperLock.Lock()
-	defer i.shipperLock.Unlock()
-	if i.shipper == nil {
-		return
-	}
-	uploaded, err := i.shipper.Sync(ctx)
-	if err != nil {
-		level.Error(i.logger).Log("msg", "shipper run failed", "err", err)
-	} else {
-		level.Info(i.logger).Log("msg", "shipper finshed", "uploaded_blocks", uploaded)
+func (i *Ingester) running(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	case err := <-i.lifecyclerWatcher.Chan(): // handle lifecycler errors
+		return fmt.Errorf("lifecycler failed: %w", err)
 	}
 }
 
-func (i *Ingester) running(ctx context.Context) error {
-	// run shipper periodically and at start-up
-	shipperTicker := time.NewTicker(5 * time.Minute)
-	defer shipperTicker.Stop()
-	go func() {
-		i.runShipper(ctx)
-	}()
-
-	for {
-		select {
-
-		case <-ctx.Done(): // wait until service is asked to stop
-			return nil
-
-		case err := <-i.lifecyclerWatcher.Chan(): // handle lifecycler errors
-			return fmt.Errorf("lifecycler failed: %w", err)
-
-		case <-shipperTicker.C: // run shipper loop
-			i.runShipper(ctx)
-		}
+func (i *Ingester) GetOrCreateInstance(instanceID string) (*instance, error) { //nolint:revive
+	inst, ok := i.getInstanceByID(instanceID)
+	if ok {
+		return inst, nil
 	}
+
+	i.instancesMtx.Lock()
+	defer i.instancesMtx.Unlock()
+	inst, ok = i.instances[instanceID]
+	if !ok {
+		var err error
+		inst, err = newInstance(i.dbConfig, instanceID, i.logger, i.storageBucket, i.reg)
+		if err != nil {
+			return nil, err
+		}
+		i.instances[instanceID] = inst
+	}
+	return inst, nil
+}
+
+func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+
+	inst, ok := i.instances[id]
+	return inst, ok
+}
+
+// forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
+func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance) (T, error)) (T, error) {
+	var res T
+	err := i.forInstance(ctx, func(inst *instance) error {
+		r, err := f(inst)
+		if err == nil {
+			res = r
+		}
+		return err
+	})
+	return res, err
+}
+
+// forInstance executes the given function for the instance with the given tenant ID in the context.
+func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) error {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	instance, err := i.GetOrCreateInstance(tenantID)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return f(instance)
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	level.Debug(i.logger).Log("msg", "message received by ingester push", "request_headers: ", fmt.Sprintf("%+v", req.Header()))
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
+		level.Debug(instance.logger).Log("msg", "message received by ingester push")
+		for _, series := range req.Msg.Series {
+			for _, sample := range series.Samples {
+				reader, err := gzip.NewReader(bytes.NewReader(sample.RawProfile))
+				if err != nil {
+					return nil, err
+				}
+				data, err := io.ReadAll(reader)
+				if err != nil {
+					return nil, err
+				}
 
-	for _, series := range req.Msg.Series {
-		for _, sample := range series.Samples {
-			reader, err := gzip.NewReader(bytes.NewReader(sample.RawProfile))
-			if err != nil {
-				return nil, err
+				p := profilev1.ProfileFromVTPool()
+				if err := p.UnmarshalVT(data); err != nil {
+					return nil, err
+				}
+				id, err := uuid.Parse(sample.ID)
+				if err != nil {
+					return nil, err
+				}
+				if err := instance.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
+					return nil, err
+				}
+				p.ReturnToVTPool()
 			}
-			data, err := io.ReadAll(reader)
-			if err != nil {
-				return nil, err
-			}
-
-			p := profilev1.ProfileFromVTPool()
-			if err := p.UnmarshalVT(data); err != nil {
-				return nil, err
-			}
-			id, err := uuid.Parse(sample.ID)
-			if err != nil {
-				return nil, err
-			}
-			if err := i.fireDB.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
-				return nil, err
-			}
-			p.ReturnToVTPool()
 		}
-	}
-
-	res := connect.NewResponse(&pushv1.PushResponse{})
-	return res, nil
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	})
 }
 
 func (i *Ingester) stopping(_ error) error {
-	return services.StopAndAwaitTerminated(context.Background(), i.lifecycler)
+	err := services.StopAndAwaitTerminated(context.Background(), i.lifecycler)
+	// stop all instances
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+	for _, inst := range i.instances {
+		inst.Stop()
+	}
+	return err
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
-	if err := i.fireDB.Flush(ctx); err != nil {
-		return nil, err
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+	for _, inst := range i.instances {
+		if err := inst.Flush(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	return connect.NewResponse(&ingesterv1.FlushResponse{}), nil
 }
 
 func (i *Ingester) TransferOut(ctx context.Context) error {
-	return nil
+	return ring.ErrTransferDisabled
 }
 
 // ReadinessHandler is used to indicate to k8s when the ingesters are ready for

@@ -72,7 +72,7 @@ func (a *Agent) running(ctx context.Context) error {
 					a.groups[jobName].sync(groups)
 					continue
 				}
-				newGroup := NewTargetGroup(ctx, jobName, jobConfig(jobName, a.Config), a.pusherClientProvider, a.logger)
+				newGroup := NewTargetGroup(ctx, jobName, jobConfig(jobName, a.Config), a.pusherClientProvider, a.Config.ClientConfig.TenantID, a.logger)
 				a.groups[jobName] = newGroup
 				newGroup.sync(groups)
 

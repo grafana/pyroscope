@@ -60,12 +60,12 @@ type Querier struct {
 	ingesterQuerier *IngesterQuerier
 }
 
-func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, logger log.Logger) (*Querier, error) {
+func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
 	q := &Querier{
 		cfg:           cfg,
 		logger:        logger,
 		ingestersRing: ingestersRing,
-		pool:          clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger),
+		pool:          clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger, clientsOptions...),
 	}
 	var err error
 	q.subservices, err = services.NewManager(q.pool)

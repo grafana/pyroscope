@@ -14,6 +14,8 @@ import (
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
+
+	"github.com/grafana/fire/pkg/tenant"
 )
 
 type Config struct {
@@ -25,6 +27,7 @@ type Config struct {
 // prefix. If prefix is a non-empty string, prefix should end with a period.
 func (c *ClientConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.Var(&c.URL, prefix+"client.url", "URL of log server.")
+	f.StringVar(&c.TenantID, prefix+"client.tenant-id", tenant.DefaultTenantID, "Tenant ID to use when pushing profiles to Fire (default: anonymous).")
 	// Default backoff schedule: 0.5s, 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s(4.267m) For a total time of 511.5s(8.5m) before logs are lost
 	// f.IntVar(&c.BackoffConfig.MaxRetries, prefix+"client.max-retries", MaxRetries, "Maximum number of retires when sending batches (deprecated).")
 	// f.DurationVar(&c.BackoffConfig.MinBackoff, prefix+"client.min-backoff", MinBackoff, "Initial backoff time between retries (deprecated).")
@@ -50,6 +53,8 @@ type ClientConfig struct {
 	BatchWait time.Duration
 	BatchSize int
 	Client    commonconfig.HTTPClientConfig `yaml:",inline"`
+	// The tenant ID to use when pushing profiles to Fire (default to anonymous).
+	TenantID string `yaml:"tenant_id"`
 	// todo add backoff config
 	// BackoffConfig backoff.Config                `yaml:"backoff_config"`
 }
