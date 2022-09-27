@@ -63,8 +63,6 @@ func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Req
 			appName := appName
 			i := i
 			g.Go(func() error {
-				var params CreateParams
-
 				annotation, err := h.svc.CreateAnnotation(ctx, model.CreateAnnotation{
 					AppName:   appName,
 					Timestamp: timestamp,
