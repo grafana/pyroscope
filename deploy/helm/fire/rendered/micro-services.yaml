@@ -555,7 +555,7 @@ spec:
             limits:
               memory: 12Gi
             requests:
-              cpu: 500m
+              cpu: 1
               memory: 6Gi
       volumes:
         - name: config
