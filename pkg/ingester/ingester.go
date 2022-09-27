@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/klauspost/compress/gzip"
@@ -207,14 +208,15 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 }
 
 func (i *Ingester) stopping(_ error) error {
-	err := services.StopAndAwaitTerminated(context.Background(), i.lifecycler)
+	errs := multierror.New()
+	errs.Add(services.StopAndAwaitTerminated(context.Background(), i.lifecycler))
 	// stop all instances
 	i.instancesMtx.RLock()
 	defer i.instancesMtx.RUnlock()
 	for _, inst := range i.instances {
-		inst.Stop()
+		errs.Add(inst.Stop())
 	}
-	return err
+	return errs.Err()
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
