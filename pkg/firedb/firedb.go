@@ -81,8 +81,7 @@ func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, err
 	if _, err := f.initHead(); err != nil {
 		return nil, err
 	}
-	f.Service = services.NewBasicService(f.starting, f.running, f.stopping)
-
+	go f.loop()
 	fs, err := filesystem.NewBucket(cfg.DataPath)
 	if err != nil {
 		return nil, err
@@ -144,27 +143,10 @@ func (f *FireDB) loop() {
 	}
 }
 
-func (f *FireDB) starting(ctx context.Context) error {
-	go f.loop()
-	return nil
-}
-
-func (f *FireDB) running(ctx context.Context) error {
-	select {
-	// wait until service is asked to stop
-	case <-ctx.Done():
-		// stop
-		close(f.stopCh)
-	}
-	return nil
-}
-
-func (f *FireDB) stopping(_ error) error {
+func (f *FireDB) Close() error {
+	close(f.stopCh)
 	errs := multierror.New()
 	if err := f.blockQuerier.Close(); err != nil {
-		errs.Add(err)
-	}
-	if err := f.Close(context.Background()); err != nil {
 		errs.Add(err)
 	}
 	return errs.Err()
@@ -488,8 +470,4 @@ func (f *FireDB) Flush(ctx context.Context) error {
 		return nil
 	}
 	return oldHead.Flush(ctx)
-}
-
-func (f *FireDB) Close(ctx context.Context) error {
-	return f.head.Flush(ctx)
 }
