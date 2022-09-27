@@ -1,0 +1,91 @@
+% This can be compiled using:
+% $ pdflatex -interaction=nonstopmode query-sharding.tex
+% $ convert -density 300 query-sharding.pdf -quality 90 query-sharding.png
+%
+% Or by using an online service like https://www.overleaf.com/
+
+\documentclass[border=10pt]{standalone}
+\usepackage{tikz}
+\usepackage{xfrac}
+\usetikzlibrary{arrows.meta}
+\tikzset{%
+    >={Latex[width=2mm,length=2mm]},
+    % Specifications for style of nodes:
+    base/.style        = {rectangle, rounded corners, draw=black, minimum width=3cm, minimum height=1cm, text centered, font=\footnotesize\ttfamily},
+    userQuery/.style   = {base, fill=blue!15, align=left, minimum width=9.4cm},
+    transparent/.style = {fill opacity=0, text opacity= 1},
+    story/.style       = {transparent, text width=4cm},
+    storyShift/.style  = {story, xshift=-6cm},
+    startend/.style    = {base, fill=orange!15, node distance=2.9cm, minimum width=3.5cm, align=left},
+    query/.style       = {startend, font=\footnotesize\ttfamily, node distance=4cm},
+    shard/.style       = {base, fill=green!15, node distance = 1.2cm and 10cm, minimum width=0.4cm, minimum height = 0.4cm},
+    elemx/.style       = {base, fill=blue!15, align=left, minimum width=9.4cm, font=\small\rmfamily},
+}
+
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground}
+
+\begin{document}
+\begin{tikzpicture}[node distance=1.5cm]
+    % Specification of nodes (position, etc.)
+    \node (user)            [userQuery]                                   {query =  sum(rate(failed[1m])) / sum(rate(total[1m])) \\ start = today - 7d \\ end = today};
+    \node (userStory)       [storyShift, left of=user] {User queries over 7 days};
+    \node (timesplitdots)   [below of=user, yshift = -1cm, transparent]   {\dots};
+    \node (timesplit1)      [startend, left of=timesplitdots]             {start = today - 7d \\ end = today - 6d};
+    \node (timesplitn)      [startend, right of=timesplitdots]            {start = today - 1d \\ end = today};
+    \node (timesplitStory)  [storyShift, left of=timesplitdots] {Queries are split into 24 hour pieces \texttt{split\_by\_interval=24h}};
+    \node (shardingLeg1)    [query, below of=timesplit1, yshift=2.2cm]  {sum(rate(failed[1m]))};
+    \node (shardingLeg1M)   [shard, below of=shardingLeg1]  {\sfrac{2}{3}};
+    \node (shardingLeg1L)   [shard, left of=shardingLeg1M]  {\sfrac{1}{3}};
+    \node (shardingLeg1R)   [shard, right of=shardingLeg1M] {\sfrac{3}{3}};
+    \node (shardingLeg2)    [query, right of=shardingLeg1]  {sum(rate(total[1m]))};
+    \node (shardingLeg2M)   [shard, below of=shardingLeg2]  {\sfrac{2}{3}};
+    \node (shardingLeg2L)   [shard, left of=shardingLeg2M]  {\sfrac{1}{3}};
+    \node (shardingLeg2R)   [shard, right of=shardingLeg2M] {\sfrac{3}{3}};
+    \node (legStory)        [story, below of=timesplitStory, yshift=-0.3cm]{Query is split into different legs};
+    \node (shardingStory)   [story, below of=legStory]      {Each leg generates a query for each shard \texttt{total\_shards=3}};
+    \node (process)         [elemx,below of=timesplitdots,yshift=-3cm] {Process queries};
+    \node (aggregate)       [elemx,below of=process] {Aggregate results};
+
+    % Gray box around query process
+    \begin{pgfonlayer}{background}
+        \path (aggregate.west |- timesplit1.north) node (qfa) {};
+
+        \path (aggregate.west |- timesplit1.north)+(0,0.2cm) node (qfa) {};
+        \path (aggregate.east) node (qfc) {};
+
+        \path[fill=black!10,rounded corners]
+        (qfa) rectangle (qfc);
+
+    \end{pgfonlayer}
+
+    % Specification of lines between nodes specified above
+    \draw[->]              (user) -- (user.south |- qfa);
+    \draw[->]              (timesplit1.south) -- +(0,-0.3cm) -|  (shardingLeg2.north);
+    \draw[->]              (timesplit1.south) -- (timesplit1.south)  --  (shardingLeg1.north);
+    \draw[->]              (shardingLeg1M.south|-shardingLeg1.south) -- (shardingLeg1M);
+    \draw[->]              (shardingLeg1L.south|-shardingLeg1.south) -- (shardingLeg1L);
+    \draw[->]              (shardingLeg1R.south|-shardingLeg1.south) -- (shardingLeg1R);
+    \draw[->]              (shardingLeg2M.south|-shardingLeg2.south) -- (shardingLeg2M);
+    \draw[->]              (shardingLeg2L.south|-shardingLeg2.south) -- (shardingLeg2L);
+    \draw[->]              (shardingLeg2R.south|-shardingLeg2.south) -- (shardingLeg2R);
+
+    \draw[->]              (shardingLeg1M.south) -- (shardingLeg1M|-process.north);
+    \draw[->]              (shardingLeg1L.south) -- (shardingLeg1L|-process.north);
+    \draw[->]              (shardingLeg1R.south) -- (shardingLeg1R|-process.north);
+    \draw[->]              (shardingLeg2M.south) -- (shardingLeg2M|-process.north);
+    \draw[->]              (shardingLeg2L.south) -- (shardingLeg2L|-process.north);
+    \draw[->]              (shardingLeg2R.south) -- (shardingLeg2R|-process.north);
+
+    \draw[->]              (shardingLeg1M|-process.south) -- (shardingLeg1M|-aggregate.north);
+    \draw[->]              (shardingLeg1L|-process.south) -- (shardingLeg1L|-aggregate.north);
+    \draw[->]              (shardingLeg1R|-process.south) -- (shardingLeg1R|-aggregate.north);
+    \draw[->]              (shardingLeg2M|-process.south) -- (shardingLeg2M|-aggregate.north);
+    \draw[->]              (shardingLeg2L|-process.south) -- (shardingLeg2L|-aggregate.north);
+    \draw[->]              (shardingLeg2R|-process.south) -- (shardingLeg2R|-aggregate.north);
+
+    \draw[->]              (timesplitn.south) -- ++(0,-0.3cm) -|  ([xshift=1.2cm]shardingLeg2R |- process.north) node(processTimesplitn);
+    \draw[->]              (processTimesplitn|-process.south) -- (processTimesplitn|-aggregate.north);
+\end{tikzpicture}
+\end{document}
