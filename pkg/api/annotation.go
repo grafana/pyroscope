@@ -31,15 +31,15 @@ func NewAnnotationsHandler(svc AnnotationsService, httpUtils httputils.Utils) *A
 }
 
 type CreateParams struct {
-	AppName   []string `json:"appName"`
+	AppName   string   `json:"appName"`
+	AppNames  []string `json:"appNames"`
 	Timestamp int64    `json:"timestamp"`
 	Content   string   `json:"content"`
 }
 
 func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Request) {
-	var params CreateParams
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		h.httpUtils.WriteInternalServerError(r, w, err, "failed to unmarshal JSON")
+	params := h.validateAppNames(w, r)
+	if params == nil {
 		return
 	}
 
@@ -55,11 +55,11 @@ func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Req
 		Timestamp int64  `json:"timestamp"`
 	}
 
-	createAnnotations := func(ctx context.Context, params CreateParams) ([]annotationsResponse, error) {
+	createAnnotations := func(ctx context.Context, params *CreateParams) ([]annotationsResponse, error) {
 		g, ctx := errgroup.WithContext(ctx)
 
-		results := make([]annotationsResponse, len(params.AppName))
-		for i, appName := range params.AppName {
+		results := make([]annotationsResponse, len(params.AppNames))
+		for i, appName := range params.AppNames {
 			appName := appName
 			i := i
 			g.Go(func() error {
@@ -90,12 +90,6 @@ func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Req
 		return results, nil
 	}
 
-	if len(params.AppName) <= 0 {
-		h.httpUtils.HandleError(r, w, model.ValidationError{errors.New("at least one appName must be provided")})
-
-		return
-	}
-
 	res, err := createAnnotations(r.Context(), params)
 	if err != nil {
 		h.httpUtils.HandleError(r, w, err)
@@ -103,5 +97,44 @@ func (h *AnnotationsHandler) CreateAnnotation(w http.ResponseWriter, r *http.Req
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	if len(res) == 1 {
+		h.httpUtils.WriteResponseJSON(r, w, res[0])
+		return
+	}
+
 	h.httpUtils.WriteResponseJSON(r, w, res)
+}
+
+// validateAppNames handles the different combinations between (`appName` and `appNames`)
+// in the failure case, it returns nil and serves an error
+// in the success case, it returns a `CreateParams` struct where `appNames` is ALWAYS populated with at least one appName
+func (h *AnnotationsHandler) validateAppNames(w http.ResponseWriter, r *http.Request) *CreateParams {
+	var params CreateParams
+
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		h.httpUtils.WriteInternalServerError(r, w, err, "failed to unmarshal JSON")
+		return nil
+	}
+
+	// handling `appName` and `appNames`
+	// 1. Both are set, is invalid
+	if params.AppName != "" && len(params.AppNames) > 0 {
+		h.httpUtils.HandleError(r, w, model.ValidationError{errors.New("only one of 'appName' and 'appNames' can be specified")})
+		return nil
+	}
+
+	// 2. None are set
+	if params.AppName == "" && len(params.AppNames) <= 0 {
+		h.httpUtils.HandleError(r, w, model.ValidationError{errors.New("at least one of 'appName' and 'appNames' needs to be specified")})
+		return nil
+	}
+
+	// 3. Only appName is set
+	if params.AppName != "" && len(params.AppNames) <= 0 {
+		params.AppNames = append(params.AppNames, params.AppName)
+		return &params
+	}
+
+	// 4. Only appNames is set
+	return &params
 }

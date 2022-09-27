@@ -1,16 +1,16 @@
 [
   {
-    "appName": "myApp1",
+    "appName": "myApp1.cpu",
     "content": "mycontent",
     "timestamp": 1662729099
   },
   {
-    "appName": "myApp2",
+    "appName": "myApp1.goroutines",
     "content": "mycontent",
     "timestamp": 1662729099
   },
   {
-    "appName": "myApp3",
+    "appName": "myApp1.alloc_objects",
     "content": "mycontent",
     "timestamp": 1662729099
   }
