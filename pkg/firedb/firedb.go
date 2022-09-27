@@ -59,6 +59,7 @@ type FireDB struct {
 	reg    prometheus.Registerer
 	logger log.Logger
 	stopCh chan struct{}
+	wg     sync.WaitGroup
 
 	headLock    sync.RWMutex
 	head        *Head
@@ -120,9 +121,11 @@ func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
 }
 
 func (f *FireDB) loop() {
+	f.wg.Add(1)
 	blockScanTicker := time.NewTicker(5 * time.Minute)
 	defer func() {
 		blockScanTicker.Stop()
+		f.wg.Done()
 	}()
 
 	for {
@@ -144,8 +147,12 @@ func (f *FireDB) loop() {
 }
 
 func (f *FireDB) Close() error {
-	close(f.stopCh)
 	errs := multierror.New()
+	if f.head != nil {
+		errs.Add(f.head.Close())
+	}
+	close(f.stopCh)
+	f.wg.Wait()
 	if err := f.blockQuerier.Close(); err != nil {
 		errs.Add(err)
 	}
