@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/storage/heatmap"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -20,14 +21,14 @@ type MergeExemplarsInput struct {
 
 	// FIXME: Not implemented: parameters are ignored.
 	ExemplarsSelection ExemplarsSelection
-	HeatmapParams      HeatmapParams
+	HeatmapParams      heatmap.HeatmapParams
 }
 
 type MergeExemplarsOutput struct {
 	Tree          *tree.Tree
 	Count         uint64
 	Metadata      metadata.Metadata
-	HeatmapSketch HeatmapSketch // FIXME: Not implemented: the field is never populated.
+	HeatmapSketch heatmap.HeatmapSketch // FIXME: Not implemented: the field is never populated.
 	Telemetry     map[string]interface{}
 }
 

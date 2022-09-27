@@ -3,8 +3,9 @@ package flamebearer
 import (
 	"errors"
 	"fmt"
+	"sort"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/heatmap"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -127,37 +128,18 @@ type Heatmap struct {
 	MaxDepth uint64 `json:"maxDepth"`
 }
 
-func NewProfile(name string, output *storage.GetOutput, maxNodes int) FlamebearerProfile {
-	fb := output.Tree.FlamebearerStruct(maxNodes)
-	return FlamebearerProfile{
-		Version:   1,
-		Telemetry: output.Telemetry,
-		FlamebearerProfileV1: FlamebearerProfileV1{
-			Flamebearer: newFlambearer(fb),
-			Timeline:    newTimeline(output.Timeline),
-			Groups:      convertGroups(output.Groups),
-			Metadata: newMetadata(name, fb.Format, metadata.Metadata{
-				SpyName:         output.SpyName,
-				SampleRate:      output.SampleRate,
-				Units:           output.Units,
-				AggregationType: output.AggregationType,
-			}),
-		},
-	}
-}
-
 type ProfileConfig struct {
 	Name      string
 	MaxNodes  int
 	Metadata  metadata.Metadata
 	Tree      *tree.Tree
 	Timeline  *segment.Timeline
-	Heatmap   *storage.Heatmap
+	Heatmap   *heatmap.Heatmap
 	Groups    map[string]*segment.Timeline
 	Telemetry map[string]interface{}
 }
 
-func NewProfileWithConfig(in ProfileConfig) FlamebearerProfile {
+func NewProfile(in ProfileConfig) FlamebearerProfile {
 	fb := in.Tree.FlamebearerStruct(in.MaxNodes)
 	return FlamebearerProfile{
 		Version:   1,
@@ -180,32 +162,32 @@ func convertGroups(v map[string]*segment.Timeline) map[string]*FlamebearerTimeli
 	return res
 }
 
-func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes int) (FlamebearerProfile, error) {
-	if left.Units != right.Units {
+func NewCombinedProfile(base, diff ProfileConfig) (FlamebearerProfile, error) {
+	if base.Metadata.Units != diff.Metadata.Units {
 		// if one of them is empty, it still makes sense merging the profiles
-		if left.Units != "" && right.Units != "" {
-			msg := fmt.Sprintf("left units (%s) does not match right units (%s)", left.Units, right.Units)
+		if base.Metadata.Units != "" && diff.Metadata.Units != "" {
+			msg := fmt.Sprintf("left units (%s) does not match right units (%s)", base.Metadata.Units, diff.Metadata.Units)
 			return FlamebearerProfile{}, errors.New(msg)
 		}
 	}
 
-	if left.SampleRate != right.SampleRate {
+	if base.Metadata.SampleRate != diff.Metadata.SampleRate {
 		// if one of them is empty, it still makes sense merging the profiles
-		if left.SampleRate != 0 && right.SampleRate != 0 {
-			msg := fmt.Sprintf("left sample rate (%d) does not match right sample rate (%d)", left.SampleRate, right.SampleRate)
+		if base.Metadata.SampleRate != 0 && diff.Metadata.SampleRate != 0 {
+			msg := fmt.Sprintf("left sample rate (%d) does not match right sample rate (%d)", base.Metadata.SampleRate, diff.Metadata.SampleRate)
 			return FlamebearerProfile{}, errors.New(msg)
 		}
 	}
 
 	// Figure out the non empty one, since we will use its attributes
 	// Notice that this does not handle when both are empty, since there's nothing todo
-	output := left
-	if isEmpty(left) {
-		output = right
+	output := base
+	if isEmpty(base) {
+		output = diff
 	}
 
-	lt, rt := tree.CombineTree(left.Tree, right.Tree)
-	fb := tree.CombineToFlamebearerStruct(lt, rt, maxNodes)
+	lt, rt := tree.CombineTree(base.Tree, diff.Tree)
+	fb := tree.CombineToFlamebearerStruct(lt, rt, base.MaxNodes)
 	return FlamebearerProfile{
 		Version: 1,
 		FlamebearerProfileV1: FlamebearerProfileV1{
@@ -213,11 +195,11 @@ func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes in
 			Timeline:    nil,
 			LeftTicks:   lt.Samples(),
 			RightTicks:  rt.Samples(),
-			Metadata: newMetadata(name, fb.Format, metadata.Metadata{
-				SpyName:         output.SpyName,
-				SampleRate:      output.SampleRate,
-				Units:           output.Units,
-				AggregationType: output.AggregationType,
+			Metadata: newMetadata(base.Name, fb.Format, metadata.Metadata{
+				SpyName:         output.Metadata.SpyName,
+				SampleRate:      output.Metadata.SampleRate,
+				Units:           output.Metadata.Units,
+				AggregationType: output.Metadata.AggregationType,
 			}),
 		},
 	}, nil
@@ -254,20 +236,20 @@ func newTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
 	}
 }
 
-func newHeatmap(heatmap *storage.Heatmap) *Heatmap {
-	if heatmap == nil {
+func newHeatmap(h *heatmap.Heatmap) *Heatmap {
+	if h == nil {
 		return nil
 	}
 	return &Heatmap{
-		Values:       heatmap.Values,
-		TimeBuckets:  heatmap.TimeBuckets,
-		ValueBuckets: heatmap.ValueBuckets,
-		StartTime:    heatmap.StartTime.UnixNano(),
-		EndTime:      heatmap.EndTime.UnixNano(),
-		MinValue:     heatmap.MinValue,
-		MaxValue:     heatmap.MaxValue,
-		MinDepth:     heatmap.MinDepth,
-		MaxDepth:     heatmap.MaxDepth,
+		Values:       h.Values,
+		TimeBuckets:  h.TimeBuckets,
+		ValueBuckets: h.ValueBuckets,
+		StartTime:    h.StartTime.UnixNano(),
+		EndTime:      h.EndTime.UnixNano(),
+		MinValue:     h.MinValue,
+		MaxValue:     h.MaxValue,
+		MinDepth:     h.MinDepth,
+		MaxDepth:     h.MaxDepth,
 	}
 }
 
@@ -314,7 +296,93 @@ func (fb FlamebearerProfileV1) Validate() error {
 	return nil
 }
 
-func isEmpty(t *storage.GetOutput) bool {
-	// TODO: improve heuristic
-	return t.SampleRate == 0
+func isEmpty(p ProfileConfig) bool {
+	return p.Metadata.SampleRate == 0 || p.Tree == nil || p.Tree.Samples() == 0
+}
+
+// Diff takes two single profiles and generates a diff profile
+func Diff(name string, base, diff *FlamebearerProfile, maxNodes int) (FlamebearerProfile, error) {
+	var fb FlamebearerProfile
+	bt, err := profileToTree(*base)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
+	}
+	dt, err := profileToTree(*diff)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
+	}
+	baseProfile := ProfileConfig{
+		Name:     name,
+		Tree:     bt,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    base.Metadata.SpyName,
+			SampleRate: base.Metadata.SampleRate,
+			Units:      base.Metadata.Units,
+		},
+	}
+	diffProfile := ProfileConfig{
+		Name:     name,
+		Tree:     dt,
+		MaxNodes: maxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    diff.Metadata.SpyName,
+			SampleRate: diff.Metadata.SampleRate,
+			Units:      diff.Metadata.Units,
+		},
+	}
+	return NewCombinedProfile(baseProfile, diffProfile)
+}
+
+func profileToTree(fb FlamebearerProfile) (*tree.Tree, error) {
+	if fb.Metadata.Format != string(tree.FormatSingle) {
+		return nil, fmt.Errorf("unsupported flamebearer format %s", fb.Metadata.Format)
+	}
+	if fb.Version != 1 {
+		return nil, fmt.Errorf("unsupported flamebearer version %d", fb.Version)
+	}
+	return flamebearerV1ToTree(fb.Flamebearer)
+}
+
+func flamebearerV1ToTree(fb FlamebearerV1) (*tree.Tree, error) {
+	t := tree.New()
+	deltaDecoding(fb.Levels, 0, 4)
+	for i, l := range fb.Levels {
+		if i == 0 {
+			// Skip the first level: it'll contain the root ("total") node..
+			continue
+		}
+		for j := 0; j < len(l); j += 4 {
+			self := l[j+2]
+			if self > 0 {
+				t.InsertStackString(buildStack(fb, i, j), uint64(self))
+			}
+		}
+	}
+	return t, nil
+}
+
+func deltaDecoding(levels [][]int, start, step int) {
+	for _, l := range levels {
+		prev := 0
+		for i := start; i < len(l); i += step {
+			delta := l[i] + l[i+1]
+			l[i] += prev
+			prev += delta
+		}
+	}
+}
+
+func buildStack(fb FlamebearerV1, level, idx int) []string {
+	// The stack will contain names in the range [1, level].
+	// Level 0 is not included as its the root ("total") node.
+	stack := make([]string, level)
+	stack[level-1] = fb.Names[fb.Levels[level][idx+3]]
+	x := fb.Levels[level][idx]
+	for i := level - 1; i > 0; i-- {
+		j := sort.Search(len(fb.Levels[i])/4, func(j int) bool { return fb.Levels[i][j*4] > x }) - 1
+		stack[i-1] = fb.Names[fb.Levels[i][j*4+3]]
+		x = fb.Levels[i][j*4]
+	}
+	return stack
 }

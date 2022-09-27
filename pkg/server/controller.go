@@ -29,8 +29,6 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
-	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
-
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
@@ -76,14 +74,12 @@ type Controller struct {
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
 
-	// Adhoc mode
-	adhoc adhocserver.Server
-
 	// TODO: Should be moved to a separate Login handler/service.
 	authService        service.AuthService
 	userService        service.UserService
 	jwtTokenService    service.JWTTokenService
 	annotationsService service.AnnotationsService
+	signupDefaultRole  model.Role
 
 	scrapeManager *scrape.Manager
 	historyMgr    history.Manager
@@ -91,7 +87,7 @@ type Controller struct {
 
 type Config struct {
 	Configuration *config.Server
-	*logrus.Logger
+	Logger        *logrus.Logger
 	// TODO(kolesnikovae): Ideally, Storage should be decomposed.
 	*storage.Storage
 	ingestion.Ingester
@@ -101,11 +97,8 @@ type Config struct {
 	// The registerer is used for exposing server metrics.
 	MetricsRegisterer       prometheus.Registerer
 	ExportedMetricsRegistry *prometheus.Registry
-
-	Adhoc adhocserver.Server
-
-	ScrapeManager *scrape.Manager
-	HistoryMgr    history.Manager
+	ScrapeManager           *scrape.Manager
+	HistoryMgr              history.Manager
 }
 
 type StatsReceiver interface {
@@ -160,16 +153,17 @@ func New(c Config) (*Controller, error) {
 			}),
 		}),
 
-		adhoc:         c.Adhoc,
 		db:            c.DB,
 		scrapeManager: c.ScrapeManager,
 		historyMgr:    c.HistoryMgr,
 	}
 
 	var err error
-	ctrl.dir, err = webapp.Assets()
-	if err != nil {
+	if ctrl.dir, err = webapp.Assets(); err != nil {
 		return nil, err
+	}
+	if ctrl.signupDefaultRole, err = model.ParseRole(c.Configuration.Auth.SignupDefaultRole); err != nil {
+		return nil, fmt.Errorf("default signup role is invalid: %w", err)
 	}
 
 	return &ctrl, nil
@@ -207,6 +201,9 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		AuthService:        ctrl.authService,
 		UserService:        ctrl.userService,
 		AnnotationsService: ctrl.annotationsService,
+		AdhocService: service.NewAdhocService(
+			ctrl.config.MaxNodesRender,
+			ctrl.config.AdhocDataPath),
 	})
 
 	apiRouter.Use(
@@ -218,6 +215,9 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		apiRouter.RegisterAPIKeyHandlers()
 	}
 	apiRouter.RegisterAnnotationsHandlers()
+	if !ctrl.config.NoAdhocUI {
+		apiRouter.RegisterAdhocHandlers()
+	}
 
 	ingestRouter := r.Path("/ingest").Subrouter()
 	ingestRouter.Use(ctrl.drainMiddleware)
@@ -280,6 +280,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 				{"/merge", h},
 				{"/api/exemplars:merge", h},
 				{"/api/exemplars:query", h},
+				// TODO(kolesnikovae): Add adhoc endpoints
 			}...)
 		}
 	} else {
@@ -294,10 +295,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			{"/api/exemplars:query", ctrl.exemplarsHandler().QueryExemplars},
 		}...)
 	}
-
-	routes = append(routes, []route{
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
-	}...)
 
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, routes,

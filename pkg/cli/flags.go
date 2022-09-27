@@ -17,7 +17,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
@@ -112,7 +111,6 @@ func Unmarshal(vpr *viper.Viper, cfg interface{}) error {
 			// Function to add a special type for «env. mode»
 			stringToByteSize,
 			stringToSameSite,
-			stringToRole,
 			// Function to support net.IP
 			mapstructure.StringToIPHookFunc(),
 			// Appended by the two default functions
@@ -142,17 +140,6 @@ func stringToSameSite(_, t reflect.Type, data interface{}) (interface{}, error) 
 		return data, nil
 	}
 	return parseSameSite(stringData)
-}
-
-func stringToRole(_, t reflect.Type, data interface{}) (interface{}, error) {
-	if t != reflect.TypeOf(model.AdminRole) {
-		return data, nil
-	}
-	stringData, ok := data.(string)
-	if !ok {
-		return data, nil
-	}
-	return model.ParseRole(stringData)
 }
 
 type options struct {
@@ -206,25 +193,6 @@ func (df *durFlag) Type() string {
 	v := time.Duration(*df)
 	t := reflect.TypeOf(v)
 	return t.String()
-}
-
-type roleFlag model.Role
-
-func (rf *roleFlag) String() string {
-	return model.Role(*rf).String()
-}
-
-func (rf *roleFlag) Set(value string) error {
-	d, err := model.ParseRole(value)
-	if err != nil {
-		return err
-	}
-	*rf = roleFlag(d)
-	return nil
-}
-
-func (rf *roleFlag) Type() string {
-	return reflect.TypeOf(model.Role(*rf)).String()
 }
 
 type sameSiteFlag http.SameSite
@@ -349,20 +317,6 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 		}
 
 		switch field.Type {
-		case reflect.TypeOf(model.InvalidRole):
-			valRole := fieldV.Addr().Interface().(*model.Role)
-			val := (*roleFlag)(valRole)
-			var defaultVal model.Role
-			if defaultValStr != "" {
-				var err error
-				defaultVal, err = model.ParseRole(defaultValStr)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			*val = (roleFlag)(defaultVal)
-			flagSet.Var(val, nameVal, descVal)
-			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf(http.SameSiteStrictMode):
 			valP := fieldV.Addr().Interface().(*http.SameSite)
 			val := (*sameSiteFlag)(valP)

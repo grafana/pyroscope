@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/model"
 	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
@@ -188,7 +187,7 @@ type RetentionLevels struct {
 }
 
 type Auth struct {
-	SignupDefaultRole model.Role `json:"-" deprecated:"true" def:"ReadOnly" desc:"specifies which role will be granted to a newly signed up user. Supported roles: Admin, ReadOnly. Defaults to ReadOnly" mapstructure:"signup-default-role"`
+	SignupDefaultRole string `json:"-" deprecated:"true" def:"ReadOnly" desc:"specifies which role will be granted to a newly signed up user. Supported roles: Admin, ReadOnly. Defaults to ReadOnly" mapstructure:"signup-default-role"`
 
 	Internal InternalAuth `mapstructure:"internal"`
 	Google   GoogleOauth  `mapstructure:"google"`

@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/pyroscope-io/pyroscope/pkg/model"
-	"github.com/pyroscope-io/pyroscope/pkg/service"
-	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
+	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -77,7 +78,6 @@ var _ = Describe("server", func() {
 			MetricsRegisterer:       prometheus.NewRegistry(),
 			ExportedMetricsRegistry: prometheus.NewRegistry(),
 			Notifier:                mockNotifier{},
-			Adhoc:                   mockAdhocServer{},
 			DB:                      sql.DB(),
 		})
 

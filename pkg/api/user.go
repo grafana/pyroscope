@@ -8,7 +8,6 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/sirupsen/logrus"
 )
 
 //go:generate mockgen -destination mocks/user.go -package mocks . UserService
@@ -23,14 +22,12 @@ type UserService interface {
 }
 
 type UserHandler struct {
-	logger      logrus.FieldLogger
 	userService UserService
 	httpUtils   httputils.Utils
 }
 
-func NewUserHandler(logger logrus.FieldLogger, userService UserService, httpUtils httputils.Utils) UserHandler {
+func NewUserHandler(userService UserService, httpUtils httputils.Utils) UserHandler {
 	return UserHandler{
-		logger:      logger,
 		userService: userService,
 		httpUtils:   httpUtils,
 	}

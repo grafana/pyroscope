@@ -10,6 +10,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/heatmap"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
@@ -89,7 +90,7 @@ func (h ExemplarsHandler) MergeExemplars(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	flame := flamebearer.NewProfileWithConfig(flamebearer.ProfileConfig{
+	flame := flamebearer.NewProfile(flamebearer.ProfileConfig{
 		MaxNodes:  maxNodes,
 		Metadata:  out.Metadata,
 		Tree:      out.Tree,
@@ -177,7 +178,7 @@ func mergeExemplarsInputFromMergeExemplarsRequest(req *mergeExemplarsRequest) st
 			MinValue:  req.MinValue,
 			MaxValue:  req.MaxValue,
 		},
-		HeatmapParams: storage.HeatmapParams{
+		HeatmapParams: heatmap.HeatmapParams{
 			StartTime:    startTime,
 			EndTime:      endTime,
 			MinValue:     req.MinValue,

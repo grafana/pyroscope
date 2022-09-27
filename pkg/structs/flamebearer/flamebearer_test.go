@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -36,14 +35,17 @@ var _ = Describe("FlamebearerProfile", func() {
 				Watermarks:              watermarks,
 			}
 
-			out := &storage.GetOutput{
-				Tree:       tree,
-				Timeline:   timeline,
-				SpyName:    spyName,
-				SampleRate: sampleRate,
-				Units:      units,
-			}
-			p := NewProfile("name", out, maxNodes)
+			p := NewProfile(ProfileConfig{
+				Name:     "name",
+				Tree:     tree,
+				MaxNodes: maxNodes,
+				Timeline: timeline,
+				Metadata: metadata.Metadata{
+					SpyName:    spyName,
+					SampleRate: sampleRate,
+					Units:      units,
+				},
+			})
 
 			// Flamebearer
 			Expect(p.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
@@ -94,23 +96,42 @@ var _ = Describe("Diff", func() {
 	Context("sampleRate does not match", func() {
 		When("they are both set", func() {
 			It("returns an error", func() {
-				left := &storage.GetOutput{Tree: treeA, SampleRate: 100}
-				right := &storage.GetOutput{Tree: treeB, SampleRate: 101}
-
-				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				left := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{SampleRate: 100},
+					Tree:     treeA,
+					MaxNodes: maxNodes,
+				}
+				right := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{SampleRate: 101},
+					Tree:     treeB,
+					MaxNodes: maxNodes,
+				}
+				_, err := NewCombinedProfile(left, right)
 				Expect(err).To(MatchError("left sample rate (100) does not match right sample rate (101)"))
 			})
 		})
 
 		When("one of them is empty", func() {
 			It("does not return an error", func() {
-				left := &storage.GetOutput{Tree: treeA, SampleRate: 0}
-				right := &storage.GetOutput{Tree: treeB, SampleRate: 100}
+				left := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{SampleRate: 0},
+					Tree:     treeA,
+					MaxNodes: maxNodes,
+				}
+				right := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{SampleRate: 101},
+					Tree:     treeB,
+					MaxNodes: maxNodes,
+				}
 
-				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				_, err := NewCombinedProfile(left, right)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = NewCombinedProfile("name", right, left, maxNodes)
+				_, err = NewCombinedProfile(right, left)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -119,23 +140,42 @@ var _ = Describe("Diff", func() {
 	Context("units does not match", func() {
 		When("they are both set", func() {
 			It("returns an error", func() {
-				left := &storage.GetOutput{Tree: treeA, SampleRate: sampleRate, Units: "unitA"}
-				right := &storage.GetOutput{Tree: treeB, SampleRate: sampleRate, Units: "unitB"}
-
-				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				left := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{Units: "unitA", SampleRate: sampleRate},
+					Tree:     treeA,
+					MaxNodes: maxNodes,
+				}
+				right := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{Units: "unitB", SampleRate: sampleRate},
+					Tree:     treeB,
+					MaxNodes: maxNodes,
+				}
+				_, err := NewCombinedProfile(left, right)
 				Expect(err).To(MatchError("left units (unitA) does not match right units (unitB)"))
 			})
 		})
 
 		When("one of them is empty", func() {
 			It("does not return an error", func() {
-				left := &storage.GetOutput{Tree: treeA, SampleRate: sampleRate}
-				right := &storage.GetOutput{Tree: treeB, SampleRate: sampleRate, Units: "unitB"}
+				left := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{SampleRate: sampleRate},
+					Tree:     treeA,
+					MaxNodes: maxNodes,
+				}
+				right := ProfileConfig{
+					Name:     "name",
+					Metadata: metadata.Metadata{SampleRate: sampleRate, Units: "unitB"},
+					Tree:     treeB,
+					MaxNodes: maxNodes,
+				}
 
-				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				_, err := NewCombinedProfile(left, right)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = NewCombinedProfile("name", right, left, maxNodes)
+				_, err = NewCombinedProfile(right, left)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -151,9 +191,20 @@ var _ = Describe("Diff", func() {
 			treeB.Insert([]byte("a;b"), uint64(4))
 			treeB.Insert([]byte("a;c"), uint64(8))
 
-			left := &storage.GetOutput{Tree: treeA, SampleRate: sampleRate, Units: units}
-			right := &storage.GetOutput{Tree: treeB, SampleRate: sampleRate, Units: units}
-			p, err := NewCombinedProfile("name", left, right, maxNodes)
+			left := ProfileConfig{
+				Name:     "name",
+				Metadata: metadata.Metadata{SampleRate: sampleRate, Units: units},
+				Tree:     treeA,
+				MaxNodes: maxNodes,
+			}
+			right := ProfileConfig{
+				Name:     "name",
+				Metadata: metadata.Metadata{SampleRate: sampleRate, Units: units},
+				Tree:     treeB,
+				MaxNodes: maxNodes,
+			}
+
+			p, err := NewCombinedProfile(left, right)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Flamebearer

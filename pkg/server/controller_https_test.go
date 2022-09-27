@@ -46,7 +46,6 @@ var _ = Describe("server", func() {
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),
 						Notifier:                mockNotifier{},
-						Adhoc:                   mockAdhocServer{},
 					})
 					c.dir = http.Dir(testDataDir)
 
@@ -87,7 +86,6 @@ var _ = Describe("server", func() {
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),
 						Notifier:                mockNotifier{},
-						Adhoc:                   mockAdhocServer{},
 					})
 					c.dir = http.Dir(testDataDir)
 

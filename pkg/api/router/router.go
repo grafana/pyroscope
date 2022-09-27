@@ -23,6 +23,7 @@ type Services struct {
 	api.UserService
 	api.APIKeyService
 	api.AnnotationsService
+	api.AdhocService
 }
 
 func New(m *mux.Router, s Services) *Router {
@@ -39,7 +40,7 @@ func (r *Router) RegisterHandlers() {
 }
 
 func (r *Router) RegisterUserHandlers() {
-	h := api.NewUserHandler(r.Logger, r.UserService, httputils.NewDefaultHelper(r.Logger))
+	h := api.NewUserHandler(r.UserService, httputils.NewDefaultHelper(r.Logger))
 	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/users").Subrouter()
@@ -78,8 +79,18 @@ func (r *Router) RegisterAPIKeyHandlers() {
 }
 
 func (r *Router) RegisterAnnotationsHandlers() {
-	h := api.NewAnnotationsHandler(r.Logger, r.AnnotationsService, httputils.NewDefaultHelper(r.Logger))
+	h := api.NewAnnotationsHandler(r.AnnotationsService, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/annotations").Subrouter()
 	x.Methods(http.MethodPost).HandlerFunc(h.CreateAnnotation)
+}
+
+func (r *Router) RegisterAdhocHandlers() {
+	h := api.NewAdhocHandler(r.AdhocService, httputils.NewDefaultHelper(r.Logger))
+
+	x := r.PathPrefix("/adhoc/v1").Subrouter()
+	x.Methods(http.MethodGet).PathPrefix("/profiles").HandlerFunc(h.GetProfiles)
+	x.Methods(http.MethodGet).PathPrefix("/profile/{id:[0-9a-f]+}").HandlerFunc(h.GetProfile)
+	x.Methods(http.MethodGet).PathPrefix("/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}").HandlerFunc(h.GetProfileDiff)
+	x.Methods(http.MethodPost).PathPrefix("/upload").HandlerFunc(h.Upload)
 }
