@@ -82,6 +82,7 @@ func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, err
 	if _, err := f.initHead(); err != nil {
 		return nil, err
 	}
+	f.wg.Add(1)
 	go f.loop()
 	fs, err := filesystem.NewBucket(cfg.DataPath)
 	if err != nil {
@@ -121,7 +122,6 @@ func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
 }
 
 func (f *FireDB) loop() {
-	f.wg.Add(1)
 	blockScanTicker := time.NewTicker(5 * time.Minute)
 	defer func() {
 		blockScanTicker.Stop()
