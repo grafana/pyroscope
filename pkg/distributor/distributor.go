@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -29,6 +28,7 @@ import (
 	"github.com/grafana/fire/pkg/ingester/clientpool"
 	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/pprof"
+	"github.com/grafana/fire/pkg/tenant"
 )
 
 type PushClient interface {
@@ -69,12 +69,12 @@ type Distributor struct {
 	metrics *metrics
 }
 
-func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, reg prometheus.Registerer, logger log.Logger) (*Distributor, error) {
+func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
 	d := &Distributor{
 		cfg:           cfg,
 		logger:        logger,
 		ingestersRing: ingestersRing,
-		pool:          clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger),
+		pool:          clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger, clientsOptions...),
 		metrics:       newMetrics(reg),
 	}
 	var err error
@@ -106,6 +106,10 @@ func (d *Distributor) stopping(_ error) error {
 }
 
 func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	var (
 		keys     = make([]uint32, 0, len(req.Msg.Series))
 		profiles = make([]*profileTracker, 0, len(req.Msg.Series))
@@ -113,13 +117,11 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		// todo pool readers/writer
 		gzipReader *gzip.Reader
 		gzipWriter *gzip.Writer
-		err        error
 		br         = bytes.NewReader(nil)
 	)
 
 	for _, series := range req.Msg.Series {
-		// todo propagate tenantID.
-		keys = append(keys, TokenFor("", labelsString(series.Labels)))
+		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
 		profName := firemodel.Labels(series.Labels).Get(scrape.ProfileName)
 		for _, raw := range series.Samples {
 			d.metrics.receivedCompressedBytes.WithLabelValues(profName).Observe(float64(len(raw.RawProfile)))
@@ -206,7 +208,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			// Use a background context to make sure all ingesters get samples even if we return early
 			localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
 			defer cancel()
-			localCtx = user.InjectOrgID(localCtx, "")
+			localCtx = tenant.InjectTenantID(localCtx, tenantID)
 			if sp := opentracing.SpanFromContext(ctx); sp != nil {
 				localCtx = opentracing.ContextWithSpan(localCtx, sp)
 			}

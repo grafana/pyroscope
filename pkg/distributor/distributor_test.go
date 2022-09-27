@@ -26,6 +26,7 @@ import (
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/fire/pkg/ingester/clientpool"
+	"github.com/grafana/fire/pkg/tenant"
 	"github.com/grafana/fire/pkg/testhelper"
 )
 
@@ -39,13 +40,13 @@ func Test_ConnectPush(t *testing.T) {
 	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
-	mux.Handle(pushv1connect.NewPusherServiceHandler(d))
+	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
 	s := httptest.NewServer(mux)
 	defer s.Close()
 
-	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL)
+	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
 
-	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
+	resp, err := client.Push(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
 				Labels: []*commonv1.LabelPair{
@@ -70,6 +71,7 @@ func Test_Replication(t *testing.T) {
 		"2": newFakeIngester(t, false),
 		"3": newFakeIngester(t, true),
 	}
+	ctx := tenant.InjectTenantID(context.Background(), "foo")
 	req := connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
@@ -93,12 +95,12 @@ func Test_Replication(t *testing.T) {
 	}, nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
-	resp, err := d.Push(context.Background(), req)
+	resp, err := d.Push(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	// 2 ingesters failing with a replication of 3 should return an error.
 	ingesters["2"].fail = true
-	resp, err = d.Push(context.Background(), req)
+	resp, err = d.Push(ctx, req)
 	require.Error(t, err)
 	require.Nil(t, resp)
 }

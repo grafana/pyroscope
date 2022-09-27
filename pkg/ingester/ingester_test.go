@@ -1,10 +1,34 @@
 package ingester
 
-/*
+import (
+	"bytes"
+	"context"
+	"os"
+	"runtime/pprof"
+	"testing"
+	"time"
+
+	"github.com/bufbuild/connect-go"
+	"github.com/go-kit/log"
+	"github.com/google/uuid"
+	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/dskit/kv"
+	"github.com/grafana/dskit/ring"
+	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/fire/pkg/firedb"
+	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/fire/pkg/objstore/client"
+	"github.com/grafana/fire/pkg/tenant"
+)
+
 func defaultIngesterTestConfig(t testing.TB) Config {
 	kvClient, err := kv.NewClient(kv.Config{Store: "inmemory"}, ring.GetCodec(), nil, log.NewNopLogger())
 	require.NoError(t, err)
-
 	cfg := Config{}
 	flagext.DefaultValues(&cfg)
 	cfg.LifecyclerConfig.RingConfig.KVStore.Mock = kvClient
@@ -16,65 +40,71 @@ func defaultIngesterTestConfig(t testing.TB) Config {
 	cfg.LifecyclerConfig.MinReadyDuration = 0
 	return cfg
 }
-*/
 
-/*
-func Test_ConnectPush(t *testing.T) {
-	cfg := defaultIngesterTestConfig(t)
-	logger := log.NewLogfmtLogger(os.Stdout)
+func testProfile(t *testing.T) []byte {
+	t.Helper()
 
-	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
+	buf := bytes.NewBuffer(nil)
+	require.NoError(t, pprof.WriteHeapProfile(buf))
+	return buf.Bytes()
+}
+
+func Test_MultitenantReadWrite(t *testing.T) {
+	dbPath := t.TempDir()
+	logger := log.NewJSONLogger(os.Stdout)
+	reg := prometheus.NewRegistry()
+
+	fs, err := client.NewBucket(logger, []byte(`
+type: FILESYSTEM
+config:
+    directory: "`+dbPath+`"
+prefix: ""`), reg, "storage")
 	require.NoError(t, err)
 
-	mux := http.NewServeMux()
-	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
+	ing, err := New(defaultIngesterTestConfig(t), firedb.Config{
+		DataPath:         dbPath,
+		MaxBlockDuration: 30 * time.Hour,
+	}, logger, reg, fs)
 	require.NoError(t, err)
+	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
 
-	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(d))
-	s := httptest.NewServer(mux)
-	defer s.Close()
-
-	client := ingesterv1connect.NewIngesterServiceClient(http.DefaultClient, s.URL)
-
-	rawProfile := testProfile(t)
-	resp, err := client.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{
-			{
-				Labels: []*commonv1.LabelPair{
-					{Name: "__name__", Value: "my_own_profile"},
-					{Name: "cluster", Value: "us-central1"},
-				},
-				Samples: []*pushv1.RawSample{
-					{
-						RawProfile: rawProfile,
+	req := &connect.Request[pushv1.PushRequest]{
+		Msg: &pushv1.PushRequest{
+			Series: []*pushv1.RawProfileSeries{
+				{
+					Samples: []*pushv1.RawSample{
+						{
+							ID:         uuid.NewString(),
+							RawProfile: testProfile(t),
+						},
 					},
 				},
 			},
 		},
-	}))
+	}
+	req.Msg.Series[0].Labels = firemodel.LabelsFromStrings("foo", "bar")
+	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "foo"), req)
 	require.NoError(t, err)
-	require.NotNil(t, resp)
-	ingestedSamples := countNonZeroValues(parseRawProfile(t, bytes.NewBuffer(rawProfile)))
 
-	profileStore.Table().Sync()
-	var queriedSamples int64
-	require.NoError(t, profileStore.Table().View(func(tx uint64) error {
-		return profileStore.Table().Iterator(context.Background(), tx, memory.NewGoAllocator(), nil, nil, nil, func(ar arrow.Record) error {
-			t.Log(ar)
+	req.Msg.Series[0].Labels = firemodel.LabelsFromStrings("buzz", "bazz")
+	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "buzz"), req)
+	require.NoError(t, err)
 
-			queriedSamples += ar.NumRows()
+	labelNames, err := ing.LabelNames(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "foo"}, labelNames.Msg.Names)
 
-			return nil
-		})
-	}))
+	labelNames, err = ing.LabelNames(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "buzz"}, labelNames.Msg.Names)
 
-	require.Equal(t, ingestedSamples, queriedSamples, "expected to query all ingested samples")
+	labelsValues, err := ing.LabelValues(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "foo"}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"bar"}, labelsValues.Msg.Names)
 
-	require.NoError(t, profileStore.Table().RotateBlock())
+	labelsValues, err = ing.LabelValues(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "buzz"}))
+	require.NoError(t, err)
+	require.Equal(t, []string{"bazz"}, labelsValues.Msg.Names)
 
-	require.NoError(
-		t,
-		profileStore.Close(),
-	)
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
 }
-*/

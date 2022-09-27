@@ -6,9 +6,10 @@ import (
 	"net/http"
 
 	"github.com/weaveworks/common/httpgrpc"
-	"github.com/weaveworks/common/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/grafana/fire/pkg/tenant"
 )
 
 // StatusClientClosedRequest is the status code for when a client request cancellation of an http request
@@ -44,7 +45,7 @@ func ClientHTTPStatusAndError(err error) (int, error) {
 	case errors.Is(err, context.DeadlineExceeded) ||
 		(isRPC && s.Code() == codes.DeadlineExceeded):
 		return http.StatusGatewayTimeout, errors.New(ErrDeadlineExceeded)
-	case errors.Is(err, user.ErrNoOrgID):
+	case errors.Is(err, tenant.ErrNoTenantID):
 		return http.StatusBadRequest, err
 	default:
 		if grpcErr, ok := httpgrpc.HTTPResponseFromError(err); ok {
