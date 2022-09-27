@@ -23,6 +23,7 @@ keywords:
 
 > Get started + video = Cyril
 > Deploy on Kubernetes = Christian
+> Play in Grafana
 > Architecture = Christian
   > About the architecture
   > Deployment mode
