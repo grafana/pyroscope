@@ -43,7 +43,7 @@ func (i *authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		// Server side if the interceptor is enabled, we extract the tenantID from the request header and inject it into the context
 		// If the interceptor is disabled, we inject the default tenant ID into the context.
 		if !i.enabled {
-			return next(user.InjectOrgID(ctx, DefaultTenantID), req)
+			return next(InjectTenantID(ctx, DefaultTenantID), req)
 		}
 		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, req.Header())
 		return next(ctx, req)
@@ -64,7 +64,7 @@ func (i *authInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) 
 func (i *authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
 		if !i.enabled {
-			return next(user.InjectOrgID(ctx, DefaultTenantID), conn)
+			return next(InjectTenantID(ctx, DefaultTenantID), conn)
 		}
 		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, conn.RequestHeader())
 		return next(ctx, conn)
@@ -77,9 +77,9 @@ var defaultResolver tenant.Resolver = tenant.NewSingleResolver()
 func ExtractTenantIDFromHeaders(ctx context.Context, headers http.Header) (string, context.Context, error) {
 	orgID := headers.Get(user.OrgIDHeaderName)
 	if orgID == "" {
-		return "", ctx, user.ErrNoOrgID
+		return "", ctx, ErrNoTenantID
 	}
-	ctx = user.InjectOrgID(ctx, orgID)
+	ctx = InjectTenantID(ctx, orgID)
 
 	tenantID, err := defaultResolver.TenantID(ctx)
 	if err != nil {

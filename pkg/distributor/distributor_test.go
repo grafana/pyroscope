@@ -21,7 +21,6 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
-	"github.com/weaveworks/common/user"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
@@ -47,7 +46,7 @@ func Test_ConnectPush(t *testing.T) {
 
 	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
 
-	resp, err := client.Push(user.InjectOrgID(context.Background(), "foo"), connect.NewRequest(&pushv1.PushRequest{
+	resp, err := client.Push(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
 				Labels: []*commonv1.LabelPair{
@@ -72,7 +71,7 @@ func Test_Replication(t *testing.T) {
 		"2": newFakeIngester(t, false),
 		"3": newFakeIngester(t, true),
 	}
-	ctx := user.InjectOrgID(context.Background(), "foo")
+	ctx := tenant.InjectTenantID(context.Background(), "foo")
 	req := connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{

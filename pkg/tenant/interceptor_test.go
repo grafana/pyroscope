@@ -7,7 +7,6 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/stretchr/testify/require"
-	"github.com/weaveworks/common/user"
 )
 
 func Test_AuthInterceptor(t *testing.T) {
@@ -19,7 +18,7 @@ func Test_AuthInterceptor(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tenantID, "foo")
 				return nil, nil
-			})(user.InjectOrgID(context.Background(), "foo"), newFakeReq(true))
+			})(InjectTenantID(context.Background(), "foo"), newFakeReq(true))
 			require.NoError(t, err)
 			require.Nil(t, resp)
 		},
@@ -27,7 +26,7 @@ func Test_AuthInterceptor(t *testing.T) {
 			i := NewAuthInterceptor(false)
 			resp, err := i.WrapUnary(func(ctx context.Context, ar connect.AnyRequest) (connect.AnyResponse, error) {
 				tenantID, _, err := ExtractTenantIDFromHeaders(context.Background(), ar.Header())
-				require.Equal(t, user.ErrNoOrgID, err)
+				require.Equal(t, ErrNoTenantID, err)
 				require.Equal(t, tenantID, "")
 				return nil, nil
 			})(context.Background(), newFakeReq(true))
@@ -65,7 +64,7 @@ func Test_AuthInterceptor(t *testing.T) {
 			inConn := newFakeClientStreamingConn()
 			outConn := i.WrapStreamingClient(func(ctx context.Context, s connect.Spec) connect.StreamingClientConn {
 				return inConn
-			})(user.InjectOrgID(context.Background(), "foo"), connect.Spec{})
+			})(InjectTenantID(context.Background(), "foo"), connect.Spec{})
 			require.Equal(t, "foo", outConn.RequestHeader().Get("X-Scope-OrgID"))
 		},
 		"streaming server should forward from header to context if enabled": func(t *testing.T) {

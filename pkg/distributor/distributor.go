@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/weaveworks/common/user"
 	"go.uber.org/atomic"
 
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -209,7 +208,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			// Use a background context to make sure all ingesters get samples even if we return early
 			localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
 			defer cancel()
-			localCtx = user.InjectOrgID(localCtx, tenantID)
+			localCtx = tenant.InjectTenantID(localCtx, tenantID)
 			if sp := opentracing.SpanFromContext(ctx); sp != nil {
 				localCtx = opentracing.ContextWithSpan(localCtx, sp)
 			}
