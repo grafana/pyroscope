@@ -157,7 +157,6 @@ type Fire struct {
 	ring               *ring.Ring
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
-	// fireDB             *firedb.FireDB
 
 	storageBucket objstore.Bucket
 
