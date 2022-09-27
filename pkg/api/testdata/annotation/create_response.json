@@ -1,5 +1,7 @@
-{
-  "appName": "myApp",
-  "content": "mycontent",
-  "timestamp": 1662729099
-}
+[
+  {
+    "appName": "myApp",
+    "content": "mycontent",
+    "timestamp": 1662729099
+  }
+]

@@ -94,6 +94,34 @@ var _ = Describe("AnnotationHandler", func() {
 			})
 		})
 
+		When("multiple appNames are passed", func() {
+			BeforeEach(func() {
+				svc = &mockService{
+					createAnnotationResponse: func(params model.CreateAnnotation) (*model.Annotation, error) {
+						return &model.Annotation{
+							AppName:   params.AppName,
+							Content:   "mycontent",
+							Timestamp: time.Unix(1662729099, 0),
+						}, nil
+					},
+				}
+
+				server = httptest.NewServer(newTestRouter(defaultUserCtx, router.Services{
+					Logger:             logrus.StandardLogger(),
+					AnnotationsService: svc,
+				}))
+			})
+
+			It("creates correctly", func() {
+				url := server.URL + "/annotations"
+
+				expectResponse(newRequest(http.MethodPost, url,
+					"annotation/create_multiple_request.json"),
+					"annotation/create_multiple_response.json",
+					http.StatusCreated)
+			})
+		})
+
 		When("fields are invalid", func() {
 			BeforeEach(func() {
 				svc = &mockService{

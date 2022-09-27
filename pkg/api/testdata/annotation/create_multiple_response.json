@@ -1,0 +1,17 @@
+[
+  {
+    "appName": "myApp1",
+    "content": "mycontent",
+    "timestamp": 1662729099
+  },
+  {
+    "appName": "myApp2",
+    "content": "mycontent",
+    "timestamp": 1662729099
+  },
+  {
+    "appName": "myApp3",
+    "content": "mycontent",
+    "timestamp": 1662729099
+  }
+]
