@@ -21,12 +21,12 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/util/pool"
-	"github.com/weaveworks/common/user"
 	"golang.org/x/net/context/ctxhttp"
 
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
+	"github.com/grafana/fire/pkg/tenant"
 )
 
 var (
@@ -220,7 +220,7 @@ func (t *Target) scrape(ctx context.Context) {
 	// With a http pusher the interceptor will add the tenant ID to the request headers.
 	// When directly pushing distributors, the tenant ID will already be in the context.
 	if t.tenantID != "" {
-		ctx = user.InjectOrgID(ctx, t.tenantID)
+		ctx = tenant.InjectTenantID(ctx, t.tenantID)
 	}
 	if _, err := t.pusherClientProvider().Push(ctx, connect.NewRequest(req)); err != nil {
 		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)

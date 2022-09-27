@@ -17,13 +17,13 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
-	"github.com/weaveworks/common/user"
 
 	"github.com/grafana/fire/pkg/firedb"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
 	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/objstore/client"
+	"github.com/grafana/fire/pkg/tenant"
 )
 
 func defaultIngesterTestConfig(t testing.TB) Config {
@@ -83,26 +83,26 @@ prefix: ""`), reg, "storage")
 		},
 	}
 	req.Msg.Series[0].Labels = firemodel.LabelsFromStrings("foo", "bar")
-	_, err = ing.Push(user.InjectOrgID(context.Background(), "foo"), req)
+	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "foo"), req)
 	require.NoError(t, err)
 
 	req.Msg.Series[0].Labels = firemodel.LabelsFromStrings("buzz", "bazz")
-	_, err = ing.Push(user.InjectOrgID(context.Background(), "buzz"), req)
+	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "buzz"), req)
 	require.NoError(t, err)
 
-	labelNames, err := ing.LabelNames(user.InjectOrgID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
+	labelNames, err := ing.LabelNames(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "foo"}, labelNames.Msg.Names)
 
-	labelNames, err = ing.LabelNames(user.InjectOrgID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
+	labelNames, err = ing.LabelNames(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "buzz"}, labelNames.Msg.Names)
 
-	labelsValues, err := ing.LabelValues(user.InjectOrgID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "foo"}))
+	labelsValues, err := ing.LabelValues(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "foo"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"bar"}, labelsValues.Msg.Names)
 
-	labelsValues, err = ing.LabelValues(user.InjectOrgID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "buzz"}))
+	labelsValues, err = ing.LabelValues(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "buzz"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"bazz"}, labelsValues.Msg.Names)
 
