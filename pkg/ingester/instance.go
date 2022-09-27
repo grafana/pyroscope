@@ -93,7 +93,9 @@ func (i *instance) runShipper(ctx context.Context) {
 	}
 }
 
-func (i *instance) Stop() {
+func (i *instance) Stop() error {
+	err := i.FireDB.Close()
 	i.cancel()
 	i.wg.Wait()
+	return err
 }
