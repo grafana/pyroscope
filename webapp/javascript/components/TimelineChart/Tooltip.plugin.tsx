@@ -10,26 +10,14 @@ prefer-destructuring
 import React from 'react';
 import * as ReactDOM from 'react-dom';
 import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
-import { PlotType, EventHolderType, EventType } from './types';
 import getFormatLabel from './getFormatLabel';
 import clamp from './clamp';
 import injectTooltip from './injectTooltip';
-
-type ContextType = {
-  init: (plot: PlotType) => void;
-  options: ShamefulAny;
-  name: string;
-  version: string;
-  onHoverDisplayTooltip?: (
-    data: ExploreTooltipProps
-  ) => React.FC<ExploreTooltipProps>;
-};
+import { ITooltipWrapperProps } from './TooltipWrapper';
 
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
 (function ($: JQueryStatic) {
-  //  function init(this: ContextType, plot: PlotType) {
-  //function init(plot: plotInitPluginParams) {
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
     const exploreTooltip = injectTooltip($, TOOLTIP_WRAPPER_ID);
 
@@ -41,7 +29,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       xToTime: -1,
     };
 
-    function onMouseMove(e: EventType) {
+    function onMouseMove(e: { pageX: number; pageY: number; which?: number }) {
       const offset = plot.getPlaceholder().offset()!;
       const plotOffset = plot.getPlotOffset();
 
@@ -73,9 +61,12 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
     }
 
     plot.hooks!.drawOverlay!.push(() => {
-      const options = plot.getOptions();
-      // TODO(eh-am): fix type
-      const onHoverDisplayTooltip = (options as any).onHoverDisplayTooltip;
+      const options = plot.getOptions() as jquery.flot.plotOptions & {
+        onHoverDisplayTooltip?: (
+          data: Omit<ITooltipWrapperProps & ExploreTooltipProps, 'children'>
+        ) => React.ReactElement;
+      };
+      const onHoverDisplayTooltip = options.onHoverDisplayTooltip;
       const { xaxis } = plot.getAxes() as ShamefulAny;
       const data = plot.getData();
 
@@ -123,10 +114,8 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           return;
         }
 
-        const Tooltip: React.ReactElement<
-          ExploreTooltipProps,
-          string | React.JSXElementConstructor<ExploreTooltipProps>
-        >[] = onHoverDisplayTooltip({
+        // Returns an element
+        const Tooltip = onHoverDisplayTooltip({
           pageX: params.pageX,
           pageY: params.pageY,
           timeLabel,
