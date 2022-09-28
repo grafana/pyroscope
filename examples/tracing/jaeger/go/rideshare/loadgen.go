@@ -23,6 +23,7 @@ var hosts = []string{
 	"eu-north-java",
 	"ap-south-java",
 	"eu-north-java-instrumentation",
+	"eu-north-ruby",
 }
 
 var vehicles = []string{

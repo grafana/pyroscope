@@ -33,5 +33,7 @@ module Rideshare
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+    # config.hosts << "eu-north-ruby"
+    config.hosts << ENV['SERVER_HOST']
   end
 end
