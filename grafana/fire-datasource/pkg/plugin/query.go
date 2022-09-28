@@ -289,7 +289,7 @@ func normalizeUnit(unit string) string {
 		return "ns"
 	}
 	if unit == "count" {
-		return "none"
+		return "short"
 	}
 	return unit
 }

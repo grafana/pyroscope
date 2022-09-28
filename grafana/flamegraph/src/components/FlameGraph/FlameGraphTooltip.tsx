@@ -48,28 +48,24 @@ export const getTooltipData = (field: Field, label: string, value: number, total
   let percentTitle = '';
   let unitTitle = '';
 
-  const unit = field.config.unit;
   const processor = getDisplayProcessor({ field, theme: createTheme() /* theme does not matter for us here */ });
-  const displayValue = processor(value, 2);
+  const displayValue = processor(value);
   const percent = Math.round(10000 * (samples / totalTicks)) / 100;
   let unitValue = displayValue.text + displayValue.suffix;
 
-  switch (unit) {
+  switch (field.config.unit) {
     case SampleUnit.Bytes:
       percentTitle = '% of total';
       unitTitle = 'RAM';
       break;
-
-    case SampleUnit.None:
-      percentTitle = '% of total';
-      unitTitle = 'Count';
-      // Remove unit suffix
-      unitValue = displayValue.text;
-      break;
-
     case SampleUnit.Nanoseconds:
       percentTitle = '% of total time';
       unitTitle = 'Time';
+      break;
+    default:
+      percentTitle = '% of total';
+      unitTitle = 'Count';
+      break;
   }
 
   return {
