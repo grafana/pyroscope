@@ -9,6 +9,6 @@ export type TooltipData = {
 
 export enum SampleUnit {
   Bytes = 'bytes',
-  None = 'none',
+  Short = 'short',
   Nanoseconds = 'ns'
 }
