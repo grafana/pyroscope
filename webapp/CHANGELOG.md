@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.44.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.7...@pyroscope/webapp@1.44.0) (2022-09-28)
+
+
+### Features
+
+* remove heatmap grid ([#1567](https://github.com/pyroscope-io/pyroscope/issues/1567)) ([541133b](https://github.com/pyroscope-io/pyroscope/commit/541133b54d7d10cde0c3815c17077e4e2de1109d))
+
+
+
+
+
 ## [1.43.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.6...@pyroscope/webapp@1.43.7) (2022-09-27)
 
 **Note:** Version bump only for package @pyroscope/webapp
