@@ -65,6 +65,10 @@ export const getTooltipData = (field: Field, label: string, value: number, total
     default:
       percentTitle = '% of total';
       unitTitle = 'Count';
+      if (!displayValue.suffix) {
+        // Makes sure we don't show 123undefined or something like that if suffix isn't defined
+        unitValue = displayValue.text
+      }
       break;
   }
 

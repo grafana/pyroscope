@@ -14,14 +14,48 @@ describe('should get tooltip data correctly', () => {
     });
   });
 
-  it('for objects', () => {
+  it('with none unit', () => {
     const tooltipData = getTooltipData(makeField('none'), 'total', 8_624_078_250, 8_624_078_250);
     expect(tooltipData).toEqual({
       name: 'total',
       percentTitle: '% of total',
       percentValue: 100,
       unitTitle: 'Count',
-      unitValue: '8624078250.00',
+      unitValue: '8624078250',
+      samples: '8,624,078,250',
+    });
+  });
+
+  it('without unit', () => {
+    const tooltipData = getTooltipData(
+      {
+        name: 'test',
+        type: FieldType.number,
+        values: new ArrayVector(),
+        config: {},
+      },
+      'total',
+      8_624_078_250,
+      8_624_078_250
+    );
+    expect(tooltipData).toEqual({
+      name: 'total',
+      percentTitle: '% of total',
+      percentValue: 100,
+      unitTitle: 'Count',
+      unitValue: '8624078250',
+      samples: '8,624,078,250',
+    });
+  });
+
+  it('for objects', () => {
+    const tooltipData = getTooltipData(makeField('short'), 'total', 8_624_078_250, 8_624_078_250);
+    expect(tooltipData).toEqual({
+      name: 'total',
+      percentTitle: '% of total',
+      percentValue: 100,
+      unitTitle: 'Count',
+      unitValue: '8.62 Bil',
       samples: '8,624,078,250',
     });
   });
