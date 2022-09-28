@@ -49,12 +49,14 @@ $svg-side-margin: 40px;
 
       .tickValue {
         width: 1px;
+        height: 20px;
+        position: relative;
       }
 
       span {
         width: 115px;
         display: inline-block;
-        position: relative;
+        position: absolute;
         left: -60px;
       }
 
