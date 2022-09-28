@@ -28,7 +28,9 @@ type ContextType = {
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
 (function ($: JQueryStatic) {
-  function init(this: ContextType, plot: PlotType) {
+  //  function init(this: ContextType, plot: PlotType) {
+  //function init(plot: plotInitPluginParams) {
+  function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
     const exploreTooltip = injectTooltip($, TOOLTIP_WRAPPER_ID);
 
     const params = {
@@ -40,7 +42,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
     };
 
     function onMouseMove(e: EventType) {
-      const offset = plot.getPlaceholder().offset();
+      const offset = plot.getPlaceholder().offset()!;
       const plotOffset = plot.getPlotOffset();
 
       params.canvasX = clamp(
@@ -68,15 +70,16 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       params.xToTime = position.x;
     }
 
-    plot.hooks.drawOverlay.push(() => {
+    plot.hooks!.drawOverlay!.push(() => {
       const options = plot.getOptions();
-      const onHoverDisplayTooltip = options?.onHoverDisplayTooltip;
+      // TODO(eh-am): fix type
+      const onHoverDisplayTooltip = (options as any).onHoverDisplayTooltip;
       const { xaxis } = plot.getAxes() as ShamefulAny;
       const data = plot.getData();
 
       if (onHoverDisplayTooltip && exploreTooltip?.length) {
         const align = params.canvasX > plot.width() / 2 ? 'left' : 'right';
-        const timezone = options.xaxis.timezone;
+        const timezone = options.xaxis!.timezone;
 
         const timeLabel = getFormatLabel({
           date: params.xToTime,
@@ -84,37 +87,35 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           timezone,
         });
 
-        const values = data?.map(
-          (
-            d: {
-              data: number[][];
-              tagName: string;
-              color: { color: number[] };
-            },
-            i
-          ) => {
-            let closest = null;
-            let color = null;
-            let tagName = String(i);
+        const values = data?.map((dataSeries, i) => {
+          // Sometimes we also pass a tagName/color
+          // Eg in tagExplorer page
+          const d = dataSeries as jquery.flot.dataSeries & {
+            tagName: string;
+            color: { color: number[] };
+          };
 
-            if (d?.data?.length && params.xToTime && params.pageX > 0) {
-              color = d?.color?.color;
-              tagName = d.tagName;
-              closest = (d?.data || []).reduce(function (prev, curr) {
-                return Math.abs(curr?.[0] - params.xToTime) <
-                  Math.abs(prev?.[0] - params.xToTime)
-                  ? curr
-                  : prev;
-              });
-            }
+          let closest = null;
+          let color = null;
+          let tagName = String(i);
 
-            return {
-              closest,
-              color,
-              tagName,
-            };
+          if (d?.data?.length && params.xToTime && params.pageX > 0) {
+            color = d?.color?.color;
+            tagName = d.tagName;
+            closest = (d?.data || []).reduce(function (prev, curr) {
+              return Math.abs(curr?.[0] - params.xToTime) <
+                Math.abs(prev?.[0] - params.xToTime)
+                ? curr
+                : prev;
+            });
           }
-        );
+
+          return {
+            closest,
+            color,
+            tagName,
+          };
+        });
 
         if (!values?.length) {
           return;
@@ -141,20 +142,26 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       }
     });
 
-    plot.hooks.bindEvents.push((p: PlotType, eventHolder: EventHolderType) => {
-      eventHolder.mousemove(onMouseMove);
-      eventHolder.mouseleave(onMouseLeave);
-      plot.getPlaceholder().bind('plothover', onPlotHover);
-    });
+    plot.hooks!.bindEvents!.push(
+      (p: PlotType, eventHolder: EventHolderType) => {
+        console.log({
+          eventHolder,
+        });
+        eventHolder.mousemove(onMouseMove);
+        eventHolder.mouseleave(onMouseLeave);
+        plot.getPlaceholder().bind('plothover', onPlotHover);
+      }
+    );
 
-    plot.hooks.shutdown.push((_: PlotType, eventHolder: EventHolderType) => {
+    plot.hooks!.shutdown!.push((_: PlotType, eventHolder: EventHolderType) => {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mouseleave', onMouseLeave);
       plot.getPlaceholder().unbind('plothover', onPlotHover);
     });
   }
 
-  ($ as ShamefulAny).plot.plugins.push({
+  //  ($ as ShamefulAny).plot.plugins.push({
+  $.plot.plugins.push({
     init,
     options: {},
     name: 'rich_tooltip',

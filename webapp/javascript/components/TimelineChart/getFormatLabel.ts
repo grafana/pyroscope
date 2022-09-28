@@ -6,7 +6,7 @@ function getFormatLabel({
   xaxis,
 }: {
   date: number;
-  timezone: string;
+  timezone?: string;
   xaxis: {
     min: number;
     max: number;
