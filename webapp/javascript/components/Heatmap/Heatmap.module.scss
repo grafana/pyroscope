@@ -33,6 +33,10 @@ $svg-side-margin: 40px;
       margin: -10px 0px;
       width: 30px;
     }
+
+    .ticksContainer {
+      border-right: 1px solid var(--ps-neutral-2);
+    }
   }
 
   .xAxis {
@@ -42,21 +46,42 @@ $svg-side-margin: 40px;
 
     .tickValues {
       flex-direction: row;
-      margin: 0 -25px;
+
+      .tickValue {
+        width: 1px;
+      }
+
+      span {
+        width: 115px;
+        display: inline-block;
+        position: relative;
+        left: -60px;
+      }
+
+      .tickValue:first-child {
+        visibility: hidden;
+      }
     }
 
     .ticksContainer {
+      position: relative;
+      left: -1px;
+      width: calc(100% + 1px);
       display: flex;
       flex-direction: row;
       justify-content: space-between;
       margin-bottom: 2px;
-      width: 100%;
       height: 10px;
       margin-left: 0;
+      border-top: 1px solid var(--ps-neutral-2);
 
       .tick {
         width: 1px;
         height: 8px;
+
+        &:first-child {
+          visibility: hidden;
+        }
       }
     }
   }

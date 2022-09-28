@@ -253,13 +253,13 @@ function Axis({ axis, max, min, ticksNumber }: AxisProps) {
             className={cl(styles.tickValue, styles[`${axis}TickValue`])}
             key={tick}
           >
-            {tick}
+            <span>{tick}</span>
           </div>
         ))}
       </div>
       <div className={styles.ticksContainer}>
         {ticks.map((tick) => (
-          <div className={styles.tick} key={tick}></div>
+          <div className={styles.tick} key={tick} />
         ))}
       </div>
     </div>
