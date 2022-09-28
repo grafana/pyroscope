@@ -5,10 +5,12 @@ require "opentelemetry/sdk"
 require "opentelemetry/exporter/otlp"
 require 'opentelemetry/exporter/jaeger'
 
-app_name = "ride-sharing-app-java"
+app_name = "ride-sharing-app-ruby"
 pyroscope_server_address = ENV["PYROSCOPE_SERVER_ADDRESS"] || "http://localhost:4040"
 pyroscope_endpoint = ENV["OTEL_PYROSCOPE_ENDPOINT"] || "http://localhost:4040"
 jaeger_endpoint = ENV["JAEGER_ENDPOINT"] || "http://localhost:14268/api/traces"
+
+puts("jaeger endpoint #{jaeger_endpoint}")
 
 Pyroscope.configure do |config|
   config.application_name = app_name
