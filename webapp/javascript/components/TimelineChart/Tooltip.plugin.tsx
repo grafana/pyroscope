@@ -134,10 +134,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           align,
           canvasX: params.canvasX,
 
-          // TODO(eh-am): fix type
-          coordsToCanvasPos: (plot as unknown as jquery.flot.plot).p2c.bind(
-            this
-          ),
+          coordsToCanvasPos: plot.p2c.bind(plot),
         });
 
         ReactDOM.render(Tooltip, exploreTooltip?.[0]);
@@ -150,14 +147,13 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       plot.getPlaceholder().bind('plothover', onPlotHover);
     });
 
-    plot.hooks!.shutdown!.push((p: PlotType, eventHolder: EventHolderType) => {
+    plot.hooks!.shutdown!.push((p, eventHolder) => {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mouseleave', onMouseLeave);
       plot.getPlaceholder().unbind('plothover', onPlotHover);
     });
   }
 
-  //  ($ as ShamefulAny).plot.plugins.push({
   $.plot.plugins.push({
     init,
     options: {},
