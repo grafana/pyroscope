@@ -218,6 +218,10 @@ func treeToNestedSetDataFrame(tree *ProfileTree, profileTypeID string) *data.Fra
 
 	levelField := data.NewField("level", nil, []int64{})
 	valueField := data.NewField("value", nil, []int64{})
+
+	// profileTypeID should encode the type of the profile with unit being the 3rd part
+	parts := strings.Split(profileTypeID, ":")
+	valueField.Config = &data.FieldConfig{Unit: normalizeUnit(parts[2])}
 	labelField := data.NewField("label", nil, []string{})
 	frame.Fields = data.Fields{levelField, valueField, labelField}
 
@@ -226,9 +230,6 @@ func treeToNestedSetDataFrame(tree *ProfileTree, profileTypeID string) *data.Fra
 		valueField.Append(tree.Value)
 		labelField.Append(tree.Name)
 	})
-	frame.Meta.Custom = CustomMeta{
-		ProfileTypeID: profileTypeID,
-	}
 	return frame
 }
 
@@ -260,15 +261,18 @@ func seriesToDataFrame(seriesResp *connect.Response[querierv1.SelectSeriesRespon
 
 	for index, series := range seriesResp.Msg.Series {
 		label := ""
+		unit := ""
 		if len(series.Labels) > 0 {
 			label = series.Labels[0].Name
 		} else {
 			parts := strings.Split(profileTypeID, ":")
 			if len(parts) == 5 {
 				label = parts[1] // sample type e.g. cpu, goroutine, alloc_objects
+				unit = normalizeUnit(parts[2])
 			}
 		}
 		valueField := data.NewField(label, nil, []float64{})
+		valueField.Config = &data.FieldConfig{Unit: unit}
 
 		for _, point := range series.Points {
 			if index == 0 {
@@ -282,4 +286,14 @@ func seriesToDataFrame(seriesResp *connect.Response[querierv1.SelectSeriesRespon
 
 	frame.Fields = fields
 	return frame
+}
+
+func normalizeUnit(unit string) string {
+	if unit == "nanoseconds" {
+		return "ns"
+	}
+	if unit == "count" {
+		return "short"
+	}
+	return unit
 }
