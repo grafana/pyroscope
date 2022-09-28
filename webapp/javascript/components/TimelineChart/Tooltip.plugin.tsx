@@ -66,8 +66,10 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       params.pageY = -1;
     }
 
-    function onPlotHover(e: EventType, position: { x: number }) {
-      params.xToTime = position.x;
+    function onPlotHover(e: unknown, position: { x?: number }) {
+      if (position.x) {
+        params.xToTime = position.x;
+      }
     }
 
     plot.hooks!.drawOverlay!.push(() => {
@@ -142,18 +144,13 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
       }
     });
 
-    plot.hooks!.bindEvents!.push(
-      (p: PlotType, eventHolder: EventHolderType) => {
-        console.log({
-          eventHolder,
-        });
-        eventHolder.mousemove(onMouseMove);
-        eventHolder.mouseleave(onMouseLeave);
-        plot.getPlaceholder().bind('plothover', onPlotHover);
-      }
-    );
+    plot.hooks!.bindEvents!.push((p, eventHolder) => {
+      eventHolder.mousemove(onMouseMove);
+      eventHolder.mouseleave(onMouseLeave);
+      plot.getPlaceholder().bind('plothover', onPlotHover);
+    });
 
-    plot.hooks!.shutdown!.push((_: PlotType, eventHolder: EventHolderType) => {
+    plot.hooks!.shutdown!.push((p: PlotType, eventHolder: EventHolderType) => {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mouseleave', onMouseLeave);
       plot.getPlaceholder().unbind('plothover', onPlotHover);
