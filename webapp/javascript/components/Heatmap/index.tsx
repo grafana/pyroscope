@@ -28,9 +28,10 @@ interface HeatmapProps {
     startT: number,
     endT: number
   ) => void;
+  timezone: string;
 }
 
-export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
+export function Heatmap({ heatmap, onSelection, timezone }: HeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const resizedSelectedAreaRef = useRef<HTMLDivElement>(null);
@@ -156,6 +157,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         min={heatmap.startTime}
         max={heatmap.endTime}
         ticksNumber={7}
+        timezone={timezone}
       />
       <div className={styles.legend} data-testid="color-scale">
         {HEATMAP_COLORS.map((color, index) => (
@@ -230,6 +232,7 @@ interface AxisProps {
   min: number;
   max: number;
   ticksNumber: number;
+  timezone?: string;
 }
 
 const FORMAT_MAP = {
@@ -237,8 +240,8 @@ const FORMAT_MAP = {
   y: 'value' as const,
 };
 
-function Axis({ axis, max, min, ticksNumber }: AxisProps) {
-  const ticks = getTicks(FORMAT_MAP[axis], min, max, ticksNumber);
+function Axis({ axis, max, min, ticksNumber, timezone }: AxisProps) {
+  const ticks = getTicks(FORMAT_MAP[axis], min, max, ticksNumber, timezone);
 
   return (
     <div
