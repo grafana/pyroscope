@@ -25,4 +25,3 @@ OpenTelemetry::SDK.configure do |c|
     OpenTelemetry::Exporter::Jaeger::CollectorExporter.new(endpoint: jaeger_endpoint))
   c.use_all()
 end
-

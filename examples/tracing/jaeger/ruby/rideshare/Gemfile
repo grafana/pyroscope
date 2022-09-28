@@ -34,4 +34,4 @@ gem 'opentelemetry-sdk', "~> 1.2.0"
 gem 'opentelemetry-exporter-otlp', "~> 0.24.0"
 gem 'opentelemetry-exporter-jaeger', '~> 0.22.0'
 
-# gem 'opentelemetry-instrumentation-rails' # it's top span is "http get" which is not super usefull for demo
+gem 'opentelemetry-instrumentation-rails' # it's top span is "http get" which is not super usefull for demo
