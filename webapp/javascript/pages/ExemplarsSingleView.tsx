@@ -108,7 +108,7 @@ function ExemplarsSingleView() {
             heatmap={exemplarsSingleView.heatmap}
             onSelection={handleHeatmapSelection}
             timezone={offset === 0 ? 'utc' : 'browser'}
-            sampleRate={exemplarsSingleView.profile.metadata.sampleRate}
+            sampleRate={exemplarsSingleView.profile?.metadata.sampleRate || 100}
           />
         ) : (
           <NoData />
