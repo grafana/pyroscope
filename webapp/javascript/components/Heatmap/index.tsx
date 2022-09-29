@@ -11,11 +11,7 @@ import {
   useHeatmapSelection,
 } from './useHeatmapSelection.hook';
 import HeatmapTooltip from './HeatmapTooltip';
-import {
-  SELECTED_AREA_BACKGROUND,
-  HEATMAP_HEIGHT,
-  HEATMAP_COLORS,
-} from './constants';
+import { HEATMAP_HEIGHT, HEATMAP_COLORS } from './constants';
 import { getTicks } from './utils';
 
 // eslint-disable-next-line css-modules/no-unused-class
@@ -220,20 +216,35 @@ function ResizedSelectedArea({
   const left = Math.abs((originalLeftOffset * w) / (end.x - start.x || 1));
 
   return (
-    <div
-      ref={resizedSelectedAreaRef}
-      data-testid="selection-resizable-canvas"
-      onClick={handleClick}
-      className={styles.selectedAreaBlock}
-      id="selectionArea"
-      style={{
-        width: w,
-        height: h,
-        top,
-        left,
-        backgroundColor: SELECTED_AREA_BACKGROUND.toString(),
-      }}
-    />
+    <>
+      {h ? (
+        <div
+          style={{
+            position: 'absolute',
+            width: w,
+            height: h,
+            top,
+            left,
+            border: `1px solid ${Color.rgb(255, 149, 5).toString()}`,
+          }}
+        />
+      ) : null}
+      <div
+        ref={resizedSelectedAreaRef}
+        data-testid="selection-resizable-canvas"
+        onClick={handleClick}
+        className={styles.selectedAreaBlock}
+        id="selectionArea"
+        style={{
+          width: w,
+          height: h,
+          top,
+          left,
+          mixBlendMode: 'overlay',
+          backgroundColor: Color.rgb(255, 149, 5).toString(),
+        }}
+      />
+    </>
   );
 }
 
