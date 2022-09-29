@@ -1,11 +1,11 @@
-# fire
+# <p align="center">Fire</p>
 
-<p style="text-align: center;">Grafana Fire is an open source software project for aggregating continuous profiling data. Continuous profiling is
+<p align="center">Grafana Fire is an open source software project for aggregating continuous profiling data. Continuous profiling is
 observability signal allowing you to understand your workload's resources (CPU, memory, etc...) usage down to the line number.</p>
 
 Grafana Fire fully integrated with Grafana allowing you to **correlate** with other observability signals.
 
-![Alt Text](grafana-profiles.gif)
+![Grafana Explore](grafana-profiles.gif)
 
 [Try the profiling experience in play.grafana.com]()
 
@@ -29,6 +29,37 @@ Some core features of Grafana Fire includes:
   to isolate data and queries from independent teams or business units, making it
   possible for these groups to share the same cluster.
 
-# Deploying Grafana Fire
+## Deploying Grafana Fire
 
 For information about how to deploy Grafana Fire, refer to [Deploy Grafana Fire](https://grafana.com/docs/fire/latest/operators-guide/deploying-grafana-fire/).
+
+## Getting started
+
+If you’re new to Grafana Mimir, read the [Getting started guide](https://grafana.com/docs/mimir/latest/operators-guide/getting-started/).
+
+Before deploying Grafana Mimir in a production environment, read:
+
+1. [An overview of Grafana Mimir’s architecture](https://grafana.com/docs/mimir/latest/operators-guide/architecture/)
+1. [Configure Grafana Mimir](https://grafana.com/docs/mimir/latest/operators-guide/configuring/)
+1. [Run Grafana Mimir in production](https://grafana.com/docs/mimir/latest/operators-guide/running-production-environment/)
+
+## Documentation
+
+Refer to the following links to access Grafana Mimir documentation:
+
+- [Latest release](https://grafana.com/docs/mimir/latest/)
+- [Upcoming release](https://grafana.com/docs/mimir/next/), at the tip of the main branch
+
+## Contributing
+
+To contribute to Grafana Mimir, refer to [Contributing to Grafana Mimir](https://github.com/grafana/mimir/tree/main/docs/internal/contributing).
+
+## Join the Grafana Mimir discussion
+
+If you have any questions or feedback regarding Grafana Mimir, join the [Grafana Mimir Discussion](https://github.com/grafana/mimir/discussions). Alternatively, consider joining the monthly [Grafana Mimir Community Call](https://docs.google.com/document/d/1E4jJcGicvLTyMEY6cUFFZUg_I8ytrBuW8r5yt1LyMv4).
+
+Your feedback is always welcome, and you can also share it via the [`#mimir` Slack channel](https://slack.grafana.com/).
+
+## License
+
+Grafana Mimir is distributed under [AGPL-3.0-only](LICENSE).
