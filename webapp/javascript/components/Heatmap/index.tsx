@@ -10,11 +10,7 @@ import {
   useHeatmapSelection,
 } from './useHeatmapSelection.hook';
 import HeatmapTooltip from './HeatmapTooltip';
-import {
-  SELECTED_AREA_BACKGROUND,
-  HEATMAP_HEIGHT,
-  HEATMAP_COLORS,
-} from './constants';
+import { HEATMAP_HEIGHT, HEATMAP_COLORS } from './constants';
 import { getTicks } from './utils';
 
 // eslint-disable-next-line css-modules/no-unused-class
