@@ -156,7 +156,7 @@ func (b *BlockQuerier) BlockMetas(ctx context.Context) (metas []*block.Meta, _ e
 	return metas[0 : pos+1], nil
 }
 
-// Sync gradually scans the available blcoks. If there are any changes to the
+// Sync gradually scans the available blocks. If there are any changes to the
 // last run it will Open/Close new/no longer existing ones.
 func (b *BlockQuerier) Sync(ctx context.Context) error {
 	observedMetas, err := b.BlockMetas(ctx)
