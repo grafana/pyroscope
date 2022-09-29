@@ -47,12 +47,6 @@ Flushing is the operation run by ingesters to offload time series from memory an
 
 Gossip is a protocol by which components coordinate without the need for a centralized [key-value store]({{< relref "#key-value-store" >}}).
 
-## HA tracker
-
-The HA tracker is a feature of the Grafana Fire distributor.
-It deduplicates time series received from two or more Prometheus servers that are configured to scrape the same targets.
-To configure HA tracking, refer to [Configuring high-availability deduplication]({{< relref "configure/configuring-high-availability-deduplication.md" >}}).
-
 ## Hash ring
 
 The hash ring is a distributed data structure used by Grafana Fire for sharding, replication, and service discovery.

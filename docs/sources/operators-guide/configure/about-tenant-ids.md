@@ -4,7 +4,7 @@ aliases:
 description: Learn about tenant ID restrictions.
 menuTitle: About tenant IDs
 title: About Grafana Fire tenant IDs
-weight: 10
+weight: 40
 ---
 
 # About Grafana Fire tenant IDs

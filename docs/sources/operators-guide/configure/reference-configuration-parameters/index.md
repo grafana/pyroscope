@@ -4,7 +4,7 @@ aliases:
 description: Describes parameters used to configure Grafana Fire.
 menuTitle: Configuration parameters
 title: Grafana Fire configuration parameters
-weight: 130
+weight: 70
 ---
 
 # Grafana Fire configuration parameters

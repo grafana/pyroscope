@@ -1,4 +1,6 @@
-# <p align="center">Fire</p>
+# <p align="center">Grafana Fire</p>
+
+[//TODO]: <> (Add logo once read)
 
 <p align="center">Grafana Fire is an open source software project for aggregating continuous profiling data. Continuous profiling is
 observability signal allowing you to understand your workload's resources (CPU, memory, etc...) usage down to the line number.</p>
@@ -9,7 +11,7 @@ Grafana Fire fully integrated with Grafana allowing you to **correlate** with ot
 
 [Try the profiling experience in play.grafana.com]()
 
-[//]: <> (link to live demo/play.grafana.com.)
+[//TODO]: <> (link to live demo/play.grafana.com.)
 
 Some core features of Grafana Fire includes:
 
@@ -41,7 +43,7 @@ Before deploying Grafana Fire in a production environment, read:
 
 1. [An overview of Grafana Fire’s architecture](https://grafana.com/docs/fire/latest/operators-guide/architecture/)
 1. [Configure Grafana Fire](https://grafana.com/docs/fire/latest/operators-guide/configuring/)
-1. [Run Grafana Fire in production](https://grafana.com/docs/fire/latest/operators-guide/running-production-environment/)
+1. [Deploy in Kubernetes](https://grafana.com/docs/fire/latest/operators-guide/deploy-kubernetes/)
 
 ## Documentation
 
@@ -56,7 +58,7 @@ To contribute to Grafana Fire, refer to [Contributing to Grafana Fire](https://g
 
 ## Join the Grafana Fire discussion
 
-If you have any questions or feedback regarding Grafana Fire, join the [Grafana Fire Discussion](https://github.com/grafana/fire/discussions). Alternatively, consider joining the monthly [Grafana Fire Community Call](https://docs.google.com/document/d/1E4jJcGicvLTyMEY6cUFFZUg_I8ytrBuW8r5yt1LyMv4).
+If you have any questions or feedback regarding Grafana Fire, join the [Grafana Fire Discussion](https://github.com/grafana/fire/discussions). Alternatively, consider joining the monthly [Grafana Fire Community Call](TODO-doc-link).
 
 Your feedback is always welcome, and you can also share it via the [`#fire` Slack channel](https://slack.grafana.com/).
 

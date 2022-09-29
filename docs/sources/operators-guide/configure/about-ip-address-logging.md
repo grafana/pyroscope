@@ -4,7 +4,7 @@ aliases:
 description: Troubleshoot errors by logging IP addresses of reverse proxies.
 menuTitle: About IP address logging of a reverse proxy
 title: About Grafana Fire IP address logging of a reverse proxy
-weight: 30
+weight: 60
 ---
 
 # About Grafana Fire IP address logging of a reverse proxy
