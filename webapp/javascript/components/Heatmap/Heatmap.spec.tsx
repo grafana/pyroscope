@@ -17,9 +17,9 @@ const renderHeatmap = () => {
   render(
     <Heatmap
       sampleRate={100}
-      timezone="utc"
       heatmap={heatmapMockData}
       onSelection={() => ({})}
+      timezone="utc"
     />
   );
 };

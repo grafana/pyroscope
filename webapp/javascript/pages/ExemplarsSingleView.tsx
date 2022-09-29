@@ -9,6 +9,7 @@ import {
   fetchSelectionProfile,
 } from '@webapp/redux/reducers/tracing';
 import Box from '@webapp/ui/Box';
+import NoData from '@webapp/ui/NoData';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
@@ -23,6 +24,7 @@ import styles from './ExemplarsSingleView.module.scss';
 function ExemplarsSingleView() {
   const { colorMode } = useColorMode();
   const { offset } = useTimeZone();
+
   const { query } = useAppSelector(selectQueries);
   const { exemplarsSingleView } = useAppSelector((state) => state.tracing);
   const { from, until } = useAppSelector((state) => state.continuous);
@@ -68,7 +70,7 @@ function ExemplarsSingleView() {
     switch (exemplarsSingleView.type) {
       case 'loaded':
       case 'reloading': {
-        return (
+        return exemplarsSingleView.profile ? (
           <FlamegraphRenderer
             showCredit={false}
             profile={exemplarsSingleView.profile}
@@ -84,7 +86,7 @@ function ExemplarsSingleView() {
               />
             }
           />
-        );
+        ) : null;
       }
 
       default: {
@@ -101,13 +103,15 @@ function ExemplarsSingleView() {
     switch (exemplarsSingleView.type) {
       case 'loaded':
       case 'reloading': {
-        return (
+        return exemplarsSingleView.heatmap !== null ? (
           <Heatmap
             heatmap={exemplarsSingleView.heatmap}
             onSelection={handleHeatmapSelection}
             timezone={offset === 0 ? 'utc' : 'browser'}
             sampleRate={exemplarsSingleView.profile.metadata.sampleRate}
           />
+        ) : (
+          <NoData />
         );
       }
 
@@ -130,7 +134,7 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
-        <Box>{flamegraphRenderer}</Box>
+        {exemplarsSingleView.heatmap ? <Box>{flamegraphRenderer}</Box> : null}
       </div>
     </div>
   );

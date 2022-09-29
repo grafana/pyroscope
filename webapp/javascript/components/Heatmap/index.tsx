@@ -165,8 +165,10 @@ export function Heatmap({
         min={heatmap.startTime}
         max={heatmap.endTime}
         ticksCount={7}
+        timezone={timezone}
       />
       <div className={styles.legend} data-testid="color-scale">
+        <span className={styles.units}>Count</span>
         {HEATMAP_COLORS.map((color, index) => (
           <div key={color.toString()} className={styles.colorLabelContainer}>
             {index % 3 === 0 && (
@@ -263,15 +265,22 @@ function Axis({ axis, max, min, ticksCount, timezone, sampleRate }: AxisProps) {
       {yAxisformatter ? (
         <div className={styles.axisUnits}>{yAxisformatter.suffix}s</div>
       ) : null}
-      {ticks.map((tick) => (
-        <div
-          role="textbox"
-          className={cl(styles.tick, styles[`${axis}Tick`])}
-          key={tick}
-        >
-          {tick}
-        </div>
-      ))}
+      <div className={styles.tickValues}>
+        {ticks.map((tick) => (
+          <div
+            role="textbox"
+            className={cl(styles.tickValue, styles[`${axis}TickValue`])}
+            key={tick}
+          >
+            <span>{tick}</span>
+          </div>
+        ))}
+      </div>
+      <div className={styles.ticksContainer}>
+        {ticks.map((tick) => (
+          <div className={styles.tick} key={tick} />
+        ))}
+      </div>
     </div>
   );
 }
