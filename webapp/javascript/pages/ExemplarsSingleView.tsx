@@ -67,7 +67,7 @@ function ExemplarsSingleView() {
     switch (exemplarsSingleView.type) {
       case 'loaded':
       case 'reloading': {
-        return (
+        return exemplarsSingleView.profile ? (
           <FlamegraphRenderer
             showCredit={false}
             profile={exemplarsSingleView.profile}
@@ -83,7 +83,7 @@ function ExemplarsSingleView() {
               />
             }
           />
-        );
+        ) : null;
       }
 
       default: {
