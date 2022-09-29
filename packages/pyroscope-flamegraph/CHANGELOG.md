@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.22.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.21.5...@pyroscope/flamegraph@0.22.0) (2022-09-29)
+
+
+### Features
+
+* Heatmap should show error message if no data is returned ([#1565](https://github.com/pyroscope-io/pyroscope/issues/1565)) ([fe32a07](https://github.com/pyroscope-io/pyroscope/commit/fe32a07e6e1bf05b11a6634f6eea0b44bf8b0536))
+
+
+
+
+
 ## [0.21.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.21.4...@pyroscope/flamegraph@0.21.5) (2022-09-26)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

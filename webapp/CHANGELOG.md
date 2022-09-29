@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.46.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.45.0...@pyroscope/webapp@1.46.0) (2022-09-29)
+
+
+### Features
+
+* add "Count" title above heatmap scale ([#1571](https://github.com/pyroscope-io/pyroscope/issues/1571)) ([910c496](https://github.com/pyroscope-io/pyroscope/commit/910c496a88c81d03efdc91548c4365dcff3a670a))
+* Heatmap should show error message if no data is returned ([#1565](https://github.com/pyroscope-io/pyroscope/issues/1565)) ([fe32a07](https://github.com/pyroscope-io/pyroscope/commit/fe32a07e6e1bf05b11a6634f6eea0b44bf8b0536))
+
+
+
+
+
 # [1.45.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.44.0...@pyroscope/webapp@1.45.0) (2022-09-29)
 
 
