@@ -4,7 +4,7 @@ aliases:
 description: This section provides links to Grafana Fire configuration topics.
 keywords:
   - Fire configuration
-menuTitle: Configuration
+menuTitle: Configure the server
 title: Configure Grafana Fire
 weight: 30
 ---

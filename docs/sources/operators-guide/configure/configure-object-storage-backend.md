@@ -2,8 +2,10 @@
 title: "Configure Grafana Fire object storage backend"
 menuTitle: "Configure object storage"
 description: "Learn how to configure Grafana Fire to use different object storage backend implementations."
-weight: 65
+weight: 30
 ---
+
+[//TODO]: <> (Adapt me for thanos style object store config)
 
 # Configure Grafana Fire object storage backend
 

@@ -22,7 +22,7 @@ define docs_docker_run
 	@echo "http://$(DOCS_BASE_URL)/docs/$(DOCS_PROJECT)/$(DOCS_VERSION)/"
 	@echo ""
 	@if [[ -z $${NON_INTERACTIVE} ]]; then \
-		read -p "Press a key to continue"; \
+		read -n 1 -t 1 -r -p "Press a key to continue" || true ; \
 	fi
 	@docker run --name $(DOCS_DOCKER_CONTAINER) $(DOCS_DOCKER_RUN_FLAGS) /bin/bash -c "exec $(1)"
 endef

@@ -4,7 +4,7 @@ aliases:
 description: Learn how to configure Grafana Fire to send traces to Jaeger.
 menuTitle: Configuring tracing
 title: Configuring Grafana Fire tracing
-weight: 100
+weight: 80
 ---
 
 # Configuring Grafana Fire tracing
