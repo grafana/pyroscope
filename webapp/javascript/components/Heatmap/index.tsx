@@ -203,18 +203,20 @@ function ResizedSelectedArea({
   const h = Math.abs(end.y - start.y);
   const left = Math.abs((originalLeftOffset * w) / (end.x - start.x || 1));
 
-  return h ? (
+  return (
     <>
-      <div
-        style={{
-          position: 'absolute',
-          width: w,
-          height: h,
-          top,
-          left,
-          border: `1px solid ${Color.rgb(255, 149, 5).toString()}`,
-        }}
-      />
+      {h ? (
+        <div
+          style={{
+            position: 'absolute',
+            width: w,
+            height: h,
+            top,
+            left,
+            border: `1px solid ${Color.rgb(255, 149, 5).toString()}`,
+          }}
+        />
+      ) : null}
       <div
         ref={resizedSelectedAreaRef}
         data-testid="selection-resizable-canvas"
@@ -231,7 +233,7 @@ function ResizedSelectedArea({
         }}
       />
     </>
-  ) : null;
+  );
 }
 
 interface AxisProps {
