@@ -1,14 +1,14 @@
 ---
 aliases:
-  - ../../visualizing-metrics/dashboards/slow-queries/
-  - /docs/mimir/latest/operators-guide/monitoring-grafana-mimir/dashboards/slow-queries/
+  - ../../visualizing-profiles/dashboards/slow-queries/
+  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/dashboards/slow-queries/
 description: Review a description of the Slow queries dashboard.
 menuTitle: Slow queries
-title: Grafana Mimir Slow queries dashboard
+title: Grafana Fire Slow queries dashboard
 weight: 150
 ---
 
-# Grafana Mimir Slow queries dashboard
+# Grafana Fire Slow queries dashboard
 
 The Slow queries dashboard shows details about the slowest queries for a given time range and enables you to filter results by a specific tenant.
 

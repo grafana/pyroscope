@@ -1,11 +1,11 @@
 ---
-title: "Grafana Mimir listblocks"
+title: "Grafana Fire listblocks"
 menuTitle: "Listblocks"
 description: "Listblocks show the block details of a tenant."
 weight: 10
 ---
 
-# Grafana Mimir listblocks
+# Grafana Fire listblocks
 
 The listblocks tool lists blocks and show the block details of a tenant.
 Listblocks requires at least configuration to access the bucket and tenant.

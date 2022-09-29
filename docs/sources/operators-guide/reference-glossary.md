@@ -1,17 +1,17 @@
 ---
-title: "Reference: Grafana Mimir glossary"
+title: "Reference: Grafana Fire glossary"
 menuTitle: "Reference: Glossary"
-description: "Grafana Mimir glossary terms."
+description: "Grafana Fire glossary terms."
 weight: 130
 ---
 
-# Reference: Grafana Mimir glossary
+# Reference: Grafana Fire glossary
 
 ## Blocks storage
 
-Blocks storage is the Mimir storage engine based on the Prometheus TSDB.
-Grafana Mimir stores blocks in object stores such as AWS S3, Google Cloud Storage (GCS), Azure blob storage, or OpenStack Object Storage (Swift).
-For a complete list of supported backends, refer to [About the architecture]({{< relref "architecture/about-grafana-mimir-architecture/index.md" >}})
+Blocks storage is the Fire storage engine based on the Prometheus TSDB.
+Grafana Fire stores blocks in object stores such as AWS S3, Google Cloud Storage (GCS), Azure blob storage, or OpenStack Object Storage (Swift).
+For a complete list of supported backends, refer to [About the architecture]({{< relref "architecture/about-grafana-fire-architecture/index.md" >}})
 
 ## Chunk
 
@@ -26,7 +26,7 @@ Typically, series become idle when a monitored target process or node gets termi
 
 ## Component
 
-Grafana Mimir comprises several components.
+Grafana Fire comprises several components.
 Each component provides a specific function to the system.
 For component specific documentation, refer to one of the following topics:
 
@@ -49,20 +49,20 @@ Gossip is a protocol by which components coordinate without the need for a centr
 
 ## HA tracker
 
-The HA tracker is a feature of the Grafana Mimir distributor.
+The HA tracker is a feature of the Grafana Fire distributor.
 It deduplicates time series received from two or more Prometheus servers that are configured to scrape the same targets.
 To configure HA tracking, refer to [Configuring high-availability deduplication]({{< relref "configure/configuring-high-availability-deduplication.md" >}}).
 
 ## Hash ring
 
-The hash ring is a distributed data structure used by Grafana Mimir for sharding, replication, and service discovery.
+The hash ring is a distributed data structure used by Grafana Fire for sharding, replication, and service discovery.
 Components use a [key-value store]({{< relref "#key-value-store" >}}) or [gossip]({{< relref "#gossip" >}}) to share the hash ring data structure.
 For more information, refer to the [Hash ring]({{< relref "architecture/hash-ring/index.md" >}}).
 
 ## Key-value store
 
 A key-value store is a database that associates keys with values.
-To understand how Grafana Mimir uses key-value stores, refer to [Key-value store]({{< relref "architecture/key-value-store.md" >}}).
+To understand how Grafana Fire uses key-value stores, refer to [Key-value store]({{< relref "architecture/key-value-store.md" >}}).
 
 ## Memberlist
 
@@ -106,9 +106,9 @@ node_cpu_seconds_total{instance="10.0.0.2",mode="user"}
 
 ## Tenant
 
-A tenant is the owner of a set of series written to and queried from Grafana Mimir.
-Grafana Mimir isolates series and alerts belonging to different tenants.
-To understand how Grafana Mimir authenticates tenants, refer to [Authentication and authorization]({{< relref "secure/authentication-and-authorization.md" >}}).
+A tenant is the owner of a set of series written to and queried from Grafana Fire.
+Grafana Fire isolates series and alerts belonging to different tenants.
+To understand how Grafana Fire authenticates tenants, refer to [Authentication and authorization]({{< relref "secure/authentication-and-authorization.md" >}}).
 
 ## Time series
 
@@ -121,4 +121,4 @@ Refer to [Tenant]({{< relref "#tenant" >}}).
 ## Write-ahead log (WAL)
 
 The write-ahead Log (WAL) is an append only log stored on disk by ingesters to recover their in-memory state after the process gets restarted.
-For more information, refer to [The write path]({{< relref "architecture/about-grafana-mimir-architecture/index.md#the-write-path" >}}).
+For more information, refer to [The write path]({{< relref "architecture/about-grafana-fire-architecture/index.md#the-write-path" >}}).

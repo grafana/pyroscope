@@ -1,11 +1,11 @@
 ---
-title: "Grafana Mimir query-frontend"
+title: "Grafana Fire query-frontend"
 menuTitle: "Query-frontend"
 description: "The query-frontend accelerates queries."
 weight: 60
 ---
 
-# Grafana Mimir query-frontend
+# Grafana Fire query-frontend
 
 The query-frontend is a stateless component that provides the same API as the [querier]({{< relref "../querier.md" >}}) and can be used to accelerate the read path.
 Although the query-frontend is not required, we recommend that you deploy it.
@@ -61,7 +61,7 @@ If the cached results are incomplete, the query-frontend calculates the required
 The query-frontend can optionally align queries with their step parameter to improve the cacheability of the query results.
 The result cache is backed by Memcached.
 
-Although aligning the step parameter to the query time range increases the performance of Grafana Mimir, it violates the [PromQL conformance](https://prometheus.io/blog/2021/05/03/introducing-prometheus-conformance-program/) of Grafana Mimir. If PromQL conformance is not a priority to you, you can enable step alignment by setting `-query-frontend.align-queries-with-step=true`.
+Although aligning the step parameter to the query time range increases the performance of Grafana Fire, it violates the [PromQL conformance](https://prometheus.io/blog/2021/05/03/introducing-prometheus-conformance-program/) of Grafana Fire. If PromQL conformance is not a priority to you, you can enable step alignment by setting `-query-frontend.align-queries-with-step=true`.
 
 ### About query sharding
 

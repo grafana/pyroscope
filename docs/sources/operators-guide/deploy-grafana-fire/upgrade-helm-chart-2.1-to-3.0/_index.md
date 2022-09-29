@@ -1,38 +1,38 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/deploying-grafana-mimir/upgrade-helm-chart-2.1-to-3.0/
-description: "Upgrade the Grafana Mimir Helm chart from version 2.1 to 3.0"
-title: "Upgrade the Grafana Mimir Helm chart from version 2.1 to 3.0"
+  - /docs/fire/latest/operators-guide/deploying-grafana-fire/upgrade-helm-chart-2.1-to-3.0/
+description: "Upgrade the Grafana Fire Helm chart from version 2.1 to 3.0"
+title: "Upgrade the Grafana Fire Helm chart from version 2.1 to 3.0"
 menuTitle: "Upgrade Helm chart 2.1 to 3.0"
 weight: 100
 ---
 
-# Upgrade the Grafana Mimir Helm chart from version 2.1 to 3.0
+# Upgrade the Grafana Fire Helm chart from version 2.1 to 3.0
 
-There are breaking changes between the Grafana Mimir Helm chart versions 2.1 and 3.0.
-Several parameters that were available in version 2.1 of the mimir-distributed Helm chart have changed.
+There are breaking changes between the Grafana Fire Helm chart versions 2.1 and 3.0.
+Several parameters that were available in version 2.1 of the fire-distributed Helm chart have changed.
 
 **To upgrade from Helm chart 2.1 to 3.0:**
 
-1. Understand the improvements that we made to the Mimir configuration in the Helm chart:
+1. Understand the improvements that we made to the Fire configuration in the Helm chart:
 
-   - The Mimir configuration is now stored in a Kubernetes ConfigMap by default, instead of a Kubernetes Secret.
-   - You can override individual properties without copying the entire `mimir.config` block. Specify properties you want to override under the `mimir.structuredConfig`.
-   - You can move secrets outside the Mimir configuration via external secrets and environment variables. Environment variables can be used to externalize secrets from the configuration file.
+   - The Fire configuration is now stored in a Kubernetes ConfigMap by default, instead of a Kubernetes Secret.
+   - You can override individual properties without copying the entire `fire.config` block. Specify properties you want to override under the `fire.structuredConfig`.
+   - You can move secrets outside the Fire configuration via external secrets and environment variables. Environment variables can be used to externalize secrets from the configuration file.
 
-1. Decide whether or not you need to update the Mimir configuration:
+1. Decide whether or not you need to update the Fire configuration:
 
    - If you are using external configuration (`useExternalConfig: true`), then you must set `configStorageType: Secret`.
 
      > **Note:** It is now possible to use a ConfigMap to manage your external configuration instead.
      > If your external configuration contains secrets, then you can externalize them and use a ConfigMap. See _Externalize secrets_.
 
-   - If you are not using external configuration (`useExternalConfig: false`), and your Mimir configuration contains secrets, chose one of two options:
+   - If you are not using external configuration (`useExternalConfig: false`), and your Fire configuration contains secrets, chose one of two options:
 
      - Keep the previous location as-is by setting `configStorageType: Secret`.
      - Externalize secrets:
 
-       1. Move secrets from the Mimir configuration to a [Kubernetes Secret](https://kubernetes.io/docs/concepts/configuration/secret/#working-with-secrets).
+       1. Move secrets from the Fire configuration to a [Kubernetes Secret](https://kubernetes.io/docs/concepts/configuration/secret/#working-with-secrets).
        2. Mount the Kubernetes Secret via `global.extraEnvFrom`:
 
           ```yaml
@@ -44,25 +44,25 @@ Several parameters that were available in version 2.1 of the mimir-distributed H
 
           For more information, see [Secrets - Use case: As container environment variables](https://kubernetes.io/docs/concepts/configuration/secret/#use-case-as-container-environment-variables).
 
-       3. Replace the values in the Mimir configuration with environment variables.
+       3. Replace the values in the Fire configuration with environment variables.
 
           For example:
 
           ```yaml
-          mimir:
+          fire:
             structuredConfig:
               blocks_storage:
                 s3:
                   secret_access_key: ${AWS_SECRET_ACCESS_KEY}
           ```
 
-   - If you are not using an external configuration (`useExternalConfig: false`), and your Mimir configuration does not contain secrets, then the storage location is automatically changed by Helm and you do not need to do anything.
+   - If you are not using an external configuration (`useExternalConfig: false`), and your Fire configuration does not contain secrets, then the storage location is automatically changed by Helm and you do not need to do anything.
 
    See [Example migrated values file](#example-of-migrated-values).
 
 1. Update your memcached configuration via your customized Helm chart values, if needed:
 
-   The mimir-distributed Helm chart supports multiple cache types.
+   The fire-distributed Helm chart supports multiple cache types.
    If you have not enabled any memcached caches,
    and you are not overriding the values of `memcached`,
    `memcached-queries`,
@@ -86,15 +86,15 @@ Several parameters that were available in version 2.1 of the mimir-distributed H
    - The `memcached*.architecture` values were removed.
    - The `memcached*.arguments` values were removed.
    - The default arguments are now encoded in the Helm chart templates; the values `*-cache.allocatedMemory`, `*-cache.maxItemMemory` and `*-cache.port` control the arguments `-m`, `-I` and `-u`. To provide additional arguments, use `*-cache.extraArgs`.
-   - The `memcached*.metrics` values were consolidated under `memcachedExporter`.
+   - The `memcached*.profiles` values were consolidated under `memcachedExporter`.
 
    See also an [example of migration of customized memcached values between versions 2.1 and 3.0](#example-of-migration-of-customized-memcached-values-between-versions-21-and-30).
 
-1. Update your memcached-related Mimir configuration
-   via your customized Helm chart value that is named `mimir.config`, if needed:
+1. Update your memcached-related Fire configuration
+   via your customized Helm chart value that is named `fire.config`, if needed:
 
-   The configuration parameters for memcached `addresses` and `max_item_size` have changed in the default `mimir.config` value.
-   If you previously copied the value of `mimir.config` into your values file, then take the latest version of the `memcached` configuration in the `mimir.config` from the `values.yaml` file in the Helm chart.
+   The configuration parameters for memcached `addresses` and `max_item_size` have changed in the default `fire.config` value.
+   If you previously copied the value of `fire.config` into your values file, then take the latest version of the `memcached` configuration in the `fire.config` from the `values.yaml` file in the Helm chart.
 
 1. (Conditional) If you have enabled `serviceMonitor`, or you are overriding the value of anything under the `serviceMonitor` section, or both, then move the `serviceMonitor` section under `metaMonitoring`.
 
@@ -105,14 +105,14 @@ Several parameters that were available in version 2.1 of the mimir-distributed H
    - To continue using Pod Security Policy (PSP), set `rbac.create` to `true` and `rbac.type` to `psp`.
    - To start using Security Context Constraints (SCC) instead of PSP, set `rbac.create` to `true` and `rbac.type` to `scc`.
 
-1. Update the `mimir.config` value, based on the following information:
+1. Update the `fire.config` value, based on the following information:
 
-   - Compare your overridden value of `mimir.config` with the one in the `values.yaml` file in the chart. If you are not overriding the value of `mimir.config`, then skip this step.
+   - Compare your overridden value of `fire.config` with the one in the `values.yaml` file in the chart. If you are not overriding the value of `fire.config`, then skip this step.
 
 1. Decide whether or not to update the `nginx` configuration:
 
    - Unless you have overridden the value of `nginx.nginxConfig.file`,
-     and you are using the default `mimir.config`, then skip this step.
+     and you are using the default `fire.config`, then skip this step.
    - Otherwise, compare the overridden `nginx.nginxConfig.file` value
      to the one in the `values.yaml` file in the Helm chart,
      and incorporate the differences.
@@ -120,17 +120,17 @@ Several parameters that were available in version 2.1 of the mimir-distributed H
      The value in the `values.yaml` file contains Nginx configuration
      that adds the `X-Scope-OrgId` header to incoming requests that do not already set it.
 
-     > **Note:** This change allows Mimir clients to keep sending requests without needing to specify a tenant ID, even though multi-tenancy is now enabled by default.
+     > **Note:** This change allows Fire clients to keep sending requests without needing to specify a tenant ID, even though multi-tenancy is now enabled by default.
 
 ## Example of migrated values
 
-The example values file is compatible with version 2.1 of the mimir-distributed Helm chart, and demonstrates a few things:
+The example values file is compatible with version 2.1 of the fire-distributed Helm chart, and demonstrates a few things:
 
 - All memcached caches are enabled.
 - The default pod security policy is disabled.
 - ServiceMonitors are enabled.
-- Object storage credentials for block storage are specified directly in the `mimir.config` value.
-  > **Note:** The unmodified parts of the default `mimir.config` are omitted for brevity, even though in a valid 2.1 values file they need to be included.
+- Object storage credentials for block storage are specified directly in the `fire.config` value.
+  > **Note:** The unmodified parts of the default `fire.config` are omitted for brevity, even though in a valid 2.1 values file they need to be included.
 
 ```yaml
 rbac:
@@ -155,7 +155,7 @@ memcached-results:
 serviceMonitor:
   enabled: true
 
-mimir:
+fire:
   config: |-
     #######
     # default contents omitted for brevity
@@ -186,7 +186,7 @@ Kubernetes Secret:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: mimir-bucket-secret
+  name: fire-bucket-secret
 data:
   AWS_ACCESS_KEY_ID: FAKEACCESSKEY
   AWS_SECRET_ACCESS_KEY: FAKESECRETKEY
@@ -218,7 +218,7 @@ metaMonitoring:
   serviceMonitor:
     enabled: true
 
-mimir:
+fire:
   structuredConfig:
     blocks_storage:
       backend: s3
@@ -231,7 +231,7 @@ mimir:
 global:
   extraEnvFrom:
     - secretRef:
-        name: mimir-bucket-secret
+        name: fire-bucket-secret
 ```
 
 ## Example of migration of customized memcached values between versions 2.1 and 3.0

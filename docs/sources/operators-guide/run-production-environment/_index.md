@@ -1,14 +1,14 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/running-production-environment/
-description: Learn how to run Grafana Mimir in production.
+  - /docs/fire/latest/operators-guide/running-production-environment/
+description: Learn how to run Grafana Fire in production.
 menuTitle: Run in production
-title: Run Grafana Mimir in production
+title: Run Grafana Fire in production
 weight: 80
 ---
 
-# Run Grafana Mimir in production
+# Run Grafana Fire in production
 
-The following topics provide guidance for you to consider when you run Grafana Mimir in a production environment.
+The following topics provide guidance for you to consider when you run Grafana Fire in a production environment.
 
 {{< section menuTitle="true" >}}

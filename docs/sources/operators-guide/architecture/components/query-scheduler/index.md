@@ -1,11 +1,11 @@
 ---
-title: "(Optional) Grafana Mimir query-scheduler"
+title: "(Optional) Grafana Fire query-scheduler"
 menuTitle: "(Optional) Query-scheduler"
 description: "The query-scheduler distributes work to queriers."
 weight: 120
 ---
 
-# (Optional) Grafana Mimir query-scheduler
+# (Optional) Grafana Fire query-scheduler
 
 The query-scheduler is an optional, stateless component that retains a queue of queries to execute, and distributes the workload to available [queriers]({{< relref "../querier.md" >}}).
 
@@ -13,7 +13,7 @@ The query-scheduler is an optional, stateless component that retains a queue of 
 
 [//]: # "Diagram source at https://docs.google.com/presentation/d/1bHp8_zcoWCYoNU2AhO2lSagQyuIrghkCncViSqn14cU/edit"
 
-The following flow describes how a queries moves through a Grafana Mimir cluster:
+The following flow describes how a queries moves through a Grafana Fire cluster:
 
 1. The [query-frontend]({{< relref "../query-frontend/index.md" >}}) receives queries, and then either splits and shards them, or serves them from the cache.
 1. The query-frontend enqueues the queries into a query-scheduler.
@@ -29,7 +29,7 @@ Query-scheduler enables the scaling of query-frontends. You might experience cha
 
 When you use the query-scheduler, the queue is moved from the query-frontend to the query-scheduler, and the query-frontend can be scaled to any number of replicas.
 
-The query-scheduler is affected by the same scalability limits as the query-frontend, but because a query-scheduler replica can handle high amounts of query throughput, scaling the query-scheduler to a number of replicas greater than `-querier.max-concurrent` is typically not required, even for very large Grafana Mimir clusters.
+The query-scheduler is affected by the same scalability limits as the query-frontend, but because a query-scheduler replica can handle high amounts of query throughput, scaling the query-scheduler to a number of replicas greater than `-querier.max-concurrent` is typically not required, even for very large Grafana Fire clusters.
 
 ## Configuration
 
@@ -62,5 +62,5 @@ To use the query-scheduler with ring-based service discovery, configure the quer
 
 For high-availability, run two query-scheduler replicas.
 
-If you're running a Grafana Mimir cluster with a very high query throughput, you can add more query-scheduler replicas.
+If you're running a Grafana Fire cluster with a very high query throughput, you can add more query-scheduler replicas.
 If you scale the query-scheduler, ensure that the number of replicas you add is less or equal than the configured `-querier.max-concurrent`.

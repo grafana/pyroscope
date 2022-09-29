@@ -1,14 +1,14 @@
 ---
 aliases:
-  - ../../visualizing-metrics/dashboards/scaling/
-  - /docs/mimir/latest/operators-guide/monitoring-grafana-mimir/dashboards/scaling/
+  - ../../visualizing-profiles/dashboards/scaling/
+  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/dashboards/scaling/
 description: View an example Scaling dashboard.
 menuTitle: Scaling
-title: Grafana Mimir scaling dashboard
+title: Grafana Fire scaling dashboard
 weight: 140
 ---
 
-# Grafana Mimir scaling dashboard
+# Grafana Fire scaling dashboard
 
 The scaling dashboard displays services that you can optionally scale up, in the event of a failure that is caused by one or more specific reasons.
 
@@ -16,4 +16,4 @@ The scaling dashboard displays services that you can optionally scale up, in the
 
 The following example shows a Scaling dashboard from a demo cluster.
 
-![Grafana Mimir scaling dashboard](mimir-scaling.png)
+![Grafana Fire scaling dashboard](fire-scaling.png)

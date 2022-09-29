@@ -1,15 +1,15 @@
 ---
 aliases:
-  - ../visualizing-metrics/dashboards/
-  - /docs/mimir/latest/operators-guide/monitoring-grafana-mimir/dashboards/
-description: View examples of production-ready Grafana Mimir dashboards.
+  - ../visualizing-profiles/dashboards/
+  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/dashboards/
+description: View examples of production-ready Grafana Fire dashboards.
 menuTitle: Viewing dashboards
-title: Viewing Grafana Mimir dashboards
+title: Viewing Grafana Fire dashboards
 weight: 40
 ---
 
-# Viewing Grafana Mimir dashboards
+# Viewing Grafana Fire dashboards
 
-Grafana Mimir provides the following production-ready dashboards.
+Grafana Fire provides the following production-ready dashboards.
 
 {{< section menuTitle="true" >}}

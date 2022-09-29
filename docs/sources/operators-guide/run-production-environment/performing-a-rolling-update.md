@@ -1,26 +1,26 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/running-production-environment/performing-a-rolling-update/
-description: Learn how to perform a rolling update to Grafana Mimir.
+  - /docs/fire/latest/operators-guide/running-production-environment/performing-a-rolling-update/
+description: Learn how to perform a rolling update to Grafana Fire.
 menuTitle: Performing a rolling update
-title: Performing a rolling update to Grafana Mimir
+title: Performing a rolling update to Grafana Fire
 weight: 20
 ---
 
-# Performing a rolling update to Grafana Mimir
+# Performing a rolling update to Grafana Fire
 
-You can use a rolling update strategy to apply configuration changes to Grafana Mimir and to upgrade Grafana Mimir to a newer version. A rolling update results in no downtime to Grafana Mimir.
+You can use a rolling update strategy to apply configuration changes to Grafana Fire and to upgrade Grafana Fire to a newer version. A rolling update results in no downtime to Grafana Fire.
 
 ## Monolithic mode
 
-When you run Grafana Mimir in monolithic mode, roll out changes to one instance at a time.
+When you run Grafana Fire in monolithic mode, roll out changes to one instance at a time.
 After you apply changes to an instance, and the instance restarts, its `/ready` endpoint returns HTTP status code `200`, which means that you can proceed with rolling out changes to another instance.
 
-> **Note**: When you run Grafana Mimir on Kubernetes, to roll out changes to one instance at a time, configure the `Deployment` or `StatefulSet` update strategy to `RollingUpdate` and `maxUnavailable` to `1`.
+> **Note**: When you run Grafana Fire on Kubernetes, to roll out changes to one instance at a time, configure the `Deployment` or `StatefulSet` update strategy to `RollingUpdate` and `maxUnavailable` to `1`.
 
 ## Microservices mode
 
-When you run Grafana Mimir in microservices mode, roll out changes to multiple instances of each stateless component at the same time.
+When you run Grafana Fire in microservices mode, roll out changes to multiple instances of each stateless component at the same time.
 You can also roll out multiple stateless components in parallel.
 Stateful components have the following restrictions:
 
@@ -49,7 +49,7 @@ When an ingester restarts, the samples stored in the restarting ingester are not
 
 By default, ingesters run with a replication factor equal to `3`.
 Ingesters running with the replication factor of `3` require a quorum of two instances to successfully query any series samples.
-Because series are sharded across all ingesters, Grafana Mimir tolerates up to one unavailable ingester.
+Because series are sharded across all ingesters, Grafana Fire tolerates up to one unavailable ingester.
 
 To ensure no query fails during a rolling update, roll out changes to one ingester at a time.
 

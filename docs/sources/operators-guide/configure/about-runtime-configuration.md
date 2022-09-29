@@ -1,21 +1,21 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/about-runtime-configuration/
+  - /docs/fire/latest/operators-guide/configuring/about-runtime-configuration/
 description:
   Runtime configuration enables you to change a subset of configurations
-  without restarting Grafana Mimir.
+  without restarting Grafana Fire.
 menuTitle: About runtime configuration
-title: About Grafana Mimir runtime configuration
+title: About Grafana Fire runtime configuration
 weight: 40
 ---
 
-# About Grafana Mimir runtime configuration
+# About Grafana Fire runtime configuration
 
-A runtime configuration file is a file that contains configuration parameters, which is periodically reloaded while Mimir is running.
-It allows you to change a subset of Grafana Mimir’s configuration without having to restart the Grafana Mimir component or instance.
+A runtime configuration file is a file that contains configuration parameters, which is periodically reloaded while Fire is running.
+It allows you to change a subset of Grafana Fire’s configuration without having to restart the Grafana Fire component or instance.
 
 Runtime configuration is available for a subset of the configuration that was set at startup.
-A Grafana Mimir operator can observe the configuration and use runtime configuration to make immediate adjustments to Grafana Mimir.
+A Grafana Fire operator can observe the configuration and use runtime configuration to make immediate adjustments to Grafana Fire.
 
 Runtime configuration values take precedence over command-line options.
 
@@ -25,13 +25,13 @@ If multiple runtime configuration files are specified the runtime config files w
 
 To enable runtime configuration, specify a comma-separated list of file paths upon startup by using the `-runtime-config.file=<filepath>,<filepath>` CLI flag or from within your YAML configuration file in the `runtime_config` block.
 
-By default, Grafana Mimir reloads the contents of these files every 10 seconds and merges these files from left to right. You can configure this interval by using the `-runtime-config.reload-period=<duration>` CLI flag or by specifying the `period` value in your YAML configuration file.
+By default, Grafana Fire reloads the contents of these files every 10 seconds and merges these files from left to right. You can configure this interval by using the `-runtime-config.reload-period=<duration>` CLI flag or by specifying the `period` value in your YAML configuration file.
 
-When running Grafana Mimir on Kubernetes, store the runtime configuration files in a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mount the ConfigMaps in each container.
+When running Grafana Fire on Kubernetes, store the runtime configuration files in a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mount the ConfigMaps in each container.
 
 ## Viewing the runtime configuration
 
-Use Grafana Mimir’s `/runtime_config` endpoint to see the current value of the runtime configuration, including the overrides. To see only the non-default values of the configuration, specify the endpoint with `/runtime_config?mode=diff`.
+Use Grafana Fire’s `/runtime_config` endpoint to see the current value of the runtime configuration, including the overrides. To see only the non-default values of the configuration, specify the endpoint with `/runtime_config?mode=diff`.
 
 ## Runtime configuration of per-tenant limits
 
@@ -49,7 +49,7 @@ overrides:
     ingestion_rate: 75000
 ```
 
-As a result, Grafana Mimir allows `tenant1` to send 50,000 SPS, and `tenant2` to send 75,000 SPS, while maintaining a 25,000 SPS rate limit on all other tenants.
+As a result, Grafana Fire allows `tenant1` to send 50,000 SPS, and `tenant2` to send 75,000 SPS, while maintaining a 25,000 SPS rate limit on all other tenants.
 
 - On a per-tenant basis, you can override all of the limits listed in the [`limits`]({{< relref "reference-configuration-parameters/index.md#limits" >}}) block within the runtime configuration file.
 - For each tenant, you can override different limits.
@@ -57,7 +57,7 @@ As a result, Grafana Mimir allows `tenant1` to send 50,000 SPS, and `tenant2` to
 
 ## Ingester instance limits
 
-The runtime configuration file can be used to dynamically adjust Grafana Mimir ingester instance limits. While per-tenant limits are limits applied to each tenant, per-ingester-instance limits are limits applied to each ingester process.
+The runtime configuration file can be used to dynamically adjust Grafana Fire ingester instance limits. While per-tenant limits are limits applied to each tenant, per-ingester-instance limits are limits applied to each ingester process.
 Ingester limits ensure individual ingesters are not overwhelmed, regardless of any per-tenant limits. These limits can be set under the `ingester.instance_limits` block in the global configuration file, with CLI flags, or under the `ingester_limits` field in the runtime configuration file.
 
 The runtime configuration allows you to override initial values, which is useful for advanced operators who need to dynamically change them in response to changes in ingest or query load.
@@ -80,4 +80,4 @@ An advanced runtime configuration option controls if ingesters transfer encoded 
 The parameter `ingester_stream_chunks_when_using_blocks` might only be used in runtime configuration.
 A value of `true` transfers encoded chunks, and a value of `false` transfers decoded series.
 
-> **Note:** We strongly recommend that you use the default setting, which is `true`, except in rare cases where users observe Grafana Mimir rules evaluation slowing down.
+> **Note:** We strongly recommend that you use the default setting, which is `true`, except in rare cases where users observe Grafana Fire rules evaluation slowing down.

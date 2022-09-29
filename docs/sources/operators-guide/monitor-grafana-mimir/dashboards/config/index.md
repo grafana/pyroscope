@@ -1,19 +1,19 @@
 ---
 aliases:
-  - ../../visualizing-metrics/dashboards/config/
-  - /docs/mimir/latest/operators-guide/monitoring-grafana-mimir/dashboards/config/
+  - ../../visualizing-profiles/dashboards/config/
+  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/dashboards/config/
 description: View an example Config dashboard.
 menuTitle: Config
-title: Grafana Mimir Config dashboard
+title: Grafana Fire Config dashboard
 weight: 50
 ---
 
-# Grafana Mimir Config dashboard
+# Grafana Fire Config dashboard
 
-The Config dashboard shows details about the runtime configuration currently loaded by each Grafana Mimir instance.
+The Config dashboard shows details about the runtime configuration currently loaded by each Grafana Fire instance.
 
 ## Example
 
 The following example shows a Config dashboard from a demo cluster.
 
-![Grafana Mimir config dashboard](mimir-config.png)
+![Grafana Fire config dashboard](fire-config.png)

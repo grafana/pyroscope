@@ -1,22 +1,22 @@
 ---
-title: "Grafana Mimir runbooks"
+title: "Grafana Fire runbooks"
 menuTitle: "Runbooks"
-description: "Grafana Mimir runbooks."
+description: "Grafana Fire runbooks."
 weight: 110
 keywords:
-  - Mimir runbooks
+  - Fire runbooks
 ---
 
-# Grafana Mimir runbooks
+# Grafana Fire runbooks
 
-This document contains runbooks, or at least a checklist of what to look for, for alerts in the mimir-mixin and logs from Mimir. This document assumes that you are running a Mimir cluster:
+This document contains runbooks, or at least a checklist of what to look for, for alerts in the fire-mixin and logs from Fire. This document assumes that you are running a Fire cluster:
 
 1. Using this mixin config
 2. Using GCS as object store (but similar procedures apply to other backends)
 
 ## Alerts
 
-### MimirIngesterRestarts
+### FireIngesterRestarts
 
 First, check if the alert is for a single ingester or multiple. Even if the alert is only for one ingester, it's best to follow up by checking `kubectl get pods --namespace=<prod/staging/etc.>` every few minutes, or looking at the query `rate(kube_pod_container_status_restarts_total{container="ingester"}[30m]) > 0` just until you're sure there isn't a larger issue causing multiple restarts.
 
@@ -34,16 +34,16 @@ In events you're looking for things like:
 If nothing obvious from the above, check for increased load:
 
 - If there is an increase in the number of active series and the memory provisioned is not enough, scale up the ingesters horizontally to have the same number of series as before per ingester.
-- If we had an outage and once Mimir is back up, the incoming traffic increases. (or) The clients have their Prometheus remote-write lagging and starts to send samples at a higher rate (again, an increase in traffic but in terms of number of samples). Scale up the ingester horizontally in this case too.
+- If we had an outage and once Fire is back up, the incoming traffic increases. (or) The clients have their Prometheus remote-write lagging and starts to send samples at a higher rate (again, an increase in traffic but in terms of number of samples). Scale up the ingester horizontally in this case too.
 
-### MimirIngesterReachingSeriesLimit
+### FireIngesterReachingSeriesLimit
 
 This alert fires when the `max_series` per ingester instance limit is enabled and the actual number of in-memory series in an ingester is reaching the limit. Once the limit is reached, writes to the ingester will fail (5xx) for new series, while appending samples to existing ones will continue to succeed.
 
 In case of **emergency**:
 
 - If the actual number of series is very close to or already hit the limit, then you can increase the limit via runtime config to gain some time
-- Increasing the limit will increase the ingesters' memory utilization. Please monitor the ingesters' memory utilization via the `Mimir / Writes Resources` dashboard
+- Increasing the limit will increase the ingesters' memory utilization. Please monitor the ingesters' memory utilization via the `Fire / Writes Resources` dashboard
 
 How the limit is **configured**:
 
@@ -114,14 +114,14 @@ How to **fix** it:
 3. **Scale up ingesters**<br />
    Scaling up ingesters will lower the number of series per ingester. However, the effect of this change will take up to 4h, because after the scale up we need to wait until all stale series are dropped from memory as the effect of TSDB head compaction, which could take up to 4h (with the default config, TSDB keeps in-memory series up to 3h old and it gets compacted every 2h).
 
-### MimirIngesterReachingTenantsLimit
+### FireIngesterReachingTenantsLimit
 
 This alert fires when the `max_tenants` per ingester instance limit is enabled and the actual number of tenants in an ingester is reaching the limit. Once the limit is reached, writes to the ingester will fail (5xx) for new tenants, while they will continue to succeed for previously existing ones.
 
 In case of **emergency**:
 
 - If the actual number of tenants is very close to or already hit the limit, then you can increase the limit via runtime config to gain some time
-- Increasing the limit will increase the ingesters' memory utilization. Please monitor the ingesters' memory utilization via the `Mimir / Writes Resources` dashboard
+- Increasing the limit will increase the ingesters' memory utilization. Please monitor the ingesters' memory utilization via the `Fire / Writes Resources` dashboard
 
 How the limit is **configured**:
 
@@ -143,17 +143,17 @@ How the limit is **configured**:
 
 How to **fix** it:
 
-1. Ensure shuffle-sharding is enabled in the Mimir cluster
+1. Ensure shuffle-sharding is enabled in the Fire cluster
 1. Assuming shuffle-sharding is enabled, scaling up ingesters will lower the number of tenants per ingester. However, the effect of this change will be visible only after `-blocks-storage.tsdb.close-idle-tsdb-timeout` period so you may have to temporarily increase the limit
 
-### MimirDistributorReachingInflightPushRequestLimit
+### FireDistributorReachingInflightPushRequestLimit
 
 This alert fires when the `cortex_distributor_inflight_push_requests` per distributor instance limit is enabled and the actual number of in-flight push requests is approaching the set limit. Once the limit is reached, push requests to the distributor will fail (5xx) for new requests, while existing in-flight push requests will continue to succeed.
 
 In case of **emergency**:
 
 - If the actual number of in-flight push requests is very close to or already at the set limit, then you can increase the limit via CLI flag or config to gain some time
-- Increasing the limit will increase the number of in-flight push requests which will increase distributors' memory utilization. Please monitor the distributors' memory utilization via the `Mimir / Writes Resources` dashboard
+- Increasing the limit will increase the number of in-flight push requests which will increase distributors' memory utilization. Please monitor the distributors' memory utilization via the `Fire / Writes Resources` dashboard
 
 How the limit is **configured**:
 
@@ -173,18 +173,18 @@ How to **fix** it:
 2. **Scale up distributors**<br />
    Scaling up distributors will lower the number of in-flight push requests per distributor.
 
-### MimirRequestLatency
+### FireRequestLatency
 
-This alert fires when a specific Mimir route is experiencing an high latency.
+This alert fires when a specific Fire route is experiencing an high latency.
 
-The alert message includes both the Mimir service and route experiencing the high latency. Establish if the alert is about the read or write path based on that (see [Mimir routes by path](#mimir-routes-by-path)).
+The alert message includes both the Fire service and route experiencing the high latency. Establish if the alert is about the read or write path based on that (see [Fire routes by path](#fire-routes-by-path)).
 
 #### Write Latency
 
 How to **investigate**:
 
-- Check the `Mimir / Writes` dashboard
-  - Looking at the dashboard you should see in which Mimir service the high latency originates
+- Check the `Fire / Writes` dashboard
+  - Looking at the dashboard you should see in which Fire service the high latency originates
   - The panels in the dashboard are vertically sorted by the network path (eg. gateway -> distributor -> ingester)
 - Deduce where in the stack the latency is being introduced
   - **`gateway`**
@@ -192,15 +192,15 @@ How to **investigate**:
       - Network issues such as packet loss between the client and gateway.
       - Poor performance of intermediate network hops such as load balancers or HTTP proxies.
       - Client process having insufficient CPU resources.
-    - The gateway may need to be scaled up. Use the `Mimir / Scaling` dashboard to check for CPU usage vs requests.
+    - The gateway may need to be scaled up. Use the `Fire / Scaling` dashboard to check for CPU usage vs requests.
     - There could be a problem with authentication (eg. slow to run auth layer)
   - **`distributor`**
     - Typically, distributor p99 latency is in the range 50-100ms. If the distributor latency is higher than this, you may need to scale up the distributors.
   - **`ingester`**
     - Typically, ingester p99 latency is in the range 5-50ms. If the ingester latency is higher than this, you should investigate the root cause before scaling up ingesters.
     - Check out the following alerts and fix them if firing:
-      - `MimirProvisioningTooManyActiveSeries`
-      - `MimirProvisioningTooManyWrites`
+      - `FireProvisioningTooManyActiveSeries`
+      - `FireProvisioningTooManyWrites`
 
 #### Read Latency
 
@@ -208,16 +208,16 @@ Query performance is a known issue. A query may be slow because of high cardinal
 
 How to **investigate**:
 
-- Check the `Mimir / Reads` dashboard
-  - Looking at the dashboard you should see in which Mimir service the high latency originates
+- Check the `Fire / Reads` dashboard
+  - Looking at the dashboard you should see in which Fire service the high latency originates
   - The panels in the dashboard are vertically sorted by the network path (eg. gateway -> query-frontend -> query->scheduler -> querier -> store-gateway)
-- Check the `Mimir / Slow Queries` dashboard to find out if it's caused by few slow queries
+- Check the `Fire / Slow Queries` dashboard to find out if it's caused by few slow queries
 - Deduce where in the stack the latency is being introduced
   - **`gateway`**
-    - The gateway may need to be scaled up. Use the `Mimir / Scaling` dashboard to check for CPU usage vs requests.
+    - The gateway may need to be scaled up. Use the `Fire / Scaling` dashboard to check for CPU usage vs requests.
     - There could be a problem with authentication (eg. slow to run auth layer)
   - **`query-frontend`**
-    - The query-frontend may need to be scaled up. If the Mimir cluster is running with the query-scheduler, the query-frontend can be scaled up with no side effects, otherwise the maximum number of query-frontend replicas should be the configured `-querier.max-concurrent`.
+    - The query-frontend may need to be scaled up. If the Fire cluster is running with the query-scheduler, the query-frontend can be scaled up with no side effects, otherwise the maximum number of query-frontend replicas should be the configured `-querier.max-concurrent`.
   - **`querier`**
     - Look at slow queries traces to find out where it's slow.
     - Typically, slowness either comes from running PromQL engine (`innerEval`) or fetching chunks from ingesters and/or store-gateways.
@@ -227,12 +227,12 @@ How to **investigate**:
         - Scale up ingesters
       - Low cache hit ratio in the store-gateways
         - Check `Memcached Overview` dashboard
-        - If memcached eviction rate is high, then you should scale up memcached replicas. Check the recommendations by `Mimir / Scaling` dashboard and make reasonable adjustments as necessary.
+        - If memcached eviction rate is high, then you should scale up memcached replicas. Check the recommendations by `Fire / Scaling` dashboard and make reasonable adjustments as necessary.
         - If memcached eviction rate is zero or very low, then it may be caused by "first time" queries
       - Cache query timeouts
-        - Check store-gateway logs and look for warnings about timed out Memcached queries (example query: `{namespace="example-mimir-cluster", name=~"store-gateway.*"} |= "level=warn" |= "memcached" |= "timeout"`)
+        - Check store-gateway logs and look for warnings about timed out Memcached queries (example query: `{namespace="example-fire-cluster", name=~"store-gateway.*"} |= "level=warn" |= "memcached" |= "timeout"`)
         - If there are indeed a lot of timed out Memcached queries, consider whether the store-gateway Memcached timeout setting (`-blocks-storage.bucket-store.chunks-cache.memcached.timeout`) is sufficient
-    - By consulting the "Queue length" panel of the `Mimir / Queries` dashboard, determine if queries are waiting in queue due to busy queriers (an indication of this would be queue length > 0 for some time)
+    - By consulting the "Queue length" panel of the `Fire / Queries` dashboard, determine if queries are waiting in queue due to busy queriers (an indication of this would be queue length > 0 for some time)
       - If queries are waiting in queue
         - Consider scaling up number of queriers if they're not auto-scaled; if auto-scaled, check auto-scaling parameters
       - If queries are not waiting in queue
@@ -243,7 +243,7 @@ How to **investigate**:
 
 How to **investigate**:
 
-- Check the `Mimir / Alertmanager` dashboard
+- Check the `Fire / Alertmanager` dashboard
   - Looking at the dashboard you should see which part of the stack is affected
 - Deduce where in the stack the latency is being introduced
   - **Configuration API (gateway) + Alertmanager UI**
@@ -251,12 +251,12 @@ How to **investigate**:
       - Network issues such as packet loss between the client and gateway.
       - Poor performance of intermediate network hops such as load balancers or HTTP proxies.
       - Client process having insufficient CPU resources.
-    - The gateway may need to be scaled up. Use the `Mimir / Scaling` dashboard to check for CPU usage vs requests.
+    - The gateway may need to be scaled up. Use the `Fire / Scaling` dashboard to check for CPU usage vs requests.
     - There could be a problem with authentication (eg. slow to run auth layer)
   - **Alertmanager distributor**
     - Typically, Alertmanager distributor p99 latency is in the range 50-100ms. If the distributor latency is higher than this, you may need to scale up the number of alertmanager replicas.
 
-### MimirRequestErrors
+### FireRequestErrors
 
 This alert fires when the rate of 5xx errors of a specific route is > 1% for some time.
 
@@ -264,31 +264,31 @@ This alert typically acts as a last resort to detect issues / outages. SLO alert
 
 How to **investigate**:
 
-- Check for which route the alert fired (see [Mimir routes by path](#mimir-routes-by-path))
-  - Write path: open the `Mimir / Writes` dashboard
-  - Read path: open the `Mimir / Reads` dashboard
-- Looking at the dashboard you should see in which Mimir service the error originates
+- Check for which route the alert fired (see [Fire routes by path](#fire-routes-by-path))
+  - Write path: open the `Fire / Writes` dashboard
+  - Read path: open the `Fire / Reads` dashboard
+- Looking at the dashboard you should see in which Fire service the error originates
   - The panels in the dashboard are vertically sorted by the network path (eg. on the write path: gateway -> distributor -> ingester)
 - If the failing service is going OOM (`OOMKilled`): scale up or increase the memory
 - If the failing service is crashing / panicking: look for the stack trace in the logs and investigate from there
   - If crashing service is query-frontend, querier or store-gateway, and you have "activity tracker" feature enabled, look for `found unfinished activities from previous run` message and subsequent `activity` messages in the log file to see which queries caused the crash.
-- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`MimirGossipMembersMismatch`](#MimirGossipMembersMismatch) alert.
+- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`FireGossipMembersMismatch`](#FireGossipMembersMismatch) alert.
 
 #### Alertmanager
 
 How to **investigate**:
 
-- Looking at `Mimir / Alertmanager` dashboard you should see in which part of the stack the error originates
+- Looking at `Fire / Alertmanager` dashboard you should see in which part of the stack the error originates
 - If some replicas are going OOM (`OOMKilled`): scale up or increase the memory
 - If the failing service is crashing / panicking: look for the stack trace in the logs and investigate from there
 
-### MimirIngesterUnhealthy
+### FireIngesterUnhealthy
 
 This alert goes off when one or more ingesters are marked as unhealthy. Check the ring web page to see which ones are marked as unhealthy. You could then check the logs to see if there are any related to involved ingesters, f.ex: `kubectl logs -f ingester-01 --namespace=prod`. A simple way to resolve this may be to click the "Forget" button on the ring page, especially if the pod doesn't exist anymore. It might not exist anymore because it was on a node that got shut down, so you could check to see if there are any logs related to the node that pod is/was on, f.ex.: `kubectl get events --namespace=prod | grep cloud-provider-node`.
 
-### MimirMemoryMapAreasTooHigh
+### FireMemoryMapAreasTooHigh
 
-This alert fires when a Mimir process has a number of memory map areas close to the limit. The limit is a per-process limit imposed by the kernel and this issue is typically caused by a large number of mmap-ed failes.
+This alert fires when a Fire process has a number of memory map areas close to the limit. The limit is a per-process limit imposed by the kernel and this issue is typically caused by a large number of mmap-ed failes.
 
 How to **fix** it:
 
@@ -300,25 +300,25 @@ More information:
 - [Kernel doc](https://www.kernel.org/doc/Documentation/sysctl/vm.txt)
 - [Side effects when increasing `vm.max_map_count`](https://www.suse.com/support/kb/doc/?id=000016692)
 
-### MimirRulerFailedRingCheck
+### FireRulerFailedRingCheck
 
 This alert occurs when a ruler is unable to validate whether or not it should claim ownership over the evaluation of a rule group. The most likely cause is that one of the rule ring entries is unhealthy. If this is the case proceed to the ring admin http page and forget the unhealth ruler. The other possible cause would be an error returned the ring client. If this is the case look into debugging the ring based on the in-use backend implementation.
 
-When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`MimirGossipMembersMismatch`](#MimirGossipMembersMismatch) alert.
+When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`FireGossipMembersMismatch`](#FireGossipMembersMismatch) alert.
 
-### MimirRulerTooManyFailedPushes
+### FireRulerTooManyFailedPushes
 
 This alert fires when rulers cannot push new samples (result of rule evaluation) to ingesters.
 
-In general, pushing samples can fail due to problems with Mimir operations (eg. too many ingesters have crashed, and ruler cannot write samples to them), or due to problems with resulting data (eg. user hitting limit for number of series, out of order samples, etc.).
+In general, pushing samples can fail due to problems with Fire operations (eg. too many ingesters have crashed, and ruler cannot write samples to them), or due to problems with resulting data (eg. user hitting limit for number of series, out of order samples, etc.).
 This alert fires only for first kind of problems, and not for problems caused by limits or invalid rules.
 
 How to **fix** it:
 
 - Investigate the ruler logs to find out the reason why ruler cannot write samples. Note that ruler logs all push errors, including "user errors", but those are not causing the alert to fire. Focus on problems with ingesters.
-- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`MimirGossipMembersMismatch`](#MimirGossipMembersMismatch) alert.
+- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`FireGossipMembersMismatch`](#FireGossipMembersMismatch) alert.
 
-### MimirRulerTooManyFailedQueries
+### FireRulerTooManyFailedQueries
 
 This alert fires when rulers fail to evaluate rule queries.
 
@@ -329,16 +329,16 @@ There is a category of errors that is more important: errors due to failure to r
 How to **fix** it:
 
 - Investigate the ruler logs to find out the reason why ruler cannot evaluate queries. Note that ruler logs rule evaluation errors even for "user errors", but those are not causing the alert to fire. Focus on problems with ingesters or store-gateways.
-- In case remote operational mode is enabled the problem could be at any of the ruler query path components (ruler-query-frontend, ruler-query-scheduler and ruler-querier). Check the `Mimir / Remote ruler reads` and `Mimir / Remote ruler reads resources` dashboards to find out in which Mimir service the error is being originated.
-- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`MimirGossipMembersMismatch`](#MimirGossipMembersMismatch) alert.
+- In case remote operational mode is enabled the problem could be at any of the ruler query path components (ruler-query-frontend, ruler-query-scheduler and ruler-querier). Check the `Fire / Remote ruler reads` and `Fire / Remote ruler reads resources` dashboards to find out in which Fire service the error is being originated.
+- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`FireGossipMembersMismatch`](#FireGossipMembersMismatch) alert.
 
-### MimirRulerMissedEvaluations
+### FireRulerMissedEvaluations
 
 This alert fires when there is a rule group that is taking longer to evaluate than its evaluation interval.
 
 How it **works**:
 
-- The Mimir ruler will evaluate a rule group according to the evaluation interval on the rule group.
+- The Fire ruler will evaluate a rule group according to the evaluation interval on the rule group.
 - If an evaluation is not finished by the time the next evaluation should happen, the next evaluation is missed.
 
 How to **fix** it:
@@ -346,16 +346,16 @@ How to **fix** it:
 - Increase the evaluation interval of the rule group. You can use the rate of missed evaluation to estimate how long the rule group evaluation actually takes.
 - Try splitting up the rule group into multiple rule groups. Rule groups are evaluated in parallel, so the same rules may still fit in the same resolution.
 
-### MimirIngesterHasNotShippedBlocks
+### FireIngesterHasNotShippedBlocks
 
-This alert fires when a Mimir ingester is not uploading any block to the long-term storage. An ingester is expected to upload a block to the storage every block range period (defaults to 2h) and if a longer time elapse since the last successful upload it means something is not working correctly.
+This alert fires when a Fire ingester is not uploading any block to the long-term storage. An ingester is expected to upload a block to the storage every block range period (defaults to 2h) and if a longer time elapse since the last successful upload it means something is not working correctly.
 
 How to **investigate**:
 
 - Ensure the ingester is receiving write-path traffic (samples to ingest)
 - Look for any upload error in the ingester logs (ie. networking or authentication issues)
 
-_If the alert `MimirIngesterTSDBHeadCompactionFailed` fired as well, then give priority to it because that could be the cause._
+_If the alert `FireIngesterTSDBHeadCompactionFailed` fired as well, then give priority to it because that could be the cause._
 
 #### Ingester hit the disk capacity
 
@@ -367,21 +367,21 @@ If the ingester hit the disk capacity, any attempt to append samples will fail. 
 - Was the disk just too small?
 - Was there an issue compacting TSDB head and the WAL is increasing indefinitely?
 
-### MimirIngesterHasNotShippedBlocksSinceStart
+### FireIngesterHasNotShippedBlocksSinceStart
 
-Same as [`MimirIngesterHasNotShippedBlocks`](#MimirIngesterHasNotShippedBlocks).
+Same as [`FireIngesterHasNotShippedBlocks`](#FireIngesterHasNotShippedBlocks).
 
-### MimirIngesterHasUnshippedBlocks
+### FireIngesterHasUnshippedBlocks
 
-This alert fires when a Mimir ingester has compacted some blocks but such blocks haven't been successfully uploaded to the storage yet.
+This alert fires when a Fire ingester has compacted some blocks but such blocks haven't been successfully uploaded to the storage yet.
 
 How to **investigate**:
 
 - Look for details in the ingester logs
 
-### MimirIngesterTSDBHeadCompactionFailed
+### FireIngesterTSDBHeadCompactionFailed
 
-This alert fires when a Mimir ingester is failing to compact the TSDB head into a block.
+This alert fires when a Fire ingester is failing to compact the TSDB head into a block.
 
 A TSDB instance is opened for each tenant writing at least 1 series to the ingester and its head contains the in-memory series not flushed to a block yet. Once the TSDB head is compactable, the ingester will try to compact it every 1 minute. If the TSDB head compaction repeatedly fails, it means it's failing to compact a block from the in-memory series for at least 1 tenant, and it's a critical condition that should be immediately investigated.
 
@@ -395,9 +395,9 @@ How to **investigate**:
 
 - Look for details in the ingester logs
 
-### MimirIngesterTSDBHeadTruncationFailed
+### FireIngesterTSDBHeadTruncationFailed
 
-This alert fires when a Mimir ingester fails to truncate the TSDB head.
+This alert fires when a Fire ingester fails to truncate the TSDB head.
 
 The TSDB head is the in-memory store used to keep series and samples not compacted into a block yet. If head truncation fails for a long time, the ingester disk might get full as it won't continue to the WAL truncation stage and the subsequent ingester restart may take a long time or even go into an OOMKilled crash loop because of the huge WAL to replay. For this reason, it's important to investigate and address the issue as soon as it happen.
 
@@ -405,18 +405,18 @@ How to **investigate**:
 
 - Look for details in the ingester logs
 
-### MimirIngesterTSDBCheckpointCreationFailed
+### FireIngesterTSDBCheckpointCreationFailed
 
-This alert fires when a Mimir ingester fails to create a TSDB checkpoint.
+This alert fires when a Fire ingester fails to create a TSDB checkpoint.
 
 How to **investigate**:
 
 - Look for details in the ingester logs
-- If the checkpoint fails because of a `corruption in segment`, you can restart the ingester because at next startup TSDB will try to "repair" it. After restart, if the issue is repaired and the ingester is running, you should also get paged by `MimirIngesterTSDBWALCorrupted` to signal you the WAL was corrupted and manual investigation is required.
+- If the checkpoint fails because of a `corruption in segment`, you can restart the ingester because at next startup TSDB will try to "repair" it. After restart, if the issue is repaired and the ingester is running, you should also get paged by `FireIngesterTSDBWALCorrupted` to signal you the WAL was corrupted and manual investigation is required.
 
-### MimirIngesterTSDBCheckpointDeletionFailed
+### FireIngesterTSDBCheckpointDeletionFailed
 
-This alert fires when a Mimir ingester fails to delete a TSDB checkpoint.
+This alert fires when a Fire ingester fails to delete a TSDB checkpoint.
 
 Generally, this is not an urgent issue, but manual investigation is required to find the root cause of the issue and fix it.
 
@@ -424,19 +424,19 @@ How to **investigate**:
 
 - Look for details in the ingester logs
 
-### MimirIngesterTSDBWALTruncationFailed
+### FireIngesterTSDBWALTruncationFailed
 
-This alert fires when a Mimir ingester fails to truncate the TSDB WAL.
+This alert fires when a Fire ingester fails to truncate the TSDB WAL.
 
 How to **investigate**:
 
 - Look for details in the ingester logs
 
-### MimirIngesterTSDBWALCorrupted
+### FireIngesterTSDBWALCorrupted
 
-This alert fires when a Mimir ingester finds a corrupted TSDB WAL (stored on disk) while replaying it at ingester startup or when creation of a checkpoint comes across a WAL corruption.
+This alert fires when a Fire ingester finds a corrupted TSDB WAL (stored on disk) while replaying it at ingester startup or when creation of a checkpoint comes across a WAL corruption.
 
-If this alert fires during an **ingester startup**, the WAL should have been auto-repaired, but manual investigation is required. The WAL repair mechanism causes data loss because all WAL records after the corrupted segment are discarded, and so their samples are lost while replaying the WAL. If this happens only on 1 ingester then Mimir doesn't suffer any data loss because of the replication factor, but if it happens on multiple ingesters some data loss is possible.
+If this alert fires during an **ingester startup**, the WAL should have been auto-repaired, but manual investigation is required. The WAL repair mechanism causes data loss because all WAL records after the corrupted segment are discarded, and so their samples are lost while replaying the WAL. If this happens only on 1 ingester then Fire doesn't suffer any data loss because of the replication factor, but if it happens on multiple ingesters some data loss is possible.
 
 To investigate how the ingester dealt with the WAL corruption, it's recommended you search the logs, e.g. with the following Grafana Loki query:
 
@@ -452,25 +452,25 @@ WAL corruption can occur after pods are rescheduled following a fault with the u
 kubectl get events --field-selector involvedObject.name=ingester-X
 ```
 
-If this alert fires during a **checkpoint creation**, you should have also been paged with `MimirIngesterTSDBCheckpointCreationFailed`, and you can follow the steps under that alert.
+If this alert fires during a **checkpoint creation**, you should have also been paged with `FireIngesterTSDBCheckpointCreationFailed`, and you can follow the steps under that alert.
 
-### MimirIngesterTSDBWALWritesFailed
+### FireIngesterTSDBWALWritesFailed
 
-This alert fires when a Mimir ingester is failing to log records to the TSDB WAL on disk.
+This alert fires when a Fire ingester is failing to log records to the TSDB WAL on disk.
 
 How to **investigate**:
 
 - Look for details in the ingester logs
 
-### MimirQuerierHasNotScanTheBucket
+### FireQuerierHasNotScanTheBucket
 
-This alert fires when a Mimir querier is not successfully scanning blocks in the storage (bucket). A querier is expected to periodically iterate the bucket to find new and deleted blocks (defaults to every 5m) and if it's not successfully synching the bucket since a long time, it may end up querying only a subset of blocks, thus leading to potentially partial results.
+This alert fires when a Fire querier is not successfully scanning blocks in the storage (bucket). A querier is expected to periodically iterate the bucket to find new and deleted blocks (defaults to every 5m) and if it's not successfully synching the bucket since a long time, it may end up querying only a subset of blocks, thus leading to potentially partial results.
 
 How to **investigate**:
 
 - Look for any scan error in the querier logs (ie. networking or rate limiting issues)
 
-### MimirQuerierHighRefetchRate
+### FireQuerierHighRefetchRate
 
 This alert fires when there's an high number of queries for which series have been refetched from a different store-gateway because of missing blocks. This could happen for a short time whenever a store-gateway ring resharding occurs (e.g. during/after an outage or while rolling out store-gateway) but store-gateways should reconcile in a short time. This alert fires if the issue persist for an unexpected long time and thus it should be investigated.
 
@@ -479,15 +479,15 @@ How to **investigate**:
 - Ensure there are no errors related to blocks scan or sync in the queriers and store-gateways
 - Check store-gateway logs to see if all store-gateway have successfully completed a blocks sync
 
-### MimirStoreGatewayHasNotSyncTheBucket
+### FireStoreGatewayHasNotSyncTheBucket
 
-This alert fires when a Mimir store-gateway is not successfully scanning blocks in the storage (bucket). A store-gateway is expected to periodically iterate the bucket to find new and deleted blocks (defaults to every 5m) and if it's not successfully synching the bucket for a long time, it may end up querying only a subset of blocks, thus leading to potentially partial results.
+This alert fires when a Fire store-gateway is not successfully scanning blocks in the storage (bucket). A store-gateway is expected to periodically iterate the bucket to find new and deleted blocks (defaults to every 5m) and if it's not successfully synching the bucket for a long time, it may end up querying only a subset of blocks, thus leading to potentially partial results.
 
 How to **investigate**:
 
 - Look for any scan error in the store-gateway logs (ie. networking or rate limiting issues)
 
-### MimirStoreGatewayNoSyncedTenants
+### FireStoreGatewayNoSyncedTenants
 
 This alert fires when a store-gateway doesn't own any tenant. Effectively it is sitting idle because no blocks are sharded to it.
 
@@ -496,7 +496,7 @@ How it **works**:
 - Store-gateways join a hash ring to shard tenants and blocks across all store-gateway replicas.
 - A tenant can be sharded across multiple store-gateways. How many exactly is determined by `-store-gateway.tenant-shard-size` or the `store_gateway_tenant_shard_size` limit.
 - When the tenant shard size is less than the replicas of store-gateways, some store-gateways may not get any tenants' blocks sharded to them.
-- This is more likely to happen in Mimir clusters with fewer number of tenants.
+- This is more likely to happen in Fire clusters with fewer number of tenants.
 
 How to **fix** it:
 
@@ -506,31 +506,31 @@ There are three options:
 - Increase the shard size of one or more tenants to match the number of replicas or
 - Set the shard size of one or more tenant to `0`; this will shard this tenant's blocks across all store-gateways.
 
-### MimirCompactorHasNotSuccessfullyCleanedUpBlocks
+### FireCompactorHasNotSuccessfullyCleanedUpBlocks
 
-This alert fires when a Mimir compactor is not successfully deleting blocks marked for deletion for a long time.
+This alert fires when a Fire compactor is not successfully deleting blocks marked for deletion for a long time.
 
 How to **investigate**:
 
 - Ensure the compactor is not crashing during compaction (ie. `OOMKilled`)
 - Look for any error in the compactor logs (ie. bucket Delete API errors)
 
-### MimirCompactorHasNotSuccessfullyCleanedUpBlocksSinceStart
+### FireCompactorHasNotSuccessfullyCleanedUpBlocksSinceStart
 
-Same as [`MimirCompactorHasNotSuccessfullyCleanedUpBlocks`](#MimirCompactorHasNotSuccessfullyCleanedUpBlocks).
+Same as [`FireCompactorHasNotSuccessfullyCleanedUpBlocks`](#FireCompactorHasNotSuccessfullyCleanedUpBlocks).
 
-### MimirCompactorHasNotUploadedBlocks
+### FireCompactorHasNotUploadedBlocks
 
-This alert fires when a Mimir compactor is not uploading any compacted blocks to the storage since a long time.
+This alert fires when a Fire compactor is not uploading any compacted blocks to the storage since a long time.
 
 How to **investigate**:
 
-- If the alert `MimirCompactorHasNotSuccessfullyRunCompaction` has fired as well, then investigate that issue first
-- If the alert `MimirIngesterHasNotShippedBlocks` or `MimirIngesterHasNotShippedBlocksSinceStart` have fired as well, then investigate that issue first
+- If the alert `FireCompactorHasNotSuccessfullyRunCompaction` has fired as well, then investigate that issue first
+- If the alert `FireIngesterHasNotShippedBlocks` or `FireIngesterHasNotShippedBlocksSinceStart` have fired as well, then investigate that issue first
 - Ensure ingesters are successfully shipping blocks to the storage
 - Look for any error in the compactor logs
 
-### MimirCompactorHasNotSuccessfullyRunCompaction
+### FireCompactorHasNotSuccessfullyRunCompaction
 
 This alert fires if the compactor is not able to successfully compact all discovered compactable blocks (across all tenants).
 
@@ -545,7 +545,7 @@ How to **investigate**:
     - **What it means**: The compactor successfully validated the source blocks. But the validation of the result block after the compaction did not succeed. The result block was not uploaded and the compaction job will be retried.
     - Out-of-order chunks
       - **How to detect**: Search compactor logs for `invalid result block` and `out-of-order chunks`.
-      - This is caused by a bug in the ingester - see [mimir#1537](https://github.com/grafana/mimir/issues/1537). Ingesters upload blocks where the MinT and MaxT of some chunks don't match the first and last samples in the chunk. When the faulty chunks' MinT and MaxT overlap with other chunks, the compactor merges the chunks. Because one chunk's MinT and MaxT are incorrect the merge may be performed incorrectly, leading to OoO samples.
+      - This is caused by a bug in the ingester - see [fire#1537](https://github.com/grafana/fire/issues/1537). Ingesters upload blocks where the MinT and MaxT of some chunks don't match the first and last samples in the chunk. When the faulty chunks' MinT and MaxT overlap with other chunks, the compactor merges the chunks. Because one chunk's MinT and MaxT are incorrect the merge may be performed incorrectly, leading to OoO samples.
       - **How to mitigate**: Mark the faulty blocks to avoid compacting them in the future:
         - Find all affected compaction groups in the compactor logs. You will find them as `invalid result block /data/compact/<compaction_group>/<result_block>`.
         - For each failed compaction job
@@ -556,7 +556,7 @@ How to **investigate**:
             ./tools/markblocks/markblocks -backend gcs -gcs.bucket-name <bucket> -mark no-compact -tenant <tenant-id> -details "Leading to out-of-order chunks when compacting with other blocks" <block-1> <block-2>...
             ```
 
-### MimirCompactorSkippedBlocksWithOutOfOrderChunks
+### FireCompactorSkippedBlocksWithOutOfOrderChunks
 
 This alert fires when compactor tries to compact a block, but finds that given block has out-of-order chunks. This indicates a bug in Prometheus TSDB library and should be investigated.
 
@@ -570,7 +570,7 @@ level=error ts=2020-07-12T17:35:05.516823471Z caller=compactor.go:339 component=
 
 When this happen you should:
 
-1. Rename the block prefixing it with `corrupted-` so that it will be skipped by the compactor and queriers. Keep in mind that doing so the block will become invisible to the queriers too, so its series/samples will not be queried. If the corruption affects only 1 block whose compaction `level` is 1 (the information is stored inside its `meta.json`) then Mimir guarantees no data loss because all the data is replicated across other blocks. In all other cases, there may be some data loss once you rename the block and stop querying it.
+1. Rename the block prefixing it with `corrupted-` so that it will be skipped by the compactor and queriers. Keep in mind that doing so the block will become invisible to the queriers too, so its series/samples will not be queried. If the corruption affects only 1 block whose compaction `level` is 1 (the information is stored inside its `meta.json`) then Fire guarantees no data loss because all the data is replicated across other blocks. In all other cases, there may be some data loss once you rename the block and stop querying it.
 2. Ensure the compactor has recovered
 3. Investigate offline the root cause (eg. download the corrupted block and debug it locally)
 
@@ -586,7 +586,7 @@ Where:
 - `TENANT` is the tenant id reported in the example error message above as `REDACTED-TENANT`
 - `BLOCK` is the last part of the file path reported as `REDACTED-BLOCK` in the example error message above
 
-### MimirBucketIndexNotUpdated
+### FireBucketIndexNotUpdated
 
 This alert fires when the bucket index, for a given tenant, is not updated since a long time. The bucket index is expected to be periodically updated by the compactor and is used by queriers and store-gateways to get an almost-updated view over the bucket store.
 
@@ -595,9 +595,9 @@ How to **investigate**:
 - Ensure the compactor is successfully running
 - Look for any error in the compactor logs
 
-### MimirTenantHasPartialBlocks
+### FireTenantHasPartialBlocks
 
-This alert fires when Mimir finds partial blocks for a given tenant. A partial block is a block missing the `meta.json` and this may usually happen in two circumstances:
+This alert fires when Fire finds partial blocks for a given tenant. A partial block is a block missing the `meta.json` and this may usually happen in two circumstances:
 
 1. A block upload has been interrupted and not cleaned up or retried
 2. A block deletion has been interrupted and `deletion-mark.json` has been deleted before `meta.json`
@@ -606,27 +606,27 @@ How to **investigate**:
 
 1. Look for partial blocks in the logs. Example Loki query: `{cluster="<cluster>",namespace="<namespace>",container="compactor"} |= "skipped partial block"`
 1. Pick a block and note its ID (`block` field in log entry) and tenant ID (`org_id` in log entry)
-1. Find the bucket used by the Mimir cluster, such as checking the configured `blocks_storage_bucket_name` if you are using Jsonnet.
-1. Find out which Mimir component operated on the block last (e.g. uploaded by ingester/compactor, or deleted by compactor)
-   1. Determine when the partial block was uploaded: `gsutil ls -l gs://${BUCKET}/${TENANT_ID}/${BLOCK_ID}`. Alternatively you can use `ulidtime` command from Mimir tools directory `ulidtime ${BLOCK_ID}` to find block creation time.
+1. Find the bucket used by the Fire cluster, such as checking the configured `blocks_storage_bucket_name` if you are using Jsonnet.
+1. Find out which Fire component operated on the block last (e.g. uploaded by ingester/compactor, or deleted by compactor)
+   1. Determine when the partial block was uploaded: `gsutil ls -l gs://${BUCKET}/${TENANT_ID}/${BLOCK_ID}`. Alternatively you can use `ulidtime` command from Fire tools directory `ulidtime ${BLOCK_ID}` to find block creation time.
    1. Search in the logs around that time to find the log entry from when the compactor created the block ("compacted blocks" for log message)
    1. From the compactor log entry you found, pick the job ID from the `groupKey` field, f.ex. `0@9748515562602778029-merge--1645711200000-1645718400000`
    1. Then search the logs for the job ID and look for an entry with the message "compaction job failed", this will show that the compactor failed uploading the block
    1. If you found a failed compaction job, as outlined in the previous step, try searching for a corresponding log message (for the same job ID) "compaction job succeeded". This will mean that the compaction job was retried successfully. Note: this should produce a different block ID from the failed upload.
 1. Investigate if it was a partial upload or partial delete
-   1. If it was a partial delete or an upload failed by a compactor you can safely mark the block for deletion, and compactor will delete the block. You can use `markblocks` command from Mimir tools directory: `markblocks -mark deletion -allow-partial -tenant <tenant> <blockID>` with correct backend (eg. GCS: `-backend gcs -gcs.bucket-name <bucket-name>`) configuration.
+   1. If it was a partial delete or an upload failed by a compactor you can safely mark the block for deletion, and compactor will delete the block. You can use `markblocks` command from Fire tools directory: `markblocks -mark deletion -allow-partial -tenant <tenant> <blockID>` with correct backend (eg. GCS: `-backend gcs -gcs.bucket-name <bucket-name>`) configuration.
    1. If it was a failed upload by an ingester, but not later retried (ingesters are expected to retry uploads until succeed), further investigate
 1. Prevent the issue from reoccurring by enabling automatic partial block cleanup. This can be enabled with the `-compactor.partial-block-deletion-delay` flag. It takes a duration as an argument. If a partial block persists past the specified duration, the compactor will automatically delete it. One can monitor automatic cleanup of partial blocks via the `cortex_compactor_blocks_marked_for_deletion_total{reason="partial"}` counter.
 
-### MimirQueriesIncorrect
+### FireQueriesIncorrect
 
 _TODO: this runbook has not been written yet._
 
-### MimirInconsistentRuntimeConfig
+### FireInconsistentRuntimeConfig
 
-This alert fires if multiple replicas of the same Mimir service are using a different runtime config for a longer period of time.
+This alert fires if multiple replicas of the same Fire service are using a different runtime config for a longer period of time.
 
-The Mimir runtime config is a config file which gets live reloaded by Mimir at runtime. In order for Mimir to work properly, the loaded config is expected to be the exact same across multiple replicas of the same Mimir service (eg. distributors, ingesters, ...). When the config changes, there may be short periods of time during which some replicas have loaded the new config and others are still running on the previous one, but it shouldn't last for more than few minutes.
+The Fire runtime config is a config file which gets live reloaded by Fire at runtime. In order for Fire to work properly, the loaded config is expected to be the exact same across multiple replicas of the same Fire service (eg. distributors, ingesters, ...). When the config changes, there may be short periods of time during which some replicas have loaded the new config and others are still running on the previous one, but it shouldn't last for more than few minutes.
 
 How to **investigate**:
 
@@ -641,24 +641,24 @@ How to **investigate**:
 - Check if the runtime config has been updated on the affected replicas' filesystem. Check `-runtime-config.file` command line argument to find the location of the file.
 - Check the affected replicas logs and look for any error loading the runtime config
 
-### MimirBadRuntimeConfig
+### FireBadRuntimeConfig
 
-This alert fires if Mimir is unable to reload the runtime config.
+This alert fires if Fire is unable to reload the runtime config.
 
-This typically means an invalid runtime config was deployed. Mimir keeps running with the previous (valid) version of the runtime config; running Mimir replicas and the system availability shouldn't be affected, but new replicas won't be able to startup until the runtime config is fixed.
+This typically means an invalid runtime config was deployed. Fire keeps running with the previous (valid) version of the runtime config; running Fire replicas and the system availability shouldn't be affected, but new replicas won't be able to startup until the runtime config is fixed.
 
 How to **investigate**:
 
 - Check the latest runtime config update (it's likely to be broken)
-- Check Mimir logs to get more details about what's wrong with the config
+- Check Fire logs to get more details about what's wrong with the config
 
-### MimirFrontendQueriesStuck
+### FireFrontendQueriesStuck
 
-This alert fires if Mimir is running without query-scheduler and queries are piling up in the query-frontend queue.
+This alert fires if Fire is running without query-scheduler and queries are piling up in the query-frontend queue.
 
-The procedure to investigate it is the same as the one for [`MimirSchedulerQueriesStuck`](#MimirSchedulerQueriesStuck): please see the other runbook for more details.
+The procedure to investigate it is the same as the one for [`FireSchedulerQueriesStuck`](#FireSchedulerQueriesStuck): please see the other runbook for more details.
 
-### MimirSchedulerQueriesStuck
+### FireSchedulerQueriesStuck
 
 This alert fires if queries are piling up in the query-scheduler.
 
@@ -683,17 +683,17 @@ How to **investigate**:
   - Check if a specific tenant is running heavy queries
     - Run `sum by (user) (cortex_query_scheduler_queue_length{namespace="<namespace>"}) > 0` to find tenants with enqueued queries
     - If remote ruler evaluation is enabled, make sure you understand which one of the read paths (user or ruler queries?) is being affected - check the alert message.
-    - Check the `Mimir / Slow Queries` dashboard to find slow queries
-  - On multi-tenant Mimir cluster with **shuffle-sharing for queriers disabled**, you may consider to enable it for that specific tenant to reduce its blast radius. To enable queriers shuffle-sharding for a single tenant you need to set the `max_queriers_per_tenant` limit override for the specific tenant (the value should be set to the number of queriers assigned to the tenant).
-  - On multi-tenant Mimir cluster with **shuffle-sharding for queriers enabled**, you may consider to temporarily increase the shard size for affected tenants: be aware that this could affect other tenants too, reducing resources available to run other tenant queries. Alternatively, you may choose to do nothing and let Mimir return errors for that given user once the per-tenant queue is full.
-  - On multi-tenant Mimir clusters with **query-sharding enabled** and **more than a few tenants** being affected: The workload exceeds the available downstream capacity. Scaling of queriers and potentially store-gateways should be considered.
-  - On multi-tenant Mimir clusters with **query-sharding enabled** and **only a single tenant** being affected:
-    - Verify if the particular queries are hitting edge cases, where query-sharding is not benefical, by getting traces from the `Mimir / Slow Queries` dashboard and then look where time is spent. If time is spent in the query-frontend running PromQL engine, then it means query-sharding is not beneficial for this tenant. Consider disabling query-sharding or reduce the shard count using the `query_sharding_total_shards` override.
+    - Check the `Fire / Slow Queries` dashboard to find slow queries
+  - On multi-tenant Fire cluster with **shuffle-sharing for queriers disabled**, you may consider to enable it for that specific tenant to reduce its blast radius. To enable queriers shuffle-sharding for a single tenant you need to set the `max_queriers_per_tenant` limit override for the specific tenant (the value should be set to the number of queriers assigned to the tenant).
+  - On multi-tenant Fire cluster with **shuffle-sharding for queriers enabled**, you may consider to temporarily increase the shard size for affected tenants: be aware that this could affect other tenants too, reducing resources available to run other tenant queries. Alternatively, you may choose to do nothing and let Fire return errors for that given user once the per-tenant queue is full.
+  - On multi-tenant Fire clusters with **query-sharding enabled** and **more than a few tenants** being affected: The workload exceeds the available downstream capacity. Scaling of queriers and potentially store-gateways should be considered.
+  - On multi-tenant Fire clusters with **query-sharding enabled** and **only a single tenant** being affected:
+    - Verify if the particular queries are hitting edge cases, where query-sharding is not benefical, by getting traces from the `Fire / Slow Queries` dashboard and then look where time is spent. If time is spent in the query-frontend running PromQL engine, then it means query-sharding is not beneficial for this tenant. Consider disabling query-sharding or reduce the shard count using the `query_sharding_total_shards` override.
     - Otherwise and only if the queries by the tenant are within reason representing normal usage, consider scaling of queriers and potentially store-gateways.
 
-### MimirMemcachedRequestErrors
+### FireMemcachedRequestErrors
 
-This alert fires if Mimir memcached client is experiencing an high error rate for a specific cache and operation.
+This alert fires if Fire memcached client is experiencing an high error rate for a specific cache and operation.
 
 How to **investigate**:
 
@@ -702,7 +702,7 @@ How to **investigate**:
   - `index-cache`: TSDB index cache
   - `chunks-cache`: TSDB chunks cache
 - Check which specific error is occurring
-  - Run the following query to find out the reason (replace `<namespace>` with the actual Mimir cluster namespace)
+  - Run the following query to find out the reason (replace `<namespace>` with the actual Fire cluster namespace)
     ```
     sum by(name, operation, reason) (rate(thanos_memcached_operation_failures_total{namespace="<namespace>"}[1m])) > 0
     ```
@@ -710,31 +710,31 @@ How to **investigate**:
   - `timeout`
     - Scale up the memcached replicas
   - `server-error`
-    - Check both Mimir and memcached logs to find more details
+    - Check both Fire and memcached logs to find more details
   - `network-error`
-    - Check Mimir logs to find more details
+    - Check Fire logs to find more details
   - `malformed-key`
     - The key is too long or contains invalid characters
-    - Check Mimir logs to find the offending key
+    - Check Fire logs to find the offending key
     - Fixing this will require changes to the application code
   - `other`
-    - Check both Mimir and memcached logs to find more details
+    - Check both Fire and memcached logs to find more details
 
-### MimirProvisioningTooManyActiveSeries
+### FireProvisioningTooManyActiveSeries
 
 This alert fires if the average number of in-memory series per ingester is above our target (1.5M).
 
 How to **fix** it:
 
 - Scale up ingesters
-  - To find out the Mimir clusters where ingesters should be scaled up and how many minimum replicas are expected:
+  - To find out the Fire clusters where ingesters should be scaled up and how many minimum replicas are expected:
     ```
     ceil(sum by(cluster, namespace) (cortex_ingester_memory_series) / 1.5e6) >
     count by(cluster, namespace) (cortex_ingester_memory_series)
     ```
 - After the scale up, the in-memory series are expected to be reduced at the next TSDB head compaction (occurring every 2h)
 
-### MimirProvisioningTooManyWrites
+### FireProvisioningTooManyWrites
 
 This alert fires if the average number of samples ingested / sec in ingesters is above our target.
 
@@ -746,13 +746,13 @@ How to **fix** it:
     sum(rate(cortex_ingester_ingested_samples_total{namespace="<namespace>"}[$__rate_interval])) / (<target> * 0.9)
     ```
 
-### MimirAllocatingTooMuchMemory
+### FireAllocatingTooMuchMemory
 
 This alert fires when ingester memory utilization is getting too close to the limit.
 
 How it **works**:
 
-- Mimir ingesters are stateful services
+- Fire ingesters are stateful services
 - Having 2+ ingesters `OOMKilled` might cause a cluster outage
 - Ingester memory baseline usage is primarily influenced by memory allocated by the process (mostly Go heap) and mmap-ed files (used by TSDB)
 - Ingester memory short spikes are primarily influenced by queries and TSDB head compaction into new blocks (occurring every 2h)
@@ -766,18 +766,18 @@ How to **fix** it:
     kubectl -n <namespace> delete pod ingester-XXX
     ```
   - Restarting an ingester typically reduces the memory allocated by mmap-ed files. After the restart, ingester may allocate this memory again over time, but it may give more time while working on a longer term solution
-- Check the `Mimir / Writes Resources` dashboard to see if the number of series per ingester is above the target (1.5M). If so:
-  - Scale up ingesters; you can use e.g. the `Mimir / Scaling` dashboard for reference, in order to determine the needed amount of ingesters (also keep in mind that each ingester should handle ~1.5 million series, and the series will be duplicated across three instances)
+- Check the `Fire / Writes Resources` dashboard to see if the number of series per ingester is above the target (1.5M). If so:
+  - Scale up ingesters; you can use e.g. the `Fire / Scaling` dashboard for reference, in order to determine the needed amount of ingesters (also keep in mind that each ingester should handle ~1.5 million series, and the series will be duplicated across three instances)
   - Memory is expected to be reclaimed at the next TSDB head compaction (occurring every 2h)
 
-### MimirGossipMembersMismatch
+### FireGossipMembersMismatch
 
 This alert fires when any instance does not register all other instances as members of the memberlist cluster.
 
 How it **works**:
 
 - This alert applies when memberlist is used as KV store for hash rings.
-- All Mimir instances using the ring, regardless of type, join a single memberlist cluster.
+- All Fire instances using the ring, regardless of type, join a single memberlist cluster.
 - Each instance (ie. memberlist cluster member) should see all memberlist cluster members.
 - Therefore the following should be equal for every instance:
   - The reported number of cluster members (`memberlist_client_cluster_members_count`)
@@ -791,14 +791,14 @@ How to **investigate**:
   - The following log message indicates that the _initial_ initial join did not succeed: `failed to join memberlist cluster`
   - The following log message indicates that subsequent re-join attempts are failing: `re-joining memberlist cluster failed`
   - If it is the case that the initial join failed, take action according to the reason given.
-- Verify communication with other members by checking memberlist traffic is being sent and received by the instance using the following metrics:
+- Verify communication with other members by checking memberlist traffic is being sent and received by the instance using the following profiles:
   - `memberlist_tcp_transport_packets_received_total`
   - `memberlist_tcp_transport_packets_sent_total`
-- If traffic is present, then verify there are no errors sending or receiving packets using the following metrics:
+- If traffic is present, then verify there are no errors sending or receiving packets using the following profiles:
   - `memberlist_tcp_transport_packets_sent_errors_total`
   - `memberlist_tcp_transport_packets_received_errors_total`
   - These errors (and others) can be found by searching for messages prefixed with `TCPTransport:`.
-- Logs coming directly from memberlist are also logged by Mimir; they may indicate where to investigate further. These can be identified as such due to being tagged with `caller=memberlist_logger.go:<line>`.
+- Logs coming directly from memberlist are also logged by Fire; they may indicate where to investigate further. These can be identified as such due to being tagged with `caller=memberlist_logger.go:<line>`.
 
 ### EtcdAllocatingTooMuchMemory
 
@@ -818,7 +818,7 @@ This can be triggered if there are too many HA dedupe keys in etcd. We saw this 
   },
 ```
 
-### MimirAlertmanagerSyncConfigsFailing
+### FireAlertmanagerSyncConfigsFailing
 
 How it **works**:
 
@@ -838,7 +838,7 @@ How to **investigate**:
 
 Look at the error message that is logged and attempt to understand what is causing the failure. I.e. it could be a networking issue, incorrect configuration for the store, etc.
 
-### MimirAlertmanagerRingCheckFailing
+### FireAlertmanagerRingCheckFailing
 
 How it **works**:
 
@@ -851,9 +851,9 @@ The metric for this alert is `cortex_alertmanager_ring_check_errors_total`.
 How to **investigate**:
 
 - Look at the error message that is logged and attempt to understand what is causing the failure. In most cases the error will be encountered when attempting to read from the ring, which can fail if there is an issue with in-use backend implementation.
-- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`MimirGossipMembersMismatch`](#MimirGossipMembersMismatch) alert.
+- When using Memberlist as KV store for hash rings, ensure that Memberlist is working correctly. See instructions for [`FireGossipMembersMismatch`](#FireGossipMembersMismatch) alert.
 
-### MimirAlertmanagerPartialStateMergeFailing
+### FireAlertmanagerPartialStateMergeFailing
 
 How it **works**:
 
@@ -863,9 +863,9 @@ The metric for this alert is cortex_alertmanager_partial_state_merges_failed_tot
 
 How to **investigate**:
 
-The error is not currently logged on the receiver side. If this alert is firing, it is likely that `MimirAlertmanagerReplicationFailing` is firing also, so instead follow the investigation steps for that alert, with the assumption that the issue is not RPC/communication related.
+The error is not currently logged on the receiver side. If this alert is firing, it is likely that `FireAlertmanagerReplicationFailing` is firing also, so instead follow the investigation steps for that alert, with the assumption that the issue is not RPC/communication related.
 
-### MimirAlertmanagerReplicationFailing
+### FireAlertmanagerReplicationFailing
 
 How it **works**:
 
@@ -877,7 +877,7 @@ How to **investigate**:
 
 When state replication fails it gets logged as an error in the alertmanager that attempted the state replication. Check the error message in the log to understand the cause of the error (i.e. was it due to an RPC/communication error or was there an error in the receiving alertmanager).
 
-### MimirAlertmanagerPersistStateFailing
+### FireAlertmanagerPersistStateFailing
 
 How it **works**:
 
@@ -892,7 +892,7 @@ Each failure to persist state to the remote object storage is logged. Find the r
 - The most probable cause is that remote write failed. Try to investigate why based on the message (network issue, storage issue). If the error indicates the issue might be transient, then you can wait until the next periodic attempt and see if it succeeds.
 - It is also possible that encoding the state failed. This does not depend on external factors as it is just pulling state from the Alertmanager internal state. It may indicate a bug in the encoding method.
 
-### MimirAlertmanagerInitialSyncFailed
+### FireAlertmanagerInitialSyncFailed
 
 How it **works**:
 
@@ -907,24 +907,24 @@ When an alertmanager cannot read the state for a tenant from storage it gets log
 - The state could not be merged because it might be invalid and could not be decoded. This could indicate data corruption and therefore a bug in the reading or writing of the state, and would need further investigation.
 - The state could not be read from storage. This could be due to a networking issue such as a timeout or an authentication and authorization issue with the remote object store.
 
-### MimirAlertmanagerAllocatingTooMuchMemory
+### FireAlertmanagerAllocatingTooMuchMemory
 
 This alert fires when alertmanager memory utilization is getting too close to the limit.
 
 How it **works**:
 
-- Mimir alertmanager is an stateful service
+- Fire alertmanager is an stateful service
 - Having 2+ alertmanagers `OOMKilled` might cause service interruption as it needs quorum for API responses. Notification (from alertmanager to third-party) can succeed without quorum.
 - Alertmanager memory baseline usage is primarily influenced by memory allocated by the process (mostly Go heap) for alerts and silences.
 - A pod gets `OOMKilled` once its working set memory reaches the configured limit, so it's important to prevent alertmanager's memory utilization (working set memory) from going over to the limit. The memory usage is typically sustained and does not suffer from spikes, hence thresholds are set very close to the limit.
 
 How to **fix** it:
 
-- Scale up alertmanager replicas; you can use e.g. the `Mimir / Scaling` dashboard for reference, in order to determine the needed amount of alertmanagers.
+- Scale up alertmanager replicas; you can use e.g. the `Fire / Scaling` dashboard for reference, in order to determine the needed amount of alertmanagers.
 
-### MimirRolloutStuck
+### FireRolloutStuck
 
-This alert fires when a Mimir service rollout is stuck, which means the number of updated replicas doesn't match the expected one and looks there's no progress in the rollout. The alert monitors services deployed as Kubernetes `StatefulSet` and `Deployment`.
+This alert fires when a Fire service rollout is stuck, which means the number of updated replicas doesn't match the expected one and looks there's no progress in the rollout. The alert monitors services deployed as Kubernetes `StatefulSet` and `Deployment`.
 
 How to **investigate**:
 
@@ -933,9 +933,9 @@ How to **investigate**:
 - Ensure there's no pod `NotReady` (the number of ready containers should match the total number of containers, eg. `1/1` or `2/2`)
 - Run `kubectl -n <namespace> describe statefulset <name>` or `kubectl -n <namespace> describe deployment <name>` and look at "Pod Status" and "Events" to get more information
 
-### MimirKVStoreFailure
+### FireKVStoreFailure
 
-This alert fires if a Mimir instance is failing to run any operation on a KV store (eg. consul or etcd).
+This alert fires if a Fire instance is failing to run any operation on a KV store (eg. consul or etcd).
 When using Memberlist as KV store for hash rings, all read and update operations work on a local copy of the hash ring, and will never fail and raise this alert.
 
 How it **works**:
@@ -950,13 +950,13 @@ How to **investigate**:
 - Ensure Consul/Etcd is up and running.
 - Investigate the logs of the affected instance to find the specific error occurring when talking to Consul/Etcd.
 
-### MimirReachingTCPConnectionsLimit
+### FireReachingTCPConnectionsLimit
 
-This alert fires if a Mimir instance is configured with `-server.http-conn-limit` or `-server.grpc-conn-limit` and is reaching the limit.
+This alert fires if a Fire instance is configured with `-server.http-conn-limit` or `-server.grpc-conn-limit` and is reaching the limit.
 
 How it **works**:
 
-- A Mimir service could be configured with a limit of the max number of TCP connections accepted simultaneously on the HTTP and/or gRPC port.
+- A Fire service could be configured with a limit of the max number of TCP connections accepted simultaneously on the HTTP and/or gRPC port.
 - If the limit is reached:
   - New connections acceptance will put on hold or rejected. Exact behaviour depends on backlog parameter to `listen()` call and kernel settings.
   - The **health check endpoint may fail** (eg. timeout).
@@ -966,7 +966,7 @@ How to **investigate**:
 
 - Limit reached in `gateway`:
   - Check if it's caused by an **high latency on write path**:
-    - Check the distributors and ingesters latency in the `Mimir / Writes` dashboard
+    - Check the distributors and ingesters latency in the `Fire / Writes` dashboard
     - An high latency on write path could lead our customers Prometheus / Agent to increase the number of shards nearly at the same time, leading to a significantly higher number of concurrent requests to the load balancer and thus gateway
   - Check if it's caused by a **single tenant**:
     - We don't have a metric tracking the active TCP connections or QPS per tenant
@@ -976,14 +976,14 @@ How to **investigate**:
     ```
     - In case you need to quickly reject write path traffic from a single tenant, you can override its `ingestion_rate` and `ingestion_rate_burst` setting lower values (so that some/most of their traffic will be rejected)
 
-### MimirQuerierAutoscalerNotActive
+### FireQuerierAutoscalerNotActive
 
-This alert fires when the Mimir querier Kubernetes Horizontal Pod Autoscaler's (HPA) `ScalingActive` condition is `false`. When this happens, it's not able to calculate desired scale and generally indicates problems with fetching metrics.
+This alert fires when the Fire querier Kubernetes Horizontal Pod Autoscaler's (HPA) `ScalingActive` condition is `false`. When this happens, it's not able to calculate desired scale and generally indicates problems with fetching profiles.
 
 How it **works**:
 
-- HPA is configured to autoscale Mimir queriers based on custom metrics fetched from Prometheus via the KEDA custom metrics API server
-- HPA periodically queries updated metrics and updates the number of desired replicas based on that
+- HPA is configured to autoscale Fire queriers based on custom profiles fetched from Prometheus via the KEDA custom profiles API server
+- HPA periodically queries updated profiles and updates the number of desired replicas based on that
 - Please refer to the [HPA documentation](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) for more information about it
 
 How to **investigate**:
@@ -992,25 +992,25 @@ How to **investigate**:
   ```
   kubectl describe hpa -n <namespace> keda-hpa-querier
   ```
-- Ensure KEDA custom metrics API server is up and running
+- Ensure KEDA custom profiles API server is up and running
   ```
   # Assuming KEDA is running in a dedicated namespace "keda":
   kubectl get pods -n keda
   ```
-- Check KEDA custom metrics API server logs
+- Check KEDA custom profiles API server logs
   ```
   # Assuming KEDA is running in a dedicated namespace "keda":
-  kubectl logs -n keda deployment/keda-operator-metrics-apiserver
+  kubectl logs -n keda deployment/keda-operator-profiles-apiserver
   ```
 
-### MimirContinuousTestNotRunningOnWrites
+### FireContinuousTestNotRunningOnWrites
 
-This alert fires when `mimir-continuous-test` is deployed in the Mimir cluster, and continuous testing is not effectively running because writes are failing.
+This alert fires when `fire-continuous-test` is deployed in the Fire cluster, and continuous testing is not effectively running because writes are failing.
 
 How it **works**:
 
-- `mimir-continuous-test` is an optional testing tool that can be deployed in the Mimir cluster
-- The tool runs some tests against the Mimir cluster itself at regular intervals
+- `fire-continuous-test` is an optional testing tool that can be deployed in the Fire cluster
+- The tool runs some tests against the Fire cluster itself at regular intervals
 - This alert fires if the tool is unable to properly run the tests, and not if the tool assertions don't match the expected results
 
 How to **investigate**:
@@ -1020,19 +1020,19 @@ How to **investigate**:
   kubectl logs -n <namespace> deployment/continuous-test
   ```
 
-### MimirContinuousTestNotRunningOnReads
+### FireContinuousTestNotRunningOnReads
 
-This alert is like [`MimirContinuousTestNotRunningOnWrites`](#MimirContinuousTestNotRunningOnWrites) but it fires when queries are failing.
+This alert is like [`FireContinuousTestNotRunningOnWrites`](#FireContinuousTestNotRunningOnWrites) but it fires when queries are failing.
 
-### MimirContinuousTestFailed
+### FireContinuousTestFailed
 
-This alert fires when `mimir-continuous-test` is deployed in the Mimir cluster, and continuous testing tool's assertions don't match the expected results.
-When this alert fires there could be a bug in Mimir that should be investigated as soon as possible.
+This alert fires when `fire-continuous-test` is deployed in the Fire cluster, and continuous testing tool's assertions don't match the expected results.
+When this alert fires there could be a bug in Fire that should be investigated as soon as possible.
 
 How it **works**:
 
-- `mimir-continuous-test` is an optional testing tool that can be deployed in the Mimir cluster
-- The tool runs some tests against the Mimir cluster itself at regular intervals
+- `fire-continuous-test` is an optional testing tool that can be deployed in the Fire cluster
+- The tool runs some tests against the Fire cluster itself at regular intervals
 - This alert fires if the tool assertions don't match the expected results
 
 How to **investigate**:
@@ -1044,7 +1044,7 @@ How to **investigate**:
 - Check if query result comparison is failing
   - Is query failing both when results cache is enabled and when it's disabled?
 - This alert should always be actionable. There are two possible outcomes:
-  1. The alert fired because of a bug in Mimir: fix it.
+  1. The alert fired because of a bug in Fire: fix it.
   1. The alert fired because of a bug or edge case in the continuous test tool, causing a false positive: fix it.
 
 ### RolloutOperatorNotReconciling
@@ -1054,7 +1054,7 @@ This alert fires if the [`rollout-operator`](https://github.com/grafana/rollout-
 How it **works**:
 
 - The rollout-operator coordinates the rollout of pods between different StatefulSets within a specific namespace and is used to manage multi-zone deployments
-- The rollout-operator is deployed in namespaces where some Mimir components (e.g. ingesters) are deployed in multi-zone
+- The rollout-operator is deployed in namespaces where some Fire components (e.g. ingesters) are deployed in multi-zone
 - The rollout-operator reconciles as soon as there's any change in observed Kubernetes resources or every 5m at most
 
 How to **investigate**:
@@ -1066,117 +1066,117 @@ How to **investigate**:
 
 ## Errors catalog
 
-Mimir has some codified error IDs that you might see in HTTP responses or logs.
+Fire has some codified error IDs that you might see in HTTP responses or logs.
 These error IDs allow you to read related details in the documentation that follows.
 
-### err-mimir-missing-metric-name
+### err-fire-missing-metric-name
 
-This non-critical error occurs when Mimir receives a write request that contains a series without a metric name.
+This non-critical error occurs when Fire receives a write request that contains a series without a metric name.
 Each series must have a metric name. Rarely it does not, in which case there might be a bug in the sender client.
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-metric-name-invalid
+### err-fire-metric-name-invalid
 
-This non-critical error occurs when Mimir receives a write request that contains a series with an invalid metric name.
+This non-critical error occurs when Fire receives a write request that contains a series with an invalid metric name.
 A metric name can only contain characters as defined by Prometheus’ [Metric names and labels](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels).
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-max-label-names-per-series
+### err-fire-max-label-names-per-series
 
-This non-critical error occurs when Mimir receives a write request that contains a series with a number of labels that exceed the configured limit.
+This non-critical error occurs when Fire receives a write request that contains a series with a number of labels that exceed the configured limit.
 The limit protects the system’s stability from potential abuse or mistakes. To configure the limit on a per-tenant basis, use the `-validation.max-label-names-per-series` option.
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-label-invalid
+### err-fire-label-invalid
 
-This non-critical error occurs when Mimir receives a write request that contains a series with an invalid label name.
+This non-critical error occurs when Fire receives a write request that contains a series with an invalid label name.
 A label name name can only contain characters as defined by Prometheus’ [Metric names and labels](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels).
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-label-name-too-long
+### err-fire-label-name-too-long
 
-This non-critical error occurs when Mimir receives a write request that contains a series with a label name whose length exceeds the configured limit.
+This non-critical error occurs when Fire receives a write request that contains a series with a label name whose length exceeds the configured limit.
 The limit protects the system’s stability from potential abuse or mistakes. To configure the limit on a per-tenant basis, use the `-validation.max-length-label-name` option.
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-label-value-too-long
+### err-fire-label-value-too-long
 
-This non-critical error occurs when Mimir receives a write request that contains a series with a label value whose length exceeds the configured limit.
+This non-critical error occurs when Fire receives a write request that contains a series with a label value whose length exceeds the configured limit.
 The limit protects the system’s stability from potential abuse or mistakes. To configure the limit on a per-tenant basis, use the `-validation.max-length-label-value` option.
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-duplicate-label-names
+### err-fire-duplicate-label-names
 
-This non-critical error occurs when Mimir receives a write request that contains a series with the same label name two or more times.
+This non-critical error occurs when Fire receives a write request that contains a series with the same label name two or more times.
 A series that contains a duplicated label name is invalid and gets skipped during the ingestion.
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-labels-not-sorted
+### err-fire-labels-not-sorted
 
-This error occurs when Mimir receives a write request that contains a series whose label names are not sorted alphabetically.
-However, Mimir internally sorts labels for series that it receives, so this error should not occur in practice.
-If you experience this error, [open an issue in the Mimir repository](https://github.com/grafana/mimir/issues).
+This error occurs when Fire receives a write request that contains a series whose label names are not sorted alphabetically.
+However, Fire internally sorts labels for series that it receives, so this error should not occur in practice.
+If you experience this error, [open an issue in the Fire repository](https://github.com/grafana/fire/issues).
 
 > **Note**: Invalid series are skipped during the ingestion, and valid series within the same request are ingested.
 
-### err-mimir-too-far-in-future
+### err-fire-too-far-in-future
 
-This non-critical error occurs when Mimir receives a write request that contains a sample whose timestamp is in the future compared to the current "real world" time.
-Mimir accepts timestamps that are slightly in the future, due to skewed clocks for example. It rejects timestamps that are too far in the future, based on the definition that you can set via the `-validation.create-grace-period` option.
+This non-critical error occurs when Fire receives a write request that contains a sample whose timestamp is in the future compared to the current "real world" time.
+Fire accepts timestamps that are slightly in the future, due to skewed clocks for example. It rejects timestamps that are too far in the future, based on the definition that you can set via the `-validation.create-grace-period` option.
 On a per-tenant basis, you can fine tune the tolerance by configuring the `-validation.max-length-label-value` option.
 
 > **Note**: Series with invalid samples are skipped during the ingestion, and series within the same request are ingested.
 
-### err-mimir-exemplar-labels-missing
+### err-fire-exemplar-labels-missing
 
-This non-critical error occurs when Mimir receives a write request that contains an exemplar without a label that identifies the related metric.
+This non-critical error occurs when Fire receives a write request that contains an exemplar without a label that identifies the related metric.
 An exemplar must have at least one valid label pair, otherwise it cannot be associated with any metric.
 
 > **Note**: Invalid exemplars are skipped during the ingestion, and valid exemplars within the same request are ingested.
 
-### err-mimir-exemplar-labels-too-long
+### err-fire-exemplar-labels-too-long
 
-This non-critical error occurs when Mimir receives a write request that contains an exemplar where the combined set size of its labels exceeds the limit.
+This non-critical error occurs when Fire receives a write request that contains an exemplar where the combined set size of its labels exceeds the limit.
 The limit is used to protect the system’s stability from potential abuse or mistakes, and it cannot be configured.
 
 > **Note**: Invalid exemplars are skipped during the ingestion, and valid exemplars within the same request are ingested.
 
-### err-mimir-exemplar-timestamp-invalid
+### err-fire-exemplar-timestamp-invalid
 
-This non-critical error occurs when Mimir receives a write request that contains an exemplar without a timestamp.
+This non-critical error occurs when Fire receives a write request that contains an exemplar without a timestamp.
 An exemplar must have a valid timestamp, otherwise it cannot be correlated to any point in time.
 
 > **Note**: Invalid exemplars are skipped during the ingestion, and valid exemplars within the same request are ingested.
 
-### err-mimir-metadata-missing-metric-name
+### err-fire-metadata-missing-metric-name
 
-This non-critical error occurs when Mimir receives a write request that contains a metric metadata without a metric name.
+This non-critical error occurs when Fire receives a write request that contains a metric metadata without a metric name.
 Each metric metadata must have a metric name. Rarely it does not, in which case there might be a bug in the sender client.
 
-> **Note**: Invalid metrics metadata are skipped during the ingestion, and valid metadata within the same request are ingested.
+> **Note**: Invalid profiles metadata are skipped during the ingestion, and valid metadata within the same request are ingested.
 
-### err-mimir-metric-name-too-long
+### err-fire-metric-name-too-long
 
-This non-critical error occurs when Mimir receives a write request that contains a metric metadata with a metric name whose length exceeds the configured limit.
+This non-critical error occurs when Fire receives a write request that contains a metric metadata with a metric name whose length exceeds the configured limit.
 The limit protects the system’s stability from potential abuse or mistakes. To configure the limit on a per-tenant basis, use the `-validation.max-metadata-length` option.
 
-> **Note**: Invalid metrics metadata are skipped during the ingestion, and valid metadata within the same request are ingested.
+> **Note**: Invalid profiles metadata are skipped during the ingestion, and valid metadata within the same request are ingested.
 
-### err-mimir-unit-too-long
+### err-fire-unit-too-long
 
-This non-critical error occurs when Mimir receives a write request that contains a metric metadata with unit name whose length exceeds the configured limit.
+This non-critical error occurs when Fire receives a write request that contains a metric metadata with unit name whose length exceeds the configured limit.
 The limit protects the system’s stability from potential abuse or mistakes. To configure the limit on a per-tenant basis, use the `-validation.max-metadata-length` option.
 
-> **Note**: Invalid metrics metadata are skipped during the ingestion, and valid metadata within the same request are ingested.
+> **Note**: Invalid profiles metadata are skipped during the ingestion, and valid metadata within the same request are ingested.
 
-### err-mimir-distributor-max-ingestion-rate
+### err-fire-distributor-max-ingestion-rate
 
 This critical error occurs when the rate of received samples, exemplars and metadata per second is exceeded in a distributor.
 
@@ -1189,7 +1189,7 @@ How to **fix** it:
 - Scale up the distributors.
 - Increase the limit by using the `-distributor.instance-limits.max-ingestion-rate` option.
 
-### err-mimir-distributor-max-inflight-push-requests
+### err-fire-distributor-max-inflight-push-requests
 
 This error occurs when a distributor rejects a write request because the maximum in-flight requests limit has been reached.
 
@@ -1202,10 +1202,10 @@ How it **works**:
 How to **fix** it:
 
 - Increase the limit by setting the `-distributor.instance-limits.max-inflight-push-requests` option.
-- Check the write requests latency through the `Mimir / Writes` dashboard and come back to investigate the root cause of high latency (the higher the latency, the higher the number of in-flight write requests).
+- Check the write requests latency through the `Fire / Writes` dashboard and come back to investigate the root cause of high latency (the higher the latency, the higher the number of in-flight write requests).
 - Consider scaling out the distributors.
 
-### err-mimir-distributor-max-inflight-push-requests-bytes
+### err-fire-distributor-max-inflight-push-requests-bytes
 
 This error occurs when a distributor rejects a write request because the total size in bytes of all in-flight requests limit has been reached.
 
@@ -1218,10 +1218,10 @@ How it **works**:
 How to **fix** it:
 
 - Increase the limit by setting the `-distributor.instance-limits.max-inflight-push-requests-bytes` option.
-- Check the write requests latency through the `Mimir / Writes` dashboard and come back to investigate the root cause of the increased size of requests or the increased latency (the higher the latency, the higher the number of in-flight write requests, the higher their combined size).
+- Check the write requests latency through the `Fire / Writes` dashboard and come back to investigate the root cause of the increased size of requests or the increased latency (the higher the latency, the higher the number of in-flight write requests, the higher their combined size).
 - Consider scaling out the distributors.
 
-### err-mimir-ingester-max-ingestion-rate
+### err-fire-ingester-max-ingestion-rate
 
 This critical error occurs when the rate of received samples per second is exceeded in an ingester.
 
@@ -1234,7 +1234,7 @@ How to **fix** it:
 - Scale up the ingesters.
 - Increase the limit by using the `-ingester.instance-limits.max-ingestion-rate` option (or `max_ingestion_rate` in the runtime config).
 
-### err-mimir-ingester-max-tenants
+### err-fire-ingester-max-tenants
 
 This critical error occurs when the ingester receives a write request for a new tenant (a tenant for which no series have been stored yet) but the ingester cannot accept it because the maximum number of allowed tenants per ingester has been reached.
 
@@ -1243,7 +1243,7 @@ How to **fix** it:
 - Increase the limit by using the `-ingester.instance-limits.max-tenants` option (or `max_tenants` in the runtime config).
 - Consider configuring ingesters shuffle sharding to reduce the number of tenants per ingester.
 
-### err-mimir-ingester-max-series
+### err-fire-ingester-max-series
 
 This critical error occurs when an ingester rejects a write request because it reached the maximum number of in-memory series.
 
@@ -1256,9 +1256,9 @@ How it **works**:
 
 How to **fix** it:
 
-- See [`MimirIngesterReachingSeriesLimit`](#MimirIngesterReachingSeriesLimit) runbook.
+- See [`FireIngesterReachingSeriesLimit`](#FireIngesterReachingSeriesLimit) runbook.
 
-### err-mimir-ingester-max-inflight-push-requests
+### err-fire-ingester-max-inflight-push-requests
 
 This error occurs when an ingester rejects a write request because the maximum in-flight requests limit has been reached.
 
@@ -1271,10 +1271,10 @@ How it **works**:
 How to **fix** it:
 
 - Increase the limit by setting the `-ingester.instance-limits.max-inflight-push-requests` option (or `max_inflight_push_requests` in the runtime config).
-- Check the write requests latency through the `Mimir / Writes` dashboard and come back to investigate the root cause of high latency (the higher the latency, the higher the number of in-flight write requests).
+- Check the write requests latency through the `Fire / Writes` dashboard and come back to investigate the root cause of high latency (the higher the latency, the higher the number of in-flight write requests).
 - Consider scaling out the ingesters.
 
-### err-mimir-max-series-per-user
+### err-fire-max-series-per-user
 
 This error occurs when the number of in-memory series for a given tenant exceeds the configured limit.
 
@@ -1286,12 +1286,12 @@ How to **fix** it:
 - Ensure the actual number of series written by the affected tenant is legit.
 - Consider increasing the per-tenant limit by using the `-ingester.max-global-series-per-user` option (or `max_global_series_per_user` in the runtime configuration).
 
-### err-mimir-max-series-per-metric
+### err-fire-max-series-per-metric
 
 This error occurs when the number of in-memory series for a given tenant and metric name exceeds the configured limit.
 
-The limit is primarily used to protect a tenant from potential mistakes on their metrics instrumentation.
-For example, if an instrumented application exposes a metric with a label value including very dynamic data (e.g. a timestamp) the ingestion of that metric would quickly lead to hit the per-tenant series limit, causing other metrics to be rejected too.
+The limit is primarily used to protect a tenant from potential mistakes on their profiles instrumentation.
+For example, if an instrumented application exposes a metric with a label value including very dynamic data (e.g. a timestamp) the ingestion of that metric would quickly lead to hit the per-tenant series limit, causing other profiles to be rejected too.
 This limit introduces a cap on the maximum number of series each metric name can have, rejecting exceeding series only for that metric name, before the per-tenant series limit is reached.
 To configure the limit on a per-tenant basis, use the `-ingester.max-global-series-per-metric` option (or `max_global_series_per_metric` in the runtime configuration).
 
@@ -1303,15 +1303,15 @@ How to **fix** it:
 - Consider increasing the per-tenant limit by using the `-ingester.max-global-series-per-metric` option.
 - Consider excluding specific metric names from this limit's check by using the `-ingester.ignore-series-limit-for-metric-names` option (or `max_global_series_per_metric` in the runtime configuration).
 
-### err-mimir-max-metadata-per-user
+### err-fire-max-metadata-per-user
 
-This non-critical error occurs when the number of in-memory metrics with metadata for a given tenant exceeds the configured limit.
+This non-critical error occurs when the number of in-memory profiles with metadata for a given tenant exceeds the configured limit.
 
 Metric metadata is a set of information attached to a metric name, like its unit (e.g. counter) and description.
 Metric metadata can be included by the sender in the write request, and it's returned when querying the `/api/v1/metadata` API endpoint.
-Metric metadata is stored in the ingesters memory, so the higher the number of metrics metadata stored, the higher the memory utilization.
+Metric metadata is stored in the ingesters memory, so the higher the number of profiles metadata stored, the higher the memory utilization.
 
-Mimir has a per-tenant limit of the number of metric names that have metadata attached.
+Fire has a per-tenant limit of the number of metric names that have metadata attached.
 This limit is used to protect the whole system’s stability from potential abuse or mistakes.
 To configure the limit on a per-tenant basis, use the `-ingester.max-global-series-per-user` option (or `max_global_metadata_per_user` in the runtime configuration).
 
@@ -1320,7 +1320,7 @@ How to **fix** it:
 - Check the current number of metric names for the affected tenant, running the instant query `count(count by(__name__) ({__name__=~".+"}))`. Alternatively, you can get the cardinality of `__name__` label calling the API endpoint `/api/v1/cardinality/label_names`.
 - Consider increasing the per-tenant limit setting to a value greater than the number of unique metric names returned by the previous query.
 
-### err-mimir-max-metadata-per-metric
+### err-fire-max-metadata-per-metric
 
 This non-critical error occurs when the number of different metadata for a given metric name exceeds the configured limit.
 
@@ -1338,7 +1338,7 @@ How to **fix** it:
 - If the different metadata is unexpected, consider fixing the discrepancy in the instrumented applications.
 - If the different metadata is expected, consider increasing the per-tenant limit by using the `-ingester.max-global-series-per-metric` option (or `max_global_metadata_per_metric` in the runtime configuration).
 
-### err-mimir-max-chunks-per-query
+### err-fire-max-chunks-per-query
 
 This error occurs when a query execution exceeds the limit on the number of series chunks fetched.
 
@@ -1350,7 +1350,7 @@ How to **fix** it:
 - Consider reducing the time range and/or cardinality of the query. To reduce the cardinality of the query, you can add more label matchers to the query, restricting the set of matching series.
 - Consider increasing the per-tenant limit by using the `-querier.max-fetched-chunks-per-query` option (or `max_fetched_chunks_per_query` in the runtime configuration).
 
-### err-mimir-max-series-per-query
+### err-fire-max-series-per-query
 
 This error occurs when a query execution exceeds the limit on the maximum number of series.
 
@@ -1362,7 +1362,7 @@ How to **fix** it:
 - Consider reducing the time range and/or cardinality of the query. To reduce the cardinality of the query, you can add more label matchers to the query, restricting the set of matching series.
 - Consider increasing the per-tenant limit by using the `-querier.max-fetched-series-per-query` option (or `max_fetched_series_per_query` in the runtime configuration).
 
-### err-mimir-max-chunks-bytes-per-query
+### err-fire-max-chunks-bytes-per-query
 
 This error occurs when a query execution exceeds the limit on aggregated size (in bytes) of fetched chunks.
 
@@ -1374,22 +1374,22 @@ How to **fix** it:
 - Consider reducing the time range and/or cardinality of the query. To reduce the cardinality of the query, you can add more label matchers to the query, restricting the set of matching series.
 - Consider increasing the per-tenant limit by using the `-querier.max-fetched-chunk-bytes-per-query` option (or `max_fetched_chunk_bytes_per_query` in the runtime configuration).
 
-### err-mimir-max-query-length
+### err-fire-max-query-length
 
 This error occurs when the time range of a query exceeds the configured maximum length.
 
-Both PromQL instant and range queries can fetch metrics data over a period of time.
+Both PromQL instant and range queries can fetch profiles data over a period of time.
 A [range query](https://prometheus.io/docs/prometheus/latest/querying/api/#range-queries) requires a `start` and `end` timestamp, so the difference of `end` minus `start` is the time range length of the query.
 An [instant query](https://prometheus.io/docs/prometheus/latest/querying/api/#instant-queries) requires a `time` parameter and the query is executed fetching samples at that point in time.
-However, even an instant query can fetch metrics data over a period of time by using the [range vector selectors](https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors).
-For example, the instant query `sum(rate(http_requests_total{job="prometheus"}[1h]))` fetches metrics over a 1 hour period.
-This time period is what Grafana Mimir calls the _query time range length_ (or _query length_).
+However, even an instant query can fetch profiles data over a period of time by using the [range vector selectors](https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors).
+For example, the instant query `sum(rate(http_requests_total{job="prometheus"}[1h]))` fetches profiles over a 1 hour period.
+This time period is what Grafana Fire calls the _query time range length_ (or _query length_).
 
-Mimir has a limit on the query length.
+Fire has a limit on the query length.
 This limit is applied to partial queries, after they've split (according to time) by the query-frontend. This limit protects the system’s stability from potential abuse or mistakes.
 To configure the limit on a per-tenant basis, use the `-store.max-query-length` option (or `max_query_length` in the runtime configuration).
 
-### err-mimir-tenant-max-request-rate
+### err-fire-tenant-max-request-rate
 
 This error occurs when the rate of write requests per second is exceeded for this tenant.
 
@@ -1402,7 +1402,7 @@ How to **fix** it:
 
 - Increase the per-tenant limit by using the `-distributor.request-rate-limit` (requests per second) and `-distributor.request-burst-size` (number of requests) options (or `request_rate` and `request_burst_size` in the runtime configuration). The configurable burst represents how many requests can temporarily exceed the limit, in case of short traffic peaks. The configured burst size must be greater or equal than the configured limit.
 
-### err-mimir-tenant-max-ingestion-rate
+### err-fire-tenant-max-ingestion-rate
 
 This error occurs when the rate of received samples, exemplars and metadata per second is exceeded for this tenant.
 
@@ -1415,7 +1415,7 @@ How to **fix** it:
 
 - Increase the per-tenant limit by using the `-distributor.ingestion-rate-limit` (samples per second) and `-distributor.ingestion-burst-size` (number of samples) options (or `ingestion_rate` and `ingestion_burst_size` in the runtime configuration). The configurable burst represents how many samples, exemplars and metadata can temporarily exceed the limit, in case of short traffic peaks. The configured burst size must be greater or equal than the configured limit.
 
-### err-mimir-tenant-too-many-ha-clusters
+### err-fire-tenant-too-many-ha-clusters
 
 This error occurs when a distributor rejects a write request because the number of [high-availability (HA) clusters]({{< relref "../configure/configuring-high-availability-deduplication.md" >}}) has hit the configured limit for this tenant.
 
@@ -1429,7 +1429,7 @@ How to **fix** it:
 
 - Increase the per-tenant limit by using the `-distributor.ha-tracker.max-clusters` option (or `ha_max_clusters` in the runtime configuration).
 
-### err-mimir-sample-timestamp-too-old
+### err-fire-sample-timestamp-too-old
 
 This error occurs when the ingester rejects a sample because its timestamp is too old as compared to the most recent timestamp received for the same tenant across all its time series.
 
@@ -1437,9 +1437,9 @@ How it **works**:
 
 - If the incoming timestamp is more than 1 hour older than the most recent timestamp ingested for the tenant, the sample will be rejected.
 
-> **Note**: If the out-of-order sample ingestion is enabled, then this error is similar to `err-mimir-sample-out-of-order` below with a difference that the sample is older than the out-of-order time window as it relates to the latest sample for that particular time series or the TSDB.
+> **Note**: If the out-of-order sample ingestion is enabled, then this error is similar to `err-fire-sample-out-of-order` below with a difference that the sample is older than the out-of-order time window as it relates to the latest sample for that particular time series or the TSDB.
 
-### err-mimir-sample-out-of-order
+### err-fire-sample-out-of-order
 
 This error occurs when the ingester rejects a sample because another sample with a more recent timestamp has already been ingested.
 
@@ -1451,22 +1451,22 @@ Common **causes**:
 
 - Your code has a single target that exposes the same time series multiple times, or multiple targets with identical labels.
 - System time of your Prometheus instance has been shifted backwards. If this was a mistake, fix the system time back to normal. Otherwise, wait until the system time catches up to the time it was changed.
-- You are running multiple Prometheus instances pushing the same metrics and [your high-availability tracker is not properly configured for deduplication]({{< relref "../configure/configuring-high-availability-deduplication.md" >}}).
+- You are running multiple Prometheus instances pushing the same profiles and [your high-availability tracker is not properly configured for deduplication]({{< relref "../configure/configuring-high-availability-deduplication.md" >}}).
 - Prometheus relabelling has been configured and it causes series to clash after the relabelling. Check the error message for information about which series has received a sample out of order.
 - A Prometheus instance was restarted, and it pushed all data from its Write-Ahead Log to remote write upon restart, some of which has already been pushed and ingested. This is normal and can be ignored.
 
 > **Note**: You can learn more about out of order samples in Prometheus, in the blog post [Debugging out of order samples](https://www.robustperception.io/debugging-out-of-order-samples/).
 
-### err-mimir-sample-duplicate-timestamp
+### err-fire-sample-duplicate-timestamp
 
 This error occurs when the ingester rejects a sample because it is a duplicate of a previously received sample with the same timestamp but different value in the same time series.
 
 Common **causes**:
 
-- Multiple endpoints are exporting the same metrics, or multiple Prometheus instances are scraping different metrics with identical labels.
+- Multiple endpoints are exporting the same profiles, or multiple Prometheus instances are scraping different profiles with identical labels.
 - Prometheus relabelling has been configured and it causes series to clash after the relabelling. Check the error message for information about which series has received a duplicate sample.
 
-### err-mimir-exemplar-series-missing
+### err-fire-exemplar-series-missing
 
 This error occurs when the ingester rejects an exemplar because its related series has not been ingested yet.
 
@@ -1474,13 +1474,13 @@ How it **works**:
 
 - The series must already exist before exemplars can be appended, as we do not create new series upon ingesting exemplars. The series will be created when a sample from it is ingested.
 
-### err-mimir-store-consistency-check-failed
+### err-fire-store-consistency-check-failed
 
 This error occurs when the querier is unable to fetch some of the expected blocks after multiple retries and connections to different store-gateways. The query fails because some blocks are missing in the queried store-gateways.
 
 How it **works**:
 
-- Mimir has been designed to guarantee query results correctness and never return partial query results. Either a query succeeds returning fully consistent results or it fails.
+- Fire has been designed to guarantee query results correctness and never return partial query results. Either a query succeeds returning fully consistent results or it fails.
 - Queriers, and rulers running with the "internal" evaluation mode, run a consistency check to ensure all expected blocks have been queried from the long-term storage via the store-gateways.
 - If any expected block has not been queried via the store-gateways, then the query fails with this error.
 - See [Anatomy of a query request]({{< relref "../architecture/components/querier.md#anatomy-of-a-query-request" >}}) to learn more.
@@ -1488,9 +1488,9 @@ How it **works**:
 How to **fix** it:
 
 - Ensure all store-gateways are healthy.
-- Ensure all store-gateways are successfully synching owned blocks (see [`MimirStoreGatewayHasNotSyncTheBucket`](#MimirStoreGatewayHasNotSyncTheBucket)).
+- Ensure all store-gateways are successfully synching owned blocks (see [`FireStoreGatewayHasNotSyncTheBucket`](#FireStoreGatewayHasNotSyncTheBucket)).
 
-### err-mimir-bucket-index-too-old
+### err-fire-bucket-index-too-old
 
 This error occurs when a query fails because the bucket index is too old.
 
@@ -1508,7 +1508,7 @@ How to **fix** it:
 - Ensure each compactor replica has successfully updated bucket index of each owned tenant within the double of `-compactor.cleanup-interval` (query below assumes the cleanup interval is set to 15 minutes):
   `time() - cortex_compactor_block_cleanup_last_successful_run_timestamp_seconds > 2 * (15 * 60)`
 
-### err-mimir-distributor-max-write-message-size
+### err-fire-distributor-max-write-message-size
 
 This error occurs when a distributor rejects a write request because its message size is larger than the allowed limit.
 
@@ -1521,7 +1521,7 @@ How to **fix** it:
 
 - Increase the allowed limit by using the `-distributor.max-recv-msg-size` option.
 
-## Mimir routes by path
+## Fire routes by path
 
 **Write path**:
 
@@ -1553,7 +1553,7 @@ How to **fix** it:
 - `prometheus_rules_namespace`
 - `prometheus_rules`
 
-## Mimir blocks storage - What to do when things to wrong
+## Fire blocks storage - What to do when things to wrong
 
 ## Recovering from a potential data loss incident
 
@@ -1566,7 +1566,7 @@ There could be several root causes leading to a potential data loss. In this doc
 
 ### Halt the compactor
 
-The Mimir cluster continues to successfully operate even if the compactor is not running, except that over a long period (12+ hours) this will lead to query performance degradation. The compactor could potentially be the cause of data loss because:
+The Fire cluster continues to successfully operate even if the compactor is not running, except that over a long period (12+ hours) this will lead to query performance degradation. The compactor could potentially be the cause of data loss because:
 
 - It marks blocks for deletion (soft deletion). _This doesn't lead to any immediate deletion, but blocks marked for deletion will be hard deleted once a delay expires._
 - It permanently deletes blocks marked for deletion after `-compactor.deletion-delay` (hard deletion)
@@ -1587,7 +1587,7 @@ The blocks retained in the ingesters can be used in case the compactor generates
 
 How to manually blocks from ingesters to the bucket:
 
-1. Ensure [`gsutil`](https://cloud.google.com/storage/docs/gsutil) is installed in the Mimir pod. If not, [install it](#install-gsutil-in-the-mimir-pod)
+1. Ensure [`gsutil`](https://cloud.google.com/storage/docs/gsutil) is installed in the Fire pod. If not, [install it](#install-gsutil-in-the-fire-pod)
 2. Run `cd /data/tsdb && /path/to/gsutil -m rsync -n -r -x 'thanos.shipper.json|chunks_head|wal' . gs://<bucket>/recovered/`
    - `-n` enabled the **dry run** (remove it once you've verified the output matches your expectations)
    - `-m` enables parallel mode
@@ -1698,7 +1698,7 @@ spec:
 
 After this preparation, one can use `kubectl exec -t -i clone-ingester-7-dataaccess /bin/sh` to inspect the disk mounted under `/data`.
 
-### Install `gsutil` in the Mimir pod
+### Install `gsutil` in the Fire pod
 
 1. Install python
    ```

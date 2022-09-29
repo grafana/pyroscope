@@ -35,31 +35,31 @@ For information about how to deploy Grafana Fire, refer to [Deploy Grafana Fire]
 
 ## Getting started
 
-If you’re new to Grafana Mimir, read the [Getting started guide](https://grafana.com/docs/mimir/latest/operators-guide/getting-started/).
+If you’re new to Grafana Fire, read the [Getting started guide](https://grafana.com/docs/fire/latest/operators-guide/getting-started/).
 
-Before deploying Grafana Mimir in a production environment, read:
+Before deploying Grafana Fire in a production environment, read:
 
-1. [An overview of Grafana Mimir’s architecture](https://grafana.com/docs/mimir/latest/operators-guide/architecture/)
-1. [Configure Grafana Mimir](https://grafana.com/docs/mimir/latest/operators-guide/configuring/)
-1. [Run Grafana Mimir in production](https://grafana.com/docs/mimir/latest/operators-guide/running-production-environment/)
+1. [An overview of Grafana Fire’s architecture](https://grafana.com/docs/fire/latest/operators-guide/architecture/)
+1. [Configure Grafana Fire](https://grafana.com/docs/fire/latest/operators-guide/configuring/)
+1. [Run Grafana Fire in production](https://grafana.com/docs/fire/latest/operators-guide/running-production-environment/)
 
 ## Documentation
 
-Refer to the following links to access Grafana Mimir documentation:
+Refer to the following links to access Grafana Fire documentation:
 
-- [Latest release](https://grafana.com/docs/mimir/latest/)
-- [Upcoming release](https://grafana.com/docs/mimir/next/), at the tip of the main branch
+- [Latest release](https://grafana.com/docs/fire/latest/)
+- [Upcoming release](https://grafana.com/docs/fire/next/), at the tip of the main branch
 
 ## Contributing
 
-To contribute to Grafana Mimir, refer to [Contributing to Grafana Mimir](https://github.com/grafana/mimir/tree/main/docs/internal/contributing).
+To contribute to Grafana Fire, refer to [Contributing to Grafana Fire](https://github.com/grafana/fire/tree/main/docs/internal/contributing).
 
-## Join the Grafana Mimir discussion
+## Join the Grafana Fire discussion
 
-If you have any questions or feedback regarding Grafana Mimir, join the [Grafana Mimir Discussion](https://github.com/grafana/mimir/discussions). Alternatively, consider joining the monthly [Grafana Mimir Community Call](https://docs.google.com/document/d/1E4jJcGicvLTyMEY6cUFFZUg_I8ytrBuW8r5yt1LyMv4).
+If you have any questions or feedback regarding Grafana Fire, join the [Grafana Fire Discussion](https://github.com/grafana/fire/discussions). Alternatively, consider joining the monthly [Grafana Fire Community Call](https://docs.google.com/document/d/1E4jJcGicvLTyMEY6cUFFZUg_I8ytrBuW8r5yt1LyMv4).
 
-Your feedback is always welcome, and you can also share it via the [`#mimir` Slack channel](https://slack.grafana.com/).
+Your feedback is always welcome, and you can also share it via the [`#fire` Slack channel](https://slack.grafana.com/).
 
 ## License
 
-Grafana Mimir is distributed under [AGPL-3.0-only](LICENSE).
+Grafana Fire is distributed under [AGPL-3.0-only](LICENSE).

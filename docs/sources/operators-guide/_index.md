@@ -1,25 +1,25 @@
 ---
-title: "Grafana Mimir operator and user guide"
+title: "Grafana Fire operator and user guide"
 menuTitle: "Operator and user guide"
-description: "This guide contains information about deploying, configuring, and maintaining Grafana Mimir."
+description: "This guide contains information about deploying, configuring, and maintaining Grafana Fire."
 weight: 20
 keywords:
-  - Grafana Mimir architecture
-  - Mimir architecture
-  - Mimir components
+  - Grafana Fire architecture
+  - Fire architecture
+  - Fire components
   - query sharding
-  - Mimir deployment
-  - deploying Mimir
+  - Fire deployment
+  - deploying Fire
 ---
 
-# Grafana Mimir operator and user guide
+# Grafana Fire operator and user guide
 
-This guide describes the decisions Grafana Mimir operators and users make and the actions they perform to deploy, configure, and maintain Grafana Mimir.
+This guide describes the decisions Grafana Fire operators and users make and the actions they perform to deploy, configure, and maintain Grafana Fire.
 
 The intended audience for this guide includes:
 
-- Operators who are responsible for deploying and configuring Grafana Mimir.
-- Users who are responsible for viewing Grafana Mimir dashboards to troubleshoot production environment issues.
+- Operators who are responsible for deploying and configuring Grafana Fire.
+- Users who are responsible for viewing Grafana Fire dashboards to troubleshoot production environment issues.
 
 This guide contains the following sections:
 

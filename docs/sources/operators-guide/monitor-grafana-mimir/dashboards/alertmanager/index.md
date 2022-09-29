@@ -1,19 +1,19 @@
 ---
 aliases:
-  - ../../visualizing-metrics/dashboards/alertmanager/
-  - /docs/mimir/latest/operators-guide/monitoring-grafana-mimir/dashboards/alertmanager/
+  - ../../visualizing-profiles/dashboards/alertmanager/
+  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/dashboards/alertmanager/
 description: View an example Alertmanager dashboard.
 menuTitle: Alertmanager
-title: Grafana Mimir Alertmanager dashboard
+title: Grafana Fire Alertmanager dashboard
 weight: 10
 ---
 
-# Grafana Mimir Alertmanager dashboard
+# Grafana Fire Alertmanager dashboard
 
-The Alertmanager dashboard shows health and activity metrics for the Alertmanager, and object storage metrics for operations triggered by the Alertmanager.
+The Alertmanager dashboard shows health and activity profiles for the Alertmanager, and object storage profiles for operations triggered by the Alertmanager.
 
 ## Example
 
 The following example shows an Alertmanager dashboard from a demo cluster.
 
-![Grafana Mimir Alertmanager dashboard](mimir-alertmanager.png)
+![Grafana Fire Alertmanager dashboard](fire-alertmanager.png)

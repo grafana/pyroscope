@@ -1,28 +1,28 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/configuring-high-availability-deduplication/
-description: Learn how to configure Grafana Mimir to handle HA Prometheus server deduplication.
+  - /docs/fire/latest/operators-guide/configuring/configuring-high-availability-deduplication/
+description: Learn how to configure Grafana Fire to handle HA Prometheus server deduplication.
 menuTitle: Configuring high-availability deduplication
-title: Configuring Grafana Mimir high-availability deduplication
+title: Configuring Grafana Fire high-availability deduplication
 weight: 70
 ---
 
-# Configuring Grafana Mimir high-availability deduplication
+# Configuring Grafana Fire high-availability deduplication
 
-You can have more than one Prometheus instance that scrapes the same metrics for redundancy. Grafana Mimir already performs replication for redundancy,
-so you do not need to ingest the same data twice. In Grafana Mimir, you can deduplicate the data that you receive from HA pairs of Prometheus instances.
+You can have more than one Prometheus instance that scrapes the same profiles for redundancy. Grafana Fire already performs replication for redundancy,
+so you do not need to ingest the same data twice. In Grafana Fire, you can deduplicate the data that you receive from HA pairs of Prometheus instances.
 
 Assume that there are two teams, each running their own Prometheus instance, which monitors different services: Prometheus `team-1` and Prometheus `team-2`.
 If the teams are running Prometheus HA pairs, the individual Prometheus instances would be `team-1.a` and `team-1.b`, and `team-2.a` and `team-2.b`.
 
-Grafana Mimir only ingests from either `team-1.a` or `team-1.b`, and only from `team-2.a` or `team-2.b`. It does this by electing a leader replica for each
+Grafana Fire only ingests from either `team-1.a` or `team-1.b`, and only from `team-2.a` or `team-2.b`. It does this by electing a leader replica for each
 Prometheus server. For example, in the case of `team-1`, the leader replica would be `team-1.a`. As long as `team-1.a` is the leader, the samples
-that `team-1.b` sends are dropped. And if Grafana Mimir does not see any new samples from `team-1.a` for a short period of time (30 seconds by default), it switches the leader to `team-1.b`.
+that `team-1.b` sends are dropped. And if Grafana Fire does not see any new samples from `team-1.a` for a short period of time (30 seconds by default), it switches the leader to `team-1.b`.
 
-If `team-1.a` goes down for more than 30 seconds, Grafana Mimir’s HA sample handling will have switched and elected `team-1.b` as the leader. The failure
+If `team-1.a` goes down for more than 30 seconds, Grafana Fire’s HA sample handling will have switched and elected `team-1.b` as the leader. The failure
 timeout ensures that too much data is not dropped before failover to the other replica.
 
-> **Note:** In a scenario where the default scrape period is 15 seconds, and the timeouts in Grafana Mimir are set to the default values,
+> **Note:** In a scenario where the default scrape period is 15 seconds, and the timeouts in Grafana Fire are set to the default values,
 > when a leader-election failover occurs, you'll likely only lose a single scrape of data. For any query using the `rate()` function, make the rate time interval
 > at least four times that of the scrape period to account for any of these failover scenarios.
 > For example, with the default scrape period of 15 seconds, use a rate time-interval at least 1-minute.
@@ -38,11 +38,11 @@ Incoming samples are considered duplicated (and thus dropped) if they are receiv
 
 If the HA tracker is enabled but incoming samples contain only one or none of the cluster and replica labels, these samples are accepted by default and never deduplicated.
 
-> Note: for performance reasons, the HA tracker only checks the cluster and replica label of the first series in the request to determine whether all series in the request should be deduplicated. This assumes that all series inside the request have the same cluster and replica labels, which is typically true when Prometheus is configured with external labels. Ensure this requirement is honored if you have a non-standard Prometheus setup (for example, you're using Prometheus federation or have a metrics proxy in between).
+> Note: for performance reasons, the HA tracker only checks the cluster and replica label of the first series in the request to determine whether all series in the request should be deduplicated. This assumes that all series inside the request have the same cluster and replica labels, which is typically true when Prometheus is configured with external labels. Ensure this requirement is honored if you have a non-standard Prometheus setup (for example, you're using Prometheus federation or have a profiles proxy in between).
 
 ## Configuration
 
-This section includes information about how to configure Prometheus and Grafana Mimir.
+This section includes information about how to configure Prometheus and Grafana Fire.
 
 ### How to configure Prometheus
 
@@ -69,14 +69,14 @@ global:
 
 > **Note:** The preceding labels are external labels and have nothing to do with `remote_write` configuration.
 
-These two label names are configurable on a per-tenant basis within Grafana Mimir. For example, if the label name of one cluster is used by
+These two label names are configurable on a per-tenant basis within Grafana Fire. For example, if the label name of one cluster is used by
 some workloads, set the label name of another cluster to something else that uniquely identifies the second cluster.
 
 Set the replica label so that the value for each Prometheus cluster is unique in that cluster.
 
-> **Note:** Grafana Mimir drops this label when ingesting data, but preserves the cluster label. This way, your timeseries won't change when replicas change.
+> **Note:** Grafana Fire drops this label when ingesting data, but preserves the cluster label. This way, your timeseries won't change when replicas change.
 
-### How to configure Grafana Mimir
+### How to configure Grafana Fire
 
 The minimal configuration required is as follows:
 

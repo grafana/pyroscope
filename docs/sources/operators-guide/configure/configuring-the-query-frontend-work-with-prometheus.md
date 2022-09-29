@@ -1,26 +1,26 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/configuring-the-query-frontend-work-with-prometheus/
+  - /docs/fire/latest/operators-guide/configuring/configuring-the-query-frontend-work-with-prometheus/
 description: Learn how to configure the query-frontend to work with Prometheus.
 menuTitle: Configuring the query-frontend to work with Prometheus
-title: Configuring the Grafana Mimir query-frontend to work with Prometheus
+title: Configuring the Grafana Fire query-frontend to work with Prometheus
 weight: 90
 ---
 
-# Configuring the Grafana Mimir query-frontend to work with Prometheus
+# Configuring the Grafana Fire query-frontend to work with Prometheus
 
-You can use the Grafana Mimir query-frontend with any Prometheus-API compatible
+You can use the Grafana Fire query-frontend with any Prometheus-API compatible
 service, including Prometheus and Thanos. Use this configuration file to
 benefit from query parallelization and caching.
 
 <!-- prettier-ignore-start -->
 [embedmd]:# (../../../configurations/prometheus-frontend.yml)
 ```yml
-# You can use the Mimir query frontend with any Prometheus-API compatible
+# You can use the Fire query frontend with any Prometheus-API compatible
 # service, including Prometheus and Thanos.  Use this config file to get
 # the benefits of query parallelisation and caching.
 
-# Disable the requirement that every request to Mimir has a
+# Disable the requirement that every request to Fire has a
 # X-Scope-OrgID header. `anonymous` will be substituted in instead.
 multitenancy_enabled: false
 
@@ -43,9 +43,9 @@ query_range:
     backend: "memcached"
 
     memcached:
-      # You can either configure a headless service in Kubernetes and Mimir will discover the individual
+      # You can either configure a headless service in Kubernetes and Fire will discover the individual
       # instances using a SRV DNS query (host) or list comma separated memcached addresses.
-      addresses: "dnssrvnoa+memcached.mimir.svc.cluster.local:11211"
+      addresses: "dnssrvnoa+memcached.fire.svc.cluster.local:11211"
 
 frontend:
   log_queries_longer_than: 1s

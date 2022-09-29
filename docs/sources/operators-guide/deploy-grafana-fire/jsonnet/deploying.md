@@ -1,13 +1,13 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/deploying-grafana-mimir/jsonnet/deploying/
-description: Learn how to deploy Grafana Mimir on Kubernetes with Jsonnet and Tanka.
+  - /docs/fire/latest/operators-guide/deploying-grafana-fire/jsonnet/deploying/
+description: Learn how to deploy Grafana Fire on Kubernetes with Jsonnet and Tanka.
 menuTitle: Deploying with Jsonnet
-title: Deploying Grafana Mimir with Jsonnet and Tanka
+title: Deploying Grafana Fire with Jsonnet and Tanka
 weight: 10
 ---
 
-# Deploying Grafana Mimir with Jsonnet and Tanka
+# Deploying Grafana Fire with Jsonnet and Tanka
 
 You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com/jsonnet-bundler/jsonnet-bundler) to generate Kubernetes YAML manifests from the jsonnet files.
 
@@ -24,12 +24,12 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
 1. Set up a Jsonnet project, based on the example that follows:
 
    - Initialize Tanka
-   - Install Grafana Mimir and Kubernetes Jsonnet libraries
+   - Install Grafana Fire and Kubernetes Jsonnet libraries
    - Set up an environment
 
    <!-- prettier-ignore-start -->
 
-   [embedmd]: # "../../../../../operations/mimir/getting-started.sh"
+   [embedmd]: # "../../../../../operations/fire/getting-started.sh"
 
    ```sh
    #!/usr/bin/env bash
@@ -41,11 +41,11 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
    mkdir jsonnet-example && cd jsonnet-example
    tk init --k8s=1.21
 
-   # Install Mimir jsonnet.
-   jb install github.com/grafana/mimir/operations/mimir@main
+   # Install Fire jsonnet.
+   jb install github.com/grafana/fire/operations/fire@main
 
    # Use the provided example.
-   cp vendor/mimir/mimir-manifests.jsonnet.example environments/default/main.jsonnet
+   cp vendor/fire/fire-manifests.jsonnet.example environments/default/main.jsonnet
 
    # Generate the YAML manifests.
    export PAGER=cat

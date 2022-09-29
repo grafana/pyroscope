@@ -1,15 +1,15 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/running-production-environment/production-tips/
-description: Learn tips for setting up a production Grafana Mimir cluster.
+  - /docs/fire/latest/operators-guide/running-production-environment/production-tips/
+description: Learn tips for setting up a production Grafana Fire cluster.
 menuTitle: Production tips
-title: Grafana Mimir production tips
+title: Grafana Fire production tips
 weight: 40
 ---
 
-# Grafana Mimir production tips
+# Grafana Fire production tips
 
-This topic provides tips and techniques for you to consider when setting up a production Grafana Mimir cluster.
+This topic provides tips and techniques for you to consider when setting up a production Grafana Fire cluster.
 
 ## Ingester
 
@@ -17,11 +17,11 @@ This topic provides tips and techniques for you to consider when setting up a pr
 
 The ingester receives samples from distributor, and appends the received samples to the specific per-tenant TSDB that is stored on the ingester local disk.
 The per-tenant TSDB is composed of several files and the ingester keeps a file descriptor open for each TSDB file.
-The total number of file descriptors, used to load TSDB files, linearly increases with the number of tenants in the Grafana Mimir cluster and the configured `-blocks-storage.tsdb.retention-period`.
+The total number of file descriptors, used to load TSDB files, linearly increases with the number of tenants in the Grafana Fire cluster and the configured `-blocks-storage.tsdb.retention-period`.
 
 We recommend fine-tuning the following settings to avoid reaching the maximum number of open file descriptors:
 
-1. Configure the system's `file-max` ulimit to at least `65536`. Increase the limit to `1048576` when running a Grafana Mimir cluster with more than a thousand tenants.
+1. Configure the system's `file-max` ulimit to at least `65536`. Increase the limit to `1048576` when running a Grafana Fire cluster with more than a thousand tenants.
 1. Enable ingesters [shuffle sharding]({{< relref "../../configure/configuring-shuffle-sharding/index.md" >}}) to reduce the number of tenants per ingester.
 
 ### Ingester disk space
@@ -51,14 +51,14 @@ For more information about configuring the cache, refer to [querier]({{< relref 
 
 ### Avoid querying non-compacted blocks
 
-When running Grafana Mimir at scale, querying non-compacted blocks might be inefficient for the following reasons:
+When running Grafana Fire at scale, querying non-compacted blocks might be inefficient for the following reasons:
 
 - Non compacted blocks contain duplicated samples, as a result of the ingesters replication.
 - Querying many small TSDB indexes is slower than querying a few compacted TSDB indexes.
 
 The default values for `-querier.query-store-after`, `-querier.query-ingesters-within`, and `-blocks-storage.bucket-store.ignore-blocks-within` are set such that only compacted blocks are queried. In most cases, no additional configuration is required.
 
-Configure Grafana Mimir so large tenants are parallelized by the compactor:
+Configure Grafana Fire so large tenants are parallelized by the compactor:
 
 1. Configure compactor's `-compactor.split-and-merge-shards` and `-compactor.split-groups` for every tenant with more than 20 million active series. For more information about configuring the compactor's split and merge shards, refer to [compactor]({{< relref "../../architecture/components/compactor/index.md" >}}).
 
@@ -66,7 +66,7 @@ Configure Grafana Mimir so large tenants are parallelized by the compactor:
 
 If you are not using the defaults, set the `-querier.query-store-after` to a duration that is large enough to give compactor enough time to compact newly uploaded blocks, and queriers and store-gateways to discover and synchronize newly compacted blocks.
 
-The following diagram shows all of the timings involved in the estimation. This diagram should be used only as a template and you can modify the assumptions based on real measurements in your Mimir cluster. The example makes the following assumptions:
+The following diagram shows all of the timings involved in the estimation. This diagram should be used only as a template and you can modify the assumptions based on real measurements in your Fire cluster. The example makes the following assumptions:
 
 - An ingester takes up to 30 minutes to upload a block to the storage
 - The compactor takes up to three hours to compact two-hour blocks shipped from all ingesters
@@ -114,7 +114,7 @@ For more information about required disk space, refer to [Compactor disk utiliza
 ### Ensure Memcached is properly scaled
 
 We recommend ensuring Memcached evictions happen infrequently.
-Grafana Mimir query performances might be negatively affected if your Memcached cluster evicts items frequently.
+Grafana Fire query performances might be negatively affected if your Memcached cluster evicts items frequently.
 We recommend increasing your Memcached cluster replicas to add more memory to the cluster and reduce evictions.
 
 We also recommend running a dedicated Memcached cluster for each type of cache: query results, metadata, index, and chunks.
@@ -122,5 +122,5 @@ Running a dedicated Memcached cluster for each cache type is not required, but r
 
 ## Security
 
-We recommend securing the Grafana Mimir cluster.
-For more information about securing a Mimir cluster, refer to [Secure Grafana Mimir]({{< relref "../../secure/_index.md" >}}).
+We recommend securing the Grafana Fire cluster.
+For more information about securing a Fire cluster, refer to [Secure Grafana Fire]({{< relref "../../secure/_index.md" >}}).

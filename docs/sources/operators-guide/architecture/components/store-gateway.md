@@ -1,13 +1,13 @@
 ---
-title: "Grafana Mimir store-gateway"
+title: "Grafana Fire store-gateway"
 menuTitle: "Store-gateway"
 description: "The store-gateway queries blocks from long-term storage."
 weight: 70
 ---
 
-# Grafana Mimir store-gateway
+# Grafana Fire store-gateway
 
-The store-gateway component, which is stateful, queries blocks from [long-term storage]({{< relref "../about-grafana-mimir-architecture/index.md#long-term-storage" >}}).
+The store-gateway component, which is stateful, queries blocks from [long-term storage]({{< relref "../about-grafana-fire-architecture/index.md#long-term-storage" >}}).
 On the read path, the [querier]({{< relref "querier.md" >}}) and the [ruler]({{< relref "ruler/index.md" >}}) use the store-gateway when handling the query, whether the query comes from a user or from when a rule is being evaluated.
 
 To find the right blocks to look up at query time, the store-gateway requires an almost up-to-date view of the bucket in long-term storage.
@@ -33,7 +33,7 @@ You can configure the `-blocks-storage.bucket-store.sync-interval` flag to contr
 
 When a query executes, store-gateway downloads chunks, but it does not fully download the whole block; the store-gateway downloads only the portions of index and chunks that are required to run a given query.
 To avoid the store-gateway having to re-download the index header during subsequent restarts, we recommend running the store-gateway with a persistent disk.
-For example, if you're running the Grafana Mimir cluster in Kubernetes, you can use a StatefulSet with a PersistentVolumeClaim for the store-gateways.
+For example, if you're running the Grafana Fire cluster in Kubernetes, you can use a StatefulSet with a PersistentVolumeClaim for the store-gateways.
 
 For more information about the index-header, refer to [Binary index-header documentation]({{< relref "../binary-index-header.md" >}}).
 
@@ -115,7 +115,7 @@ Keeping the index-header on the local disk makes query execution faster.
 By default, a store-gateway downloads the index-headers to disk and doesn't load them to memory until required.
 When required by a query, index-headers are memory-mapped and automatically released by the store-gateway after the amount of inactivity time you specify in `-blocks-storage.bucket-store.index-header-lazy-loading-idle-timeout` has passed.
 
-Grafana Mimir provides a configuration flag `-blocks-storage.bucket-store.index-header-lazy-loading-enabled=false` to disable index-header lazy loading.
+Grafana Fire provides a configuration flag `-blocks-storage.bucket-store.index-header-lazy-loading-enabled=false` to disable index-header lazy loading.
 When disabled, the store-gateway memory-maps all index-headers, which provides faster access to the data in the index-header.
 However, in a cluster with a large number of blocks, each store-gateway might have a large amount of memory-mapped index-headers, regardless of how frequently they are used at query time.
 
@@ -164,7 +164,7 @@ For example, if you're running Memcached in Kubernetes, you might:
 
 1. Deploy your Memcached cluster using a [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/).
 1. Create a [headless service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) for Memcached StatefulSet.
-1. Configure the Mimir's Memcached client address using the `dnssrvnoa+` [service discovery]({{< relref "../../configure/about-dns-service-discovery.md" >}}).
+1. Configure the Fire's Memcached client address using the `dnssrvnoa+` [service discovery]({{< relref "../../configure/about-dns-service-discovery.md" >}}).
 
 **To configure the Memcached backend**:
 

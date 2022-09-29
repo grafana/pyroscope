@@ -1,20 +1,20 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/securing/
-description: Learn how to secure Grafana Mimir data and communication paths.
+  - /docs/fire/latest/operators-guide/securing/
+description: Learn how to secure Grafana Fire data and communication paths.
 keywords:
-  - Mimir security
-  - Mimir authentication
-  - Mimir authorization
-  - Mimir encrypt data at rest
-  - Mimir TLS
+  - Fire security
+  - Fire authentication
+  - Fire authorization
+  - Fire encrypt data at rest
+  - Fire TLS
 menuTitle: Secure
-title: Secure Grafana Mimir
+title: Secure Grafana Fire
 weight: 70
 ---
 
-# Secure Grafana Mimir
+# Secure Grafana Fire
 
-These sections explain how to secure Grafana Mimir data and communication paths.
+These sections explain how to secure Grafana Fire data and communication paths.
 
 {{< section menuTitle="true" >}}

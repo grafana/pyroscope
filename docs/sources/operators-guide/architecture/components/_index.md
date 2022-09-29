@@ -1,23 +1,23 @@
 ---
-title: "Grafana Mimir components"
+title: "Grafana Fire components"
 menuTitle: "Components"
-description: "Grafana Mimir includes a set of components that interact to form a cluster."
+description: "Grafana Fire includes a set of components that interact to form a cluster."
 weight: 30
 keywords:
-  - Mimir components
-  - Mimir compactor
-  - Mimir distributor
-  - Mimir ingester
-  - Mimir querier
-  - Mimir query-frontend
-  - Mimir store-gateway
-  - Mimir overrides-exporter
-  - Mimir query-scheduler
-  - Mimir ruler
+  - Fire components
+  - Fire compactor
+  - Fire distributor
+  - Fire ingester
+  - Fire querier
+  - Fire query-frontend
+  - Fire store-gateway
+  - Fire overrides-exporter
+  - Fire query-scheduler
+  - Fire ruler
 ---
 
-# Grafana Mimir components
+# Grafana Fire components
 
-Grafana Mimir includes a set of components that interact to form a cluster.
+Grafana Fire includes a set of components that interact to form a cluster.
 
 {{< section menuTitle="true" >}}

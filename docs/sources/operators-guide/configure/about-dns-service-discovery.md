@@ -1,17 +1,17 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/about-dns-service-discovery/
+  - /docs/fire/latest/operators-guide/configuring/about-dns-service-discovery/
 description:
   DNS service discovery finds addresses of backend services to which Grafana
-  Mimir connects.
+  Fire connects.
 menuTitle: About DNS service discovery
-title: About Grafana Mimir DNS service discovery
+title: About Grafana Fire DNS service discovery
 weight: 20
 ---
 
-# About Grafana Mimir DNS service discovery
+# About Grafana Fire DNS service discovery
 
-Some clients in Grafana Mimir support service discovery via DNS to locate the addresses of backend servers to connect to. The following clients support service discovery via DNS:
+Some clients in Grafana Fire support service discovery via DNS to locate the addresses of backend servers to connect to. The following clients support service discovery via DNS:
 
 - [Memcached server addresses]({{< relref "reference-configuration-parameters/index.md#memcached" >}})
   - `-blocks-storage.bucket-store.chunks-cache.memcached.addresses`

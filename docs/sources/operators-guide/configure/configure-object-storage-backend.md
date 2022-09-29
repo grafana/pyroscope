@@ -1,13 +1,13 @@
 ---
-title: "Configure Grafana Mimir object storage backend"
+title: "Configure Grafana Fire object storage backend"
 menuTitle: "Configure object storage"
-description: "Learn how to configure Grafana Mimir to use different object storage backend implementations."
+description: "Learn how to configure Grafana Fire to use different object storage backend implementations."
 weight: 65
 ---
 
-# Configure Grafana Mimir object storage backend
+# Configure Grafana Fire object storage backend
 
-Grafana Mimir can use different object storage services to persist blocks containing the metrics data, as well as recording rules and alertmanager state.
+Grafana Fire can use different object storage services to persist blocks containing the profiles data, as well as recording rules and alertmanager state.
 The supported backends are:
 
 - [Amazon S3](https://aws.amazon.com/s3/) (and compatible implementations like [MinIO](https://min.io/))
@@ -30,9 +30,9 @@ To avoid repetition, you can use the [common configuration]({{< relref "about-co
 - different bucket, overriding the common bucket name
 - storage prefix
 
-Grafana Mimir will fail to start if you configure blocks storage to use the same bucket and storage prefix that the alertmanager or ruler store uses.
+Grafana Fire will fail to start if you configure blocks storage to use the same bucket and storage prefix that the alertmanager or ruler store uses.
 
-A valid configuration for the object storage (taken from the ["Play with Grafana Mimir" tutorial](https://grafana.com/tutorials/play-with-grafana-mimir/)) looks as follows:
+A valid configuration for the object storage (taken from the ["Play with Grafana Fire" tutorial](https://grafana.com/tutorials/play-with-grafana-fire/)) looks as follows:
 
 ```yaml
 common:
@@ -40,10 +40,10 @@ common:
     backend: s3
     s3:
       endpoint: minio:9000
-      access_key_id: mimir
+      access_key_id: fire
       secret_access_key: supersecret
       insecure: true
-      bucket_name: mimir
+      bucket_name: fire
 
 blocks_storage:
   storage_prefix: blocks

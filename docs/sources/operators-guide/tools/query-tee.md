@@ -1,17 +1,17 @@
 ---
-title: "Grafana Mimir query-tee"
+title: "Grafana Fire query-tee"
 menuTitle: "Query-tee"
-description: "Use query-tee to compare query results and performance between two Grafana Mimir clusters."
+description: "Use query-tee to compare query results and performance between two Grafana Fire clusters."
 weight: 30
 ---
 
-# Grafana Mimir query-tee
+# Grafana Fire query-tee
 
-The query-tee is a standalone tool that you can use for testing purposes when comparing the query results and performances of two Grafana Mimir clusters.
-The two Mimir clusters compared by the query-tee must ingest the same series and samples.
+The query-tee is a standalone tool that you can use for testing purposes when comparing the query results and performances of two Grafana Fire clusters.
+The two Fire clusters compared by the query-tee must ingest the same series and samples.
 
 The query-tee exposes Prometheus-compatible read API endpoints and acts as a proxy.
-When the query-tee receives a request, it performs the same request against the two backend Grafana Mimir clusters and tracks the response time of each backend, and compares the query results.
+When the query-tee receives a request, it performs the same request against the two backend Grafana Fire clusters and tracks the response time of each backend, and compares the query results.
 
 ## Download the query-tee
 
@@ -23,18 +23,18 @@ docker pull "grafana/query-tee:latest"
 
 - Using a local binary:
 
-Download the appropriate [release asset](https://github.com/grafana/mimir/releases/latest) for your operating system and architecture and make it executable.
+Download the appropriate [release asset](https://github.com/grafana/fire/releases/latest) for your operating system and architecture and make it executable.
 
 For Linux with the AMD64 architecture, execute the following command:
 
 ```bash
-curl -Lo query-tee https://github.com/grafana/mimir/releases/latest/download/query-tee-linux-amd64
+curl -Lo query-tee https://github.com/grafana/fire/releases/latest/download/query-tee-linux-amd64
 chmod +x query-tee
 ```
 
 ## Configure the query-tee
 
-The query-tee requires the endpoints of the backend Grafana Mimir clusters.
+The query-tee requires the endpoints of the backend Grafana Fire clusters.
 You can configure the backend endpoints by setting the `-backend.endpoints` flag to a comma-separated list of HTTP or HTTPS URLs.
 
 For each incoming request, the query-tee clones the request and sends it to each configured backend.
@@ -114,9 +114,9 @@ When the query results comparison is enabled, the query-tee compares the respons
 
 > **Note**: Floating point sample values are compared with a tolerance that can be configured via `-proxy.value-comparison-tolerance`. The configured tolerance prevents false positives due to differences in floating point values rounding introduced by the non-deterministic series ordering within the Prometheus PromQL engine.
 
-### Exported metrics
+### Exported profiles
 
-The query-tee exposes the following Prometheus metrics at the `/metrics` endpoint listening on the port configured via the flag `-server.metrics-port`:
+The query-tee exposes the following Prometheus profiles at the `/profiles` endpoint listening on the port configured via the flag `-server.profiles-port`:
 
 ```bash
 # HELP cortex_querytee_backend_request_duration_seconds Time (in seconds) spent serving requests.
