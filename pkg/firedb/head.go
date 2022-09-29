@@ -378,7 +378,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	}
 	h.metaLock.Unlock()
 
-	samplesInProfile := len(p.Sample) * len(labels)
+	samplesInProfile := len(samplesPerType[0]) * len(labels)
 	h.totalSamples.Add(sampleSize)
 	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(samplesInProfile))
 	h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(labels)))
