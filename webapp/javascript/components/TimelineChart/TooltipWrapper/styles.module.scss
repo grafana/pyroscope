@@ -9,6 +9,7 @@
   border-radius: 4px;
   padding: 8px 12px;
   color: var(--ps-tooltip-text);
+  pointer-events: none;
 
   // Don't show anything when there's no body
   // Otherwise an empty box will be shown

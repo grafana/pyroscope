@@ -113,7 +113,7 @@ function ComparisonDiffApp() {
             onSelect={(from, until) => {
               dispatch(actions.setFromAndUntil({ from, until }));
             }}
-            markings={{
+            selection={{
               left: {
                 from: leftFrom,
                 to: leftUntil,
@@ -155,10 +155,11 @@ function ComparisonDiffApp() {
               key="timeline-chart-left"
               id="timeline-chart-left"
               timelineA={leftTimeline}
+              selectionWithHandler
               onSelect={(from, until) => {
                 dispatch(actions.setLeft({ from, until }));
               }}
-              markings={{
+              selection={{
                 left: {
                   from: leftFrom,
                   to: leftUntil,
@@ -189,11 +190,12 @@ function ComparisonDiffApp() {
               data-testid="timeline-right"
               key="timeline-chart-right"
               id="timeline-chart-right"
+              selectionWithHandler
               timelineA={rightTimeline}
               onSelect={(from, until) => {
                 dispatch(actions.setRight({ from, until }));
               }}
-              markings={{
+              selection={{
                 right: {
                   from: rightFrom,
                   to: rightUntil,

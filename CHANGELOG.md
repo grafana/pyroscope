@@ -1,3 +1,25 @@
+# [0.29.0](https://github.com/pyroscope-io/pyroscope/compare/v0.28.1...v0.29.0) (2022-09-14)
+
+
+### Bug Fixes
+
+* add pprof format during ingestion to RawProfile ([#1482](https://github.com/pyroscope-io/pyroscope/issues/1482)) ([b8f0296](https://github.com/pyroscope-io/pyroscope/commit/b8f0296e70b5eebcabdc877ae437fa64ee3a2b41))
+* ignore missing heatmap params ([#1480](https://github.com/pyroscope-io/pyroscope/issues/1480)) ([c7e051b](https://github.com/pyroscope-io/pyroscope/commit/c7e051b79481aa398729e034dfa7d44ba44bd4a2))
+* **pprof:** multipart upload pprof format ([#1483](https://github.com/pyroscope-io/pyroscope/issues/1483)) ([47d2bcc](https://github.com/pyroscope-io/pyroscope/commit/47d2bccab52fd21731fa28f245a61c0184a9ef1e))
+* support for float parameters in exemplar query params ([#1479](https://github.com/pyroscope-io/pyroscope/issues/1479)) ([b8bd9b7](https://github.com/pyroscope-io/pyroscope/commit/b8bd9b7f55fa609b98f406acc83a37378a7885b3))
+* **webapp:** CollapseBox overflow ([#1490](https://github.com/pyroscope-io/pyroscope/issues/1490)) ([0af9f1d](https://github.com/pyroscope-io/pyroscope/commit/0af9f1d0ec3f18f2b4cb366eb0b8afda3e2e8de5))
+* **webapp:** hide tooltip if there's no data ([#1472](https://github.com/pyroscope-io/pyroscope/issues/1472)) ([df4c8cc](https://github.com/pyroscope-io/pyroscope/commit/df4c8cc360877b7100d987513beae905bc735a74))
+
+
+### Features
+
+* **backend:** annotations ([#1473](https://github.com/pyroscope-io/pyroscope/issues/1473)) ([9b94f58](https://github.com/pyroscope-io/pyroscope/commit/9b94f58409915f121f20238adbc9d1dc679a00ba))
+* **webapp:** Add <CollapseBox /> component ([#1474](https://github.com/pyroscope-io/pyroscope/issues/1474)) ([6595794](https://github.com/pyroscope-io/pyroscope/commit/659579448bdf3e32a77f047aceffa01108d784b3))
+* **webapp:** Add Explore Page piechart ([#1477](https://github.com/pyroscope-io/pyroscope/issues/1477)) ([c421b42](https://github.com/pyroscope-io/pyroscope/commit/c421b4225baaa7543b22185c3b26fcf48a60a024))
+* **webapp:** Add tracing page with heatmap ([#1433](https://github.com/pyroscope-io/pyroscope/issues/1433)) ([587379a](https://github.com/pyroscope-io/pyroscope/commit/587379aa5067521f38bc892c364ccff6e1d35b28))
+
+
+
 ## [0.28.1](https://github.com/pyroscope-io/pyroscope/compare/v0.28.0...v0.28.1) (2022-09-06)
 
 

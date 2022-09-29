@@ -10,6 +10,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/heatmap"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
@@ -89,7 +90,7 @@ func (h ExemplarsHandler) MergeExemplars(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	flame := flamebearer.NewProfileWithConfig(flamebearer.ProfileConfig{
+	flame := flamebearer.NewProfile(flamebearer.ProfileConfig{
 		MaxNodes:  maxNodes,
 		Metadata:  out.Metadata,
 		Tree:      out.Tree,
@@ -177,7 +178,7 @@ func mergeExemplarsInputFromMergeExemplarsRequest(req *mergeExemplarsRequest) st
 			MinValue:  req.MinValue,
 			MaxValue:  req.MaxValue,
 		},
-		HeatmapParams: storage.HeatmapParams{
+		HeatmapParams: heatmap.HeatmapParams{
 			StartTime:    startTime,
 			EndTime:      endTime,
 			MinValue:     req.MinValue,
@@ -205,7 +206,7 @@ func parseTime(t string) time.Time {
 	return attime.Parse(t)
 }
 
-func parseNumber(n string) (uint64, error) {
+func parseNumber(n string, ceil bool) (uint64, error) {
 	if n == "" {
 		return 0, nil
 	}
@@ -215,7 +216,10 @@ func parseNumber(n string) (uint64, error) {
 	}
 	f, err := strconv.ParseFloat(n, 64)
 	if err == nil {
-		return uint64(math.Round(f)), nil
+		if ceil {
+			return uint64(math.Ceil(f)), nil
+		}
+		return uint64(f), nil
 	}
 	return 0, fmt.Errorf("invalid value: expected uint or float: %q", n)
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/model"
 	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	sm "github.com/pyroscope-io/pyroscope/pkg/scrape/model"
@@ -289,7 +288,7 @@ var _ = Describe("flags", func() {
 						},
 						JWTSecret:                "",
 						LoginMaximumLifetimeDays: 0,
-						SignupDefaultRole:        model.AdminRole,
+						SignupDefaultRole:        "admin",
 						CookieSameSite:           http.SameSiteStrictMode,
 					},
 

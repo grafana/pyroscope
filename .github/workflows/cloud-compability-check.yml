@@ -1,0 +1,16 @@
+name: Cloud Compatibility Check
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  cloud_compability_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: cloud-compatibility-check
+        run: .github/cloud-compatibility-check.rb
+        env:
+          GITHUB_TOKEN: ${{ secrets.CLOUD_COMPAT_CHECK_GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}

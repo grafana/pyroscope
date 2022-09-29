@@ -14,6 +14,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
@@ -154,7 +155,35 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	combined, err := flamebearer.NewCombinedProfile("diff", leftOut, rightOut, params.MaxNodes)
+	leftProfile := flamebearer.ProfileConfig{
+		Name:     "diff",
+		MaxNodes: params.MaxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    leftOut.SpyName,
+			SampleRate: leftOut.SampleRate,
+			Units:      leftOut.Units,
+		},
+		Tree:      leftOut.Tree,
+		Timeline:  leftOut.Timeline,
+		Groups:    leftOut.Groups,
+		Telemetry: leftOut.Telemetry,
+	}
+
+	rightProfile := flamebearer.ProfileConfig{
+		Name:     "diff",
+		MaxNodes: params.MaxNodes,
+		Metadata: metadata.Metadata{
+			SpyName:    rightOut.SpyName,
+			SampleRate: rightOut.SampleRate,
+			Units:      rightOut.Units,
+		},
+		Tree:      rightOut.Tree,
+		Timeline:  rightOut.Timeline,
+		Groups:    rightOut.Groups,
+		Telemetry: rightOut.Telemetry,
+	}
+
+	combined, err := flamebearer.NewCombinedProfile(leftProfile, rightProfile)
 	if err != nil {
 		rh.httpUtils.WriteInvalidParameterError(r, w, err)
 		return
@@ -172,12 +201,12 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// fallthrough to default, to maintain existing behaviour
 		fallthrough
 	default:
-		metadata := renderMetadataResponse{FlamebearerMetadataV1: combined.Metadata}
-		rh.enhanceWithCustomFields(&metadata, params)
+		md := renderMetadataResponse{FlamebearerMetadataV1: combined.Metadata}
+		rh.enhanceWithCustomFields(&md, params)
 
 		res := RenderDiffResponse{
 			FlamebearerProfile: &combined,
-			Metadata:           metadata,
+			Metadata:           md,
 		}
 
 		rh.httpUtils.WriteResponseJSON(r, w, res)
@@ -235,7 +264,7 @@ func (rh *RenderDiffHandler) loadTree(ctx context.Context, gi *storage.GetInput,
 
 // add custom fields to renderMetadataResponse
 // original motivation is to add custom {start,end}Time calculated dynamically
-func (rh *RenderDiffHandler) enhanceWithCustomFields(metadata *renderMetadataResponse, params diffParams) {
+func (rh *RenderDiffHandler) enhanceWithCustomFields(md *renderMetadataResponse, params diffParams) {
 	var diffAppName string
 
 	if params.Left.Query.AppName == params.Right.Query.AppName {
@@ -246,9 +275,9 @@ func (rh *RenderDiffHandler) enhanceWithCustomFields(metadata *renderMetadataRes
 
 	startTime, endTime := rh.findStartEndTime(params.Left, params.Right)
 
-	metadata.AppName = diffAppName
-	metadata.StartTime = startTime.Unix()
-	metadata.EndTime = endTime.Unix()
+	md.AppName = diffAppName
+	md.StartTime = startTime.Unix()
+	md.EndTime = endTime.Unix()
 	// TODO: add missing fields
 }
 

@@ -5,13 +5,15 @@ import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
-import { formatAsOBject } from '@webapp/util/formatDate';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
 import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
+import Annotation from './Annotation';
 import styles from './TimelineChartWrapper.module.css';
+import { markingsFromAnnotations, markingsFromSelection } from './markings';
+import { ContextMenuProps } from './ContextMenu.plugin';
 
 export interface TimelineGroupData {
   data: Group;
@@ -24,37 +26,40 @@ interface TimelineData {
   color?: string;
 }
 
-interface Marking {
+interface Selection {
   from: string;
   to: string;
   color: Color;
-  overlayColor?: string | Color;
+  overlayColor: Color;
 }
 
-type TimelineDataProps =
-  | {
-      /** timelineA refers to the first (and maybe unique) timeline */
-      timelineA: TimelineData;
-      /** timelineB refers to the second timeline, useful for comparison view */
-      timelineB?: TimelineData;
-      /** to manage strict data type */
-      mode: 'singles';
-    }
-  | {
-      /** timelineGroups refers to group of timelines, useful for explore view */
-      timelineGroups: TimelineGroupData[];
-      /** if there is active group, the other groups should "dim" themselves */
-      activeGroup: string;
-      /** show or hide tags legend, useful forr disabling single timeline legend */
-      showTagsLegend: boolean;
-      /** to set active tagValue using <Legend /> */
-      handleGroupByTagValueChange: (groupByTagValue: string) => void;
-      /** to manage strict data type */
-      mode: 'multiple';
-    };
+type SingleDataProps = {
+  /** used to display at max 2 time series */
+  mode: 'singles';
+  /** timelineA refers to the first (and maybe unique) timeline */
+  timelineA: TimelineData;
+  /** timelineB refers to the second timeline, useful for comparison view */
+  timelineB?: TimelineData;
+};
+
+// Used in Tag Explorer
+type MultipleDataProps = {
+  /** used when displaying multiple time series. original use case is for tag explorer */
+  mode: 'multiple';
+  /** timelineGroups refers to group of timelines, useful for explore view */
+  timelineGroups: TimelineGroupData[];
+  /** if there is active group, the other groups should "dim" themselves */
+  activeGroup: string;
+  /** show or hide legend */
+  showTagsLegend: boolean;
+  /** to set active tagValue using <Legend /> */
+  handleGroupByTagValueChange: (groupByTagValue: string) => void;
+};
+
+type TimelineDataProps = SingleDataProps | MultipleDataProps;
 
 type TimelineChartWrapperProps = TimelineDataProps & {
-  /** the id attribute of the element float will use to apply to, it should be unique */
+  /** the id attribute of the element float will use to apply to, it should be globally unique */
   id: string;
 
   ['data-testid']?: string;
@@ -64,17 +69,27 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   height?: string;
 
   /** refers to the highlighted selection */
-  markings?: {
-    left?: Marking;
-    right?: Marking;
+  selection?: {
+    left?: Selection;
+    right?: Selection;
   };
 
   timezone: 'browser' | 'utc';
   title?: ReactNode;
 
+  /** whether to show a selection with grabbable handle
+   * ATTENTION: it only works with a single selection */
+  selectionWithHandler?: boolean;
+
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
+
+  /** list of annotations timestamp, to be rendered as markings */
+  annotations?: { timestamp: number; content: string }[];
+
+  /** What element to render when clicking */
+  ContextMenu?: (props: ContextMenuProps) => React.ReactNode;
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -86,6 +101,8 @@ class TimelineChartWrapper extends React.Component<
   static defaultProps = {
     format: 'bars',
     mode: 'singles',
+    timezone: 'browser',
+    height: '100px',
   };
 
   constructor(props: TimelineChartWrapperProps) {
@@ -99,6 +116,7 @@ class TimelineChartWrapper extends React.Component<
         right: 0,
       },
       selection: {
+        selectionWithHandler: props.selectionWithHandler || false,
         mode: 'x',
         // custom selection works for 'single' selection type,
         // 'double' selection works in old fashion way
@@ -107,13 +125,13 @@ class TimelineChartWrapper extends React.Component<
         overlayColor:
           props.selectionType === 'double'
             ? undefined
-            : props?.markings?.['right']?.overlayColor ||
-              props?.markings?.['left']?.overlayColor,
+            : props?.selection?.['right']?.overlayColor ||
+              props?.selection?.['left']?.overlayColor,
         boundaryColor:
           props.selectionType === 'double'
             ? undefined
-            : props?.markings?.['right']?.color ||
-              props?.markings?.['left']?.color,
+            : props?.selection?.['right']?.color ||
+              props?.selection?.['left']?.color,
       },
       crosshair: {
         mode: 'x',
@@ -123,6 +141,12 @@ class TimelineChartWrapper extends React.Component<
       grid: {
         borderWidth: 1, // outside border of the timelines
         hoverable: true,
+
+        // For the contextMenu plugin to work. From the docs:
+        // > If you set “clickable” to true, the plot will listen for click events
+        //   on the plot area and fire a “plotclick” event on the placeholder with
+        //   a position and a nearby data item object as parameters.
+        clickable: true,
       },
       yaxis: {
         show: false,
@@ -130,6 +154,7 @@ class TimelineChartWrapper extends React.Component<
       },
       points: {
         show: false,
+        symbol: () => {}, // function that draw points on the chart
       },
       lines: {
         show: false,
@@ -139,7 +164,7 @@ class TimelineChartWrapper extends React.Component<
       },
       xaxis: {
         mode: 'time',
-        timezone: 'browser',
+        timezone: props.timezone,
         reserveSpace: false,
       },
     };
@@ -151,6 +176,7 @@ class TimelineChartWrapper extends React.Component<
             ...flotOptions,
             lines: {
               show: true,
+              lineWidth: 0.8,
             },
             bars: {
               show: false,
@@ -180,7 +206,10 @@ class TimelineChartWrapper extends React.Component<
   }
 
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
-    if (prevProps.markings !== this.props.markings) {
+    if (
+      prevProps.selection !== this.props.selection ||
+      prevProps.annotations !== this.props.annotations
+    ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
       this.setState({ flotOptions: newFlotOptions });
@@ -188,60 +217,81 @@ class TimelineChartWrapper extends React.Component<
   }
 
   plotMarkings = () => {
-    const constructMarking = (m: Marking) => {
-      const from = new Date(formatAsOBject(m.from)).getTime();
-      const to = new Date(formatAsOBject(m.to)).getTime();
+    const selectionMarkings = markingsFromSelection(
+      this.props.selectionType,
+      this.props.selection?.left,
+      this.props.selection?.right
+    );
 
-      // 'double' selection uses built-in Flot selection
-      // built-in Flot selection for 'single' case becomes 'transparent'
-      // to use custom apperance and color for it
-      const boundary = {
-        lineWidth: 1,
-        color:
-          this.props.selectionType === 'double' ? m.color.rgb() : 'transparent',
-      };
+    const annotationsMarkings = markingsFromAnnotations(this.props.annotations);
 
-      return [
-        {
-          xaxis: { from, to },
-          color:
-            this.props.selectionType === 'double'
-              ? m.overlayColor
-              : 'tranparent',
-        },
-        { ...boundary, xaxis: { from, to: from } },
-        { ...boundary, xaxis: { from: to, to } },
-      ];
-    };
-
-    const { markings } = this.props;
-
-    if (markings) {
-      return [
-        markings.left && constructMarking(markings.left),
-        markings.right && constructMarking(markings.right),
-      ]
-        .flat()
-        .filter((a) => !!a);
-    }
-
-    return [];
+    return [...selectionMarkings, ...annotationsMarkings];
   };
 
   setOnHoverDisplayTooltip = (
     data: ITooltipWrapperProps & ExploreTooltipProps
   ) => {
+    const { timezone } = this.props;
+    let tooltipContent = [];
+
     const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
       this.props?.onHoverDisplayTooltip;
 
     if (TooltipBody) {
+      tooltipContent.push(
+        <TooltipBody
+          key="explore-body"
+          values={data.values}
+          timeLabel={data.timeLabel}
+        />
+      );
+    }
+
+    // convert to the format we are expecting
+    const annotations =
+      this.props.annotations?.map((a) => ({
+        ...a,
+        timestamp: a.timestamp * 1000,
+      })) || [];
+
+    if (this.props.annotations) {
+      if (
+        this.props.mode === 'singles' &&
+        data.coordsToCanvasPos &&
+        data.canvasX
+      ) {
+        const an = Annotation({
+          timezone,
+          annotations,
+          canvasX: data.canvasX,
+          coordsToCanvasPos: data.coordsToCanvasPos,
+        });
+
+        // if available, only render annotation
+        // so that the tooltip is not bloated
+        if (an) {
+          // Rerender as tsx to make use of key
+          tooltipContent = [
+            <Annotation
+              key="annotation"
+              timezone={timezone}
+              annotations={annotations}
+              canvasX={data.canvasX}
+              coordsToCanvasPos={data.coordsToCanvasPos}
+            />,
+          ];
+        }
+      }
+    }
+
+    if (tooltipContent.length) {
       return (
         <TooltipWrapper
           align={data.align}
           pageY={data.pageY}
           pageX={data.pageX}
         >
-          <TooltipBody values={data.values} timeLabel={data.timeLabel} />
+          {tooltipContent.map((tooltipBody) => tooltipBody)}
         </TooltipWrapper>
       );
     }
@@ -249,84 +299,73 @@ class TimelineChartWrapper extends React.Component<
     return null;
   };
 
-  render = () => {
+  renderMultiple = (props: MultipleDataProps) => {
     const { flotOptions } = this.state;
+    const { timelineGroups, activeGroup, showTagsLegend } = props;
+    const { timezone } = this.props;
 
-    const onHoverDisplayTooltip = this.props?.onHoverDisplayTooltip
-      ? (data: ITooltipWrapperProps & ExploreTooltipProps) =>
-          this.setOnHoverDisplayTooltip(data)
-      : null;
-
-    if (this.props.mode === 'multiple') {
-      const { timelineGroups, activeGroup, showTagsLegend, id, timezone } =
-        this.props;
-
-      const customFlotOptions = {
-        ...flotOptions,
-        onHoverDisplayTooltip,
-        xaxis: {
-          ...flotOptions.xaxis,
-          autoscaleMargin: null,
-          timezone: timezone || 'browser',
-        },
-      };
-
-      const centeredTimelineGroups =
-        timelineGroups &&
-        timelineGroups.map(({ data, color, tagName }) => {
-          return {
-            data: centerTimelineData({ data }),
-            tagName,
-            color:
-              activeGroup && activeGroup !== tagName
-                ? color?.fade(0.75)
-                : color,
-          };
-        });
-
-      return (
-        <>
-          <TimelineChart
-            onSelect={this.props.onSelect}
-            className={styles.wrapper}
-            // eslint-disable-next-line react/destructuring-assignment
-            data-testid={this.props['data-testid']}
-            id={id}
-            options={customFlotOptions}
-            data={centeredTimelineGroups}
-            width="100%"
-            height={this.props.height || '100px'}
-          />
-          {showTagsLegend && (
-            <Legend
-              activeGroup={activeGroup}
-              groups={timelineGroups}
-              handleGroupByTagValueChange={
-                this.props.handleGroupByTagValueChange
-              }
-            />
-          )}
-        </>
-      );
-    }
-
-    const { id, timelineA, timezone, title } = this.props;
-
-    // TODO deep copy
-    let timelineB = this.props.timelineB
-      ? JSON.parse(JSON.stringify(this.props.timelineB))
-      : undefined;
+    // TODO: unify with renderSingle
+    const onHoverDisplayTooltip = (
+      data: ITooltipWrapperProps & ExploreTooltipProps
+    ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
       ...flotOptions,
       onHoverDisplayTooltip,
+      ContextMenu: this.props.ContextMenu,
+      xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
+    };
+
+    const centeredTimelineGroups = timelineGroups.map(
+      ({ data, color, tagName }) => {
+        return {
+          data: centerTimelineData({ data }),
+          tagName,
+          color:
+            activeGroup && activeGroup !== tagName ? color?.fade(0.75) : color,
+        };
+      }
+    );
+
+    return (
+      <>
+        {this.timelineChart(centeredTimelineGroups, customFlotOptions)}
+        {showTagsLegend && (
+          <Legend
+            activeGroup={activeGroup}
+            groups={timelineGroups}
+            handleGroupByTagValueChange={props.handleGroupByTagValueChange}
+          />
+        )}
+      </>
+    );
+  };
+
+  renderSingle = (props: SingleDataProps) => {
+    const { flotOptions } = this.state;
+    const { timelineA } = props;
+    let { timelineB } = props;
+    const { timezone, title } = this.props;
+
+    // TODO deep copy
+    timelineB = timelineB ? JSON.parse(JSON.stringify(timelineB)) : undefined;
+
+    // TODO: unify with renderMultiple
+    const onHoverDisplayTooltip = (
+      data: ITooltipWrapperProps & ExploreTooltipProps
+    ) => this.setOnHoverDisplayTooltip(data);
+
+    const customFlotOptions = {
+      ...flotOptions,
+      onHoverDisplayTooltip,
+      ContextMenu: this.props.ContextMenu,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
         // both sides making it look more centers
         autoscaleMargin:
           timelineA?.data && timelineA.data.samples.length > 3 ? null : 0.005,
-        timezone: timezone || 'browser',
+        timezone,
       },
     };
 
@@ -368,19 +407,34 @@ class TimelineChartWrapper extends React.Component<
     return (
       <>
         {title}
-        <TimelineChart
-          onSelect={this.props.onSelect}
-          className={styles.wrapper}
-          // eslint-disable-next-line react/destructuring-assignment
-          data-testid={this.props['data-testid']}
-          id={id}
-          options={customFlotOptions}
-          data={data}
-          width="100%"
-          height={this.props.height || '100px'}
-        />
+        {this.timelineChart(data, customFlotOptions)}
       </>
     );
+  };
+
+  timelineChart = (
+    data: ({ data: number[][]; color?: string | Color } | undefined)[],
+    customFlotOptions: ShamefulAny
+  ) => {
+    return (
+      <TimelineChart
+        onSelect={this.props.onSelect}
+        className={styles.wrapper}
+        data-testid={this.props['data-testid']}
+        id={this.props.id}
+        options={customFlotOptions}
+        data={data}
+        width="100%"
+        height={this.props.height}
+      />
+    );
+  };
+
+  render = () => {
+    if (this.props.mode === 'multiple') {
+      return this.renderMultiple(this.props);
+    }
+    return this.renderSingle(this.props);
   };
 }
 

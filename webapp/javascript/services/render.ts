@@ -12,6 +12,7 @@ import {
   buildMergeURLWithQueryID,
 } from '@webapp/util/updateRequests';
 import { Timeline, TimelineSchema } from '@webapp/models/timeline';
+import { Annotation, AnnotationSchema } from '@webapp/models/annotation';
 import type { RequestError } from './base';
 import { request, parseResponse } from './base';
 
@@ -19,6 +20,7 @@ export interface RenderOutput {
   profile: Profile;
   timeline: Timeline;
   groups?: Groups;
+  annotations: Annotation[];
 }
 
 interface renderSingleProps {
@@ -45,7 +47,17 @@ export async function renderSingle(
   }
 
   const parsed = FlamebearerProfileSchema.merge(
-    z.object({ timeline: TimelineSchema })
+    z.object({
+      timeline: TimelineSchema,
+
+      // Default to empty array if not present
+      annotations: z.preprocess((a) => {
+        if (!a) {
+          return [];
+        }
+        return a;
+      }, z.array(AnnotationSchema)),
+    })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
     .safeParse(response.value);
@@ -53,11 +65,12 @@ export async function renderSingle(
   if (parsed.success) {
     // TODO: strip timeline
     const profile = parsed.data;
-    const { timeline } = parsed.data;
+    const { timeline, annotations } = parsed.data;
 
     return Result.ok({
       profile,
       timeline,
+      annotations,
     });
   }
 
@@ -124,6 +137,132 @@ export async function mergeWithQueryID(
   }
 
   return Result.err(parsed.error);
+}
+
+const HeatmapSchema = z.object({
+  startTime: z.number(),
+  endTime: z.number(),
+  minValue: z.number(),
+  maxValue: z.number(),
+  minDepth: z.number(),
+  maxDepth: z.number(),
+  timeBuckets: z.number(),
+  valueBuckets: z.number(),
+  values: z.array(z.array(z.number())),
+});
+
+export interface getHeatmapProps {
+  query: string;
+  from: string;
+  until: string;
+  minValue: number;
+  maxValue: number;
+  heatmapTimeBuckets: number;
+  heatmapValueBuckets: number;
+  maxNodes?: string;
+}
+
+export type Heatmap = z.infer<typeof HeatmapSchema>;
+export interface HeatmapOutput {
+  heatmap: Heatmap;
+  profile: Profile;
+}
+
+export async function getHeatmap(
+  props: getHeatmapProps,
+  controller?: {
+    signal?: AbortSignal;
+  }
+): Promise<Result<HeatmapOutput, RequestError | ZodError>> {
+  const params = new URLSearchParams({
+    ...props,
+    minValue: props.minValue.toString(),
+    maxValue: props.maxValue.toString(),
+    heatmapTimeBuckets: props.heatmapTimeBuckets.toString(),
+    heatmapValueBuckets: props.heatmapValueBuckets.toString(),
+  });
+
+  const response = await request(`/api/exemplars:query?${params}`, {
+    signal: controller?.signal,
+  });
+
+  if (response.isOk) {
+    const parsed = FlamebearerProfileSchema.merge(
+      z.object({ timeline: TimelineSchema })
+    )
+      .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+      .merge(z.object({ heatmap: HeatmapSchema }))
+      .safeParse(response.value);
+
+    if (parsed.success) {
+      const profile = parsed.data;
+      const { heatmap } = parsed.data;
+
+      return Result.ok({
+        heatmap,
+        profile,
+      });
+    }
+
+    return Result.err<HeatmapOutput, RequestError>(response.error);
+  }
+
+  return Result.err<HeatmapOutput, RequestError>(response.error);
+}
+
+export interface SelectionProfileOutput {
+  profile: Profile;
+}
+
+export interface selectionProfileProps {
+  from: string;
+  until: string;
+  query: string;
+  selectionStartTime: number;
+  selectionEndTime: number;
+  selectionMinValue: number;
+  selectionMaxValue: number;
+  heatmapTimeBuckets: number;
+  heatmapValueBuckets: number;
+}
+
+export async function getHeatmapSelectionProfile(
+  props: selectionProfileProps,
+  controller?: {
+    signal?: AbortSignal;
+  }
+): Promise<Result<SelectionProfileOutput, RequestError | ZodError>> {
+  const params = new URLSearchParams({
+    ...props,
+    selectionStartTime: props.selectionStartTime.toString(),
+    selectionEndTime: props.selectionEndTime.toString(),
+    selectionMinValue: props.selectionMinValue.toString(),
+    selectionMaxValue: props.selectionMaxValue.toString(),
+    heatmapTimeBuckets: props.heatmapTimeBuckets.toString(),
+    heatmapValueBuckets: props.heatmapValueBuckets.toString(),
+  });
+
+  const response = await request(`/api/exemplars:query?${params}`, {
+    signal: controller?.signal,
+  });
+
+  if (response.isOk) {
+    const parsed = FlamebearerProfileSchema.merge(
+      z.object({ timeline: TimelineSchema })
+    )
+      .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+      .safeParse(response.value);
+
+    if (parsed.success) {
+      return Result.ok({
+        profile: parsed.data,
+      });
+    }
+
+    return Result.err<SelectionProfileOutput, RequestError>(response.error);
+  }
+
+  return Result.err<SelectionProfileOutput, RequestError>(response.error);
 }
 
 export type RenderDiffResponse = z.infer<typeof FlamebearerProfileSchema>;
@@ -194,7 +333,25 @@ export async function renderExplore(
     z.object({ timeline: TimelineSchema })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
-    .merge(z.object({ groups: GroupsSchema }))
+    .merge(
+      z.object({
+        groups: z.preprocess((groups) => {
+          const groupNames = Object.keys(groups as Groups);
+
+          return groupNames.length
+            ? groupNames
+                .filter((g) => !!g.trim())
+                .reduce(
+                  (acc, current) => ({
+                    ...acc,
+                    [current]: (groups as Groups)[current],
+                  }),
+                  {}
+                )
+            : groups;
+        }, GroupsSchema),
+      })
+    )
     .safeParse(response.value);
 
   if (parsed.success) {

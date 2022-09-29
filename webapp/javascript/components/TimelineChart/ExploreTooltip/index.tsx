@@ -12,6 +12,8 @@ export interface ExploreTooltipProps {
     tagName: string;
   }>;
   profile?: Profile;
+  coordsToCanvasPos?: jquery.flot.axis['p2c'];
+  canvasX?: number;
 }
 
 const ExploreTooltip: FC<ExploreTooltipProps> = ({

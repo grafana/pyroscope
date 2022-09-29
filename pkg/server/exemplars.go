@@ -4,6 +4,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/heatmap"
 )
 
 func (ctrl *Controller) exemplarsHandler() ExemplarsHandler {
@@ -33,9 +34,9 @@ type ExemplarsHandler struct {
 }
 
 type HeatmapBuilder interface {
-	BuildFromSketch(storage.HeatmapSketch) *storage.Heatmap
+	BuildFromSketch(heatmap.HeatmapSketch) *heatmap.Heatmap
 }
 
 type NoopHeatmapBuilder struct{}
 
-func (NoopHeatmapBuilder) BuildFromSketch(storage.HeatmapSketch) *storage.Heatmap { return nil }
+func (NoopHeatmapBuilder) BuildFromSketch(heatmap.HeatmapSketch) *heatmap.Heatmap { return nil }

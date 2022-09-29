@@ -9,6 +9,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
@@ -76,7 +77,20 @@ func (w Writer) Write(t0, t1 time.Time) error {
 		}
 
 		if w.outputJSON {
-			flame := flamebearer.NewProfile(name, out, w.maxNodesRender)
+			flame := flamebearer.NewProfile(flamebearer.ProfileConfig{
+				Name:      name,
+				MaxNodes:  w.maxNodesRender,
+				Tree:      out.Tree,
+				Timeline:  out.Timeline,
+				Groups:    out.Groups,
+				Telemetry: out.Telemetry,
+				Metadata: metadata.Metadata{
+					SpyName:         out.SpyName,
+					SampleRate:      out.SampleRate,
+					Units:           out.Units,
+					AggregationType: out.AggregationType,
+				},
+			})
 			filename := fmt.Sprintf("%s-%s.json", name, t0.Format("2006-01-02-15-04-05"))
 			path, err := w.adhocDataDirWriter.Write(filename, flame)
 			if err != nil {

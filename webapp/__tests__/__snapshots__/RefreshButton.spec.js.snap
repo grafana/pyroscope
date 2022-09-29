@@ -2,7 +2,7 @@
 
 exports[`RefreshButton render correctly RefreshButton component 1`] = `
 <button
-  className="button  default undefined"
+  className="button default"
   data-testid="refresh-btn"
   disabled={false}
   onClick={[Function]}

@@ -1,5 +1,4 @@
-import { getUTCdate } from '@webapp/util/formatDate';
-import { format } from 'date-fns';
+import { getUTCdate, getTimelineFormatDate } from '@webapp/util/formatDate';
 
 function getFormatLabel({
   date,
@@ -25,16 +24,7 @@ function getFormatLabel({
 
     const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
 
-    if (hours < 12) {
-      return format(d, 'HH:mm:ss');
-    }
-    if (hours >= 12 && hours <= 24) {
-      return format(d, 'HH:mm');
-    }
-    if (hours > 24) {
-      return format(d, 'MMM do HH:mm');
-    }
-    return format(d, 'MMM do HH:mm');
+    return getTimelineFormatDate(d, hours);
   } catch (e) {
     return '???';
   }

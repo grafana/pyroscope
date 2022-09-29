@@ -14,9 +14,16 @@ $border-radius: 4px;
   &[type='submit'] {
     -webkit-appearance: button;
   }
+}
 
-  /* when we have an icon only button */
-  //min-width: 48px;
+.noIcon {
+  min-width: 48px;
+}
+
+.noBox {
+  border: none;
+  border-radius: none;
+  background: inherit !important;
 }
 
 .iconWithText {
@@ -39,7 +46,7 @@ $border-radius: 4px;
 }
 
 .primary {
-  border: none;
+  border-color: transparent;
   color: var(--ps-button-switch-text) !important;
   background-color: var(--ps-button-switch-bg);
 
@@ -53,7 +60,7 @@ $border-radius: 4px;
 }
 
 .secondary {
-  border: none;
+  border-color: transparent;
   color: var(--ps-immutable-off-white);
   background-color: var(--ps-blue-primary);
 
@@ -67,7 +74,7 @@ $border-radius: 4px;
 }
 
 .danger {
-  border: none;
+  border-color: transparent;
   color: var(--ps-neutral-2);
   background-color: var(--ps-red-primary);
   &:hover {

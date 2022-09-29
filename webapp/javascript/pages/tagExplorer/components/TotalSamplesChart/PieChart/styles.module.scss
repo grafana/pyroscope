@@ -1,0 +1,12 @@
+.wrapper {
+  :global {
+    .pieLabel {
+      background-color: white;
+      font-size: 12px;
+      color: var(--ps-grey-primary);
+      padding: 1px 3px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+  }
+}

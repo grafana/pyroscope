@@ -1,0 +1,77 @@
+$svg-side-margin: 40px;
+
+.heatmapContainer {
+  position: relative;
+  width: calc(100% - $svg-side-margin * 2);
+  margin: auto auto 10px auto;
+  min-height: 100px;
+  user-select: none;
+
+  span[role='progressbar'] {
+    display: block;
+    text-align: center;
+    padding-top: 45px;
+  }
+
+  .heatmapSvg {
+    width: 100%;
+    cursor: crosshair;
+
+    .selectionContainer {
+      width: 100%;
+    }
+  }
+
+  .yAxis {
+    left: -35px;
+    position: absolute;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+  }
+
+  .xAxis {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+
+  .tick {
+    font-size: 12px;
+    text-align: center;
+
+    &.yTick {
+      text-align: right;
+    }
+  }
+
+  .selectedAreaBlock {
+    cursor: crosshair;
+    position: absolute;
+  }
+
+  .legend {
+    position: absolute;
+    right: -40px;
+    top: 0;
+
+    .colorLabelContainer {
+      display: flex;
+      align-items: center;
+      justify-content: right;
+
+      .label {
+        font-size: 10px;
+        line-height: 10px;
+        padding-right: 3px;
+      }
+
+      .color {
+        width: 12px;
+        height: 12px;
+        margin-bottom: 2px;
+      }
+    }
+  }
+}

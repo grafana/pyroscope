@@ -13,6 +13,7 @@ import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/Explo
 import { PlotType, EventHolderType, EventType } from './types';
 import getFormatLabel from './getFormatLabel';
 import clamp from './clamp';
+import injectTooltip from './injectTooltip';
 
 type ContextType = {
   init: (plot: PlotType) => void;
@@ -28,7 +29,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
 (function ($: JQueryStatic) {
   function init(this: ContextType, plot: PlotType) {
-    const exploreTooltip = injectTooltip($);
+    const exploreTooltip = injectTooltip($, TOOLTIP_WRAPPER_ID);
 
     const params = {
       canvasX: -1,
@@ -128,6 +129,12 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           timeLabel,
           values,
           align,
+          canvasX: params.canvasX,
+
+          // TODO(eh-am): fix type
+          coordsToCanvasPos: (plot as unknown as jquery.flot.plot).p2c.bind(
+            this
+          ),
         });
 
         ReactDOM.render(Tooltip, exploreTooltip?.[0]);
@@ -154,13 +161,3 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
     version: '1.0',
   });
 })(jQuery);
-
-const injectTooltip = ($: JQueryStatic) => {
-  const tooltipParent = $(`#${TOOLTIP_WRAPPER_ID}`).length
-    ? $(`#${TOOLTIP_WRAPPER_ID}`)
-    : $(`<div id="${TOOLTIP_WRAPPER_ID}" />`);
-
-  const par2 = $(`body`);
-
-  return tooltipParent.appendTo(par2);
-};

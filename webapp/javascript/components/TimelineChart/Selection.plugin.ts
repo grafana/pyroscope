@@ -422,7 +422,10 @@ const handleHeight = 22;
     plot.hooks.draw.push(function (plot: PlotType, ctx: CtxType) {
       const opts = plot.getOptions();
 
-      if (opts?.selection?.selectionType === 'single') {
+      if (
+        opts?.selection?.selectionType === 'single' &&
+        opts?.selection?.selectionWithHandler
+      ) {
         const axes = plot.getAxes();
         const plotOffset = plot.getPlotOffset();
         const extractedY = extractRange(axes, 'y');

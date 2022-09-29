@@ -3,6 +3,253 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.44.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.7...@pyroscope/webapp@1.44.0) (2022-09-28)
+
+
+### Features
+
+* remove heatmap grid ([#1567](https://github.com/pyroscope-io/pyroscope/issues/1567)) ([541133b](https://github.com/pyroscope-io/pyroscope/commit/541133b54d7d10cde0c3815c17077e4e2de1109d))
+
+
+
+
+
+## [1.43.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.6...@pyroscope/webapp@1.43.7) (2022-09-27)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.43.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.5...@pyroscope/webapp@1.43.6) (2022-09-26)
+
+
+### Bug Fixes
+
+* heatmap bug fixes ([#1545](https://github.com/pyroscope-io/pyroscope/issues/1545)) ([3218c62](https://github.com/pyroscope-io/pyroscope/commit/3218c6295383fa608bfe6fed40501949d1189708))
+
+
+
+
+
+## [1.43.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.4...@pyroscope/webapp@1.43.5) (2022-09-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.43.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.3...@pyroscope/webapp@1.43.4) (2022-09-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.43.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.2...@pyroscope/webapp@1.43.3) (2022-09-26)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.43.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.1...@pyroscope/webapp@1.43.2) (2022-09-23)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.43.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.0...@pyroscope/webapp@1.43.1) (2022-09-22)
+
+
+### Bug Fixes
+
+* **webapp:** don't render popover outside the visible window ([#1534](https://github.com/pyroscope-io/pyroscope/issues/1534)) ([0ce4e7d](https://github.com/pyroscope-io/pyroscope/commit/0ce4e7de968bb3e919fab0dcd7394350eb4716b5))
+
+
+
+
+
+# [1.43.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.4...@pyroscope/webapp@1.43.0) (2022-09-22)
+
+
+### Features
+
+* **webapp:** create annotations via ui ([#1524](https://github.com/pyroscope-io/pyroscope/issues/1524)) ([53836ce](https://github.com/pyroscope-io/pyroscope/commit/53836ce6b2f4a5eb2debc6a2e03c0b39812bf488))
+
+
+
+
+
+## [1.42.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.3...@pyroscope/webapp@1.42.4) (2022-09-19)
+
+
+### Bug Fixes
+
+* **webapp:** format annotation using timezone ([#1522](https://github.com/pyroscope-io/pyroscope/issues/1522)) ([bc68da3](https://github.com/pyroscope-io/pyroscope/commit/bc68da3757154656fe8a799a8170928686305f68))
+
+
+
+
+
+## [1.42.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.2...@pyroscope/webapp@1.42.3) (2022-09-16)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.42.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.1...@pyroscope/webapp@1.42.2) (2022-09-16)
+
+
+### Bug Fixes
+
+* **webapp:** show annotations tooltip only when hovering close to the marker ([#1510](https://github.com/pyroscope-io/pyroscope/issues/1510)) ([e8bdf4a](https://github.com/pyroscope-io/pyroscope/commit/e8bdf4abbff10efcdc317aea09d45ecd795e2f42))
+
+
+
+
+
+## [1.42.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.42.0...@pyroscope/webapp@1.42.1) (2022-09-16)
+
+
+### Bug Fixes
+
+* **webapp:** annotation doesn't have a weird marking anymore ([#1512](https://github.com/pyroscope-io/pyroscope/issues/1512)) ([20abd58](https://github.com/pyroscope-io/pyroscope/commit/20abd58350a0fd729ac13cb2537c1f7b424178c8))
+
+
+
+
+
+# [1.42.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.41.0...@pyroscope/webapp@1.42.0) (2022-09-15)
+
+
+### Features
+
+* **webapp:** annotations UI ([#1489](https://github.com/pyroscope-io/pyroscope/issues/1489)) ([0e57137](https://github.com/pyroscope-io/pyroscope/commit/0e571379e1bb4f99bfdb9c3a22d1b2827128e3a5))
+
+
+
+
+
+# [1.41.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.40.1...@pyroscope/webapp@1.41.0) (2022-09-15)
+
+
+### Features
+
+* heatmap improvements ([#1501](https://github.com/pyroscope-io/pyroscope/issues/1501)) ([e9e5bfd](https://github.com/pyroscope-io/pyroscope/commit/e9e5bfdd1e93efaa0428d0a2d3803652d8c7b083))
+
+
+
+
+
+## [1.40.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.40.0...@pyroscope/webapp@1.40.1) (2022-09-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.40.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.39.1...@pyroscope/webapp@1.40.0) (2022-09-14)
+
+
+### Features
+
+* **webapp:** Add Explore Page piechart ([#1477](https://github.com/pyroscope-io/pyroscope/issues/1477)) ([c421b42](https://github.com/pyroscope-io/pyroscope/commit/c421b4225baaa7543b22185c3b26fcf48a60a024))
+
+
+
+
+
+## [1.39.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.39.0...@pyroscope/webapp@1.39.1) (2022-09-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.39.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.6...@pyroscope/webapp@1.39.0) (2022-09-13)
+
+
+### Features
+
+* **webapp:** Add tracing page with heatmap ([#1433](https://github.com/pyroscope-io/pyroscope/issues/1433)) ([587379a](https://github.com/pyroscope-io/pyroscope/commit/587379aa5067521f38bc892c364ccff6e1d35b28))
+
+
+
+
+
+## [1.38.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.5...@pyroscope/webapp@1.38.6) (2022-09-13)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.38.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.4...@pyroscope/webapp@1.38.5) (2022-09-13)
+
+
+### Bug Fixes
+
+* **webapp:** CollapseBox overflow ([#1490](https://github.com/pyroscope-io/pyroscope/issues/1490)) ([0af9f1d](https://github.com/pyroscope-io/pyroscope/commit/0af9f1d0ec3f18f2b4cb366eb0b8afda3e2e8de5))
+
+
+
+
+
+## [1.38.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.3...@pyroscope/webapp@1.38.4) (2022-09-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.38.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.2...@pyroscope/webapp@1.38.3) (2022-09-12)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.38.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.1...@pyroscope/webapp@1.38.2) (2022-09-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.38.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.38.0...@pyroscope/webapp@1.38.1) (2022-09-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.38.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.4...@pyroscope/webapp@1.38.0) (2022-09-09)
+
+
+### Features
+
+* **webapp:** Add <CollapseBox /> component ([#1474](https://github.com/pyroscope-io/pyroscope/issues/1474)) ([6595794](https://github.com/pyroscope-io/pyroscope/commit/659579448bdf3e32a77f047aceffa01108d784b3))
+
+
+
+
+
 ## [1.37.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.37.3...@pyroscope/webapp@1.37.4) (2022-09-08)
 
 **Note:** Version bump only for package @pyroscope/webapp

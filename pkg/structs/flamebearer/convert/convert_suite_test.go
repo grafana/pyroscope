@@ -1,4 +1,4 @@
-package server_test
+package convert_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestServer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Server Suite")
+	RunSpecs(t, "Flamebearer Convert Suite")
 }

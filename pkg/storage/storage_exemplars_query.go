@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/heatmap"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -15,7 +16,7 @@ type QueryExemplarsInput struct {
 	EndTime   time.Time
 
 	ExemplarsSelection ExemplarsSelection
-	HeatmapParams      HeatmapParams
+	HeatmapParams      heatmap.HeatmapParams
 }
 
 type ExemplarsSelection struct {
@@ -29,7 +30,7 @@ type QueryExemplarsOutput struct {
 	Tree          *tree.Tree
 	Count         uint64
 	Metadata      metadata.Metadata
-	HeatmapSketch HeatmapSketch
+	HeatmapSketch heatmap.HeatmapSketch
 	Telemetry     map[string]interface{}
 }
 

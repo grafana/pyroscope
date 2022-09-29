@@ -34,6 +34,16 @@ func (*DefaultImpl) MustJSON(_ *http.Request, w http.ResponseWriter, v interface
 	_, _ = w.Write(resp)
 }
 
+func (*DefaultImpl) mustJSONError(_ *http.Request, w http.ResponseWriter, code int, v interface{}) {
+	resp, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, _ = w.Write(resp)
+}
+
 // HandleError replies to the request with an appropriate message as
 // JSON-encoded body and writes a corresponding message to the log
 // with debug log level.
@@ -42,11 +52,7 @@ func (*DefaultImpl) MustJSON(_ *http.Request, w http.ResponseWriter, v interface
 // treated as an internal server error causing response code 500. Such
 // errors are not sent but only logged with error log level.
 func (d *DefaultImpl) HandleError(r *http.Request, w http.ResponseWriter, err error) {
-	d.error(r, w, d.Logger(r), err)
-}
-
-func (d *DefaultImpl) error(r *http.Request, w http.ResponseWriter, rLogger logrus.FieldLogger, err error) {
-	d.ErrorCode(r, w, rLogger, err, -1)
+	d.ErrorCode(r, w, d.Logger(r), err, -1)
 }
 
 // ErrorCode replies to the request with the specified error message
@@ -61,7 +67,7 @@ func (d *DefaultImpl) error(r *http.Request, w http.ResponseWriter, rLogger logr
 //
 // It does not end the HTTP request; the caller should ensure no further
 // writes are done to w.
-func (d *DefaultImpl) ErrorCode(r *http.Request, w http.ResponseWriter, rLogger logrus.FieldLogger, err error, code int) {
+func (d *DefaultImpl) ErrorCode(r *http.Request, w http.ResponseWriter, logger logrus.FieldLogger, err error, code int) {
 	switch {
 	case err == nil:
 		return
@@ -99,20 +105,20 @@ func (d *DefaultImpl) ErrorCode(r *http.Request, w http.ResponseWriter, rLogger 
 		e.Errors = []string{err.Error()}
 	}
 
-	w.WriteHeader(code)
-	if rLogger != nil {
+	if logger != nil {
 		// Internal errors must not be shown to users but
 		// logged with error log level.
-		rLogger = rLogger.WithError(err).WithField("code", code)
+		logger = logger.WithError(err).WithField("code", code)
 		msg := strings.ToLower(http.StatusText(code))
 		if code == http.StatusInternalServerError {
-			rLogger.Error(msg)
+			w.WriteHeader(code)
+			logger.Error(msg)
 			return
 		}
-		rLogger.Debug(msg)
+		logger.Debug(msg)
 	}
 
-	d.MustJSON(r, w, e)
+	d.mustJSONError(r, w, code, e)
 }
 
 var (

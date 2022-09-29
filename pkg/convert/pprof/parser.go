@@ -3,12 +3,13 @@ package pprof
 import (
 	"context"
 	"fmt"
+	"io"
+	"time"
+
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"io"
-	"time"
 )
 
 type Parser struct {

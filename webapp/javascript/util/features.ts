@@ -38,3 +38,5 @@ export const isSignupEnabled = features.signupEnabled;
 export const isExportToFlamegraphDotComEnabled =
   features.exportToFlamegraphDotComEnabled;
 export const isAuthRequired = features.isAuthRequired;
+// oss only features
+export const isAnnotationsEnabled = true;

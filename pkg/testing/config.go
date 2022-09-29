@@ -24,6 +24,10 @@ func WithConfig(cb func(cfg **config.Config)) {
 				Database: config.Database{
 					Type: "sqlite3",
 				},
+
+				Auth: config.Auth{
+					SignupDefaultRole: "admin",
+				},
 			},
 		}
 	})

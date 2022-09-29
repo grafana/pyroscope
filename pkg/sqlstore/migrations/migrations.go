@@ -48,6 +48,8 @@ func Migrate(db *gorm.DB, c *config.Server) error {
 	return gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		createUserTableMigration(c.Auth.Internal.AdminUser),
 		createAPIKeyTableMigration(),
+		createAnnotationsTableMigration(),
+		addIndexesUniqueTableMigration(),
 	}).Migrate()
 }
 
@@ -107,6 +109,44 @@ func createAPIKeyTableMigration() *gormigrate.Migration {
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Migrator().DropTable(&apiKey{})
+		},
+	}
+}
+
+func createAnnotationsTableMigration() *gormigrate.Migration {
+	type annotation struct {
+		ID        uint      `gorm:"primarykey"`
+		AppName   string    `gorm:"not null;default:null"`
+		Timestamp time.Time `form:"not null;default:null"`
+		Content   string    `gorm:"not null;default:null"`
+		CreatedAt time.Time
+		UpdatedAt time.Time
+	}
+
+	return &gormigrate.Migration{
+		ID: "1661975049",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&annotation{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable(&annotation{})
+		},
+	}
+}
+
+func addIndexesUniqueTableMigration() *gormigrate.Migration {
+	type annotation struct {
+		AppName   string    `gorm:"index:idx_appname_timestamp,unique;not null;default:null"`
+		Timestamp time.Time `gorm:"index:idx_appname_timestamp,unique;not null;default:null"`
+	}
+
+	return &gormigrate.Migration{
+		ID: "1663269650",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&annotation{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropIndex(&annotation{}, "idx_appname_timestamp")
 		},
 	}
 }
