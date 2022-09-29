@@ -14,7 +14,14 @@ jest.mock('./useHeatmapSelection.hook', () => ({
 }));
 
 const renderHeatmap = () => {
-  render(<Heatmap heatmap={heatmapMockData} onSelection={() => ({})} />);
+  render(
+    <Heatmap
+      sampleRate={100}
+      timezone="utc"
+      heatmap={heatmapMockData}
+      onSelection={() => ({})}
+    />
+  );
 };
 
 describe('Component: Heatmap', () => {

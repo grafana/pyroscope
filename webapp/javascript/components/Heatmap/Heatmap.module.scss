@@ -28,6 +28,13 @@ $svg-side-margin: 40px;
     display: flex;
     flex-direction: column-reverse;
     justify-content: space-between;
+
+    .axisUnits {
+      position: absolute;
+      top: -30px;
+      width: 60px;
+      font-size: 14px;
+    }
   }
 
   .xAxis {

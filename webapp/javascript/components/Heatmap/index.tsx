@@ -4,6 +4,7 @@ import Color from 'color';
 import cl from 'classnames';
 import { interpolateViridis } from 'd3-scale-chromatic';
 
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import type { Heatmap as HeatmapType } from '@webapp/services/render';
 import {
   SelectedAreaCoordsType,
@@ -28,9 +29,16 @@ interface HeatmapProps {
     startT: number,
     endT: number
   ) => void;
+  timezone: string;
+  sampleRate: number;
 }
 
-export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
+export function Heatmap({
+  heatmap,
+  onSelection,
+  timezone,
+  sampleRate,
+}: HeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const resizedSelectedAreaRef = useRef<HTMLDivElement>(null);
@@ -125,9 +133,10 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
     >
       <Axis
         axis="y"
+        sampleRate={sampleRate}
         min={heatmap.minValue}
         max={heatmap.maxValue}
-        ticksNumber={5}
+        ticksCount={5}
       />
       <ResizedSelectedArea
         resizedSelectedAreaRef={resizedSelectedAreaRef}
@@ -155,7 +164,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         axis="x"
         min={heatmap.startTime}
         max={heatmap.endTime}
-        ticksNumber={7}
+        ticksCount={7}
       />
       <div className={styles.legend} data-testid="color-scale">
         {HEATMAP_COLORS.map((color, index) => (
@@ -178,6 +187,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         dataSourceElRef={canvasRef}
         heatmapW={heatmapW}
         heatmap={heatmap}
+        timezone={timezone}
       />
     </div>
   );
@@ -229,16 +239,20 @@ interface AxisProps {
   axis: 'x' | 'y';
   min: number;
   max: number;
-  ticksNumber: number;
+  ticksCount: number;
+  timezone?: string;
+  sampleRate?: number;
 }
 
-const FORMAT_MAP = {
-  x: 'time' as const,
-  y: 'value' as const,
-};
+function Axis({ axis, max, min, ticksCount, timezone, sampleRate }: AxisProps) {
+  const yAxisformatter = sampleRate && getFormatter(max, sampleRate, 'samples');
 
-function Axis({ axis, max, min, ticksNumber }: AxisProps) {
-  const ticks = getTicks(FORMAT_MAP[axis], min, max, ticksNumber);
+  const ticks = getTicks(
+    min,
+    max,
+    { timezone, formatter: yAxisformatter, ticksCount },
+    sampleRate
+  );
 
   return (
     <div
@@ -246,6 +260,9 @@ function Axis({ axis, max, min, ticksNumber }: AxisProps) {
       className={styles[`${axis}Axis`]}
       style={axis === 'y' ? { height: HEATMAP_HEIGHT } : {}}
     >
+      {yAxisformatter ? (
+        <div className={styles.axisUnits}>{yAxisformatter.suffix}s</div>
+      ) : null}
       {ticks.map((tick) => (
         <div
           role="textbox"

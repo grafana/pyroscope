@@ -37,16 +37,6 @@ describe('format', () => {
         expect(df.format(8000, 100)).toBe('80.00 seconds');
       });
 
-      it('correctly formats trace samples', () => {
-        const df = getFormatter(80, 2, 'trace_samples');
-
-        expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
-        expect(df.format(100, 100)).toBe('1.00 second');
-        expect(df.format(2000, 100)).toBe('20.00 seconds');
-        expect(df.format(2012.3, 100)).toBe('20.12 seconds');
-        expect(df.format(8000, 100)).toBe('80.00 seconds');
-      });
-
       it('correctly formats duration when maxdur = 80', () => {
         const df = getFormatter(160, 2, 'samples');
 
@@ -55,6 +45,27 @@ describe('format', () => {
         expect(df.format(2000, 100)).toBe('0.33 minutes');
         expect(df.format(2012.3, 100)).toBe('0.34 minutes');
         expect(df.format(8000, 100)).toBe('1.33 minutes');
+      });
+
+      it('correctly formats samples duration and return value without units', () => {
+        const df = getFormatter(160, 2, 'samples');
+
+        expect(df.suffix).toBe('minute');
+        expect(df.format(6000, 100, false)).toBe('1.00');
+        expect(df.format(100, 100, false)).toBe('0.02');
+        expect(df.format(2000, 100, false)).toBe('0.33');
+        expect(df.format(2012.3, 100, false)).toBe('0.34');
+        expect(df.format(8000, 100, false)).toBe('1.33');
+      });
+
+      it('correctly formats trace samples', () => {
+        const df = getFormatter(80, 2, 'trace_samples');
+
+        expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
+        expect(df.format(100, 100)).toBe('1.00 second');
+        expect(df.format(2000, 100)).toBe('20.00 seconds');
+        expect(df.format(2012.3, 100)).toBe('20.12 seconds');
+        expect(df.format(8000, 100)).toBe('80.00 seconds');
       });
 
       it('correctly formats trace_samples duration when maxdur is less than second', () => {

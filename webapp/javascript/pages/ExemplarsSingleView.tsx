@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 
 import useColorMode from '@webapp/hooks/colorMode.hook';
+import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { selectQueries } from '@webapp/redux/reducers/continuous';
 import {
@@ -21,6 +22,7 @@ import styles from './ExemplarsSingleView.module.scss';
 
 function ExemplarsSingleView() {
   const { colorMode } = useColorMode();
+  const { offset } = useTimeZone();
   const { query } = useAppSelector(selectQueries);
   const { exemplarsSingleView } = useAppSelector((state) => state.tracing);
   const { from, until } = useAppSelector((state) => state.continuous);
@@ -103,6 +105,8 @@ function ExemplarsSingleView() {
           <Heatmap
             heatmap={exemplarsSingleView.heatmap}
             onSelection={handleHeatmapSelection}
+            timezone={offset === 0 ? 'utc' : 'browser'}
+            sampleRate={exemplarsSingleView.profile.metadata.sampleRate}
           />
         );
       }

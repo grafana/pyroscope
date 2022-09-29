@@ -86,7 +86,7 @@ class DurationFormatter {
     }
   }
 
-  format(samples: number, sampleRate: number): string {
+  format(samples: number, sampleRate: number, withUnits = true): string {
     if (this.enableSubsecondPrecision) {
       sampleRate /= 1e6;
     }
@@ -101,10 +101,12 @@ class DurationFormatter {
       nStr = '< 0.01';
     }
 
-    return `${nStr} ${
-      this.units ||
-      `${this.suffix}${n === 1 || this.suffix.length === 2 ? '' : 's'}`
-    }`;
+    return withUnits
+      ? `${nStr} ${
+          this.units ||
+          `${this.suffix}${n === 1 || this.suffix.length === 2 ? '' : 's'}`
+        }`
+      : nStr;
   }
 }
 
