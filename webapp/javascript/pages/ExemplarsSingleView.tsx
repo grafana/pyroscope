@@ -75,7 +75,6 @@ function ExemplarsSingleView() {
             showCredit={false}
             profile={exemplarsSingleView.profile}
             colorMode={colorMode}
-            onlyDisplay="flamegraph"
             ExportData={
               <ExportData
                 flamebearer={exemplarsSingleView.profile}
