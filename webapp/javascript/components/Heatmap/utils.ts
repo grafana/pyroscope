@@ -89,6 +89,7 @@ export const getSelectionData = (
   };
 };
 
+// TODO(dogfrogfog): refactor (reuse existing formatters)
 export const timeFormatter =
   (min: number, max: number, timezone: string) => (v: number) => {
     const d = getUTCdate(
