@@ -158,6 +158,7 @@ export function Heatmap({ heatmap, onSelection }: HeatmapProps) {
         ticksNumber={7}
       />
       <div className={styles.legend} data-testid="color-scale">
+        <span className={styles.units}>Count</span>
         {HEATMAP_COLORS.map((color, index) => (
           <div key={color.toString()} className={styles.colorLabelContainer}>
             {index % 3 === 0 && (
