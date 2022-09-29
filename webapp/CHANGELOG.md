@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.45.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.44.0...@pyroscope/webapp@1.45.0) (2022-09-29)
+
+
+### Features
+
+* add ticks to x and y-axis ([#1558](https://github.com/pyroscope-io/pyroscope/issues/1558)) ([4a3e140](https://github.com/pyroscope-io/pyroscope/commit/4a3e1402ff1f117f3a806e4ef4cae456fe60c336))
+
+
+
+
+
 # [1.44.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.43.7...@pyroscope/webapp@1.44.0) (2022-09-28)
 
 
