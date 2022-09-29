@@ -164,8 +164,8 @@ export interface getHeatmapProps {
 
 export type Heatmap = z.infer<typeof HeatmapSchema>;
 export interface HeatmapOutput {
-  heatmap: Heatmap;
-  profile: Profile;
+  heatmap: Heatmap | null;
+  profile?: Profile;
 }
 
 export async function getHeatmap(
@@ -191,16 +191,22 @@ export async function getHeatmap(
       z.object({ timeline: TimelineSchema })
     )
       .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
-      .merge(z.object({ heatmap: HeatmapSchema }))
+      .merge(z.object({ heatmap: HeatmapSchema.nullable() }))
       .safeParse(response.value);
 
     if (parsed.success) {
       const profile = parsed.data;
       const { heatmap } = parsed.data;
 
+      if (heatmap !== null) {
+        return Result.ok({
+          heatmap,
+          profile,
+        });
+      }
+
       return Result.ok({
-        heatmap,
-        profile,
+        heatmap: null,
       });
     }
 
