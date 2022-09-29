@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.47.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.46.0...@pyroscope/webapp@1.47.0) (2022-09-29)
+
+
+### Features
+
+* add table view to heatmap flamegraph ([#1574](https://github.com/pyroscope-io/pyroscope/issues/1574)) ([e55cc8a](https://github.com/pyroscope-io/pyroscope/commit/e55cc8aff22c863d8aab6395c1b895aee1c46278))
+
+
+
+
+
 # [1.46.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.45.0...@pyroscope/webapp@1.46.0) (2022-09-29)
 
 
