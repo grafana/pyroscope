@@ -1,6 +1,6 @@
 import type { Heatmap } from '@webapp/services/render';
 
-import { getTimelineFormatDate } from '@webapp/util/formatDate';
+import { getUTCdate, getTimelineFormatDate } from '@webapp/util/formatDate';
 import { SELECTED_AREA_BACKGROUND, HEATMAP_HEIGHT } from './constants';
 import type { SelectedAreaCoordsType } from './useHeatmapSelection.hook';
 
@@ -92,7 +92,8 @@ export const getSelectionData = (
 export const getFormatter = (
   format: 'value' | 'time',
   min?: number,
-  max?: number
+  max?: number,
+  timezone?: string
 ) => {
   switch (format) {
     case 'value':
@@ -100,12 +101,15 @@ export const getFormatter = (
         v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
     case 'time':
       return (v: number) => {
-        const date = new Date(v / 1000000);
-        // nanoseconds -> hours
+        const d = getUTCdate(
+          new Date(v / 1000000),
+          timezone === 'utc' ? 0 : new Date().getTimezoneOffset()
+        );
+
         const hours =
           ((max as number) - (min as number)) / 60 / 60 / 1000 / 1000 / 1000;
 
-        return getTimelineFormatDate(date, hours);
+        return getTimelineFormatDate(d, hours);
       };
     default:
       return () => '';
@@ -116,10 +120,13 @@ export const getTicks = (
   format: 'value' | 'time',
   min: number,
   max: number,
-  ticksCount: number
+  ticksCount: number,
+  timezone?: string
 ) => {
   const formatter =
-    format === 'time' ? getFormatter(format, min, max) : getFormatter(format);
+    format === 'time'
+      ? getFormatter(format, min, max, timezone)
+      : getFormatter(format);
 
   const step = (max - min) / ticksCount;
   const ticksArray = [formatter(min)];
