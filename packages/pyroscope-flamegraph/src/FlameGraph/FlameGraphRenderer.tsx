@@ -9,12 +9,12 @@ import React, { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
+import NoData from '@pyroscope/webapp/javascript/ui/NoData';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
-import NoProfilingData from '../NoProfilingData';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
@@ -467,7 +467,7 @@ class FlameGraphRenderer extends React.Component<
               styles.panesWrapper
             )}`}
           >
-            {dataUnavailable ? <NoProfilingData /> : panes.map((pane) => pane)}
+            {dataUnavailable ? <NoData /> : panes.map((pane) => pane)}
           </div>
         </div>
 

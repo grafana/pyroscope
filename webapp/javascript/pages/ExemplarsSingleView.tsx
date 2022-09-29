@@ -8,6 +8,7 @@ import {
   fetchSelectionProfile,
 } from '@webapp/redux/reducers/tracing';
 import Box from '@webapp/ui/Box';
+import NoData from '@webapp/ui/NoData';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
@@ -99,11 +100,13 @@ function ExemplarsSingleView() {
     switch (exemplarsSingleView.type) {
       case 'loaded':
       case 'reloading': {
-        return (
+        return exemplarsSingleView.heatmap !== null ? (
           <Heatmap
             heatmap={exemplarsSingleView.heatmap}
             onSelection={handleHeatmapSelection}
           />
+        ) : (
+          <NoData />
         );
       }
 
@@ -126,7 +129,7 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
-        <Box>{flamegraphRenderer}</Box>
+        {exemplarsSingleView.heatmap ? <Box>{flamegraphRenderer}</Box> : null}
       </div>
     </div>
   );

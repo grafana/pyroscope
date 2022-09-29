@@ -39,10 +39,10 @@ type SingleView =
 // TODO
 
 type ExemplarsSingleView =
-  | { type: 'pristine'; heatmap?: Heatmap; profile?: Profile }
-  | { type: 'loading'; heatmap?: Heatmap; profile?: Profile }
-  | { type: 'loaded'; heatmap: Heatmap; profile: Profile }
-  | { type: 'reloading'; heatmap: Heatmap; profile: Profile };
+  | { type: 'pristine'; heatmap?: Heatmap | null; profile?: Profile }
+  | { type: 'loading'; heatmap?: Heatmap | null; profile?: Profile }
+  | { type: 'loaded'; heatmap: Heatmap | null; profile?: Profile }
+  | { type: 'reloading'; heatmap: Heatmap | null; profile?: Profile };
 interface TracingState {
   queryID: string;
   maxNodes: string;

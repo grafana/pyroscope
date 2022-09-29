@@ -28,11 +28,6 @@ function HeatmapTooltip({
 
   const formatter = getFormatter('time', heatmap.startTime, heatmap.endTime);
 
-  const onMouseOut = () => {
-    window.removeEventListener('mousemove', memoizedOnMouseMove);
-    setTooltipParams(undefined);
-  };
-
   const memoizedOnMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!tooltipRef || !tooltipRef.current) {
@@ -62,7 +57,8 @@ function HeatmapTooltip({
       (e.target as HTMLCanvasElement).id !== 'selectionCanvas' &&
       (e.target as HTMLCanvasElement).id !== 'selectionArea'
     ) {
-      onMouseOut();
+      window.removeEventListener('mousemove', memoizedOnMouseMove);
+      setTooltipParams(undefined);
     } else {
       memoizedOnMouseMove(e);
     }
@@ -85,7 +81,8 @@ function HeatmapTooltip({
 
     return () => {
       dataSourceEl.removeEventListener('mouseenter', handleMouseEnter);
-      onMouseOut();
+      window.removeEventListener('mousemove', memoizedOnMouseMove);
+      window.removeEventListener('mousemove', handleWindowMouseMove);
     };
   }, [dataSourceElRef.current, memoizedOnMouseMove]);
 
