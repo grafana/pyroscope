@@ -104,9 +104,10 @@ function ExemplarsSingleView() {
       case 'reloading': {
         return exemplarsSingleView.heatmap !== null ? (
           <Heatmap
-            timezone={offset === 0 ? 'utc' : 'browser'}
             heatmap={exemplarsSingleView.heatmap}
             onSelection={handleHeatmapSelection}
+            timezone={offset === 0 ? 'utc' : 'browser'}
+            sampleRate={exemplarsSingleView.profile?.metadata.sampleRate || 100}
           />
         ) : (
           <NoData />

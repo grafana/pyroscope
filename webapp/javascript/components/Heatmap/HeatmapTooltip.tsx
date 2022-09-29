@@ -8,25 +8,27 @@ import React, {
 
 import TooltipWrapper from '@webapp/components/TimelineChart/TooltipWrapper';
 import type { Heatmap } from '@webapp/services/render';
-import { getTimeDataByXCoord, getFormatter } from './utils';
+import { getTimeDataByXCoord, timeFormatter } from './utils';
 
 interface HeatmapTooltipProps {
   dataSourceElRef: RefObject<HTMLCanvasElement>;
   heatmapW: number;
   heatmap: Heatmap;
+  timezone: string;
 }
 
 function HeatmapTooltip({
   dataSourceElRef,
   heatmapW,
   heatmap,
+  timezone,
 }: HeatmapTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipParams, setTooltipParams] = useState<
     { pageX: number; pageY: number; time: string } | undefined
   >();
 
-  const formatter = getFormatter('time', heatmap.startTime, heatmap.endTime);
+  const formatter = timeFormatter(heatmap.startTime, heatmap.endTime, timezone);
 
   const memoizedOnMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -48,7 +50,7 @@ function HeatmapTooltip({
         time: formatter(time).toString(),
       });
     },
-    [tooltipRef, setTooltipParams, heatmapW, heatmap]
+    [tooltipRef, setTooltipParams, heatmapW, heatmap, timezone]
   );
 
   // to show tooltip when move mouse over selected area

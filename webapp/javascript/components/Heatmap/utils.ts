@@ -1,6 +1,6 @@
 import type { Heatmap } from '@webapp/services/render';
 
-import { getUTCdate, getTimelineFormatDate } from '@webapp/util/formatDate';
+import { getTimelineFormatDate, getUTCdate } from '@webapp/util/formatDate';
 import { SELECTED_AREA_BACKGROUND, HEATMAP_HEIGHT } from './constants';
 import type { SelectedAreaCoordsType } from './useHeatmapSelection.hook';
 
@@ -89,49 +89,43 @@ export const getSelectionData = (
   };
 };
 
-export const getFormatter = (
-  format: 'value' | 'time',
-  min?: number,
-  max?: number,
-  timezone?: string
-) => {
-  switch (format) {
-    case 'value':
-      return (v: number) =>
-        v > 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0);
-    case 'time':
-      return (v: number) => {
-        const d = getUTCdate(
-          new Date(v / 1000000),
-          timezone === 'utc' ? 0 : new Date().getTimezoneOffset()
-        );
+// TODO(dogfrogfog): refactor (reuse existing formatters)
+export const timeFormatter =
+  (min: number, max: number, timezone: string) => (v: number) => {
+    const d = getUTCdate(
+      new Date(v / 1000000),
+      timezone === 'utc' ? 0 : new Date().getTimezoneOffset()
+    );
+    // nanoseconds -> hours
+    const hours = (max - min) / 60 / 60 / 1000 / 1000 / 1000;
 
-        const hours =
-          ((max as number) - (min as number)) / 60 / 60 / 1000 / 1000 / 1000;
+    return getTimelineFormatDate(d, hours);
+  };
 
-        return getTimelineFormatDate(d, hours);
-      };
-    default:
-      return () => '';
-  }
-};
+// TODO(dogfrogfog): refactor types
+interface TickOptions {
+  formatter?: ShamefulAny;
+  ticksCount: number;
+  timezone?: string;
+}
 
 export const getTicks = (
-  format: 'value' | 'time',
   min: number,
   max: number,
-  ticksCount: number,
-  timezone?: string
+  options: TickOptions,
+  sampleRate?: number
 ) => {
-  const formatter =
-    format === 'time'
-      ? getFormatter(format, min, max, timezone)
-      : getFormatter(format);
+  let formatter;
+  if (sampleRate && options.formatter) {
+    formatter = (v: number) => options.formatter.format(v, sampleRate, false);
+  } else {
+    formatter = timeFormatter(min, max, options.timezone as string);
+  }
 
-  const step = (max - min) / ticksCount;
+  const step = (max - min) / options.ticksCount;
   const ticksArray = [formatter(min)];
 
-  for (let i = 1; i <= ticksCount; i += 1) {
+  for (let i = 1; i <= options.ticksCount; i += 1) {
     ticksArray.push(formatter(min + step * i));
   }
 

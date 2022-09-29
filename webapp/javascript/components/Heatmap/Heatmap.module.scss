@@ -28,6 +28,13 @@ $svg-side-margin: 40px;
     position: absolute;
     display: flex;
 
+    .axisUnits {
+      position: absolute;
+      top: -30px;
+      width: 60px;
+      font-size: 14px;
+    }
+
     .tickValues {
       margin: -10px 0px;
       width: 30px;

@@ -16,6 +16,7 @@ jest.mock('./useHeatmapSelection.hook', () => ({
 const renderHeatmap = () => {
   render(
     <Heatmap
+      sampleRate={100}
       heatmap={heatmapMockData}
       onSelection={() => ({})}
       timezone="utc"
