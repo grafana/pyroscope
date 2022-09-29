@@ -1,10 +1,5 @@
 FROM ruby:3.0.2
 
-RUN git clone https://github.com/pyroscope-io/otel-profiling-ruby.git \
-    && cd otel-profiling-ruby \
-    && git checkout 62caca3 \
-    && bundle install \
-    && rake install
 WORKDIR /rideshare
 COPY Gemfile /rideshare/Gemfile
 RUN bundle install
