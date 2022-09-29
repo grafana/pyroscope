@@ -1,17 +1,17 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/configuring-hash-rings/
-description: Learn how to configure Grafana Mimir hash rings.
+  - /docs/fire/latest/operators-guide/configuring/configuring-hash-rings/
+description: Learn how to configure Grafana Fire hash rings.
 menuTitle: Configuring hash rings
-title: Configuring Grafana Mimir hash rings
+title: Configuring Grafana Fire hash rings
 weight: 60
 ---
 
-# Configuring Grafana Mimir hash rings
+# Configuring Grafana Fire hash rings
 
-[Hash rings]({{< relref "../architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Grafana Mimir for sharding and replication.
+[Hash rings]({{< relref "../architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Grafana Fire for sharding and replication.
 
-Each of the following Grafana Mimir components builds an independent hash ring.
+Each of the following Grafana Fire components builds an independent hash ring.
 The CLI flags used to configure the hash ring of each component have the following prefixes:
 
 - Ingesters: `-ingester.ring.*`
@@ -27,11 +27,11 @@ You can configure each parameter either via the CLI flag or its respective YAML 
 
 ## Configuring the key-value store
 
-Hash ring data structures need to be shared between Grafana Mimir instances.
-To propagate changes to the hash ring, Grafana Mimir uses a [key-value store]({{< relref "../architecture/key-value-store.md" >}}).
+Hash ring data structures need to be shared between Grafana Fire instances.
+To propagate changes to the hash ring, Grafana Fire uses a [key-value store]({{< relref "../architecture/key-value-store.md" >}}).
 The key-value store is required and can be configured independently for the hash rings of different components.
 
-Grafana Mimir supports the following key-value (KV) store backends for hash rings:
+Grafana Fire supports the following key-value (KV) store backends for hash rings:
 
 - `memberlist` (default)
 - `consul`
@@ -42,10 +42,10 @@ You can configure the KV store backend setting the `<prefix>.store` CLI flag (fo
 
 ### Memberlist (default)
 
-By default, Grafana Mimir uses `memberlist` as the KV store backend.
+By default, Grafana Fire uses `memberlist` as the KV store backend.
 
-At startup, a Grafana Mimir instance connects to other Mimir replicas to join the cluster.
-A Grafana Mimir instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
+At startup, a Grafana Fire instance connects to other Fire replicas to join the cluster.
+A Grafana Fire instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
 The `-memberlist.join` CLI flag must resolve to other replicas in the cluster and can be specified multiple times.
 
 The `-memberlist.join` can be set to:
@@ -58,24 +58,24 @@ The default port is `7946`.
 
 > **Note**: At a minimum, configure one or more addresses that resolve to a consistent subset of replicas (for example, all the ingesters).
 
-> **Note**: If you're running Grafana Mimir in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Grafana Mimir pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
+> **Note**: If you're running Grafana Fire in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Grafana Fire pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
 
 > **Note**: The `memberlist` backend is configured globally and can't be customized on a per-component basis. Because `memberlist` is configured globally, the `memberlist` backend differs from other supported backends, such as Consul or etcd.
 
-Grafana Mimir supports TLS for memberlist connections between its components.
+Grafana Fire supports TLS for memberlist connections between its components.
 For more information about TLS configuration, refer to [secure communications with TLS]({{< relref "../secure/securing-communications-with-tls.md" >}}).
 
 To see all supported configuration parameters, refer to [memberlist]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 #### Configuring the memberlist address and port
 
-By default, Grafana Mimir memberlist protocol listens on address `0.0.0.0` and port `7946`.
-If you run multiple Mimir processes on the same node or the port `7946` is not available, you can change the bind and advertise port by setting the following parameters:
+By default, Grafana Fire memberlist protocol listens on address `0.0.0.0` and port `7946`.
+If you run multiple Fire processes on the same node or the port `7946` is not available, you can change the bind and advertise port by setting the following parameters:
 
 - `-memberlist.bind-addr`: IP address to listen on the local machine.
 - `-memberlist.bind-port`: Port to listen on the local machine.
-- `-memberlist.advertise-addr`: IP address to advertise to other Mimir replicas. The other replicas will connect to this IP to talk to the instance.
-- `-memberlist.advertise-port`: Port to advertise to other Mimir replicas. The other replicas will connect to this port to talk to the instance.
+- `-memberlist.advertise-addr`: IP address to advertise to other Fire replicas. The other replicas will connect to this IP to talk to the instance.
+- `-memberlist.advertise-port`: Port to advertise to other Fire replicas. The other replicas will connect to this port to talk to the instance.
 
 ### Fine tuning memberlist changes propagation latency
 
@@ -112,7 +112,7 @@ To use [etcd](https://etcd.io) as a backend KV store, set the following paramete
 - `<prefix>.etcd.username`: Username used to authenticate to etcd. If etcd authentication is disabled, you can leave the username empty.
 - `<prefix>.etcd.password`: Password used to authenticate to etcd. If etcd authentication is disabled, you can leave the password empty.
 
-Grafana Mimir supports TLS between its components and etcd.
+Grafana Fire supports TLS between its components and etcd.
 For more information about TLS configuration, refer to [secure communications with TLS]({{< relref "../secure/securing-communications-with-tls.md" >}}).
 
 To see all supported configuration parameters, refer to [etcd]({{< relref "reference-configuration-parameters/index.md#etcd" >}}).
@@ -133,7 +133,7 @@ You can use the following parameters to configure the multi KV store settings:
 - `<prefix>.multi.mirror-enabled`: Whether mirroring of writes to the secondary backend store is enabled.
 - `<prefix>.multi.mirror-timeout`: The maximum time allowed to mirror a change to the secondary backend store.
 
-> **Note**: Grafana Mimir does not log an error if it is unable to mirror writes to the secondary backend store. The total number of errors is only tracked through the metric `cortex_multikv_mirror_write_errors_total`.
+> **Note**: Grafana Fire does not log an error if it is unable to mirror writes to the secondary backend store. The total number of errors is only tracked through the metric `cortex_multikv_mirror_write_errors_total`.
 
 The multi KV primary backend and mirroring can also be configured in the [runtime configuration file]({{< relref "about-runtime-configuration.md" >}}).
 Changes to a multi KV Store in the runtime configuration apply to _all_ components using a multi KV store.
@@ -154,10 +154,10 @@ multi_kv_config:
 The following steps show how to migrate ingesters from Consul to etcd:
 
 1. Configure `-ingester.ring.store=multi`, `-ingester.ring.multi.primary=consul`, `-ingester.ring.multi.secondary=etcd`, and `-ingester.ring.multi.mirror-enabled=true`. Configure both Consul settings `-ingester.ring.consul.*` and etcd settings `-ingester.ring.etcd.*`.
-1. Apply changes to your Grafana Mimir cluster. After changes have rolled out, Grafana Mimir uses Consul as primary KV store, and all writes are mirrored to etcd too.
+1. Apply changes to your Grafana Fire cluster. After changes have rolled out, Grafana Fire uses Consul as primary KV store, and all writes are mirrored to etcd too.
 1. Configure `primary: etcd` in the `multi_kv_config` block of the [runtime configuration file]({{< relref "about-runtime-configuration.md" >}}). Changes in the runtime configuration file are reloaded live, without the need to restart the process.
-1. Wait until all Mimir instances have reloaded the updated configuration.
+1. Wait until all Fire instances have reloaded the updated configuration.
 1. Configure `mirror_enabled: false` in the `multi_kv_config` block of the [runtime configuration file]({{< relref "about-runtime-configuration.md" >}}).
-1. Wait until all Mimir instances have reloaded the updated configuration.
+1. Wait until all Fire instances have reloaded the updated configuration.
 1. Configure `-ingester.ring.store=etcd` and remove both the multi and Consul configuration because they are no longer required.
-1. Apply changes to your Grafana Mimir cluster. After changes have rolled out, Grafana Mimir only uses etcd.
+1. Apply changes to your Grafana Fire cluster. After changes have rolled out, Grafana Fire only uses etcd.

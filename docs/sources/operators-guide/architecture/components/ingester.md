@@ -1,19 +1,19 @@
 ---
-title: "Grafana Mimir ingester"
+title: "Grafana Fire ingester"
 menuTitle: "Ingester"
 description: "The ingester writes incoming series to long-term storage."
 weight: 30
 ---
 
-# Grafana Mimir ingester
+# Grafana Fire ingester
 
-The ingester is a stateful component that writes incoming series to [long-term storage]({{< relref "../about-grafana-mimir-architecture/index.md#long-term-storage" >}}) on the write path and returns series samples for queries on the read path.
+The ingester is a stateful component that writes incoming series to [long-term storage]({{< relref "../about-grafana-fire-architecture/index.md#long-term-storage" >}}) on the write path and returns series samples for queries on the read path.
 
 Incoming series from [distributors]({{< relref "distributor.md" >}}) are not immediately written to the long-term storage but are either kept in ingesters memory or offloaded to ingesters disk.
 Eventually, all series are written to disk and periodically uploaded (by default every two hours) to the long-term storage.
 For this reason, the [queriers]({{< relref "querier.md" >}}) might need to fetch samples from both ingesters and long-term storage while executing a query on the read path.
 
-Any Grafana Mimir component that calls the ingesters starts by first looking up ingesters registered in the [hash ring]({{< relref "../hash-ring/index.md" >}}) to determine which ingesters are available.
+Any Grafana Fire component that calls the ingesters starts by first looking up ingesters registered in the [hash ring]({{< relref "../hash-ring/index.md" >}}) to determine which ingesters are available.
 Each ingester could be in one of the following states:
 
 - `PENDING`<br />
@@ -37,7 +37,7 @@ Ingesters store recently received samples in-memory in order to perform write de
 If the ingesters immediately write received samples to the long-term storage, the system would have difficulty scaling due to the high pressure on the long-term storage.
 For this reason, the ingesters batch and compress samples in-memory and periodically upload them to the long-term storage.
 
-Write de-amplification is the main source of Mimir's low total cost of ownership (TCO).
+Write de-amplification is the main source of Fire's low total cost of ownership (TCO).
 
 ## Ingesters failure and data loss
 
@@ -51,8 +51,8 @@ There are the following ways to mitigate this failure mode:
 ### Replication
 
 By default, each series is replicated to three ingesters.
-Writes to the Mimir cluster are successful if a quorum of ingesters received the data, which is a minimum of 2 with a replication factor of 3.
-If the Mimir cluster loses an ingester, the in-memory series samples held by the lost ingester are available at least in one other ingester.
+Writes to the Fire cluster are successful if a quorum of ingesters received the data, which is a minimum of 2 with a replication factor of 3.
+If the Fire cluster loses an ingester, the in-memory series samples held by the lost ingester are available at least in one other ingester.
 In the event of a single ingester failure, no time series samples are lost.
 If multiple ingesters fail, time series might be lost if the failure affects all the ingesters holding the replicas of a specific time series.
 
@@ -68,8 +68,8 @@ Replication is still recommended in order to gracefully handle a single ingester
 
 The write-behind log (WBL) is similar to the WAL, but it only writes incoming out-of-order samples to a persistent disk until the series are uploaded to long-term storage.
 
-There is a different log for this because it is not possible to know if a sample is out-of-order until Mimir tries to append it.
-First Mimir needs to attempt to append it, the TSDB will detect that it is out-of-order, append it anyway if out-of-order is enabled and then write it to the log.
+There is a different log for this because it is not possible to know if a sample is out-of-order until Fire tries to append it.
+First Fire needs to attempt to append it, the TSDB will detect that it is out-of-order, append it anyway if out-of-order is enabled and then write it to the log.
 
 If the ingesters fail, the same characteristics as in the WAL apply.
 
@@ -89,6 +89,6 @@ For more information on shuffle sharding, refer to [Configuring shuffle sharding
 
 ## Out-of-order samples ingestion
 
-Out-of-order samples are discarded by default. If the system writing samples to Mimir produces out-of-order samples, you can enable ingestion of such samples.
+Out-of-order samples are discarded by default. If the system writing samples to Fire produces out-of-order samples, you can enable ingestion of such samples.
 
 For more information about out-of-order samples ingestion, refer to [Configuring out of order samples ingestion]({{< relref "../../configure/configure-out-of-order-samples-ingestion.md" >}}).

@@ -1,11 +1,11 @@
 ---
-title: "Grafana Mimir compactor"
+title: "Grafana Fire compactor"
 menuTitle: "Compactor"
 description: "The compactor increases query performance and reduces long-term storage usage."
 weight: 10
 ---
 
-# Grafana Mimir compactor
+# Grafana Fire compactor
 
 The compactor increases query performance and reduces long-term storage usage by combining blocks.
 
@@ -38,11 +38,11 @@ Compaction can be tuned for clusters with large tenants. Configuration specifies
 - **Vertical scaling**<br />
   The setting `-compactor.compaction-concurrency` configures the max number of concurrent compactions running in a single compactor instance. Each compaction uses one CPU core.
 - **Horizontal scaling**<br />
-  By default, tenant blocks can be compacted by any Grafana Mimir compactor. When you enable compactor [shuffle sharding]({{< relref "../../../configure/configuring-shuffle-sharding/index.md" >}}) by setting `-compactor.compactor-tenant-shard-size` (or its respective YAML configuration option) to a value higher than `0` and lower than the number of available compactors, only the specified number of compactors are eligible to compact blocks for a given tenant.
+  By default, tenant blocks can be compacted by any Grafana Fire compactor. When you enable compactor [shuffle sharding]({{< relref "../../../configure/configuring-shuffle-sharding/index.md" >}}) by setting `-compactor.compactor-tenant-shard-size` (or its respective YAML configuration option) to a value higher than `0` and lower than the number of available compactors, only the specified number of compactors are eligible to compact blocks for a given tenant.
 
 ## Compaction algorithm
 
-Mimir uses a sophisticated compaction algorithm called split-and-merge.
+Fire uses a sophisticated compaction algorithm called split-and-merge.
 
 By design, the split-and-merge algorithm overcomes time series database (TSDB) index limitations, and it avoids situations in which compacted blocks grow indefinitely for a very large tenant at any compaction stage.
 
@@ -120,7 +120,7 @@ The soft delete mechanism gives time to queriers, rulers, and store-gateways to 
 The compactor is responsible for enforcing the storage retention, deleting the blocks that contain samples that are older than the configured retention period from the long-term storage.
 The storage retention is disabled by default, and no data will be deleted from the long-term storage unless you explicitly configure the retention period.
 
-For more information, refer to [Configure metrics storage retention]({{< relref "../../../configure/configure-metrics-storage-retention.md" >}}).
+For more information, refer to [Configure profiles storage retention]({{< relref "../../../configure/configure-profiles-storage-retention.md" >}}).
 
 ## Compactor disk utilization
 

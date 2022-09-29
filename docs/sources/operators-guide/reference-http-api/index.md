@@ -1,23 +1,23 @@
 ---
-title: "Reference: Grafana Mimir HTTP API"
+title: "Reference: Grafana Fire HTTP API"
 menuTitle: "Reference: HTTP API"
-description: "Use the HTTP API to write and query time-series data and operate a Grafana Mimir cluster."
+description: "Use the HTTP API to write and query time-series data and operate a Grafana Fire cluster."
 weight: 120
 keywords:
-  - Mimir API
-  - Mimir endpoints
-  - Mimir communication
-  - Mimir querying
+  - Fire API
+  - Fire endpoints
+  - Fire communication
+  - Fire querying
 ---
 
-# Reference: Grafana Mimir HTTP API
+# Reference: Grafana Fire HTTP API
 
-Grafana Mimir exposes an HTTP API that you can use to write and query time series data, and operate the cluster.
+Grafana Fire exposes an HTTP API that you can use to write and query time series data, and operate the cluster.
 
-This document groups API endpoints by service. Note that the API endpoints are exposed when you run Grafana Mimir in microservices mode and monolithic mode:
+This document groups API endpoints by service. Note that the API endpoints are exposed when you run Grafana Fire in microservices mode and monolithic mode:
 
 - **Microservices mode**: Each service exposes its own endpoints.
-- **Monolithic mode**: The Grafana Mimir instance exposes all API endpoints.
+- **Monolithic mode**: The Grafana Fire instance exposes all API endpoints.
 
 ## Endpoints
 
@@ -28,14 +28,14 @@ This document groups API endpoints by service. Note that the API endpoints are e
 | [Runtime Configuration](#runtime-configuration)                                       | _All services_                 | `GET /runtime_config`                                                     |
 | [Services' status](#services-status)                                                  | _All services_                 | `GET /services`                                                           |
 | [Readiness probe](#readiness-probe)                                                   | _All services_                 | `GET /ready`                                                              |
-| [Metrics](#metrics)                                                                   | _All services_                 | `GET /metrics`                                                            |
+| [Profiles](#profiles)                                                                   | _All services_                 | `GET /profiles`                                                            |
 | [Pprof](#pprof)                                                                       | _All services_                 | `GET /debug/pprof`                                                        |
 | [Fgprof](#fgprof)                                                                     | _All services_                 | `GET /debug/fgprof`                                                       |
 | [Build information](#build-information)                                               | _All services_                 | `GET /api/v1/status/buildinfo`                                            |
 | [Memberlist cluster](#memberlist-cluster)                                             | _All services_                 | `GET /memberlist`                                                         |
 | [Get tenant limits](#get-tenant-limits)                                               | _All services_                 | `GET /api/v1/user_limits`                                                 |
 | [Remote write](#remote-write)                                                         | Distributor                    | `POST /api/v1/push`                                                       |
-| [OTLP](#otlp)                                                                         | Distributor                    | `POST /otlp/v1/metrics`                                                   |
+| [OTLP](#otlp)                                                                         | Distributor                    | `POST /otlp/v1/profiles`                                                   |
 | [Tenants stats](#tenants-stats)                                                       | Distributor                    | `GET /distributor/all_user_stats`                                         |
 | [HA tracker status](#ha-tracker-status)                                               | Distributor                    | `GET /distributor/ha_tracker`                                             |
 | [Flush chunks / blocks](#flush-chunks--blocks)                                        | Ingester                       | `GET,POST /ingester/flush`                                                |
@@ -98,7 +98,7 @@ The following table provides usage of placeholder path prefixes, for prefixes th
 
 Endpoints that require authentication must be called with the `X-Scope-OrgID` HTTP request header specified to the tenant ID.
 
-If you disable multi-tenancy, Grafana Mimir doesn't require any request to include the `X-Scope-OrgID` header.
+If you disable multi-tenancy, Grafana Fire doesn't require any request to include the `X-Scope-OrgID` header.
 
 Multi-tenancy can be enabled and disabled via the `-auth.multitenancy-enabled` flag or its respective YAML configuration option.
 
@@ -114,7 +114,7 @@ The following API endpoints are exposed by all services.
 GET /
 ```
 
-This endpoint displays an index page with links to other web pages exposed by Grafana Mimir.
+This endpoint displays an index page with links to other web pages exposed by Grafana Fire.
 
 ### Configuration
 
@@ -122,7 +122,7 @@ This endpoint displays an index page with links to other web pages exposed by Gr
 GET /config
 ```
 
-This endpoint displays the configuration currently applied to Grafana Mimir including default values and settings via CLI flags. This endpoint provides the configuration in YAML format and masks sensitive data.
+This endpoint displays the configuration currently applied to Grafana Fire including default values and settings via CLI flags. This endpoint provides the configuration in YAML format and masks sensitive data.
 
 > **Note**: The exported configuration doesn't include the per-tenant overrides.
 
@@ -132,7 +132,7 @@ This endpoint displays the configuration currently applied to Grafana Mimir incl
 GET /config?mode=diff
 ```
 
-This endpoint displays the differences between the Grafana Mimir default configuration and the current configuration.
+This endpoint displays the differences between the Grafana Fire default configuration and the current configuration.
 
 ```
 GET /config?mode=defaults
@@ -146,8 +146,8 @@ This endpoint displays the default configuration values.
 GET /runtime_config
 ```
 
-This endpoint displays the [runtime configuration]({{< relref "../configure/about-runtime-configuration.md" >}}) currently applied to Grafana Mimir, in YAML format, including default values.
-The endpoint is only available if Grafana Mimir is configured with the `-runtime-config.file` option.
+This endpoint displays the [runtime configuration]({{< relref "../configure/about-runtime-configuration.md" >}}) currently applied to Grafana Fire, in YAML format, including default values.
+The endpoint is only available if Grafana Fire is configured with the `-runtime-config.file` option.
 
 #### Different modes
 
@@ -155,7 +155,7 @@ The endpoint is only available if Grafana Mimir is configured with the `-runtime
 GET /runtime_config?mode=diff
 ```
 
-This endpoint displays the differences between the Grafana Mimir default runtime configuration and the current runtime configuration.
+This endpoint displays the differences between the Grafana Fire default runtime configuration and the current runtime configuration.
 
 ### Services' status
 
@@ -163,7 +163,7 @@ This endpoint displays the differences between the Grafana Mimir default runtime
 GET /services
 ```
 
-This endpoint displays a web page with the status of internal Grafana Mimir services.
+This endpoint displays a web page with the status of internal Grafana Fire services.
 
 ### Readiness probe
 
@@ -171,15 +171,15 @@ This endpoint displays a web page with the status of internal Grafana Mimir serv
 GET /ready
 ```
 
-This endoint returns 200 when Grafana Mimir is ready to serve traffic.
+This endoint returns 200 when Grafana Fire is ready to serve traffic.
 
-### Metrics
+### Profiles
 
 ```
-GET /metrics
+GET /profiles
 ```
 
-This endpoint returns the metrics for the running Grafana Mimir service in the Prometheus exposition format.
+This endpoint returns the profiles for the running Grafana Fire service in the Prometheus exposition format.
 
 ### Pprof
 
@@ -239,7 +239,7 @@ This API is experimental.
 
 Requires [authentication](#authentication).
 
-The endpoint is only available if Grafana Mimir is configured with the `-runtime-config.file` option.
+The endpoint is only available if Grafana Fire is configured with the `-runtime-config.file` option.
 
 ## Distributor
 
@@ -254,13 +254,13 @@ POST /api/v1/push
 Entrypoint for the [Prometheus remote write](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write).
 
 This endpoint accepts an HTTP POST request with a body that contains a request encoded with [Protocol Buffers](https://developers.google.com/protocol-buffers) and compressed with [Snappy](https://github.com/google/snappy).
-You can find the definition of the protobuf message in [pkg/mimirpb/mimir.proto](https://github.com/grafana/mimir/blob/main/pkg/mimirpb/mimir.proto).
+You can find the definition of the protobuf message in [pkg/firepb/fire.proto](https://github.com/grafana/fire/blob/main/pkg/firepb/fire.proto).
 The HTTP request must contain the header `X-Prometheus-Remote-Write-Version` set to `0.1.0`.
 
 To skip the label name validation, perform the following actions:
 
 - Enable API's flag `-api.skip-label-name-validation-header-enabled=true`
-- Ensure that the request is sent with the header `X-Mimir-SkipLabelNameValidation: true`
+- Ensure that the request is sent with the header `X-Fire-SkipLabelNameValidation: true`
 
 This feature supports the writes from non-standard downstream clients that have metric name not Prometheus compliant.
 
@@ -271,13 +271,13 @@ Requires [authentication](#authentication).
 ### OTLP
 
 ```
-POST /otlp/v1/metrics
+POST /otlp/v1/profiles
 ```
 
 Entrypoint for the [OTLP HTTP](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/otlp.md#otlphttp). Experimental.
 
 This endpoint accepts an HTTP POST request with a body that contains a request encoded with [Protocol Buffers](https://developers.google.com/protocol-buffers) and optionally compressed with [GZIP](https://www.gnu.org/software/gzip/).
-You can find the definition of the protobuf message in [metrics.proto](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto).
+You can find the definition of the protobuf message in [profiles.proto](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/profiles/v1/profiles.proto).
 
 Requires [authentication](#authentication).
 
@@ -617,7 +617,7 @@ This endpoint can be disabled via the `-ruler.enable-api` CLI flag (or its respe
 
 Requires [authentication](#authentication).
 
-> **Note:** To list all rule groups from Mimir, use [`mimirtool rules list` command]({{< relref "../tools/mimirtool.md#list-rules" >}}).
+> **Note:** To list all rule groups from Fire, use [`firetool rules list` command]({{< relref "../tools/firetool.md#list-rules" >}}).
 
 **Example response**
 
@@ -712,7 +712,7 @@ This endpoint can be disabled via the `-ruler.enable-api` CLI flag (or its respe
 
 Requires [authentication](#authentication).
 
-> **Note:** To retrieve a single rule group from Mimir, use [`mimirtool rules get` command]({{< relref "../tools/mimirtool.md#get-rule-group" >}}) .
+> **Note:** To retrieve a single rule group from Fire, use [`firetool rules get` command]({{< relref "../tools/firetool.md#get-rule-group" >}}) .
 
 ### Set rule group
 
@@ -728,7 +728,7 @@ This endpoint can be disabled via the `-ruler.enable-api` CLI flag (or its respe
 
 Requires [authentication](#authentication).
 
-> **Note:** To load one or more rule groups into Mimir, use [`mimirtool rules load` command]({{< relref "../tools/mimirtool.md#load-rule-group" >}}) .
+> **Note:** To load one or more rule groups into Fire, use [`firetool rules load` command]({{< relref "../tools/firetool.md#load-rule-group" >}}) .
 
 > **Note:** When using `curl` send the request body from a file, ensure that you use the `--data-binary` flag instead of `-d`, `--data`, or `--data-ascii`.
 > The latter options do not preserve carriage returns and newlines.
@@ -756,7 +756,7 @@ This endpoint can be disabled via the `-ruler.enable-api` CLI flag (or its respe
 
 Requires [authentication](#authentication).
 
-> **Note:** To delete a rule group from Mimir, use [`mimirtool rules delete` command]({{< relref "../tools/mimirtool.md#delete-rule-group" >}}).
+> **Note:** To delete a rule group from Fire, use [`firetool rules delete` command]({{< relref "../tools/firetool.md#delete-rule-group" >}}).
 
 ### Delete namespace
 
@@ -844,7 +844,7 @@ This endpoint can disabled enabled via the `-alertmanager.enable-api` CLI flag (
 
 Requires [authentication](#authentication).
 
-> **Note:** To retrieve a tenant's Alertmanager configuration from Mimir, use [`mimirtool alertmanager get` command]({{< relref "../tools/mimirtool.md#get-alertmanager-configuration" >}}).
+> **Note:** To retrieve a tenant's Alertmanager configuration from Fire, use [`firetool alertmanager get` command]({{< relref "../tools/firetool.md#get-alertmanager-configuration" >}}).
 
 ### Set Alertmanager configuration
 
@@ -860,7 +860,7 @@ This endpoint can disabled enabled via the `-alertmanager.enable-api` CLI flag (
 
 Requires [authentication](#authentication).
 
-> **Note:** To load a tenant's Alertmanager configuration to Mimir, use [`mimirtool alertmanager load` command]({{< relref "../tools/mimirtool.md#load-alertmanager-configuration" >}}).
+> **Note:** To load a tenant's Alertmanager configuration to Fire, use [`firetool alertmanager load` command]({{< relref "../tools/firetool.md#load-alertmanager-configuration" >}}).
 
 > **Note:** When using `curl` send the request body from a file, ensure that you use the `--data-binary` flag instead of `-d`, `--data`, or `--data-ascii`.
 > The latter options do not preserve carriage returns and newlines.
@@ -900,7 +900,7 @@ This endpoint can be disabled via the `-alertmanager.enable-api` CLI flag (or it
 
 Requires [authentication](#authentication).
 
-> **Note:** To delete a tenant's Alertmanager configuration from Mimir, use [`mimirtool alertmanager delete` command]({{< relref "../tools/mimirtool.md#delete-alertmanager-configuration" >}}).
+> **Note:** To delete a tenant's Alertmanager configuration from Fire, use [`firetool alertmanager delete` command]({{< relref "../tools/firetool.md#delete-alertmanager-configuration" >}}).
 
 ## Store-gateway
 

@@ -1,19 +1,19 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/configuring-shuffle-sharding/
+  - /docs/fire/latest/operators-guide/configuring/configuring-shuffle-sharding/
 description: Learn how to configure shuffle sharding.
 menuTitle: Configuring shuffle sharding
-title: Configuring Grafana Mimir shuffle sharding
+title: Configuring Grafana Fire shuffle sharding
 weight: 80
 ---
 
-# Configuring Grafana Mimir shuffle sharding
+# Configuring Grafana Fire shuffle sharding
 
-Grafana Mimir leverages sharding to horizontally scale both single- and multi-tenant clusters beyond the capacity of a single node.
+Grafana Fire leverages sharding to horizontally scale both single- and multi-tenant clusters beyond the capacity of a single node.
 
 ## Background
 
-Grafana Mimir uses a sharding strategy that distributes the workload across a subset of the instances that run a given component.
+Grafana Fire uses a sharding strategy that distributes the workload across a subset of the instances that run a given component.
 For example, on the write path, each tenant's series are sharded across a subset of the ingesters.
 The size of this subset, which is the number of instances, is configured using the `shard size` parameter, which by default is `0`.
 This default value means that each tenant uses all available instances, in order to fairly balance resources such as CPU and memory usage, and to maximize the usage of these resources across the cluster.
@@ -30,11 +30,11 @@ Configuring a shard size value higher than `0` enables shuffle sharding. The goa
 Shuffle sharding is a technique that isolates different tenant's workloads and gives each tenant a single-tenant experience, even if they're running in a shared cluster.
 For more information about how AWS describes shuffle sharding, refer to [What is shuffle sharding?](https://aws.amazon.com/builders-library/workload-isolation-using-shuffle-sharding/).
 
-Shuffle sharding assigns each tenant a shard that is composed of a subset of the Grafana Mimir instances.
+Shuffle sharding assigns each tenant a shard that is composed of a subset of the Grafana Fire instances.
 This technique minimizes the number of overlapping instances between two tenants.
 Shuffle sharding provides the following benefits:
 
-- An outage on some Grafana Mimir cluster instances or nodes only affect a subset of tenants.
+- An outage on some Grafana Fire cluster instances or nodes only affect a subset of tenants.
 - A misbehaving tenant only affects its shard instances.
   Assuming that each tenant shard is relatively small compared to the total number of instances in the cluster, it’s likely that any other tenant runs on different instances or that only a subset of instances match the affected instances.
 
@@ -42,7 +42,7 @@ Using shuffle sharding doesn’t require more resources, but can result in unbal
 
 ### Low overlapping instances probability
 
-For example, in a Grafana Mimir cluster that runs 50 ingesters and assigns each tenant four out of 50 ingesters, by shuffling instances between each tenant, there are 230,000 possible combinations.
+For example, in a Grafana Fire cluster that runs 50 ingesters and assigns each tenant four out of 50 ingesters, by shuffling instances between each tenant, there are 230,000 possible combinations.
 
 Randomly picking two tenants yields the following probabilities:
 
@@ -56,9 +56,9 @@ Randomly picking two tenants yields the following probabilities:
 
 [//]: # "Diagram source of shuffle-sharding probability at https://docs.google.com/spreadsheets/d/1FXbiWTXi6bdERtamH-IfmpgFq1fNL4GP_KX_yJvbRi4/edit"
 
-## Grafana Mimir shuffle sharding
+## Grafana Fire shuffle sharding
 
-Grafana Mimir supports shuffle sharding in the following components:
+Grafana Fire supports shuffle sharding in the following components:
 
 - [Ingesters](#ingesters-shuffle-sharding)
 - [Query-frontend / Query-scheduler](#query-frontend-and-query-scheduler-shuffle-sharding)
@@ -67,13 +67,13 @@ Grafana Mimir supports shuffle sharding in the following components:
 - [Compactor](#compactor-shuffle-sharding)
 - [Alertmanager](#alertmanager-shuffle-sharding)
 
-When you run Grafana Mimir with the default configuration, shuffle sharding is disabled and you need to explicitly enable it by increasing the shard size either globally or for a given tenant.
+When you run Grafana Fire with the default configuration, shuffle sharding is disabled and you need to explicitly enable it by increasing the shard size either globally or for a given tenant.
 
 > **Note:** If the shard size value is equal to or higher than the number of available instances, for example where `-distributor.ingestion-tenant-shard-size` is higher than the number of ingesters, then shuffle sharding is disabled and all instances are used again.
 
 ### Guaranteed properties
 
-The Grafana Mimir shuffle sharding implementation provides the following benefits:
+The Grafana Fire shuffle sharding implementation provides the following benefits:
 
 - **Stability**<br />
   Given a consistent state of the hash ring, the shuffle sharding algorithm always selects the same instances for a given tenant, even across different machines.
@@ -86,7 +86,7 @@ The Grafana Mimir shuffle sharding implementation provides the following benefit
 
 ### Ingesters shuffle sharding
 
-By default, the Grafana Mimir distributor divides the received series among all running ingesters.
+By default, the Grafana Fire distributor divides the received series among all running ingesters.
 
 When you enable ingester shuffle sharding, the distributor and ruler on the write path divide each tenant series among `-distributor.ingestion-tenant-shard-size` number of ingesters, while on the read path, the querier and ruler queries only the subset of ingesters that hold the series for a given tenant.
 
@@ -97,7 +97,7 @@ The shard size can be overridden on a per-tenant basis by setting `ingestion_ten
 To enable shuffle sharding for ingesters on the write path, configure the following flags (or their respective YAML configuration options) on the distributor, ingester, and ruler:
 
 - `-distributor.ingestion-tenant-shard-size=<size>`<br />
-  `<size>`: Set the size to the number of ingesters each tenant series should be sharded to. If `<size>` is `0` or is greater than the number of available ingesters in the Grafana Mimir cluster, the tenant series are sharded across all ingesters.
+  `<size>`: Set the size to the number of ingesters each tenant series should be sharded to. If `<size>` is `0` or is greater than the number of available ingesters in the Grafana Fire cluster, the tenant series are sharded across all ingesters.
 
 #### Ingesters read path
 
@@ -110,18 +110,18 @@ The following flags are set appropriately by default to enable shuffle sharding 
 - `-querier.shuffle-sharding-ingesters-enabled=true`<br />
   Shuffle sharding for ingesters on the read path can be explicitly enabled or disabled.
 - `-querier.query-ingesters-within=<period>`<br />
-  Queriers and rulers fetch in-memory series from the minimum set of required ingesters, selecting only ingesters which might have received series since 'now - query ingesters within'. If this period is `0`, shuffle sharding for ingesters on the read path is disabled, which means all ingesters in the Mimir cluster are queried for any tenant.
+  Queriers and rulers fetch in-memory series from the minimum set of required ingesters, selecting only ingesters which might have received series since 'now - query ingesters within'. If this period is `0`, shuffle sharding for ingesters on the read path is disabled, which means all ingesters in the Fire cluster are queried for any tenant.
   The configured `<period>` should be:
   - greater than `-querier.query-store-after` and,
   - greater than the estimated minimum amount of time for the oldest samples stored in a block uploaded by ingester to be discovered and available for querying.
-    When running Grafana Mimir with the default configuration, the estimated minimum amount of time for the oldest sample in a uploaded block to be available for querying is `3h`.
+    When running Grafana Fire with the default configuration, the estimated minimum amount of time for the oldest sample in a uploaded block to be available for querying is `3h`.
 
 If you enable ingesters shuffle sharding only for the write path, queriers and rulers on the read path always query all ingesters instead of querying the subset of ingesters that belong to the tenant's shard.
 Keeping ingesters shuffle sharding enabled only on the write path does not lead to incorrect query results, but might increase query latency.
 
 #### Rollout strategy
 
-If you’re running a Grafana Mimir cluster with shuffle sharding disabled, and you want to enable it for the ingesters, use the following rollout strategy to avoid missing querying for any series currently in the ingesters:
+If you’re running a Grafana Fire cluster with shuffle sharding disabled, and you want to enable it for the ingesters, use the following rollout strategy to avoid missing querying for any series currently in the ingesters:
 
 1. Explicitly disable ingesters shuffle-sharding on the read path via `-querier.shuffle-sharding-ingesters-enabled=false` since this is enabled by default.
 1. Enable ingesters shuffle sharding on the write path.
@@ -130,7 +130,7 @@ If you’re running a Grafana Mimir cluster with shuffle sharding disabled, and 
 
 #### Limitation: Decreasing the tenant shard size
 
-The current shuffle sharding implementation in Grafana Mimir has a limitation that prevents you from safely decreasing the tenant shard size when you enable ingesters’ shuffle sharding on the read path.
+The current shuffle sharding implementation in Grafana Fire has a limitation that prevents you from safely decreasing the tenant shard size when you enable ingesters’ shuffle sharding on the read path.
 
 If a tenant’s shard decreases in size, there is currently no way for the queriers and rulers to know how large the tenant shard was previously, and as a result, they potentially miss an ingester with data for that tenant.
 The query-ingesters-within period, which is used to select the ingesters that might have received series since 'now - query ingesters within', doesn't work correctly for finding tenant shards if the tenant shard size is decreased.
@@ -144,7 +144,7 @@ Although decreasing the tenant shard size is not supported, consider the followi
 
 ### Query-frontend and query-scheduler shuffle sharding
 
-By default, all Grafana Mimir queriers can execute queries for any tenant.
+By default, all Grafana Fire queriers can execute queries for any tenant.
 
 When you enable shuffle sharding by setting `-query-frontend.max-queriers-per-tenant` (or its respective YAML configuration option) to a value higher than `0` and lower than the number of available queriers, only the specified number of queriers are eligible to execute queries for a given tenant.
 
@@ -172,7 +172,7 @@ A delay of 1 minute might be a reasonable trade-off:
 
 ### Store-gateway shuffle sharding
 
-By default, a tenant's blocks are divided among all Grafana Mimir store-gateways.
+By default, a tenant's blocks are divided among all Grafana Fire store-gateways.
 
 When you enable store-gateway shuffle sharding by setting `-store-gateway.tenant-shard-size` (or its respective YAML configuration option) to a value higher than `0` and lower than the number of available store-gateways, only the specified number of store-gateways are eligible to load and query blocks for a given tenant.
 You must set this flag on the store-gateway, querier, and ruler.
@@ -183,7 +183,7 @@ For more information about the store-gateway, refer to [store-gateway]({{< relre
 
 ### Ruler shuffle sharding
 
-By default, tenant rule groups are sharded by all Grafana Mimir rulers.
+By default, tenant rule groups are sharded by all Grafana Fire rulers.
 
 When you enable ruler shuffle sharding by setting `-ruler.tenant-shard-size` (or its respective YAML configuration option) to a value higher than `0` and lower than the number of available rulers, only the specified number of rulers are eligible to evaluate rule groups for a given tenant.
 
@@ -191,7 +191,7 @@ You can override the ruler shard size on a per-tenant basis by setting `ruler_te
 
 ### Compactor shuffle sharding
 
-By default, tenant blocks can be compacted by any Grafana Mimir compactor.
+By default, tenant blocks can be compacted by any Grafana Fire compactor.
 
 When you enable compactor shuffle sharding by setting `-compactor.compactor-tenant-shard-size` (or its respective YAML configuration option) to a value higher than `0` and lower than the number of available compactors, only the specified number of compactors are eligible to compact blocks for a given tenant.
 

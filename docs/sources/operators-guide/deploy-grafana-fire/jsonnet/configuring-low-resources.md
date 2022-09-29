@@ -1,31 +1,31 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/deploying-grafana-mimir/jsonnet/configuring-low-resources/
-description: Learn how to configure Grafana Mimir when using Jsonnet.
+  - /docs/fire/latest/operators-guide/deploying-grafana-fire/jsonnet/configuring-low-resources/
+description: Learn how to configure Grafana Fire when using Jsonnet.
 menuTitle: Configuring low resources
-title: Configuring Grafana Mimir to use low resources with Jsonnet
+title: Configuring Grafana Fire to use low resources with Jsonnet
 weight: 20
 ---
 
-# Configuring Grafana Mimir to use low resources with Jsonnet
+# Configuring Grafana Fire to use low resources with Jsonnet
 
-This page describes how to configure Jsonnet to deploy Grafana Mimir in a Kubernetes cluster with low CPU and memory resources available.
+This page describes how to configure Jsonnet to deploy Grafana Fire in a Kubernetes cluster with low CPU and memory resources available.
 
 ## Anti-affinity
 
-Given the distributed nature of Mimir, both performance and reliability are improved when pods are spread across different nodes.
+Given the distributed nature of Fire, both performance and reliability are improved when pods are spread across different nodes.
 For example, losing multiple ingesters can cause data loss, so it's better to distribute them across different nodes.
 
 For this reason, by default, anti-affinity rules are applied to some Kubernetes Deployments and StatefulSets.
-These anti-affinity rules can become an issue when playing with Mimir in a single-node Kubernetes cluster.
+These anti-affinity rules can become an issue when playing with Fire in a single-node Kubernetes cluster.
 You can disable anti-affinity by setting the configuration values `_config.<component>_allow_multiple_replicas_on_same_node`.
 
 ### Example: disable anti-affinity
 
 ```jsonnet
-local mimir = import 'mimir/mimir.libsonnet';
+local fire = import 'fire/fire.libsonnet';
 
-mimir {
+fire {
   _config+:: {
     ingester_allow_multiple_replicas_on_same_node: true,
     store_gateway_allow_multiple_replicas_on_same_node: true,
@@ -35,20 +35,20 @@ mimir {
 
 ## Resources
 
-Default scaling of Mimir components in the provided Jsonnet is opinionated and based on engineers’ years of experience running it at Grafana Labs.
+Default scaling of Fire components in the provided Jsonnet is opinionated and based on engineers’ years of experience running it at Grafana Labs.
 The default resource requests and limits are also fine-tuned for the provided alerting rules.
-For more information, see [Monitor Grafana Mimir]({{< relref "../../monitor-grafana-mimir/_index.md" >}}).
+For more information, see [Monitor Grafana Fire]({{< relref "../../monitor-grafana-fire/_index.md" >}}).
 
 However, there are use cases where you might want to change the default resource requests, their limits, or both.
-For example, if you are just testing Mimir and you want to run it on a small (possibly one-node) Kubernetes cluster, and you do not have tens of gigabytes of memory or multiple cores to schedule the components, consider overriding the scaling requirements as follows:
+For example, if you are just testing Fire and you want to run it on a small (possibly one-node) Kubernetes cluster, and you do not have tens of gigabytes of memory or multiple cores to schedule the components, consider overriding the scaling requirements as follows:
 
 ```jsonnet
 local k = import 'github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet',
       deployment = k.apps.v1.deployment,
       statefulSet = k.apps.v1.statefulSet;
-local mimir = import 'mimir/mimir.libsonnet';
+local fire = import 'fire/fire.libsonnet';
 
-mimir {
+fire {
   _config+:: {
     // ... configuration values
   },

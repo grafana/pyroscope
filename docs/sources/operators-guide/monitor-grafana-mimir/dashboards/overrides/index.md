@@ -1,14 +1,14 @@
 ---
 aliases:
-  - ../../visualizing-metrics/dashboards/overrides/
-  - /docs/mimir/latest/operators-guide/monitoring-grafana-mimir/dashboards/overrides/
+  - ../../visualizing-profiles/dashboards/overrides/
+  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/dashboards/overrides/
 description: View an example Overrides dashboard.
 menuTitle: Overrides
-title: Grafana Mimir Overrides dashboard
+title: Grafana Fire Overrides dashboard
 weight: 70
 ---
 
-# Grafana Mimir Overrides dashboard
+# Grafana Fire Overrides dashboard
 
 The Overrides dashboard shows global limits and per-tenant overrides.
 
@@ -16,4 +16,4 @@ The Overrides dashboard shows global limits and per-tenant overrides.
 
 The following example shows an Overrides dashboard from a demo cluster.
 
-![Grafana Mimir overrides dashboard](mimir-overrides.png)
+![Grafana Fire overrides dashboard](fire-overrides.png)

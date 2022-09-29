@@ -1,15 +1,15 @@
 ---
-title: "(Optional) Grafana Mimir overrides-exporter"
+title: "(Optional) Grafana Fire overrides-exporter"
 menuTitle: "(Optional) Overrides-exporter"
-description: "The overrides-exporter exports Prometheus metrics containing the configured per-tenant limits."
+description: "The overrides-exporter exports Prometheus profiles containing the configured per-tenant limits."
 weight: 110
 ---
 
-# (Optional) Grafana Mimir overrides-exporter
+# (Optional) Grafana Fire overrides-exporter
 
-Grafana Mimir supports applying overrides on a per-tenant basis.
+Grafana Fire supports applying overrides on a per-tenant basis.
 A number of overrides configure limits that prevent a single tenant from using too many resources.
-The overrides-exporter component exposes limits as Prometheus metrics so that operators can understand how close tenants are to their limits.
+The overrides-exporter component exposes limits as Prometheus profiles so that operators can understand how close tenants are to their limits.
 
 For more information about configuring overrides, refer to [Runtime configuration file]({{< relref "../../configure/about-runtime-configuration.md" >}}).
 
@@ -18,7 +18,7 @@ For more information about configuring overrides, refer to [Runtime configuratio
 The overrides-exporter must be explicitly enabled.
 
 > **Warning:**
-> The metrics emitted by the overrides-exporter have high cardinality.
+> The profiles emitted by the overrides-exporter have high cardinality.
 > It's recommended to run only a single replica of the overrides-exporter to limit that cardinality.
 
 With a `runtime.yaml` file as follows:
@@ -40,16 +40,16 @@ overrides:
 Run the overrides-exporter by providing the `-target`, and `-runtime-config.file` flags:
 
 ```
-mimir -target=overrides-exporter -runtime-config.file=runtime.yaml
+fire -target=overrides-exporter -runtime-config.file=runtime.yaml
 ```
 
 After the overrides-exporter starts, you can to use `curl` to inspect the tenant overrides:
 
 ```bash
-curl -s http://localhost:8080/metrics | grep cortex_limits_overrides
+curl -s http://localhost:8080/profiles | grep cortex_limits_overrides
 ```
 
-The output metrics look similar to the following:
+The output profiles look similar to the following:
 
 ```console
 # HELP cortex_limits_overrides Resource limit overrides applied to tenants
@@ -60,5 +60,5 @@ cortex_limits_overrides{limit_name="max_global_series_per_metric",user="user1"} 
 cortex_limits_overrides{limit_name="max_global_series_per_user",user="user1"} 300000
 ```
 
-With these metrics, you can set up alerts to know when tenants are close to hitting their limits
+With these profiles, you can set up alerts to know when tenants are close to hitting their limits
 before they exceed them.

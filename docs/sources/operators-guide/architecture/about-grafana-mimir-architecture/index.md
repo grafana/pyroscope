@@ -1,21 +1,21 @@
 ---
-title: "About the Grafana Mimir architecture"
+title: "About the Grafana Fire architecture"
 menuTitle: "About the architecture"
-description: "Learn about the Grafana Mimir architecture."
+description: "Learn about the Grafana Fire architecture."
 weight: 10
 ---
 
-# About the Grafana Mimir architecture
+# About the Grafana Fire architecture
 
-Grafana Mimir has a microservices-based architecture.
+Grafana Fire has a microservices-based architecture.
 The system has multiple horizontally scalable microservices that can run separately and in parallel.
-Grafana Mimir microservices are called components.
+Grafana Fire microservices are called components.
 
-Grafana Mimir's design compiles the code for all components into a single binary.
-The `-target` parameter controls which component(s) that single binary will behave as. For those looking for a simple way to get started, Grafana Mimir can also be run in [monolithic mode]({{< relref "../deployment-modes/index.md#monolithic-mode" >}}), with all components running simultaneously in one process.
+Grafana Fire's design compiles the code for all components into a single binary.
+The `-target` parameter controls which component(s) that single binary will behave as. For those looking for a simple way to get started, Grafana Fire can also be run in [monolithic mode]({{< relref "../deployment-modes/index.md#monolithic-mode" >}}), with all components running simultaneously in one process.
 For more information, refer to [Deployment modes]({{< relref "../deployment-modes/index.md" >}}).
 
-## Grafana Mimir components
+## Grafana Fire components
 
 Most components are stateless and do not require any data persisted between process restarts. Some components are stateful and rely on non-volatile storage to prevent data loss between process restarts. For details about each component, see its page in [Components]({{< relref "../components/_index.md" >}}).
 
@@ -23,7 +23,7 @@ Most components are stateless and do not require any data persisted between proc
 
 [//]: # "Diagram source of write path at https://docs.google.com/presentation/d/1LemaTVqa4Lf_tpql060vVoDGXrthp-Pie_SQL7qwHjc/edit#slide=id.g11658e7e4c6_0_899"
 
-![Architecture of Grafana Mimir's write path](write-path.svg)
+![Architecture of Grafana Fire's write path](write-path.svg)
 
 Ingesters receive incoming samples from the distributors.
 Each push request belongs to a tenant, and the ingester appends the received samples to the specific per-tenant TSDB that is stored on the local disk.
@@ -38,7 +38,7 @@ This gives [queriers]({{< relref "../components/querier.md" >}}) and [store-gate
 
 To effectively use the WAL, and to be able to recover the in-memory series if an ingester abruptly terminates, store the WAL to a persistent disk that can survive an ingester failure.
 For example, when running in the cloud, include an AWS EBS volume or a GCP persistent disk.
-If you are running the Grafana Mimir cluster in Kubernetes, you can use a StatefulSet with a persistent volume claim for the ingesters.
+If you are running the Grafana Fire cluster in Kubernetes, you can use a StatefulSet with a persistent volume claim for the ingesters.
 The location on the filesystem where the WAL is stored is the same location where local TSDB blocks (compacted from head) are stored. The location of the filesystem and the location of the local TSDB blocks cannot be decoupled.
 
 For more information, refer to [timeline of block uploads]({{< relref "../../run-production-environment/production-tips/index.md#how-to-estimate--querierquery-store-after" >}}) and [Ingester]({{< relref "../components/ingester.md" >}}).
@@ -54,9 +54,9 @@ For more information, refer to [Compactor]({{< relref "../components/compactor/i
 
 [//]: # "Diagram source of read path at https://docs.google.com/presentation/d/1LemaTVqa4Lf_tpql060vVoDGXrthp-Pie_SQL7qwHjc/edit#slide=id.g11658e7e4c6_2_6"
 
-![Architecture of Grafana Mimir's read path](read-path.svg)
+![Architecture of Grafana Fire's read path](read-path.svg)
 
-Queries coming into Grafana Mimir arrive at the [query-frontend]({{< relref "../components/query-frontend" >}}). The query-frontend then splits queries over longer time ranges into multiple, smaller queries.
+Queries coming into Grafana Fire arrive at the [query-frontend]({{< relref "../components/query-frontend" >}}). The query-frontend then splits queries over longer time ranges into multiple, smaller queries.
 
 The query-frontend next checks the results cache. If the result of a query has been cached, the query-frontend returns the cached results. Queries that cannot be answered from the results cache are put into an in-memory queue within the query-frontend.
 
@@ -70,24 +70,24 @@ After the querier executes the query, it returns the results to the query-fronte
 
 ## The role of Prometheus
 
-Prometheus instances scrape samples from various targets and push them to Grafana Mimir by using Prometheus’ [remote write API](https://prometheus.io/docs/prometheus/latest/storage/#remote-storage-integrations).
+Prometheus instances scrape samples from various targets and push them to Grafana Fire by using Prometheus’ [remote write API](https://prometheus.io/docs/prometheus/latest/storage/#remote-storage-integrations).
 The remote write API emits batched [Snappy](https://google.github.io/snappy/)-compressed [Protocol Buffer](https://developers.google.com/protocol-buffers/) messages inside the body of an HTTP `PUT` request.
 
-Mimir requires that each HTTP request has a header that specifies a tenant ID for the request. Request [authentication and authorization]({{< relref "../../secure/authentication-and-authorization.md" >}}) are handled by an external reverse proxy.
+Fire requires that each HTTP request has a header that specifies a tenant ID for the request. Request [authentication and authorization]({{< relref "../../secure/authentication-and-authorization.md" >}}) are handled by an external reverse proxy.
 
 Incoming samples (writes from Prometheus) are handled by the [distributor]({{< relref "../components/distributor.md" >}}), and incoming reads (PromQL queries) are handled by the [query frontend]({{< relref "../components/query-frontend/index.md" >}}).
 
 ## Long-term storage
 
-The Grafana Mimir storage format is based on [Prometheus TSDB storage](https://prometheus.io/docs/prometheus/latest/storage/).
-The Grafana Mimir storage format stores each tenant's time series into their own TSDB, which persists series to an on-disk block.
+The Grafana Fire storage format is based on [Prometheus TSDB storage](https://prometheus.io/docs/prometheus/latest/storage/).
+The Grafana Fire storage format stores each tenant's time series into their own TSDB, which persists series to an on-disk block.
 By default, each block has a two-hour range.
 Each on-disk block directory contains an index file, a file containing metadata, and the time series chunks.
 
 The TSDB block files contain samples for multiple series.
 The series inside the blocks are indexed by a per-block index, which indexes both metric names and labels to time series in the block files.
 
-Grafana Mimir requires any of the following object stores for the block files:
+Grafana Fire requires any of the following object stores for the block files:
 
 - [Amazon S3](https://aws.amazon.com/s3)
 - [Google Cloud Storage](https://cloud.google.com/storage/)
@@ -95,4 +95,4 @@ Grafana Mimir requires any of the following object stores for the block files:
 - [OpenStack Swift](https://wiki.openstack.org/wiki/Swift)
 - Local Filesystem (single node only)
 
-For more information, refer to [configure object storage]({{< relref "../../configure/configure-object-storage-backend.md" >}}) and [configure metrics storage retention]({{< relref "../../configure/configure-metrics-storage-retention.md" >}}).
+For more information, refer to [configure object storage]({{< relref "../../configure/configure-object-storage-backend.md" >}}) and [configure profiles storage retention]({{< relref "../../configure/configure-profiles-storage-retention.md" >}}).

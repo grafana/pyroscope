@@ -1,34 +1,34 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/running-production-environment/planning-capacity/
-description: Learn how to plan the resources required to deploy Grafana Mimir.
+  - /docs/fire/latest/operators-guide/running-production-environment/planning-capacity/
+description: Learn how to plan the resources required to deploy Grafana Fire.
 menuTitle: Planning capacity
-title: Planning Grafana Mimir capacity
+title: Planning Grafana Fire capacity
 weight: 10
 ---
 
-# Planning Grafana Mimir capacity
+# Planning Grafana Fire capacity
 
-The information that follows is an overview about the CPU, memory, and disk space that Grafana Mimir requires at scale.
+The information that follows is an overview about the CPU, memory, and disk space that Grafana Fire requires at scale.
 You can get a rough idea about the required resources, rather than a prescriptive recommendation about the exact amount of CPU, memory, and disk space.
 
 The resources utilization is estimated based on a general production workload, and the assumption
-is that Grafana Mimir is running with one tenant and the default configuration.
+is that Grafana Fire is running with one tenant and the default configuration.
 Your real resources’ utilization likely differs, because it is based on actual data, configuration settings, and traffic patterns.
 For example, the real resources’ utilization might differ based on the actual number
 or length of series' labels, or the percentage of queries that reach the store-gateway.
 
 The resources’ utilization are the minimum requirements.
-To gracefully handle traffic peaks, run Grafana Mimir with 50% extra capacity for memory and disk.
+To gracefully handle traffic peaks, run Grafana Fire with 50% extra capacity for memory and disk.
 
 ## Monolithic mode
 
-When Grafana Mimir is running in monolithic mode, you can estimate the required resources by summing up all of the requirements for each Grafana Mimir component.
+When Grafana Fire is running in monolithic mode, you can estimate the required resources by summing up all of the requirements for each Grafana Fire component.
 For more information about per component requirements, refer to [Microservices mode](#microservices-mode).
 
 ## Microservices mode
 
-When Grafana Mimir is running in microservices mode, you can estimate the required resources of each component individually.
+When Grafana Fire is running in microservices mode, you can estimate the required resources of each component individually.
 
 ### Distributor
 
@@ -137,8 +137,8 @@ When [remote]({{< relref "../architecture/components/ruler/index.md#internal" >}
 
 The [compactor]({{< relref "../architecture/components/compactor/index.md" >}}) component resources utilization is determined by the number of active series.
 
-The compactor can scale horizontally both in Grafana Mimir clusters with one tenant and multiple tenants.
-We recommend to run at least one compactor instance every 20 million active series ingested in total in the Grafana Mimir cluster, calculated before ingesters replication.
+The compactor can scale horizontally both in Grafana Fire clusters with one tenant and multiple tenants.
+We recommend to run at least one compactor instance every 20 million active series ingested in total in the Grafana Fire cluster, calculated before ingesters replication.
 
 Assuming you run one compactor instance every 20 million active series, the estimated required CPU, memory and disk for each compactor instance are:
 

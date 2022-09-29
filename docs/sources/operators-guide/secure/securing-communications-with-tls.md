@@ -1,21 +1,21 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/securing/securing-communications-with-tls/
-description: Learn how to configure TLS between Grafana Mimir components.
+  - /docs/fire/latest/operators-guide/securing/securing-communications-with-tls/
+description: Learn how to configure TLS between Grafana Fire components.
 menuTitle: Securing communications with TLS
-title: Securing Grafana Mimir communications with TLS
+title: Securing Grafana Fire communications with TLS
 weight: 50
 ---
 
-# Securing Grafana Mimir communications with TLS
+# Securing Grafana Fire communications with TLS
 
-Grafana Mimir is a distributed system with significant traffic between its components.
-To allow for secure communication, Grafana Mimir supports TLS between its
+Grafana Fire is a distributed system with significant traffic between its components.
+To allow for secure communication, Grafana Fire supports TLS between its
 components. This topic describes the process you use to set up TLS.
 
 ### Generation of certificates to configure TLS
 
-To establish secure inter-component communication in Grafana Mimir with TLS, you must generate certificates using a certificate authority (CA).
+To establish secure inter-component communication in Grafana Fire with TLS, you must generate certificates using a certificate authority (CA).
 The CA should be private to the organization because certificates signed by the CA will have permissions to communicate with the cluster.
 
 > **Note**: The generated certficates are valid for 100,000 days. You can change the duration by adjusting the `-days` option in the command. We recommended that you replace the certificates every two years.
@@ -42,9 +42,9 @@ openssl x509 -req -in client.csr -CA root.crt -CAkey root.key -CAcreateserial -o
 openssl x509 -req -in server.csr -CA root.crt -CAkey root.key -CAcreateserial -out server.crt -days 100000 -sha256
 ```
 
-### Configure TLS certificates in Grafana Mimir
+### Configure TLS certificates in Grafana Fire
 
-Every gRPC link between Grafana Mimir components supports TLS configuration as specified in server flags and client flags.
+Every gRPC link between Grafana Fire components supports TLS configuration as specified in server flags and client flags.
 
 #### Server flags
 
@@ -91,11 +91,11 @@ In the following example, both of the server authorization flags, `-server.http-
 
 #### Client flags
 
-You can configure TLS private keys, certificates, and CAs in a similar fashion for gRPC clients in Grafana Mimir.
+You can configure TLS private keys, certificates, and CAs in a similar fashion for gRPC clients in Grafana Fire.
 
 To enable TLS for a component, use the client flag that contains the suffix `*.tls-enabled=true`, for example, `-querier.frontend-client.tls-enabled=true`.
 
-The following Grafana Mimir components support TLS for inter-communication, which are shown with their corresponding configuration flag prefixes:
+The following Grafana Fire components support TLS for inter-communication, which are shown with their corresponding configuration flag prefixes:
 
 - Query scheduler gRPC client used to connect to query-frontends: `-query-scheduler.grpc-client-config.*`
 - Querier gRPC client used to connect to store-gateways: `-querier.store-gateway-client.*`
@@ -105,8 +105,8 @@ The following Grafana Mimir components support TLS for inter-communication, whic
 - Ruler gRPC client used to connect to query-frontend: `-ruler.query-frontend.grpc-client-config.*`
 - Alertmanager gRPC client used to connect to other Alertmanager instances: `-alertmanager.alertmanager-client.*`
 - gRPC client used by distributors, queriers, and rulers to connect to ingesters: `-ingester.client.*`
-- etcd client used by all Mimir components to connect to etcd, which is required only if you're running the hash ring or HA tracker on the etcd backend: `-<prefix>.etcd.*`
-- Memberlist client used by all Mimir components to gossip the hash ring, which is required only if you're running the hash ring on memberlist: `-memberlist.`
+- etcd client used by all Fire components to connect to etcd, which is required only if you're running the hash ring or HA tracker on the etcd backend: `-<prefix>.etcd.*`
+- Memberlist client used by all Fire components to gossip the hash ring, which is required only if you're running the hash ring on memberlist: `-memberlist.`
 
 Each of the components listed above support the following TLS configuration options, which are shown with their corresponding flag suffixes:
 

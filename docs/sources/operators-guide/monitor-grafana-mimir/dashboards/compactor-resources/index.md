@@ -1,21 +1,21 @@
 ---
 aliases:
-  - ../../visualizing-metrics/dashboards/compactor-resources/
-  - /docs/mimir/latest/operators-guide/monitoring-grafana-mimir/dashboards/compactor-resources/
+  - ../../visualizing-profiles/dashboards/compactor-resources/
+  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/dashboards/compactor-resources/
 description: View an example Compactor resources dashboard.
 menuTitle: Compactor resources
-title: Grafana Mimir Compactor resources dashboard
+title: Grafana Fire Compactor resources dashboard
 weight: 40
 ---
 
-# Grafana Mimir Compactor resources dashboard
+# Grafana Fire Compactor resources dashboard
 
-The Compactor resources dashboard shows CPU, memory, disk, and networking metrics for the compactor.
+The Compactor resources dashboard shows CPU, memory, disk, and networking profiles for the compactor.
 
-This dashboard requires [additional resources metrics]({{< relref "../../requirements.md#additional-resources-metrics" >}}).
+This dashboard requires [additional resources profiles]({{< relref "../../requirements.md#additional-resources-profiles" >}}).
 
 ## Example
 
 The following example shows a Compactor resources dashboard from a demo cluster.
 
-![Grafana Mimir compactor resources dashboard](mimir-compactor-resources.png)
+![Grafana Fire compactor resources dashboard](fire-compactor-resources.png)

@@ -1,19 +1,19 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/about-versioning/
-description: Learn about guarantees for this Grafana Mimir major release.
+  - /docs/fire/latest/operators-guide/configuring/about-versioning/
+description: Learn about guarantees for this Grafana Fire major release.
 menuTitle: About versioning
-title: About Grafana Mimir versioning
+title: About Grafana Fire versioning
 weight: 50
 ---
 
-# About Grafana Mimir versioning
+# About Grafana Fire versioning
 
-This topic describes our guarantees for this Grafana Mimir major release.
+This topic describes our guarantees for this Grafana Fire major release.
 
 ## Flags, configuration, and minor version upgrades
 
-Upgrading Grafana Mimir from one minor version to the next minor version should work, but we don't want to bump the major version every time we remove a configuration parameter.
+Upgrading Grafana Fire from one minor version to the next minor version should work, but we don't want to bump the major version every time we remove a configuration parameter.
 We will keep deprecated flags and YAML configuration parameters in place for two minor releases.
 You can use the `deprecated_flags_inuse_total` metric to generate an alert that helps you determine if you're using a deprecated flag.
 
@@ -21,24 +21,24 @@ These guarantees don't apply to [experimental features](#experimental-features).
 
 ## Reading old data
 
-The Grafana Mimir maintainers commit to ensuring that future versions can read data written by versions within the last two years.
+The Grafana Fire maintainers commit to ensuring that future versions can read data written by versions within the last two years.
 In practice, we expect to be able to read data written more than two years ago, but a minimum of two years is our guarantee.
 
 ## API Compatibility
 
-Grafana Mimir strives to be 100% compatible with the Prometheus HTTP API which is by default served by endpoints with the /prometheus HTTP path prefix `/prometheus/*`.
+Grafana Fire strives to be 100% compatible with the Prometheus HTTP API which is by default served by endpoints with the /prometheus HTTP path prefix `/prometheus/*`.
 
 We consider any deviation from this 100% API compatibility to be a bug, except for the following scenarios:
 
 - Additional API endpoints for creating, removing, modifying alerts, and recording rules.
-- Additional APIs that push metrics (under `/prometheus/api/push`).
-- Additional API endpoints for management of Grafana Mimir, such as the ring. These APIs are not included in any compatibility guarantees.
+- Additional APIs that push profiles (under `/prometheus/api/push`).
+- Additional API endpoints for management of Grafana Fire, such as the ring. These APIs are not included in any compatibility guarantees.
 - [Delete series API](https://prometheus.io/docs/prometheus/latest/querying/api/#delete-series).
 
 ## Experimental features
 
-Grafana Mimir is an actively developed project and we encourage the introduction of new features and capabilities.
-Not everything in each release of Grafana Mimir is considered production-ready.
+Grafana Fire is an actively developed project and we encourage the introduction of new features and capabilities.
+Not everything in each release of Grafana Fire is considered production-ready.
 We mark as "Experimental" all features and flags that we don't consider production-ready.
 
 We do not guarantee backwards compatibility for experimental features and flags.
@@ -50,7 +50,7 @@ The following features are currently experimental:
   - Tenant federation
   - Use query-frontend for rule evaluation
 - Distributor
-  - Metrics relabeling
+  - Profiles relabeling
   - Request rate limit
     - `-distributor.request-rate-limit`
     - `-distributor.request-burst-limit`

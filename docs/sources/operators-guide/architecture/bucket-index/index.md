@@ -1,11 +1,11 @@
 ---
-title: "Grafana Mimir bucket index"
+title: "Grafana Fire bucket index"
 menuTitle: "Bucket index"
 description: "The bucket index enhances query performance."
 weight: 50
 ---
 
-# Grafana Mimir bucket index
+# Grafana Fire bucket index
 
 The bucket index is a per-tenant file that contains the list of blocks and block deletion marks in the storage. The bucket index is stored in the backend object storage, is periodically updated by the compactor, and used by queriers, store-gateways, and rulers (in [internal]({{< relref "../components/ruler/index.md#internal" >}}) operational mode) to discover blocks in the storage.
 
@@ -42,7 +42,7 @@ The [compactor]({{< relref "../components/compactor/index.md" >}}) periodically 
 You can configure the frequency with which the bucket index is updated via `-compactor.cleanup-interval`.
 
 The use of the bucket index is optional, but the index is built and updated by the compactor even if `-blocks-storage.bucket-store.bucket-index.enabled=false`.
-This behavior ensures that the bucket index for any tenant exists and that query result consistency is guaranteed if a Grafana Mimir cluster operator enable the bucket index in a live cluster.
+This behavior ensures that the bucket index for any tenant exists and that query result consistency is guaranteed if a Grafana Fire cluster operator enable the bucket index in a live cluster.
 The overhead introduced by keeping the bucket index updated is not signifcant.
 
 ## How it's used by the querier

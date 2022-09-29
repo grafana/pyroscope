@@ -47,7 +47,7 @@ keywords:
   > Configure on disk storage
   > About tenant id
   > Configuring memberlist (+DNS service discovery)
-  > About Grafana Mimir IP address logging of a reverse proxy
+  > About Grafana Fire IP address logging of a reverse proxy
   > Configuration parameters (all of it)
   > Configure Tracing
 > Monitor Fire (coming soon)

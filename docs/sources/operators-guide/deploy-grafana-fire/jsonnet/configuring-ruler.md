@@ -1,16 +1,16 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/deploying-grafana-mimir/jsonnet/configuring-ruler/
-description: Learn how to configure the Grafana Mimir ruler when using Jsonnet.
+  - /docs/fire/latest/operators-guide/deploying-grafana-fire/jsonnet/configuring-ruler/
+description: Learn how to configure the Grafana Fire ruler when using Jsonnet.
 menuTitle: Configuring ruler
-title: Configuring the Grafana Mimir ruler with Jsonnet
+title: Configuring the Grafana Fire ruler with Jsonnet
 weight: 20
 ---
 
-# Configuring the Grafana Mimir ruler with Jsonnet
+# Configuring the Grafana Fire ruler with Jsonnet
 
 The ruler is an optional component and is therefore not deployed by default when using Jsonnet.
-For more information about the ruler, see [Grafana Mimir ruler]({{< relref "../../architecture/components/ruler/index.md" >}}).
+For more information about the ruler, see [Grafana Fire ruler]({{< relref "../../architecture/components/ruler/index.md" >}}).
 
 To enable it, add the following Jsonnet code to the `_config` section:
 
@@ -22,7 +22,7 @@ _config+:: {
 ```
 
 The `ruler_client_type` option must be one of either `local`, `azure`, `aws`, or `s3`.
-For more information about the options available for storing ruler state, see [Grafana Mimir ruler: State]({{< relref "../../architecture/components/ruler/index.md#state" >}}).
+For more information about the options available for storing ruler state, see [Grafana Fire ruler: State]({{< relref "../../architecture/components/ruler/index.md#state" >}}).
 
 To get started, use the `local` client type for initial testing:
 
@@ -50,7 +50,7 @@ If you are using object storage, additional configuration options are required:
   - `ruler_storage_azure_account_name`
   - `ruler_storage_azure_account_key`
 
-> **Note:** You need to manually provide the storage credentials for `s3` and `gcs` by using additional command line arguments as necessary. For more information, see [Grafana Mimir configuration parameters: ruler_storage]({{< relref "../../configure/reference-configuration-parameters/index.md#ruler_storage" >}}).
+> **Note:** You need to manually provide the storage credentials for `s3` and `gcs` by using additional command line arguments as necessary. For more information, see [Grafana Fire configuration parameters: ruler_storage]({{< relref "../../configure/reference-configuration-parameters/index.md#ruler_storage" >}}).
 
 ## Operational modes
 

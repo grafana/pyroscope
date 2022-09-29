@@ -1,11 +1,11 @@
 ---
-title: "Grafana Mimir binary index-header"
+title: "Grafana Fire binary index-header"
 menuTitle: "Binary index-header"
 description: "The binary index-header contains information that the store-gateway uses at query time."
 weight: 40
 ---
 
-# Grafana Mimir binary index-header
+# Grafana Fire binary index-header
 
 To query series inside blocks from object storage, the [store-gateway]({{< relref "components/store-gateway.md" >}}) must obtain information about each block index.
 To obtain the required information, the store-gateway builds an index-header for each block and stores it on local disk.

@@ -1,20 +1,20 @@
 ---
-title: "Grafana Mimirtool"
-menuTitle: "Mimirtool"
-description: "Use Mimirtool to perform common tasks in Grafana Mimir or Grafana Cloud Metrics."
+title: "Grafana Firetool"
+menuTitle: "Firetool"
+description: "Use Firetool to perform common tasks in Grafana Fire or Grafana Cloud Profiles."
 weight: 40
 ---
 
-# Grafana Mimirtool
+# Grafana Firetool
 
-Mimirtool is a command-line tool that operators and tenants can use to execute a number of common tasks that involve Grafana Mimir or Grafana Cloud Metrics.
+Firetool is a command-line tool that operators and tenants can use to execute a number of common tasks that involve Grafana Fire or Grafana Cloud Profiles.
 
-- The `alertmanager` command enables you to create, update, and delete tenant configurations in Grafana Mimir Alertmanager or Grafana Cloud Metrics.
+- The `alertmanager` command enables you to create, update, and delete tenant configurations in Grafana Fire Alertmanager or Grafana Cloud Profiles.
 
   For more information about the `alertmanager` command, refer to [Alertmanager]({{< relref "#alertmanager" >}}).
 
-- The `rules` command enables you to validate and lint Prometheus rule files and convert them for use in Grafana Mimir.
-  You can also create, update, and delete rulegroups in Grafana Mimir or Grafana Cloud Metrics.
+- The `rules` command enables you to validate and lint Prometheus rule files and convert them for use in Grafana Fire.
+  You can also create, update, and delete rulegroups in Grafana Fire or Grafana Cloud Profiles.
 
   For more information about the `rules` command, refer to [Rules]({{< relref "#rules" >}}).
 
@@ -24,60 +24,60 @@ Mimirtool is a command-line tool that operators and tenants can use to execute a
   For more information about the remote-read command, refer to [Remote-read]({{< relref "#remote-read" >}}).
 
 - The `analyze` command extracts statistics about metric usage from Grafana or Hosted Grafana instances.
-  You can also extract the same metrics from Grafana dashboard JSON files or Prometheus rule YAML files.
+  You can also extract the same profiles from Grafana dashboard JSON files or Prometheus rule YAML files.
 
   For more information about the `analyze` command, refer to [Analyze]({{< relref "#analyze" >}}).
 
-- The `bucket-validation` command verifies that an object storage bucket is suitable as a backend storage for Grafana Mimir.
+- The `bucket-validation` command verifies that an object storage bucket is suitable as a backend storage for Grafana Fire.
 
   For more information about the `bucket-validation` command, refer to [Bucket validation]({{< relref "#bucket-validation" >}}).
 
-- The `acl` command generates the label-based access control header used in Grafana Enterprise Metrics and Grafana Cloud Metrics.
+- The `acl` command generates the label-based access control header used in Grafana Enterprise Profiles and Grafana Cloud Profiles.
 
   For more information about the `acl` command, refer to [ACL]({{< relref "#acl" >}}).
 
-- The `config` command helps convert configuration files from Cortex to Grafana Mimir.
+- The `config` command helps convert configuration files from Cortex to Grafana Fire.
 
   For more information about the `config` command, refer to [Config]({{< relref "#config" >}})
 
-- The `backfill` command uploads existing Prometheus TSDB blocks into Grafana Mimir.
+- The `backfill` command uploads existing Prometheus TSDB blocks into Grafana Fire.
 
   For more information about the `backfill` command, refer to [Backfill]({{< relref "#backfill" >}})
 
-Mimirtool interacts with:
+Firetool interacts with:
 
-- User-facing APIs provided by Grafana Mimir.
-- Backend storage components containing Grafana Mimir data.
+- User-facing APIs provided by Grafana Fire.
+- Backend storage components containing Grafana Fire data.
 
 ## Installation
 
-To install Grafana Mimirtool, refer to the [latest release](https://github.com/grafana/mimir/releases).
+To install Grafana Firetool, refer to the [latest release](https://github.com/grafana/fire/releases).
 
 ## Configuration options
 
-For Mimirtools to interact with Grafana Mimir, Grafana Enterprise Metrics, Prometheus, or Grafana, set the following environment variables or CLI flags.
+For Firetools to interact with Grafana Fire, Grafana Enterprise Profiles, Prometheus, or Grafana, set the following environment variables or CLI flags.
 
 | Environment variable | Flag        | Description                                                                                                                                                                                      |
 | -------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `MIMIR_ADDRESS`      | `--address` | Sets the address of the API of the Grafana Mimir cluster.                                                                                                                                        |
+| `MIMIR_ADDRESS`      | `--address` | Sets the address of the API of the Grafana Fire cluster.                                                                                                                                        |
 | `MIMIR_API_USER`     | `--user`    | Sets the basic auth username. If this variable is empty and `MIMIR_API_KEY` is set, the system uses `MIMIR_TENANT_ID` instead. If you're using Grafana Cloud, this variable is your instance ID. |
 | `MIMIR_API_KEY`      | `--key`     | Sets the basic auth password. If you're using Grafana Cloud, this variable is your API key.                                                                                                      |
-| `MIMIR_TENANT_ID`    | `--id`      | Sets the tenant ID of the Grafana Mimir instance that Mimirtools interacts with.                                                                                                                 |
+| `MIMIR_TENANT_ID`    | `--id`      | Sets the tenant ID of the Grafana Fire instance that Firetools interacts with.                                                                                                                 |
 
 ## Commands
 
-The following sections outline the commands that you can run against Grafana Mimir and Grafana Cloud Metrics.
+The following sections outline the commands that you can run against Grafana Fire and Grafana Cloud Profiles.
 
 ### Alertmanager
 
-The following commands interact with Grafana Mimir Alertmanager configuration and alert template files.
+The following commands interact with Grafana Fire Alertmanager configuration and alert template files.
 
 #### Get Alertmanager configuration
 
 The following command shows the current Alertmanager configuration.
 
 ```bash
-mimirtool alertmanager get
+firetool alertmanager get
 ```
 
 #### Load Alertmanager configuration
@@ -85,14 +85,14 @@ mimirtool alertmanager get
 The following command loads an Alertmanager configuration to the Alertmanager instance.
 
 ```bash
-mimirtool alertmanager load <config_file>
-mimirtool alertmanager load <config_file> <template_files>...
+firetool alertmanager load <config_file>
+firetool alertmanager load <config_file> <template_files>...
 ```
 
 ##### Example
 
 ```bash
-mimirtool alertmanager load ./example_alertmanager_config.yaml
+firetool alertmanager load ./example_alertmanager_config.yaml
 ```
 
 `./example_alertmanager_config.yaml`:
@@ -107,44 +107,44 @@ receivers:
 
 #### Delete Alertmanager configuration
 
-The following command deletes the Alertmanager configuration in the Grafana Mimir Alertmanager.
+The following command deletes the Alertmanager configuration in the Grafana Fire Alertmanager.
 
 ```bash
-mimirtool alertmanager delete
+firetool alertmanager delete
 ```
 
 #### Alert verification
 
-The following command verifies if alerts in an Alertmanager cluster are deduplicated. This command is useful for verifying the correct configuration when transferring from Prometheus to Grafana Mimir alert evaluation.
+The following command verifies if alerts in an Alertmanager cluster are deduplicated. This command is useful for verifying the correct configuration when transferring from Prometheus to Grafana Fire alert evaluation.
 
 ```bash
-mimirtool alerts verify
+firetool alerts verify
 ```
 
 ### Rules
 
-The rules command features sub-commands for working with Prometheus rule files and with the APIs in the Grafana Mimir ruler.
+The rules command features sub-commands for working with Prometheus rule files and with the APIs in the Grafana Fire ruler.
 
 The commands in this section enable you to perform the following actions:
 
 - Load and show Prometheus rule files
-- Interact with individual rule groups in the Mimir ruler
+- Interact with individual rule groups in the Fire ruler
 - Manipulate local rule files
 
 #### List rules
 
-The following command retrieves the names of all rule groups in the Grafana Mimir instance and prints them to the terminal.
+The following command retrieves the names of all rule groups in the Grafana Fire instance and prints them to the terminal.
 
 ```bash
-mimirtool rules list
+firetool rules list
 ```
 
 #### Print rules
 
-The following command retrieves all rule groups in the Grafana Mimir instance and prints them to the terminal.
+The following command retrieves all rule groups in the Grafana Fire instance and prints them to the terminal.
 
 ```bash
-mimirtool rules print
+firetool rules print
 ```
 
 #### Get rule group
@@ -152,7 +152,7 @@ mimirtool rules print
 The following command retrieves a single rule group and prints it to the terminal.
 
 ```bash
-mimirtool rules get <namespace> <rule_group_name>
+firetool rules get <namespace> <rule_group_name>
 ```
 
 #### Delete rule group
@@ -160,22 +160,22 @@ mimirtool rules get <namespace> <rule_group_name>
 The following command deletes a rule group.
 
 ```bash
-mimirtool rules delete <namespace> <rule_group_name>
+firetool rules delete <namespace> <rule_group_name>
 ```
 
 #### Load rule group
 
-The following command loads each rule group from the files into Grafana Mimir.
+The following command loads each rule group from the files into Grafana Fire.
 This command overwrites all existing rule groups with the same name.
 
 ```bash
-mimirtool rules load <file_path>...
+firetool rules load <file_path>...
 ```
 
 ##### Example
 
 ```bash
-mimirtool rules load ./example_rules_one.yaml
+firetool rules load ./example_rules_one.yaml
 ```
 
 `./example_rules_one.yaml`:
@@ -197,24 +197,24 @@ The `lint` command provides YAML and PromQL expression formatting within the rul
 This command edits the rule file in place.
 To perform a trial run that does not make changes, you can use the dry run flag (`-n`).
 
-> **Note:** This command does not verify if a query is correct and does not interact with your Grafana Mimir cluster.
+> **Note:** This command does not verify if a query is correct and does not interact with your Grafana Fire cluster.
 
 ```bash
-mimirtool rules lint <file_path>...
+firetool rules lint <file_path>...
 ```
 
 The format of the file is the same format as shown in [rules load](#load-rule-group).
 
 #### Prepare
 
-This `prepare` command prepares a rules file that you upload to Grafana Mimir.
+This `prepare` command prepares a rules file that you upload to Grafana Fire.
 It lints all PromQL expressions and adds a label to your PromQL query aggregations in the file.
 The format of the file is the same format as shown in [rules load](#load-rule-group).
 
-> **Note:** This command does not interact with your Grafana Mimir cluster.
+> **Note:** This command does not interact with your Grafana Fire cluster.
 
 ```bash
-mimirtool rules prepare <file_path>...
+firetool rules prepare <file_path>...
 ```
 
 ##### Configuration
@@ -227,7 +227,7 @@ mimirtool rules prepare <file_path>...
 ##### Example
 
 ```bash
-mimirtool rules prepare ./example_rules_one.yaml
+firetool rules prepare ./example_rules_one.yaml
 ```
 
 `./example_rules_one.yaml`:
@@ -265,16 +265,16 @@ INFO[0000] SUCCESS: 1 rules found, 0 modified expressions
 
 The `check` command checks rules against the recommended [best practices](https://prometheus.io/docs/practices/rules/) for
 rules.
-This command does not interact with your Grafana Mimir cluster.
+This command does not interact with your Grafana Fire cluster.
 
 ```bash
-mimirtool rules check <file_path>...
+firetool rules check <file_path>...
 ```
 
 ##### Example
 
 ```bash
-mimirtool rules check rules.yaml
+firetool rules check rules.yaml
 ```
 
 `rules.yaml`
@@ -297,29 +297,29 @@ The format of the file is the same format as shown in [rules load](#load-rule-gr
 
 #### Diff
 
-The following command compares rules against the rules in your Grafana Mimir cluster.
+The following command compares rules against the rules in your Grafana Fire cluster.
 
 ```bash
-mimirtool rules diff <file_path>...
+firetool rules diff <file_path>...
 ```
 
 The format of the file is the same format as shown in [rules load](#load-rule-group).
 
 #### Sync
 
-The `sync` command compares rules against the rules in your Grafana Mimir cluster.
-The command applies any differences to your Grafana Mimir cluster.
+The `sync` command compares rules against the rules in your Grafana Fire cluster.
+The command applies any differences to your Grafana Fire cluster.
 
 ```bash
-mimirtool rules sync <file_path>...
+firetool rules sync <file_path>...
 ```
 
 The format of the file is the same format as shown in [rules load](#load-rule-group).
 
 ### Remote-read
 
-Grafana Mimir exposes a [remote read API] which allows the system to access the stored series.
-The `remote-read` subcommand `mimirtool` enables you to interact with its API, and to determine which series are stored.
+Grafana Fire exposes a [remote read API] which allows the system to access the stored series.
+The `remote-read` subcommand `firetool` enables you to interact with its API, and to determine which series are stored.
 
 [remote read api]: https://prometheus.io/docs/prometheus/latest/storage/#remote-storage-integrations
 
@@ -330,7 +330,7 @@ The `remote-read stats` command summarizes statistics of the stored series that 
 ##### Example
 
 ```bash
-mimirtool remote-read stats --selector '{job="node"}' --address http://demo.robustperception.io:9090 --remote-read-path /api/v1/read
+firetool remote-read stats --selector '{job="node"}' --address http://demo.robustperception.io:9090 --remote-read-path /api/v1/read
 ```
 
 Running the command results in the following output:
@@ -349,7 +349,7 @@ The `remote-read dump` command prints all series and samples that match the sele
 ##### Example
 
 ```bash
-mimirtool remote-read dump --selector 'up{job="node"}' --address http://demo.robustperception.io:9090 --remote-read-path /api/v1/read
+firetool remote-read dump --selector 'up{job="node"}' --address http://demo.robustperception.io:9090 --remote-read-path /api/v1/read
 ```
 
 Running the command results in the following output:
@@ -366,8 +366,8 @@ The `remote-read export` command exports all series and samples that match the s
 You can use local tooling such as `prometheus` and [`promtool`](https://github.com/prometheus/prometheus/tree/main/cmd/promtool) to further analyze the TSDB.
 
 ```bash
-# Use Remote Read API to download all metrics with label job=name into local tsdb
-mimirtool remote-read export --selector '{job="node"}' --address http://demo.robustperception.io:9090 --remote-read-path /api/v1/read --tsdb-path ./local-tsdb
+# Use Remote Read API to download all profiles with label job=name into local tsdb
+firetool remote-read export --selector '{job="node"}' --address http://demo.robustperception.io:9090 --remote-read-path /api/v1/read --tsdb-path ./local-tsdb
 ```
 
 Running the command results in the following output:
@@ -405,22 +405,22 @@ prometheus --storage.tsdb.path ./local-tsdb --config.file=<(echo "")
 
 ### ACL
 
-The `acl` command generates the label-based access control header used in Grafana Enterprise Metrics and Grafana Cloud Metrics.
+The `acl` command generates the label-based access control header used in Grafana Enterprise Profiles and Grafana Cloud Profiles.
 
 #### Generate header
 
-The following command enables you to generate a header that you can use to enforce access control rules in Grafana Enterprise Metrics or Grafana Cloud.
+The following command enables you to generate a header that you can use to enforce access control rules in Grafana Enterprise Profiles or Grafana Cloud.
 
-> **Note**: Grafana Mimir does not support ACLs.
+> **Note**: Grafana Fire does not support ACLs.
 
 ```bash
-mimirtool acl generate-header --id=<tenant_id> --rule=<promql_selector>
+firetool acl generate-header --id=<tenant_id> --rule=<promql_selector>
 ```
 
 ##### Example
 
 ```bash
-mimirtool acl generate-header --id=1234 --rule='{namespace="A"}'
+firetool acl generate-header --id=1234 --rule='{namespace="A"}'
 ```
 
 Example output:
@@ -432,16 +432,16 @@ X-Prom-Label-Policy: 1234:%7Bnamespace=%22A%22%7D
 
 ### Analyze
 
-You can analyze your Grafana or Hosted Grafana instance to determine which metrics are used and exported. You can also extract metrics from dashboard JSON files and rules YAML files.
+You can analyze your Grafana or Hosted Grafana instance to determine which profiles are used and exported. You can also extract profiles from dashboard JSON files and rules YAML files.
 
 #### Grafana
 
 The following command runs against your Grafana instance, downloads its dashboards, and extracts the Prometheus
-metrics used in its queries.
-The output is a JSON file. You can use this file with `analyse prometheus --grafana-metrics-file`.
+profiles used in its queries.
+The output is a JSON file. You can use this file with `analyse prometheus --grafana-profiles-file`.
 
 ```bash
-mimirtool analyze grafana --address=<url>
+firetool analyze grafana --address=<url>
 ```
 
 ##### Configuration
@@ -450,13 +450,13 @@ mimirtool analyze grafana --address=<url>
 | -------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GRAFANA_ADDRESS`    | `--address` | Sets the address of the Grafana instance.                                                                                                          |
 | `GRAFANA_API_KEY`    | `--key`     | Sets the API Key for the Grafana instance. To create a key, refer to [Authentication API](https://grafana.com/docs/grafana/latest/http_api/auth/). |
-| -                    | `--output`  | Sets the output file path, which by default is `metrics-in-grafana.json`.                                                                          |
+| -                    | `--output`  | Sets the output file path, which by default is `profiles-in-grafana.json`.                                                                          |
 
 ##### Example output file
 
 ```json
 {
-  "metricsUsed": [
+  "profilesUsed": [
     "apiserver_request:availability30d",
     "workqueue_depth",
     "workqueue_queue_duration_seconds_bucket"
@@ -466,7 +466,7 @@ mimirtool analyze grafana --address=<url>
       "slug": "",
       "uid": "09ec8aa1e996d6ffcd6817bbaff4db1b",
       "title": "Kubernetes / API server",
-      "metrics": [
+      "profiles": [
         "apiserver_request:availability30d",
         "apiserver_request_total",
         "cluster_quantile:apiserver_request_duration_seconds:histogram_quantile",
@@ -481,11 +481,11 @@ mimirtool analyze grafana --address=<url>
 
 #### Ruler
 
-The following command runs against your Grafana Mimir, Grafana Enterprise Metrics, or Grafana Cloud Prometheus instance. The command fetches the rule groups and extracts the Prometheus metrics used in the rule queries.
-The output is a JSON file. You can use this file with `analyse prometheus --ruler-metrics-file`.
+The following command runs against your Grafana Fire, Grafana Enterprise Profiles, or Grafana Cloud Prometheus instance. The command fetches the rule groups and extracts the Prometheus profiles used in the rule queries.
+The output is a JSON file. You can use this file with `analyse prometheus --ruler-profiles-file`.
 
 ```bash
-mimirtool analyze ruler --address=<url> --id=<tenant_id>
+firetool analyze ruler --address=<url> --id=<tenant_id>
 ```
 
 ##### Configuration
@@ -495,13 +495,13 @@ mimirtool analyze ruler --address=<url> --id=<tenant_id>
 | `MIMIR_ADDRESS`      | `--address` | Sets the address of the Prometheus instance.                                                    |
 | `MIMIR_TENANT_ID`    | `--user`    | Sets the basic auth username. If you're using Grafana Cloud, this variable is your instance ID. |
 | `MIMIR_API_KEY`      | `--key`     | Sets the basic auth password. If you're using Grafana Cloud, this variable is your API key.     |
-| -                    | `--output`  | Sets the output file path, which by default is `metrics-in-ruler.json`.                         |
+| -                    | `--output`  | Sets the output file path, which by default is `profiles-in-ruler.json`.                         |
 
 ##### Example output file
 
 ```json
 {
-  "metricsUsed": [
+  "profilesUsed": [
     "apiserver_request_duration_seconds_bucket",
     "container_cpu_usage_seconds_total",
     "scheduler_scheduling_algorithm_duration_seconds_bucket"
@@ -510,7 +510,7 @@ mimirtool analyze ruler --address=<url> --id=<tenant_id>
     {
       "namspace": "prometheus_rules",
       "name": "kube-apiserver.rules",
-      "metrics": [
+      "profiles": [
         "apiserver_request_duration_seconds_bucket",
         "apiserver_request_duration_seconds_count",
         "apiserver_request_total"
@@ -523,47 +523,47 @@ mimirtool analyze ruler --address=<url> --id=<tenant_id>
 
 #### Dashboard
 
-The following command accepts Grafana dashboard JSON files as input and extracts Prometheus metrics used in the queries.
+The following command accepts Grafana dashboard JSON files as input and extracts Prometheus profiles used in the queries.
 The output is a JSON file.
-You can use the output file with `analyze prometheus --grafana-metrics-file`.
+You can use the output file with `analyze prometheus --grafana-profiles-file`.
 
 ```bash
-mimirtool analyze dashboard <file>...
+firetool analyze dashboard <file>...
 ```
 
 ##### Configuration
 
 | Environment variable | Flag       | Description                                                               |
 | -------------------- | ---------- | ------------------------------------------------------------------------- |
-| -                    | `--output` | Sets the output file path, which by default is `prometheus-metrics.json`. |
+| -                    | `--output` | Sets the output file path, which by default is `prometheus-profiles.json`. |
 
 #### Rule-file
 
-The following command accepts Prometheus rule YAML files as input and extracts Prometheus metrics used in the queries.
-The output is a JSON file. You can use the output file with `analyse prometheus --ruler-metrics-file`.
+The following command accepts Prometheus rule YAML files as input and extracts Prometheus profiles used in the queries.
+The output is a JSON file. You can use the output file with `analyse prometheus --ruler-profiles-file`.
 
 ```bash
-mimirtool analyze rule-file <file>
+firetool analyze rule-file <file>
 ```
 
 ##### Configuration
 
 | Environment variable | Flag       | Description                                                               |
 | -------------------- | ---------- | ------------------------------------------------------------------------- |
-| -                    | `--output` | Sets the output file path, which by default is `prometheus-metrics.json`. |
+| -                    | `--output` | Sets the output file path, which by default is `prometheus-profiles.json`. |
 
 #### Prometheus
 
-The following command runs against your Grafana Mimir, Grafana Metrics Enterprise, Prometheus, or Cloud Prometheus instance.
+The following command runs against your Grafana Fire, Grafana Profiles Enterprise, Prometheus, or Cloud Prometheus instance.
 The command uses the output from a previous run of `analyse grafana`, `analyse dashboard`, `analyse ruler`
 or `analyse rule-file` to show the number of series in the Prometheus instance that are used in dashboards or rules, or both.
-This command also shows which metrics exist in Grafana Cloud that are _not_ in dashboards or rules. The output is a JSON file.
+This command also shows which profiles exist in Grafana Cloud that are _not_ in dashboards or rules. The output is a JSON file.
 
 > **Note:** The command makes a request for every active series in the Prometheus instance.
 > For Prometheus instances with a large number of active series, this command might take time to complete.
 
 ```bash
-mimirtool analyze prometheus --address=<url> --id=<tenant_id>
+firetool analyze prometheus --address=<url> --id=<tenant_id>
 ```
 
 ##### Configuration
@@ -573,9 +573,9 @@ mimirtool analyze prometheus --address=<url> --id=<tenant_id>
 | `MIMIR_ADDRESS`      | `--address`              | Sets the address of the Prometheus instance.                                                                             |
 | `MIMIR_TENANT_ID`    | `--user`                 | Sets the basic auth username. If you're using Grafana Cloud this variable is your instance ID.                           |
 | `MIMIR_API_KEY`      | `--key`                  | Sets the basic auth password. If you're using Grafana Cloud, this variable is your API key.                              |
-| -                    | `--grafana-metrics-file` | `mimirtool analyse grafana` or `mimirtool analyse dashboard` output file, which by default is `metrics-in-grafana.json`. |
-| -                    | `--ruler-metrics-file`   | `mimirtool analyse ruler` or `mimirtool analyse rule-file` output file, which by default is `metrics-in-ruler.json`.     |
-| -                    | `--output`               | Sets the output file path, which by default is `prometheus-metrics.json`.                                                |
+| -                    | `--grafana-profiles-file` | `firetool analyse grafana` or `firetool analyse dashboard` output file, which by default is `profiles-in-grafana.json`. |
+| -                    | `--ruler-profiles-file`   | `firetool analyse ruler` or `firetool analyse rule-file` output file, which by default is `profiles-in-ruler.json`.     |
+| -                    | `--output`               | Sets the output file path, which by default is `prometheus-profiles.json`.                                                |
 
 ##### Example output
 
@@ -626,7 +626,7 @@ mimirtool analyze prometheus --address=<url> --id=<tenant_id>
 The following command validates that the object store bucket works correctly.
 
 ```bash
-mimirtool bucket-validation
+firetool bucket-validation
 ```
 
 | Flag                   | Description                                                                                                   |
@@ -643,7 +643,7 @@ mimirtool bucket-validation
 
 #### Convert
 
-The config convert command converts configuration parameters that work with Cortex v1.10.0 and above to parameters that work with Grafana Mimir v2.0.0.
+The config convert command converts configuration parameters that work with Cortex v1.10.0 and above to parameters that work with Grafana Fire v2.0.0.
 It supports converting both CLI flags and [YAML configuration files]({{< relref "../configure/reference-configuration-parameters/index.md" >}}).
 
 ##### Configuration
@@ -654,23 +654,23 @@ It supports converting both CLI flags and [YAML configuration files]({{< relref 
 | `--flags-file`       | A file containing a newline-delimited list of CLI flags to convert.                                                                                                                                                                                 |
 | `--yaml-out`         | File to use for the converted YAML configuration. If not set, output to `stdout`.                                                                                                                                                                   |
 | `--flags-out`        | File to use for list of converted CLI flags. If not set, output to `stdout`.                                                                                                                                                                        |
-| `--update-defaults`  | If you set this flag and you set a configuration parameter to a default value that has changed in Mimir 2.0, the parameter updates to the new default value.                                                                                        |
+| `--update-defaults`  | If you set this flag and you set a configuration parameter to a default value that has changed in Fire 2.0, the parameter updates to the new default value.                                                                                        |
 | `--include-defaults` | If you set this flag, all default values are included in the output YAML, regardless of whether you explicitly set the values in the input files.                                                                                                   |
 | `-v`, `--verbose`    | If you set this flag, the CLI flags and YAML paths from the old configuration that do not exist in the new configuration are printed to `stderr`. This flag also prints default values that have changed between the old and the new configuration. |
-| `--gem`              | If you set this flag, the tool will convert from Grafana Metrics Enterprise (GEM) v1.7.x to v2.0.0.                                                                                                                                                 |
+| `--gem`              | If you set this flag, the tool will convert from Grafana Profiles Enterprise (GEM) v1.7.x to v2.0.0.                                                                                                                                                 |
 
 ##### Changes to default values
 
-`mimirtool config convert` helps you migrate from Cortex to Grafana Mimir. There are changes to the default values of
-some configuration parameters in Mimir v2.0.0 that you might not want to use as part of this migration:
+`firetool config convert` helps you migrate from Cortex to Grafana Fire. There are changes to the default values of
+some configuration parameters in Fire v2.0.0 that you might not want to use as part of this migration:
 
-| Parameter                                     | Cortex/GEM 1.7 default   | Mimir/GEM 2.0 default    |
+| Parameter                                     | Cortex/GEM 1.7 default   | Fire/GEM 2.0 default    |
 | --------------------------------------------- | ------------------------ | ------------------------ |
 | `blocks_storage.backend`                      | `s3`                     | `filesystem`             |
 | `ruler_storage.backend`                       | `s3`                     | `filesystem`             |
 | `alertmanager_storage.backend`                | `s3`                     | `filesystem`             |
 | `server.http_listen_port`                     | `80`                     | `8080`                   |
-| `activity_tracker.filepath`                   | `./active-query-tracker` | `./metrics-activity.log` |
+| `activity_tracker.filepath`                   | `./active-query-tracker` | `./profiles-activity.log` |
 | `alertmanager.data_dir`                       | `data/`                  | `./data-alertmanager/`   |
 | `blocks_storage.filesystem.dir`               | `<empty>`                | `blocks`                 |
 | `compactor.data_dir`                          | `./data`                 | `./data-compactor/`      |
@@ -679,16 +679,16 @@ some configuration parameters in Mimir v2.0.0 that you might not want to use as 
 | (GEM only) `auth.type`                        | `trust`                  | `enterprise`             |
 | (GEM only) `graphite.querier.schemas.backend` | `s3`                     | `filesystem`             |
 
-For these parameters `mimirtool config convert` will output the Cortex default value even when the configuration parameter is not explicitly set in the input
+For these parameters `firetool config convert` will output the Cortex default value even when the configuration parameter is not explicitly set in the input
 configuration. If in the input configuration you explicitly set the Cortex default value, and you have provided
-the `--update-defaults` flag, `mimirtool config convert` will not update the value to the Mimir default.
+the `--update-defaults` flag, `firetool config convert` will not update the value to the Fire default.
 
 ##### Example
 
-The following example shows a command that converts Cortex [query-frontend]({{< relref "../architecture/components/query-frontend" >}}) YAML configuration file and CLI flag to a Mimir-compatible YAML and CLI flag.
+The following example shows a command that converts Cortex [query-frontend]({{< relref "../architecture/components/query-frontend" >}}) YAML configuration file and CLI flag to a Fire-compatible YAML and CLI flag.
 
 ```bash
-mimirtool config convert --yaml-file=cortex.yaml --flags-file=cortex.flags --yaml-out=mimir.yaml --flags-out=mimir.flags
+firetool config convert --yaml-file=cortex.yaml --flags-file=cortex.flags --yaml-out=fire.yaml --flags-out=fire.flags
 ```
 
 `cortex.yaml` input file:
@@ -698,7 +698,7 @@ query_range:
   results_cache:
     cache:
       memcached:
-        expiration: 10s # Expiration was removed in Grafana Mimir, so this parameter will be missing from the output YAML
+        expiration: 10s # Expiration was removed in Grafana Fire, so this parameter will be missing from the output YAML
         batch_size: 2048
         parallelism: 10
       memcached_client:
@@ -713,7 +713,7 @@ query_range:
 
 After you run the command, the converted output should be:
 
-`mimir.yaml` converted output file:
+`fire.yaml` converted output file:
 
 ```yaml
 frontend:
@@ -727,9 +727,9 @@ server:
   http_listen_port: 80
 ```
 
-> **Note:** As a precaution,`server.http_listen_port` is included. The default value in Grafana Mimir changed from 80 to 8080. Unless you explicitly set the port in the input configuration, the tool outputs the old default value.
+> **Note:** As a precaution,`server.http_listen_port` is included. The default value in Grafana Fire changed from 80 to 8080. Unless you explicitly set the port in the input configuration, the tool outputs the old default value.
 
-`mimir.flags` converted output file:
+`fire.flags` converted output file:
 
 ```
 -query-frontend.results-cache.memcached.max-async-concurrency=45
@@ -748,22 +748,22 @@ The output includes the following entries:
 
 - `flag is no longer supported: <flag_name>`
 
-  This parameter was used in the input Cortex CLI flags file, but the parameter was removed in Grafana Mimir. The tool removed this CLI flag from the output configuration.
+  This parameter was used in the input Cortex CLI flags file, but the parameter was removed in Grafana Fire. The tool removed this CLI flag from the output configuration.
 
 - `using a new default for <yaml_path>: <new_value> (used to be <old_value>)`
 
-  The default value for a configuration parameter changed in Grafana Mimir. This parameter was not explicitly set in the input configuration files.
-  When you run Grafana Mimir with the output configuration from `mimirtool config convert` Grafana Mimir uses the new default.
+  The default value for a configuration parameter changed in Grafana Fire. This parameter was not explicitly set in the input configuration files.
+  When you run Grafana Fire with the output configuration from `firetool config convert` Grafana Fire uses the new default.
 
 - `default value for <yaml_path> changed: <new_value> (used to be <old_value>); not updating`
 
-  The default value for a configuration parameter that was set in the input configuration file has changed in Grafana Mimir.
+  The default value for a configuration parameter that was set in the input configuration file has changed in Grafana Fire.
   The tool has not converted the old default value to the new default value. To automatically update the default value to the new default value, pass the `--update-defaults` flag.
 
 ##### Extracting flags from Jsonnet
 
-When using the Grafana Mimir Jsonnet library, all configuration uses flags set as object member key-value pairs.
-To perform conversion with mimirtool, you first need to extract the flags from the JSON manifested from the Jsonnet evaluation.
+When using the Grafana Fire Jsonnet library, all configuration uses flags set as object member key-value pairs.
+To perform conversion with firetool, you first need to extract the flags from the JSON manifested from the Jsonnet evaluation.
 
 Use the following bash script to extract the arguments from a specific component:
 
@@ -815,10 +815,10 @@ To retrieve the arguments from the distributor for a Tanka environment:
 The script outputs results that are similar to the following:
 
 ```console
--consul.hostname=consul.cortex-to-mimir.svc.cluster.local:8500
+-consul.hostname=consul.cortex-to-fire.svc.cluster.local:8500
 -distributor.ha-tracker.enable=false
 -distributor.ha-tracker.enable-for-all-users=true
--distributor.ha-tracker.etcd.endpoints=etcd-client.cortex-to-mimir.svc.cluster.local.:2379
+-distributor.ha-tracker.etcd.endpoints=etcd-client.cortex-to-fire.svc.cluster.local.:2379
 -distributor.ha-tracker.prefix=prom_ha/
 -distributor.ha-tracker.store=etcd
 -distributor.health-check-ingesters=true
@@ -827,7 +827,7 @@ The script outputs results that are similar to the following:
 -distributor.ingestion-rate-limit-strategy=global
 -distributor.remote-timeout=20s
 -distributor.replication-factor=3
--distributor.ring.consul.hostname=consul.cortex-to-mimir.svc.cluster.local:8500
+-distributor.ring.consul.hostname=consul.cortex-to-fire.svc.cluster.local:8500
 -distributor.ring.prefix=
 -distributor.shard-by-all-labels=true
 -mem-ballast-size-bytes=1073741824
@@ -844,7 +844,7 @@ The script outputs results that are similar to the following:
 -validation.reject-old-samples.max-age=12h
 ```
 
-Use the output of the script as input to run the `mimirtool` configuration conversion.
+Use the output of the script as input to run the `firetool` configuration conversion.
 
 After conversion, you can use the following script to transform the converted flags back into JSON:
 
@@ -878,18 +878,18 @@ The only parameter of the script is a file containing the flags, with each flag 
 
 ### Backfill
 
-The `backfill` command uploads Prometheus TSDB blocks into Grafana Mimir, by using the [block-upload API that is exposed by the compactor component]({{< relref "../reference-http-api/index.md#compactor" >}}).
+The `backfill` command uploads Prometheus TSDB blocks into Grafana Fire, by using the [block-upload API that is exposed by the compactor component]({{< relref "../reference-http-api/index.md#compactor" >}}).
 
-If the command is interrupted, you can restart it. Mimirtool detects which blocks are already uploaded, and will only upload unfinished or new blocks.
+If the command is interrupted, you can restart it. Firetool detects which blocks are already uploaded, and will only upload unfinished or new blocks.
 
 The block-upload feature is disabled by default.
 To enable the block-upload feature for a user or an entire system, refer to [Configure TSDB block upload]({{< relref "../configure/configure-tsdb-block-upload.md" >}}).
-If block upload is not enabled for the user, `mimirtool backfill` will fail.
+If block upload is not enabled for the user, `firetool backfill` will fail.
 
 ##### Example
 
 ```bash
-mimirtool backfill --address=http://mimir-compactor/ --id=anonymous /var/prometheus/{01G803NFXZ0MVKN71GT91HMV3Z,01G8BQ8PRR4TAP7EXZVBNTRBZ4,01G8CB7GTTC5ZXY23WTXHSYQXQ}
+firetool backfill --address=http://fire-compactor/ --id=anonymous /var/prometheus/{01G803NFXZ0MVKN71GT91HMV3Z,01G8BQ8PRR4TAP7EXZVBNTRBZ4,01G8CB7GTTC5ZXY23WTXHSYQXQ}
 ```
 
 The results of the `backfill` command are as follows:
@@ -911,4 +911,4 @@ INFO[0001] finished uploading blocks                already_exists=1 failed=0 su
 
 ## License
 
-This software is licensed as AGPLv3. For more information, see [LICENSE](https://github.com/grafana/mimir/blob/main/LICENSE).
+This software is licensed as AGPLv3. For more information, see [LICENSE](https://github.com/grafana/fire/blob/main/LICENSE).

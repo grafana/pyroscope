@@ -1,28 +1,28 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/running-production-environment/scaling-out/
-description: Learn how to scale out Grafana Mimir.
+  - /docs/fire/latest/operators-guide/running-production-environment/scaling-out/
+description: Learn how to scale out Grafana Fire.
 menuTitle: Scaling out
-title: Scaling out Grafana Mimir
+title: Scaling out Grafana Fire
 weight: 30
 ---
 
-# Scaling out Grafana Mimir
+# Scaling out Grafana Fire
 
-Grafana Mimir can horizontally scale every component.
-Scaling out Grafana Mimir means that to respond to increased load, you can increase the number of replicas of each Grafana Mimir component.
+Grafana Fire can horizontally scale every component.
+Scaling out Grafana Fire means that to respond to increased load, you can increase the number of replicas of each Grafana Fire component.
 
-We have designed Grafana Mimir to scale up quickly, safely, and with no manual intervention.
+We have designed Grafana Fire to scale up quickly, safely, and with no manual intervention.
 However, be careful when scaling down some of the stateful components as these actions can result in writes and reads failures, or partial query results.
 
 ## Monolithic mode
 
-When running Grafana Mimir in monolithic mode, you can safely scale up to any number of instances.
-To scale down the Grafana Mimir cluster, see [Scaling down ingesters](#scaling-down-ingesters).
+When running Grafana Fire in monolithic mode, you can safely scale up to any number of instances.
+To scale down the Grafana Fire cluster, see [Scaling down ingesters](#scaling-down-ingesters).
 
 ## Microservices mode
 
-When running Grafana Mimir in microservices mode, you can safely scale up any component.
+When running Grafana Fire in microservices mode, you can safely scale up any component.
 You can also safely scale down any stateless component.
 
 The following stateful components have limitations when scaling down:
@@ -38,7 +38,7 @@ Scaling down [Alertmanagers]({{< relref "../architecture/components/alertmanager
 Consider the following guidelines when you scale down Alertmanagers:
 
 - Scale down no more than two Alertmanagers at the same time.
-- Ensure at least `-alertmanager.sharding-ring.replication-factor` Alertmanager instances are running (three when running Grafana Mimir with the default configuration).
+- Ensure at least `-alertmanager.sharding-ring.replication-factor` Alertmanager instances are running (three when running Grafana Fire with the default configuration).
 
 > **Note:** If you enabled [zone-aware replication]({{< relref "../configure/configuring-zone-aware-replication.md" >}}) for Alertmanagers, you can, in parallel, scale down any number of Alertmanager instances within one zone at a time.
 
@@ -69,7 +69,7 @@ You might experience the following challenges when you scale down ingesters:
 
 Complete the following steps to scale down ingesters deployed in a single zone.
 
-1. Configure the Grafana Mimir cluster to discover and query new uploaded blocks as quickly as possible.
+1. Configure the Grafana Fire cluster to discover and query new uploaded blocks as quickly as possible.
 
    a. Configure queriers and rulers to always query the long-term storage and to disable ingesters [shuffle sharding]({{< relref "../configure/configuring-shuffle-sharding/index.md" >}}) on the read path:
 
@@ -115,7 +115,7 @@ Complete the following steps to scale down ingesters deployed in a single zone.
 
 #### Scaling down ingesters deployed in multiple zones
 
-Grafana Mimir can tolerate a full-zone outage when you deploy ingesters in [multiple zones]({{< relref "../configure/configuring-zone-aware-replication.md" >}}).
+Grafana Fire can tolerate a full-zone outage when you deploy ingesters in [multiple zones]({{< relref "../configure/configuring-zone-aware-replication.md" >}}).
 A scale down of ingesters in one zone can be seen as a partial-zone outage.
 To simplify the scale down process, you can leverage ingesters deployed in multiple zones.
 
@@ -137,6 +137,6 @@ The required amount of time to wait depends on your configuration and it's the m
 To guarantee no downtime when scaling down [store-gateways]({{< relref "../architecture/components/store-gateway.md" >}}), complete the following steps:
 
 1. Scale down no more than two store-gateways at the same time.
-1. Ensure at least `-store-gateway.sharding-ring.replication-factor` store-gateway instances are running (three when running Grafana Mimir with the default configuration).
+1. Ensure at least `-store-gateway.sharding-ring.replication-factor` store-gateway instances are running (three when running Grafana Fire with the default configuration).
 
 > **Note:** If you enabled [zone-aware replication]({{< relref "../configure/configuring-zone-aware-replication.md" >}}) for store-gateways, you can in parallel scale down any number of store-gateway instances in one zone at a time.

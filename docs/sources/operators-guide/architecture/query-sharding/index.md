@@ -1,13 +1,13 @@
 ---
-title: "Grafana Mimir query sharding"
+title: "Grafana Fire query sharding"
 menuTitle: "Query sharding"
 description: "Query sharding parallelizes query execution."
 weight: 90
 ---
 
-# Grafana Mimir query sharding
+# Grafana Fire query sharding
 
-Mimir includes the ability to run a single query across multiple machines. This is
+Fire includes the ability to run a single query across multiple machines. This is
 achieved by breaking the dataset into smaller pieces. These smaller pieces are
 called shards. Each shard then gets queried in a partial query, and those
 partial queries are distributed by the query-frontend to run on different
@@ -174,7 +174,7 @@ count of `16`:
 sharded_queries=32 query="sum(rate(prometheus_engine_queries{engine=\"ruler\"}[5m]))/sum(rate(prometheus_engine_queries[5m]))"
 ```
 
-The query-frontend also exposes metrics, which can be useful to understand the
+The query-frontend also exposes profiles, which can be useful to understand the
 query workload's parallelism as a whole.
 
 You can run the following query to get the ratio of queries which have been successfully sharded:

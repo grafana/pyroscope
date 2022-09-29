@@ -1,28 +1,28 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/securing/encrypting-data-at-rest/
+  - /docs/fire/latest/operators-guide/securing/encrypting-data-at-rest/
 description: Learn how to configure object storage encryption.
 menuTitle: Encrypting data at rest
-title: Encrypting Grafana Mimir data at rest
+title: Encrypting Grafana Fire data at rest
 weight: 30
 ---
 
-# Encrypting Grafana Mimir data at rest
+# Encrypting Grafana Fire data at rest
 
-Grafana Mimir supports encrypting data at rest in object storage using server-side encryption (SSE).
+Grafana Fire supports encrypting data at rest in object storage using server-side encryption (SSE).
 Configuration of SSE depends on your storage backend.
 
 ## Google Cloud Storage
 
 Google Cloud Storage (GCS) encrypts data before writing it to disk. SSE is enabled by default and you cannot turn it off.
 For more information about GCS encryption at rest, refer to [Data encryption options](https://cloud.google.com/storage/docs/encryption/).
-Grafana Mimir requires no additional configuration to use GCS with SSE.
+Grafana Fire requires no additional configuration to use GCS with SSE.
 
 ## AWS S3
 
-Configuring SSE with AWS S3 requires configuration in the Grafana Mimir S3 client.
+Configuring SSE with AWS S3 requires configuration in the Grafana Fire S3 client.
 The S3 client is only used when the storage backend is `s3`.
-Grafana Mimir supports the following AWS S3 SSE modes:
+Grafana Fire supports the following AWS S3 SSE modes:
 
 - [Server-Side Encryption with Amazon S3-Managed Keys (SSE-S3)](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html)
 - [Server-Side Encryption with KMS keys Stored in AWS Key Management Service (SSE-KMS)](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html)
@@ -39,7 +39,7 @@ Configuring AWS S3 SSE globally requires setting SSE for each of the following s
 
 For more information about AWS S3 SSE configuration parameters, refer to [s3_storage_backend]({{< relref "../configure/reference-configuration-parameters/index.md#s3_storage_backend" >}}).
 
-The following code sample shows a snippet of a Grafana Mimir configuration file with every backend storage configured to use AWS S3 SSE with and Amazon S3-managed key.
+The following code sample shows a snippet of a Grafana Fire configuration file with every backend storage configured to use AWS S3 SSE with and Amazon S3-managed key.
 
 ```yaml
 alertmanager_storage:
@@ -76,7 +76,7 @@ You can use the following settings to override AWS S3 SSE for each tenant:
 
 **To configure AWS S3 SSE for a specific tenant**:
 
-1. Ensure Grafana Mimir uses a runtime configuration file by verifying that the flag `-runtime-config.file` is set to a non-null value.
+1. Ensure Grafana Fire uses a runtime configuration file by verifying that the flag `-runtime-config.file` is set to a non-null value.
    For more information about supported runtime configuration parameters, refer to [Runtime configuration]({{< relref "../configure/about-runtime-configuration.md" >}}).
 1. In the runtime configuration file, apply the `overrides.<TENANT>` SSE settings.
 

@@ -1,12 +1,12 @@
 ---
-title: "Grafana Mimir tools"
+title: "Grafana Fire tools"
 menuTitle: "Tools"
-description: "Tools for Grafana Mimir aid in administration and troubleshooting tasks."
+description: "Tools for Grafana Fire aid in administration and troubleshooting tasks."
 weight: 100
 ---
 
-# Grafana Mimir tools
+# Grafana Fire tools
 
-Tools for Grafana Mimir aid in administration and troubleshooting tasks.
+Tools for Grafana Fire aid in administration and troubleshooting tasks.
 
 {{< section menuTitle="true" >}}
