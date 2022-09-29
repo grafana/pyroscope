@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.48.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.47.0...@pyroscope/webapp@1.48.0) (2022-09-29)
+
+
+### Features
+
+* show heatmap y-axis units ([#1559](https://github.com/pyroscope-io/pyroscope/issues/1559)) ([8199170](https://github.com/pyroscope-io/pyroscope/commit/81991706e0ba6767da9d9fdefcd89a65f527722a))
+
+
+
+
+
 # [1.47.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.46.0...@pyroscope/webapp@1.47.0) (2022-09-29)
 
 

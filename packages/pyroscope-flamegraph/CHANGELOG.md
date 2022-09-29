@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.23.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.22.0...@pyroscope/flamegraph@0.23.0) (2022-09-29)
+
+
+### Features
+
+* show heatmap y-axis units ([#1559](https://github.com/pyroscope-io/pyroscope/issues/1559)) ([8199170](https://github.com/pyroscope-io/pyroscope/commit/81991706e0ba6767da9d9fdefcd89a65f527722a))
+
+
+
+
+
 # [0.22.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.21.5...@pyroscope/flamegraph@0.22.0) (2022-09-29)
 
 
