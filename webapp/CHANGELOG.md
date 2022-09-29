@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.49.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.48.0...@pyroscope/webapp@1.49.0) (2022-09-29)
+
+
+### Features
+
+* change color of the selected area of the heatmap ([#1572](https://github.com/pyroscope-io/pyroscope/issues/1572)) ([9ebdded](https://github.com/pyroscope-io/pyroscope/commit/9ebdded1524684f405ad79a5100cde52a2548a0a))
+
+
+
+
+
 # [1.48.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.47.0...@pyroscope/webapp@1.48.0) (2022-09-29)
 
 
