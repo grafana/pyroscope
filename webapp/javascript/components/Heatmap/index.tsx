@@ -207,22 +207,35 @@ function ResizedSelectedArea({
   const h = Math.abs(end.y - start.y);
   const left = Math.abs((originalLeftOffset * w) / (end.x - start.x || 1));
 
-  return (
-    <div
-      ref={resizedSelectedAreaRef}
-      data-testid="selection-resizable-canvas"
-      onClick={handleClick}
-      className={styles.selectedAreaBlock}
-      id="selectionArea"
-      style={{
-        width: w,
-        height: h,
-        top,
-        left,
-        backgroundColor: SELECTED_AREA_BACKGROUND.toString(),
-      }}
-    />
-  );
+  return h ? (
+    <>
+      <div
+        style={{
+          position: 'absolute',
+          width: w,
+          height: h,
+          top,
+          left,
+          border: `1px solid ${Color.rgb(255, 149, 5).toString()}`,
+        }}
+      />
+      <div
+        ref={resizedSelectedAreaRef}
+        data-testid="selection-resizable-canvas"
+        onClick={handleClick}
+        className={styles.selectedAreaBlock}
+        id="selectionArea"
+        style={{
+          width: w,
+          height: h,
+          top,
+          left,
+          mixBlendMode: 'overlay',
+          backgroundColor: Color.rgb(255, 149, 5).toString(),
+        }}
+      />
+    </>
+  ) : null;
 }
 
 interface AxisProps {
