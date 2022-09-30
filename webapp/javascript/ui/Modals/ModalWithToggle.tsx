@@ -17,8 +17,6 @@ export interface ModalWithToggleProps {
   modalHeight?: string;
 }
 
-export const TOGGLE_BTN_ID = 'modal-toggler';
-
 function ModalWithToggle({
   isModalOpen,
   setModalOpenStatus,
@@ -32,27 +30,25 @@ function ModalWithToggle({
   modalClassName,
   modalHeight,
 }: ModalWithToggleProps) {
-  const handleOutsideClick = (e: MouseEvent) => {
-    if ((e.target as { id?: string })?.id !== TOGGLE_BTN_ID) {
-      setModalOpenStatus(false);
-    }
+  const handleOutsideClick = () => {
+    setModalOpenStatus(false);
   };
 
   return (
     <div data-testid="modal-with-toggle" className={styles.container}>
-      <button
-        id={TOGGLE_BTN_ID}
-        type="button"
-        data-testid="toggler"
-        className={styles.toggle}
-        onClick={() => setModalOpenStatus((v) => !v)}
+      <OutsideClickHandler
+        onOutsideClick={customHandleOutsideClick || handleOutsideClick}
       >
-        {toggleText}
-      </button>
-      {isModalOpen && (
-        <OutsideClickHandler
-          onOutsideClick={customHandleOutsideClick || handleOutsideClick}
+        <button
+          id="modal-toggler"
+          type="button"
+          data-testid="toggler"
+          className={styles.toggle}
+          onClick={() => setModalOpenStatus((v) => !v)}
         >
+          {toggleText}
+        </button>
+        {isModalOpen && (
           <div
             className={classnames(styles.modal, modalClassName)}
             data-testid="modal"
@@ -82,8 +78,8 @@ function ModalWithToggle({
               {footerEl}
             </div>
           </div>
-        </OutsideClickHandler>
-      )}
+        )}
+      </OutsideClickHandler>
     </div>
   );
 }
