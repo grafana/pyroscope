@@ -72,7 +72,7 @@ function HeatmapTooltip({
       ];
 
       // to fix tooltip on window edge
-      const maxPageX = window.innerWidth - 130;
+      const maxPageX = window.innerWidth - 250;
 
       setTooltipParams({
         pageX: e.pageX < maxPageX ? e.pageX - 10 : maxPageX,
