@@ -1,6 +1,7 @@
 /* eslint-disable react/destructuring-assignment */
 import React, { useState } from 'react';
 import { format } from 'date-fns';
+import OutsideClickHandler from 'react-outside-click-handler';
 
 import Button from '@webapp/ui/Button';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
@@ -218,6 +219,7 @@ function ExportData(props: ExportDataProps) {
       document.body.appendChild(downloadAnchorNode); // required for firefox
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
+      setToggleMenu(false);
     }
   };
 
@@ -283,57 +285,59 @@ function ExportData(props: ExportDataProps) {
 
   return (
     <div className={styles.dropdownContainer}>
-      <Button icon={faBars} onClick={handleToggleMenu} />
-      <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
-        {exportPNG && (
-          <button
-            className={styles.dropdownMenuItem}
-            onClick={downloadPNG}
-            onKeyPress={downloadPNG}
-            type="button"
-          >
-            png
-          </button>
-        )}
-        {exportJSON && (
-          <button
-            className={styles.dropdownMenuItem}
-            type="button"
-            onClick={downloadJSON}
-          >
-            json
-          </button>
-        )}
-        {exportPprof && (
-          <button
-            className={styles.dropdownMenuItem}
-            type="button"
-            onClick={downloadPprof}
-          >
-            pprof
-          </button>
-        )}
-        {exportHTML && (
-          <button
-            className={styles.dropdownMenuItem}
-            type="button"
-            onClick={downloadHTML}
-          >
-            {' '}
-            html
-          </button>
-        )}
-        {exportFlamegraphDotCom && (
-          <button
-            className={styles.dropdownMenuItem}
-            type="button"
-            onClick={downloadFlamegraphDotCom}
-          >
-            {' '}
-            flamegraph.com
-          </button>
-        )}
-      </div>
+      <OutsideClickHandler onOutsideClick={() => setToggleMenu(false)}>
+        <Button icon={faBars} onClick={handleToggleMenu} />
+        <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
+          {exportPNG && (
+            <button
+              className={styles.dropdownMenuItem}
+              onClick={downloadPNG}
+              onKeyPress={downloadPNG}
+              type="button"
+            >
+              png
+            </button>
+          )}
+          {exportJSON && (
+            <button
+              className={styles.dropdownMenuItem}
+              type="button"
+              onClick={downloadJSON}
+            >
+              json
+            </button>
+          )}
+          {exportPprof && (
+            <button
+              className={styles.dropdownMenuItem}
+              type="button"
+              onClick={downloadPprof}
+            >
+              pprof
+            </button>
+          )}
+          {exportHTML && (
+            <button
+              className={styles.dropdownMenuItem}
+              type="button"
+              onClick={downloadHTML}
+            >
+              {' '}
+              html
+            </button>
+          )}
+          {exportFlamegraphDotCom && (
+            <button
+              className={styles.dropdownMenuItem}
+              type="button"
+              onClick={downloadFlamegraphDotCom}
+            >
+              {' '}
+              flamegraph.com
+            </button>
+          )}
+        </div>
+      </OutsideClickHandler>
     </div>
   );
 }
