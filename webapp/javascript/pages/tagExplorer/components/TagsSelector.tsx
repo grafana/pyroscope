@@ -6,9 +6,7 @@ import { actions } from '@webapp/redux/reducers/continuous';
 import { appendLabelToQuery } from '@webapp/util/query';
 import { brandQuery } from '@webapp/models/query';
 import { PAGES } from '@webapp/pages/constants';
-import ModalWithToggle, {
-  TOGGLE_BTN_ID,
-} from '@webapp/ui/Modals/ModalWithToggle';
+import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import styles from './TagsSelector.module.scss';
 
 const emptyTagsTag = 'No tags available';
@@ -115,11 +113,9 @@ function TagSelector({
     setModalOpenStatus(false);
   };
 
-  const handleOutsideClick = (e: MouseEvent) => {
-    if ((e.target as { id?: string })?.id !== TOGGLE_BTN_ID) {
-      setSelectedTags(defaultSelectedTags);
-      setModalOpenStatus(false);
-    }
+  const handleOutsideClick = () => {
+    setSelectedTags(defaultSelectedTags);
+    setModalOpenStatus(false);
   };
 
   return (
