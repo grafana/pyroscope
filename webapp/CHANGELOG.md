@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.49.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.49.1...@pyroscope/webapp@1.49.2) (2022-09-30)
+
+
+### Bug Fixes
+
+* export dropdown should close when clicking outside ([#1579](https://github.com/pyroscope-io/pyroscope/issues/1579)) ([b4074a7](https://github.com/pyroscope-io/pyroscope/commit/b4074a72f0482cd59e53960ce0ba437052475b50))
+* tag explorer modal should close when another one is clicked ([#1578](https://github.com/pyroscope-io/pyroscope/issues/1578)) ([c2d1e96](https://github.com/pyroscope-io/pyroscope/commit/c2d1e966e33aed1d483bcabdbfc05a545518a302))
+
+
+
+
+
 ## [1.49.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.49.0...@pyroscope/webapp@1.49.1) (2022-09-30)
 
 **Note:** Version bump only for package @pyroscope/webapp
