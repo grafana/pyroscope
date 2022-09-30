@@ -134,6 +134,20 @@ services:
       options:
         loki-url: 'http://localhost:3100/loki/api/v1/push'
 
+  eu-north-ruby:
+    env_file:
+      - config.env
+    environment:
+      - REGION=eu-north
+      - SERVER_HOST=eu-north-ruby
+    build:
+      context: 'ruby/rideshare'
+      dockerfile: Dockerfile
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/loki/api/v1/push'
+
   load-generator:
     env_file:
       - config.env

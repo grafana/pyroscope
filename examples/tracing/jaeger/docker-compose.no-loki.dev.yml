@@ -88,8 +88,20 @@ services:
   eu-north-java-instrumentation:
     env_file:
       - config.env
+    environment:
+      - REGION=eu-north
     build:
       context: 'java-instrumentation/rideshare'
+      dockerfile: Dockerfile
+
+  eu-north-ruby:
+    env_file:
+      - config.env
+    environment:
+      - REGION=eu-north
+      - SERVER_HOST=eu-north-ruby
+    build:
+      context: 'ruby/rideshare'
       dockerfile: Dockerfile
 
   load-generator:
