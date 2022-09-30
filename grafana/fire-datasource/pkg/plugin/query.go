@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"regexp"
 	"strings"
 	"time"
 
@@ -323,22 +322,4 @@ func normalizeUnit(unit string) string {
 		return "short"
 	}
 	return unit
-}
-
-// ParseIntervalStringToTimeDuration parses string in the form of N[unit] for example 10s or 1w to correct duration.
-// Taken from prometheus code. TODO: move this into sdk?
-func ParseIntervalStringToTimeDuration(interval string) (time.Duration, error) {
-	formattedInterval := strings.Replace(strings.Replace(interval, "<", "", 1), ">", "", 1)
-	isPureNum, err := regexp.MatchString(`^\d+$`, formattedInterval)
-	if err != nil {
-		return time.Duration(0), err
-	}
-	if isPureNum {
-		formattedInterval += "s"
-	}
-	parsedInterval, err := gtime.ParseDuration(formattedInterval)
-	if err != nil {
-		return time.Duration(0), err
-	}
-	return parsedInterval, nil
 }
