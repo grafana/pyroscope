@@ -219,6 +219,7 @@ function ExportData(props: ExportDataProps) {
       document.body.appendChild(downloadAnchorNode); // required for firefox
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
+      setToggleMenu(false);
     }
   };
 
