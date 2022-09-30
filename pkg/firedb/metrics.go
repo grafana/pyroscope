@@ -1,7 +1,20 @@
 package firedb
 
 import (
+	"context"
+
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	firecontext "github.com/grafana/fire/pkg/fire/context"
+	query "github.com/grafana/fire/pkg/firedb/query"
+)
+
+type contextKey uint8
+
+const (
+	headMetricsContextKey contextKey = iota
+	blockMetricsContextKey
 )
 
 type headMetrics struct {
@@ -22,41 +35,44 @@ type headMetrics struct {
 
 func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 	m := &headMetrics{
-		seriesCreated: prometheus.NewCounterVec(prometheus.CounterOpts{
+		seriesCreated: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "fire_tsdb_head_series_created_total",
 			Help: "Total number of series created in the head",
 		}, []string{"profile_name"}),
+		rowsWritten: promauto.With(reg).NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "fire_rows_written",
+				Help: "Number of rows written to a parquet table.",
+			},
+			[]string{"type"}),
+		profilesCreated: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "fire_head_profiles_created_total",
+			Help: "Total number of profiles created in the head",
+		}, []string{"profile_name"}),
+		sampleValuesIngested: promauto.With(reg).NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "fire_head_ingested_sample_values_total",
+				Help: "Number of sample values ingested into the head per profile type.",
+			},
+			[]string{"profile_name"}),
+		sampleValuesReceived: promauto.With(reg).NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "fire_head_received_sample_values_total",
+				Help: "Number of sample values received into the head per profile type.",
+			},
+			[]string{"profile_name"}),
+
+		// this metric is not registered using promauto, as it has a callback into the header
 		sizeBytes: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "fire_head_size_bytes",
 				Help: "Size of a particular in memory store within the head firedb block.",
 			},
 			[]string{"type"}),
-		rowsWritten: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "fire_rows_written",
-				Help: "Number of rows written to a parquet table.",
-			},
-			[]string{"type"}),
-		profilesCreated: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "fire_head_profiles_created_total",
-			Help: "Total number of profiles created in the head",
-		}, []string{"profile_name"}),
-		sampleValuesIngested: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "fire_head_ingested_sample_values_total",
-				Help: "Number of sample values ingested into the head per profile type.",
-			},
-			[]string{"profile_name"}),
-		sampleValuesReceived: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "fire_head_received_sample_values_total",
-				Help: "Number of sample values received into the head per profile type.",
-			},
-			[]string{"profile_name"}),
 	}
 
-	m.series = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+	// metrics that call into the head
+	m.series = promauto.With(reg).NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "fire_tsdb_head_series",
 		Help: "Total number of series in the head block.",
 	}, func() float64 {
@@ -65,24 +81,32 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 		}
 		return float64(m.head.index.totalSeries.Load())
 	})
-	m.profiles = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+	m.profiles = promauto.With(reg).NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "fire_head_profiles",
 		Help: "Total number of profiles in the head block.",
 	}, func() float64 {
+		if m.head == nil {
+			return 0.0
+		}
 		return float64(m.head.index.totalProfiles.Load())
 	})
 
 	if reg != nil {
 		reg.MustRegister(
-			m.series,
-			m.seriesCreated,
-			m.profiles,
-			m.profilesCreated,
-			m.rowsWritten,
-			m.sampleValuesIngested,
-			m.sampleValuesReceived,
 			m,
 		)
+	}
+	return m
+}
+
+func contextWithHeadMetrics(ctx context.Context, m *headMetrics) context.Context {
+	return context.WithValue(ctx, headMetricsContextKey, m)
+}
+
+func contextHeadMetrics(ctx context.Context) *headMetrics {
+	m, ok := ctx.Value(headMetricsContextKey).(*headMetrics)
+	if !ok {
+		return newHeadMetrics(firecontext.Registry(ctx))
 	}
 	return m
 }
@@ -103,4 +127,32 @@ func (m *headMetrics) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 	m.sizeBytes.Collect(ch)
+}
+
+type blocksMetrics struct {
+	query *query.Metrics
+
+	blockOpeningLatency prometheus.Histogram
+}
+
+func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
+	return &blocksMetrics{
+		query: query.NewMetrics(reg),
+		blockOpeningLatency: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name: "firedb_block_opening_duration",
+			Help: "Latency of opening a block in seconds",
+		}),
+	}
+}
+
+func contextWithBlockMetrics(ctx context.Context, m *blocksMetrics) context.Context {
+	return context.WithValue(ctx, blockMetricsContextKey, m)
+}
+
+func contextBlockMetrics(ctx context.Context) *blocksMetrics {
+	m, ok := ctx.Value(blockMetricsContextKey).(*blocksMetrics)
+	if !ok {
+		return newBlocksMetrics(firecontext.Registry(ctx))
+	}
+	return m
 }

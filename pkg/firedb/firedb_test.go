@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -33,16 +32,16 @@ func TestCreateLocalDir(t *testing.T) {
 	dataPath := t.TempDir()
 	localFile := dataPath + "/local"
 	require.NoError(t, ioutil.WriteFile(localFile, []byte("d"), 0o644))
-	_, err := New(Config{
+	_, err := New(context.Background(), Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	}, log.NewNopLogger(), nil)
+	})
 	require.Error(t, err)
 	require.NoError(t, os.Remove(localFile))
-	_, err = New(Config{
+	_, err = New(context.Background(), Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	}, log.NewNopLogger(), nil)
+	})
 	require.NoError(t, err)
 }
 
@@ -133,10 +132,10 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		step    = 15 * time.Second
 	)
 
-	db, err := New(Config{
+	db, err := New(context.Background(), Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, log.NewNopLogger(), nil)
+	})
 	require.NoError(t, err)
 	defer require.NoError(t, db.Close())
 
