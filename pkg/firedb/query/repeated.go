@@ -24,51 +24,54 @@ type repeatedPageIterator[T any] struct {
 	currentPage     parquet.Page
 	startPageRowNum int64
 
-	currRowNum int64
+	pageNextRowNum int64
 
 	currentPages parquet.Pages
 	valueReader  parquet.ValueReader
 
 	err            error
-	currentValue   RepeatedRow[T]
+	done           bool // because we advance the iterator to seek in advance we remember if we are done
+	currentValue   *RepeatedRow[T]
 	buffer         []parquet.Value
 	originalBuffer []parquet.Value
 }
 
+// NewRepeatedPageIterator returns an iterator that iterates over the repeated values in a column.
+// The iterator can only seek forward and so rows should be sorted by row number.
 func NewRepeatedPageIterator[T any](
 	rows iter.Iterator[T],
 	rgs []parquet.RowGroup,
 	column int,
 	readSize int,
-) iter.Iterator[RepeatedRow[T]] {
+) iter.Iterator[*RepeatedRow[T]] {
 	if readSize <= 0 {
 		panic("readSize must be greater than 0")
 	}
 	buffer := make([]parquet.Value, readSize)
+	done := !rows.Next()
 	return &repeatedPageIterator[T]{
 		rows:           rows,
 		rgs:            rgs,
 		column:         column,
 		readSize:       readSize,
-		buffer:         buffer,
+		buffer:         buffer[:0],
 		originalBuffer: buffer,
+		currentValue:   &RepeatedRow[T]{},
+		done:           done,
 	}
 }
 
+// seekRowNum the row num to seek to.
 func (it *repeatedPageIterator[T]) seekRowNum() int64 {
 	return any(it.rows.At()).(RowGetter).RowNumber()
 }
 
 func (it *repeatedPageIterator[T]) Next() bool {
-	// we should only next the first time and if we have reached a new row in the page.
-	if !it.rows.Next() { // 1 [1 2] // 2
-		return false
-	}
-	return it.next()
-}
-
-func (it *repeatedPageIterator[T]) next() bool {
+Outer:
 	for {
+		if it.done {
+			return false
+		}
 		for len(it.rgs) != 0 && (it.seekRowNum() >= (it.startRowGroupRowNum + it.rgs[0].NumRows())) {
 			if !it.closeCurrentPages() {
 				return false
@@ -85,12 +88,15 @@ func (it *repeatedPageIterator[T]) next() bool {
 		// read a new page.
 		if it.currentPage == nil {
 			// SeekToRow seek across and within pages. So the next position in the page will the be the row.
-			if err := it.currentPages.SeekToRow(it.seekRowNum() - it.startRowGroupRowNum); err != nil {
+			seekTo := it.seekRowNum() - it.startRowGroupRowNum
+			if err := it.currentPages.SeekToRow(seekTo); err != nil {
 				it.err = err
-				it.currentPages = nil
+				it.currentPages = nil // we can set it to nil since somehow it was closed.
 				return false
 			}
 			it.startPageRowNum = it.seekRowNum()
+			it.pageNextRowNum = 0
+			it.buffer = it.buffer[:0]
 			var err error
 			it.currentPage, err = it.currentPages.ReadPage()
 			if err != nil {
@@ -100,7 +106,7 @@ func (it *repeatedPageIterator[T]) next() bool {
 				it.err = err
 				return false
 			}
-			it.valueReader = nil
+			it.valueReader = it.currentPage.Values()
 		}
 		// if there's no more value in that page we can skip it.
 		if it.seekRowNum() >= it.startPageRowNum+it.currentPage.NumRows() {
@@ -108,42 +114,47 @@ func (it *repeatedPageIterator[T]) next() bool {
 			continue
 		}
 
-		if it.valueReader == nil {
-			it.valueReader = it.currentPage.Values()
-		}
-		// reading values....
-		it.buffer = it.originalBuffer
-		n, err := it.valueReader.ReadValues(it.buffer)
-		if err != nil && err != io.EOF {
-			it.err = err
-			return false
-		}
-		it.buffer = it.buffer[:n]
-		// no more buffer, move to next page
+		// only read values if the buffer is empty
 		if len(it.buffer) == 0 {
-			it.currentPage = nil
-			continue
+			// reading values....
+			it.buffer = it.originalBuffer
+			n, err := it.valueReader.ReadValues(it.buffer)
+			if err != nil && err != io.EOF {
+				it.err = err
+				return false
+			}
+			it.buffer = it.buffer[:n]
+			// no more buffer, move to next page
+			if len(it.buffer) == 0 {
+				it.done = !it.rows.Next() // if the page has no more data the current row is over.
+				it.currentPage = nil
+				continue
+			}
 		}
-		// slice the current amount of values.
-		// todo start with 1 it's still the current row.
-		// only one 0 => we don't increment the next rowNum
-		// two zero => we increment the next rowNum
 
-		//
+		// we have data in the buffer.
 		it.currentValue.Row = it.rows.At()
-
-		next := 1
-		for _, v := range it.buffer[1:] {
+		next := 0
+		if it.buffer[0].RepetitionLevel() == 0 {
+			// todo we need to advance the row here. ?
+			next++
+		}
+		for _, v := range it.buffer[next:] {
 			if v.RepetitionLevel() == 0 {
+				// if the row to seek is after the current row we skip it.
+				if it.seekRowNum() > it.pageNextRowNum+it.startPageRowNum {
+					it.pageNextRowNum++
+					it.buffer = it.buffer[next:] // skip the next value.
+					continue Outer
+				}
+				it.pageNextRowNum++
+				it.done = !it.rows.Next()
 				break
 			}
 			next++
 		}
 		it.currentValue.Values = it.buffer[:next]
-		it.buffer = it.buffer[next:]
-		if len(it.buffer) == 0 {
-			it.valueReader = nil
-		}
+		it.buffer = it.buffer[next:] // consume the values.
 		return true
 	}
 }
@@ -160,7 +171,10 @@ func (it *repeatedPageIterator[T]) closeCurrentPages() bool {
 	return true
 }
 
-func (it *repeatedPageIterator[T]) At() RepeatedRow[T] {
+// At returns the current value.
+// Only valid after a call to Next.
+// The returned value is reused on the next call to Next and should not be retained.
+func (it *repeatedPageIterator[T]) At() *RepeatedRow[T] {
 	return it.currentValue
 }
 
@@ -177,8 +191,3 @@ func (it *repeatedPageIterator[T]) Close() error {
 	}
 	return nil
 }
-
-/// => 2 4 [ 2 3 4] skip rows that I don't select
-// => 2  10 {[ 2 3 4 5 6 7 8 9 ] } // skip through values and skip all values at once if possible.
-// 2 5 6 15 {[1 2] [5 6] [10 11]} {[15]} skip through rows.
-// 2 10  {[1 2] [5 6] [10 11]} {[15]} // skip through pages
