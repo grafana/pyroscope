@@ -270,10 +270,14 @@ var lambdaGeneratedEnclosingClass = regexp.MustCompile("^(.+\\$\\$Lambda\\$)\\d+
 // libzstd-jni-1.5.1-16931311898282279136.so.Java_com_github_luben_zstd_ZstdInputStreamNoFinalizer_decompressStream
 var zstdJniSoLibName = regexp.MustCompile("^(libzstd-jni-\\d+\\.\\d+\\.\\d+-)(\\d+)(\\.so)$")
 
+// ./tmp/libamazonCorrettoCryptoProvider109b39cf33c563eb.so
+var amazonCorrettoCryptoProvider = regexp.MustCompile("^\\./tmp/(libamazonCorrettoCryptoProvider)([0-9a-f]{16})(\\.so)$")
+
 func mergeJVMGeneratedClasses(frame string) string {
 	frame = generatedMethodAccessor.ReplaceAllString(frame, "${1}_")
 	frame = lambdaGeneratedEnclosingClass.ReplaceAllString(frame, "${1}_")
 	frame = zstdJniSoLibName.ReplaceAllString(frame, "${1}_${3}")
+	frame = amazonCorrettoCryptoProvider.ReplaceAllString(frame, "${1}_${3}")
 	return frame
 }
 

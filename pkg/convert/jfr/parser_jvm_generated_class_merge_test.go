@@ -35,4 +35,10 @@ var _ = ginkgo.Describe("mergeJVMGeneratedClasses", func() {
 		res := mergeJVMGeneratedClasses(src)
 		Expect(res).To(Equal("libzstd-jni-1.5.1-_.so"))
 	})
+
+	ginkgo.It("merges amazon correto crypto provider", func() {
+		src := "./tmp/libamazonCorrettoCryptoProvider109b39cf33c563eb.so"
+		res := mergeJVMGeneratedClasses(src)
+		Expect(res).To(Equal("libamazonCorrettoCryptoProvider_.so"))
+	})
 })
