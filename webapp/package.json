@@ -1,6 +1,6 @@
 {
   "name": "@pyroscope/webapp",
-  "version": "1.49.0",
+  "version": "1.49.1",
   "private": true,
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
