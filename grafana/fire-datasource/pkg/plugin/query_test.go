@@ -17,8 +17,15 @@ import (
 
 // This is where the tests for the datasource backend live.
 func Test_query(t *testing.T) {
+	client := &FakeClient{}
 	ds := &FireDatasource{
-		client: &FakeClient{},
+		client: client,
+	}
+
+	pCtx := backend.PluginContext{
+		DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{
+			JSONData: []byte(`{"minStep":"30s"}`),
+		},
 	}
 
 	dataQuery := backend.DataQuery{
@@ -30,11 +37,11 @@ func Test_query(t *testing.T) {
 			From: time.UnixMilli(10000),
 			To:   time.UnixMilli(20000),
 		},
-		JSON: []byte(`{"profileTypeId":"foo:bar","labelSelector":"{app=\\\"baz\\\"}"}`),
+		JSON: []byte(`{"profileTypeId":"foo:bar:baz","labelSelector":"{app=\\\"baz\\\"}"}`),
 	}
 
 	t.Run("query both", func(t *testing.T) {
-		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		resp := ds.query(context.Background(), pCtx, dataQuery)
 		require.Nil(t, resp.Error)
 		require.Equal(t, 2, len(resp.Frames))
 		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
@@ -43,7 +50,7 @@ func Test_query(t *testing.T) {
 
 	t.Run("query profile", func(t *testing.T) {
 		dataQuery.QueryType = queryTypeProfile
-		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		resp := ds.query(context.Background(), pCtx, dataQuery)
 		require.Nil(t, resp.Error)
 		require.Equal(t, 1, len(resp.Frames))
 		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[0].Fields[0])
@@ -51,10 +58,33 @@ func Test_query(t *testing.T) {
 
 	t.Run("query metrics", func(t *testing.T) {
 		dataQuery.QueryType = queryTypeMetrics
-		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		resp := ds.query(context.Background(), pCtx, dataQuery)
 		require.Nil(t, resp.Error)
 		require.Equal(t, 1, len(resp.Frames))
 		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+	})
+
+	t.Run("query metrics uses min step", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeMetrics
+		resp := ds.query(context.Background(), pCtx, dataQuery)
+		require.Nil(t, resp.Error)
+		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
+		require.True(t, ok)
+		require.Equal(t, float64(30), r.Msg.Step)
+	})
+
+	t.Run("query metrics uses default min step", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeMetrics
+		pCtxNoMinStep := backend.PluginContext{
+			DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{
+				JSONData: []byte(`{}`),
+			},
+		}
+		resp := ds.query(context.Background(), pCtxNoMinStep, dataQuery)
+		require.Nil(t, resp.Error)
+		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
+		require.True(t, ok)
+		require.Equal(t, float64(15), r.Msg.Step)
 	})
 }
 
@@ -177,22 +207,22 @@ func Test_seriesToDataFrame(t *testing.T) {
 }
 
 type FakeClient struct {
-	Req *connect.Request[querierv1.SelectMergeStacktracesRequest]
+	Req interface{}
 }
 
-func (f FakeClient) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
+func (f *FakeClient) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
 	panic("implement me")
 }
 
-func (f FakeClient) LabelValues(ctx context.Context, c *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
+func (f *FakeClient) LabelValues(ctx context.Context, c *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
 	panic("implement me")
 }
 
-func (f FakeClient) LabelNames(context.Context, *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
+func (f *FakeClient) LabelNames(context.Context, *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
 	panic("implement me")
 }
 
-func (f FakeClient) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
+func (f *FakeClient) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	return &connect.Response[querierv1.SeriesResponse]{
 		Msg: &querierv1.SeriesResponse{
 			LabelsSet: []*v1.Labels{{
@@ -215,7 +245,7 @@ func (f FakeClient) Series(ctx context.Context, c *connect.Request[querierv1.Ser
 	}, nil
 }
 
-func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+func (f *FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	f.Req = c
 	return &connect.Response[querierv1.SelectMergeStacktracesResponse]{
 		Msg: &querierv1.SelectMergeStacktracesResponse{
@@ -233,7 +263,8 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 	}, nil
 }
 
-func (f FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+func (f *FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+	f.Req = req
 	return &connect.Response[querierv1.SelectSeriesResponse]{
 		Msg: &querierv1.SelectSeriesResponse{
 			Series: []*commonv1.Series{
