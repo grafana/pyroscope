@@ -53,7 +53,7 @@ function HeatmapTooltip({
       if (!tooltipRef || !tooltipRef.current) {
         throw new Error('Missing tooltipElement');
       }
-      const canvas = e.target as HTMLCanvasElement;
+      const canvas = dataSourceElRef.current as HTMLCanvasElement;
       const { left, top } = canvas.getBoundingClientRect();
 
       const xCursorPosition = e.pageX - left;
@@ -82,7 +82,7 @@ function HeatmapTooltip({
         count: heatmap.values[matrixCoords[0]][matrixCoords[1]],
       });
     },
-    [tooltipRef, setTooltipParams, heatmapW, heatmap, timezone]
+    [tooltipRef, setTooltipParams, heatmapW, heatmap, timezone, dataSourceElRef]
   );
 
   // to show tooltip when move mouse over selected area
