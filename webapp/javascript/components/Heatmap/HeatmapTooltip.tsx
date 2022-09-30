@@ -6,15 +6,24 @@ import React, {
   useCallback,
 } from 'react';
 
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import TooltipWrapper from '@webapp/components/TimelineChart/TooltipWrapper';
 import type { Heatmap } from '@webapp/services/render';
-import { getTimeDataByXCoord, timeFormatter } from './utils';
+import {
+  getTimeDataByXCoord,
+  getBucketsDurationByYCoord,
+  timeFormatter,
+} from './utils';
+import { HEATMAP_HEIGHT } from './constants';
+
+import styles from './HeatmapTooltip.module.scss';
 
 interface HeatmapTooltipProps {
   dataSourceElRef: RefObject<HTMLCanvasElement>;
   heatmapW: number;
   heatmap: Heatmap;
   timezone: string;
+  sampleRate: number;
 }
 
 function HeatmapTooltip({
@@ -22,13 +31,22 @@ function HeatmapTooltip({
   heatmapW,
   heatmap,
   timezone,
+  sampleRate,
 }: HeatmapTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipParams, setTooltipParams] = useState<
-    { pageX: number; pageY: number; time: string } | undefined
+    | {
+        pageX: number;
+        pageY: number;
+        time: string;
+        duration: string;
+        count: number;
+      }
+    | undefined
   >();
 
   const formatter = timeFormatter(heatmap.startTime, heatmap.endTime, timezone);
+  const valueFormatter = getFormatter(heatmap.maxValue, sampleRate, 'samples');
 
   const memoizedOnMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -36,10 +54,22 @@ function HeatmapTooltip({
         throw new Error('Missing tooltipElement');
       }
       const canvas = e.target as HTMLCanvasElement;
-      const { left } = canvas.getBoundingClientRect();
+      const { left, top } = canvas.getBoundingClientRect();
 
       const xCursorPosition = e.pageX - left;
+      const yCursorPosition = e.clientY - top;
       const time = getTimeDataByXCoord(heatmap, heatmapW, xCursorPosition);
+      const bucketsDuration = getBucketsDurationByYCoord(
+        heatmap,
+        yCursorPosition
+      );
+      const cellW = heatmapW / heatmap.timeBuckets;
+      const cellH = HEATMAP_HEIGHT / heatmap.valueBuckets;
+
+      const matrixCoords = [
+        Math.trunc(xCursorPosition / cellW),
+        Math.trunc((HEATMAP_HEIGHT - yCursorPosition) / cellH),
+      ];
 
       // to fix tooltip on window edge
       const maxPageX = window.innerWidth - 130;
@@ -48,6 +78,8 @@ function HeatmapTooltip({
         pageX: e.pageX < maxPageX ? e.pageX - 10 : maxPageX,
         pageY: e.pageY + 10,
         time: formatter(time).toString(),
+        duration: valueFormatter.format(bucketsDuration, sampleRate),
+        count: heatmap.values[matrixCoords[0]][matrixCoords[1]],
       });
     },
     [tooltipRef, setTooltipParams, heatmapW, heatmap, timezone]
@@ -92,11 +124,20 @@ function HeatmapTooltip({
     <div data-testid="heatmap-tooltip" ref={tooltipRef}>
       {tooltipParams && (
         <TooltipWrapper
+          className={styles.tooltipWrapper}
           align="right"
           pageX={tooltipParams.pageX}
           pageY={tooltipParams.pageY}
         >
-          {tooltipParams.time}
+          <p className={styles.tooltipHeader}>{tooltipParams.time}</p>
+          <div className={styles.dataRow}>
+            <span>Count: </span>
+            <span>{tooltipParams.count} profiles</span>
+          </div>
+          <div className={styles.dataRow}>
+            <span>Duration: </span>
+            <span>{tooltipParams.duration}</span>
+          </div>
         </TooltipWrapper>
       )}
     </div>

@@ -1,0 +1,20 @@
+.tooltipWrapper {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+
+  .tooltipHeader {
+    margin: 0;
+    padding: 10px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    background-color: var(--ps-tooltip-header-bg);
+  }
+
+  .dataRow {
+    width: 220px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+}

@@ -44,15 +44,20 @@ interface SelectionData {
   selectionEndTime: number;
 }
 
-// TODO(dogfrogfog): extend calculating data
 export const getTimeDataByXCoord = (
   heatmap: Heatmap,
   heatmapW: number,
   x: number
 ) => {
-  const timeForPixel = (heatmap.endTime - heatmap.startTime) / heatmapW;
+  const unitsForPixel = (heatmap.endTime - heatmap.startTime) / heatmapW;
 
-  return x * timeForPixel + heatmap.startTime;
+  return x * unitsForPixel + heatmap.startTime;
+};
+
+export const getBucketsDurationByYCoord = (heatmap: Heatmap, y: number) => {
+  const unitsForPixel = (heatmap.maxValue - heatmap.minValue) / HEATMAP_HEIGHT;
+
+  return (HEATMAP_HEIGHT - y) * unitsForPixel;
 };
 
 export const getSelectionData = (
