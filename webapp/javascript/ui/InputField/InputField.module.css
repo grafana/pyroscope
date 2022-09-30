@@ -6,3 +6,7 @@
   width: 30%;
   min-width: 150px;
 }
+
+.label {
+  font-weight: bold;
+}

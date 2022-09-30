@@ -2,7 +2,6 @@
 import React, { Ref, ReactNode } from 'react';
 import ModalUnstyled from '@mui/base/ModalUnstyled';
 import Button from '@webapp/ui/Button';
-import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import cx from 'classnames';
 import styles from './Dialog.module.css';
 
@@ -27,7 +26,6 @@ export const DialogHeader = React.forwardRef(
         {closeable ? (
           <Button
             aria-label="Close"
-            icon={faTimes}
             onClick={() => props.onClose()}
             noBox
             className={styles.closeButton}
