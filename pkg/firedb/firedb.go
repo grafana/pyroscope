@@ -25,6 +25,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	"github.com/grafana/fire/pkg/firedb/block"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -55,29 +56,32 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 type FireDB struct {
 	services.Service
 
+	logger  log.Logger
+	firectx context.Context
+
 	cfg    Config
-	reg    prometheus.Registerer
-	logger log.Logger
 	stopCh chan struct{}
 	wg     sync.WaitGroup
 
-	headLock    sync.RWMutex
-	head        *Head
-	headMetrics *headMetrics
+	headLock sync.RWMutex
+	head     *Head
 
 	headFlushTimer time.Timer
 
 	blockQuerier *BlockQuerier
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, error) {
-	headMetrics := newHeadMetrics(reg)
+func New(firectx context.Context, cfg Config) (*FireDB, error) {
+	reg := firecontext.Registry(firectx)
+
+	// ensure head metrics are registered early so they are reused for the new head
+	firectx = contextWithHeadMetrics(firectx, newHeadMetrics(reg))
+
 	f := &FireDB{
-		cfg:         cfg,
-		reg:         reg,
-		logger:      logger,
-		stopCh:      make(chan struct{}, 0),
-		headMetrics: headMetrics,
+		cfg:     cfg,
+		logger:  firecontext.Logger(firectx),
+		firectx: firectx,
+		stopCh:  make(chan struct{}, 0),
 	}
 	if _, err := f.initHead(); err != nil {
 		return nil, err
@@ -97,7 +101,7 @@ func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, err
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
 
-	f.blockQuerier = NewBlockQuerier(logger, bucketReader)
+	f.blockQuerier = NewBlockQuerier(firectx, bucketReader)
 
 	// do an initial querier sync
 	ctx := context.Background()
@@ -460,7 +464,7 @@ func (f *FireDB) initHead() (oldHead *Head, err error) {
 	f.headLock.Lock()
 	defer f.headLock.Unlock()
 	oldHead = f.head
-	f.head, err = NewHead(f.cfg, headWithMetrics(f.headMetrics), HeadWithLogger(f.logger))
+	f.head, err = NewHead(f.firectx, f.cfg)
 	if err != nil {
 		return oldHead, err
 	}

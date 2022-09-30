@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -26,6 +27,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	"github.com/grafana/fire/pkg/firedb/block"
 	query "github.com/grafana/fire/pkg/firedb/query"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
@@ -44,7 +46,8 @@ type tableReader interface {
 }
 
 type BlockQuerier struct {
-	logger log.Logger
+	firectx context.Context
+	logger  log.Logger
 
 	bucketReader fireobjstore.BucketReader
 
@@ -52,12 +55,13 @@ type BlockQuerier struct {
 	queriersLock sync.RWMutex
 }
 
-func NewBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketReader) *BlockQuerier {
-	if logger == nil {
-		logger = log.NewNopLogger()
-	}
+func NewBlockQuerier(firectx context.Context, bucketReader fireobjstore.BucketReader) *BlockQuerier {
 	return &BlockQuerier{
-		logger:       logger,
+		firectx: contextWithBlockMetrics(firectx,
+			newBlocksMetrics(
+				firecontext.Registry(firectx),
+			),
+		),
 		bucketReader: bucketReader,
 	}
 }
@@ -67,7 +71,7 @@ func (b *BlockQuerier) reconstructMetaFromBlock(ctx context.Context, ulid ulid.U
 	fakeMeta := block.NewMeta()
 	fakeMeta.ULID = ulid
 
-	q := newSingleBlockQuerierFromMeta(b.logger, b.bucketReader, fakeMeta)
+	q := newSingleBlockQuerierFromMeta(b.firectx, b.bucketReader, fakeMeta)
 	defer q.Close()
 
 	meta, err := q.reconstructMeta(ctx)
@@ -188,7 +192,7 @@ func (b *BlockQuerier) Sync(ctx context.Context) error {
 			continue
 		}
 
-		b.queriers[pos] = newSingleBlockQuerierFromMeta(b.logger, b.bucketReader, m)
+		b.queriers[pos] = newSingleBlockQuerierFromMeta(b.firectx, b.bucketReader, m)
 	}
 	// ensure queriers are in ascending order.
 	sort.Slice(b.queriers, func(i, j int) bool {
@@ -265,7 +269,9 @@ func (mm *minMax) InRange(start, end model.Time) bool {
 }
 
 type singleBlockQuerier struct {
-	logger       log.Logger
+	logger  log.Logger
+	metrics *blocksMetrics
+
 	bucketReader fireobjstore.BucketReader
 	meta         *block.Meta
 
@@ -282,9 +288,11 @@ type singleBlockQuerier struct {
 	profiles              parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
 }
 
-func newSingleBlockQuerierFromMeta(logger log.Logger, bucketReader fireobjstore.BucketReader, meta *block.Meta) *singleBlockQuerier {
+func newSingleBlockQuerierFromMeta(firectx context.Context, bucketReader fireobjstore.BucketReader, meta *block.Meta) *singleBlockQuerier {
 	q := &singleBlockQuerier{
-		logger:       logger,
+		logger:  firecontext.Logger(firectx),
+		metrics: contextBlockMetrics(firectx),
+
 		bucketReader: fireobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
 		meta:         meta,
 	}
@@ -727,8 +735,10 @@ func newByteSliceFromBucketReader(bucketReader fireobjstore.BucketReader, path s
 }
 
 func (q *singleBlockQuerier) open(ctx context.Context) error {
+	start := time.Now()
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - open")
 	defer func() {
+		q.metrics.blockOpeningLatency.Observe(time.Since(start).Seconds())
 		sp.LogFields(
 			otlog.String("block_ulid", q.meta.ULID.String()),
 		)
@@ -755,7 +765,7 @@ func (q *singleBlockQuerier) open(ctx context.Context) error {
 
 	// open parquet files
 	for _, x := range q.tables {
-		if err := x.open(ctx, q.bucketReader); err != nil {
+		if err := x.open(contextWithBlockMetrics(ctx, q.metrics), q.bucketReader); err != nil {
 			return err
 		}
 	}
@@ -767,9 +777,11 @@ type parquetReader[M Models, P schemav1.PersisterName] struct {
 	persister P
 	file      *parquet.File
 	reader    fireobjstore.ReaderAt
+	metrics   *blocksMetrics
 }
 
 func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstore.BucketReader) error {
+	r.metrics = contextBlockMetrics(ctx)
 	filePath := r.persister.Name() + block.ParquetSuffix
 
 	ra, err := bucketReader.ReaderAt(ctx, filePath)
@@ -823,6 +835,7 @@ func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string,
 	if index == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))
 	}
+	ctx = query.AddMetricsToContext(ctx, r.metrics.query)
 	return query.NewColumnIterator(ctx, r.file.RowGroups(), index, columnName, 1000, predicate, alias)
 }
 
