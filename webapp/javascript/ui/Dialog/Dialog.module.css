@@ -19,7 +19,7 @@
   /* TODO(eh-am): support light background */
   background-color: #222;
 
-  max-width: 500px;
+  max-width: 520px;
   max-height: calc(100% - 64px);
   overflow-y: auto;
   display: flex;
@@ -35,20 +35,35 @@
 
 /* reset immediate headers */
 .header > h1,
-h2,
-h3,
-h4 {
+.header > h2,
+.header > h3,
+.header > h4 {
   margin: 0;
+  flex: 1;
 }
 .body {
-  padding: 15px 20px 10px;
+  padding: 0 20px 20px;
   overflow-y: auto;
 }
 
 .closeButton {
-  position: absolute;
-  right: 8px;
-  top: 8px;
+  border: none;
+  padding: 0;
+  width: 34px;
+  height: 34px;
+  margin-right: -10px;
+  cursor: pointer;
+  position: relative;
+  justify-self: flex-end;
+  min-width: 0;
+}
+
+.closeButton::after {
+  width: 34px;
+  height: 34px;
+  line-height: 22px;
+  font-size: 1.5em;
+  content: '\00d7';
 }
 
 .backdrop {
@@ -63,7 +78,7 @@ h4 {
 }
 
 .footer {
-  padding: 15px 20px 10px;
+  padding: 15px 20px 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   flex-direction: column;

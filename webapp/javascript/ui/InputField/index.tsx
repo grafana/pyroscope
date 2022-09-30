@@ -28,7 +28,7 @@ function InputField({
 }: IInputFieldProps) {
   return (
     <div className={`${className || ''} ${styles.inputWrapper}`}>
-      <h4>{label}</h4>
+      <label className={styles.label}>{label}</label>
       <Input
         type={type}
         placeholder={placeholder}
