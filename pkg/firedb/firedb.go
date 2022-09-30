@@ -88,7 +88,7 @@ func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, err
 	if err != nil {
 		return nil, err
 	}
-	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("firedb", reg))
+	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("firedb_", reg))
 	if err != nil {
 		return nil, err
 	}
