@@ -7,8 +7,9 @@
 # | |         | |       | |     __/ |
 # |_|         |_|       |_|    |___/
 
-FROM php:7.3-fpm-alpine3.13 as phpspy-builder
-RUN apk add --update alpine-sdk
+FROM php:7.4-fpm-alpine3.16 as phpspy-builder
+RUN apk update && apk upgrade \
+    && apk add --update alpine-sdk
 COPY Makefile Makefile
 RUN mkdir -p third_party/phpspy
 RUN make build-phpspy-dependencies
@@ -20,9 +21,10 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:14.17.6-alpine3.12 as js-builder
+FROM node:18-alpine3.16 as js-builder
 
-RUN apk add --no-cache make
+RUN apk update && apk upgrade && \
+    apk add --no-cache make
 
 WORKDIR /opt/pyroscope
 
@@ -51,8 +53,9 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #  \___|_.__/| .__/|_|
 #            | |
 #            |_|
-FROM alpine:3.12 as ebpf-builder
-RUN apk add cmake make binutils gcc g++ clang musl-dev linux-headers zlib-dev elfutils-dev libelf-static zlib-static git openssh
+FROM alpine:3.16 as ebpf-builder
+RUN apk update && apk upgrade && \
+    apk add cmake make binutils gcc g++ clang musl-dev linux-headers zlib-dev elfutils-dev libelf-static zlib-static git openssh
 ADD third_party/libbpf/Makefile /build/libbpf/
 RUN make -C /build/libbpf/
 ADD third_party/bcc/Makefile /build/bcc/
@@ -69,17 +72,12 @@ RUN CFLAGS=-I/build/libbpf/lib/include make -C /build/profile.bpf
 #   __/ |                     __/ |
 #  |___/                     |___/
 
-# We build our own golang image because we need alpine 3.12 and go 1.17 is not available in alpine 3.12
-# The dockerfile we use is a copy of this one:
-#   https://github.com/docker-library/golang/blob/48e32c58a6abc052253fba899cea876740cab262/1.16/alpine3.14/Dockerfile
-# TODO: figure out why linking isn't working on alpine 3.13 or 3.14
-# see https://github.com/pyroscope-io/pyroscope/pull/372 for more context
-FROM pyroscope/golang:1.18.0-alpine3.12 AS go-builder
 
-RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash zlib-dev elfutils-dev libelf-static zlib-static \
+FROM golang:1.19-alpine3.16 AS go-builder
+
+RUN apk update && apk upgrade && \
+    apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash zlib-dev elfutils-dev libelf-static zlib-static \
     linux-headers
-RUN apk upgrade binutils
-RUN apk upgrade elfutils
 
 WORKDIR /opt/pyroscope
 
@@ -118,13 +116,14 @@ RUN ENABLED_SPIES_RELEASE="ebpfspy,phpspy,dotnetspy" \
 #                                           __/ |
 #                                          |___/
 
-FROM alpine:3.12
+FROM alpine:3.16
 
 LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 
 WORKDIR /var/lib/pyroscope
 
-RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
+RUN apk update && apk upgrade && \
+    apk add --no-cache ca-certificates bash tzdata openssl musl-utils bash-completion
 
 RUN ln -s $(which python3) /usr/bin/python
 
@@ -150,7 +149,6 @@ COPY --from=go-builder --chmod=0777 /opt/pyroscope/bin/pyroscope /usr/bin/pyrosc
 # we use this in cloud
 COPY --from=js-builder /opt/pyroscope/webapp/public/standalone.html /standalone.html
 
-RUN apk add bash-completion
 RUN pyroscope completion bash > /usr/share/bash-completion/completions/pyroscope
 
 USER pyroscope
