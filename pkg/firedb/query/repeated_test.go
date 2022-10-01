@@ -32,6 +32,56 @@ func Test_RepeatedIterator(t *testing.T) {
 		readSize int
 	}{
 		{
+			name: "single row group no repeated",
+			rows: []testRowGetter{
+				{0},
+				{1},
+				{2},
+			},
+			rgs: [][]RepeatedTestRow{
+				{
+					{[]int64{1}},
+					{[]int64{2}},
+					{[]int64{3}},
+				},
+			},
+			expected: []RepeatedRow[testRowGetter]{
+				{testRowGetter{0}, []parquet.Value{parquet.ValueOf(1)}},
+				{testRowGetter{1}, []parquet.Value{parquet.ValueOf(2)}},
+				{testRowGetter{2}, []parquet.Value{parquet.ValueOf(3)}},
+			},
+		},
+		{
+			name: "single row group no repeated",
+			rows: []testRowGetter{
+				{0},
+				{2},
+				{7},
+			},
+			rgs: [][]RepeatedTestRow{
+				{
+					{[]int64{1}},
+					{[]int64{2}},
+					{[]int64{3}},
+				},
+				{
+					{[]int64{4}},
+					{[]int64{5}},
+					{[]int64{6}},
+				},
+				{
+					{[]int64{7}},
+					{[]int64{8}},
+					{[]int64{9}},
+				},
+			},
+			expected: []RepeatedRow[testRowGetter]{
+				{testRowGetter{0}, []parquet.Value{parquet.ValueOf(1)}},
+				{testRowGetter{2}, []parquet.Value{parquet.ValueOf(3)}},
+				{testRowGetter{7}, []parquet.Value{parquet.ValueOf(8)}},
+			},
+		},
+		{
 			name: "single row group",
 			rows: []testRowGetter{
 				{0},
