@@ -1,19 +1,3 @@
-#        _
-#       | |
-#  _ __ | |__  _ __  ___ _ __  _   _
-# | '_ \| '_ \| '_ \/ __| '_ \| | | |
-# | |_) | | | | |_) \__ \ |_) | |_| |
-# | .__/|_| |_| .__/|___/ .__/ \__, |
-# | |         | |       | |     __/ |
-# |_|         |_|       |_|    |___/
-
-FROM php:7.4-fpm-alpine3.16 as phpspy-builder
-RUN apk update && apk upgrade \
-    && apk add --update alpine-sdk
-COPY Makefile Makefile
-RUN mkdir -p third_party/phpspy
-RUN make build-phpspy-dependencies
-
 #                     _
 #                    | |
 #   __ _ ___ ___  ___| |_ ___
@@ -82,8 +66,6 @@ RUN apk update && apk upgrade && \
 WORKDIR /opt/pyroscope
 
 
-COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
-COPY --from=phpspy-builder /var/www/html/third_party/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY --from=ebpf-builder /build/bcc/lib third_party/bcc/lib
 COPY --from=ebpf-builder /build/libbpf/lib third_party/libbpf/lib
@@ -100,7 +82,7 @@ COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
 COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
 
-RUN ENABLED_SPIES_RELEASE="ebpfspy,phpspy,dotnetspy" \
+RUN ENABLED_SPIES_RELEASE="ebpfspy,dotnetspy" \
     EMBEDDED_ASSETS_DEPS="" \
     EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" \
     make build-release
