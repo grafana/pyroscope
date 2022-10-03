@@ -110,8 +110,9 @@ const START_OFFSET = 0
 // Value or width of the bar
 const VALUE_OFFSET = 1
 
-// Self value of the bar, we don't use it at the moment but will add it to the metadata later.
-// const SELF_OFFSET = 2
+// Self value of the bar
+const SELF_OFFSET = 2
+
 // Index into the names array
 const NAME_OFFSET = 3
 
@@ -121,6 +122,7 @@ const ITEM_OFFSET = 4
 type ProfileTree struct {
 	Start int64
 	Value int64
+	Self  int64
 	Level int
 	Name  string
 	Nodes []*ProfileTree
@@ -132,6 +134,7 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 	tree := &ProfileTree{
 		Start: 0,
 		Value: levels[0].Values[VALUE_OFFSET],
+		Self:  levels[0].Values[SELF_OFFSET],
 		Level: 0,
 		Name:  names[levels[0].Values[0]],
 	}
@@ -166,6 +169,7 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 
 			itemStart := levels[currentLevel].Values[itemIndex+START_OFFSET] + offset
 			itemValue := levels[currentLevel].Values[itemIndex+VALUE_OFFSET]
+			selfValue := levels[currentLevel].Values[itemIndex+SELF_OFFSET]
 			itemEnd := itemStart + itemValue
 			parentEnd := currentParent.Start + currentParent.Value
 
@@ -174,6 +178,7 @@ func levelsToTree(levels []*querierv1.Level, names []string) *ProfileTree {
 				treeItem := &ProfileTree{
 					Start: itemStart,
 					Value: itemValue,
+					Self:  selfValue,
 					Level: currentLevel,
 					Name:  names[levels[currentLevel].Values[itemIndex+NAME_OFFSET]],
 				}
@@ -218,16 +223,19 @@ func treeToNestedSetDataFrame(tree *ProfileTree, profileTypeID string) *data.Fra
 
 	levelField := data.NewField("level", nil, []int64{})
 	valueField := data.NewField("value", nil, []int64{})
+	selfField := data.NewField("self", nil, []int64{})
 
 	// profileTypeID should encode the type of the profile with unit being the 3rd part
 	parts := strings.Split(profileTypeID, ":")
 	valueField.Config = &data.FieldConfig{Unit: normalizeUnit(parts[2])}
+	selfField.Config = &data.FieldConfig{Unit: normalizeUnit(parts[2])}
 	labelField := data.NewField("label", nil, []string{})
-	frame.Fields = data.Fields{levelField, valueField, labelField}
+	frame.Fields = data.Fields{levelField, valueField, selfField, labelField}
 
 	walkTree(tree, func(tree *ProfileTree) {
 		levelField.Append(int64(tree.Level))
 		valueField.Append(tree.Value)
+		selfField.Append(tree.Self)
 		labelField.Append(tree.Name)
 	})
 	return frame
