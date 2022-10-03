@@ -3,7 +3,7 @@ import React from 'react';
 import { useToggle } from 'react-use';
 
 import { CoreApp, GrafanaTheme2, SelectableValue } from '@grafana/data';
-import { Icon, useStyles2, RadioButtonGroup, Field, MultiSelect } from '@grafana/ui';
+import { Icon, useStyles2, RadioButtonGroup, Field, MultiSelect, EditorField } from '@grafana/ui';
 import { Query, SeriesMessage } from '../types';
 import { Stack } from './Stack';
 
@@ -59,20 +59,30 @@ export function QueryOptions({ query, onQueryChange, app, series }: Props) {
         <h6 className={styles.title}>Options</h6>
         {!isOpen && (
           <div className={styles.description}>
-            <span>Type: {query.queryType}</span>
+            <span>
+              Type: {query.queryType}
+              {query.groupBy?.length ? `, Group by: ${query.groupBy.join(', ')}` : ''}
+            </span>
           </div>
         )}
       </div>
       {isOpen && (
         <div className={styles.body}>
-          <Field label={'Query Type'}>
+          <EditorField label={'Query Type'}>
             <RadioButtonGroup
               options={typeOptions}
               value={query.queryType}
               onChange={(value) => onQueryChange({ ...query, queryType: value })}
             />
-          </Field>
-          <Field label={'Group by'}>
+          </EditorField>
+          <EditorField
+            label={'Group by'}
+            tooltip={
+              <>
+                Used to group the metric result by a specific label or set of labels. Does not apply to profile query.
+              </>
+            }
+          >
             <MultiSelect
               placeholder="Label"
               value={query.groupBy}
@@ -85,7 +95,7 @@ export function QueryOptions({ query, onQueryChange, app, series }: Props) {
                 onQueryChange({ ...query, groupBy: changes });
               }}
             />
-          </Field>
+          </EditorField>
         </div>
       )}
     </Stack>
