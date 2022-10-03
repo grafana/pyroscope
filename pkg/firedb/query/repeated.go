@@ -155,6 +155,7 @@ Outer:
 			it.done = !it.rows.Next()
 			return true
 		}
+		// we read a partial row or we're skipping a row.
 		if it.rowFinished || it.skipping {
 			it.rowFinished = false
 			// skip until we find the next row.
@@ -180,11 +181,13 @@ Outer:
 		}
 		// this is the start of a new row.
 		if !it.rowFinished && it.buffer[start].RepetitionLevel() == 0 {
+			// consume values up to the new start if there is
 			if start >= 1 {
 				it.currentValue.Values = it.buffer[:start]
 				it.buffer = it.buffer[start:] // consume the values.
 				return true
 			}
+			// or move to the next row.
 			it.pageNextRowNum++
 			it.done = !it.rows.Next()
 			it.rowFinished = true
