@@ -3,6 +3,11 @@
   font-size: 14px;
   font-weight: 600;
 
+  .tooltipHeader,
+  .tooltipBody {
+    padding: 10px;
+  }
+
   .tooltipHeader {
     margin: 0;
     padding: 10px;
@@ -13,8 +18,12 @@
 
   .dataRow {
     width: 220px;
-    padding: 10px;
+    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
+
+    &:last-child {
+      margin: 0;
+    }
   }
 }

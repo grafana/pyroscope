@@ -39,7 +39,7 @@ function HeatmapTooltip({
         pageX: number;
         pageY: number;
         time: string;
-        duration: string;
+        latency: string;
         count: number;
       }
     | undefined
@@ -78,7 +78,7 @@ function HeatmapTooltip({
         pageX: e.pageX < maxPageX ? e.pageX - 10 : maxPageX,
         pageY: e.pageY + 10,
         time: formatter(time).toString(),
-        duration: valueFormatter.format(bucketsDuration, sampleRate),
+        latency: valueFormatter.format(bucketsDuration, sampleRate),
         count: heatmap.values[matrixCoords[0]][matrixCoords[1]],
       });
     },
@@ -130,13 +130,15 @@ function HeatmapTooltip({
           pageY={tooltipParams.pageY}
         >
           <p className={styles.tooltipHeader}>{tooltipParams.time}</p>
-          <div className={styles.dataRow}>
-            <span>Count: </span>
-            <span>{tooltipParams.count} profiles</span>
-          </div>
-          <div className={styles.dataRow}>
-            <span>Duration: </span>
-            <span>{tooltipParams.duration}</span>
+          <div className={styles.tooltipBody}>
+            <div className={styles.dataRow}>
+              <span>Count: </span>
+              <span>{tooltipParams.count} profiles</span>
+            </div>
+            <div className={styles.dataRow}>
+              <span>Latency: </span>
+              <span>{tooltipParams.latency}</span>
+            </div>
           </div>
         </TooltipWrapper>
       )}
