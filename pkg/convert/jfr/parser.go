@@ -273,11 +273,15 @@ var zstdJniSoLibName = regexp.MustCompile("^(libzstd-jni-\\d+\\.\\d+\\.\\d+-)(\\
 // ./tmp/libamazonCorrettoCryptoProvider109b39cf33c563eb.so
 var amazonCorrettoCryptoProvider = regexp.MustCompile("^\\./tmp/(libamazonCorrettoCryptoProvider)([0-9a-f]{16})(\\.so)$")
 
+// libasyncProfiler-linux-arm64-17b9a1d8156277a98ccc871afa9a8f69215f92.so
+var pyroscopeAsyncProfiler = regexp.MustCompile("^(libasyncProfiler)-(linux-arm64|linux-musl-x64|linux-x64|macos)-(17b9a1d8156277a98ccc871afa9a8f69215f92)(\\.so)$")
+
 func mergeJVMGeneratedClasses(frame string) string {
 	frame = generatedMethodAccessor.ReplaceAllString(frame, "${1}_")
 	frame = lambdaGeneratedEnclosingClass.ReplaceAllString(frame, "${1}_")
 	frame = zstdJniSoLibName.ReplaceAllString(frame, "${1}_${3}")
 	frame = amazonCorrettoCryptoProvider.ReplaceAllString(frame, "${1}_${3}")
+	frame = pyroscopeAsyncProfiler.ReplaceAllString(frame, "${1}-${2}-_${4}")
 	return frame
 }
 

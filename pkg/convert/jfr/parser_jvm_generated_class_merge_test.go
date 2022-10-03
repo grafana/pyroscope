@@ -41,4 +41,25 @@ var _ = ginkgo.Describe("mergeJVMGeneratedClasses", func() {
 		res := mergeJVMGeneratedClasses(src)
 		Expect(res).To(Equal("libamazonCorrettoCryptoProvider_.so"))
 	})
+
+	ginkgo.When("async-profiler", func() {
+		testcases := [][]string{
+			{"libasyncProfiler-linux-arm64-17b9a1d8156277a98ccc871afa9a8f69215f92.so",
+				"libasyncProfiler-linux-arm64-_.so"},
+			{"libasyncProfiler-linux-musl-x64-17b9a1d8156277a98ccc871afa9a8f69215f92.so",
+				"libasyncProfiler-linux-musl-x64-_.so"},
+			{"libasyncProfiler-linux-x64-17b9a1d8156277a98ccc871afa9a8f69215f92.so",
+				"libasyncProfiler-linux-x64-_.so"},
+			{"libasyncProfiler-macos-17b9a1d8156277a98ccc871afa9a8f69215f92.so",
+				"libasyncProfiler-macos-_.so"},
+		}
+		for _, testcase := range testcases {
+			src := testcase[0]
+			expectedRes := testcase[1]
+			ginkgo.It("merges different versions "+src, func() {
+				res := mergeJVMGeneratedClasses(src)
+				Expect(res).To(Equal(expectedRes))
+			})
+		}
+	})
 })
