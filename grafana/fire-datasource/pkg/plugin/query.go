@@ -3,12 +3,15 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/live"
@@ -18,6 +21,10 @@ type queryModel struct {
 	WithStreaming bool
 	ProfileTypeID string `json:"profileTypeId"`
 	LabelSelector string `json:"labelSelector"`
+}
+
+type dsJsonModel struct {
+	MinStep string `json:"minStep"`
 }
 
 // These constants need to match the ones in the frontend.
@@ -35,20 +42,38 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 
 	err := json.Unmarshal(query.JSON, &qm)
 	if err != nil {
-		response.Error = err
+		response.Error = fmt.Errorf("error unmarshaling query model: %v", err)
 		return response
 	}
 
 	if query.QueryType == queryTypeMetrics || query.QueryType == queryTypeBoth {
-		seriesResp, err := d.client.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+		var dsJson dsJsonModel
+		err = json.Unmarshal(pCtx.DataSourceInstanceSettings.JSONData, &dsJson)
+		if err != nil {
+			response.Error = fmt.Errorf("error unmarshaling datasource json model: %v", err)
+			return response
+		}
+
+		parsedInterval := time.Second * 15
+		if dsJson.MinStep != "" {
+			parsedInterval, err = gtime.ParseDuration(dsJson.MinStep)
+			if err != nil {
+				parsedInterval = time.Second * 15
+				log.DefaultLogger.Debug("Failed to parse the MinStep using default", "MinStep", dsJson.MinStep)
+			}
+		}
+		req := connect.NewRequest(&querierv1.SelectSeriesRequest{
 			ProfileTypeID: qm.ProfileTypeID,
 			LabelSelector: qm.LabelSelector,
 			Start:         query.TimeRange.From.UnixMilli(),
 			End:           query.TimeRange.To.UnixMilli(),
-			Step:          query.Interval.Seconds(),
+			Step:          math.Max(query.Interval.Seconds(), parsedInterval.Seconds()),
 			// todo add one or more group bys
 			GroupBy: []string{},
-		}))
+		})
+
+		log.DefaultLogger.Debug("Sending SelectSeriesRequest", "request", req, "queryModel", qm)
+		seriesResp, err := d.client.SelectSeries(ctx, req)
 		if err != nil {
 			log.DefaultLogger.Error("Querying SelectSeries()", "err", err)
 			response.Error = err
@@ -59,7 +84,8 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 	}
 
 	if query.QueryType == queryTypeProfile || query.QueryType == queryTypeBoth {
-		log.DefaultLogger.Debug("Querying SelectMergeStacktraces()", "queryModel", qm)
+		req := makeRequest(qm, query)
+		log.DefaultLogger.Debug("Sending SelectMergeStacktracesRequest", "request", req, "queryModel", qm)
 		resp, err := d.client.SelectMergeStacktraces(ctx, makeRequest(qm, query))
 		if err != nil {
 			log.DefaultLogger.Error("Querying SelectMergeStacktraces()", "err", err)
