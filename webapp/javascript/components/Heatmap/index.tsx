@@ -186,6 +186,7 @@ export function Heatmap({
         heatmapW={heatmapW}
         heatmap={heatmap}
         timezone={timezone}
+        sampleRate={sampleRate}
       />
     </div>
   );
