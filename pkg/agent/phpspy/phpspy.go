@@ -5,7 +5,7 @@
 package phpspy
 
 // #cgo darwin LDFLAGS: -L../../../third_party/phpspy -lphpspy
-// #cgo linux,!musl LDFLAGS: -L../../../third_party/phpspy -lphpspy -ldl -lunwind -lrt
+// #cgo linux,!musl LDFLAGS: -L../../../third_party/phpspy -lphpspy -ldl -lrt
 // #cgo linux,musl LDFLAGS: -L../../../third_party/phpspy -lphpspy
 // #include "../../../third_party/phpspy/phpspy.h"
 import "C"
