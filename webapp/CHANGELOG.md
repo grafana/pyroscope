@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.50.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.49.2...@pyroscope/webapp@1.50.0) (2022-10-03)
+
+
+### Features
+
+* Add count and latency to heatmap tooltip ([#1582](https://github.com/pyroscope-io/pyroscope/issues/1582)) ([4590901](https://github.com/pyroscope-io/pyroscope/commit/459090179b623e5f40d7c31bbfb1bae8c4e9146f))
+
+
+
+
+
 ## [1.49.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.49.1...@pyroscope/webapp@1.49.2) (2022-09-30)
 
 
