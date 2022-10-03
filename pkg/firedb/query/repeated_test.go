@@ -32,7 +32,7 @@ func Test_RepeatedIterator(t *testing.T) {
 		readSize int
 	}{
 		{
-			name: "single row group no repeated",
+			name: "single row group no repeated and repeated",
 			rows: []testRowGetter{
 				{0},
 				{1},
@@ -40,19 +40,19 @@ func Test_RepeatedIterator(t *testing.T) {
 			},
 			rgs: [][]RepeatedTestRow{
 				{
-					{[]int64{1}},
+					{[]int64{1, 1, 1, 1}},
 					{[]int64{2}},
-					{[]int64{3}},
+					{[]int64{3, 4}},
 				},
 			},
 			expected: []RepeatedRow[testRowGetter]{
-				{testRowGetter{0}, []parquet.Value{parquet.ValueOf(1)}},
+				{testRowGetter{0}, []parquet.Value{parquet.ValueOf(1), parquet.ValueOf(1), parquet.ValueOf(1), parquet.ValueOf(1)}},
 				{testRowGetter{1}, []parquet.Value{parquet.ValueOf(2)}},
-				{testRowGetter{2}, []parquet.Value{parquet.ValueOf(3)}},
+				{testRowGetter{2}, []parquet.Value{parquet.ValueOf(3), parquet.ValueOf(4)}},
 			},
 		},
 		{
-			name: "single row group no repeated",
+			name: "multiple row group no repeated skip group and page",
 			rows: []testRowGetter{
 				{0},
 				{2},
@@ -215,7 +215,8 @@ func Test_RepeatedIterator(t *testing.T) {
 		},
 	} {
 		tc := tc
-		for _, readSize := range []int{10} {
+		for _, readSize := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12} {
+			// for _, readSize := range []int{5} {
 			tc.readSize = readSize
 			t.Run(tc.name+fmt.Sprintf("_rs_%d", readSize), func(t *testing.T) {
 				var groups []parquet.RowGroup
