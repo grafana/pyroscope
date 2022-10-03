@@ -1,9 +1,9 @@
 import { DataSourceInstanceSettings } from '@grafana/data';
 import { DataSourceWithBackend } from '@grafana/runtime';
-import { MyDataSourceOptions, Query, ProfileTypeMessage, SeriesMessage } from './types';
+import { FireDataSourceOptions, Query, ProfileTypeMessage, SeriesMessage } from './types';
 
-export class FireDataSource extends DataSourceWithBackend<Query, MyDataSourceOptions> {
-  constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
+export class FireDataSource extends DataSourceWithBackend<Query, FireDataSourceOptions> {
+  constructor(instanceSettings: DataSourceInstanceSettings<FireDataSourceOptions>) {
     super(instanceSettings);
   }
 
