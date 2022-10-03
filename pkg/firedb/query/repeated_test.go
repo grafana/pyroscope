@@ -213,9 +213,44 @@ func Test_RepeatedIterator(t *testing.T) {
 				{testRowGetter{10}, []parquet.Value{parquet.ValueOf(13), parquet.ValueOf(14), parquet.ValueOf(15)}},
 			},
 		},
+		{
+			name: "multiple row group skip within and through pages and row group mix repeated",
+			rows: []testRowGetter{
+				{0},
+				{2},
+				{8},
+				{10},
+			},
+			rgs: [][]RepeatedTestRow{
+				{
+					{[]int64{1, 2, 3}}, // 0
+					{[]int64{4, 5}},
+					{[]int64{7}}, // 2
+					{[]int64{0}},
+					{[]int64{0, 0, 0}},
+				},
+				{
+					{[]int64{0, 0, 0}},
+					{[]int64{0, 0, 0}},
+					{[]int64{0, 0, 0}},
+				},
+				{
+					{[]int64{10, 11, 12}}, // 8
+					{[]int64{0, 0, 0}},
+					{[]int64{13, 14}}, // 10
+
+				},
+			},
+			expected: []RepeatedRow[testRowGetter]{
+				{testRowGetter{0}, []parquet.Value{parquet.ValueOf(1), parquet.ValueOf(2), parquet.ValueOf(3)}},
+				{testRowGetter{2}, []parquet.Value{parquet.ValueOf(7)}},
+				{testRowGetter{8}, []parquet.Value{parquet.ValueOf(10), parquet.ValueOf(11), parquet.ValueOf(12)}},
+				{testRowGetter{10}, []parquet.Value{parquet.ValueOf(13), parquet.ValueOf(14)}},
+			},
+		},
 	} {
 		tc := tc
-		for _, readSize := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12} {
+		for _, readSize := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 10000} {
 			// for _, readSize := range []int{5} {
 			tc.readSize = readSize
 			t.Run(tc.name+fmt.Sprintf("_rs_%d", readSize), func(t *testing.T) {
