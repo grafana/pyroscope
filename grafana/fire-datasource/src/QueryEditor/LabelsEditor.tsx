@@ -3,21 +3,21 @@ import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { CodeEditor, Monaco, useStyles2, monacoTypes } from '@grafana/ui';
 import type { languages } from 'monaco-editor';
-import { useAsync, useLatest } from 'react-use';
+import { useLatest } from 'react-use';
 
 import { languageDefinition } from '../fireql';
-import { FireDataSource } from '../datasource';
 import { CompletionProvider } from './autocomplete';
+import { SeriesMessage } from '../types';
 
 interface Props {
   value: string;
-  datasource: FireDataSource;
   onChange: (val: string) => void;
   onRunQuery: (value: string) => void;
+  series?: SeriesMessage;
 }
 
 export function LabelsEditor(props: Props) {
-  const setupAutocompleteFn = useAutocomplete(props.datasource);
+  const setupAutocompleteFn = useAutocomplete(props.series);
   const styles = useStyles2(getStyles);
 
   const onRunQueryRef = useLatest(props.onRunQuery);
@@ -91,23 +91,16 @@ const EDITOR_HEIGHT_OFFSET = 2;
 
 /**
  * Hook that returns function that will set up monaco autocomplete for the label selector
- * @param datasource
  */
-function useAutocomplete(datasource: FireDataSource) {
-  // We need the provider ref so we can pass it the label/values data later. This is because we run the call for the
-  // values here but there is additional setup needed for the provider later on. We could run the getSeries() in the
-  // returned function but that is run after the monaco is mounted so would delay the request a bit when it does not
-  // need to.
+function useAutocomplete(series?: SeriesMessage) {
   const providerRef = useRef<CompletionProvider>(new CompletionProvider());
 
-  const seriesResult = useAsync(() => {
-    return datasource.getSeries();
-  }, [datasource]);
-
-  if (seriesResult.value) {
-    // When we have the value we will pass it to the CompletionProvider
-    providerRef.current.setSeries(seriesResult.value);
-  }
+  useEffect(() => {
+    if (series) {
+      // When we have the value we will pass it to the CompletionProvider
+      providerRef.current.setSeries(series);
+    }
+  }, [series]);
 
   const autocompleteDisposeFun = useRef<(() => void) | null>(null);
   useEffect(() => {
