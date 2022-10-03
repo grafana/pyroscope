@@ -19,9 +19,9 @@ import (
 
 type queryModel struct {
 	WithStreaming bool
-	ProfileTypeID string `json:"profileTypeId"`
-	LabelSelector string `json:"labelSelector"`
-	GroupBy       string `json:"groupBy"`
+	ProfileTypeID string   `json:"profileTypeId"`
+	LabelSelector string   `json:"labelSelector"`
+	GroupBy       []string `json:"groupBy"`
 }
 
 type dsJsonModel struct {
@@ -69,7 +69,7 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 			Start:         query.TimeRange.From.UnixMilli(),
 			End:           query.TimeRange.To.UnixMilli(),
 			Step:          math.Max(query.Interval.Seconds(), parsedInterval.Seconds()),
-			GroupBy:       strings.Split(qm.GroupBy, ","),
+			GroupBy:       qm.GroupBy,
 		})
 
 		log.DefaultLogger.Debug("Sending SelectSeriesRequest", "request", req, "queryModel", qm)
