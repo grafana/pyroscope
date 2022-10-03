@@ -2,14 +2,14 @@ import { css } from '@emotion/css';
 import React from 'react';
 import { useToggle } from 'react-use';
 
-import {CoreApp, GrafanaTheme2} from '@grafana/data';
-import { Icon, useStyles2, RadioButtonGroup, Field } from '@grafana/ui';
+import { CoreApp, GrafanaTheme2 } from '@grafana/data';
+import { Icon, useStyles2, RadioButtonGroup, Field, Input } from '@grafana/ui';
 import { Query } from '../types';
 import { Stack } from './Stack';
 
 export interface Props {
   query: Query;
-  onQueryTypeChange: (val: string) => void;
+  onQueryChange: (query: Query) => void;
   app?: CoreApp;
 }
 
@@ -20,7 +20,7 @@ const rangeOptions: Array<{ value: Query['queryType']; label: string; descriptio
 ];
 
 function getOptions(app?: CoreApp) {
-if (app === CoreApp.Explore) {
+  if (app === CoreApp.Explore) {
     return rangeOptions;
   }
   return rangeOptions.filter((option) => option.value !== 'both');
@@ -29,10 +29,10 @@ if (app === CoreApp.Explore) {
 /**
  * Base on QueryOptionGroup component from grafana/ui but that is not available yet.
  */
-export function QueryOptions({ query, onQueryTypeChange, app }: Props) {
+export function QueryOptions({ query, onQueryChange, app }: Props) {
   const [isOpen, toggleOpen] = useToggle(false);
   const styles = useStyles2(getStyles);
-  const options = getOptions(app)
+  const options = getOptions(app);
 
   return (
     <Stack gap={0} direction="column">
@@ -50,7 +50,17 @@ export function QueryOptions({ query, onQueryTypeChange, app }: Props) {
       {isOpen && (
         <div className={styles.body}>
           <Field label={'Query Type'}>
-            <RadioButtonGroup options={options} value={query.queryType} onChange={onQueryTypeChange} />
+            <RadioButtonGroup
+              options={options}
+              value={query.queryType}
+              onChange={(value) => onQueryChange({ ...query, queryType: value })}
+            />
+          </Field>
+          <Field label={'Group by'}>
+            <Input
+              value={query.groupBy}
+              onChange={(ev) => onQueryChange({ ...query, groupBy: ev.currentTarget.value })}
+            />
           </Field>
         </div>
       )}

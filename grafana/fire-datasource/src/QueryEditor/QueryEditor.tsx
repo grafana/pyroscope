@@ -84,7 +84,7 @@ export function QueryEditor(props: Props) {
       <EditorRow>
         <QueryOptions
           query={query}
-          onQueryTypeChange={(val) => props.onChange({ ...query, queryType: val as Query['queryType'] })}
+          onQueryChange={props.onChange}
           app={props.app}
         />
       </EditorRow>
