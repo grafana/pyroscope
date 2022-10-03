@@ -129,13 +129,15 @@ function HeatmapTooltip({
           pageX={tooltipParams.pageX}
           pageY={tooltipParams.pageY}
         >
-          <p className={styles.tooltipHeader}>{tooltipParams.time}</p>
+          <p role="textbox" className={styles.tooltipHeader}>
+            {tooltipParams.time}
+          </p>
           <div className={styles.tooltipBody}>
-            <div className={styles.dataRow}>
+            <div role="textbox" className={styles.dataRow}>
               <span>Count: </span>
               <span>{tooltipParams.count} profiles</span>
             </div>
-            <div className={styles.dataRow}>
+            <div role="textbox" className={styles.dataRow}>
               <span>Latency: </span>
               <span>{tooltipParams.latency}</span>
             </div>
