@@ -17,8 +17,15 @@ import (
 
 // This is where the tests for the datasource backend live.
 func Test_query(t *testing.T) {
+	client := &FakeClient{}
 	ds := &FireDatasource{
-		client: &FakeClient{},
+		client: client,
+	}
+
+	pCtx := backend.PluginContext{
+		DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{
+			JSONData: []byte(`{"minStep":"30s"}`),
+		},
 	}
 
 	dataQuery := backend.DataQuery{
@@ -30,11 +37,11 @@ func Test_query(t *testing.T) {
 			From: time.UnixMilli(10000),
 			To:   time.UnixMilli(20000),
 		},
-		JSON: []byte(`{"profileTypeId":"foo:bar","labelSelector":"{app=\\\"baz\\\"}"}`),
+		JSON: []byte(`{"profileTypeId":"memory:alloc_objects:count:space:bytes","labelSelector":"{app=\\\"baz\\\"}"}`),
 	}
 
 	t.Run("query both", func(t *testing.T) {
-		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		resp := ds.query(context.Background(), pCtx, dataQuery)
 		require.Nil(t, resp.Error)
 		require.Equal(t, 2, len(resp.Frames))
 		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
@@ -43,7 +50,7 @@ func Test_query(t *testing.T) {
 
 	t.Run("query profile", func(t *testing.T) {
 		dataQuery.QueryType = queryTypeProfile
-		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		resp := ds.query(context.Background(), pCtx, dataQuery)
 		require.Nil(t, resp.Error)
 		require.Equal(t, 1, len(resp.Frames))
 		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[0].Fields[0])
@@ -51,10 +58,33 @@ func Test_query(t *testing.T) {
 
 	t.Run("query metrics", func(t *testing.T) {
 		dataQuery.QueryType = queryTypeMetrics
-		resp := ds.query(context.Background(), backend.PluginContext{}, dataQuery)
+		resp := ds.query(context.Background(), pCtx, dataQuery)
 		require.Nil(t, resp.Error)
 		require.Equal(t, 1, len(resp.Frames))
 		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+	})
+
+	t.Run("query metrics uses min step", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeMetrics
+		resp := ds.query(context.Background(), pCtx, dataQuery)
+		require.Nil(t, resp.Error)
+		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
+		require.True(t, ok)
+		require.Equal(t, float64(30), r.Msg.Step)
+	})
+
+	t.Run("query metrics uses default min step", func(t *testing.T) {
+		dataQuery.QueryType = queryTypeMetrics
+		pCtxNoMinStep := backend.PluginContext{
+			DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{
+				JSONData: []byte(`{}`),
+			},
+		}
+		resp := ds.query(context.Background(), pCtxNoMinStep, dataQuery)
+		require.Nil(t, resp.Error)
+		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
+		require.True(t, ok)
+		require.Equal(t, float64(15), r.Msg.Step)
 	})
 }
 
@@ -65,8 +95,8 @@ func Test_profileToDataFrame(t *testing.T) {
 			Flamegraph: &querierv1.FlameGraph{
 				Names: []string{"func1", "func2", "func3"},
 				Levels: []*querierv1.Level{
-					{Values: []int64{0, 20, 0, 0}},
-					{Values: []int64{0, 10, 0, 1, 0, 5, 0, 2}},
+					{Values: []int64{0, 20, 1, 2}},
+					{Values: []int64{0, 10, 3, 1, 4, 5, 5, 2}},
 				},
 				Total:   987,
 				MaxSelf: 123,
@@ -74,11 +104,11 @@ func Test_profileToDataFrame(t *testing.T) {
 		},
 	}
 	frame := responseToDataFrames(resp, "memory:alloc_objects:count:space:bytes")
-	require.Equal(t, 3, len(frame.Fields))
+	require.Equal(t, 4, len(frame.Fields))
 	require.Equal(t, data.NewField("level", nil, []int64{0, 1, 1}), frame.Fields[0])
-	require.Equal(t, data.NewField("value", nil, []int64{20, 10, 5}), frame.Fields[1])
-	require.Equal(t, data.NewField("label", nil, []string{"func1", "func2", "func3"}), frame.Fields[2])
-	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
+	require.Equal(t, data.NewField("value", nil, []int64{20, 10, 5}).SetConfig(&data.FieldConfig{Unit: "short"}), frame.Fields[1])
+	require.Equal(t, data.NewField("self", nil, []int64{1, 3, 5}).SetConfig(&data.FieldConfig{Unit: "short"}), frame.Fields[2])
+	require.Equal(t, data.NewField("label", nil, []string{"func1", "func2", "func3"}), frame.Fields[3])
 }
 
 // This is where the tests for the datasource backend live.
@@ -131,12 +161,12 @@ func Test_levelsToTree(t *testing.T) {
 
 func Test_treeToNestedDataFrame(t *testing.T) {
 	tree := &ProfileTree{
-		Start: 0, Value: 100, Level: 0, Name: "root", Nodes: []*ProfileTree{
+		Start: 0, Value: 100, Level: 0, Self: 1, Name: "root", Nodes: []*ProfileTree{
 			{
-				Start: 10, Value: 40, Level: 1, Name: "func1",
+				Start: 10, Value: 40, Level: 1, Self: 2, Name: "func1",
 			},
-			{Start: 60, Value: 30, Level: 1, Name: "func2", Nodes: []*ProfileTree{
-				{Start: 61, Value: 15, Level: 2, Name: "func1:func3"},
+			{Start: 60, Value: 30, Level: 1, Self: 3, Name: "func2", Nodes: []*ProfileTree{
+				{Start: 61, Value: 15, Level: 2, Self: 4, Name: "func1:func3"},
 			}},
 		},
 	}
@@ -145,10 +175,10 @@ func Test_treeToNestedDataFrame(t *testing.T) {
 	require.Equal(t,
 		[]*data.Field{
 			data.NewField("level", nil, []int64{0, 1, 1, 2}),
-			data.NewField("value", nil, []int64{100, 40, 30, 15}),
+			data.NewField("value", nil, []int64{100, 40, 30, 15}).SetConfig(&data.FieldConfig{Unit: "short"}),
+			data.NewField("self", nil, []int64{1, 2, 3, 4}).SetConfig(&data.FieldConfig{Unit: "short"}),
 			data.NewField("label", nil, []string{"root", "func1", "func2", "func1:func3"}),
 		}, frame.Fields)
-	require.Equal(t, "memory:alloc_objects:count:space:bytes", frame.Meta.Custom.(CustomMeta).ProfileTypeID)
 }
 
 func Test_seriesToDataFrame(t *testing.T) {
@@ -162,7 +192,7 @@ func Test_seriesToDataFrame(t *testing.T) {
 	frame := seriesToDataFrame(resp, "process_cpu:samples:count:cpu:nanoseconds")
 	require.Equal(t, 2, len(frame.Fields))
 	require.Equal(t, data.NewField("time", nil, []time.Time{time.UnixMilli(1000), time.UnixMilli(2000)}), frame.Fields[0])
-	require.Equal(t, data.NewField("samples", nil, []float64{30, 10}), frame.Fields[1])
+	require.Equal(t, data.NewField("samples", nil, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: "short"}), frame.Fields[1])
 
 	// with a label pair, the value field should name itself with a label pair name and not the profile type
 	resp = &connect.Response[querierv1.SelectSeriesResponse]{
@@ -173,26 +203,26 @@ func Test_seriesToDataFrame(t *testing.T) {
 		},
 	}
 	frame = seriesToDataFrame(resp, "process_cpu:samples:count:cpu:nanoseconds")
-	require.Equal(t, data.NewField("app", nil, []float64{30, 10}), frame.Fields[1])
+	require.Equal(t, data.NewField("app", nil, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: ""}), frame.Fields[1])
 }
 
 type FakeClient struct {
-	Req *connect.Request[querierv1.SelectMergeStacktracesRequest]
+	Req interface{}
 }
 
-func (f FakeClient) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
+func (f *FakeClient) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
 	panic("implement me")
 }
 
-func (f FakeClient) LabelValues(ctx context.Context, c *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
+func (f *FakeClient) LabelValues(ctx context.Context, c *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
 	panic("implement me")
 }
 
-func (f FakeClient) LabelNames(context.Context, *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
+func (f *FakeClient) LabelNames(context.Context, *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
 	panic("implement me")
 }
 
-func (f FakeClient) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
+func (f *FakeClient) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	return &connect.Response[querierv1.SeriesResponse]{
 		Msg: &querierv1.SeriesResponse{
 			LabelsSet: []*v1.Labels{{
@@ -215,7 +245,7 @@ func (f FakeClient) Series(ctx context.Context, c *connect.Request[querierv1.Ser
 	}, nil
 }
 
-func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+func (f *FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	f.Req = c
 	return &connect.Response[querierv1.SelectMergeStacktracesResponse]{
 		Msg: &querierv1.SelectMergeStacktracesResponse{
@@ -233,7 +263,8 @@ func (f FakeClient) SelectMergeStacktraces(ctx context.Context, c *connect.Reque
 	}, nil
 }
 
-func (f FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+func (f *FakeClient) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+	f.Req = req
 	return &connect.Response[querierv1.SelectSeriesResponse]{
 		Msg: &querierv1.SelectSeriesResponse{
 			Series: []*commonv1.Series{

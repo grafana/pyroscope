@@ -6,13 +6,13 @@ import { ButtonCascader, CascaderOption } from '@grafana/ui';
 import { CoreApp, QueryEditorProps } from '@grafana/data';
 
 import { FireDataSource } from '../datasource';
-import { defaultQuery, MyDataSourceOptions, ProfileTypeMessage, Query } from '../types';
+import { defaultQuery, FireDataSourceOptions, ProfileTypeMessage, Query } from '../types';
 import { LabelsEditor } from './LabelsEditor';
 import { QueryOptions } from './QueryOptions';
 import { EditorRows } from './EditorRows';
 import { EditorRow } from './EditorRow';
 
-export type Props = QueryEditorProps<FireDataSource, Query, MyDataSourceOptions>;
+export type Props = QueryEditorProps<FireDataSource, Query, FireDataSourceOptions>;
 
 export function QueryEditor(props: Props) {
   const [profileTypes, setProfileTypes] = useState<ProfileTypeMessage[]>([]);

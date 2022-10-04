@@ -3,7 +3,7 @@ import { ItemWithStart } from './dataTransform';
 
 describe('getRectDimensionsForLevel', () => {
   it('should render a single item', () => {
-    const level: ItemWithStart[] = [{ level: 1, start: 0, value: 100, label: '1' }];
+    const level: ItemWithStart[] = [{ level: 1, start: 0, value: 100, label: '1', self: 0 }];
     const result = getRectDimensionsForLevel(level, 1, 100, 0, 10);
     expect(result).toEqual([
       {
@@ -20,9 +20,9 @@ describe('getRectDimensionsForLevel', () => {
 
   it('should render a multiple items', () => {
     const level: ItemWithStart[] = [
-      { level: 2, start: 0, value: 100, label: '1' },
-      { level: 2, start: 100, value: 50, label: '2' },
-      { level: 2, start: 150, value: 50, label: '3' },
+      { level: 2, start: 0, value: 100, label: '1', self: 0 },
+      { level: 2, start: 100, value: 50, label: '2', self: 0 },
+      { level: 2, start: 150, value: 50, label: '3', self: 0 },
     ];
     const result = getRectDimensionsForLevel(level, 2, 100, 0, 10);
     expect(result).toEqual([
@@ -34,9 +34,9 @@ describe('getRectDimensionsForLevel', () => {
 
   it('should render a collapsed items', () => {
     const level: ItemWithStart[] = [
-      { level: 2, start: 0, value: 100, label: '1' },
-      { level: 2, start: 100, value: 2, label: '2' },
-      { level: 2, start: 102, value: 1, label: '3' },
+      { level: 2, start: 0, value: 100, label: '1', self: 0 },
+      { level: 2, start: 100, value: 2, label: '2', self: 0 },
+      { level: 2, start: 102, value: 1, label: '3', self: 0 },
     ];
     const result = getRectDimensionsForLevel(level, 2, 100, 0, 1);
     expect(result).toEqual([
