@@ -23,12 +23,13 @@ type IngestInput struct {
 type Format string
 
 const (
-	FormatPprof  Format = "pprof"
-	FormatJFR    Format = "jfr"
-	FormatTrie   Format = "trie"
-	FormatTree   Format = "tree"
-	FormatLines  Format = "lines"
-	FormatGroups Format = "groups"
+	FormatPprof      Format = "pprof"
+	FormatJFR        Format = "jfr"
+	FormatTrie       Format = "trie"
+	FormatTree       Format = "tree"
+	FormatLines      Format = "lines"
+	FormatGroups     Format = "groups"
+	FormatSpeedscope Format = "speedscope"
 )
 
 type RawProfile interface {
