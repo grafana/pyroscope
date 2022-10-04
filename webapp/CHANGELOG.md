@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.51.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.50.1...@pyroscope/webapp@1.51.0) (2022-10-04)
+
+
+### Features
+
+* add sorting to explore view table ([#1592](https://github.com/pyroscope-io/pyroscope/issues/1592)) ([64bc4b3](https://github.com/pyroscope-io/pyroscope/commit/64bc4b3ffaaa72ac01513093a74919c3389c45af))
+
+
+
+
+
 ## [1.50.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.50.0...@pyroscope/webapp@1.50.1) (2022-10-04)
 
 **Note:** Version bump only for package @pyroscope/webapp
