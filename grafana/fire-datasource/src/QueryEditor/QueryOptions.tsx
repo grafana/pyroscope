@@ -3,9 +3,10 @@ import React from 'react';
 import { useToggle } from 'react-use';
 
 import { CoreApp, GrafanaTheme2, SelectableValue } from '@grafana/data';
-import { Icon, useStyles2, RadioButtonGroup, Field, MultiSelect, EditorField } from '@grafana/ui';
+import { Icon, useStyles2, RadioButtonGroup, MultiSelect } from '@grafana/ui';
 import { Query, SeriesMessage } from '../types';
 import { Stack } from './Stack';
+import { EditorField } from './EditorField';
 
 export interface Props {
   query: Query;
@@ -59,10 +60,11 @@ export function QueryOptions({ query, onQueryChange, app, series }: Props) {
         <h6 className={styles.title}>Options</h6>
         {!isOpen && (
           <div className={styles.description}>
-            <span>
-              Type: {query.queryType}
-              {query.groupBy?.length ? `, Group by: ${query.groupBy.join(', ')}` : ''}
-            </span>
+            {[`Type: ${query.queryType}`, query.groupBy?.length ? `Group by: ${query.groupBy.join(', ')}` : undefined]
+              .filter((v) => v)
+              .map((v, i) => (
+                <span key={i}>{v}</span>
+              ))}
           </div>
         )}
       </div>
