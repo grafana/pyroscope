@@ -134,7 +134,6 @@ func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 			tr.InsertStackString(nameStack, uint64(ev.At-last))
 			indexStack = indexStack[:lastIdx]
 			nameStack = nameStack[:lastIdx]
-
 		} else if ev.Type == eventOpen {
 			// Add any time up til now
 			if len(nameStack) > 0 {
@@ -166,8 +165,8 @@ func parseSampled(tr *tree.Tree, prof *profile, frames []frame) error {
 			return fmt.Errorf("Negative weight %f", weight)
 		}
 
-		for _, frameId := range samp {
-			fid := int(frameId)
+		for _, frameID := range samp {
+			fid := int(frameID)
 			if fid < 0 || fid > len(frames) {
 				return fmt.Errorf("Invalid frame %d", fid)
 			}
@@ -186,6 +185,6 @@ func (p *RawProfile) Bytes() ([]byte, error) {
 }
 
 // ContentType returns the HTTP ContentType of the profile
-func (p *RawProfile) ContentType() string {
+func (*RawProfile) ContentType() string {
 	return "application/json"
 }
