@@ -18,12 +18,8 @@ jobs:
           inputsToCheck: 'token'
         env:
           token: ${{ secrets.BOT_GITHUB_TOKEN }}
-  test:
-    runs-on: ubuntu-latest
-    needs: check
-    steps:
-      - run: echo ${{ needs.check.outputs.inputsChecked }}
   build:
+    # skip if user has not access to the token
     if: needs.check.outputs.inputsChecked == 'true'
     runs-on: ubuntu-latest
     needs: check
