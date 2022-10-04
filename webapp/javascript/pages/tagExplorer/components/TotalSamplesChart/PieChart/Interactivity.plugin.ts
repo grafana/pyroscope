@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import React from 'react';
 import * as ReactDOM from 'react-dom';
-import { PlotType } from '@webapp/components/TimelineChart/types';
 import injectTooltip from '@webapp/components/TimelineChart/injectTooltip';
 import { ITooltipWrapperProps } from '@webapp/components/TimelineChart/TooltipWrapper';
 import { PieChartTooltipProps } from '../PieChartTooltip';
@@ -22,11 +20,15 @@ type PositionType = {
 };
 
 (function ($: JQueryStatic) {
-  function init(plot: PlotType) {
+  function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
     const tooltipWrapper = injectTooltip($, TOOLTIP_WRAPPER_ID);
 
-    function onPlotHover(_: ShamefulAny, pos: PositionType, obj: ObjType) {
-      const options = plot.getOptions();
+    function onPlotHover(_: unknown, pos: PositionType, obj: ObjType) {
+      const options = plot.getOptions() as jquery.flot.plotOptions & {
+        pieChartTooltip: (
+          props: Omit<ITooltipWrapperProps & PieChartTooltipProps, 'children'>
+        ) => React.ReactElement;
+      };
       const tooltip = options?.pieChartTooltip;
 
       if (tooltip && tooltipWrapper?.length) {
@@ -37,13 +39,7 @@ type PositionType = {
           value ? 'crosshair' : 'default'
         );
 
-        const Tooltip: React.ReactElement<
-          ITooltipWrapperProps & PieChartTooltipProps,
-          | string
-          | React.JSXElementConstructor<
-              ITooltipWrapperProps & PieChartTooltipProps
-            >
-        >[] = tooltip({
+        const Tooltip = tooltip({
           pageX: value ? pos.pageX : -1,
           pageY: value ? pos.pageY : -1,
           align: 'right',
@@ -56,16 +52,16 @@ type PositionType = {
       }
     }
 
-    plot.hooks.bindEvents.push(() => {
+    plot.hooks!.bindEvents!.push(() => {
       plot.getPlaceholder().bind('plothover', onPlotHover);
     });
 
-    plot.hooks.shutdown.push(() => {
+    plot.hooks!.shutdown!.push(() => {
       plot.getPlaceholder().unbind('plothover', onPlotHover);
     });
   }
 
-  ($ as ShamefulAny).plot.plugins.push({
+  $.plot.plugins.push({
     init,
     options: {},
     name: 'interactivity',
