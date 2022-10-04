@@ -102,6 +102,7 @@ const TIMELINE_SERIES_COLORS = [
   Color.rgb(222, 218, 247),
 ];
 
+// structured data to display/style table cells
 interface TableValuesData {
   color?: Color;
   mean: number;
@@ -408,7 +409,6 @@ function Table({
     [groupsData]
   );
 
-  // nessesary data to display/style table cells
   const tableValuesData = calculateTableData(groupsData);
 
   const { sortByDirection, sortBy, updateSortParams } = useTableSort(headRow);
