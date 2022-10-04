@@ -15,7 +15,7 @@ import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import TagsSelector from '@webapp/pages/tagExplorer/components/TagsSelector';
-import TableUI, { BodyRow } from '@webapp/ui/Table';
+import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { appendLabelToQuery } from '@webapp/util/query';
@@ -101,6 +101,34 @@ const TIMELINE_SERIES_COLORS = [
   Color.rgb(249, 217, 249),
   Color.rgb(222, 218, 247),
 ];
+
+// structured data to display/style table cells
+interface TableValuesData {
+  color?: Color;
+  mean: number;
+  stdDeviation: number;
+  total: number;
+  tagName: string;
+}
+
+const calculateTableData = (
+  groupsData: TimelineGroupData[]
+): TableValuesData[] =>
+  groupsData.reduce((acc, { tagName, data, color }) => {
+    const mean = calculateMean(data.samples);
+    const total = calculateTotal(data.samples);
+    const stdDeviation = calculateStdDeviation(data.samples, mean);
+
+    acc.push({
+      tagName,
+      color,
+      mean,
+      total,
+      stdDeviation,
+    });
+
+    return acc;
+  }, [] as TableValuesData[]);
 
 const TIMELINE_WRAPPER_ID = 'explore_timeline_wrapper';
 
@@ -366,11 +394,11 @@ function Table({
     {
       name: 'name',
       label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
-      sortable: 0,
+      sortable: 1,
     },
-    { name: 'avgSamples', label: 'avg samples', sortable: 0 },
-    { name: 'stdDeviation', label: 'std deviation samples', sortable: 0 },
-    { name: 'totalSamples', label: 'total samples', sortable: 0 },
+    { name: 'avgSamples', label: 'avg samples', sortable: 1 },
+    { name: 'stdDeviation', label: 'std deviation samples', sortable: 1 },
+    { name: 'totalSamples', label: 'total samples', sortable: 1 },
   ];
 
   const groupsTotal = useMemo(
@@ -381,10 +409,40 @@ function Table({
     [groupsData]
   );
 
-  const bodyRows = groupsData.reduce(
-    (acc, { tagName, color, data }): BodyRow[] => {
-      const mean = calculateMean(data.samples);
-      const total = calculateTotal(data.samples);
+  const tableValuesData = calculateTableData(groupsData);
+
+  const { sortByDirection, sortBy, updateSortParams } = useTableSort(headRow);
+
+  const sortedTableValuesData = (() => {
+    const m = sortByDirection === 'asc' ? 1 : -1;
+    let sorted: TableValuesData[] = [];
+
+    switch (sortBy) {
+      case 'name':
+        sorted = tableValuesData.sort(
+          (a, b) => m * a.tagName.localeCompare(b.tagName)
+        );
+        break;
+      case 'totalSamples':
+        sorted = tableValuesData.sort((a, b) => m * (a.total - b.total));
+        break;
+      case 'avgSamples':
+        sorted = tableValuesData.sort((a, b) => m * (a.mean - b.mean));
+        break;
+      case 'stdDeviation':
+        sorted = tableValuesData.sort(
+          (a, b) => m * (a.stdDeviation - b.stdDeviation)
+        );
+        break;
+      default:
+        sorted = tableValuesData;
+    }
+
+    return sorted;
+  })();
+
+  const bodyRows = sortedTableValuesData.reduce(
+    (acc, { tagName, color, total, mean, stdDeviation }): BodyRow[] => {
       const percentage = (total / groupsTotal) * 100;
       const row = {
         isRowSelected: isTagSelected(tagName),
@@ -409,7 +467,7 @@ function Table({
             ),
           },
           { value: mean.toFixed(2) },
-          { value: calculateStdDeviation(data.samples, mean).toFixed(2) },
+          { value: stdDeviation.toFixed(2) },
           { value: total },
         ],
       };
@@ -453,7 +511,13 @@ function Table({
           />
         </div>
       </div>
-      <TableUI table={table} className={styles.tagExplorerTable} />
+      <TableUI
+        updateSortParams={updateSortParams}
+        sortBy={sortBy}
+        sortByDirection={sortByDirection}
+        table={table}
+        className={styles.tagExplorerTable}
+      />
     </div>
   );
 }
