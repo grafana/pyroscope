@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check
     # Don't run if not created by one member of pyroscope org
-    if: needs.check.github_token_gate.outputs.inputsChecked == 'true'
+    if: needs.check.github_token_gate.outputs.inputsChecked == 'false'
     steps:
       #######################
       #      Checkout      #
