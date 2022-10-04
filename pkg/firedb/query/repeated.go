@@ -1,12 +1,15 @@
 package query
 
 import (
+	"context"
 	"io"
 
+	"github.com/grafana/dskit/multierror"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
-	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/fire/pkg/iter"
 )
 
@@ -19,6 +22,8 @@ type repeatedPageIterator[T any] struct {
 	rows     iter.Iterator[T]
 	column   int
 	readSize int
+	ctx      context.Context
+	span     opentracing.Span
 
 	rgs                 []parquet.RowGroup
 	startRowGroupRowNum int64
@@ -43,6 +48,7 @@ type repeatedPageIterator[T any] struct {
 // NewRepeatedPageIterator returns an iterator that iterates over the repeated values in a column.
 // The iterator can only seek forward and so rows should be sorted by row number.
 func NewRepeatedPageIterator[T any](
+	ctx context.Context,
 	rows iter.Iterator[T],
 	rgs []parquet.RowGroup,
 	column int,
@@ -53,7 +59,10 @@ func NewRepeatedPageIterator[T any](
 	}
 	buffer := make([]parquet.Value, readSize)
 	done := !rows.Next()
+	span, ctx := opentracing.StartSpanFromContext(ctx, "NewRepeatedPageIterator")
 	return &repeatedPageIterator[T]{
+		ctx:            ctx,
+		span:           span,
 		rows:           rows,
 		rgs:            rgs,
 		column:         column,
@@ -114,6 +123,12 @@ Outer:
 				it.err = err
 				return false
 			}
+			it.span.LogFields(
+				otlog.String("msg", "Page read"),
+				otlog.Int64("startRowGroupRowNum", it.startRowGroupRowNum),
+				otlog.Int64("startPageRowNum", it.startPageRowNum),
+				otlog.Int64("pageRowNum", it.currentPage.NumRows()),
+			)
 			it.valueReader = it.currentPage.Values()
 		}
 		// if there's no more value in that page we can skip it.
@@ -239,6 +254,7 @@ func (it *repeatedPageIterator[T]) Err() error {
 }
 
 func (it *repeatedPageIterator[T]) Close() error {
+	defer it.span.Finish()
 	if it.currentPages != nil {
 		if err := it.currentPages.Close(); err != nil {
 			return err
