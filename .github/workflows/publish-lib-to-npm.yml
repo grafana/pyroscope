@@ -7,20 +7,30 @@ on:
     branches: [main]
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: svrooij/secret-gate-action@v1
+        id: github_token_gate
+        with:
+          inputsToCheck: 'token'
+        env:
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
   build:
     runs-on: ubuntu-latest
-    # Don't run for forks
+    needs: check
+    # Don't run if not created by one member of pyroscope org
+    if: steps.github_token_gate.outputs.inputsChecked == 'true'
     steps:
+      # For non-pull requests, fetch all tags
       #######################
       #      Checkout      #
       ######################
-      # For non-pull requests, fetch all tags
       - uses: actions/checkout@v2
         if: github.event_name != 'pull_request'
         with:
           fetch-depth: 0
           token: ${{ secrets.BOT_GITHUB_TOKEN }}
-
       # For pull requests, also checkout out the REAL commit (as opposed to a merge commit with main)
       - uses: actions/checkout@v2
         if: github.event_name == 'pull_request'
