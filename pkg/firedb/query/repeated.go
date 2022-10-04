@@ -260,6 +260,9 @@ type multiRepeatedPageIterator[T any] struct {
 	curr      *MultiRepeatedRow[T]
 }
 
+// NewMultiRepeatedPageIterator returns an iterator that iterates over the values of repeated columns nested together.
+// Each column is iterate over in parallel.
+// If one column is finished, the iterator will return false.
 func NewMultiRepeatedPageIterator[T any](iters ...iter.Iterator[*RepeatedRow[T]]) iter.Iterator[*MultiRepeatedRow[T]] {
 	return &multiRepeatedPageIterator[T]{
 		iters:     iters,
@@ -277,11 +280,14 @@ func (it *multiRepeatedPageIterator[T]) Next() bool {
 			next := it.iters[i].Next()
 			if next {
 				it.curr.Values[i] = it.iters[i].At().Values
+				if i == 0 {
+					it.curr.Row = it.iters[i].At().Row
+				}
 			}
 			return next
 		})
 	}
-	var next bool
+	next := true
 	for i := range it.iters {
 		if !<-it.asyncNext[i] {
 			next = false
