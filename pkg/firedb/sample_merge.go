@@ -8,7 +8,6 @@ import (
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
-	"github.com/segmentio/parquet-go"
 
 	query "github.com/grafana/fire/pkg/firedb/query"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -20,30 +19,29 @@ import (
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	it := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			query.NewRowNumberIterator(rows),
-			b.profiles.columnIter(ctx, "Samples.list.element.StacktraceID", nil, "StacktraceID"),
-			b.profiles.columnIter(ctx, "Samples.list.element.Value", nil, "Value"),
-		}, nil,
+	// clone the rows to iterate over them twice
+	multiRows, err := iter.CloneN(rows, 2)
+	if err != nil {
+		return nil, err
+	}
+	it := query.NewMultiRepeatedPageIterator(
+		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.StacktraceID", multiRows[0]),
+		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", multiRows[1]),
 	)
 	defer it.Close()
 
-	var series [][]parquet.Value
 	stacktraceAggrValues := map[int64]*ingestv1.StacktraceSample{}
 
 	for it.Next() {
-		values := it.At()
-		series = values.Columns(series, "StacktraceID", "Value")
-		for i := 0; i < len(series[0]); i++ {
-			sample, ok := stacktraceAggrValues[series[0][i].Int64()]
+		values := it.At().Values
+		for i := 0; i < len(values[0]); i++ {
+			sample, ok := stacktraceAggrValues[values[0][i].Int64()]
 			if ok {
-				sample.Value += series[1][i].Int64()
+				sample.Value += values[1][i].Int64()
 				continue
 			}
-			stacktraceAggrValues[series[0][i].Int64()] = &ingestv1.StacktraceSample{
-				Value: series[1][i].Int64(),
+			stacktraceAggrValues[values[0][i].Int64()] = &ingestv1.StacktraceSample{
+				Value: values[1][i].Int64(),
 			}
 		}
 	}
@@ -172,16 +170,9 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
-	index, _ := query.GetColumnIndexByPath(b.profiles.file, "Samples.list.element.Value")
-	if index == -1 {
-		panic("foo")
-	}
-	it := query.NewRepeatedPageIterator(
-		rows,
-		b.profiles.file.RowGroups(),
-		index,
-		10000,
-	)
+
+	it := repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", rows)
+
 	defer it.Close()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
