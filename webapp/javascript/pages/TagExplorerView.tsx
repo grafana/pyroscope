@@ -435,7 +435,7 @@ function Table({
         );
         break;
       default:
-        tableValuesData;
+        sorted = tableValuesData;
     }
 
     return sorted;
