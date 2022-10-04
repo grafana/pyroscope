@@ -142,3 +142,16 @@ func Slice[T any](it Iterator[T]) ([]T, error) {
 	}
 	return result, it.Err()
 }
+
+// Clone returns a copy of the iterator.
+// The returned iterator is independent of the original iterator.
+func Clone[T any](it Iterator[T]) (Iterator[T], error) {
+	if sl, ok := it.(*sliceIterator[T]); ok {
+		return NewSliceIterator(sl.list), nil
+	}
+	slice, err := Slice(it)
+	if err != nil {
+		return nil, err
+	}
+	return NewSliceIterator(slice), nil
+}

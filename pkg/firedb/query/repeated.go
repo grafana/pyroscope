@@ -3,8 +3,10 @@ package query
 import (
 	"io"
 
+	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
+	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/fire/pkg/iter"
 )
 
@@ -31,7 +33,6 @@ type repeatedPageIterator[T any] struct {
 
 	rowFinished    bool
 	skipping       bool
-	firstRow       bool
 	err            error
 	done           bool // because we advance the iterator to seek in advance we remember if we are done
 	currentValue   *RepeatedRow[T]
@@ -61,7 +62,6 @@ func NewRepeatedPageIterator[T any](
 		originalBuffer: buffer,
 		currentValue:   &RepeatedRow[T]{},
 		done:           done,
-		firstRow:       true,
 		rowFinished:    true,
 		skipping:       false,
 	}
@@ -103,8 +103,8 @@ Outer:
 			it.startPageRowNum = it.seekRowNum()
 			it.pageNextRowNum = 0
 			it.buffer = it.buffer[:0]
-			it.firstRow = true
 			it.rowFinished = true
+			it.skipping = false
 			var err error
 			it.currentPage, err = it.currentPages.ReadPage()
 			if err != nil {
@@ -246,4 +246,67 @@ func (it *repeatedPageIterator[T]) Close() error {
 		it.currentPages = nil
 	}
 	return nil
+}
+
+type MultiRepeatedRow[T any] struct {
+	Row    T
+	Values [][]parquet.Value
+}
+
+type multiRepeatedPageIterator[T any] struct {
+	iters     []iter.Iterator[*RepeatedRow[T]]
+	asyncNext []chan bool
+	err       error
+	curr      *MultiRepeatedRow[T]
+}
+
+func NewMultiRepeatedPageIterator[T any](iters ...iter.Iterator[*RepeatedRow[T]]) iter.Iterator[*MultiRepeatedRow[T]] {
+	return &multiRepeatedPageIterator[T]{
+		iters:     iters,
+		asyncNext: make([]chan bool, len(iters)),
+		curr: &MultiRepeatedRow[T]{
+			Values: make([][]parquet.Value, len(iters)),
+		},
+	}
+}
+
+func (it *multiRepeatedPageIterator[T]) Next() bool {
+	for i := range it.iters {
+		i := i
+		it.asyncNext[i] = lo.Async(func() bool {
+			next := it.iters[i].Next()
+			if next {
+				it.curr.Values[i] = it.iters[i].At().Values
+			}
+			return next
+		})
+	}
+	var next bool
+	for i := range it.iters {
+		if !<-it.asyncNext[i] {
+			next = false
+		}
+	}
+	return next
+}
+
+func (it *multiRepeatedPageIterator[T]) At() *MultiRepeatedRow[T] {
+	return it.curr
+}
+
+func (it *multiRepeatedPageIterator[T]) Err() error {
+	errs := multierror.New()
+	errs.Add(it.err)
+	for _, i := range it.iters {
+		errs.Add(i.Err())
+	}
+	return errs.Err()
+}
+
+func (it *multiRepeatedPageIterator[T]) Close() error {
+	errs := multierror.New()
+	for _, i := range it.iters {
+		errs.Add(i.Close())
+	}
+	return errs.Err()
 }
