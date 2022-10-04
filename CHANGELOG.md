@@ -1,3 +1,39 @@
+# [0.30.0](https://github.com/pyroscope-io/pyroscope/compare/v0.29.0...v0.30.0) (2022-10-04)
+
+
+### Bug Fixes
+
+* **backend:** don't set a default annotation timestamp in controller ([#1504](https://github.com/pyroscope-io/pyroscope/issues/1504)) ([c2b2cfe](https://github.com/pyroscope-io/pyroscope/commit/c2b2cfea9b7be78177ec962ae659ef4a9e688d5a))
+* **backend:** upsert annotations ([#1508](https://github.com/pyroscope-io/pyroscope/issues/1508)) ([a557183](https://github.com/pyroscope-io/pyroscope/commit/a557183e773dbcc669f9ab32b8bacae9d7cbbce9))
+* export dropdown should close when clicking outside ([#1579](https://github.com/pyroscope-io/pyroscope/issues/1579)) ([b4074a7](https://github.com/pyroscope-io/pyroscope/commit/b4074a72f0482cd59e53960ce0ba437052475b50))
+* heatmap bug fixes ([#1545](https://github.com/pyroscope-io/pyroscope/issues/1545)) ([3218c62](https://github.com/pyroscope-io/pyroscope/commit/3218c6295383fa608bfe6fed40501949d1189708))
+* merge zstd lib generated so names for jfr ([#1569](https://github.com/pyroscope-io/pyroscope/issues/1569)) ([00ed85a](https://github.com/pyroscope-io/pyroscope/commit/00ed85a351e2e38517a0ad31da5e9ee63168b243))
+* tag explorer modal should close when another one is clicked ([#1578](https://github.com/pyroscope-io/pyroscope/issues/1578)) ([c2d1e96](https://github.com/pyroscope-io/pyroscope/commit/c2d1e966e33aed1d483bcabdbfc05a545518a302))
+* Update flask rideshare app name ([fdd7b4c](https://github.com/pyroscope-io/pyroscope/commit/fdd7b4c0df2764158cf0e035dff6b8be8d5e0eab))
+* **webapp:** annotation doesn't have a weird marking anymore ([#1512](https://github.com/pyroscope-io/pyroscope/issues/1512)) ([20abd58](https://github.com/pyroscope-io/pyroscope/commit/20abd58350a0fd729ac13cb2537c1f7b424178c8))
+* **webapp:** don't render popover outside the visible window ([#1534](https://github.com/pyroscope-io/pyroscope/issues/1534)) ([0ce4e7d](https://github.com/pyroscope-io/pyroscope/commit/0ce4e7de968bb3e919fab0dcd7394350eb4716b5))
+* **webapp:** format annotation using timezone ([#1522](https://github.com/pyroscope-io/pyroscope/issues/1522)) ([bc68da3](https://github.com/pyroscope-io/pyroscope/commit/bc68da3757154656fe8a799a8170928686305f68))
+* **webapp:** show annotations tooltip only when hovering close to the marker ([#1510](https://github.com/pyroscope-io/pyroscope/issues/1510)) ([e8bdf4a](https://github.com/pyroscope-io/pyroscope/commit/e8bdf4abbff10efcdc317aea09d45ecd795e2f42))
+
+
+### Features
+
+* add 'perf script' format upload ([#1499](https://github.com/pyroscope-io/pyroscope/issues/1499)) ([c7bb5ca](https://github.com/pyroscope-io/pyroscope/commit/c7bb5caf41cb7142d933e0b8f404661fea9f67ef))
+* add "Count" title above heatmap scale ([#1571](https://github.com/pyroscope-io/pyroscope/issues/1571)) ([910c496](https://github.com/pyroscope-io/pyroscope/commit/910c496a88c81d03efdc91548c4365dcff3a670a))
+* Add count and latency to heatmap tooltip ([#1582](https://github.com/pyroscope-io/pyroscope/issues/1582)) ([4590901](https://github.com/pyroscope-io/pyroscope/commit/459090179b623e5f40d7c31bbfb1bae8c4e9146f))
+* add table view to heatmap flamegraph ([#1574](https://github.com/pyroscope-io/pyroscope/issues/1574)) ([e55cc8a](https://github.com/pyroscope-io/pyroscope/commit/e55cc8aff22c863d8aab6395c1b895aee1c46278))
+* add ticks to x and y-axis ([#1558](https://github.com/pyroscope-io/pyroscope/issues/1558)) ([4a3e140](https://github.com/pyroscope-io/pyroscope/commit/4a3e1402ff1f117f3a806e4ef4cae456fe60c336))
+* **annotations:** allow creating multiple annotations for different apps ([#1562](https://github.com/pyroscope-io/pyroscope/issues/1562)) ([1986b11](https://github.com/pyroscope-io/pyroscope/commit/1986b11f9ca91d4db76ac95368c0e424211da850))
+* change color of the selected area of the heatmap ([#1572](https://github.com/pyroscope-io/pyroscope/issues/1572)) ([9ebdded](https://github.com/pyroscope-io/pyroscope/commit/9ebdded1524684f405ad79a5100cde52a2548a0a))
+* heatmap improvements ([#1501](https://github.com/pyroscope-io/pyroscope/issues/1501)) ([e9e5bfd](https://github.com/pyroscope-io/pyroscope/commit/e9e5bfdd1e93efaa0428d0a2d3803652d8c7b083))
+* Heatmap should show error message if no data is returned ([#1565](https://github.com/pyroscope-io/pyroscope/issues/1565)) ([fe32a07](https://github.com/pyroscope-io/pyroscope/commit/fe32a07e6e1bf05b11a6634f6eea0b44bf8b0536))
+* remove heatmap grid ([#1567](https://github.com/pyroscope-io/pyroscope/issues/1567)) ([541133b](https://github.com/pyroscope-io/pyroscope/commit/541133b54d7d10cde0c3815c17077e4e2de1109d))
+* show heatmap y-axis units ([#1559](https://github.com/pyroscope-io/pyroscope/issues/1559)) ([8199170](https://github.com/pyroscope-io/pyroscope/commit/81991706e0ba6767da9d9fdefcd89a65f527722a))
+* **webapp:** annotations UI ([#1489](https://github.com/pyroscope-io/pyroscope/issues/1489)) ([0e57137](https://github.com/pyroscope-io/pyroscope/commit/0e571379e1bb4f99bfdb9c3a22d1b2827128e3a5))
+* **webapp:** create annotations via ui ([#1524](https://github.com/pyroscope-io/pyroscope/issues/1524)) ([53836ce](https://github.com/pyroscope-io/pyroscope/commit/53836ce6b2f4a5eb2debc6a2e03c0b39812bf488))
+
+
+
 # [0.29.0](https://github.com/pyroscope-io/pyroscope/compare/v0.28.1...v0.29.0) (2022-09-14)
 
 
