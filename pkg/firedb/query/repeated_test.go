@@ -273,6 +273,119 @@ func Test_RepeatedIterator(t *testing.T) {
 	}
 }
 
+type MultiRepeatedItem struct {
+	X int64
+	Y int64
+}
+
+type MultiRepeatedTestRow struct {
+	List []MultiRepeatedItem
+}
+
+func Test_MultiRepeatedPageIterator(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		rows     []testRowGetter
+		rgs      [][]MultiRepeatedTestRow
+		expected []MultiRepeatedRow[testRowGetter]
+	}{
+		{
+			name: "single row group",
+			rows: []testRowGetter{
+				{0},
+			},
+			rgs: [][]MultiRepeatedTestRow{
+				{
+					{
+						List: []MultiRepeatedItem{
+							{1, 2},
+							{3, 4},
+							{5, 6},
+						},
+					},
+				},
+			},
+			expected: []MultiRepeatedRow[testRowGetter]{
+				{
+					testRowGetter{0},
+					[][]parquet.Value{
+						{parquet.ValueOf(1), parquet.ValueOf(3), parquet.ValueOf(5)},
+						{parquet.ValueOf(2), parquet.ValueOf(4), parquet.ValueOf(6)},
+					},
+				},
+			},
+		},
+		{
+			name: "row group and page seek",
+			rows: []testRowGetter{
+				{1},
+				{4},
+				{7},
+			},
+			rgs: [][]MultiRepeatedTestRow{
+				{
+					{List: []MultiRepeatedItem{{0, 0}, {0, 0}}},
+					{List: []MultiRepeatedItem{{1, 2}, {3, 4}}}, // 1
+					{List: []MultiRepeatedItem{{0, 0}, {0, 0}}},
+				},
+				{
+					{List: []MultiRepeatedItem{{0, 0}, {0, 0}}},
+					{List: []MultiRepeatedItem{{5, 6}, {7, 8}}}, // 4
+					{List: []MultiRepeatedItem{{0, 0}, {0, 0}}},
+					{List: []MultiRepeatedItem{{0, 0}, {0, 0}}},
+					{List: []MultiRepeatedItem{{9, 10}}}, // 7
+				},
+			},
+			expected: []MultiRepeatedRow[testRowGetter]{
+				{
+					testRowGetter{1},
+					[][]parquet.Value{
+						{parquet.ValueOf(1), parquet.ValueOf(3)},
+						{parquet.ValueOf(2), parquet.ValueOf(4)},
+					},
+				},
+				{
+					testRowGetter{4},
+					[][]parquet.Value{
+						{parquet.ValueOf(5), parquet.ValueOf(7)},
+						{parquet.ValueOf(6), parquet.ValueOf(8)},
+					},
+				},
+				{
+					testRowGetter{7},
+					[][]parquet.Value{
+						{parquet.ValueOf(9)},
+						{parquet.ValueOf(10)},
+					},
+				},
+			},
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var groups []parquet.RowGroup
+			for _, rg := range tc.rgs {
+				buffer := parquet.NewBuffer()
+				for _, row := range rg {
+					require.NoError(t, buffer.Write(row))
+				}
+				groups = append(groups, buffer)
+			}
+			actual := readMultiPageIterator(t,
+				NewMultiRepeatedPageIterator(
+					NewRepeatedPageIterator(
+						iter.NewSliceIterator(tc.rows), groups, 0, 1000),
+					NewRepeatedPageIterator(
+						iter.NewSliceIterator(tc.rows), groups, 1, 1000),
+				),
+			)
+			if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
+				t.Errorf("result mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 // readPageIterator reads all the values from the iterator and returns the result.
 // Result are copied to avoid keeping reference between next calls.
 func readPageIterator(t *testing.T, it iter.Iterator[*RepeatedRow[testRowGetter]]) []RepeatedRow[testRowGetter] {
@@ -285,10 +398,36 @@ func readPageIterator(t *testing.T, it iter.Iterator[*RepeatedRow[testRowGetter]
 			Row:    it.At().Row,
 			Values: make([]parquet.Value, len(it.At().Values)),
 		}
-		// copy the values
 		copy(current.Values, it.At().Values)
 		if len(result) > 0 && current.Row.RowNumber() == result[len(result)-1].Row.RowNumber() {
 			result[len(result)-1].Values = append(result[len(result)-1].Values, current.Values...)
+			continue
+		}
+
+		result = append(result, current)
+	}
+	require.NoError(t, it.Err())
+	return result
+}
+
+func readMultiPageIterator(t *testing.T, it iter.Iterator[*MultiRepeatedRow[testRowGetter]]) []MultiRepeatedRow[testRowGetter] {
+	defer func() {
+		require.NoError(t, it.Close())
+	}()
+	var result []MultiRepeatedRow[testRowGetter]
+	for it.Next() {
+		current := MultiRepeatedRow[testRowGetter]{
+			Row:    it.At().Row,
+			Values: make([][]parquet.Value, len(it.At().Values)),
+		}
+		for i, v := range it.At().Values {
+			current.Values[i] = make([]parquet.Value, len(v))
+			copy(current.Values[i], v)
+		}
+		if len(result) > 0 && current.Row.RowNumber() == result[len(result)-1].Row.RowNumber() {
+			for i, v := range current.Values {
+				result[len(result)-1].Values[i] = append(result[len(result)-1].Values[i], v...)
+			}
 			continue
 		}
 
