@@ -17,7 +17,8 @@ jobs:
         with:
           inputsToCheck: 'token'
         env:
-          token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          # token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          token: ${{ secrets.BOT_GITHUB_TOKEN2 }}
   test:
     runs-on: ubuntu-latest
     needs: check
@@ -26,8 +27,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: check
-    # Don't run if not created by one member of pyroscope org
-    if: ${{ needs.check.outputs.inputsChecked }} == 'true'
     steps:
       #######################
       #      Checkout      #
