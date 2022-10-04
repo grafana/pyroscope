@@ -172,12 +172,15 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
-	it := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			query.NewRowNumberIterator(rows),
-			b.profiles.columnIter(ctx, "Samples.list.element.Value", nil, "Value"),
-		}, nil,
+	index, _ := query.GetColumnIndexByPath(b.profiles.file, "Samples.list.element.Value")
+	if index == -1 {
+		panic("foo")
+	}
+	it := query.NewRepeatedPageIterator(
+		rows,
+		b.profiles.file.RowGroups(),
+		index,
+		10000,
 	)
 	defer it.Close()
 
@@ -187,10 +190,10 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 
 	for it.Next() {
 		values := it.At()
-		p := values.Entries[0].RowValue.(Profile)
+		p := values.Row
 		var total int64
-		for _, e := range values.Entries[1:] {
-			total += e.V.Int64()
+		for _, e := range values.Values {
+			total += e.Int64()
 		}
 		labelsByString, ok := labelsByFingerprint[p.Fingerprint()]
 		if !ok {

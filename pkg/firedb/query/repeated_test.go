@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/grafana/fire/pkg/iter"
 	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/fire/pkg/iter"
 )
 
 type RepeatedTestRow struct {
@@ -23,7 +24,6 @@ func (t testRowGetter) RowNumber() int64 {
 }
 
 func Test_RepeatedIterator(t *testing.T) {
-	defaultReadSize := 100
 	for _, tc := range []struct {
 		name     string
 		rows     []testRowGetter
@@ -251,7 +251,6 @@ func Test_RepeatedIterator(t *testing.T) {
 	} {
 		tc := tc
 		for _, readSize := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 10000} {
-			// for _, readSize := range []int{5} {
 			tc.readSize = readSize
 			t.Run(tc.name+fmt.Sprintf("_rs_%d", readSize), func(t *testing.T) {
 				var groups []parquet.RowGroup
@@ -261,9 +260,6 @@ func Test_RepeatedIterator(t *testing.T) {
 						require.NoError(t, buffer.Write(row))
 					}
 					groups = append(groups, buffer)
-				}
-				if tc.readSize == 0 {
-					tc.readSize = defaultReadSize
 				}
 				actual := readPageIterator(t,
 					NewRepeatedPageIterator(
