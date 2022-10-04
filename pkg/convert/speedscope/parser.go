@@ -114,19 +114,20 @@ func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 
 	for _, ev := range prof.Events {
 		if ev.At < last {
-			return fmt.Errorf("Events out of order, %d < %d", ev.At, last)
+			return fmt.Errorf("Events out of order, %f < %f", ev.At, last)
 		}
-		if ev.Frame < 0 || ev.Frame >= len(frames) {
-			return fmt.Errorf("Invalid frame %d", ev.Frame)
+		fid := int(ev.Frame)
+		if fid < 0 || fid >= len(frames) {
+			return fmt.Errorf("Invalid frame %d", fid)
 		}
 
 		if ev.Type == eventClose {
 			if len(indexStack) == 0 {
-				return fmt.Errorf("No stack to close at %d", ev.At)
+				return fmt.Errorf("No stack to close at %f", ev.At)
 			}
 			lastIdx := len(indexStack) - 1
-			if indexStack[lastIdx] != ev.Frame {
-				return fmt.Errorf("Closing non-open frame %d", ev.Frame)
+			if indexStack[lastIdx] != fid {
+				return fmt.Errorf("Closing non-open frame %d", fid)
 			}
 
 			// Close this frame
@@ -141,8 +142,8 @@ func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 			}
 
 			// Open the frame
-			indexStack = append(indexStack, ev.Frame)
-			nameStack = append(nameStack, frames[ev.Frame].Name)
+			indexStack = append(indexStack, fid)
+			nameStack = append(nameStack, frames[fid].Name)
 		} else {
 			return fmt.Errorf("Unknown event type %s", ev.Type)
 		}
@@ -162,10 +163,11 @@ func parseSampled(tr *tree.Tree, prof *profile, frames []frame) error {
 	for i, samp := range prof.Samples {
 		weight := prof.Weights[i]
 		if weight < 0 {
-			return fmt.Errorf("Negative weight %d", weight)
+			return fmt.Errorf("Negative weight %f", weight)
 		}
 
-		for _, fid := range samp {
+		for _, frameId := range samp {
+			fid := int(frameId)
 			if fid < 0 || fid > len(frames) {
 				return fmt.Errorf("Invalid frame %d", fid)
 			}

@@ -25,7 +25,7 @@ type speedscopeFile struct {
 	Shared             shared
 	Profiles           []profile
 	Name               string
-	ActiveProfileIndex int
+	ActiveProfileIndex float64
 	Exporter           string
 }
 
@@ -36,30 +36,30 @@ type shared struct {
 type frame struct {
 	Name string
 	File string
-	Line int
-	Col  int
+	Line float64
+	Col  float64
 }
 
 type profile struct {
 	Type       string
 	Name       string
 	Unit       string
-	StartValue int64
-	EndValue   int64
+	StartValue float64
+	EndValue   float64
 
 	// Evented profile
 	Events []event
 
 	// Sample profile
 	Samples []sample
-	Weights []int64
+	Weights []float64
 }
 
 type event struct {
 	Type  string
-	At    int64
-	Frame int
+	At    float64
+	Frame float64
 }
 
 // Indexes into Frames
-type sample []int
+type sample []float64
