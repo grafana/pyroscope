@@ -78,7 +78,7 @@ func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bo
 	case profileEvented:
 		err = parseEvented(tr, prof, frames)
 	case profileSampled:
-		// TODO: Handle sampled profiles
+		err = parseSampled(tr, prof, frames)
 	default:
 		return nil, fmt.Errorf("Profile type %s not supported", prof.Type)
 	}
@@ -116,7 +116,7 @@ func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 		if ev.At < last {
 			return fmt.Errorf("Events out of order, %d < %d", ev.At, last)
 		}
-		if ev.Frame >= len(frames) {
+		if ev.Frame < 0 || ev.Frame >= len(frames) {
 			return fmt.Errorf("Invalid frame %d", ev.Frame)
 		}
 
@@ -150,6 +150,31 @@ func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 		last = ev.At
 	}
 
+	return nil
+}
+
+func parseSampled(tr *tree.Tree, prof *profile, frames []frame) error {
+	if len(prof.Samples) != len(prof.Weights) {
+		return fmt.Errorf("Unequal lengths of samples and weights: %d != %d", len(prof.Samples), len(prof.Weights))
+	}
+
+	stack := []string{}
+	for i, samp := range prof.Samples {
+		weight := prof.Weights[i]
+		if weight < 0 {
+			return fmt.Errorf("Negative weight %d", weight)
+		}
+
+		for _, fid := range samp {
+			if fid < 0 || fid > len(frames) {
+				return fmt.Errorf("Invalid frame %d", fid)
+			}
+			stack = append(stack, frames[fid].Name)
+		}
+		tr.InsertStackString(stack, uint64(weight))
+
+		stack = stack[:0] // clear, but retain memory
+	}
 	return nil
 }
 

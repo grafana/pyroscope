@@ -46,4 +46,30 @@ a;b;d 4
 `
 		Expect(input.Val.String()).To(Equal(expectedResult))
 	})
+
+	It("Can parse a sample-format profile", func() {
+		data, err := os.ReadFile("testdata/two-sampled.speedscope.json")
+		Expect(err).ToNot(HaveOccurred())
+
+		key, err := segment.ParseKey("foo{x=y}")
+		Expect(err).ToNot(HaveOccurred())
+
+		ingester := new(mockIngester)
+		profile := &RawProfile{RawData: data}
+
+		md := ingestion.Metadata{Key: key}
+		err = profile.Parse(context.Background(), ingester, nil, md)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(ingester.actual).To(HaveLen(2))
+
+		input := ingester.actual[0]
+		Expect(input.Units).To(Equal(metadata.SamplesUnits))
+		Expect(input.Key.Normalized()).To(Equal("foo.seconds{x=y}"))
+		expectedResult := `a;b 5
+a;b;c 5
+a;b;d 4
+`
+		Expect(input.Val.String()).To(Equal(expectedResult))
+	})
 })
