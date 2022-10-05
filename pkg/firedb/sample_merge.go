@@ -19,7 +19,7 @@ import (
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	// clone the rows to iterate over them twice
+	// clone the rows to be able to iterate over them twice
 	multiRows, err := iter.CloneN(rows, 2)
 	if err != nil {
 		return nil, err
