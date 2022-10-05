@@ -8,7 +8,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -65,12 +64,16 @@ func parseAll(rawData []byte, md ingestion.Metadata) ([]*storage.PutInput, error
 
 func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bool) (*storage.PutInput, error) {
 	// Fixup some metadata
-	putInput.Units = chooseUnit(prof.Unit)
+	putInput.Units = prof.Unit.chooseMetadataUnit()
 	putInput.AggregationType = metadata.SumAggregationType
 	if multi {
-		putInput.Key = chooseKey(putInput.Key, prof.Unit)
+		putInput.Key = prof.Unit.chooseKey(putInput.Key)
 	}
-	// Don't override sampleRate. Sometimes units corresponds to that, but not necessarily.
+
+	// TODO(petethepig): We need a way to tell if it's a default or a value set by user
+	if putInput.SampleRate == 100 {
+		putInput.SampleRate = uint32(prof.Unit.defaultSampleRate())
+	}
 
 	var err error
 	tr := tree.New()
@@ -90,27 +93,11 @@ func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bo
 	return &putInput, nil
 }
 
-func chooseUnit(unit string) metadata.Units {
-	switch unit {
-	case unitBytes:
-		return metadata.BytesUnits
-	default:
-		return metadata.SamplesUnits
-	}
-}
-
-func chooseKey(orig *segment.Key, unit string) *segment.Key {
-	// This means we'll have duplicate keys if multiple profiles have the same units. Probably ok.
-	name := fmt.Sprintf("%s.%s", orig.AppName(), unit)
-	result := orig.Clone()
-	result.Add("__name__", name)
-	return result
-}
-
 func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 	last := prof.StartValue
 	indexStack := []int{}
 	nameStack := []string{}
+	precisionMultiplier := prof.Unit.precisionMultiplier()
 
 	for _, ev := range prof.Events {
 		if ev.At < last {
@@ -131,7 +118,7 @@ func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 			}
 
 			// Close this frame
-			tr.InsertStackString(nameStack, uint64(ev.At-last))
+			tr.InsertStackString(nameStack, uint64(ev.At-last)*precisionMultiplier)
 			indexStack = indexStack[:lastIdx]
 			nameStack = nameStack[:lastIdx]
 		} else if ev.Type == eventOpen {
@@ -158,6 +145,7 @@ func parseSampled(tr *tree.Tree, prof *profile, frames []frame) error {
 		return fmt.Errorf("Unequal lengths of samples and weights: %d != %d", len(prof.Samples), len(prof.Weights))
 	}
 
+	precisionMultiplier := prof.Unit.precisionMultiplier()
 	stack := []string{}
 	for i, samp := range prof.Samples {
 		weight := prof.Weights[i]
@@ -172,7 +160,7 @@ func parseSampled(tr *tree.Tree, prof *profile, frames []frame) error {
 			}
 			stack = append(stack, frames[fid].Name)
 		}
-		tr.InsertStackString(stack, uint64(weight))
+		tr.InsertStackString(stack, uint64(weight)*precisionMultiplier)
 
 		stack = stack[:0] // clear, but retain memory
 	}

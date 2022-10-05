@@ -9,13 +9,6 @@ const (
 	profileEvented = "evented"
 	profileSampled = "sampled"
 
-	unitNone         = "none"
-	unitNanoseconds  = "nanoseconds"
-	unitMicroseconds = "microseconds"
-	unitMilliseconds = "milliseconds"
-	unitSeconds      = "seconds"
-	unitBytes        = "bytes"
-
 	eventOpen  = "O"
 	eventClose = "C"
 )
@@ -43,7 +36,7 @@ type frame struct {
 type profile struct {
 	Type       string
 	Name       string
-	Unit       string
+	Unit       unit
 	StartValue float64
 	EndValue   float64
 

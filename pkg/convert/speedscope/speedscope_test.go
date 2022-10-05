@@ -31,7 +31,7 @@ var _ = Describe("Speedscope", func() {
 		ingester := new(mockIngester)
 		profile := &RawProfile{RawData: data}
 
-		md := ingestion.Metadata{Key: key}
+		md := ingestion.Metadata{Key: key, SampleRate: 100}
 		err = profile.Parse(context.Background(), ingester, nil, md)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -40,11 +40,12 @@ var _ = Describe("Speedscope", func() {
 
 		Expect(input.Units).To(Equal(metadata.SamplesUnits))
 		Expect(input.Key.Normalized()).To(Equal("foo{}"))
-		expectedResult := `a;b 5
-a;b;c 5
-a;b;d 4
+		expectedResult := `a;b 500
+a;b;c 500
+a;b;d 400
 `
 		Expect(input.Val.String()).To(Equal(expectedResult))
+		Expect(input.SampleRate).To(Equal(uint32(10000)))
 	})
 
 	It("Can parse a sample-format profile", func() {
@@ -57,7 +58,7 @@ a;b;d 4
 		ingester := new(mockIngester)
 		profile := &RawProfile{RawData: data}
 
-		md := ingestion.Metadata{Key: key}
+		md := ingestion.Metadata{Key: key, SampleRate: 100}
 		err = profile.Parse(context.Background(), ingester, nil, md)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -66,10 +67,11 @@ a;b;d 4
 		input := ingester.actual[0]
 		Expect(input.Units).To(Equal(metadata.SamplesUnits))
 		Expect(input.Key.Normalized()).To(Equal("foo.seconds{x=y}"))
-		expectedResult := `a;b 5
-a;b;c 5
-a;b;d 4
+		expectedResult := `a;b 500
+a;b;c 500
+a;b;d 400
 `
 		Expect(input.Val.String()).To(Equal(expectedResult))
+		Expect(input.SampleRate).To(Equal(uint32(100)))
 	})
 })
