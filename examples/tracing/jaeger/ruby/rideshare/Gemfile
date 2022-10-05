@@ -29,7 +29,7 @@ group :development do
 end
 
 gem "pyroscope", "~> 0.5.1"
-gem "pyroscope-otel", "~> 0.1.0"
+gem "pyroscope-otel", "~> 0.1.1"
 gem 'opentelemetry-sdk', "~> 1.2.0"
 gem 'opentelemetry-exporter-otlp', "~> 0.24.0"
 gem 'opentelemetry-exporter-jaeger', '~> 0.22.0'
