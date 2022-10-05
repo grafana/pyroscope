@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -246,8 +247,10 @@ type ColumnIterator struct {
 	selectAs string
 	seekTo   atomic.Value
 
-	quit chan struct{}
-	ch   chan *columnIteratorBuffer
+	metrics *Metrics
+	table   string
+	quit    chan struct{}
+	ch      chan *columnIteratorBuffer
 
 	curr  *columnIteratorBuffer
 	currN int
@@ -266,6 +269,8 @@ type columnIteratorBuffer struct {
 
 func NewColumnIterator(ctx context.Context, rgs []parquet.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string) *ColumnIterator {
 	c := &ColumnIterator{
+		metrics:  getMetricsFromContext(ctx),
+		table:    strings.ToLower(rgs[0].Schema().Name()) + "s",
 		rgs:      rgs,
 		col:      column,
 		colName:  columnName,
@@ -343,6 +348,7 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 				if pg == nil || err == io.EOF {
 					break
 				}
+				c.metrics.pageReadsTotal.WithLabelValues(c.table, c.colName).Add(1)
 				span.LogFields(
 					log.String("msg", "reading page"),
 					log.Int64("page_num_values", pg.NumValues()),

@@ -32,7 +32,7 @@ func blocksList(ctx context.Context) error {
 		return err
 	}
 
-	metas, err := firedb.NewBlockQuerier(logger, bucket).BlockMetas(ctx)
+	metas, err := firedb.NewBlockQuerier(ctx, bucket).BlockMetas(ctx)
 	if err != nil {
 		return err
 	}

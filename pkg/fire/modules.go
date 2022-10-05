@@ -25,6 +25,7 @@ import (
 
 	"github.com/grafana/fire/pkg/agent"
 	"github.com/grafana/fire/pkg/distributor"
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
 	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
@@ -171,7 +172,11 @@ func (f *Fire) initStorage() (_ services.Service, err error) {
 func (f *Fire) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	ingester, err := ingester.New(f.Cfg.Ingester, f.Cfg.FireDB, f.logger, f.reg, f.storageBucket)
+	// TODO: This should be passed to all other services and could also be used to signal shutdown
+	firectx := firecontext.WithLogger(context.Background(), f.logger)
+	firectx = firecontext.WithRegistry(firectx, f.reg)
+
+	ingester, err := ingester.New(firectx, f.Cfg.Ingester, f.Cfg.FireDB, f.storageBucket)
 	if err != nil {
 		return nil, err
 	}
