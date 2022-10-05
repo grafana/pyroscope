@@ -71,6 +71,7 @@ func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bo
 	}
 
 	// TODO(petethepig): We need a way to tell if it's a default or a value set by user
+	//   See https://github.com/pyroscope-io/pyroscope/issues/1598
 	if putInput.SampleRate == 100 {
 		putInput.SampleRate = uint32(prof.Unit.defaultSampleRate())
 	}
