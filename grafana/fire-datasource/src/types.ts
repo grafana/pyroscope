@@ -4,6 +4,7 @@ export interface Query extends DataQuery {
   labelSelector: string;
   profileTypeId: string;
   queryType: 'metrics' | 'profile' | 'both';
+  groupBy: string[];
 }
 
 export interface ProfileTypeMessage {
@@ -20,6 +21,7 @@ export type SeriesMessage = Array<{ labels: Array<{ name: string; value: string 
 export const defaultQuery: Partial<Query> = {
   labelSelector: '{}',
   queryType: 'both',
+  groupBy: [],
 };
 
 /**

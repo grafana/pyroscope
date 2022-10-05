@@ -28,7 +28,72 @@ func Test_query(t *testing.T) {
 		},
 	}
 
-	dataQuery := backend.DataQuery{
+	t.Run("query both", func(t *testing.T) {
+		dataQuery := makeDataQuery()
+		resp := ds.query(context.Background(), pCtx, *dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 2, len(resp.Frames))
+		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[1].Fields[0])
+	})
+
+	t.Run("query profile", func(t *testing.T) {
+		dataQuery := makeDataQuery()
+		dataQuery.QueryType = queryTypeProfile
+		resp := ds.query(context.Background(), pCtx, *dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 1, len(resp.Frames))
+		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[0].Fields[0])
+	})
+
+	t.Run("query metrics", func(t *testing.T) {
+		dataQuery := makeDataQuery()
+		dataQuery.QueryType = queryTypeMetrics
+		resp := ds.query(context.Background(), pCtx, *dataQuery)
+		require.Nil(t, resp.Error)
+		require.Equal(t, 1, len(resp.Frames))
+		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
+	})
+
+	t.Run("query metrics uses min step", func(t *testing.T) {
+		dataQuery := makeDataQuery()
+		dataQuery.QueryType = queryTypeMetrics
+		resp := ds.query(context.Background(), pCtx, *dataQuery)
+		require.Nil(t, resp.Error)
+		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
+		require.True(t, ok)
+		require.Equal(t, float64(30), r.Msg.Step)
+	})
+
+	t.Run("query metrics uses default min step", func(t *testing.T) {
+		dataQuery := makeDataQuery()
+		dataQuery.QueryType = queryTypeMetrics
+		pCtxNoMinStep := backend.PluginContext{
+			DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{
+				JSONData: []byte(`{}`),
+			},
+		}
+		resp := ds.query(context.Background(), pCtxNoMinStep, *dataQuery)
+		require.Nil(t, resp.Error)
+		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
+		require.True(t, ok)
+		require.Equal(t, float64(15), r.Msg.Step)
+	})
+
+	t.Run("query metrics uses group by", func(t *testing.T) {
+		dataQuery := makeDataQuery()
+		dataQuery.QueryType = queryTypeMetrics
+		dataQuery.JSON = []byte(`{"profileTypeId":"memory:alloc_objects:count:space:bytes","labelSelector":"{app=\\\"baz\\\"}","groupBy":["app","instance"]}`)
+		resp := ds.query(context.Background(), pCtx, *dataQuery)
+		require.Nil(t, resp.Error)
+		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
+		require.True(t, ok)
+		require.Equal(t, []string{"app", "instance"}, r.Msg.GroupBy)
+	})
+}
+
+func makeDataQuery() *backend.DataQuery {
+	return &backend.DataQuery{
 		RefID:         "A",
 		QueryType:     queryTypeBoth,
 		MaxDataPoints: 0,
@@ -39,53 +104,6 @@ func Test_query(t *testing.T) {
 		},
 		JSON: []byte(`{"profileTypeId":"memory:alloc_objects:count:space:bytes","labelSelector":"{app=\\\"baz\\\"}"}`),
 	}
-
-	t.Run("query both", func(t *testing.T) {
-		resp := ds.query(context.Background(), pCtx, dataQuery)
-		require.Nil(t, resp.Error)
-		require.Equal(t, 2, len(resp.Frames))
-		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
-		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[1].Fields[0])
-	})
-
-	t.Run("query profile", func(t *testing.T) {
-		dataQuery.QueryType = queryTypeProfile
-		resp := ds.query(context.Background(), pCtx, dataQuery)
-		require.Nil(t, resp.Error)
-		require.Equal(t, 1, len(resp.Frames))
-		require.Equal(t, data.NewField("level", nil, []int64{0, 1, 2}), resp.Frames[0].Fields[0])
-	})
-
-	t.Run("query metrics", func(t *testing.T) {
-		dataQuery.QueryType = queryTypeMetrics
-		resp := ds.query(context.Background(), pCtx, dataQuery)
-		require.Nil(t, resp.Error)
-		require.Equal(t, 1, len(resp.Frames))
-		require.Equal(t, "time", resp.Frames[0].Fields[0].Name)
-	})
-
-	t.Run("query metrics uses min step", func(t *testing.T) {
-		dataQuery.QueryType = queryTypeMetrics
-		resp := ds.query(context.Background(), pCtx, dataQuery)
-		require.Nil(t, resp.Error)
-		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
-		require.True(t, ok)
-		require.Equal(t, float64(30), r.Msg.Step)
-	})
-
-	t.Run("query metrics uses default min step", func(t *testing.T) {
-		dataQuery.QueryType = queryTypeMetrics
-		pCtxNoMinStep := backend.PluginContext{
-			DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{
-				JSONData: []byte(`{}`),
-			},
-		}
-		resp := ds.query(context.Background(), pCtxNoMinStep, dataQuery)
-		require.Nil(t, resp.Error)
-		r, ok := client.Req.(*connect.Request[querierv1.SelectSeriesRequest])
-		require.True(t, ok)
-		require.Equal(t, float64(15), r.Msg.Step)
-	})
 }
 
 // This is where the tests for the datasource backend live.
@@ -182,28 +200,48 @@ func Test_treeToNestedDataFrame(t *testing.T) {
 }
 
 func Test_seriesToDataFrame(t *testing.T) {
-	resp := &connect.Response[querierv1.SelectSeriesResponse]{
-		Msg: &querierv1.SelectSeriesResponse{
-			Series: []*commonv1.Series{
-				{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
+	t.Run("single series", func(t *testing.T) {
+		resp := &connect.Response[querierv1.SelectSeriesResponse]{
+			Msg: &querierv1.SelectSeriesResponse{
+				Series: []*commonv1.Series{
+					{Labels: []*commonv1.LabelPair{}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
+				},
 			},
-		},
-	}
-	frame := seriesToDataFrame(resp, "process_cpu:samples:count:cpu:nanoseconds")
-	require.Equal(t, 2, len(frame.Fields))
-	require.Equal(t, data.NewField("time", nil, []time.Time{time.UnixMilli(1000), time.UnixMilli(2000)}), frame.Fields[0])
-	require.Equal(t, data.NewField("samples", nil, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: "short"}), frame.Fields[1])
+		}
+		frames := seriesToDataFrames(resp, "process_cpu:samples:count:cpu:nanoseconds")
+		require.Equal(t, 2, len(frames[0].Fields))
+		require.Equal(t, data.NewField("time", nil, []time.Time{time.UnixMilli(1000), time.UnixMilli(2000)}), frames[0].Fields[0])
+		require.Equal(t, data.NewField("samples", map[string]string{}, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: "short"}), frames[0].Fields[1])
 
-	// with a label pair, the value field should name itself with a label pair name and not the profile type
-	resp = &connect.Response[querierv1.SelectSeriesResponse]{
-		Msg: &querierv1.SelectSeriesResponse{
-			Series: []*commonv1.Series{
-				{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
+		// with a label pair, the value field should name itself with a label pair name and not the profile type
+		resp = &connect.Response[querierv1.SelectSeriesResponse]{
+			Msg: &querierv1.SelectSeriesResponse{
+				Series: []*commonv1.Series{
+					{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
+				},
 			},
-		},
-	}
-	frame = seriesToDataFrame(resp, "process_cpu:samples:count:cpu:nanoseconds")
-	require.Equal(t, data.NewField("app", nil, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: ""}), frame.Fields[1])
+		}
+		frames = seriesToDataFrames(resp, "process_cpu:samples:count:cpu:nanoseconds")
+		require.Equal(t, data.NewField("samples", map[string]string{"app": "bar"}, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: "short"}), frames[0].Fields[1])
+	})
+
+	t.Run("single series", func(t *testing.T) {
+		resp := &connect.Response[querierv1.SelectSeriesResponse]{
+			Msg: &querierv1.SelectSeriesResponse{
+				Series: []*commonv1.Series{
+					{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
+					{Labels: []*commonv1.LabelPair{{Name: "foo", Value: "baz"}}, Points: []*commonv1.Point{{Timestamp: int64(1000), Value: 30}, {Timestamp: int64(2000), Value: 10}}},
+				},
+			},
+		}
+		frames := seriesToDataFrames(resp, "process_cpu:samples:count:cpu:nanoseconds")
+		require.Equal(t, 2, len(frames))
+		require.Equal(t, 2, len(frames[0].Fields))
+		require.Equal(t, 2, len(frames[1].Fields))
+		require.Equal(t, data.NewField("samples", map[string]string{"foo": "bar"}, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: "short"}), frames[0].Fields[1])
+		require.Equal(t, data.NewField("samples", map[string]string{"foo": "baz"}, []float64{30, 10}).SetConfig(&data.FieldConfig{Unit: "short"}), frames[1].Fields[1])
+
+	})
 }
 
 type FakeClient struct {

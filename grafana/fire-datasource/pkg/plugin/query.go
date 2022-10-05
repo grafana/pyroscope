@@ -19,8 +19,9 @@ import (
 
 type queryModel struct {
 	WithStreaming bool
-	ProfileTypeID string `json:"profileTypeId"`
-	LabelSelector string `json:"labelSelector"`
+	ProfileTypeID string   `json:"profileTypeId"`
+	LabelSelector string   `json:"labelSelector"`
+	GroupBy       []string `json:"groupBy"`
 }
 
 type dsJsonModel struct {
@@ -68,8 +69,7 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 			Start:         query.TimeRange.From.UnixMilli(),
 			End:           query.TimeRange.To.UnixMilli(),
 			Step:          math.Max(query.Interval.Seconds(), parsedInterval.Seconds()),
-			// todo add one or more group bys
-			GroupBy: []string{},
+			GroupBy:       qm.GroupBy,
 		})
 
 		log.DefaultLogger.Debug("Sending SelectSeriesRequest", "request", req, "queryModel", qm)
@@ -80,7 +80,7 @@ func (d *FireDatasource) query(ctx context.Context, pCtx backend.PluginContext, 
 			return response
 		}
 		// add the frames to the response.
-		response.Frames = append(response.Frames, seriesToDataFrame(seriesResp, qm.ProfileTypeID))
+		response.Frames = append(response.Frames, seriesToDataFrames(seriesResp, qm.ProfileTypeID)...)
 	}
 
 	if query.QueryType == queryTypeProfile || query.QueryType == queryTypeBoth {
@@ -285,41 +285,44 @@ func walkTree(tree *ProfileTree, fn func(tree *ProfileTree)) {
 	}
 }
 
-func seriesToDataFrame(seriesResp *connect.Response[querierv1.SelectSeriesResponse], profileTypeID string) *data.Frame {
-	frame := data.NewFrame("series")
-	frame.Meta = &data.FrameMeta{PreferredVisualization: "graph"}
+func seriesToDataFrames(seriesResp *connect.Response[querierv1.SelectSeriesResponse], profileTypeID string) []*data.Frame {
+	var frames []*data.Frame
 
-	fields := data.Fields{}
-	timeField := data.NewField("time", nil, []time.Time{})
-	fields = append(fields, timeField)
+	for _, series := range seriesResp.Msg.Series {
+		// We create separate data frames as the series may not have the same length
+		frame := data.NewFrame("series")
+		frame.Meta = &data.FrameMeta{PreferredVisualization: "graph"}
 
-	for index, series := range seriesResp.Msg.Series {
+		fields := data.Fields{}
+		timeField := data.NewField("time", nil, []time.Time{})
+		fields = append(fields, timeField)
+
 		label := ""
 		unit := ""
-		if len(series.Labels) > 0 {
-			label = series.Labels[0].Name
-		} else {
-			parts := strings.Split(profileTypeID, ":")
-			if len(parts) == 5 {
-				label = parts[1] // sample type e.g. cpu, goroutine, alloc_objects
-				unit = normalizeUnit(parts[2])
-			}
+		parts := strings.Split(profileTypeID, ":")
+		if len(parts) == 5 {
+			label = parts[1] // sample type e.g. cpu, goroutine, alloc_objects
+			unit = normalizeUnit(parts[2])
 		}
-		valueField := data.NewField(label, nil, []float64{})
+
+		labels := make(map[string]string)
+		for _, label := range series.Labels {
+			labels[label.Name] = label.Value
+		}
+
+		valueField := data.NewField(label, labels, []float64{})
 		valueField.Config = &data.FieldConfig{Unit: unit}
 
 		for _, point := range series.Points {
-			if index == 0 {
-				timeField.Append(time.UnixMilli(point.Timestamp))
-			}
+			timeField.Append(time.UnixMilli(point.Timestamp))
 			valueField.Append(point.Value)
 		}
 
 		fields = append(fields, valueField)
+		frame.Fields = fields
+		frames = append(frames, frame)
 	}
-
-	frame.Fields = fields
-	return frame
+	return frames
 }
 
 func normalizeUnit(unit string) string {
