@@ -2,6 +2,7 @@ package context
 
 import (
 	"context"
+	"os"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,6 +15,10 @@ const (
 	registryKey
 )
 
+var (
+	defaultLogger = log.NewLogfmtLogger(os.Stderr)
+)
+
 func WithLogger(ctx context.Context, logger log.Logger) context.Context {
 	return context.WithValue(ctx, loggerKey, logger)
 }
@@ -22,7 +27,7 @@ func Logger(ctx context.Context) log.Logger {
 	if logger, ok := ctx.Value(loggerKey).(log.Logger); ok {
 		return logger
 	}
-	return log.NewNopLogger()
+	return defaultLogger
 }
 
 func WithRegistry(ctx context.Context, registry prometheus.Registerer) context.Context {
