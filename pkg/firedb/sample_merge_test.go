@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -117,10 +116,10 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(Config{
+			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, log.NewNopLogger(), nil)
+			})
 			require.NoError(t, err)
 			ctx := context.Background()
 
@@ -134,7 +133,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			require.NoError(t, err)
 
 			// open resulting block
-			q := NewBlockQuerier(log.NewNopLogger(), b)
+			q := NewBlockQuerier(context.Background(), b)
 			require.NoError(t, q.Sync(context.Background()))
 
 			profiles, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
@@ -260,10 +259,10 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(Config{
+			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, log.NewNopLogger(), nil)
+			})
 			require.NoError(t, err)
 			ctx := context.Background()
 
@@ -377,10 +376,10 @@ func TestMergeSampleByLabels(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(Config{
+			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, log.NewNopLogger(), nil)
+			})
 			require.NoError(t, err)
 			ctx := context.Background()
 
@@ -394,7 +393,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			require.NoError(t, err)
 
 			// open resulting block
-			q := NewBlockQuerier(log.NewNopLogger(), b)
+			q := NewBlockQuerier(context.Background(), b)
 			require.NoError(t, q.Sync(context.Background()))
 
 			profileIt, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
@@ -502,10 +501,10 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testPath := t.TempDir()
-			db, err := New(Config{
+			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, log.NewNopLogger(), nil)
+			})
 			require.NoError(t, err)
 			ctx := context.Background()
 

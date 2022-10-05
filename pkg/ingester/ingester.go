@@ -18,6 +18,7 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	"github.com/grafana/fire/pkg/firedb"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -46,6 +47,7 @@ type Ingester struct {
 	cfg      Config
 	dbConfig firedb.Config
 	logger   log.Logger
+	firectx  context.Context
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
@@ -69,11 +71,13 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(cfg Config, dbConfig firedb.Config, logger log.Logger, reg prometheus.Registerer, storageBucket fireobjstore.Bucket) (*Ingester, error) {
+func New(firectx context.Context, cfg Config, dbConfig firedb.Config, storageBucket fireobjstore.Bucket) (*Ingester, error) {
+
 	i := &Ingester{
 		cfg:           cfg,
-		logger:        logger,
-		reg:           reg,
+		firectx:       firectx,
+		logger:        firecontext.Logger(firectx),
+		reg:           firecontext.Registry(firectx),
 		instances:     map[string]*instance{},
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
@@ -86,7 +90,7 @@ func New(cfg Config, dbConfig firedb.Config, logger log.Logger, reg prometheus.R
 		"ingester",
 		"ring",
 		true,
-		logger, prometheus.WrapRegistererWithPrefix("fire_", reg))
+		i.logger, prometheus.WrapRegistererWithPrefix("fire_", i.reg))
 	if err != nil {
 		return nil, err
 	}
@@ -121,22 +125,22 @@ func (i *Ingester) running(ctx context.Context) error {
 	}
 }
 
-func (i *Ingester) GetOrCreateInstance(instanceID string) (*instance, error) { //nolint:revive
-	inst, ok := i.getInstanceByID(instanceID)
+func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
+	inst, ok := i.getInstanceByID(tenantID)
 	if ok {
 		return inst, nil
 	}
 
 	i.instancesMtx.Lock()
 	defer i.instancesMtx.Unlock()
-	inst, ok = i.instances[instanceID]
+	inst, ok = i.instances[tenantID]
 	if !ok {
 		var err error
-		inst, err = newInstance(i.dbConfig, instanceID, i.logger, i.storageBucket, i.reg)
+		inst, err = newInstance(i.firectx, i.dbConfig, tenantID, i.storageBucket)
 		if err != nil {
 			return nil, err
 		}
-		i.instances[instanceID] = inst
+		i.instances[tenantID] = inst
 	}
 	return inst, nil
 }

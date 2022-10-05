@@ -10,6 +10,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 )
 
 var cfg struct {
@@ -26,7 +28,8 @@ var (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx := firecontext.WithLogger(context.Background(), logger)
+
 	app := kingpin.New(filepath.Base(os.Args[0]), "Tooling for Grafana Fire, the continuous profiling aggregation system.").UsageWriter(os.Stdout)
 	app.Version(version.Print("firetool"))
 	app.HelpFlag.Short('h')

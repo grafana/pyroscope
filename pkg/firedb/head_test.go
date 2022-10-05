@@ -4,14 +4,19 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/google/uuid"
 	"github.com/klauspost/compress/gzip"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -20,14 +25,17 @@ import (
 
 func newTestHead(t testing.TB) *testHead {
 	dataPath := t.TempDir()
-	head, err := NewHead(Config{DataPath: dataPath})
+	reg := prometheus.NewPedanticRegistry()
+	ctx := firecontext.WithRegistry(context.Background(), reg)
+	head, err := NewHead(ctx, Config{DataPath: dataPath})
 	require.NoError(t, err)
-	return &testHead{Head: head, t: t}
+	return &testHead{Head: head, t: t, reg: reg}
 }
 
 type testHead struct {
 	*Head
-	t testing.TB
+	t   testing.TB
+	reg *prometheus.Registry
 }
 
 func (t *testHead) Flush(ctx context.Context) error {
@@ -167,6 +175,41 @@ func newProfileBaz() *profilev1.Profile {
 			"func_c",
 		},
 	}
+}
+
+func TestHeadMetrics(t *testing.T) {
+	head := newTestHead(t)
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New()))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New()))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBaz(), uuid.New()))
+	time.Sleep(time.Second)
+	require.NoError(t, testutil.GatherAndCompare(head.reg,
+		strings.NewReader(`
+# HELP fire_head_ingested_sample_values_total Number of sample values ingested into the head per profile type.
+# TYPE fire_head_ingested_sample_values_total counter
+fire_head_ingested_sample_values_total{profile_name=""} 3
+# HELP fire_head_profiles_created_total Total number of profiles created in the head
+# TYPE fire_head_profiles_created_total counter
+fire_head_profiles_created_total{profile_name=""} 2
+# HELP fire_head_received_sample_values_total Number of sample values received into the head per profile type.
+# TYPE fire_head_received_sample_values_total counter
+fire_head_received_sample_values_total{profile_name=""} 3
+
+# HELP fire_head_size_bytes Size of a particular in memory store within the head firedb block.
+# TYPE fire_head_size_bytes gauge
+fire_head_size_bytes{type="functions"} 240
+fire_head_size_bytes{type="locations"} 344
+fire_head_size_bytes{type="mappings"} 192
+fire_head_size_bytes{type="profiles"} 416
+fire_head_size_bytes{type="stacktraces"} 104
+fire_head_size_bytes{type="strings"} 52
+
+`),
+		"fire_head_received_sample_values_total",
+		"fire_head_profiles_created_total",
+		"fire_head_ingested_sample_values_total",
+		"fire_head_size_bytes",
+	))
 }
 
 func TestHeadIngestFunctions(t *testing.T) {
