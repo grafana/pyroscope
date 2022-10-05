@@ -9,7 +9,7 @@ function isQueriesHasSameApp(queries: Query[]): boolean {
     return false;
   }
 
-  return queries.every((query) => query.match(appName.value));
+  return queries.every((query) => query.startsWith(appName.value));
 }
 
 // usePopulateLeftRightQuery populates the left and right queries using the main query
