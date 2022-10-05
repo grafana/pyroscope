@@ -8,7 +8,6 @@ import (
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
-	"github.com/segmentio/parquet-go"
 
 	query "github.com/grafana/fire/pkg/firedb/query"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -20,30 +19,29 @@ import (
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	it := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			query.NewRowNumberIterator(rows),
-			b.profiles.columnIter(ctx, "Samples.list.element.StacktraceID", nil, "StacktraceID"),
-			b.profiles.columnIter(ctx, "Samples.list.element.Value", nil, "Value"),
-		}, nil,
+	// clone the rows to be able to iterate over them twice
+	multiRows, err := iter.CloneN(rows, 2)
+	if err != nil {
+		return nil, err
+	}
+	it := query.NewMultiRepeatedPageIterator(
+		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.StacktraceID", multiRows[0]),
+		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", multiRows[1]),
 	)
 	defer it.Close()
 
-	var series [][]parquet.Value
 	stacktraceAggrValues := map[int64]*ingestv1.StacktraceSample{}
 
 	for it.Next() {
-		values := it.At()
-		series = values.Columns(series, "StacktraceID", "Value")
-		for i := 0; i < len(series[0]); i++ {
-			sample, ok := stacktraceAggrValues[series[0][i].Int64()]
+		values := it.At().Values
+		for i := 0; i < len(values[0]); i++ {
+			sample, ok := stacktraceAggrValues[values[0][i].Int64()]
 			if ok {
-				sample.Value += series[1][i].Int64()
+				sample.Value += values[1][i].Int64()
 				continue
 			}
-			stacktraceAggrValues[series[0][i].Int64()] = &ingestv1.StacktraceSample{
-				Value: series[1][i].Int64(),
+			stacktraceAggrValues[values[0][i].Int64()] = &ingestv1.StacktraceSample{
+				Value: values[1][i].Int64(),
 			}
 		}
 	}
@@ -63,16 +61,26 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 
 	var (
 		locationIDs = newUniqueIDs[struct{}]()
-		stacktraces = b.stacktraces.retrieveRows(ctx, iter.NewSliceIterator(stacktraceIDs))
+		stacktraces = repeatedColumnIter(ctx, b.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
 	)
 
 	for stacktraces.Next() {
 		s := stacktraces.At()
 
-		locationsByStacktraceID[s.RowNum] = make([]uint64, len(s.Result.LocationIDs))
-		for i, locationID := range s.Result.LocationIDs {
-			locationIDs[int64(locationID)] = struct{}{}
-			locationsByStacktraceID[s.RowNum][i] = locationID
+		_, ok := locationsByStacktraceID[s.Row]
+		if !ok {
+			locationsByStacktraceID[s.Row] = make([]uint64, len(s.Values))
+			for i, locationID := range s.Values {
+				locID := locationID.Uint64()
+				locationIDs[int64(locID)] = struct{}{}
+				locationsByStacktraceID[s.Row][i] = locID
+			}
+			continue
+		}
+		for _, locationID := range s.Values {
+			locID := locationID.Uint64()
+			locationIDs[int64(locID)] = struct{}{}
+			locationsByStacktraceID[s.Row] = append(locationsByStacktraceID[s.Row], locID)
 		}
 	}
 	if err := stacktraces.Err(); err != nil {
@@ -172,13 +180,9 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
-	it := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			query.NewRowNumberIterator(rows),
-			b.profiles.columnIter(ctx, "Samples.list.element.Value", nil, "Value"),
-		}, nil,
-	)
+
+	it := repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", rows)
+
 	defer it.Close()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
@@ -187,10 +191,10 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 
 	for it.Next() {
 		values := it.At()
-		p := values.Entries[0].RowValue.(Profile)
+		p := values.Row
 		var total int64
-		for _, e := range values.Entries[1:] {
-			total += e.V.Int64()
+		for _, e := range values.Values {
+			total += e.Int64()
 		}
 		labelsByString, ok := labelsByFingerprint[p.Fingerprint()]
 		if !ok {
