@@ -61,16 +61,26 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 
 	var (
 		locationIDs = newUniqueIDs[struct{}]()
-		stacktraces = b.stacktraces.retrieveRows(ctx, iter.NewSliceIterator(stacktraceIDs))
+		stacktraces = repeatedColumnIter(ctx, b.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
 	)
 
 	for stacktraces.Next() {
 		s := stacktraces.At()
 
-		locationsByStacktraceID[s.RowNum] = make([]uint64, len(s.Result.LocationIDs))
-		for i, locationID := range s.Result.LocationIDs {
-			locationIDs[int64(locationID)] = struct{}{}
-			locationsByStacktraceID[s.RowNum][i] = locationID
+		_, ok := locationsByStacktraceID[s.Row]
+		if !ok {
+			locationsByStacktraceID[s.Row] = make([]uint64, len(s.Values))
+			for i, locationID := range s.Values {
+				locID := locationID.Uint64()
+				locationIDs[int64(locID)] = struct{}{}
+				locationsByStacktraceID[s.Row][i] = locID
+			}
+			continue
+		}
+		for _, locationID := range s.Values {
+			locID := locationID.Uint64()
+			locationIDs[int64(locID)] = struct{}{}
+			locationsByStacktraceID[s.Row] = append(locationsByStacktraceID[s.Row], locID)
 		}
 	}
 	if err := stacktraces.Err(); err != nil {
