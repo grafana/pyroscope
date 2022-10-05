@@ -30,6 +30,11 @@ $tdHeight: 25px;
         text-shadow: 0 0 1px var(--ps-table-row-text-shadow);
       }
 
+      width: 135px;
+      min-width: 135px;
+      max-width: 135px;
+      text-align: right;
+
       &:first-child {
         border-left: none;
         text-align: left;
@@ -43,7 +48,6 @@ $tdHeight: 25px;
         width: 220px;
         min-width: 220px;
         max-width: 220px;
-        text-align: right;
         padding: 0px 10px;
       }
     }

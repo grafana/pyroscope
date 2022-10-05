@@ -6,6 +6,7 @@ export const AllProfilesSchema = z.record(
     id: z.string(),
     name: z.string(),
     updatedAt: z.string(),
+    suffix: z.string().optional(),
   })
 );
 

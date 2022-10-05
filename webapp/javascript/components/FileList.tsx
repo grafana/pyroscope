@@ -9,8 +9,10 @@ import styles from './FileList.module.scss';
 
 const dateModifiedColName = 'updatedAt';
 const fileNameColName = 'name';
+const suffixColName = 'suffix';
 const headRow = [
   { name: fileNameColName, label: 'Filename', sortable: 1 },
+  { name: suffixColName, label: 'Suffix' },
   {
     name: dateModifiedColName,
     label: 'Date Modified',
@@ -46,6 +48,7 @@ const getBodyRows = (
             </div>
           ),
         },
+        { value: profile?.suffix || '' },
         { value: timeString },
       ],
       onClick: () => {
