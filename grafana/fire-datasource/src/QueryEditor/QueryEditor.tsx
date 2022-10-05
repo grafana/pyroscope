@@ -1,6 +1,6 @@
 import { defaults } from 'lodash';
-import React, { useMemo, useState } from 'react';
-import { useMount } from 'react-use';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAsync } from 'react-use';
 
 import { ButtonCascader, CascaderOption } from '@grafana/ui';
 import { CoreApp, QueryEditorProps } from '@grafana/data';
@@ -15,7 +15,7 @@ import { EditorRow } from './EditorRow';
 export type Props = QueryEditorProps<FireDataSource, Query, FireDataSourceOptions>;
 
 export function QueryEditor(props: Props) {
-  const [profileTypes, setProfileTypes] = useState<ProfileTypeMessage[]>([]);
+  const profileTypes = useProfileTypes(props.datasource);
 
   function onProfileTypeChange(value: string[], selectedOptions: CascaderOption[]) {
     if (selectedOptions.length === 0) {
@@ -29,13 +29,37 @@ export function QueryEditor(props: Props) {
     props.onChange({ ...props.query, labelSelector: value });
   }
 
-  useMount(async () => {
-    const profileTypes = await props.datasource.getProfileTypes();
-    setProfileTypes(profileTypes);
-  });
+  const seriesResult = useAsync(() => {
+    return props.datasource.getSeries();
+  }, [props.datasource]);
 
-  // Turn profileTypes into cascader options
-  const cascaderOptions = useMemo(() => {
+  const cascaderOptions = useCascaderOptions(profileTypes);
+  const selectedProfileName = useProfileName(profileTypes, props.query.profileTypeId);
+  let query = normalizeQuery(props.query, props.app);
+
+  return (
+    <EditorRows>
+      <EditorRow stackProps={{ wrap: false, gap: 1 }}>
+        <ButtonCascader onChange={onProfileTypeChange} options={cascaderOptions} buttonProps={{ variant: 'secondary' }}>
+          {selectedProfileName}
+        </ButtonCascader>
+        <LabelsEditor
+          value={query.labelSelector}
+          onChange={onLabelSelectorChange}
+          onRunQuery={props.onRunQuery}
+          series={seriesResult.value}
+        />
+      </EditorRow>
+      <EditorRow>
+        <QueryOptions query={query} onQueryChange={props.onChange} app={props.app} series={seriesResult.value} />
+      </EditorRow>
+    </EditorRows>
+  );
+}
+
+// Turn profileTypes into cascader options
+function useCascaderOptions(profileTypes: ProfileTypeMessage[]) {
+  return useMemo(() => {
     let mainTypes = new Map<string, CascaderOption>();
     // Classify profile types by name then sample type.
     for (let profileType of profileTypes) {
@@ -53,43 +77,31 @@ export function QueryEditor(props: Props) {
     }
     return Array.from(mainTypes.values());
   }, [profileTypes]);
+}
 
-  const selectedProfileName = useMemo(() => {
+function useProfileTypes(datasource: FireDataSource) {
+  const [profileTypes, setProfileTypes] = useState<ProfileTypeMessage[]>([]);
+  useEffect(() => {
+    (async () => {
+      const profileTypes = await datasource.getProfileTypes();
+      setProfileTypes(profileTypes);
+    })();
+  }, [datasource]);
+  return profileTypes;
+}
+
+function useProfileName(profileTypes: ProfileTypeMessage[], profileTypeId: string) {
+  return useMemo(() => {
     if (!profileTypes) {
       return 'Loading';
     }
-    const profile = profileTypes.find((type) => type.ID === props.query.profileTypeId);
+    const profile = profileTypes.find((type) => type.ID === profileTypeId);
     if (!profile) {
       return 'Select a profile type';
     }
 
     return profile.name + ' - ' + profile.sample_type;
-  }, [props.query.profileTypeId, profileTypes]);
-
-  let query = normalizeQuery(props.query, props.app);
-
-  return (
-    <EditorRows>
-      <EditorRow stackProps={{ wrap: false, gap: 1 }}>
-        <ButtonCascader onChange={onProfileTypeChange} options={cascaderOptions} buttonProps={{ variant: 'secondary' }}>
-          {selectedProfileName}
-        </ButtonCascader>
-        <LabelsEditor
-          value={query.labelSelector}
-          onChange={onLabelSelectorChange}
-          datasource={props.datasource}
-          onRunQuery={props.onRunQuery}
-        />
-      </EditorRow>
-      <EditorRow>
-        <QueryOptions
-          query={query}
-          onQueryTypeChange={(val) => props.onChange({ ...query, queryType: val as Query['queryType'] })}
-          app={props.app}
-        />
-      </EditorRow>
-    </EditorRows>
-  );
+  }, [profileTypeId, profileTypes]);
 }
 
 function normalizeQuery(query: Query, app?: CoreApp) {
