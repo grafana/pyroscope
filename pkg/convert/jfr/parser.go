@@ -274,7 +274,8 @@ var zstdJniSoLibName = regexp.MustCompile("^(\\.?/tmp/)?(libzstd-jni-\\d+\\.\\d+
 var amazonCorrettoCryptoProvider = regexp.MustCompile("^(\\.?/tmp/)?(libamazonCorrettoCryptoProvider)([0-9a-f]{16})(\\.so)( \\(deleted\\))?$")
 
 // libasyncProfiler-linux-arm64-17b9a1d8156277a98ccc871afa9a8f69215f92.so
-var pyroscopeAsyncProfiler = regexp.MustCompile("^(\\.?/tmp/)?(libasyncProfiler)-(linux-arm64|linux-musl-x64|linux-x64|macos)-(17b9a1d8156277a98ccc871afa9a8f69215f92)(\\.so)( \\(deleted\\))?$")
+var pyroscopeAsyncProfiler = regexp.MustCompile(
+	"^(\\.?/tmp/)?(libasyncProfiler)-(linux-arm64|linux-musl-x64|linux-x64|macos)-(17b9a1d8156277a98ccc871afa9a8f69215f92)(\\.so)( \\(deleted\\))?$")
 
 func mergeJVMGeneratedClasses(frame string) string {
 	frame = generatedMethodAccessor.ReplaceAllString(frame, "${1}_")
