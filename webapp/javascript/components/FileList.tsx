@@ -12,6 +12,7 @@ const fileNameColName = 'name';
 const suffixColName = 'suffix';
 const headRow = [
   { name: fileNameColName, label: 'Filename', sortable: 1 },
+  // TODO(dogfrogfog): add sortable prop after BE implementation
   { name: suffixColName, label: 'Suffix' },
   {
     name: dateModifiedColName,
