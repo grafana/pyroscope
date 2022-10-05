@@ -33,7 +33,7 @@ const getBodyRows = (
     const date = parseISO(profile.updatedAt);
     const timeString = `${format(date, 'MMM d, yyyy')} at ${format(
       date,
-      'H:mm'
+      'h:mm a'
     )}`;
 
     acc.push({
