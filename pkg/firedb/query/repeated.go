@@ -78,7 +78,14 @@ func NewRepeatedPageIterator[T any](
 
 // seekRowNum the row num to seek to.
 func (it *repeatedPageIterator[T]) seekRowNum() int64 {
-	return any(it.rows.At()).(RowGetter).RowNumber()
+	switch i := any(it.rows.At()).(type) {
+	case RowGetter:
+		return i.RowNumber()
+	case int64:
+		return i
+	default:
+		panic("unknown type")
+	}
 }
 
 func (it *repeatedPageIterator[T]) Next() bool {
