@@ -30,6 +30,12 @@ const getBodyRows = (
       (profId) => profId === profile.id
     );
 
+    const date = parseISO(profile.updatedAt);
+    const timeString = `${format(date, 'MMM d, yyyy')} at ${format(
+      date,
+      'H:MM'
+    )}`;
+
     acc.push({
       cells: [
         {
@@ -40,7 +46,7 @@ const getBodyRows = (
             </div>
           ),
         },
-        { value: format(parseISO(profile.updatedAt), 'yyyy-MM-dd') },
+        { value: timeString },
       ],
       onClick: () => {
         // Optimize to not reload the same one
