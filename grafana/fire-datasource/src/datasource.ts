@@ -9,11 +9,25 @@ export class FireDataSource extends DataSourceWithBackend<Query, FireDataSourceO
   }
 
   query(request: DataQueryRequest<Query>): Observable<DataQueryResponse> {
-    const validTargets = request.targets.filter((t) => t.profileTypeId);
+    const validTargets = request.targets
+      .filter((t) => t.profileTypeId)
+      .map((t) => {
+        // Empty string errors out but honestly seems like we can just normalize it this way
+        if (t.labelSelector === '') {
+          return {
+            ...t,
+            labelSelector: '{}',
+          };
+        }
+        return t;
+      });
     if (!validTargets.length) {
       return of({ data: [] });
     }
-    return super.query(request);
+    return super.query({
+      ...request,
+      targets: validTargets,
+    });
   }
 
   async getProfileTypes(): Promise<ProfileTypeMessage[]> {
