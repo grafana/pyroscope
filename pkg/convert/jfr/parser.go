@@ -268,20 +268,21 @@ var generatedMethodAccessor = regexp.MustCompile("^(jdk/internal/reflect/Generat
 var lambdaGeneratedEnclosingClass = regexp.MustCompile("^(.+\\$\\$Lambda\\$)\\d+[./](0x[\\da-f]+|\\d+)$")
 
 // libzstd-jni-1.5.1-16931311898282279136.so.Java_com_github_luben_zstd_ZstdInputStreamNoFinalizer_decompressStream
-var zstdJniSoLibName = regexp.MustCompile("^(libzstd-jni-\\d+\\.\\d+\\.\\d+-)(\\d+)(\\.so)$")
+var zstdJniSoLibName = regexp.MustCompile("^(\\.?/tmp/)?(libzstd-jni-\\d+\\.\\d+\\.\\d+-)(\\d+)(\\.so)( \\(deleted\\))?$")
 
 // ./tmp/libamazonCorrettoCryptoProvider109b39cf33c563eb.so
-var amazonCorrettoCryptoProvider = regexp.MustCompile("^\\./tmp/(libamazonCorrettoCryptoProvider)([0-9a-f]{16})(\\.so)$")
+var amazonCorrettoCryptoProvider = regexp.MustCompile("^(\\.?/tmp/)?(libamazonCorrettoCryptoProvider)([0-9a-f]{16})(\\.so)( \\(deleted\\))?$")
 
 // libasyncProfiler-linux-arm64-17b9a1d8156277a98ccc871afa9a8f69215f92.so
-var pyroscopeAsyncProfiler = regexp.MustCompile("^(libasyncProfiler)-(linux-arm64|linux-musl-x64|linux-x64|macos)-(17b9a1d8156277a98ccc871afa9a8f69215f92)(\\.so)$")
+var pyroscopeAsyncProfiler = regexp.MustCompile(
+	"^(\\.?/tmp/)?(libasyncProfiler)-(linux-arm64|linux-musl-x64|linux-x64|macos)-(17b9a1d8156277a98ccc871afa9a8f69215f92)(\\.so)( \\(deleted\\))?$")
 
 func mergeJVMGeneratedClasses(frame string) string {
 	frame = generatedMethodAccessor.ReplaceAllString(frame, "${1}_")
 	frame = lambdaGeneratedEnclosingClass.ReplaceAllString(frame, "${1}_")
-	frame = zstdJniSoLibName.ReplaceAllString(frame, "${1}_${3}")
-	frame = amazonCorrettoCryptoProvider.ReplaceAllString(frame, "${1}_${3}")
-	frame = pyroscopeAsyncProfiler.ReplaceAllString(frame, "${1}-${2}-_${4}")
+	frame = zstdJniSoLibName.ReplaceAllString(frame, "libzstd-jni-_.so")
+	frame = amazonCorrettoCryptoProvider.ReplaceAllString(frame, "libamazonCorrettoCryptoProvider_.so")
+	frame = pyroscopeAsyncProfiler.ReplaceAllString(frame, "libasyncProfiler-_.so")
 	return frame
 }
 
