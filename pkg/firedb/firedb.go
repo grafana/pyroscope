@@ -2,10 +2,10 @@ package firedb
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,8 +18,10 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
+	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
@@ -33,6 +35,12 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/objstore/client"
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
+	diskutil "github.com/grafana/fire/pkg/util/disk"
+)
+
+const (
+	minFreeDisk                = 10 * 1024 * 1024 * 1024 // 10Gi
+	minDiskAvailablePercentage = 0.05
 )
 
 type Config struct {
@@ -53,6 +61,17 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.MaxBlockDuration, "firedb.max-block-duration", 3*time.Hour, "Upper limit to the duration of a Fire block.")
 }
 
+type fileSystem interface {
+	fs.ReadDirFS
+	RemoveAll(string) error
+}
+
+type realFileSystem struct{}
+
+func (*realFileSystem) Open(name string) (fs.File, error)          { return os.Open(name) }
+func (*realFileSystem) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
+func (*realFileSystem) RemoveAll(path string) error                { return os.RemoveAll(path) }
+
 type FireDB struct {
 	services.Service
 
@@ -65,6 +84,9 @@ type FireDB struct {
 
 	headLock sync.RWMutex
 	head     *Head
+
+	volumeChecker diskutil.VolumeChecker
+	fs            fileSystem
 
 	headFlushTimer time.Timer
 
@@ -82,6 +104,11 @@ func New(firectx context.Context, cfg Config) (*FireDB, error) {
 		logger:  firecontext.Logger(firectx),
 		firectx: firectx,
 		stopCh:  make(chan struct{}, 0),
+		volumeChecker: diskutil.NewVolumeChecker(
+			minFreeDisk,
+			minDiskAvailablePercentage,
+		),
+		fs: &realFileSystem{},
 	}
 	if _, err := f.initHead(); err != nil {
 		return nil, err
@@ -119,7 +146,103 @@ func (f *FireDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
 	return f.blockQuerier.BlockMetas(ctx)
 }
 
+func (f *FireDB) listLocalULID() ([]ulid.ULID, error) {
+	path := f.LocalDataPath()
+	files, err := f.fs.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []ulid.ULID
+	for _, file := range files {
+		if !file.IsDir() {
+			continue
+		}
+
+		id, ok := block.IsBlockDir(filepath.Join(path, file.Name()))
+		if !ok {
+			continue
+		}
+		ids = append(ids, id)
+	}
+
+	// sort the blocks by their id, which will be the time they've been created.
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i].Compare(ids[j]) < 0
+	})
+
+	return ids, nil
+}
+
+func (f *FireDB) cleanupBlocksWhenHighDiskUtilization(ctx context.Context) error {
+	var (
+		path      = f.LocalDataPath()
+		lastStats *diskutil.VolumeStats
+		lastULID  ulid.ULID
+	)
+
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		current, err := f.volumeChecker.HasHighDiskUtilization(path)
+		if err != nil {
+			return err
+		}
+
+		// not in high disk utilization, nothing to do.
+		if !current.HighDiskUtilization {
+			break
+		}
+
+		// when disk utilization is not lower since the last loop, we end the
+		// cleanup there to avoid deleting all block when disk usage reporting
+		// is delayed.
+		if lastStats != nil && lastStats.BytesAvailable >= current.BytesAvailable {
+			level.Warn(f.logger).Log("msg", "disk utilization is not lowered by deletion of block, pausing until next cycle", "path", path)
+			break
+		}
+
+		// get list of all ulids
+		ulids, err := f.listLocalULID()
+		if err != nil {
+			return err
+		}
+
+		// nothing to delete, when there are no ulids
+		if len(ulids) == 0 {
+			break
+		}
+
+		if lastULID.Compare(ulids[0]) == 0 {
+			return fmt.Errorf("making no progress in deletion: trying to delete block '%s' again", lastULID.String())
+		}
+
+		deletePath := filepath.Join(path, ulids[0].String())
+
+		// ensure that we never delete the root directory or anything above
+		if deletePath == path {
+			return errors.New("delete path is the same as the root path, this should never happen")
+		}
+
+		// delete oldest block
+		if err := f.fs.RemoveAll(deletePath); err != nil {
+			return fmt.Errorf("failed to delete oldest block %s: %w", deletePath, err)
+		}
+		level.Warn(f.logger).Log("msg", "disk utilization is high, deleted oldest block", "path", deletePath)
+		lastStats = current
+		lastULID = ulids[0]
+	}
+
+	return nil
+}
+
 func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
+	if err := f.cleanupBlocksWhenHighDiskUtilization(ctx); err != nil {
+		level.Error(f.logger).Log("msg", "cleanup block check failed", "err", err)
+	}
+
 	if err := f.blockQuerier.Sync(ctx); err != nil {
 		level.Error(f.logger).Log("msg", "sync of blocks failed", "err", err)
 	}
