@@ -108,6 +108,7 @@ function ComparisonDiffApp() {
         />
         <Box>
           <LoadingOverlay
+            kind="dark"
             active={
               timelines.left.type === 'reloading' ||
               timelines.left.type === 'loading' ||
@@ -149,6 +150,7 @@ function ComparisonDiffApp() {
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
             <LoadingOverlay
+              kind="dark"
               active={
                 timelines.left.type === 'reloading' ||
                 timelines.left.type === 'loading'
@@ -233,7 +235,7 @@ function ComparisonDiffApp() {
           </Box>
         </div>
         <Box>
-          <LoadingOverlay active={diffView.type === 'reloading'} />
+          <LoadingOverlay active={diffView.type === 'reloading'} kind="dark" />
           <TimelineTitle titleKey="diff" />
           <FlamegraphRenderer
             showCredit={false}

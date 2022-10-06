@@ -1,5 +1,6 @@
 import React from 'react';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import cx from 'classnames';
 import styles from './LoadingOverlay.module.css';
 
 /**
@@ -9,9 +10,11 @@ import styles from './LoadingOverlay.module.css';
 export function LoadingOverlay({
   active = true,
   spinnerPosition = 'center',
+  kind = 'blur',
 }: {
   spinnerPosition?: 'center' | 'baseline';
   active?: boolean;
+  kind?: 'dark' | 'blur';
 }) {
   if (!active) {
     return null;
@@ -21,7 +24,10 @@ export function LoadingOverlay({
   // so that if the request is fast enough we don't show anything
   return (
     <div
-      className={styles.loadingOverlay}
+      className={cx(
+        styles.loadingOverlay,
+        kind === 'dark' ? styles.withDarkoverlay : styles.withBlurOverlay
+      )}
       style={{
         alignItems: spinnerPosition,
         zIndex: 99,

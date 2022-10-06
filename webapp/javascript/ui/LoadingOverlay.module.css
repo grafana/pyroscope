@@ -5,10 +5,17 @@
   top: 0;
   bottom: 0;
   display: flex;
-  backdrop-filter: blur(2px);
   justify-content: center;
 
   /* ignore all pointer events */
-  pointerevents: all;
+  pointer-events: all;
   zindex: 99;
+}
+
+.withBlurOverlay {
+  backdrop-filter: blur(2px);
+}
+
+.withDarkoverlay {
+  background: rgba(0, 0, 0, 0.7);
 }
