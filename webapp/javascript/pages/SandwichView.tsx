@@ -5,6 +5,8 @@ import PageTitle from '@webapp/components/PageTitle';
 import Toolbar from '@webapp/components/Toolbar';
 import { useAppSelector } from '@webapp/redux/hooks';
 import { selectQueries } from '@webapp/redux/reducers/continuous';
+import { flamebearersToTree } from '@pyroscope/flamegraph/src';
+import sandwichProfile from './sandwichSmallTestProfile.json';
 
 import { formatTitle } from './formatTitle';
 
@@ -12,6 +14,10 @@ import styles from './SandwichView.module.scss';
 
 export default function SandwichView() {
   const { query } = useAppSelector(selectQueries);
+
+  console.log(
+    flamebearersToTree(sandwichProfile.flamebearer, sandwichProfile.flamebearer)
+  );
 
   return (
     <>

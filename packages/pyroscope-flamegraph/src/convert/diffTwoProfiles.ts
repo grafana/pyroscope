@@ -8,7 +8,7 @@ import {
   deltaDiffWrapperReverse,
 } from '../FlameGraph/decode';
 
-function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
+export function flamebearersToTree(f1: Flamebearer, f2: Flamebearer) {
   const lookup = {};
   const lookup2 = {};
   let root;
