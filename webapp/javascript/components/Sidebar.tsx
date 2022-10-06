@@ -13,6 +13,7 @@ import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointR
 import { faChartLine } from '@fortawesome/free-solid-svg-icons/faChartLine';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
 import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
+import { faHamburger } from '@fortawesome/free-solid-svg-icons/faHamburger';
 import Sidebar, {
   MenuItem,
   SidebarHeader,
@@ -85,6 +86,7 @@ export function SidebarComponent() {
           PAGES.TAG_EXPLORER,
           PAGES.TRACING_EXEMPLARS_MERGE,
           PAGES.TRACING_EXEMPLARS_SINGLE,
+          PAGES.SANDWICH,
         ] as string[]
       ).includes(pathname) || pathname.startsWith(PAGES.SETTINGS),
     [pathname]
@@ -225,6 +227,14 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
+          <MenuItem
+            data-testid="sidebar-sandwich"
+            active={isRouteActive(PAGES.SANDWICH)}
+            icon={<Icon icon={faHamburger} />}
+          >
+            Sandwich view
+            <NavLink to={{ pathname: PAGES.SANDWICH, search }} exact />
+          </MenuItem>
           {isTracingActive && (
             <SubMenu
               title="Tracing Exemplars"

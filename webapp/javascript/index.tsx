@@ -32,6 +32,7 @@ import { PAGES } from './pages/constants';
 import history from './util/history';
 import TracingSingleView from './pages/TracingSingleView';
 import ExemplarsSingleView from './pages/ExemplarsSingleView';
+import SandwichView from './pages/SandwichView';
 
 function App() {
   return (
@@ -80,7 +81,13 @@ function App() {
               </Continuous>
             </Protected>
           </Route>
-
+          <Route path={PAGES.SANDWICH}>
+            <Protected>
+              <Continuous>
+                <SandwichView />
+              </Continuous>
+            </Protected>
+          </Route>
           {isAuthRequired && (
             <Route path={PAGES.SETTINGS}>
               <Protected>
