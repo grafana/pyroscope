@@ -132,15 +132,17 @@ func config(block *ConfigBlock, cfg interface{}, flags map[uintptr]*flag.Flag, r
 	}
 
 	// The input config is expected to be addressable.
-	if reflect.TypeOf(cfg).Kind() != reflect.Ptr {
-		t := reflect.TypeOf(cfg)
-		return nil, fmt.Errorf("%s is a %s while a %s is expected", t, t.Kind(), reflect.Ptr)
+	v := reflect.ValueOf(cfg)
+	for v.Kind() != reflect.Struct {
+		// if pointer is zero recreate object
+		if v.IsZero() {
+			v = reflect.New(reflect.TypeOf(v))
+		}
+		// The input config is expected to be a pointer to struct.
+		v = v.Elem()
 	}
 
-	// The input config is expected to be a pointer to struct.
-	v := reflect.ValueOf(cfg).Elem()
 	t := v.Type()
-
 	if v.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("%s is a %s while a %s is expected", v, v.Kind(), reflect.Struct)
 	}
