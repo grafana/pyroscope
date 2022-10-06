@@ -1111,6 +1111,13 @@ export const selectAppTags = (query?: Query) => (state: RootState) => {
   } as TagsState;
 };
 
+export const selectTimelineSides = (state: RootState) => {
+  return {
+    left: state.continuous.leftTimeline,
+    right: state.continuous.rightTimeline,
+  };
+};
+
 export const selectTimelineSidesData = (state: RootState) => {
   return {
     left: state.continuous.leftTimeline.timeline,

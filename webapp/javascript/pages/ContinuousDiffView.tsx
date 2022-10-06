@@ -7,6 +7,8 @@ import {
   actions,
   fetchTagValues,
   selectQueries,
+  selectTimelineSidesData,
+  selectTimelineSides,
 } from '@webapp/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
@@ -22,6 +24,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
@@ -46,6 +49,7 @@ function ComparisonDiffApp() {
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
   const { leftTimeline, rightTimeline } = useTimelines();
 
+  const timelines = useAppSelector(selectTimelineSides);
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
     diffView.profile
   );
@@ -103,6 +107,14 @@ function ComparisonDiffApp() {
           }}
         />
         <Box>
+          <LoadingOverlay
+            active={
+              timelines.left.type === 'reloading' ||
+              timelines.left.type === 'loading' ||
+              timelines.right.type === 'loading' ||
+              timelines.right.type === 'reloading'
+            }
+          />
           <TimelineChartWrapper
             data-testid="timeline-main"
             id="timeline-chart-diff"
@@ -136,6 +148,12 @@ function ComparisonDiffApp() {
         </Box>
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
+            <LoadingOverlay
+              active={
+                timelines.left.type === 'reloading' ||
+                timelines.left.type === 'loading'
+              }
+            />
             <TimelineTitle titleKey="baseline" color={leftColor} />
             <TagsBar
               query={leftQuery}
@@ -172,6 +190,12 @@ function ComparisonDiffApp() {
             />
           </Box>
           <Box className="diff-instructions-wrapper-side">
+            <LoadingOverlay
+              active={
+                timelines.right.type === 'reloading' ||
+                timelines.right.type === 'loading'
+              }
+            />
             <TimelineTitle titleKey="comparison" color={rightColor} />
             <TagsBar
               query={rightQuery}
@@ -209,6 +233,7 @@ function ComparisonDiffApp() {
           </Box>
         </div>
         <Box>
+          <LoadingOverlay active={diffView.type === 'reloading'} />
           <TimelineTitle titleKey="diff" />
           <FlamegraphRenderer
             showCredit={false}
