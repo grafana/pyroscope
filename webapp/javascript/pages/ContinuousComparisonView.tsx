@@ -91,6 +91,7 @@ function ComparisonApp() {
         />
         <div style={{ position: 'relative' }}>
           <LoadingOverlay
+            spinnerPosition="baseline"
             active={
               comparisonView.left.type === 'reloading' ||
               comparisonView.right.type === 'reloading'
