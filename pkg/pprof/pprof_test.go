@@ -1,11 +1,13 @@
 package pprof
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	"github.com/grafana/fire/pkg/pprof/testhelper"
 )
 
 func TestNormalizeProfile(t *testing.T) {
@@ -78,6 +80,37 @@ func TestNormalizeProfile(t *testing.T) {
 		Comment:           []int64{},
 		DefaultSampleType: 0,
 	})
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+func BenchmarkNormalize(b *testing.B) {
+	profiles := make([]*Profile, b.N)
+	for i := 0; i < b.N; i++ {
+		builder := testhelper.NewProfileBuilder(0).CPUProfile()
+		// 10% of samples should be dropped.
+		for i := 0; i < 1000; i++ {
+			builder.ForStacktrace(RandStringBytes(3), RandStringBytes(3)).AddSamples(0)
+		}
+		for i := 0; i < 10000; i++ {
+			builder.ForStacktrace(RandStringBytes(3), RandStringBytes(3)).AddSamples(1)
+		}
+		profiles[i] = &Profile{Profile: builder.Profile}
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		profiles[i].Normalize()
+	}
 }
 
 func TestRemoveDuplicateSampleStacktraces(t *testing.T) {
