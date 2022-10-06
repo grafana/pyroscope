@@ -127,6 +127,7 @@ func newFakeClientStreamingConn() fakeClientStreamingConn {
 	}
 }
 
+func (fakeClientStreamingConn) Peer() connect.Peer           { return connect.Peer{} }
 func (fakeClientStreamingConn) Spec() connect.Spec           { return connect.Spec{} }
 func (fakeClientStreamingConn) Send(any) error               { return nil }
 func (f fakeClientStreamingConn) RequestHeader() http.Header { return f.requestHeaders }
