@@ -24,6 +24,13 @@ import (
 	"github.com/weaveworks/common/logging"
 )
 
+const (
+	typeURL           = "url"
+	typeString        = "string"
+	typeDuration      = "duration"
+	typeRelabelConfig = "relabel_config..."
+)
+
 var (
 	yamlFieldNameParser   = regexp.MustCompile("^[^,]+")
 	yamlFieldInlineParser = regexp.MustCompile("^[^,]*,inline$")
@@ -174,10 +181,7 @@ func config(block *ConfigBlock, cfg interface{}, flags map[uintptr]*flag.Flag, r
 		}
 
 		// Handle custom fields in vendored libs upon which we have no control.
-		fieldEntry, err := getCustomFieldEntry(cfg, field, fieldValue, flags)
-		if err != nil {
-			return nil, err
-		}
+		fieldEntry := getCustomFieldEntry(cfg, field, fieldValue, flags)
 		if fieldEntry != nil {
 			block.Add(fieldEntry)
 			continue
@@ -260,7 +264,7 @@ func config(block *ConfigBlock, cfg interface{}, flags map[uintptr]*flag.Flag, r
 				}
 				kind = KindSlice
 
-				_, err = config(element, reflect.New(field.Type.Elem()).Interface(), flags, rootBlocks)
+				_, err := config(element, reflect.New(field.Type.Elem()).Interface(), flags, rootBlocks)
 				if err != nil {
 					return nil, errors.Wrapf(err, "couldn't inspect slice, element_type=%s", field.Type.Elem())
 				}
@@ -272,10 +276,7 @@ func config(block *ConfigBlock, cfg interface{}, flags map[uintptr]*flag.Flag, r
 			return nil, errors.Wrapf(err, "config=%s.%s", t.PkgPath(), t.Name())
 		}
 
-		fieldFlag, err := getFieldFlag(field, fieldValue, flags)
-		if err != nil {
-			return nil, errors.Wrapf(err, "config=%s.%s", t.PkgPath(), t.Name())
-		}
+		fieldFlag := getFieldFlag(field, fieldValue, flags)
 		if fieldFlag == nil {
 			block.Add(&ConfigEntry{
 				Kind:         kind,
@@ -333,15 +334,15 @@ func getFieldCustomType(t reflect.Type) (string, bool) {
 	// Handle custom data types used in the config
 	switch t.String() {
 	case reflect.TypeOf(&url.URL{}).String():
-		return "url", true
+		return typeURL, true
 	case reflect.TypeOf(time.Duration(0)).String():
-		return "duration", true
+		return typeDuration, true
 	case reflect.TypeOf(flagext.StringSliceCSV{}).String():
-		return "string", true
+		return typeString, true
 	case reflect.TypeOf(flagext.CIDRSliceCSV{}).String():
-		return "string", true
+		return typeString, true
 	case reflect.TypeOf([]*relabel.Config{}).String():
-		return "relabel_config...", true
+		return typeRelabelConfig, true
 	default:
 		return "", false
 	}
@@ -384,7 +385,7 @@ func getFieldType(t reflect.Type) (string, error) {
 		return "float", nil
 
 	case reflect.String:
-		return "string", nil
+		return typeString, nil
 
 	case reflect.Slice:
 		// Get the type of elements
@@ -411,15 +412,15 @@ func getCustomFieldType(t reflect.Type) (string, bool) {
 	// Handle custom data types used in the config
 	switch t.String() {
 	case reflect.TypeOf(&url.URL{}).String():
-		return "url", true
+		return typeURL, true
 	case reflect.TypeOf(time.Duration(0)).String():
-		return "duration", true
+		return typeDuration, true
 	case reflect.TypeOf(flagext.StringSliceCSV{}).String():
-		return "string", true
+		return typeString, true
 	case reflect.TypeOf(flagext.CIDRSliceCSV{}).String():
-		return "string", true
+		return typeString, true
 	case reflect.TypeOf([]*relabel.Config{}).String():
-		return "relabel_config...", true
+		return typeRelabelConfig, true
 	default:
 		return "", false
 	}
@@ -427,11 +428,11 @@ func getCustomFieldType(t reflect.Type) (string, bool) {
 
 func ReflectType(typ string) reflect.Type {
 	switch typ {
-	case "string":
+	case typeString:
 		return reflect.TypeOf("")
-	case "url":
+	case typeURL:
 		return reflect.TypeOf(flagext.URLValue{})
-	case "duration":
+	case typeDuration:
 		return reflect.TypeOf(time.Duration(0))
 	case "time":
 		return reflect.TypeOf(&flagext.Time{})
@@ -447,7 +448,7 @@ func ReflectType(typ string) reflect.Type {
 		fallthrough
 	case "map of tracker name (string) to matcher (string)":
 		return reflect.TypeOf(map[string]string{})
-	case "relabel_config...":
+	case typeRelabelConfig:
 		return reflect.TypeOf([]*relabel.Config{})
 	case "map of string to float64":
 		return reflect.TypeOf(map[string]float64{})
@@ -456,17 +457,17 @@ func ReflectType(typ string) reflect.Type {
 	}
 }
 
-func getFieldFlag(field reflect.StructField, fieldValue reflect.Value, flags map[uintptr]*flag.Flag) (*flag.Flag, error) {
+func getFieldFlag(field reflect.StructField, fieldValue reflect.Value, flags map[uintptr]*flag.Flag) *flag.Flag {
 	if isAbsentInCLI(field) {
-		return nil, nil
+		return nil
 	}
 	fieldPtr := fieldValue.Addr().Pointer()
 	fieldFlag, ok := flags[fieldPtr]
 	if !ok {
-		return nil, nil
+		return nil
 	}
 
-	return fieldFlag, nil
+	return fieldFlag
 }
 
 func getFieldExample(fieldKey string, fieldType reflect.Type) *FieldExample {
@@ -481,11 +482,11 @@ func getFieldExample(fieldKey string, fieldType reflect.Type) *FieldExample {
 	}
 }
 
-func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue reflect.Value, flags map[uintptr]*flag.Flag) (*ConfigEntry, error) {
+func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue reflect.Value, flags map[uintptr]*flag.Flag) *ConfigEntry {
 	if field.Type == reflect.TypeOf(logging.Level{}) || field.Type == reflect.TypeOf(logging.Format{}) {
-		fieldFlag, err := getFieldFlag(field, fieldValue, flags)
-		if err != nil || fieldFlag == nil {
-			return nil, err
+		fieldFlag := getFieldFlag(field, fieldValue, flags)
+		if fieldFlag == nil {
+			return nil
 		}
 
 		return &ConfigEntry{
@@ -494,14 +495,14 @@ func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue 
 			Required:     isFieldRequired(field),
 			FieldFlag:    fieldFlag.Name,
 			FieldDesc:    getFieldDescription(cfg, field, fieldFlag.Usage),
-			FieldType:    "string",
+			FieldType:    typeString,
 			FieldDefault: getFieldDefault(field, fieldFlag.DefValue),
-		}, nil
+		}
 	}
 	if field.Type == reflect.TypeOf(flagext.URLValue{}) {
-		fieldFlag, err := getFieldFlag(field, fieldValue, flags)
-		if err != nil || fieldFlag == nil {
-			return nil, err
+		fieldFlag := getFieldFlag(field, fieldValue, flags)
+		if fieldFlag == nil {
+			return nil
 		}
 
 		return &ConfigEntry{
@@ -510,14 +511,14 @@ func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue 
 			Required:     isFieldRequired(field),
 			FieldFlag:    fieldFlag.Name,
 			FieldDesc:    getFieldDescription(cfg, field, fieldFlag.Usage),
-			FieldType:    "url",
+			FieldType:    typeURL,
 			FieldDefault: getFieldDefault(field, fieldFlag.DefValue),
-		}, nil
+		}
 	}
 	if field.Type == reflect.TypeOf(flagext.Secret{}) {
-		fieldFlag, err := getFieldFlag(field, fieldValue, flags)
-		if err != nil || fieldFlag == nil {
-			return nil, err
+		fieldFlag := getFieldFlag(field, fieldValue, flags)
+		if fieldFlag == nil {
+			return nil
 		}
 
 		return &ConfigEntry{
@@ -528,12 +529,12 @@ func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue 
 			FieldDesc:    getFieldDescription(cfg, field, fieldFlag.Usage),
 			FieldType:    "string",
 			FieldDefault: getFieldDefault(field, fieldFlag.DefValue),
-		}, nil
+		}
 	}
 	if field.Type == reflect.TypeOf(model.Duration(0)) {
-		fieldFlag, err := getFieldFlag(field, fieldValue, flags)
-		if err != nil || fieldFlag == nil {
-			return nil, err
+		fieldFlag := getFieldFlag(field, fieldValue, flags)
+		if fieldFlag == nil {
+			return nil
 		}
 
 		return &ConfigEntry{
@@ -544,12 +545,12 @@ func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue 
 			FieldDesc:    getFieldDescription(cfg, field, fieldFlag.Usage),
 			FieldType:    "duration",
 			FieldDefault: getFieldDefault(field, fieldFlag.DefValue),
-		}, nil
+		}
 	}
 	if field.Type == reflect.TypeOf(flagext.Time{}) {
-		fieldFlag, err := getFieldFlag(field, fieldValue, flags)
-		if err != nil || fieldFlag == nil {
-			return nil, err
+		fieldFlag := getFieldFlag(field, fieldValue, flags)
+		if fieldFlag == nil {
+			return nil
 		}
 
 		return &ConfigEntry{
@@ -560,10 +561,10 @@ func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue 
 			FieldDesc:    getFieldDescription(cfg, field, fieldFlag.Usage),
 			FieldType:    "time",
 			FieldDefault: getFieldDefault(field, fieldFlag.DefValue),
-		}, nil
+		}
 	}
 
-	return nil, nil
+	return nil
 }
 
 func getFieldDefault(field reflect.StructField, fallback string) string {

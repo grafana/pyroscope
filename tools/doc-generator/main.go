@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/fire/pkg/fire"
 	"github.com/grafana/fire/tools/doc-generator/parse"
 )
