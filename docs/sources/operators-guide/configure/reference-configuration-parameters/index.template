@@ -1,17 +1,17 @@
 ---
 aliases:
-  - /docs/mimir/latest/operators-guide/configuring/reference-configuration-parameters/
-description: Describes parameters used to configure Grafana Mimir.
+  - /docs/fire/latest/operators-guide/configuring/reference-configuration-parameters/
+description: Describes parameters used to configure Grafana Fire.
 menuTitle: Configuration parameters
-title: Grafana Mimir configuration parameters
-weight: 130
+title: Grafana Fire configuration parameters
+weight: 70
 ---
 
-# Grafana Mimir configuration parameters
+# Grafana Fire configuration parameters
 
 {{ .GeneratedFileWarning }}
 
-You can configure Grafana Mimir by using a YAML file or via command-line flags
+You can configure Grafana Fire by using a YAML file or via command-line flags
 that represent configuration parameters.
 To specify the YAML file, use the `-config.file` command-line option.
 If you specify both the command-line flags and YAML configuration parameters, 
@@ -39,42 +39,6 @@ brackets indicate that a parameter is optional.
     - `2006-01-20` (midnight, local timezone)
     - `2006-01-20T15:04` (local timezone) 
     - RFC 3339 formats: `2006-01-20T15:04:05Z` (UTC) or `2006-01-20T15:04:05+07:00` (explicit timezone)
-
-## Parameter categories
-
-In order to simplify Mimir configuration, we categorize parameters by
-maturity level and intended use:
-
-- **Basic** parameters are ones that we expect the majority of users to modify.
-Examples of basic parameters are object store credentials and
-other dependency connection information.
-These parameters will generally remain stable for long periods of time,
-and they focus on user goals.
-In this reference, any parameters that are not marked as `(advanced)` or
-`(experimental)` are in the basic category.
-
-- **Advanced** parameters are ones that few users will change
-from their default values. 
-There are strong use cases for altered values.
-In this reference, advanced-category parameters include `(advanced)` at
-the beginning of their description.
-
-- **Experimental** parameters are for new and experimental features.
-These parameters permit
-early adopters and Mimir developers to gain confidence with new
-features.
-In this reference, experimental-category parameters include `(experimental)` at
-the beginning of their description.
-
-### Parameter lifecycle
-
-When new parameters are added, they can be introduced as **basic**, **advanced**, or **experimental**.
-
-**Experimental** parameters will remain experimental until they are either made stable or removed. Parameters that are made stable will be classified as either **basic** or **advanced**. We aim to make this decision on an experimental parameter within 6 months of its initial release, but this decision may take longer depending on what we discover during testing, or if upstream dependencies (e.g., Prometheus) of our code changes.
-
-If we decide to eliminate a **basic** or **advanced** parameter, we will first mark it deprecated. After two more minor releases, a deprecated flag will be removed entirely. Use the metric `deprecated_flags_inuse_total` to determine whether you're using deprecated flags.
-
-![Parameter states](param-states.png)
 
 ## Use environment variables in the configuration
 
