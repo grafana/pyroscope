@@ -3,14 +3,14 @@ module github.com/grafana/fire
 go 1.18
 
 require (
-	github.com/bufbuild/connect-go v0.4.1-0.20220914044445-cce7065d23ae
+	github.com/bufbuild/connect-go v1.0.0
 	github.com/bufbuild/connect-grpchealth-go v0.1.0
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/drone/envsubst v1.0.3
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/status v1.1.0
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/dskit v0.0.0-20220708154635-9c29dc5195e4

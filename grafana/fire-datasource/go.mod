@@ -3,7 +3,7 @@ module github.com/grafana/fire/grafana/fire-datasource
 go 1.18
 
 require (
-	github.com/bufbuild/connect-go v0.4.1-0.20220914044445-cce7065d23ae
+	github.com/bufbuild/connect-go v1.0.0
 	github.com/grafana/fire v0.0.0-00010101000000-000000000000
 	github.com/grafana/grafana-plugin-sdk-go v0.139.0
 	github.com/stretchr/testify v1.8.0
@@ -30,7 +30,7 @@ require (
 	github.com/gogo/status v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/flatbuffers v2.0.5+incompatible // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/grafana/regexp v0.0.0-20220304095617-2e8d9baf4ac2 // indirect
