@@ -1,0 +1,14 @@
+.loadingOverlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  backdrop-filter: blur(2px);
+  justify-content: center;
+
+  /* ignore all pointer events */
+  pointerevents: all;
+  zindex: 99;
+}
