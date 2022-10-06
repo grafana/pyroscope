@@ -7,7 +7,9 @@ observability signal that allows you to understand your workload's resources (CP
 
 Grafana Fire is fully integrated with Grafana allowing you to **correlate** with other observability signals, like metrics, logs, and traces.
 
-![Grafana Explore](grafana-profiles.gif)
+<video preload="none" autoplay loop muted playsinline poster="LINK.jpg" width="100%" height="100%">
+    <source src="fire-ui.webm" type="video/webm">
+</video>
 
 [If you want to understand what profiling data looks like, try the profiling experience in play.grafana.com]()
 
@@ -19,7 +21,7 @@ Core features of Grafana Fire include:
   running with just one binary and no additional dependencies. On Kubernetes a single helm chart
   allows to deploy in different mode.
 - **Horizontal scalability:**  You can run Grafana Fire
-   across multiple machines, which makes it effortless for you to scale the database to handle the profiling volumes your workload generates. 
+   across multiple machines, which makes it effortless for you to scale the database to handle the profiling volumes your workload generates.
 - **High availability:** Grafana Fire replicates incoming profiles, ensuring that
   no data is lost in the event of machine failure. This means you can rollout without
   interrupting profiles ingestion and analysis.
