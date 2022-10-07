@@ -33,6 +33,17 @@ export type CtxType = {
   fillRect: (arg0: number, arg1: number, arg2: number, arg3: number) => void;
   strokeRect: (arg0: number, arg1: number, arg2: number, arg3: number) => void;
   restore: () => void;
+  beginPath: () => void;
+  moveTo: (x: number, y: number) => void;
+  lineTo: (x: number, y: number) => void;
+  stroke: () => void;
+  drawImage: (
+    img: HTMLImageElement,
+    x: number,
+    y: number,
+    width?: number,
+    height?: number
+  ) => void;
 };
 
 export type EventHolderType = {

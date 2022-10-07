@@ -8,7 +8,7 @@ import './Selection.plugin';
 import 'react-flot/flot/jquery.flot.crosshair.min';
 import './TimelineChartPlugin';
 import './Tooltip.plugin';
-import './ContextMenu.plugin';
+import './Annotations.plugin';
 
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;

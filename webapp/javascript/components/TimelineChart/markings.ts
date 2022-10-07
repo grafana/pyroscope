@@ -3,7 +3,6 @@ import Color from 'color';
 
 // Same green as button
 export const ANNOTATION_COLOR = Color('#2ecc40');
-export const ANNOTATION_WIDTH = '2px';
 
 type FlotMarkings = {
   xaxis: {
@@ -16,27 +15,6 @@ type FlotMarkings = {
   };
   color: Color;
 }[];
-
-/**
- * generate markings in flotjs format
- */
-export function markingsFromAnnotations(
-  annotations?: { timestamp: number }[]
-): FlotMarkings {
-  if (!annotations?.length) {
-    return [];
-  }
-
-  return annotations.map((a) => ({
-    xaxis: {
-      // TODO(eh-am): look this up
-      from: a.timestamp * 1000,
-      to: a.timestamp * 1000,
-    },
-    lineWidth: ANNOTATION_WIDTH,
-    color: ANNOTATION_COLOR,
-  }));
-}
 
 // Unify these types
 interface Selection {

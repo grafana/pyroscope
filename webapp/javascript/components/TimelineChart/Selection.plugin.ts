@@ -2,12 +2,14 @@
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
 import { PlotType, CtxType, EventHolderType, EventType } from './types';
 import clamp from './clamp';
+import extractRange from './extractRange';
 
 const handleWidth = 4;
 const handleHeight = 22;
 
 (function ($) {
   function init(plot: PlotType) {
+    const placeholder = plot.getPlaceholder();
     var selection = {
       first: { x: -1, y: -1 },
       second: { x: -1, y: -1 },
@@ -15,6 +17,7 @@ const handleHeight = 22;
       active: false,
       selectingSide: null,
     };
+    var hoveringOnAnnotation = false;
 
     // FIXME: The drag handling implemented here should be
     // abstracted out, there's some similar code from a library in
@@ -36,7 +39,7 @@ const handleHeight = 22;
 
     function getCursorPositionX(e: EventType) {
       const plotOffset = plot.getPlotOffset();
-      const offset = plot.getPlaceholder().offset();
+      const offset = placeholder.offset();
       return clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
     }
 
@@ -46,7 +49,7 @@ const handleHeight = 22;
       const o = plot.getOptions();
       const axes = plot.getAxes();
       const plotOffset = plot.getPlotOffset();
-      const extractedX = extractRange(axes, 'x');
+      const extractedX = extractRange(plot, axes, 'x');
 
       return {
         left:
@@ -95,7 +98,7 @@ const handleHeight = 22;
         if (dragSide) {
           setCursor('grab');
         } else {
-          setCursor('crosshair');
+          setCursor(hoveringOnAnnotation ? 'pointer' : 'crosshair');
         }
       }
 
@@ -108,7 +111,7 @@ const handleHeight = 22;
           setCursor('crosshair');
         }
 
-        plot.getPlaceholder().trigger('plotselecting', [getSelection()]);
+        placeholder.trigger('plotselecting', [getSelection()]);
       }
     }
 
@@ -137,7 +140,7 @@ const handleHeight = 22;
         };
       }
 
-      const offset = plot.getPlaceholder().offset();
+      const offset = placeholder.offset();
       const plotOffset = plot.getPlotOffset();
       const { left, right } = getPlotSelection();
       const clickX = getCursorPositionX(e);
@@ -190,8 +193,8 @@ const handleHeight = 22;
       if (selectionIsSane()) triggerSelectedEvent();
       else {
         // this counts as a clear
-        plot.getPlaceholder().trigger('plotunselected', []);
-        plot.getPlaceholder().trigger('plotselecting', [null]);
+        placeholder.trigger('plotunselected', []);
+        placeholder.trigger('plotselecting', [null]);
       }
 
       setCursor('crosshair');
@@ -220,11 +223,11 @@ const handleHeight = 22;
     function triggerSelectedEvent() {
       var r: any = getSelection();
 
-      plot.getPlaceholder().trigger('plotselected', [r]);
+      placeholder.trigger('plotselected', [r]);
 
       // backwards-compat stuff, to be removed in future
       if (r.xaxis && r.yaxis)
-        plot.getPlaceholder().trigger('selected', [
+        placeholder.trigger('selected', [
           {
             x1: r.xaxis.from,
             y1: r.yaxis.from,
@@ -236,7 +239,7 @@ const handleHeight = 22;
 
     function setSelectionPos(pos: { x: number; y: number }, e: EventType) {
       var o = plot.getOptions();
-      var offset = plot.getPlaceholder().offset();
+      var offset = placeholder.offset();
       var plotOffset = plot.getPlotOffset();
       pos.x = clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
       pos.y = clamp(0, plot.height(), e.pageY - offset.top - plotOffset.top);
@@ -262,46 +265,8 @@ const handleHeight = 22;
       if (selection.show) {
         selection.show = false;
         plot.triggerRedrawOverlay();
-        if (!preventEvent) plot.getPlaceholder().trigger('plotunselected', []);
+        if (!preventEvent) placeholder.trigger('plotunselected', []);
       }
-    }
-
-    // function taken from markings support in Flot
-    function extractRange(ranges: { [x: string]: any }, coord: string) {
-      var axis,
-        from,
-        to,
-        key,
-        axes = plot.getAxes();
-
-      for (var k in axes) {
-        axis = axes[k];
-        if (axis.direction == coord) {
-          key = coord + axis.n + 'axis';
-          if (!ranges[key] && axis.n == 1) key = coord + 'axis'; // support x1axis as xaxis
-          if (ranges[key]) {
-            from = ranges[key].from;
-            to = ranges[key].to;
-            break;
-          }
-        }
-      }
-
-      // backwards-compat stuff - to be removed in future
-      if (!ranges[key as string]) {
-        axis = coord == 'x' ? plot.getXAxes()[0] : plot.getYAxes()[0];
-        from = ranges[coord + '1'];
-        to = ranges[coord + '2'];
-      }
-
-      // auto-reverse as an added bonus
-      if (from != null && to != null && from > to) {
-        var tmp = from;
-        from = to;
-        to = tmp;
-      }
-
-      return { from: from, to: to, axis: axis };
     }
 
     function setSelection(ranges: any, preventEvent: any) {
@@ -313,7 +278,7 @@ const handleHeight = 22;
         selection.first.x = 0;
         selection.second.x = plot.width();
       } else {
-        range = extractRange(ranges, 'x');
+        range = extractRange(plot, ranges, 'x');
 
         selection.first.x = range.axis.p2c(range.from);
         selection.second.x = range.axis.p2c(range.to);
@@ -323,7 +288,7 @@ const handleHeight = 22;
         selection.first.y = 0;
         selection.second.y = plot.height();
       } else {
-        range = extractRange(ranges, 'y');
+        range = extractRange(plot, ranges, 'y');
 
         selection.first.y = range.axis.p2c(range.from);
         selection.second.y = range.axis.p2c(range.to);
@@ -346,6 +311,18 @@ const handleHeight = 22;
     plot.setSelection = setSelection;
     plot.getSelection = getSelection;
 
+    function onHoveringOnAnnotation(
+      _: EventType,
+      value?: { hovering: boolean }
+    ) {
+      // during further complication this logic should be moved to separated plugin
+      // which only handles cursor state over Flot
+      // because cursor setters conflict between each other
+      if (value) {
+        hoveringOnAnnotation = value?.hovering;
+      }
+    }
+
     plot.hooks.bindEvents.push(function (
       plot: PlotType,
       eventHolder: EventHolderType
@@ -354,6 +331,7 @@ const handleHeight = 22;
       if (o.selection.mode != null) {
         eventHolder.mousemove(onMouseMove);
         eventHolder.mousedown(onMouseDown);
+        placeholder.bind('hoveringOnAnnotation', onHoveringOnAnnotation);
       }
     });
 
@@ -428,7 +406,7 @@ const handleHeight = 22;
       ) {
         const axes = plot.getAxes();
         const plotOffset = plot.getPlotOffset();
-        const extractedY = extractRange(axes, 'y');
+        const extractedY = extractRange(plot, axes, 'y');
         const { left, right } = getPlotSelection();
 
         const yMax =
@@ -465,6 +443,7 @@ const handleHeight = 22;
     ) {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mousedown', onMouseDown);
+      placeholder.unbind('hoveringOnAnnotation', onHoveringOnAnnotation);
 
       if (mouseUpHandler)
         ($ as any)(document).unbind('mouseup', mouseUpHandler);
