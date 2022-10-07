@@ -27,9 +27,9 @@ To configure Grafana Fire to send traces, perform the following steps:
 1. Set the `JAEGER_AGENT_HOST` environment variable in all components to point
    to the Jaeger agent.
 1. Enable sampling in the appropriate components:
-   - The ingester and ruler self-initiate traces and should have sampling
+   - The ingester self-initiate traces and should have sampling
      explicitly enabled.
-   - Sampling for the distributor and query-frontend can be enabled in Grafana Fire
+   - Sampling for the distributor and querier can be enabled in Grafana Fire
      or in an upstream service, like a proxy or gateway running in front of Grafana Fire.
 
 To enable sampling in Grafana Fire components you can specify either
