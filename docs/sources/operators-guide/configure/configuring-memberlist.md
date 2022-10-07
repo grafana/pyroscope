@@ -11,18 +11,13 @@ weight: 50
 
 [Hash rings]({{< relref "../architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Grafana Fire for sharding and replication.
 
-Each of the following Grafana Fire components builds an independent hash ring.
-The CLI flags used to configure the hash ring of each component have the following prefixes:
+Grafana Fire only support hash ring via memberlist protocol.
 
-- Ingesters: `-ingester.ring.*`
-- Distributors: `-distributor.ring.*`
-
-The rest of the documentation refers to these prefixes as `<prefix>`.
-You can configure each parameter either via the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md" >}}).
+You can configure memberlist either via the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 ### Memberlist
 
-By default, Grafana Fire uses `memberlist` as the KV store backend.
+Grafana Fire uses `memberlist` as the KV store backend.
 
 At startup, a Grafana Fire instance connects to other Fire replicas to join the cluster.
 A Grafana Fire instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
@@ -32,7 +27,7 @@ The `-memberlist.join` can be set to:
 
 - An address in the `<ip>:<port>` format.
 - An address in the `<hostname>:<port>` format.
-- An address in the [DNS service discovery]({{< relref "about-dns-service-discovery.md" >}}) format.
+- An address in the [DNS service discovery](#supported-discovery-modes) format.
 
 The default port is `7946`.
 
@@ -40,10 +35,7 @@ The default port is `7946`.
 
 > **Note**: If you're running Grafana Fire in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Grafana Fire pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
 
-> **Note**: The `memberlist` backend is configured globally and can't be customized on a per-component basis. Because `memberlist` is configured globally, the `memberlist` backend differs from other supported backends, such as Consul or etcd.
-
 Grafana Fire supports TLS for memberlist connections between its components.
-For more information about TLS configuration, refer to [secure communications with TLS]({{< relref "../secure/securing-communications-with-tls.md" >}}).
 
 To see all supported configuration parameters, refer to [memberlist]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
@@ -64,7 +56,7 @@ This metric tracks the oldest heartbeat timestamp across all instances in the ri
 You can execute the following query to measure the age of the oldest heartbeat timestamp in the ring:
 
 ```promql
-max(time() - cortex_ring_oldest_member_timestamp{state="ACTIVE"})
+max(time() - fire_ring_oldest_member_timestamp{state="ACTIVE"})
 ```
 
 The measured age shouldn't be higher than the configured `<prefix>.heartbeat-period` plus a reasonable delta (for example, 15 seconds).
@@ -79,15 +71,8 @@ If you experience a higher changes propagation latency, you can adjust the follo
 
 Some clients in Grafana Fire support service discovery via DNS to locate the addresses of backend servers to connect to. The following clients support service discovery via DNS:
 
-- [Memcached server addresses]({{< relref "reference-configuration-parameters/index.md#memcached" >}})
-  - `-blocks-storage.bucket-store.chunks-cache.memcached.addresses`
-  - `-blocks-storage.bucket-store.index-cache.memcached.addresses`
-  - `-blocks-storage.bucket-store.metadata-cache.memcached.addresses`
-  - `-query-frontend.results-cache.memcached.addresses`
 - [Memberlist KV store]({{< relref "reference-configuration-parameters/index.md#memberlist" >}})
   - `-memberlist.join`
-- [Alertmanager URL configured in the ruler]({{< relref "reference-configuration-parameters/index.md#ruler" >}})
-  - `-ruler.alertmanager-url`
 
 ## Supported discovery modes
 
