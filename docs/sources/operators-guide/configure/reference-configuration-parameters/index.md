@@ -14,14 +14,14 @@ weight: 70
 You can configure Grafana Fire by using a YAML file or via command-line flags
 that represent configuration parameters.
 To specify the YAML file, use the `-config.file` command-line option.
-If you specify both the command-line flags and YAML configuration parameters, 
+If you specify both the command-line flags and YAML configuration parameters,
 the command-line flags take precedence over values in a YAML file.
 
 To see the current configuration of any component,
 go to the `/config` HTTP API endpoint.
 Passwords are filtered out of this endpoint.
 
-Parameters are 
+Parameters are
 written in [YAML format](https://en.wikipedia.org/wiki/YAML), and
 brackets indicate that a parameter is optional.
 
@@ -37,7 +37,7 @@ brackets indicate that a parameter is optional.
 - `<relabel_config>`: a [Prometheus relabeling configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
 - `<time>`: a timestamp, with available formats:
     - `2006-01-20` (midnight, local timezone)
-    - `2006-01-20T15:04` (local timezone) 
+    - `2006-01-20T15:04` (local timezone)
     - RFC 3339 formats: `2006-01-20T15:04:05Z` (UTC) or `2006-01-20T15:04:05+07:00` (explicit timezone)
 
 ## Use environment variables in the configuration
@@ -178,9 +178,10 @@ tracing:
 storage:
   [bucketConfig: <string> | default = ""]
 
-# Set to false to disable auth.
-# CLI flag: -auth.enabled
-[auth_enabled: <boolean> | default = true]
+# When set to true, incoming HTTP requests must specify tenant ID in HTTP
+# X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
+# CLI flag: -auth.multitenancy-enabled
+[multitenancy_enabled: <boolean> | default = false]
 
 # yaml file to load
 # CLI flag: -config.file
@@ -793,4 +794,108 @@ The `memberlist` block configures the Gossip memberlist.
 # Skip validating server certificate.
 # CLI flag: -memberlist.tls-insecure-skip-verify
 [tls_insecure_skip_verify: <boolean> | default = false]
+```
+
+### Scrape configs
+
+The root block `scrape_configs` configure the list of scrape config used by the Agent to scrape and push profiles.
+
+The `scrape_config` block configures a single Agent scrape config.
+
+```yaml
+# The job name assigned to scraped profiles by default.
+[job_name: <string> | default = ""]
+
+# Optional HTTP URL parameters.
+params:
+  [ <string>: [<string>, ...] ]
+
+# How frequently to scrape targets from this job.
+[scrape_interval:  <duration> | default = 10s]
+
+# Per-scrape timeout when scraping this job.
+[scrape_timeout:  <duration> | default = 0s]
+
+# Configures the protocol scheme used for requests.
+[scheme: <string> | default = "http"]
+
+# Configures profile types and their path to scrape for this job.
+profiling_config:
+  pprof_config:
+     [ <string>: [<pprof_config>]
+  [path_prefix: <string> | default = ""]
+
+# List of target relabel configurations.
+relabel_configs:
+  [ - <relabel_config> ... ]
+
+# List of labeled statically configured targets for this job.
+static_configs:
+  [ - <static_config> ... ]
+
+# List of Kubernetes service discovery configurations.
+kubernetes_sd_configs:
+   [ - <kubernetes_sd_config> ... ]
+
+# Sets the `Authorization` header on every scrape request with the
+# configured username and password.
+# password and password_file are mutually exclusive.
+basic_auth:
+  [ username: <string> ]
+  [ password: <secret> ]
+  [ password_file: <string> ]
+
+# Sets the `Authorization` header on every scrape request with
+# the configured credentials.
+authorization:
+  # Sets the authentication type of the request.
+  [ type: <string> | default: Bearer ]
+  # Sets the credentials of the request. It is mutually exclusive with
+  # `credentials_file`.
+  [ credentials: <secret> ]
+  # Sets the credentials of the request with the credentials read from the
+  # configured file. It is mutually exclusive with `credentials`.
+  [ credentials_file: <filename> ]
+
+# Optional OAuth 2.0 configuration.
+# Cannot be used at the same time as basic_auth or authorization.
+oauth2:
+  [ <oauth2> ]
+
+# Configure whether scrape requests follow HTTP 3xx redirects.
+[ follow_redirects: <boolean> | default = true ]
+
+# Whether to enable HTTP2.
+[ enable_http2: <bool> | default: true ]
+
+# Configures the scrape request's TLS settings.
+tls_config:
+  [ <tls_config> ]
+
+# Optional proxy URL.
+[ proxy_url: <string> ]
+```
+
+You can refer to the Prometheus documentation the following block:
+
+- [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
+- [static_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)
+- [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)
+
+#### pprof_config
+
+The block `pprof_config` configure a single pprof scraping configuration.
+
+```yaml
+# Whether to enable this profile type scraping.
+[enabled: <bool | default: none>]
+
+# Configures the path to scrape this profile type.
+[path: <string | default: none>]
+
+# Whether this profile type is a delta.
+# A delta profile type means the profile data contains data only for the scraping period.
+# A seconds URL parameters will be added to all delta profile type scraping to notify the endpoint
+# the period of scraping.
+[delta:  <bool | default: false>]
 ```
