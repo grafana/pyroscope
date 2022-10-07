@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	"github.com/grafana/fire/pkg/firedb"
 	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
@@ -53,6 +54,8 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	dbPath := t.TempDir()
 	logger := log.NewJSONLogger(os.Stdout)
 	reg := prometheus.NewRegistry()
+	ctx := firecontext.WithLogger(context.Background(), logger)
+	ctx = firecontext.WithRegistry(ctx, reg)
 
 	fs, err := client.NewBucket(logger, []byte(`
 type: FILESYSTEM
@@ -61,10 +64,10 @@ config:
 prefix: ""`), reg, "storage")
 	require.NoError(t, err)
 
-	ing, err := New(defaultIngesterTestConfig(t), firedb.Config{
+	ing, err := New(ctx, defaultIngesterTestConfig(t), firedb.Config{
 		DataPath:         dbPath,
 		MaxBlockDuration: 30 * time.Hour,
-	}, logger, reg, fs)
+	}, fs)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
 

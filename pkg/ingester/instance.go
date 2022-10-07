@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	"github.com/grafana/fire/pkg/firedb"
 	"github.com/grafana/fire/pkg/firedb/block"
 	"github.com/grafana/fire/pkg/firedb/shipper"
@@ -27,26 +28,27 @@ type instance struct {
 	wg     sync.WaitGroup
 }
 
-func newInstance(cfg firedb.Config, instanceID string, logger log.Logger, storageBucket fireobjstore.Bucket, reg prometheus.Registerer) (*instance, error) {
-	cfg.DataPath = path.Join(cfg.DataPath, instanceID)
-	reg = prometheus.WrapRegistererWith(prometheus.Labels{"tenant": instanceID}, reg)
-	db, err := firedb.New(cfg, logger, reg)
+func newInstance(firectx context.Context, cfg firedb.Config, tenantID string, storageBucket fireobjstore.Bucket) (*instance, error) {
+	cfg.DataPath = path.Join(cfg.DataPath, tenantID)
+
+	firectx = firecontext.WrapTenant(firectx, tenantID)
+	db, err := firedb.New(firectx, cfg)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(firectx)
 	inst := &instance{
 		FireDB: db,
-		logger: log.With(logger, "tenant", instanceID),
-		reg:    reg,
+		logger: firecontext.Logger(firectx),
+		reg:    firecontext.Registry(firectx),
 		cancel: cancel,
 	}
 	if storageBucket != nil {
 		inst.shipper = shipper.New(
-			logger,
-			reg,
+			inst.logger,
+			inst.reg,
 			db,
-			fireobjstore.BucketWithPrefix(storageBucket, instanceID+"/firedb"),
+			fireobjstore.BucketWithPrefix(storageBucket, tenantID+"/firedb"),
 			block.IngesterSource,
 			false,
 			false,
@@ -93,7 +95,9 @@ func (i *instance) runShipper(ctx context.Context) {
 	}
 }
 
-func (i *instance) Stop() {
+func (i *instance) Stop() error {
+	err := i.FireDB.Close()
 	i.cancel()
 	i.wg.Wait()
+	return err
 }

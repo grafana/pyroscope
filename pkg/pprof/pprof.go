@@ -122,34 +122,29 @@ func (p *Profile) clearSampleReferences(samples []*profilev1.Sample) {
 		return
 	}
 	// remove all data not used anymore.
-	var removedLocationTotal int
-	for _, s := range samples {
-		removedLocationTotal = len(s.LocationId)
-	}
-	removedLocationIds := make([]uint64, 0, removedLocationTotal)
+	removedLocationIds := map[uint64]struct{}{}
 
 	for _, s := range samples {
-		removedLocationIds = append(removedLocationIds, s.LocationId...)
+		for _, l := range s.LocationId {
+			removedLocationIds[l] = struct{}{}
+		}
 	}
-	removedLocationIds = lo.Uniq(removedLocationIds)
 
 	// figure which removed Locations IDs are not used.
 	for _, s := range p.Sample {
 		for _, l := range s.LocationId {
-			removedLocationIds = slices.RemoveInPlace(removedLocationIds, func(locID uint64, _ int) bool {
-				return l == locID
-			})
+			delete(removedLocationIds, l)
 		}
 	}
 	if len(removedLocationIds) == 0 {
 		return
 	}
-	var removedFunctionIds []uint64
+	removedFunctionIds := map[uint64]struct{}{}
 	// remove the locations that are not used anymore.
 	p.Location = slices.RemoveInPlace(p.Location, func(loc *profilev1.Location, _ int) bool {
-		if lo.Contains(removedLocationIds, loc.Id) {
+		if _, ok := removedLocationIds[loc.Id]; ok {
 			for _, l := range loc.Line {
-				removedFunctionIds = append(removedFunctionIds, l.FunctionId)
+				removedFunctionIds[l.FunctionId] = struct{}{}
 			}
 			return true
 		}
@@ -159,46 +154,44 @@ func (p *Profile) clearSampleReferences(samples []*profilev1.Sample) {
 	if len(removedFunctionIds) == 0 {
 		return
 	}
-	removedFunctionIds = lo.Uniq(removedFunctionIds)
 	// figure which removed Function IDs are not used.
 	for _, l := range p.Location {
 		for _, f := range l.Line {
-			removedFunctionIds = slices.RemoveInPlace(removedFunctionIds, func(fnID uint64, _ int) bool {
-				// that ID is used in another location, remove it.
-				return f.FunctionId == fnID
-			})
+			// 	// that ID is used in another location, remove it.
+			delete(removedFunctionIds, f.FunctionId)
 		}
 	}
-	var removedNames []int64
+	removedNamesMap := map[int64]struct{}{}
 	// remove the functions that are not used anymore.
 	p.Function = slices.RemoveInPlace(p.Function, func(fn *profilev1.Function, _ int) bool {
-		if lo.Contains(removedFunctionIds, fn.Id) {
-			removedNames = append(removedNames, fn.Name, fn.SystemName, fn.Filename)
+		if _, ok := removedFunctionIds[fn.Id]; ok {
+			removedNamesMap[fn.Name] = struct{}{}
+			removedNamesMap[fn.SystemName] = struct{}{}
+			removedNamesMap[fn.Filename] = struct{}{}
 			return true
 		}
 		return false
 	})
 
-	if len(removedNames) == 0 {
+	if len(removedNamesMap) == 0 {
 		return
 	}
-	removedNames = lo.Uniq(removedNames)
 	// remove names that are still used.
 	p.visitAllNameReferences(func(idx *int64) {
-		removedNames = slices.RemoveInPlace(removedNames, func(name int64, _ int) bool {
-			return *idx == name
-		})
+		delete(removedNamesMap, *idx)
 	})
-	if len(removedNames) == 0 {
+	if len(removedNamesMap) == 0 {
 		return
 	}
-	// Sort to remove in order.
-	sort.Slice(removedNames, func(i, j int) bool { return removedNames[i] < removedNames[j] })
+
 	// remove the names that are not used anymore.
 	p.StringTable = lo.Reject(p.StringTable, func(_ string, i int) bool {
-		return lo.Contains(removedNames, int64(i))
+		_, ok := removedNamesMap[int64(i)]
+		return ok
 	})
-
+	removedNames := lo.Keys(removedNamesMap)
+	// Sort to remove in order.
+	sort.Slice(removedNames, func(i, j int) bool { return removedNames[i] < removedNames[j] })
 	// Now shift all indices [0,1,2,3,4,5,6]
 	// if we removed [1,2,5] then we need to shift [3,4] to [1,2] and [6] to [3]
 	// Basically we need to shift all indices that are greater than the removed index by the amount of removed indices.

@@ -2,37 +2,54 @@ import { css } from '@emotion/css';
 import React from 'react';
 import { useToggle } from 'react-use';
 
-import {CoreApp, GrafanaTheme2} from '@grafana/data';
-import { Icon, useStyles2, RadioButtonGroup, Field } from '@grafana/ui';
-import { Query } from '../types';
+import { CoreApp, GrafanaTheme2, SelectableValue } from '@grafana/data';
+import { Icon, useStyles2, RadioButtonGroup, MultiSelect } from '@grafana/ui';
+import { Query, SeriesMessage } from '../types';
 import { Stack } from './Stack';
+import { EditorField } from './EditorField';
 
 export interface Props {
   query: Query;
-  onQueryTypeChange: (val: string) => void;
+  onQueryChange: (query: Query) => void;
   app?: CoreApp;
+  series?: SeriesMessage;
 }
 
-const rangeOptions: Array<{ value: Query['queryType']; label: string; description: string }> = [
+const typeOptions: Array<{ value: Query['queryType']; label: string; description: string }> = [
   { value: 'metrics', label: 'Metric', description: 'Return aggregated metrics' },
   { value: 'profile', label: 'Profile', description: 'Return profile' },
   { value: 'both', label: 'Both', description: 'Return both metric and profile data' },
 ];
 
-function getOptions(app?: CoreApp) {
-if (app === CoreApp.Explore) {
-    return rangeOptions;
+function getTypeOptions(app?: CoreApp) {
+  if (app === CoreApp.Explore) {
+    return typeOptions;
   }
-  return rangeOptions.filter((option) => option.value !== 'both');
+  return typeOptions.filter((option) => option.value !== 'both');
+}
+
+function getGroupByOptions(series?: SeriesMessage) {
+  let options: SelectableValue[] = [];
+  if (series) {
+    const labels = series.flatMap((val) => {
+      return val.labels.map((l) => l.name);
+    });
+    options = Array.from(new Set(labels)).map((l) => ({
+      label: l,
+      value: l,
+    }));
+  }
+  return options;
 }
 
 /**
  * Base on QueryOptionGroup component from grafana/ui but that is not available yet.
  */
-export function QueryOptions({ query, onQueryTypeChange, app }: Props) {
+export function QueryOptions({ query, onQueryChange, app, series }: Props) {
   const [isOpen, toggleOpen] = useToggle(false);
   const styles = useStyles2(getStyles);
-  const options = getOptions(app)
+  const typeOptions = getTypeOptions(app);
+  const groupByOptions = getGroupByOptions(series);
 
   return (
     <Stack gap={0} direction="column">
@@ -43,15 +60,44 @@ export function QueryOptions({ query, onQueryTypeChange, app }: Props) {
         <h6 className={styles.title}>Options</h6>
         {!isOpen && (
           <div className={styles.description}>
-            <span>Type: {query.queryType}</span>
+            {[`Type: ${query.queryType}`, query.groupBy?.length ? `Group by: ${query.groupBy.join(', ')}` : undefined]
+              .filter((v) => v)
+              .map((v, i) => (
+                <span key={i}>{v}</span>
+              ))}
           </div>
         )}
       </div>
       {isOpen && (
         <div className={styles.body}>
-          <Field label={'Query Type'}>
-            <RadioButtonGroup options={options} value={query.queryType} onChange={onQueryTypeChange} />
-          </Field>
+          <EditorField label={'Query Type'}>
+            <RadioButtonGroup
+              options={typeOptions}
+              value={query.queryType}
+              onChange={(value) => onQueryChange({ ...query, queryType: value })}
+            />
+          </EditorField>
+          <EditorField
+            label={'Group by'}
+            tooltip={
+              <>
+                Used to group the metric result by a specific label or set of labels. Does not apply to profile query.
+              </>
+            }
+          >
+            <MultiSelect
+              placeholder="Label"
+              value={query.groupBy}
+              allowCustomValue
+              options={groupByOptions}
+              onChange={(change) => {
+                const changes = change.map((c: SelectableValue<string>) => {
+                  return c.value!;
+                });
+                onQueryChange({ ...query, groupBy: changes });
+              }}
+            />
+          </EditorField>
         </div>
       )}
     </Stack>

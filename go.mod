@@ -3,14 +3,14 @@ module github.com/grafana/fire
 go 1.18
 
 require (
-	github.com/bufbuild/connect-go v0.4.1-0.20220914044445-cce7065d23ae
+	github.com/bufbuild/connect-go v1.0.0
 	github.com/bufbuild/connect-grpchealth-go v0.1.0
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/drone/envsubst v1.0.3
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/status v1.1.0
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/dskit v0.0.0-20220708154635-9c29dc5195e4
@@ -41,6 +41,7 @@ require (
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17
 	golang.org/x/net v0.0.0-20220812174116-3211cb980234
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
+	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6
 	golang.org/x/text v0.3.7
 	google.golang.org/genproto v0.0.0-20220815135757-37a418bb8959
 	google.golang.org/grpc v1.48.0
@@ -232,7 +233,6 @@ require (
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
-	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
 	golang.org/x/tools v0.1.11 // indirect
