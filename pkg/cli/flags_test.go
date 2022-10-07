@@ -366,7 +366,6 @@ var _ = Describe("flags", func() {
 							ApplicationName:    "foo.app",
 							SampleRate:         0,
 							DetectSubprocesses: false,
-							PyspyBlocking:      false,
 							Tags: map[string]string{
 								"foo": "xxx",
 								"baz": "qux",
