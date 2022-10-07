@@ -14,6 +14,8 @@ import (
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pkg/errors"
+	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -27,6 +29,7 @@ import (
 	"github.com/grafana/phlare/pkg/distributor"
 	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
 	"github.com/grafana/phlare/pkg/gen/agent/v1/agentv1connect"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
@@ -36,6 +39,7 @@ import (
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/util/build"
 )
 
 // The various modules that make up Phlare.
@@ -86,9 +90,17 @@ func (f *Phlare) getPusherClient() pushv1connect.PusherServiceClient {
 }
 
 func (f *Phlare) initGRPCGateway() (services.Service, error) {
-	f.grpcGatewayMux = grpcgw.NewServeMux()
-	f.Server.HTTP.NewRoute().PathPrefix("/api").Handler(f.grpcGatewayMux)
-
+	f.grpcGatewayMux = grpcgw.NewServeMux(
+		grpcgw.WithMarshalerOption("application/json+pretty", &grpcgw.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				Indent:    "  ",
+				Multiline: true, // Optional, implied by presence of "Indent".
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
 	return nil, nil
 }
 
@@ -242,7 +254,44 @@ func (f *Phlare) initServer() (services.Service, error) {
 	}
 	f.Server.HTTP.Handle("/api/swagger.json", openapiv2Handler)
 
+	// register grpc-gateway api
+	f.Server.HTTP.NewRoute().PathPrefix("/api").Handler(f.grpcGatewayMux)
+
+	// register status service providing config and buildinfo at grpc gateway
+	if err := commonv1.RegisterStatusServiceHandlerServer(context.Background(), f.grpcGatewayMux, f.statusService()); err != nil {
+		return nil, err
+	}
+
 	return s, nil
+}
+
+type statusService struct {
+	commonv1.UnimplementedStatusServiceServer
+	configYaml string
+}
+
+func (s *statusService) GetBuildInfo(ctx context.Context, req *commonv1.GetBuildInfoRequest) (*commonv1.GetBuildInfoResponse, error) {
+	version := build.GetVersion()
+	return &commonv1.GetBuildInfoResponse{
+		Status: "success",
+		Data: &commonv1.GetBuildInfoData{
+			Version:   version.Version,
+			Revision:  build.Revision,
+			Branch:    version.Branch,
+			GoVersion: version.GoVersion,
+		},
+	}, nil
+}
+
+func (s *statusService) GetConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+	return &httpbody.HttpBody{
+		ContentType: "text/plain",
+		Data:        []byte("Hello World"),
+	}, nil
+}
+
+func (f *Phlare) statusService() commonv1.StatusServiceServer {
+	return &statusService{}
 }
 
 // NewServerService constructs service from Server component.
