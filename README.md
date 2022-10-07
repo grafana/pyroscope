@@ -7,8 +7,9 @@ observability signal that allows you to understand your workload's resources (CP
 
 Grafana Fire is fully integrated with Grafana allowing you to **correlate** with other observability signals, like metrics, logs, and traces.
 
-<img alt="Explore UI" style="border-radius: 1%;display: block;margin-left: auto;  margin-right: auto;  width: 50%;" src=grafana-profiles.gif>
-
+<p align="center">
+<img alt="Explore UI" style="border-radius: 1%;" src=grafana-profiles.gif>
+</p>
 [If you want to understand what profiling data looks like, try the profiling experience in play.grafana.com]()
 
 [//TODO]: <> (link to live demo/play.grafana.com.)
