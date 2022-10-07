@@ -21,73 +21,43 @@ Most components are stateless and do not require any data persisted between proc
 
 ### The write path
 
-[//]: # "Diagram source of write path at https://docs.google.com/presentation/d/1LemaTVqa4Lf_tpql060vVoDGXrthp-Pie_SQL7qwHjc/edit#slide=id.g11658e7e4c6_0_899"
+[//]: # "To edit open with https://mermaid.live/edit#pako{...}"
+<p align="center">
+  <img alt="Architecture of Grafana Fire's write path" width="200px" src="https://mermaid.ink/svg/pako:eNqNUc9PwyAU_lcavGzJtrqi3cbBg9GzB008rDtQeLQoLQ08nMvS_11onHr09vH9gvc4E2ElEEaUsUfRcofZy33VZ1nw4Gb7V6cR_GGeLZd3mdQena4DWpccf46TrPsGPMKkXfAkWJ8o62f7p_oNBGY-RuAwT6zHk4HpskxpY9iV2qlF7LXvwK4opd94edQSW1YMn78h6_8dIQvSgeu4lnHSc6qoCLbQQUVYhBIUDwYrUvVjtIZBcoRHqeMzCVPceFgQHud8PvWCMHQBLqYHzRvHux-XsVxCDJ0Jnoa01iYuKVYK2yvdJD44E-kWcfAsz5O8ajS2oV4J2-Vey_QH7ceuzMui3PKCQrmh_JZSKer1bquKm7WSm-t1wck4jl9KVZdq" />
+  </a>
+</p>
 
-![Architecture of Grafana Fire's write path](write-path.svg)
+Ingesters receive incoming profiles from the distributors.
+Each push request belongs to a tenant, and the ingester appends the received profiles to the specific per-tenant FireDB that is stored on the local disk.
 
-Ingesters receive incoming samples from the distributors.
-Each push request belongs to a tenant, and the ingester appends the received samples to the specific per-tenant TSDB that is stored on the local disk.
-The samples that are received are both kept in-memory and written to a write-ahead log (WAL).
-If the ingester abruptly terminates, the WAL can help to recover the in-memory series.
-The per-tenant TSDB is lazily created in each ingester as soon as the first samples are received for that tenant.
+The per-tenant FireDB is lazily created in each ingester as soon as the first profiles are received for that tenant.
 
-The in-memory samples are periodically flushed to disk, and the WAL is truncated, when a new TSDB block is created.
-By default, this occurs every two hours.
-Each newly created block is uploaded to long-term storage and kept in the ingester until the configured `-blocks-storage.tsdb.retention-period` expires.
-This gives [queriers]({{< relref "../components/querier.md" >}}) and [store-gateways]({{< relref "../components/store-gateway.md" >}}) enough time to discover the new block on the storage and download its index-header.
+The in-memory profiles are periodically flushed to disk and new block is created.
 
-To effectively use the WAL, and to be able to recover the in-memory series if an ingester abruptly terminates, store the WAL to a persistent disk that can survive an ingester failure.
-For example, when running in the cloud, include an AWS EBS volume or a GCP persistent disk.
-If you are running the Grafana Fire cluster in Kubernetes, you can use a StatefulSet with a persistent volume claim for the ingesters.
-The location on the filesystem where the WAL is stored is the same location where local TSDB blocks (compacted from head) are stored. The location of the filesystem and the location of the local TSDB blocks cannot be decoupled.
-
-For more information, refer to [timeline of block uploads]({{< relref "../../run-production-environment/production-tips/index.md#how-to-estimate--querierquery-store-after" >}}) and [Ingester]({{< relref "../components/ingester.md" >}}).
+For more information, refer to [Ingester]({{< relref "../components/ingester.md" >}}).
 
 #### Series sharding and replication
 
-By default, each time series is replicated to three ingesters, and each ingester writes its own block to the long-term storage.
-The [Compactor]({{< relref "../components/compactor/index.md" >}}) merges blocks from multiple ingesters into a single block, and removes duplicate samples.
-Blocks compaction significantly reduces storage utilization.
-For more information, refer to [Compactor]({{< relref "../components/compactor/index.md" >}}) and [Production tips]({{< relref "../../run-production-environment/production-tips/index.md" >}}).
+By default, each profile series is replicated to three ingesters, and each ingester writes its own block to the long-term storage.
 
 ### The read path
 
-[//]: # "Diagram source of read path at https://docs.google.com/presentation/d/1LemaTVqa4Lf_tpql060vVoDGXrthp-Pie_SQL7qwHjc/edit#slide=id.g11658e7e4c6_2_6"
+[//]: # "To edit open with https://mermaid.live/edit#pako{...}"
+<p align="center">
+  <img alt="Architecture of Grafana Fire's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkTFPwzAQhf-K5S6t1DY0gbTxwIBgRgK2poNrnxODEwf7TKmq_HfsqoDExPb03vfO9vlEhZVAGVXGHkTLHZKXu7onJHhw0-0TcOl3M7JY3JL3AE6DS-FFnm3dN-Dxr0-E7WJCvLX9GbM-AdZPt4_7VxBIPFoHu1lyPR4NnE8kShvDJqpSc4_OvgGbFEVx0YuDltiyfPj8LVn_7wqd0w5cx7WMzz2lETXFFjqoKYtSguLBYE3rfoxoGCRHeJA6XpMyxY2HOeUB7fOxF5ShC_AN3WveON79UMZyCbF0ongc0m4b7TGOFLZXukl-cCbaLeLgWZaleNlobMN-GdeWeS3TR7QfVZmVebnheQHluuA3RSHFflVtVH69UnJ9tco5HcfxC3-dl_E" />
+  </a>
+</p>
 
-![Architecture of Grafana Fire's read path](read-path.svg)
-
-Queries coming into Grafana Fire arrive at the [query-frontend]({{< relref "../components/query-frontend" >}}). The query-frontend then splits queries over longer time ranges into multiple, smaller queries.
-
-The query-frontend next checks the results cache. If the result of a query has been cached, the query-frontend returns the cached results. Queries that cannot be answered from the results cache are put into an in-memory queue within the query-frontend.
-
-> **Note:** If you run the optional [query-scheduler]({{< relref "../components/query-scheduler" >}}) component, this queue is maintained in the query-scheduler instead of the query-frontend.
-
-The queriers act as workers, pulling queries from the queue.
-
-The queriers connect to the store-gateways and the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
-
-After the querier executes the query, it returns the results to the query-frontend for aggregation. The query-frontend then returns the aggregated results to the client.
-
-## The role of Prometheus
-
-Prometheus instances scrape samples from various targets and push them to Grafana Fire by using Prometheus’ [remote write API](https://prometheus.io/docs/prometheus/latest/storage/#remote-storage-integrations).
-The remote write API emits batched [Snappy](https://google.github.io/snappy/)-compressed [Protocol Buffer](https://developers.google.com/protocol-buffers/) messages inside the body of an HTTP `PUT` request.
-
-Fire requires that each HTTP request has a header that specifies a tenant ID for the request. Request [authentication and authorization]({{< relref "../../secure/authentication-and-authorization.md" >}}) are handled by an external reverse proxy.
-
-Incoming samples (writes from Prometheus) are handled by the [distributor]({{< relref "../components/distributor.md" >}}), and incoming reads (PromQL queries) are handled by the [query frontend]({{< relref "../components/query-frontend/index.md" >}}).
+Queries coming into Grafana Fire arrive at the [querier]({{< relref "../components/querier" >}}). The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
 
 ## Long-term storage
 
-The Grafana Fire storage format is based on [Prometheus TSDB storage](https://prometheus.io/docs/prometheus/latest/storage/).
-The Grafana Fire storage format stores each tenant's time series into their own TSDB, which persists series to an on-disk block.
-By default, each block has a two-hour range.
-Each on-disk block directory contains an index file, a file containing metadata, and the time series chunks.
-
-The TSDB block files contain samples for multiple series.
-The series inside the blocks are indexed by a per-block index, which indexes both metric names and labels to time series in the block files.
+The Grafana Fire storage format is described in detail in on the [block format page]({{< relref "..//block-format/" >}}).
+The Grafana Fire storage format stores each tenant's profiles into their own on-disk block. Each on-disk block directory contains an index file, a file containing metadata, and the Parquet tables.
 
 Grafana Fire requires any of the following object stores for the block files:
+
+[//]: # "TODO: Verify that's correct"
 
 - [Amazon S3](https://aws.amazon.com/s3)
 - [Google Cloud Storage](https://cloud.google.com/storage/)
@@ -95,4 +65,4 @@ Grafana Fire requires any of the following object stores for the block files:
 - [OpenStack Swift](https://wiki.openstack.org/wiki/Swift)
 - Local Filesystem (single node only)
 
-For more information, refer to [configure object storage]({{< relref "../../configure/configure-object-storage-backend.md" >}}) and [configure profiles storage retention]({{< relref "../../configure/configure-profiles-storage-retention.md" >}}).
+For more information, refer to [configure object storage]({{< relref "../../configure/configure-object-storage-backend.md" >}}) and [configure disk storage]({{< relref "../../configure/configure-disk-storage.md" >}}).
