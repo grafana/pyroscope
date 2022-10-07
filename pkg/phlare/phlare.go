@@ -224,11 +224,11 @@ func (f *Phlare) setupModuleManager() error {
 		All:          {Agent, Ingester, Distributor, Querier},
 		Distributor:  {Ring, Server},
 		Querier:      {Ring, Server},
-		Agent:        {Server, GRPCGateway},
+		Agent:        {Server},
 		Ingester:     {Server, MemberlistKV, Storage},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
-		GRPCGateway:  {Server},
+		Server:       {GRPCGateway},
 
 		// Querier:                  {Store, Ring, Server, IngesterQuerier, TenantConfigs, UsageReport},
 		// QueryFrontendTripperware: {Server, Overrides, TenantConfigs},
