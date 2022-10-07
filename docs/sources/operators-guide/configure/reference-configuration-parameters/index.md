@@ -164,11 +164,11 @@ client:
 firedb:
   # Directory used for local storage.
   # CLI flag: -firedb.data-path
-  [datapath: <string> | default = "./data"]
+  [data_path: <string> | default = "./data"]
 
   # Upper limit to the duration of a Fire block.
   # CLI flag: -firedb.max-block-duration
-  [maxblockduration: <duration> | default = 3h]
+  [max_block_duration: <duration> | default = 3h]
 
 tracing:
   # Set to false to disable tracing.

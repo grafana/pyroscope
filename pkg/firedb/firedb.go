@@ -44,8 +44,9 @@ const (
 )
 
 type Config struct {
-	DataPath         string
-	MaxBlockDuration time.Duration // Blocks are generally cut once they reach 1000M of memory size, this will setup an upper limit to the duration of data that a block has that is cut by the ingester.
+	DataPath string `yaml:"data_path,omitempty"`
+	// Blocks are generally cut once they reach 1000M of memory size, this will setup an upper limit to the duration of data that a block has that is cut by the ingester.
+	MaxBlockDuration time.Duration `yaml:"max_block_duration,omitempty"`
 
 	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determiend by fire itself. Currently they are solely used for test cases
 }
