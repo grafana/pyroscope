@@ -5,29 +5,45 @@ description: "Describe how Grafana Fire's stores profiles on the durable object 
 weight: 50
 ---
 
-# Grafana Fire memberlist and gossip protocol
+# Grafana Fire Block format
 
-[Memberlist](https://github.com/hashicorp/memberlist) is a Go library that manages cluster membership, node failure detection, and message passing using a gossip-based protocol.
-Memberlist is eventually consistent and network partitions are partially tolerated by attempting to communicate to potentially dead nodes through multiple routes.
+This document describes how Grafana Fire stores the data in its blocks. Each
+block belongs to a single tenant and is identfied by a unique [ULID]. Within
+the block there are multiple files:
 
-By default, Grafana Fire uses memberlist to implement a [key-value (KV) store]({{< relref "key-value-store.md" >}}) to share the [hash ring]({{< relref "hash-ring/index.md" >}}) data structures between instances.
+* A metadata file `meta.json`, which contains information about what the block
+  contains, like the time range of the profiling data.
 
-When using a memberlist-based KV store, each instance maintains a copy of the hash rings.
-Each Fire instance updates a hash ring locally and uses memberlist to propagate the changes to other instances.
-Updates generated locally and updates received from other instances are merged together to form the current state of the ring on the instance.
+* A [TSDB index] `index.tsdb` mapping the external labels to the profiles
+  stored in the profiles table.
 
-To configure memberlist, refer to [configuring hash rings]({{< relref "../configure/configuring-hash-rings.md" >}}).
+* [Parquet] tables for the different models within a profile in the files
+  `profiles.parquet`, `stacktraces.parquet`, `locations.parquet`,
+  `functions.parquet`, `mappings.parquet`, `strings.parquet`.
 
-## How memberlist propagates hash ring changes
+## Data model
 
-When using a memberlist-based KV store, every Grafana Fire instance propagates the hash ring data structures to other instances using the following techniques:
+The data model within the block is fairly aligned to Google's [proto
+definition][pprof] for the pprof wire format.  In general strings within the
+block are referenced by their position in a string table.
 
-1. Propagating only the differences introduced in recent changes.
-1. Propagating the full hash ring data structure.
+Grafana Fire's profiles have two types of labels:
 
-Every `-memberlist.gossip-interval` an instance randomly selects a subset of all Grafana Fire cluster instances configured by `-memberlist.gossip-nodes` and sends the latest changes to the selected instances.
-This operation is performed frequently and it's the primary technique used to propagate changes.
+* External Labels: Contain additional information gathered at ingestion time
+  and can be used to select certain profiles. They are comparable to
+  Prometeus'/Loki's label and typical labels are `namespace` and `pod` to
+  describe which workload the profiles are coming form.
 
-In addition, every `-memberlist.pullpush-interval` an instance randomly selects another instance in the Grafana Fire cluster and transfers the full content of the KV store, including all hash rings (unless `-memberlist.pullpush-interval` is zero, which disables this behavior).
-After this operation is complete, the two instances have the same content as the KV store.
-This operation is computationally more expensive, and as a result, it's performed less frequently. The operation ensures that the hash rings periodically reconcile to a common state.
+* Pprof Labels: Part of the pprof payload and used by the agent or the software
+  to transport additional information.
+
+Each profile ingested will be added into a new row in the profile table. If
+there are entries missing in the tables for the different models they are also
+inserted.
+
+[![](https://mermaid.ink/img/pako:eNptU11P4zAQ_CuWn4HSlgvUjyicVImTTgTdC-ZhsTeJdYkdOfYJVOW_n_PhJFR9W8_Ozs6OkhMVRiJlVFTQtqmCwkLNNSFSWRROGU1eH_v30CeZs0oXy_sXNE0AyKmHCDmmhBGvtEvueqBbiM9GwKA2MafBY7rmE_KsNLaMvL33xblEgKbpn14P3i6NM3Jpf5xYnwLir7MgMHqKHo_pYOHiHb-tyVU1j2RoFbYvmH_3kUHdVOMhY3mmMoKzyOzk_J4_UPmzg7iOmXO65ZRcX5upivbZnC3XfSChrQfiwhhinrrEhM6oEENiS75cr3IamXq9a5UZ1zGcmRaPj41F4DVLH49a4mdYMIYx4ouZZS9bB8Q1vaI12hqUDJ_tECGnrsQaOWWhlJiDrxynXHeB6hsJDp-kcsZSlkPV4hUF70z2pQVlznqMpOnrn1mVAYlh6ETdV9P_I4VqXZAURueq6HFvqwCXzjUt22z69k2hXOk_boSpN62SJVhX_jskm2SXPMBuj8n9Hn7s91J8bA8P-e5um8v72-0OaNd1_wF4hit7)](https://mermaid.live/edit#pako:eNptU11P4zAQ_CuWn4HSlgvUjyicVImTTgTdC-ZhsTeJdYkdOfYJVOW_n_PhJFR9W8_Ozs6OkhMVRiJlVFTQtqmCwkLNNSFSWRROGU1eH_v30CeZs0oXy_sXNE0AyKmHCDmmhBGvtEvueqBbiM9GwKA2MafBY7rmE_KsNLaMvL33xblEgKbpn14P3i6NM3Jpf5xYnwLir7MgMHqKHo_pYOHiHb-tyVU1j2RoFbYvmH_3kUHdVOMhY3mmMoKzyOzk_J4_UPmzg7iOmXO65ZRcX5upivbZnC3XfSChrQfiwhhinrrEhM6oEENiS75cr3IamXq9a5UZ1zGcmRaPj41F4DVLH49a4mdYMIYx4ouZZS9bB8Q1vaI12hqUDJ_tECGnrsQaOWWhlJiDrxynXHeB6hsJDp-kcsZSlkPV4hUF70z2pQVlznqMpOnrn1mVAYlh6ETdV9P_I4VqXZAURueq6HFvqwCXzjUt22z69k2hXOk_boSpN62SJVhX_jskm2SXPMBuj8n9Hn7s91J8bA8P-e5um8v72-0OaNd1_wF4hit7)
+
+
+[pprof]: https://github.com/google/pprof/blob/main/proto/profile.proto
+[TSDB index]: https://ganeshvernekar.com/blog/prometheus-tsdb-persistent-block-and-its-index/
+[Parquet]: https://parquet.apache.org/docs/
