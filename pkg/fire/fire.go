@@ -56,8 +56,8 @@ type Config struct {
 
 	Storage StorageConfig `yaml:"storage"`
 
-	AuthEnabled bool `yaml:"auth_enabled,omitempty"`
-	ConfigFile  string
+	MultitenancyEnabled bool `yaml:"multitenancy_enabled,omitempty"`
+	ConfigFile          string
 }
 
 type StorageConfig struct {
@@ -72,7 +72,8 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
 	f.Var(&c.Target, "target", "Comma-separated list of Fire modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
-	f.BoolVar(&c.AuthEnabled, "auth.enabled", true, "Set to false to disable auth.")
+	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
+
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.AgentConfig.RegisterFlags(f)
 	c.MemberlistKV.RegisterFlags(f)
@@ -194,7 +195,7 @@ func New(cfg Config) (*Fire, error) {
 	if err != nil {
 		return nil, err
 	}
-	fire.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.AuthEnabled))
+	fire.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.MultitenancyEnabled))
 
 	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
 	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient,

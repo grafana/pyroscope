@@ -17,54 +17,47 @@
 // TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 // THIS SOFTWARE.
 import { css } from '@emotion/css';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useMeasure } from 'react-use';
 
-import { DataFrame, DataFrameView } from '@grafana/data';
-import { useStyles2 } from '@grafana/ui';
+import { DataFrame, FieldType } from '@grafana/data';
 
 import { PIXELS_PER_LEVEL } from '../../constants';
 import { getBarX, getRectDimensionsForLevel, renderRect } from './rendering';
-import { Item, ItemWithStart, nestedSetToLevels } from './dataTransform';
+import { ItemWithStart } from './dataTransform';
 import FlameGraphTooltip, { getTooltipData } from './FlameGraphTooltip';
-import { TooltipData } from '../types';
+import { TooltipData, SelectedView } from '../types';
 
 type Props = {
   data: DataFrame;
+  levels: ItemWithStart[][];
   topLevelIndex: number;
   rangeMin: number;
   rangeMax: number;
-  query: string;
+  search: string;
   setTopLevelIndex: (level: number) => void;
   setRangeMin: (range: number) => void;
   setRangeMax: (range: number) => void;
+  selectedView: SelectedView;
   style?: React.CSSProperties;
 };
 
 const FlameGraph = ({
   data,
+  levels,
   topLevelIndex,
   rangeMin,
   rangeMax,
-  query,
+  search,
   setTopLevelIndex,
   setRangeMin,
   setRangeMax,
+  selectedView,
 }: Props) => {
-  const styles = useStyles2(getStyles);
+  const styles = getStyles(selectedView);
   const totalTicks = data.fields[1].values.get(0);
-  const profileTypeId = data.meta!.custom!.ProfileTypeID;
-
-  // Transform dataFrame with nested set format to array of levels. Each level contains all the bars for a particular
-  // level of the flame graph. We do this temporary as in the end we should be able to render directly by iterating
-  // over the dataFrame rows.
-  const levels = useMemo(() => {
-    if (!data) {
-      return [];
-    }
-    const dataView = new DataFrameView<Item>(data);
-    return nestedSetToLevels(dataView);
-  }, [data]);
+  const valueField =
+    data.fields.find((f) => f.name === 'value') ?? data.fields.find((f) => f.type === FieldType.number);
 
   const [sizeRef, { width: wrapperWidth }] = useMeasure<HTMLDivElement>();
   const graphRef = useRef<HTMLCanvasElement>(null);
@@ -91,15 +84,14 @@ const FlameGraph = ({
       const ctx = graphRef.current?.getContext('2d')!;
       const graph = graphRef.current!;
 
-      const width = graph.clientWidth;
       const height = PIXELS_PER_LEVEL * levels.length;
-      graph.width = Math.round(width * window.devicePixelRatio);
+      graph.width = Math.round(wrapperWidth * window.devicePixelRatio);
       graph.height = Math.round(height * window.devicePixelRatio);
-      graph.style.width = `${width}px`;
+      graph.style.width = `${wrapperWidth}px`;
       graph.style.height = `${height}px`;
 
       ctx.textBaseline = 'middle';
-      ctx.font = (12 * window.devicePixelRatio) + 'px monospace';
+      ctx.font = 12 * window.devicePixelRatio + 'px monospace';
       ctx.strokeStyle = 'white';
 
       for (let levelIndex = 0; levelIndex < levels.length; levelIndex++) {
@@ -109,29 +101,25 @@ const FlameGraph = ({
         const dimensions = getRectDimensionsForLevel(level, levelIndex, totalTicks, rangeMin, pixelsPerTick);
         for (const rect of dimensions) {
           // Render each rectangle based on the computed dimensions
-          renderRect(ctx, rect, totalTicks, rangeMin, rangeMax, query, levelIndex, topLevelIndex);
+          renderRect(ctx, rect, totalTicks, rangeMin, rangeMax, search, levelIndex, topLevelIndex);
         }
       }
     },
-    [levels, query, rangeMax, rangeMin, topLevelIndex, totalTicks]
+    [levels, wrapperWidth, totalTicks, rangeMin, rangeMax, search, topLevelIndex]
   );
 
   useEffect(() => {
     if (graphRef.current) {
-      graphRef.current.style.width = wrapperWidth + 'px';
       const pixelsPerTick = (wrapperWidth * window.devicePixelRatio) / totalTicks / (rangeMax - rangeMin);
       render(pixelsPerTick);
 
       // Clicking allows user to "zoom" into the flamegraph. Zooming means the x axis gets smaller so that the clicked
       // bar takes 100% of the x axis.
       graphRef.current.onclick = (e) => {
-        const pixelsPerTick =
-          (graphRef.current!.clientWidth) / totalTicks / (rangeMax - rangeMin);
+        const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
         const { levelIndex, barIndex } = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
-        if (barIndex === -1) {
-          return;
-        }
-        if (!isNaN(levelIndex) && !isNaN(barIndex)) {
+        
+        if (barIndex !== -1 && !isNaN(levelIndex) && !isNaN(barIndex)) {
           setTopLevelIndex(levelIndex);
           setRangeMin(levels[levelIndex][barIndex].start / totalTicks);
           setRangeMax((levels[levelIndex][barIndex].start + levels[levelIndex][barIndex].value) / totalTicks);
@@ -143,17 +131,15 @@ const FlameGraph = ({
           setShowTooltip(false);
           const pixelsPerTick = graphRef.current!.clientWidth / totalTicks / (rangeMax - rangeMin);
           const { levelIndex, barIndex } = convertPixelCoordinatesToBarCoordinates(e.offsetX, e.offsetY, pixelsPerTick);
-          const bar = levels[levelIndex][barIndex];
+        
+          if (barIndex !== -1 && !isNaN(levelIndex) && !isNaN(barIndex)) {
+            tooltipRef.current.style.left = e.clientX + 10 + 'px';
+            tooltipRef.current.style.top = e.clientY + 40 + 'px';
 
-          if (!isNaN(levelIndex) && !isNaN(barIndex)) {
-            if (barIndex !== -1) {
-              tooltipRef.current.style.left = e.clientX + 10 + 'px';
-              tooltipRef.current.style.top = e.clientY + 'px';
-
-              const tooltipData = getTooltipData(profileTypeId, bar.label, bar.value, totalTicks);
-              setTooltipData(tooltipData);
-              setShowTooltip(true);
-            }
+            const bar = levels[levelIndex][barIndex];
+            const tooltipData = getTooltipData(valueField!, bar.label, bar.value, totalTicks);
+            setTooltipData(tooltipData);
+            setShowTooltip(true);
           }
         }
       };
@@ -174,21 +160,23 @@ const FlameGraph = ({
     setTopLevelIndex,
     setRangeMin,
     setRangeMax,
-    profileTypeId,
+    selectedView,
+    valueField,
   ]);
 
   return (
-    <div ref={sizeRef}>
-      <canvas className={styles.graph} ref={graphRef} data-testid="flamegraph" />
+    <div className={styles.graph} ref={sizeRef}>
+      <canvas ref={graphRef} data-testid="flameGraph" />
       <FlameGraphTooltip tooltipRef={tooltipRef} tooltipData={tooltipData!} showTooltip={showTooltip} />
     </div>
   );
 };
 
-const getStyles = () => ({
+const getStyles = (selectedView: SelectedView) => ({
   graph: css`
     cursor: pointer;
-    width: 100%;
+    float: left;
+    width: ${selectedView === SelectedView.FlameGraph ? '100%' : '50%'};
   `,
 });
 

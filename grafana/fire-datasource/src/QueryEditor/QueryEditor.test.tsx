@@ -12,7 +12,7 @@ describe('QueryEditor', () => {
   it('should render without error', async () => {
     setup();
 
-    expect(screen.findByText('process_cpu:cpu')).toBeDefined();
+    expect(await screen.findByText('process_cpu - cpu')).toBeDefined();
   });
 
   it('should render options', async () => {
@@ -21,6 +21,8 @@ describe('QueryEditor', () => {
     expect(screen.getByText(/Metric/)).toBeDefined();
     expect(screen.getByText(/Profile/)).toBeDefined();
     expect(screen.getByText(/Both/)).toBeDefined();
+
+    expect(screen.getByText(/Group by/)).toBeDefined();
   });
 
   it('should render correct options outside of explore', async () => {
@@ -76,6 +78,7 @@ function setup(options: { props: Partial<Props> } = { props: {} }) {
         labelSelector: '',
         profileTypeId: 'process_cpu:cpu',
         refId: 'A',
+        groupBy: [],
       }}
       datasource={ds}
       onChange={onChange}

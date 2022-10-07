@@ -19,7 +19,6 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -28,6 +27,7 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	"github.com/grafana/fire/pkg/firedb/block"
 	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
@@ -98,26 +98,6 @@ type Table interface {
 	Close() error
 }
 
-func HeadWithRegistry(reg prometheus.Registerer) HeadOption {
-	return func(h *Head) {
-		h.metrics = newHeadMetrics(reg).setHead(h)
-	}
-}
-
-func headWithMetrics(m *headMetrics) HeadOption {
-	return func(h *Head) {
-		h.metrics = m.setHead(h)
-	}
-}
-
-func HeadWithLogger(l log.Logger) HeadOption {
-	return func(h *Head) {
-		h.logger = l
-	}
-}
-
-type HeadOption func(*Head)
-
 type Head struct {
 	logger  log.Logger
 	metrics *headMetrics
@@ -154,8 +134,11 @@ const (
 	defaultFolderMode = 0o755
 )
 
-func NewHead(cfg Config, opts ...HeadOption) (*Head, error) {
+func NewHead(firectx context.Context, cfg Config) (*Head, error) {
 	h := &Head{
+		logger:  firecontext.Logger(firectx),
+		metrics: contextHeadMetrics(firectx),
+
 		stopCh: make(chan struct{}),
 
 		meta:         block.NewMeta(),
@@ -168,22 +151,10 @@ func NewHead(cfg Config, opts ...HeadOption) (*Head, error) {
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
 	h.localPath = filepath.Join(cfg.DataPath, pathLocal, h.meta.ULID.String())
+	h.metrics.setHead(h)
 
 	if cfg.Parquet != nil {
 		h.parquetConfig = cfg.Parquet
-	}
-
-	// execute options
-	for _, o := range opts {
-		o(h)
-	}
-
-	// setup fall backs
-	if h.logger == nil {
-		h.logger = log.NewNopLogger()
-	}
-	if h.metrics == nil {
-		h.metrics = newHeadMetrics(nil).setHead(h)
 	}
 
 	if err := os.MkdirAll(h.headPath, defaultFolderMode); err != nil {
@@ -378,7 +349,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	}
 	h.metaLock.Unlock()
 
-	samplesInProfile := len(p.Sample) * len(labels)
+	samplesInProfile := len(samplesPerType[0]) * len(labels)
 	h.totalSamples.Add(sampleSize)
 	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(samplesInProfile))
 	h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(labels)))

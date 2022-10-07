@@ -1,4 +1,4 @@
-FROM golang:1.18.5 as build
+FROM golang:1.19.2 as build
 
 WORKDIR /src/fire
 

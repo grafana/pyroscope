@@ -3,6 +3,7 @@ package iter
 import (
 	"sort"
 
+	"github.com/samber/lo"
 	"golang.org/x/exp/constraints"
 )
 
@@ -141,4 +142,18 @@ func Slice[T any](it Iterator[T]) ([]T, error) {
 		result = append(result, it.At())
 	}
 	return result, it.Err()
+}
+
+// CloneN returns N copy of the iterator.
+// The returned iterators are independent of the original iterator.
+// The original might be exhausted and should be discarded.
+func CloneN[T any](it Iterator[T], n int) ([]Iterator[T], error) {
+	if sl, ok := it.(*sliceIterator[T]); ok {
+		return lo.Times(n, func(_ int) Iterator[T] { return NewSliceIterator(sl.list) }), nil
+	}
+	slice, err := Slice(it)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Times(n, func(_ int) Iterator[T] { return NewSliceIterator(slice) }), nil
 }

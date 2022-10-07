@@ -2,10 +2,10 @@ package firedb
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,13 +18,16 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
+	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
+	firecontext "github.com/grafana/fire/pkg/fire/context"
 	"github.com/grafana/fire/pkg/firedb/block"
 	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
@@ -32,6 +35,12 @@ import (
 	firemodel "github.com/grafana/fire/pkg/model"
 	"github.com/grafana/fire/pkg/objstore/client"
 	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
+	diskutil "github.com/grafana/fire/pkg/util/disk"
+)
+
+const (
+	minFreeDisk                = 10 * 1024 * 1024 * 1024 // 10Gi
+	minDiskAvailablePercentage = 0.05
 )
 
 type Config struct {
@@ -52,42 +61,65 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.MaxBlockDuration, "firedb.max-block-duration", 3*time.Hour, "Upper limit to the duration of a Fire block.")
 }
 
+type fileSystem interface {
+	fs.ReadDirFS
+	RemoveAll(string) error
+}
+
+type realFileSystem struct{}
+
+func (*realFileSystem) Open(name string) (fs.File, error)          { return os.Open(name) }
+func (*realFileSystem) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
+func (*realFileSystem) RemoveAll(path string) error                { return os.RemoveAll(path) }
+
 type FireDB struct {
 	services.Service
 
-	cfg    Config
-	reg    prometheus.Registerer
-	logger log.Logger
-	stopCh chan struct{}
+	logger  log.Logger
+	firectx context.Context
 
-	headLock    sync.RWMutex
-	head        *Head
-	headMetrics *headMetrics
+	cfg    Config
+	stopCh chan struct{}
+	wg     sync.WaitGroup
+
+	headLock sync.RWMutex
+	head     *Head
+
+	volumeChecker diskutil.VolumeChecker
+	fs            fileSystem
 
 	headFlushTimer time.Timer
 
 	blockQuerier *BlockQuerier
 }
 
-func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, error) {
-	headMetrics := newHeadMetrics(reg)
+func New(firectx context.Context, cfg Config) (*FireDB, error) {
+	reg := firecontext.Registry(firectx)
+
+	// ensure head metrics are registered early so they are reused for the new head
+	firectx = contextWithHeadMetrics(firectx, newHeadMetrics(reg))
+
 	f := &FireDB{
-		cfg:         cfg,
-		reg:         reg,
-		logger:      logger,
-		stopCh:      make(chan struct{}, 0),
-		headMetrics: headMetrics,
+		cfg:     cfg,
+		logger:  firecontext.Logger(firectx),
+		firectx: firectx,
+		stopCh:  make(chan struct{}, 0),
+		volumeChecker: diskutil.NewVolumeChecker(
+			minFreeDisk,
+			minDiskAvailablePercentage,
+		),
+		fs: &realFileSystem{},
 	}
 	if _, err := f.initHead(); err != nil {
 		return nil, err
 	}
-	f.Service = services.NewBasicService(f.starting, f.running, f.stopping)
-
+	f.wg.Add(1)
+	go f.loop()
 	fs, err := filesystem.NewBucket(cfg.DataPath)
 	if err != nil {
 		return nil, err
 	}
-	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("firedb", reg))
+	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("firedb_", reg))
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +128,7 @@ func New(cfg Config, logger log.Logger, reg prometheus.Registerer) (*FireDB, err
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
 
-	f.blockQuerier = NewBlockQuerier(logger, bucketReader)
+	f.blockQuerier = NewBlockQuerier(firectx, bucketReader)
 
 	// do an initial querier sync
 	ctx := context.Background()
@@ -114,7 +146,103 @@ func (f *FireDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
 	return f.blockQuerier.BlockMetas(ctx)
 }
 
+func (f *FireDB) listLocalULID() ([]ulid.ULID, error) {
+	path := f.LocalDataPath()
+	files, err := f.fs.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []ulid.ULID
+	for _, file := range files {
+		if !file.IsDir() {
+			continue
+		}
+
+		id, ok := block.IsBlockDir(filepath.Join(path, file.Name()))
+		if !ok {
+			continue
+		}
+		ids = append(ids, id)
+	}
+
+	// sort the blocks by their id, which will be the time they've been created.
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i].Compare(ids[j]) < 0
+	})
+
+	return ids, nil
+}
+
+func (f *FireDB) cleanupBlocksWhenHighDiskUtilization(ctx context.Context) error {
+	var (
+		path      = f.LocalDataPath()
+		lastStats *diskutil.VolumeStats
+		lastULID  ulid.ULID
+	)
+
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		current, err := f.volumeChecker.HasHighDiskUtilization(path)
+		if err != nil {
+			return err
+		}
+
+		// not in high disk utilization, nothing to do.
+		if !current.HighDiskUtilization {
+			break
+		}
+
+		// when disk utilization is not lower since the last loop, we end the
+		// cleanup there to avoid deleting all block when disk usage reporting
+		// is delayed.
+		if lastStats != nil && lastStats.BytesAvailable >= current.BytesAvailable {
+			level.Warn(f.logger).Log("msg", "disk utilization is not lowered by deletion of block, pausing until next cycle", "path", path)
+			break
+		}
+
+		// get list of all ulids
+		ulids, err := f.listLocalULID()
+		if err != nil {
+			return err
+		}
+
+		// nothing to delete, when there are no ulids
+		if len(ulids) == 0 {
+			break
+		}
+
+		if lastULID.Compare(ulids[0]) == 0 {
+			return fmt.Errorf("making no progress in deletion: trying to delete block '%s' again", lastULID.String())
+		}
+
+		deletePath := filepath.Join(path, ulids[0].String())
+
+		// ensure that we never delete the root directory or anything above
+		if deletePath == path {
+			return errors.New("delete path is the same as the root path, this should never happen")
+		}
+
+		// delete oldest block
+		if err := f.fs.RemoveAll(deletePath); err != nil {
+			return fmt.Errorf("failed to delete oldest block %s: %w", deletePath, err)
+		}
+		level.Warn(f.logger).Log("msg", "disk utilization is high, deleted oldest block", "path", deletePath)
+		lastStats = current
+		lastULID = ulids[0]
+	}
+
+	return nil
+}
+
 func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
+	if err := f.cleanupBlocksWhenHighDiskUtilization(ctx); err != nil {
+		level.Error(f.logger).Log("msg", "cleanup block check failed", "err", err)
+	}
+
 	if err := f.blockQuerier.Sync(ctx); err != nil {
 		level.Error(f.logger).Log("msg", "sync of blocks failed", "err", err)
 	}
@@ -124,6 +252,7 @@ func (f *FireDB) loop() {
 	blockScanTicker := time.NewTicker(5 * time.Minute)
 	defer func() {
 		blockScanTicker.Stop()
+		f.wg.Done()
 	}()
 
 	for {
@@ -144,27 +273,14 @@ func (f *FireDB) loop() {
 	}
 }
 
-func (f *FireDB) starting(ctx context.Context) error {
-	go f.loop()
-	return nil
-}
-
-func (f *FireDB) running(ctx context.Context) error {
-	select {
-	// wait until service is asked to stop
-	case <-ctx.Done():
-		// stop
-		close(f.stopCh)
-	}
-	return nil
-}
-
-func (f *FireDB) stopping(_ error) error {
+func (f *FireDB) Close() error {
 	errs := multierror.New()
-	if err := f.blockQuerier.Close(); err != nil {
-		errs.Add(err)
+	if f.head != nil {
+		errs.Add(f.head.Close())
 	}
-	if err := f.Close(context.Background()); err != nil {
+	close(f.stopCh)
+	f.wg.Wait()
+	if err := f.blockQuerier.Close(); err != nil {
 		errs.Add(err)
 	}
 	return errs.Err()
@@ -471,7 +587,7 @@ func (f *FireDB) initHead() (oldHead *Head, err error) {
 	f.headLock.Lock()
 	defer f.headLock.Unlock()
 	oldHead = f.head
-	f.head, err = NewHead(f.cfg, headWithMetrics(f.headMetrics), HeadWithLogger(f.logger))
+	f.head, err = NewHead(f.firectx, f.cfg)
 	if err != nil {
 		return oldHead, err
 	}
@@ -488,8 +604,4 @@ func (f *FireDB) Flush(ctx context.Context) error {
 		return nil
 	}
 	return oldHead.Flush(ctx)
-}
-
-func (f *FireDB) Close(ctx context.Context) error {
-	return f.head.Flush(ctx)
 }
