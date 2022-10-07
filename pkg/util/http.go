@@ -10,6 +10,7 @@ import (
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/http2"
+	"gopkg.in/yaml.v3"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{
@@ -43,4 +44,22 @@ func WrapWithInstrumentedHTTPTransport(next http.RoundTripper) http.RoundTripper
 		defer tr.Finish()
 		return next.RoundTrip(req)
 	})
+}
+
+// WriteYAMLResponse writes some YAML as a HTTP response.
+func WriteYAMLResponse(w http.ResponseWriter, v interface{}) {
+	// There is not standardised content-type for YAML, text/plain ensures the
+	// YAML is displayed in the browser instead of offered as a download
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// We ignore errors here, because we cannot do anything about them.
+	// Write will trigger sending Status code, so we cannot send a different status code afterwards.
+	// Also this isn't internal error, but error communicating with client.
+	_, _ = w.Write(data)
 }

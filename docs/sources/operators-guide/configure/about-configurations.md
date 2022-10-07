@@ -13,39 +13,8 @@ You can configure Grafana Fire via a ([YAML](https://en.wikipedia.org/wiki/YAML)
 
 To see the most common CLI flags that you need to get started with Grafana Fire, run the `fire -help` command. To see all of the available CLI flags, run the `fire -help-all` command.
 
-A given configuration loads at startup and cannot be modified at runtime. However, Grafana Fire does have a second configuration file, known as the _runtime configuration_, that is dynamically reloaded. For more information, see [About runtime configuration]({{< relref "about-runtime-configuration.md" >}}).
+To see the current configuration state of any component, use the `/config` HTTP API endpoint.
 
-To see the current configuration state of any component, use the [`/config`]({{< relref "../reference-http-api/index.md#configuration" >}}) or [`/runtime_config`]({{< relref "../reference-http-api/index.md#runtime-configuration" >}}) HTTP API endpoint.
-
-## Common configurations
-
-Some configurations, such as object storage backend, are repeated for multiple components.
-To avoid repetition in the configuration file, use the [`common`]({{< relref "../configure/reference-configuration-parameters/index.md#common" >}}) configuration section or `-common.*` CLI flags.
-Common configurations are first applied to all of the specific configurations, which allows the common configurations to be overridden later by specific values.
-
-For example, the following configuration uses the same Amazon S3 object storage bucket called `fire`. The common storage is located in the `us-east` region for both the ruler and alertmanager stores, and the blocks storage uses the `fire-blocks` bucket from the same region:
-
-```yaml
-common:
-  storage:
-    backend: s3
-    s3:
-      region: us-east
-      bucket_name: fire
-
-blocks_storage:
-  s3:
-    bucket_name: fire-blocks
-```
-
-For a reference of this configuration, see [Configure Grafana Fire object storage backend]({{< relref "configure-object-storage-backend.md" >}}).
-
-The precedence of the common configuration is as follows, where each configuration overrides the previous one:
-
-- YAML common values
-- YAML specific values
-- CLI common flags
-- CLI specific flags
 
 ## Operational considerations
 
