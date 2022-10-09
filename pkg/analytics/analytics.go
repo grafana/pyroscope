@@ -233,8 +233,6 @@ func (s *Service) getAnalytics() *Analytics {
 		ControllerDiff:       controllerStats["diff"],
 		ControllerIngest:     controllerStats["ingest"],
 		ControllerRender:     controllerStats["render"],
-		SpyRbspy:             controllerStats["ingest:rbspy"],
-		SpyPyspy:             controllerStats["ingest:pyspy"],
 		SpyGospy:             controllerStats["ingest:gospy"],
 		SpyEbpfspy:           controllerStats["ingest:ebpfspy"],
 		SpyPhpspy:            controllerStats["ingest:phpspy"],

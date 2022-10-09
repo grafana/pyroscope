@@ -16,8 +16,6 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/phpspy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"

@@ -11,8 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
@@ -70,10 +68,6 @@ func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
 	if cfg.SampleRate != 0 {
 		sampleRate = uint32(cfg.SampleRate)
 	}
-
-	// TODO: this is somewhat hacky, we need to find a better way to configure agents
-	pyspy.Blocking = cfg.PyspyBlocking
-	rbspy.Blocking = cfg.RbspyBlocking
 
 	return &Exec{
 		Args:               args,
