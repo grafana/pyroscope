@@ -1,0 +1,9 @@
+# See https://github.com/helm/chart-testing#configuration
+remote: origin
+target-branch: main
+chart-dirs:
+  - operations/phlare/helm/
+chart-repos:
+  - grafana=https://grafana.github.io/helm-charts
+helm-extra-args: --timeout 600s
+validate-maintainers: false
