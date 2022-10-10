@@ -67,6 +67,7 @@ go/deps:
 go/bin:
 	mkdir -p ./bin
 	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) -o bin/ ./cmd/fire
+	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) -o bin/ ./cmd/profilecli
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint

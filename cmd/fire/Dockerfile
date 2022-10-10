@@ -15,6 +15,7 @@ FROM alpine:3.16.2
 RUN apk add --no-cache ca-certificates
 
 COPY --from=build /src/fire/bin/fire /usr/bin/fire
+COPY --from=build /src/fire/bin/profilecli /usr/bin/profilecli
 COPY cmd/fire/fire.yaml /etc/fire/config.yaml
 
 RUN addgroup -g 10001 -S fire && \
