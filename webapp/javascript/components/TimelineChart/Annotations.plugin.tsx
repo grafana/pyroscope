@@ -1,5 +1,6 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom';
+import Color from 'color';
 import { randomId } from '@webapp/util/randomId';
 import { PlotType, CtxType } from './types';
 import extractRange from './extractRange';
@@ -91,6 +92,34 @@ const findAnnotationByCursorPosition = (
     return x >= an.fromX && x <= an.toX && y >= an.fromY && y <= an.toY;
   });
 };
+
+function drawRoundRect(
+  ctx: CtxType,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number,
+  color: string | Color
+) {
+  const r = x + w;
+  const b = y + h;
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1;
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(r - radius, y);
+  ctx.quadraticCurveTo(r, y, r, y + radius);
+  ctx.lineTo(r, y + h - radius);
+  ctx.quadraticCurveTo(r, b, r - radius, b);
+  ctx.lineTo(x + radius, b);
+  ctx.quadraticCurveTo(x, b, x, b - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.fill();
+  ctx.stroke();
+}
 
 (function ($) {
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
@@ -187,10 +216,10 @@ const findAnnotationByCursorPosition = (
             Math.floor(extractedY.axis.p2c(extractedY.axis.min)) +
             plotOffset.top;
           const yMin = 0 + plotOffset.top;
-          const lineWidth = 2;
+          const lineWidth = 1;
           const subPixel = lineWidth / 2 || 0;
-          const squareHeight = 30;
-          const squareWidth = 34;
+          const squareHeight = 20;
+          const squareWidth = 26;
 
           // draw vertical line
           ctx.beginPath();
@@ -200,31 +229,36 @@ const findAnnotationByCursorPosition = (
           ctx.lineTo(left + subPixel, yMin);
           ctx.stroke();
 
-          // draw icon square
-          ctx.beginPath();
-          ctx.fillStyle = a.color;
+          // draw icon rounded square
           const rectParams = {
-            fromX: left + 1 - squareWidth / 2,
-            toX: left + 1 + squareWidth / 2,
+            fromX: left - squareWidth / 2,
+            toX: left + squareWidth / 2,
             fromY: 0,
             toY: squareHeight,
             ...a,
           };
-          ctx.fillRect(
+          drawRoundRect(
+            ctx,
             rectParams.fromX,
             rectParams.fromY,
             squareWidth,
-            squareHeight
+            squareHeight,
+            3,
+            a.color
           );
-          ctx.stroke();
           annotationsPositions.push(rectParams);
 
           // draw icon
           const img = new Image();
           img.onload = () => {
-            ctx.drawImage(img, left - squareWidth / 2 + 4, 1, 28, 28);
+            ctx.drawImage(
+              img,
+              left - squareWidth / 2 + 3,
+              2,
+              squareWidth - 6,
+              squareHeight - 3
+            );
           };
-
           img.src = getIconByAnnotationType(a.type);
         });
       }

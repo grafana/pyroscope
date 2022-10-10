@@ -44,6 +44,8 @@ export type CtxType = {
     width?: number,
     height?: number
   ) => void;
+  quadraticCurveTo: (cpx: number, cpy: number, x: number, y: number) => void;
+  fill: () => void;
 };
 
 export type EventHolderType = {
