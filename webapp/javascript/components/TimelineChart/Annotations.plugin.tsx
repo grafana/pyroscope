@@ -5,6 +5,9 @@ import { randomId } from '@webapp/util/randomId';
 import { CtxType } from './types';
 import extractRange from './extractRange';
 
+const AnnotationMsgIcon =
+  require('../../../images/annotationMessage.png').default;
+
 type AnnotationType = {
   content: string;
   timestamp: number;
@@ -47,7 +50,7 @@ const getIconByAnnotationType = (type: string) => {
   switch (type) {
     case 'message':
     default:
-      return 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gU3ZnIFZlY3RvciBJY29ucyA6IGh0dHA6Ly93d3cub25saW5ld2ViZm9udHMuY29tL2ljb24gLS0+DQo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDEuMS8vRU4iICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiPg0KPHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4Ig0KICAgIHZpZXdCb3g9IjAgMCAxMDAwIDEwMDAiIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDEwMDAgMTAwMCIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQogICAgPG1ldGFkYXRhPiBTdmcgVmVjdG9yIEljb25zIDogaHR0cDovL3d3dy5vbmxpbmV3ZWJmb250cy5jb20vaWNvbiA8L21ldGFkYXRhPg0KICAgIDxnPg0KICAgICAgICA8cGF0aCBmaWxsPSIjZmZmIg0KICAgICAgICAgICAgZD0iTTg5Miw4MTguNGgtNzkuM2wtNzAuOCwxMjIuN0w1MjkuNCw4MTguNEgxMDhjLTU0LjEsMC05OC00My45LTk4LTk4VjE1Ni45YzAtNTQuMSw0My45LTk4LDk4LTk4aDc4NGM1NC4xLDAsOTgsNDMuOSw5OCw5OHY1NjMuNUM5OTAsNzc0LjUsOTQ2LjEsODE4LjQsODkyLDgxOC40eiBNOTE2LjUsMTMyLjRoLTgzM3Y2MTIuNWg0NjMuOWwxNzAuMSw5OC4ybDU2LjctOTguMmgxNDIuNFYxMzIuNHogTTE4MS41LDU4NS43YzAtMjAuMywxNi41LTM2LjgsMzYuOC0zNi44aDU2My41YzIwLjMsMCwzNi44LDE2LjUsMzYuOCwzNi44YzAsMjAuMy0xNi41LDM2LjgtMzYuOCwzNi44SDIxOC4zQzE5OCw2MjIuNCwxODEuNSw2MDYsMTgxLjUsNTg1Ljd6IE03ODEuOCw0NzUuNEgyMTguM2MtMjAuMywwLTM2LjgtMTYuNS0zNi44LTM2LjhjMC0yMC4zLDE2LjUtMzYuOCwzNi44LTM2LjhoNTYzLjVjMjAuMywwLDM2LjgsMTYuNSwzNi44LDM2LjhDODE4LjUsNDU5LDgwMiw0NzUuNCw3ODEuOCw0NzUuNHogTTU4NS44LDMyOC40SDIxOC4zYy0yMC4zLDAtMzYuOC0xNi41LTM2LjgtMzYuN2MwLTIwLjMsMTYuNS0zNi44LDM2LjgtMzYuOGgzNjcuNWMyMC4zLDAsMzYuOCwxNi41LDM2LjgsMzYuOEM2MjIuNSwzMTIsNjA2LDMyOC40LDU4NS44LDMyOC40eiIgLz4NCiAgICA8L2c+DQo8L3N2Zz4=';
+      return AnnotationMsgIcon;
   }
 };
 
@@ -204,7 +207,7 @@ function drawRoundRect(
           const yMin = 0 + plotOffset.top;
           const lineWidth = 1;
           const subPixel = lineWidth / 2 || 0;
-          const squareHeight = 20;
+          const squareHeight = 23;
           const squareWidth = 26;
 
           // draw vertical line
@@ -241,7 +244,7 @@ function drawRoundRect(
               img,
               left - squareWidth / 2 + 3,
               2,
-              squareWidth - 6,
+              squareHeight - 3,
               squareHeight - 3
             );
           };
