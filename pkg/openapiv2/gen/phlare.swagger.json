@@ -74,6 +74,51 @@
         ]
       }
     },
+    "/api/v1/status/config/default": {
+      "get": {
+        "operationId": "StatusService_GetDefaultConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1/status/config/diff": {
+      "get": {
+        "summary": "Retrieve the diff config to the defaults",
+        "operationId": "StatusService_GetDiffConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
     "/api/v1/targets": {
       "get": {
         "summary": "Retrieve information about targets.",
