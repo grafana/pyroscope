@@ -38,6 +38,9 @@ type StatusServiceClient interface {
 	GetBuildInfo(ctx context.Context, in *GetBuildInfoRequest, opts ...grpc.CallOption) (*GetBuildInfoResponse, error)
 	// Retrieve the running config
 	GetConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error)
+	// Retrieve the diff config to the defaults
+	GetDiffConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error)
+	GetDefaultConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error)
 }
 
 type statusServiceClient struct {
@@ -66,6 +69,24 @@ func (c *statusServiceClient) GetConfig(ctx context.Context, in *GetConfigReques
 	return out, nil
 }
 
+func (c *statusServiceClient) GetDiffConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error) {
+	out := new(httpbody.HttpBody)
+	err := c.cc.Invoke(ctx, "/common.v1.StatusService/GetDiffConfig", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *statusServiceClient) GetDefaultConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error) {
+	out := new(httpbody.HttpBody)
+	err := c.cc.Invoke(ctx, "/common.v1.StatusService/GetDefaultConfig", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StatusServiceServer is the server API for StatusService service.
 // All implementations must embed UnimplementedStatusServiceServer
 // for forward compatibility
@@ -74,6 +95,9 @@ type StatusServiceServer interface {
 	GetBuildInfo(context.Context, *GetBuildInfoRequest) (*GetBuildInfoResponse, error)
 	// Retrieve the running config
 	GetConfig(context.Context, *GetConfigRequest) (*httpbody.HttpBody, error)
+	// Retrieve the diff config to the defaults
+	GetDiffConfig(context.Context, *GetConfigRequest) (*httpbody.HttpBody, error)
+	GetDefaultConfig(context.Context, *GetConfigRequest) (*httpbody.HttpBody, error)
 	mustEmbedUnimplementedStatusServiceServer()
 }
 
@@ -86,6 +110,12 @@ func (UnimplementedStatusServiceServer) GetBuildInfo(context.Context, *GetBuildI
 }
 func (UnimplementedStatusServiceServer) GetConfig(context.Context, *GetConfigRequest) (*httpbody.HttpBody, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConfig not implemented")
+}
+func (UnimplementedStatusServiceServer) GetDiffConfig(context.Context, *GetConfigRequest) (*httpbody.HttpBody, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDiffConfig not implemented")
+}
+func (UnimplementedStatusServiceServer) GetDefaultConfig(context.Context, *GetConfigRequest) (*httpbody.HttpBody, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDefaultConfig not implemented")
 }
 func (UnimplementedStatusServiceServer) mustEmbedUnimplementedStatusServiceServer() {}
 
@@ -136,6 +166,42 @@ func _StatusService_GetConfig_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StatusService_GetDiffConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StatusServiceServer).GetDiffConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/common.v1.StatusService/GetDiffConfig",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StatusServiceServer).GetDiffConfig(ctx, req.(*GetConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StatusService_GetDefaultConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StatusServiceServer).GetDefaultConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/common.v1.StatusService/GetDefaultConfig",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StatusServiceServer).GetDefaultConfig(ctx, req.(*GetConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StatusService_ServiceDesc is the grpc.ServiceDesc for StatusService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -150,6 +216,14 @@ var StatusService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetConfig",
 			Handler:    _StatusService_GetConfig_Handler,
+		},
+		{
+			MethodName: "GetDiffConfig",
+			Handler:    _StatusService_GetDiffConfig_Handler,
+		},
+		{
+			MethodName: "GetDefaultConfig",
+			Handler:    _StatusService_GetDefaultConfig_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

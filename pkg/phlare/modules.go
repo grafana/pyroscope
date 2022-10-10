@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -267,7 +268,9 @@ func (f *Phlare) initServer() (services.Service, error) {
 
 type statusService struct {
 	commonv1.UnimplementedStatusServiceServer
-	configYaml string
+	configYaml    string
+	defaultConfig *Config
+	actualConfig  *Config
 }
 
 func (s *statusService) GetBuildInfo(ctx context.Context, req *commonv1.GetBuildInfoRequest) (*commonv1.GetBuildInfoResponse, error) {
@@ -284,14 +287,69 @@ func (s *statusService) GetBuildInfo(ctx context.Context, req *commonv1.GetBuild
 }
 
 func (s *statusService) GetConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+	body, err := yaml.Marshal(s.actualConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return &httpbody.HttpBody{
-		ContentType: "text/plain",
-		Data:        []byte("Hello World"),
+		ContentType: "text/plain; charset=utf-8",
+		Data:        body,
+	}, nil
+}
+
+func (s *statusService) GetDefaultConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+	body, err := yaml.Marshal(s.defaultConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpbody.HttpBody{
+		ContentType: "text/plain; charset=utf-8",
+		Data:        body,
+	}, nil
+}
+
+func (s *statusService) GetDiffConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+	aBody, err := yaml.Marshal(s.actualConfig)
+	if err != nil {
+		return nil, err
+	}
+	aCfg := map[interface{}]interface{}{}
+	if err := yaml.Unmarshal(aBody, &aCfg); err != nil {
+		return nil, err
+	}
+
+	dBody, err := yaml.Marshal(s.defaultConfig)
+	if err != nil {
+		return nil, err
+	}
+	dCfg := map[interface{}]interface{}{}
+	if err := yaml.Unmarshal(dBody, &dCfg); err != nil {
+		return nil, err
+	}
+
+	diff, err := util.DiffConfig(dCfg, aCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := yaml.Marshal(diff)
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpbody.HttpBody{
+		ContentType: "text/plain; charset=utf-8",
+		Data:        body,
 	}, nil
 }
 
 func (f *Phlare) statusService() commonv1.StatusServiceServer {
-	return &statusService{}
+	return &statusService{
+		actualConfig:  &f.Cfg,
+		defaultConfig: newDefaultConfig(),
+	}
 }
 
 // NewServerService constructs service from Server component.

@@ -32,6 +32,9 @@ type StatusServiceClient interface {
 	GetBuildInfo(context.Context, *connect_go.Request[v1.GetBuildInfoRequest]) (*connect_go.Response[v1.GetBuildInfoResponse], error)
 	// Retrieve the running config
 	GetConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error)
+	// Retrieve the diff config to the defaults
+	GetDiffConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error)
+	GetDefaultConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error)
 }
 
 // NewStatusServiceClient constructs a client for the common.v1.StatusService service. By default,
@@ -54,13 +57,25 @@ func NewStatusServiceClient(httpClient connect_go.HTTPClient, baseURL string, op
 			baseURL+"/common.v1.StatusService/GetConfig",
 			opts...,
 		),
+		getDiffConfig: connect_go.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
+			httpClient,
+			baseURL+"/common.v1.StatusService/GetDiffConfig",
+			opts...,
+		),
+		getDefaultConfig: connect_go.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
+			httpClient,
+			baseURL+"/common.v1.StatusService/GetDefaultConfig",
+			opts...,
+		),
 	}
 }
 
 // statusServiceClient implements StatusServiceClient.
 type statusServiceClient struct {
-	getBuildInfo *connect_go.Client[v1.GetBuildInfoRequest, v1.GetBuildInfoResponse]
-	getConfig    *connect_go.Client[v1.GetConfigRequest, httpbody.HttpBody]
+	getBuildInfo     *connect_go.Client[v1.GetBuildInfoRequest, v1.GetBuildInfoResponse]
+	getConfig        *connect_go.Client[v1.GetConfigRequest, httpbody.HttpBody]
+	getDiffConfig    *connect_go.Client[v1.GetConfigRequest, httpbody.HttpBody]
+	getDefaultConfig *connect_go.Client[v1.GetConfigRequest, httpbody.HttpBody]
 }
 
 // GetBuildInfo calls common.v1.StatusService.GetBuildInfo.
@@ -73,12 +88,25 @@ func (c *statusServiceClient) GetConfig(ctx context.Context, req *connect_go.Req
 	return c.getConfig.CallUnary(ctx, req)
 }
 
+// GetDiffConfig calls common.v1.StatusService.GetDiffConfig.
+func (c *statusServiceClient) GetDiffConfig(ctx context.Context, req *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error) {
+	return c.getDiffConfig.CallUnary(ctx, req)
+}
+
+// GetDefaultConfig calls common.v1.StatusService.GetDefaultConfig.
+func (c *statusServiceClient) GetDefaultConfig(ctx context.Context, req *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error) {
+	return c.getDefaultConfig.CallUnary(ctx, req)
+}
+
 // StatusServiceHandler is an implementation of the common.v1.StatusService service.
 type StatusServiceHandler interface {
 	// Retrieve build information about the binary
 	GetBuildInfo(context.Context, *connect_go.Request[v1.GetBuildInfoRequest]) (*connect_go.Response[v1.GetBuildInfoResponse], error)
 	// Retrieve the running config
 	GetConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error)
+	// Retrieve the diff config to the defaults
+	GetDiffConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error)
+	GetDefaultConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error)
 }
 
 // NewStatusServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -98,6 +126,16 @@ func NewStatusServiceHandler(svc StatusServiceHandler, opts ...connect_go.Handle
 		svc.GetConfig,
 		opts...,
 	))
+	mux.Handle("/common.v1.StatusService/GetDiffConfig", connect_go.NewUnaryHandler(
+		"/common.v1.StatusService/GetDiffConfig",
+		svc.GetDiffConfig,
+		opts...,
+	))
+	mux.Handle("/common.v1.StatusService/GetDefaultConfig", connect_go.NewUnaryHandler(
+		"/common.v1.StatusService/GetDefaultConfig",
+		svc.GetDefaultConfig,
+		opts...,
+	))
 	return "/common.v1.StatusService/", mux
 }
 
@@ -110,4 +148,12 @@ func (UnimplementedStatusServiceHandler) GetBuildInfo(context.Context, *connect_
 
 func (UnimplementedStatusServiceHandler) GetConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("common.v1.StatusService.GetConfig is not implemented"))
+}
+
+func (UnimplementedStatusServiceHandler) GetDiffConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("common.v1.StatusService.GetDiffConfig is not implemented"))
+}
+
+func (UnimplementedStatusServiceHandler) GetDefaultConfig(context.Context, *connect_go.Request[v1.GetConfigRequest]) (*connect_go.Response[httpbody.HttpBody], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("common.v1.StatusService.GetDefaultConfig is not implemented"))
 }

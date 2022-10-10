@@ -50,6 +50,17 @@ service StatusService {
       get: "/api/v1/status/config"
     };
   }
+  // Retrieve the diff config to the defaults
+  rpc GetDiffConfig(GetConfigRequest) returns (google.api.HttpBody) {
+    option (google.api.http) = {
+      get: "/api/v1/status/config/diff"
+    };
+  }
+  rpc GetDefaultConfig(GetConfigRequest) returns (google.api.HttpBody) {
+    option (google.api.http) = {
+      get: "/api/v1/status/config/default"
+    };
+  }
 }
 
 message GetBuildInfoRequest {}

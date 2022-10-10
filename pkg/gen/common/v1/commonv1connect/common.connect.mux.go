@@ -29,4 +29,14 @@ func RegisterStatusServiceHandler(mux *mux.Router, svc StatusServiceHandler, opt
 		svc.GetConfig,
 		opts...,
 	))
+	mux.Handle("/common.v1.StatusService/GetDiffConfig", connect_go.NewUnaryHandler(
+		"/common.v1.StatusService/GetDiffConfig",
+		svc.GetDiffConfig,
+		opts...,
+	))
+	mux.Handle("/common.v1.StatusService/GetDefaultConfig", connect_go.NewUnaryHandler(
+		"/common.v1.StatusService/GetDefaultConfig",
+		svc.GetDefaultConfig,
+		opts...,
+	))
 }
