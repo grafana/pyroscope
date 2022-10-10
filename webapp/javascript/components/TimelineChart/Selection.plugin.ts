@@ -49,7 +49,11 @@ const handleHeight = 22;
       const o = plot.getOptions();
       const axes = plot.getAxes();
       const plotOffset = plot.getPlotOffset();
-      const extractedX = extractRange(plot, axes, 'x');
+      const extractedX = extractRange(
+        plot as jquery.flot.plot & PlotType,
+        axes,
+        'x'
+      );
 
       return {
         left:
@@ -278,7 +282,7 @@ const handleHeight = 22;
         selection.first.x = 0;
         selection.second.x = plot.width();
       } else {
-        range = extractRange(plot, ranges, 'x');
+        range = extractRange(plot as jquery.flot.plot & PlotType, ranges, 'x');
 
         selection.first.x = range.axis.p2c(range.from);
         selection.second.x = range.axis.p2c(range.to);
@@ -288,7 +292,7 @@ const handleHeight = 22;
         selection.first.y = 0;
         selection.second.y = plot.height();
       } else {
-        range = extractRange(plot, ranges, 'y');
+        range = extractRange(plot as jquery.flot.plot & PlotType, ranges, 'y');
 
         selection.first.y = range.axis.p2c(range.from);
         selection.second.y = range.axis.p2c(range.to);
@@ -406,7 +410,11 @@ const handleHeight = 22;
       ) {
         const axes = plot.getAxes();
         const plotOffset = plot.getPlotOffset();
-        const extractedY = extractRange(plot, axes, 'y');
+        const extractedY = extractRange(
+          plot as jquery.flot.plot & PlotType,
+          axes,
+          'y'
+        );
         const { left, right } = getPlotSelection();
 
         const yMax =

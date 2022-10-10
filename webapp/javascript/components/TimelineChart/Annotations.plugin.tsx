@@ -2,7 +2,7 @@ import React from 'react';
 import * as ReactDOM from 'react-dom';
 import Color from 'color';
 import { randomId } from '@webapp/util/randomId';
-import { PlotType, CtxType } from './types';
+import { CtxType } from './types';
 import extractRange from './extractRange';
 
 type AnnotationType = {
@@ -66,7 +66,7 @@ const inject = ($: JQueryStatic) => {
 };
 
 const getCursorPositionInPx = (
-  plot: PlotType,
+  plot: jquery.flot.plot,
   positionInTimestamp: { x: number; y: number }
 ) => {
   const axes = plot.getAxes();
@@ -128,10 +128,7 @@ function drawRoundRect(
 
     function onHover(_: unknown, pos: { x: number; y: number }) {
       if (annotationsPositions?.length) {
-        const { x, y } = getCursorPositionInPx(
-          plot as PlotType & jquery.flot.plot,
-          pos
-        );
+        const { x, y } = getCursorPositionInPx(plot, pos);
 
         const annotation = findAnnotationByCursorPosition(
           x,
@@ -159,10 +156,7 @@ function drawRoundRect(
 
       const ContextMenu = options?.ContextMenu;
 
-      const { x, y } = getCursorPositionInPx(
-        plot as PlotType & jquery.flot.plot,
-        pos
-      );
+      const { x, y } = getCursorPositionInPx(plot, pos);
 
       const annotation = findAnnotationByCursorPosition(
         x,
@@ -197,16 +191,8 @@ function drawRoundRect(
       if (o.annotations?.length) {
         const axes = plot.getAxes();
         const plotOffset: { top: number; left: number } = plot.getPlotOffset();
-        const extractedX = extractRange(
-          plot as PlotType & jquery.flot.plot,
-          axes,
-          'x'
-        );
-        const extractedY = extractRange(
-          plot as PlotType & jquery.flot.plot,
-          axes,
-          'y'
-        );
+        const extractedX = extractRange(plot, axes, 'x');
+        const extractedY = extractRange(plot, axes, 'y');
 
         o.annotations.forEach((a: AnnotationType) => {
           const left: number =

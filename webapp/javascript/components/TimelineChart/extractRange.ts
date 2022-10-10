@@ -1,9 +1,7 @@
 /* eslint-disable */
-import { PlotType } from './types';
-
 // function taken from markings support in Flot
 export default function extractRange(
-  plot: PlotType,
+  plot: jquery.flot.plot,
   ranges: { [x: string]: any },
   coord: string
 ) {
@@ -14,6 +12,7 @@ export default function extractRange(
     axes = plot.getAxes();
 
   for (var k in axes) {
+    // @ts-ignore:next-line
     axis = axes[k];
     if (axis.direction == coord) {
       key = coord + axis.n + 'axis';
