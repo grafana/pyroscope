@@ -5,8 +5,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -34,10 +32,6 @@ func newConnect(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) (
 	if cfg.SampleRate != 0 {
 		sampleRate = uint32(cfg.SampleRate)
 	}
-
-	// TODO: this is somewhat hacky, we need to find a better way to configure agents
-	pyspy.Blocking = cfg.PyspyBlocking
-	rbspy.Blocking = cfg.RbspyBlocking
 
 	return &exec.Connect{
 		Logger:             logger,

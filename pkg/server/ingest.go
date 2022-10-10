@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/convert/speedscope"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
@@ -148,6 +149,12 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 	case format == "pprof":
 		input.Format = ingestion.FormatPprof
 		input.Profile = &pprof.RawProfile{
+			RawData: b,
+		}
+
+	case format == "speedscope":
+		input.Format = ingestion.FormatSpeedscope
+		input.Profile = &speedscope.RawProfile{
 			RawData: b,
 		}
 
