@@ -7,3 +7,4 @@ monitoring/gen/*
 coverage
 *.html
 lerna.json
+examples/*
