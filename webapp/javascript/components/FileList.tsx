@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { format, parseISO } from 'date-fns';
 
 import { Maybe } from '@webapp/util/fp';
 import { AllProfiles } from '@webapp/models/adhoc';
@@ -29,17 +30,23 @@ const getBodyRows = (
       (profId) => profId === profile.id
     );
 
+    const date = parseISO(profile.updatedAt);
+    const timeString = `${format(date, 'MMM d, yyyy')} at ${format(
+      date,
+      'h:mm a'
+    )}`;
+
     acc.push({
       cells: [
         {
           value: (
-            <>
-              {profile.name}
+            <div className={styles.profileName}>
+              <span title={profile.name}>{profile.name}</span>
               {isRowSelected && <CheckIcon className={styles.checkIcon} />}
-            </>
+            </div>
           ),
         },
-        { value: profile.updatedAt },
+        { value: timeString },
       ],
       onClick: () => {
         // Optimize to not reload the same one

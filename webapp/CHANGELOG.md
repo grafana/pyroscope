@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.51.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.1...@pyroscope/webapp@1.51.2) (2022-10-09)
+
+
+### Bug Fixes
+
+* make adhoc table fit width ([#1591](https://github.com/pyroscope-io/pyroscope/issues/1591)) ([da74fe8](https://github.com/pyroscope-io/pyroscope/commit/da74fe896536b97911d9cf00a9288c64dda77a28))
+
+
+
+
+
 ## [1.51.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.0...@pyroscope/webapp@1.51.1) (2022-10-05)
 
 **Note:** Version bump only for package @pyroscope/webapp

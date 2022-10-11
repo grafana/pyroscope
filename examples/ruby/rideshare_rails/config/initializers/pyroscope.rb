@@ -8,7 +8,6 @@ Pyroscope.configure do |config|
   config.app_name       = app_name
   config.server_address = pyroscope_server_address
   config.auth_token     = ENV.fetch("PYROSCOPE_AUTH_TOKEN", "")
-  config.log_level = 'debug'
 
   config.tags = {
     "region": ENV["REGION"] || "us-east",
