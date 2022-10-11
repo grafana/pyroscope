@@ -38,17 +38,6 @@ export interface ContextMenuProps {
 
 const WRAPPER_ID = randomId('annotations');
 
-const inject = ($: JQueryStatic) => {
-  const alreadyInitialized = $(`#${WRAPPER_ID}`).length > 0;
-
-  if (alreadyInitialized) {
-    return $(`#${WRAPPER_ID}`);
-  }
-
-  const body = $('body');
-  return $(`<div id="${WRAPPER_ID}" />`).appendTo(body);
-};
-
 (function ($) {
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
     const placeholder = plot.getPlaceholder();
@@ -78,57 +67,33 @@ const inject = ($: JQueryStatic) => {
     }
 
     plot.hooks!.draw!.push((plot, ctx: CtxType) => {
-      const o: IFlotOptions = plot.getOptions();
+      const options: IFlotOptions = plot.getOptions();
 
-      if (o.annotations?.length) {
+      if (options.annotations?.length) {
         const plotOffset: { top: number; left: number } = plot.getPlotOffset();
         const extractedX = extractRange(plot, 'x');
         const extractedY = extractRange(plot, 'y');
 
-        o.annotations.forEach((a: AnnotationType) => {
+        options.annotations.forEach((a: AnnotationType) => {
           const left: number =
             Math.floor(extractedX.axis.p2c(a.timestamp * 1000)) +
             plotOffset.left;
 
-          const annotationMarkElementId = 'annotation_mark_'.concat(
-            String(a.timestamp)
-          );
+          renderAnnotationMark({
+            annotation: a,
+            options,
+            left,
+          });
 
-          const annotationMarkElement = $(`#${annotationMarkElementId}`);
-
-          if (!annotationMarkElement.length) {
-            $(
-              `<div id="${annotationMarkElementId}" style="position: absolute; top: 0; left: ${left}px; width: 0" />`
-            ).appendTo(`#${o.wrapperId}`);
-          } else {
-            annotationMarkElement.css({ left });
-          }
-
-          ReactDOM.render(
-            <Provider store={store}>
-              <AnnotationMark
-                type={a.type}
-                color={a.color}
-                value={{ content: a.content, timestamp: a.timestamp }}
-              />
-            </Provider>,
-            document.getElementById(annotationMarkElementId)
-          );
-
-          const yMax =
-            Math.floor(extractedY.axis.p2c(extractedY.axis.min)) +
-            plotOffset.top;
-          const yMin = 0 + plotOffset.top;
-          const lineWidth = 1;
-          const subPixel = lineWidth / 2 || 0;
-
-          // draw vertical line
-          ctx.beginPath();
-          ctx.strokeStyle = a.color;
-          ctx.lineWidth = lineWidth;
-          ctx.moveTo(left + subPixel, yMax);
-          ctx.lineTo(left + subPixel, yMin);
-          ctx.stroke();
+          drawAnnotationLine({
+            ctx,
+            yMin: plotOffset.top,
+            yMax:
+              Math.floor(extractedY.axis.p2c(extractedY.axis.min)) +
+              plotOffset.top,
+            left,
+            color: a.color,
+          });
         });
       }
     });
@@ -153,3 +118,70 @@ const inject = ($: JQueryStatic) => {
     version: '1.0',
   });
 })(jQuery);
+
+const inject = ($: JQueryStatic) => {
+  const alreadyInitialized = $(`#${WRAPPER_ID}`).length > 0;
+
+  if (alreadyInitialized) {
+    return $(`#${WRAPPER_ID}`);
+  }
+
+  const body = $('body');
+  return $(`<div id="${WRAPPER_ID}" />`).appendTo(body);
+};
+
+const drawAnnotationLine = ({
+  ctx,
+  color,
+  left,
+  yMax,
+  yMin,
+}: {
+  ctx: CtxType;
+  color: Color;
+  left: number;
+  yMax: number;
+  yMin: number;
+}) => {
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.moveTo(left + 0.5, yMax);
+  ctx.lineTo(left + 0.5, yMin);
+  ctx.stroke();
+};
+
+const renderAnnotationMark = ({
+  annotation,
+  options,
+  left,
+}: {
+  annotation: AnnotationType;
+  options: { wrapperId?: string };
+  left: number;
+}) => {
+  const annotationMarkElementId = 'annotation_mark_'.concat(
+    String(annotation.timestamp)
+  );
+
+  const annotationMarkElement = $(`#${annotationMarkElementId}`);
+
+  if (!annotationMarkElement.length) {
+    $(
+      `<div id="${annotationMarkElementId}" style="position: absolute; top: 0; left: ${left}px; width: 0" />`
+    ).appendTo(`#${options.wrapperId}`);
+  } else {
+    annotationMarkElement.css({ left });
+  }
+
+  ReactDOM.render(
+    <Provider store={store}>
+      <AnnotationMark
+        type={annotation.type}
+        color={annotation.color}
+        value={{ content: annotation.content, timestamp: annotation.timestamp }}
+      />
+    </Provider>,
+    document.getElementById(annotationMarkElementId)
+  );
+};
