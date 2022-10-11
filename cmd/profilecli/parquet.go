@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -10,33 +11,30 @@ import (
 	"github.com/segmentio/parquet-go"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: parquet-tool <file>")
-		os.Exit(1)
-	}
-	f, err := os.Open(os.Args[1])
+func parquetInspect(ctx context.Context, path string) error {
+	f, err := os.Open(path)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer f.Close()
 	stats, err := f.Stat()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	pf, err := parquet.OpenFile(f, stats.Size())
 	if err != nil {
-		panic(err)
+		return err
 	}
-	fmt.Println("schema:", pf.Schema())
+	out := output(ctx)
+	fmt.Fprintln(out, "schema:", pf.Schema())
 	meta := pf.Metadata()
 	fmt.Println("Num Rows:", meta.NumRows)
 	for i, rg := range meta.RowGroups {
-		fmt.Println("\t Row group:", i)
-		fmt.Println("\t\t Row Count:", rg.NumRows)
-		fmt.Println("\t\t Row size:", humanize.Bytes(uint64(rg.TotalByteSize)))
-		fmt.Println("\t\t Columns:")
-		table := tablewriter.NewWriter(os.Stdout)
+		fmt.Fprintln(out, "\t Row group:", i)
+		fmt.Fprintln(out, "\t\t Row Count:", rg.NumRows)
+		fmt.Fprintln(out, "\t\t Row size:", humanize.Bytes(uint64(rg.TotalByteSize)))
+		fmt.Fprintln(out, "\t\t Columns:")
+		table := tablewriter.NewWriter(out)
 		table.SetHeader([]string{
 			"Col", "Type", "NumVal", "TotalCompressedSize", "TotalUncompressedSize", "Compression", "%", "PageCount", "AvgPageSize",
 		})
@@ -63,4 +61,6 @@ func main() {
 		}
 		table.Render()
 	}
+
+	return nil
 }

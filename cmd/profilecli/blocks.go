@@ -37,7 +37,7 @@ func blocksList(ctx context.Context) error {
 		return err
 	}
 
-	table := tablewriter.NewWriter(os.Stdout)
+	table := tablewriter.NewWriter(output(ctx))
 	table.SetHeader([]string{"Block ID", "MinTime", "MaxTime", "Duration", "Index", "Profiles", "Stacktraces", "Locations", "Functions", "Strings"})
 	for _, blockInfo := range metas {
 		table.Append([]string{
