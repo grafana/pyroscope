@@ -38,9 +38,6 @@ export interface ContextMenuProps {
 
 const WRAPPER_ID = randomId('annotations');
 
-const shouldStartAnnotationsFunctionality = (annotations?: AnnotationType[]) =>
-  Array.isArray(annotations);
-
 const inject = ($: JQueryStatic) => {
   const alreadyInitialized = $(`#${WRAPPER_ID}`).length > 0;
 
@@ -136,24 +133,16 @@ const inject = ($: JQueryStatic) => {
       }
     });
 
-    plot.hooks!.bindEvents!.push((plot) => {
-      const o: IFlotOptions = plot.getOptions();
-
-      if (shouldStartAnnotationsFunctionality(o.annotations)) {
-        placeholder.bind('plotclick', onClick);
-      }
+    plot.hooks!.bindEvents!.push(() => {
+      placeholder.bind('plotclick', onClick);
     });
 
-    plot.hooks!.shutdown!.push((plot) => {
-      const o: IFlotOptions = plot.getOptions();
+    plot.hooks!.shutdown!.push(() => {
+      placeholder.unbind('plotclick', onClick);
 
-      if (shouldStartAnnotationsFunctionality(o.annotations)) {
-        placeholder.unbind('plotclick', onClick);
+      const container = inject($);
 
-        const container = inject($);
-
-        ReactDOM.unmountComponentAtNode(container?.[0]);
-      }
+      ReactDOM.unmountComponentAtNode(container?.[0]);
     });
   }
 

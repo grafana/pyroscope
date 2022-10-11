@@ -147,7 +147,7 @@ class TimelineChartWrapper extends React.Component<
         //   a position and a nearby data item object as parameters.
         clickable: true,
       },
-      annotations: null,
+      annotations: [],
       yaxis: {
         show: false,
         min: 0,
