@@ -41,7 +41,6 @@ function getCalleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
 
   const findTreeNode = (node) => {
     const { name, children, total, self } = node;
-    console.log(name);
     if (!result.levels.length && name === nodeName) {
       treeNodeToFlamebearer(node, 0, 0);
       result.numTicks = total[0];
@@ -59,6 +58,8 @@ function getCalleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
 
 // should return both callees and callers profiles after implementation
 export function sandwichViewProfiles(p: Profile, nodeName: string): Profile {
+  // original imported json mutates after deltaDiffWrapper/deltaDiffWrapperReverse calls
+  console.log(p.flamebearer.levels);
   p.flamebearer.levels = deltaDiffWrapper('single', p.flamebearer.levels);
   const calleesFlamebearer = getCalleesFlamebearer(p.flamebearer, nodeName);
   calleesFlamebearer.levels = deltaDiffWrapperReverse(

@@ -53,23 +53,24 @@ export default function SandwichView() {
               <h3>callees flamegraph</h3>
               {selectedFunction && (
                 <FlamegraphRenderer
+                  showToolbar={false}
                   onlyDisplay="flamegraph"
                   showCredit={false}
                   profile={profile}
-                  ExportData={
-                    <ExportData
-                      flamebearer={{
-                        ...singleView.profile,
-                        flamebearer: profile.flamebearer,
-                        metadata: {
-                          ...profile.flamebearer.metadata,
-                          ...singleView.profile?.metadata,
-                        },
-                      }}
-                      exportJSON
-                      exportPprof
-                    />
-                  }
+                  // ExportData={
+                  //   <ExportData
+                  //     flamebearer={{
+                  //       ...singleView.profile,
+                  //       flamebearer: profile.flamebearer,
+                  //       metadata: {
+                  //         ...profile.flamebearer.metadata,
+                  //         ...singleView.profile?.metadata,
+                  //       },
+                  //     }}
+                  //     exportJSON
+                  //     exportPprof
+                  //   />
+                  // }
                 />
               )}
             </div>
