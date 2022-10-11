@@ -70,14 +70,18 @@ func (t *Dict) readValue(key Key, w io.Writer) bool {
 	}
 }
 
+func (t *Dict) PutTo(dst io.Writer, val Value) {
+	t.m.Lock()
+	defer t.m.Unlock()
+	t.root.findNodeAt(val, dst)
+}
+
 var bufferPool bytebufferpool.Pool
 
 func (t *Dict) Put(val Value) Key {
-	t.m.Lock()
-	defer t.m.Unlock()
 	b := bufferPool.Get()
 	defer bufferPool.Put(b)
-	t.root.findNodeAt(val, b)
+	t.PutTo(b, val)
 	k := make([]byte, b.Len())
 	copy(k, b.B)
 	return k
