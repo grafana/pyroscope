@@ -119,7 +119,7 @@ const WRAPPER_ID = randomId('annotations');
   });
 })(jQuery);
 
-const inject = ($: JQueryStatic) => {
+function inject($: JQueryStatic) {
   const alreadyInitialized = $(`#${WRAPPER_ID}`).length > 0;
 
   if (alreadyInitialized) {
@@ -128,9 +128,9 @@ const inject = ($: JQueryStatic) => {
 
   const body = $('body');
   return $(`<div id="${WRAPPER_ID}" />`).appendTo(body);
-};
+}
 
-const drawAnnotationLine = ({
+function drawAnnotationLine({
   ctx,
   color,
   left,
@@ -142,16 +142,16 @@ const drawAnnotationLine = ({
   left: number;
   yMax: number;
   yMin: number;
-}) => {
+}) {
   ctx.beginPath();
   ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   ctx.moveTo(left + 0.5, yMax);
   ctx.lineTo(left + 0.5, yMin);
   ctx.stroke();
-};
+}
 
-const renderAnnotationMark = ({
+function renderAnnotationMark({
   annotation,
   options,
   left,
@@ -159,7 +159,7 @@ const renderAnnotationMark = ({
   annotation: AnnotationType;
   options: { wrapperId?: string };
   left: number;
-}) => {
+}) {
   const annotationMarkElementId = 'annotation_mark_'.concat(
     String(annotation.timestamp)
   );
@@ -184,4 +184,4 @@ const renderAnnotationMark = ({
     </Provider>,
     document.getElementById(annotationMarkElementId)
   );
-};
+}
