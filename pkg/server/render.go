@@ -147,13 +147,6 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			},
 		})
 
-		sum := uint64(0)
-		for _, v := range flame.Timeline.Samples {
-			sum += v - 1
-		}
-
-		logrus.WithField("samples", sum).Info("samples")
-
 		// Look up annotations
 		annotations, err := rh.annotationsService.FindAnnotationsByTimeRange(r.Context(), appName, p.gi.StartTime, p.gi.EndTime)
 		if err != nil {
