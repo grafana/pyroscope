@@ -37,23 +37,25 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 			return err
 		}
 		val := tn.Self
+
+		// tn.ChildrenNodes = tn.ChildrenNodes[:0]
+		largeEnoughNodes := make([]*treeNode, 0)
+		for _, cn := range tn.ChildrenNodes {
+			if cn.Total >= minVal {
+				largeEnoughNodes = append(largeEnoughNodes, cn)
+			} else {
+				// Truncated children accounted as parent self.
+				val += cn.Total
+			}
+		}
+
 		if _, err = vw.Write(w, val); err != nil {
 			return err
 		}
-
-		cNodes := tn.ChildrenNodes
-		tn.ChildrenNodes = tn.ChildrenNodes[:0]
-		for _, cn := range cNodes {
-			if cn.Total >= minVal {
-				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
-			}
+		if len(largeEnoughNodes) > 0 {
+			nodes = append(largeEnoughNodes, nodes...)
 		}
-		if len(tn.ChildrenNodes) > 0 {
-			nodes = append(tn.ChildrenNodes, nodes...)
-		} else {
-			tn.ChildrenNodes = nil // Just to make it eligible for GC.
-		}
-		if _, err = vw.Write(w, uint64(len(tn.ChildrenNodes))); err != nil {
+		if _, err = vw.Write(w, uint64(len(largeEnoughNodes))); err != nil {
 			return err
 		}
 	}
