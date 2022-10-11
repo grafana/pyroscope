@@ -27,17 +27,17 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	query "github.com/grafana/phlare/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	query "github.com/grafana/phlare/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
 )
 
 type tableReader interface {
@@ -47,7 +47,7 @@ type tableReader interface {
 
 type BlockQuerier struct {
 	phlarectx context.Context
-	logger  log.Logger
+	logger    log.Logger
 
 	bucketReader phlareobjstore.BucketReader
 

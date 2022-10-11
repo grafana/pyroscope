@@ -36,10 +36,10 @@ import (
 	tsdb_enc "github.com/prometheus/prometheus/tsdb/encoding"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/encoding"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/encoding"
 )
 
 const (

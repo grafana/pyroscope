@@ -25,7 +25,6 @@ import (
 
 	"github.com/grafana/phlare/pkg/agent"
 	"github.com/grafana/phlare/pkg/distributor"
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
 	"github.com/grafana/phlare/pkg/gen/agent/v1/agentv1connect"
 	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
@@ -34,6 +33,7 @@ import (
 	"github.com/grafana/phlare/pkg/ingester"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/openapiv2"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/util"
 )

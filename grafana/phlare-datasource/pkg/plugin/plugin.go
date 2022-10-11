@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
-	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 // Make sure PhlareDatasource implements required interfaces. This is important to do

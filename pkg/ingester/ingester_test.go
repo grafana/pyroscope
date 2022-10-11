@@ -18,12 +18,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb"
 	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/objstore/client"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/tenant"
 )
 

@@ -8,10 +8,10 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
 type ProfileBuilder struct {

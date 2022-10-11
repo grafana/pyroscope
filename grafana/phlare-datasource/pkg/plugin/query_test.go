@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	v1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	v1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"

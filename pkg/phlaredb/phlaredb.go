@@ -27,14 +27,14 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
 	diskutil "github.com/grafana/phlare/pkg/util/disk"
 )
 
@@ -76,7 +76,7 @@ func (*realFileSystem) RemoveAll(path string) error                { return os.R
 type PhlareDB struct {
 	services.Service
 
-	logger  log.Logger
+	logger    log.Logger
 	phlarectx context.Context
 
 	cfg    Config
@@ -101,10 +101,10 @@ func New(phlarectx context.Context, cfg Config) (*PhlareDB, error) {
 	phlarectx = contextWithHeadMetrics(phlarectx, newHeadMetrics(reg))
 
 	f := &PhlareDB{
-		cfg:     cfg,
-		logger:  phlarecontext.Logger(phlarectx),
+		cfg:       cfg,
+		logger:    phlarecontext.Logger(phlarectx),
 		phlarectx: phlarectx,
-		stopCh:  make(chan struct{}, 0),
+		stopCh:    make(chan struct{}, 0),
 		volumeChecker: diskutil.NewVolumeChecker(
 			minFreeDisk,
 			minDiskAvailablePercentage,

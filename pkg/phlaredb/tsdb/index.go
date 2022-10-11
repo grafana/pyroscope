@@ -19,9 +19,9 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
 )
 
 var (

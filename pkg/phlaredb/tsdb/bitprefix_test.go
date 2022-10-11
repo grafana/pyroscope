@@ -9,10 +9,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
 )
 
 func Test_BitPrefixGetShards(t *testing.T) {

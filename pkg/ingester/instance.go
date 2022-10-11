@@ -10,11 +10,11 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
+	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
 	"github.com/grafana/phlare/pkg/phlaredb/shipper"
-	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 )
 
 type instance struct {
@@ -39,9 +39,9 @@ func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string
 	ctx, cancel := context.WithCancel(phlarectx)
 	inst := &instance{
 		PhlareDB: db,
-		logger: phlarecontext.Logger(phlarectx),
-		reg:    phlarecontext.Registry(phlarectx),
-		cancel: cancel,
+		logger:   phlarecontext.Logger(phlarectx),
+		reg:      phlarecontext.Registry(phlarectx),
+		cancel:   cancel,
 	}
 	if storageBucket != nil {
 		inst.shipper = shipper.New(
