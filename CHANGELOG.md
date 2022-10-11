@@ -1,3 +1,18 @@
+# [0.31.0](https://github.com/pyroscope-io/pyroscope/compare/v0.30.0...v0.31.0) (2022-10-06)
+
+
+### Bug Fixes
+
+* update regexes for deleted so names ([#1599](https://github.com/pyroscope-io/pyroscope/issues/1599)) ([85d13ea](https://github.com/pyroscope-io/pyroscope/commit/85d13ea06839139040f902dcbee7179db7c41d34))
+
+
+### Features
+
+* add sorting to explore view table ([#1592](https://github.com/pyroscope-io/pyroscope/issues/1592)) ([64bc4b3](https://github.com/pyroscope-io/pyroscope/commit/64bc4b3ffaaa72ac01513093a74919c3389c45af))
+* support speedscope format ([#1589](https://github.com/pyroscope-io/pyroscope/issues/1589)) ([edb5e18](https://github.com/pyroscope-io/pyroscope/commit/edb5e18edb54c5bba8d4af7f4200e765fd57305b))
+
+
+
 # [0.30.0](https://github.com/pyroscope-io/pyroscope/compare/v0.29.0...v0.30.0) (2022-10-04)
 
 

@@ -171,6 +171,7 @@ Pyroscope is possible thanks to the excellent work of many people, including but
 * Ben Frederickson — creator of py-spy — sampling profiler for Python
 * Adam Saponara — creator of phpspy — sampling profiler for PHP
 * Alexei Starovoitov, Brendan Gregg, and many others who made BPF based profiling in Linux kernel possible
+* Jamie Wong — creator of speedscope — interactive flamegraph visualizer
 
 ## Contributing
 
@@ -225,6 +226,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
 <a href="https://github.com/dleviminzi"><img src="https://avatars.githubusercontent.com/u/51272568?v=4" title="dleviminzi" width="80" height="80"></a>
 <a href="https://github.com/Dzalevski"><img src="https://avatars.githubusercontent.com/u/9572827?v=4" title="Dzalevski" width="80" height="80"></a>
+<a href="https://github.com/vasi-stripe"><img src="https://avatars.githubusercontent.com/u/28717751?v=4" title="vasi-stripe" width="80" height="80"></a>
 <a href="https://github.com/dhanusaputra"><img src="https://avatars.githubusercontent.com/u/35093673?v=4" title="dhanusaputra" width="80" height="80"></a>
 <a href="https://github.com/Juneezee"><img src="https://avatars.githubusercontent.com/u/20135478?v=4" title="Juneezee" width="80" height="80"></a>
 <a href="https://github.com/Faria-Ejaz"><img src="https://avatars.githubusercontent.com/u/14238844?v=4" title="Faria-Ejaz" width="80" height="80"></a>

@@ -40,11 +40,23 @@ $tdHeight: 25px;
       }
 
       &:last-child {
-        width: 400px;
-        min-width: 400px;
-        max-width: 400px;
-        text-align: right;
+        width: 250px;
+        min-width: 250px;
+        max-width: 250px;
         padding: 0px 10px;
+      }
+    }
+
+    .profileName {
+      display: flex;
+      align-items: center;
+
+      span {
+        display: inline-block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: calc(100% - 30px);
+        margin-right: 10px;
       }
     }
   }
