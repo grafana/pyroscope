@@ -36,7 +36,7 @@ export interface ContextMenuProps {
   } | null;
 }
 
-const WRAPPER_ID = randomId('contextMenu');
+const WRAPPER_ID = randomId('annotations');
 
 const shouldStartAnnotationsFunctionality = (annotations?: AnnotationType[]) =>
   Array.isArray(annotations);
