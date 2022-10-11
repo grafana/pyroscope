@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	//go:embed gen/fire.swagger.json
+	//go:embed gen/phlare.swagger.json
 	openapiV2 []byte
 )
 
@@ -33,7 +33,7 @@ func Handler() (http.Handler, error) {
 	}
 
 	obj["info"] = map[string]interface{}{
-		"title":   "Grafana Fire",
+		"title":   "Grafana Phlare",
 		"version": version.Info(),
 	}
 

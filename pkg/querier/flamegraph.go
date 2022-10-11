@@ -5,8 +5,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/samber/lo"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
 )
 
 type stackNode struct {

@@ -1,12 +1,12 @@
 ---
 aliases:
-  - /docs/fire/latest/operators-guide/run-in-production/
-description: Run Grafana Fire in production.
+  - /docs/phlare/latest/operators-guide/run-in-production/
+description: Run Grafana Phlare in production.
 menuTitle: Run in production
-title: Run Grafana Fire in production
+title: Run Grafana Phlare in production
 weight: 51
 ---
 
-# Run Grafana Fire in production
+# Run Grafana Phlare in production
 
 Coming soon.

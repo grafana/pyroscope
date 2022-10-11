@@ -3,7 +3,7 @@ package parquet
 import (
 	"encoding/binary"
 
-	"github.com/grafana/fire/pkg/objstore"
+	"github.com/grafana/phlare/pkg/objstore"
 )
 
 type parquetReaderAt struct {

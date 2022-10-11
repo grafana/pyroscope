@@ -1,16 +1,16 @@
 ---
 aliases:
-  - /docs/fire/latest/operators-guide/configuring/
-description: This section provides links to Grafana Fire configuration topics.
+  - /docs/phlare/latest/operators-guide/configuring/
+description: This section provides links to Grafana Phlare configuration topics.
 keywords:
-  - Fire configuration
+  - Phlare configuration
 menuTitle: Configure the server
-title: Configure Grafana Fire
+title: Configure Grafana Phlare
 weight: 30
 ---
 
-# Configure Grafana Fire
+# Configure Grafana Phlare
 
-Grafana Fire's flexibility is achieved through configuration.
+Grafana Phlare's flexibility is achieved through configuration.
 
 {{< section menuTitle="true" >}}

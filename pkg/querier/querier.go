@@ -21,17 +21,17 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
-	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 // todo: move to non global metrics.
 var clients = promauto.NewGauge(prometheus.GaugeOpts{
-	Namespace: "fire",
+	Namespace: "phlare",
 	Name:      "querier_ingester_clients",
 	Help:      "The current number of ingester clients.",
 })
@@ -201,7 +201,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 				return r.response
 			}),
 			func(t *commonv1.Labels) uint64 {
-				return firemodel.Labels(t.Labels).Hash()
+				return phlaremodel.Labels(t.Labels).Hash()
 			}),
 	}), nil
 }
@@ -218,7 +218,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		sp.Finish()
 	}()
 
-	profileType, err := firemodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -275,7 +275,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		)
 		sp.Finish()
 	}()
-	profileType, err := firemodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -386,7 +386,7 @@ Outer:
 	}
 	series := lo.Values(seriesMap)
 	sort.Slice(series, func(i, j int) bool {
-		return firemodel.CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
+		return phlaremodel.CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
 	})
 	return series
 }

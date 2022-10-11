@@ -18,13 +18,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	"github.com/grafana/fire/pkg/firedb"
-	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/objstore/client"
-	"github.com/grafana/fire/pkg/tenant"
+	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/objstore/client"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb"
+	"github.com/grafana/phlare/pkg/tenant"
 )
 
 func defaultIngesterTestConfig(t testing.TB) Config {
@@ -54,8 +54,8 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	dbPath := t.TempDir()
 	logger := log.NewJSONLogger(os.Stdout)
 	reg := prometheus.NewRegistry()
-	ctx := firecontext.WithLogger(context.Background(), logger)
-	ctx = firecontext.WithRegistry(ctx, reg)
+	ctx := phlarecontext.WithLogger(context.Background(), logger)
+	ctx = phlarecontext.WithRegistry(ctx, reg)
 
 	fs, err := client.NewBucket(logger, []byte(`
 type: FILESYSTEM
@@ -64,7 +64,7 @@ config:
 prefix: ""`), reg, "storage")
 	require.NoError(t, err)
 
-	ing, err := New(ctx, defaultIngesterTestConfig(t), firedb.Config{
+	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
 		DataPath:         dbPath,
 		MaxBlockDuration: 30 * time.Hour,
 	}, fs)
@@ -85,11 +85,11 @@ prefix: ""`), reg, "storage")
 			},
 		},
 	}
-	req.Msg.Series[0].Labels = firemodel.LabelsFromStrings("foo", "bar")
+	req.Msg.Series[0].Labels = phlaremodel.LabelsFromStrings("foo", "bar")
 	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "foo"), req)
 	require.NoError(t, err)
 
-	req.Msg.Series[0].Labels = firemodel.LabelsFromStrings("buzz", "bazz")
+	req.Msg.Series[0].Labels = phlaremodel.LabelsFromStrings("buzz", "bazz")
 	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "buzz"), req)
 	require.NoError(t, err)
 

@@ -14,9 +14,9 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 // LabelValuesHandler only returns the label values for the given label name.
@@ -135,7 +135,7 @@ func parseQuery(req *http.Request) (string, *commonv1.ProfileType, error) {
 		return "", nil, status.Error(codes.InvalidArgument, "query must contain a profile-type selection")
 	}
 
-	profileSelector, err := firemodel.ParseProfileTypeSelector(nameLabel.Value)
+	profileSelector, err := phlaremodel.ParseProfileTypeSelector(nameLabel.Value)
 	if err != nil {
 		return "", nil, status.Error(codes.InvalidArgument, "failed to parse query")
 	}

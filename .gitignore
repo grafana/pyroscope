@@ -6,7 +6,7 @@ bin
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-/cmd/fire/data
+/cmd/phlare/data
 /data/
 go.work
 go.work.sum

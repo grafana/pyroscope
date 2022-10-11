@@ -3,8 +3,8 @@ package model
 import (
 	"testing"
 
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/testhelper"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 func TestMergeBatchResponse(t *testing.T) {

@@ -25,7 +25,7 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
 
 # Build flags
-VPREFIX := github.com/grafana/fire/pkg/util/build
+VPREFIX := github.com/grafana/phlare/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
 GO_FLAGS     := -ldflags "-extldflags \"-static\" -s -w $(GO_LDFLAGS)" -tags netgo -mod=mod
 
@@ -67,7 +67,7 @@ go/deps:
 .PHONY: go/bin
 go/bin:
 	mkdir -p ./bin
-	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) -o bin/ ./cmd/fire
+	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) -o bin/ ./cmd/phlare
 	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) -o bin/ ./cmd/profilecli
 
 .PHONY: go/lint
@@ -80,14 +80,14 @@ go/mod:
 	GO111MODULE=on go mod download
 	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
-	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod download
-	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod verify
-	cd ./grafana/fire-datasource/ && GO111MODULE=on go mod tidy
+	cd ./grafana/phlare-datasource/ && GO111MODULE=on go mod download
+	cd ./grafana/phlare-datasource/ && GO111MODULE=on go mod verify
+	cd ./grafana/phlare-datasource/ && GO111MODULE=on go mod tidy
 
 
 .PHONY: plugin/datasource/build
 plugin/datasource/build: $(BIN)/mage
-	pushd ./grafana/fire-datasource && \
+	pushd ./grafana/phlare-datasource && \
 	yarn install && yarn build && \
 	$(BIN)/mage -v \
 
@@ -98,7 +98,7 @@ plugin/flamegraph/build:
 
 .PHONY: start/grafana
 start/grafana: plugin/datasource/build plugin/flamegraph/build
-	./tools/grafana-fire
+	./tools/grafana-phlare
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -122,24 +122,24 @@ define docker_buildx
 endef
 
 define docker_buildx_grafana
-	docker buildx build $(1) --ssh default --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION)  -t $(IMAGE_PREFIX)grafana-fire:$(IMAGE_TAG) -f grafana/Dockerfile .
+	docker buildx build $(1) --ssh default --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION)  -t $(IMAGE_PREFIX)grafana-phlare:$(IMAGE_TAG) -f grafana/Dockerfile .
 endef
 
 define deploy
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	# Load image into nodes
-	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)fire:$(IMAGE_TAG)
+	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)phlare:$(IMAGE_TAG)
 	kubectl get pods
-	$(BIN)/helm upgrade --install $(1) ./deploy/helm/fire $(2) \
-		--set fire.image.tag=$(IMAGE_TAG) --set fire.service.port_name=http-metrics
+	$(BIN)/helm upgrade --install $(1) ./deploy/helm/phlare $(2) \
+		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.service.port_name=http-metrics
 endef
 
-.PHONY: docker-image/fire/build
-docker-image/fire/build:
+.PHONY: docker-image/phlare/build
+docker-image/phlare/build:
 	$(call docker_buildx,--load)
 
-.PHONY: docker-image/fire/push
-docker-image/fire/push:
+.PHONY: docker-image/phlare/push
+docker-image/phlare/push:
 	$(call docker_buildx,--push)
 
 .PHONY: docker-image/grafana/build
@@ -155,29 +155,29 @@ define UPDATER_CONFIG_JSON
   "repo_name": "deployment_tools",
   "destination_branch": "master",
   "wait_for_ci": true,
-  "wait_for_ci_branch_prefix": "automation/fire-dev-deploy",
+  "wait_for_ci_branch_prefix": "automation/phlare-dev-deploy",
   "wait_for_ci_timeout": "10m",
   "wait_for_ci_required_status": [
     "continuous-integration/drone/push"
   ],
   "update_jsonnet_attribute_configs": [
     {
-      "file_path": "ksonnet/environments/fire/waves/dev.libsonnet",
-      "jsonnet_key": "fire",
-      "jsonnet_value": "$(IMAGE_PREFIX)fire:$(IMAGE_TAG)"
+      "file_path": "ksonnet/environments/phlare/waves/dev.libsonnet",
+      "jsonnet_key": "phlare",
+      "jsonnet_value": "$(IMAGE_PREFIX)phlare:$(IMAGE_TAG)"
     },
 	{
-      "file_path": "ksonnet/environments/fire/waves/dev.libsonnet",
+      "file_path": "ksonnet/environments/phlare/waves/dev.libsonnet",
       "jsonnet_key": "grafana",
-      "jsonnet_value": "$(IMAGE_PREFIX)grafana-fire:$(IMAGE_TAG)"
+      "jsonnet_value": "$(IMAGE_PREFIX)grafana-phlare:$(IMAGE_TAG)"
     }
   ]
 }
 endef
 
-.PHONY: docker-image/fire/deploy-dev-001
-docker-image/fire/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/fire/deploy-dev-001: $(BIN)/updater
+.PHONY: docker-image/phlare/deploy-dev-001
+docker-image/phlare/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
+docker-image/phlare/deploy-dev-001: $(BIN)/updater
 	$(BIN)/updater
 
 .PHONY: clean
@@ -249,35 +249,35 @@ $(BIN)/updater: Makefile
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/drone/plugins/cmd/updater@d64d509
 
-KIND_CLUSTER = fire-dev
+KIND_CLUSTER = phlare-dev
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
-	$(BIN)/helm lint ./deploy/helm/fire/
+	$(BIN)/helm lint ./deploy/helm/phlare/
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeval $(BIN)/helm
-	mkdir -p ./deploy/helm/fire/rendered/
-	$(BIN)/helm template fire-dev ./deploy/helm/fire/ \
-		| tee ./deploy/helm/fire/rendered/single-binary.yaml \
+	mkdir -p ./deploy/helm/phlare/rendered/
+	$(BIN)/helm template phlare-dev ./deploy/helm/phlare/ \
+		| tee ./deploy/helm/phlare/rendered/single-binary.yaml \
 		| $(BIN)/kubeval --strict
-	$(BIN)/helm template fire-dev ./deploy/helm/fire/ --values deploy/helm/fire/values-micro-services.yaml \
-		| tee ./deploy/helm/fire/rendered/micro-services.yaml \
+	$(BIN)/helm template phlare-dev ./deploy/helm/phlare/ --values deploy/helm/phlare/values-micro-services.yaml \
+		| tee ./deploy/helm/phlare/rendered/micro-services.yaml \
 		| $(BIN)/kubeval --strict
-	cat deploy/helm/fire/values-micro-services.yaml \
+	cat deploy/helm/phlare/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./deploy/jsonnet/values-micro-services.json
-	cat deploy/helm/fire/values.yaml \
+	cat deploy/helm/phlare/values.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./deploy/jsonnet/values.json
 
 .PHONY: deploy
-deploy: $(BIN)/kind $(BIN)/helm docker-image/fire/build
-	$(call deploy,fire-dev)
+deploy: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
+	$(call deploy,phlare-dev)
 
 .PHONY: deploy-micro-services
-deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/fire/build
-	$(call deploy,fire-micro-services,--values=deploy/helm/fire/values-micro-services.yaml)
+deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
+	$(call deploy,phlare-micro-services,--values=deploy/helm/phlare/values-micro-services.yaml)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
@@ -289,4 +289,4 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN) $(BIN)/tk init -f
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
-	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name fire-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
+	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name phlare-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring

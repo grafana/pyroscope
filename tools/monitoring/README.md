@@ -1,6 +1,6 @@
 # Monitoring
 
-This folder contains a deployment example of the fire-mixin.
+This folder contains a deployment example of the phlare-mixin.
 This is useful for testing new changes to the mixin.
 
 First use `make deploy-micro-services` to deploy locally using kind.

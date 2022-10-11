@@ -5,7 +5,7 @@ import (
 
 	"github.com/samber/lo"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 )
 
 func MergeSeries(series ...[]*commonv1.Series) []*commonv1.Series {
