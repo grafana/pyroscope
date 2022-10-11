@@ -20,7 +20,7 @@ type Metrics struct {
 func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return &Metrics{
 		pageReadsTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-			Name: "firedb_page_reads_total",
+			Name: "phlaredb_page_reads_total",
 			Help: "Total number of pages read while querying",
 		}, []string{"table", "column"}),
 	}

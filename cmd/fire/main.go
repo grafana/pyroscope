@@ -6,27 +6,27 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grafana/fire/pkg/cfg"
-	"github.com/grafana/fire/pkg/fire"
-	_ "github.com/grafana/fire/pkg/util/build"
+	"github.com/grafana/phlare/pkg/cfg"
+	"github.com/grafana/phlare/pkg/phlare"
+	_ "github.com/grafana/phlare/pkg/util/build"
 )
 
 func main() {
-	var config fire.Config
+	var config phlare.Config
 	if err := cfg.DynamicUnmarshal(&config, os.Args[1:], flag.CommandLine); err != nil {
 		fmt.Fprintf(os.Stderr, "failed parsing config: %v\n", err)
 		os.Exit(1)
 	}
 
-	f, err := fire.New(config)
+	f, err := phlare.New(config)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed creating fire: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed creating phlare: %v\n", err)
 		os.Exit(1)
 	}
 
 	err = f.Run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed running fire: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed running phlare: %v\n", err)
 		os.Exit(1)
 	}
 }

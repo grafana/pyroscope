@@ -8,8 +8,8 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
-	v11 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	v1 "github.com/grafana/fire/pkg/gen/push/v1"
+	v11 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	v1 "github.com/grafana/phlare/pkg/gen/push/v1"
 	http "net/http"
 	strings "strings"
 )

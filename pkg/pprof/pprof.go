@@ -10,8 +10,8 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/samber/lo"
 
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	"github.com/grafana/fire/pkg/slices"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	"github.com/grafana/phlare/pkg/slices"
 )
 
 type Profile struct {

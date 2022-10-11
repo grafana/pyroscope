@@ -1,9 +1,9 @@
 import { DataSourcePlugin } from '@grafana/data';
-import { FireDataSource } from './datasource';
+import { PhlareDataSource } from './datasource';
 import { ConfigEditor } from './ConfigEditor';
 import { QueryEditor } from './QueryEditor/QueryEditor';
-import { Query, FireDataSourceOptions } from './types';
+import { Query, PhlareDataSourceOptions } from './types';
 
-export const plugin = new DataSourcePlugin<FireDataSource, Query, FireDataSourceOptions>(FireDataSource)
+export const plugin = new DataSourcePlugin<PhlareDataSource, Query, PhlareDataSourceOptions>(PhlareDataSource)
   .setConfigEditor(ConfigEditor)
   .setQueryEditor(QueryEditor);

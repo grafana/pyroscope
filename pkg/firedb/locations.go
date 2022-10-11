@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"encoding/binary"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 )
 
 type locationsKey struct {

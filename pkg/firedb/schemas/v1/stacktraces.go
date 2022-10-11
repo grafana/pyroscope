@@ -3,12 +3,12 @@ package v1
 import (
 	"github.com/segmentio/parquet-go"
 
-	fireparquet "github.com/grafana/fire/pkg/parquet"
+	phlareparquet "github.com/grafana/phlare/pkg/parquet"
 )
 
-var stacktracesSchema = parquet.NewSchema("Stacktrace", fireparquet.Group{
-	fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-	fireparquet.NewGroupField("LocationIDs", parquet.List(parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked))),
+var stacktracesSchema = parquet.NewSchema("Stacktrace", phlareparquet.Group{
+	phlareparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+	phlareparquet.NewGroupField("LocationIDs", parquet.List(parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked))),
 })
 
 type Stacktrace struct {

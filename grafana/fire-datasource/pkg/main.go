@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 
-	"github.com/grafana/fire/grafana/fire-datasource/pkg/plugin"
+	"github.com/grafana/phlare/grafana/phlare-datasource/pkg/plugin"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	// from Grafana to create different instances of SampleDatasource (per datasource
 	// ID). When datasource configuration changed Dispose method will be called and
 	// new datasource instance created using NewSampleDatasource factory.
-	if err := datasource.Manage("fire-backend-datasource", plugin.NewFireDatasource, datasource.ManageOpts{}); err != nil {
+	if err := datasource.Manage("phlare-backend-datasource", plugin.NewPhlareDatasource, datasource.ManageOpts{}); err != nil {
 		log.DefaultLogger.Error(err.Error())
 		os.Exit(1)
 	}

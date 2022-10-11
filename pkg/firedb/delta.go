@@ -1,12 +1,12 @@
-package firedb
+package phlaredb
 
 import (
 	"sync"
 
 	"github.com/prometheus/common/model"
 
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 const (
@@ -28,7 +28,7 @@ func newDeltaProfiles() *deltaProfiles {
 	}
 }
 
-func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs firemodel.Labels) *schemav1.Profile {
+func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs phlaremodel.Labels) *schemav1.Profile {
 	// there's no delta to compute for those profile.
 	if !isDelta(lbs) {
 		return ps
@@ -69,9 +69,9 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs firemodel.Labels)
 	return ps
 }
 
-func isDelta(lbs firemodel.Labels) bool {
+func isDelta(lbs phlaremodel.Labels) bool {
 	if lbs.Get(model.MetricNameLabel) == memoryProfileName {
-		ty := lbs.Get(firemodel.LabelNameType)
+		ty := lbs.Get(phlaremodel.LabelNameType)
 		if ty == allocObjectTypeName || ty == allocSpaceTypeName {
 			return true
 		}

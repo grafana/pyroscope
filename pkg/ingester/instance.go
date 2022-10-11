@@ -10,15 +10,15 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	"github.com/grafana/fire/pkg/firedb"
-	"github.com/grafana/fire/pkg/firedb/block"
-	"github.com/grafana/fire/pkg/firedb/shipper"
-	fireobjstore "github.com/grafana/fire/pkg/objstore"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/phlare/pkg/phlaredb/shipper"
+	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 )
 
 type instance struct {
-	*firedb.FireDB
+	*phlaredb.PhlareDB
 	shipper     *shipper.Shipper
 	shipperLock sync.Mutex
 	logger      log.Logger
@@ -28,19 +28,19 @@ type instance struct {
 	wg     sync.WaitGroup
 }
 
-func newInstance(firectx context.Context, cfg firedb.Config, tenantID string, storageBucket fireobjstore.Bucket) (*instance, error) {
+func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, storageBucket phlareobjstore.Bucket) (*instance, error) {
 	cfg.DataPath = path.Join(cfg.DataPath, tenantID)
 
-	firectx = firecontext.WrapTenant(firectx, tenantID)
-	db, err := firedb.New(firectx, cfg)
+	phlarectx = phlarecontext.WrapTenant(phlarectx, tenantID)
+	db, err := phlaredb.New(phlarectx, cfg)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(firectx)
+	ctx, cancel := context.WithCancel(phlarectx)
 	inst := &instance{
-		FireDB: db,
-		logger: firecontext.Logger(firectx),
-		reg:    firecontext.Registry(firectx),
+		PhlareDB: db,
+		logger: phlarecontext.Logger(phlarectx),
+		reg:    phlarecontext.Registry(phlarectx),
 		cancel: cancel,
 	}
 	if storageBucket != nil {
@@ -48,7 +48,7 @@ func newInstance(firectx context.Context, cfg firedb.Config, tenantID string, st
 			inst.logger,
 			inst.reg,
 			db,
-			fireobjstore.BucketWithPrefix(storageBucket, tenantID+"/firedb"),
+			phlareobjstore.BucketWithPrefix(storageBucket, tenantID+"/phlaredb"),
 			block.IngesterSource,
 			false,
 			false,
@@ -96,7 +96,7 @@ func (i *instance) runShipper(ctx context.Context) {
 }
 
 func (i *instance) Stop() error {
-	err := i.FireDB.Close()
+	err := i.PhlareDB.Close()
 	i.cancel()
 	i.wg.Wait()
 	return err

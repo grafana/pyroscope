@@ -1,5 +1,5 @@
 {{- $global := . }}
-{{- range $component, $cfg := (fromYaml (include "fire.components" .)) }}
+{{- range $component, $cfg := (fromYaml (include "phlare.components" .)) }}
 {{- with $global }}
 ---
 apiVersion: v1
@@ -7,17 +7,17 @@ kind: Service
 metadata:
   name: {{ $cfg.name }}
   labels:
-    {{- include "fire.labels" . | nindent 4 }}
+    {{- include "phlare.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  type: {{ .Values.fire.service.type }}
+  type: {{ .Values.phlare.service.type }}
   ports:
-    - port: {{ .Values.fire.service.port }}
-      targetPort: {{ .Values.fire.service.port_name }}
+    - port: {{ .Values.phlare.service.port }}
+      targetPort: {{ .Values.phlare.service.port_name }}
       protocol: TCP
-      name: {{ .Values.fire.service.port_name }}
+      name: {{ .Values.phlare.service.port_name }}
   selector:
-    {{- include "fire.selectorLabels" . | nindent 4 }}
+    {{- include "phlare.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 {{- if eq $cfg.kind "StatefulSet" }}
 ---
@@ -26,17 +26,17 @@ kind: Service
 metadata:
   name: {{ $cfg.name }}-headless
   labels:
-    {{- include "fire.labels" . | nindent 4 }}
+    {{- include "phlare.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  type: {{ .Values.fire.service.type }}
+  type: {{ .Values.phlare.service.type }}
   ports:
-    - port: {{ .Values.fire.service.port }}
-      targetPort: {{ .Values.fire.service.port_name }}
+    - port: {{ .Values.phlare.service.port }}
+      targetPort: {{ .Values.phlare.service.port_name }}
       protocol: TCP
-      name: {{ .Values.fire.service.port_name }}
+      name: {{ .Values.phlare.service.port_name }}
   selector:
-    {{- include "fire.selectorLabels" . | nindent 4 }}
+    {{- include "phlare.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 {{- end }}
 {{- end }}

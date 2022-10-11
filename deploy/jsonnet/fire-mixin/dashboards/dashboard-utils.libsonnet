@@ -29,15 +29,15 @@ local utils = import 'mixin-utils/utils.libsonnet';
 
       addCluster(multi=false)::
         if multi then
-          self.addMultiTemplate('cluster', 'fire_build_info', $._config.per_cluster_label)
+          self.addMultiTemplate('cluster', 'phlare_build_info', $._config.per_cluster_label)
         else
-          self.addTemplate('cluster', 'fire_build_info', $._config.per_cluster_label),
+          self.addTemplate('cluster', 'phlare_build_info', $._config.per_cluster_label),
 
       addNamespace(multi=false)::
         if multi then
-          self.addMultiTemplate('namespace', 'fire_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace')
+          self.addMultiTemplate('namespace', 'phlare_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace')
         else
-          self.addTemplate('namespace', 'fire_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace'),
+          self.addTemplate('namespace', 'phlare_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace'),
 
       addTag()::
         self + {
@@ -50,7 +50,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
               keepTime: true,
               tags: $._config.tags,
               targetBlank: false,
-              title: 'Fire Dashboards',
+              title: 'Phlare Dashboards',
               type: 'dashboards',
             },
           ],
@@ -67,18 +67,18 @@ local utils = import 'mixin-utils/utils.libsonnet';
               keepTime: true,
               tags: $._config.tags,
               targetBlank: false,
-              title: 'Fire Dashboards',
+              title: 'Phlare Dashboards',
               type: 'dashboards',
             },
           ],
         };
 
         if multi then
-          d.addMultiTemplate('cluster', 'fire_build_info', $._config.per_cluster_label)
-          .addMultiTemplate('namespace', 'fire_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace')
+          d.addMultiTemplate('cluster', 'phlare_build_info', $._config.per_cluster_label)
+          .addMultiTemplate('namespace', 'phlare_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace')
         else
-          d.addTemplate('cluster', 'fire_build_info', $._config.per_cluster_label)
-          .addTemplate('namespace', 'fire_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace'),
+          d.addTemplate('cluster', 'phlare_build_info', $._config.per_cluster_label)
+          .addTemplate('namespace', 'phlare_build_info{' + $._config.per_cluster_label + '=~"$cluster"}', 'namespace'),
     },
 
   jobMatcher(job)::

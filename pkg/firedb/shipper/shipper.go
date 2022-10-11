@@ -30,7 +30,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/fire/pkg/firedb/block"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
 )
 
 type metrics struct {
@@ -45,23 +45,23 @@ func newMetrics(reg prometheus.Registerer, uploadCompacted bool) *metrics {
 	var m metrics
 
 	m.dirSyncs = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "fire_shipper_dir_syncs_total",
+		Name: "phlare_shipper_dir_syncs_total",
 		Help: "Total number of dir syncs",
 	})
 	m.dirSyncFailures = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "fire_shipper_dir_sync_failures_total",
+		Name: "phlare_shipper_dir_sync_failures_total",
 		Help: "Total number of failed dir syncs",
 	})
 	m.uploads = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "fire_shipper_uploads_total",
+		Name: "phlare_shipper_uploads_total",
 		Help: "Total number of uploaded blocks",
 	})
 	m.uploadFailures = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "fire_shipper_upload_failures_total",
+		Name: "phlare_shipper_upload_failures_total",
 		Help: "Total number of block upload failures",
 	})
 	uploadCompactedGaugeOpts := prometheus.GaugeOpts{
-		Name: "fire_shipper_upload_compacted_done",
+		Name: "phlare_shipper_upload_compacted_done",
 		Help: "If 1 it means shipper uploaded all compacted blocks from the filesystem.",
 	}
 	if uploadCompacted {

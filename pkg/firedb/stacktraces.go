@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"encoding/binary"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
 const (

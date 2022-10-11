@@ -1,5 +1,5 @@
 {
-  "fire": {
+  "phlare": {
     "components": {
       "agent": {
         "kind": "Deployment",

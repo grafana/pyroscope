@@ -24,8 +24,8 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func TestMemPostings_addFor(t *testing.T) {
@@ -878,7 +878,7 @@ func BenchmarkPostings_Stats(b *testing.B) {
 	createPostingsLabelValues := func(name, valuePrefix string, count int) {
 		for n := 1; n < count; n++ {
 			value := fmt.Sprintf("%s-%d", valuePrefix, n)
-			p.Add(seriesID, firemodel.LabelsFromStrings(name, value))
+			p.Add(seriesID, phlaremodel.LabelsFromStrings(name, value))
 			seriesID++
 		}
 	}
@@ -903,9 +903,9 @@ func BenchmarkPostings_Stats(b *testing.B) {
 
 func TestMemPostings_Delete(t *testing.T) {
 	p := NewMemPostings()
-	p.Add(1, firemodel.LabelsFromStrings("lbl1", "a"))
-	p.Add(2, firemodel.LabelsFromStrings("lbl1", "b"))
-	p.Add(3, firemodel.LabelsFromStrings("lbl2", "a"))
+	p.Add(1, phlaremodel.LabelsFromStrings("lbl1", "a"))
+	p.Add(2, phlaremodel.LabelsFromStrings("lbl1", "b"))
+	p.Add(3, phlaremodel.LabelsFromStrings("lbl2", "a"))
 
 	before := p.Get(allPostingsKey.Name, allPostingsKey.Value)
 	p.Delete(map[storage.SeriesRef]struct{}{

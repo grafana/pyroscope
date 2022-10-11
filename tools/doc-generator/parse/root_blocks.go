@@ -9,10 +9,10 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/weaveworks/common/server"
 
-	"github.com/grafana/fire/pkg/agent"
-	"github.com/grafana/fire/pkg/distributor"
-	"github.com/grafana/fire/pkg/ingester"
-	"github.com/grafana/fire/pkg/querier"
+	"github.com/grafana/phlare/pkg/agent"
+	"github.com/grafana/phlare/pkg/distributor"
+	"github.com/grafana/phlare/pkg/ingester"
+	"github.com/grafana/phlare/pkg/querier"
 )
 
 var (

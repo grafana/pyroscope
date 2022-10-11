@@ -1,14 +1,14 @@
 {{- $global := . }}
-{{- range $component, $cfg := (fromYaml (include "fire.components" .)) }}
+{{- range $component, $cfg := (fromYaml (include "phlare.components" .)) }}
 {{- with $global }}
-{{-  $values := mustMergeOverwrite (deepCopy .Values.fire ) ($cfg | default dict)}}
+{{-  $values := mustMergeOverwrite (deepCopy .Values.phlare ) ($cfg | default dict)}}
 ---
 apiVersion: apps/v1
 kind: {{ $cfg.kind }}
 metadata:
   name: {{ $cfg.name }}
   labels:
-    {{- include "fire.labels" . | nindent 4 }}
+    {{- include "phlare.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
 {{- if eq $values.kind "StatefulSet" }}
@@ -20,7 +20,7 @@ spec:
 {{- end }}
   selector:
     matchLabels:
-      {{- include "fire.selectorLabels" . | nindent 6 }}
+      {{- include "phlare.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component | quote }}
   template:
     metadata:
@@ -30,31 +30,31 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "fire.templateLabels" . | nindent 8 }}
+        {{- include "phlare.templateLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component | quote }}
-        name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
+        name: {{ if eq $component "all" }}"phlare"{{ else }}"{{ $component }}"{{ end }}
     spec:
       {{- with $values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "fire.serviceAccountName" . }}
+      serviceAccountName: {{ include "phlare.serviceAccountName" . }}
       securityContext:
         {{- toYaml $values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ if eq $component "all" }}"fire"{{ else }}"{{ $component }}"{{ end }}
+        - name: {{ if eq $component "all" }}"phlare"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
             {{- toYaml $values.securityContext | nindent 12 }}
           image: "{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $values.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
-            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "fire.fullname" .}}"
-            - "-memberlist.join={{ include "fire.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local."
+            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "phlare.fullname" .}}"
+            - "-memberlist.join={{ include "phlare.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local."
           {{- if eq $component "agent" }}
-            - "-client.url=http://{{ include "fire.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
+            - "-client.url=http://{{ include "phlare.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
           {{- end }}
-            - "-config.file=/etc/fire/config.yaml"
+            - "-config.file=/etc/phlare/config.yaml"
           {{- range $key, $value := $values.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
@@ -78,7 +78,7 @@ spec:
               port: {{ $values.service.port_name }}
           volumeMounts:
             - name: config
-              mountPath: /etc/fire/config.yaml
+              mountPath: /etc/phlare/config.yaml
               subPath: config.yaml
             - name: data
               mountPath: /data
@@ -105,7 +105,7 @@ spec:
       {{- end }}
         - name: config
           configMap:
-            name: {{ include "fire.fullname" . }}-config
+            name: {{ include "phlare.fullname" . }}-config
   {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
         - name: data

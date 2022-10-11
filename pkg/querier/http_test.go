@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 )
 
 func Test_ParseQuery(t *testing.T) {

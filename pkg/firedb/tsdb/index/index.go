@@ -36,10 +36,10 @@ import (
 	tsdb_enc "github.com/prometheus/prometheus/tsdb/encoding"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 
-	"github.com/grafana/fire/pkg/firedb/block"
-	"github.com/grafana/fire/pkg/firedb/tsdb/encoding"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/encoding"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 const (
@@ -137,7 +137,7 @@ type Writer struct {
 	fingerprintOffsets FingerprintOffsets
 
 	// Hold last series to validate that clients insert new series in order.
-	lastSeries     firemodel.Labels
+	lastSeries     phlaremodel.Labels
 	lastSeriesHash uint64
 	lastRef        storage.SeriesRef
 
@@ -443,7 +443,7 @@ func (w *Writer) writeMeta() error {
 // fingerprint differs from what labels.Hash() produces. For example,
 // multitenant TSDBs embed a tenant label, but the actual series has no such
 // label and so the derived fingerprint differs.
-func (w *Writer) AddSeries(ref storage.SeriesRef, lset firemodel.Labels, fp model.Fingerprint, chunks ...ChunkMeta) error {
+func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp model.Fingerprint, chunks ...ChunkMeta) error {
 	if err := w.ensureStage(idxStageSeries); err != nil {
 		return err
 	}
@@ -1724,7 +1724,7 @@ func (r *Reader) LabelValueFor(id storage.SeriesRef, label string) (string, erro
 }
 
 // Series reads the series with the given ID and writes its labels and chunks into lbls and chks.
-func (r *Reader) Series(id storage.SeriesRef, lbls *firemodel.Labels, chks *[]ChunkMeta) (uint64, error) {
+func (r *Reader) Series(id storage.SeriesRef, lbls *phlaremodel.Labels, chks *[]ChunkMeta) (uint64, error) {
 	offset := id
 	// In version 2 series IDs are no longer exact references but series are 16-byte padded
 	// and the ID is the multiple of 16 of the actual position.
@@ -1947,7 +1947,7 @@ func (dec *Decoder) LabelValueFor(b []byte, label string) (string, error) {
 }
 
 // Series decodes a series entry from the given byte slice into lset and chks.
-func (dec *Decoder) Series(b []byte, lbls *firemodel.Labels, chks *[]ChunkMeta) (uint64, error) {
+func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta) (uint64, error) {
 	*lbls = (*lbls)[:0]
 	*chks = (*chks)[:0]
 

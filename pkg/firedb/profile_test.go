@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -13,10 +13,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	v1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func TestIndex(t *testing.T) {
@@ -28,13 +28,13 @@ func TestIndex(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 10; j++ {
-				lb1 := firemodel.Labels([]*commonv1.LabelPair{
+				lb1 := phlaremodel.Labels([]*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "__sample__type__", Value: "bytes"},
 					{Name: "bar", Value: fmt.Sprint(j)},
 				})
 				sort.Sort(lb1)
-				lb2 := firemodel.Labels([]*commonv1.LabelPair{
+				lb2 := phlaremodel.Labels([]*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "__sample__type__", Value: "count"},
 					{Name: "bar", Value: fmt.Sprint(j)},
@@ -65,7 +65,7 @@ func TestIndex(t *testing.T) {
 		labels.MustNewMatcher(labels.MatchEqual, "__name__", "memory"),
 		labels.MustNewMatcher(labels.MatchRegexp, "bar", "[0-9]"),
 		labels.MustNewMatcher(labels.MatchNotEqual, "buzz", "bar"),
-	}, func(_ firemodel.Labels, _ model.Fingerprint, _ *v1.Profile) error {
+	}, func(_ phlaremodel.Labels, _ model.Fingerprint, _ *v1.Profile) error {
 		total++
 		return nil
 	})
@@ -90,13 +90,13 @@ func TestWriteRead(t *testing.T) {
 	require.NoError(t, err)
 
 	for j := 0; j < 10; j++ {
-		lb1 := firemodel.Labels([]*commonv1.LabelPair{
+		lb1 := phlaremodel.Labels([]*commonv1.LabelPair{
 			{Name: "__name__", Value: "memory"},
 			{Name: "__sample__type__", Value: "bytes"},
 			{Name: "bar", Value: fmt.Sprint(j)},
 		})
 		sort.Sort(lb1)
-		lb2 := firemodel.Labels([]*commonv1.LabelPair{
+		lb2 := phlaremodel.Labels([]*commonv1.LabelPair{
 			{Name: "__name__", Value: "memory"},
 			{Name: "__sample__type__", Value: "count"},
 			{Name: "bar", Value: fmt.Sprint(j)},
@@ -137,7 +137,7 @@ func TestWriteRead(t *testing.T) {
 	require.Equal(t, int64(0), from)
 	require.Equal(t, int64(9), through)
 	p, err := r.Postings("__name__", nil, "memory")
-	lbls := make(firemodel.Labels, 2)
+	lbls := make(phlaremodel.Labels, 2)
 	chks := make([]index.ChunkMeta, 1)
 	require.NoError(t, err)
 	for p.Next() {

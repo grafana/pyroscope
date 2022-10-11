@@ -7,8 +7,8 @@
 package ingesterv1
 
 import (
-	v1 "github.com/grafana/fire/pkg/gen/common/v1"
-	v11 "github.com/grafana/fire/pkg/gen/push/v1"
+	v1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	v11 "github.com/grafana/phlare/pkg/gen/push/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

@@ -1,26 +1,26 @@
 ---
 aliases:
-  - /docs/fire/latest/operators-guide/configuring/configuring-memberlist/
-description: Learn how to configure Grafana Fire memberlist.
+  - /docs/phlare/latest/operators-guide/configuring/configuring-memberlist/
+description: Learn how to configure Grafana Phlare memberlist.
 menuTitle: Configuring memberlist
-title: Configuring Grafana Fire memberlist
+title: Configuring Grafana Phlare memberlist
 weight: 50
 ---
 
-# Configuring Grafana Fire memberlist
+# Configuring Grafana Phlare memberlist
 
-[Hash rings]({{< relref "../architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Grafana Fire for sharding and replication.
+[Hash rings]({{< relref "../architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Grafana Phlare for sharding and replication.
 
-Grafana Fire only support hash ring via memberlist protocol.
+Grafana Phlare only support hash ring via memberlist protocol.
 
 You can configure memberlist either via the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 ### Memberlist
 
-Grafana Fire uses `memberlist` as the KV store backend.
+Grafana Phlare uses `memberlist` as the KV store backend.
 
-At startup, a Grafana Fire instance connects to other Fire replicas to join the cluster.
-A Grafana Fire instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
+At startup, a Grafana Phlare instance connects to other Phlare replicas to join the cluster.
+A Grafana Phlare instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
 The `-memberlist.join` CLI flag must resolve to other replicas in the cluster and can be specified multiple times.
 
 The `-memberlist.join` can be set to:
@@ -33,21 +33,21 @@ The default port is `7946`.
 
 > **Note**: At a minimum, configure one or more addresses that resolve to a consistent subset of replicas (for example, all the ingesters).
 
-> **Note**: If you're running Grafana Fire in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Grafana Fire pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
+> **Note**: If you're running Grafana Phlare in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Grafana Phlare pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
 
-Grafana Fire supports TLS for memberlist connections between its components.
+Grafana Phlare supports TLS for memberlist connections between its components.
 
 To see all supported configuration parameters, refer to [memberlist]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 #### Configuring the memberlist address and port
 
-By default, Grafana Fire memberlist protocol listens on address `0.0.0.0` and port `7946`.
-If you run multiple Fire processes on the same node or the port `7946` is not available, you can change the bind and advertise port by setting the following parameters:
+By default, Grafana Phlare memberlist protocol listens on address `0.0.0.0` and port `7946`.
+If you run multiple Phlare processes on the same node or the port `7946` is not available, you can change the bind and advertise port by setting the following parameters:
 
 - `-memberlist.bind-addr`: IP address to listen on the local machine.
 - `-memberlist.bind-port`: Port to listen on the local machine.
-- `-memberlist.advertise-addr`: IP address to advertise to other Fire replicas. The other replicas will connect to this IP to talk to the instance.
-- `-memberlist.advertise-port`: Port to advertise to other Fire replicas. The other replicas will connect to this port to talk to the instance.
+- `-memberlist.advertise-addr`: IP address to advertise to other Phlare replicas. The other replicas will connect to this IP to talk to the instance.
+- `-memberlist.advertise-port`: Port to advertise to other Phlare replicas. The other replicas will connect to this port to talk to the instance.
 
 ### Fine tuning memberlist changes propagation latency
 
@@ -56,7 +56,7 @@ This metric tracks the oldest heartbeat timestamp across all instances in the ri
 You can execute the following query to measure the age of the oldest heartbeat timestamp in the ring:
 
 ```promql
-max(time() - fire_ring_oldest_member_timestamp{state="ACTIVE"})
+max(time() - phlare_ring_oldest_member_timestamp{state="ACTIVE"})
 ```
 
 The measured age shouldn't be higher than the configured `<prefix>.heartbeat-period` plus a reasonable delta (for example, 15 seconds).
@@ -67,9 +67,9 @@ If you experience a higher changes propagation latency, you can adjust the follo
 - Decrease `-memberlist.pullpush-interval`
 - Increase `-memberlist.retransmit-factor`
 
-# About Grafana Fire DNS service discovery
+# About Grafana Phlare DNS service discovery
 
-Some clients in Grafana Fire support service discovery via DNS to locate the addresses of backend servers to connect to. The following clients support service discovery via DNS:
+Some clients in Grafana Phlare support service discovery via DNS to locate the addresses of backend servers to connect to. The following clients support service discovery via DNS:
 
 - [Memberlist KV store]({{< relref "reference-configuration-parameters/index.md#memberlist" >}})
   - `-memberlist.join`

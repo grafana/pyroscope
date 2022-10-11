@@ -8,7 +8,7 @@ import (
 	context "context"
 	binary "encoding/binary"
 	fmt "fmt"
-	v1 "github.com/grafana/fire/pkg/gen/common/v1"
+	v1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

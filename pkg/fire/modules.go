@@ -1,4 +1,4 @@
-package fire
+package phlare
 
 import (
 	"context"
@@ -23,22 +23,22 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"github.com/grafana/fire/pkg/agent"
-	"github.com/grafana/fire/pkg/distributor"
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
-	"github.com/grafana/fire/pkg/gen/agent/v1/agentv1connect"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
-	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
-	"github.com/grafana/fire/pkg/gen/querier/v1/querierv1connect"
-	"github.com/grafana/fire/pkg/ingester"
-	objstoreclient "github.com/grafana/fire/pkg/objstore/client"
-	"github.com/grafana/fire/pkg/openapiv2"
-	"github.com/grafana/fire/pkg/querier"
-	"github.com/grafana/fire/pkg/util"
+	"github.com/grafana/phlare/pkg/agent"
+	"github.com/grafana/phlare/pkg/distributor"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
+	"github.com/grafana/phlare/pkg/gen/agent/v1/agentv1connect"
+	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
+	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
+	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
+	"github.com/grafana/phlare/pkg/ingester"
+	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
+	"github.com/grafana/phlare/pkg/openapiv2"
+	"github.com/grafana/phlare/pkg/querier"
+	"github.com/grafana/phlare/pkg/util"
 )
 
-// The various modules that make up Fire.
+// The various modules that make up Phlare.
 const (
 	All          string = "all"
 	Agent        string = "agent"
@@ -68,7 +68,7 @@ const (
 	// UsageReport              string = "usage-report"
 )
 
-func (f *Fire) initQuerier() (services.Service, error) {
+func (f *Phlare) initQuerier() (services.Service, error) {
 	q, err := querier.New(f.Cfg.Querier, f.ring, nil, f.logger, f.auth)
 	if err != nil {
 		return nil, err
@@ -81,18 +81,18 @@ func (f *Fire) initQuerier() (services.Service, error) {
 	return q, nil
 }
 
-func (f *Fire) getPusherClient() pushv1connect.PusherServiceClient {
+func (f *Phlare) getPusherClient() pushv1connect.PusherServiceClient {
 	return f.pusherClient
 }
 
-func (f *Fire) initGRPCGateway() (services.Service, error) {
+func (f *Phlare) initGRPCGateway() (services.Service, error) {
 	f.grpcGatewayMux = grpcgw.NewServeMux()
 	f.Server.HTTP.NewRoute().PathPrefix("/api").Handler(f.grpcGatewayMux)
 
 	return nil, nil
 }
 
-func (f *Fire) initDistributor() (services.Service, error) {
+func (f *Phlare) initDistributor() (services.Service, error) {
 	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.reg, f.logger, f.auth)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (f *Fire) initDistributor() (services.Service, error) {
 	return d, nil
 }
 
-func (f *Fire) initAgent() (services.Service, error) {
+func (f *Phlare) initAgent() (services.Service, error) {
 	a, err := agent.New(&f.Cfg.AgentConfig, f.logger, f.getPusherClient)
 	if err != nil {
 		return nil, err
@@ -121,14 +121,14 @@ func (f *Fire) initAgent() (services.Service, error) {
 	return a, nil
 }
 
-func (f *Fire) initMemberlistKV() (services.Service, error) {
+func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	f.Cfg.MemberlistKV.MetricsRegisterer = f.reg
 	f.Cfg.MemberlistKV.Codecs = []codec.Codec{
 		ring.GetCodec(),
 	}
 
 	dnsProviderReg := prometheus.WrapRegistererWithPrefix(
-		"fire_",
+		"phlare_",
 		prometheus.WrapRegistererWith(
 			prometheus.Labels{"name": "memberlist"},
 			f.reg,
@@ -143,8 +143,8 @@ func (f *Fire) initMemberlistKV() (services.Service, error) {
 	return f.MemberlistKV, nil
 }
 
-func (f *Fire) initRing() (_ services.Service, err error) {
-	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("fire_", f.reg))
+func (f *Phlare) initRing() (_ services.Service, err error) {
+	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("phlare_", f.reg))
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (f *Fire) initRing() (_ services.Service, err error) {
 	return f.ring, nil
 }
 
-func (f *Fire) initStorage() (_ services.Service, err error) {
+func (f *Phlare) initStorage() (_ services.Service, err error) {
 	if cfg := f.Cfg.Storage.BucketConfig; len(cfg) > 0 {
 		b, err := objstoreclient.NewBucket(
 			f.logger,
@@ -169,14 +169,14 @@ func (f *Fire) initStorage() (_ services.Service, err error) {
 	return nil, nil
 }
 
-func (f *Fire) initIngester() (_ services.Service, err error) {
+func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
 	// TODO: This should be passed to all other services and could also be used to signal shutdown
-	firectx := firecontext.WithLogger(context.Background(), f.logger)
-	firectx = firecontext.WithRegistry(firectx, f.reg)
+	phlarectx := phlarecontext.WithLogger(context.Background(), f.logger)
+	phlarectx = phlarecontext.WithRegistry(phlarectx, f.reg)
 
-	ingester, err := ingester.New(firectx, f.Cfg.Ingester, f.Cfg.FireDB, f.storageBucket)
+	ingester, err := ingester.New(phlarectx, f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket)
 	if err != nil {
 		return nil, err
 	}
@@ -186,11 +186,11 @@ func (f *Fire) initIngester() (_ services.Service, err error) {
 	return ingester, nil
 }
 
-func (f *Fire) initServer() (services.Service, error) {
-	prometheus.MustRegister(version.NewCollector("fire"))
+func (f *Phlare) initServer() (services.Service, error) {
+	prometheus.MustRegister(version.NewCollector("phlare"))
 	DisableSignalHandling(&f.Cfg.Server)
-	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("fire_", f.reg)
-	// TODO(cyril) figure why this is locking the bidi stream see https://github.com/grafana/fire/issues/231
+	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("phlare_", f.reg)
+	// TODO(cyril) figure why this is locking the bidi stream see https://github.com/grafana/phlare/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 
 	serv, err := server.New(f.Cfg.Server)
@@ -211,7 +211,7 @@ func (f *Fire) initServer() (services.Service, error) {
 		return svs
 	}
 
-	// sounds like logging is the problem. see https://github.com/grafana/fire/issues/231
+	// sounds like logging is the problem. see https://github.com/grafana/phlare/issues/231
 	defaultHTTPMiddleware := []middleware.Interface{
 		middleware.Tracer{
 			RouteMatcher: f.Server.HTTP,

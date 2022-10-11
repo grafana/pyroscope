@@ -1,23 +1,23 @@
 ---
-title: "Grafana Fire components"
+title: "Grafana Phlare components"
 menuTitle: "Components"
-description: "Grafana Fire includes a set of components that interact to form a cluster."
+description: "Grafana Phlare includes a set of components that interact to form a cluster."
 weight: 30
 keywords:
-  - Fire components
-  - Fire compactor
-  - Fire distributor
-  - Fire ingester
-  - Fire querier
-  - Fire query-frontend
-  - Fire store-gateway
-  - Fire overrides-exporter
-  - Fire query-scheduler
-  - Fire ruler
+  - Phlare components
+  - Phlare compactor
+  - Phlare distributor
+  - Phlare ingester
+  - Phlare querier
+  - Phlare query-frontend
+  - Phlare store-gateway
+  - Phlare overrides-exporter
+  - Phlare query-scheduler
+  - Phlare ruler
 ---
 
-# Grafana Fire components
+# Grafana Phlare components
 
-Grafana Fire includes a set of components that interact to form a cluster.
+Grafana Phlare includes a set of components that interact to form a cluster.
 
 {{< section menuTitle="true" >}}

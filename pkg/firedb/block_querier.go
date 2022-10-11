@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -27,39 +27,39 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	"github.com/grafana/fire/pkg/firedb/block"
-	query "github.com/grafana/fire/pkg/firedb/query"
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
-	fireobjstore "github.com/grafana/fire/pkg/objstore"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	query "github.com/grafana/phlare/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 )
 
 type tableReader interface {
-	open(ctx context.Context, bucketReader fireobjstore.BucketReader) error
+	open(ctx context.Context, bucketReader phlareobjstore.BucketReader) error
 	io.Closer
 }
 
 type BlockQuerier struct {
-	firectx context.Context
+	phlarectx context.Context
 	logger  log.Logger
 
-	bucketReader fireobjstore.BucketReader
+	bucketReader phlareobjstore.BucketReader
 
 	queriers     []*singleBlockQuerier
 	queriersLock sync.RWMutex
 }
 
-func NewBlockQuerier(firectx context.Context, bucketReader fireobjstore.BucketReader) *BlockQuerier {
+func NewBlockQuerier(phlarectx context.Context, bucketReader phlareobjstore.BucketReader) *BlockQuerier {
 	return &BlockQuerier{
-		firectx: contextWithBlockMetrics(firectx,
+		phlarectx: contextWithBlockMetrics(phlarectx,
 			newBlocksMetrics(
-				firecontext.Registry(firectx),
+				phlarecontext.Registry(phlarectx),
 			),
 		),
 		bucketReader: bucketReader,
@@ -71,7 +71,7 @@ func (b *BlockQuerier) reconstructMetaFromBlock(ctx context.Context, ulid ulid.U
 	fakeMeta := block.NewMeta()
 	fakeMeta.ULID = ulid
 
-	q := newSingleBlockQuerierFromMeta(b.firectx, b.bucketReader, fakeMeta)
+	q := newSingleBlockQuerierFromMeta(b.phlarectx, b.bucketReader, fakeMeta)
 	defer q.Close()
 
 	meta, err := q.reconstructMeta(ctx)
@@ -192,7 +192,7 @@ func (b *BlockQuerier) Sync(ctx context.Context) error {
 			continue
 		}
 
-		b.queriers[pos] = newSingleBlockQuerierFromMeta(b.firectx, b.bucketReader, m)
+		b.queriers[pos] = newSingleBlockQuerierFromMeta(b.phlarectx, b.bucketReader, m)
 	}
 	// ensure queriers are in ascending order.
 	sort.Slice(b.queriers, func(i, j int) bool {
@@ -272,7 +272,7 @@ type singleBlockQuerier struct {
 	logger  log.Logger
 	metrics *blocksMetrics
 
-	bucketReader fireobjstore.BucketReader
+	bucketReader phlareobjstore.BucketReader
 	meta         *block.Meta
 
 	tables []tableReader
@@ -288,12 +288,12 @@ type singleBlockQuerier struct {
 	profiles              parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
 }
 
-func newSingleBlockQuerierFromMeta(firectx context.Context, bucketReader fireobjstore.BucketReader, meta *block.Meta) *singleBlockQuerier {
+func newSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobjstore.BucketReader, meta *block.Meta) *singleBlockQuerier {
 	q := &singleBlockQuerier{
-		logger:  firecontext.Logger(firectx),
-		metrics: contextBlockMetrics(firectx),
+		logger:  phlarecontext.Logger(phlarectx),
+		metrics: contextBlockMetrics(phlarectx),
 
-		bucketReader: fireobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
+		bucketReader: phlareobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
 		meta:         meta,
 	}
 	q.tables = []tableReader{
@@ -420,11 +420,11 @@ func (m *mapPredicate[K, V]) KeepValue(v parquet.Value) bool {
 
 type labelsInfo struct {
 	fp  model.Fingerprint
-	lbs firemodel.Labels
+	lbs phlaremodel.Labels
 }
 
 func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher, start, end model.Time,
-	fn func(lbs firemodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error,
+	fn func(lbs phlaremodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error,
 ) error {
 	postings, err := PostingsForMatchers(b.index, nil, matchers...)
 	if err != nil {
@@ -432,7 +432,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 	}
 
 	var (
-		lbls         = make(firemodel.Labels, 0, 6)
+		lbls         = make(phlaremodel.Labels, 0, 6)
 		chks         = make([]index.ChunkMeta, 1)
 		lblsPerIndex = make(map[uint32]labelsInfo)
 	)
@@ -445,7 +445,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 		}
 		if lblsExisting, exists := lblsPerIndex[chks[0].SeriesIndex]; exists {
 			// Compare to check if there is a clash
-			if firemodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
+			if phlaremodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
 				panic("label hash conflict")
 			}
 		} else {
@@ -453,7 +453,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
-			lbls = make(firemodel.Labels, 0, 6)
+			lbls = make(phlaremodel.Labels, 0, 6)
 		}
 	}
 
@@ -511,7 +511,7 @@ func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers [
 type Profile interface {
 	Timestamp() model.Time
 	Fingerprint() model.Fingerprint
-	Labels() firemodel.Labels
+	Labels() phlaremodel.Labels
 }
 
 type Querier interface {
@@ -525,7 +525,7 @@ type Querier interface {
 }
 
 type BlockProfile struct {
-	labels firemodel.Labels
+	labels phlaremodel.Labels
 	fp     model.Fingerprint
 	ts     model.Time
 	RowNum int64
@@ -535,7 +535,7 @@ func (p BlockProfile) RowNumber() int64 {
 	return p.RowNum
 }
 
-func (p BlockProfile) Labels() firemodel.Labels {
+func (p BlockProfile) Labels() phlaremodel.Labels {
 	return p.labels
 }
 
@@ -557,7 +557,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
-	matchers = append(matchers, firemodel.SelectorFromProfileType(params.Type))
+	matchers = append(matchers, phlaremodel.SelectorFromProfileType(params.Type))
 
 	postings, err := PostingsForMatchers(b.index, nil, matchers...)
 	if err != nil {
@@ -565,7 +565,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	}
 
 	var (
-		lbls       = make(firemodel.Labels, 0, 6)
+		lbls       = make(phlaremodel.Labels, 0, 6)
 		chks       = make([]index.ChunkMeta, 1)
 		lblsPerRef = make(map[int64]labelsInfo)
 	)
@@ -578,7 +578,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		}
 		if lblsExisting, exists := lblsPerRef[int64(chks[0].SeriesIndex)]; exists {
 			// Compare to check if there is a clash
-			if firemodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
+			if phlaremodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
 				panic("label hash conflict")
 			}
 		} else {
@@ -586,7 +586,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 				fp:  model.Fingerprint(fp),
 				lbs: lbls,
 			}
-			lbls = make(firemodel.Labels, 0, 6)
+			lbls = make(phlaremodel.Labels, 0, 6)
 		}
 	}
 	pIt := query.NewJoinIterator(
@@ -719,7 +719,7 @@ func (q *singleBlockQuerier) readTSBoundaries(ctx context.Context) (minMax, []mi
 	return tsBoundary, tsBoundaryPerRowGroup, nil
 }
 
-func newByteSliceFromBucketReader(bucketReader fireobjstore.BucketReader, path string) (index.RealByteSlice, error) {
+func newByteSliceFromBucketReader(bucketReader phlareobjstore.BucketReader, path string) (index.RealByteSlice, error) {
 	ctx := context.Background()
 	f, err := bucketReader.Get(ctx, path)
 	if err != nil {
@@ -776,11 +776,11 @@ func (q *singleBlockQuerier) open(ctx context.Context) error {
 type parquetReader[M Models, P schemav1.PersisterName] struct {
 	persister P
 	file      *parquet.File
-	reader    fireobjstore.ReaderAt
+	reader    phlareobjstore.ReaderAt
 	metrics   *blocksMetrics
 }
 
-func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstore.BucketReader) error {
+func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader phlareobjstore.BucketReader) error {
 	r.metrics = contextBlockMetrics(ctx)
 	filePath := r.persister.Name() + block.ParquetSuffix
 
@@ -958,11 +958,11 @@ type ResultWithRowNum[M any] struct {
 type inMemoryparquetReader[M Models, P schemav1.PersisterName] struct {
 	persister P
 	file      *parquet.File
-	reader    fireobjstore.ReaderAt
+	reader    phlareobjstore.ReaderAt
 	cache     []M
 }
 
-func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader fireobjstore.BucketReader) error {
+func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phlareobjstore.BucketReader) error {
 	filePath := r.persister.Name() + block.ParquetSuffix
 
 	ra, err := bucketReader.ReaderAt(ctx, filePath)

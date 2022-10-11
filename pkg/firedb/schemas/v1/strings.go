@@ -3,12 +3,12 @@ package v1
 import (
 	"github.com/segmentio/parquet-go"
 
-	fireparquet "github.com/grafana/fire/pkg/parquet"
+	phlareparquet "github.com/grafana/phlare/pkg/parquet"
 )
 
-var stringsSchema = parquet.NewSchema("String", fireparquet.Group{
-	fireparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-	fireparquet.NewGroupField("String", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
+var stringsSchema = parquet.NewSchema("String", phlareparquet.Group{
+	phlareparquet.NewGroupField("ID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+	phlareparquet.NewGroupField("String", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
 })
 
 type StoredString struct {

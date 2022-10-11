@@ -9,16 +9,16 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 type ProfileWithLabels struct {
 	Timestamp int64
-	firemodel.Labels
+	phlaremodel.Labels
 	IngesterAddr string
 }
 
@@ -204,7 +204,7 @@ func (h *ProfileIteratorHeap) Pop() interface{} {
 func (h ProfileIteratorHeap) Less(i, j int) bool {
 	p1, p2 := h[i].At(), h[j].At()
 	if p1.Timestamp == p2.Timestamp {
-		return firemodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
+		return phlaremodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
 	}
 	return p1.Timestamp < p2.Timestamp
 }
@@ -238,7 +238,7 @@ func skipDuplicates(its []MergeIterator) error {
 		for profilesHeap.Len() > 0 {
 			next := profilesHeap.Peek()
 			value := next.At()
-			if len(tuples) > 0 && (tuples[0].At().Timestamp != value.Timestamp || firemodel.CompareLabelPairs(tuples[0].At().Labels, value.Labels) != 0) {
+			if len(tuples) > 0 && (tuples[0].At().Timestamp != value.Timestamp || phlaremodel.CompareLabelPairs(tuples[0].At().Labels, value.Labels) != 0) {
 				break
 			}
 			heap.Pop(profilesHeap)
@@ -328,7 +328,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 
 // mergeProfilesStacktracesResult merges the results of multiple MergeProfilesStacktraces into a single result.
 func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktracesResult) []stacktraces {
-	merge := firemodel.MergeBatchMergeStacktraces(results...)
+	merge := phlaremodel.MergeBatchMergeStacktraces(results...)
 	result := make([]stacktraces, 0, len(merge.Stacktraces))
 	for _, st := range merge.Stacktraces {
 		locs := make([]string, len(st.FunctionIds))
@@ -350,7 +350,7 @@ type ProfileValue struct {
 	Value      float64
 }
 
-func (p ProfileValue) Labels() firemodel.Labels {
+func (p ProfileValue) Labels() phlaremodel.Labels {
 	return p.Lbs
 }
 
@@ -396,7 +396,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	series := firemodel.MergeSeries(results...)
+	series := phlaremodel.MergeSeries(results...)
 	seriesIters := make([]iter.Iterator[ProfileValue], 0, len(series))
 	for _, s := range series {
 		s := s
@@ -417,7 +417,7 @@ func newSeriesIterator(lbs []*commonv1.LabelPair, points []*commonv1.Point) *ser
 
 		curr: ProfileValue{
 			Lbs:        lbs,
-			LabelsHash: firemodel.Labels(lbs).Hash(),
+			LabelsHash: phlaremodel.Labels(lbs).Hash(),
 		},
 	}
 }

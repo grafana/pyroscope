@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"sort"
@@ -8,12 +8,12 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/pprof"
-	"github.com/grafana/fire/pkg/pprof/testhelper"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/pprof"
+	"github.com/grafana/phlare/pkg/pprof/testhelper"
 )
 
 func TestComputeDelta(t *testing.T) {
@@ -58,7 +58,7 @@ func TestComputeDelta(t *testing.T) {
 	require.Equal(t, int64(4), profile.Samples[1].Value)
 }
 
-func newProfileSchema(p *profilev1.Profile, name string) ([]*schemav1.Profile, []firemodel.Labels) {
+func newProfileSchema(p *profilev1.Profile, name string) ([]*schemav1.Profile, []phlaremodel.Labels) {
 	var (
 		labels, seriesRefs = labelsForProfile(p, &commonv1.LabelPair{Name: model.MetricNameLabel, Value: name})
 		ps                 = make([]*schemav1.Profile, len(labels))

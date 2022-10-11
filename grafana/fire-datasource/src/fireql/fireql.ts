@@ -20,7 +20,7 @@ export const languageConfiguration = {
 export const language = {
     ignoreCase: false,
     defaultToken: '',
-    tokenPostfix: '.fireql',
+    tokenPostfix: '.phlareql',
 
     keywords: [],
     operators: [],

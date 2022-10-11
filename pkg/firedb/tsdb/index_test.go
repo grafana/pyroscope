@@ -5,9 +5,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/grafana/fire/pkg/firedb/tsdb/shard"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -57,13 +57,13 @@ func TestDeleteAddLoopkup(t *testing.T) {
 		{Name: "bar", Value: "bar"},
 		{Name: "buzz", Value: "buzz"},
 	}
-	sort.Sort(firemodel.Labels(lbs))
+	sort.Sort(phlaremodel.Labels(lbs))
 
 	require.Equal(t, uint32(6), labelsSeriesIDHash(lbs)%32)
 	// make sure we consistent
 	require.Equal(t, uint32(6), labelsSeriesIDHash(lbs)%32)
-	index.Add(lbs, model.Fingerprint((firemodel.Labels(lbs).Hash())))
-	index.Delete(lbs, model.Fingerprint(firemodel.Labels(lbs).Hash()))
+	index.Add(lbs, model.Fingerprint((phlaremodel.Labels(lbs).Hash())))
+	index.Delete(lbs, model.Fingerprint(phlaremodel.Labels(lbs).Hash()))
 	ids, err := index.Lookup([]*labels.Matcher{
 		labels.MustNewMatcher(labels.MatchEqual, "foo", "foo"),
 	}, nil)

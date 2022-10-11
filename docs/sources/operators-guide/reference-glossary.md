@@ -1,17 +1,17 @@
 ---
-title: "Reference: Grafana Fire glossary"
+title: "Reference: Grafana Phlare glossary"
 menuTitle: "Reference: Glossary"
-description: "Grafana Fire glossary terms."
+description: "Grafana Phlare glossary terms."
 weight: 130
 ---
 
-# Reference: Grafana Fire glossary
+# Reference: Grafana Phlare glossary
 
 ## Blocks storage
 
-Blocks storage is the Fire storage engine based on the Prometheus TSDB.
-Grafana Fire stores blocks in object stores such as AWS S3, Google Cloud Storage (GCS), Azure blob storage, or OpenStack Object Storage (Swift).
-For a complete list of supported backends, refer to [About the architecture]({{< relref "architecture/about-grafana-fire-architecture/index.md" >}})
+Blocks storage is the Phlare storage engine based on the Prometheus TSDB.
+Grafana Phlare stores blocks in object stores such as AWS S3, Google Cloud Storage (GCS), Azure blob storage, or OpenStack Object Storage (Swift).
+For a complete list of supported backends, refer to [About the architecture]({{< relref "architecture/about-grafana-phlare-architecture/index.md" >}})
 
 ## Chunk
 
@@ -26,7 +26,7 @@ Typically, series become idle when a monitored target process or node gets termi
 
 ## Component
 
-Grafana Fire comprises several components.
+Grafana Phlare comprises several components.
 Each component provides a specific function to the system.
 For component specific documentation, refer to one of the following topics:
 
@@ -49,14 +49,14 @@ Gossip is a protocol by which components coordinate without the need for a centr
 
 ## Hash ring
 
-The hash ring is a distributed data structure used by Grafana Fire for sharding, replication, and service discovery.
+The hash ring is a distributed data structure used by Grafana Phlare for sharding, replication, and service discovery.
 Components use a [key-value store]({{< relref "#key-value-store" >}}) or [gossip]({{< relref "#gossip" >}}) to share the hash ring data structure.
 For more information, refer to the [Hash ring]({{< relref "architecture/hash-ring/index.md" >}}).
 
 ## Key-value store
 
 A key-value store is a database that associates keys with values.
-To understand how Grafana Fire uses key-value stores, refer to [Key-value store]({{< relref "architecture/key-value-store.md" >}}).
+To understand how Grafana Phlare uses key-value stores, refer to [Key-value store]({{< relref "architecture/key-value-store.md" >}}).
 
 ## Memberlist
 
@@ -100,9 +100,9 @@ node_cpu_seconds_total{instance="10.0.0.2",mode="user"}
 
 ## Tenant
 
-A tenant is the owner of a set of series written to and queried from Grafana Fire.
-Grafana Fire isolates series and alerts belonging to different tenants.
-To understand how Grafana Fire authenticates tenants, refer to [Authentication and authorization]({{< relref "secure/authentication-and-authorization.md" >}}).
+A tenant is the owner of a set of series written to and queried from Grafana Phlare.
+Grafana Phlare isolates series and alerts belonging to different tenants.
+To understand how Grafana Phlare authenticates tenants, refer to [Authentication and authorization]({{< relref "secure/authentication-and-authorization.md" >}}).
 
 ## Time series
 
@@ -115,4 +115,4 @@ Refer to [Tenant]({{< relref "#tenant" >}}).
 ## Write-ahead log (WAL)
 
 The write-ahead Log (WAL) is an append only log stored on disk by ingesters to recover their in-memory state after the process gets restarted.
-For more information, refer to [The write path]({{< relref "architecture/about-grafana-fire-architecture/index.md#the-write-path" >}}).
+For more information, refer to [The write path]({{< relref "architecture/about-grafana-phlare-architecture/index.md#the-write-path" >}}).

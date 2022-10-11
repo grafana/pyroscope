@@ -200,7 +200,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/agent.(*Target).start.func1",
+      "text": "github.com/grafana/phlare/pkg/agent.(*Target).start.func1",
       "x": 4,
       "y": 33,
     },
@@ -786,7 +786,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/agent.(*Target).scrape",
+      "text": "github.com/grafana/phlare/pkg/agent.(*Target).scrape",
       "x": 4,
       "y": 55,
     },
@@ -1328,7 +1328,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/distributor.(*Distributor).Push",
+      "text": "github.com/grafana/phlare/pkg/distributor.(*Distributor).Push",
       "x": 4,
       "y": 77,
     },
@@ -1993,7 +1993,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/pprof.OpenRaw",
+      "text": "github.com/grafana/phlare/pkg/pprof.OpenRaw",
       "x": 113.84204131227219,
       "y": 99,
     },
@@ -2188,7 +2188,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/pprof.(*Profile).Normalize",
+      "text": "github.com/grafana/phlare/pkg/pprof.(*Profile).Normalize",
       "x": 172.16524908869988,
       "y": 99,
     },
@@ -2445,7 +2445,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/util.glob..func1.1",
+      "text": "github.com/grafana/phlare/pkg/util.glob..func1.1",
       "x": 402.5419198055893,
       "y": 99,
     },
@@ -2988,7 +2988,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/gen/google/v1.(*Profile).UnmarshalVT",
+      "text": "github.com/grafana/phlare/pkg/gen/google/v1.(*Profile).UnmarshalVT",
       "x": 113.84204131227219,
       "y": 121,
     },
@@ -3289,7 +3289,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/pprof.(*Profile).clearSampleReferences",
+      "text": "github.com/grafana/phlare/pkg/pprof.(*Profile).clearSampleReferences",
       "x": 195.49453219927096,
       "y": 121,
     },
@@ -5043,7 +5043,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/slices.RemoveInPlace[...]",
+      "text": "github.com/grafana/phlare/pkg/slices.RemoveInPlace[...]",
       "x": 195.49453219927096,
       "y": 143,
     },
@@ -7299,7 +7299,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/pprof.(*Profile).clearSampleReferences.func1",
+      "text": "github.com/grafana/phlare/pkg/pprof.(*Profile).clearSampleReferences.func1",
       "x": 195.49453219927096,
       "y": 165,
     },
@@ -7736,7 +7736,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/fire.(*Fire).initServer.func2.1",
+      "text": "github.com/grafana/phlare/pkg/phlare.(*Phlare).initServer.func2.1",
       "x": 402.5419198055893,
       "y": 165,
     },
@@ -15503,7 +15503,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/ingester.(*Ingester).Push",
+      "text": "github.com/grafana/phlare/pkg/ingester.(*Ingester).Push",
       "x": 402.5419198055893,
       "y": 451,
     },
@@ -16029,7 +16029,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/firedb.(*Head).Ingest",
+      "text": "github.com/grafana/phlare/pkg/phlaredb.(*Head).Ingest",
       "x": 421.01093560145813,
       "y": 473,
     },
@@ -16135,7 +16135,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/gen/google/v1.(*Profile).UnmarshalVT",
+      "text": "github.com/grafana/phlare/pkg/gen/google/v1.(*Profile).UnmarshalVT",
       "x": 503.6354799513974,
       "y": 473,
     },
@@ -16661,7 +16661,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/firedb.(*Head).convertSamples",
+      "text": "github.com/grafana/phlare/pkg/phlaredb.(*Head).convertSamples",
       "x": 421.01093560145813,
       "y": 495,
     },
@@ -16767,7 +16767,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/firedb.(*deduplicatingSlice[...]).ingest",
+      "text": "github.com/grafana/phlare/pkg/phlaredb.(*deduplicatingSlice[...]).ingest",
       "x": 455.0328068043743,
       "y": 495,
     },
@@ -17890,7 +17890,7 @@ Array [
   Object {
     "props": Object {
       "maxWidth": null,
-      "text": "github.com/grafana/fire/pkg/firedb.(*deduplicatingSlice[...]).ingest",
+      "text": "github.com/grafana/phlare/pkg/phlaredb.(*deduplicatingSlice[...]).ingest",
       "x": 421.01093560145813,
       "y": 517,
     },

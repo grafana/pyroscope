@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -27,14 +27,14 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	"github.com/grafana/fire/pkg/firedb/block"
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func copySlice[T any](in []T) []T {
@@ -109,7 +109,7 @@ type Head struct {
 
 	flushCh chan struct{} // this channel is closed once the Head should be flushed, should be used externally
 
-	flushForcedTimer *time.Timer // this timer will fire after the maximum
+	flushForcedTimer *time.Timer // this timer will phlare after the maximum
 
 	metaLock sync.RWMutex
 	meta     *block.Meta
@@ -134,10 +134,10 @@ const (
 	defaultFolderMode = 0o755
 )
 
-func NewHead(firectx context.Context, cfg Config) (*Head, error) {
+func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 	h := &Head{
-		logger:  firecontext.Logger(firectx),
-		metrics: contextHeadMetrics(firectx),
+		logger:  phlarecontext.Logger(phlarectx),
+		metrics: contextHeadMetrics(phlarectx),
 
 		stopCh: make(chan struct{}),
 
@@ -279,7 +279,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 }
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
-	metricName := firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
+	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
 	// create a rewriter state
@@ -357,30 +357,30 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	return nil
 }
 
-func labelsForProfile(p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) ([]firemodel.Labels, []model.Fingerprint) {
+func labelsForProfile(p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
 	// build label set per sample type before references are rewritten
 	var (
 		sb                                             strings.Builder
-		lbls                                           = firemodel.NewLabelsBuilder(externalLabels)
+		lbls                                           = phlaremodel.NewLabelsBuilder(externalLabels)
 		sampleType, sampleUnit, periodType, periodUnit string
-		metricName                                     = firemodel.Labels(externalLabels).Get(model.MetricNameLabel)
+		metricName                                     = phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 	)
 
 	// set common labels
 	if p.PeriodType != nil {
 		periodType = p.StringTable[p.PeriodType.Type]
-		lbls.Set(firemodel.LabelNamePeriodType, periodType)
+		lbls.Set(phlaremodel.LabelNamePeriodType, periodType)
 		periodUnit = p.StringTable[p.PeriodType.Unit]
-		lbls.Set(firemodel.LabelNamePeriodUnit, periodUnit)
+		lbls.Set(phlaremodel.LabelNamePeriodUnit, periodUnit)
 	}
 
-	profilesLabels := make([]firemodel.Labels, len(p.SampleType))
+	profilesLabels := make([]phlaremodel.Labels, len(p.SampleType))
 	seriesRefs := make([]model.Fingerprint, len(p.SampleType))
 	for pos := range p.SampleType {
 		sampleType = p.StringTable[p.SampleType[pos].Type]
-		lbls.Set(firemodel.LabelNameType, sampleType)
+		lbls.Set(phlaremodel.LabelNameType, sampleType)
 		sampleUnit = p.StringTable[p.SampleType[pos].Unit]
-		lbls.Set(firemodel.LabelNameUnit, sampleUnit)
+		lbls.Set(phlaremodel.LabelNameUnit, sampleUnit)
 
 		sb.Reset()
 		_, _ = sb.WriteString(metricName)
@@ -393,7 +393,7 @@ func labelsForProfile(p *profilev1.Profile, externalLabels ...*commonv1.LabelPai
 		_, _ = sb.WriteRune(':')
 		_, _ = sb.WriteString(periodUnit)
 		t := sb.String()
-		lbls.Set(firemodel.LabelNameProfileType, t)
+		lbls.Set(phlaremodel.LabelNameProfileType, t)
 		lbs := lbls.Labels().Clone()
 		profilesLabels[pos] = lbs
 		seriesRefs[pos] = model.Fingerprint(lbs.Hash())
@@ -427,7 +427,7 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1.Lab
 
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	values, err := h.index.ix.LabelValues(firemodel.LabelNameProfileType, nil)
+	values, err := h.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 
 	profileTypes := make([]*commonv1.ProfileType, len(values))
 	for i, v := range values {
-		tp, err := firemodel.ParseProfileTypeSelector(v)
+		tp, err := phlaremodel.ParseProfileTypeSelector(v)
 		if err != nil {
 			return nil, err
 		}
@@ -464,7 +464,7 @@ func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.Sele
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
-	selectors = append(selectors, firemodel.SelectorFromProfileType(params.Type))
+	selectors = append(selectors, phlaremodel.SelectorFromProfileType(params.Type))
 	return h.index.SelectProfiles(selectors, model.Time(params.Start), model.Time(params.End))
 }
 
@@ -577,7 +577,7 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 	}
 	result := lo.Values(seriesByLabels)
 	sort.Slice(result, func(i, j int) bool {
-		return firemodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
 	})
 	// we have to sort the points in each series because labels reduction may have changed the order
 	for _, s := range result {
@@ -656,7 +656,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	response := &ingestv1.SeriesResponse{}
 	uniqu := map[model.Fingerprint]struct{}{}
 	for _, selector := range selectors {
-		if err := h.index.forMatchingLabels(selector, func(lbs firemodel.Labels, fp model.Fingerprint) error {
+		if err := h.index.forMatchingLabels(selector, func(lbs phlaremodel.Labels, fp model.Fingerprint) error {
 			if _, ok := uniqu[fp]; ok {
 				return nil
 			}
@@ -668,7 +668,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 		}
 	}
 	sort.Slice(response.LabelsSet, func(i, j int) bool {
-		return firemodel.CompareLabelPairs(response.LabelsSet[i].Labels, response.LabelsSet[j].Labels) < 0
+		return phlaremodel.CompareLabelPairs(response.LabelsSet[i].Labels, response.LabelsSet[j].Labels) < 0
 	})
 	return connect.NewResponse(response), nil
 }

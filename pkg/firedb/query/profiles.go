@@ -12,7 +12,7 @@ package query
 // 	buffer [][]parquet.Value
 // }
 
-// func NewSeriesIterator(rowNums Iterator, fp model.Fingerprint, lbs firemodel.Labels) *SeriesIterator {
+// func NewSeriesIterator(rowNums Iterator, fp model.Fingerprint, lbs phlaremodel.Labels) *SeriesIterator {
 // 	return &SeriesIterator{
 // 		rowNums: rowNums,
 // 		curr:    Profile{fp: fp, labels: lbs},

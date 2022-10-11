@@ -1,19 +1,19 @@
 ---
 aliases:
-  - /docs/fire/latest/operators-guide/configuring/about-tenant-ids/
+  - /docs/phlare/latest/operators-guide/configuring/about-tenant-ids/
 description: Learn about tenant ID restrictions.
 menuTitle: About tenant IDs
-title: About Grafana Fire tenant IDs
+title: About Grafana Phlare tenant IDs
 weight: 40
 ---
 
-# About Grafana Fire tenant IDs
+# About Grafana Phlare tenant IDs
 
-Grafana Fire is a multi-tenant system where tenants can query profiles that include their tenant ID.
-Within a Grafana Fire cluster, the tenant ID is the unique identifier of a tenant.
+Grafana Phlare is a multi-tenant system where tenants can query profiles that include their tenant ID.
+Within a Grafana Phlare cluster, the tenant ID is the unique identifier of a tenant.
 The query takes the tenant ID from the `X-Scope-OrgID` parameter that exists in the HTTP header of each request, for example `X-Scope-OrgID: <TENANT-ID>`.
 
-To push profiles to Grafana Fire for a specific tenant refer to [Configure the Agent]({{<relref "../configure-agent/_index.md">}}).
+To push profiles to Grafana Phlare for a specific tenant refer to [Configure the Agent]({{<relref "../configure-agent/_index.md">}}).
 
 ## Restrictions
 

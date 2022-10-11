@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package common.v1;
 
-option go_package = "github.com/grafana/fire/pkg/gen/go/v1/common;commonv1";
+option go_package = "github.com/grafana/phlare/pkg/gen/go/v1/common;commonv1";
 
 message LabelPair {
   string name = 1;

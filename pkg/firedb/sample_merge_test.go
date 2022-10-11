@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/iter"
-	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
-	pprofth "github.com/grafana/fire/pkg/pprof/testhelper"
-	"github.com/grafana/fire/pkg/testhelper"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	pprofth "github.com/grafana/phlare/pkg/pprof/testhelper"
+	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 func TestMergeSampleByStacktraces(t *testing.T) {
@@ -560,14 +560,14 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 		require.NoError(b, err)
 // 	}
 // }
-// func newSingleBlockQuerier(logger log.Logger, bucketReader fireobjstore.BucketReader, path string) (*singleBlockQuerier, error) {
+// func newSingleBlockQuerier(logger log.Logger, bucketReader phlareobjstore.BucketReader, path string) (*singleBlockQuerier, error) {
 // 	meta, _, err := block.MetaFromDir(path)
 // 	if err != nil {
 // 		return nil, err
 // 	}
 // 	q := &singleBlockQuerier{
 // 		logger:       logger,
-// 		bucketReader: fireobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
+// 		bucketReader: phlareobjstore.BucketReaderWithPrefix(bucketReader, meta.ULID.String()),
 // 		meta:         meta,
 // 	}
 // 	q.tables = []tableReader{
@@ -600,7 +600,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 			expected: []ProfileValue{
 // 				{
 // 					Profile: Profile{
-// 						Labels:    firemodel.LabelsFromStrings("job", "foo", "instance", "bar"),
+// 						Labels:    phlaremodel.LabelsFromStrings("job", "foo", "instance", "bar"),
 // 						Timestamp: model.TimeFromUnixNano(int64(15 * time.Second)),
 // 					},
 // 					Value: 7,
@@ -708,7 +708,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 	for i := 0; i < count; i++ {
 // 		result = append(result, ProfileValue{
 // 			Profile: Profile{
-// 				Labels:    firemodel.LabelsFromStrings("job", "foo", "series", fmt.Sprintf("%d", i)),
+// 				Labels:    phlaremodel.LabelsFromStrings("job", "foo", "series", fmt.Sprintf("%d", i)),
 // 				Timestamp: model.TimeFromUnixNano(int64(15 * time.Second)),
 // 			},
 // 			Value: value,
@@ -716,7 +716,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 	}
 // 	// profiles are store by labels then timestamp.
 // 	sort.Slice(result, func(i, j int) bool {
-// 		return firemodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+// 		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
 // 	})
 // 	return
 // }

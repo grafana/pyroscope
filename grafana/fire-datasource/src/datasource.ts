@@ -1,10 +1,10 @@
 import { DataQueryRequest, DataQueryResponse, DataSourceInstanceSettings } from '@grafana/data';
 import { DataSourceWithBackend } from '@grafana/runtime';
-import { FireDataSourceOptions, Query, ProfileTypeMessage, SeriesMessage } from './types';
+import { PhlareDataSourceOptions, Query, ProfileTypeMessage, SeriesMessage } from './types';
 import { Observable, of } from 'rxjs';
 
-export class FireDataSource extends DataSourceWithBackend<Query, FireDataSourceOptions> {
-  constructor(instanceSettings: DataSourceInstanceSettings<FireDataSourceOptions>) {
+export class PhlareDataSource extends DataSourceWithBackend<Query, PhlareDataSourceOptions> {
+  constructor(instanceSettings: DataSourceInstanceSettings<PhlareDataSourceOptions>) {
     super(instanceSettings);
   }
 

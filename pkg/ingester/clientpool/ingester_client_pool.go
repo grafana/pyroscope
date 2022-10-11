@@ -14,9 +14,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
-	"github.com/grafana/fire/pkg/util"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
+	"github.com/grafana/phlare/pkg/util"
 )
 
 type BidiClientMergeProfilesStacktraces interface {
