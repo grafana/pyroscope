@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -9,11 +9,11 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	query "github.com/grafana/fire/pkg/firedb/query"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	query "github.com/grafana/phlare/pkg/phlaredb/query"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
@@ -223,7 +223,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 
 	result := lo.Values(seriesByLabels)
 	sort.Slice(result, func(i, j int) bool {
-		return firemodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
 	})
 	// we have to sort the points in each series because labels reduction may have changed the order
 	for _, s := range result {

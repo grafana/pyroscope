@@ -1,4 +1,4 @@
-package fire
+package phlare
 
 import (
 	"bytes"
@@ -30,17 +30,17 @@ import (
 	wwtracing "github.com/weaveworks/common/tracing"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/grafana/fire/pkg/agent"
-	"github.com/grafana/fire/pkg/cfg"
-	"github.com/grafana/fire/pkg/distributor"
-	"github.com/grafana/fire/pkg/firedb"
-	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
-	"github.com/grafana/fire/pkg/ingester"
-	"github.com/grafana/fire/pkg/objstore"
-	"github.com/grafana/fire/pkg/querier"
-	"github.com/grafana/fire/pkg/tenant"
-	"github.com/grafana/fire/pkg/tracing"
-	"github.com/grafana/fire/pkg/util"
+	"github.com/grafana/phlare/pkg/agent"
+	"github.com/grafana/phlare/pkg/cfg"
+	"github.com/grafana/phlare/pkg/distributor"
+	"github.com/grafana/phlare/pkg/phlaredb"
+	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
+	"github.com/grafana/phlare/pkg/ingester"
+	"github.com/grafana/phlare/pkg/objstore"
+	"github.com/grafana/phlare/pkg/querier"
+	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/phlare/pkg/tracing"
+	"github.com/grafana/phlare/pkg/util"
 )
 
 type Config struct {
@@ -51,7 +51,7 @@ type Config struct {
 	Querier      querier.Config         `yaml:"querier,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
-	FireDB       firedb.Config          `yaml:"firedb,omitempty"`
+	PhlareDB       phlaredb.Config          `yaml:"phlaredb,omitempty"`
 	Tracing      tracing.Config         `yaml:"tracing"`
 
 	Storage StorageConfig `yaml:"storage"`
@@ -70,7 +70,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	// Set the default module list to 'all'
 	c.Target = []string{All}
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
-	f.Var(&c.Target, "target", "Comma-separated list of Fire modules to load. "+
+	f.Var(&c.Target, "target", "Comma-separated list of Phlare modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
 
@@ -79,7 +79,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.MemberlistKV.RegisterFlags(f)
 	c.Distributor.RegisterFlags(f)
 	c.Querier.RegisterFlags(f)
-	c.FireDB.RegisterFlags(f)
+	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
 }
 
@@ -119,7 +119,7 @@ func (c *Config) ApplyDynamicConfig() cfg.Source {
 	return func(dst cfg.Cloneable) error {
 		r, ok := dst.(*Config)
 		if !ok {
-			return errors.New("dst is not a Fire config")
+			return errors.New("dst is not a Phlare config")
 		}
 		if r.AgentConfig.ClientConfig.URL.String() == "" {
 			listenAddress := "0.0.0.0"
@@ -141,7 +141,7 @@ func (c *Config) Clone() flagext.Registerer {
 	}(*c)
 }
 
-type Fire struct {
+type Phlare struct {
 	Cfg    Config
 	logger log.Logger
 	reg    prometheus.Registerer
@@ -166,10 +166,10 @@ type Fire struct {
 	auth connect.Option
 }
 
-func New(cfg Config) (*Fire, error) {
+func New(cfg Config) (*Phlare, error) {
 	logger := initLogger(&cfg.Server)
 
-	fire := &Fire{
+	phlare := &Phlare{
 		Cfg:    cfg,
 		logger: logger,
 		reg:    prometheus.DefaultRegisterer,
@@ -177,17 +177,17 @@ func New(cfg Config) (*Fire, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if err := fire.setupModuleManager(); err != nil {
+	if err := phlare.setupModuleManager(); err != nil {
 		return nil, err
 	}
 
 	if cfg.Tracing.Enabled {
 		// Setting the environment variable JAEGER_AGENT_HOST enables tracing
-		trace, err := wwtracing.NewFromEnv(fmt.Sprintf("fire-%s", cfg.Target))
+		trace, err := wwtracing.NewFromEnv(fmt.Sprintf("phlare-%s", cfg.Target))
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
 		}
-		fire.tracer = trace
+		phlare.tracer = trace
 	}
 
 	// instantiate a fallback pusher client (when not run with a local distributor
@@ -195,17 +195,17 @@ func New(cfg Config) (*Fire, error) {
 	if err != nil {
 		return nil, err
 	}
-	fire.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.MultitenancyEnabled))
+	phlare.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.MultitenancyEnabled))
 
 	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
-	fire.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient,
+	phlare.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient,
 		cfg.AgentConfig.ClientConfig.URL.String(),
-		fire.auth,
+		phlare.auth,
 	)
-	return fire, nil
+	return phlare, nil
 }
 
-func (f *Fire) setupModuleManager() error {
+func (f *Phlare) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
@@ -254,7 +254,7 @@ func (f *Fire) setupModuleManager() error {
 	return nil
 }
 
-func (f *Fire) Run() error {
+func (f *Phlare) Run() error {
 	serviceMap, err := f.ModuleManager.InitModuleServices(f.Cfg.Target...)
 	if err != nil {
 		return err
@@ -274,10 +274,10 @@ func (f *Fire) Run() error {
 	f.Server.HTTP.Path("/config").Methods("GET").Handler(f.Cfg.configHandler())
 
 	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, grpcutil.NewHealthCheck(sm))
-	healthy := func() { level.Info(f.logger).Log("msg", "Fire started", "version", version.Info()) }
+	healthy := func() { level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info()) }
 
 	serviceFailed := func(service services.Service) {
-		// if any service fails, stop entire Fire
+		// if any service fails, stop entire Phlare
 		sm.StopAsync()
 
 		// let's find out which module failed
@@ -330,7 +330,7 @@ func (f *Fire) Run() error {
 	return err
 }
 
-func (f *Fire) readyHandler(sm *services.Manager) http.HandlerFunc {
+func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !sm.IsHealthy() {
 			msg := bytes.Buffer{}
@@ -349,8 +349,8 @@ func (f *Fire) readyHandler(sm *services.Manager) http.HandlerFunc {
 	}
 }
 
-func (f *Fire) stopped() {
-	level.Info(f.logger).Log("msg", "Fire stopped")
+func (f *Phlare) stopped() {
+	level.Info(f.logger).Log("msg", "Phlare stopped")
 	if f.tracer != nil {
 		if err := f.tracer.Close(); err != nil {
 			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)

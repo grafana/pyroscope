@@ -1,14 +1,14 @@
 ---
 aliases:
-  - /docs/fire/latest/operators-guide/monitoring-grafana-fire/
+  - /docs/phlare/latest/operators-guide/monitoring-grafana-phlare/
   - /visualizing-profiles/
-description: View example Grafana Fire dashboards.
+description: View example Grafana Phlare dashboards.
 keywords:
-menuTitle: Monitor Fire
-title: Monitor Grafana Fire
+menuTitle: Monitor Phlare
+title: Monitor Grafana Phlare
 weight: 51
 ---
 
-# Monitor Grafana Fire
+# Monitor Grafana Phlare
 
 Coming soon.

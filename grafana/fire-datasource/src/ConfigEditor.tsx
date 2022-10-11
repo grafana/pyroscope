@@ -1,9 +1,9 @@
 import React from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { FireDataSourceOptions } from './types';
+import { PhlareDataSourceOptions } from './types';
 import { DataSourceHttpSettings, EventsWithValidation, LegacyForms, regexValidation } from '@grafana/ui';
 
-interface Props extends DataSourcePluginOptionsEditorProps<FireDataSourceOptions> {}
+interface Props extends DataSourcePluginOptionsEditorProps<PhlareDataSourceOptions> {}
 
 export const ConfigEditor = (props: Props) => {
   const { options, onOptionsChange } = props;
@@ -49,7 +49,7 @@ export const ConfigEditor = (props: Props) => {
                   }}
                 />
               }
-              tooltip="Minimal step used for metric query. Should be the same or higher as the scrape interval setting in the Fire database."
+              tooltip="Minimal step used for metric query. Should be the same or higher as the scrape interval setting in the Phlare database."
             />
           </div>
         </div>

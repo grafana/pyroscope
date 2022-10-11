@@ -1,9 +1,9 @@
-import { language, languageConfiguration } from './fireql';
+import { language, languageConfiguration } from './phlareql';
 
 export const languageDefinition = {
-  id: 'fireql',
-  extensions: ['.fireql'],
-  aliases: ['fire', 'fireql'],
+  id: 'phlareql',
+  extensions: ['.phlareql'],
+  aliases: ['phlare', 'phlareql'],
   mimetypes: [],
   def: {
     language,

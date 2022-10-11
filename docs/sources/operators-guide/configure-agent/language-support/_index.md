@@ -1,11 +1,11 @@
 ---
-title: "Grafana Fire Agent Language Support"
+title: "Grafana Phlare Agent Language Support"
 menuTitle: "Language Support"
 description: ""
 weight: 20
 ---
 
-# Grafana Fire Agent Language Support
+# Grafana Phlare Agent Language Support
 
 The following languages provide support for profiles in the pprof format:
 

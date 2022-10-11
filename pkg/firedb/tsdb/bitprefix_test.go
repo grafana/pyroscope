@@ -9,10 +9,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	"github.com/grafana/fire/pkg/firedb/tsdb/shard"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func Test_BitPrefixGetShards(t *testing.T) {
@@ -78,10 +78,10 @@ func Test_BitPrefixDeleteAddLoopkup(t *testing.T) {
 		{Name: "bar", Value: "bar"},
 		{Name: "buzz", Value: "buzz"},
 	}
-	sort.Sort(firemodel.Labels(lbs))
+	sort.Sort(phlaremodel.Labels(lbs))
 
-	index.Add(lbs, model.Fingerprint((firemodel.Labels(lbs).Hash())))
-	index.Delete(lbs, model.Fingerprint(firemodel.Labels(lbs).Hash()))
+	index.Add(lbs, model.Fingerprint((phlaremodel.Labels(lbs).Hash())))
+	index.Delete(lbs, model.Fingerprint(phlaremodel.Labels(lbs).Hash()))
 	ids, err := index.Lookup([]*labels.Matcher{
 		labels.MustNewMatcher(labels.MatchEqual, "foo", "foo"),
 	}, nil)
@@ -107,11 +107,11 @@ func Test_BitPrefix_hash_mapping(t *testing.T) {
 
 			requestedFactor := 16
 
-			fp := model.Fingerprint(firemodel.Labels(lbs).Hash())
+			fp := model.Fingerprint(phlaremodel.Labels(lbs).Hash())
 			ii.Add(lbs, fp)
 
 			requiredBits := index.NewShard(0, uint32(requestedFactor)).RequiredBits()
-			expShard := uint32(firemodel.Labels(lbs).Hash() >> (64 - requiredBits))
+			expShard := uint32(phlaremodel.Labels(lbs).Hash() >> (64 - requiredBits))
 
 			res, err := ii.Lookup(
 				[]*labels.Matcher{{
@@ -139,7 +139,7 @@ func Test_BitPrefixNoMatcherLookup(t *testing.T) {
 	// with no shard param
 	ii, err := NewBitPrefixWithShards(16)
 	require.Nil(t, err)
-	fp := model.Fingerprint(firemodel.Labels(lbs).Hash())
+	fp := model.Fingerprint(phlaremodel.Labels(lbs).Hash())
 	ii.Add(lbs, fp)
 	ids, err := ii.Lookup(nil, nil)
 	require.Nil(t, err)
@@ -167,7 +167,7 @@ func Test_BitPrefixConsistentMapping(t *testing.T) {
 			{Name: "hi", Value: fmt.Sprint(i)},
 		}
 
-		fp := model.Fingerprint(firemodel.Labels(lbs).Hash())
+		fp := model.Fingerprint(phlaremodel.Labels(lbs).Hash())
 		a.Add(lbs, fp)
 		b.Add(lbs, fp)
 	}

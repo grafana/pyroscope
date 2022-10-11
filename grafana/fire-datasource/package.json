@@ -1,5 +1,5 @@
 {
-  "name": "grafana-fire-datasource",
+  "name": "grafana-phlare-datasource",
   "version": "1.0.0",
   "description": "",
   "scripts": {

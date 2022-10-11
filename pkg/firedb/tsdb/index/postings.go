@@ -23,9 +23,9 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 var allPostingsKey = &commonv1.LabelPair{}
@@ -350,7 +350,7 @@ func (p *MemPostings) Iter(f func(labels.Label, Postings) error) error {
 }
 
 // Add a label set to the postings index.
-func (p *MemPostings) Add(id storage.SeriesRef, lset firemodel.Labels) {
+func (p *MemPostings) Add(id storage.SeriesRef, lset phlaremodel.Labels) {
 	p.mtx.Lock()
 
 	for _, l := range lset {

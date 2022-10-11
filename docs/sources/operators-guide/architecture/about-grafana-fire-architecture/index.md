@@ -1,21 +1,21 @@
 ---
-title: "About the Grafana Fire architecture"
+title: "About the Grafana Phlare architecture"
 menuTitle: "About the architecture"
-description: "Learn about the Grafana Fire architecture."
+description: "Learn about the Grafana Phlare architecture."
 weight: 10
 ---
 
-# About the Grafana Fire architecture
+# About the Grafana Phlare architecture
 
-Grafana Fire has a microservices-based architecture.
+Grafana Phlare has a microservices-based architecture.
 The system has multiple horizontally scalable microservices that can run separately and in parallel.
-Grafana Fire microservices are called components.
+Grafana Phlare microservices are called components.
 
-Grafana Fire's design compiles the code for all components into a single binary.
-The `-target` parameter controls which component(s) that single binary will behave as. For those looking for a simple way to get started, Grafana Fire can also be run in [monolithic mode]({{< relref "../deployment-modes/index.md#monolithic-mode" >}}), with all components running simultaneously in one process.
+Grafana Phlare's design compiles the code for all components into a single binary.
+The `-target` parameter controls which component(s) that single binary will behave as. For those looking for a simple way to get started, Grafana Phlare can also be run in [monolithic mode]({{< relref "../deployment-modes/index.md#monolithic-mode" >}}), with all components running simultaneously in one process.
 For more information, refer to [Deployment modes]({{< relref "../deployment-modes/index.md" >}}).
 
-## Grafana Fire components
+## Grafana Phlare components
 
 Most components are stateless and do not require any data persisted between process restarts. Some components are stateful and rely on non-volatile storage to prevent data loss between process restarts. For details about each component, see its page in [Components]({{< relref "../components/_index.md" >}}).
 
@@ -23,14 +23,14 @@ Most components are stateless and do not require any data persisted between proc
 
 [//]: # "To edit open with https://mermaid.live/edit#pako{...}"
 <p align="center">
-  <img alt="Architecture of Grafana Fire's write path" width="200px" src="https://mermaid.ink/svg/pako:eNqNUc9PwyAU_lcavGzJtrqi3cbBg9GzB008rDtQeLQoLQ08nMvS_11onHr09vH9gvc4E2ElEEaUsUfRcofZy33VZ1nw4Gb7V6cR_GGeLZd3mdQena4DWpccf46TrPsGPMKkXfAkWJ8o62f7p_oNBGY-RuAwT6zHk4HpskxpY9iV2qlF7LXvwK4opd94edQSW1YMn78h6_8dIQvSgeu4lnHSc6qoCLbQQUVYhBIUDwYrUvVjtIZBcoRHqeMzCVPceFgQHud8PvWCMHQBLqYHzRvHux-XsVxCDJ0Jnoa01iYuKVYK2yvdJD44E-kWcfAsz5O8ajS2oV4J2-Vey_QH7ceuzMui3PKCQrmh_JZSKer1bquKm7WSm-t1wck4jl9KVZdq" />
+  <img alt="Architecture of Grafana Phlare's write path" width="200px" src="https://mermaid.ink/svg/pako:eNqNUc9PwyAU_lcavGzJtrqi3cbBg9GzB008rDtQeLQoLQ08nMvS_11onHr09vH9gvc4E2ElEEaUsUfRcofZy33VZ1nw4Gb7V6cR_GGeLZd3mdQena4DWpccf46TrPsGPMKkXfAkWJ8o62f7p_oNBGY-RuAwT6zHk4HpskxpY9iV2qlF7LXvwK4opd94edQSW1YMn78h6_8dIQvSgeu4lnHSc6qoCLbQQUVYhBIUDwYrUvVjtIZBcoRHqeMzCVPceFgQHud8PvWCMHQBLqYHzRvHux-XsVxCDJ0Jnoa01iYuKVYK2yvdJD44E-kWcfAsz5O8ajS2oV4J2-Vey_QH7ceuzMui3PKCQrmh_JZSKer1bquKm7WSm-t1wck4jl9KVZdq" />
   </a>
 </p>
 
 Ingesters receive incoming profiles from the distributors.
-Each push request belongs to a tenant, and the ingester appends the received profiles to the specific per-tenant FireDB that is stored on the local disk.
+Each push request belongs to a tenant, and the ingester appends the received profiles to the specific per-tenant PhlareDB that is stored on the local disk.
 
-The per-tenant FireDB is lazily created in each ingester as soon as the first profiles are received for that tenant.
+The per-tenant PhlareDB is lazily created in each ingester as soon as the first profiles are received for that tenant.
 
 The in-memory profiles are periodically flushed to disk and new block is created.
 
@@ -44,18 +44,18 @@ By default, each profile series is replicated to three ingesters, and each inges
 
 [//]: # "To edit open with https://mermaid.live/edit#pako{...}"
 <p align="center">
-  <img alt="Architecture of Grafana Fire's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkTFPwzAQhf-K5S6t1DY0gbTxwIBgRgK2poNrnxODEwf7TKmq_HfsqoDExPb03vfO9vlEhZVAGVXGHkTLHZKXu7onJHhw0-0TcOl3M7JY3JL3AE6DS-FFnm3dN-Dxr0-E7WJCvLX9GbM-AdZPt4_7VxBIPFoHu1lyPR4NnE8kShvDJqpSc4_OvgGbFEVx0YuDltiyfPj8LVn_7wqd0w5cx7WMzz2lETXFFjqoKYtSguLBYE3rfoxoGCRHeJA6XpMyxY2HOeUB7fOxF5ShC_AN3WveON79UMZyCbF0ongc0m4b7TGOFLZXukl-cCbaLeLgWZaleNlobMN-GdeWeS3TR7QfVZmVebnheQHluuA3RSHFflVtVH69UnJ9tco5HcfxC3-dl_E" />
+  <img alt="Architecture of Grafana Phlare's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkTFPwzAQhf-K5S6t1DY0gbTxwIBgRgK2poNrnxODEwf7TKmq_HfsqoDExPb03vfO9vlEhZVAGVXGHkTLHZKXu7onJHhw0-0TcOl3M7JY3JL3AE6DS-FFnm3dN-Dxr0-E7WJCvLX9GbM-AdZPt4_7VxBIPFoHu1lyPR4NnE8kShvDJqpSc4_OvgGbFEVx0YuDltiyfPj8LVn_7wqd0w5cx7WMzz2lETXFFjqoKYtSguLBYE3rfoxoGCRHeJA6XpMyxY2HOeUB7fOxF5ShC_AN3WveON79UMZyCbF0ongc0m4b7TGOFLZXukl-cCbaLeLgWZaleNlobMN-GdeWeS3TR7QfVZmVebnheQHluuA3RSHFflVtVH69UnJ9tco5HcfxC3-dl_E" />
   </a>
 </p>
 
-Queries coming into Grafana Fire arrive at the [querier]({{< relref "../components/querier" >}}). The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
+Queries coming into Grafana Phlare arrive at the [querier]({{< relref "../components/querier" >}}). The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
 
 ## Long-term storage
 
-The Grafana Fire storage format is described in detail in on the [block format page]({{< relref "..//block-format/" >}}).
-The Grafana Fire storage format stores each tenant's profiles into their own on-disk block. Each on-disk block directory contains an index file, a file containing metadata, and the Parquet tables.
+The Grafana Phlare storage format is described in detail in on the [block format page]({{< relref "..//block-format/" >}}).
+The Grafana Phlare storage format stores each tenant's profiles into their own on-disk block. Each on-disk block directory contains an index file, a file containing metadata, and the Parquet tables.
 
-Grafana Fire requires any of the following object stores for the block files:
+Grafana Phlare requires any of the following object stores for the block files:
 
 [//]: # "TODO: Verify that's correct"
 

@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -12,15 +12,15 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/atomic"
 
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	"github.com/grafana/fire/pkg/firedb/tsdb"
-	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 type profileLabels struct {
-	lbs      firemodel.Labels
+	lbs      phlaremodel.Labels
 	fp       model.Fingerprint
 	profiles []*schemav1.Profile
 }
@@ -52,7 +52,7 @@ func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, 
 
 // Add a new set of profile to the index.
 // The seriesRef are expected to match the profile labels passed in.
-func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs firemodel.Labels, profileName string) {
+func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profileName string) {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
 	profiles, ok := pi.profilesPerFP[ps.SeriesFingerprint]
@@ -76,7 +76,7 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs firemodel.Labels, profile
 // You can use sampleIdx to filter the samples by his position in the returned profile.
 // The returned profile is not sorted.
 func (pi *profilesIndex) forMatchingProfiles(matchers []*labels.Matcher,
-	fn func(lbs firemodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error,
+	fn func(lbs phlaremodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error,
 ) error {
 	filters, matchers := SplitFiltersAndMatchers(matchers)
 	ids, err := pi.ix.Lookup(matchers, nil)
@@ -149,7 +149,7 @@ outer:
 
 type ProfileWithLabels struct {
 	*schemav1.Profile
-	lbs firemodel.Labels
+	lbs phlaremodel.Labels
 	fp  model.Fingerprint
 }
 
@@ -161,7 +161,7 @@ func (p ProfileWithLabels) Fingerprint() model.Fingerprint {
 	return p.fp
 }
 
-func (p ProfileWithLabels) Labels() firemodel.Labels {
+func (p ProfileWithLabels) Labels() phlaremodel.Labels {
 	return p.lbs
 }
 
@@ -169,10 +169,10 @@ type SeriesIterator struct {
 	iter.Iterator[*schemav1.Profile]
 	curr ProfileWithLabels
 	fp   model.Fingerprint
-	lbs  firemodel.Labels
+	lbs  phlaremodel.Labels
 }
 
-func NewSeriesIterator(labels firemodel.Labels, fingerprint model.Fingerprint, it iter.Iterator[*schemav1.Profile]) *SeriesIterator {
+func NewSeriesIterator(labels phlaremodel.Labels, fingerprint model.Fingerprint, it iter.Iterator[*schemav1.Profile]) *SeriesIterator {
 	return &SeriesIterator{
 		Iterator: it,
 		fp:       fingerprint,
@@ -198,7 +198,7 @@ func (it *SeriesIterator) At() Profile {
 
 // forMatchingLabels iterates through all matching label sets and calls f for each labels set.
 func (pi *profilesIndex) forMatchingLabels(matchers []*labels.Matcher,
-	fn func(lbs firemodel.Labels, fp model.Fingerprint) error,
+	fn func(lbs phlaremodel.Labels, fp model.Fingerprint) error,
 ) error {
 	filters, matchers := SplitFiltersAndMatchers(matchers)
 	ids, err := pi.ix.Lookup(matchers, nil)
@@ -266,7 +266,7 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 
 	// sort by fp
 	sort.Slice(pfs, func(i, j int) bool {
-		return firemodel.CompareLabelPairs(pfs[i].lbs, pfs[j].lbs) < 0
+		return phlaremodel.CompareLabelPairs(pfs[i].lbs, pfs[j].lbs) < 0
 	})
 
 	symbolsMap := make(map[string]struct{})

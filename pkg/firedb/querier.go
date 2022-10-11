@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"sort"
@@ -6,9 +6,9 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 
-	"github.com/grafana/fire/pkg/firedb/tsdb"
-	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 // IndexReader provides reading access of serialized index data.
@@ -38,7 +38,7 @@ type IndexReader interface {
 	// Series populates the given labels and chunk metas for the series identified
 	// by the reference.
 	// Returns storage.ErrNotFound if the ref does not resolve to a known series.
-	Series(ref storage.SeriesRef, lset *firemodel.Labels, chks *[]index.ChunkMeta) (uint64, error)
+	Series(ref storage.SeriesRef, lset *phlaremodel.Labels, chks *[]index.ChunkMeta) (uint64, error)
 
 	// LabelNames returns all the unique label names present in the index in sorted order.
 	LabelNames(matchers ...*labels.Matcher) ([]string, error)

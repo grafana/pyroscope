@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -27,15 +27,15 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	"github.com/grafana/fire/pkg/firedb/block"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/objstore/client"
-	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
-	diskutil "github.com/grafana/fire/pkg/util/disk"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/objstore/client"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	diskutil "github.com/grafana/phlare/pkg/util/disk"
 )
 
 const (
@@ -48,7 +48,7 @@ type Config struct {
 	// Blocks are generally cut once they reach 1000M of memory size, this will setup an upper limit to the duration of data that a block has that is cut by the ingester.
 	MaxBlockDuration time.Duration `yaml:"max_block_duration,omitempty"`
 
-	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determiend by fire itself. Currently they are solely used for test cases
+	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determiend by phlare itself. Currently they are solely used for test cases
 }
 
 type ParquetConfig struct {
@@ -58,8 +58,8 @@ type ParquetConfig struct {
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.StringVar(&cfg.DataPath, "firedb.data-path", "./data", "Directory used for local storage.")
-	f.DurationVar(&cfg.MaxBlockDuration, "firedb.max-block-duration", 3*time.Hour, "Upper limit to the duration of a Fire block.")
+	f.StringVar(&cfg.DataPath, "phlaredb.data-path", "./data", "Directory used for local storage.")
+	f.DurationVar(&cfg.MaxBlockDuration, "phlaredb.max-block-duration", 3*time.Hour, "Upper limit to the duration of a Phlare block.")
 }
 
 type fileSystem interface {
@@ -73,11 +73,11 @@ func (*realFileSystem) Open(name string) (fs.File, error)          { return os.O
 func (*realFileSystem) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
 func (*realFileSystem) RemoveAll(path string) error                { return os.RemoveAll(path) }
 
-type FireDB struct {
+type PhlareDB struct {
 	services.Service
 
 	logger  log.Logger
-	firectx context.Context
+	phlarectx context.Context
 
 	cfg    Config
 	stopCh chan struct{}
@@ -94,16 +94,16 @@ type FireDB struct {
 	blockQuerier *BlockQuerier
 }
 
-func New(firectx context.Context, cfg Config) (*FireDB, error) {
-	reg := firecontext.Registry(firectx)
+func New(phlarectx context.Context, cfg Config) (*PhlareDB, error) {
+	reg := phlarecontext.Registry(phlarectx)
 
 	// ensure head metrics are registered early so they are reused for the new head
-	firectx = contextWithHeadMetrics(firectx, newHeadMetrics(reg))
+	phlarectx = contextWithHeadMetrics(phlarectx, newHeadMetrics(reg))
 
-	f := &FireDB{
+	f := &PhlareDB{
 		cfg:     cfg,
-		logger:  firecontext.Logger(firectx),
-		firectx: firectx,
+		logger:  phlarecontext.Logger(phlarectx),
+		phlarectx: phlarectx,
 		stopCh:  make(chan struct{}, 0),
 		volumeChecker: diskutil.NewVolumeChecker(
 			minFreeDisk,
@@ -120,7 +120,7 @@ func New(firectx context.Context, cfg Config) (*FireDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("firedb_", reg))
+	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("phlaredb_", reg))
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func New(firectx context.Context, cfg Config) (*FireDB, error) {
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
 
-	f.blockQuerier = NewBlockQuerier(firectx, bucketReader)
+	f.blockQuerier = NewBlockQuerier(phlarectx, bucketReader)
 
 	// do an initial querier sync
 	ctx := context.Background()
@@ -139,15 +139,15 @@ func New(firectx context.Context, cfg Config) (*FireDB, error) {
 	return f, nil
 }
 
-func (f *FireDB) LocalDataPath() string {
+func (f *PhlareDB) LocalDataPath() string {
 	return filepath.Join(f.cfg.DataPath, pathLocal)
 }
 
-func (f *FireDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
+func (f *PhlareDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
 	return f.blockQuerier.BlockMetas(ctx)
 }
 
-func (f *FireDB) listLocalULID() ([]ulid.ULID, error) {
+func (f *PhlareDB) listLocalULID() ([]ulid.ULID, error) {
 	path := f.LocalDataPath()
 	files, err := f.fs.ReadDir(path)
 	if err != nil {
@@ -175,7 +175,7 @@ func (f *FireDB) listLocalULID() ([]ulid.ULID, error) {
 	return ids, nil
 }
 
-func (f *FireDB) cleanupBlocksWhenHighDiskUtilization(ctx context.Context) error {
+func (f *PhlareDB) cleanupBlocksWhenHighDiskUtilization(ctx context.Context) error {
 	var (
 		path      = f.LocalDataPath()
 		lastStats *diskutil.VolumeStats
@@ -239,7 +239,7 @@ func (f *FireDB) cleanupBlocksWhenHighDiskUtilization(ctx context.Context) error
 	return nil
 }
 
-func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
+func (f *PhlareDB) runBlockQuerierSync(ctx context.Context) {
 	if err := f.cleanupBlocksWhenHighDiskUtilization(ctx); err != nil {
 		level.Error(f.logger).Log("msg", "cleanup block check failed", "err", err)
 	}
@@ -249,7 +249,7 @@ func (f *FireDB) runBlockQuerierSync(ctx context.Context) {
 	}
 }
 
-func (f *FireDB) loop() {
+func (f *PhlareDB) loop() {
 	blockScanTicker := time.NewTicker(5 * time.Minute)
 	defer func() {
 		blockScanTicker.Stop()
@@ -274,7 +274,7 @@ func (f *FireDB) loop() {
 	}
 }
 
-func (f *FireDB) Close() error {
+func (f *PhlareDB) Close() error {
 	errs := multierror.New()
 	if f.head != nil {
 		errs.Add(f.head.Close())
@@ -287,7 +287,7 @@ func (f *FireDB) Close() error {
 	return errs.Err()
 }
 
-func (f *FireDB) Head() *Head {
+func (f *PhlareDB) Head() *Head {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 	return f.head
@@ -295,7 +295,7 @@ func (f *FireDB) Head() *Head {
 
 type Queriers []Querier
 
-func (f *FireDB) querierFor(start, end model.Time) Queriers {
+func (f *PhlareDB) querierFor(start, end model.Time) Queriers {
 	blocks := f.blockQuerier.queriersFor(start, end)
 	if f.Head().InRange(start, end) {
 		res := make(Queriers, 0, len(blocks)+1)
@@ -306,7 +306,7 @@ func (f *FireDB) querierFor(start, end model.Time) Queriers {
 	return blocks
 }
 
-func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
+func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesStacktraces")
 	defer sp.Finish()
 
@@ -378,7 +378,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 
 	// sends the final result to the client.
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-		Result: firemodel.MergeBatchMergeStacktraces(result...),
+		Result: phlaremodel.MergeBatchMergeStacktraces(result...),
 	})
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -390,7 +390,7 @@ func (f *FireDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.B
 	return nil
 }
 
-func (f *FireDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
+func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesLabels")
 	defer sp.Finish()
 
@@ -464,7 +464,7 @@ func (f *FireDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiSt
 
 	// sends the final result to the client.
 	err = stream.Send(&ingestv1.MergeProfilesLabelsResponse{
-		Series: firemodel.MergeSeries(result...),
+		Series: phlaremodel.MergeSeries(result...),
 	})
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -482,7 +482,7 @@ type BidiServerMerge[Res any, Req any] interface {
 }
 
 type labelWithIndex struct {
-	firemodel.Labels
+	phlaremodel.Labels
 	index int
 }
 
@@ -584,18 +584,18 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 	return selection, nil
 }
 
-func (f *FireDB) initHead() (oldHead *Head, err error) {
+func (f *PhlareDB) initHead() (oldHead *Head, err error) {
 	f.headLock.Lock()
 	defer f.headLock.Unlock()
 	oldHead = f.head
-	f.head, err = NewHead(f.firectx, f.cfg)
+	f.head, err = NewHead(f.phlarectx, f.cfg)
 	if err != nil {
 		return oldHead, err
 	}
 	return oldHead, nil
 }
 
-func (f *FireDB) Flush(ctx context.Context) error {
+func (f *PhlareDB) Flush(ctx context.Context) error {
 	oldHead, err := f.initHead()
 	if err != nil {
 		return err

@@ -34,9 +34,9 @@ import (
 	"github.com/prometheus/prometheus/tsdb/encoding"
 	"github.com/prometheus/prometheus/util/testutil"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func TestMain(m *testing.M) {
@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 }
 
 type series struct {
-	l      firemodel.Labels
+	l      phlaremodel.Labels
 	chunks []ChunkMeta
 }
 
@@ -72,7 +72,7 @@ func (m mockIndex) Symbols() (map[string]struct{}, error) {
 	return m.symbols, nil
 }
 
-func (m mockIndex) AddSeries(ref storage.SeriesRef, l firemodel.Labels, chunks ...ChunkMeta) error {
+func (m mockIndex) AddSeries(ref storage.SeriesRef, l phlaremodel.Labels, chunks ...ChunkMeta) error {
 	if _, ok := m.series[ref]; ok {
 		return errors.Errorf("series with reference %d already added", ref)
 	}
@@ -137,7 +137,7 @@ func (m mockIndex) Postings(name string, values ...string) (Postings, error) {
 	return Merge(p...), nil
 }
 
-func (m mockIndex) Series(ref storage.SeriesRef, lset *firemodel.Labels, chks *[]ChunkMeta) error {
+func (m mockIndex) Series(ref storage.SeriesRef, lset *phlaremodel.Labels, chks *[]ChunkMeta) error {
 	s, ok := m.series[ref]
 	if !ok {
 		return errors.New("not found")
@@ -181,11 +181,11 @@ func TestIndexRW_Postings(t *testing.T) {
 	iw, err := NewWriter(context.Background(), fn)
 	require.NoError(t, err)
 
-	series := []firemodel.Labels{
-		firemodel.LabelsFromStrings("a", "1", "b", "1"),
-		firemodel.LabelsFromStrings("a", "1", "b", "2"),
-		firemodel.LabelsFromStrings("a", "1", "b", "3"),
-		firemodel.LabelsFromStrings("a", "1", "b", "4"),
+	series := []phlaremodel.Labels{
+		phlaremodel.LabelsFromStrings("a", "1", "b", "1"),
+		phlaremodel.LabelsFromStrings("a", "1", "b", "2"),
+		phlaremodel.LabelsFromStrings("a", "1", "b", "3"),
+		phlaremodel.LabelsFromStrings("a", "1", "b", "4"),
 	}
 
 	require.NoError(t, iw.AddSymbol("1"))
@@ -210,7 +210,7 @@ func TestIndexRW_Postings(t *testing.T) {
 	p, err := ir.Postings("a", nil, "1")
 	require.NoError(t, err)
 
-	var l firemodel.Labels
+	var l phlaremodel.Labels
 	var c []ChunkMeta
 
 	for i := 0; p.Next(); i++ {
@@ -263,10 +263,10 @@ func TestPostingsMany(t *testing.T) {
 
 	// Create a label in the index which has 999 values.
 	symbols := map[string]struct{}{}
-	series := []firemodel.Labels{}
+	series := []phlaremodel.Labels{}
 	for i := 1; i < 1000; i++ {
 		v := fmt.Sprintf("%03d", i)
-		series = append(series, firemodel.LabelsFromStrings("i", v, "foo", "bar"))
+		series = append(series, phlaremodel.LabelsFromStrings("i", v, "foo", "bar"))
 		symbols[v] = struct{}{}
 	}
 	symbols["i"] = struct{}{}
@@ -330,7 +330,7 @@ func TestPostingsMany(t *testing.T) {
 		require.NoError(t, err)
 
 		got := []string{}
-		var lbls firemodel.Labels
+		var lbls phlaremodel.Labels
 		var metas []ChunkMeta
 		for it.Next() {
 			_, err := ir.Series(it.At(), &lbls, &metas)
@@ -360,9 +360,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 	lbls, err := labels.ReadLabels(filepath.Join("..", "testdata", "20kseries.json"), 20000)
 	require.NoError(t, err)
 
-	flbls := make([]firemodel.Labels, len(lbls))
+	flbls := make([]phlaremodel.Labels, len(lbls))
 	for i, ls := range lbls {
-		flbls[i] = make(firemodel.Labels, 0, len(ls))
+		flbls[i] = make(phlaremodel.Labels, 0, len(ls))
 		for _, l := range ls {
 			flbls[i] = append(flbls[i], &commonv1.LabelPair{Name: l.Name, Value: l.Value})
 		}
@@ -449,7 +449,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 		expp, err := mi.Postings(p.Name, p.Value)
 		require.NoError(t, err)
 
-		var lset, explset firemodel.Labels
+		var lset, explset phlaremodel.Labels
 		var chks, expchks []ChunkMeta
 
 		for gotp.Next() {

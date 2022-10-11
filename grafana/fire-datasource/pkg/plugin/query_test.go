@@ -6,19 +6,19 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	v1 "github.com/grafana/fire/pkg/gen/common/v1"
+	v1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
 )
 
 // This is where the tests for the datasource backend live.
 func Test_query(t *testing.T) {
 	client := &FakeClient{}
-	ds := &FireDatasource{
+	ds := &PhlareDatasource{
 		client: client,
 	}
 

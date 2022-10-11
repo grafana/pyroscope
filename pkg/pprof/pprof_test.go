@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	"github.com/grafana/fire/pkg/pprof/testhelper"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	"github.com/grafana/phlare/pkg/pprof/testhelper"
 )
 
 func TestNormalizeProfile(t *testing.T) {

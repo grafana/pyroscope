@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 )
 
 var seps = []byte{'\xff'}

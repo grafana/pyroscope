@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"sync"
@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/atomic"
 
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 )
 
 type labelCache struct {

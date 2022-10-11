@@ -1,12 +1,12 @@
 ---
-title: "Grafana Fire Agent"
+title: "Grafana Phlare Agent"
 menuTitle: "Configure the Agent"
 description: ""
 weight: 31
 ---
 
-# Grafana Fire Agent
+# Grafana Phlare Agent
 
-The Agent can collect and send profiles to Grafana Fire:
+The Agent can collect and send profiles to Grafana Phlare:
 
 {{< section menuTitle="true" >}}

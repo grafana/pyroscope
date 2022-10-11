@@ -1,9 +1,9 @@
-package firedb
+package phlaredb
 
 import (
 	"unsafe"
 
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 )
 
 type mappingsHelper struct{}

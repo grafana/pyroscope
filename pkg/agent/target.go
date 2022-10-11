@@ -23,15 +23,15 @@ import (
 	"github.com/prometheus/prometheus/util/pool"
 	"golang.org/x/net/context/ctxhttp"
 
-	agentv1 "github.com/grafana/fire/pkg/gen/agent/v1"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/tenant"
+	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	"github.com/grafana/phlare/pkg/tenant"
 )
 
 var (
 	payloadBuffers  = pool.New(1e3, 1e6, 3, func(sz int) interface{} { return make([]byte, 0, sz) })
-	userAgentHeader = fmt.Sprintf("fire/%s", version.Version)
+	userAgentHeader = fmt.Sprintf("phlare/%s", version.Version)
 )
 
 type TargetGroup struct {

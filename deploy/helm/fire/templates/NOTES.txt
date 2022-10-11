@@ -1,3 +1,3 @@
 1. Get to the application by running this commands:
-  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "fire.fullname" . }} {{ .Values.fire.service.port }}:{{ .Values.fire.service.port }}
-2. Then you can visit http://127.0.0.1:{{ .Values.fire.service.port }} to use your application
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "phlare.fullname" . }} {{ .Values.phlare.service.port }}:{{ .Values.phlare.service.port }}
+2. Then you can visit http://127.0.0.1:{{ .Values.phlare.service.port }} to use your application

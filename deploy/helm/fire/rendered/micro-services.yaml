@@ -1,25 +1,25 @@
 ---
-# Source: fire/templates/serviceaccount.yaml
+# Source: phlare/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: fire-dev
+  name: phlare-dev
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
 ---
-# Source: fire/templates/configmap.yaml
+# Source: phlare/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: fire-dev-config
+  name: phlare-dev-config
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
 data:
@@ -73,15 +73,15 @@ data:
           - __meta_kubernetes_pod_container_name
           target_label: __path__
 ---
-# Source: fire/templates/clusterrole.yaml
+# Source: phlare/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: default-fire-dev
+  name: default-phlare-dev
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
 rules:
@@ -99,35 +99,35 @@ rules:
   verbs:
   - get
 ---
-# Source: fire/templates/clusterrolebinding.yaml
+# Source: phlare/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-fire-dev
+  name: default-phlare-dev
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: default-fire-dev
+  name: default-phlare-dev
 subjects:
 - kind: ServiceAccount
-  name: fire-dev
+  name: phlare-dev
   namespace: default
 ---
-# Source: fire/templates/memberlist-service.yaml
+# Source: phlare/templates/memberlist-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: fire-dev-memberlist
+  name: phlare-dev-memberlist
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
 spec:
@@ -140,20 +140,20 @@ spec:
       targetPort: 7946
   publishNotReadyAddresses: true
   selector:
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     # TODO: Ensure only services that offer memberlist register
-    # fire.grafana.com/memberlist: "true"
+    # phlare.grafana.com/memberlist: "true"
 ---
-# Source: fire/templates/services.yaml
+# Source: phlare/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: fire-dev-agent
+  name: phlare-dev-agent
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
@@ -165,19 +165,19 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "agent"
 ---
-# Source: fire/templates/services.yaml
+# Source: phlare/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: fire-dev-distributor
+  name: phlare-dev-distributor
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
@@ -189,19 +189,19 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "distributor"
 ---
-# Source: fire/templates/services.yaml
+# Source: phlare/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: fire-dev-ingester
+  name: phlare-dev-ingester
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
@@ -213,19 +213,19 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "ingester"
 ---
-# Source: fire/templates/services.yaml
+# Source: phlare/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: fire-dev-ingester-headless
+  name: phlare-dev-ingester-headless
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
@@ -237,19 +237,19 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "ingester"
 ---
-# Source: fire/templates/services.yaml
+# Source: phlare/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: fire-dev-querier
+  name: phlare-dev-querier
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
@@ -261,19 +261,19 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "querier"
 ---
-# Source: fire/templates/deployments-statefulsets.yaml
+# Source: phlare/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fire-dev-agent
+  name: phlare-dev-agent
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
@@ -281,34 +281,34 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: fire
-      app.kubernetes.io/instance: fire-dev
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
       app.kubernetes.io/component: "agent"
   template:
     metadata:
       annotations:
         checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
       labels:
-        app.kubernetes.io/name: fire
-        app.kubernetes.io/instance: fire-dev
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
         app.kubernetes.io/component: "agent"
         name: "agent"
     spec:
-      serviceAccountName: fire-dev
+      serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
       containers:
         - name: "agent"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/fire:0.0.0"
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=agent"
-            - "-memberlist.cluster-label=default-fire-dev"
-            - "-memberlist.join=fire-dev-memberlist.default.svc.cluster.local."
-            - "-client.url=http://fire-dev-distributor.default.svc.cluster.local.:4100"
-            - "-config.file=/etc/fire/config.yaml"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-client.url=http://phlare-dev-distributor.default.svc.cluster.local.:4100"
+            - "-config.file=/etc/phlare/config.yaml"
             - "-log.level=debug"
           ports:
             - name: http
@@ -323,7 +323,7 @@ spec:
               port: http
           volumeMounts:
             - name: config
-              mountPath: /etc/fire/config.yaml
+              mountPath: /etc/phlare/config.yaml
               subPath: config.yaml
             - name: data
               mountPath: /data
@@ -336,19 +336,19 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: fire-dev-config
+            name: phlare-dev-config
         - name: data
           emptyDir: {}
 ---
-# Source: fire/templates/deployments-statefulsets.yaml
+# Source: phlare/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fire-dev-distributor
+  name: phlare-dev-distributor
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
@@ -356,33 +356,33 @@ spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: fire
-      app.kubernetes.io/instance: fire-dev
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
       app.kubernetes.io/component: "distributor"
   template:
     metadata:
       annotations:
         checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
       labels:
-        app.kubernetes.io/name: fire
-        app.kubernetes.io/instance: fire-dev
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
         app.kubernetes.io/component: "distributor"
         name: "distributor"
     spec:
-      serviceAccountName: fire-dev
+      serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
       containers:
         - name: "distributor"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/fire:0.0.0"
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
-            - "-memberlist.cluster-label=default-fire-dev"
-            - "-memberlist.join=fire-dev-memberlist.default.svc.cluster.local."
-            - "-config.file=/etc/fire/config.yaml"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
             - "-log.level=debug"
           ports:
             - name: http
@@ -397,7 +397,7 @@ spec:
               port: http
           volumeMounts:
             - name: config
-              mountPath: /etc/fire/config.yaml
+              mountPath: /etc/phlare/config.yaml
               subPath: config.yaml
             - name: data
               mountPath: /data
@@ -410,19 +410,19 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: fire-dev-config
+            name: phlare-dev-config
         - name: data
           emptyDir: {}
 ---
-# Source: fire/templates/deployments-statefulsets.yaml
+# Source: phlare/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fire-dev-querier
+  name: phlare-dev-querier
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
@@ -430,33 +430,33 @@ spec:
   replicas: 3
   selector:
     matchLabels:
-      app.kubernetes.io/name: fire
-      app.kubernetes.io/instance: fire-dev
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
       app.kubernetes.io/component: "querier"
   template:
     metadata:
       annotations:
         checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
       labels:
-        app.kubernetes.io/name: fire
-        app.kubernetes.io/instance: fire-dev
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
         app.kubernetes.io/component: "querier"
         name: "querier"
     spec:
-      serviceAccountName: fire-dev
+      serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
       containers:
         - name: "querier"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/fire:0.0.0"
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
-            - "-memberlist.cluster-label=default-fire-dev"
-            - "-memberlist.join=fire-dev-memberlist.default.svc.cluster.local."
-            - "-config.file=/etc/fire/config.yaml"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
             - "-log.level=debug"
           ports:
             - name: http
@@ -471,7 +471,7 @@ spec:
               port: http
           volumeMounts:
             - name: config
-              mountPath: /etc/fire/config.yaml
+              mountPath: /etc/phlare/config.yaml
               subPath: config.yaml
             - name: data
               mountPath: /data
@@ -484,55 +484,55 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: fire-dev-config
+            name: phlare-dev-config
         - name: data
           emptyDir: {}
 ---
-# Source: fire/templates/deployments-statefulsets.yaml
+# Source: phlare/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: fire-dev-ingester
+  name: phlare-dev-ingester
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
-  serviceName: fire-dev-ingester-headless
+  serviceName: phlare-dev-ingester-headless
   podManagementPolicy: Parallel
   replicas: 3
   selector:
     matchLabels:
-      app.kubernetes.io/name: fire
-      app.kubernetes.io/instance: fire-dev
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
       app.kubernetes.io/component: "ingester"
   template:
     metadata:
       annotations:
         checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
       labels:
-        app.kubernetes.io/name: fire
-        app.kubernetes.io/instance: fire-dev
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
         app.kubernetes.io/component: "ingester"
         name: "ingester"
     spec:
-      serviceAccountName: fire-dev
+      serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
       containers:
         - name: "ingester"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/fire:0.0.0"
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
-            - "-memberlist.cluster-label=default-fire-dev"
-            - "-memberlist.join=fire-dev-memberlist.default.svc.cluster.local."
-            - "-config.file=/etc/fire/config.yaml"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
             - "-log.level=debug"
           ports:
             - name: http
@@ -547,7 +547,7 @@ spec:
               port: http
           volumeMounts:
             - name: config
-              mountPath: /etc/fire/config.yaml
+              mountPath: /etc/phlare/config.yaml
               subPath: config.yaml
             - name: data
               mountPath: /data
@@ -560,19 +560,19 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: fire-dev-config
+            name: phlare-dev-config
         - name: data
           emptyDir: {}
 ---
-# Source: fire/templates/tests/test-connection.yaml
+# Source: phlare/templates/tests/test-connection.yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "fire-dev-test-connection"
+  name: "phlare-dev-test-connection"
   labels:
-    helm.sh/chart: fire-0.1.0
-    app.kubernetes.io/name: fire
-    app.kubernetes.io/instance: fire-dev
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.0.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
@@ -582,5 +582,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['fire-dev:4100']
+      args: ['phlare-dev:4100']
   restartPolicy: Never

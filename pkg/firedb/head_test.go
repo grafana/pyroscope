@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -16,17 +16,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func newTestHead(t testing.TB) *testHead {
 	dataPath := t.TempDir()
 	reg := prometheus.NewPedanticRegistry()
-	ctx := firecontext.WithRegistry(context.Background(), reg)
+	ctx := phlarecontext.WithRegistry(context.Background(), reg)
 	head, err := NewHead(ctx, Config{DataPath: dataPath})
 	require.NoError(t, err)
 	return &testHead{Head: head, t: t, reg: reg}
@@ -185,30 +185,30 @@ func TestHeadMetrics(t *testing.T) {
 	time.Sleep(time.Second)
 	require.NoError(t, testutil.GatherAndCompare(head.reg,
 		strings.NewReader(`
-# HELP fire_head_ingested_sample_values_total Number of sample values ingested into the head per profile type.
-# TYPE fire_head_ingested_sample_values_total counter
-fire_head_ingested_sample_values_total{profile_name=""} 3
-# HELP fire_head_profiles_created_total Total number of profiles created in the head
-# TYPE fire_head_profiles_created_total counter
-fire_head_profiles_created_total{profile_name=""} 2
-# HELP fire_head_received_sample_values_total Number of sample values received into the head per profile type.
-# TYPE fire_head_received_sample_values_total counter
-fire_head_received_sample_values_total{profile_name=""} 3
+# HELP phlare_head_ingested_sample_values_total Number of sample values ingested into the head per profile type.
+# TYPE phlare_head_ingested_sample_values_total counter
+phlare_head_ingested_sample_values_total{profile_name=""} 3
+# HELP phlare_head_profiles_created_total Total number of profiles created in the head
+# TYPE phlare_head_profiles_created_total counter
+phlare_head_profiles_created_total{profile_name=""} 2
+# HELP phlare_head_received_sample_values_total Number of sample values received into the head per profile type.
+# TYPE phlare_head_received_sample_values_total counter
+phlare_head_received_sample_values_total{profile_name=""} 3
 
-# HELP fire_head_size_bytes Size of a particular in memory store within the head firedb block.
-# TYPE fire_head_size_bytes gauge
-fire_head_size_bytes{type="functions"} 240
-fire_head_size_bytes{type="locations"} 344
-fire_head_size_bytes{type="mappings"} 192
-fire_head_size_bytes{type="profiles"} 416
-fire_head_size_bytes{type="stacktraces"} 104
-fire_head_size_bytes{type="strings"} 52
+# HELP phlare_head_size_bytes Size of a particular in memory store within the head phlaredb block.
+# TYPE phlare_head_size_bytes gauge
+phlare_head_size_bytes{type="functions"} 240
+phlare_head_size_bytes{type="locations"} 344
+phlare_head_size_bytes{type="mappings"} 192
+phlare_head_size_bytes{type="profiles"} 416
+phlare_head_size_bytes{type="stacktraces"} 104
+phlare_head_size_bytes{type="strings"} 52
 
 `),
-		"fire_head_received_sample_values_total",
-		"fire_head_profiles_created_total",
-		"fire_head_ingested_sample_values_total",
-		"fire_head_size_bytes",
+		"phlare_head_received_sample_values_total",
+		"phlare_head_profiles_created_total",
+		"phlare_head_ingested_sample_values_total",
+		"phlare_head_size_bytes",
 	))
 }
 
@@ -277,8 +277,8 @@ func TestHeadIngestStacktraces(t *testing.T) {
 
 func TestHeadLabelValues(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
 
 	res, err := head.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
 	require.NoError(t, err)
@@ -291,8 +291,8 @@ func TestHeadLabelValues(t *testing.T) {
 
 func TestHeadLabelNames(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
 
 	res, err := head.LabelNames(context.Background(), connect.NewRequest(&ingestv1.LabelNamesRequest{}))
 	require.NoError(t, err)
@@ -301,13 +301,13 @@ func TestHeadLabelNames(t *testing.T) {
 
 func TestHeadSeries(t *testing.T) {
 	head := newTestHead(t)
-	fooLabels := firemodel.NewLabelsBuilder(nil).Set("namespace", "fire").Set("job", "foo").Labels()
-	barLabels := firemodel.NewLabelsBuilder(nil).Set("namespace", "fire").Set("job", "bar").Labels()
+	fooLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "foo").Labels()
+	barLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "bar").Labels()
 	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), fooLabels...))
 	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), barLabels...))
 
-	expected := firemodel.NewLabelsBuilder(nil).
-		Set("namespace", "fire").
+	expected := phlaremodel.NewLabelsBuilder(nil).
+		Set("namespace", "phlare").
 		Set("job", "foo").
 		Set("__period_type__", "type").
 		Set("__period_unit__", "unit").
@@ -322,8 +322,8 @@ func TestHeadSeries(t *testing.T) {
 
 func TestHeadProfileTypes(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "foo"}, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "fire"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "foo"}, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
 
 	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
@@ -334,7 +334,7 @@ func TestHeadProfileTypes(t *testing.T) {
 }
 
 func mustParseProfileSelector(t testing.TB, selector string) *commonv1.ProfileType {
-	ps, err := firemodel.ParseProfileTypeSelector(selector)
+	ps, err := phlaremodel.ParseProfileTypeSelector(selector)
 	require.NoError(t, err)
 	return ps
 }

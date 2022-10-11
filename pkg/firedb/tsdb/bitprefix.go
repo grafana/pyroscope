@@ -7,10 +7,10 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	"github.com/grafana/fire/pkg/firedb/tsdb/shard"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 // BitPrefixInvertedIndex is another inverted index implementation
@@ -117,7 +117,7 @@ func (ii *BitPrefixInvertedIndex) validateShard(shard *shard.Annotation) error {
 // Add a fingerprint under the specified labels.
 // NOTE: memory for `labels` is unsafe; anything retained beyond the
 // life of this function must be copied
-func (ii *BitPrefixInvertedIndex) Add(labels firemodel.Labels, fp model.Fingerprint) firemodel.Labels {
+func (ii *BitPrefixInvertedIndex) Add(labels phlaremodel.Labels, fp model.Fingerprint) phlaremodel.Labels {
 	// add() returns 'interned' values so the original labels are not retained
 	return ii.shards[ii.shardForFP(fp)].add(labels, fp)
 }

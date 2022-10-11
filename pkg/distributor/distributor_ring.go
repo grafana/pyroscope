@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 
-	"github.com/grafana/fire/pkg/util"
+	"github.com/grafana/phlare/pkg/util"
 )
 
 // RingConfig masks the ring lifecycler config which contains

@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	"github.com/grafana/fire/pkg/firedb/tsdb/index"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	v1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func TestQueryIndex(t *testing.T) {
@@ -25,13 +25,13 @@ func TestQueryIndex(t *testing.T) {
 	require.NoError(t, err)
 
 	for j := 0; j < 10; j++ {
-		lb1 := firemodel.Labels([]*commonv1.LabelPair{
+		lb1 := phlaremodel.Labels([]*commonv1.LabelPair{
 			{Name: "__name__", Value: "memory"},
 			{Name: "__sample__type__", Value: "bytes"},
 			{Name: "bar", Value: fmt.Sprint(j)},
 		})
 		sort.Sort(lb1)
-		lb2 := firemodel.Labels([]*commonv1.LabelPair{
+		lb2 := phlaremodel.Labels([]*commonv1.LabelPair{
 			{Name: "__name__", Value: "memory"},
 			{Name: "__sample__type__", Value: "count"},
 			{Name: "bar", Value: fmt.Sprint(j)},
@@ -63,7 +63,7 @@ func TestQueryIndex(t *testing.T) {
 	p, err := PostingsForMatchers(r, nil, labels.MustNewMatcher(labels.MatchRegexp, "bar", "(1|2)"))
 	require.NoError(t, err)
 
-	lbls := make(firemodel.Labels, 3)
+	lbls := make(phlaremodel.Labels, 3)
 	chks := make([]index.ChunkMeta, 1)
 	for p.Next() {
 		fp, err := r.Series(p.At(), &lbls, &chks)

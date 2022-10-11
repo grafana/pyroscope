@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/grafana/fire/pkg/tenant"
+	"github.com/grafana/phlare/pkg/tenant"
 )
 
 func Test_writeError(t *testing.T) {

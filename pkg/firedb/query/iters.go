@@ -15,7 +15,7 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/segmentio/parquet-go"
 
-	"github.com/grafana/fire/pkg/iter"
+	"github.com/grafana/phlare/pkg/iter"
 )
 
 // RowNumber is the sequence of row numbers uniquely identifying a value

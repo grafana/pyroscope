@@ -5,7 +5,7 @@ import { CodeEditor, Monaco, useStyles2, monacoTypes } from '@grafana/ui';
 import type { languages } from 'monaco-editor';
 import { useLatest } from 'react-use';
 
-import { languageDefinition } from '../fireql';
+import { languageDefinition } from '../phlareql';
 import { CompletionProvider } from './autocomplete';
 import { SeriesMessage } from '../types';
 
@@ -53,7 +53,7 @@ export function LabelsEditor(props: Props) {
             bottom: 6,
           },
         }}
-        onBeforeEditorMount={ensureFireQL}
+        onBeforeEditorMount={ensurePhlareQL}
         onEditorDidMount={(editor, monaco) => {
           setupAutocompleteFn(editor, monaco);
 
@@ -121,12 +121,12 @@ function useAutocomplete(series?: SeriesMessage) {
 }
 
 // we must only run the setup code once
-let fireqlSetupDone = false;
-const langId = 'fireql';
+let phlareqlSetupDone = false;
+const langId = 'phlareql';
 
-function ensureFireQL(monaco: Monaco) {
-  if (fireqlSetupDone === false) {
-    fireqlSetupDone = true;
+function ensurePhlareQL(monaco: Monaco) {
+  if (phlareqlSetupDone === false) {
+    phlareqlSetupDone = true;
     const { aliases, extensions, mimetypes, def } = languageDefinition;
     monaco.languages.register({ id: langId, aliases, extensions, mimetypes });
     monaco.languages.setMonarchTokensProvider(langId, def.language as languages.IMonarchLanguage);

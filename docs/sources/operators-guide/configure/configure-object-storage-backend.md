@@ -1,13 +1,13 @@
 ---
-title: "Configure Grafana Fire object storage backend"
+title: "Configure Grafana Phlare object storage backend"
 menuTitle: "Configure object storage"
-description: "Learn how to configure Grafana Fire to use different object storage backend implementations."
+description: "Learn how to configure Grafana Phlare to use different object storage backend implementations."
 weight: 30
 ---
 
-# Configure Grafana Fire object storage backend
+# Configure Grafana Phlare object storage backend
 
-Grafana Fire can use different object storage services to persist blocks containing the profiles data.
+Grafana Phlare can use different object storage services to persist blocks containing the profiles data.
 Blocks are flushed by ingesters [on disk]({{<relref "./configure-disk-storage.md">}}) first then are uploaded to object store.
 > The storage is still in development and querying from object store is not yet implemented.
 
@@ -22,7 +22,7 @@ Additionally and for non-production testing purposes, you can use a file-system 
 
 Object storage configuration is currently only supported via the configuration files under the `storage.bucketConfig` configuration, see below for example.
 
-> Since Grafana Fire uses the same object storage configuration as [Thanos](https://thanos.io/) you can also refer to their [configuration section](https://thanos.io/tip/thanos/storage.md)
+> Since Grafana Phlare uses the same object storage configuration as [Thanos](https://thanos.io/) you can also refer to their [configuration section](https://thanos.io/tip/thanos/storage.md)
 > for more details.
 
 ## Amazon S3

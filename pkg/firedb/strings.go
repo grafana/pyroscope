@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 type stringConversionTable []int64
 

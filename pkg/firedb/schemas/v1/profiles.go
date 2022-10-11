@@ -5,34 +5,34 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/segmentio/parquet-go"
 
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	fireparquet "github.com/grafana/fire/pkg/parquet"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	phlareparquet "github.com/grafana/phlare/pkg/parquet"
 )
 
 var (
 	stringRef   = parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)
-	pprofLabels = parquet.List(fireparquet.Group{
-		fireparquet.NewGroupField("Key", stringRef),
-		fireparquet.NewGroupField("Str", parquet.Optional(stringRef)),
-		fireparquet.NewGroupField("Num", parquet.Optional(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
-		fireparquet.NewGroupField("NumUnit", parquet.Optional(stringRef)),
+	pprofLabels = parquet.List(phlareparquet.Group{
+		phlareparquet.NewGroupField("Key", stringRef),
+		phlareparquet.NewGroupField("Str", parquet.Optional(stringRef)),
+		phlareparquet.NewGroupField("Num", parquet.Optional(parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked))),
+		phlareparquet.NewGroupField("NumUnit", parquet.Optional(stringRef)),
 	})
-	sampleField = fireparquet.Group{
-		fireparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("Labels", pprofLabels),
+	sampleField = phlareparquet.Group{
+		phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField("Labels", pprofLabels),
 	}
-	profilesSchema = parquet.NewSchema("Profile", fireparquet.Group{
-		fireparquet.NewGroupField("ID", parquet.UUID()),
-		fireparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
-		fireparquet.NewGroupField("Samples", parquet.List(sampleField)),
-		fireparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
-		fireparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
-		fireparquet.NewGroupField("TimeNanos", parquet.Timestamp(parquet.Nanosecond)),
-		fireparquet.NewGroupField("DurationNanos", parquet.Optional(parquet.Int(64))),
-		fireparquet.NewGroupField("Period", parquet.Optional(parquet.Int(64))),
-		fireparquet.NewGroupField("Comments", parquet.List(stringRef)),
-		fireparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
+	profilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
+		phlareparquet.NewGroupField("ID", parquet.UUID()),
+		phlareparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField("Samples", parquet.List(sampleField)),
+		phlareparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
+		phlareparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
+		phlareparquet.NewGroupField("TimeNanos", parquet.Timestamp(parquet.Nanosecond)),
+		phlareparquet.NewGroupField("DurationNanos", parquet.Optional(parquet.Int(64))),
+		phlareparquet.NewGroupField("Period", parquet.Optional(parquet.Int(64))),
+		phlareparquet.NewGroupField("Comments", parquet.List(stringRef)),
+		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
 )
 

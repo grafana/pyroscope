@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/grafana/fire/pkg/gen/
+    default: github.com/grafana/phlare/pkg/gen/
     except:
       - buf.build/googleapis/googleapis
 
@@ -16,8 +16,8 @@ plugins:
     opt:
       - paths=source_relative
       - features=marshal+unmarshal+size+pool+grpc+pool
-      - pool=github.com/grafana/fire/pkg/gen/google/v1.Profile
-      - pool=github.com/grafana/fire/pkg/gen/google/v1.Sample
+      - pool=github.com/grafana/phlare/pkg/gen/google/v1.Profile
+      - pool=github.com/grafana/phlare/pkg/gen/google/v1.Sample
 
   - name: connect-go
     out: pkg/gen/
@@ -35,4 +35,4 @@ plugins:
   - name: openapiv2
     out: pkg/openapiv2/gen
     strategy: all
-    opt: allow_merge=true,merge_file_name=fire
+    opt: allow_merge=true,merge_file_name=phlare

@@ -5,14 +5,14 @@ import { useAsync } from 'react-use';
 import { ButtonCascader, CascaderOption } from '@grafana/ui';
 import { CoreApp, QueryEditorProps } from '@grafana/data';
 
-import { FireDataSource } from '../datasource';
-import { defaultQuery, FireDataSourceOptions, ProfileTypeMessage, Query } from '../types';
+import { PhlareDataSource } from '../datasource';
+import { defaultQuery, PhlareDataSourceOptions, ProfileTypeMessage, Query } from '../types';
 import { LabelsEditor } from './LabelsEditor';
 import { QueryOptions } from './QueryOptions';
 import { EditorRows } from './EditorRows';
 import { EditorRow } from './EditorRow';
 
-export type Props = QueryEditorProps<FireDataSource, Query, FireDataSourceOptions>;
+export type Props = QueryEditorProps<PhlareDataSource, Query, PhlareDataSourceOptions>;
 
 export function QueryEditor(props: Props) {
   const profileTypes = useProfileTypes(props.datasource);
@@ -79,7 +79,7 @@ function useCascaderOptions(profileTypes: ProfileTypeMessage[]) {
   }, [profileTypes]);
 }
 
-function useProfileTypes(datasource: FireDataSource) {
+function useProfileTypes(datasource: PhlareDataSource) {
   const [profileTypes, setProfileTypes] = useState<ProfileTypeMessage[]>([]);
   useEffect(() => {
     (async () => {

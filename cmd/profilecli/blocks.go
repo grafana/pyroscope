@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/grafana/fire/pkg/firedb"
-	"github.com/grafana/fire/pkg/firedb/block"
-	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
+	"github.com/grafana/phlare/pkg/phlaredb"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 )
 
 func fileInfo(f *block.File) string {
@@ -32,7 +32,7 @@ func blocksList(ctx context.Context) error {
 		return err
 	}
 
-	metas, err := firedb.NewBlockQuerier(ctx, bucket).BlockMetas(ctx)
+	metas, err := phlaredb.NewBlockQuerier(ctx, bucket).BlockMetas(ctx)
 	if err != nil {
 		return err
 	}

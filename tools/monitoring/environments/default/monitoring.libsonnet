@@ -1,4 +1,4 @@
-local fire = import './../../../../deploy/jsonnet/fire-mixin/mixin.libsonnet';
+local phlare = import './../../../../deploy/jsonnet/phlare-mixin/mixin.libsonnet';
 local grafana = import 'grafana/grafana.libsonnet';
 local k = import 'ksonnet-util/kausal.libsonnet';
 local prom_k_grafana = import 'prometheus-ksonnet/grafana/grafana.libsonnet';
@@ -33,20 +33,20 @@ prometheus {
       },
     },
   mixins+:: {
-    fire: fire {
+    phlare: phlare {
       grafanaPlugins: ['pyroscope-datasource', 'pyroscope-panel'],
     },
   },
   grafana_datasource_config_map+: k.core.v1.configMap.withDataMixin({
-    'fire-datasource.yml': k.util.manifestYaml({
+    'phlare-datasource.yml': k.util.manifestYaml({
       apiVersion: 1,
       datasources: [
         prom_k_grafana.grafana_datasource(
-          'fire',
-          'http://fire-micro-services-querier.default.svc.cluster.local.:4100/pyroscope/',
+          'phlare',
+          'http://phlare-micro-services-querier.default.svc.cluster.local.:4100/pyroscope/',
           type='pyroscope-datasource'
         ) + grafana.datasource.withJsonData({
-          path: 'http://fire-micro-services-querier.default.svc.cluster.local.:4100/pyroscope/',
+          path: 'http://phlare-micro-services-querier.default.svc.cluster.local.:4100/pyroscope/',
         },),
       ],
     }),

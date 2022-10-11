@@ -23,12 +23,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/ingester/clientpool"
-	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/pprof"
-	"github.com/grafana/fire/pkg/tenant"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/pprof"
+	"github.com/grafana/phlare/pkg/tenant"
 )
 
 type PushClient interface {
@@ -37,7 +37,7 @@ type PushClient interface {
 
 // todo: move to non global metrics.
 var clients = promauto.NewGauge(prometheus.GaugeOpts{
-	Namespace: "fire",
+	Namespace: "phlare",
 	Name:      "distributor_ingester_clients",
 	Help:      "The current number of ingester clients.",
 })
@@ -122,7 +122,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 
 	for _, series := range req.Msg.Series {
 		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
-		profName := firemodel.Labels(series.Labels).Get(scrape.ProfileName)
+		profName := phlaremodel.Labels(series.Labels).Get(scrape.ProfileName)
 		for _, raw := range series.Samples {
 			d.metrics.receivedCompressedBytes.WithLabelValues(profName).Observe(float64(len(raw.RawProfile)))
 			br.Reset(raw.RawProfile)

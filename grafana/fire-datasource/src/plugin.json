@@ -1,18 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
-  "name": "Grafana Fire Data Source Plugin",
-  "id": "grafana-fire-datasource",
+  "name": "Grafana Phlare Data Source Plugin",
+  "id": "grafana-phlare-datasource",
   "metrics": true,
   "backend": true,
-  "executable": "gpx_fire-datasource",
+  "executable": "gpx_phlare-datasource",
   "info": {
     "description": "",
     "author": {
       "name": "Cyril Tovena",
       "url": "https://www.grafana.com"
     },
-    "keywords": ["grafana", "datasource", "fire","flamegraph"],
+    "keywords": ["grafana", "datasource", "phlare","flamegraph"],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"

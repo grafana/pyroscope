@@ -6,7 +6,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
   grafanaDashboards+: {
     local dashboards = self,
 
-    'fire-writes.json': {
+    'phlare-writes.json': {
                           local cfg = self,
 
                           showMultiCluster:: $._config.multi_cluster,
@@ -31,7 +31,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                           distributorSelector:: selector('distributor'),
                           ingesterSelector:: selector('ingester'),
                         } +
-                        $.dashboard('Fire / Writes', uid='writes')
+                        $.dashboard('Phlare / Writes', uid='writes')
                         .addCluster()
                         .addNamespace()
                         .addTag()
@@ -40,8 +40,8 @@ local utils = import 'mixin-utils/utils.libsonnet';
                           .addPanel(
                             $.panel('Compressed Size') +
                             utils.latencyRecordingRulePanel(
-                              'fire_distributor_received_compressed_bytes',
-                              dashboards['fire-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['fire-writes.json'].clusterMatchers,
+                              'phlare_distributor_received_compressed_bytes',
+                              dashboards['phlare-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['phlare-writes.json'].clusterMatchers,
                               multiplier='1',
                               sum_by=['type'],
                             ) + { yaxes: g.yaxes('bytes') },
@@ -49,8 +49,8 @@ local utils = import 'mixin-utils/utils.libsonnet';
                           .addPanel(
                             $.panel('Samples') +
                             utils.latencyRecordingRulePanel(
-                              'fire_distributor_received_samples',
-                              dashboards['fire-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['fire-writes.json'].clusterMatchers,
+                              'phlare_distributor_received_samples',
+                              dashboards['phlare-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['phlare-writes.json'].clusterMatchers,
                               multiplier='1',
                               sum_by=['type'],
                             ) + { yaxes: g.yaxes('count') },
@@ -60,13 +60,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                           $.row('Distributor Requests')
                           .addPanel(
                             $.panel('QPS') +
-                            $.qpsPanel('fire_request_duration_seconds_count{%s, route=~".*push.*"}' % std.rstripChars(dashboards['fire-writes.json'].distributorSelector, ','))
+                            $.qpsPanel('phlare_request_duration_seconds_count{%s, route=~".*push.*"}' % std.rstripChars(dashboards['phlare-writes.json'].distributorSelector, ','))
                           )
                           .addPanel(
                             $.panel('Latency') +
                             utils.latencyRecordingRulePanel(
-                              'fire_request_duration_seconds',
-                              dashboards['fire-writes.json'].matchers.distributor + [utils.selector.re('route', '.*push.*')] + dashboards['fire-writes.json'].clusterMatchers,
+                              'phlare_request_duration_seconds',
+                              dashboards['phlare-writes.json'].matchers.distributor + [utils.selector.re('route', '.*push.*')] + dashboards['phlare-writes.json'].clusterMatchers,
                             )
                           )
                         )
@@ -74,13 +74,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                           $.row('Ingester')
                           .addPanel(
                             $.panel('QPS') +
-                            $.qpsPanel('fire_request_duration_seconds_count{%s route=~".*push.*"}' % dashboards['fire-writes.json'].ingesterSelector)
+                            $.qpsPanel('phlare_request_duration_seconds_count{%s route=~".*push.*"}' % dashboards['phlare-writes.json'].ingesterSelector)
                           )
                           .addPanel(
                             $.panel('Latency') +
                             utils.latencyRecordingRulePanel(
-                              'fire_request_duration_seconds',
-                              dashboards['fire-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*')] + dashboards['fire-writes.json'].clusterMatchers,
+                              'phlare_request_duration_seconds',
+                              dashboards['phlare-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*')] + dashboards['phlare-writes.json'].clusterMatchers,
                             )
                           )
                         ),

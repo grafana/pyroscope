@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"bytes"
@@ -22,16 +22,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	googlev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/gen/ingester/v1/ingesterv1connect"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/testhelper"
-	diskutil "github.com/grafana/fire/pkg/util/disk"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	googlev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
+	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/testhelper"
+	diskutil "github.com/grafana/phlare/pkg/util/disk"
 )
 
 func TestCreateLocalDir(t *testing.T) {
@@ -57,7 +57,7 @@ var cpuProfileGenerator = func(tsNano int64, t testing.TB) (*googlev1.Profile, s
 	return p, "process_cpu"
 }
 
-func ingestProfiles(b testing.TB, db *FireDB, generator func(tsNano int64, t testing.TB) (*googlev1.Profile, string), from, to int64, step time.Duration, externalLabels ...*commonv1.LabelPair) {
+func ingestProfiles(b testing.TB, db *PhlareDB, generator func(tsNano int64, t testing.TB) (*googlev1.Profile, string), from, to int64, step time.Duration, externalLabels ...*commonv1.LabelPair) {
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
@@ -85,9 +85,9 @@ func (f *fakeBidiServerMergeProfilesStacktraces) Receive() (*ingestv1.MergeProfi
 	return res, nil
 }
 
-func (f *FireDB) ingesterClient() (ingesterv1connect.IngesterServiceClient, func()) {
+func (f *PhlareDB) ingesterClient() (ingesterv1connect.IngesterServiceClient, func()) {
 	mux := http.NewServeMux()
-	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerFireDB{f}))
+	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{f}))
 	serv := testhelper.NewInMemoryServer(mux)
 
 	var httpClient *http.Client = serv.Client()
@@ -99,31 +99,31 @@ func (f *FireDB) ingesterClient() (ingesterv1connect.IngesterServiceClient, func
 	return client, serv.Close
 }
 
-type ingesterHandlerFireDB struct {
-	*FireDB
+type ingesterHandlerPhlareDB struct {
+	*PhlareDB
 }
 
-func (i *ingesterHandlerFireDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
-func (i *ingesterHandlerFireDB) LabelValues(context.Context, *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
+func (i *ingesterHandlerPhlareDB) LabelValues(context.Context, *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
-func (i *ingesterHandlerFireDB) LabelNames(context.Context, *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+func (i *ingesterHandlerPhlareDB) LabelNames(context.Context, *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
-func (i *ingesterHandlerFireDB) ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+func (i *ingesterHandlerPhlareDB) ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
-func (i *ingesterHandlerFireDB) Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+func (i *ingesterHandlerPhlareDB) Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
-func (i *ingesterHandlerFireDB) Flush(context.Context, *connect.Request[ingestv1.FlushRequest]) (*connect.Response[ingestv1.FlushResponse], error) {
+func (i *ingesterHandlerPhlareDB) Flush(context.Context, *connect.Request[ingestv1.FlushRequest]) (*connect.Response[ingestv1.FlushResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -260,8 +260,8 @@ func TestFilterProfiles(t *testing.T) {
 	profiles := lo.Times(11, func(i int) Profile {
 		return ProfileWithLabels{
 			Profile: &schemav1.Profile{TimeNanos: int64(i * int(time.Minute))},
-			lbs:     firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)),
-			fp:      model.Fingerprint(firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)).Hash()),
+			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)),
+			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)).Hash()),
 		}
 	})
 	in := iter.NewSliceIterator(profiles)
@@ -279,7 +279,7 @@ func TestFilterProfiles(t *testing.T) {
 	testhelper.EqualProto(t, []*ingestv1.ProfileSets{
 		{
 			LabelsSets: lo.Times(5, func(i int) *commonv1.Labels {
-				return &commonv1.Labels{Labels: firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i))}
+				return &commonv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i))}
 			}),
 			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64(i * int(time.Minute)))), LabelIndex: int32(i)}
@@ -287,7 +287,7 @@ func TestFilterProfiles(t *testing.T) {
 		},
 		{
 			LabelsSets: lo.Times(5, func(i int) *commonv1.Labels {
-				return &commonv1.Labels{Labels: firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+5))}
+				return &commonv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+5))}
 			}),
 			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 5) * int(time.Minute)))), LabelIndex: int32(i)}
@@ -295,7 +295,7 @@ func TestFilterProfiles(t *testing.T) {
 		},
 		{
 			LabelsSets: lo.Times(1, func(i int) *commonv1.Labels {
-				return &commonv1.Labels{Labels: firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+10))}
+				return &commonv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+10))}
 			}),
 			Profiles: lo.Times(1, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 10) * int(time.Minute)))), LabelIndex: int32(i)}
@@ -306,13 +306,13 @@ func TestFilterProfiles(t *testing.T) {
 	require.Equal(t, []Profile{
 		ProfileWithLabels{
 			Profile: &schemav1.Profile{TimeNanos: int64(5 * int(time.Minute))},
-			lbs:     firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)),
-			fp:      model.Fingerprint(firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)).Hash()),
+			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)),
+			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)).Hash()),
 		},
 		ProfileWithLabels{
 			Profile: &schemav1.Profile{TimeNanos: int64(10 * int(time.Minute))},
-			lbs:     firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)),
-			fp:      model.Fingerprint(firemodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)).Hash()),
+			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)),
+			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)).Hash()),
 		},
 	}, filtered)
 }
@@ -356,7 +356,7 @@ func (f *fakeFile) IsDir() bool                { return f.dir }
 func (f *fakeFile) Info() (fs.FileInfo, error) { panic("not implemented") }
 func (f *fakeFile) Type() fs.FileMode          { panic("not implemented") }
 
-func TestFireDB_cleanupBlocksWhenHighDiskUtilization(t *testing.T) {
+func TestPhlareDB_cleanupBlocksWhenHighDiskUtilization(t *testing.T) {
 	const suffix = "0000000000000000000000"
 
 	for _, tc := range []struct {
@@ -469,7 +469,7 @@ func TestFireDB_cleanupBlocksWhenHighDiskUtilization(t *testing.T) {
 				fakeFS = &fakeVolumeFS{}
 			)
 
-			db := &FireDB{
+			db := &PhlareDB{
 				logger:        logger,
 				volumeChecker: fakeFS,
 				fs:            fakeFS,

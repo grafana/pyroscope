@@ -1,15 +1,15 @@
 ---
-title: "Reference: Grafana Fire HTTP API"
+title: "Reference: Grafana Phlare HTTP API"
 menuTitle: "Reference: HTTP API"
-description: "Use the HTTP API to write and query profiles data and operate a Grafana Fire cluster."
+description: "Use the HTTP API to write and query profiles data and operate a Grafana Phlare cluster."
 weight: 120
 keywords:
-  - Fire API
-  - Fire endpoints
-  - Fire communication
-  - Fire querying
+  - Phlare API
+  - Phlare endpoints
+  - Phlare communication
+  - Phlare querying
 ---
 
-# Reference: Grafana Fire HTTP API
+# Reference: Grafana Phlare HTTP API
 
 Coming soon

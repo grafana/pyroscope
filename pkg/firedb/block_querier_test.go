@@ -1,4 +1,4 @@
-package firedb
+package phlaredb
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	"github.com/grafana/fire/pkg/iter"
-	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/iter"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 )
 
 func TestInMemoryReader(t *testing.T) {

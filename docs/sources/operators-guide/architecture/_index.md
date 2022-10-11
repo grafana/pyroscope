@@ -1,12 +1,12 @@
 ---
-title: "Grafana Fire architecture"
+title: "Grafana Phlare architecture"
 menuTitle: "Architecture"
-description: "Learn about the Grafana Fire architecture components and services."
+description: "Learn about the Grafana Phlare architecture components and services."
 weight: 20
 ---
 
-# Grafana Fire architecture
+# Grafana Phlare architecture
 
-The following topics include overviews of the Grafana Fire architecture.
+The following topics include overviews of the Grafana Phlare architecture.
 
 {{< section menuTitle="true" >}}

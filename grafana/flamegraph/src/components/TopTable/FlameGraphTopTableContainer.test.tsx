@@ -54,7 +54,7 @@ describe('FlameGraphTopTableContainer', () => {
     expect(cells[0].textContent).toEqual('net/http.HandlerFunc.ServeHTTP');
     expect(cells[1].textContent).toEqual('31.7 K');
     expect(cells[2].textContent).toEqual('31.7 Bil');
-    expect(cells[24].textContent).toEqual('github.com/grafana/fire/pkg/fire.(*Fire).initServer.func2.1');
+    expect(cells[24].textContent).toEqual('github.com/grafana/phlare/pkg/phlare.(*Phlare).initServer.func2.1');
     expect(cells[25].textContent).toEqual('5.58 K');
     expect(cells[26].textContent).toEqual('5.58 Bil');
   });
