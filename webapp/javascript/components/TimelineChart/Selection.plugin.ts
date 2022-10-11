@@ -47,13 +47,8 @@ const handleHeight = 22;
       // unlike function getSelection() which shows temp selection (it doesnt save any data between rerenders)
       // this function returns left X and right X coords of visible user selection (translates opts.grid.markings to X coords)
       const o = plot.getOptions();
-      const axes = plot.getAxes();
       const plotOffset = plot.getPlotOffset();
-      const extractedX = extractRange(
-        plot as jquery.flot.plot & PlotType,
-        axes,
-        'x'
-      );
+      const extractedX = extractRange(plot as jquery.flot.plot & PlotType, 'x');
 
       return {
         left:
@@ -282,7 +277,7 @@ const handleHeight = 22;
         selection.first.x = 0;
         selection.second.x = plot.width();
       } else {
-        range = extractRange(plot as jquery.flot.plot & PlotType, ranges, 'x');
+        range = extractRange(plot as jquery.flot.plot & PlotType, 'x');
 
         selection.first.x = range.axis.p2c(range.from);
         selection.second.x = range.axis.p2c(range.to);
@@ -292,7 +287,7 @@ const handleHeight = 22;
         selection.first.y = 0;
         selection.second.y = plot.height();
       } else {
-        range = extractRange(plot as jquery.flot.plot & PlotType, ranges, 'y');
+        range = extractRange(plot as jquery.flot.plot & PlotType, 'y');
 
         selection.first.y = range.axis.p2c(range.from);
         selection.second.y = range.axis.p2c(range.to);
@@ -408,11 +403,9 @@ const handleHeight = 22;
         opts?.selection?.selectionType === 'single' &&
         opts?.selection?.selectionWithHandler
       ) {
-        const axes = plot.getAxes();
         const plotOffset = plot.getPlotOffset();
         const extractedY = extractRange(
           plot as jquery.flot.plot & PlotType,
-          axes,
           'y'
         );
         const { left, right } = getPlotSelection();

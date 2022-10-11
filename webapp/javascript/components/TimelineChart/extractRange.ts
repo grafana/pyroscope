@@ -1,15 +1,17 @@
 /* eslint-disable */
-// function taken from markings support in Flot
-export default function extractRange(
-  plot: jquery.flot.plot,
-  ranges: { [x: string]: any },
-  coord: string
-) {
-  var axis,
-    from,
-    to,
-    key,
-    axes = plot.getAxes();
+/**
+ * @remarks
+ * function taken from built-in markings support in Flot
+ * @param plot - plot instance
+ * @param coord - 'x' | 'y'
+ *
+ * @returns params of X or Y axis
+ *
+ */
+export default function extractRange(plot: jquery.flot.plot, coord: 'x' | 'y') {
+  const axes = plot.getAxes();
+  var axis, from, to, key;
+  var ranges: { [x: string]: any } = axes;
 
   for (var k in axes) {
     // @ts-ignore:next-line

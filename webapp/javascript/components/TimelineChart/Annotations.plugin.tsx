@@ -84,10 +84,9 @@ const inject = ($: JQueryStatic) => {
       const o: IFlotOptions = plot.getOptions();
 
       if (o.annotations?.length) {
-        const axes = plot.getAxes();
         const plotOffset: { top: number; left: number } = plot.getPlotOffset();
-        const extractedX = extractRange(plot, axes, 'x');
-        const extractedY = extractRange(plot, axes, 'y');
+        const extractedX = extractRange(plot, 'x');
+        const extractedY = extractRange(plot, 'y');
 
         o.annotations.forEach((a: AnnotationType) => {
           const left: number =
