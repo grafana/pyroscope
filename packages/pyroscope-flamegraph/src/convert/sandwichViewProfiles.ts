@@ -1,5 +1,6 @@
 import type { Profile } from '@pyroscope/models/src';
 
+import { Flamebearer } from '@pyroscope/models/src';
 import { flamebearersToTree } from './diffTwoProfiles';
 import {
   deltaDiffWrapper,
@@ -57,7 +58,10 @@ function getCalleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
 }
 
 // should return both callees and callers profiles after implementation
-export function sandwichViewProfiles(p: Profile, nodeName: string): Profile {
+export function sandwichViewProfiles(
+  p: Profile | any,
+  nodeName: string
+): Profile {
   // original imported json mutates after deltaDiffWrapper/deltaDiffWrapperReverse calls
   console.log(p.flamebearer.levels);
   p.flamebearer.levels = deltaDiffWrapper('single', p.flamebearer.levels);

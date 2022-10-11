@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
 
+import { Profile } from '@pyroscope/models/src';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
 import { sandwichViewProfiles } from '@pyroscope/flamegraph/src/convert/sandwichViewProfiles';
 import Box from '@webapp/ui/Box';
@@ -56,7 +57,7 @@ export default function SandwichView() {
                   showToolbar={false}
                   onlyDisplay="flamegraph"
                   showCredit={false}
-                  profile={profile}
+                  profile={profile as Profile}
                   // ExportData={
                   //   <ExportData
                   //     flamebearer={{
