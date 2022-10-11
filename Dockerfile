@@ -20,7 +20,7 @@ COPY babel.config.js .eslintrc.js .eslintignore .prettierrc tsconfig.json ./
 COPY webapp ./webapp
 
 # we only need the dependencies required to BUILD the application
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn/v6 make install-build-web-dependencies
+RUN make install-build-web-dependencies
 
 
 ARG EXTRA_METADATA=""
