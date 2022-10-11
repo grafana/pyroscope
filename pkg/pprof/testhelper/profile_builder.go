@@ -8,10 +8,10 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	schemav1 "github.com/grafana/fire/pkg/firedb/schemas/v1"
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	firemodel "github.com/grafana/fire/pkg/model"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
 type ProfileBuilder struct {
@@ -78,7 +78,7 @@ func (m *ProfileBuilder) WithLabels(lv ...string) *ProfileBuilder {
 			Value: lv[i+1],
 		})
 	}
-	sort.Sort(firemodel.Labels(m.Labels))
+	sort.Sort(phlaremodel.Labels(m.Labels))
 	return m
 }
 
@@ -162,7 +162,7 @@ func (m *ProfileBuilder) ForStacktrace(stacktraces ...string) *StacktraceBuilder
 	}
 }
 
-func (m *ProfileBuilder) ToModel() (*schemav1.Profile, []firemodel.Labels) {
+func (m *ProfileBuilder) ToModel() (*schemav1.Profile, []phlaremodel.Labels) {
 	res := &schemav1.Profile{
 		ID: m.UUID,
 

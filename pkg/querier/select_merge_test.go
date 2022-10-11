@@ -7,17 +7,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/testhelper"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 var (
-	foobarlabels  = firemodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "bar"}})
-	foobuzzlabels = firemodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "buzz"}})
+	foobarlabels  = phlaremodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "bar"}})
+	foobuzzlabels = phlaremodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "buzz"}})
 )
 
 func TestSelectMergeStacktraces(t *testing.T) {

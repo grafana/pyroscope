@@ -7,8 +7,8 @@ package ingesterv1
 import (
 	context "context"
 	fmt "fmt"
-	v11 "github.com/grafana/fire/pkg/gen/common/v1"
-	v1 "github.com/grafana/fire/pkg/gen/push/v1"
+	v11 "github.com/grafana/phlare/pkg/gen/common/v1"
+	v1 "github.com/grafana/phlare/pkg/gen/push/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

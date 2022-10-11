@@ -10,7 +10,7 @@ import (
 	"github.com/thanos-io/objstore/providers/filesystem"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/fire/pkg/objstore"
+	"github.com/grafana/phlare/pkg/objstore"
 )
 
 var _ objstore.BucketReader = (*Bucket)(nil)

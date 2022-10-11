@@ -1,0 +1,586 @@
+---
+# Source: phlare/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: phlare-dev
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: phlare/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phlare-dev-config
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.yaml: |
+
+    
+    scrape_configs:
+      - job_name: "default"
+        scrape_interval: "5s"
+        static_configs:
+          - targets: [ '127.0.0.1:4100']
+      - job_name: kubernetes-pods-name
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels:
+          - __meta_kubernetes_pod_label_name
+          target_label: __service__
+        - source_labels:
+          - __meta_kubernetes_pod_node_name
+          target_label: __host__
+        - action: drop
+          regex: ''
+          source_labels:
+          - __service__
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - action: replace
+          replacement: $1
+          separator: /
+          source_labels:
+          - __meta_kubernetes_namespace
+          - __service__
+          target_label: job
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_namespace
+          target_label: namespace
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_pod_name
+          target_label: pod
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_pod_container_name
+          target_label: container
+        - replacement: /var/log/pods/*$1/*.log
+          separator: /
+          source_labels:
+          - __meta_kubernetes_pod_uid
+          - __meta_kubernetes_pod_container_name
+          target_label: __path__
+---
+# Source: phlare/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: default-phlare-dev
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+---
+# Source: phlare/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default-phlare-dev
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: default-phlare-dev
+subjects:
+- kind: ServiceAccount
+  name: phlare-dev
+  namespace: default
+---
+# Source: phlare/templates/memberlist-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-memberlist
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: memberlist
+      port: 7946
+      protocol: TCP
+      targetPort: 7946
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    # TODO: Ensure only services that offer memberlist register
+    # phlare.grafana.com/memberlist: "true"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-agent
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "agent"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "agent"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-distributor
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "distributor"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "distributor"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-ingester
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "ingester"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "ingester"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-ingester-headless
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "ingester"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "ingester"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-querier
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "querier"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "querier"
+---
+# Source: phlare/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phlare-dev-agent
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "agent"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/component: "agent"
+  template:
+    metadata:
+      annotations:
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
+      labels:
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/component: "agent"
+        name: "agent"
+    spec:
+      serviceAccountName: phlare-dev
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: "agent"
+          securityContext:
+            {}
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=agent"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-client.url=http://phlare-dev-distributor.default.svc.cluster.local.:4100"
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: phlare-dev-config
+        - name: data
+          emptyDir: {}
+---
+# Source: phlare/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phlare-dev-distributor
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "distributor"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/component: "distributor"
+  template:
+    metadata:
+      annotations:
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
+      labels:
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/component: "distributor"
+        name: "distributor"
+    spec:
+      serviceAccountName: phlare-dev
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: "distributor"
+          securityContext:
+            {}
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=distributor"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: phlare-dev-config
+        - name: data
+          emptyDir: {}
+---
+# Source: phlare/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phlare-dev-querier
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "querier"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/component: "querier"
+  template:
+    metadata:
+      annotations:
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
+      labels:
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/component: "querier"
+        name: "querier"
+    spec:
+      serviceAccountName: phlare-dev
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: "querier"
+          securityContext:
+            {}
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=querier"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: phlare-dev-config
+        - name: data
+          emptyDir: {}
+---
+# Source: phlare/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: phlare-dev-ingester
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "ingester"
+spec:
+  serviceName: phlare-dev-ingester-headless
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/component: "ingester"
+  template:
+    metadata:
+      annotations:
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
+      labels:
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/component: "ingester"
+        name: "ingester"
+    spec:
+      serviceAccountName: phlare-dev
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: "ingester"
+          securityContext:
+            {}
+          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=ingester"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 12Gi
+            requests:
+              cpu: 1
+              memory: 6Gi
+      volumes:
+        - name: config
+          configMap:
+            name: phlare-dev-config
+        - name: data
+          emptyDir: {}
+---
+# Source: phlare/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "phlare-dev-test-connection"
+  labels:
+    helm.sh/chart: phlare-0.1.0
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['phlare-dev:4100']
+  restartPolicy: Never

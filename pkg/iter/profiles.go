@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/common/model"
 
-	firemodel "github.com/grafana/fire/pkg/model"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 type Timestamp interface {
@@ -14,7 +14,7 @@ type Timestamp interface {
 }
 
 type Profile interface {
-	Labels() firemodel.Labels
+	Labels() phlaremodel.Labels
 	Timestamp
 }
 
@@ -40,7 +40,7 @@ func (h ProfileIteratorHeap[P]) Less(i, j int) bool {
 	p1, p2 := h[i].At(), h[j].At()
 	if p1.Timestamp() == p2.Timestamp() {
 		// todo we could compare SeriesRef here
-		return firemodel.CompareLabelPairs(p1.Labels(), p2.Labels()) < 0
+		return phlaremodel.CompareLabelPairs(p1.Labels(), p2.Labels()) < 0
 	}
 	return p1.Timestamp() < p2.Timestamp()
 }

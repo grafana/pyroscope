@@ -1,25 +1,25 @@
 ---
-title: "Grafana Fire operator and user guide"
+title: "Grafana Phlare operator and user guide"
 menuTitle: "Operator and user guide"
-description: "This guide contains information about deploying, configuring, and maintaining Grafana Fire."
+description: "This guide contains information about deploying, configuring, and maintaining Grafana Phlare."
 weight: 20
 keywords:
-  - Grafana Fire architecture
-  - Fire architecture
-  - Fire components
+  - Grafana Phlare architecture
+  - Phlare architecture
+  - Phlare components
   - query sharding
-  - Fire deployment
-  - deploying Fire
+  - Phlare deployment
+  - deploying Phlare
 ---
 
-# Grafana Fire operator and user guide
+# Grafana Phlare operator and user guide
 
-This guide describes the decisions Grafana Fire operators and users make and the actions they perform to deploy, configure, and maintain Grafana Fire.
+This guide describes the decisions Grafana Phlare operators and users make and the actions they perform to deploy, configure, and maintain Grafana Phlare.
 
 The intended audience for this guide includes:
 
-- Operators who are responsible for deploying and configuring Grafana Fire.
-- Users who are responsible for viewing Grafana Fire dashboards to troubleshoot production environment issues.
+- Operators who are responsible for deploying and configuring Grafana Phlare.
+- Users who are responsible for viewing Grafana Phlare dashboards to troubleshoot production environment issues.
 
 This guide contains the following sections:
 

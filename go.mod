@@ -1,4 +1,4 @@
-module github.com/grafana/fire
+module github.com/grafana/phlare
 
 go 1.18
 

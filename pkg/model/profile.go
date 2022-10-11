@@ -7,8 +7,8 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"google.golang.org/grpc/codes"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 )
 
 // CompareProfile compares the two profiles.

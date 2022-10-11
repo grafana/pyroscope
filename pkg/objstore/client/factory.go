@@ -22,14 +22,14 @@ import (
 	"github.com/thanos-io/objstore/providers/s3"
 	"github.com/thanos-io/objstore/providers/swift"
 
-	fireobjstore "github.com/grafana/fire/pkg/objstore"
-	"github.com/grafana/fire/pkg/objstore/client/parquet"
-	"github.com/grafana/fire/pkg/objstore/providers/filesystem"
+	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
+	"github.com/grafana/phlare/pkg/objstore/client/parquet"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 )
 
 // NewBucket initializes and returns new object storage clients.
 // NOTE: confContentYaml can contain secrets.
-func NewBucket(logger log.Logger, confContentYaml []byte, reg prometheus.Registerer, component string) (fireobjstore.InstrumentedBucket, error) {
+func NewBucket(logger log.Logger, confContentYaml []byte, reg prometheus.Registerer, component string) (phlareobjstore.InstrumentedBucket, error) {
 	level.Info(logger).Log("msg", "loading bucket configuration")
 	bucketConf := &client.BucketConfig{}
 	if err := yaml.UnmarshalStrict(confContentYaml, bucketConf); err != nil {
@@ -72,7 +72,7 @@ func NewBucket(logger log.Logger, confContentYaml []byte, reg prometheus.Registe
 
 type readerAtBucket struct {
 	objstore.InstrumentedBucket
-	bkt fireobjstore.Bucket
+	bkt phlareobjstore.Bucket
 }
 
 type readerAt struct {
@@ -82,11 +82,11 @@ type readerAt struct {
 	ctx  context.Context
 }
 
-func ReaderAtBucket(prefix string, b objstore.Bucket, reg prometheus.Registerer) (fireobjstore.InstrumentedBucket, error) {
-	// Prefer to use custom fireobjstore.BucketReaderAt implenentation if possible.
-	if b, ok := b.(fireobjstore.Bucket); ok {
+func ReaderAtBucket(prefix string, b objstore.Bucket, reg prometheus.Registerer) (phlareobjstore.InstrumentedBucket, error) {
+	// Prefer to use custom phlareobjstore.BucketReaderAt implenentation if possible.
+	if b, ok := b.(phlareobjstore.Bucket); ok {
 		if prefix != "" {
-			b = fireobjstore.BucketWithPrefix(b, prefix)
+			b = phlareobjstore.BucketWithPrefix(b, prefix)
 		}
 
 		return &readerAtBucket{
@@ -102,9 +102,9 @@ func ReaderAtBucket(prefix string, b objstore.Bucket, reg prometheus.Registerer)
 	}, nil
 }
 
-func (b *readerAtBucket) ReaderAt(ctx context.Context, name string) (r fireobjstore.ReaderAt, err error) {
+func (b *readerAtBucket) ReaderAt(ctx context.Context, name string) (r phlareobjstore.ReaderAt, err error) {
 	if b.bkt != nil {
-		// use fireobjstore.BucketReaderAt if possible.
+		// use phlareobjstore.BucketReaderAt if possible.
 		r, err := b.bkt.ReaderAt(ctx, name)
 		if err != nil {
 			return nil, err
@@ -124,7 +124,7 @@ func (b *readerAtBucket) ReaderAt(ctx context.Context, name string) (r fireobjst
 	}), nil
 }
 
-func (b *readerAtBucket) WithExpectedErrs(expectedFunc objstore.IsOpFailureExpectedFunc) fireobjstore.Bucket {
+func (b *readerAtBucket) WithExpectedErrs(expectedFunc objstore.IsOpFailureExpectedFunc) phlareobjstore.Bucket {
 	if ib, ok := b.InstrumentedBucket.WithExpectedErrs(expectedFunc).(objstore.InstrumentedBucket); ok {
 		return &readerAtBucket{
 			InstrumentedBucket: ib,
@@ -134,7 +134,7 @@ func (b *readerAtBucket) WithExpectedErrs(expectedFunc objstore.IsOpFailureExpec
 	return b
 }
 
-func (b *readerAtBucket) ReaderWithExpectedErrs(expectedFunc objstore.IsOpFailureExpectedFunc) fireobjstore.BucketReader {
+func (b *readerAtBucket) ReaderWithExpectedErrs(expectedFunc objstore.IsOpFailureExpectedFunc) phlareobjstore.BucketReader {
 	return b.WithExpectedErrs(expectedFunc)
 }
 

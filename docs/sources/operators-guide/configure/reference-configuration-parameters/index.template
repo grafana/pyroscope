@@ -1,17 +1,17 @@
 ---
 aliases:
-  - /docs/fire/latest/operators-guide/configuring/reference-configuration-parameters/
-description: Describes parameters used to configure Grafana Fire.
+  - /docs/phlare/latest/operators-guide/configuring/reference-configuration-parameters/
+description: Describes parameters used to configure Grafana Phlare.
 menuTitle: Configuration parameters
-title: Grafana Fire configuration parameters
+title: Grafana Phlare configuration parameters
 weight: 70
 ---
 
-# Grafana Fire configuration parameters
+# Grafana Phlare configuration parameters
 
 {{ .GeneratedFileWarning }}
 
-You can configure Grafana Fire by using a YAML file or via command-line flags
+You can configure Grafana Phlare by using a YAML file or via command-line flags
 that represent configuration parameters.
 To specify the YAML file, use the `-config.file` command-line option.
 If you specify both the command-line flags and YAML configuration parameters,

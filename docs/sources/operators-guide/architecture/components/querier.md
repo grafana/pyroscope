@@ -1,16 +1,16 @@
 ---
-title: "Grafana Fire querier"
+title: "Grafana Phlare querier"
 menuTitle: "Querier"
 description: "The querier evaluates PromQL expressions."
 weight: 50
 ---
 
-# Grafana Fire querier
+# Grafana Phlare querier
 
 The querier is a stateless component that evaluates [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/)
 expressions by fetching time series and labels on the read path.
 
-The querier uses the [store-gateway]({{< relref "store-gateway.md" >}}) component to query the [long-term storage]({{< relref "../about-grafana-fire-architecture/index.md#long-term-storage" >}}) and the [ingester]({{< relref "ingester.md" >}}) component to query recently written data.
+The querier uses the [store-gateway]({{< relref "store-gateway.md" >}}) component to query the [long-term storage]({{< relref "../about-grafana-phlare-architecture/index.md#long-term-storage" >}}) and the [ingester]({{< relref "ingester.md" >}}) component to query recently written data.
 
 ## How it works
 

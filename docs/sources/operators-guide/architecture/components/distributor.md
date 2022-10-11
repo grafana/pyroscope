@@ -1,11 +1,11 @@
 ---
-title: "Grafana Fire distributor"
+title: "Grafana Phlare distributor"
 menuTitle: "Distributor"
 description: "The distributor validates time-series data and sends the data to ingesters."
 weight: 20
 ---
 
-# Grafana Fire distributor
+# Grafana Phlare distributor
 
 The distributor is a stateless component that receives time-series data from Prometheus or the Grafana agent.
 The distributor validates the data for correctness and to ensure that it is within the configured limits for a given tenant.
@@ -40,10 +40,10 @@ The distributor validation includes the following checks:
 The distributor includes two different types of rate limiters that apply to each tenant.
 
 - **Request rate**<br />
-  The maximum number of requests per second that can be served across Grafana Fire cluster for each tenant.
+  The maximum number of requests per second that can be served across Grafana Phlare cluster for each tenant.
 
 - **Ingestion rate**<br />
-  The maximum samples per second that can be ingested across Grafana Fire cluster for each tenant.
+  The maximum samples per second that can be ingested across Grafana Phlare cluster for each tenant.
 
 If any of these rates is exceeded, the distributor drops the request and returns an HTTP 429 response code.
 
@@ -70,12 +70,12 @@ To configure the distributors' hash ring, refer to [configuring hash rings]({{< 
 
 ## High-availability tracker
 
-Remote write senders, such as Prometheus, can be configured in pairs, which means that profiles continue to be scraped and written to Grafana Fire even when one of the remote write senders is down for maintenance or is unavailable due to a failure.
+Remote write senders, such as Prometheus, can be configured in pairs, which means that profiles continue to be scraped and written to Grafana Phlare even when one of the remote write senders is down for maintenance or is unavailable due to a failure.
 We refer to this configuration as high-availability (HA) pairs.
 
 The distributor includes an HA tracker.
 When the HA tracker is enabled, the distributor deduplicates incoming series from Prometheus HA pairs.
-This enables you to have multiple HA replicas of the same Prometheus servers that write the same series to Fire and then deduplicates the series in the Fire distributor.
+This enables you to have multiple HA replicas of the same Prometheus servers that write the same series to Phlare and then deduplicates the series in the Phlare distributor.
 
 For more information about HA deduplication and how to configure it, refer to [configure HA deduplication]({{< relref "../../configure/configuring-high-availability-deduplication.md" >}}).
 
@@ -96,13 +96,13 @@ For more information, see [hash ring]({{< relref "../hash-ring/index.md" >}}).
 
 Because distributors share access to the same hash ring, write requests can be sent to any distributor. You can also set up a stateless load balancer in front of it.
 
-To ensure consistent query results, Fire uses [Dynamo-style](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf) quorum consistency on reads and writes.
+To ensure consistent query results, Phlare uses [Dynamo-style](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf) quorum consistency on reads and writes.
 The distributor waits for a successful response from `n`/2 + 1 ingesters, where `n` is the configured replication factor, before sending a successful response to the Prometheus write request.
 
 ## Load balancing across distributors
 
 We recommend randomly load balancing write requests across distributor instances.
-If you're running Grafana Fire in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.
+If you're running Grafana Phlare in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.
 
 > **Note:** A Kubernetes Service balances TCP connections across Kubernetes endpoints and does not balance HTTP requests within a single TCP connection.
 > If you enable HTTP persistent connections (HTTP keep-alive), because Prometheus uses HTTP keep-alive, it re-uses the same TCP connection for each remote-write HTTP request of a remote-write shard.

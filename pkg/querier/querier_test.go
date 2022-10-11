@@ -14,13 +14,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	querierv1 "github.com/grafana/fire/pkg/gen/querier/v1"
-	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/iter"
-	firemodel "github.com/grafana/fire/pkg/model"
-	"github.com/grafana/fire/pkg/testhelper"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	"github.com/grafana/phlare/pkg/iter"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 func Test_QuerySampleType(t *testing.T) {
@@ -126,8 +126,8 @@ func Test_QueryLabelNames(t *testing.T) {
 }
 
 func Test_Series(t *testing.T) {
-	foobarlabels := firemodel.NewLabelsBuilder(nil).Set("foo", "bar")
-	foobuzzlabels := firemodel.NewLabelsBuilder(nil).Set("foo", "buzz")
+	foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar")
+	foobuzzlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "buzz")
 	req := connect.NewRequest(&querierv1.SeriesRequest{Matchers: []string{`{foo="bar"}`}})
 	ingesterReponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*commonv1.Labels{
 		{Labels: foobarlabels.Labels()},
@@ -252,7 +252,7 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	selected = append(selected, bidi3.kept...)
 	sort.Slice(selected, func(i, j int) bool {
 		if selected[i].Ts == selected[j].Ts {
-			return firemodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+			return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
 		}
 		return selected[i].Ts < selected[j].Ts
 	})
@@ -356,7 +356,7 @@ func TestSelectSeries(t *testing.T) {
 	selected = append(selected, bidi3.kept...)
 	sort.Slice(selected, func(i, j int) bool {
 		if selected[i].Ts == selected[j].Ts {
-			return firemodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+			return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
 		}
 		return selected[i].Ts < selected[j].Ts
 	})
@@ -681,14 +681,14 @@ func TestRangeSeries(t *testing.T) {
 // 			return nil, fmt.Errorf("ingester %s is not serving", addr)
 // 		}
 // 		bidi := c.(IngesterQueryClient).MergeProfilesStacktraces(ctx)
-// 		profileType, err := firemodel.ParseProfileTypeSelector("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
+// 		profileType, err := phlaremodel.ParseProfileTypeSelector("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
 // 		if err != nil {
 // 			return nil, err
 // 		}
 // 		now := time.Now()
 // 		err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 // 			Request: &ingestv1.SelectProfilesRequest{
-// 				LabelSelector: `{namespace="fire-dev-001"}`,
+// 				LabelSelector: `{namespace="phlare-dev-001"}`,
 // 				Type:          profileType,
 // 				Start:         int64(model.TimeFromUnixNano(now.Add(-30 * time.Minute).UnixNano())),
 // 				End:           int64(model.TimeFromUnixNano(now.UnixNano())),

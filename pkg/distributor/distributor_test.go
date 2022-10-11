@@ -22,12 +22,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	"github.com/grafana/fire/pkg/gen/push/v1/pushv1connect"
-	"github.com/grafana/fire/pkg/ingester/clientpool"
-	"github.com/grafana/fire/pkg/tenant"
-	"github.com/grafana/fire/pkg/testhelper"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
+	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 func Test_ConnectPush(t *testing.T) {

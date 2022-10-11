@@ -8,7 +8,7 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
-	v1 "github.com/grafana/fire/pkg/gen/querier/v1"
+	v1 "github.com/grafana/phlare/pkg/gen/querier/v1"
 	http "net/http"
 	strings "strings"
 )

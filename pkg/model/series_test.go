@@ -3,8 +3,8 @@ package model
 import (
 	"testing"
 
-	commonv1 "github.com/grafana/fire/pkg/gen/common/v1"
-	"github.com/grafana/fire/pkg/testhelper"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 func TestMergeSeries(t *testing.T) {

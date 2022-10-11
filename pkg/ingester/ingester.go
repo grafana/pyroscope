@@ -18,14 +18,14 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 
-	firecontext "github.com/grafana/fire/pkg/fire/context"
-	"github.com/grafana/fire/pkg/firedb"
-	profilev1 "github.com/grafana/fire/pkg/gen/google/v1"
-	ingesterv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
-	pushv1 "github.com/grafana/fire/pkg/gen/push/v1"
-	fireobjstore "github.com/grafana/fire/pkg/objstore"
-	"github.com/grafana/fire/pkg/tenant"
-	"github.com/grafana/fire/pkg/util"
+	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb"
+	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/phlare/pkg/util"
 )
 
 type Config struct {
@@ -44,15 +44,15 @@ func (cfg *Config) Validate() error {
 type Ingester struct {
 	services.Service
 
-	cfg      Config
-	dbConfig firedb.Config
-	logger   log.Logger
-	firectx  context.Context
+	cfg       Config
+	dbConfig  phlaredb.Config
+	logger    log.Logger
+	phlarectx context.Context
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
 
-	storageBucket fireobjstore.Bucket
+	storageBucket phlareobjstore.Bucket
 
 	instances    map[string]*instance
 	instancesMtx sync.RWMutex
@@ -71,13 +71,13 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(firectx context.Context, cfg Config, dbConfig firedb.Config, storageBucket fireobjstore.Bucket) (*Ingester, error) {
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobjstore.Bucket) (*Ingester, error) {
 
 	i := &Ingester{
 		cfg:           cfg,
-		firectx:       firectx,
-		logger:        firecontext.Logger(firectx),
-		reg:           firecontext.Registry(firectx),
+		phlarectx:     phlarectx,
+		logger:        phlarecontext.Logger(phlarectx),
+		reg:           phlarecontext.Registry(phlarectx),
 		instances:     map[string]*instance{},
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
@@ -90,7 +90,7 @@ func New(firectx context.Context, cfg Config, dbConfig firedb.Config, storageBuc
 		"ingester",
 		"ring",
 		true,
-		i.logger, prometheus.WrapRegistererWithPrefix("fire_", i.reg))
+		i.logger, prometheus.WrapRegistererWithPrefix("phlare_", i.reg))
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //n
 	inst, ok = i.instances[tenantID]
 	if !ok {
 		var err error
-		inst, err = newInstance(i.firectx, i.dbConfig, tenantID, i.storageBucket)
+		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.storageBucket)
 		if err != nil {
 			return nil, err
 		}

@@ -4,34 +4,34 @@ ENV NODE_OPTIONS=--max_old_space_size=8000
 
 WORKDIR /grafana
 
-COPY grafana/fire-datasource/package.json grafana/fire-datasource/README.md grafana/fire-datasource/.prettierrc.js grafana/fire-datasource/tsconfig.json grafana/fire-datasource/yarn.lock  fire-datasource/
-RUN cd fire-datasource && yarn install
+COPY grafana/phlare-datasource/package.json grafana/phlare-datasource/README.md grafana/phlare-datasource/.prettierrc.js grafana/phlare-datasource/tsconfig.json grafana/phlare-datasource/yarn.lock  phlare-datasource/
+RUN cd phlare-datasource && yarn install
 
 COPY grafana/flamegraph/package.json grafana/flamegraph/README.md  grafana/flamegraph/.prettierrc.js grafana/flamegraph/tsconfig.json grafana/flamegraph/yarn.lock  flamegraph/
 RUN cd flamegraph && yarn install
 
 ENV NODE_ENV production
-COPY grafana/fire-datasource/src/ fire-datasource/src/
+COPY grafana/phlare-datasource/src/ phlare-datasource/src/
 COPY grafana/flamegraph/src/ flamegraph/src/
-RUN cd fire-datasource && yarn build
+RUN cd phlare-datasource && yarn build
 RUN cd flamegraph && yarn build
 
 FROM golang:1.19.2-alpine as go-builder
 
 WORKDIR /build
-COPY grafana/fire-datasource/go.mod grafana/fire-datasource/go.sum grafana/fire-datasource/Magefile.go grafana/fire-datasource/
-COPY grafana/fire-datasource/pkg/ grafana/fire-datasource/pkg/
-COPY grafana/fire-datasource/src/ grafana/fire-datasource/src/
+COPY grafana/phlare-datasource/go.mod grafana/phlare-datasource/go.sum grafana/phlare-datasource/Magefile.go grafana/phlare-datasource/
+COPY grafana/phlare-datasource/pkg/ grafana/phlare-datasource/pkg/
+COPY grafana/phlare-datasource/src/ grafana/phlare-datasource/src/
 COPY pkg/ pkg/
 COPY go.mod ./
 COPY go.sum ./
 
-RUN cd grafana/fire-datasource && go mod verify && go install github.com/magefile/mage@v1.13.0 && mage -v
+RUN cd grafana/phlare-datasource && go mod verify && go install github.com/magefile/mage@v1.13.0 && mage -v
 
 FROM aocenas/grafana:explore-experiment-2
 
 ENV GF_DEFAULT_APP_MODE=development
 
-COPY --from=js-builder /grafana/fire-datasource/dist/ /var/lib/grafana/plugins/fire-datasource/
+COPY --from=js-builder /grafana/phlare-datasource/dist/ /var/lib/grafana/plugins/phlare-datasource/
 COPY --from=js-builder /grafana/flamegraph/dist/ /var/lib/grafana/plugins/flamegraph/
-COPY --from=go-builder /build/grafana/fire-datasource/dist/ /var/lib/grafana/plugins/fire-datasource/
+COPY --from=go-builder /build/grafana/phlare-datasource/dist/ /var/lib/grafana/plugins/phlare-datasource/

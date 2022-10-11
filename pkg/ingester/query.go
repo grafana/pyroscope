@@ -5,7 +5,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 
-	ingestv1 "github.com/grafana/fire/pkg/gen/ingester/v1"
+	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 )
 
 // LabelValues returns the possible label values for a given label name.

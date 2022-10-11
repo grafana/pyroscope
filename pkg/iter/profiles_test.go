@@ -6,21 +6,21 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	firemodel "github.com/grafana/fire/pkg/model"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 var (
-	aLabels = firemodel.LabelsFromStrings("foo", "a")
-	bLabels = firemodel.LabelsFromStrings("foo", "b")
-	cLabels = firemodel.LabelsFromStrings("foo", "c")
+	aLabels = phlaremodel.LabelsFromStrings("foo", "a")
+	bLabels = phlaremodel.LabelsFromStrings("foo", "b")
+	cLabels = phlaremodel.LabelsFromStrings("foo", "c")
 )
 
 type profile struct {
-	labels    firemodel.Labels
+	labels    phlaremodel.Labels
 	timestamp int64
 }
 
-func (p profile) Labels() firemodel.Labels {
+func (p profile) Labels() phlaremodel.Labels {
 	return p.labels
 }
 
