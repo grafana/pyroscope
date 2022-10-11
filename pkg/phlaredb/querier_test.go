@@ -12,10 +12,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	v1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
 )
 
 func TestQueryIndex(t *testing.T) {

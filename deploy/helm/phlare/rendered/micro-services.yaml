@@ -287,7 +287,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev
@@ -362,7 +362,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev
@@ -436,7 +436,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev
@@ -512,7 +512,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ad3c4c8b342afb79ec56a2e456ea7cd2919188de37310b5a2b545da8f27012ed
+        checksum/config: 347935723163b38a36511df0d4afd4110d0314ef22e15608f4eb8f19acc96256
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev

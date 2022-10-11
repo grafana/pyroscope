@@ -18,12 +18,12 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb"
 	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/util"
 )
@@ -44,10 +44,10 @@ func (cfg *Config) Validate() error {
 type Ingester struct {
 	services.Service
 
-	cfg      Config
-	dbConfig phlaredb.Config
-	logger   log.Logger
-	phlarectx  context.Context
+	cfg       Config
+	dbConfig  phlaredb.Config
+	logger    log.Logger
+	phlarectx context.Context
 
 	lifecycler        *ring.Lifecycler
 	lifecyclerWatcher *services.FailureWatcher
@@ -75,7 +75,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 
 	i := &Ingester{
 		cfg:           cfg,
-		phlarectx:       phlarectx,
+		phlarectx:     phlarectx,
 		logger:        phlarecontext.Logger(phlarectx),
 		reg:           phlarecontext.Registry(phlarectx),
 		instances:     map[string]*instance{},

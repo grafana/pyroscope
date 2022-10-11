@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/live"
+	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
 )
 
 type queryModel struct {

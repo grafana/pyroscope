@@ -9,11 +9,11 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	query "github.com/grafana/phlare/pkg/phlaredb/query"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	query "github.com/grafana/phlare/pkg/phlaredb/query"
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {

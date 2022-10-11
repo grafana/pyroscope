@@ -16,11 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 )
 
 func newTestHead(t testing.TB) *testHead {

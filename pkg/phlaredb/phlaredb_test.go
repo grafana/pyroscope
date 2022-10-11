@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	googlev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
@@ -30,6 +29,7 @@ import (
 	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/testhelper"
 	diskutil "github.com/grafana/phlare/pkg/util/disk"
 )

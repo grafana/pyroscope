@@ -8,9 +8,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
 func TestInMemoryReader(t *testing.T) {

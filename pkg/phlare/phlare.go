@@ -33,10 +33,10 @@ import (
 	"github.com/grafana/phlare/pkg/agent"
 	"github.com/grafana/phlare/pkg/cfg"
 	"github.com/grafana/phlare/pkg/distributor"
-	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/ingester"
 	"github.com/grafana/phlare/pkg/objstore"
+	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/tracing"
@@ -51,7 +51,7 @@ type Config struct {
 	Querier      querier.Config         `yaml:"querier,omitempty"`
 	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
 	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB       phlaredb.Config          `yaml:"phlaredb,omitempty"`
+	PhlareDB     phlaredb.Config        `yaml:"phlaredb,omitempty"`
 	Tracing      tracing.Config         `yaml:"tracing"`
 
 	Storage StorageConfig `yaml:"storage"`

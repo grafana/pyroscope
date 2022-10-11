@@ -27,14 +27,14 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
 func copySlice[T any](in []T) []T {
