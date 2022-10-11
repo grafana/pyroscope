@@ -8,11 +8,12 @@
 
   .sandwich {
     display: flex;
+    width: 100%;
 
     .half {
-      width: 50%;
+      width: 100%;
       min-height: 400px;
-      border: 1px solid white;
+      padding: 0 10px;
     }
   }
 }
