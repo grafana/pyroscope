@@ -1,0 +1,23 @@
+.wrapper {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  left: -12px;
+  top: -12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.icon {
+  pointer-events: none;
+  width: 19px !important;
+  height: 19px;
+  margin-top: -2px;
+}
+
+.form {
+  width: 160px;
+}

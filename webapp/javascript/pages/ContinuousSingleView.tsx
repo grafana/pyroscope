@@ -27,7 +27,6 @@ import {
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
-import AnnotationInfo from './continuous/contextMenu/AnnotationInfo';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -114,18 +113,6 @@ function ContinuousSingleView() {
   const contextMenu = (props: ContextMenuProps) => {
     if (!isAnnotationsEnabled) {
       return null;
-    }
-
-    if (props.value) {
-      return (
-        <AnnotationInfo
-          value={props.value}
-          container={props.containerEl}
-          popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
-          timestamp={props.timestamp}
-          timezone={offset === 0 ? 'utc' : 'browser'}
-        />
-      );
     }
 
     return (

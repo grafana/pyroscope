@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState, useEffect } from 'react';
+import React, { Dispatch, SetStateAction } from 'react';
 import { MenuItem, applyStatics } from '@webapp/ui/Menu';
 import { Popover, PopoverBody, PopoverFooter } from '@webapp/ui/Popover';
 import Button from '@webapp/ui/Button';
@@ -14,6 +14,9 @@ interface AnnotationInfo {
   timestamp: AddAnnotationProps['timestamp'];
   timezone: AddAnnotationProps['timezone'];
   value: { content: string; timestamp: number };
+  isOpen: boolean;
+  setIsOpen: Dispatch<SetStateAction<boolean>>;
+  popoverClassname?: string;
 }
 
 const AnnotationInfo = ({
@@ -21,22 +24,19 @@ const AnnotationInfo = ({
   popoverAnchorPoint,
   value,
   timezone,
+  isOpen,
+  setIsOpen,
+  popoverClassname,
 }: AnnotationInfo) => {
-  const [isPopoverOpen, setPopoverOpen] = useState(false);
   const { register, errors } = useAnnotationForm({ value, timezone });
-
-  useEffect(() => {
-    if (value) {
-      setPopoverOpen(true);
-    }
-  }, []);
 
   return (
     <Portal container={container}>
       <Popover
         anchorPoint={{ x: popoverAnchorPoint.x, y: popoverAnchorPoint.y }}
-        isModalOpen={isPopoverOpen}
-        setModalOpenStatus={setPopoverOpen}
+        isModalOpen={isOpen}
+        setModalOpenStatus={setIsOpen}
+        className={popoverClassname}
       >
         <PopoverBody>
           <form id="annotation-form" name="annotation-form">
@@ -57,7 +57,7 @@ const AnnotationInfo = ({
         </PopoverBody>
         <PopoverFooter>
           <Button
-            onClick={() => setPopoverOpen(false)}
+            onClick={() => setIsOpen(false)}
             kind="secondary"
             form="annotation-form"
           >

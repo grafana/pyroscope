@@ -332,6 +332,7 @@ class TimelineChartWrapper extends React.Component<
       ...flotOptions,
       onHoverDisplayTooltip,
       ContextMenu: this.props.ContextMenu,
+      wrapperId: this.props.id,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to
