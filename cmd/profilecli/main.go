@@ -58,7 +58,9 @@ func main() {
 		os.Exit(checkError(blocksList(ctx)))
 	case parquetInspectCmd.FullCommand():
 		for _, file := range *parquetInspectFiles {
-			os.Exit(checkError(parquetInspect(ctx, file)))
+			if err := parquetInspect(ctx, file); err != nil {
+				os.Exit(checkError(err))
+			}
 		}
 	}
 }
