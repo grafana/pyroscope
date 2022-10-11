@@ -13,6 +13,8 @@ import (
 // serialization format version. it's not very useful right now, but it will be in the future
 const currentVersion = 1
 
+var otherName = []byte("other")
+
 func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error {
 	t.Lock()
 	defer t.Unlock()
@@ -37,16 +39,31 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 			return err
 		}
 		val := tn.Self
+		other := uint64(0)
 
 		// tn.ChildrenNodes = tn.ChildrenNodes[:0]
 		largeEnoughNodes := make([]*treeNode, 0)
-		for _, cn := range tn.ChildrenNodes {
+		otherIndex := -1
+		for i, cn := range tn.ChildrenNodes {
+			if bytes.Equal(cn.Name, otherName) {
+				otherIndex = i
+			}
 			if cn.Total >= minVal {
 				largeEnoughNodes = append(largeEnoughNodes, cn)
 			} else {
 				// Truncated children accounted as parent self.
-				val += cn.Total
+				other += cn.Total
 			}
+		}
+
+		if other > 0 {
+			var otherNode *treeNode
+			if otherIndex != -1 {
+				otherNode = tn.ChildrenNodes[otherIndex]
+			} else {
+				otherNode = &treeNode{Name: otherName, Self: other, Total: other}
+			}
+			largeEnoughNodes = append(largeEnoughNodes, otherNode)
 		}
 
 		if _, err = vw.Write(w, val); err != nil {
