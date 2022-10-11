@@ -13,7 +13,7 @@ import (
 // serialization format version. it's not very useful right now, but it will be in the future
 const currentVersion = 1
 
-var otherName = []byte("other")
+var lostDuringSerializationName = []byte("other")
 
 func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error {
 	t.Lock()
@@ -38,14 +38,15 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 		if _, err = w.Write(labelKey); err != nil {
 			return err
 		}
-		val := tn.Self
-		other := uint64(0)
+		if _, err = vw.Write(w, tn.Self); err != nil {
+			return err
+		}
 
-		// tn.ChildrenNodes = tn.ChildrenNodes[:0]
+		other := uint64(0)
 		largeEnoughNodes := make([]*treeNode, 0)
 		otherIndex := -1
 		for i, cn := range tn.ChildrenNodes {
-			if bytes.Equal(cn.Name, otherName) {
+			if bytes.Equal(cn.Name, lostDuringSerializationName) {
 				otherIndex = i
 			}
 			if cn.Total >= minVal {
@@ -55,20 +56,16 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 				other += cn.Total
 			}
 		}
-
 		if other > 0 {
 			var otherNode *treeNode
 			if otherIndex != -1 {
 				otherNode = tn.ChildrenNodes[otherIndex]
 			} else {
-				otherNode = &treeNode{Name: otherName, Self: other, Total: other}
+				otherNode = &treeNode{Name: lostDuringSerializationName, Self: other, Total: other}
 			}
 			largeEnoughNodes = append(largeEnoughNodes, otherNode)
 		}
 
-		if _, err = vw.Write(w, val); err != nil {
-			return err
-		}
 		if len(largeEnoughNodes) > 0 {
 			nodes = append(largeEnoughNodes, nodes...)
 		}
@@ -211,6 +208,7 @@ func DeserializeNoDict(r io.Reader) (*Tree, error) {
 }
 
 // used in the cloud
+// this function modifies the tree, so should only be used once!
 func (t *Tree) SerializeTruncateNoDict(maxNodes int, w io.Writer) error {
 	t.Lock()
 	defer t.Unlock()
@@ -229,19 +227,34 @@ func (t *Tree) SerializeTruncateNoDict(maxNodes int, w io.Writer) error {
 			return err
 		}
 
-		val := tn.Self
+		if _, err = vw.Write(w, tn.Self); err != nil {
+			return err
+		}
 		cNodes := tn.ChildrenNodes
 		tn.ChildrenNodes = tn.ChildrenNodes[:0]
-		for _, cn := range cNodes {
+
+		other := uint64(0)
+		otherIndex := -1
+		for i, cn := range cNodes {
+			if bytes.Equal(cn.Name, lostDuringSerializationName) {
+				otherIndex = i
+			}
+
 			if cn.Total >= minVal {
 				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
 			} else {
 				// Truncated children accounted as parent self.
-				val += cn.Total
+				other += cn.Total
 			}
 		}
-		if _, err = vw.Write(w, val); err != nil {
-			return err
+		if other > 0 {
+			var otherNode *treeNode
+			if otherIndex != -1 {
+				otherNode = cNodes[otherIndex]
+			} else {
+				otherNode = &treeNode{Name: lostDuringSerializationName, Self: other, Total: other}
+			}
+			tn.ChildrenNodes = append(tn.ChildrenNodes, otherNode)
 		}
 
 		if len(tn.ChildrenNodes) > 0 {

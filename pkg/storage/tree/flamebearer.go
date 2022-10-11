@@ -21,7 +21,7 @@ type Flamebearer struct {
 	Format     Format `json:"format"`
 }
 
-var otherJsonableSlice = jsonableSlice("other")
+var lostDuringRenderingName = jsonableSlice("other")
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 	t.RLock()
@@ -81,7 +81,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			otherTotal := uint64(0)
 			var otherNode *treeNode
 			for _, n := range tn.ChildrenNodes {
-				if bytes.Equal(n.Name, otherName) {
+				if bytes.Equal(n.Name, lostDuringRenderingName) {
 					otherTotal += n.Total
 					continue
 				}
@@ -96,7 +96,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			}
 			if otherTotal != 0 {
 				otherNode = &treeNode{
-					Name:  otherJsonableSlice,
+					Name:  lostDuringRenderingName,
 					Total: otherTotal,
 					Self:  otherTotal,
 				}
