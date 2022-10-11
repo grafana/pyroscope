@@ -47,6 +47,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/pr
 	rm -rf pkg/gen/ pkg/openapiv2/gen
 	PATH=$(BIN) $(BIN)/buf generate
 	PATH=$(BIN):$(PATH) ./tools/add-parquet-tags.sh
+	go run ./tools/doc-generator/ ./docs/sources/operators-guide/configure/reference-configuration-parameters/index.template > docs/sources/operators-guide/configure/reference-configuration-parameters/index.md
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf

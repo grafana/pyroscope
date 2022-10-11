@@ -271,6 +271,7 @@ func (f *Fire) Run() error {
 		return err
 	}
 	f.Server.HTTP.Path("/ready").Methods("GET").Handler(f.readyHandler(sm))
+	f.Server.HTTP.Path("/config").Methods("GET").Handler(f.Cfg.configHandler())
 
 	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, grpcutil.NewHealthCheck(sm))
 	healthy := func() { level.Info(f.logger).Log("msg", "Fire started", "version", version.Info()) }
@@ -389,5 +390,47 @@ func levelFilter(l string) level.Option {
 		return level.AllowError()
 	default:
 		return level.AllowAll()
+	}
+}
+
+func (conf *Config) configHandler() http.HandlerFunc {
+	var defaultCfg Config
+	if err := cfg.Defaults(flag.NewFlagSet("default", flag.ExitOnError))(&defaultCfg); err != nil {
+		panic(err)
+	}
+	return DefaultConfigHandler(conf, defaultCfg)
+}
+
+func DefaultConfigHandler(actualCfg interface{}, defaultCfg interface{}) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var output interface{}
+		switch r.URL.Query().Get("mode") {
+		case "diff":
+			defaultCfgObj, err := util.YAMLMarshalUnmarshal(defaultCfg)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			actualCfgObj, err := util.YAMLMarshalUnmarshal(actualCfg)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			diff, err := util.DiffConfig(defaultCfgObj, actualCfgObj)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			output = diff
+
+		case "defaults":
+			output = defaultCfg
+		default:
+			output = actualCfg
+		}
+
+		util.WriteYAMLResponse(w, output)
 	}
 }
