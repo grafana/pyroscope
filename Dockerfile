@@ -21,7 +21,7 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:18-alpine3.16 as js-builder
+FROM node:14.17.6-alpine3.12 as js-builder
 
 RUN apk update && apk upgrade && \
     apk add --no-cache make
@@ -35,8 +35,7 @@ COPY packages ./packages
 COPY babel.config.js .eslintrc.js .eslintignore .prettierrc tsconfig.json ./
 COPY webapp ./webapp
 
-# we only need the dependencies required to BUILD the application
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn/v6 make install-build-web-dependencies
+RUN make install-build-web-dependencies
 
 
 ARG EXTRA_METADATA=""
