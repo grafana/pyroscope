@@ -17,7 +17,6 @@ const handleHeight = 22;
       active: false,
       selectingSide: null,
     };
-    var hoveringOnAnnotation = false;
 
     // FIXME: The drag handling implemented here should be
     // abstracted out, there's some similar code from a library in
@@ -97,7 +96,7 @@ const handleHeight = 22;
         if (dragSide) {
           setCursor('grab');
         } else {
-          setCursor(hoveringOnAnnotation ? 'pointer' : 'crosshair');
+          setCursor('crosshair');
         }
       }
 
@@ -310,18 +309,6 @@ const handleHeight = 22;
     plot.setSelection = setSelection;
     plot.getSelection = getSelection;
 
-    function onHoveringOnAnnotation(
-      _: EventType,
-      value?: { hovering: boolean }
-    ) {
-      // during further complication this logic should be moved to separated plugin
-      // which only handles cursor state over Flot
-      // because cursor setters conflict between each other
-      if (value) {
-        hoveringOnAnnotation = value?.hovering;
-      }
-    }
-
     plot.hooks.bindEvents.push(function (
       plot: PlotType,
       eventHolder: EventHolderType
@@ -330,7 +317,6 @@ const handleHeight = 22;
       if (o.selection.mode != null) {
         eventHolder.mousemove(onMouseMove);
         eventHolder.mousedown(onMouseDown);
-        placeholder.bind('hoveringOnAnnotation', onHoveringOnAnnotation);
       }
     });
 
@@ -444,7 +430,6 @@ const handleHeight = 22;
     ) {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mousedown', onMouseDown);
-      placeholder.unbind('hoveringOnAnnotation', onHoveringOnAnnotation);
 
       if (mouseUpHandler)
         ($ as any)(document).unbind('mouseup', mouseUpHandler);
