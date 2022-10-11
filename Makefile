@@ -106,7 +106,7 @@ fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint er
 	# TODO: Reenable once golangci-lint support go 1.18 properly
 	# $(BIN)/golangci-lint run --fix
 	$(BIN)/buf format -w .
-	$(BIN)/tk fmt ./deploy/jsonnet/ tools/monitoring/
+	$(BIN)/tk fmt ./operations/phlare/jsonnet/ tools/monitoring/
 
 .PHONY: check/unstaged-changes
 check/unstaged-changes:
@@ -130,7 +130,7 @@ define deploy
 	# Load image into nodes
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)phlare:$(IMAGE_TAG)
 	kubectl get pods
-	$(BIN)/helm upgrade --install $(1) ./deploy/helm/phlare $(2) \
+	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
 		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.service.port_name=http-metrics
 endef
 
@@ -253,23 +253,23 @@ KIND_CLUSTER = phlare-dev
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
-	$(BIN)/helm lint ./deploy/helm/phlare/
+	$(BIN)/helm lint ./operations/phlare/helm/phlare/
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeval $(BIN)/helm
-	mkdir -p ./deploy/helm/phlare/rendered/
-	$(BIN)/helm template phlare-dev ./deploy/helm/phlare/ \
-		| tee ./deploy/helm/phlare/rendered/single-binary.yaml \
+	mkdir -p ./operations/phlare/helm/phlare/rendered/
+	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ \
+		| tee ./operations/phlare/helm/phlare/rendered/single-binary.yaml \
 		| $(BIN)/kubeval --strict
-	$(BIN)/helm template phlare-dev ./deploy/helm/phlare/ --values deploy/helm/phlare/values-micro-services.yaml \
-		| tee ./deploy/helm/phlare/rendered/micro-services.yaml \
+	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ --values operations/phlare/helm/phlare/values-micro-services.yaml \
+		| tee ./operations/phlare/helm/phlare/rendered/micro-services.yaml \
 		| $(BIN)/kubeval --strict
-	cat deploy/helm/phlare/values-micro-services.yaml \
+	cat operations/phlare/helm/phlare/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
-		> ./deploy/jsonnet/values-micro-services.json
-	cat deploy/helm/phlare/values.yaml \
+		> ./operations/phlare/jsonnet/values-micro-services.json
+	cat operations/phlare/helm/phlare/values.yaml \
 		| go run ./tools/yaml-to-json \
-		> ./deploy/jsonnet/values.json
+		> ./operations/phlare/jsonnet/values.json
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
@@ -277,7 +277,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
-	$(call deploy,phlare-micro-services,--values=deploy/helm/phlare/values-micro-services.yaml)
+	$(call deploy,phlare-micro-services,--values=operations/phlare/helm/phlare/values-micro-services.yaml)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
