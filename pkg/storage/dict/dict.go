@@ -70,10 +70,14 @@ func (t *Dict) readValue(key Key, w io.Writer) bool {
 	}
 }
 
-func (t *Dict) PutTo(dst io.Writer, val Value) {
+var writerPool = sync.Pool{New: func() any { return varint.NewWriter() }}
+
+func (t *Dict) PutValue(val Value, dst io.Writer) {
 	t.m.Lock()
 	defer t.m.Unlock()
-	t.root.findNodeAt(val, dst)
+	vw := writerPool.Get().(varint.Writer)
+	defer writerPool.Put(vw)
+	t.root.findNodeAt(val, vw, dst)
 }
 
 var bufferPool bytebufferpool.Pool
@@ -81,7 +85,7 @@ var bufferPool bytebufferpool.Pool
 func (t *Dict) Put(val Value) Key {
 	b := bufferPool.Get()
 	defer bufferPool.Put(b)
-	t.PutTo(b, val)
+	t.PutValue(val, b)
 	k := make([]byte, b.Len())
 	copy(k, b.B)
 	return k
