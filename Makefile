@@ -290,3 +290,7 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN) $(BIN)/tk init -f
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
 	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name phlare-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
+
+.PHONY: docs/%
+docs/%:
+	$(MAKE) -C docs $*
