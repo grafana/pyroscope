@@ -10,41 +10,6 @@ import styles from './LoadingOverlay.module.css';
 export function LoadingOverlay({
   active = true,
   spinnerPosition = 'center',
-  kind = 'blur',
-}: {
-  spinnerPosition?: 'center' | 'baseline';
-  active?: boolean;
-  kind?: 'dark' | 'blur';
-}) {
-  if (!active) {
-    return null;
-  }
-
-  // TODO(eh-am): wait few ms before displaying
-  // so that if the request is fast enough we don't show anything
-  return (
-    <div
-      className={cx(
-        styles.loadingOverlay,
-        kind === 'dark' ? styles.withDarkoverlay : styles.withBlurOverlay
-      )}
-      style={{
-        alignItems: spinnerPosition,
-        zIndex: 99,
-      }}
-    >
-      <LoadingSpinner size="46px" />
-    </div>
-  );
-}
-
-/**
- * LoadingOverlay when 'active' will cover the entire parent's width/height with
- * an overlay and a loading spinner
- */
-export function LoadingOverlay2({
-  active = true,
-  spinnerPosition = 'center',
   children,
   delay = 250,
 }: {

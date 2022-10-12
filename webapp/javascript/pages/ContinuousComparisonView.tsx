@@ -21,7 +21,7 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
-import { LoadingOverlay2 } from '@webapp/ui/LoadingOverlay';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import PageTitle from '@webapp/components/PageTitle';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
@@ -91,7 +91,7 @@ function ComparisonApp() {
         />
         <div style={{ position: 'relative' }}>
           <Box>
-            <LoadingOverlay2
+            <LoadingOverlay
               active={
                 comparisonView.left.type === 'reloading' ||
                 comparisonView.right.type === 'reloading'
@@ -131,14 +131,14 @@ function ComparisonApp() {
                 }
                 selectionType="double"
               />
-            </LoadingOverlay2>
+            </LoadingOverlay>
           </Box>
           <div
             className="comparison-container"
             data-testid="comparison-container"
           >
             <Box className={styles.comparisonPane}>
-              <LoadingOverlay2
+              <LoadingOverlay
                 active={comparisonView.left.type === 'reloading'}
                 spinnerPosition="baseline"
               >
@@ -202,11 +202,11 @@ function ComparisonApp() {
                     timezone={timezone}
                   />
                 </FlamegraphRenderer>
-              </LoadingOverlay2>
+              </LoadingOverlay>
             </Box>
 
             <Box className={styles.comparisonPane}>
-              <LoadingOverlay2
+              <LoadingOverlay
                 spinnerPosition="baseline"
                 active={comparisonView.right.type === 'reloading'}
               >
@@ -270,7 +270,7 @@ function ComparisonApp() {
                     timezone={timezone}
                   />
                 </FlamegraphRenderer>
-              </LoadingOverlay2>
+              </LoadingOverlay>
             </Box>
           </div>
         </div>

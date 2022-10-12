@@ -20,7 +20,7 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
-import { LoadingOverlay2 } from '@webapp/ui/LoadingOverlay';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
@@ -142,7 +142,7 @@ function ContinuousSingleView() {
         <Toolbar />
 
         <Box>
-          <LoadingOverlay2 active={singleView.type === 'reloading'}>
+          <LoadingOverlay active={singleView.type === 'reloading'}>
             <TimelineChartWrapper
               timezone={offset === 0 ? 'utc' : 'browser'}
               data-testid="timeline-single"
@@ -159,15 +159,15 @@ function ContinuousSingleView() {
               selectionType="single"
               ContextMenu={contextMenu}
             />
-          </LoadingOverlay2>
+          </LoadingOverlay>
         </Box>
         <Box>
-          <LoadingOverlay2
+          <LoadingOverlay
             spinnerPosition="baseline"
             active={singleView.type === 'reloading'}
           >
             {flamegraphRenderer}
-          </LoadingOverlay2>
+          </LoadingOverlay>
         </Box>
       </div>
     </div>

@@ -23,7 +23,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
-import { LoadingOverlay2 } from '@webapp/ui/LoadingOverlay';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
@@ -106,7 +106,7 @@ function ComparisonDiffApp() {
           }}
         />
         <Box>
-          <LoadingOverlay2
+          <LoadingOverlay
             active={
               timelines.left.type === 'reloading' ||
               timelines.left.type === 'loading' ||
@@ -144,11 +144,11 @@ function ComparisonDiffApp() {
                 <TimelineTitle titleKey={diffView.profile?.metadata.units} />
               }
             />
-          </LoadingOverlay2>
+          </LoadingOverlay>
         </Box>
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay2
+            <LoadingOverlay
               active={
                 timelines.left.type === 'reloading' ||
                 timelines.left.type === 'loading'
@@ -188,10 +188,10 @@ function ComparisonDiffApp() {
                 selectionType="single"
                 timezone={timezone}
               />
-            </LoadingOverlay2>
+            </LoadingOverlay>
           </Box>
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay2
+            <LoadingOverlay
               active={
                 timelines.right.type === 'reloading' ||
                 timelines.right.type === 'loading'
@@ -231,11 +231,11 @@ function ComparisonDiffApp() {
                 selectionType="single"
                 timezone={timezone}
               />
-            </LoadingOverlay2>
+            </LoadingOverlay>
           </Box>
         </div>
         <Box>
-          <LoadingOverlay2
+          <LoadingOverlay
             active={
               diffView.type === 'reloading' || diffView.type === 'loading'
             }
@@ -248,7 +248,7 @@ function ComparisonDiffApp() {
               ExportData={exportData}
               colorMode={colorMode}
             />
-          </LoadingOverlay2>
+          </LoadingOverlay>
         </Box>
       </div>
     </div>
