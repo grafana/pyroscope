@@ -12,7 +12,7 @@ import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
 import { markingsFromSelection, ANNOTATION_COLOR } from './markings';
-import { ContextMenuProps } from './Annotations.plugin';
+import { ContextMenuProps } from './ContextMenu.plugin';
 
 export interface TimelineGroupData {
   data: Group;

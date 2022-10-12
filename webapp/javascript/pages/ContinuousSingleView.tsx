@@ -19,7 +19,7 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
-import { ContextMenuProps } from '@webapp/components/TimelineChart/Annotations.plugin';
+import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
@@ -114,7 +114,6 @@ function ContinuousSingleView() {
     if (!isAnnotationsEnabled) {
       return null;
     }
-
     return (
       <ContextMenu position={props.click}>
         <AddAnnotationMenuItem

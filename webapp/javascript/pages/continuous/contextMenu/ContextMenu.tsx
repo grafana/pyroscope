@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ControlledMenu } from '@webapp/ui/Menu';
-import { ContextMenuProps as PluginContextMenuProps } from '@webapp/components/TimelineChart/Annotations.plugin';
+import { ContextMenuProps as PluginContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
 
 interface ContextMenuProps {
   /** position */

@@ -3,7 +3,6 @@ import * as ReactDOM from 'react-dom';
 import Color from 'color';
 import { Provider } from 'react-redux';
 import store from '@webapp/redux/store';
-import { randomId } from '@webapp/util/randomId';
 import { CtxType } from './types';
 import extractRange from './extractRange';
 import AnnotationMark from './AnnotationMark';
@@ -17,55 +16,11 @@ type AnnotationType = {
 
 interface IFlotOptions extends jquery.flot.plotOptions {
   annotations?: AnnotationType[];
-  ContextMenu?: React.FC<ContextMenuProps>;
   wrapperId?: string;
 }
 
-export interface ContextMenuProps {
-  click: {
-    /** The X position in the window where the click originated */
-    pageX: number;
-    /** The Y position in the window where the click originated */
-    pageY: number;
-  };
-  timestamp: number;
-  containerEl: HTMLElement;
-  value?: {
-    timestamp: number;
-    content: string;
-  } | null;
-}
-
-const WRAPPER_ID = randomId('annotations');
-
 (function ($) {
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
-    const placeholder = plot.getPlaceholder();
-
-    function onClick(
-      _: unknown,
-      pos: { x: number; pageX: number; pageY: number; y: number }
-    ) {
-      const options: IFlotOptions = plot.getOptions();
-      const container = inject($);
-      const containerEl = container?.[0];
-
-      ReactDOM.unmountComponentAtNode(containerEl);
-
-      const ContextMenu = options?.ContextMenu;
-
-      if (ContextMenu && containerEl) {
-        ReactDOM.render(
-          <ContextMenu
-            click={{ ...pos }}
-            containerEl={containerEl}
-            timestamp={Math.round(pos.x / 1000)}
-          />,
-          containerEl
-        );
-      }
-    }
-
     plot.hooks!.draw!.push((plot, ctx: CtxType) => {
       const options: IFlotOptions = plot.getOptions();
 
@@ -97,18 +52,6 @@ const WRAPPER_ID = randomId('annotations');
         });
       }
     });
-
-    plot.hooks!.bindEvents!.push(() => {
-      placeholder.bind('plotclick', onClick);
-    });
-
-    plot.hooks!.shutdown!.push(() => {
-      placeholder.unbind('plotclick', onClick);
-
-      const container = inject($);
-
-      ReactDOM.unmountComponentAtNode(container?.[0]);
-    });
   }
 
   $.plot.plugins.push({
@@ -118,17 +61,6 @@ const WRAPPER_ID = randomId('annotations');
     version: '1.0',
   });
 })(jQuery);
-
-function inject($: JQueryStatic) {
-  const alreadyInitialized = $(`#${WRAPPER_ID}`).length > 0;
-
-  if (alreadyInitialized) {
-    return $(`#${WRAPPER_ID}`);
-  }
-
-  const body = $('body');
-  return $(`<div id="${WRAPPER_ID}" />`).appendTo(body);
-}
 
 function drawAnnotationLine({
   ctx,
