@@ -11,15 +11,16 @@
   pointer-events: all;
   z-index: 99;
 
+  /*opacity: 1;*/
   /* Use a progress indicator for any action that takes longer than about 1.0 second. */
   /* https://www.nngroup.com/articles/progress-indicators */
-  /*  visibility: hidden;
-  transition: all .5s ease-in-out;
-  */
+  transition: all 0.5s ease-in-out;
 }
 
 .unactive {
-  display: none;
+  opacity: 0;
+  background: initial;
+  visibility: hidden;
 }
 
 .withBlurOverlay {

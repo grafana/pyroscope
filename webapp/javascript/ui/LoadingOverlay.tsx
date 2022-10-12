@@ -45,21 +45,21 @@ export function LoadingOverlay({
 export function LoadingOverlay2({
   active = true,
   spinnerPosition = 'center',
-  kind = 'dark',
   children,
   delay = 250,
 }: {
   /** where to position the spinner. use baseline when the component's vertical center is outside the viewport */
   spinnerPosition?: 'center' | 'baseline';
   active?: boolean;
-  kind?: 'dark' | 'blur';
   children?: React.ReactNode;
   /** delay in ms before showing the overlay. this evicts a flick */
   delay: number;
 }) {
-  // Wait for `delay`
-  // https://www.nngroup.com/articles/progress-indicators/
   const [isVisible, setVisible] = useState(false);
+
+  // Wait for `delay` ms before showing the overlay
+  // So that it feels snappy when server is fast
+  // https://www.nngroup.com/articles/progress-indicators/
   useEffect(() => {
     if (active) {
       const timeoutID = window.setTimeout(() => {
@@ -70,6 +70,7 @@ export function LoadingOverlay2({
     }
 
     setVisible(false);
+    return () => {};
   }, [active]);
 
   return (
