@@ -62,10 +62,9 @@ export function sandwichViewProfiles(
   p: Profile | any,
   nodeName: string
 ): Profile {
-  // original imported json mutates after deltaDiffWrapper/deltaDiffWrapperReverse calls
-  console.log(p.flamebearer.levels);
-  p.flamebearer.levels = deltaDiffWrapper('single', p.flamebearer.levels);
-  const calleesFlamebearer = getCalleesFlamebearer(p.flamebearer, nodeName);
+  const copy = JSON.parse(JSON.stringify(p));
+  copy.flamebearer.levels = deltaDiffWrapper('single', copy.flamebearer.levels);
+  const calleesFlamebearer = getCalleesFlamebearer(copy.flamebearer, nodeName);
   calleesFlamebearer.levels = deltaDiffWrapperReverse(
     'single',
     calleesFlamebearer.levels
@@ -74,6 +73,6 @@ export function sandwichViewProfiles(
   return {
     version: 1,
     flamebearer: calleesFlamebearer,
-    metadata: p.metadata,
+    metadata: copy.metadata,
   };
 }
