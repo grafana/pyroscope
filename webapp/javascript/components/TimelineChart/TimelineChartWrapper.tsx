@@ -226,7 +226,7 @@ class TimelineChartWrapper extends React.Component<
           type: 'message',
           color: ANNOTATION_COLOR,
         }))
-      : null;
+      : [];
   };
 
   plotMarkings = () => {
