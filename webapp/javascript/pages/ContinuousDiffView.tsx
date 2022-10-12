@@ -106,7 +106,7 @@ function ComparisonDiffApp() {
           }}
         />
         <Box>
-          <LoadingOverlay
+          <LoadingOverlay2
             kind="dark"
             active={
               timelines.left.type === 'reloading' ||
@@ -114,37 +114,38 @@ function ComparisonDiffApp() {
               timelines.right.type === 'loading' ||
               timelines.right.type === 'reloading'
             }
-          />
-          <TimelineChartWrapper
-            data-testid="timeline-main"
-            id="timeline-chart-diff"
-            format="lines"
-            height="125px"
-            timelineA={leftTimeline}
-            timelineB={rightTimeline}
-            onSelect={(from, until) => {
-              dispatch(actions.setFromAndUntil({ from, until }));
-            }}
-            selection={{
-              left: {
-                from: leftFrom,
-                to: leftUntil,
-                color: leftColor,
-                overlayColor: leftColor.alpha(0.3),
-              },
-              right: {
-                from: rightFrom,
-                to: rightUntil,
-                color: rightColor,
-                overlayColor: rightColor.alpha(0.3),
-              },
-            }}
-            selectionType="double"
-            timezone={timezone}
-            title={
-              <TimelineTitle titleKey={diffView.profile?.metadata.units} />
-            }
-          />
+          >
+            <TimelineChartWrapper
+              data-testid="timeline-main"
+              id="timeline-chart-diff"
+              format="lines"
+              height="125px"
+              timelineA={leftTimeline}
+              timelineB={rightTimeline}
+              onSelect={(from, until) => {
+                dispatch(actions.setFromAndUntil({ from, until }));
+              }}
+              selection={{
+                left: {
+                  from: leftFrom,
+                  to: leftUntil,
+                  color: leftColor,
+                  overlayColor: leftColor.alpha(0.3),
+                },
+                right: {
+                  from: rightFrom,
+                  to: rightUntil,
+                  color: rightColor,
+                  overlayColor: rightColor.alpha(0.3),
+                },
+              }}
+              selectionType="double"
+              timezone={timezone}
+              title={
+                <TimelineTitle titleKey={diffView.profile?.metadata.units} />
+              }
+            />
+          </LoadingOverlay2>
         </Box>
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
