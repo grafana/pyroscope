@@ -109,8 +109,6 @@ function ComparisonDiffApp() {
           <LoadingOverlay
             active={
               timelines.left.type === 'reloading' ||
-              timelines.left.type === 'loading' ||
-              timelines.right.type === 'loading' ||
               timelines.right.type === 'reloading'
             }
           >
@@ -148,12 +146,7 @@ function ComparisonDiffApp() {
         </Box>
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay
-              active={
-                timelines.left.type === 'reloading' ||
-                timelines.left.type === 'loading'
-              }
-            >
+            <LoadingOverlay active={timelines.left.type === 'reloading'}>
               <TimelineTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
@@ -191,12 +184,7 @@ function ComparisonDiffApp() {
             </LoadingOverlay>
           </Box>
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay
-              active={
-                timelines.right.type === 'reloading' ||
-                timelines.right.type === 'loading'
-              }
-            >
+            <LoadingOverlay active={timelines.right.type === 'reloading'}>
               <TimelineTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
@@ -236,9 +224,7 @@ function ComparisonDiffApp() {
         </div>
         <Box>
           <LoadingOverlay
-            active={
-              diffView.type === 'reloading' || diffView.type === 'loading'
-            }
+            active={diffView.type === 'reloading'}
             spinnerPosition="baseline"
           >
             <TimelineTitle titleKey="diff" />
