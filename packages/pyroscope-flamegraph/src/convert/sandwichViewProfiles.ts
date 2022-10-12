@@ -1,13 +1,14 @@
-import type { Profile } from '@pyroscope/models/src';
-
-import { Flamebearer } from '@pyroscope/models/src';
-import { flamebearersToTree } from './diffTwoProfiles';
+import type { Profile, Flamebearer } from '@pyroscope/models/src';
 import {
   deltaDiffWrapper,
   deltaDiffWrapperReverse,
 } from '../FlameGraph/decode';
+import { flamebearersToTree } from './convert';
 
-function getCalleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
+export function calleesFlamebearer(
+  f: Flamebearer,
+  nodeName: string
+): Flamebearer {
   const result: Flamebearer = {
     format: 'single',
     numTicks: f.numTicks as number,
@@ -18,8 +19,29 @@ function getCalleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
     units: f.units,
     spyName: f.spyName,
   };
+  let targetTreeNode: any;
+  const sameNameNodesArr: any = [];
 
-  const treeNodeToFlamebearer = (node, level: number, offsetLeft: number) => {
+  const tree = flamebearersToTree(f);
+
+  const processTree = (node: any) => {
+    const { name, children, total, self } = node;
+    if (name === nodeName) {
+      if (!targetTreeNode) {
+        targetTreeNode = node;
+        result.numTicks = total[0];
+        result.maxSelf = self[0];
+      }
+      sameNameNodesArr.push(node);
+    }
+    for (let i = 0; i < children.length; i += 1) {
+      processTree(children[i]);
+    }
+  };
+
+  processTree(tree);
+
+  const processNode = (node: any, level: number, offsetLeft: number) => {
     const { name, children, self, total } = node;
     result.names.push(name);
     result.levels[level] ||= [];
@@ -32,47 +54,40 @@ function getCalleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
     ]);
 
     for (let i = 0; i < children.length; i += 1) {
-      const ol = treeNodeToFlamebearer(children[i], level + 1, offsetLeft);
+      const ol = processNode(children[i], level + 1, offsetLeft);
       offsetLeft += ol;
     }
-    return total[0];
+    return total[0] || 0;
   };
 
-  const tree = flamebearersToTree(f);
-
-  const findTreeNode = (node) => {
-    const { name, children, total, self } = node;
-    if (!result.levels.length && name === nodeName) {
-      treeNodeToFlamebearer(node, 0, 0);
-      result.numTicks = total[0];
-      result.maxSelf = self[0];
-    }
-    for (let i = 0; i < children.length; i += 1) {
-      findTreeNode(children[i]);
-    }
-  };
-
-  findTreeNode(tree);
+  processNode(targetTreeNode, 0, 0);
 
   return result;
 }
 
-// should return both callees and callers profiles after implementation
 export function sandwichViewProfiles(
-  p: Profile | any,
+  p: Profile,
   nodeName: string
-): Profile {
+): [Profile, Profile] {
   const copy = JSON.parse(JSON.stringify(p));
   copy.flamebearer.levels = deltaDiffWrapper('single', copy.flamebearer.levels);
-  const calleesFlamebearer = getCalleesFlamebearer(copy.flamebearer, nodeName);
-  calleesFlamebearer.levels = deltaDiffWrapperReverse(
+  const calleesResultFlamebearer = calleesFlamebearer(
+    copy.flamebearer,
+    nodeName
+  );
+  calleesResultFlamebearer.levels = deltaDiffWrapperReverse(
     'single',
-    calleesFlamebearer.levels
+    calleesResultFlamebearer.levels
   );
 
-  return {
-    version: 1,
-    flamebearer: calleesFlamebearer,
-    metadata: copy.metadata,
-  };
+  return [
+    {
+      version: 1,
+      flamebearer: calleesResultFlamebearer,
+      metadata: copy.metadata,
+    },
+    {
+      // not implemented
+    } as Profile,
+  ];
 }
