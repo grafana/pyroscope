@@ -23,7 +23,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
-import { LoadingOverlay, LoadingOverlay2 } from '@webapp/ui/LoadingOverlay';
+import { LoadingOverlay2 } from '@webapp/ui/LoadingOverlay';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
@@ -107,7 +107,6 @@ function ComparisonDiffApp() {
         />
         <Box>
           <LoadingOverlay2
-            kind="dark"
             active={
               timelines.left.type === 'reloading' ||
               timelines.left.type === 'loading' ||
@@ -237,7 +236,9 @@ function ComparisonDiffApp() {
         </div>
         <Box>
           <LoadingOverlay2
-            active={diffView.type === 'reloading'}
+            active={
+              diffView.type === 'reloading' || diffView.type === 'loading'
+            }
             spinnerPosition="baseline"
           >
             <TimelineTitle titleKey="diff" />

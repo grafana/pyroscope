@@ -20,7 +20,7 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
-import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
+import { LoadingOverlay2 } from '@webapp/ui/LoadingOverlay';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
@@ -142,28 +142,32 @@ function ContinuousSingleView() {
         <Toolbar />
 
         <Box>
-          <LoadingOverlay active={singleView.type === 'reloading'} />
-          <TimelineChartWrapper
-            timezone={offset === 0 ? 'utc' : 'browser'}
-            data-testid="timeline-single"
-            id="timeline-chart-single"
-            timelineA={getTimeline()}
-            onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
-            height="125px"
-            title={
-              <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
-            }
-            annotations={annotations}
-            selectionType="single"
-            ContextMenu={contextMenu}
-          />
+          <LoadingOverlay2 active={singleView.type === 'reloading'}>
+            <TimelineChartWrapper
+              timezone={offset === 0 ? 'utc' : 'browser'}
+              data-testid="timeline-single"
+              id="timeline-chart-single"
+              timelineA={getTimeline()}
+              onSelect={(from, until) =>
+                dispatch(setDateRange({ from, until }))
+              }
+              height="125px"
+              title={
+                <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
+              }
+              annotations={annotations}
+              selectionType="single"
+              ContextMenu={contextMenu}
+            />
+          </LoadingOverlay2>
         </Box>
         <Box>
-          <LoadingOverlay
+          <LoadingOverlay2
             spinnerPosition="baseline"
             active={singleView.type === 'reloading'}
-          />
-          {flamegraphRenderer}
+          >
+            {flamegraphRenderer}
+          </LoadingOverlay2>
         </Box>
       </div>
     </div>

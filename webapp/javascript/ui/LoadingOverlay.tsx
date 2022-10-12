@@ -50,10 +50,10 @@ export function LoadingOverlay2({
 }: {
   /** where to position the spinner. use baseline when the component's vertical center is outside the viewport */
   spinnerPosition?: 'center' | 'baseline';
-  active?: boolean;
+  active: boolean;
   children?: React.ReactNode;
   /** delay in ms before showing the overlay. this evicts a flick */
-  delay: number;
+  delay?: number;
 }) {
   const [isVisible, setVisible] = useState(false);
 
