@@ -9,7 +9,11 @@
 
   /* ignore all pointer events */
   pointer-events: all;
-  zindex: 99;
+  z-index: 99;
+}
+
+.unactive {
+  display: none;
 }
 
 .withBlurOverlay {
