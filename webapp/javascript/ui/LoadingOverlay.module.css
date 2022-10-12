@@ -10,17 +10,11 @@
   /* ignore all pointer events */
   pointer-events: all;
   z-index: 99;
-
-  /* Use a progress indicator for any action that takes longer than about 1.0 second. */
-  /* https://www.nngroup.com/articles/progress-indicators */
   transition: all 0.5s ease-in-out;
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .unactive {
-  opacity: 0;
   background: initial;
   visibility: hidden;
-}
-.withDarkoverlay {
-  background: rgba(0, 0, 0, 0.7);
 }

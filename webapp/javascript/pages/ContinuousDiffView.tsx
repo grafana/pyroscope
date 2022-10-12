@@ -29,6 +29,7 @@ import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import PageTitle from '@webapp/components/PageTitle';
 import { formatTitle } from './formatTitle';
+import { isLoadingOrReloading } from './loading';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -107,10 +108,10 @@ function ComparisonDiffApp() {
         />
         <Box>
           <LoadingOverlay
-            active={
-              timelines.left.type === 'reloading' ||
-              timelines.right.type === 'reloading'
-            }
+            active={isLoadingOrReloading([
+              timelines.left.type,
+              timelines.right.type,
+            ])}
           >
             <TimelineChartWrapper
               data-testid="timeline-main"
@@ -146,7 +147,9 @@ function ComparisonDiffApp() {
         </Box>
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay active={timelines.left.type === 'reloading'}>
+            <LoadingOverlay
+              active={isLoadingOrReloading([timelines.left.type])}
+            >
               <TimelineTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
@@ -184,7 +187,9 @@ function ComparisonDiffApp() {
             </LoadingOverlay>
           </Box>
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay active={timelines.right.type === 'reloading'}>
+            <LoadingOverlay
+              active={isLoadingOrReloading([timelines.right.type])}
+            >
               <TimelineTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
@@ -224,7 +229,7 @@ function ComparisonDiffApp() {
         </div>
         <Box>
           <LoadingOverlay
-            active={diffView.type === 'reloading'}
+            active={isLoadingOrReloading([diffView.type])}
             spinnerPosition="baseline"
           >
             <TimelineTitle titleKey="diff" />

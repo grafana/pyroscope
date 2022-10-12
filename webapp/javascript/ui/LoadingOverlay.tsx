@@ -43,7 +43,6 @@ export function LoadingOverlay({
       <div
         className={cx(
           styles.loadingOverlay,
-          styles.withDarkoverlay,
           !isVisible ? styles.unactive : null
         )}
         style={{

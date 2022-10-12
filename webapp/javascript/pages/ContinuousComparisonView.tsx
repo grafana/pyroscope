@@ -33,6 +33,7 @@ import useTimelines, {
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
 import { formatTitle } from './formatTitle';
+import { isLoadingOrReloading } from './loading';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -91,10 +92,10 @@ function ComparisonApp() {
         />
         <Box>
           <LoadingOverlay
-            active={
-              comparisonView.left.type === 'reloading' ||
-              comparisonView.right.type === 'reloading'
-            }
+            active={isLoadingOrReloading([
+              comparisonView.left.type,
+              comparisonView.right.type,
+            ])}
           >
             <TimelineChartWrapper
               data-testid="timeline-main"
@@ -136,7 +137,7 @@ function ComparisonApp() {
         >
           <Box className={styles.comparisonPane}>
             <LoadingOverlay
-              active={comparisonView.left.type === 'reloading'}
+              active={isLoadingOrReloading([comparisonView.left.type])}
               spinnerPosition="baseline"
             >
               <TimelineTitle titleKey="baseline" color={leftColor} />
@@ -201,7 +202,7 @@ function ComparisonApp() {
           <Box className={styles.comparisonPane}>
             <LoadingOverlay
               spinnerPosition="baseline"
-              active={comparisonView.right.type === 'reloading'}
+              active={isLoadingOrReloading([comparisonView.right.type])}
             >
               <TimelineTitle titleKey="comparison" color={rightColor} />
               <TagsBar

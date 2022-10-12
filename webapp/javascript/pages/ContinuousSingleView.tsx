@@ -28,6 +28,7 @@ import {
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
+import { isLoadingOrReloading } from './loading';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -142,7 +143,7 @@ function ContinuousSingleView() {
         <Toolbar />
 
         <Box>
-          <LoadingOverlay active={singleView.type === 'reloading'}>
+          <LoadingOverlay active={isLoadingOrReloading([singleView.type])}>
             <TimelineChartWrapper
               timezone={offset === 0 ? 'utc' : 'browser'}
               data-testid="timeline-single"
@@ -164,7 +165,7 @@ function ContinuousSingleView() {
         <Box>
           <LoadingOverlay
             spinnerPosition="baseline"
-            active={singleView.type === 'reloading'}
+            active={isLoadingOrReloading([singleView.type])}
           >
             {flamegraphRenderer}
           </LoadingOverlay>
