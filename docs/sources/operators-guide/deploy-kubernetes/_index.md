@@ -5,7 +5,7 @@ title: Deploy Grafana Phlare using the Helm chart
 weight: 15
 ---
 
-# Getting started with Grafana Phlare using the Helm chart
+# Deploy Grafana Phlare using the Helm chart
 
 The [Helm](https://helm.sh/) chart allows you to configure, install, and upgrade Grafana Phlare within a Kubernetes cluster.
 
@@ -234,8 +234,8 @@ First install Grafana, and then add Phlare as a Prometheus data source.
 
    | Field | Value                              |
    | ----- | ---------------------------------- |
-   | Name  | Phlare                              |
-   | URL   | http://\<ingress-host\>/prometheus |
+   | Name  | Phlare                             |
+   | URL   | http://\<ingress-host\>/           |
 
    To add a data source, see [Add a data source](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/).
 
@@ -243,7 +243,6 @@ First install Grafana, and then add Phlare as a Prometheus data source.
 
    You should be able to query profiles in [Grafana Explore](http://localhost:3000/explore),
    as well as create dashboard panels by using your newly configured `Phlare` data source.
-   For more information, see [Monitor Grafana Phlare]({{< relref "../../monitor-grafana-phlare" >}}).
 
 ## Set up metamonitoring
 

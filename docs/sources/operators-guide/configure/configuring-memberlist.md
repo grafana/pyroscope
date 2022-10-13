@@ -15,7 +15,7 @@ Grafana Phlare only support hash ring via memberlist protocol.
 
 You can configure memberlist either via the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
-### Memberlist
+## Memberlist
 
 Grafana Phlare uses `memberlist` as the KV store backend.
 
@@ -67,7 +67,7 @@ If you experience a higher changes propagation latency, you can adjust the follo
 - Decrease `-memberlist.pullpush-interval`
 - Increase `-memberlist.retransmit-factor`
 
-# About Grafana Phlare DNS service discovery
+## About Grafana Phlare DNS service discovery
 
 Some clients in Grafana Phlare support service discovery via DNS to locate the addresses of backend servers to connect to. The following clients support service discovery via DNS:
 
