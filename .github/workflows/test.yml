@@ -95,6 +95,16 @@ jobs:
       - name: Check helm manifests
         run: make helm/check
 
+  test-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check out code"
+        uses: "actions/checkout@v3"
+      - name: "Test docs"
+        run: make docs/test
+      - name: "Validate docs"
+        run: make docs/validate
+
   build-image:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
