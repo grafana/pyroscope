@@ -2,6 +2,7 @@ import { DataQueryRequest, DataQueryResponse, DataSourceInstanceSettings } from 
 import { DataSourceWithBackend } from '@grafana/runtime';
 import { PhlareDataSourceOptions, Query, ProfileTypeMessage, SeriesMessage } from './types';
 import { Observable, of } from 'rxjs';
+import { normalizeQuery } from './QueryEditor/QueryEditor';
 
 export class PhlareDataSource extends DataSourceWithBackend<Query, PhlareDataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<PhlareDataSourceOptions>) {
@@ -19,8 +20,10 @@ export class PhlareDataSource extends DataSourceWithBackend<Query, PhlareDataSou
             labelSelector: '{}',
           };
         }
-        return t;
-      });
+
+        return normalizeQuery(t, request.app);
+      })
+
     if (!validTargets.length) {
       return of({ data: [] });
     }
