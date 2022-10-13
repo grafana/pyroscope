@@ -14,6 +14,9 @@ import (
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pkg/errors"
+	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -27,6 +30,7 @@ import (
 	"github.com/grafana/phlare/pkg/distributor"
 	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
 	"github.com/grafana/phlare/pkg/gen/agent/v1/agentv1connect"
+	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
 	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
 	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
@@ -36,6 +40,7 @@ import (
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/util/build"
 )
 
 // The various modules that make up Phlare.
@@ -86,9 +91,17 @@ func (f *Phlare) getPusherClient() pushv1connect.PusherServiceClient {
 }
 
 func (f *Phlare) initGRPCGateway() (services.Service, error) {
-	f.grpcGatewayMux = grpcgw.NewServeMux()
-	f.Server.HTTP.NewRoute().PathPrefix("/api").Handler(f.grpcGatewayMux)
-
+	f.grpcGatewayMux = grpcgw.NewServeMux(
+		grpcgw.WithMarshalerOption("application/json+pretty", &grpcgw.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				Indent:    "  ",
+				Multiline: true, // Optional, implied by presence of "Indent".
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
 	return nil, nil
 }
 
@@ -242,7 +255,108 @@ func (f *Phlare) initServer() (services.Service, error) {
 	}
 	f.Server.HTTP.Handle("/api/swagger.json", openapiv2Handler)
 
+	// register grpc-gateway api
+	f.Server.HTTP.NewRoute().PathPrefix("/api").Handler(f.grpcGatewayMux)
+
+	// register status service providing config and buildinfo at grpc gateway
+	if err := commonv1.RegisterStatusServiceHandlerServer(context.Background(), f.grpcGatewayMux, f.statusService()); err != nil {
+		return nil, err
+	}
+
 	return s, nil
+}
+
+type statusService struct {
+	commonv1.UnimplementedStatusServiceServer
+	configYaml    string
+	defaultConfig *Config
+	actualConfig  *Config
+}
+
+func (s *statusService) GetBuildInfo(ctx context.Context, req *commonv1.GetBuildInfoRequest) (*commonv1.GetBuildInfoResponse, error) {
+	version := build.GetVersion()
+	return &commonv1.GetBuildInfoResponse{
+		Status: "success",
+		Data: &commonv1.GetBuildInfoData{
+			Version:   version.Version,
+			Revision:  build.Revision,
+			Branch:    version.Branch,
+			GoVersion: version.GoVersion,
+		},
+	}, nil
+}
+
+const (
+	// There is not standardised and generally used content-type for YAML,
+	// text/plain ensures the YAML is displayed in the browser instead of
+	// offered as a download
+	yamlContentType = "text/plain; charset=utf-8"
+)
+
+func (s *statusService) GetConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+	body, err := yaml.Marshal(s.actualConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpbody.HttpBody{
+		ContentType: yamlContentType,
+		Data:        body,
+	}, nil
+}
+
+func (s *statusService) GetDefaultConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+	body, err := yaml.Marshal(s.defaultConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpbody.HttpBody{
+		ContentType: yamlContentType,
+		Data:        body,
+	}, nil
+}
+
+func (s *statusService) GetDiffConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+	aBody, err := yaml.Marshal(s.actualConfig)
+	if err != nil {
+		return nil, err
+	}
+	aCfg := map[interface{}]interface{}{}
+	if err := yaml.Unmarshal(aBody, &aCfg); err != nil {
+		return nil, err
+	}
+
+	dBody, err := yaml.Marshal(s.defaultConfig)
+	if err != nil {
+		return nil, err
+	}
+	dCfg := map[interface{}]interface{}{}
+	if err := yaml.Unmarshal(dBody, &dCfg); err != nil {
+		return nil, err
+	}
+
+	diff, err := util.DiffConfig(dCfg, aCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := yaml.Marshal(diff)
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpbody.HttpBody{
+		ContentType: yamlContentType,
+		Data:        body,
+	}, nil
+}
+
+func (f *Phlare) statusService() commonv1.StatusServiceServer {
+	return &statusService{
+		actualConfig:  &f.Cfg,
+		defaultConfig: newDefaultConfig(),
+	}
 }
 
 // NewServerService constructs service from Server component.

@@ -1,6 +1,8 @@
 package build
 
 import (
+	"encoding/json"
+	"net/http"
 	"runtime"
 
 	"github.com/prometheus/common/version"
@@ -38,4 +40,16 @@ func GetVersion() prom.PrometheusVersion {
 		BuildDate: version.BuildDate,
 		GoVersion: version.GoVersion,
 	}
+}
+
+func BuildInfoHandler(rw http.ResponseWriter, req *http.Request) {
+	resp := struct {
+		Status string      `json:"status"`
+		Data   interface{} `json:"data,omitempty"`
+	}{
+		Status: "success",
+		Data:   GetVersion(),
+	}
+	rw.Header().Add("Content-Type", "application/json")
+	_ = json.NewEncoder(rw).Encode(&resp)
 }
