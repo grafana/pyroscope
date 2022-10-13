@@ -11,7 +11,7 @@ export function calleesFlamebearer(
 ): Flamebearer {
   const result: Flamebearer = {
     format: 'single',
-    numTicks: f.numTicks as number,
+    numTicks: 0,
     maxSelf: 100,
     sampleRate: 100,
     names: [],
@@ -19,20 +19,15 @@ export function calleesFlamebearer(
     units: f.units,
     spyName: f.spyName,
   };
-  let targetTreeNode: any;
-  const sameNameNodesArr: any = [];
+  const nodesArray: any = [];
 
   const tree = flamebearersToTree(f);
 
   const processTree = (node: any) => {
-    const { name, children, total, self } = node;
+    const { name, children, total } = node;
     if (name === nodeName) {
-      if (!targetTreeNode) {
-        targetTreeNode = node;
-        result.numTicks = total[0];
-        result.maxSelf = self[0];
-      }
-      sameNameNodesArr.push(node);
+      nodesArray.push(node);
+      result.numTicks = result.numTicks + total[0];
     }
     for (let i = 0; i < children.length; i += 1) {
       processTree(children[i]);
@@ -40,6 +35,19 @@ export function calleesFlamebearer(
   };
 
   processTree(tree);
+
+  const combinedNode =
+    nodesArray.length > 1
+      ? nodesArray.reduce(
+          (acc: any, node: any) => {
+            acc.children.push(node);
+            acc.total[0] += node.total[0];
+
+            return acc;
+          },
+          { total: [0], self: [0], key: '/total', name: 'total', children: [] }
+        )
+      : nodesArray[0];
 
   const processNode = (node: any, level: number, offsetLeft: number) => {
     const { name, children, self, total } = node;
@@ -60,7 +68,7 @@ export function calleesFlamebearer(
     return total[0] || 0;
   };
 
-  processNode(targetTreeNode, 0, 0);
+  processNode(combinedNode, 0, 0);
 
   return result;
 }
