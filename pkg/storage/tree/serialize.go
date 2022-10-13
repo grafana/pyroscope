@@ -15,6 +15,7 @@ const currentVersion = 1
 
 var lostDuringSerializationName = []byte("other")
 
+// warning: this function modifies the tree
 func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error {
 	t.Lock()
 	defer t.Unlock()
@@ -42,34 +43,32 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 			return err
 		}
 
+		cNodes := tn.ChildrenNodes
+		tn.ChildrenNodes = tn.ChildrenNodes[:0]
+
 		other := uint64(0)
-		largeEnoughNodes := make([]*treeNode, 0)
-		otherIndex := -1
-		for i, cn := range tn.ChildrenNodes {
-			if bytes.Equal(cn.Name, lostDuringSerializationName) {
-				otherIndex = i
-			}
-			if cn.Total >= minVal {
-				largeEnoughNodes = append(largeEnoughNodes, cn)
+		for _, cn := range cNodes {
+			isOtherNode := bytes.Equal(cn.Name, lostDuringSerializationName)
+			if cn.Total >= minVal || isOtherNode {
+				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
 			} else {
 				// Truncated children accounted as parent self.
 				other += cn.Total
 			}
 		}
+
 		if other > 0 {
-			var otherNode *treeNode
-			if otherIndex != -1 {
-				otherNode = tn.ChildrenNodes[otherIndex]
-			} else {
-				otherNode = &treeNode{Name: lostDuringSerializationName, Self: other, Total: other}
-			}
-			largeEnoughNodes = append(largeEnoughNodes, otherNode)
+			otherNode := tn.insert(lostDuringSerializationName)
+			otherNode.Self += other
+			otherNode.Total += other
 		}
 
-		if len(largeEnoughNodes) > 0 {
-			nodes = append(largeEnoughNodes, nodes...)
+		if len(tn.ChildrenNodes) > 0 {
+			nodes = append(tn.ChildrenNodes, nodes...)
+		} else {
+			tn.ChildrenNodes = nil // Just to make it eligible for GC.
 		}
-		if _, err = vw.Write(w, uint64(len(largeEnoughNodes))); err != nil {
+		if _, err = vw.Write(w, uint64(len(tn.ChildrenNodes))); err != nil {
 			return err
 		}
 	}
@@ -208,7 +207,7 @@ func DeserializeNoDict(r io.Reader) (*Tree, error) {
 }
 
 // used in the cloud
-// this function modifies the tree, so should only be used once!
+// warning: this function modifies the tree
 func (t *Tree) SerializeTruncateNoDict(maxNodes int, w io.Writer) error {
 	t.Lock()
 	defer t.Unlock()
@@ -234,27 +233,20 @@ func (t *Tree) SerializeTruncateNoDict(maxNodes int, w io.Writer) error {
 		tn.ChildrenNodes = tn.ChildrenNodes[:0]
 
 		other := uint64(0)
-		otherIndex := -1
-		for i, cn := range cNodes {
-			if bytes.Equal(cn.Name, lostDuringSerializationName) {
-				otherIndex = i
-			}
-
-			if cn.Total >= minVal {
+		for _, cn := range cNodes {
+			isOtherNode := bytes.Equal(cn.Name, lostDuringSerializationName)
+			if cn.Total >= minVal || isOtherNode {
 				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
 			} else {
 				// Truncated children accounted as parent self.
 				other += cn.Total
 			}
 		}
+
 		if other > 0 {
-			var otherNode *treeNode
-			if otherIndex != -1 {
-				otherNode = cNodes[otherIndex]
-			} else {
-				otherNode = &treeNode{Name: lostDuringSerializationName, Self: other, Total: other}
-			}
-			tn.ChildrenNodes = append(tn.ChildrenNodes, otherNode)
+			otherNode := tn.insert(lostDuringSerializationName)
+			otherNode.Self += other
+			otherNode.Total += other
 		}
 
 		if len(tn.ChildrenNodes) > 0 {

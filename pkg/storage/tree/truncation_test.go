@@ -37,9 +37,21 @@ var _ = Describe("truncation", func() {
 			It("after serialization drops node 'a'", func() {
 				buf := &bytes.Buffer{}
 				treeA.SerializeTruncate(d, 3, buf)
-				treeB, err := Deserialize(d, buf)
+				b := buf.Bytes()
+				treeB, err := Deserialize(d, bytes.NewReader(b))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(treeB.StringWithEmpty()).To(Equal(treeStr(`"b" 2|"c" 3|"ls" 1|`)))
+
+				treeA.Insert([]byte("d"), uint64(1))
+
+				buf = &bytes.Buffer{}
+				treeA.SerializeTruncate(d, 3, buf)
+				b = buf.Bytes()
+
+				treeC, err := Deserialize(d, bytes.NewReader(b))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(treeC.StringWithEmpty()).To(Equal(treeStr(`"b" 2|"c" 3|"ls" 2|`)))
+				Expect(treeC.StringWithEmpty()).To(Equal(treeA.StringWithEmpty()))
 			})
 		})
 
