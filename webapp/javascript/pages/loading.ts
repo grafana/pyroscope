@@ -1,7 +1,10 @@
+/**
+ * returns true if at least one source is in 'loading' or 'reloading' state
+ */
 export function isLoadingOrReloading(
-  states: ('pristine' | 'loading' | 'reloading' | 'loaded')[]
+  sources: ('pristine' | 'loading' | 'reloading' | 'loaded')[]
 ) {
-  return states.every((state) => {
+  return sources.some((state) => {
     return state === 'loading' || state === 'reloading';
   });
 }

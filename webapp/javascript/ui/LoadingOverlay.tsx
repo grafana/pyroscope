@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import cx from 'classnames';
 import styles from './LoadingOverlay.module.css';
@@ -16,7 +16,7 @@ export function LoadingOverlay({
   /** where to position the spinner. use baseline when the component's vertical center is outside the viewport */
   spinnerPosition?: 'center' | 'baseline';
   active: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
   /** delay in ms before showing the overlay. this evicts a flick */
   delay?: number;
 }) {
@@ -51,7 +51,6 @@ export function LoadingOverlay({
       >
         <LoadingSpinner size="46px" />
       </div>
-
       {children}
     </div>
   );

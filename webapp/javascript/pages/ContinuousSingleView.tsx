@@ -141,7 +141,6 @@ function ContinuousSingleView() {
       <PageTitle title={formatTitle('Single', query)} />
       <div className="main-wrapper">
         <Toolbar />
-
         <Box>
           <LoadingOverlay active={isLoadingOrReloading([singleView.type])}>
             <TimelineChartWrapper
