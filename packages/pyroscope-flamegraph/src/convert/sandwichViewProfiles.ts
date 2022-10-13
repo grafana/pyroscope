@@ -27,7 +27,7 @@ export function calleesFlamebearer(
     const { name, children, total } = node;
     if (name === nodeName) {
       nodesArray.push(node);
-      result.numTicks = result.numTicks + total[0];
+      result.numTicks += total[0];
     }
     for (let i = 0; i < children.length; i += 1) {
       processTree(children[i]);
