@@ -40,7 +40,7 @@ The deletion will be logged like this:
 level=warn caller=phlaredb.go:231 ts=2022-10-05T13:19:09.770693308Z msg="disk utilization is high, deleted oldest block" path=data/anonymous/local/01GDZYHKKKY2ANY6PCJJZGT1N8
 ```
 
-[block format]: ../../architecture/block-format/
-[object-store]: ../configure-object-storage-backend/
+[block format]: {{< relref "../architecture/block-format/" >}}
+[object-store]: {{< relref "./configure-object-storage-backend.md" >}}
 [ULID]: https://github.com/ulid/spec
-[ingester]: ../../architecture/components/ingester/
+[ingester]: {{< relref "../architecture/components/ingester.md" >}}

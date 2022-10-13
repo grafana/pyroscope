@@ -74,10 +74,6 @@ Each of the following components builds an independent hash ring:
 
 - [Ingesters]({{< relref "../components/ingester.md" >}}) shard and replicate series.
 - [Distributors]({{< relref "../components/distributor.md" >}}) enforce rate limits.
-- [Compactors]({{< relref "../components/compactor/index.md" >}}) shard compaction workload.
-- [Store-gateways]({{< relref "../components/store-gateway.md" >}}) shard blocks to query from long-term storage.
-- [(Optional) Rulers]({{< relref "../components/ruler/index.md" >}}) shard rule groups to evaluate.
-- [(Optional) Alertmanagers]({{< relref "../components/alertmanager.md" >}}) shard tenants.
 
 ## How the hash ring is shared between Grafana Phlare instances
 
@@ -85,7 +81,7 @@ Hash ring data structures need to be shared between Grafana Phlare instances.
 To propagate changes to the hash ring, Grafana Phlare uses a key-value store.
 The key-value store is required and can be configured independently for the hash rings of different components.
 
-For more information, see the [key-value store documentation]({{< relref "../key-value-store.md" >}}).
+For more information, see the [memberlist documentation]({{< relref "../memberlist-and-the-gossip-protocol.md" >}}).
 
 ## Features that are built using the hash ring
 
@@ -94,5 +90,3 @@ Features that are built using the hash ring:
 
 - **Service discovery**: Instances can discover each other looking up who is registered in the ring.
 - **Heartbeating**: Instances periodically send an heartbeat to the ring to signal they're up and running. An instance is considered unhealthy if misses the heartbeat for some period of time.
-- **Zone-aware replication**: Zone-aware replication is the replication of data across failure domains and can be optionally enabled in Grafana Phlare. For more information, see [configuring zone-aware replication]({{< relref "../../configure/configuring-zone-aware-replication.md" >}}).
-- **Shuffle sharding**: Grafana Phlare optionally supports shuffle sharding in a multi-tenant cluster, to reduce the blast radius of an outage and better isolate tenants. For more information, refer to [configure shuffle sharding]({{< relref "../../configure/configuring-shuffle-sharding/index.md" >}}).
