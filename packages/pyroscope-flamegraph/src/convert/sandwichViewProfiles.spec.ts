@@ -17,12 +17,14 @@ describe('Sandwich view profiles', () => {
       format: 'single',
       levels: [
         [0, 400, 0, 0],
-        [0, 400, 100, 1],
-        [0, 300, 0, 2],
-        [0, 150, 150, 3, 150, 150, 150, 4],
+        [0, 400, 0, 1],
+        [0, 400, 100, 2],
+        [0, 300, 0, 3],
+        [0, 150, 150, 4, 150, 150, 150, 5],
       ],
       maxSelf: 150,
       names: [
+        'total',
         'name-2-2',
         'name-3-1',
         'specific-function-name',
