@@ -38,6 +38,7 @@ const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
   return (
     <>
       <div
+        data-testid="annotation_mark_wrapper"
         onClick={onClick}
         style={{ background: color.hex() }}
         className={styles.wrapper}

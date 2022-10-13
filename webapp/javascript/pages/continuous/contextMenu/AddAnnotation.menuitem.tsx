@@ -76,12 +76,14 @@ function AddAnnotation(props: AddAnnotationProps) {
                     label="Description"
                     variant="light"
                     errorMessage={errors.content?.message}
+                    data-testid="annotation_content_input"
                   />
                   <TextField
                     {...register('timestamp')}
                     label="Time"
                     type="text"
                     readOnly
+                    data-testid="annotation_timestamp_input"
                   />
                 </form>
               </PopoverBody>

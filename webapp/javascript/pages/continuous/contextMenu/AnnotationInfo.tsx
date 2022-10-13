@@ -43,15 +43,16 @@ const AnnotationInfo = ({
             <TextField
               {...register('content')}
               label="Description"
-              variant="light"
               errorMessage={errors.content?.message}
               readOnly
+              data-testid="annotation_content_input"
             />
             <TextField
               {...register('timestamp')}
               label="Time"
               type="text"
               readOnly
+              data-testid="annotation_timestamp_input"
             />
           </form>
         </PopoverBody>
