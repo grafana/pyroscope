@@ -28,7 +28,7 @@ For component specific documentation, refer to one of the following topics:
 
 - [Distributor]({{< relref "architecture/components/distributor.md" >}})
 - [Ingester]({{< relref "architecture/components/ingester.md" >}})
-- [Queryier]({{< relref "architecture/components/querier.md" >}})
+- [Querier]({{< relref "architecture/components/querier.md" >}})
 
 ## Flushing
 
