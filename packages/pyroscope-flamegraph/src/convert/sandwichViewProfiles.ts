@@ -5,6 +5,8 @@ import {
 } from '../FlameGraph/decode';
 import { flamebearersToTree } from './flamebearersToTree';
 
+import { tree1 } from './testData';
+
 export function calleesFlamebearer(
   f: Flamebearer,
   nodeName: string
@@ -36,18 +38,20 @@ export function calleesFlamebearer(
 
   processTree(tree);
 
-  const combinedNode =
-    nodesArray.length > 1
-      ? nodesArray.reduce(
-          (acc: any, node: any) => {
-            acc.children.push(node);
-            acc.total[0] += node.total[0];
+  const combinedNode = nodesArray.reduce(
+    (acc: any, node: any) => {
+      // to prevent displaying 2 total lines
+      if (node.name !== 'total') {
+        acc.children.push(node);
+        acc.total[0] += node.total[0];
+      } else {
+        return node;
+      }
 
-            return acc;
-          },
-          { total: [0], self: [0], key: '/total', name: 'total', children: [] }
-        )
-      : nodesArray[0];
+      return acc;
+    },
+    { total: [0], self: [0], key: '/total', name: 'total', children: [] }
+  );
 
   const processNode = (node: any, level: number, offsetLeft: number) => {
     const { name, children, self, total } = node;
