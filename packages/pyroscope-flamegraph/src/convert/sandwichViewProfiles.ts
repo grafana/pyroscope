@@ -36,7 +36,9 @@ export function calleesFlamebearer(
     }
   };
 
-  processTree(tree);
+  // mocked tree
+  // remove when implement final version
+  processTree(tree1);
 
   const combinedNode = nodesArray.reduce(
     (acc: any, node: any) => {
