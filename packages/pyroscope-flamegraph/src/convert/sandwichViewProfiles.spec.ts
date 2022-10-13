@@ -1,5 +1,5 @@
 import { calleesFlamebearer } from './sandwichViewProfiles';
-import { flamebearersToTree } from './convert';
+import { flamebearersToTree } from './flamebearersToTree';
 
 import { tree1 } from './testData';
 

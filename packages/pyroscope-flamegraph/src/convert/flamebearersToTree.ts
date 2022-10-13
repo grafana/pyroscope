@@ -1,3 +1,7 @@
+/* eslint-disable import/prefer-default-export */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
+
 import type { Flamebearer } from '@pyroscope/models/src';
 
 export function flamebearersToTree(f1: Flamebearer, f2?: Flamebearer) {

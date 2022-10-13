@@ -3,7 +3,7 @@ import {
   deltaDiffWrapper,
   deltaDiffWrapperReverse,
 } from '../FlameGraph/decode';
-import { flamebearersToTree } from './convert';
+import { flamebearersToTree } from './flamebearersToTree';
 
 export function calleesFlamebearer(
   f: Flamebearer,
