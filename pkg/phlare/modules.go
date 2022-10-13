@@ -286,6 +286,13 @@ func (s *statusService) GetBuildInfo(ctx context.Context, req *commonv1.GetBuild
 	}, nil
 }
 
+const (
+	// There is not standardised and generally used content-type for YAML,
+	// text/plain ensures the YAML is displayed in the browser instead of
+	// offered as a download
+	yamlContentType = "text/plain; charset=utf-8"
+)
+
 func (s *statusService) GetConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
 	body, err := yaml.Marshal(s.actualConfig)
 	if err != nil {
@@ -293,7 +300,7 @@ func (s *statusService) GetConfig(ctx context.Context, req *commonv1.GetConfigRe
 	}
 
 	return &httpbody.HttpBody{
-		ContentType: "text/plain; charset=utf-8",
+		ContentType: yamlContentType,
 		Data:        body,
 	}, nil
 }
@@ -305,7 +312,7 @@ func (s *statusService) GetDefaultConfig(ctx context.Context, req *commonv1.GetC
 	}
 
 	return &httpbody.HttpBody{
-		ContentType: "text/plain; charset=utf-8",
+		ContentType: yamlContentType,
 		Data:        body,
 	}, nil
 }
@@ -340,7 +347,7 @@ func (s *statusService) GetDiffConfig(ctx context.Context, req *commonv1.GetConf
 	}
 
 	return &httpbody.HttpBody{
-		ContentType: "text/plain; charset=utf-8",
+		ContentType: yamlContentType,
 		Data:        body,
 	}, nil
 }
