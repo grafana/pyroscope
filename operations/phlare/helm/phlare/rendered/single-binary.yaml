@@ -264,24 +264,3 @@ spec:
             name: phlare-dev-config
         - name: data
           emptyDir: {}
----
-# Source: phlare/templates/tests/test-connection.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: "phlare-dev-test-connection"
-  labels:
-    helm.sh/chart: phlare-0.1.0
-    app.kubernetes.io/name: phlare
-    app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    "helm.sh/hook": test-success
-spec:
-  containers:
-    - name: wget
-      image: busybox
-      command: ['wget']
-      args: ['phlare-dev:4100']
-  restartPolicy: Never
