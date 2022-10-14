@@ -49,6 +49,41 @@ function AddAnnotation(props: AddAnnotationProps) {
     }
   }, [setFocus, isPopoverOpen]);
 
+  const popoverContent = isPopoverOpen ? (
+    <>
+      <PopoverHeader>Add annotation</PopoverHeader>
+      <PopoverBody>
+        <form
+          id="annotation-form"
+          name="annotation-form"
+          onSubmit={handleSubmit((d) => {
+            onCreateAnnotation(d.content as string);
+          })}
+        >
+          <TextField
+            {...register('content')}
+            label="Description"
+            variant="light"
+            errorMessage={errors.content?.message}
+            data-testid="annotation_content_input"
+          />
+          <TextField
+            {...register('timestamp')}
+            label="Time"
+            type="text"
+            readOnly
+            data-testid="annotation_timestamp_input"
+          />
+        </form>
+      </PopoverBody>
+      <PopoverFooter>
+        <Button type="submit" kind="secondary" form="annotation-form">
+          Save
+        </Button>
+      </PopoverFooter>
+    </>
+  ) : null;
+
   return (
     <>
       <MenuItem key="focus" onClick={() => setPopoverOpen(true)}>
@@ -60,40 +95,7 @@ function AddAnnotation(props: AddAnnotationProps) {
           isModalOpen
           setModalOpenStatus={setPopoverOpen}
         >
-          {isPopoverOpen ? (
-            <>
-              <PopoverHeader>Add annotation</PopoverHeader>
-              <PopoverBody>
-                <form
-                  id="annotation-form"
-                  name="annotation-form"
-                  onSubmit={handleSubmit((d) => {
-                    onCreateAnnotation(d.content as string);
-                  })}
-                >
-                  <TextField
-                    {...register('content')}
-                    label="Description"
-                    variant="light"
-                    errorMessage={errors.content?.message}
-                    data-testid="annotation_content_input"
-                  />
-                  <TextField
-                    {...register('timestamp')}
-                    label="Time"
-                    type="text"
-                    readOnly
-                    data-testid="annotation_timestamp_input"
-                  />
-                </form>
-              </PopoverBody>
-              <PopoverFooter>
-                <Button type="submit" kind="secondary" form="annotation-form">
-                  Save
-                </Button>
-              </PopoverFooter>
-            </>
-          ) : null}
+          {popoverContent}
         </Popover>
       </Portal>
     </>

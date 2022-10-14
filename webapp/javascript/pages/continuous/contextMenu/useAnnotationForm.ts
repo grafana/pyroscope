@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
 import { getUTCdate, timezoneToOffset } from '@webapp/util/formatDate';
 
-interface IseAnnotationFormProps {
+interface UseAnnotationFormProps {
   timezone: 'browser' | 'utc';
   value: {
     content?: string;
@@ -19,7 +19,7 @@ const newAnnotationFormSchema = z.object({
 export const useAnnotationForm = ({
   value,
   timezone,
-}: IseAnnotationFormProps) => {
+}: UseAnnotationFormProps) => {
   const {
     register,
     handleSubmit,

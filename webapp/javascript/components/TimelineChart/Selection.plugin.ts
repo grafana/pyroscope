@@ -1,6 +1,6 @@
 /* eslint-disable */
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
-import { PlotType, CtxType, EventHolderType, EventType } from './types';
+import { PlotType, EventHolderType, EventType } from './types';
 import clamp from './clamp';
 import extractRange from './extractRange';
 
@@ -320,7 +320,10 @@ const handleHeight = 22;
       }
     });
 
-    plot.hooks.drawOverlay.push(function (plot: PlotType, ctx: CtxType) {
+    plot.hooks.drawOverlay.push(function (
+      plot: PlotType,
+      ctx: CanvasRenderingContext2D
+    ) {
       // draw selection
       if (selection.show && selectionIsSane()) {
         const plotOffset = plot.getPlotOffset();
@@ -382,7 +385,10 @@ const handleHeight = 22;
       }
     });
 
-    plot.hooks.draw.push(function (plot: PlotType, ctx: CtxType) {
+    plot.hooks.draw.push(function (
+      plot: PlotType,
+      ctx: CanvasRenderingContext2D
+    ) {
       const opts = plot.getOptions();
 
       if (

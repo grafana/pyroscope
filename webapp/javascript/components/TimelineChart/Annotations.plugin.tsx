@@ -3,7 +3,6 @@ import * as ReactDOM from 'react-dom';
 import Color from 'color';
 import { Provider } from 'react-redux';
 import store from '@webapp/redux/store';
-import { CtxType } from './types';
 import extractRange from './extractRange';
 import AnnotationMark from './AnnotationMark';
 
@@ -19,39 +18,11 @@ interface IFlotOptions extends jquery.flot.plotOptions {
   wrapperId?: string;
 }
 
+interface IPlot extends jquery.flot.plot, jquery.flot.plotOptions {}
+
 (function ($) {
-  function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
-    plot.hooks!.draw!.push((plot, ctx: CtxType) => {
-      const options: IFlotOptions = plot.getOptions();
-
-      if (options.annotations?.length) {
-        const plotOffset: { top: number; left: number } = plot.getPlotOffset();
-        const extractedX = extractRange(plot, 'x');
-        const extractedY = extractRange(plot, 'y');
-
-        options.annotations.forEach((a: AnnotationType) => {
-          const left: number =
-            Math.floor(extractedX.axis.p2c(a.timestamp * 1000)) +
-            plotOffset.left;
-
-          renderAnnotationMark({
-            annotation: a,
-            options,
-            left,
-          });
-
-          drawAnnotationLine({
-            ctx,
-            yMin: plotOffset.top,
-            yMax:
-              Math.floor(extractedY.axis.p2c(extractedY.axis.min)) +
-              plotOffset.top,
-            left,
-            color: a.color,
-          });
-        });
-      }
-    });
+  function init(plot: IPlot) {
+    plot.hooks!.draw!.push(renderAnnotationListInTimeline);
   }
 
   $.plot.plugins.push({
@@ -62,6 +33,40 @@ interface IFlotOptions extends jquery.flot.plotOptions {
   });
 })(jQuery);
 
+function renderAnnotationListInTimeline(
+  plot: IPlot,
+  ctx: CanvasRenderingContext2D
+) {
+  const options: IFlotOptions = plot.getOptions();
+
+  if (options.annotations?.length) {
+    const plotOffset: { top: number; left: number } = plot.getPlotOffset();
+    const extractedX = extractRange(plot, 'x');
+    const extractedY = extractRange(plot, 'y');
+
+    options.annotations.forEach((annotation: AnnotationType) => {
+      const left: number =
+        Math.floor(extractedX.axis.p2c(annotation.timestamp * 1000)) +
+        plotOffset.left;
+
+      renderAnnotationIcon({
+        annotation,
+        options,
+        left,
+      });
+
+      drawAnnotationLine({
+        ctx,
+        yMin: plotOffset.top,
+        yMax:
+          Math.floor(extractedY.axis.p2c(extractedY.axis.min)) + plotOffset.top,
+        left,
+        color: annotation.color,
+      });
+    });
+  }
+}
+
 function drawAnnotationLine({
   ctx,
   color,
@@ -69,21 +74,21 @@ function drawAnnotationLine({
   yMax,
   yMin,
 }: {
-  ctx: CtxType;
+  ctx: CanvasRenderingContext2D;
   color: Color;
   left: number;
   yMax: number;
   yMin: number;
 }) {
   ctx.beginPath();
-  ctx.strokeStyle = color;
+  ctx.strokeStyle = color.hex();
   ctx.lineWidth = 1;
   ctx.moveTo(left + 0.5, yMax);
   ctx.lineTo(left + 0.5, yMin);
   ctx.stroke();
 }
 
-function renderAnnotationMark({
+function renderAnnotationIcon({
   annotation,
   options,
   left,
@@ -92,9 +97,10 @@ function renderAnnotationMark({
   options: { wrapperId?: string };
   left: number;
 }) {
-  const annotationMarkElementId = 'annotation_mark_'.concat(
-    String(annotation.timestamp)
-  );
+  const annotationMarkElementId =
+    `${options.wrapperId}_annotation_mark_`.concat(
+      String(annotation.timestamp)
+    );
 
   const annotationMarkElement = $(`#${annotationMarkElementId}`);
 

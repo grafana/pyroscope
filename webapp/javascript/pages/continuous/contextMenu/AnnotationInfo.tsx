@@ -9,13 +9,16 @@ import { AddAnnotationProps } from './AddAnnotation.menuitem';
 import { useAnnotationForm } from './useAnnotationForm';
 
 interface AnnotationInfo {
+  /** where to put the popover in the DOM */
   container: AddAnnotationProps['container'];
+
+  /** where to position the popover */
   popoverAnchorPoint: AddAnnotationProps['popoverAnchorPoint'];
   timestamp: AddAnnotationProps['timestamp'];
   timezone: AddAnnotationProps['timezone'];
   value: { content: string; timestamp: number };
   isOpen: boolean;
-  setIsOpen: Dispatch<SetStateAction<boolean>>;
+  onClose: () => void;
   popoverClassname?: string;
 }
 
@@ -25,7 +28,7 @@ const AnnotationInfo = ({
   value,
   timezone,
   isOpen,
-  setIsOpen,
+  onClose,
   popoverClassname,
 }: AnnotationInfo) => {
   const { register, errors } = useAnnotationForm({ value, timezone });
@@ -35,7 +38,7 @@ const AnnotationInfo = ({
       <Popover
         anchorPoint={{ x: popoverAnchorPoint.x, y: popoverAnchorPoint.y }}
         isModalOpen={isOpen}
-        setModalOpenStatus={setIsOpen}
+        setModalOpenStatus={onClose as Dispatch<SetStateAction<boolean>>}
         className={popoverClassname}
       >
         <PopoverBody>
@@ -57,11 +60,7 @@ const AnnotationInfo = ({
           </form>
         </PopoverBody>
         <PopoverFooter>
-          <Button
-            onClick={() => setIsOpen(false)}
-            kind="secondary"
-            form="annotation-form"
-          >
+          <Button onClick={onClose} kind="secondary" form="annotation-form">
             Close
           </Button>
         </PopoverFooter>
