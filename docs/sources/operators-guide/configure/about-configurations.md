@@ -13,7 +13,7 @@ You can configure Grafana Phlare via a ([YAML](https://en.wikipedia.org/wiki/YAM
 
 To see the most common CLI flags that you need to get started with Grafana Phlare, run the `phlare -help` command. To see all of the available CLI flags, run the `phlare -help-all` command.
 
-To see the current configuration state of any component, use the `/config` HTTP API endpoint.
+To see the current configuration state of any component, use the `/api/v1/status/config` HTTP API endpoint.
 
 
 ## Operational considerations
