@@ -28,6 +28,7 @@ const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
   const { offset } = useTimeZone();
   const [visible, toggle] = useState(false);
   const [target, setTarget] = useState<Element>();
+  const [hovered, setHovered] = useState(false);
 
   const onClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     e.stopPropagation();
@@ -40,9 +41,11 @@ const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
       <div
         data-testid="annotation_mark_wrapper"
         onClick={onClick}
-        style={{ background: color.hex() }}
+        style={{ background: hovered ? color.darken(0.2).hex() : color.hex() }}
         className={styles.wrapper}
         role="none"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
         <FontAwesomeIcon className={styles.icon} icon={getIcon(type)} />
       </div>
