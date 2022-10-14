@@ -6,7 +6,7 @@
     "extraArgs": {
       "log.level": "debug"
     },
-    "extraEnvVars": null,
+    "extraEnvVars": {},
     "extraLabels": {},
     "extraVolumeMounts": [],
     "extraVolumes": [],
