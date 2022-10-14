@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.51.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.3...@pyroscope/webapp@1.51.4) (2022-10-14)
+
+
+### Bug Fixes
+
+* **webapp:** make app selector/timerange dropdowns to be above loading overlay ([#1618](https://github.com/pyroscope-io/pyroscope/issues/1618)) ([f4c8f17](https://github.com/pyroscope-io/pyroscope/commit/f4c8f1716e5a7352ddc4387dbf5613964ccd64e9))
+
+
+
+
+
 ## [1.51.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.2...@pyroscope/webapp@1.51.3) (2022-10-13)
 
 **Note:** Version bump only for package @pyroscope/webapp
