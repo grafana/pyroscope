@@ -1,6 +1,6 @@
 import React from 'react';
 import Color from 'color';
-
+import clsx from 'clsx';
 import styles from './TimelineTitle.module.scss';
 
 const unitsToFlamegraphTitle = {
@@ -20,14 +20,16 @@ const unitsToFlamegraphTitle = {
 interface TimelineTitleProps {
   color?: Color;
   titleKey?: keyof typeof unitsToFlamegraphTitle;
+  className?: string;
 }
 
 export default function TimelineTitle({
   color,
   titleKey = '',
+  className,
 }: TimelineTitleProps) {
   return (
-    <div className={styles.timelineTitle}>
+    <div className={clsx([styles.timelineTitle, className])}>
       {color && (
         <span
           className={styles.colorReference}
