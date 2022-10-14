@@ -11,7 +11,7 @@ weight: 10
 
 You can configure Grafana Phlare via a ([YAML](https://en.wikipedia.org/wiki/YAML)-based) configuration file or CLI (command-line-interface) flags. It is best to specify your configuration via the configuration file rather than CLI flags. Every parameter that is set in the configuration file can also be set via a corresponding CLI flag. If you specify both CLI flags and configuration parameters, CLI flags take precedence over corresponding values in a configuration file. You can specify the configuration file by using the `-config.file` CLI flag.
 
-To see the most common CLI flags that you need to get started with Grafana Phlare, run the `phlare -help` command. To see all of the available CLI flags, run the `phlare -help-all` command.
+To see the CLI flags that you need to get started with Grafana Phlare, run the `phlare -help` command.
 
 To see the current configuration state of any component, use the `/api/v1/status/config` HTTP API endpoint.
 
