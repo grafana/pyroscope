@@ -1,8 +1,13 @@
 describe('Annotations', () => {
   it('add annotation flow works as expected', () => {
-    cy.visit('/').wait(3000);
+    const basePath = Cypress.env('basePath') || '';
+    cy.intercept(`${basePath}**/label-values**`).as('labelValues');
 
-    cy.findByTestId('timeline-single').click();
+    cy.visit('/');
+
+    cy.wait('@labelValues').wait(1000);
+
+    cy.get('canvas.flot-overlay').click();
 
     cy.get('li[role=menuitem]').contains('Add annotation').click();
 
