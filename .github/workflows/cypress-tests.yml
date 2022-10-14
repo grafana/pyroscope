@@ -14,6 +14,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.18'
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.18.0'
@@ -62,6 +65,9 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.18.0'
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.18'
       - name: Cache go mod directories
         uses: actions/cache@v2
         with:
@@ -105,6 +111,9 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.18.0'
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.18'
       - name: Cache go mod directories
         uses: actions/cache@v2
         with:
