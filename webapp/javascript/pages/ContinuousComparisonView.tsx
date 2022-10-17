@@ -13,6 +13,7 @@ import {
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
@@ -162,6 +163,11 @@ function ComparisonApp() {
                 )
               }
             >
+              <SyncTimelines
+                timeline={leftTimeline}
+                titleKey="baseline"
+                selection={{ from: leftFrom, to: leftUntil }}
+              />
               <TimelineChartWrapper
                 key="timeline-chart-left"
                 id="timeline-chart-left"
@@ -221,6 +227,11 @@ function ComparisonApp() {
                 )
               }
             >
+              <SyncTimelines
+                timeline={rightTimeline}
+                titleKey="comparison"
+                selection={{ from: rightFrom, to: rightUntil }}
+              />
               <TimelineChartWrapper
                 key="timeline-chart-right"
                 id="timeline-chart-right"

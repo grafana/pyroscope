@@ -21,6 +21,7 @@ import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
@@ -150,6 +151,11 @@ function ComparisonDiffApp() {
                 dispatch(fetchTagValues({ query, label }));
               }}
             />
+            <SyncTimelines
+              timeline={leftTimeline}
+              titleKey="baseline"
+              selection={{ from: leftFrom, to: leftUntil }}
+            />
             <TimelineChartWrapper
               data-testid="timeline-left"
               key="timeline-chart-left"
@@ -185,6 +191,11 @@ function ComparisonDiffApp() {
               onSelectedLabel={(label, query) => {
                 dispatch(fetchTagValues({ query, label }));
               }}
+            />
+            <SyncTimelines
+              timeline={rightTimeline}
+              titleKey="comparison"
+              selection={{ from: rightFrom, to: rightUntil }}
             />
             <TimelineChartWrapper
               data-testid="timeline-right"

@@ -1,0 +1,31 @@
+$main_color: #87650e;
+
+.wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff2cd;
+  color: $main_color;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid $main_color;
+  padding: 5px;
+  font-weight: bold;
+  line-height: 16px;
+}
+
+.syncButton {
+  border: 2px solid $main_color;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  display: flex;
+  flex-shrink: 0;
+  margin-left: 10px;
+
+  &:hover {
+    border-color: darken($color: $main_color, $amount: 10);
+    color: darken($color: $main_color, $amount: 10);
+  }
+}
