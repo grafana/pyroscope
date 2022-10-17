@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 
 import { Profile } from '@pyroscope/models/src';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
-import { sandwichViewProfiles } from '@pyroscope/flamegraph/src/convert/sandwichViewProfiles';
+import { calleesProfile } from '@pyroscope/flamegraph/src/convert/sandwichViewProfiles';
 import Box from '@webapp/ui/Box';
 import PageTitle from '@webapp/components/PageTitle';
 import Toolbar from '@webapp/components/Toolbar';
@@ -14,13 +14,11 @@ import { formatTitle } from './formatTitle';
 import styles from './SandwichView.module.scss';
 
 export default function SandwichView() {
-  const [selectedFunction, setSelectedFunction] = useState('name');
+  const [selectedFunction, setSelectedFunction] = useState('total');
   const { query } = useAppSelector(selectQueries);
 
-  const [profile] = useMemo(
-    () =>
-      selectedFunction &&
-      sandwichViewProfiles(sandwichProfile, selectedFunction),
+  const profile = useMemo(
+    () => selectedFunction && calleesProfile(sandwichProfile, selectedFunction),
     [selectedFunction]
   );
 
@@ -38,17 +36,7 @@ export default function SandwichView() {
           <h3>Sandwich view</h3>
           <button onClick={() => setSelectedFunction('name')}>reset</button>
           <select value={selectedFunction} onChange={handleSelectChange}>
-            {/* {sandwichProfile.flamebearer.names.map((name) => ( */}
-            {/* array on mocked tree function names */}
-            {[
-              'name',
-              'specific-function-name',
-              'name-3-2',
-              'name-2-2',
-              'name-3-1',
-              'name-5-1',
-              'name-5-2',
-            ].map((name) => (
+            {sandwichProfile.flamebearer.names.map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>

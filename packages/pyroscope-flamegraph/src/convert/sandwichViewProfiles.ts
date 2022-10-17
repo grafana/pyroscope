@@ -5,8 +5,6 @@ import {
 } from '../FlameGraph/decode';
 import { flamebearersToTree } from './flamebearersToTree';
 
-import { tree1 } from './testData';
-
 export function calleesFlamebearer(
   f: Flamebearer,
   nodeName: string
@@ -38,7 +36,7 @@ export function calleesFlamebearer(
 
   // mocked tree
   // remove when implement final version
-  processTree(tree1);
+  processTree(tree);
 
   const combinedNode = nodesArray.reduce(
     (acc: any, node: any) => {
@@ -79,10 +77,7 @@ export function calleesFlamebearer(
   return result;
 }
 
-export function sandwichViewProfiles(
-  p: Profile,
-  nodeName: string
-): [Profile, Profile] {
+export function calleesProfile(p: Profile, nodeName: string): Profile {
   const copy = JSON.parse(JSON.stringify(p));
   copy.flamebearer.levels = deltaDiffWrapper('single', copy.flamebearer.levels);
   const calleesResultFlamebearer = calleesFlamebearer(
@@ -94,14 +89,9 @@ export function sandwichViewProfiles(
     calleesResultFlamebearer.levels
   );
 
-  return [
-    {
-      version: 1,
-      flamebearer: calleesResultFlamebearer,
-      metadata: copy.metadata,
-    },
-    {
-      // not implemented
-    } as Profile,
-  ];
+  return {
+    version: 1,
+    flamebearer: calleesResultFlamebearer,
+    metadata: copy.metadata,
+  };
 }
