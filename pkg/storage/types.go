@@ -124,7 +124,6 @@ type BadgerDBWithCache interface {
 	BadgerDB
 	CacheLayer
 
-	Close()
 	Size() bytesize.ByteSize
 	CacheSize() uint64
 
