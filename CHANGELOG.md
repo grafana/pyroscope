@@ -1,3 +1,14 @@
+# [0.32.0](https://github.com/pyroscope-io/pyroscope/compare/v0.31.0...v0.32.0) (2022-10-17)
+
+
+### Bug Fixes
+
+* disable ptrace capability check for dotnetspy ([#1622](https://github.com/pyroscope-io/pyroscope/issues/1622)) ([68c8cfc](https://github.com/pyroscope-io/pyroscope/commit/68c8cfc5a5e64eb3e818284efcfdd54196673e36))
+* make adhoc table fit width ([#1591](https://github.com/pyroscope-io/pyroscope/issues/1591)) ([da74fe8](https://github.com/pyroscope-io/pyroscope/commit/da74fe896536b97911d9cf00a9288c64dda77a28))
+* **webapp:** make app selector/timerange dropdowns to be above loading overlay ([#1618](https://github.com/pyroscope-io/pyroscope/issues/1618)) ([f4c8f17](https://github.com/pyroscope-io/pyroscope/commit/f4c8f1716e5a7352ddc4387dbf5613964ccd64e9))
+
+
+
 # [0.31.0](https://github.com/pyroscope-io/pyroscope/compare/v0.30.0...v0.31.0) (2022-10-06)
 
 
