@@ -1,3 +1,7 @@
+/* eslint-disable import/prefer-default-export */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
+
 import type { Profile, Flamebearer } from '@pyroscope/models/src';
 import {
   deltaDiffWrapper,
@@ -5,10 +9,42 @@ import {
 } from '../FlameGraph/decode';
 import { flamebearersToTree } from './flamebearersToTree';
 
-export function calleesFlamebearer(
-  f: Flamebearer,
-  nodeName: string
-): Flamebearer {
+export const treeToFlamebearer = (tree) => {
+  const flamebearerData: {
+    maxSelf: number;
+    levels: number[][];
+    names: string[];
+  } = {
+    maxSelf: 100,
+    names: [],
+    levels: [],
+  };
+
+  const processNode = (node: any, level: number, offsetLeft: number) => {
+    const { name, children, self, total } = node;
+    flamebearerData.names.push(name);
+    flamebearerData.levels[level] ||= [];
+    flamebearerData.maxSelf = Math.max(flamebearerData.maxSelf, self[0] || 0);
+    flamebearerData.levels[level] = flamebearerData.levels[level].concat([
+      offsetLeft,
+      total[0] || 0,
+      self[0] || 0,
+      flamebearerData.names.length - 1,
+    ]);
+
+    for (let i = 0; i < children.length; i += 1) {
+      const ol = processNode(children[i], level + 1, offsetLeft);
+      offsetLeft += ol;
+    }
+    return total[0] || 0;
+  };
+
+  processNode(tree, 0, 0);
+
+  return flamebearerData;
+};
+
+function calleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
   const result: Flamebearer = {
     format: 'single',
     numTicks: 0,
@@ -34,8 +70,6 @@ export function calleesFlamebearer(
     }
   };
 
-  // mocked tree
-  // remove when implement final version
   processTree(tree);
 
   const combinedNode = nodesArray.reduce(
@@ -53,28 +87,9 @@ export function calleesFlamebearer(
     { total: [0], self: [0], key: '/total', name: 'total', children: [] }
   );
 
-  const processNode = (node: any, level: number, offsetLeft: number) => {
-    const { name, children, self, total } = node;
-    result.names.push(name);
-    result.levels[level] ||= [];
-    result.maxSelf = Math.max(result.maxSelf, self[0] || 0);
-    result.levels[level] = result.levels[level].concat([
-      offsetLeft,
-      total[0] || 0,
-      self[0] || 0,
-      result.names.length - 1,
-    ]);
+  const flamebearersData = treeToFlamebearer(combinedNode);
 
-    for (let i = 0; i < children.length; i += 1) {
-      const ol = processNode(children[i], level + 1, offsetLeft);
-      offsetLeft += ol;
-    }
-    return total[0] || 0;
-  };
-
-  processNode(combinedNode, 0, 0);
-
-  return result;
+  return { ...result, ...flamebearersData };
 }
 
 export function calleesProfile(p: Profile, nodeName: string): Profile {

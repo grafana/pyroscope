@@ -1,6 +1,6 @@
 const specificFunctionName = 'specific-function-name';
 
-export const tree1 = {
+export const tree = {
   name: 'name',
   key: '/name',
   self: [0],

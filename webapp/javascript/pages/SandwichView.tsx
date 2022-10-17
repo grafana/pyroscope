@@ -43,7 +43,6 @@ export default function SandwichView() {
             ))}
           </select>
           <br />
-          mocked tree
           <br />
           {/* will be moved to flamegraph package */}
           <div className={styles.sandwich}>
