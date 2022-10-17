@@ -44,7 +44,10 @@ export const treeToFlamebearer = (tree) => {
   return flamebearerData;
 };
 
-function calleesFlamebearer(f: Flamebearer, nodeName: string): Flamebearer {
+export function calleesFlamebearer(
+  f: Flamebearer,
+  nodeName: string
+): Flamebearer {
   const result: Flamebearer = {
     format: 'single',
     numTicks: 0,
