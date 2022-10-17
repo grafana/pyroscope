@@ -3,7 +3,7 @@
 // Provenance-includes-license: Apache-2.0
 // Provenance-includes-copyright: The Cortex Authors.
 
-package bucket
+package objstore
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/s3"
 
-	mimir_s3 "github.com/grafana/mimir/pkg/storage/bucket/s3"
+	phlare_s3 "github.com/grafana/phlare/pkg/objstore/providers/s3"
 )
 
 // TenantConfigProvider defines a per-tenant config provider.
@@ -85,7 +85,7 @@ func (b *SSEBucketClient) getCustomS3SSEConfig() (encrypt.ServerSide, error) {
 		return nil, nil
 	}
 
-	cfg := mimir_s3.SSEConfig{
+	cfg := phlare_s3.SSEConfig{
 		Type:                 sseType,
 		KMSKeyID:             b.cfgProvider.S3SSEKMSKeyID(b.userID),
 		KMSEncryptionContext: b.cfgProvider.S3SSEKMSEncryptionContext(b.userID),
