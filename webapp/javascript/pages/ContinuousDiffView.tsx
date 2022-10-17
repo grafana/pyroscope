@@ -7,6 +7,7 @@ import {
   actions,
   fetchTagValues,
   selectQueries,
+  selectTimelineSides,
 } from '@webapp/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
@@ -23,11 +24,13 @@ import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import PageTitle from '@webapp/components/PageTitle';
 import { formatTitle } from './formatTitle';
+import { isLoadingOrReloading } from './loading';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -47,6 +50,7 @@ function ComparisonDiffApp() {
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
   const { leftTimeline, rightTimeline } = useTimelines();
 
+  const timelines = useAppSelector(selectTimelineSides);
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
     diffView.profile
   );
@@ -104,129 +108,149 @@ function ComparisonDiffApp() {
           }}
         />
         <Box>
-          <TimelineChartWrapper
-            data-testid="timeline-main"
-            id="timeline-chart-diff"
-            format="lines"
-            height="125px"
-            timelineA={leftTimeline}
-            timelineB={rightTimeline}
-            onSelect={(from, until) => {
-              dispatch(actions.setFromAndUntil({ from, until }));
-            }}
-            selection={{
-              left: {
-                from: leftFrom,
-                to: leftUntil,
-                color: leftColor,
-                overlayColor: leftColor.alpha(0.3),
-              },
-              right: {
-                from: rightFrom,
-                to: rightUntil,
-                color: rightColor,
-                overlayColor: rightColor.alpha(0.3),
-              },
-            }}
-            selectionType="double"
-            timezone={timezone}
-            title={
-              <TimelineTitle titleKey={diffView.profile?.metadata.units} />
-            }
-          />
-        </Box>
-        <div className="diff-instructions-wrapper">
-          <Box className="diff-instructions-wrapper-side">
-            <TimelineTitle titleKey="baseline" color={leftColor} />
-            <TagsBar
-              query={leftQuery}
-              tags={leftTags}
-              onSetQuery={(q) => {
-                dispatch(actions.setLeftQuery(q));
-                if (leftQuery === q) {
-                  dispatch(actions.refresh());
-                }
-              }}
-              onSelectedLabel={(label, query) => {
-                dispatch(fetchTagValues({ query, label }));
-              }}
-            />
-            <SyncTimelines
-              timeline={leftTimeline}
-              titleKey="baseline"
-              selection={{ from: leftFrom, to: leftUntil }}
-            />
+          <LoadingOverlay
+            active={isLoadingOrReloading([
+              timelines.left.type,
+              timelines.right.type,
+            ])}
+          >
             <TimelineChartWrapper
-              data-testid="timeline-left"
-              key="timeline-chart-left"
-              id="timeline-chart-left"
+              data-testid="timeline-main"
+              id="timeline-chart-diff"
+              format="lines"
+              height="125px"
               timelineA={leftTimeline}
-              selectionWithHandler
+              timelineB={rightTimeline}
               onSelect={(from, until) => {
-                dispatch(actions.setLeft({ from, until }));
+                dispatch(actions.setFromAndUntil({ from, until }));
               }}
               selection={{
                 left: {
                   from: leftFrom,
                   to: leftUntil,
-                  color: selectionColor,
-                  overlayColor: selectionColor.alpha(0.3),
+                  color: leftColor,
+                  overlayColor: leftColor.alpha(0.3),
                 },
-              }}
-              selectionType="single"
-              timezone={timezone}
-            />
-          </Box>
-          <Box className="diff-instructions-wrapper-side">
-            <TimelineTitle titleKey="comparison" color={rightColor} />
-            <TagsBar
-              query={rightQuery}
-              tags={rightTags}
-              onSetQuery={(q) => {
-                dispatch(actions.setRightQuery(q));
-                if (rightQuery === q) {
-                  dispatch(actions.refresh());
-                }
-              }}
-              onSelectedLabel={(label, query) => {
-                dispatch(fetchTagValues({ query, label }));
-              }}
-            />
-            <SyncTimelines
-              timeline={rightTimeline}
-              titleKey="comparison"
-              selection={{ from: rightFrom, to: rightUntil }}
-            />
-            <TimelineChartWrapper
-              data-testid="timeline-right"
-              key="timeline-chart-right"
-              id="timeline-chart-right"
-              selectionWithHandler
-              timelineA={rightTimeline}
-              onSelect={(from, until) => {
-                dispatch(actions.setRight({ from, until }));
-              }}
-              selection={{
                 right: {
                   from: rightFrom,
                   to: rightUntil,
-                  color: selectionColor,
-                  overlayColor: selectionColor.alpha(0.3),
+                  color: rightColor,
+                  overlayColor: rightColor.alpha(0.3),
                 },
               }}
-              selectionType="single"
+              selectionType="double"
               timezone={timezone}
+              title={
+                <TimelineTitle titleKey={diffView.profile?.metadata.units} />
+              }
             />
+          </LoadingOverlay>
+        </Box>
+        <div className="diff-instructions-wrapper">
+          <Box className="diff-instructions-wrapper-side">
+            <LoadingOverlay
+              active={isLoadingOrReloading([timelines.left.type])}
+            >
+              <TimelineTitle titleKey="baseline" color={leftColor} />
+              <TagsBar
+                query={leftQuery}
+                tags={leftTags}
+                onSetQuery={(q) => {
+                  dispatch(actions.setLeftQuery(q));
+                  if (leftQuery === q) {
+                    dispatch(actions.refresh());
+                  }
+                }}
+                onSelectedLabel={(label, query) => {
+                  dispatch(fetchTagValues({ query, label }));
+                }}
+              />
+              <SyncTimelines
+                timeline={leftTimeline}
+                titleKey="baseline"
+                selection={{ from: leftFrom, to: leftUntil }}
+              />
+              <TimelineChartWrapper
+                data-testid="timeline-left"
+                key="timeline-chart-left"
+                id="timeline-chart-left"
+                timelineA={leftTimeline}
+                selectionWithHandler
+                onSelect={(from, until) => {
+                  dispatch(actions.setLeft({ from, until }));
+                }}
+                selection={{
+                  left: {
+                    from: leftFrom,
+                    to: leftUntil,
+                    color: selectionColor,
+                    overlayColor: selectionColor.alpha(0.3),
+                  },
+                }}
+                selectionType="single"
+                timezone={timezone}
+              />
+            </LoadingOverlay>
+          </Box>
+          <Box className="diff-instructions-wrapper-side">
+            <LoadingOverlay
+              active={isLoadingOrReloading([timelines.right.type])}
+            >
+              <TimelineTitle titleKey="comparison" color={rightColor} />
+              <TagsBar
+                query={rightQuery}
+                tags={rightTags}
+                onSetQuery={(q) => {
+                  dispatch(actions.setRightQuery(q));
+                  if (rightQuery === q) {
+                    dispatch(actions.refresh());
+                  }
+                }}
+                onSelectedLabel={(label, query) => {
+                  dispatch(fetchTagValues({ query, label }));
+                }}
+              />
+              <SyncTimelines
+                timeline={rightTimeline}
+                titleKey="comparison"
+                selection={{ from: rightFrom, to: rightUntil }}
+              />
+              <TimelineChartWrapper
+                data-testid="timeline-right"
+                key="timeline-chart-right"
+                id="timeline-chart-right"
+                selectionWithHandler
+                timelineA={rightTimeline}
+                onSelect={(from, until) => {
+                  dispatch(actions.setRight({ from, until }));
+                }}
+                selection={{
+                  right: {
+                    from: rightFrom,
+                    to: rightUntil,
+                    color: selectionColor,
+                    overlayColor: selectionColor.alpha(0.3),
+                  },
+                }}
+                selectionType="single"
+                timezone={timezone}
+              />
+            </LoadingOverlay>
           </Box>
         </div>
         <Box>
-          <TimelineTitle titleKey="diff" />
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={diffView.profile}
-            ExportData={exportData}
-            colorMode={colorMode}
-          />
+          <LoadingOverlay
+            active={isLoadingOrReloading([diffView.type])}
+            spinnerPosition="baseline"
+          >
+            <TimelineTitle titleKey="diff" />
+            <FlamegraphRenderer
+              showCredit={false}
+              profile={diffView.profile}
+              ExportData={exportData}
+              colorMode={colorMode}
+            />
+          </LoadingOverlay>
         </Box>
       </div>
     </div>

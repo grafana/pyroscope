@@ -76,23 +76,20 @@ type ComparisonView = {
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile }
-    | { type: 'failed'; profile?: Profile };
+    | { type: 'reloading'; profile: Profile };
 
   right:
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile }
-    | { type: 'failed'; profile?: Profile };
+    | { type: 'reloading'; profile: Profile };
 };
 
 type DiffView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
   | { type: 'loaded'; profile: Profile }
-  | { type: 'reloading'; profile: Profile }
-  | { type: 'failed'; profile?: Profile };
+  | { type: 'reloading'; profile: Profile };
 
 type DiffView2 = ComparisonView;
 
@@ -100,8 +97,7 @@ type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
   | { type: 'reloading'; timeline: Timeline }
-  | { type: 'loaded'; timeline: Timeline }
-  | { type: 'failed'; timeline: Timeline };
+  | { type: 'loaded'; timeline: Timeline };
 
 type TagsData =
   | { type: 'pristine' }
@@ -845,8 +841,14 @@ export const continuousSlice = createSlice({
     /*      Timeline Sides       */
     /*****************************/
     builder.addCase(fetchSideTimelines.pending, (state) => {
-      state.leftTimeline = { ...state.leftTimeline, type: 'loading' };
-      state.rightTimeline = { ...state.rightTimeline, type: 'loading' };
+      state.leftTimeline = {
+        ...state.leftTimeline,
+        type: getNextStateFromPending(state.leftTimeline.type),
+      };
+      state.rightTimeline = {
+        ...state.rightTimeline,
+        type: getNextStateFromPending(state.leftTimeline.type),
+      };
     });
     builder.addCase(fetchSideTimelines.fulfilled, (state, action) => {
       state.leftTimeline = {
@@ -859,30 +861,8 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(
-      fetchSideTimelines.rejected,
-      (state, action: ShamefulAny) => {
-        let type: TimelineState['type'] = 'failed';
-
-        if (
-          action?.meta?.rejectedWithValue &&
-          action?.payload?.rejectedWithValue
-        ) {
-          type = action?.payload?.rejectedWithValue;
-        } else if (action.error.message === 'unmount') {
-          type = 'loaded';
-        }
-
-        state.leftTimeline = {
-          ...state.leftTimeline,
-          type,
-        };
-        state.rightTimeline = {
-          ...state.rightTimeline,
-          type,
-        };
-      }
-    );
+    // TODO
+    builder.addCase(fetchSideTimelines.rejected, () => {});
 
     /***********************/
     /*      Diff View      */
@@ -1111,6 +1091,13 @@ export const selectAppTags = (query?: Query) => (state: RootState) => {
   } as TagsState;
 };
 
+export const selectTimelineSides = (state: RootState) => {
+  return {
+    left: state.continuous.leftTimeline,
+    right: state.continuous.rightTimeline,
+  };
+};
+
 export const selectTimelineSidesData = (state: RootState) => {
   return {
     left: state.continuous.leftTimeline.timeline,
@@ -1133,3 +1120,13 @@ export const selectAnnotationsOrDefault = (state: RootState) => {
   }
   return [];
 };
+
+function getNextStateFromPending(
+  prevState: 'pristine' | 'loading' | 'reloading' | 'loaded'
+) {
+  if (prevState === 'pristine' || prevState === 'loading') {
+    return 'loading';
+  }
+
+  return 'reloading';
+}
