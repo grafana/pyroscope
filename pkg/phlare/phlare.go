@@ -36,6 +36,8 @@ import (
 	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/ingester"
 	"github.com/grafana/phlare/pkg/objstore"
+	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/tenant"
@@ -68,12 +70,19 @@ func newDefaultConfig() *Config {
 }
 
 type StorageConfig struct {
-	// TODO: This is probably to simple and will need needs replacing
-	BucketConfig string `yaml:"bucketConfig,omitempty"`
+	Bucket objstoreclient.Config `yaml:",inline"`
+}
+
+func (c *StorageConfig) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
+	c.Bucket.RegisterFlagsWithPrefix("storage.", f, phlarecontext.Logger(ctx))
+}
+
+func (c *Config) RegisterFlags(f *flag.FlagSet) {
+	c.RegisterFlagsWithContext(context.Background(), f)
 }
 
 // RegisterFlags registers flag.
-func (c *Config) RegisterFlags(f *flag.FlagSet) {
+func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
 	// Set the default module list to 'all'
 	c.Target = []string{All}
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
@@ -88,6 +97,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.Querier.RegisterFlags(f)
 	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
+	c.Storage.RegisterFlagsWithContext(ctx, f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.

@@ -3,7 +3,7 @@
 // Provenance-includes-license: Apache-2.0
 // Provenance-includes-copyright: The Cortex Authors.
 
-package bucket
+package client
 
 import (
 	"bytes"
@@ -19,8 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/grafana/mimir/pkg/storage/bucket/filesystem"
-	util_log "github.com/grafana/mimir/pkg/util/log"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 )
 
 const (
@@ -91,7 +90,7 @@ func TestNewClient(t *testing.T) {
 			require.NoError(t, err)
 
 			// Instance a new bucket client from the config
-			bucketClient, err := NewClient(context.Background(), cfg, "test", util_log.Logger, nil)
+			bucketClient, err := NewBucket(context.Background(), cfg, "test")
 			require.Equal(t, testData.expectedErr, err)
 
 			if testData.expectedErr == nil {
@@ -192,7 +191,7 @@ func TestNewPrefixedBucketClient(t *testing.T) {
 			StoragePrefix: "prefix",
 		}
 
-		client, err := NewClient(ctx, cfg, "test", util_log.Logger, nil)
+		client, err := NewBucket(ctx, cfg, "test")
 		require.NoError(t, err)
 
 		err = client.Upload(ctx, "file", bytes.NewBufferString("content"))
@@ -221,7 +220,7 @@ func TestNewPrefixedBucketClient(t *testing.T) {
 			},
 		}
 
-		client, err := NewClient(ctx, cfg, "test", util_log.Logger, nil)
+		client, err := NewBucket(ctx, cfg, "test")
 		require.NoError(t, err)
 		err = client.Upload(ctx, "file", bytes.NewBufferString("content"))
 		require.NoError(t, err)

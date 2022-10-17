@@ -16,9 +16,8 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/minio/minio-go/v7/pkg/encrypt"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"github.com/thanos-io/objstore/providers/s3"
-
-	"github.com/grafana/mimir/pkg/util"
 )
 
 const (
@@ -103,7 +102,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 // Validate config and returns error on failure
 func (cfg *Config) Validate() error {
-	if !util.StringsContain(supportedSignatureVersions, cfg.SignatureVersion) {
+	if !lo.Contains(supportedSignatureVersions, cfg.SignatureVersion) {
 		return errUnsupportedSignatureVersion
 	}
 
@@ -134,7 +133,7 @@ func (cfg *SSEConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 }
 
 func (cfg *SSEConfig) Validate() error {
-	if cfg.Type != "" && !util.StringsContain(supportedSSETypes, cfg.Type) {
+	if cfg.Type != "" && !lo.Contains(supportedSSETypes, cfg.Type) {
 		return errUnsupportedSSEType
 	}
 
