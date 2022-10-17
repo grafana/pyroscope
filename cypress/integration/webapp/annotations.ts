@@ -1,17 +1,25 @@
 describe('Annotations', () => {
   it('add annotation flow works as expected', () => {
     const basePath = Cypress.env('basePath') || '';
-    cy.intercept(`${basePath}**/label-values**`).as('labelValues');
+    cy.intercept(`${basePath}**/labels*`).as('labels');
+    cy.intercept(`${basePath}**/label-values*`, {
+      fixture: 'appNames.json',
+    }).as('labelValues');
+    cy.intercept('**/render*', {
+      fixture: 'render.json',
+    }).as('render');
 
     cy.visit('/');
 
-    cy.wait('@labelValues').wait(1000);
+    cy.wait('@labels');
+    cy.wait('@labelValues');
+    cy.wait('@render');
 
     cy.get('canvas.flot-overlay').click();
 
     cy.get('li[role=menuitem]').contains('Add annotation').click();
 
-    const content = 'this is annotation content';
+    const content = 'test';
     let time;
 
     cy.get('form#annotation-form')
@@ -25,7 +33,7 @@ describe('Annotations', () => {
 
     cy.get('button[form=annotation-form]').click();
 
-    cy.findByTestId('annotation_mark_wrapper').click();
+    cy.get('div[data-testid="annotation_mark_wrapper"]').click();
 
     cy.get('form#annotation-form')
       .findByTestId('annotation_content_input')
