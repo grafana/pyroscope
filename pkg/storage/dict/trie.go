@@ -16,10 +16,8 @@ type trieNode struct {
 }
 
 func newTrieNode(label []byte) *trieNode {
-	labelCopy := make([]byte, len(label))
-	copy(labelCopy, label)
 	return &trieNode{
-		label:    labelCopy,
+		label:    label,
 		children: make([]*trieNode, 0),
 	}
 }
@@ -30,6 +28,12 @@ func (tn *trieNode) insert(t2 *trieNode) {
 
 // TODO: too complicated, need to refactor / document this
 func (tn *trieNode) findNodeAt(key []byte, vw varint.Writer, w io.Writer) {
+	// log.Debug("findNodeAt")
+	key2 := make([]byte, len(key))
+	// TODO: remove
+	copy(key2, key)
+	key = key2
+
 OuterLoop:
 	for {
 		// log.Debug("findNodeAt, key", string(key))
