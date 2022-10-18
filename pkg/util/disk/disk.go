@@ -1,19 +1,10 @@
+//go:build !windows
+
 package diskutil
 
 import (
 	"golang.org/x/sys/unix"
 )
-
-type VolumeChecker interface {
-	HasHighDiskUtilization(path string) (*VolumeStats, error)
-}
-
-type VolumeStats struct {
-	BytesAvailable uint64
-	BytesTotal     uint64
-
-	HighDiskUtilization bool
-}
 
 type volumeChecker struct {
 	minFreeDisk                uint64

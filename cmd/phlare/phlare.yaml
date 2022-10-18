@@ -3,16 +3,6 @@ server:
 
 scrape_configs:
   - job_name: "default"
-    scrape_interval: "2s"
+    scrape_interval: "15s"
     static_configs:
       - targets: ["127.0.0.1:4100"]
-
-  - job_name: "foo"
-    scrape_interval: "5s"
-    static_configs:
-      - targets: ["127.0.0.1:4100"]
-    # Disable CPU collection for second profile. (only one profiling request can be in flight at a time)
-    profiling_config:
-      pprof_config:
-        process_cpu:
-          enabled: false
