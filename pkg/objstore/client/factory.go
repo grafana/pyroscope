@@ -2,72 +2,58 @@ package client
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/yaml.v2"
 
 	"github.com/thanos-io/objstore"
-	"github.com/thanos-io/objstore/client"
-	"github.com/thanos-io/objstore/providers/azure"
-	"github.com/thanos-io/objstore/providers/bos"
-	"github.com/thanos-io/objstore/providers/cos"
-	"github.com/thanos-io/objstore/providers/gcs"
-	"github.com/thanos-io/objstore/providers/oci"
-	"github.com/thanos-io/objstore/providers/oss"
-	"github.com/thanos-io/objstore/providers/s3"
-	"github.com/thanos-io/objstore/providers/swift"
 
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 	"github.com/grafana/phlare/pkg/objstore/client/parquet"
+	"github.com/grafana/phlare/pkg/objstore/providers/azure"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	"github.com/grafana/phlare/pkg/objstore/providers/gcs"
+	"github.com/grafana/phlare/pkg/objstore/providers/s3"
+	"github.com/grafana/phlare/pkg/objstore/providers/swift"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 )
 
-// NewBucket initializes and returns new object storage clients.
-// NOTE: confContentYaml can contain secrets.
-func NewBucket(logger log.Logger, confContentYaml []byte, reg prometheus.Registerer, component string) (phlareobjstore.InstrumentedBucket, error) {
-	level.Info(logger).Log("msg", "loading bucket configuration")
-	bucketConf := &client.BucketConfig{}
-	if err := yaml.UnmarshalStrict(confContentYaml, bucketConf); err != nil {
-		return nil, errors.Wrap(err, "parsing config YAML file")
-	}
+// NewBucket creates a new bucket client based on the configured backend
+func NewBucket(ctx context.Context, cfg Config, name string) (phlareobjstore.Bucket, error) {
+	var (
+		backendClient objstore.Bucket
+		err           error
+	)
+	logger := phlarecontext.Logger(ctx)
+	reg := phlarecontext.Registry(ctx)
 
-	config, err := yaml.Marshal(bucketConf.Config)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshal content of bucket configuration")
-	}
-
-	var bucket objstore.Bucket
-	switch strings.ToUpper(string(bucketConf.Type)) {
-	case string(client.GCS):
-		bucket, err = gcs.NewBucket(context.Background(), logger, config, component)
-	case string(client.S3):
-		bucket, err = s3.NewBucket(logger, config, component)
-	case string(client.AZURE):
-		bucket, err = azure.NewBucket(logger, config, component)
-	case string(client.SWIFT):
-		bucket, err = swift.NewContainer(logger, config)
-	case string(client.COS):
-		bucket, err = cos.NewBucket(logger, config, component)
-	case string(client.ALIYUNOSS):
-		bucket, err = oss.NewBucket(logger, config, component)
-	case string(client.FILESYSTEM):
-		bucket, err = filesystem.NewBucketFromConfig(config)
-	case string(client.BOS):
-		bucket, err = bos.NewBucket(logger, config, component)
-	case string(client.OCI):
-		bucket, err = oci.NewBucket(logger, config)
+	switch cfg.Backend {
+	case S3:
+		backendClient, err = s3.NewBucketClient(cfg.S3, name, logger)
+	case GCS:
+		backendClient, err = gcs.NewBucketClient(ctx, cfg.GCS, name, logger)
+	case Azure:
+		backendClient, err = azure.NewBucketClient(cfg.Azure, name, logger)
+	case Swift:
+		backendClient, err = swift.NewBucketClient(cfg.Swift, name, logger)
+	case Filesystem:
+		backendClient, err = filesystem.NewBucket(cfg.Filesystem.Directory)
 	default:
-		return nil, errors.Errorf("bucket with type %s is not supported", bucketConf.Type)
+		return nil, ErrUnsupportedStorageBackend
 	}
+
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("create %s client", bucketConf.Type))
+		return nil, err
 	}
-	return ReaderAtBucket(bucketConf.Prefix, bucket, reg)
+
+	// Wrap the client with any provided middleware
+	for _, wrap := range cfg.Middlewares {
+		backendClient, err = wrap(backendClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ReaderAtBucket(cfg.StoragePrefix, backendClient, reg)
 }
 
 type readerAtBucket struct {
