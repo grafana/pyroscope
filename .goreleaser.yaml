@@ -1,0 +1,174 @@
+project_name: phlare
+# before:
+#   hooks:
+#     - make go/mod lint generate go/test
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "6"
+      - "7"
+    main: ./cmd/phlare
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    tags:
+      - netgo
+    ldflags:
+      - >
+        -extldflags "-static" -s -w
+        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Env.GIT_BRANCH }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Env.IMAGE_TAG }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .Env.GIT_REVISION }}"
+        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .Env.GIT_LAST_COMMIT_DATE }}"
+    id: phlare
+  - env:
+      - CGO_ENABLED=0
+    tags:
+      - netgo
+    ldflags:
+      - >
+        -extldflags "-static" -s -w
+        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Env.GIT_BRANCH }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Env.IMAGE_TAG }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .Env.GIT_REVISION }}"
+        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .Env.GIT_LAST_COMMIT_DATE }}"
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+    main: ./cmd/profilecli
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    binary: profilecli
+    id: profilecli
+dockers:
+  - use: buildx
+    goos: linux
+    goarch: amd64
+    dockerfile: ./cmd/phlare/Dockerfile
+    ids:
+      - phlare
+      - profilecli
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "grafana/{{ .ProjectName }}:latest-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - use: buildx
+    goos: linux
+    goarch: arm64
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    dockerfile: ./cmd/phlare/Dockerfile
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8"
+      - "grafana/{{ .ProjectName }}:latest-arm64v8"
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - use: buildx
+    goos: linux
+    goarch: arm
+    goarm: "6"
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    dockerfile: ./cmd/phlare/Dockerfile
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-armv6"
+      - "grafana/{{ .ProjectName }}:latest-armv6"
+    build_flag_templates:
+      - "--platform=linux/arm/v6"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - use: buildx
+    goos: linux
+    goarch: arm
+    goarm: "7"
+    dockerfile: ./cmd/phlare/Dockerfile
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-armv7"
+      - "grafana/{{ .ProjectName }}:latest-armv7"
+    build_flag_templates:
+      - "--platform=linux/arm/v7"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+docker_manifests:
+  # https://goreleaser.com/customization/docker_manifest/
+  - name_template: grafana/{{ .ProjectName }}:{{ .Version }}
+    image_templates:
+      - grafana/{{ .ProjectName }}:{{ .Version }}-amd64
+      - grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8
+      - grafana/{{ .ProjectName }}:{{ .Version }}-armv6
+      - grafana/{{ .ProjectName }}:{{ .Version }}-armv7
+  - name_template: grafana/{{ .ProjectName }}:latest
+    image_templates:
+      - grafana/{{ .ProjectName }}:latest-amd64
+      - grafana/{{ .ProjectName }}:latest-arm64v8
+      - grafana/{{ .ProjectName }}:latest-armv6
+      - grafana/{{ .ProjectName }}:latest-armv7
+archives:
+  - id: phlare
+    builds:
+      - phlare
+  - id: profilecli
+    name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    builds:
+      - profilecli
+    format_overrides:
+      - goos: windows
+        format: zip
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+release:
+  draft: true
+  ids:
+    - phlare
+    - profilecli
+# milestones:
+#   - close: true
+
+# modelines, feel free to remove those if you don't want/use them:
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj

@@ -2,12 +2,14 @@
 bin
 # Test binary, built with `go test -c`
 *.test
+phlare
+profilecli
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
 /cmd/phlare/data
-/data/
+data/
 go.work
 go.work.sum
 .DS_Store
@@ -28,3 +30,5 @@ node_modules
 **/dist
 
 .idea
+
+dist/

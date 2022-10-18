@@ -13,6 +13,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	_ "github.com/grafana/phlare/pkg/util/build"
 )
 
 var cfg struct {
