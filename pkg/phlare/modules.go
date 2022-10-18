@@ -166,11 +166,10 @@ func (f *Phlare) initRing() (_ services.Service, err error) {
 }
 
 func (f *Phlare) initStorage() (_ services.Service, err error) {
-	if cfg := f.Cfg.Storage.BucketConfig; len(cfg) > 0 {
+	if cfg := f.Cfg.Storage.Bucket; cfg.Backend != "filesystem" {
 		b, err := objstoreclient.NewBucket(
-			f.logger,
-			[]byte(cfg),
-			f.reg,
+			f.context(),
+			cfg,
 			"storage",
 		)
 		if err != nil {
@@ -182,14 +181,16 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 	return nil, nil
 }
 
+// TODO: This should be passed to all other services and could also be used to signal shutdown
+func (f *Phlare) context() context.Context {
+	phlarectx := phlarecontext.WithLogger(context.Background(), f.logger)
+	return phlarecontext.WithRegistry(phlarectx, f.reg)
+}
+
 func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	// TODO: This should be passed to all other services and could also be used to signal shutdown
-	phlarectx := phlarecontext.WithLogger(context.Background(), f.logger)
-	phlarectx = phlarecontext.WithRegistry(phlarectx, f.reg)
-
-	ingester, err := ingester.New(phlarectx, f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket)
+	ingester, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket)
 	if err != nil {
 		return nil, err
 	}

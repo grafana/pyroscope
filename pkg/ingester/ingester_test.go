@@ -22,6 +22,7 @@ import (
 	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/objstore/client"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/tenant"
@@ -56,12 +57,15 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	ctx := phlarecontext.WithLogger(context.Background(), logger)
 	ctx = phlarecontext.WithRegistry(ctx, reg)
+	cfg := client.Config{StorageBackendConfig: client.StorageBackendConfig{
+		Backend: client.Filesystem,
+		Filesystem: filesystem.Config{
+			Directory: dbPath,
+		},
+	},
+	}
 
-	fs, err := client.NewBucket(logger, []byte(`
-type: FILESYSTEM
-config:
-    directory: "`+dbPath+`"
-prefix: ""`), reg, "storage")
+	fs, err := client.NewBucket(ctx, cfg, "storage")
 	require.NoError(t, err)
 
 	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
