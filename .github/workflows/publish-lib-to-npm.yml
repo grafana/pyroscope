@@ -7,9 +7,22 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
-    # Don't run for forks
+    outputs:
+      inputsChecked: ${{ steps.github_token_gate.outputs.inputsChecked }}
+    steps:
+      - uses: svrooij/secret-gate-action@v1
+        id: github_token_gate
+        with:
+          inputsToCheck: 'token'
+        env:
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
+  build:
+    # skip if user has not access to the token
+    if: needs.check.outputs.inputsChecked == 'true'
+    runs-on: ubuntu-latest
+    needs: check
     steps:
       #######################
       #      Checkout      #
@@ -20,7 +33,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.BOT_GITHUB_TOKEN }}
-
       # For pull requests, also checkout out the REAL commit (as opposed to a merge commit with main)
       - uses: actions/checkout@v2
         if: github.event_name == 'pull_request'
@@ -41,7 +53,7 @@ jobs:
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v2
         with:
-          node-version: '14.17'
+          node-version: '16.18'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Get yarn cache directory path

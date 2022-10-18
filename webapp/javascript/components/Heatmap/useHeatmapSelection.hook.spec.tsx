@@ -8,7 +8,7 @@ import tracingReducer from '@webapp/redux/reducers/tracing';
 import { useHeatmapSelection } from './useHeatmapSelection.hook';
 import { heatmapMockData } from '../../services/exemplarsTestData';
 
-const canvasEl = document.createElement('canvasEl');
+const canvasEl = document.createElement('canvas');
 const divEl = document.createElement('div');
 const canvasRef = { current: canvasEl } as RefObject<HTMLCanvasElement>;
 const resizedSelectedAreaRef = { current: divEl } as RefObject<HTMLDivElement>;

@@ -10,6 +10,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.18'
       - name: Install Webapp dependencies
         run: yarn install --frozen-lockfile
       - uses: andresz1/size-limit-action@v1

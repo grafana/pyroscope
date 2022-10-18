@@ -17,18 +17,18 @@ ifeq ("$(OS)", "Darwin")
 	endif
 endif
 
-ALL_SPIES = ebpfspy,rbspy,pyspy,dotnetspy,debugspy
+ALL_SPIES = ebpfspy,dotnetspy,phpspy,debugspy
 ifeq ("$(OS)", "Linux")
-	ENABLED_SPIES_RELEASE ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
+	ENABLED_SPIES_RELEASE ?= ebpfspy,phpspy,dotnetspy
 else
-	ENABLED_SPIES_RELEASE ?= rbspy,pyspy,dotnetspy
+	ENABLED_SPIES_RELEASE ?= dotnetspy
 endif
 ENABLED_SPIES ?= none
 
 ifeq ("$(OS)", "Linux")
-	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies build-phpspy-dependencies"
+	THIRD_PARTY_DEPENDENCIES ?= "build-phpspy-dependencies"
 else
-	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
+	THIRD_PARTY_DEPENDENCIES ?= ""
 endif
 
 EXTRA_GO_TAGS ?=
@@ -49,15 +49,14 @@ endif
 
 ifeq ("$(OS)", "Linux")
 	ifeq ("$(shell cat /etc/os-release | grep ^ID=)", "ID=alpine")
-		RUST_TARGET ?= "$(ARCH)-unknown-linux-musl"
 		GO_TAGS := $(GO_TAGS),musl
 		ALPINE_TAG := ,musl
 	else
-		RUST_TARGET ?= "$(ARCH)-unknown-linux-gnu"
+
 	endif
 else
 	ifeq ("$(OS)", "Darwin")
-		RUST_TARGET ?= "$(ARCH)-apple-darwin"
+
 	endif
 endif
 
@@ -86,24 +85,6 @@ PYROSCOPE_STORAGE_PATH ?= tmp/pyroscope-storage
 .PHONY: all
 all: build ## Runs the build target
 
-.PHONY: build-rbspy-static-library
-build-rbspy-static-library: ## builds rbspy static library (used in our gem integration)
-	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,rbspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
-ifeq ("$(OS)", "Linux")
-	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.a
-	ranlib ./out/libpyroscope.rbspy.a
-endif
-
-.PHONY: build-pyspy-static-library
-build-pyspy-static-library: ## builds pyspy static library (used in our pip integration)
-	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,pyspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
-ifeq ("$(OS)", "Linux")
-	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.a
-	ranlib ./out/libpyroscope.pyspy.a
-endif
-
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library: ## builds phpspy static library
 	mkdir -p ./out
@@ -130,19 +111,6 @@ build-release: embedded-assets ## Builds the release build
 .PHONY: build-panel
 build-panel:
 	NODE_ENV=production $(shell yarn bin webpack) --config scripts/webpack/webpack.panel.js
-
-.PHONY: build-rust-dependencies
-build-rust-dependencies:
-ifeq ("$(OS)", "Linux")
-	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET) || $(MAKE) print-deps-error-message
-	cp third_party/rustdeps/target/$(patsubst "%",%,$(RUST_TARGET))/release/librustdeps.a third_party/rustdeps/target/release/librustdeps.a
-else
-	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release || $(MAKE) print-deps-error-message
-endif
-
-.PHONY: build-rust-dependencies-docker
-build-rust-dependencies-docker: ## Builds the rust dependencies in docker
-	DOCKER_BUILDKIT=1 docker build --target lib-exporter --progress=plain -f Dockerfile --output type=local,dest=out .
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies: ## Builds the PHP dependency

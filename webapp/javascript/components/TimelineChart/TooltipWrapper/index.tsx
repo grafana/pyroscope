@@ -11,9 +11,11 @@ export interface ITooltipWrapperProps {
   pageY: number;
   align: 'left' | 'right';
   children: React.ReactNode | React.ReactNode[];
+  className?: string;
 }
 
 const TooltipWrapper = ({
+  className,
   pageX,
   pageY,
   align,
@@ -32,6 +34,7 @@ const TooltipWrapper = ({
       className={cx({
         [styles.tooltip]: true,
         [styles.hidden]: isHidden,
+        [className || '']: className,
       })}
       id={EXPLORE_TOOLTIP_WRAPPER_ID}
     >

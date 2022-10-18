@@ -49,8 +49,6 @@ type Adhoc struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
-	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
-	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	// Connect mode configuration
 	Pid int `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
@@ -87,10 +85,6 @@ type Target struct {
 	ApplicationName    string `yaml:"application-name" mapstructure:"application-name" def:"" desc:"application name used when uploading profiling data"`
 	SampleRate         uint   `yaml:"sample-rate" mapstructure:"sample-rate" def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
 	DetectSubprocesses bool   `yaml:"detect-subprocesses" mapstructure:"detect-subprocesses" def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
-
-	// Spy-specific settings.
-	PyspyBlocking bool `yaml:"pyspy-blocking" mapstructure:"pyspy-blocking" def:"false" desc:"enables blocking mode for pyspy"`
-	RbspyBlocking bool `yaml:"rbspy-blocking" mapstructure:"rbspy-blocking" def:"false" desc:"enables blocking mode for rbspy"`
 
 	// Tags are inherited from the agent level. At some point we may need
 	// specifying tags at the target level (override).
@@ -292,8 +286,6 @@ type Exec struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
-	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
-	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	// Remote upstream configuration
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
@@ -317,8 +309,6 @@ type Connect struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
-	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
-	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	// Remote upstream configuration
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`

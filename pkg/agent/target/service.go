@@ -7,14 +7,11 @@ import (
 	"time"
 
 	"github.com/mitchellh/go-ps"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
-	"github.com/sirupsen/logrus"
-
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -67,10 +64,6 @@ func (s *service) attach(ctx context.Context) {
 }
 
 func (s *service) wait(ctx context.Context) error {
-	// TODO: this is somewhat hacky, we need to find a better way to configure agents
-	pyspy.Blocking = s.target.PyspyBlocking
-	rbspy.Blocking = s.target.RbspyBlocking
-
 	session, err := agent.NewSession(s.sc)
 	if err != nil {
 		return err

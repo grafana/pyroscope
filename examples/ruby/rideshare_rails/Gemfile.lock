@@ -112,12 +112,66 @@ GEM
       racc (~> 1.4)
     nokogiri (1.13.4-x86_64-darwin)
       racc (~> 1.4)
+    nokogiri (1.13.4-x86_64-linux)
+      racc (~> 1.4)
+    opentelemetry-api (1.1.0)
+    opentelemetry-common (0.19.6)
+      opentelemetry-api (~> 1.0)
+    opentelemetry-exporter-jaeger (0.22.0)
+      opentelemetry-api (~> 1.1)
+      opentelemetry-common (~> 0.19.6)
+      opentelemetry-sdk (~> 1.2)
+      opentelemetry-semantic_conventions
+      thrift
+    opentelemetry-instrumentation-action_pack (0.2.1)
+      opentelemetry-api (~> 1.0)
+      opentelemetry-instrumentation-base (~> 0.21.0)
+      opentelemetry-instrumentation-rack (~> 0.21.0)
+    opentelemetry-instrumentation-action_view (0.3.0)
+      opentelemetry-api (~> 1.0)
+      opentelemetry-instrumentation-active_support (~> 0.1)
+      opentelemetry-instrumentation-base (~> 0.20)
+    opentelemetry-instrumentation-active_record (0.4.0)
+      opentelemetry-api (~> 1.0)
+      opentelemetry-instrumentation-base (~> 0.21.0)
+      ruby2_keywords
+    opentelemetry-instrumentation-active_support (0.2.0)
+      opentelemetry-api (~> 1.0)
+      opentelemetry-instrumentation-base (~> 0.21.0)
+    opentelemetry-instrumentation-base (0.21.0)
+      opentelemetry-api (~> 1.0)
+      opentelemetry-registry (~> 0.1)
+    opentelemetry-instrumentation-rack (0.21.1)
+      opentelemetry-api (~> 1.0)
+      opentelemetry-common (~> 0.19.3)
+      opentelemetry-instrumentation-base (~> 0.21.0)
+    opentelemetry-instrumentation-rails (0.22.0)
+      opentelemetry-api (~> 1.0)
+      opentelemetry-instrumentation-action_pack (~> 0.2.0)
+      opentelemetry-instrumentation-action_view (~> 0.3.0)
+      opentelemetry-instrumentation-active_record (~> 0.4.0)
+      opentelemetry-instrumentation-active_support (~> 0.2.0)
+      opentelemetry-instrumentation-base (~> 0.21.0)
+    opentelemetry-registry (0.2.0)
+      opentelemetry-api (~> 1.1)
+    opentelemetry-sdk (1.2.0)
+      opentelemetry-api (~> 1.1)
+      opentelemetry-common (~> 0.19.3)
+      opentelemetry-registry (~> 0.2)
+      opentelemetry-semantic_conventions
+    opentelemetry-semantic_conventions (1.8.0)
+      opentelemetry-api (~> 1.0)
     puma (5.6.4)
       nio4r (~> 2.0)
     pyroscope (0.5.1)
       ffi
     pyroscope (0.5.1-x86_64-darwin)
       ffi
+    pyroscope (0.5.1-x86_64-linux)
+      ffi
+    pyroscope-otel (0.1.1)
+      opentelemetry-api (~> 1.1.0)
+      pyroscope (~> 0.5.1)
     racc (1.6.0)
     rack (2.2.3)
     rack-test (1.1.0)
@@ -151,6 +205,7 @@ GEM
     rake (13.0.6)
     reline (0.3.1)
       io-console (~> 0.5)
+    ruby2_keywords (0.0.5)
     sprockets (4.0.3)
       concurrent-ruby (~> 1.0)
       rack (> 1, < 3)
@@ -161,6 +216,7 @@ GEM
     sqlite3 (1.4.2)
     strscan (3.0.1)
     thor (1.2.1)
+    thrift (0.17.0)
     timeout (0.2.0)
     tzinfo (2.0.4)
       concurrent-ruby (~> 1.0)
@@ -172,11 +228,16 @@ GEM
 PLATFORMS
   ruby
   x86_64-darwin-21
+  x86_64-linux
 
 DEPENDENCIES
   debug
+  opentelemetry-exporter-jaeger (~> 0.22.0)
+  opentelemetry-instrumentation-rails
+  opentelemetry-sdk (~> 1.2.0)
   puma (~> 5.0)
   pyroscope (~> 0.5.1)
+  pyroscope-otel (~> 0.1.1)
   rails (~> 7.0.2, >= 7.0.2.3)
   sprockets-rails
   sqlite3 (~> 1.4)
