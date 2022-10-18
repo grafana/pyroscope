@@ -1,5 +1,5 @@
 ---
-title: "Grafana Flare documentation"
+title: "Grafana Phlare documentation"
 menuTitle: "Grafana Phlare"
 weight: 1
 keywords:
