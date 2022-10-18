@@ -268,7 +268,7 @@
     "zod": "3.17.3"
   },
   "engines": {
-    "node": ">=14.17.0"
+    "node": ">=16.18.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,yml,yaml,eslintrc,prettierrc,css,scss}": "prettier --write"
