@@ -1,6 +1,7 @@
 package segment
 
 import (
+	"bytes"
 	"errors"
 	"strconv"
 	"strings"
@@ -56,16 +57,16 @@ func ParseKey(name string) (*Key, error) {
 
 type parser struct {
 	parserState ParserState
-	key         *strings.Builder
-	value       *strings.Builder
+	key         *bytes.Buffer
+	value       *bytes.Buffer
 }
 
 var parserPool = sync.Pool{
 	New: func() any {
 		return &parser{
 			parserState: nameParserState,
-			key:         new(strings.Builder),
-			value:       new(strings.Builder),
+			key:         new(bytes.Buffer),
+			value:       new(bytes.Buffer),
 		}
 	},
 }
