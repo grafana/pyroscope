@@ -9,6 +9,7 @@ weight: 30
 
 Grafana Phlare can use different object storage services to persist blocks containing the profiles data.
 Blocks are flushed by ingesters [on disk]({{<relref "./configure-disk-storage.md">}}) first then are uploaded to object store.
+
 > The long term storage is still in development and querying from object store is not yet implemented.
 
 The supported backends are:
@@ -17,10 +18,6 @@ The supported backends are:
 - [Google Cloud Storage](https://cloud.google.com/storage)
 - [Azure Blob Storage](https://azure.microsoft.com/es-es/services/storage/blobs/)
 - [Swift (OpenStack Object Storage)](https://wiki.openstack.org/wiki/Swift)
-
-Additionally and for non-production testing purposes, you can use a file-system emulated [`filesystem`](https://thanos.io/tip/thanos/storage.md/#filesystem) object storage implementation.
-
-Object storage configuration is currently only supported via the configuration files under the `-storage` configuration, see below for examples.
 
 > Under the hood Grafana Phlare uses [Thanos' object store client] library, so their stated limitations apply.
 
