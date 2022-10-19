@@ -9,7 +9,7 @@ weight: 30
 
 Grafana Phlare can use different object storage services to persist blocks containing the profiles data.
 Blocks are flushed by ingesters [on disk]({{<relref "./configure-disk-storage.md">}}) first then are uploaded to object store.
-> The storage is still in development and querying from object store is not yet implemented.
+> The long term storage is still in development and querying from object store is not yet implemented.
 
 The supported backends are:
 
@@ -20,148 +20,104 @@ The supported backends are:
 
 Additionally and for non-production testing purposes, you can use a file-system emulated [`filesystem`](https://thanos.io/tip/thanos/storage.md/#filesystem) object storage implementation.
 
-Object storage configuration is currently only supported via the configuration files under the `storage.bucketConfig` configuration, see below for example.
+Object storage configuration is currently only supported via the configuration files under the `-storage` configuration, see below for examples.
 
-> Since Grafana Phlare uses the same object storage configuration as [Thanos](https://thanos.io/) you can also refer to their [configuration section](https://thanos.io/tip/thanos/storage.md)
-> for more details.
+> Under the hood Grafana Phlare uses [Thanos' object store client] library, so their stated limitations apply.
+
+[Thanos' object store client]: https://github.com/thanos-io/objstore#supported-providers-clients
 
 ## Amazon S3
 
-```yaml
-storage:
-  bucketConfig: |
-    type: S3
-    config:
-      bucket: ""
-      endpoint: ""
-      region: ""
-      aws_sdk_auth: false
-      access_key: ""
-      insecure: false
-      signature_version2: false
-      secret_key: ""
-      put_user_metadata: {}
-      http_config:
-        idle_conn_timeout: 1m30s
-        response_header_timeout: 2m
-        insecure_skip_verify: false
-        tls_handshake_timeout: 10s
-        expect_continue_timeout: 1s
-        max_idle_conns: 100
-        max_idle_conns_per_host: 100
-        max_conns_per_host: 0
-        tls_config:
-          ca_file: ""
-          cert_file: ""
-          key_file: ""
-          server_name: ""
-          insecure_skip_verify: false
-        disable_compression: false
-      trace:
-        enable: false
-      list_objects_version: ""
-      bucket_lookup_type: auto
-      part_size: 67108864
-      sse_config:
-        type: ""
-        kms_key_id: ""
-        kms_encryption_context: {}
-        encryption_key: ""
-      sts_endpoint: ""
-    prefix: ""
-```
+To use an AWS S3 or S3-compatible bucket for long term storage, you can find Grafana Phlare's configuration parameters [in the reference config][aws_ref]. Apart from those it is also possible to supply configuration using [the well-known environment variables] of the AWS SDK.
 
-At a minimum, you will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys.
+At a minimum, you will need to provide a values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
 
-### Google Cloud Storage
+[aws_ref]: {{< relref "./reference-configuration-parameters/#s3_storage_backend" >}}
+[aws_enf]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+
+### Example using an AWS Bucket
+
+This how one would configure a bucket in the AWS region `eu-west-2`:
 
 ```yaml
 storage:
-  bucketConfig: |
-    type: GCS
-    config:
-      bucket: ""
-      service_account: ""
-    prefix: ""
+ backend: s3
+ s3:
+   bucket_name: grafana-phlare-data
+   region: eu-west-2
+   endpoint: s3.eu-west-2.amazonaws.com
+   access_key_id: MY_ACCESS_KEY
+   secret_access_key: MY_SECRET_KEY
 ```
 
-Use the `GOOGLE_APPLICATION_CREDENTIALS` environnement variable to locate your [application credentials](https://cloud.google.com/docs/authentication/production).
+### Example using a S3 compatible Bucket
 
-### Azure Blob Storage
+This how one would configure a bucket on a locally running instance of [MinIO]:
 
 ```yaml
 storage:
-  bucketConfig: |
-    type: AZURE
-    config:
-      storage_account: ""
-      storage_account_key: ""
-      container: ""
-      endpoint: ""
-      max_retries: 0
-      msi_resource: ""
-      user_assigned_id: ""
-      pipeline_config:
-        max_tries: 0
-        try_timeout: 0s
-        retry_delay: 0s
-        max_retry_delay: 0s
-      reader_config:
-        max_retry_requests: 0
-      http_config:
-        idle_conn_timeout: 0s
-        response_header_timeout: 0s
-        insecure_skip_verify: false
-        tls_handshake_timeout: 0s
-        expect_continue_timeout: 0s
-        max_idle_conns: 0
-        max_idle_conns_per_host: 0
-        max_conns_per_host: 0
-        tls_config:
-          ca_file: ""
-          cert_file: ""
-          key_file: ""
-          server_name: ""
-          insecure_skip_verify: false
-        disable_compression: false
-    prefix: ""
+ backend: s3
+ s3:
+   bucket_name: grafana-phlare-data
+   endpoint: localhost:9000
+   insecure: true
+   access_key_id: grafana-phlare-data
+   secret_access_key: grafana-phlare-data
 ```
 
-If `msi_resource` is used, authentication is done via system-assigned managed identity. The value for Azure should be `https://<storage-account-name>.blob.core.windows.net`.
+[MinIO]: https://min.io/docs/minio/container/index.html
 
-If `user_assigned_id` is used, authentication is done via user-assigned managed identity. When using `user_assigned_id` the `msi_resource` defaults to `https://<storage_account>.<endpoint>`
+## Google Cloud Storage
 
-The generic `max_retries` will be used as value for the `pipeline_config`’s `max_tries` and `reader_config`’s `max_retry_requests`. For more control, `max_retries` could be ignored (0) and one could set specific retry values.
+To use a Google Cloud Storage (GCS) bucket for long term storage, you can find Grafana Phlare's configuration parameters [in the reference config][gcs_ref].
 
-### Swift (OpenStack Object Storage)
+[gcs_ref]: {{< relref "./reference-configuration-parameters/#gcs_storage_backend" >}}
+
+At a minimum, you will need to provide a values for the `bucket_name` and a service account. To supply the service account there are two ways:
+
+* Use the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to locate your [application credentials](https://cloud.google.com/docs/authentication/production).
+* Provide the content the service account key within the `service_account` parameter.
+
+### Example using a Google Cloud Storage bucket
+
+This how one would configure a GCS bucket using the `service_account` parameter:
 
 ```yaml
 storage:
-  bucketConfig: |
-    type: SWIFT
-    config:
-      auth_version: 0
-      auth_url: ""
-      username: ""
-      user_domain_name: ""
-      user_domain_id: ""
-      user_id: ""
-      password: ""
-      domain_id: ""
-      domain_name: ""
-      project_id: ""
-      project_name: ""
-      project_domain_id: ""
-      project_domain_name: ""
-      region_name: ""
-      container_name: ""
-      large_object_chunk_size: 1073741824
-      large_object_segments_container_name: ""
-      retries: 3
-      connect_timeout: 10s
-      timeout: 5m
-      use_dynamic_large_objects: false
-    prefix: ""
+  backend: gcs
+  gcs:
+    bucket_name: grafana-phlare-data
+    service_account: |
+        {
+          "type": "service_account",
+          "project_id": "PROJECT_ID",
+          "private_key_id": "KEY_ID",
+          "private_key": "-----BEGIN PRIVATE KEY-----\nPRIVATE_KEY\n-----END PRIVATE KEY-----\n",
+          "client_email": "SERVICE_ACCOUNT_EMAIL",
+          "client_id": "CLIENT_ID",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://accounts.google.com/o/oauth2/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/SERVICE_ACCOUNT_EMAIL"
+        }
 ```
+
+## Azure Blob Storage
+
+To use a Google Cloud Storage (GCS) bucket for long term storage, you can find Grafana Phlare's configuration parameters [in the reference config][azure_ref].
+
+[azure_ref]: {{< relref "./reference-configuration-parameters/#azure_storage_backend" >}}
+
+If `user_assigned_id` is used, authentication is done via user-assigned managed identity.
+
+[//TODO]: <> (Provide example with and without user-assigned managed identity)
+
+## Swift (OpenStack Object Storage)
+
+To use a Swift (OpenStack Object Storage) bucket for long term storage, you can find Grafana Phlare's configuration parameters [in the reference config][swift_ref].
+
+[swift_ref]: {{< relref "./reference-configuration-parameters/#swift_storage_backend" >}}
 
 >If the `name` of a user, project or tenant is used one must also specify its domain by ID or name. Various examples for OpenStack authentication can be found in the [official documentation](https://developer.openstack.org/api-ref/identity/v3/index.html?expanded=password-authentication-with-scoped-authorization-detail#password-authentication-with-unscoped-authorization).
+
+[//TODO]: <> (Provide example)
