@@ -20,6 +20,8 @@ services:
       - "3000:3000"
     environment:
       - GF_FEATURE_TOGGLES_ENABLE=flameGraph
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     volumes:
       - ./datasource.yaml:/etc/grafana/provisioning/datasources/datasources.yml
     networks:
