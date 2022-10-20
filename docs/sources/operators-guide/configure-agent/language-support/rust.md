@@ -2,7 +2,7 @@
 title: "Rust"
 menuTitle: "Rust"
 description: ""
-weight: 20
+weight: 30
 ---
 
 [//TODO]:<> (Do this!)
