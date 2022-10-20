@@ -1,12 +1,10 @@
 ---
-title: "Grafana Phlare Agent Language Support"
-menuTitle: "Language Support"
+title: "Python"
+menuTitle: "Python (Coming Soon)"
 description: ""
-weight: 20
+weight: 50
 ---
 
-# Grafana Phlare Agent Language Support
+Coming Soon.
 
-The following languages provide support for profiles in the pprof format:
-
-{{< section menuTitle="true" >}}
+If you're interested into Python integration, please reach out to us on [github](https://github.com/grafana/phlare/discussions/293).

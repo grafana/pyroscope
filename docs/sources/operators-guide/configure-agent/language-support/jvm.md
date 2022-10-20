@@ -2,7 +2,7 @@
 title: "JVM"
 menuTitle: "JVM"
 description: ""
-weight: 40
+weight: 20
 ---
 
 [//TODO]:<> (Do this!)
