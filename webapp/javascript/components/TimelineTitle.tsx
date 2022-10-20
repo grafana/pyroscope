@@ -3,7 +3,7 @@ import Color from 'color';
 
 import styles from './TimelineTitle.module.scss';
 
-export const unitsToFlamegraphTitle = {
+const unitsToFlamegraphTitle = {
   objects: 'Total number of objects in RAM',
   goroutines: 'Total number of goroutines',
   bytes: 'Total amount of RAM',

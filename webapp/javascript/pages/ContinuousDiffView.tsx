@@ -144,6 +144,7 @@ function ComparisonDiffApp() {
                 <TimelineTitle titleKey={diffView.profile?.metadata.units} />
               }
             />
+            <SyncTimelines />
           </LoadingOverlay>
         </Box>
         <div className="diff-instructions-wrapper">
@@ -164,11 +165,6 @@ function ComparisonDiffApp() {
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
-              />
-              <SyncTimelines
-                timeline={leftTimeline}
-                titleKey="baseline"
-                selection={{ from: leftFrom, to: leftUntil }}
               />
               <TimelineChartWrapper
                 data-testid="timeline-left"
@@ -209,11 +205,6 @@ function ComparisonDiffApp() {
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
-              />
-              <SyncTimelines
-                timeline={rightTimeline}
-                titleKey="comparison"
-                selection={{ from: rightFrom, to: rightUntil }}
               />
               <TimelineChartWrapper
                 data-testid="timeline-right"

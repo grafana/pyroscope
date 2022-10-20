@@ -130,6 +130,7 @@ function ComparisonApp() {
               }
               selectionType="double"
             />
+            <SyncTimelines />
           </LoadingOverlay>
         </Box>
         <div
@@ -176,11 +177,6 @@ function ComparisonApp() {
                   )
                 }
               >
-                <SyncTimelines
-                  timeline={leftTimeline}
-                  titleKey="baseline"
-                  selection={{ from: leftFrom, to: leftUntil }}
-                />
                 <TimelineChartWrapper
                   key="timeline-chart-left"
                   id="timeline-chart-left"
@@ -245,11 +241,6 @@ function ComparisonApp() {
                   )
                 }
               >
-                <SyncTimelines
-                  timeline={rightTimeline}
-                  titleKey="comparison"
-                  selection={{ from: rightFrom, to: rightUntil }}
-                />
                 <TimelineChartWrapper
                   key="timeline-chart-right"
                   id="timeline-chart-right"
