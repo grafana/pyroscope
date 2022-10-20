@@ -74,7 +74,7 @@ scrape_configs:
           path: "/debug/pprof/heap"
         fgprof:
           enabled: true
-          path: "/debug/pprof/fgprof"
+          path: "/debug/fgprof"
           delta: true
 ```
 
