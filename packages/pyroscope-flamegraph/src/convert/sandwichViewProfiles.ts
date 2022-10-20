@@ -2,12 +2,18 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
+// todo(dogfrogfog):
+// 1. add types
+// 2. remove "total" node duplication
+// 3. refactor arrayToTree function
+
 import type { Profile, Flamebearer } from '@pyroscope/models/src';
 import {
   deltaDiffWrapper,
   deltaDiffWrapperReverse,
 } from '../FlameGraph/decode';
 import { flamebearersToTree } from './flamebearersToTree';
+import { tree as tree1 } from './testData';
 
 export const treeToFlamebearer = (tree) => {
   const flamebearerData: {
@@ -48,6 +54,7 @@ export function calleesFlamebearer(
   f: Flamebearer,
   nodeName: string
 ): Flamebearer {
+  const tree = flamebearersToTree(f);
   const result: Flamebearer = {
     format: 'single',
     numTicks: 0,
@@ -58,41 +65,86 @@ export function calleesFlamebearer(
     units: f.units,
     spyName: f.spyName,
   };
-  const nodesArray: any = [];
 
-  const tree = flamebearersToTree(f);
+  // totalNode - node to accumulate values
+  const totalNode = {
+    children: [],
+    total: [],
+    name: 'total',
+    key: '/total',
+    self: [0],
+  };
+  // use recursion to treverse the tree and fill totalNode.children with selected function nodes
+  const processTree = (node) => {
+    if (node.name === nodeName) {
+      result.numTicks += node.total[0];
 
-  const processTree = (node: any) => {
-    const { name, children, total } = node;
-    if (name === nodeName) {
-      nodesArray.push(node);
-      result.numTicks += total[0];
+      totalNode.total = [result.numTicks];
+      totalNode.children.push(node);
     }
-    for (let i = 0; i < children.length; i += 1) {
-      processTree(children[i]);
+    for (let i = 0; i < node.children.length; i += 1) {
+      processTree(node.children[i]);
     }
   };
+  processTree(tree1);
 
-  processTree(tree);
+  return { ...result, ...treeToFlamebearer(totalNode) };
+}
 
-  const combinedNode = nodesArray.reduce(
-    (acc: any, node: any) => {
-      // to prevent displaying 2 total lines
-      if (node.name !== 'total') {
-        acc.children.push(node);
-        acc.total[0] += node.total[0];
-      } else {
-        return node;
-      }
+// todo(dogfrogfog): add types
+const arrayToTree = (nodesArray) => {
+  let result = {};
+  let nestedObj = result;
+  nodesArray.forEach(({ name, ...rest }) => {
+    nestedObj.children = [{ name, ...rest }];
+    nestedObj = nestedObj.children[0];
+  });
 
-      return acc;
-    },
-    { total: [0], self: [0], key: '/total', name: 'total', children: [] }
-  );
+  return result.children[0];
+};
 
-  const flamebearersData = treeToFlamebearer(combinedNode);
+export function callersFlamebearer(
+  f: Flamebearer,
+  nodeName: string
+): Flamebearer {
+  const tree = flamebearersToTree(f);
+  const result: Flamebearer = {
+    format: 'single',
+    maxSelf: 100,
+    sampleRate: 100,
+    numTicks: 0,
+    names: [],
+    levels: [],
+    units: f.units,
+    spyName: f.spyName,
+  };
 
-  return { ...result, ...flamebearersData };
+  let targetFunctionTotalSelf = 0;
+  const totalNode = { total: [0], self: [0], name: '', children: [] };
+  const processTree = (node, parentNodes = []) => {
+    const { name, children, total, ...rest } = node;
+    const currentNode = {
+      children: [],
+      name,
+      total,
+      ...rest,
+    };
+
+    if (name === nodeName) {
+      targetFunctionTotalSelf += self[0];
+      const subTree = arrayToTree([...parentNodes, currentNode]);
+
+      result.numTicks += subTree.total[0];
+      totalNode.children.push(subTree);
+    }
+
+    for (let i = 0; i < children.length; i += 1) {
+      processTree(children[i], [...parentNodes, currentNode]);
+    }
+  };
+  processTree(tree1);
+
+  return { ...result, ...treeToFlamebearer(totalNode) };
 }
 
 export function calleesProfile(p: Profile, nodeName: string): Profile {
@@ -110,6 +162,26 @@ export function calleesProfile(p: Profile, nodeName: string): Profile {
   return {
     version: 1,
     flamebearer: calleesResultFlamebearer,
+    metadata: copy.metadata,
+  };
+}
+
+export function callersProfile(p: Profile, nodeName: string): Profile {
+  const copy = JSON.parse(JSON.stringify(p));
+
+  copy.flamebearer.levels = deltaDiffWrapper('single', copy.flamebearer.levels);
+  const callersResultFlamebearer = callersFlamebearer(
+    copy.flamebearer,
+    nodeName
+  );
+  callersResultFlamebearer.levels = deltaDiffWrapperReverse(
+    'single',
+    callersResultFlamebearer.levels
+  );
+
+  return {
+    version: 1,
+    flamebearer: callersResultFlamebearer,
     metadata: copy.metadata,
   };
 }
