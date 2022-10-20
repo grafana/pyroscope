@@ -7,6 +7,8 @@ import {
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { markingsFromSelection, Selection } from '../markings';
 
+const timeOffset = 5000;
+
 export function useSync() {
   const dispatch = useAppDispatch();
   const { leftTimeline } = useTimelines();
@@ -39,8 +41,8 @@ export function useSync() {
     rightSelectionTo,
   ];
 
-  const min = Math.min(...selectionsLimits);
-  const max = Math.max(...selectionsLimits);
+  const selectionMin = Math.min(...selectionsLimits);
+  const selectionMax = Math.max(...selectionsLimits);
 
   const isFullyRelativeTime = [
     leftFrom,
@@ -51,30 +53,46 @@ export function useSync() {
     until,
   ].every((t) => t.startsWith('now'));
 
+  const minInRange = selectionMin + timeOffset >= timelineFrom;
+  const maxInRange = selectionMax - timeOffset <= timelineTo;
+
+  const timeSpan = [
+    leftFrom,
+    rightFrom,
+    leftUntil,
+    rightUntil,
+    from,
+    until,
+  ].some((t) => t.startsWith('now'))
+    ? timeOffset
+    : 1;
+
+  const onSync = () => {
+    dispatch(
+      actions.setLeft({
+        from: String(leftSelectionFrom),
+        until: String(leftSelectionTo),
+      })
+    );
+    dispatch(
+      actions.setRight({
+        from: String(rightSelectionFrom),
+        until: String(rightSelectionTo),
+      })
+    );
+    dispatch(
+      actions.setFromAndUntil({
+        from: String(selectionMin - timeSpan),
+        until: String(selectionMax + timeSpan),
+      })
+    );
+  };
+
   return {
     isWarningHidden:
-      (min >= timelineFrom && max <= timelineTo) ||
+      (minInRange && maxInRange) ||
       !leftTimeline.data?.samples.length ||
       isFullyRelativeTime,
-    onSync: () => {
-      dispatch(
-        actions.setLeft({
-          from: String(leftSelectionFrom),
-          until: String(leftSelectionTo),
-        })
-      );
-      dispatch(
-        actions.setRight({
-          from: String(rightSelectionFrom),
-          until: String(rightSelectionTo),
-        })
-      );
-      dispatch(
-        actions.setFromAndUntil({
-          from: String(min - 5000),
-          until: String(max + 5000),
-        })
-      );
-    },
+    onSync,
   };
 }
