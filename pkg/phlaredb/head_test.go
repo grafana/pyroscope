@@ -333,14 +333,19 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 	profilePaths := []string{
 		"testdata/heap",
 		"testdata/profile",
+		"testdata/profile_uncompressed",
+		"testdata/profile_python",
 	}
 
 	head := newTestHead(t)
 	ctx := context.Background()
 
 	for pos := range profilePaths {
-		profile := parseProfile(t, profilePaths[pos])
-		require.NoError(t, head.Ingest(ctx, profile, uuid.New()))
+		path := profilePaths[pos]
+		t.Run(path, func(t *testing.T) {
+			profile := parseProfile(t, profilePaths[pos])
+			require.NoError(t, head.Ingest(ctx, profile, uuid.New()))
+		})
 	}
 
 	require.NoError(t, head.Flush(ctx))
