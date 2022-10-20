@@ -2,11 +2,9 @@ package distributor
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"flag"
 	"hash/fnv"
-	"io/ioutil"
 	"strconv"
 	"time"
 
@@ -113,11 +111,6 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 	var (
 		keys     = make([]uint32, 0, len(req.Msg.Series))
 		profiles = make([]*profileTracker, 0, len(req.Msg.Series))
-
-		// todo pool readers/writer
-		gzipReader *gzip.Reader
-		gzipWriter *gzip.Writer
-		br         = bytes.NewReader(nil)
 	)
 
 	for _, series := range req.Msg.Series {
@@ -125,55 +118,21 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		profName := phlaremodel.Labels(series.Labels).Get(scrape.ProfileName)
 		for _, raw := range series.Samples {
 			d.metrics.receivedCompressedBytes.WithLabelValues(profName).Observe(float64(len(raw.RawProfile)))
-			br.Reset(raw.RawProfile)
-			if gzipReader == nil {
-				gzipReader, err = gzip.NewReader(br)
-				if err != nil {
-					return nil, errors.Wrap(err, "gzip reader")
-				}
-			} else {
-				if err := gzipReader.Reset(br); err != nil {
-					return nil, errors.Wrap(err, "gzip reset")
-				}
-			}
-			data, err := ioutil.ReadAll(gzipReader)
-			if err != nil {
-				return nil, errors.Wrap(err, "gzip read all")
-			}
-			d.metrics.receivedDecompressedBytes.WithLabelValues(profName).Observe(float64(len(data)))
-			p, err := pprof.OpenRaw(data)
+			p, err := pprof.RawFromBytes(raw.RawProfile)
 			if err != nil {
 				return nil, err
 			}
+			d.metrics.receivedDecompressedBytes.WithLabelValues(profName).Observe(float64(p.SizeBytes()))
 			d.metrics.receivedSamples.WithLabelValues(profName).Observe(float64(len(p.Sample)))
 
 			p.Normalize()
 
-			// reuse the data buffer if possible
-			size := p.SizeVT()
-			if cap(data) < size {
-				data = make([]byte, size)
-			}
-			n, err := p.MarshalToVT(data)
-			if err != nil {
-				return nil, err
-			}
-			p.ReturnToVTPool()
-			data = data[:n]
-
 			// zip the data back into the buffer
 			bw := bytes.NewBuffer(raw.RawProfile[:0])
-			if gzipWriter == nil {
-				gzipWriter = gzip.NewWriter(bw)
-			} else {
-				gzipWriter.Reset(bw)
+			if _, err := p.WriteTo(bw); err != nil {
+				return nil, err
 			}
-			if _, err := gzipWriter.Write(data); err != nil {
-				return nil, errors.Wrap(err, "gzip write")
-			}
-			if err := gzipWriter.Close(); err != nil {
-				return nil, errors.Wrap(err, "gzip close")
-			}
+			p.Close()
 			raw.RawProfile = bw.Bytes()
 			// generate a unique profile ID before pushing.
 			raw.ID = uuid.NewString()
