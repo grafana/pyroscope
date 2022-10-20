@@ -10,7 +10,7 @@ services:
     command: -config.file=/etc/phlare/config.yaml
     volumes:
       - ./phlare.yaml:/etc/phlare/config.yaml
-      - ./data:/data
+      - data:/data
     networks:
       - phlare
 
@@ -26,5 +26,8 @@ services:
       - ./datasource.yaml:/etc/grafana/provisioning/datasources/datasources.yml
     networks:
       - phlare
+
+volumes:
+  data:
 
 # yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
