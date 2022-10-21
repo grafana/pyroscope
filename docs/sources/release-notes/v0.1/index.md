@@ -7,7 +7,8 @@ weight: 100
 
 # Grafana Phlare version 0.1 release notes
 
-![Grafana Phlare Logo](../phlare-logo.png)
+![Grafana Phlare Logo](phlare-logo.png)
+
 
 The Grafana Phlare team is excited to announce the first release. We’re committed to building the best continuous profiling experience in Grafana and contributing to that space along with the open-source community.
 
@@ -18,7 +19,7 @@ From the first release you can expect:
 - **A fully integrated data source in Grafana** to correlate your continuous profiling data with other observability signals using Grafana Explore and dashboards. The native flame graph panel visualization can also be used by other profiling data sources.
 - **Phlare packages an Agent** for pulling profiles directly from your applications like Prometheus. We have also provided detailed documentation about how to profile your application written in **Go, Java/JVM, Python, and Rust**.
 
-![Grafana Phlare UI](../phlare-ui.png)
+![Grafana Phlare UI](phlare-ui.png)
 
 Ready to give it a try, follow our [getting started](https://grafana.com/docs/phlare/latest/operators-guide/get-started/) documentation.
 
