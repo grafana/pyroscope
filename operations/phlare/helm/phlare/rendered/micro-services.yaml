@@ -366,34 +366,23 @@ metadata:
 data:
   config.yaml: |
     scrape_configs:
-    - job_name: default
-      scrape_interval: 5s
-      static_configs:
-      - targets:
-        - 127.0.0.1:4100
-    - job_name: kubernetes-pods-name
+    - job_name: kubernetes-pods
       kubernetes_sd_configs:
       - role: pod
       relabel_configs:
-      - source_labels:
-        - __meta_kubernetes_pod_label_name
-        target_label: __service__
-      - source_labels:
-        - __meta_kubernetes_pod_node_name
-        target_label: __host__
-      - action: drop
-        regex: ""
+      - action: keep
+        regex: true
         source_labels:
-        - __service__
+        - __meta_kubernetes_pod_annotation_phlare_grafana_com_scrape
+      - action: replace
+        regex: (.+?)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_phlare_grafana_com_port
+        target_label: __address__
       - action: labelmap
         regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        replacement: $1
-        separator: /
-        source_labels:
-        - __meta_kubernetes_namespace
-        - __service__
-        target_label: job
       - action: replace
         source_labels:
         - __meta_kubernetes_namespace
@@ -402,16 +391,11 @@ data:
         source_labels:
         - __meta_kubernetes_pod_name
         target_label: pod
-      - action: replace
+      - action: drop
+        regex: Pending|Succeeded|Failed|Completed
         source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - replacement: /var/log/pods/*$1/*.log
-        separator: /
-        source_labels:
-        - __meta_kubernetes_pod_uid
-        - __meta_kubernetes_pod_container_name
-        target_label: __path__
+        - __meta_kubernetes_pod_phase
+      scrape_interval: 15s
     storage:
       backend: s3
       s3:
@@ -702,7 +686,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f4270195a1cc8c27c7009bfa26101faed0fddcf091e88f840a11faa78cde6cbe
+        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        phlare.grafana.com/port: "4100"
+        phlare.grafana.com/scrape: "true"
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev
@@ -716,7 +702,7 @@ spec:
         - name: "agent"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          image: "grafana/phlare:0.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=agent"
@@ -777,7 +763,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f4270195a1cc8c27c7009bfa26101faed0fddcf091e88f840a11faa78cde6cbe
+        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        phlare.grafana.com/port: "4100"
+        phlare.grafana.com/scrape: "true"
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev
@@ -791,7 +779,7 @@ spec:
         - name: "distributor"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          image: "grafana/phlare:0.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
@@ -851,7 +839,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f4270195a1cc8c27c7009bfa26101faed0fddcf091e88f840a11faa78cde6cbe
+        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        phlare.grafana.com/port: "4100"
+        phlare.grafana.com/scrape: "true"
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev
@@ -865,7 +855,7 @@ spec:
         - name: "querier"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          image: "grafana/phlare:0.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
@@ -933,6 +923,8 @@ spec:
       annotations:
         checksum/secrets: 724d4b2b4c21778e1a7ba2b50758a575320075a4ad70fb3d37039151f7a3320d
         checksum/config: a33d0359184ba5e8ad28956d2aa6e225869c19657918cd81d3c90620a36609ba
+        phlare.grafana.com/port: "9000"
+        phlare.grafana.com/scrape: "true"
     spec:
       securityContext:
         runAsUser: 1000
@@ -1020,7 +1012,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f4270195a1cc8c27c7009bfa26101faed0fddcf091e88f840a11faa78cde6cbe
+        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        phlare.grafana.com/port: "4100"
+        phlare.grafana.com/scrape: "true"
       labels:
         app.kubernetes.io/name: phlare
         app.kubernetes.io/instance: phlare-dev
@@ -1034,7 +1028,7 @@ spec:
         - name: "ingester"
           securityContext:
             {}
-          image: "us.gcr.io/kubernetes-dev/phlare:0.0.0"
+          image: "grafana/phlare:0.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
