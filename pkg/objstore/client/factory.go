@@ -53,7 +53,7 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobjstore.Buc
 		}
 	}
 
-	return ReaderAtBucket(cfg.StoragePrefix, backendClient, reg)
+	return ReaderAtBucket(cfg.StoragePrefix, backendClient, reg), nil
 }
 
 type readerAtBucket struct {
@@ -68,8 +68,8 @@ type readerAt struct {
 	ctx  context.Context
 }
 
-func ReaderAtBucket(prefix string, b objstore.Bucket, reg prometheus.Registerer) (phlareobjstore.InstrumentedBucket, error) {
-	// Prefer to use custom phlareobjstore.BucketReaderAt implenentation if possible.
+func ReaderAtBucket(prefix string, b objstore.Bucket, reg prometheus.Registerer) phlareobjstore.InstrumentedBucket {
+	// Prefer to use custom phlareobjstore.BucketReaderAt implementation if possible.
 	if b, ok := b.(phlareobjstore.Bucket); ok {
 		if prefix != "" {
 			b = phlareobjstore.BucketWithPrefix(b, prefix)
@@ -78,14 +78,14 @@ func ReaderAtBucket(prefix string, b objstore.Bucket, reg prometheus.Registerer)
 		return &readerAtBucket{
 			InstrumentedBucket: objstore.NewTracingBucket(objstore.BucketWithMetrics(b.Name(), b, reg)),
 			bkt:                b,
-		}, nil
+		}
 	}
 	if prefix != "" {
 		b = objstore.NewPrefixedBucket(b, prefix)
 	}
 	return &readerAtBucket{
 		InstrumentedBucket: objstore.NewTracingBucket(objstore.BucketWithMetrics(b.Name(), b, reg)),
-	}, nil
+	}
 }
 
 func (b *readerAtBucket) ReaderAt(ctx context.Context, name string) (r phlareobjstore.ReaderAt, err error) {
