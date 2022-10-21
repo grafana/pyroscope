@@ -10,9 +10,10 @@ keywords:
   - profiles datastore
   - observability
 ---
-<h1 align="center">Grafana Phlare documentation</h1>
+# Grafana Phlare documentation
 
-[//TODO]: <> (Add logo once read)
+![Grafana Phlare](logo.png)
+
 
 <p align="center">Grafana Phlare is an open source software project for aggregating continuous profiling data. Continuous profiling is an
 observability signal that allows you to understand your workload's resources (CPU, memory, etc...) usage down to the line number.</p>
