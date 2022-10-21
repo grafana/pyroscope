@@ -4,7 +4,7 @@
 
 
 <p align="center">Grafana Phlare is an open source software project for aggregating continuous profiling data. Continuous profiling is an
-observability signal that allows you to understand your workload's resources (CPU, memory, etc...) usage down to the line number.</p>
+observability signal that allows you to understand your workload's resources (CPU, memory, etc...) usage down to the exact lines of code.</p>
 
 Grafana Phlare is fully integrated with Grafana allowing you to **correlate** with other observability signals, like metrics, logs, and traces.
 
