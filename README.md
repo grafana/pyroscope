@@ -1,6 +1,7 @@
 # <p align="center">Grafana Phlare</p>
 
-[//TODO]: <> (Add logo once read)
+<p align="center"><img src="images/logo.png" alt="Grafana Phlare logo" width="400"></p>
+
 
 <p align="center">Grafana Phlare is an open source software project for aggregating continuous profiling data. Continuous profiling is an
 observability signal that allows you to understand your workload's resources (CPU, memory, etc...) usage down to the line number.</p>
@@ -8,7 +9,7 @@ observability signal that allows you to understand your workload's resources (CP
 Grafana Phlare is fully integrated with Grafana allowing you to **correlate** with other observability signals, like metrics, logs, and traces.
 
 <p align="center">
-  <img alt="Explore UI" src=grafana-profiles.gif>
+  <img alt="Explore UI" src=images/grafana-profiles.gif>
 </p>
 
 [If you want to understand what profiling data looks like, try the profiling experience in play.grafana.com]()
