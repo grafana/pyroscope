@@ -1,3 +1,19 @@
-1. Get to the application by running this commands:
-  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "phlare.fullname" . }} {{ .Values.phlare.service.port }}:{{ .Values.phlare.service.port }}
-2. Then you can visit http://127.0.0.1:{{ .Values.phlare.service.port }} to use your application
+Thanks for deploying Grafana Phlare.
+
+In order to configure Grafana to use the Phlare datasource, you need to add the Phlare datasource to your Grafana instance.
+
+The in-cluster query URL is:
+
+{{- if hasKey .Values.phlare.components "querier" }}
+http://{{ include "phlare.fullname" . }}-querier.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.phlare.service.port }}
+{{- else }}
+http://{{ include "phlare.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.phlare.service.port }}
+{{- end }}
+
+To forward the query API to your localhost you can use:
+
+{{- if hasKey .Values.phlare.components "querier" }}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "phlare.fullname" . }}-querier {{ .Values.phlare.service.port }}:{{ .Values.phlare.service.port }}
+{{- else }}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "phlare.fullname" . }} {{ .Values.phlare.service.port }}:{{ .Values.phlare.service.port }}
+{{- end }}
