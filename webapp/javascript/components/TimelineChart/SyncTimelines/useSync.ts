@@ -5,8 +5,8 @@ import {
   selectContinuousState,
 } from '@webapp/redux/reducers/continuous';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
-import { markingsFromSelection, Selection } from '../markings';
 import { useEffect, useState } from 'react';
+import { markingsFromSelection, Selection } from '../markings';
 
 const timeOffset = 5000;
 
@@ -17,14 +17,12 @@ const getTitle = (leftInRange: boolean, rightInRange: boolean) => {
   if (!rightInRange) {
     return 'Warning: Comparison timeline selection is out of range';
   }
-  if (!leftInRange) {
-    return 'Warning: Baseline timeline selection is out of range';
-  }
+  return 'Warning: Baseline timeline selection is out of range';
 };
 
 export function useSync() {
   const dispatch = useAppDispatch();
-  const { leftTimeline, rightTimeline } = useTimelines();
+  const { leftTimeline } = useTimelines();
   const [isIgnoring, setIgnoring] = useState(false);
   const { leftFrom, rightFrom, leftUntil, rightUntil, from, until } =
     useAppSelector(selectContinuousState);
