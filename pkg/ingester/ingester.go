@@ -1,11 +1,9 @@
 package ingester
 
 import (
-	"bytes"
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"sync"
 
 	"github.com/bufbuild/connect-go"
@@ -15,15 +13,14 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
+	"github.com/grafana/phlare/pkg/pprof"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/util"
 )
@@ -184,19 +181,11 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		level.Debug(instance.logger).Log("msg", "message received by ingester push")
 		for _, series := range req.Msg.Series {
 			for _, sample := range series.Samples {
-				reader, err := gzip.NewReader(bytes.NewReader(sample.RawProfile))
-				if err != nil {
-					return nil, err
-				}
-				data, err := io.ReadAll(reader)
+				p, err := pprof.FromBytes(sample.RawProfile)
 				if err != nil {
 					return nil, err
 				}
 
-				p := profilev1.ProfileFromVTPool()
-				if err := p.UnmarshalVT(data); err != nil {
-					return nil, err
-				}
 				id, err := uuid.Parse(sample.ID)
 				if err != nil {
 					return nil, err
