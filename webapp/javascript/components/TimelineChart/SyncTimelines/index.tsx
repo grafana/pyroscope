@@ -4,7 +4,7 @@ import { useSync } from './useSync';
 import styles from './styles.module.scss';
 
 function SyncTimelines() {
-  const { isWarningHidden, onSync } = useSync();
+  const { isWarningHidden, onSync, onIgnore, title } = useSync();
 
   if (isWarningHidden) {
     return null;
@@ -12,10 +12,19 @@ function SyncTimelines() {
 
   return (
     <div className={styles.wrapper}>
-      Warning: Main Timeline selection is out of range
-      <button onClick={onSync} type="button" className={styles.syncButton}>
-        Sync Timelines
-      </button>
+      {title}
+      <div className={styles.buttons}>
+        <button
+          onClick={onIgnore}
+          type="button"
+          className={styles.ignoreButton}
+        >
+          Ignore
+        </button>
+        <button onClick={onSync} type="button" className={styles.syncButton}>
+          Sync Timelines
+        </button>
+      </div>
     </div>
   );
 }

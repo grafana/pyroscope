@@ -5,27 +5,34 @@ $main_color: #87650e;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  background-color: #fff2cd;
-  color: $main_color;
+  background-color: #f2cd51;
+  color: var(--ps-immutable-placeholder-text);
   font-size: 12px;
   border-radius: 4px;
-  border: 1px solid $main_color;
+  border: 1px solid var(--ps-ui-border);
   padding: 5px;
   font-weight: bold;
   line-height: 16px;
 }
 
+.buttons {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+}
+
 .syncButton {
-  border: 2px solid $main_color;
+  border: 2px solid var(--ps-ui-border);
   cursor: pointer;
   padding: 3px 5px;
   border-radius: 4px;
   display: flex;
   flex-shrink: 0;
-  margin-left: 10px;
+  margin-left: 5px;
+}
 
-  &:hover {
-    border-color: darken($color: $main_color, $amount: 10);
-    color: darken($color: $main_color, $amount: 10);
-  }
+.ignoreButton {
+  @extend .syncButton;
+
+  margin-left: 10px;
 }

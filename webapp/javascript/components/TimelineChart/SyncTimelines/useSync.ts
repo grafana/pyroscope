@@ -6,15 +6,34 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { markingsFromSelection, Selection } from '../markings';
+import { useEffect, useState } from 'react';
 
 const timeOffset = 5000;
 
+const getTitle = (leftInRange: boolean, rightInRange: boolean) => {
+  if (!leftInRange && !rightInRange) {
+    return 'Warning: Baseline and Comparison timeline selections are out of range';
+  }
+  if (!rightInRange) {
+    return 'Warning: Comparison timeline selection is out of range';
+  }
+  if (!leftInRange) {
+    return 'Warning: Baseline timeline selection is out of range';
+  }
+};
+
 export function useSync() {
   const dispatch = useAppDispatch();
-  const { leftTimeline } = useTimelines();
+  const { leftTimeline, rightTimeline } = useTimelines();
+  const [isIgnoring, setIgnoring] = useState(false);
   const { leftFrom, rightFrom, leftUntil, rightUntil, from, until } =
     useAppSelector(selectContinuousState);
-  const centeredData = centerTimelineData(leftTimeline);
+
+  useEffect(() => {
+    if (isIgnoring) {
+      setIgnoring(false);
+    }
+  }, [leftFrom, rightFrom, leftUntil, rightUntil, from, until]);
 
   const leftSelectionMarkings = markingsFromSelection('single', {
     from: leftFrom,
@@ -25,6 +44,8 @@ export function useSync() {
     to: rightUntil,
   } as Selection);
 
+  const centeredData = centerTimelineData(leftTimeline);
+
   const timelineFrom = centeredData?.[0]?.[0];
   const timelineTo = centeredData?.[centeredData?.length - 1]?.[0];
 
@@ -33,6 +54,20 @@ export function useSync() {
 
   const rightSelectionFrom = rightSelectionMarkings?.[0]?.xaxis?.from;
   const rightSelectionTo = rightSelectionMarkings?.[0]?.xaxis?.to;
+
+  const offset = [leftFrom, rightFrom, leftUntil, rightUntil, from, until].some(
+    (p) => String(p).startsWith('now')
+  )
+    ? timeOffset
+    : 1;
+
+  const leftInRange =
+    leftSelectionFrom + timeOffset >= timelineFrom &&
+    leftSelectionTo - timeOffset <= timelineTo;
+
+  const rightInRange =
+    rightSelectionFrom + timeOffset >= timelineFrom &&
+    rightSelectionTo - timeOffset <= timelineTo;
 
   const selectionsLimits = [
     leftSelectionFrom,
@@ -44,7 +79,7 @@ export function useSync() {
   const selectionMin = Math.min(...selectionsLimits);
   const selectionMax = Math.max(...selectionsLimits);
 
-  const isFullyRelativeTime = [
+  const timeIsRelative = [
     leftFrom,
     rightFrom,
     leftUntil,
@@ -52,20 +87,6 @@ export function useSync() {
     from,
     until,
   ].every((t) => t.startsWith('now'));
-
-  const minInRange = selectionMin + timeOffset >= timelineFrom;
-  const maxInRange = selectionMax - timeOffset <= timelineTo;
-
-  const timeSpan = [
-    leftFrom,
-    rightFrom,
-    leftUntil,
-    rightUntil,
-    from,
-    until,
-  ].some((t) => t.startsWith('now'))
-    ? timeOffset
-    : 1;
 
   const onSync = () => {
     dispatch(
@@ -82,17 +103,20 @@ export function useSync() {
     );
     dispatch(
       actions.setFromAndUntil({
-        from: String(selectionMin - timeSpan),
-        until: String(selectionMax + timeSpan),
+        from: String(selectionMin - offset),
+        until: String(selectionMax + offset),
       })
     );
   };
 
   return {
     isWarningHidden:
-      (minInRange && maxInRange) ||
       !leftTimeline.data?.samples.length ||
-      isFullyRelativeTime,
+      (leftInRange && rightInRange) ||
+      timeIsRelative ||
+      isIgnoring,
+    title: getTitle(leftInRange, rightInRange),
+    onIgnore: () => setIgnoring(true),
     onSync,
   };
 }
