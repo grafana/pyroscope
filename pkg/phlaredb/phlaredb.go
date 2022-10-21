@@ -95,39 +95,36 @@ type PhlareDB struct {
 }
 
 func New(phlarectx context.Context, cfg Config) (*PhlareDB, error) {
-	reg := phlarecontext.Registry(phlarectx)
-
-	// ensure head metrics are registered early so they are reused for the new head
-	phlarectx = contextWithHeadMetrics(phlarectx, newHeadMetrics(reg))
+	fs, err := filesystem.NewBucket(cfg.DataPath)
+	if err != nil {
+		return nil, err
+	}
 
 	f := &PhlareDB{
-		cfg:       cfg,
-		logger:    phlarecontext.Logger(phlarectx),
-		phlarectx: phlarectx,
-		stopCh:    make(chan struct{}, 0),
+		cfg:    cfg,
+		logger: phlarecontext.Logger(phlarectx),
+		stopCh: make(chan struct{}, 0),
 		volumeChecker: diskutil.NewVolumeChecker(
 			minFreeDisk,
 			minDiskAvailablePercentage,
 		),
 		fs: &realFileSystem{},
 	}
+	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
+		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
+	}
+	reg := phlarecontext.Registry(phlarectx)
+
+	// ensure head metrics are registered early so they are reused for the new head
+	phlarectx = contextWithHeadMetrics(phlarectx, newHeadMetrics(reg))
+	f.phlarectx = phlarectx
 	if _, err := f.initHead(); err != nil {
 		return nil, err
 	}
 	f.wg.Add(1)
 	go f.loop()
-	fs, err := filesystem.NewBucket(cfg.DataPath)
-	if err != nil {
-		return nil, err
-	}
-	bucketReader, err := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("phlaredb_", reg))
-	if err != nil {
-		return nil, err
-	}
 
-	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
-		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
-	}
+	bucketReader := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("phlaredb_", reg))
 
 	f.blockQuerier = NewBlockQuerier(phlarectx, bucketReader)
 
