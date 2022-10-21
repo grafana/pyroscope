@@ -2,15 +2,12 @@ package phlaredb
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/google/uuid"
-	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +18,7 @@ import (
 	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/pprof"
 )
 
 func newTestHead(t testing.TB) *testHead {
@@ -46,17 +44,9 @@ func (t *testHead) Flush(ctx context.Context) error {
 }
 
 func parseProfile(t testing.TB, path string) *profilev1.Profile {
-	f, err := os.Open(path)
+	p, err := pprof.OpenFile(path)
 	require.NoError(t, err, "failed opening profile: ", path)
-	r, err := gzip.NewReader(f)
-	require.NoError(t, err)
-	content, err := ioutil.ReadAll(r)
-	require.NoError(t, err, "failed reading file: ", path)
-
-	p := &profilev1.Profile{}
-	require.NoError(t, p.UnmarshalVT(content))
-
-	return p
+	return p.Profile
 }
 
 var valueTypeStrings = []string{"unit", "type"}

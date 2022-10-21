@@ -1,50 +1,176 @@
 package pprof
 
 import (
-	"compress/gzip"
+	"bytes"
 	"encoding/binary"
-	"io/ioutil"
+	"io"
 	"os"
 	"sort"
+	"sync"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/klauspost/compress/gzip"
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
 	"github.com/grafana/phlare/pkg/slices"
 )
 
+var (
+	gzipReaderPool = sync.Pool{
+		New: func() any {
+			return &gzipReader{
+				reader: bytes.NewReader(nil),
+			}
+		},
+	}
+	gzipWriterPool = sync.Pool{
+		New: func() any {
+			return gzip.NewWriter(io.Discard)
+		},
+	}
+	bufPool = sync.Pool{
+		New: func() any {
+			return bytes.NewBuffer(nil)
+		},
+	}
+)
+
+type gzipReader struct {
+	gzip   *gzip.Reader
+	reader *bytes.Reader
+}
+
+// open gzip, create reader if required
+func (r *gzipReader) gzipOpen() error {
+	var err error
+	if r.gzip == nil {
+		r.gzip, err = gzip.NewReader(r.reader)
+	} else {
+		err = r.gzip.Reset(r.reader)
+	}
+	return err
+}
+
+func (r *gzipReader) openBytes(input []byte) (io.Reader, error) {
+	r.reader.Reset(input)
+
+	// handle if data is not gzipped at all
+	if err := r.gzipOpen(); err == gzip.ErrHeader {
+		r.reader.Reset(input)
+		return r.reader, nil
+	} else if err != nil {
+		return nil, errors.Wrap(err, "gzip reset")
+	}
+
+	return r.gzip, nil
+}
+
+func fromUncompressedReader(r io.Reader) (*Profile, error) {
+	buf := bufPool.Get().(*bytes.Buffer)
+
+	_, err := io.Copy(buf, r)
+	if err != nil {
+		return nil, errors.Wrap(err, "copy to buffer")
+	}
+
+	p := profilev1.ProfileFromVTPool()
+	if err := p.UnmarshalVT(buf.Bytes()); err != nil {
+		return nil, err
+	}
+
+	return &Profile{Profile: p, buf: buf}, nil
+}
+
+// Read RawProfile from bytes
+func RawFromBytes(input []byte) (*Profile, error) {
+	gzipReader := gzipReaderPool.Get().(*gzipReader)
+	defer gzipReaderPool.Put(gzipReader)
+
+	r, err := gzipReader.openBytes(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return fromUncompressedReader(r)
+}
+
+// Read Profile from Bytes
+func FromBytes(input []byte) (*profilev1.Profile, error) {
+	p, err := RawFromBytes(input)
+	if err != nil {
+		return nil, err
+	}
+
+	p.buf.Reset()
+	bufPool.Put(p.buf)
+
+	return p.Profile, nil
+}
+
+func OpenFile(path string) (*Profile, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return RawFromBytes(data)
+}
+
 type Profile struct {
 	*profilev1.Profile
-	raw []byte
+	//raw []byte
+	buf *bytes.Buffer
 
 	hasher StacktracesHasher
 }
 
-func OpenFile(path string) (*Profile, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	r, err := gzip.NewReader(f)
-	if err != nil {
-		return nil, err
-	}
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	return OpenRaw(content)
+func (p *Profile) Close() {
+	p.Profile.ReturnToVTPool()
+	p.buf.Reset()
+	bufPool.Put(p.buf)
 }
 
-func OpenRaw(data []byte) (*Profile, error) {
-	p := profilev1.ProfileFromVTPool()
-	if err := p.UnmarshalVT(data); err != nil {
-		return nil, err
+func (p *Profile) SizeBytes() int {
+	return p.buf.Len()
+}
+
+// WriteTo writes the profile to the given writer.
+func (p *Profile) WriteTo(w io.Writer) (int64, error) {
+	// reuse the data buffer if possible
+	p.buf.Reset()
+	p.buf.Grow(p.SizeVT())
+	data := p.buf.Bytes()
+	n, err := p.MarshalToVT(data)
+	if err != nil {
+		return 0, err
+	}
+	data = data[:n]
+
+	p.ReturnToVTPool()
+	data = data[:n]
+
+	gzipWriter := gzipWriterPool.Get().(*gzip.Writer)
+	gzipWriter.Reset(w)
+	defer func() {
+		// reset gzip writer and return to pool
+		gzipWriter.Reset(io.Discard)
+		gzipWriterPool.Put(gzipWriter)
+	}()
+
+	written, err := gzipWriter.Write(data)
+	if err != nil {
+		return 0, errors.Wrap(err, "gzip write")
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return 0, errors.Wrap(err, "gzip close")
 	}
 
-	return &Profile{Profile: p, raw: data}, nil
+	// reset buffer
+	p.buf.Reset()
+
+	return int64(written), nil
 }
 
 type sortedSample struct {
