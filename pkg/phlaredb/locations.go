@@ -53,7 +53,10 @@ func (*locationsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTabl
 }
 
 func (*locationsHelper) rewrite(r *rewriter, l *profilev1.Location) error {
-	r.mappings.rewriteUint64(&l.MappingId)
+	// when mapping id is not 0, rewrite it
+	if l.MappingId != 0 {
+		r.mappings.rewriteUint64(&l.MappingId)
+	}
 
 	for pos := range l.Line {
 		r.functions.rewriteUint64(&l.Line[pos].FunctionId)
