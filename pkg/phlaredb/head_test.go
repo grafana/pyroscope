@@ -349,7 +349,7 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 	}
 
 	require.NoError(t, head.Flush(ctx))
-	t.Logf("strings=%d samples=%d", len(head.strings.slice), len(head.profiles.slice[0].Samples))
+	t.Logf("strings=%d samples=%d", len(head.strings.slice), head.totalSamples.Load())
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {
