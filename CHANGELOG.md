@@ -1,3 +1,19 @@
+# [0.33.0](https://github.com/pyroscope-io/pyroscope/compare/v0.32.0...v0.33.0) (2022-10-22)
+
+
+### Bug Fixes
+
+* close databases in deterministic order ([#1623](https://github.com/pyroscope-io/pyroscope/issues/1623)) ([7a8b33c](https://github.com/pyroscope-io/pyroscope/commit/7a8b33cb0c52221836a0c69f8e141705bbdaf627))
+* fix node version in update-contributors action ([deb36ad](https://github.com/pyroscope-io/pyroscope/commit/deb36adc5667aa9d53f716f2f3f47482c7cdcdd2))
+
+
+### Performance Improvements
+
+* optimize allocations in dictionaries ([#1610](https://github.com/pyroscope-io/pyroscope/issues/1610)) ([f8d52f5](https://github.com/pyroscope-io/pyroscope/commit/f8d52f5d478024ad52107a6e1c3510b2a8fabdd6))
+* optimize segment key parser allocations ([#1625](https://github.com/pyroscope-io/pyroscope/issues/1625)) ([7c83b32](https://github.com/pyroscope-io/pyroscope/commit/7c83b327e66f1350f5c9255f739c26e2babcaeee))
+
+
+
 # [0.32.0](https://github.com/pyroscope-io/pyroscope/compare/v0.31.0...v0.32.0) (2022-10-17)
 
 
