@@ -2,6 +2,8 @@ package model
 
 import (
 	"encoding/binary"
+	"sort"
+	"strings"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -90,6 +92,9 @@ func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesR
 		result = &ingestv1.MergeProfilesStacktracesResult{}
 	}
 
+	// sort stacktraces by function name
+	sortStacktraces(result)
+
 	return result
 }
 
@@ -113,4 +118,30 @@ func (h StacktracesHasher) Hashes(fnIds []int32) uint64 {
 		}
 	}
 	return h.hash.Sum64()
+}
+
+// sortStacktraces sorts the stacktraces by function name
+func sortStacktraces(r *ingestv1.MergeProfilesStacktracesResult) {
+	sort.Slice(r.Stacktraces, func(i, j int) bool {
+		pos := 0
+		for {
+			// check slice lengths
+			if pos >= len(r.Stacktraces[i].FunctionIds) {
+				break
+			}
+			if pos >= len(r.Stacktraces[j].FunctionIds) {
+				return false
+			}
+
+			if diff := strings.Compare(r.FunctionNames[r.Stacktraces[i].FunctionIds[pos]], r.FunctionNames[r.Stacktraces[j].FunctionIds[pos]]); diff < 0 {
+				break
+			} else if diff > 0 {
+				return false
+			}
+			pos++
+		}
+
+		// when we get here, i is less than j
+		return true
+	})
 }
