@@ -83,6 +83,11 @@ func (s *deduplicatingSlice[M, K, H, P]) Close() error {
 }
 
 func (s *deduplicatingSlice[M, K, H, P]) maxRowsPerRowGroup() int {
+	// with empty slice we need to return early
+	if len(s.slice) == 0 {
+		return 1
+	}
+
 	var (
 		// average size per row in memory
 		bytesPerRow = s.Size() / uint64(len(s.slice))
