@@ -8,7 +8,8 @@ import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { useEffect, useState } from 'react';
 import { markingsFromSelection, Selection } from '../markings';
 
-const timeOffset = 5000;
+const timeOffset = 5 * 60 * 1000;
+const selectionOffset = 5000;
 
 const getTitle = (leftInRange: boolean, rightInRange: boolean) => {
   if (!leftInRange && !rightInRange) {
@@ -53,12 +54,6 @@ export function useSync() {
   const rightSelectionFrom = rightSelectionMarkings?.[0]?.xaxis?.from;
   const rightSelectionTo = rightSelectionMarkings?.[0]?.xaxis?.to;
 
-  const offset = [leftFrom, rightFrom, leftUntil, rightUntil, from, until].some(
-    (p) => String(p).startsWith('now')
-  )
-    ? timeOffset
-    : 1;
-
   const leftInRange =
     leftSelectionFrom + timeOffset >= timelineFrom &&
     leftSelectionTo - timeOffset <= timelineTo;
@@ -74,9 +69,6 @@ export function useSync() {
     rightSelectionTo,
   ];
 
-  const selectionMin = Math.min(...selectionsLimits);
-  const selectionMax = Math.max(...selectionsLimits);
-
   const timeIsRelative = [
     leftFrom,
     rightFrom,
@@ -87,6 +79,20 @@ export function useSync() {
   ].every((t) => t.startsWith('now'));
 
   const onSync = () => {
+    const selectionMin = Math.min(...selectionsLimits);
+    const selectionMax = Math.max(...selectionsLimits);
+
+    const offset = [
+      leftFrom,
+      rightFrom,
+      leftUntil,
+      rightUntil,
+      from,
+      until,
+    ].some((p) => String(p).startsWith('now'))
+      ? selectionOffset
+      : 1;
+
     dispatch(
       actions.setLeft({
         from: String(leftSelectionFrom),
