@@ -233,7 +233,7 @@ export const fetchSingleView = createAsyncThunk<
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -728,7 +728,19 @@ export const continuousSlice = createSlice({
       state.refreshToken = Math.random().toString();
     },
   },
+
   extraReducers: (builder) => {
+    /**********************/
+    /* GENERAL GUIDELINES */
+    /**********************/
+
+    // There are (currently) only 2 ways an action can be aborted:
+    // 1. The component is unmounting, eg when changing route
+    // 2. New data is loading, which means previous request is going to be superseeded
+    // In both cases, not doing state transitions is fine
+    // Specially in the second case, where a 'rejected' may happen AFTER a 'pending' is dispatched
+    // https://redux-toolkit.js.org/api/createAsyncThunk#checking-if-a-promise-rejection-was-from-an-error-or-cancellation
+
     /*************************/
     /*      Single View      */
     /*************************/
@@ -759,31 +771,19 @@ export const continuousSlice = createSlice({
     });
 
     builder.addCase(fetchSingleView.rejected, (state, action) => {
-      switch (state.singleView.type) {
-        // if previous state is loaded, let's continue displaying data
-        case 'reloading': {
-          let type: SingleView['type'] = 'reloading';
-          if (action.meta.rejectedWithValue) {
-            type = (
-              action?.payload as { rejectedWithValue: SingleView['type'] }
-            )?.rejectedWithValue;
-          } else if (action.error.message === 'cancel') {
-            type = 'loaded';
-          }
-          state.singleView = {
-            ...state.singleView,
-            type,
-          };
-          break;
-        }
-
-        default: {
-          // it failed to load for the first time, so far all effects it's pristine
-          state.singleView = {
-            type: 'pristine',
-          };
-        }
+      // There are (currently) only 2 ways an action can be aborted:
+      // 1. The component is unmounting, eg when changing route
+      // 2. New data is loading, which means previous request is going to be superseeded
+      // In both cases, not doing state transitions is fine
+      // Specially in the second case, where a 'rejected' may happen AFTER a 'pending' is dispatched
+      // https://redux-toolkit.js.org/api/createAsyncThunk#checking-if-a-promise-rejection-was-from-an-error-or-cancellation
+      if (action.meta.aborted) {
+        return;
       }
+
+      state.singleView = {
+        type: 'pristine',
+      };
     });
 
     /*****************************/
@@ -820,21 +820,13 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchComparisonSide.rejected, (state, action) => {
       const { side } = action.meta.arg;
 
-      if (action?.meta?.rejectedWithValue) {
-        state.comparisonView[side] = {
-          profile: state.comparisonView[side].profile as Profile,
-          type: (
-            action?.payload as {
-              rejectedWithValue: ComparisonView['left' | 'right']['type'];
-            }
-          )?.rejectedWithValue,
-        };
-      } else {
-        state.comparisonView[side] = {
-          profile: state.comparisonView[side].profile as Profile,
-          type: 'loaded',
-        };
+      if (action.meta.aborted) {
+        return;
       }
+
+      state.comparisonView[side] = {
+        type: 'pristine',
+      };
     });
 
     /*****************************/
@@ -896,24 +888,13 @@ export const continuousSlice = createSlice({
       };
     });
     builder.addCase(fetchDiffView.rejected, (state, action) => {
-      switch (state.diffView.type) {
-        case 'reloading': {
-          state.diffView = {
-            profile: state.diffView.profile,
-            type: action.meta.rejectedWithValue
-              ? (action?.payload as { rejectedWithValue: DiffView['type'] })
-                  ?.rejectedWithValue
-              : 'loaded',
-          };
-          break;
-        }
-
-        default: {
-          state.diffView = {
-            type: 'pristine',
-          };
-        }
+      if (action.meta.aborted) {
+        return;
       }
+
+      state.diffView = {
+        type: 'pristine',
+      };
     });
 
     /*******************************/
