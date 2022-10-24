@@ -277,7 +277,7 @@ export const fetchTagExplorerView = createAsyncThunk<
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -330,7 +330,7 @@ export const fetchTagExplorerViewProfile = createAsyncThunk<
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -379,18 +379,14 @@ export const fetchSideTimelines = createAsyncThunk<
       },
       sideTimelinesAbortController
     ),
-  ]).catch((e) => {
-    if (e?.message.includes('The user aborted a request')) {
-      thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
-    }
-  });
+  ]);
 
   if (
     (res?.[0]?.isErr && res?.[0]?.error instanceof RequestAbortedError) ||
     (res?.[1]?.isErr && res?.[1]?.error instanceof RequestAbortedError) ||
     (!res && thunkAPI.signal.aborted)
   ) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject();
   }
 
   if (res?.[0].isOk && res?.[1].isOk) {
@@ -771,12 +767,6 @@ export const continuousSlice = createSlice({
     });
 
     builder.addCase(fetchSingleView.rejected, (state, action) => {
-      // There are (currently) only 2 ways an action can be aborted:
-      // 1. The component is unmounting, eg when changing route
-      // 2. New data is loading, which means previous request is going to be superseeded
-      // In both cases, not doing state transitions is fine
-      // Specially in the second case, where a 'rejected' may happen AFTER a 'pending' is dispatched
-      // https://redux-toolkit.js.org/api/createAsyncThunk#checking-if-a-promise-rejection-was-from-an-error-or-cancellation
       if (action.meta.aborted) {
         return;
       }
