@@ -69,7 +69,6 @@ func (i *ingesterFlusherCompat) Flush() {
 }
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobjstore.Bucket) (*Ingester, error) {
-
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
