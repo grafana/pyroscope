@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/klauspost/compress/gzip"
@@ -188,6 +189,10 @@ func (s *sortedSample) Swap(i, j int) {
 	s.hashes[i], s.hashes[j] = s.hashes[j], s.hashes[i]
 }
 
+var (
+	currentTime = time.Now
+)
+
 // Normalize normalizes the profile by:
 //   - Removing all duplicate samples (summing their values).
 //   - Removing redundant profile labels (byte => unique of an allocation site)
@@ -195,7 +200,13 @@ func (s *sortedSample) Swap(i, j int) {
 //     we cannot recompute the allocation per site ("bytes") profile label.
 //   - Removing empty samples.
 //   - Then remove unused references.
+//   - Ensure that the profile has a time_nanos set
 func (p *Profile) Normalize() {
+	// if the profile has no time, set it to now
+	if p.TimeNanos == 0 {
+		p.TimeNanos = currentTime().UnixNano()
+	}
+
 	// first we sort the samples location ids.
 	hashes := p.hasher.Hashes(p.Sample)
 
