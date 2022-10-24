@@ -3,6 +3,7 @@ package pprof
 import (
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -11,6 +12,14 @@ import (
 )
 
 func TestNormalizeProfile(t *testing.T) {
+	currentTime = func() time.Time {
+		t, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
+		return t
+	}
+	defer func() {
+		currentTime = time.Now
+	}()
+
 	p := &profilev1.Profile{
 		SampleType: []*profilev1.ValueType{
 			{Type: 2, Unit: 1},
@@ -78,6 +87,7 @@ func TestNormalizeProfile(t *testing.T) {
 		},
 		PeriodType:        &profilev1.ValueType{Type: 0, Unit: 1},
 		Comment:           []int64{},
+		TimeNanos:         1577836800000000000,
 		DefaultSampleType: 0,
 	})
 }
