@@ -120,7 +120,7 @@ func OpenFile(path string) (*Profile, error) {
 
 type Profile struct {
 	*profilev1.Profile
-	//raw []byte
+	// raw []byte
 	buf *bytes.Buffer
 
 	hasher StacktracesHasher
@@ -146,9 +146,6 @@ func (p *Profile) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	data = data[:n]
-
-	p.ReturnToVTPool()
 	data = data[:n]
 
 	gzipWriter := gzipWriterPool.Get().(*gzip.Writer)
