@@ -1,13 +1,8 @@
 import { Result } from '@webapp/util/fp';
 import { AppNames } from '@webapp/models/appNames';
+import { fetchApps } from '@webapp/services/apps';
 import type { ZodError } from 'zod';
 import type { RequestError } from './base';
-import { fetchApps } from './apps';
-
-/* eslint-disable import/prefer-default-export */
-export interface FetchAppNamesError {
-  message?: string;
-}
 
 // Due to circunstances, older versions of pyroscope accepted apps with empty names
 // TODO: maybe also check for illegal characters and whatnot?
