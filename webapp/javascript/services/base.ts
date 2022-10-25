@@ -40,7 +40,7 @@ export class RequestNotOkWithErrorsList extends CustomError {
 export class ResponseNotOkInHTMLFormat extends CustomError {
   public constructor(public code: number, public body: string) {
     super(
-      `Server returned with code: '${code}'. The body contains a HTML page`
+      `Server returned with code: '${code}'. The body contains an HTML page`
     );
   }
 }
