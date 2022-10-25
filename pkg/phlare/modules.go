@@ -302,6 +302,11 @@ func (f *Phlare) initUsageReport() (services.Service, error) {
 		b = fs
 	}
 
+	if b == nil {
+		level.Warn(f.logger).Log("msg", "no storage bucket configured, usage report will not be sent")
+		return nil, nil
+	}
+
 	ur, err := usagestats.NewReporter(f.Cfg.Analytics, f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore, b, f.logger, f.reg)
 	if err != nil {
 		level.Info(f.logger).Log("msg", "failed to initialize usage report", "err", err)
