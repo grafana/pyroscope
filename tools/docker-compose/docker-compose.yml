@@ -46,7 +46,6 @@ services:
       - 8082:8080
     networks:
       - phlare
-
   java-simple:
     build:
       context: java/simple
@@ -54,7 +53,17 @@ services:
     cap_add:
       - SYS_ADMIN
     ports:
-      - 8083:8080
+      - 8083:4001
+    networks:
+      - phlare
+  java-springboot:
+    build:
+      context: java/springboot
+      dockerfile: Dockerfile
+    cap_add:
+      - SYS_ADMIN
+    ports:
+      - 8084:8080
     networks:
       - phlare
 

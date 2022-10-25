@@ -6,6 +6,6 @@ COPY . .
 
 RUN ./gradlew clean build
 
-EXPOSE 4001
+EXPOSE 8080
 
-CMD ["./gradlew", "run"]
+CMD ["./gradlew", "bootRun"]
