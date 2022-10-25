@@ -36,7 +36,6 @@ import (
 	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/phlare/pkg/ingester"
-	"github.com/grafana/phlare/pkg/objstore"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	"github.com/grafana/phlare/pkg/openapiv2"
@@ -291,7 +290,7 @@ func (f *Phlare) initUsageReport() (services.Service, error) {
 
 	usagestats.Target(f.Cfg.Target.String())
 
-	var b objstore.Bucket
+	b := f.storageBucket
 	if f.storageBucket == nil {
 		if err := os.MkdirAll(f.Cfg.PhlareDB.DataPath, 0o777); err != nil {
 			return nil, fmt.Errorf("mkdir %s: %w", f.Cfg.PhlareDB.DataPath, err)
