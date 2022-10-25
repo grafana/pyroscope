@@ -2,8 +2,8 @@
 bin
 # Test binary, built with `go test -c`
 *.test
-phlare
-profilecli
+/phlare
+/profilecli
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

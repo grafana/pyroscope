@@ -1,4 +1,7 @@
 {
+  "minio": {
+    "enabled": true
+  },
   "phlare": {
     "components": {
       "agent": {
