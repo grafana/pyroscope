@@ -1,10 +1,8 @@
 /* eslint-disable default-case, consistent-return */
 import Color from 'color';
 import React, { useState } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import AnnotationInfo from '@webapp/pages/continuous/contextMenu/AnnotationInfo';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
-import { faCommentDots } from '@fortawesome/free-regular-svg-icons/faCommentDots';
 
 import styles from './styles.module.scss';
 
@@ -16,13 +14,6 @@ interface IAnnotationMarkProps {
     timestamp: number;
   };
 }
-
-const getIcon = (type: IAnnotationMarkProps['type']) => {
-  switch (type) {
-    case 'message':
-      return faCommentDots;
-  }
-};
 
 const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
   const { offset } = useTimeZone();
@@ -50,7 +41,7 @@ const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
   ) : null;
 
   const onHoverStyle = {
-    background: hovered ? color.darken(0.2).hex() : color.hex(),
+    backgroundColor: hovered ? color.darken(0.2).hex() : color.hex(),
     zIndex: hovered ? 2 : 1,
   };
 
@@ -64,9 +55,7 @@ const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
         role="none"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-      >
-        <FontAwesomeIcon className={styles.icon} icon={getIcon(type)} />
-      </div>
+      />
       {annotationInfoPopover}
     </>
   );

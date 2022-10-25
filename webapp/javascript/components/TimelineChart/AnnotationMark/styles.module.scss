@@ -1,14 +1,18 @@
 .wrapper {
   position: relative;
-  width: 24px;
-  height: 24px;
-  left: -12px;
-  top: -12px;
+  width: 18px;
+  height: 18px;
+  left: -9px;
+  top: -7px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  background-image: url('../../../../images/comment.svg');
+  background-size: 14px;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .icon {
