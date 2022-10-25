@@ -134,10 +134,10 @@ var _ = Describe("server", func() {
 					(*cfg).Server.Auth.Internal.Enabled = false
 					(*cfg).Server.EnableExperimentalAdmin = true
 					runServer(cfg, func(s testServices) {
-						checkRoleAccess(s, model.AdminRole, true, http.StatusForbidden)
+						checkRoleAccess(s, model.AdminRole, false, http.StatusForbidden)
 						checkRoleAccess(s, model.AgentRole, false, http.StatusForbidden)
 						checkRoleAccess(s, model.ReadOnlyRole, false, http.StatusForbidden)
-						checkRoleAccess(s, model.InvalidRole, false, http.StatusUnauthorized)
+						checkRoleAccess(s, model.InvalidRole, false, http.StatusForbidden)
 					})
 				})
 			})
