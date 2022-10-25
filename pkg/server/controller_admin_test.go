@@ -128,11 +128,13 @@ var _ = Describe("server", func() {
 				})
 			})
 			Context("with Auth disabled", func() {
-				It("should be accessible to only admin token", func() {
+				// notice that the routes' access is granular
+				// FIXME update the tests to test each route individually
+				It("should never be accessible", func() {
 					(*cfg).Server.Auth.Internal.Enabled = false
 					(*cfg).Server.EnableExperimentalAdmin = true
 					runServer(cfg, func(s testServices) {
-						checkRoleAccess(s, model.AdminRole, true, http.StatusOK)
+						checkRoleAccess(s, model.AdminRole, true, http.StatusForbidden)
 						checkRoleAccess(s, model.AgentRole, false, http.StatusForbidden)
 						checkRoleAccess(s, model.ReadOnlyRole, false, http.StatusForbidden)
 						checkRoleAccess(s, model.InvalidRole, false, http.StatusUnauthorized)
