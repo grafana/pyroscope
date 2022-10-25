@@ -53,8 +53,6 @@ services:
       dockerfile: Dockerfile
     cap_add:
       - SYS_ADMIN
-    security_opt:
-      - seccomp=unconfined
     ports:
       - 8083:8080
     networks:
