@@ -213,12 +213,8 @@ storage:
 
 analytics:
   # Enable anonymous usage reporting.
-  # CLI flag: -reporting.enabled
+  # CLI flag: -usage-stats.enabled
   [reporting_enabled: <boolean> | default = true]
-
-# yaml file to load
-# CLI flag: -config.file
-[configfile: <string> | default = ""]
 ```
 
 ### server
