@@ -218,7 +218,7 @@ describe('Base HTTP', () => {
 
       expect(res.error).toBeInstanceOf(ResponseNotOkInHTMLFormat);
       expect(res.error.message).toBe(
-        "Server returned with code: '500'. The body contains a HTML page"
+        "Server returned with code: '500'. The body contains an HTML page"
       );
     });
   });
