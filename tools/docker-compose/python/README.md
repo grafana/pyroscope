@@ -12,5 +12,5 @@ $ docker run -p 8081:8081 cp-python
 ## Collect profiles
 
 ```shell
-$ pprof -http :6060 "http://localhost:8081/debug/pprof/profile?seconds=1"
+$ pprof -http :6060 "http://localhost:8080/debug/pprof/profile?seconds=1"
 ```

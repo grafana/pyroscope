@@ -10,7 +10,17 @@ scrape_configs:
   - job_name: "cp-rust"
     scrape_interval: "15s"
     static_configs:
-      - targets: ["rust:3000"]
+      - targets: ["rust:8080"]
+    profiling_config:
+      pprof_config:
+        block: { enabled: false }
+        goroutine: { enabled: false }
+        memory: { enabled: false }
+        mutex: { enabled: false }
+  - job_name: "cp-java-simple"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["java-simple:8080"]
     profiling_config:
       pprof_config:
         block: { enabled: false }
@@ -20,7 +30,7 @@ scrape_configs:
   - job_name: "cp-python"
     scrape_interval: "15s"
     static_configs:
-      - targets: ["python:8081"]
+      - targets: ["python:8080"]
     profiling_config:
       pprof_config:
         block: { enabled: false }
