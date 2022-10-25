@@ -19,8 +19,6 @@ export async function fetchAppNames(): Promise<
   Result<AppNames, RequestError | ZodError>
 > {
   return (await fetchApps())
-    .map((apps) => {
-      return apps.map((a) => a.name);
-    })
+    .map((apps) => apps.map((a) => a.name))
     .map((a) => a.filter(isValidAppName));
 }
