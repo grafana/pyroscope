@@ -224,10 +224,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	requireAdminRole := authorizer.Require(authz.Role(model.AdminRole))
 	appsRouter := apiRouter.PathPrefix("/apps").Subrouter()
 
-	appsRouter.Path("").
-		Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
-	appsRouter.Path("").
-		Methods(http.MethodDelete).Handler(requireAdminRole(ctrl.deleteAppsHandler()))
+	appsRouter.Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
+	appsRouter.Methods(http.MethodDelete).Handler(requireAdminRole(ctrl.deleteAppsHandler()))
 
 	ingestRouter := r.Path("/ingest").Subrouter()
 	ingestRouter.Use(ctrl.drainMiddleware)
