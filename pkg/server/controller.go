@@ -221,13 +221,13 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	// FIXME: Honor ctrl.config.RemoteRead.Enabled.
 	authorizer := authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log))
+	requireAdminRole := authorizer.Require(authz.Role(model.AdminRole))
 	appsRouter := apiRouter.PathPrefix("/apps").Subrouter()
-	appsRouter.Use(ctrl.authMiddleware(nil))
 
 	appsRouter.Path("").
 		Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
 	appsRouter.Path("").
-		Methods(http.MethodDelete).Handler(authorizer.RequireAdminRole()(ctrl.deleteAppsHandler()))
+		Methods(http.MethodDelete).Handler(requireAdminRole(ctrl.deleteAppsHandler()))
 
 	ingestRouter := r.Path("/ingest").Subrouter()
 	ingestRouter.Use(ctrl.drainMiddleware)
