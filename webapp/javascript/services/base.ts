@@ -171,7 +171,15 @@ export async function request(
     } catch (e) {
       // We couldn't parse, but there's definitly some data
       // We must handle this case since the go server sometimes responds with plain text
-      // TODO(eh-am): identify it's html
+
+      // It's HTML
+      // Which normally happens when hitting a broken URL, which makes the server return the SPA
+      // Poor heuristic for identifying it's a html file
+      if (/<\/?[a-z][\s\S]*>/i.test(textBody)) {
+        return Result.err(
+          new ResponseNotOkInHTMLFormat(response.status, textBody)
+        );
+      }
       return Result.err(new RequestNotOkError(response.status, textBody));
     }
   }

@@ -1,4 +1,5 @@
 import { Result } from '@webapp/util/fp';
+import path from 'path';
 import { ZodError } from 'zod';
 import {
   request,
@@ -7,6 +8,7 @@ import {
   RequestNotOkWithErrorsList,
   ResponseOkNotInJSONFormat,
   RequestIncompleteError,
+  ResponseNotOkInHTMLFormat,
 } from './base';
 import { setupServer, rest } from './testUtils';
 import basename from '../util/baseurl';
@@ -197,6 +199,26 @@ describe('Base HTTP', () => {
       expect(res.error).toBeInstanceOf(RequestNotOkError);
       expect(res.error.message).toBe(
         "Request failed with statusCode: '500' and description: 'text error'"
+      );
+    });
+
+    it('Returns a generic message when respond with HTML data', async () => {
+      const htmlData = require('fs').readFileSync(
+        path.resolve(__dirname, './testdata/example.html'),
+        'utf8'
+      );
+
+      server = setupServer(
+        rest.get(`http://localhost/test`, (req, res, ctx) => {
+          return res(ctx.status(500), ctx.text(htmlData));
+        })
+      );
+      server.listen();
+      const res = await request('/test');
+
+      expect(res.error).toBeInstanceOf(ResponseNotOkInHTMLFormat);
+      expect(res.error.message).toBe(
+        "Server returned with code: '500'. The body contains a HTML page"
       );
     });
   });
