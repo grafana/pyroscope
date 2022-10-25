@@ -70,7 +70,7 @@ func Test_Memberlist(t *testing.T) {
 		},
 	}, "test")
 	require.NoError(t, err)
-	result := make(chan *ClusterSeed, 10)
+	result := make(chan ClusterSeed, 10)
 
 	// create a first memberlist to get a valid listening port.
 	initMKV := createMemberlist(t, 0, -1)
