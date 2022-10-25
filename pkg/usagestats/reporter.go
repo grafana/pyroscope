@@ -58,7 +58,7 @@ type Reporter struct {
 
 	conf       Config
 	kvConfig   kv.Config
-	cluster    *ClusterSeed
+	cluster    ClusterSeed
 	lastReport time.Time
 }
 
@@ -77,11 +77,11 @@ func NewReporter(config Config, kvConfig kv.Config, objectClient phlareobjstore.
 	return r, nil
 }
 
-func (rep *Reporter) initLeader(ctx context.Context) *ClusterSeed {
+func (rep *Reporter) initLeader(ctx context.Context) ClusterSeed {
 	kvClient, err := kv.NewClient(rep.kvConfig, JSONCodec, nil, rep.logger)
 	if err != nil {
 		level.Info(rep.logger).Log("msg", "failed to create kv client", "err", err)
-		return nil
+		return ClusterSeed{}
 	}
 	// Try to become leader via the kv client
 	backoff := backoff.New(ctx, backoff.Config{
@@ -126,14 +126,14 @@ func (rep *Reporter) initLeader(ctx context.Context) *ClusterSeed {
 					backoff.Wait()
 					continue
 				}
-				return &seed
+				return seed
 			}
 			backoff.Wait()
 			continue
 		}
 		return remoteSeed
 	}
-	return nil
+	return ClusterSeed{}
 }
 
 // ensureStableKey ensures that the cluster seed is stable for at least 30seconds.
@@ -182,7 +182,7 @@ func (rep *Reporter) init(ctx context.Context) {
 
 // fetchSeed fetches the cluster seed from the object store and try until it succeeds.
 // continueFn allow you to decide if we should continue retrying. Nil means always retry
-func (rep *Reporter) fetchSeed(ctx context.Context, continueFn func(err error) bool) (*ClusterSeed, error) {
+func (rep *Reporter) fetchSeed(ctx context.Context, continueFn func(err error) bool) (ClusterSeed, error) {
 	var (
 		backoff = backoff.New(ctx, backoff.Config{
 			MinBackoff: time.Second,
@@ -208,21 +208,21 @@ func (rep *Reporter) fetchSeed(ctx context.Context, continueFn func(err error) b
 				backoff.Wait()
 				continue
 			}
-			return nil, err
+			return ClusterSeed{}, err
 		}
 		return seed, nil
 	}
-	return nil, backoff.Err()
+	return ClusterSeed{}, backoff.Err()
 }
 
 // readSeedFile reads the cluster seed file from the object store.
-func (rep *Reporter) readSeedFile(ctx context.Context) (*ClusterSeed, error) {
+func (rep *Reporter) readSeedFile(ctx context.Context) (ClusterSeed, error) {
 	reader, err := rep.bucket.Get(ctx, ClusterSeedFileName)
 	if err != nil {
-		return nil, err
+		return ClusterSeed{}, err
 	}
 	if err != nil {
-		return nil, err
+		return ClusterSeed{}, err
 	}
 	defer func() {
 		if err := reader.Close(); err != nil {
@@ -231,13 +231,13 @@ func (rep *Reporter) readSeedFile(ctx context.Context) (*ClusterSeed, error) {
 	}()
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, err
+		return ClusterSeed{}, err
 	}
 	seed, err := JSONCodec.Decode(data)
 	if err != nil {
-		return nil, err
+		return ClusterSeed{}, err
 	}
-	return seed.(*ClusterSeed), nil
+	return *(seed.(*ClusterSeed)), nil
 }
 
 // writeSeedFile writes the cluster seed to the object store.
@@ -253,7 +253,7 @@ func (rep *Reporter) writeSeedFile(ctx context.Context, seed ClusterSeed) error 
 func (rep *Reporter) running(ctx context.Context) error {
 	rep.init(ctx)
 
-	if rep.cluster == nil {
+	if rep.cluster.UID == "" {
 		<-ctx.Done()
 		if err := ctx.Err(); !errors.Is(err, context.Canceled) {
 			return err
