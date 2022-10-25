@@ -12,6 +12,7 @@ import {
   fetchTagValues,
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
+import SideTimelineComparator from '@webapp/components/SideTimelineComparator';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
@@ -140,7 +141,9 @@ function ComparisonApp() {
               active={isLoadingOrReloading([comparisonView.left.type])}
               spinnerPosition="baseline"
             >
-              <TimelineTitle titleKey="baseline" color={leftColor} />
+              <div className={styles.timelineTitleWrapper}>
+                <TimelineTitle titleKey="baseline" color={leftColor} />
+              </div>
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
@@ -204,7 +207,10 @@ function ComparisonApp() {
               spinnerPosition="baseline"
               active={isLoadingOrReloading([comparisonView.right.type])}
             >
-              <TimelineTitle titleKey="comparison" color={rightColor} />
+              <div className={styles.timelineTitleWrapper}>
+                <TimelineTitle titleKey="comparison" color={rightColor} />
+                <SideTimelineComparator />
+              </div>
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}

@@ -1,0 +1,36 @@
+.wrapper {
+  position: relative;
+}
+
+.menu {
+  width: 300px;
+}
+
+.openButtonIcon {
+  margin-left: 5px;
+  height: 14px;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: row;
+
+  .buttonsCol {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.priorButton {
+    margin-bottom: 5px;
+    margin-right: 5px;
+}
+
+.hidden {
+  display: none;
+}

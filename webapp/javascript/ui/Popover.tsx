@@ -18,7 +18,7 @@ export interface PopoverProps {
 
   /** where to position the popover on the page */
   anchorPoint: {
-    x: number;
+    x: number | string;
     y: number;
   };
 }
@@ -75,6 +75,13 @@ function getPopoverPosition(
     position: 'absolute' as const,
   };
 
+  if (typeof anchorPoint.x === 'string') {
+    return {
+      ...defaultProps,
+      left: anchorPoint.x,
+    };
+  }
+
   if (anchorPoint.x + popoverWidth + marginToWindowEdge >= windowWidth) {
     // position to the left
     return {
@@ -91,14 +98,15 @@ function getPopoverPosition(
 }
 interface PopoverMemberProps {
   children: ReactNode;
+  className?: string;
 }
 
 export function PopoverHeader({ children }: PopoverMemberProps) {
   return <div className={styles.header}>{children}</div>;
 }
 
-export function PopoverBody({ children }: PopoverMemberProps) {
-  return <div className={styles.body}>{children}</div>;
+export function PopoverBody({ children, className }: PopoverMemberProps) {
+  return <div className={classnames(styles.body, className)}>{children}</div>;
 }
 
 export function PopoverFooter({ children }: PopoverMemberProps) {
