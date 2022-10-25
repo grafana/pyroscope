@@ -6,14 +6,14 @@ describe('basic test', () => {
     const basePath = Cypress.env('basePath') || '';
     // While the initial values come from the backend
     // We refresh it here so that we can mock with specific values
-    cy.intercept(`${basePath}**/label-values*`, {
+    cy.intercept(`${basePath}/api/apps`, {
       fixture: 'appNames.json',
-    }).as('labelValues');
+    }).as('appNames');
 
     cy.visit('/');
 
     cy.findByLabelText(/Refresh apps/i).click();
-    cy.wait(`@labelValues`);
+    cy.wait(`@appNames`);
 
     cy.get('.navbar').findAllByTestId('toggler').click();
 
