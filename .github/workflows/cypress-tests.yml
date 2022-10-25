@@ -40,10 +40,6 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: make --version
       - run: make -j e2e-build
-      - uses: actions/cache@v3
-        with:
-          path: bin/pyroscope
-          key: ${{ runner.os }}-pyroscope
       - name: Cypress run
         uses: cypress-io/github-action@v4
         with:
