@@ -303,13 +303,15 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	// FIXME: Honor ctrl.config.RemoteRead.Enabled.
 	appsRouter := apiRouter.PathPrefix("/").Subrouter()
-	appsRouter.Use(
+	appsRouter.HandleFunc("/apps", ctrl.getAppsHandler()).Methods("GET")
+
+	protectedAppsRouter := apiRouter.PathPrefix("/").Subrouter()
+	protectedAppsRouter.Use(
 		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
 		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
 			authz.Role(model.AdminRole),
 		))
-	appsRouter.HandleFunc("/apps", ctrl.getAppsHandler()).Methods("GET")
-	appsRouter.HandleFunc("/apps", ctrl.deleteAppsHandler()).Methods("DELETE")
+	protectedAppsRouter.HandleFunc("/apps", ctrl.deleteAppsHandler()).Methods("DELETE")
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
