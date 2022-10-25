@@ -1,6 +1,9 @@
 server:
   http_listen_port: 4100
-
+storage:
+  backend: gcs
+  gcs:
+    bucket_name: dev-us-central-0-profiles-dev-001-data
 scrape_configs:
   - job_name: "default"
     scrape_interval: "15s"
