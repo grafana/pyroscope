@@ -45,7 +45,7 @@ type Report struct {
 }
 
 // sendReport sends the report to the stats server
-func sendReport(ctx context.Context, seed *ClusterSeed, interval time.Time) error {
+func sendReport(ctx context.Context, seed ClusterSeed, interval time.Time) error {
 	report := buildReport(seed, interval)
 	out, err := jsoniter.MarshalIndent(report, "", " ")
 	if err != nil {
@@ -72,7 +72,7 @@ func sendReport(ctx context.Context, seed *ClusterSeed, interval time.Time) erro
 }
 
 // buildReport builds the report to be sent to the stats server
-func buildReport(seed *ClusterSeed, interval time.Time) Report {
+func buildReport(seed ClusterSeed, interval time.Time) Report {
 	var (
 		targetName  string
 		editionName string

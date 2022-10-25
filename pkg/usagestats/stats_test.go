@@ -15,7 +15,7 @@ import (
 
 func Test_BuildReport(t *testing.T) {
 	now := time.Now()
-	seed := &ClusterSeed{
+	seed := ClusterSeed{
 		UID:       uuid.New().String(),
 		CreatedAt: now,
 	}
