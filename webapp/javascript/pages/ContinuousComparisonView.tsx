@@ -130,7 +130,14 @@ function ComparisonApp() {
               }
               selectionType="double"
             />
-            <SyncTimelines />
+            <SyncTimelines
+              timeline={leftTimeline}
+              leftSelection={{ from: leftFrom, to: leftUntil }}
+              rightSelection={{ from: rightFrom, to: rightUntil }}
+              onSync={(from, until) => {
+                dispatch(actions.setFromAndUntil({ from, until }));
+              }}
+            />
           </LoadingOverlay>
         </Box>
         <div

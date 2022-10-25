@@ -144,7 +144,14 @@ function ComparisonDiffApp() {
                 <TimelineTitle titleKey={diffView.profile?.metadata.units} />
               }
             />
-            <SyncTimelines />
+            <SyncTimelines
+              timeline={leftTimeline}
+              leftSelection={{ from: leftFrom, to: leftUntil }}
+              rightSelection={{ from: rightFrom, to: rightUntil }}
+              onSync={(from, until) => {
+                dispatch(actions.setFromAndUntil({ from, until }));
+              }}
+            />
           </LoadingOverlay>
         </Box>
         <div className="diff-instructions-wrapper">

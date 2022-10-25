@@ -22,7 +22,7 @@ export interface TimelineGroupData {
   color?: Color;
 }
 
-interface TimelineData {
+export interface TimelineData {
   data?: Timeline;
   color?: string;
 }
