@@ -21,7 +21,7 @@ import (
 func Test_LeaderElection(t *testing.T) {
 	stabilityCheckInterval = 100 * time.Millisecond
 
-	result := make(chan *ClusterSeed, 10)
+	result := make(chan ClusterSeed, 10)
 	objectClient, err := client.NewBucket(context.Background(), client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend: client.Filesystem,
