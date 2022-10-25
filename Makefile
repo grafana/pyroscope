@@ -286,6 +286,8 @@ goreleaser/lint: $(BIN)/goreleaser
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeval $(BIN)/helm
+	$(BIN)/helm repo add --force-update minio https://charts.min.io/
+	$(BIN)/helm dependency build ./operations/phlare/helm/phlare/
 	mkdir -p ./operations/phlare/helm/phlare/rendered/
 	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ \
 		| tee ./operations/phlare/helm/phlare/rendered/single-binary.yaml \
