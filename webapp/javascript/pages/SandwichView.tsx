@@ -17,7 +17,7 @@ import { formatTitle } from './formatTitle';
 import styles from './SandwichView.module.scss';
 
 export default function SandwichView() {
-  const [selectedFunction, setSelectedFunction] = useState('name');
+  const [selectedFunction, setSelectedFunction] = useState('total');
   // to debug
   const [flameType, setFlameType] = useState('callers');
   const { query } = useAppSelector(selectQueries);
@@ -46,15 +46,7 @@ export default function SandwichView() {
           <h3>Sandwich view</h3>
           <button onClick={() => setSelectedFunction('name')}>reset</button>
           <select value={selectedFunction} onChange={handleSelectChange}>
-            {[
-              'name',
-              'name-2-2',
-              'name-3-1',
-              'name-5-1',
-              'name-5-2',
-              'specific-function-name',
-            ].map((name) => (
-              // {sandwichProfile.flamebearer.names.map((name) => (
+            {sandwichProfile.flamebearer.names.map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>
@@ -70,24 +62,22 @@ export default function SandwichView() {
           <br />
           {/* will be moved to flamegraph package */}
           <div className={styles.sandwich}>
-            {selectedFunction &&
-              (flameType === 'callees' ? (
-                <>
-                  <FlamegraphRenderer
-                    showToolbar={false}
-                    showCredit={false}
-                    profile={profile as Profile}
-                  />
-                </>
-              ) : (
-                <>
-                  <FlamegraphRenderer
-                    showToolbar={false}
-                    showCredit={false}
-                    profile={profile1 as Profile}
-                  />
-                </>
-              ))}
+            {selectedFunction && (
+              <>
+                <FlamegraphRenderer
+                  onlyDisplay="flamegraph"
+                  showToolbar={false}
+                  showCredit={false}
+                  profile={profile as Profile}
+                />
+                <FlamegraphRenderer
+                  onlyDisplay="flamegraph"
+                  showToolbar={false}
+                  showCredit={false}
+                  profile={profile1 as Profile}
+                />
+              </>
+            )}
           </div>
         </Box>
       </div>

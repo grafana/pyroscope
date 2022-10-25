@@ -13,9 +13,17 @@ import {
   deltaDiffWrapperReverse,
 } from '../FlameGraph/decode';
 import { flamebearersToTree } from './flamebearersToTree';
-import { tree as tree1 } from './testData';
 
-export const treeToFlamebearer = (tree) => {
+interface TreeNode<T> {
+  name: string;
+  key: string;
+  self: [number];
+  total: [number];
+  offset?: number;
+  children: T[];
+}
+
+export const treeToFlamebearer = (tree: TreeNode<TreeNode>): Flamebearer => {
   const flamebearerData: {
     maxSelf: number;
     levels: number[][];
@@ -27,7 +35,7 @@ export const treeToFlamebearer = (tree) => {
   };
 
   const processNode = (node: any, level: number, offsetLeft: number) => {
-    const { name, children, self, total } = node;
+    const { name, children, self, total, offset } = node;
     flamebearerData.names.push(name);
     flamebearerData.levels[level] ||= [];
     flamebearerData.maxSelf = Math.max(flamebearerData.maxSelf, self[0] || 0);
@@ -42,7 +50,7 @@ export const treeToFlamebearer = (tree) => {
       const ol = processNode(children[i], level + 1, offsetLeft);
       offsetLeft += ol;
     }
-    return total[0] || 0;
+    return total[0] || offset || 0;
   };
 
   processNode(tree, 0, 0);
@@ -86,17 +94,31 @@ export function calleesFlamebearer(
       processTree(node.children[i]);
     }
   };
-  processTree(tree1);
+  processTree(tree);
 
   return { ...result, ...treeToFlamebearer(totalNode) };
 }
 
-// todo(dogfrogfog): add types
-const arrayToTree = (nodesArray) => {
+const arrayToTree = (
+  nodesArray: TreeNode[],
+  maxLvlNumber: number,
+  total: number
+): TreeNode<TreeNode> => {
   let result = {};
   let nestedObj = result;
+  const emptyLvls = maxLvlNumber - nodesArray.length;
+
+  for (let i = 0; i < emptyLvls; i++) {
+    // todo: fix undefined
+    nestedObj.children = [
+      { total: [undefined], self: [0], name: '', children: [], offset: total },
+    ];
+    nestedObj = nestedObj.children[0];
+  }
+
   nodesArray.forEach(({ name, ...rest }) => {
-    nestedObj.children = [{ name, ...rest }];
+    // check time(%) values
+    nestedObj.children = [{ name, ...rest, total: [total] }];
     nestedObj = nestedObj.children[0];
   });
 
@@ -119,30 +141,36 @@ export function callersFlamebearer(
     spyName: f.spyName,
   };
 
-  let targetFunctionTotalSelf = 0;
-  const totalNode = { total: [0], self: [0], name: '', children: [] };
+  const targetFunctionTotals = [];
+  const subtrees = [];
+  let maxSubtreeLvl = 0;
+
   const processTree = (node, parentNodes = []) => {
-    const { name, children, total, ...rest } = node;
-    const currentNode = {
-      children: [],
-      name,
-      total,
-      ...rest,
-    };
+    const currentSubtree = parentNodes.concat([{ ...node, children: [] }]);
 
-    if (name === nodeName) {
-      targetFunctionTotalSelf += self[0];
-      const subTree = arrayToTree([...parentNodes, currentNode]);
+    if (node.name === nodeName) {
+      subtrees.push(currentSubtree);
+      targetFunctionTotals.push(node.total[0]);
+      result.numTicks += node.total[0];
 
-      result.numTicks += subTree.total[0];
-      totalNode.children.push(subTree);
+      if (maxSubtreeLvl < currentSubtree.length) {
+        maxSubtreeLvl = currentSubtree.length;
+      }
     }
 
-    for (let i = 0; i < children.length; i += 1) {
-      processTree(children[i], [...parentNodes, currentNode]);
+    for (let i = 0; i < node.children.length; i += 1) {
+      processTree(node.children[i], currentSubtree);
     }
   };
-  processTree(tree1);
+  processTree(tree);
+
+  // todo(dogfrogfog): top lvl accumulator should be removed
+  const totalNode = { total: 0, self: [0], name: '', children: [] };
+  subtrees.forEach((v, i) => {
+    totalNode.children.push(
+      arrayToTree(v, maxSubtreeLvl, targetFunctionTotals[i])
+    );
+  });
 
   return { ...result, ...treeToFlamebearer(totalNode) };
 }

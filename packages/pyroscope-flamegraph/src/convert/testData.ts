@@ -18,11 +18,19 @@ export const tree = {
           children: [],
         },
         {
-          name: 'name-3-2',
-          key: '/name/specific-function-name/name-3-2',
-          self: [400],
+          name: 'wwwwwww',
+          key: '/name/specific-function-name/wwwwwww',
+          self: [20],
           total: [400],
-          children: [],
+          children: [
+            {
+              name: 'name-3-2',
+              key: '/name/specific-function-name/wwwwwww/name-3-2',
+              self: [380],
+              total: [380],
+              children: [],
+            },
+          ],
         },
       ],
     },
@@ -33,7 +41,7 @@ export const tree = {
       total: [400],
       children: [
         {
-          name: 'name-3-1',
+          name: 'name-3-2',
           key: '/name/name-2-2/name-3-1',
           self: [100],
           total: [400],
