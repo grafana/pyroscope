@@ -93,20 +93,20 @@ func TestMergeBatchResponse(t *testing.T) {
 			expected: &ingestv1.MergeProfilesStacktracesResult{
 				Stacktraces: []*ingestv1.StacktraceSample{
 					{
-						FunctionIds: []int32{0, 1},
-						Value:       2,
-					},
-					{
-						FunctionIds: []int32{0, 1, 2},
-						Value:       6,
+						FunctionIds: []int32{4},
+						Value:       5,
 					},
 					{
 						FunctionIds: []int32{3},
 						Value:       4,
 					},
 					{
-						FunctionIds: []int32{4},
-						Value:       5,
+						FunctionIds: []int32{0, 1},
+						Value:       2,
+					},
+					{
+						FunctionIds: []int32{0, 1, 2},
+						Value:       6,
 					},
 				},
 				FunctionNames: []string{"my", "other", "stack", "foo", "bar"},
