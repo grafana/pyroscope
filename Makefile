@@ -156,11 +156,11 @@ define deploy
 endef
 
 .PHONY: docker-image/phlare/build
-docker-image/phlare/build:
+docker-image/phlare/build: go/bin
 	$(call docker_buildx,--load)
 
 .PHONY: docker-image/phlare/push
-docker-image/phlare/push:
+docker-image/phlare/push: go/bin
 	$(call docker_buildx,--push)
 
 .PHONY: docker-image/grafana/build
