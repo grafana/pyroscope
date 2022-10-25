@@ -35,7 +35,7 @@ services:
       context: python
       dockerfile: Dockerfile
     ports:
-      - 8081:8081
+      - 8081:8080
     networks:
       - phlare
   rust:
@@ -43,7 +43,20 @@ services:
       context: rust
       dockerfile: Dockerfile
     ports:
-      - 8080:3000
+      - 8082:8080
+    networks:
+      - phlare
+
+  java-simple:
+    build:
+      context: java/simple
+      dockerfile: Dockerfile
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+    ports:
+      - 8083:8080
     networks:
       - phlare
 

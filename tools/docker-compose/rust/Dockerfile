@@ -23,6 +23,6 @@ COPY --from=build /usr/src/cp-rust/target/debug/cp-rust /usr/bin/cp-rust
 ENV RUST_LOG=debug
 ENV RUST_BACKTRACE=full
 
-EXPOSE 3000
+EXPOSE 8080
 
 CMD ["cp-rust"]

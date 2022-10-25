@@ -21,7 +21,7 @@ COPY main.py .
 
 RUN pip3 install --no-index --find-links=/tmp/wheels -r requirements.txt
 
-
+EXPOSE 8080
 # Run the application when the docker image is run, using either CMD (as is done
 # here) or ENTRYPOINT.
 CMD python3 -u main.py

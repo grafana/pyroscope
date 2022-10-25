@@ -1,0 +1,23 @@
+plugins {
+    id "application"
+}
+apply plugin : "java"
+
+ext {
+   javaMainClass = "com.example.Main"
+}
+
+application {
+    mainClassName = javaMainClass
+}
+
+repositories {
+    mavenCentral()
+}
+
+group = "com.example"
+version = "0.1.0"
+
+dependencies {
+    implementation 'com.grafana:jpprof:0.1.0'
+}

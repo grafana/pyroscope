@@ -120,8 +120,8 @@ fn work(to: i64) {
 async fn main() {
     pretty_env_logger::init();
 
-    // We'll bind to 127.0.0.1:3000
-    let addr = "0.0.0.0:3000".parse().unwrap();
+    // We'll bind to 127.0.0.1:8080
+    let addr = "0.0.0.0:8080".parse().unwrap();
 
     let server = Server::bind(&addr).serve(MakeSvc);
     info!("serving at {}", addr);

@@ -24,7 +24,7 @@ def main():
     mprofile.start(sample_rate=128 * 1024)
 
     # enable pprof http server
-    start_pprof_server(host='0.0.0.0', port=8081)
+    start_pprof_server(host='0.0.0.0', port=8080)
 
     to = 500
     while True:
