@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	grpchealth "github.com/bufbuild/connect-grpchealth-go"
 	"github.com/go-kit/log"
@@ -35,10 +36,13 @@ import (
 	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/phlare/pkg/ingester"
+	"github.com/grafana/phlare/pkg/objstore"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	"github.com/grafana/phlare/pkg/openapiv2"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/querier"
+	"github.com/grafana/phlare/pkg/usagestats"
 	"github.com/grafana/phlare/pkg/util"
 	"github.com/grafana/phlare/pkg/util/build"
 )
@@ -55,6 +59,7 @@ const (
 	Querier      string = "querier"
 	GRPCGateway  string = "grpc-gateway"
 	Storage      string = "storage"
+	UsageReport  string = "usage-stats"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
@@ -70,8 +75,9 @@ const (
 	// IndexGateway             string = "index-gateway"
 	// IndexGatewayRing         string = "index-gateway-ring"
 	// QueryScheduler           string = "query-scheduler"
-	// UsageReport              string = "usage-report"
 )
+
+var objectStoreTypeStats = usagestats.NewString("store_object_type")
 
 func (f *Phlare) initQuerier() (services.Service, error) {
 	q, err := querier.New(f.Cfg.Querier, f.ring, nil, f.logger, f.auth)
@@ -138,6 +144,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	f.Cfg.MemberlistKV.MetricsRegisterer = f.reg
 	f.Cfg.MemberlistKV.Codecs = []codec.Codec{
 		ring.GetCodec(),
+		usagestats.JSONCodec,
 	}
 
 	dnsProviderReg := prometheus.WrapRegistererWithPrefix(
@@ -166,6 +173,7 @@ func (f *Phlare) initRing() (_ services.Service, err error) {
 }
 
 func (f *Phlare) initStorage() (_ services.Service, err error) {
+	objectStoreTypeStats.Set(f.Cfg.Storage.Bucket.Backend)
 	if cfg := f.Cfg.Storage.Bucket; cfg.Backend != "filesystem" {
 		b, err := objstoreclient.NewBucket(
 			f.context(),
@@ -176,6 +184,10 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 			return nil, errors.Wrap(err, "unable to initialise bucket")
 		}
 		f.storageBucket = b
+	}
+
+	if f.Cfg.Target.String() != All && f.storageBucket == nil {
+		return nil, errors.New("storage bucket configuration is required when running in microservices mode")
 	}
 
 	return nil, nil
@@ -265,6 +277,39 @@ func (f *Phlare) initServer() (services.Service, error) {
 	}
 
 	return s, nil
+}
+
+func (f *Phlare) initUsageReport() (services.Service, error) {
+	if !f.Cfg.Analytics.Enabled {
+		return nil, nil
+	}
+	f.Cfg.Analytics.Leader = false
+	// ingester is the only component that can be a leader
+	if f.isModuleActive(Ingester) {
+		f.Cfg.Analytics.Leader = true
+	}
+
+	usagestats.Target(f.Cfg.Target.String())
+
+	var b objstore.Bucket
+	if f.storageBucket == nil {
+		if err := os.MkdirAll(f.Cfg.PhlareDB.DataPath, 0o777); err != nil {
+			return nil, fmt.Errorf("mkdir %s: %w", f.Cfg.PhlareDB.DataPath, err)
+		}
+		fs, err := filesystem.NewBucket(f.Cfg.PhlareDB.DataPath)
+		if err != nil {
+			return nil, err
+		}
+		b = fs
+	}
+
+	ur, err := usagestats.NewReporter(f.Cfg.Analytics, f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore, b, f.logger, f.reg)
+	if err != nil {
+		level.Info(f.logger).Log("msg", "failed to initialize usage report", "err", err)
+		return nil, nil
+	}
+	f.usageReport = ur
+	return ur, nil
 }
 
 type statusService struct {
@@ -358,6 +403,32 @@ func (f *Phlare) statusService() commonv1.StatusServiceServer {
 		actualConfig:  &f.Cfg,
 		defaultConfig: newDefaultConfig(),
 	}
+}
+
+func (f *Phlare) isModuleActive(m string) bool {
+	for _, target := range f.Cfg.Target {
+		if target == m {
+			return true
+		}
+		if f.recursiveIsModuleActive(target, m) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *Phlare) recursiveIsModuleActive(target, m string) bool {
+	if targetDeps, ok := f.deps[target]; ok {
+		for _, dep := range targetDeps {
+			if dep == m {
+				return true
+			}
+			if f.recursiveIsModuleActive(dep, m) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // NewServerService constructs service from Server component.

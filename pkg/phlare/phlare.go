@@ -42,6 +42,7 @@ import (
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/tracing"
+	"github.com/grafana/phlare/pkg/usagestats"
 	"github.com/grafana/phlare/pkg/util"
 )
 
@@ -58,8 +59,10 @@ type Config struct {
 
 	Storage StorageConfig `yaml:"storage"`
 
-	MultitenancyEnabled bool `yaml:"multitenancy_enabled,omitempty"`
-	ConfigFile          string
+	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
+	Analytics           usagestats.Config `yaml:"analytics"`
+
+	ConfigFile string `yaml:"-"`
 }
 
 func newDefaultConfig() *Config {
@@ -98,6 +101,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
 	c.Storage.RegisterFlagsWithContext(ctx, f)
+	c.Analytics.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -175,6 +179,7 @@ type Phlare struct {
 	ring               *ring.Ring
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
+	usageReport        *usagestats.Reporter
 
 	storageBucket objstore.Bucket
 
@@ -185,6 +190,7 @@ type Phlare struct {
 
 func New(cfg Config) (*Phlare, error) {
 	logger := initLogger(&cfg.Server)
+	usagestats.Edition("oss")
 
 	phlare := &Phlare{
 		Cfg:    cfg,
@@ -234,15 +240,17 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Distributor, f.initDistributor)
 	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(Agent, f.initAgent)
+	mm.RegisterModule(UsageReport, f.initUsageReport)
 	mm.RegisterModule(All, nil)
 
 	// Add dependencies
 	deps := map[string][]string{
 		All:          {Agent, Ingester, Distributor, Querier},
-		Distributor:  {Ring, Server},
-		Querier:      {Ring, Server},
+		UsageReport:  {Storage, MemberlistKV},
+		Distributor:  {Ring, Server, UsageReport},
+		Querier:      {Ring, Server, UsageReport},
 		Agent:        {Server},
-		Ingester:     {Server, MemberlistKV, Storage},
+		Ingester:     {Server, MemberlistKV, Storage, UsageReport},
 		Ring:         {Server, MemberlistKV},
 		MemberlistKV: {Server},
 		Server:       {GRPCGateway},

@@ -22,8 +22,11 @@ import (
 	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/pprof"
 	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/phlare/pkg/usagestats"
 	"github.com/grafana/phlare/pkg/util"
 )
+
+var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
 
 type Config struct {
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
@@ -137,6 +140,7 @@ func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //n
 			return nil, err
 		}
 		i.instances[tenantID] = inst
+		activeTenantsStats.Set(int64(len(i.instances)))
 	}
 	return inst, nil
 }
