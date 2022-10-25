@@ -211,6 +211,11 @@ storage:
 # CLI flag: -auth.multitenancy-enabled
 [multitenancy_enabled: <boolean> | default = false]
 
+analytics:
+  # Enable anonymous usage reporting.
+  # CLI flag: -reporting.enabled
+  [reporting_enabled: <boolean> | default = true]
+
 # yaml file to load
 # CLI flag: -config.file
 [configfile: <string> | default = ""]

@@ -17,6 +17,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20220304095617-2e8d9baf4ac2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
+	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.15.9
 	github.com/minio/minio-go/v7 v7.0.23
 	github.com/mitchellh/go-wordwrap v1.0.0
@@ -163,7 +164,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/kolo/xmlrpc v0.0.0-20201022064351-38db28db192b // indirect

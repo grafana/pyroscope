@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"hash/fnv"
 	"strconv"
 	"time"
@@ -27,6 +28,7 @@ import (
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/pprof"
 	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/phlare/pkg/usagestats"
 )
 
 type PushClient interface {
@@ -34,11 +36,17 @@ type PushClient interface {
 }
 
 // todo: move to non global metrics.
-var clients = promauto.NewGauge(prometheus.GaugeOpts{
-	Namespace: "phlare",
-	Name:      "distributor_ingester_clients",
-	Help:      "The current number of ingester clients.",
-})
+var (
+	clients = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "phlare",
+		Name:      "distributor_ingester_clients",
+		Help:      "The current number of ingester clients.",
+	})
+	rfStats                 = usagestats.NewInt("distributor_replication_factor")
+	bytesReceivedStats      = usagestats.NewStatistics("distributor_bytes_received")
+	bytesReceivedTotalStats = usagestats.NewCounter("distributor_bytes_received_total")
+	profileReceivedStats    = usagestats.NewCounter("distributor_profiles_received")
+)
 
 // Config for a Distributor.
 type Config struct {
@@ -83,6 +91,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 	d.subservicesWatcher = services.NewFailureWatcher()
 	d.subservicesWatcher.WatchManager(d.subservices)
 	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
+	rfStats.Set(int64(ingestersRing.ReplicationFactor()))
 	return d, nil
 }
 
@@ -117,6 +126,10 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
 		profName := phlaremodel.Labels(series.Labels).Get(scrape.ProfileName)
 		for _, raw := range series.Samples {
+			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
+			profileReceivedStats.Inc(1)
+			bytesReceivedTotalStats.Inc(int64(len(raw.RawProfile)))
+			bytesReceivedStats.Record(float64(len(raw.RawProfile)))
 			d.metrics.receivedCompressedBytes.WithLabelValues(profName).Observe(float64(len(raw.RawProfile)))
 			p, err := pprof.RawFromBytes(raw.RawProfile)
 			if err != nil {
