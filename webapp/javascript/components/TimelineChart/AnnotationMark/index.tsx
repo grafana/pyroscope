@@ -1,10 +1,13 @@
 /* eslint-disable default-case, consistent-return */
 import Color from 'color';
 import React, { useState } from 'react';
+import classNames from 'classnames/bind';
 import AnnotationInfo from '@webapp/pages/continuous/contextMenu/AnnotationInfo';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 
 import styles from './styles.module.scss';
+
+const cx = classNames.bind(styles);
 
 interface IAnnotationMarkProps {
   type: 'message';
@@ -14,6 +17,13 @@ interface IAnnotationMarkProps {
     timestamp: number;
   };
 }
+
+const getIcon = (type: IAnnotationMarkProps['type']) => {
+  switch (type) {
+    case 'message':
+      return styles.message;
+  }
+};
 
 const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
   const { offset } = useTimeZone();
@@ -51,7 +61,7 @@ const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
         data-testid="annotation_mark_wrapper"
         onClick={onClick}
         style={onHoverStyle}
-        className={styles.wrapper}
+        className={cx(styles.wrapper, getIcon(type))}
         role="none"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}

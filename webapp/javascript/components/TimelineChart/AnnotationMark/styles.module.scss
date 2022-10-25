@@ -9,17 +9,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background-image: url('../../../../images/comment.svg');
   background-size: 14px;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-.icon {
-  pointer-events: none;
-  width: 19px !important;
-  height: 19px;
-  margin-top: -2px;
+.message {
+  background-image: url('../../../../images/comment.svg');
 }
 
 .form {
