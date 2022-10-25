@@ -1,6 +1,8 @@
 import React from 'react';
+import Button from '@webapp/ui/Button';
 import { TimelineData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import { useSync } from './useSync';
+import StatusMessage from '@webapp/ui/StatusMessage';
 import styles from './styles.module.scss';
 
 interface SyncTimelinesProps {
@@ -34,25 +36,28 @@ function SyncTimelines({
   }
 
   return (
-    <div className={styles.wrapper}>
-      {title}
-      <div className={styles.buttons}>
-        <button
-          onClick={onIgnore}
-          type="button"
-          className={styles.ignoreButton}
-        >
-          Ignore
-        </button>
-        <button
-          onClick={onSyncClick}
-          type="button"
-          className={styles.syncButton}
-        >
-          Sync Timelines
-        </button>
-      </div>
-    </div>
+    <StatusMessage
+      type="warning"
+      message={title}
+      rightSide={
+        <div className={styles.buttons}>
+          <Button
+            data-testid="sync-ignore-button"
+            onClick={onIgnore}
+            className={styles.ignoreButton}
+          >
+            Ignore
+          </Button>
+          <Button
+            data-testid="sync-button"
+            onClick={onSyncClick}
+            className={styles.syncButton}
+          >
+            Sync Timelines
+          </Button>
+        </div>
+      }
+    />
   );
 }
 
