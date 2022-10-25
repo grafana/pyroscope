@@ -26,3 +26,5 @@ scrape_configs:
         block: { enabled: false }
         goroutine: { enabled: false }
         mutex: { enabled: false }
+        memory:
+          path: /debug/pprof/heap
