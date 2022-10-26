@@ -8,7 +8,7 @@ import { createAPIKey } from '@webapp/redux/reducers/settings';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { type APIKey } from '@webapp/models/apikeys';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
-import Tooltip from '@webapp/ui/Tooltip';
+import { Tooltip2 } from '@webapp/ui/Tooltip';
 import StatusMessage from '@webapp/ui/StatusMessage';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
@@ -28,7 +28,6 @@ function APIKeyAddForm() {
     ttlSeconds: 360000,
   });
   const [key, setKey] = useState<string>();
-  const [isRolesTooltipVisible, setRolesTooltipVisibility] = useState(false);
   const dispatch = useAppDispatch();
 
   const handleFormChange = (event: ShamefulAny) => {
@@ -107,22 +106,17 @@ function APIKeyAddForm() {
             <div>
               <h4>
                 Role
-                <span
-                  className={styles.infoMark}
-                  onMouseEnter={() => setRolesTooltipVisibility(true)}
-                  onMouseLeave={() => setRolesTooltipVisibility(false)}
+                <Tooltip2
+                  title={[
+                    `Admin: Manage users/API keys`,
+                    `ReadOnly: Used only for visualizations (i.e. Grafana datasource, embedding in a UI)`,
+                    `Agent: Used for "authentication token" in code when auth is enabled`,
+                  ].map((r) => (
+                    <div>{r}</div>
+                  ))}
                 >
-                  <Tooltip
-                    title={
-                      'Admin: Manage users/API keys\n' +
-                      'ReadOnly: Used only for visualizations (i.e. Grafana datasource, embedding in a UI)\n' +
-                      'Agent: Used for "authentication token" in code when auth is enabled\n'
-                    }
-                    visible={isRolesTooltipVisible}
-                    placement="bottom"
-                    className={styles.rolesTooltip}
-                  />
-                </span>
+                  <span className={styles.infoMark} />
+                </Tooltip2>
               </h4>
               <Dropdown
                 onItemClick={(i) => handleRoleChange(i.value)}
