@@ -2,10 +2,10 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
-import type { Profile, Flamebearer } from '@pyroscope/models/src';
+import type { Flamebearer } from '@pyroscope/models/src';
 import { flamebearersToTree } from './flamebearersToTree';
 
-interface TreeNode {
+export interface TreeNode {
   name: string;
   key: string;
   self: [number];
@@ -27,7 +27,7 @@ export const treeToFlamebearer = (tree: TreeNode): FlamebearerData => {
     levels: [],
   };
 
-  const processNode = (node: any, level: number, offsetLeft: number) => {
+  const processNode = (node: TreeNode, level: number, offsetLeft: number) => {
     const { name, children, self, total, offset } = node;
     flamebearerData.names.push(name);
     flamebearerData.levels[level] ||= [];
@@ -51,8 +51,44 @@ export const treeToFlamebearer = (tree: TreeNode): FlamebearerData => {
   return flamebearerData;
 };
 
-export function calleesFlamebearer(p: Profile, nodeName: string): Flamebearer {
-  const tree = flamebearersToTree(p.flamebearer);
+const arrayToTree = (
+  nodesArray: TreeNode[],
+  maxLvlNumber: number,
+  total: number
+): TreeNode => {
+  const result = {};
+  let nestedObj = result;
+  const emptyLvls = maxLvlNumber - nodesArray.length;
+
+  for (let i = 0; i < emptyLvls; i += 1) {
+    const emptyNode = {
+      name: '',
+      key: '',
+      total: [0],
+      self: [0],
+      children: [],
+      offset: total,
+    };
+
+    nestedObj.children = [emptyNode];
+    nestedObj = emptyNode;
+  }
+
+  nodesArray.forEach(({ name, ...rest }) => {
+    const nextNode = { name, ...rest, total: [total] };
+
+    nestedObj.children = [nextNode];
+    nestedObj = nextNode;
+  });
+
+  return result.children[0];
+};
+
+export function calleesFlamebearer(
+  f: Flamebearer,
+  nodeName: string
+): Flamebearer {
+  const tree = flamebearersToTree(f);
   const result: Flamebearer = {
     format: 'single',
     numTicks: 0,
@@ -60,8 +96,8 @@ export function calleesFlamebearer(p: Profile, nodeName: string): Flamebearer {
     sampleRate: 100,
     names: [],
     levels: [],
-    units: p.units,
-    spyName: p.spyName,
+    units: f.units,
+    spyName: f.spyName,
   };
 
   const totalNode = {
@@ -89,32 +125,11 @@ export function calleesFlamebearer(p: Profile, nodeName: string): Flamebearer {
   return { ...result, ...treeToFlamebearer(totalNode) };
 }
 
-const arrayToTree = (
-  nodesArray: TreeNode[],
-  maxLvlNumber: number,
-  total: number
-): TreeNode => {
-  let result = {};
-  let nestedObj = result;
-  const emptyLvls = maxLvlNumber - nodesArray.length;
-
-  for (let i = 0; i < emptyLvls; i++) {
-    nestedObj.children = [
-      { name: '', key: '', total: [0], self: [0], children: [], offset: total },
-    ];
-    nestedObj = nestedObj.children[0];
-  }
-
-  nodesArray.forEach(({ name, ...rest }) => {
-    nestedObj.children = [{ name, ...rest, total: [total] }];
-    nestedObj = nestedObj.children[0];
-  });
-
-  return result.children[0];
-};
-
-export function callersFlamebearer(p: Profile, nodeName: string): Flamebearer {
-  const tree = flamebearersToTree(p.flamebearer);
+export function callersFlamebearer(
+  f: Flamebearer,
+  nodeName: string
+): Flamebearer {
+  const tree = flamebearersToTree(f);
   const result: Flamebearer = {
     format: 'single',
     maxSelf: 100,
@@ -122,8 +137,8 @@ export function callersFlamebearer(p: Profile, nodeName: string): Flamebearer {
     numTicks: 0,
     names: [],
     levels: [],
-    units: p.units,
-    spyName: p.spyName,
+    units: f.units,
+    spyName: f.spyName,
   };
 
   const targetFunctionTotals = [];
@@ -165,27 +180,27 @@ export function callersFlamebearer(p: Profile, nodeName: string): Flamebearer {
   return { ...result, ...treeToFlamebearer(totalNode) };
 }
 
-export function calleesProfile(p: Profile, nodeName: string): Profile {
-  const copy = JSON.parse(JSON.stringify(p));
+export function calleesProfile(f: Flamebearer, nodeName: string): Flamebearer {
+  const copy = JSON.parse(JSON.stringify(f));
   const calleesResultFlamebearer = calleesFlamebearer(copy, nodeName);
 
   return {
     version: 1,
-    flamebearer: calleesResultFlamebearer,
-    metadata: copy.metadata,
+    // flamebearer: calleesResultFlamebearer,
+    // metadata: copy.metadata,
     ...calleesResultFlamebearer,
   };
 }
 
-export function callersProfile(p: Profile, nodeName: string): Profile {
-  const copy = JSON.parse(JSON.stringify(p));
+export function callersProfile(f: Flamebearer, nodeName: string): Flamebearer {
+  const copy = JSON.parse(JSON.stringify(f));
 
   const callersResultFlamebearer = callersFlamebearer(copy, nodeName);
 
   return {
     version: 1,
-    flamebearer: callersResultFlamebearer,
-    metadata: copy.metadata,
+    // flamebearer: callersResultFlamebearer,
+    // metadata: copy.metadata,
     ...callersResultFlamebearer,
   };
 }

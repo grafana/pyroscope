@@ -5,7 +5,13 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
-import React, { Dispatch, SetStateAction } from 'react';
+import React, {
+  Dispatch,
+  SetStateAction,
+  ReactNode,
+  Component,
+  ComponentProps,
+} from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
@@ -82,7 +88,7 @@ export interface FlamegraphRendererProps {
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
   showCredit?: boolean;
-  ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
+  ExportData?: ComponentProps<typeof Graph>['ExportData'];
   colorMode?: 'light' | 'dark';
 
   /** @deprecated  prefer Profile */
@@ -95,7 +101,7 @@ export interface FlamegraphRendererProps {
     id: string;
   };
 
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface FlamegraphRendererState {
@@ -123,7 +129,7 @@ interface FlamegraphRendererState {
   palette: typeof DefaultPalette;
 }
 
-class FlameGraphRenderer extends React.Component<
+class FlameGraphRenderer extends Component<
   FlamegraphRendererProps,
   FlamegraphRendererState
 > {
@@ -442,21 +448,23 @@ class FlameGraphRenderer extends React.Component<
         return null;
       }
 
-      const callersP =
-        activeItemName &&
-        callersProfile(this.state.flamebearer, activeItemName);
-      const calleesP =
-        activeItemName &&
-        calleesProfile(this.state.flamebearer, activeItemName);
+      const callersFlamebearer = callersProfile(
+        this.state.flamebearer,
+        activeItemName
+      );
+      const calleesFlamebearer = calleesProfile(
+        this.state.flamebearer,
+        activeItemName
+      );
 
       return (
         <div className={styles.sandwichPane}>
           <div className={styles.sandwichTop}>
-            <span>Callers</span>
+            <span className={styles.name}>Callers</span>
             <Graph
               key="flamegraph-pane"
               showCredit={this.props.showCredit as boolean}
-              flamebearer={callersP}
+              flamebearer={callersFlamebearer}
               highlightQuery={this.getHighlightQuery()}
               setActiveItem={this.setActiveItem}
               selectedItem={this.state.selectedItem}
@@ -477,12 +485,12 @@ class FlameGraphRenderer extends React.Component<
             />
           </div>
           <div className={styles.sandwichBottom}>
-            <span>Callees</span>
+            <span className={styles.name}>Callees</span>
             <Graph
               headerVisible={false}
               key="flamegraph-pane"
               showCredit={this.props.showCredit as boolean}
-              flamebearer={calleesP}
+              flamebearer={calleesFlamebearer}
               highlightQuery={this.getHighlightQuery()}
               setActiveItem={this.setActiveItem}
               selectedItem={this.state.selectedItem}

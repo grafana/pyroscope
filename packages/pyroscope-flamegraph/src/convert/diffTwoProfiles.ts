@@ -12,7 +12,7 @@ import { flamebearersToTree } from './flamebearersToTree';
 function diffFlamebearer(f1: Flamebearer, f2: Flamebearer): Flamebearer {
   const result: Flamebearer = {
     format: 'double',
-    numTicks: (f1.numTicks as number) + (f2.numTicks as number),
+    numTicks: f1.numTicks + f2.numTicks,
     leftTicks: f1.numTicks,
     rightTicks: f2.numTicks,
     maxSelf: 100,

@@ -1,6 +1,5 @@
 import { treeToFlamebearer, calleesFlamebearer } from './sandwichViewProfiles';
 import { flamebearersToTree } from './flamebearersToTree';
-import type { Flamebearer } from '@pyroscope/models/src';
 
 import { tree, name22FunctionTreeWithTotal } from './testData';
 
@@ -9,12 +8,13 @@ describe('Sandwich view profiles', () => {
     const f = treeToFlamebearer(tree);
 
     const resultCalleesFlamebearer = calleesFlamebearer(
+      // @ts-ignore
       {
         ...f,
         spyName: 'gospy',
         units: 'samples',
         format: 'single',
-      } as Flamebearer,
+      },
       'name-2-2'
     );
 

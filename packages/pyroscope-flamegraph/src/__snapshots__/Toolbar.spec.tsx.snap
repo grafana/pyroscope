@@ -148,6 +148,12 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           </svg>
           Flamegraph
         </button>
+        <button
+          class="button grouped default noIcon"
+          type="button"
+        >
+          Sandwich
+        </button>
       </div>
     </div>
   </div>
@@ -258,6 +264,11 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
             value="flamegraph"
           >
             Flame
+          </option>
+          <option
+            value="sandwich"
+          >
+            Sandwich
           </option>
         </select>
       </div>

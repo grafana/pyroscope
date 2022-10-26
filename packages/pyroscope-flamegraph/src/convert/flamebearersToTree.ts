@@ -13,14 +13,14 @@ export function flamebearersToTree(f1: Flamebearer, f2?: Flamebearer) {
       for (let j = 0; j < f.levels[i].length; j += 4) {
         const key2 = [fi, i, j].join('/');
         const name = f.names[f.levels[i][j + 3]];
-        const offset = f.levels[i][j + 0] as number;
+        const offset = f.levels[i][j + 0];
 
         let parentKey;
         if (i !== 0) {
           const pi = i - 1;
           for (let k = 0; k < f.levels[pi].length; k += 4) {
-            const parentOffset = f.levels[pi][k + 0] as number;
-            const total = f.levels[pi][k + 1] as number;
+            const parentOffset = f.levels[pi][k + 0];
+            const total = f.levels[pi][k + 1];
             if (offset >= parentOffset && offset < parentOffset + total) {
               const parentKey2 = [fi, pi, k].join('/');
               const parentObj = lookup2[parentKey2];

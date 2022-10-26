@@ -47,7 +47,7 @@
   .sandwichBottom {
     display: flex;
 
-    span {
+    .name {
       writing-mode: vertical-rl;
       transform: rotate(-180deg);
       padding: 5px 0;
