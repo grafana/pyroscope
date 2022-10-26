@@ -39,7 +39,7 @@ function SyncTimelines({
     <StatusMessage
       type="warning"
       message={title}
-      rightSide={
+      action={
         <div className={styles.buttons}>
           <Button
             data-testid="sync-ignore-button"

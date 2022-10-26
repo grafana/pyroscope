@@ -5,14 +5,10 @@
 }
 
 .syncButton {
-  border: 2px solid var(--ps-ui-border);
-  cursor: pointer;
-  padding: 3px 5px;
-  border-radius: 4px;
-  display: flex;
-  flex-shrink: 0;
-  margin-left: 5px;
+  margin-left: 0.5em;
   background-color: transparent;
+  font-weight: normal;
+  color: var(--ps-immutable-placeholder-text);
 
   &:hover:not(:disabled) {
     background-color: transparent;
@@ -21,6 +17,4 @@
 
 .ignoreButton {
   @extend .syncButton;
-
-  margin-left: 10px;
 }

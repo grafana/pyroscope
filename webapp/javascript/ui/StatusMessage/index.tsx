@@ -5,13 +5,13 @@ import styles from './StatusMessage.module.scss';
 interface StatusMessageProps {
   type: 'error' | 'success' | 'warning';
   message: string;
-  rightSide?: React.ReactNode;
+  action?: React.ReactNode;
 }
 
 export default function StatusMessage({
   type,
   message,
-  rightSide,
+  action,
 }: StatusMessageProps) {
   const getClassnameForType = () => {
     switch (type) {
@@ -34,7 +34,7 @@ export default function StatusMessage({
       })}
     >
       <div>{message}</div>
-      <div className={styles.rightSideWrapper}>{rightSide}</div>
+      <div className={styles.action}>{action}</div>
     </div>
   ) : null;
 }
