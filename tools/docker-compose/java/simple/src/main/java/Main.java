@@ -11,7 +11,7 @@ public class Main {
         var t = new Thread(new Something());
         t.start();
 
-        var server = HttpServer.create(new InetSocketAddress(4001), 0);
+        var server = HttpServer.create(new InetSocketAddress(8080), 0);
         server.createContext("/", new PprofHttpHandler());
         server.start();
     }

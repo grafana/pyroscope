@@ -53,7 +53,7 @@ services:
     cap_add:
       - SYS_ADMIN
     ports:
-      - 8083:4001
+      - 8083:8080
     networks:
       - phlare
   java-springboot:
