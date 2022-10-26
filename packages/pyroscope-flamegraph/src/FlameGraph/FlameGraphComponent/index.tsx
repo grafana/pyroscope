@@ -47,6 +47,7 @@ interface FlamegraphProps {
   toolbarVisible?: boolean;
   headerVisible?: boolean;
   disableClick?: boolean;
+  showSingleLevel?: boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -66,6 +67,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     toolbarVisible,
     headerVisible = true,
     disableClick = false,
+    showSingleLevel = false,
     showCredit,
     setActiveItem,
     selectedItem,
@@ -304,7 +306,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       <div
         data-testid={dataTestId}
         style={{
-          opacity: dataUnavailable ? 0 : 1,
+          opacity: dataUnavailable && !showSingleLevel ? 0 : 1,
         }}
       >
         <canvas

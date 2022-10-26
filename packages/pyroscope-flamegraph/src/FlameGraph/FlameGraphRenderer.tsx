@@ -351,6 +351,13 @@ class FlameGraphRenderer extends Component<
   };
 
   updateView = (newView: ViewTypes) => {
+    // calleers/callees flamegraph may
+    if (newView === 'sandwich') {
+      this.setState({
+        selectedItem: Maybe.nothing(),
+      });
+    }
+
     this.setState({
       view: newView,
     });
@@ -458,12 +465,11 @@ class FlameGraphRenderer extends Component<
       );
 
       return (
-        <div className={styles.sandwichPane}>
+        <div className={styles.sandwichPane} key="sandwich-pane">
           <div className={styles.sandwichTop}>
             <span className={styles.name}>Callers</span>
             <Graph
-              key="flamegraph-pane"
-              disableClick={true}
+              disableClick
               showCredit={this.props.showCredit as boolean}
               flamebearer={callersFlamebearer}
               highlightQuery=""
@@ -489,8 +495,8 @@ class FlameGraphRenderer extends Component<
             <span className={styles.name}>Callees</span>
             <Graph
               headerVisible={false}
-              disableClick={true}
-              key="flamegraph-pane"
+              disableClick
+              showSingleLevel
               showCredit={this.props.showCredit as boolean}
               flamebearer={calleesFlamebearer}
               highlightQuery=""
