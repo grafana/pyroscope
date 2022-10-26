@@ -351,7 +351,6 @@ class FlameGraphRenderer extends Component<
   };
 
   updateView = (newView: ViewTypes) => {
-    // calleers/callees flamegraph may
     if (newView === 'sandwich') {
       this.setState({
         selectedItem: Maybe.nothing(),
@@ -478,6 +477,7 @@ class FlameGraphRenderer extends Component<
               fitMode={this.state.fitMode}
               zoom={this.state.flamegraphConfigs.zoom}
               focusedNode={this.state.flamegraphConfigs.focusedNode}
+              // TODO(dogfrogfog): make onZoom/onFocusOnNode optional since disableClick disabling this behaviour
               onZoom={this.onFlamegraphZoom}
               onFocusOnNode={this.onFocusOnNode}
               onReset={this.onReset}
@@ -505,6 +505,7 @@ class FlameGraphRenderer extends Component<
               fitMode={this.state.fitMode}
               zoom={this.state.flamegraphConfigs.zoom}
               focusedNode={this.state.flamegraphConfigs.focusedNode}
+              // TODO(dogfrogfog): make onZoom/onFocusOnNode optional since disableClick disabling this behaviour
               onZoom={this.onFlamegraphZoom}
               onFocusOnNode={this.onFocusOnNode}
               onReset={this.onReset}

@@ -112,8 +112,6 @@ export function calleesFlamebearer(
       result.numTicks += node.total[0];
 
       totalNode.total = [result.numTicks];
-      // double check that empty node (total: 0, offset: <value>)
-      // should not be passed if node.children.length === 0
       totalNode.children = totalNode.children.concat(node.children);
     }
     for (let i = 0; i < node.children.length; i += 1) {
