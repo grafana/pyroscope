@@ -105,3 +105,23 @@ This means that you need to run your container with the `SYS_ADMIN` capability a
 > async-profiler also requires JVM symbols to be available, use an appropriate docker base image for your JVM version.
 
 Make sure to checkout our [docker-compose example](https://github.com/grafana/phlare/tree/main/tools/docker-compose).
+
+
+## Scrape Target Configuration
+
+Because the support is currently only for CPU endpoints, you need to add the following configuration to your scrape target:
+
+```yaml
+  - job_name: "java"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["my-java-app:8080"]
+    profiling_config:
+      pprof_config:
+        block: { enabled: false }
+        goroutine: { enabled: false }
+        memory: { enabled: false }
+        mutex: { enabled: false }
+```
+
+This way, the agent will only scrape the CPU endpoint.
