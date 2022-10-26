@@ -46,6 +46,7 @@ interface FlamegraphProps {
   setPalette: (p: FlamegraphPalette) => void;
   toolbarVisible?: boolean;
   headerVisible?: boolean;
+  disableClick?: boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -64,6 +65,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     zoom,
     toolbarVisible,
     headerVisible = true,
+    disableClick = false,
     showCredit,
     setActiveItem,
     selectedItem,
@@ -311,7 +313,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           data-highlightquery={highlightQuery}
           className={clsx('flamegraph-canvas', styles.canvas)}
           ref={canvasRef}
-          onClick={onClick}
+          onClick={!disableClick ? onClick : undefined}
         />
       </div>
       {showCredit ? <LogoLink /> : ''}
@@ -347,7 +349,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
       )}
 
-      {flamegraph && canvasRef && (
+      {!disableClick && flamegraph && canvasRef && (
         <ContextMenu
           canvasRef={canvasRef}
           xyToMenuItems={xyToContextMenuItems}

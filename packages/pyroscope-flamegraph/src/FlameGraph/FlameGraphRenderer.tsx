@@ -463,6 +463,7 @@ class FlameGraphRenderer extends Component<
             <span className={styles.name}>Callers</span>
             <Graph
               key="flamegraph-pane"
+              disableClick={true}
               showCredit={this.props.showCredit as boolean}
               flamebearer={callersFlamebearer}
               highlightQuery=""
@@ -488,6 +489,7 @@ class FlameGraphRenderer extends Component<
             <span className={styles.name}>Callees</span>
             <Graph
               headerVisible={false}
+              disableClick={true}
               key="flamegraph-pane"
               showCredit={this.props.showCredit as boolean}
               flamebearer={calleesFlamebearer}
