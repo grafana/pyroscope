@@ -7,7 +7,7 @@ weight: 20
 
 # JVM
 
-JVM and Java don't support natively [pprof endpoints](https://pkg.go.dev/net/http/pprof), but we are building
+JVM and Java don't support [pprof endpoints](https://pkg.go.dev/net/http/pprof) natively, but we are building
 a library ([jpprof](https://github.com/grafana/JPProf)) to make it possible.
 
 The library currently is available on the [maven central repository](https://search.maven.org/search?q=g:com.grafana) under the `com.grafana` group.
