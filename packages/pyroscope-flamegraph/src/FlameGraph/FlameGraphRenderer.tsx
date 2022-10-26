@@ -471,8 +471,8 @@ class FlameGraphRenderer extends Component<
               fitMode={this.state.fitMode}
               zoom={this.state.flamegraphConfigs.zoom}
               focusedNode={this.state.flamegraphConfigs.focusedNode}
-              // onZoom={this.onFlamegraphZoom}
-              // onFocusOnNode={this.onFocusOnNode}
+              onZoom={this.onFlamegraphZoom}
+              onFocusOnNode={this.onFocusOnNode}
               onReset={this.onReset}
               isDirty={this.isDirty}
               palette={this.state.palette}
@@ -497,8 +497,8 @@ class FlameGraphRenderer extends Component<
               fitMode={this.state.fitMode}
               zoom={this.state.flamegraphConfigs.zoom}
               focusedNode={this.state.flamegraphConfigs.focusedNode}
-              // onZoom={this.onFlamegraphZoom}
-              // onFocusOnNode={this.onFocusOnNode}
+              onZoom={this.onFlamegraphZoom}
+              onFocusOnNode={this.onFocusOnNode}
               onReset={this.onReset}
               isDirty={this.isDirty}
               palette={this.state.palette}
