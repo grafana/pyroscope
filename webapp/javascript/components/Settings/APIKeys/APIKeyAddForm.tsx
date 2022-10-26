@@ -4,6 +4,7 @@ import InputField from '@webapp/ui/InputField';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
 import { createAPIKey } from '@webapp/redux/reducers/settings';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { type APIKey } from '@webapp/models/apikeys';
@@ -114,12 +115,12 @@ function APIKeyAddForm() {
                         `ReadOnly: Used only for visualizations (i.e. Grafana datasource, embedding in a UI)`,
                         `Agent: Used for "authentication token" in code when auth is enabled`,
                       ].map((r) => (
-                        <div>{r}</div>
+                        <div key={r}>{r}</div>
                       ))}
                     </div>
                   }
                 >
-                  <span className={styles.infoMark} />
+                  <Button icon={faInfoCircle} kind="float" />
                 </Tooltip2>
               </h4>
               <Dropdown
