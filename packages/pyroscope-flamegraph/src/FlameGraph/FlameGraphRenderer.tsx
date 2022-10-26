@@ -465,7 +465,7 @@ class FlameGraphRenderer extends Component<
               key="flamegraph-pane"
               showCredit={this.props.showCredit as boolean}
               flamebearer={callersFlamebearer}
-              highlightQuery={''}
+              highlightQuery=""
               setActiveItem={this.setActiveItem}
               selectedItem={this.state.selectedItem}
               fitMode={this.state.fitMode}
@@ -491,7 +491,7 @@ class FlameGraphRenderer extends Component<
               key="flamegraph-pane"
               showCredit={this.props.showCredit as boolean}
               flamebearer={calleesFlamebearer}
-              highlightQuery={''}
+              highlightQuery=""
               setActiveItem={this.setActiveItem}
               selectedItem={this.state.selectedItem}
               fitMode={this.state.fitMode}
