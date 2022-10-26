@@ -400,6 +400,7 @@ function ViewSection({
       <option value="table">Table</option>
       <option value="both">Both</option>
       <option value="flamegraph">Flame</option>
+      <option value="sandwich">Sandwich</option>
     </Select>
   );
 
@@ -435,6 +436,13 @@ function ViewSection({
         onClick={() => updateView('flamegraph')}
       >
         Flamegraph
+      </Button>
+      <Button
+        grouped
+        kind={kindByState('sandwich')}
+        onClick={() => updateView('sandwich')}
+      >
+        Sandwich
       </Button>
     </>
   );

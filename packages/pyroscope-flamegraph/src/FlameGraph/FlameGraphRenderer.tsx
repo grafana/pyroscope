@@ -14,6 +14,10 @@ import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
+import {
+  calleesProfile,
+  callersProfile,
+} from '../convert/sandwichViewProfiles';
 import Toolbar from '../Toolbar';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
@@ -431,9 +435,85 @@ class FlameGraphRenderer extends React.Component<
       />
     );
 
+    const sandwichPane = (() => {
+      const activeItemName = this.state.selectedItem.unwrapOr('');
+
+      if (!activeItemName) {
+        return null;
+      }
+
+      const callersP =
+        activeItemName &&
+        callersProfile(this.state.flamebearer, activeItemName);
+      const calleesP =
+        activeItemName &&
+        calleesProfile(this.state.flamebearer, activeItemName);
+
+      return (
+        <div className={styles.sandwichPane}>
+          <div className={styles.sandwichTop}>
+            <span>Callers</span>
+            <Graph
+              key="flamegraph-pane"
+              showCredit={this.props.showCredit as boolean}
+              flamebearer={callersP}
+              highlightQuery={this.getHighlightQuery()}
+              setActiveItem={this.setActiveItem}
+              selectedItem={this.state.selectedItem}
+              fitMode={this.state.fitMode}
+              zoom={this.state.flamegraphConfigs.zoom}
+              focusedNode={this.state.flamegraphConfigs.focusedNode}
+              onZoom={this.onFlamegraphZoom}
+              onFocusOnNode={this.onFocusOnNode}
+              onReset={this.onReset}
+              isDirty={this.isDirty}
+              palette={this.state.palette}
+              toolbarVisible={toolbarVisible}
+              setPalette={(p) =>
+                this.setState({
+                  palette: p,
+                })
+              }
+            />
+          </div>
+          <div className={styles.sandwichBottom}>
+            <span>Callees</span>
+            <Graph
+              headerVisible={false}
+              key="flamegraph-pane"
+              showCredit={this.props.showCredit as boolean}
+              flamebearer={calleesP}
+              highlightQuery={this.getHighlightQuery()}
+              setActiveItem={this.setActiveItem}
+              selectedItem={this.state.selectedItem}
+              fitMode={this.state.fitMode}
+              zoom={this.state.flamegraphConfigs.zoom}
+              focusedNode={this.state.flamegraphConfigs.focusedNode}
+              onZoom={this.onFlamegraphZoom}
+              onFocusOnNode={this.onFocusOnNode}
+              onReset={this.onReset}
+              isDirty={this.isDirty}
+              palette={this.state.palette}
+              toolbarVisible={toolbarVisible}
+              setPalette={(p) =>
+                this.setState({
+                  palette: p,
+                })
+              }
+            />
+          </div>
+        </div>
+      );
+    })();
+
     const dataUnavailable =
       !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
-    const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
+    const panes = decidePanesOrder(
+      this.state.view,
+      flameGraphPane,
+      tablePane,
+      sandwichPane
+    );
 
     return (
       <div data-flamegraph-color-mode={this.props.colorMode || 'dark'}>
@@ -492,7 +572,8 @@ class FlameGraphRenderer extends React.Component<
 function decidePanesOrder(
   view: FlamegraphRendererState['view'],
   flamegraphPane: JSX.Element | null,
-  tablePane: JSX.Element
+  tablePane: JSX.Element,
+  sandwichPane: JSX.Element | null
 ) {
   switch (view) {
     case 'table': {
@@ -500,6 +581,9 @@ function decidePanesOrder(
     }
     case 'flamegraph': {
       return [flamegraphPane];
+    }
+    case 'sandwich': {
+      return sandwichPane ? [tablePane, sandwichPane] : [tablePane];
     }
 
     case 'both': {

@@ -45,6 +45,7 @@ interface FlamegraphProps {
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
   toolbarVisible?: boolean;
+  headerVisible?: boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -62,6 +63,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     highlightQuery,
     zoom,
     toolbarVisible,
+    headerVisible = true,
     showCredit,
     setActiveItem,
     selectedItem,
@@ -287,14 +289,16 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         'vertical-orientation': flamebearer.format === 'double',
       })}
     >
-      <Header
-        format={flamebearer.format}
-        units={flamebearer.units}
-        ExportData={ExportData}
-        palette={palette}
-        setPalette={setPalette}
-        toolbarVisible={toolbarVisible}
-      />
+      {headerVisible && (
+        <Header
+          format={flamebearer.format}
+          units={flamebearer.units}
+          ExportData={ExportData}
+          palette={palette}
+          setPalette={setPalette}
+          toolbarVisible={toolbarVisible}
+        />
+      )}
       <div
         data-testid={dataTestId}
         style={{

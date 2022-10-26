@@ -33,6 +33,28 @@
   display: flex;
 }
 
-.tablePane {
+.tablePane,
+.sandwichPane {
   flex: 1;
+}
+
+.sandwichPane {
+  .sandwichTop {
+    margin-bottom: 10px;
+  }
+
+  .sandwichTop,
+  .sandwichBottom {
+    display: flex;
+
+    span {
+      writing-mode: vertical-rl;
+      transform: rotate(-180deg);
+      padding: 5px 0;
+    }
+  }
+
+  .sandwichBottom span {
+    text-align: right;
+  }
 }
