@@ -82,12 +82,6 @@ export default {
   resolve: {
     extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
     alias: getAlias(),
-    //    modules: [
-    //      //      'node_modules',
-    //      path.resolve('webapp'),
-    //      //      path.resolve(packagePath, 'node_modules'),
-    //      //      path.resolve(rootPath, 'node_modules'),
-    //    ],
   },
 
   stats: {
