@@ -15,13 +15,18 @@ public class Something extends Thread {
     }
 
     private static void doSomething() {
-        int i = 0;
-        for (;;) {
-            i++;
-            if (i % 3 == 0) {
-                funcFoo();
+        try {
+            int i = 0;
+            for (;;) {
+                i++;
+                if (i % 3 == 0) {
+                    funcFoo();
+                }
+                funcBar();
+                Thread.sleep(10);
             }
-            funcBar();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
