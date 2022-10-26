@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from '@webapp/ui/Button';
 import InputField from '@webapp/ui/InputField';
+import { TooltipInfoIcon } from '@webapp/ui/TooltipInfoIcon';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
@@ -120,7 +121,7 @@ function APIKeyAddForm() {
                     </div>
                   }
                 >
-                  <Button icon={faInfoCircle} kind="float" />
+                  <TooltipInfoIcon />
                 </Tooltip2>
               </h4>
               <Dropdown
