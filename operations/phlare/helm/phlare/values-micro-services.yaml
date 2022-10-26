@@ -40,3 +40,6 @@ phlare:
         requests:
           memory: 6Gi
           cpu: 1
+
+minio:
+  enabled: true

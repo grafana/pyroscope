@@ -6,5 +6,4 @@ metadata:
     {{- include "phlare.labels" . | nindent 4 }}
 data:
   config.yaml: |
-
-    {{ .Values.phlare.config | nindent 4 }}
+    {{- tpl (mergeOverwrite (tpl .Values.phlare.config . | fromYaml) .Values.phlare.structuredConfig | toYaml) . | nindent 4 }}
