@@ -70,6 +70,7 @@ function ContinuousSingleView() {
         return (
           <FlamegraphRenderer
             showCredit={false}
+            onlyDisplay="sandwich"
             profile={singleView.profile}
             colorMode={colorMode}
             ExportData={
