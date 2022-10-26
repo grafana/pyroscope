@@ -19,7 +19,7 @@ interface UseSyncParams {
 const timeOffset = 5 * 60 * 1000;
 const selectionOffset = 5000;
 
-const getTitle = (leftInRange: boolean, rightInRange: boolean) => {
+export const getTitle = (leftInRange: boolean, rightInRange: boolean) => {
   if (!leftInRange && !rightInRange) {
     return 'Warning: Baseline and Comparison timeline selections are out of range';
   }
