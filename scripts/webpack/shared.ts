@@ -38,6 +38,14 @@ export function getAlias() {
     // this alias maps that dependency to core-js@t3
     'core-js/library/fn': 'core-js/stable',
     '@webapp': path.resolve(__dirname, '../../webapp/javascript'),
+    'dom-helpers/addClass': path.resolve(
+      __dirname,
+      '../../node_modules/dom-helpers/class/addClass'
+    ),
+    'dom-helpers/removeClass': path.resolve(
+      __dirname,
+      '../../node_modules/dom-helpers/class/removeClass'
+    ),
   };
 }
 

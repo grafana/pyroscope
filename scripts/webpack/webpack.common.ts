@@ -11,6 +11,7 @@ import { ESBuildMinifyPlugin } from 'esbuild-loader';
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
 const packagePath = path.resolve(__dirname, '../../webapp');
+const rootPath = path.resolve(__dirname, '../../');
 
 // use a fake hash when running locally
 const LOCAL_HASH = 'local';
@@ -81,11 +82,12 @@ export default {
   resolve: {
     extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
     alias: getAlias(),
-    modules: [
-      'node_modules',
-      path.resolve('webapp'),
-      path.resolve(packagePath, 'node_modules'),
-    ],
+    //    modules: [
+    //      //      'node_modules',
+    //      path.resolve('webapp'),
+    //      //      path.resolve(packagePath, 'node_modules'),
+    //      //      path.resolve(rootPath, 'node_modules'),
+    //    ],
   },
 
   stats: {
