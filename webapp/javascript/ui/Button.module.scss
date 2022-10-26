@@ -86,6 +86,21 @@ $border-radius: 4px;
   }
 }
 
+.outline {
+  $border: 1px solid var(--ps-ui-border);
+  background-color: transparent;
+  color: var(--ps-button-switch-text);
+
+  &:hover {
+    border-color: var(--ps-neutral-1);
+  }
+
+  &:disabled {
+    opacity: .6;
+    pointer-events: none;
+  }
+}
+
 // only the first and last elements should have styling
 .grouped {
   margin: 0;

@@ -5,7 +5,7 @@ import cx from 'classnames';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
-  kind?: 'default' | 'primary' | 'secondary' | 'danger';
+  kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'outline';
   /** Whether the button is disabled or not */
   disabled?: boolean;
   icon?: IconDefinition;
@@ -97,6 +97,10 @@ function getKindStyles(kind: ButtonProps['kind']) {
 
     case 'danger': {
       return styles.danger;
+    }
+
+    case 'outline': {
+      return styles.outline;
     }
 
     default: {

@@ -6,13 +6,7 @@
 
 .syncButton {
   margin-left: 0.5em;
-  background-color: transparent;
   font-weight: normal;
-  color: var(--ps-immutable-placeholder-text);
-
-  &:hover:not(:disabled) {
-    background-color: transparent;
-  }
 }
 
 .ignoreButton {
