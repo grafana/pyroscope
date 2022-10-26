@@ -152,7 +152,7 @@ define deploy
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)phlare:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
-		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.service.port_name=http-metrics
+		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.image.repository=$(IMAGE_PREFIX)phlare --set phlare.service.port_name=http-metrics
 endef
 
 .PHONY: docker-image/phlare/build
@@ -304,7 +304,7 @@ helm/check: $(BIN)/kubeval $(BIN)/helm
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
-	$(call deploy,phlare-dev)
+	$(call deploy,phlare-dev,)
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
