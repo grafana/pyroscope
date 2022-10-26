@@ -1,15 +1,9 @@
 /* eslint-disable no-unused-expressions */
-import React, {
-  useEffect,
-  useMemo,
-  ChangeEvent,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useMemo, ChangeEvent, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import Input from '@pyroscope/webapp/javascript/ui/Input';
-import Tooltip, { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
+import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import styles from './SharedQueryInput.module.scss';
 import type { ProfileHeaderProps, ShowModeType } from './Toolbar';
 
@@ -37,7 +31,6 @@ const SharedQueryInput = ({
   sharedQuery,
 }: SharedQueryProps) => {
   const prevSyncEnabled = usePreviousSyncEnabled(sharedQuery?.syncEnabled);
-  const [tooltipVisible, toggleTooltip] = useState(false);
 
   const onQueryChange = (e: ChangeEvent<HTMLInputElement>) => {
     onHighlightChange(e.target.value);
