@@ -7,33 +7,12 @@ import React from 'react';
 import MuiTooltip from '@mui/material/Tooltip';
 import styles from './Tooltip.module.scss';
 
-interface TooltipProps {
-  title: string;
-  visible: boolean;
-  className?: string;
-  placement: 'top' | 'left' | 'bottom' | 'right';
-}
-
-const Tooltip = ({ title, visible, className, placement }: TooltipProps) => {
-  return (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className={`${styles.tooltip} ${visible ? styles.visible : ''} ${
-        styles?.[placement]
-      } ${className || ''} `}
-      role="tooltip"
-    >
-      {title}
-    </div>
-  );
-};
-
 // Don't expose all props from the lib
 type AvailableProps = Pick<
   React.ComponentProps<typeof MuiTooltip>,
   'title' | 'children' | 'placement'
 >;
-function Tooltip2(props: AvailableProps) {
+function Tooltip(props: AvailableProps) {
   const defaultProps: Omit<
     React.ComponentProps<typeof MuiTooltip>,
     'title' | 'children'
@@ -49,5 +28,4 @@ function Tooltip2(props: AvailableProps) {
   return <MuiTooltip {...defaultProps} {...props} />;
 }
 
-export default Tooltip;
-export { Tooltip2 };
+export { Tooltip };

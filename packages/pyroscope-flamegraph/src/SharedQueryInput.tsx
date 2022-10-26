@@ -9,7 +9,7 @@ import React, {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import Input from '@pyroscope/webapp/javascript/ui/Input';
-import Tooltip, { Tooltip2 } from '@pyroscope/webapp/javascript/ui/Tooltip';
+import Tooltip, { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import styles from './SharedQueryInput.module.scss';
 import type { ProfileHeaderProps, ShowModeType } from './Toolbar';
 
@@ -105,7 +105,7 @@ const SharedQueryInput = ({
         value={inputValue}
       />
       {sharedQuery ? (
-        <Tooltip2
+        <Tooltip
           placement="top"
           title={
             sharedQuery.syncEnabled ? 'Unsync search bars' : 'Sync search bars'
@@ -124,7 +124,7 @@ const SharedQueryInput = ({
               icon={faLink}
             />
           </button>
-        </Tooltip2>
+        </Tooltip>
       ) : null}
     </div>
   );

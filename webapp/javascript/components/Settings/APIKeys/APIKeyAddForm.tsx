@@ -5,12 +5,11 @@ import { TooltipInfoIcon } from '@webapp/ui/TooltipInfoIcon';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
-import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
 import { createAPIKey } from '@webapp/redux/reducers/settings';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { type APIKey } from '@webapp/models/apikeys';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
-import { Tooltip2 } from '@webapp/ui/Tooltip';
+import { Tooltip } from '@webapp/ui/Tooltip';
 import StatusMessage from '@webapp/ui/StatusMessage';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
@@ -108,7 +107,7 @@ function APIKeyAddForm() {
             <div>
               <h4>
                 Role
-                <Tooltip2
+                <Tooltip
                   title={
                     <div className={styles.rolesTooltip}>
                       {[
@@ -122,7 +121,7 @@ function APIKeyAddForm() {
                   }
                 >
                   <TooltipInfoIcon />
-                </Tooltip2>
+                </Tooltip>
               </h4>
               <Dropdown
                 onItemClick={(i) => handleRoleChange(i.value)}
