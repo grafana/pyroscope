@@ -106,6 +106,7 @@ const SharedQueryInput = ({
       />
       {sharedQuery ? (
         <Tooltip2
+          placement="top"
           title={
             sharedQuery.syncEnabled ? 'Unsync search bars' : 'Sync search bars'
           }
