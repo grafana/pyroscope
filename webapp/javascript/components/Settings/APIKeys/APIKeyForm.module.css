@@ -20,14 +20,7 @@
   text-align: center;
 }
 
-.rolesTooltip {
+.rolesTooltip > *:not(:first-child) {
   font-weight: normal;
-  top: calc(100% + 10px);
-  white-space: pre;
-  line-height: 24px;
-}
-
-.rolesTooltip::before {
-  right: unset;
-  left: 40px;
+  margin-top: 12px;
 }

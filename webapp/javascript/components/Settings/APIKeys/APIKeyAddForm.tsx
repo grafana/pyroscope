@@ -107,13 +107,17 @@ function APIKeyAddForm() {
               <h4>
                 Role
                 <Tooltip2
-                  title={[
-                    `Admin: Manage users/API keys`,
-                    `ReadOnly: Used only for visualizations (i.e. Grafana datasource, embedding in a UI)`,
-                    `Agent: Used for "authentication token" in code when auth is enabled`,
-                  ].map((r) => (
-                    <div>{r}</div>
-                  ))}
+                  title={
+                    <div className={styles.rolesTooltip}>
+                      {[
+                        `Admin: Manage users/API keys`,
+                        `ReadOnly: Used only for visualizations (i.e. Grafana datasource, embedding in a UI)`,
+                        `Agent: Used for "authentication token" in code when auth is enabled`,
+                      ].map((r) => (
+                        <div>{r}</div>
+                      ))}
+                    </div>
+                  }
                 >
                   <span className={styles.infoMark} />
                 </Tooltip2>
