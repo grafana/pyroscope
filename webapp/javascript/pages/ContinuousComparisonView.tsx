@@ -81,6 +81,31 @@ function ComparisonApp() {
     rightSide &&
     leftSide.metadata.units === rightSide.metadata.units;
 
+  const handleCompare = ({
+    from,
+    until,
+    leftFrom,
+    leftTo,
+    rightFrom,
+    rightTo,
+  }: {
+    from: string;
+    until: string;
+    leftFrom: string;
+    leftTo: string;
+    rightFrom: string;
+    rightTo: string;
+  }) => {
+    dispatch(actions.setRight({ from: rightFrom, until: rightTo }));
+    dispatch(actions.setLeft({ from: leftFrom, until: leftTo }));
+    dispatch(
+      actions.setFromAndUntil({
+        from,
+        until,
+      })
+    );
+  };
+
   return (
     <div>
       <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
@@ -209,7 +234,13 @@ function ComparisonApp() {
             >
               <div className={styles.timelineTitleWrapper}>
                 <TimelineTitle titleKey="comparison" color={rightColor} />
-                <SideTimelineComparator />
+                <SideTimelineComparator
+                  comparisonSelection={{
+                    from: rightFrom,
+                    to: rightUntil,
+                  }}
+                  onCompare={handleCompare}
+                />
               </div>
               <TagsBar
                 query={rightQuery}

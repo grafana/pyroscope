@@ -101,14 +101,14 @@ interface PopoverMemberProps {
   className?: string;
 }
 
-export function PopoverHeader({ children }: PopoverMemberProps) {
-  return <div className={styles.header}>{children}</div>;
+export function PopoverHeader({ children, className }: PopoverMemberProps) {
+  return <div className={classnames(styles.header, className)}>{children}</div>;
 }
 
 export function PopoverBody({ children, className }: PopoverMemberProps) {
   return <div className={classnames(styles.body, className)}>{children}</div>;
 }
 
-export function PopoverFooter({ children }: PopoverMemberProps) {
-  return <div className={styles.footer}>{children}</div>;
+export function PopoverFooter({ children, className }: PopoverMemberProps) {
+  return <div className={classnames(styles.footer, className)}>{children}</div>;
 }

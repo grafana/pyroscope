@@ -3,9 +3,28 @@ import classNames from 'classnames/bind';
 import Button from '@webapp/ui/Button';
 import { Popover, PopoverBody } from '@webapp/ui/Popover';
 import { Portal } from '@webapp/ui/Portal';
-import styles from './styles.module.scss';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  markingsFromSelection,
+  Selection,
+} from '@webapp/components/TimelineChart/markings';
+import styles from './styles.module.scss';
+
+interface SideTimelineComparatorProps {
+  comparisonSelection: {
+    from: string;
+    to: string;
+  };
+  onCompare: (params: {
+    from: string;
+    until: string;
+    leftFrom: string;
+    leftTo: string;
+    rightFrom: string;
+    rightTo: string;
+  }) => void;
+}
 
 const cx = classNames.bind(styles);
 
@@ -13,36 +32,64 @@ const buttons = [
   [
     {
       label: '1 hour prior',
-      value: '1h',
+      ms: 3600 * 1000,
     },
     {
       label: '12 hour prior',
-      value: '12h',
+      ms: 43200 * 1000,
     },
     {
       label: '24 hour prior',
-      value: '24h',
+      ms: 86400 * 1000,
     },
   ],
   [
     {
       label: '1 week prior',
-      value: '7d',
+      ms: 604800 * 1000,
     },
     {
       label: '2 weeks prior',
-      value: '14d',
+      ms: 1209600 * 1000,
     },
     {
       label: '1 month prior',
-      value: '1M',
+      // TODO: 30days, needs clarification
+      ms: 2592000 * 1000,
     },
   ],
 ];
 
-export default function SideTimelineComparator() {
+export default function SideTimelineComparator({
+  comparisonSelection,
+  onCompare,
+}: SideTimelineComparatorProps) {
   const refContainer = useRef(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [buttonCaption, setButtonCaption] = useState('Compare');
+
+  const [
+    {
+      xaxis: { from: comparisonSelectionFrom, to: comparisonSelectionTo },
+    },
+  ] = markingsFromSelection('single', {
+    ...comparisonSelection,
+  } as Selection);
+
+  const diff = comparisonSelectionTo - comparisonSelectionFrom;
+
+  const handleClick = ({ ms, label }: { ms: number; label: string }) => {
+    setButtonCaption(label);
+    onCompare({
+      from: String(comparisonSelectionTo - ms * 2),
+      until: String(comparisonSelectionTo),
+      rightFrom: String(comparisonSelectionFrom),
+      rightTo: String(comparisonSelectionTo),
+      leftFrom: String(comparisonSelectionTo - ms - diff),
+      leftTo: String(comparisonSelectionTo - ms),
+    });
+    setMenuVisible(false);
+  };
 
   return (
     <div className={styles.wrapper} ref={refContainer}>
@@ -50,7 +97,7 @@ export default function SideTimelineComparator() {
         data-testid="open-comparator-button"
         onClick={() => setMenuVisible(!menuVisible)}
       >
-        {'1 day prior'}
+        {buttonCaption}
         <FontAwesomeIcon
           className={styles.openButtonIcon}
           icon={faChevronDown}
@@ -61,7 +108,7 @@ export default function SideTimelineComparator() {
           anchorPoint={{ x: 'calc(100% - 300px)', y: 42 }}
           isModalOpen
           setModalOpenStatus={() => setMenuVisible(false)}
-          className={cx({ menu: true, [styles.hidden]: !menuVisible })}
+          className={cx({ [styles.menu]: true, [styles.hidden]: !menuVisible })}
         >
           {menuVisible ? (
             <>
@@ -77,9 +124,17 @@ export default function SideTimelineComparator() {
                         {arr.map((b) => {
                           return (
                             <Button
-                              key={b.value}
+                              kind={
+                                buttonCaption === b.label
+                                  ? 'secondary'
+                                  : 'default'
+                              }
+                              disabled={diff > b.ms}
+                              key={b.label}
                               data-testid={b.label}
-                              onClick={() => {}}
+                              onClick={() => {
+                                handleClick(b);
+                              }}
                               className={styles.priorButton}
                             >
                               {b.label}
