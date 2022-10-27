@@ -451,7 +451,13 @@ class FlameGraphRenderer extends Component<
       const activeItemName = this.state.selectedItem.unwrapOr('');
 
       if (!activeItemName) {
-        return null;
+        return (
+          <div className={styles.sandwichPane} key="sandwich-pane">
+            <div className={styles.sandwichPaneInfo}>
+              Select a function to view callers/callees sandwich view
+            </div>
+          </div>
+        );
       }
 
       const callersFlamebearer = callersProfile(
@@ -590,7 +596,7 @@ function decidePanesOrder(
   view: FlamegraphRendererState['view'],
   flamegraphPane: JSX.Element | null,
   tablePane: JSX.Element,
-  sandwichPane: JSX.Element | null
+  sandwichPane: JSX.Element
 ) {
   switch (view) {
     case 'table': {
@@ -600,7 +606,7 @@ function decidePanesOrder(
       return [flamegraphPane];
     }
     case 'sandwich': {
-      return sandwichPane ? [tablePane, sandwichPane] : [tablePane];
+      return [tablePane, sandwichPane];
     }
 
     case 'both': {

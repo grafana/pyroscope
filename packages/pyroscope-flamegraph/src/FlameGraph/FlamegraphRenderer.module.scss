@@ -39,6 +39,26 @@
 }
 
 .sandwichPane {
+  .sandwichPaneInfo {
+    display: inline-block;
+    position: relative;
+    margin: 30px 0 0 10px;
+    padding: 8px;
+    border-radius: 5px;
+    background-color: var(--ps-sandwich-pane-info-bg);
+    color: var(--ps-neutral-1);
+
+    &::before {
+      content: '◀';
+      color: var(--ps-sandwich-pane-info-bg);
+      left: -14px;
+      top: 3px;
+      font-size: 22px;
+      position: absolute;
+      height: 100%;
+    }
+  }
+
   .sandwichTop {
     margin-bottom: 10px;
   }
