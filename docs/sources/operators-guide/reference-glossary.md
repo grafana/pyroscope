@@ -58,7 +58,9 @@ Refer to [Hash ring]({{< relref "#hash-ring" >}}).
 
 ## Profile
 
-:[//TODO]:<> (Do this!)
+A profile or performance profile is a set of samples collected from a running process.
+The sample data is used to identify the source of performance issues in the process.
+Samples usually contain information about the [stacktrace](#Stacktrace), CPU usage, memory usage, and other metrics.
 
 ## Series
 
@@ -84,3 +86,26 @@ Refer to [Series]({{< relref "#series" >}}).
 ## User
 
 Refer to [Tenant]({{< relref "#tenant" >}}).
+
+
+## PProf
+
+pprof is a tool for the visualization and analysis of profiling data. We often refer to pprof as
+the wire [protocol](https://github.com/google/pprof/blob/main/proto/profile.proto) used by Phlare for pushing profiles.
+
+## Stacktrace
+
+A stack trace is a unique sequence of nested functions called by a program.
+
+## flamegraph
+
+[Flame graphs](https://www.brendangregg.com/flamegraphs.html) are a visualization of hierarchical data,
+created to visualize [stack traces](#Stacktrace) of profiled software so that the most frequent code-paths
+can be identified quickly and accurately.
+
+Flamegraph when inverted (deepest stack frames at the bottom) are called Icicle Graphs.
+
+
+## top table
+
+In the top table, you can see the top functions that are consuming the most resources.
