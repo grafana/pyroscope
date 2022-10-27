@@ -12,10 +12,6 @@ import {
 import styles from './styles.module.scss';
 
 interface SideTimelineComparatorProps {
-  comparisonSelection: {
-    from: string;
-    to: string;
-  };
   onCompare: (params: {
     from: string;
     until: string;
@@ -24,6 +20,10 @@ interface SideTimelineComparatorProps {
     rightFrom: string;
     rightTo: string;
   }) => void;
+  selection: {
+    left: Selection;
+    right: Selection;
+  };
 }
 
 const cx = classNames.bind(styles);
@@ -53,33 +53,41 @@ const buttons = [
       ms: 1209600 * 1000,
     },
     {
-      label: '1 month prior',
-      // TODO: 30days, needs clarification
+      label: '30 days prior',
       ms: 2592000 * 1000,
     },
   ],
 ];
 
 export default function SideTimelineComparator({
-  comparisonSelection,
   onCompare,
+  selection,
 }: SideTimelineComparatorProps) {
   const refContainer = useRef(null);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [buttonCaption, setButtonCaption] = useState('Compare');
+  const [comparisonVariant, setComparisonVariant] = useState({
+    label: 'Compare',
+    ms: 0,
+  });
 
   const [
     {
       xaxis: { from: comparisonSelectionFrom, to: comparisonSelectionTo },
     },
   ] = markingsFromSelection('single', {
-    ...comparisonSelection,
+    ...selection.right,
   } as Selection);
 
   const diff = comparisonSelectionTo - comparisonSelectionFrom;
 
+  const percent = comparisonVariant.ms
+    ? ((comparisonSelectionTo - comparisonSelectionFrom) /
+        comparisonVariant.ms) *
+      100
+    : null;
+
   const handleClick = ({ ms, label }: { ms: number; label: string }) => {
-    setButtonCaption(label);
+    setComparisonVariant({ ms, label });
     onCompare({
       from: String(comparisonSelectionTo - ms * 2),
       until: String(comparisonSelectionTo),
@@ -88,8 +96,40 @@ export default function SideTimelineComparator({
       leftFrom: String(comparisonSelectionTo - ms - diff),
       leftTo: String(comparisonSelectionTo - ms),
     });
-    setMenuVisible(false);
   };
+
+  const preview = percent ? (
+    <div className={styles.preview}>
+      <div className={styles.timeline}>
+        <div className={styles.timelineBox}>
+          <div className={styles.fullPriorTimeContainer}>
+            <div
+              className={styles.selection}
+              style={{
+                width: `${percent}%`,
+                backgroundColor: selection.left.overlayColor.toString(),
+              }}
+            />
+          </div>
+          <div className={styles.fullPriorTimeContainer}>
+            <div
+              style={{
+                width: `${percent}%`,
+                backgroundColor: selection.right.overlayColor.toString(),
+              }}
+              className={styles.selection}
+            />
+          </div>
+        </div>
+      </div>
+      <div className={styles.legend}>
+        <div className={styles.legendLine} />
+        <div className={styles.legendCaption}>{comparisonVariant.label}</div>
+      </div>
+    </div>
+  ) : (
+    <div>Please set the period</div>
+  );
 
   return (
     <div className={styles.wrapper} ref={refContainer}>
@@ -97,7 +137,7 @@ export default function SideTimelineComparator({
         data-testid="open-comparator-button"
         onClick={() => setMenuVisible(!menuVisible)}
       >
-        {buttonCaption}
+        {comparisonVariant.label}
         <FontAwesomeIcon
           className={styles.openButtonIcon}
           icon={faChevronDown}
@@ -113,7 +153,7 @@ export default function SideTimelineComparator({
           {menuVisible ? (
             <>
               <PopoverBody className={styles.body}>
-                <div>Set baseline to:</div>
+                <div className={styles.subtitle}>Set baseline to:</div>
                 <div className={styles.buttons}>
                   {buttons.map((arr, i) => {
                     return (
@@ -125,7 +165,7 @@ export default function SideTimelineComparator({
                           return (
                             <Button
                               kind={
-                                buttonCaption === b.label
+                                comparisonVariant.label === b.label
                                   ? 'secondary'
                                   : 'default'
                               }
@@ -145,6 +185,8 @@ export default function SideTimelineComparator({
                     );
                   })}
                 </div>
+                <div className={styles.subtitle}>Preview</div>
+                {preview}
               </PopoverBody>
             </>
           ) : null}
