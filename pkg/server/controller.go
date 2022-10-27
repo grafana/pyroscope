@@ -219,12 +219,21 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		apiRouter.RegisterAdhocHandlers()
 	}
 
-	// FIXME: Honor ctrl.config.RemoteRead.Enabled.
+	// FIXME: not optimal, unify this with the remoteReadHandler at the top
 	authorizer := authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log))
 	appsRouter := apiRouter.PathPrefix("/apps").Subrouter()
-
-	appsRouter.Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
-	appsRouter.Methods(http.MethodDelete).Handler(authorizer.RequireAdminRole(ctrl.deleteAppsHandler()))
+	if ctrl.config.RemoteRead.Enabled {
+		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
+		if err != nil {
+			logrus.WithError(err).Error("failed to initialize remote read handler")
+		} else {
+			appsRouter.Methods(http.MethodGet).Handler(h)
+			appsRouter.Methods(http.MethodDelete).Handler(h)
+		}
+	} else {
+		appsRouter.Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
+		appsRouter.Methods(http.MethodDelete).Handler(authorizer.RequireAdminRole(ctrl.deleteAppsHandler()))
+	}
 
 	ingestRouter := r.Path("/ingest").Subrouter()
 	ingestRouter.Use(ctrl.drainMiddleware)
