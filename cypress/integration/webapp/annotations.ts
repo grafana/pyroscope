@@ -2,9 +2,9 @@ describe('Annotations', () => {
   it('add annotation flow works as expected', () => {
     const basePath = Cypress.env('basePath') || '';
     cy.intercept(`${basePath}**/labels*`).as('labels');
-    cy.intercept(`${basePath}**/label-values*`, {
+    cy.intercept(`${basePath}/api/apps`, {
       fixture: 'appNames.json',
-    }).as('labelValues');
+    }).as('appNames');
     cy.intercept('**/render*', {
       fixture: 'render.json',
     }).as('render');
@@ -12,7 +12,7 @@ describe('Annotations', () => {
     cy.visit('/');
 
     cy.wait('@labels');
-    cy.wait('@labelValues');
+    cy.wait('@appNames');
     cy.wait('@render');
 
     cy.get('canvas.flot-overlay').click();
