@@ -101,7 +101,7 @@ A stack trace is a unique sequence of nested functions called by a program.
 
 [Flame graphs](https://www.brendangregg.com/flamegraphs.html) are a visualization of hierarchical data,
 created to visualize [stack traces](#Stacktrace) of profiled software so that the most frequent code-paths
-to be identified quickly and accurately.
+can be identified quickly and accurately.
 
 Flamegraph when inverted (deepest stack frames at the bottom) are called Icicle Graphs.
 
