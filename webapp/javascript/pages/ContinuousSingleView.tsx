@@ -153,7 +153,10 @@ function ContinuousSingleView() {
               }
               height="125px"
               title={
-                <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
+                <TimelineTitle
+                  className="singleView-timeline-title"
+                  titleKey={singleView?.profile?.metadata.units}
+                />
               }
               annotations={annotations}
               selectionType="single"
