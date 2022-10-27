@@ -14,7 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
@@ -391,23 +390,6 @@ func (e *exemplars) truncateN(before time.Time, count int) (bool, error) {
 	}
 
 	return true, err
-}
-
-func (s *Storage) ensureAppSegmentExists(in *PutInput) error {
-	k := segment.AppSegmentKey(in.Key.AppName())
-	r, err := s.segments.GetOrCreate(k)
-	if err != nil {
-		return fmt.Errorf("segments cache for %v: %w", k, err)
-	}
-	st := r.(*segment.Segment)
-	st.SetMetadata(metadata.Metadata{
-		SpyName:         in.SpyName,
-		SampleRate:      in.SampleRate,
-		Units:           in.Units,
-		AggregationType: in.AggregationType,
-	})
-	s.segments.Put(k, st)
-	return err
 }
 
 func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {

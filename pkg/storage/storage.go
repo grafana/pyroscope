@@ -41,7 +41,8 @@ type Storage struct {
 	labels     *labels.Labels
 	exemplars  *exemplars
 
-	hc *health.Controller
+	appSvc ApplicationService
+	hc     *health.Controller
 
 	// Maintenance tasks are executed exclusively to avoid competition:
 	// extensive writing during GC is harmful and deteriorates the

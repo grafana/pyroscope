@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
@@ -130,4 +131,10 @@ type BadgerDBWithCache interface {
 	DBInstance() *badger.DB
 	CacheInstance() *cache.Cache
 	Name() string
+}
+
+// TODO: I don't know why but I find ApplicationService name clumsy in this context.
+
+type ApplicationService interface {
+	CreateOrUpdate(context.Context, model.Application) error
 }
