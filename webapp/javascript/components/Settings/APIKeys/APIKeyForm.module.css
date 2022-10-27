@@ -2,32 +2,7 @@
   max-width: 40%;
 }
 
-.infoMark {
-  cursor: pointer;
-  position: relative;
-}
-
-.infoMark::after {
-  content: 'i';
-  width: 15px;
-  height: 15px;
-  position: absolute;
-  border: 1px solid var(--ps-neutral-2);
-  border-radius: 50%;
-  font-size: 9px;
-  margin-left: 5px;
-  top: 3px;
-  text-align: center;
-}
-
-.rolesTooltip {
+.rolesTooltip > *:not(:first-child) {
   font-weight: normal;
-  top: calc(100% + 10px);
-  white-space: pre;
-  line-height: 24px;
-}
-
-.rolesTooltip::before {
-  right: unset;
-  left: 40px;
+  margin-top: 12px;
 }

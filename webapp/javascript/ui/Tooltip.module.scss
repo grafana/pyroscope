@@ -94,3 +94,17 @@
     @extend %left-before;
   }
 }
+
+// trick to increase specificity to win against default classes
+.muiTooltip.muiTooltip {
+  border: 1px solid var(--ps-ui-border);
+  background-color: var(--ps-ui-border);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 16px;
+  padding: 4px 8px;
+}
+
+.muiTooltipArrow.muiTooltipArrow {
+  color: var(--ps-ui-border);
+}
