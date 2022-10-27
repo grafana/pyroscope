@@ -1,13 +1,8 @@
 import { Result } from '@webapp/util/fp';
-import { AppNames, appNamesModel } from '@webapp/models/appNames';
+import { AppNames } from '@webapp/models/appNames';
+import { fetchApps } from '@webapp/services/apps';
 import type { ZodError } from 'zod';
-import { parseResponse, request } from './base';
 import type { RequestError } from './base';
-
-/* eslint-disable import/prefer-default-export */
-export interface FetchAppNamesError {
-  message?: string;
-}
 
 // Due to circunstances, older versions of pyroscope accepted apps with empty names
 // TODO: maybe also check for illegal characters and whatnot?
@@ -18,13 +13,7 @@ function isValidAppName(appName: string) {
 export async function fetchAppNames(): Promise<
   Result<AppNames, RequestError | ZodError>
 > {
-  const response = await request('/label-values?label=__name__');
-
-  if (response.isOk) {
-    return parseResponse<AppNames>(response, appNamesModel).map((values) =>
-      values.filter(isValidAppName)
-    );
-  }
-
-  return Result.err<AppNames, RequestError>(response.error);
+  return (await fetchApps())
+    .map((apps) => apps.map((a) => a.name))
+    .map((a) => a.filter(isValidAppName));
 }

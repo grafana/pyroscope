@@ -219,6 +219,13 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		apiRouter.RegisterAdhocHandlers()
 	}
 
+	// FIXME: Honor ctrl.config.RemoteRead.Enabled.
+	authorizer := authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log))
+	appsRouter := apiRouter.PathPrefix("/apps").Subrouter()
+
+	appsRouter.Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
+	appsRouter.Methods(http.MethodDelete).Handler(authorizer.RequireAdminRole(ctrl.deleteAppsHandler()))
+
 	ingestRouter := r.Path("/ingest").Subrouter()
 	ingestRouter.Use(ctrl.drainMiddleware)
 	if ctrl.config.Auth.Ingestion.Enabled {
@@ -300,16 +307,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ctrl.addRoutes(r, routes,
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
-
-	// FIXME: Honor ctrl.config.RemoteRead.Enabled.
-	appsRouter := apiRouter.PathPrefix("/").Subrouter()
-	appsRouter.Use(
-		api.AuthMiddleware(nil, ctrl.authService, ctrl.httpUtils),
-		authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log)).RequireOneOf(
-			authz.Role(model.AdminRole),
-		))
-	appsRouter.HandleFunc("/apps", ctrl.getAppsHandler()).Methods("GET")
-	appsRouter.HandleFunc("/apps", ctrl.deleteAppsHandler()).Methods("DELETE")
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.

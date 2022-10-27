@@ -21,12 +21,16 @@ func NewAuthorizer(logger logrus.FieldLogger, httpUtils httputils.Utils) Authori
 	}
 }
 
-func (a Authorizer) RequireAdminRole() func(next http.Handler) http.Handler {
-	return a.Require(Role(model.AdminRole))
+func (a Authorizer) RequireRole(role model.Role) func(next http.Handler) http.Handler {
+	return a.Require(Role(role))
 }
 
-func (a Authorizer) RequireAuthenticatedUser() func(next http.Handler) http.Handler {
-	return a.Require(AuthenticatedUser)
+func (a Authorizer) RequireAdminRole(next http.Handler) http.Handler {
+	return a.RequireRole(model.AdminRole)(next)
+}
+
+func (a Authorizer) RequireAuthenticatedUser(next http.Handler) http.Handler {
+	return a.Require(AuthenticatedUser)(next)
 }
 
 func (a Authorizer) Require(funcs ...func(r *http.Request) bool) func(next http.Handler) http.Handler {
@@ -76,6 +80,7 @@ func Role(role model.Role) func(r *http.Request) bool {
 //
 // Note that authenticated API key is not linked to any user,
 // therefore this check will fail.
+// Also note that when auth is disabled this check also fails
 func AuthenticatedUser(r *http.Request) bool {
 	_, ok := model.UserFromContext(r.Context())
 	return ok
