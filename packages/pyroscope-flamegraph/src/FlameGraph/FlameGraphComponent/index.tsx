@@ -18,9 +18,11 @@ import ContextMenuHighlight from './ContextMenuHighlight';
 import FlamegraphTooltip from '../../Tooltip/FlamegraphTooltip';
 import ContextMenu from './ContextMenu';
 import LogoLink from './LogoLink';
+import SandwichIcon from '../../SandwichIcon';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
+import type { ViewTypes } from './viewTypes';
 import indexStyles from './styles.module.scss';
 
 interface FlamegraphProps {
@@ -35,6 +37,7 @@ interface FlamegraphProps {
   onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
   setActiveItem: (item: { name: string }) => void;
+  updateView?: (v: ViewTypes) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -71,6 +74,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     showCredit,
     setActiveItem,
     selectedItem,
+    updateView,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
@@ -217,6 +221,26 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         );
       };
 
+      const OpenInSandwichViewItem = () => {
+        const handleClick = () => {
+          if (updateView) {
+            updateView('sandwich');
+            setActiveItem({ name: barName });
+          }
+        };
+
+        return (
+          <MenuItem
+            key="highlight-similar-nodes"
+            className={indexStyles.sandwichItem}
+            onClick={handleClick}
+          >
+            <SandwichIcon />
+            Open in sandwich view
+          </MenuItem>
+        );
+      };
+
       return [
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
           <FontAwesomeIcon icon={faRedo} />
@@ -225,6 +249,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         CollapseItem(),
         CopyItem(),
         HighlightSimilarNodesItem(),
+        OpenInSandwichViewItem(),
       ];
     },
     [flamegraph, selectedItem]
