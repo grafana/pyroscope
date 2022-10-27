@@ -21,6 +21,7 @@ import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
+import SandwichIcon from './SandwichIcon';
 
 import styles from './Toolbar.module.css';
 
@@ -440,6 +441,7 @@ function ViewSection({
       <Button
         grouped
         kind={kindByState('sandwich')}
+        iconNode={<SandwichIcon />}
         onClick={() => updateView('sandwich')}
       >
         Sandwich
