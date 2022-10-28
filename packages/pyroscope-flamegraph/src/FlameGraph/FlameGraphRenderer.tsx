@@ -502,9 +502,10 @@ class FlameGraphRenderer extends Component<
         <div className={styles.sandwichPane} key="sandwich-pane">
           <div className={styles.sandwichTop}>
             <span className={styles.name}>Callers</span>
-            // todo(dogfrogfog): to allow left/right click on the node we should
-            store // Graph component we clicking and append action only on to
-            this component // will be implemented i nnext PR
+            {/* todo(dogfrogfog): to allow left/right click on the node we should
+            store Graph component we clicking and append action only on to
+            this component
+            will be implemented i nnext PR */}
             {sandwitchGraph({ flamebearer: callersFlamebearer })}
           </div>
           <div className={styles.sandwichBottom}>
