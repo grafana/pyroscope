@@ -93,17 +93,11 @@ $border-radius: 4px;
 }
 
 .outline {
-  $border: 1px solid var(--ps-ui-border);
+  @extend .default;
   background-color: transparent;
-  color: var(--ps-button-switch-text);
 
-  &:hover {
-    border-color: var(--ps-neutral-1);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    pointer-events: none;
+  &:hover:not(:disabled) {
+    background-color: rgba(144, 202, 249, 0.08);
   }
 }
 
