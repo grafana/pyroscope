@@ -43,7 +43,6 @@ function SyncTimelines({
         <div className={styles.buttons}>
           <Button
             kind="outline"
-            data-testid="sync-ignore-button"
             onClick={onIgnore}
             className={styles.ignoreButton}
           >
@@ -51,7 +50,6 @@ function SyncTimelines({
           </Button>
           <Button
             kind="outline"
-            data-testid="sync-button"
             onClick={onSyncClick}
             className={styles.syncButton}
           >
