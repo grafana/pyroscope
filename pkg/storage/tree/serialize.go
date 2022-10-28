@@ -25,6 +25,7 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 		return err
 	}
 
+	var b bytes.Buffer // Temporary buffer for dictionary keys.
 	minVal := t.minValue(maxNodes)
 	nodes := make([]*treeNode, 1, 128)
 	nodes[0] = t.root
@@ -32,11 +33,12 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 		tn := nodes[0]
 		nodes = nodes[1:]
 
-		labelKey := d.Put([]byte(tn.Name))
-		if _, err = vw.Write(w, uint64(len(labelKey))); err != nil {
+		b.Reset()
+		d.PutValue([]byte(tn.Name), &b)
+		if _, err = vw.Write(w, uint64(b.Len())); err != nil {
 			return err
 		}
-		if _, err = w.Write(labelKey); err != nil {
+		if _, err = w.Write(b.Bytes()); err != nil {
 			return err
 		}
 		if _, err = vw.Write(w, tn.Self); err != nil {

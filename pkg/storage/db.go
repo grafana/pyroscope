@@ -134,15 +134,6 @@ func (s *Storage) newBadger(name string, p Prefix, codec cache.Codec) (BadgerDBW
 	return d, nil
 }
 
-func (d *db) Close() {
-	if d.Cache != nil {
-		d.Cache.Flush()
-	}
-	if err := d.DB.Close(); err != nil {
-		d.logger.WithError(err).Error("closing database")
-	}
-}
-
 func (d *db) Size() bytesize.ByteSize {
 	// The value is updated once per minute.
 	lsm, vlog := d.DB.Size()

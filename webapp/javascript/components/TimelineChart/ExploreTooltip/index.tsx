@@ -34,24 +34,19 @@ const ExploreTooltip: FC<ExploreTooltipProps> = ({
     [numTicks, sampleRate, units]
   );
 
-  const total = useMemo(() => {
-    if (numTicks && typeof sampleRate === 'number' && formatter) {
-      return (
-        parseFloat(formatter.format(numTicks, sampleRate).split(' ')?.[0]) || 0
-      );
-    }
-
-    return 0;
-  }, [numTicks, sampleRate, formatter]);
+  const total = useMemo(
+    () =>
+      values?.length
+        ? values?.reduce((acc, current) => acc + (current.closest?.[1] || 0), 0)
+        : 0,
+    [values]
+  );
 
   const formatValue = (v: number) => {
     if (formatter && typeof sampleRate === 'number') {
-      const value = formatter.format(v, sampleRate);
-      const numberValue = parseFloat(value.split(' ')?.[0]) || 0;
-
-      const percent = (numberValue / total) * 100;
-
-      return `${value} (${percent.toFixed(2)}%)`;
+      return `${formatter.format(v, sampleRate)} (${((v / total) * 100).toFixed(
+        2
+      )}%)`;
     }
 
     return 0;

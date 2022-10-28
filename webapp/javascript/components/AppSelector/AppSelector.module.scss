@@ -11,10 +11,11 @@
 
   .appSelectorModal {
     height: auto;
-    width: 600px;
+    width: auto;
     right: unset;
     left: -100px;
     z-index: 999;
+    max-width: calc(100vw - 290px);
   }
 
   .headerTitle {

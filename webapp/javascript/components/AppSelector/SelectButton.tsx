@@ -73,7 +73,11 @@ const SelectButton = ({
         <Icon isFolder={isFolder} isSelected={isSelected} />
         <div className={styles.appName}>{name}</div>
       </div>
-      <div>{isFolder ? <FontAwesomeIcon icon={faAngleRight} /> : null}</div>
+      <div>
+        {isFolder ? (
+          <FontAwesomeIcon className={styles.chevron} icon={faAngleRight} />
+        ) : null}
+      </div>
     </button>
   );
 };

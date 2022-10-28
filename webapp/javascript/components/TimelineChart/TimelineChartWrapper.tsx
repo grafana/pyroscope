@@ -10,9 +10,8 @@ import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/Explo
 import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
-import Annotation from './Annotation';
 import styles from './TimelineChartWrapper.module.css';
-import { markingsFromAnnotations, markingsFromSelection } from './markings';
+import { markingsFromSelection, ANNOTATION_COLOR } from './markings';
 import { ContextMenuProps } from './ContextMenu.plugin';
 import { centerTimelineData } from './centerTimelineData';
 
@@ -149,6 +148,7 @@ class TimelineChartWrapper extends React.Component<
         //   a position and a nearby data item object as parameters.
         clickable: true,
       },
+      annotations: [],
       yaxis: {
         show: false,
         min: 0,
@@ -204,6 +204,7 @@ class TimelineChartWrapper extends React.Component<
 
     this.state = { flotOptions };
     this.state.flotOptions.grid.markings = this.plotMarkings();
+    this.state.flotOptions.annotations = this.composeAnnotationsList();
   }
 
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
@@ -213,9 +214,21 @@ class TimelineChartWrapper extends React.Component<
     ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
+      newFlotOptions.annotations = this.composeAnnotationsList();
       this.setState({ flotOptions: newFlotOptions });
     }
   }
+
+  composeAnnotationsList = () => {
+    return Array.isArray(this.props.annotations)
+      ? this.props.annotations?.map((a) => ({
+          timestamp: a.timestamp,
+          content: a.content,
+          type: 'message',
+          color: ANNOTATION_COLOR,
+        }))
+      : [];
+  };
 
   plotMarkings = () => {
     const selectionMarkings = markingsFromSelection(
@@ -224,16 +237,13 @@ class TimelineChartWrapper extends React.Component<
       this.props.selection?.right
     );
 
-    const annotationsMarkings = markingsFromAnnotations(this.props.annotations);
-
-    return [...selectionMarkings, ...annotationsMarkings];
+    return [...selectionMarkings];
   };
 
   setOnHoverDisplayTooltip = (
     data: ITooltipWrapperProps & ExploreTooltipProps
   ) => {
-    const { timezone } = this.props;
-    let tooltipContent = [];
+    const tooltipContent = [];
 
     const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
       this.props?.onHoverDisplayTooltip;
@@ -246,43 +256,6 @@ class TimelineChartWrapper extends React.Component<
           timeLabel={data.timeLabel}
         />
       );
-    }
-
-    // convert to the format we are expecting
-    const annotations =
-      this.props.annotations?.map((a) => ({
-        ...a,
-        timestamp: a.timestamp * 1000,
-      })) || [];
-
-    if (this.props.annotations) {
-      if (
-        this.props.mode === 'singles' &&
-        data.coordsToCanvasPos &&
-        data.canvasX
-      ) {
-        const an = Annotation({
-          timezone,
-          annotations,
-          canvasX: data.canvasX,
-          coordsToCanvasPos: data.coordsToCanvasPos,
-        });
-
-        // if available, only render annotation
-        // so that the tooltip is not bloated
-        if (an) {
-          // Rerender as tsx to make use of key
-          tooltipContent = [
-            <Annotation
-              key="annotation"
-              timezone={timezone}
-              annotations={annotations}
-              canvasX={data.canvasX}
-              coordsToCanvasPos={data.coordsToCanvasPos}
-            />,
-          ];
-        }
-      }
     }
 
     if (tooltipContent.length) {
@@ -360,6 +333,7 @@ class TimelineChartWrapper extends React.Component<
       ...flotOptions,
       onHoverDisplayTooltip,
       ContextMenu: this.props.ContextMenu,
+      wrapperId: this.props.id,
       xaxis: {
         ...flotOptions.xaxis,
         // In case there are few chunks left, then we'd like to add some margins to

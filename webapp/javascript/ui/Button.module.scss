@@ -73,6 +73,12 @@ $border-radius: 4px;
   }
 }
 
+.float {
+  @extend .default;
+  border-color: transparent;
+  background-color: transparent;
+}
+
 .danger {
   border-color: transparent;
   color: var(--ps-neutral-2);
