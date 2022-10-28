@@ -76,23 +76,20 @@ type ComparisonView = {
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile }
-    | { type: 'failed'; profile?: Profile };
+    | { type: 'reloading'; profile: Profile };
 
   right:
     | { type: 'pristine'; profile?: Profile }
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile }
-    | { type: 'failed'; profile?: Profile };
+    | { type: 'reloading'; profile: Profile };
 };
 
 type DiffView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
   | { type: 'loaded'; profile: Profile }
-  | { type: 'reloading'; profile: Profile }
-  | { type: 'failed'; profile?: Profile };
+  | { type: 'reloading'; profile: Profile };
 
 type DiffView2 = ComparisonView;
 
@@ -100,8 +97,7 @@ type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
   | { type: 'reloading'; timeline: Timeline }
-  | { type: 'loaded'; timeline: Timeline }
-  | { type: 'failed'; timeline: Timeline };
+  | { type: 'loaded'; timeline: Timeline };
 
 type TagsData =
   | { type: 'pristine' }
@@ -237,7 +233,7 @@ export const fetchSingleView = createAsyncThunk<
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -281,7 +277,7 @@ export const fetchTagExplorerView = createAsyncThunk<
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -334,7 +330,7 @@ export const fetchTagExplorerViewProfile = createAsyncThunk<
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject(res.error);
   }
 
   thunkAPI.dispatch(
@@ -383,18 +379,14 @@ export const fetchSideTimelines = createAsyncThunk<
       },
       sideTimelinesAbortController
     ),
-  ]).catch((e) => {
-    if (e?.message.includes('The user aborted a request')) {
-      thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
-    }
-  });
+  ]);
 
   if (
     (res?.[0]?.isErr && res?.[0]?.error instanceof RequestAbortedError) ||
     (res?.[1]?.isErr && res?.[1]?.error instanceof RequestAbortedError) ||
     (!res && thunkAPI.signal.aborted)
   ) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
+    return Promise.reject();
   }
 
   if (res?.[0].isOk && res?.[1].isOk) {
@@ -732,7 +724,19 @@ export const continuousSlice = createSlice({
       state.refreshToken = Math.random().toString();
     },
   },
+
   extraReducers: (builder) => {
+    /**********************/
+    /* GENERAL GUIDELINES */
+    /**********************/
+
+    // There are (currently) only 2 ways an action can be aborted:
+    // 1. The component is unmounting, eg when changing route
+    // 2. New data is loading, which means previous request is going to be superseeded
+    // In both cases, not doing state transitions is fine
+    // Specially in the second case, where a 'rejected' may happen AFTER a 'pending' is dispatched
+    // https://redux-toolkit.js.org/api/createAsyncThunk#checking-if-a-promise-rejection-was-from-an-error-or-cancellation
+
     /*************************/
     /*      Single View      */
     /*************************/
@@ -763,31 +767,13 @@ export const continuousSlice = createSlice({
     });
 
     builder.addCase(fetchSingleView.rejected, (state, action) => {
-      switch (state.singleView.type) {
-        // if previous state is loaded, let's continue displaying data
-        case 'reloading': {
-          let type: SingleView['type'] = 'reloading';
-          if (action.meta.rejectedWithValue) {
-            type = (
-              action?.payload as { rejectedWithValue: SingleView['type'] }
-            )?.rejectedWithValue;
-          } else if (action.error.message === 'cancel') {
-            type = 'loaded';
-          }
-          state.singleView = {
-            ...state.singleView,
-            type,
-          };
-          break;
-        }
-
-        default: {
-          // it failed to load for the first time, so far all effects it's pristine
-          state.singleView = {
-            type: 'pristine',
-          };
-        }
+      if (action.meta.aborted) {
+        return;
       }
+
+      state.singleView = {
+        type: 'pristine',
+      };
     });
 
     /*****************************/
@@ -824,29 +810,27 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchComparisonSide.rejected, (state, action) => {
       const { side } = action.meta.arg;
 
-      if (action?.meta?.rejectedWithValue) {
-        state.comparisonView[side] = {
-          profile: state.comparisonView[side].profile as Profile,
-          type: (
-            action?.payload as {
-              rejectedWithValue: ComparisonView['left' | 'right']['type'];
-            }
-          )?.rejectedWithValue,
-        };
-      } else {
-        state.comparisonView[side] = {
-          profile: state.comparisonView[side].profile as Profile,
-          type: 'loaded',
-        };
+      if (action.meta.aborted) {
+        return;
       }
+
+      state.comparisonView[side] = {
+        type: 'pristine',
+      };
     });
 
     /*****************************/
     /*      Timeline Sides       */
     /*****************************/
     builder.addCase(fetchSideTimelines.pending, (state) => {
-      state.leftTimeline = { ...state.leftTimeline, type: 'loading' };
-      state.rightTimeline = { ...state.rightTimeline, type: 'loading' };
+      state.leftTimeline = {
+        ...state.leftTimeline,
+        type: getNextStateFromPending(state.leftTimeline.type),
+      };
+      state.rightTimeline = {
+        ...state.rightTimeline,
+        type: getNextStateFromPending(state.leftTimeline.type),
+      };
     });
     builder.addCase(fetchSideTimelines.fulfilled, (state, action) => {
       state.leftTimeline = {
@@ -859,30 +843,8 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(
-      fetchSideTimelines.rejected,
-      (state, action: ShamefulAny) => {
-        let type: TimelineState['type'] = 'failed';
-
-        if (
-          action?.meta?.rejectedWithValue &&
-          action?.payload?.rejectedWithValue
-        ) {
-          type = action?.payload?.rejectedWithValue;
-        } else if (action.error.message === 'unmount') {
-          type = 'loaded';
-        }
-
-        state.leftTimeline = {
-          ...state.leftTimeline,
-          type,
-        };
-        state.rightTimeline = {
-          ...state.rightTimeline,
-          type,
-        };
-      }
-    );
+    // TODO
+    builder.addCase(fetchSideTimelines.rejected, () => {});
 
     /***********************/
     /*      Diff View      */
@@ -916,24 +878,13 @@ export const continuousSlice = createSlice({
       };
     });
     builder.addCase(fetchDiffView.rejected, (state, action) => {
-      switch (state.diffView.type) {
-        case 'reloading': {
-          state.diffView = {
-            profile: state.diffView.profile,
-            type: action.meta.rejectedWithValue
-              ? (action?.payload as { rejectedWithValue: DiffView['type'] })
-                  ?.rejectedWithValue
-              : 'loaded',
-          };
-          break;
-        }
-
-        default: {
-          state.diffView = {
-            type: 'pristine',
-          };
-        }
+      if (action.meta.aborted) {
+        return;
       }
+
+      state.diffView = {
+        type: 'pristine',
+      };
     });
 
     /*******************************/
@@ -1111,6 +1062,13 @@ export const selectAppTags = (query?: Query) => (state: RootState) => {
   } as TagsState;
 };
 
+export const selectTimelineSides = (state: RootState) => {
+  return {
+    left: state.continuous.leftTimeline,
+    right: state.continuous.rightTimeline,
+  };
+};
+
 export const selectTimelineSidesData = (state: RootState) => {
   return {
     left: state.continuous.leftTimeline.timeline,
@@ -1133,3 +1091,13 @@ export const selectAnnotationsOrDefault = (state: RootState) => {
   }
   return [];
 };
+
+function getNextStateFromPending(
+  prevState: 'pristine' | 'loading' | 'reloading' | 'loaded'
+) {
+  if (prevState === 'pristine' || prevState === 'loading') {
+    return 'loading';
+  }
+
+  return 'reloading';
+}

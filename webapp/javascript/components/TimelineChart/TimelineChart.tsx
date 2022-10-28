@@ -8,6 +8,7 @@ import './Selection.plugin';
 import 'react-flot/flot/jquery.flot.crosshair.min';
 import './TimelineChartPlugin';
 import './Tooltip.plugin';
+import './Annotations.plugin';
 import './ContextMenu.plugin';
 
 interface TimelineChartProps {

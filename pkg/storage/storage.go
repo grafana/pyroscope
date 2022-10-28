@@ -161,13 +161,49 @@ func (s *Storage) Close() error {
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")
-	// Dictionaries DB has to close last because trees and profiles DBs depend on it.
-	s.goDB(func(d BadgerDBWithCache) {
-		if d != s.dicts {
-			d.Close()
-		}
-	})
-	s.dicts.Close()
+
+	// Flush caches. Dictionaries DB has to close last because trees depends on it.
+	// Exemplars DB does not have a cache but depends on Dictionaries DB as well:
+	// there is no need to force synchronization, as exemplars storage listens to
+	// the s.stop channel and stops synchronously.
+	caches := []BadgerDBWithCache{
+		s.trees,
+		s.segments,
+		s.dimensions,
+	}
+	wg := new(sync.WaitGroup)
+	wg.Add(len(caches))
+	for _, d := range caches {
+		go func(d BadgerDBWithCache) {
+			d.CacheInstance().Flush()
+			wg.Done()
+		}(d)
+	}
+	wg.Wait()
+
+	// Flush dictionaries cache only when all the dependant caches are flushed.
+	s.dicts.CacheInstance().Flush()
+
+	// Close databases. Order does not matter.
+	dbs := []BadgerDBWithCache{
+		s.trees,
+		s.segments,
+		s.dimensions,
+		s.exemplars.db,
+		s.dicts,
+		s.main, // Also stores labels.
+	}
+	wg = new(sync.WaitGroup)
+	wg.Add(len(dbs))
+	for _, d := range dbs {
+		go func(d BadgerDBWithCache) {
+			defer wg.Done()
+			if err := d.DBInstance().Close(); err != nil {
+				s.logger.WithField("name", d.Name()).WithError(err).Error("closing database")
+			}
+		}(d)
+	}
+	wg.Wait()
 	return nil
 }
 
@@ -200,20 +236,6 @@ func (s *Storage) withContext(fn func(context.Context)) {
 		}
 	}()
 	fn(ctx)
-}
-
-// goDB runs f for all DBs concurrently.
-func (s *Storage) goDB(f func(BadgerDBWithCache)) {
-	dbs := s.databases()
-	wg := new(sync.WaitGroup)
-	wg.Add(len(dbs))
-	for _, d := range dbs {
-		go func(db BadgerDBWithCache) {
-			defer wg.Done()
-			f(db)
-		}(d)
-	}
-	wg.Wait()
 }
 
 // maintenanceTask periodically runs f exclusively.

@@ -20,6 +20,7 @@ import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDo
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
@@ -27,6 +28,7 @@ import {
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
+import { isLoadingOrReloading } from './loading';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -134,29 +136,42 @@ function ContinuousSingleView() {
       </ContextMenu>
     );
   };
-
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
       <div className="main-wrapper">
         <Toolbar />
         <Box>
-          <TimelineChartWrapper
-            timezone={offset === 0 ? 'utc' : 'browser'}
-            data-testid="timeline-single"
-            id="timeline-chart-single"
-            timelineA={getTimeline()}
-            onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
-            height="125px"
-            title={
-              <TimelineTitle titleKey={singleView?.profile?.metadata.units} />
-            }
-            annotations={annotations}
-            selectionType="single"
-            ContextMenu={contextMenu}
-          />
+          <LoadingOverlay active={isLoadingOrReloading([singleView.type])}>
+            <TimelineChartWrapper
+              timezone={offset === 0 ? 'utc' : 'browser'}
+              data-testid="timeline-single"
+              id="timeline-chart-single"
+              timelineA={getTimeline()}
+              onSelect={(from, until) =>
+                dispatch(setDateRange({ from, until }))
+              }
+              height="125px"
+              title={
+                <TimelineTitle
+                  className="singleView-timeline-title"
+                  titleKey={singleView?.profile?.metadata.units}
+                />
+              }
+              annotations={annotations}
+              selectionType="single"
+              ContextMenu={contextMenu}
+            />
+          </LoadingOverlay>
         </Box>
-        <Box>{flamegraphRenderer}</Box>
+        <Box>
+          <LoadingOverlay
+            spinnerPosition="baseline"
+            active={isLoadingOrReloading([singleView.type])}
+          >
+            {flamegraphRenderer}
+          </LoadingOverlay>
+        </Box>
       </div>
     </div>
   );

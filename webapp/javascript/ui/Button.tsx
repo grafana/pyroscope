@@ -5,7 +5,7 @@ import cx from 'classnames';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
-  kind?: 'default' | 'primary' | 'secondary' | 'danger';
+  kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'float';
   /** Whether the button is disabled or not */
   disabled?: boolean;
   icon?: IconDefinition;
@@ -37,25 +37,32 @@ export interface ButtonProps {
   autoFocus?: React.ButtonHTMLAttributes<HTMLButtonElement>['autoFocus'];
 }
 
-export default function Button({
-  disabled = false,
-  kind = 'default',
-  type = 'button',
-  icon,
-  iconNode,
-  children,
-  grouped,
-  onClick,
-  id,
-  className,
-  form,
-  noBox,
-  autoFocus,
-  ...props
-}: ButtonProps) {
+const Button = React.forwardRef(function Button(
+  {
+    disabled = false,
+    kind = 'default',
+    type = 'button',
+    icon,
+    iconNode,
+    children,
+    grouped,
+    onClick,
+    id,
+    className,
+    form,
+    noBox,
+    autoFocus,
+    ...props
+  }: ButtonProps,
+  ref: React.LegacyRef<HTMLButtonElement>
+) {
   return (
     <button
+      // needed for tooltip
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...props}
       id={id}
+      ref={ref}
       type={type}
       data-testid={props['data-testid']}
       disabled={disabled}
@@ -83,7 +90,7 @@ export default function Button({
       {children}
     </button>
   );
-}
+});
 
 function getKindStyles(kind: ButtonProps['kind']) {
   switch (kind) {
@@ -103,8 +110,14 @@ function getKindStyles(kind: ButtonProps['kind']) {
       return styles.danger;
     }
 
+    case 'float': {
+      return styles.float;
+    }
+
     default: {
       throw Error(`Unsupported kind ${kind}`);
     }
   }
 }
+
+export default Button;

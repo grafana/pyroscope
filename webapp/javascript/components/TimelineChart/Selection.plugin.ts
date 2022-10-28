@@ -1,13 +1,15 @@
 /* eslint-disable */
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
-import { PlotType, CtxType, EventHolderType, EventType } from './types';
+import { PlotType, EventHolderType, EventType } from './types';
 import clamp from './clamp';
+import extractRange from './extractRange';
 
 const handleWidth = 4;
 const handleHeight = 22;
 
 (function ($) {
   function init(plot: PlotType) {
+    const placeholder = plot.getPlaceholder();
     var selection = {
       first: { x: -1, y: -1 },
       second: { x: -1, y: -1 },
@@ -36,7 +38,7 @@ const handleHeight = 22;
 
     function getCursorPositionX(e: EventType) {
       const plotOffset = plot.getPlotOffset();
-      const offset = plot.getPlaceholder().offset();
+      const offset = placeholder.offset();
       return clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
     }
 
@@ -44,9 +46,8 @@ const handleHeight = 22;
       // unlike function getSelection() which shows temp selection (it doesnt save any data between rerenders)
       // this function returns left X and right X coords of visible user selection (translates opts.grid.markings to X coords)
       const o = plot.getOptions();
-      const axes = plot.getAxes();
       const plotOffset = plot.getPlotOffset();
-      const extractedX = extractRange(axes, 'x');
+      const extractedX = extractRange(plot as jquery.flot.plot & PlotType, 'x');
 
       return {
         left:
@@ -108,7 +109,7 @@ const handleHeight = 22;
           setCursor('crosshair');
         }
 
-        plot.getPlaceholder().trigger('plotselecting', [getSelection()]);
+        placeholder.trigger('plotselecting', [getSelection()]);
       }
     }
 
@@ -137,7 +138,7 @@ const handleHeight = 22;
         };
       }
 
-      const offset = plot.getPlaceholder().offset();
+      const offset = placeholder.offset();
       const plotOffset = plot.getPlotOffset();
       const { left, right } = getPlotSelection();
       const clickX = getCursorPositionX(e);
@@ -190,8 +191,8 @@ const handleHeight = 22;
       if (selectionIsSane()) triggerSelectedEvent();
       else {
         // this counts as a clear
-        plot.getPlaceholder().trigger('plotunselected', []);
-        plot.getPlaceholder().trigger('plotselecting', [null]);
+        placeholder.trigger('plotunselected', []);
+        placeholder.trigger('plotselecting', [null]);
       }
 
       setCursor('crosshair');
@@ -220,11 +221,11 @@ const handleHeight = 22;
     function triggerSelectedEvent() {
       var r: any = getSelection();
 
-      plot.getPlaceholder().trigger('plotselected', [r]);
+      placeholder.trigger('plotselected', [r]);
 
       // backwards-compat stuff, to be removed in future
       if (r.xaxis && r.yaxis)
-        plot.getPlaceholder().trigger('selected', [
+        placeholder.trigger('selected', [
           {
             x1: r.xaxis.from,
             y1: r.yaxis.from,
@@ -236,7 +237,7 @@ const handleHeight = 22;
 
     function setSelectionPos(pos: { x: number; y: number }, e: EventType) {
       var o = plot.getOptions();
-      var offset = plot.getPlaceholder().offset();
+      var offset = placeholder.offset();
       var plotOffset = plot.getPlotOffset();
       pos.x = clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
       pos.y = clamp(0, plot.height(), e.pageY - offset.top - plotOffset.top);
@@ -262,46 +263,8 @@ const handleHeight = 22;
       if (selection.show) {
         selection.show = false;
         plot.triggerRedrawOverlay();
-        if (!preventEvent) plot.getPlaceholder().trigger('plotunselected', []);
+        if (!preventEvent) placeholder.trigger('plotunselected', []);
       }
-    }
-
-    // function taken from markings support in Flot
-    function extractRange(ranges: { [x: string]: any }, coord: string) {
-      var axis,
-        from,
-        to,
-        key,
-        axes = plot.getAxes();
-
-      for (var k in axes) {
-        axis = axes[k];
-        if (axis.direction == coord) {
-          key = coord + axis.n + 'axis';
-          if (!ranges[key] && axis.n == 1) key = coord + 'axis'; // support x1axis as xaxis
-          if (ranges[key]) {
-            from = ranges[key].from;
-            to = ranges[key].to;
-            break;
-          }
-        }
-      }
-
-      // backwards-compat stuff - to be removed in future
-      if (!ranges[key as string]) {
-        axis = coord == 'x' ? plot.getXAxes()[0] : plot.getYAxes()[0];
-        from = ranges[coord + '1'];
-        to = ranges[coord + '2'];
-      }
-
-      // auto-reverse as an added bonus
-      if (from != null && to != null && from > to) {
-        var tmp = from;
-        from = to;
-        to = tmp;
-      }
-
-      return { from: from, to: to, axis: axis };
     }
 
     function setSelection(ranges: any, preventEvent: any) {
@@ -313,7 +276,7 @@ const handleHeight = 22;
         selection.first.x = 0;
         selection.second.x = plot.width();
       } else {
-        range = extractRange(ranges, 'x');
+        range = extractRange(plot as jquery.flot.plot & PlotType, 'x');
 
         selection.first.x = range.axis.p2c(range.from);
         selection.second.x = range.axis.p2c(range.to);
@@ -323,7 +286,7 @@ const handleHeight = 22;
         selection.first.y = 0;
         selection.second.y = plot.height();
       } else {
-        range = extractRange(ranges, 'y');
+        range = extractRange(plot as jquery.flot.plot & PlotType, 'y');
 
         selection.first.y = range.axis.p2c(range.from);
         selection.second.y = range.axis.p2c(range.to);
@@ -357,7 +320,10 @@ const handleHeight = 22;
       }
     });
 
-    plot.hooks.drawOverlay.push(function (plot: PlotType, ctx: CtxType) {
+    plot.hooks.drawOverlay.push(function (
+      plot: PlotType,
+      ctx: CanvasRenderingContext2D
+    ) {
       // draw selection
       if (selection.show && selectionIsSane()) {
         const plotOffset = plot.getPlotOffset();
@@ -419,16 +385,21 @@ const handleHeight = 22;
       }
     });
 
-    plot.hooks.draw.push(function (plot: PlotType, ctx: CtxType) {
+    plot.hooks.draw.push(function (
+      plot: PlotType,
+      ctx: CanvasRenderingContext2D
+    ) {
       const opts = plot.getOptions();
 
       if (
         opts?.selection?.selectionType === 'single' &&
         opts?.selection?.selectionWithHandler
       ) {
-        const axes = plot.getAxes();
         const plotOffset = plot.getPlotOffset();
-        const extractedY = extractRange(axes, 'y');
+        const extractedY = extractRange(
+          plot as jquery.flot.plot & PlotType,
+          'y'
+        );
         const { left, right } = getPlotSelection();
 
         const yMax =
