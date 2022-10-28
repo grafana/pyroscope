@@ -77,8 +77,29 @@ export const tree: TreeNode = {
   ],
 };
 
-// tree with single "name-2-2" function appearance (with top level total node)
-export const name22FunctionTreeWithTotal = {
+const singleAppearanceZeroCalleesTree = {
+  name: 'name-5-2',
+  children: [],
+  self: [0],
+  total: [150],
+  key: '/name-5-2',
+};
+const singleAppearanceSingleCalleeTree = {
+  name: 'wwwwwww',
+  key: '/wwwwwww',
+  self: [0],
+  total: [400],
+  children: [
+    {
+      name: 'name-3-2',
+      key: '/wwwwwww/name-3-2',
+      self: [380],
+      total: [380],
+      children: [],
+    },
+  ],
+};
+const singleAppearanceMultipleCalleesTree = {
   name: 'name-2-2',
   key: '/name-2-2',
   total: [400],
@@ -115,4 +136,10 @@ export const name22FunctionTreeWithTotal = {
       ],
     },
   ],
+};
+
+export const singleAppearanceTrees = {
+  zero: singleAppearanceZeroCalleesTree,
+  one: singleAppearanceSingleCalleeTree,
+  multiple: singleAppearanceMultipleCalleesTree,
 };
