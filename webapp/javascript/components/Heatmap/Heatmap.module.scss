@@ -38,6 +38,7 @@ $svg-side-margin: 40px;
     .tickValues {
       margin: -10px 0px;
       width: 30px;
+      word-break: initial;
     }
 
     .ticksContainer {
