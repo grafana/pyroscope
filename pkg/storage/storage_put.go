@@ -8,7 +8,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -34,7 +33,7 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 		return errRetention
 	}
 
-	s.appSvc.CreateOrUpdate(ctx, model.Application{
+	s.appSvc.CreateOrUpdate(ctx, Application{
 		Name:            pi.Key.AppName(),
 		SpyName:         pi.SpyName,
 		SampleRate:      pi.SampleRate,

@@ -3,22 +3,22 @@ package service
 import (
 	"context"
 
-	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 type ApplicationService struct{}
 
-func (ApplicationService) List(ctx context.Context) ([]model.Application, error) {
+func (ApplicationService) List(ctx context.Context) ([]storage.Application, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ApplicationService) Get(ctx context.Context, name string) (model.Application, error) {
+func (ApplicationService) Get(ctx context.Context, name string) (storage.Application, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ApplicationService) CreateOrUpdate(ctx context.Context, application model.Application) error {
+func (ApplicationService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
 	//TODO implement me
 	panic("implement me")
 }
