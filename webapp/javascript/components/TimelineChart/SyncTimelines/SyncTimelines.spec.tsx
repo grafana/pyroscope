@@ -52,18 +52,20 @@ const propsWhenHidden = {
   },
 };
 
+const { getByRole, queryByText } = screen;
+
 describe('SyncTimelines', () => {
   it('renders sync and ignore buttons when active', async () => {
     render(<SyncTimelines onSync={() => {}} {...propsWhenActive} />);
 
-    expect(screen.getByTestId('sync-ignore-button')).toBeInTheDocument();
-    expect(screen.getByTestId('sync-button')).toBeInTheDocument();
+    expect(getByRole('button', { name: 'Ignore' })).toBeInTheDocument();
+    expect(getByRole('button', { name: 'Sync Timelines' })).toBeInTheDocument();
   });
 
   it('hidden when selections are in range', async () => {
     render(<SyncTimelines onSync={() => {}} {...propsWhenHidden} />);
 
-    expect(screen.queryByText('Sync')).not.toBeInTheDocument();
+    expect(queryByText('Sync')).not.toBeInTheDocument();
   });
 
   it('onSync returns correct from/to', async () => {
@@ -77,9 +79,7 @@ describe('SyncTimelines', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('sync-button'));
-
-    console.log(result);
+    fireEvent.click(getByRole('button', { name: 'Sync Timelines' }));
 
     // new main timeline FROM = from - 1ms, TO = to + 1ms
     expect(Number(result.from) - from * 1000).toEqual(-1);
@@ -89,9 +89,9 @@ describe('SyncTimelines', () => {
   it('Hide button works', async () => {
     render(<SyncTimelines onSync={() => {}} {...propsWhenActive} />);
 
-    fireEvent.click(screen.getByTestId('sync-ignore-button'));
+    fireEvent.click(getByRole('button', { name: 'Ignore' }));
 
-    expect(screen.queryByText('Sync')).not.toBeInTheDocument();
+    expect(queryByText('Sync')).not.toBeInTheDocument();
   });
 });
 
