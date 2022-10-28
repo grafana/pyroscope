@@ -110,27 +110,19 @@ const CollapsibleSection = ({ children, title, open }: ShamefulAny) => {
         <table className={styles.target}>
           <thead>
             <tr>
-              <th className={styles.tableCell} style={{ width: '25%' }}>
-                Scrape URL
-              </th>
-              <th className={styles.tableCell} style={{ width: '10%' }}>
-                Health
-              </th>
-              <th className={styles.tableCell} style={{ width: '10%' }}>
+              <th className={cx(styles.tableCell, styles.url)}>Scrape URL</th>
+              <th className={cx(styles.tableCell, styles.health)}>Health</th>
+              <th className={cx(styles.tableCell, styles.dicoveredLabels)}>
                 Discovered labels
               </th>
-              <th className={styles.tableCell} style={{ width: '10%' }}>
-                Labels
-              </th>
-              <th className={styles.tableCell} style={{ width: '10%' }}>
+              <th className={cx(styles.tableCell, styles.labels)}>Labels</th>
+              <th className={cx(styles.tableCell, styles.lastScrape)}>
                 Last scrape
               </th>
-              <th className={styles.tableCell} style={{ width: '10%' }}>
+              <th className={cx(styles.tableCell, styles.scrapeDuration)}>
                 Scrape duration
               </th>
-              <th className={styles.tableCell} style={{ width: '25%' }}>
-                Last error
-              </th>
+              <th className={cx(styles.tableCell, styles.error)}>Last error</th>
             </tr>
           </thead>
           <tbody>{children}</tbody>
@@ -157,13 +149,13 @@ const TargetComponent = ({
 }: Target) => {
   return (
     <tr>
-      <td className={styles.tableCell}>{url}</td>
-      <td className={styles.tableCell}>
+      <td className={cx(styles.tableCell, styles.url)}>{url}</td>
+      <td className={cx(styles.tableCell, styles.health)}>
         <Badge status={health === 'up' ? Status.healthy : Status.error}>
           {health}
         </Badge>
       </td>
-      <td className={styles.tableCell}>
+      <td className={cx(styles.tableCell, styles.dicoveredLabels)}>
         {Object.keys(discoveredLabels).map((key) => (
           <Badge
             status={Status.info}
@@ -171,7 +163,7 @@ const TargetComponent = ({
           >{`${key}=${discoveredLabels[key]}`}</Badge>
         ))}
       </td>
-      <td className={styles.tableCell}>
+      <td className={cx(styles.tableCell, styles.labels)}>
         {Object.keys(labels).map((key) => (
           <Badge
             status={Status.info}
@@ -179,11 +171,16 @@ const TargetComponent = ({
           >{`${key}=${labels[key]}`}</Badge>
         ))}
       </td>
-      <td className={styles.tableCell} title={lastScrape}>
+      <td
+        className={cx(styles.tableCell, styles.lastScrape)}
+        title={lastScrape}
+      >
         {formatDistance(parseISO(lastScrape), new Date())} ago
       </td>
-      <td className={styles.tableCell}>{formatDuration(lastScrapeDuration)}</td>
-      <td className={styles.tableCell}>{lastError || '-'}</td>
+      <td className={cx(styles.tableCell, styles.scrapeDuration)}>
+        {formatDuration(lastScrapeDuration)}
+      </td>
+      <td className={cx(styles.tableCell, styles.error)}>{lastError || '-'}</td>
     </tr>
   );
 };

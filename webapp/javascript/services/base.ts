@@ -37,6 +37,14 @@ export class RequestNotOkWithErrorsList extends CustomError {
   }
 }
 
+export class ResponseNotOkInHTMLFormat extends CustomError {
+  public constructor(public code: number, public body: string) {
+    super(
+      `Server returned with code: '${code}'. The body contains an HTML page`
+    );
+  }
+}
+
 export class ResponseOkNotInJSONFormat extends CustomError {
   public constructor(public code: number, public body: string) {
     super(
@@ -49,7 +57,8 @@ export type RequestError =
   | RequestNotOkError
   | RequestNotOkWithErrorsList
   | RequestIncompleteError
-  | ResponseOkNotInJSONFormat;
+  | ResponseOkNotInJSONFormat
+  | ResponseNotOkInHTMLFormat;
 
 function join(base: string, path: string): string {
   path = path.replace(/^\/+/, '');
@@ -162,6 +171,15 @@ export async function request(
     } catch (e) {
       // We couldn't parse, but there's definitly some data
       // We must handle this case since the go server sometimes responds with plain text
+
+      // It's HTML
+      // Which normally happens when hitting a broken URL, which makes the server return the SPA
+      // Poor heuristic for identifying it's a html file
+      if (/<\/?[a-z][\s\S]*>/i.test(textBody)) {
+        return Result.err(
+          new ResponseNotOkInHTMLFormat(response.status, textBody)
+        );
+      }
       return Result.err(new RequestNotOkError(response.status, textBody));
     }
   }

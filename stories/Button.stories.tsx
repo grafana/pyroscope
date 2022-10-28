@@ -28,6 +28,7 @@ export const IconOnly = () => <Button icon={faSyncAlt} />;
 
 export const Primary = () => <Button kind="primary">Primary</Button>;
 export const Secondary = () => <Button kind="secondary">Secondary</Button>;
+export const Floating = () => <Button kind="float">Floating</Button>;
 
 export const GroupedButtons = () => (
   <>

@@ -3,6 +3,57 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.51.10](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.9...@pyroscope/webapp@1.51.10) (2022-10-27)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.51.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.8...@pyroscope/webapp@1.51.9) (2022-10-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.51.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.7...@pyroscope/webapp@1.51.8) (2022-10-24)
+
+
+### Bug Fixes
+
+* **webapp:** make ui consistent when request is cancelled ([#1635](https://github.com/pyroscope-io/pyroscope/issues/1635)) ([d9b8290](https://github.com/pyroscope-io/pyroscope/commit/d9b8290a498fb658b206fc0d6253f6b206e21b9e))
+
+
+
+
+
+## [1.51.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.6...@pyroscope/webapp@1.51.7) (2022-10-22)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.51.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.5...@pyroscope/webapp@1.51.6) (2022-10-21)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.51.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.4...@pyroscope/webapp@1.51.5) (2022-10-18)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.51.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.3...@pyroscope/webapp@1.51.4) (2022-10-14)
 
 

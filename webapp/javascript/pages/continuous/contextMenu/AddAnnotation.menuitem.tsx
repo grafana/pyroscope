@@ -7,17 +7,13 @@ import {
   PopoverFooter,
   PopoverHeader,
 } from '@webapp/ui/Popover';
-import { format } from 'date-fns';
-import { getUTCdate, timezoneToOffset } from '@webapp/util/formatDate';
 import Button from '@webapp/ui/Button';
 import { Portal, PortalProps } from '@webapp/ui/Portal';
 import { NewAnnotation } from '@webapp/services/annotations';
-import * as z from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import TextField from '@webapp/ui/Form/TextField';
+import { useAnnotationForm } from './useAnnotationForm';
 
-interface AddAnnotationProps {
+export interface AddAnnotationProps {
   /** where to put the popover in the DOM */
   container: PortalProps['container'];
 
@@ -32,10 +28,6 @@ interface AddAnnotationProps {
   timezone: 'browser' | 'utc';
 }
 
-const newAnnotationFormSchema = z.object({
-  content: z.string().min(1, { message: 'Required' }),
-});
-
 function AddAnnotation(props: AddAnnotationProps) {
   const {
     container,
@@ -45,13 +37,9 @@ function AddAnnotation(props: AddAnnotationProps) {
     timezone,
   } = props;
   const [isPopoverOpen, setPopoverOpen] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setFocus,
-  } = useForm({
-    resolver: zodResolver(newAnnotationFormSchema),
+  const { register, handleSubmit, errors, setFocus } = useAnnotationForm({
+    timezone,
+    value: { timestamp },
   });
 
   // Focus on the only input
@@ -61,6 +49,41 @@ function AddAnnotation(props: AddAnnotationProps) {
     }
   }, [setFocus, isPopoverOpen]);
 
+  const popoverContent = isPopoverOpen ? (
+    <>
+      <PopoverHeader>Add annotation</PopoverHeader>
+      <PopoverBody>
+        <form
+          id="annotation-form"
+          name="annotation-form"
+          onSubmit={handleSubmit((d) => {
+            onCreateAnnotation(d.content as string);
+          })}
+        >
+          <TextField
+            {...register('content')}
+            label="Description"
+            variant="light"
+            errorMessage={errors.content?.message}
+            data-testid="annotation_content_input"
+          />
+          <TextField
+            {...register('timestamp')}
+            label="Time"
+            type="text"
+            readOnly
+            data-testid="annotation_timestamp_input"
+          />
+        </form>
+      </PopoverBody>
+      <PopoverFooter>
+        <Button type="submit" kind="secondary" form="annotation-form">
+          Save
+        </Button>
+      </PopoverFooter>
+    </>
+  ) : null;
+
   return (
     <>
       <MenuItem key="focus" onClick={() => setPopoverOpen(true)}>
@@ -69,43 +92,10 @@ function AddAnnotation(props: AddAnnotationProps) {
       <Portal container={container}>
         <Popover
           anchorPoint={{ x: popoverAnchorPoint.x, y: popoverAnchorPoint.y }}
-          isModalOpen={isPopoverOpen}
+          isModalOpen
           setModalOpenStatus={setPopoverOpen}
         >
-          <PopoverHeader>Add annotation</PopoverHeader>
-          <PopoverBody>
-            <form
-              id="annotation-form"
-              name="annotation-form"
-              onSubmit={handleSubmit((d) => {
-                onCreateAnnotation(d.content);
-              })}
-            >
-              <TextField
-                {...register('content')}
-                label="Description"
-                variant="light"
-                errorMessage={errors.content?.message}
-              />
-              <TextField
-                label="Time"
-                type="text"
-                readOnly
-                value={format(
-                  getUTCdate(
-                    new Date(timestamp * 1000),
-                    timezoneToOffset(timezone)
-                  ),
-                  'yyyy-MM-dd HH:mm'
-                )}
-              />
-            </form>
-          </PopoverBody>
-          <PopoverFooter>
-            <Button type="submit" kind="secondary" form="annotation-form">
-              Save
-            </Button>
-          </PopoverFooter>
+          {popoverContent}
         </Popover>
       </Portal>
     </>

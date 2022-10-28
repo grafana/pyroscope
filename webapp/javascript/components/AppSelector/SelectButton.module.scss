@@ -10,12 +10,14 @@
   width: 100%;
   justify-content: space-between;
   padding-left: 10px;
+  padding-right: 10px;
   overflow: hidden;
   height: 35px;
 
   & > div {
     display: flex;
     align-items: center;
+    max-width: 100%;
   }
 
   &:hover {
@@ -38,11 +40,16 @@
   width: 18px;
   height: 18px;
   margin-right: 10px;
+  display: flex;
+  flex-shrink: 0;
 }
 
 .appName {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  max-width: 245px;
+}
+
+.chevron {
+  margin-left: 10px;
 }

@@ -16,5 +16,5 @@
 
 .unactive {
   background: initial;
-  visibility: hidden;
+  display: none;
 }

@@ -23,18 +23,6 @@ export type PlotType = {
   getData: () => ShamefulAny[];
 };
 
-export type CtxType = {
-  save: () => void;
-  translate: (arg0: ShamefulAny, arg1: ShamefulAny) => void;
-  strokeStyle: ShamefulAny;
-  lineWidth: number;
-  lineJoin: ShamefulAny;
-  fillStyle: ShamefulAny;
-  fillRect: (arg0: number, arg1: number, arg2: number, arg3: number) => void;
-  strokeRect: (arg0: number, arg1: number, arg2: number, arg3: number) => void;
-  restore: () => void;
-};
-
 export type EventHolderType = {
   unbind: (
     arg0: string,
