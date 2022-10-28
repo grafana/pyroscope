@@ -449,9 +449,7 @@ class FlameGraphRenderer extends Component<
     );
 
     const sandwichPane = (() => {
-      const activeItemName = this.state.selectedItem.unwrapOr('');
-
-      if (!activeItemName) {
+      if (this.state.selectedItem.isNothing) {
         return (
           <div className={styles.sandwichPane} key="sandwich-pane">
             <div className={styles.sandwichPaneInfo}>
@@ -463,11 +461,11 @@ class FlameGraphRenderer extends Component<
 
       const callersFlamebearer = callersProfile(
         this.state.flamebearer,
-        activeItemName
+        this.state.selectedItem.value
       );
       const calleesFlamebearer = calleesProfile(
         this.state.flamebearer,
-        activeItemName
+        this.state.selectedItem.value
       );
 
       return (
