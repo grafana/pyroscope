@@ -15,7 +15,7 @@ services:
       - phlare
 
   grafana:
-    image: aocenas/grafana:profiling-ds-2@sha256:34e6cf8c315c8efea3368cdadbc448d671f791df02a8dbb75f7376e323cb3dab
+    image: grafana/grafana:main
     ports:
       - "3000:3000"
     environment:
