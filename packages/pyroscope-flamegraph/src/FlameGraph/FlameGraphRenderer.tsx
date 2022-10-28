@@ -353,7 +353,6 @@ class FlameGraphRenderer extends Component<
   updateView = (newView: ViewTypes) => {
     if (newView === 'sandwich') {
       this.setState({
-        selectedItem: Maybe.nothing(),
         searchQuery: '',
         flamegraphConfigs: this.resetFlamegraphState,
       });
