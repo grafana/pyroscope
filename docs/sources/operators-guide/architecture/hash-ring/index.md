@@ -19,9 +19,9 @@ This value is called _token_ and used as the ID of the data.
 The token determines the location on the hash ring deterministically.
 This allows independent determination of what instance of Grafana Phlare is the authoritative owner of any specific data.
 
-For example, series are sharded across [ingesters]({{< relref "../components/ingester.md" >}}).
-The token of a given series is computed by hashing all of the series’ labels and the tenant ID: the result of which is an unsigned 32-bit integer within the space of the tokens.
-The ingester that owns that series is the instance that owns the range of the tokens, including the series' token.
+For example, profiles are sharded across [ingesters]({{< relref "../components/ingester.md" >}}).
+The token of a given profile is computed by hashing all of the profile’ labels and the tenant ID: the result of which is an unsigned 32-bit integer within the space of the tokens.
+The ingester that owns that series is the instance that owns the range of the tokens, including the profile token.
 
 To divide up set of possible tokens (`2^32`) across the available instances within the cluster, all of the running instances of a given Grafana Phlare component, such as the ingesters, join a hash ring.
 The hash ring is a data structure that splits the space of the tokens into multiple ranges, and assigns each range to a given Grafana Phlare ring member.
@@ -42,23 +42,23 @@ To better understand how it works, take four ingesters and a tokens space betwee
 - Ingester #3 is registered in the ring with the token `6`
 - Ingester #4 is registered in the ring with the token `9`
 
-Grafana Phlare receives an incoming sample for the series `{__name__="cpu_seconds_total",instance="1.1.1.1"}`.
-It hashes the series’ labels, and the result of the hashing function is the token `3`.
+Grafana Phlare receives an incoming performance profile with labels `{__name__="process_cpu", instance="1.1.1.1"}`.
+It hashes the profile’ labels, and the result of the hashing function is the token `3`.
 
 To find which ingester owns token `3`, Grafana Phlare looks up the token `3` in the ring and finds the ingester that is registered with the smallest token larger than `3`.
-The ingester #2, which is registered with token `4`, is the authoritative owner of the series `{__name__="cpu_seconds_total",instance="1.1.1.1"}`.
+The ingester #2, which is registered with token `4`, is the authoritative owner of the profile `{__name__="process_cpu",instance="1.1.1.1"}`.
 
-[//]: # "Diagram source at https://docs.google.com/presentation/d/1bHp8_zcoWCYoNU2AhO2lSagQyuIrghkCncViSqn14cU/edit"
+[//]: # "Diagram source at https://docs.google.com/presentation/d/1S2sdLUgjaIQucwwmL1iMHhi4ewfPuwL7HGF5mNEF0qc/edit#slide=id.p"
 
 ![Hash ring without replication](hash-ring-without-replication.png)
 
-By default, Grafana Phlare replicates each series to three ingesters.
-After finding the authoritative owner of the series, Grafana Phlare continues to walk the ring clockwise to find the remaining two instances where the series should be replicated.
-In the example that follows, the series are replicated to the instances of `Ingester #3` and `Ingester #4`.
+With replication set to `3`, Grafana Phlare replicates each profile to three ingesters.
+After finding the authoritative owner of the profile, Grafana Phlare continues to walk the ring clockwise to find the remaining two instances where the profile should be replicated.
+In the example that follows, the profile is replicated to the instances of `Ingester #3` and `Ingester #4`.
 
 ![Hash ring with replication](hash-ring-with-replication.png)
 
-[//]: # "Diagram source at https://docs.google.com/presentation/d/1bHp8_zcoWCYoNU2AhO2lSagQyuIrghkCncViSqn14cU/edit"
+[//]: # "Diagram source at https://docs.google.com/presentation/d/1S2sdLUgjaIQucwwmL1iMHhi4ewfPuwL7HGF5mNEF0qc/edit#slide=id.p"
 
 ### Consistent hashing
 
