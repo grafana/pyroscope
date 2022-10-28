@@ -20,16 +20,17 @@
   display: flex;
   flex-direction: row;
   margin-bottom: 15px;
+  justify-content: space-between;
 
   .buttonsCol {
     display: flex;
     flex-direction: column;
+    width: calc(50% - 4px);
   }
 }
 
 .priorButton {
   margin-bottom: 5px;
-  margin-right: 5px;
 }
 
 .hidden {
@@ -46,7 +47,8 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  align-items: flex-end;
+  position: relative;
+  padding-bottom: 40px;
 
   .timeline {
     background-color: black;
@@ -59,25 +61,22 @@
       height: 100%;
       display: flex;
       flex-direction: row;
+      position: relative;
 
-      .fullPriorTimeContainer {
-        width: 50%;
-        display: flex;
-        justify-content: flex-end;
-
-        .selection {
-          background-color: green;
-          height: 100%;
-        }
+      .selection {
+        background-color: green;
+        height: 100%;
+        position: absolute;
       }
     }
   }
 
   .legend {
-    width: 50%;
     display: flex;
     flex-direction: column;
     margin-top: 10px;
+    position: absolute;
+    top: 40px;
 
     .legendLine {
       width: 100%;

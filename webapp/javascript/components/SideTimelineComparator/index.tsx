@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames/bind';
 import Button from '@webapp/ui/Button';
 import { Popover, PopoverBody } from '@webapp/ui/Popover';
@@ -59,16 +59,42 @@ const buttons = [
   ],
 ];
 
+const defaultPeriod = {
+  label: 'Compare',
+  ms: 0,
+};
+
+function usePrevious(selection: SideTimelineComparatorProps['selection']) {
+  const ref = useRef<SideTimelineComparatorProps['selection']>();
+  useEffect(() => {
+    ref.current = selection;
+  }, [selection]);
+  return ref.current;
+}
+
 export default function SideTimelineComparator({
   onCompare,
   selection,
 }: SideTimelineComparatorProps) {
   const refContainer = useRef(null);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [comparisonVariant, setComparisonVariant] = useState({
-    label: 'Compare',
-    ms: 0,
-  });
+  const [period, setPeriod] = useState(defaultPeriod);
+
+  const prevSelection = usePrevious(selection);
+
+  useEffect(() => {
+    // reset previous period if selection has changed
+    if (
+      !menuVisible &&
+      prevSelection &&
+      (selection.left.from !== prevSelection.left.from ||
+        selection.left.to !== prevSelection.left.to ||
+        selection.right.from !== prevSelection.right.from ||
+        selection.right.to !== prevSelection.right.to)
+    ) {
+      setPeriod(defaultPeriod);
+    }
+  }, [selection, prevSelection, menuVisible]);
 
   const [
     {
@@ -80,21 +106,21 @@ export default function SideTimelineComparator({
 
   const diff = comparisonSelectionTo - comparisonSelectionFrom;
 
-  const percent = comparisonVariant.ms
-    ? ((comparisonSelectionTo - comparisonSelectionFrom) /
-        comparisonVariant.ms) *
-      100
+  const fullLength = period.ms
+    ? comparisonSelectionTo - (comparisonSelectionTo - period.ms - diff * 2)
     : null;
 
+  const percent = fullLength ? (diff / fullLength) * 100 : null;
+
   const handleClick = ({ ms, label }: { ms: number; label: string }) => {
-    setComparisonVariant({ ms, label });
+    setPeriod({ ms, label });
     onCompare({
-      from: String(comparisonSelectionTo - ms * 2),
+      from: String(comparisonSelectionTo - ms - diff * 2),
       until: String(comparisonSelectionTo),
-      rightFrom: String(comparisonSelectionFrom),
-      rightTo: String(comparisonSelectionTo),
       leftFrom: String(comparisonSelectionTo - ms - diff),
       leftTo: String(comparisonSelectionTo - ms),
+      rightFrom: String(comparisonSelectionFrom),
+      rightTo: String(comparisonSelectionTo),
     });
   };
 
@@ -102,29 +128,30 @@ export default function SideTimelineComparator({
     <div className={styles.preview}>
       <div className={styles.timeline}>
         <div className={styles.timelineBox}>
-          <div className={styles.fullPriorTimeContainer}>
-            <div
-              className={styles.selection}
-              style={{
-                width: `${percent}%`,
-                backgroundColor: selection.left.overlayColor.toString(),
-              }}
-            />
-          </div>
-          <div className={styles.fullPriorTimeContainer}>
-            <div
-              style={{
-                width: `${percent}%`,
-                backgroundColor: selection.right.overlayColor.toString(),
-              }}
-              className={styles.selection}
-            />
-          </div>
+          <div
+            className={styles.selection}
+            style={{
+              width: `${percent}%`,
+              backgroundColor: selection.left.overlayColor.toString(),
+              left: `${percent}%`,
+            }}
+          />
+          <div
+            style={{
+              width: `${percent}%`,
+              backgroundColor: selection.right.overlayColor.toString(),
+              right: 0,
+            }}
+            className={styles.selection}
+          />
         </div>
       </div>
-      <div className={styles.legend}>
+      <div
+        style={{ left: `${percent}%`, right: `${percent}%` }}
+        className={styles.legend}
+      >
         <div className={styles.legendLine} />
-        <div className={styles.legendCaption}>{comparisonVariant.label}</div>
+        <div className={styles.legendCaption}>{period.label}</div>
       </div>
     </div>
   ) : (
@@ -137,7 +164,7 @@ export default function SideTimelineComparator({
         data-testid="open-comparator-button"
         onClick={() => setMenuVisible(!menuVisible)}
       >
-        {comparisonVariant.label}
+        {period.label}
         <FontAwesomeIcon
           className={styles.openButtonIcon}
           icon={faChevronDown}
@@ -165,7 +192,7 @@ export default function SideTimelineComparator({
                           return (
                             <Button
                               kind={
-                                comparisonVariant.label === b.label
+                                period.label === b.label
                                   ? 'secondary'
                                   : 'default'
                               }
