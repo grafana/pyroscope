@@ -29,6 +29,15 @@ export const getTitle = (leftInRange: boolean, rightInRange: boolean) => {
   return 'Warning: Baseline timeline selection is out of range';
 };
 
+const isInRange = (
+  from: number,
+  to: number,
+  selectionFrom: number,
+  selectionTo: number
+) => {
+  return selectionFrom + timeOffset >= from && selectionTo - timeOffset <= to;
+};
+
 export function useSync({
   timeline,
   leftSelection,
@@ -63,13 +72,18 @@ export function useSync({
   const timelineFrom = centeredData?.[0]?.[0];
   const timelineTo = centeredData?.[centeredData?.length - 1]?.[0];
 
-  const leftInRange =
-    leftMarkingsFrom + timeOffset >= timelineFrom &&
-    leftMarkingsTo - timeOffset <= timelineTo;
-
-  const rightInRange =
-    rightMarkingsFrom + timeOffset >= timelineFrom &&
-    rightMarkingsTo - timeOffset <= timelineTo;
+  const isLeftInRange = isInRange(
+    timelineFrom,
+    timelineTo,
+    leftMarkingsFrom,
+    leftMarkingsTo
+  );
+  const isRightInRange = isInRange(
+    timelineFrom,
+    timelineTo,
+    rightMarkingsFrom,
+    rightMarkingsTo
+  );
 
   const onSyncClick = () => {
     const selectionsLimits = [
@@ -80,7 +94,9 @@ export function useSync({
     ];
     const selectionMin = Math.min(...selectionsLimits);
     const selectionMax = Math.max(...selectionsLimits);
-
+    // when some of selection is in relative time (now, now-1h etc.), we have to extend detecting time buffer
+    // 1) to prevent falsy detections
+    // 2) to workaraund pecularity that when we change selection we don't refetch main timeline
     const offset = [
       leftSelection.from,
       rightSelection.from,
@@ -96,9 +112,9 @@ export function useSync({
   return {
     isWarningHidden:
       !timeline.data?.samples.length ||
-      (leftInRange && rightInRange) ||
+      (isLeftInRange && isRightInRange) ||
       isIgnoring,
-    title: getTitle(leftInRange, rightInRange),
+    title: getTitle(isLeftInRange, isRightInRange),
     onIgnore: () => setIgnoring(true),
     onSyncClick,
   };
