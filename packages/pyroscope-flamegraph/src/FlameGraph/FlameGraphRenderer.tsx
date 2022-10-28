@@ -469,62 +469,51 @@ class FlameGraphRenderer extends Component<
         this.state.flamebearer,
         this.state.selectedItem.value
       );
+      const sandwitchGraph = (myCustomParams: {
+        flamebearer: Flamebearer;
+        headerVisible?: boolean;
+        showSingleLevel?: boolean;
+      }) => (
+        <Graph
+          disableClick
+          showCredit={this.props.showCredit as boolean}
+          highlightQuery=""
+          setActiveItem={this.setActiveItem}
+          selectedItem={this.state.selectedItem}
+          fitMode={this.state.fitMode}
+          zoom={this.state.flamegraphConfigs.zoom}
+          focusedNode={this.state.flamegraphConfigs.focusedNode}
+          onZoom={this.onFlamegraphZoom}
+          onFocusOnNode={this.onFocusOnNode}
+          onReset={this.onReset}
+          isDirty={this.isDirty}
+          palette={this.state.palette}
+          toolbarVisible={toolbarVisible}
+          setPalette={(p) =>
+            this.setState({
+              palette: p,
+            })
+          }
+          {...myCustomParams}
+        />
+      );
 
       return (
         <div className={styles.sandwichPane} key="sandwich-pane">
           <div className={styles.sandwichTop}>
             <span className={styles.name}>Callers</span>
-            <Graph
-              disableClick
-              showCredit={this.props.showCredit as boolean}
-              flamebearer={callersFlamebearer}
-              highlightQuery=""
-              setActiveItem={this.setActiveItem}
-              selectedItem={this.state.selectedItem}
-              fitMode={this.state.fitMode}
-              zoom={this.state.flamegraphConfigs.zoom}
-              focusedNode={this.state.flamegraphConfigs.focusedNode}
-              // TODO(dogfrogfog): make onZoom/onFocusOnNode optional since disableClick disabling this behaviour
-              onZoom={this.onFlamegraphZoom}
-              onFocusOnNode={this.onFocusOnNode}
-              onReset={this.onReset}
-              isDirty={this.isDirty}
-              palette={this.state.palette}
-              toolbarVisible={toolbarVisible}
-              setPalette={(p) =>
-                this.setState({
-                  palette: p,
-                })
-              }
-            />
+            // todo(dogfrogfog): to allow left/right click on the node we should
+            store // Graph component we clicking and append action only on to
+            this component // will be implemented i nnext PR
+            {sandwitchGraph({ flamebearer: callersFlamebearer })}
           </div>
           <div className={styles.sandwichBottom}>
             <span className={styles.name}>Callees</span>
-            <Graph
-              headerVisible={false}
-              disableClick
-              showSingleLevel
-              showCredit={this.props.showCredit as boolean}
-              flamebearer={calleesFlamebearer}
-              highlightQuery=""
-              setActiveItem={this.setActiveItem}
-              selectedItem={this.state.selectedItem}
-              fitMode={this.state.fitMode}
-              zoom={this.state.flamegraphConfigs.zoom}
-              focusedNode={this.state.flamegraphConfigs.focusedNode}
-              // TODO(dogfrogfog): make onZoom/onFocusOnNode optional since disableClick disabling this behaviour
-              onZoom={this.onFlamegraphZoom}
-              onFocusOnNode={this.onFocusOnNode}
-              onReset={this.onReset}
-              isDirty={this.isDirty}
-              palette={this.state.palette}
-              toolbarVisible={toolbarVisible}
-              setPalette={(p) =>
-                this.setState({
-                  palette: p,
-                })
-              }
-            />
+            {sandwitchGraph({
+              flamebearer: calleesFlamebearer,
+              headerVisible: false,
+              showSingleLevel: true,
+            })}
           </div>
         </div>
       );
