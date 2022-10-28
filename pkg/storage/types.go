@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -136,5 +136,18 @@ type BadgerDBWithCache interface {
 // TODO: I don't know why but I find ApplicationService name clumsy in this context.
 
 type ApplicationService interface {
-	CreateOrUpdate(context.Context, model.Application) error
+	CreateOrUpdate(context.Context, Application) error
+}
+
+type Application struct {
+	// TODO: Fully qualified or just name? {__name__}.{profile_type} vs __name__
+	//   app <- app name
+	//   app.cpu <- fully qualified app name
+	//   app.cpu{key=value} <- series name
+	Name string
+
+	SpyName         string
+	SampleRate      uint32
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 }
