@@ -7,8 +7,7 @@ weight: 20
 
 # Grafana Phlare distributor
 
-The distributor is a stateless component that receives time-series data from Prometheus or the Grafana agent.
-The distributor validates the data for correctness and to ensure that it is within the configured limits for a given tenant.
+The distributor is a stateless component that receives profiling data from the agent.
 The distributor then divides the data into batches and sends it to multiple [ingesters]({{< relref "ingester.md" >}}) in parallel, shards the series among ingesters, and replicates each series by the configured replication factor. By default, the configured replication factor is three.
 
 ## Validation
@@ -16,20 +15,21 @@ The distributor then divides the data into batches and sends it to multiple [ing
 The distributor cleans and validates data that it receives before writing the data to the ingesters.
 Because a single request can contain valid and invalid profiles, samples, metadata, and exemplars, the distributor only passes valid data to the ingesters. The distributor does not include invalid data in its requests to the ingesters.
 If the request contains invalid data, the distributor returns a 400 HTTP status code and the details appear in the response body.
-The details about the first invalid data are typically logged by the sender, be it Prometheus or Grafana Agent.
+The details about the first invalid data are typically logged by the agent.
 
 The distributor data cleanup includes the following transformation:
 
-[//TODO]:<> (Do this!)
+* Ensure the profile has a timestamp set, if not it will default to the time the distributor received the profile.
+* The distributor will remove samples that are having values of `0` and will sum samples that share the same stacktrace.
 
 ## Replication
 
 The distributor shards and replicates incoming series across ingesters.
-You can configure the number of ingester replicas that each series is written to via the `-ingester.ring.replication-factor` flag, which is `3` by default.
+You can configure the number of ingester replicas that each series is written to via the `-ingester.ring.replication-factor` flag, which is `1` by default.
 Distributors use consistent hashing, in conjunction with a configurable replication factor, to determine which ingesters receive a given series.
 
 Sharding and replication uses the ingesters' hash ring.
-For each incoming series, the distributor computes a hash using the metric name, labels, and tenant ID.
+For each incoming series, the distributor computes a hash using the profile name, labels, and tenant ID.
 The computed hash is called a _token_.
 The distributor looks up the token in the hash ring to determine which ingesters to write a series to.
 
