@@ -22,16 +22,16 @@ The monolithic mode runs all required components in a single process and is the 
 ./phlare -modules
 ```
 
-[//]: # "Diagram source at https://docs.google.com/presentation/d/1LemaTVqa4Lf_tpql060vVoDGXrthp-Pie_SQL7qwHjc/edit#slide=id.g11694eaa76e_0_0"
+[//]: # "Diagram source at https://docs.google.com/presentation/d/1C1fl0pH8wmKZe8gXo-VwmUuLvGiPmADfvey15FSkWpE/edit#slide=id.g11694eaa76e_0_0"
 
 ![Phlare's monolithic mode](monolithic-mode.svg)
-
+<!--
 Monolithic mode can be horizontally scaled out by deploying multiple Grafana Phlare binaries with `-target=all`. This approach provides high-availability and increased scale without the configuration complexity of the full [microservices deployment](#microservices-mode).
 
-[//]: # "Diagram source at https://docs.google.com/presentation/d/1LemaTVqa4Lf_tpql060vVoDGXrthp-Pie_SQL7qwHjc/edit#slide=id.g11658e7e4c6_1_20"
+[//]: # "Diagram source at https://docs.google.com/presentation/d/1C1fl0pH8wmKZe8gXo-VwmUuLvGiPmADfvey15FSkWpE/edit#slide=id.g11658e7e4c6_1_20"
 
 ![Phlare's horizontally scaled monolithic mode](scaled-monolithic-mode.svg)
-
+ -->
 ## Microservices mode
 
 In microservices mode, components are deployed in distinct processes. Scaling is per component, which allows for greater flexibility in scaling and more granular failure domains. Microservices mode is the preferred method for a production deployment, but it is also the most complex.
@@ -40,6 +40,6 @@ In microservices mode, each Grafana Phlare process is invoked with its `-target`
 
 If you are interested in deploying Grafana Phlare in microservices mode, we recommend that you use [Kubernetes](https://kubernetes.io/).
 
-[//]: # "Diagram source at https://docs.google.com/presentation/d/1LemaTVqa4Lf_tpql060vVoDGXrthp-Pie_SQL7qwHjc/edit#slide=id.g11658e7e4c6_1_53"
+[//]: # "Diagram source at https://docs.google.com/presentation/d/1C1fl0pH8wmKZe8gXo-VwmUuLvGiPmADfvey15FSkWpE/edit#slide=id.g11658e7e4c6_1_53"
 
 ![Phlare's microservices mode](microservices-mode.svg)
