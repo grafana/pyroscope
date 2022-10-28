@@ -39,8 +39,6 @@ interface FlamegraphProps {
   onReset: () => void;
   isDirty: () => boolean;
 
-  ExportData?: React.ComponentProps<typeof Header>['ExportData'];
-
   ['data-testid']?: string;
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
@@ -68,7 +66,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
-  const { ExportData } = props;
   const { 'data-testid': dataTestId } = props;
   const { palette, setPalette } = props;
 
@@ -290,7 +287,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       <Header
         format={flamebearer.format}
         units={flamebearer.units}
-        ExportData={ExportData}
         palette={palette}
         setPalette={setPalette}
         toolbarVisible={toolbarVisible}

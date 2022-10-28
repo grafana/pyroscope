@@ -25,8 +25,3 @@
   display: block;
   text-align: center;
 }
-
-.buttons {
-  display: flex;
-  flex-shrink: 0;
-}

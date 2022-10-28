@@ -11,8 +11,6 @@ import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 // this is just to guarantee code is compiling
 // and the callbacks are being called correctly
 describe('FlamegraphComponent', () => {
-  const ExportData = <div>ExportData</div>;
-
   const setPalette = (p: FlamegraphPalette) => {};
   it('renders', () => {
     const onZoom = jest.fn();
@@ -34,7 +32,6 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
-        ExportData={ExportData}
         palette={DefaultPalette}
         setPalette={setPalette}
       />
@@ -61,7 +58,6 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
-        ExportData={ExportData}
         palette={DefaultPalette}
         setPalette={setPalette}
       />
@@ -99,7 +95,6 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
-        ExportData={ExportData}
         palette={DefaultPalette}
         setPalette={setPalette}
       />
@@ -134,7 +129,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
         />
@@ -170,7 +164,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
         />
@@ -206,7 +199,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
         />
@@ -248,7 +240,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
           toolbarVisible
@@ -258,7 +249,6 @@ describe('FlamegraphComponent', () => {
       expect(screen.queryByRole('heading', { level: 2 })).toHaveTextContent(
         'Frame width represents CPU time per function'
       );
-      expect(screen.getByText('ExportData')).toBeInTheDocument();
     });
 
     it('renders when type is "double"', () => {
@@ -277,7 +267,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={flamebearer}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
           toolbarVisible
@@ -289,7 +278,6 @@ describe('FlamegraphComponent', () => {
       );
 
       expect(screen.getByTestId('flamegraph-legend')).toBeInTheDocument();
-      expect(screen.getByText('ExportData')).toBeInTheDocument();
     });
   });
 });

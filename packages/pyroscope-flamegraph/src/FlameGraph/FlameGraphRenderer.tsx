@@ -14,7 +14,7 @@ import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
-import Toolbar from '../Toolbar';
+import Toolbar, { ProfileHeaderProps } from '../Toolbar';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
@@ -78,7 +78,7 @@ export interface FlamegraphRendererProps {
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
   showCredit?: boolean;
-  ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
+  ExportData?: ProfileHeaderProps['ExportData'];
   colorMode?: 'light' | 'dark';
 
   /** @deprecated  prefer Profile */
@@ -410,7 +410,6 @@ class FlameGraphRenderer extends React.Component<
         // data-testid={flamegraphDataTestId}
         showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
-        ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
         setActiveItem={this.setActiveItem}
         selectedItem={this.state.selectedItem}
@@ -455,6 +454,7 @@ class FlameGraphRenderer extends React.Component<
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
+              ExportData={this.props.ExportData || <></>}
             />
           )}
           {this.props.children}
