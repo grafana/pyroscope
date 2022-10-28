@@ -105,4 +105,4 @@ To start a standalone agent, you can use the following command:
 ./phlare -target=agent -config.file=/path/to/agent-config.yaml
 ```
 
-In the future, the agent will be integrated into the [Grafana Agent]({{<relref "./grafana-agent">}}), which will remove the needs to run a standalone agent if you're already running the Grafana Agent.
+In the future, the agent will be integrated into the [Grafana Agent](https://grafana.com/docs/tempo/latest/grafana-agent/), which will remove the needs to run a standalone agent if you're already running the Grafana Agent.
