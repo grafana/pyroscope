@@ -454,7 +454,7 @@ class FlameGraphRenderer extends React.Component<
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
-              ExportData={this.props.ExportData || <></>}
+              ExportData={this.props.ExportData}
             />
           )}
           {this.props.children}

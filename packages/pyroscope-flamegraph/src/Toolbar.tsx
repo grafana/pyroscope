@@ -104,7 +104,7 @@ const Toolbar = React.memo(
     flamegraphType,
     disableChangingDisplay = false,
     sharedQuery,
-    ExportData,
+    ExportData = <></>,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
