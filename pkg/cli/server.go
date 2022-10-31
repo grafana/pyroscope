@@ -90,10 +90,20 @@ func newServerService(c *config.Server) (*serverService, error) {
 		Path:      c.StoragePath,
 	}
 
+	svc.database, err = sqlstore.Open(c)
+	if err != nil {
+		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
+	}
+
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 
+	var metadataSaver storage.ApplicationMetadataSaver = NoopMetadataSaver{}
+	if svc.config.EnableExperimentalAppMetadata {
+		metadataSaver = service.NewApplicationService(svc.database.DB())
+	}
+
 	storageConfig := storage.NewConfig(svc.config)
-	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController)
+	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController, metadataSaver)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
@@ -104,11 +114,6 @@ func newServerService(c *config.Server) (*serverService, error) {
 		if svc.config.Auth.JWTSecret, err = svc.storage.JWT(); err != nil {
 			return nil, err
 		}
-	}
-
-	svc.database, err = sqlstore.Open(c)
-	if err != nil {
-		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
 	}
 
 	// this needs to happen after storage is initiated!

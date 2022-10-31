@@ -82,7 +82,12 @@ type SampleObserver interface {
 	Observe(k []byte, v int)
 }
 
-func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller) (*Storage, error) {
+// ApplicationMetadataSaver saves application metadata
+type ApplicationMetadataSaver interface {
+	CreateOrUpdate(ctx context.Context, application Application) error
+}
+
+func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller, appSvc ApplicationMetadataSaver) (*Storage, error) {
 	s := &Storage{
 		config: c,
 		storageOptions: &storageOptions{
@@ -104,6 +109,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		logger:  logger,
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),
+		appSvc:  appSvc,
 	}
 
 	if c.NewBadger == nil {
