@@ -28,6 +28,17 @@ export const units = [
   'trace_samples',
 ];
 
+export const unitsDescription = {
+  objects: 'number of objects in RAM per function',
+  goroutines: 'number of goroutines',
+  bytes: 'amount of RAM per function',
+  samples: 'CPU time per function',
+  lock_nanoseconds: 'time spent waiting on locks per function',
+  lock_samples: 'number of contended locks per function',
+  trace_samples: 'aggregated span duration',
+  '': '',
+};
+
 // accept the defined units
 // and convert anything else to empty string
 export const UnitsSchema = z.preprocess((u) => {

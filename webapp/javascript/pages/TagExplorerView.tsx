@@ -5,6 +5,7 @@ import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
 import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
 import type { Profile, Units } from '@pyroscope/models/src';
+import { unitsDescription } from '@pyroscope/models/src';
 import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
@@ -101,17 +102,6 @@ const TIMELINE_SERIES_COLORS = [
   Color.rgb(249, 217, 249),
   Color.rgb(222, 218, 247),
 ];
-
-const unitsToTitle = {
-  objects: 'number of objects in RAM per function',
-  goroutines: 'number of goroutines',
-  bytes: 'amount of RAM per function',
-  samples: 'CPU time per function',
-  lock_nanoseconds: 'time spent waiting on locks per function',
-  lock_samples: 'number of contended locks per function',
-  trace_samples: 'aggregated span duration',
-  '': '',
-};
 
 // structured data to display/style table cells
 interface TableValuesData {
@@ -403,7 +393,7 @@ function Table({
     return `?${searchParams.toString()}`;
   };
 
-  const captionByUnits = unitsToTitle[units];
+  const captionByUnits = unitsDescription[units];
 
   const headRow = [
     // when groupByTag is not selected table represents single "application without tags" group
