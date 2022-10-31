@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { centerTimelineData } from '@webapp/components/TimelineChart/centerTimelineData';
 import { TimelineData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
-import { markingsFromSelection, Selection } from '../markings';
+import { formatAsOBject } from '@webapp/util/formatDate';
+import { Selection } from '../markings';
 
 interface UseSyncParams {
   timeline: TimelineData;
@@ -38,6 +39,20 @@ const isInRange = (
   return selectionFrom + timeOffset >= from && selectionTo - timeOffset <= to;
 };
 
+export const getSelectionBoundaries = (selection: Selection) => {
+  if (selection.from.startsWith('now') || selection.to.startsWith('now')) {
+    return {
+      from: new Date(formatAsOBject(selection.from)).getTime(),
+      to: new Date(formatAsOBject(selection.to)).getTime(),
+    };
+  }
+
+  return {
+    from: Number(selection.from) * 1000,
+    to: Number(selection.to) * 1000,
+  };
+};
+
 export function useSync({
   timeline,
   leftSelection,
@@ -52,46 +67,29 @@ export function useSync({
     }
   }, [leftSelection, rightSelection, timeline]);
 
-  const [
-    {
-      xaxis: { from: leftMarkingsFrom, to: leftMarkingsTo },
-    },
-  ] = markingsFromSelection('single', {
-    ...leftSelection,
-  } as Selection);
-  const [
-    {
-      xaxis: { from: rightMarkingsFrom, to: rightMarkingsTo },
-    },
-  ] = markingsFromSelection('single', {
-    ...rightSelection,
-  } as Selection);
+  const { from: leftFrom, to: leftTo } = getSelectionBoundaries(
+    leftSelection as Selection
+  );
+
+  const { from: rightFrom, to: rightTo } = getSelectionBoundaries(
+    rightSelection as Selection
+  );
 
   const centeredData = centerTimelineData(timeline);
 
   const timelineFrom = centeredData?.[0]?.[0];
   const timelineTo = centeredData?.[centeredData?.length - 1]?.[0];
 
-  const isLeftInRange = isInRange(
-    timelineFrom,
-    timelineTo,
-    leftMarkingsFrom,
-    leftMarkingsTo
-  );
+  const isLeftInRange = isInRange(timelineFrom, timelineTo, leftFrom, leftTo);
   const isRightInRange = isInRange(
     timelineFrom,
     timelineTo,
-    rightMarkingsFrom,
-    rightMarkingsTo
+    rightFrom,
+    rightTo
   );
 
   const onSyncClick = () => {
-    const selectionsLimits = [
-      leftMarkingsFrom,
-      leftMarkingsTo,
-      rightMarkingsFrom,
-      rightMarkingsTo,
-    ];
+    const selectionsLimits = [leftFrom, leftTo, rightFrom, rightTo];
     const selectionMin = Math.min(...selectionsLimits);
     const selectionMax = Math.max(...selectionsLimits);
     // when some of selection is in relative time (now, now-1h etc.), we have to extend detecting time buffer

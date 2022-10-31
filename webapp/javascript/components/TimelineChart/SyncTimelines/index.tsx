@@ -1,8 +1,8 @@
 import React from 'react';
 import Button from '@webapp/ui/Button';
 import { TimelineData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
-import { useSync } from './useSync';
 import StatusMessage from '@webapp/ui/StatusMessage';
+import { useSync } from './useSync';
 import styles from './styles.module.scss';
 
 interface SyncTimelinesProps {

@@ -1,7 +1,8 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import SyncTimelines from './index';
-import { getTitle } from './useSync';
+import { getTitle, getSelectionBoundaries } from './useSync';
+import { Selection } from '../markings';
 
 const from = 1666790156;
 const to = 1666791905;
@@ -110,5 +111,38 @@ describe('getTitle', () => {
     expect(getTitle(true, false)).toEqual(
       'Warning: Comparison timeline selection is out of range'
     );
+  });
+});
+
+describe('getSelectionBoundaries', () => {
+  const boundariesFromRelativeTime = getSelectionBoundaries({
+    from: 'now-1h',
+    to: 'now',
+  } as Selection);
+  const boundariesFromUnixTime = getSelectionBoundaries({
+    from: '1667204605',
+    to: '1667204867',
+  } as Selection);
+
+  const res = [
+    boundariesFromRelativeTime.from,
+    boundariesFromRelativeTime.to,
+    boundariesFromUnixTime.from,
+    boundariesFromUnixTime.to,
+  ];
+
+  it('returns correct data type', () => {
+    expect(res.every((i) => typeof i === 'number')).toBe(true);
+  });
+
+  it('returns ms format (13 digits)', () => {
+    expect(res.every((i) => String(i).length === 13)).toBe(true);
+  });
+
+  it('TO greater than FROM', () => {
+    expect(
+      boundariesFromRelativeTime.to > boundariesFromRelativeTime.from &&
+        boundariesFromUnixTime.to > boundariesFromUnixTime.from
+    ).toBe(true);
   });
 });
