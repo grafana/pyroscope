@@ -47,7 +47,7 @@ To run the unit tests suite:
 make go/test
 ```
 
-To build the docker image uses:
+To build the docker image use:
 
 ```
 make docker-image/phlare/build
