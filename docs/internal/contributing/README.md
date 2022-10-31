@@ -64,7 +64,7 @@ GOOS=linux GOARCH=amd64 make docker-image/phlare/build
 
 ### Dependency management
 
-We uses [Go modules](https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more) to manage dependencies on external packages.
+We use [Go modules](https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more) to manage dependencies on external packages.
 However we don't commit the `vendor/` folder.
 
 To add or update a new dependency, use the `go get` command:
