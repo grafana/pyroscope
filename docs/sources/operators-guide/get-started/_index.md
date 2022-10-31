@@ -80,18 +80,18 @@ In a terminal, run one of the following commands:
   ./phlare --config.file=./demo.yaml
   ```
 
-Grafana Phlare listens on port `4100`. You can now verify that phlare is ready:
+Grafana Phlare listens on port `4100`. You can now verify that Phlare is ready:
 
 ```bash
 curl localhost:4100/ready
 ```
 
-## Configure Grafana Phlare to scrape Profiles
+## Configure Grafana Phlare to scrape profiles
 
 By default, Grafana Phlare is configured to scrape itself.
 To scrape more profiles, you need to configure the `scrape_configs` section of the [configuration file]({{< relref "../configure/reference-configuration-parameters/index.md#scrape-configs" >}}).
 
-To learn more about language integrations and the phlare agent, refer to [Grafana Phlare Agent]({{< relref "../configure-agent/_index.md" >}}).
+To learn more about language integrations and the Phlare agent, refer to [Grafana Phlare Agent]({{< relref "../configure-agent/_index.md" >}}).
 
 ## Query data in Grafana
 
