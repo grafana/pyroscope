@@ -4,7 +4,7 @@ import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
 import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
-import type { Profile } from '@pyroscope/models/src';
+import type { Profile, Units } from '@pyroscope/models/src';
 import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
@@ -101,6 +101,17 @@ const TIMELINE_SERIES_COLORS = [
   Color.rgb(249, 217, 249),
   Color.rgb(222, 218, 247),
 ];
+
+const unitsToTitle = {
+  objects: 'number of objects in RAM per function',
+  goroutines: 'number of goroutines',
+  bytes: 'amount of RAM per function',
+  samples: 'CPU time per function',
+  lock_nanoseconds: 'time spent waiting on locks per function',
+  lock_samples: 'number of contended locks per function',
+  trace_samples: 'aggregated span duration',
+  '': '',
+};
 
 // structured data to display/style table cells
 interface TableValuesData {
@@ -315,6 +326,7 @@ function TagExplorerView() {
               groupsData={filteredGroupsData}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={type === 'loading'}
+              units={activeTagProfile?.metadata?.units}
             />
           </div>
         </CollapseBox>
@@ -357,6 +369,7 @@ function Table({
   groupsData,
   isLoading,
   handleGroupByTagValueChange,
+  units = '',
 }: {
   appName: string;
   whereDropdownItems: string[];
@@ -365,6 +378,7 @@ function Table({
   groupsData: TimelineGroupData[];
   isLoading: boolean;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
+  units?: Units;
 }) {
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
@@ -389,6 +403,8 @@ function Table({
     return `?${searchParams.toString()}`;
   };
 
+  const captionByUnits = unitsToTitle[units];
+
   const headRow = [
     // when groupByTag is not selected table represents single "application without tags" group
     {
@@ -396,9 +412,17 @@ function Table({
       label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
       sortable: 1,
     },
-    { name: 'avgSamples', label: 'avg samples', sortable: 1 },
-    { name: 'stdDeviation', label: 'std deviation samples', sortable: 1 },
-    { name: 'totalSamples', label: 'total samples', sortable: 1 },
+    {
+      name: 'avgSamples',
+      label: `avg ${captionByUnits}`,
+      sortable: 1,
+    },
+    {
+      name: 'stdDeviation',
+      label: `std deviation ${captionByUnits}`,
+      sortable: 1,
+    },
+    { name: 'totalSamples', label: `total ${captionByUnits}`, sortable: 1 },
   ];
 
   const groupsTotal = useMemo(
