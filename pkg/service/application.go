@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ApplicationService struct {
@@ -17,34 +17,23 @@ func NewApplicationService(db *gorm.DB) ApplicationService {
 }
 
 func (svc ApplicationService) List(ctx context.Context) (apps []storage.Application, err error) {
-	//tx := svc.db.WithContext(ctx)
-
 	result := svc.db.Find(&apps)
 	return apps, result.Error
-	//	return tx.Fin(&application).Error
-	//	return []storage.Application{}, nil
-	//TODO implement me
-	//panic("implement me")
 }
 
-func (ApplicationService) Get(ctx context.Context, name string) (storage.Application, error) {
-	//TODO implement me
-	//panic("implement me")
-	return storage.Application{}, nil
+func (svc ApplicationService) Get(ctx context.Context, name string) (storage.Application, error) {
+	app := storage.Application{}
+	res := svc.db.Where("name = ?", name).First(&app)
+	return app, res.Error
 }
 
 func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
-	fmt.Println("creating or updating", application)
 	tx := svc.db.WithContext(ctx)
-	return tx.Create(&application).Error
-
-	return nil
-	//TODO implement me
-	//	panic("implement me")
+	return tx.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(&application).Error
 }
 
-func (ApplicationService) Delete(ctx context.Context, name string) error {
-	//TODO implement me
-	//panic("implement me")
-	return nil
+func (svc ApplicationService) Delete(ctx context.Context, name string) error {
+	return svc.db.Where("name = ?", name).Delete(storage.Application{}).Error
 }

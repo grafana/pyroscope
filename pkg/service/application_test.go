@@ -2,12 +2,12 @@ package service_test
 
 import (
 	"context"
-	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
 var _ = Describe("ApplicationService", func() {
@@ -20,46 +20,63 @@ var _ = Describe("ApplicationService", func() {
 		svc = service.NewApplicationService(s.DB())
 	})
 
-	Describe("create application", func() {
-		It("creates correctly", func() {
-			ctx := context.TODO()
-			apps, err := svc.List(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(apps)).To(Equal(0))
+	app := storage.Application{
+		Name:            "myapp",
+		SampleRate:      100,
+		SpyName:         "gospy",
+		Units:           metadata.SamplesUnits,
+		AggregationType: metadata.AverageAggregationType,
+	}
 
-			err = svc.CreateOrUpdate(ctx, storage.Application{
-				Name: "myapp",
-			})
-			Expect(err).ToNot(HaveOccurred())
-			apps, err = svc.List(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(apps)).To(Equal(1))
-			fmt.Println("apps0", apps[0])
-			Expect(apps[0]).To(Equal(storage.Application{
-				Name: "myapp",
-			}))
-		})
+	assertNumOfApps := func(num int) []storage.Application {
+		apps, err := svc.List(context.TODO())
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(apps)).To(Equal(num))
+		return apps
+	}
 
-		It("upserts", func() {
-			ctx := context.TODO()
-			err := svc.CreateOrUpdate(ctx, storage.Application{
-				Name: "myapp",
-			})
-			Expect(err).ToNot(HaveOccurred())
+	It("creates correctly", func() {
+		ctx := context.TODO()
+		assertNumOfApps(0)
 
-			err = svc.CreateOrUpdate(ctx, storage.Application{
-				Name: "myapp",
-			})
-			Expect(err).ToNot(HaveOccurred())
+		err := svc.CreateOrUpdate(ctx, app)
+		Expect(err).ToNot(HaveOccurred())
 
-			apps, err := svc.List(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(apps)).To(Equal(1))
-		})
-
-		//		It("does not allow empty name", func() {
-		//
-		//		})
+		apps := assertNumOfApps(1)
+		Expect(apps[0]).To(Equal(app))
 	})
 
+	It("upserts", func() {
+		assertNumOfApps(0)
+
+		ctx := context.TODO()
+		err := svc.CreateOrUpdate(ctx, app)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = svc.CreateOrUpdate(ctx, app)
+		Expect(err).ToNot(HaveOccurred())
+		assertNumOfApps(1)
+	})
+
+	It("fetches correctly", func() {
+		ctx := context.TODO()
+		err := svc.CreateOrUpdate(ctx, app)
+		Expect(err).ToNot(HaveOccurred())
+
+		res, err := svc.Get(ctx, app.Name)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res).To(Equal(app))
+	})
+
+	It("deletes correctly", func() {
+		ctx := context.TODO()
+		err := svc.CreateOrUpdate(ctx, app)
+		Expect(err).ToNot(HaveOccurred())
+		assertNumOfApps(1)
+
+		err = svc.Delete(ctx, app.Name)
+
+		Expect(err).ToNot(HaveOccurred())
+		assertNumOfApps(0)
+	})
 })
