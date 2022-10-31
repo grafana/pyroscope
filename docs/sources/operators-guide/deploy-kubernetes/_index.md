@@ -162,7 +162,7 @@ datasources:
      url: http://phlare-querier.phlare-test.svc.cluster.local.:4100/
 ```
 
-Modify the helm deployment by running:
+Modify the Helm deployment by running:
 
 ```bash
    helm upgrade -n phlare-test --reuse-values grafana grafana/grafana \
