@@ -11,11 +11,9 @@ The [Helm](https://helm.sh/) chart allows you to configure, install, and upgrade
 
 ## Before you begin
 
-The instructions that follow are common across any flavor of Kubernetes. They also assume that you know how to install a Kubernetes cluster, and configure and operate it.
+The instructions that follow are common across any flavor of Kubernetes and assume that you know how to install, configure, and operate a Kubernetes cluster. And that you know how to use `kubectl`.
 
-It also assumes that you have an understanding of what the `kubectl` command does.
-
-> **Caution:** Do not use this getting-started procedure in a production environment.
+> **Caution:** Do not use this getting started procedure in a production environment.
 
 Hardware requirements:
 
@@ -35,7 +33,7 @@ Verify that you have:
 
 ## Install the Helm chart in a custom namespace
 
-Using a custom namespace solves problems later on because you do not have to overwrite the default namespace.
+Use a custom namespace so that you do not have to overwrite the default namespace later in the procedure.
 
 1. Create a unique Kubernetes namespace, for example `phlare-test`:
 
@@ -54,7 +52,7 @@ Using a custom namespace solves problems later on because you do not have to ove
 
    > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/phlare**](https://github.com/grafana/phlare/tree/main/operations/phlare/helm/phlare).
 
-1. Install Grafana Phlare using the Helm chart:
+1. Install Grafana Phlare using the Helm chart using one of the follwoing options:
 
    - Option A: Install Grafana Phlare as single binary
 
@@ -108,7 +106,7 @@ Using a custom namespace solves problems later on because you do not have to ove
 
 [//TODO]:<> (Upgrade grafana image version to latest dev containing the changes)
 
-1. Install Grafana in the same Kubernetes cluster.
+1. Install Grafana in the same Kubernetes cluster where you installed Phlare.
 
    ```
    helm upgrade -n phlare-test --install grafana grafana/grafana \
@@ -145,13 +143,13 @@ Using a custom namespace solves problems later on because you do not have to ove
 1. Verify success:
 
    You should be able to query profiles in [Grafana Explore](https://grafana.com/docs/grafana/latest/explore/),
-   as well as create dashboard panels by using your newly configured `Phlare` data source.
+   as well as create dashboard panels by using your newly configured Phlare data source.
 
 ## Optional: Persistently add data source:
 
 The deployment of Grafana has no persistent database, so it will not retain settings like the data source configuration across restarts.
 
-To ensure the data source gets provisioned at start-up, we will first create the following file `datasources.yaml`:
+To ensure the data source gets provisioned at start-up, create the following `datasources.yaml` file:
 
 ```yaml
 datasources:
@@ -164,7 +162,7 @@ datasources:
      url: http://phlare-querier.phlare-test.svc.cluster.local.:4100/
 ```
 
-Now we can modify the helm deployment by running:
+Modify the helm deployment by running:
 
 ```bash
    helm upgrade -n phlare-test --reuse-values grafana grafana/grafana \
@@ -176,7 +174,7 @@ Now we can modify the helm deployment by running:
 The Phare chart uses a default configuration that causes its agent to scrape Pods, provided they have the correct annotations.
 This functionailty uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) that might be familar from the Prometheus or Grafna Agent config.
 
-In order to get Phlare to scrape pods, you must add annotations to the the pods as below:
+In order to get Phlare to scrape pods, you must add the following annotations to the the pods:
 
 ```yaml
 metadata:
