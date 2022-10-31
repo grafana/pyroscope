@@ -144,10 +144,10 @@ type Application struct {
 	//   app <- app name
 	//   app.cpu <- fully qualified app name
 	//   app.cpu{key=value} <- series name
-	Name string
+	Name string `gorm:"index,unique;not null;default:null"`
 
-	SpyName         string
-	SampleRate      uint32
-	Units           metadata.Units
-	AggregationType metadata.AggregationType
+	SpyName         string                   `gorm:"not null;default:null"`
+	SampleRate      uint32                   `gorm:"not null;default:null"`
+	Units           metadata.Units           `gorm:"not null;default:null"`
+	AggregationType metadata.AggregationType `gorm:"not null;default:null"`
 }

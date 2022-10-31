@@ -33,13 +33,13 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 		return errRetention
 	}
 
-	s.appSvc.CreateOrUpdate(ctx, Application{
-		Name:            pi.Key.AppName(),
-		SpyName:         pi.SpyName,
-		SampleRate:      pi.SampleRate,
-		Units:           pi.Units,
-		AggregationType: pi.AggregationType,
-	})
+	//	s.appSvc.CreateOrUpdate(ctx, Application{
+	//		Name:            pi.Key.AppName(),
+	//		SpyName:         pi.SpyName,
+	//		SampleRate:      pi.SampleRate,
+	//		Units:           pi.Units,
+	//		AggregationType: pi.AggregationType,
+	//	})
 
 	s.putTotal.Inc()
 	if pi.Key.HasProfileID() {
