@@ -54,7 +54,7 @@ make docker-image/phlare/build
 ```
 
 This target uses the `go/bin` target to first build binaries to include in the image.
-make sure to pass the correct `GOOS` and `GOARCH` env variables.
+Make sure to pass the correct `GOOS` and `GOARCH` env variables.
 
 For example for `linux/amd64`:
 
