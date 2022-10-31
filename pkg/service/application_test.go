@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,20 +21,45 @@ var _ = Describe("ApplicationService", func() {
 	})
 
 	Describe("create application", func() {
-		It("works", func() {
-			_ = svc
-			err := svc.CreateOrUpdate(context.TODO(), storage.Application{})
+		It("creates correctly", func() {
+			ctx := context.TODO()
+			apps, err := svc.List(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			//	now := time.Now()
+			Expect(len(apps)).To(Equal(0))
 
-			//	annotation, err := svc.CreateAnnotation(context.Background(), model.CreateAnnotation{
-			//		AppName:   "myapp",
-			//		Content:   "mycontent",
-			//		Timestamp: now,
-			//	})
-
-			Expect(true).To(Equal(false))
+			err = svc.CreateOrUpdate(ctx, storage.Application{
+				Name: "myapp",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			apps, err = svc.List(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(apps)).To(Equal(1))
+			fmt.Println("apps0", apps[0])
+			Expect(apps[0]).To(Equal(storage.Application{
+				Name: "myapp",
+			}))
 		})
+
+		It("upserts", func() {
+			ctx := context.TODO()
+			err := svc.CreateOrUpdate(ctx, storage.Application{
+				Name: "myapp",
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			err = svc.CreateOrUpdate(ctx, storage.Application{
+				Name: "myapp",
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			apps, err := svc.List(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(apps)).To(Equal(1))
+		})
+
+		//		It("does not allow empty name", func() {
+		//
+		//		})
 	})
 
 })
