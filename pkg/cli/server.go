@@ -116,6 +116,14 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 	}
 
+	if svc.config.EnableExperimentalAppMetadata {
+		migrator := NewAppMetadataMigrator(svc.storage, service.NewApplicationService(svc.database.DB()))
+		err := migrator.Migrate()
+		if err != nil {
+			svc.logger.Error(err)
+		}
+	}
+
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath

@@ -79,4 +79,11 @@ var _ = Describe("ApplicationService", func() {
 		Expect(err).ToNot(HaveOccurred())
 		assertNumOfApps(0)
 	})
+
+	It("fails to get non existent app", func() {
+		ctx := context.TODO()
+		res, err := svc.Get(ctx, "non_existing_app")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res).To(BeNil())
+	})
 })
