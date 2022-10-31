@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.24.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.23.0...@pyroscope/flamegraph@0.24.0) (2022-10-31)
+
+
+### Features
+
+* add a generic Tooltip component ([#1643](https://github.com/pyroscope-io/pyroscope/issues/1643)) ([e04a9a5](https://github.com/pyroscope-io/pyroscope/commit/e04a9a5b8abacbf6c3fad87b1a8aaf2ed1636053))
+
+
+
+
+
 # [0.23.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.22.0...@pyroscope/flamegraph@0.23.0) (2022-09-29)
 
 
