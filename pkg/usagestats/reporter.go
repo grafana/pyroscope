@@ -104,7 +104,8 @@ func (rep *Reporter) initLeader(ctx context.Context) ClusterSeed {
 					return nil, false, nil
 				}
 			}
-			return &seed, true, nil
+
+			return seed.Clone(), true, nil
 		}); err != nil {
 			level.Info(rep.logger).Log("msg", "failed to CAS cluster seed key", "err", err)
 			continue
