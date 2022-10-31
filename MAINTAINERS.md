@@ -5,3 +5,6 @@ The following are the main/default maintainers:
 
 Some parts of the codebase have other maintainers, the package paths also include all sub-packages:
 
+- `docs`:
+  - Eve Meelan - [@](https://github.com/) ([Grafana Labs](https://grafana.com/))
+
