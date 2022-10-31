@@ -8,6 +8,6 @@ import (
 
 type NoopMetadataSaver struct{}
 
-func (NoopMetadataSaver) CreateOrUpdate(ctx context.Context, application storage.Application) error {
+func (NoopMetadataSaver) CreateOrUpdate(_ context.Context, _ storage.Application) error {
 	return nil
 }

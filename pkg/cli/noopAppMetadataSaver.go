@@ -1,4 +1,5 @@
-// TODO: remove this file after functionality is fully implemented
+// Package cli ... contains NoopMetadataSaver which should be removed
+// after the funcionality is made GA (ie not feature flagged anymore)
 package cli
 
 import (
@@ -9,6 +10,6 @@ import (
 
 type NoopMetadataSaver struct{}
 
-func (NoopMetadataSaver) CreateOrUpdate(ctx context.Context, application storage.Application) error {
+func (NoopMetadataSaver) CreateOrUpdate(_ context.Context, _ storage.Application) error {
 	return nil
 }

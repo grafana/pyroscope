@@ -17,13 +17,15 @@ func NewApplicationService(db *gorm.DB) ApplicationService {
 }
 
 func (svc ApplicationService) List(ctx context.Context) (apps []storage.Application, err error) {
-	result := svc.db.Find(&apps)
+	tx := svc.db.WithContext(ctx)
+	result := tx.Find(&apps)
 	return apps, result.Error
 }
 
 func (svc ApplicationService) Get(ctx context.Context, name string) (storage.Application, error) {
+	tx := svc.db.WithContext(ctx)
 	app := storage.Application{}
-	res := svc.db.Where("name = ?", name).First(&app)
+	res := tx.Where("name = ?", name).First(&app)
 	return app, res.Error
 }
 
@@ -35,5 +37,6 @@ func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application st
 }
 
 func (svc ApplicationService) Delete(ctx context.Context, name string) error {
-	return svc.db.Where("name = ?", name).Delete(storage.Application{}).Error
+	tx := svc.db.WithContext(ctx)
+	return tx.Where("name = ?", name).Delete(storage.Application{}).Error
 }
