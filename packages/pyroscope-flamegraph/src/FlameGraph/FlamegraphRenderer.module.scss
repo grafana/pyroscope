@@ -48,14 +48,16 @@
     background-color: var(--ps-sandwich-pane-info-bg);
     color: var(--ps-neutral-1);
 
-    &::before {
-      content: '◀';
-      color: var(--ps-sandwich-pane-info-bg);
-      left: -14px;
-      top: 3px;
-      font-size: 22px;
+    .arrowLeft {
       position: absolute;
-      height: 100%;
+      top: 14px;
+      left: -20px;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 8px 20px 8px 0;
+      border-color: transparent var(--ps-sandwich-pane-info-bg) transparent
+        transparent;
     }
   }
 

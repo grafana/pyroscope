@@ -454,6 +454,7 @@ class FlameGraphRenderer extends Component<
         return (
           <div className={styles.sandwichPane} key="sandwich-pane">
             <div className={styles.sandwichPaneInfo}>
+              <div className={styles.arrowLeft} />
               Select a function to view callers/callees sandwich view
             </div>
           </div>
