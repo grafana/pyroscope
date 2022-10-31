@@ -35,11 +35,11 @@ const buttons = [
       ms: 3600 * 1000,
     },
     {
-      label: '12 hour prior',
+      label: '12 hours prior',
       ms: 43200 * 1000,
     },
     {
-      label: '24 hour prior',
+      label: '24 hours prior',
       ms: 86400 * 1000,
     },
   ],
@@ -160,6 +160,7 @@ export default function SideTimelineComparator({
 
   return (
     <div className={styles.wrapper} ref={refContainer}>
+      <span className={styles.caption}>Set to&nbsp;&nbsp;</span>
       <Button
         data-testid="open-comparator-button"
         onClick={() => setMenuVisible(!menuVisible)}
@@ -170,6 +171,7 @@ export default function SideTimelineComparator({
           icon={faChevronDown}
         />
       </Button>
+      <span className={styles.caption}>&nbsp;&nbsp;to comparison</span>
       <Portal container={refContainer.current}>
         <Popover
           anchorPoint={{ x: 'calc(100% - 300px)', y: 42 }}

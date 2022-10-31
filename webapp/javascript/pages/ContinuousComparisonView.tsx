@@ -168,6 +168,23 @@ function ComparisonApp() {
             >
               <div className={styles.timelineTitleWrapper}>
                 <TimelineTitle titleKey="baseline" color={leftColor} />
+                <SideTimelineComparator
+                  onCompare={handleCompare}
+                  selection={{
+                    left: {
+                      from: leftFrom,
+                      to: leftUntil,
+                      color: leftColor,
+                      overlayColor: leftColor.alpha(0.3),
+                    },
+                    right: {
+                      from: rightFrom,
+                      to: rightUntil,
+                      color: rightColor,
+                      overlayColor: rightColor.alpha(0.3),
+                    },
+                  }}
+                />
               </div>
               <TagsBar
                 query={leftQuery}
@@ -234,23 +251,6 @@ function ComparisonApp() {
             >
               <div className={styles.timelineTitleWrapper}>
                 <TimelineTitle titleKey="comparison" color={rightColor} />
-                <SideTimelineComparator
-                  onCompare={handleCompare}
-                  selection={{
-                    left: {
-                      from: leftFrom,
-                      to: leftUntil,
-                      color: leftColor,
-                      overlayColor: leftColor.alpha(0.3),
-                    },
-                    right: {
-                      from: rightFrom,
-                      to: rightUntil,
-                      color: rightColor,
-                      overlayColor: rightColor.alpha(0.3),
-                    },
-                  }}
-                />
               </div>
               <TagsBar
                 query={rightQuery}
