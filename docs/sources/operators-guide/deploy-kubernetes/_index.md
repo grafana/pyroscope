@@ -52,7 +52,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
 
    > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/phlare**](https://github.com/grafana/phlare/tree/main/operations/phlare/helm/phlare).
 
-1. Install Grafana Phlare using the Helm chart using one of the follwoing options:
+1. Install Grafana Phlare using the Helm chart using one of the following options:
 
    - Option A: Install Grafana Phlare as single binary
 
