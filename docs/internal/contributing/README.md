@@ -83,7 +83,7 @@ Tidy up the `go.mod` and `go.sum` files:
 make go/mod
 ```
 
-You have to commit the changes to `go.mod` and `go.sum` before submitting the pull request.
+Commit the changes to `go.mod` and `go.sum` before submitting your pull request.
 
 ## Documentation
 
