@@ -83,7 +83,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           customInput={
             <TextField
               className={styles.datePickerInput}
-              label=""
+              label="from"
               variant="light"
             />
           }
@@ -104,7 +104,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           customInput={
             <TextField
               className={styles.datePickerInput}
-              label=""
+              label="until"
               variant="light"
             />
           }
