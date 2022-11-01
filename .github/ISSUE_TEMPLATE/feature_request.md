@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
+about: Suggest an idea for Phlare. If this doesn't look right, choose a different issue type. 
 title: ''
 labels: ''
 assignees: ''
