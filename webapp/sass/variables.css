@@ -30,6 +30,8 @@
 
   --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
 
+  --ps-sandwich-pane-info-bg: #f2cd50; /* flamegraph sandwich pane info */
+
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
   --ps-dropdown-shadow: #000000; /* dropdown shadow */
 
@@ -103,6 +105,7 @@
   --ps-tooltip-text: #000000; /* tooltip header text */
   --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
   --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+  --ps-sandwich-pane-info-bg: #f2cd50; /* flamegraph sandwich pane info */
 
   --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
   --ps-dropdown-shadow: #00000052; /* dropdown shadow */
