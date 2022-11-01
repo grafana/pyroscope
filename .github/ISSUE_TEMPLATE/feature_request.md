@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Phlare. If this doesn't look right, choose a different issue type. 
+about: Suggest an idea for Phlare. If this doesn't look right, choose a different [issue type](https://github.com/grafana/phlare/issues/new/choose). 
 title: ''
 labels: ''
 assignees: ''
