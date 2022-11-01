@@ -24,9 +24,9 @@ const defaultParams: Partial<ReactNotificationOptions> = {
 
 export type NotificationOptions = {
   title?: string;
-  message: string;
+  message: string | JSX.Element;
   additionalInfo?: string[];
-  type: 'success' | 'danger' | 'info';
+  type: 'success' | 'danger' | 'info' | 'warning';
 
   dismiss?: DismissOptions;
   onRemoval?: ((id: string, removedBy: ShamefulAny) => void) | undefined;
@@ -36,12 +36,13 @@ function Message({
   message,
   additionalInfo,
 }: {
-  message: string;
+  message: string | JSX.Element;
   additionalInfo?: string[];
 }) {
+  const msg = typeof message === 'string' ? <p>{message}</p> : message;
   return (
     <div>
-      {message && <p>{message}</p>}
+      {msg}
       {additionalInfo && <h4>Additional Info:</h4>}
 
       {additionalInfo && (
