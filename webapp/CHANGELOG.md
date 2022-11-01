@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.54.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.53.0...@pyroscope/webapp@1.54.0) (2022-11-01)
+
+
+### Features
+
+* **webapp:** Issue when comparison / diff timelines are out of range ([#1615](https://github.com/pyroscope-io/pyroscope/issues/1615)) ([211ccca](https://github.com/pyroscope-io/pyroscope/commit/211ccca5a03fb78087bdf10b125ad0141b2a5dc9))
+
+
+
+
+
 # [1.53.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.52.0...@pyroscope/webapp@1.53.0) (2022-11-01)
 
 
