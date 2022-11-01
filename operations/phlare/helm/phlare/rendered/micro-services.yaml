@@ -15,7 +15,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: phlare/charts/minio/templates/secrets.yaml
@@ -361,7 +361,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -413,7 +413,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -439,7 +439,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -527,7 +527,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -553,7 +553,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
 spec:
@@ -577,7 +577,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -601,7 +601,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -625,7 +625,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -649,7 +649,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -673,7 +673,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
 spec:
@@ -686,7 +686,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
@@ -750,7 +750,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -763,7 +763,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
@@ -826,7 +826,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -839,7 +839,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
@@ -997,7 +997,7 @@ metadata:
     helm.sh/chart: phlare-0.1.0
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.0.0"
+    app.kubernetes.io/version: "0.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -1012,7 +1012,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cca7603771a08e1045dc9fbe2f855536a8746210cd748df5c0fbbaf1d89e3df9
+        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
