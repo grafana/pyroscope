@@ -5,7 +5,6 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type ApplicationService struct {
@@ -31,9 +30,11 @@ func (svc ApplicationService) Get(ctx context.Context, name string) (storage.App
 
 func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
 	tx := svc.db.WithContext(ctx)
-	return tx.Clauses(clause.OnConflict{
-		UpdateAll: true,
-	}).Create(&application).Error
+
+	// Only update empty values
+	return tx.Where(storage.Application{
+		Name: application.Name,
+	}).Assign(application).FirstOrCreate(&storage.Application{}).Error
 }
 
 func (svc ApplicationService) Delete(ctx context.Context, name string) error {
