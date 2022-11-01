@@ -140,10 +140,8 @@ type ApplicationService interface {
 }
 
 type Application struct {
-	// TODO: Fully qualified or just name? {__name__}.{profile_type} vs __name__
-	//   app <- app name
-	//   app.cpu <- fully qualified app name
-	//   app.cpu{key=value} <- series name
+	// Fully qualified name
+	// Eg app.cpu ({__name__}.{profile_type})
 	Name string `gorm:"index,unique;not null;default:null"`
 
 	SpyName         string

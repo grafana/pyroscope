@@ -16,6 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/parser"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -30,7 +31,7 @@ var _ = Describe("server", func() {
 					defer close(done)
 
 					(*cfg).Server.APIBindAddr = ":10044"
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), service.NoopApplicationService{})
 					Expect(err).ToNot(HaveOccurred())
 					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)
