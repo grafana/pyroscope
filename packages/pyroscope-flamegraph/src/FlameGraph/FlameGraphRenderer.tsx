@@ -450,6 +450,9 @@ class FlameGraphRenderer extends Component<
     );
 
     const sandwichPane = (() => {
+      // TODO(dogfrogfog): remove when new toolbar is ready
+      return <></>;
+
       if (this.state.selectedItem.isNothing) {
         return (
           <div className={styles.sandwichPane} key="sandwich-pane">
@@ -463,11 +466,13 @@ class FlameGraphRenderer extends Component<
 
       const callersFlamebearer = callersProfile(
         this.state.flamebearer,
-        this.state.selectedItem.value
+        // TODO(dogfrogfog): change empty string to this.state.selectedItem.value when new toolbar is ready
+        '' // this.state.selectedItem.value
       );
       const calleesFlamebearer = calleesProfile(
         this.state.flamebearer,
-        this.state.selectedItem.value
+        // TODO(dogfrogfog): change empty string to this.state.selectedItem.value when new toolbar is ready
+        '' // this.state.selectedItem.value
       );
       const sandwitchGraph = (myCustomParams: {
         flamebearer: Flamebearer;

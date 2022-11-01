@@ -21,7 +21,7 @@ import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
-import SandwichIcon from './SandwichIcon';
+// import SandwichIcon from './SandwichIcon';
 
 import styles from './Toolbar.module.css';
 
@@ -401,7 +401,8 @@ function ViewSection({
       <option value="table">Table</option>
       <option value="both">Both</option>
       <option value="flamegraph">Flame</option>
-      <option value="sandwich">Sandwich</option>
+      {/* TODO(dogfrogfog): uncomment when new toolbar is ready */}
+      {/* <option value="sandwich">Sandwich</option> */}
     </Select>
   );
 
@@ -438,14 +439,15 @@ function ViewSection({
       >
         Flamegraph
       </Button>
-      <Button
+      {/* TODO(dogfrogfog): uncomment when new toolbar is ready */}
+      {/* <Button
         grouped
         kind={kindByState('sandwich')}
         iconNode={<SandwichIcon />}
         onClick={() => updateView('sandwich')}
       >
         Sandwich
-      </Button>
+      </Button> */}
     </>
   );
 
