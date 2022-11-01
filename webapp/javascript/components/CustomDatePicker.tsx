@@ -100,7 +100,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
       </div>
       {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}
 
-      <Button type="submit" kind="primary" onClick={() => updateDateRange()}>
+      <Button type="submit" kind="secondary" onClick={() => updateDateRange()}>
         Apply range
       </Button>
 
@@ -112,6 +112,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           id="select-timezone"
           value={String(offset)}
           disabled={timeZoneOptions.every((o) => o.value === 0)}
+          className={styles.timezoneSelect}
         >
           {timeZoneOptions.map((o) => (
             <option key={o.key} value={o.value}>
