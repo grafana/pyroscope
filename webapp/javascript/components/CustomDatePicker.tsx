@@ -5,7 +5,7 @@ import Button from '@webapp/ui/Button';
 import { formatAsOBject, getUTCdate } from '@webapp/util/formatDate';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import Select from '@webapp/ui/Select';
-
+import TextField from '@webapp/ui/Form/TextField';
 import styles from './CustomDatePicker.module.scss';
 
 interface CustomDatePickerProps {
@@ -80,7 +80,13 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           showTimeSelect
           startDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
-          className={styles.datepicker}
+          customInput={
+            <TextField
+              className={styles.datePickerInput}
+              label=""
+              variant="light"
+            />
+          }
         />
       </div>
       <div className="until">
@@ -95,7 +101,13 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           endDate={selectUntilAsDate}
           minDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
-          className={styles.datepicker}
+          customInput={
+            <TextField
+              className={styles.datePickerInput}
+              label=""
+              variant="light"
+            />
+          }
         />
       </div>
       {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}
