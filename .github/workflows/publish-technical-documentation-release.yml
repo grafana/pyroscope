@@ -8,6 +8,7 @@ on:
     - "v[0-9]+.[0-9]+.[0-9]+"
     paths:
     - "docs/sources/**"
+  workflow_dispatch:
 jobs:
   test:
     runs-on: "ubuntu-latest"
