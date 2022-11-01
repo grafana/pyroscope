@@ -20,7 +20,6 @@ const renderHeatmap = () => {
       heatmap={heatmapMockData}
       onSelection={() => ({})}
       timezone="utc"
-      actionOnSelectionReset={() => ({})}
     />
   );
 };

@@ -18,7 +18,6 @@ import { getTicks } from './utils';
 import styles from './Heatmap.module.scss';
 
 interface HeatmapProps {
-  actionOnSelectionReset: () => void;
   heatmap: HeatmapType;
   onSelection: (
     minV: number,
@@ -31,7 +30,6 @@ interface HeatmapProps {
 }
 
 export function Heatmap({
-  actionOnSelectionReset,
   heatmap,
   onSelection,
   sampleRate,
@@ -44,7 +42,6 @@ export function Heatmap({
 
   const { selectedCoordinates, selectedAreaToHeatmapRatio, resetSelection } =
     useHeatmapSelection({
-      actionOnSelectionReset,
       canvasRef,
       resizedSelectedAreaRef,
       heatmapW,

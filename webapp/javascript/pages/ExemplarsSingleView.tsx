@@ -5,7 +5,6 @@ import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { selectQueries } from '@webapp/redux/reducers/continuous';
 import {
-  actions,
   fetchExemplarsSingleView,
   fetchSelectionProfile,
 } from '@webapp/redux/reducers/tracing';
@@ -39,7 +38,7 @@ function ExemplarsSingleView() {
           query,
           from,
           until,
-          shouldFetchProfile: exemplarsSingleView.type !== 'pristine',
+          shouldFetchProfile: !!exemplarsSingleView.profile,
           ...DEFAULT_HEATMAP_PARAMS,
         })
       );
@@ -103,10 +102,6 @@ function ExemplarsSingleView() {
     }
   })();
 
-  const resetProfile = () => {
-    dispatch(actions.resetSingleExemplarsViewProfile());
-  };
-
   const heatmap = (() => {
     switch (exemplarsSingleView.type) {
       case 'loaded':
@@ -117,7 +112,6 @@ function ExemplarsSingleView() {
             onSelection={handleHeatmapSelection}
             timezone={offset === 0 ? 'utc' : 'browser'}
             sampleRate={exemplarsSingleView.profile?.metadata.sampleRate || 100}
-            actionOnSelectionReset={resetProfile}
           />
         ) : (
           <NoData />

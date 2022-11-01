@@ -187,9 +187,6 @@ export const tracingSlice = createSlice({
     refresh(state) {
       state.refreshToken = Math.random().toString();
     },
-    resetSingleExemplarsViewProfile(state) {
-      state.exemplarsSingleView.profile = undefined;
-    },
   },
   extraReducers: (builder) => {
     /*************************/
