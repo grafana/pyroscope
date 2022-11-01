@@ -18,15 +18,11 @@ trap 'rm -f "${datasource_provisioning}"' EXIT
 cat > "${datasource_provisioning}" <<EOF
 apiVersion: 1
 datasources:
-  - name: Phlare-Pyroscope
-    type: pyroscope-datasource
-    jsonData:
-      path: ${PYRO_URL}
   - name: Prometheus
     type: prometheus
     url: ${PROMETHEUS_URL}
   - name: Phlare
-    type: grafana-phlare-datasource
+    type: phlare
     url: ${PHLARE_URL}
     jsonData:
       httpHeaderName1: "X-Scope-OrgID"
@@ -39,8 +35,9 @@ docker run $DOCKER_ARGS --rm \
   -v "${datasource_provisioning}:/etc/grafana/provisioning/datasources/phlare.yaml:ro" \
   -v "$(pwd)"/grafana/phlare-datasource/dist:/var/lib/grafana/plugins/phlare-datasource \
   -v "$(pwd)"/grafana/flamegraph/dist:/var/lib/grafana/plugins/flamegraph \
+  -e GF_FEATURE_TOGGLES_ENABLE=flameGraph \
   -e GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel \
   -e GF_DEFAULT_APP_MODE=development \
   -e GF_AUTH_ANONYMOUS_ENABLED=true \
   -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
-  -t -i -p 3000:3000 aocenas/grafana:explore-experiment-2
+  -t -i -p 3000:3000 grafana/grafana:main
