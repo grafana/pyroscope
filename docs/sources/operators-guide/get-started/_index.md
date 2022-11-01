@@ -9,102 +9,102 @@ weight: 10
 
 # Get started with Grafana Phlare
 
-There are two different options for getting started with Grafana Phlare:
+You can choose from two options to get started with Grafana Phlare:
 
-- The written tutorial provides a series of imperative commands to start a single Phlare process.
-- The visual tutorial (in the form of a video) uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
+- The written tutorial provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project. For more information about the different ways to deploy Grafana Phlare, refer to [Grafana Phlare deployment modes]({{< relref "../architecture/deployment-modes/index.md" >}}).
+- The video tutorial uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
 
-{{< vimeo todo >}}
-
-<br/>
-
-The written instructions focus on deploying Grafana Phlare as a [monolith]({{< relref "../architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project. For more information about the different ways to deploy Grafana Phlare, refer to [Grafana Phlare deployment modes]({{< relref "../architecture/deployment-modes/index.md" >}}).
+  {{< vimeo todo >}}
 
 ## Before you begin
 
 - Verify that you have installed [Docker](https://docs.docker.com/engine/install/).
 
-## Download Grafana Phlare
+## Download and configure Phlare
 
-- Using Docker:
+1. Download Grafana Phlare
 
-  ```bash
-  docker pull grafana/phlare:latest
-  ```
+  You can use Docker or download a binary to install Phlare. 
 
-- Using a local binary:
+  - To install with Docker, run the following command:
+
+   ```bash
+   docker pull grafana/phlare:latest
+    ```
+
+  - To use a local binary:
 
   Download the appropriate [release asset](https://github.com/grafana/phlare/releases/latest) for your operating system and architecture and make it executable.
 
-  For Linux with the AMD64 architecture:
+  For example, for Linux with the AMD64 architecture:
 
   ```bash
   curl -fLo phlare https://github.com/grafana/phlare/releases/latest/download/phlare-linux-amd64
   chmod +x phlare
   ```
+  
+1. Start Phlare
 
-## Start Grafana Phlare
+  To run Grafana Phlare as a monolith and with local filesystem storage, write the following YAML configuration to a file called `demo.yaml`:
 
-To run Grafana Phlare as a monolith and with local filesystem storage, write the following YAML configuration to a file called `demo.yaml`:
-
-```yaml
-# Do not use this configuration in production.
-# It is for demonstration purposes only.
-scrape_configs:
-  - job_name: "default"
-    scrape_interval: "15s"
-    static_configs:
-      - targets: ["127.0.0.1:4100"]
-```
-
-You can also simply download our [demo configuration](https://raw.githubusercontent.com/grafana/phlare/main/cmd/phlare/phlare.yaml) using:
-
-```bash
-curl -fLo demo.yaml https://raw.githubusercontent.com/grafana/phlare/main/cmd/phlare/phlare.yaml
-```
-
-## Run Grafana Phlare
-
-In a terminal, run one of the following commands:
-
-- Using Docker:
-
-  ```bash
-  docker network create phlare-demo
-  docker run --rm --name phlare --network=phlare-demo -p 4100:4100 --volume "$(pwd)"/demo.yaml:/etc/phlare/demo.yaml grafana/phlare:latest --config.file=/etc/phlare/demo.yaml
+  ```yaml
+  # Do not use this configuration in production.
+  # It is for demonstration purposes only.
+  scrape_configs:
+    - job_name: "default"
+      scrape_interval: "15s"
+      static_configs:
+        - targets: ["127.0.0.1:4100"]
   ```
 
-- Using a local binary:
+  Alternatively, you can download our [demo configuration](https://raw.githubusercontent.com/grafana/phlare/main/cmd/phlare/phlare.yaml) using:
 
   ```bash
-  ./phlare --config.file=./demo.yaml
+  curl -fLo demo.yaml https://raw.githubusercontent.com/grafana/phlare/main/cmd/phlare/phlare.yaml
   ```
 
-Grafana Phlare listens on port `4100`. You can now verify that Phlare is ready:
+1. Run Phlare
 
-```bash
-curl localhost:4100/ready
-```
+  In a terminal, run one of the following commands:
 
-## Configure Grafana Phlare to scrape profiles
+  - Using Docker:
 
-By default, Grafana Phlare is configured to scrape itself.
-To scrape more profiles, you need to configure the `scrape_configs` section of the [configuration file]({{< relref "../configure/reference-configuration-parameters/index.md#scrape-configs" >}}).
+    ```bash
+    docker network create phlare-demo
+    docker run --rm --name phlare --network=phlare-demo -p 4100:4100 --volume "$(pwd)"/demo.yaml:/etc/phlare/demo.yaml grafana/phlare:latest --config.file=/etc/phlare/demo.yaml
+    ```
 
-To learn more about language integrations and the Phlare agent, refer to [Grafana Phlare Agent]({{< relref "../configure-agent/_index.md" >}}).
+  - Using a local binary:
 
-## Query data in Grafana
+    ```bash
+    ./phlare --config.file=./demo.yaml
+    ```
 
-In a new terminal, run a local Grafana server using Docker:
+1. Verify that Phlare is ready. Grafana Phlare listens on port `4100`. 
 
-```bash
-docker run --rm --name=grafana -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=phlare-demo grafana/grafana:main
-```
+  ```bash
+  curl localhost:4100/ready
+  ```
 
-### Add Grafana Phlare data source
+1. Configure Phlare to scrape profiles
+
+  By default, Grafana Phlare is configured to scrape itself.
+  To scrape more profiles, you must configure the `scrape_configs` section of the [configuration file]({{< relref "../configure/reference-configuration-parameters/index.md#scrape-configs" >}}).
+
+  To learn more about language integrations and the Phlare agent, refer to [Grafana Phlare Agent]({{< relref "../configure-agent/_index.md" >}}).
+
+## Add a Phlare data source and query data
+
+1. In a new terminal, run a local Grafana server using Docker:
+
+  ```bash
+  docker run --rm --name=grafana -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=phlare-demo grafana/grafana:main
+  ```
 
 1. In a browser, go to the Grafana server at [http://localhost:3000/datasources](http://localhost:3000/datasources).
+
 1. Sign in using the default username `admin` and password `admin`.
+
 1. Configure a new Phlare data source to query the local Grafana Phlare server using the following settings:
 
    | Field | Value                                                                |
@@ -112,9 +112,7 @@ docker run --rm --name=grafana -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameG
    | Name  | Phlare                                                               |
    | URL   | [http://phlare:4100/](http://phlare:4100/) |
 
-To add a data source, refer to [Add a data source](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/).
-
-## Verify success
+  To learn more about data sources, see [Add a data source](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/).
 
 When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](https://grafana.com/docs/grafana/latest/explore/)
-as well as create dashboard panels using the newly configured Grafana Phlare data source.
+and create dashboard panels using the newly configured Grafana Phlare data source.
