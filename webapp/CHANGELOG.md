@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.54.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.54.0...@pyroscope/webapp@1.54.1) (2022-11-01)
+
+
+### Bug Fixes
+
+* **webapp:** sort appNames alphabetically ([#1655](https://github.com/pyroscope-io/pyroscope/issues/1655)) ([e29d2e2](https://github.com/pyroscope-io/pyroscope/commit/e29d2e29862cf8e21354c194e67f2fd9e376e273))
+
+
+
+
+
 # [1.54.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.53.0...@pyroscope/webapp@1.54.0) (2022-11-01)
 
 
