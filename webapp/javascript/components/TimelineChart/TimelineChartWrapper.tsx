@@ -13,6 +13,7 @@ import TimelineChart from './TimelineChart';
 import styles from './TimelineChartWrapper.module.css';
 import { markingsFromSelection, ANNOTATION_COLOR } from './markings';
 import { ContextMenuProps } from './ContextMenu.plugin';
+import { centerTimelineData } from './centerTimelineData';
 
 export interface TimelineGroupData {
   data: Group;
@@ -20,7 +21,7 @@ export interface TimelineGroupData {
   color?: Color;
 }
 
-interface TimelineData {
+export interface TimelineData {
   data?: Timeline;
   color?: string;
 }
@@ -493,30 +494,6 @@ function areTimelinesTheSame(
   const map = new Map(biggest.samples.map((a) => [a, true]));
 
   return smallest.samples.every((a) => map.has(a));
-}
-
-// Since profiling data is chuked by 10 seconds slices
-// it's more user friendly to point a `center` of a data chunk
-// as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
-function centerTimelineData(timelineData: TimelineData) {
-  return timelineData.data
-    ? decodeTimelineData(timelineData.data).map((x) => [
-        x[0] + 5000,
-        x[1] === 0 ? 0 : x[1] - 1,
-      ])
-    : [[]];
-}
-
-function decodeTimelineData(timeline: Timeline) {
-  if (!timeline) {
-    return [];
-  }
-  let time = timeline.startTime;
-  return timeline.samples.map((x) => {
-    const res = [time * 1000, x];
-    time += timeline.durationDelta;
-    return res;
-  });
 }
 
 export default TimelineChartWrapper;

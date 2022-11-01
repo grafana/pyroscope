@@ -98,6 +98,15 @@ $border-radius: 4px;
   }
 }
 
+.outline {
+  @extend .default;
+  background-color: transparent;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(144, 202, 249, 0.08);
+  }
+}
+
 // only the first and last elements should have styling
 .grouped {
   margin: 0;

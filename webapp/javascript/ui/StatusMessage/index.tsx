@@ -1,19 +1,26 @@
 import React from 'react';
 import cx from 'classnames';
-import styles from './StatusMessage.module.css';
+import styles from './StatusMessage.module.scss';
 
 interface StatusMessageProps {
-  type: 'error' | 'success';
+  type: 'error' | 'success' | 'warning';
   message: string;
+  action?: React.ReactNode;
 }
 
-export default function StatusMessage({ type, message }: StatusMessageProps) {
+export default function StatusMessage({
+  type,
+  message,
+  action,
+}: StatusMessageProps) {
   const getClassnameForType = () => {
     switch (type) {
       case 'error':
         return styles.error;
       case 'success':
         return styles.success;
+      case 'warning':
+        return styles.warning;
       default:
         return styles.error;
     }
@@ -26,7 +33,8 @@ export default function StatusMessage({ type, message }: StatusMessageProps) {
         [getClassnameForType()]: true,
       })}
     >
-      {message}
+      <div>{message}</div>
+      <div className={styles.action}>{action}</div>
     </div>
   ) : null;
 }

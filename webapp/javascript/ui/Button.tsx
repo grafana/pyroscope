@@ -5,7 +5,8 @@ import cx from 'classnames';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
-  kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'float';
+  kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'outline' | 'float';
+  // kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'float' | 'outline';
   /** Whether the button is disabled or not */
   disabled?: boolean;
   icon?: IconDefinition;
@@ -108,6 +109,10 @@ function getKindStyles(kind: ButtonProps['kind']) {
 
     case 'danger': {
       return styles.danger;
+    }
+
+    case 'outline': {
+      return styles.outline;
     }
 
     case 'float': {
