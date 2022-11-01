@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"gorm.io/gorm"
 )
@@ -18,26 +20,49 @@ func NewApplicationService(db *gorm.DB) ApplicationService {
 func (svc ApplicationService) List(ctx context.Context) (apps []storage.Application, err error) {
 	tx := svc.db.WithContext(ctx)
 	result := tx.Find(&apps)
-	return apps, result.Error
+	return apps, svc.handleError(result.Error)
 }
 
 func (svc ApplicationService) Get(ctx context.Context, name string) (storage.Application, error) {
-	tx := svc.db.WithContext(ctx)
 	app := storage.Application{}
+	if err := model.ValidateAppName(name); err != nil {
+		return app, err
+	}
+
+	tx := svc.db.WithContext(ctx)
 	res := tx.Where("name = ?", name).First(&app)
-	return app, res.Error
+	return app, svc.handleError(res.Error)
 }
 
 func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
+	if err := model.ValidateAppName(application.Name); err != nil {
+		return err
+	}
+
 	tx := svc.db.WithContext(ctx)
 
 	// Only update empty values
-	return tx.Where(storage.Application{
+	err := tx.Where(storage.Application{
 		Name: application.Name,
 	}).Assign(application).FirstOrCreate(&storage.Application{}).Error
+	return svc.handleError(err)
 }
 
 func (svc ApplicationService) Delete(ctx context.Context, name string) error {
+	if err := model.ValidateAppName(name); err != nil {
+		return err
+	}
+
 	tx := svc.db.WithContext(ctx)
-	return tx.Where("name = ?", name).Delete(storage.Application{}).Error
+	err := tx.Where("name = ?", name).Delete(storage.Application{}).Error
+	return svc.handleError(err)
+}
+
+func (ApplicationService) handleError(err error) error {
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return model.ErrApplicationNotFound
+	default:
+		return err
+	}
 }

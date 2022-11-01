@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
@@ -35,75 +36,103 @@ var _ = Describe("ApplicationService", func() {
 		return apps
 	}
 
-	It("creates correctly", func() {
+	It("validates input", func() {
 		ctx := context.TODO()
-		assertNumOfApps(0)
 
-		err := svc.CreateOrUpdate(ctx, app)
-		Expect(err).ToNot(HaveOccurred())
+		// Create
+		err := svc.CreateOrUpdate(ctx, storage.Application{Name: ""})
+		Expect(model.IsValidationError(err)).To(BeTrue())
 
-		apps := assertNumOfApps(1)
-		Expect(apps[0]).To(Equal(app))
+		// Get
+		_, err = svc.Get(ctx, "")
+		Expect(model.IsValidationError(err)).To(BeTrue())
+
+		// Delete
+		err = svc.Delete(ctx, "")
+		Expect(model.IsValidationError(err)).To(BeTrue())
 	})
 
-	It("upserts", func() {
-		assertNumOfApps(0)
+	Context("create/update", func() {
+		It("creates correctly", func() {
+			ctx := context.TODO()
+			assertNumOfApps(0)
 
-		ctx := context.TODO()
-		err := svc.CreateOrUpdate(ctx, app)
-		Expect(err).ToNot(HaveOccurred())
+			err := svc.CreateOrUpdate(ctx, storage.Application{})
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(model.ErrApplicationNameEmpty))
 
-		err = svc.CreateOrUpdate(ctx, app)
-		Expect(err).ToNot(HaveOccurred())
-		assertNumOfApps(1)
-	})
-
-	It("handle partial updates", func() {
-		ctx := context.TODO()
-		err := svc.CreateOrUpdate(ctx, app)
-		Expect(err).ToNot(HaveOccurred())
-
-		err = svc.CreateOrUpdate(ctx, storage.Application{
-			Name:       app.Name,
-			SampleRate: 101,
+			assertNumOfApps(0)
 		})
-		Expect(err).ToNot(HaveOccurred())
+		It("upserts", func() {
+			assertNumOfApps(0)
 
-		a, err := svc.Get(ctx, app.Name)
-		Expect(err).ToNot(HaveOccurred())
+			ctx := context.TODO()
+			err := svc.CreateOrUpdate(ctx, app)
+			Expect(err).ToNot(HaveOccurred())
 
-		// Other fields should not be touched
-		app2 := app
-		app2.SampleRate = 101
-		Expect(a).To(Equal(app2))
+			err = svc.CreateOrUpdate(ctx, app)
+			Expect(err).ToNot(HaveOccurred())
+			assertNumOfApps(1)
+		})
+
+		It("handle partial updates", func() {
+			ctx := context.TODO()
+			err := svc.CreateOrUpdate(ctx, app)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = svc.CreateOrUpdate(ctx, storage.Application{
+				Name:       app.Name,
+				SampleRate: 101,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			a, err := svc.Get(ctx, app.Name)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Other fields should not be touched
+			app2 := app
+			app2.SampleRate = 101
+			Expect(a).To(Equal(app2))
+		})
+
 	})
 
-	It("fetches correctly", func() {
-		ctx := context.TODO()
-		err := svc.CreateOrUpdate(ctx, app)
-		Expect(err).ToNot(HaveOccurred())
+	Context("get", func() {
+		It("fetches correctly", func() {
+			ctx := context.TODO()
+			err := svc.CreateOrUpdate(ctx, app)
+			Expect(err).ToNot(HaveOccurred())
 
-		res, err := svc.Get(ctx, app.Name)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(res).To(Equal(app))
+			res, err := svc.Get(ctx, app.Name)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal(app))
+		})
+		It("fails when app doesn't exist", func() {
+			ctx := context.TODO()
+			_, err := svc.Get(ctx, "non_existing_app")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(model.ErrApplicationNotFound))
+		})
 	})
 
-	It("deletes correctly", func() {
-		ctx := context.TODO()
-		err := svc.CreateOrUpdate(ctx, app)
-		Expect(err).ToNot(HaveOccurred())
-		assertNumOfApps(1)
+	Context("delete", func() {
+		It("deletes correctly", func() {
+			ctx := context.TODO()
+			err := svc.CreateOrUpdate(ctx, app)
+			Expect(err).ToNot(HaveOccurred())
+			assertNumOfApps(1)
 
-		err = svc.Delete(ctx, app.Name)
+			err = svc.Delete(ctx, app.Name)
 
-		Expect(err).ToNot(HaveOccurred())
-		assertNumOfApps(0)
+			Expect(err).ToNot(HaveOccurred())
+			assertNumOfApps(0)
+		})
+
+		It("doesn't fail when app doesn't exist", func() {
+			ctx := context.TODO()
+			err := svc.Delete(ctx, "non_existing_app")
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
-	//	It("fails to get non existent app", func() {
-	//		ctx := context.TODO()
-	//		res, err := svc.Get(ctx, "non_existing_app")
-	//		Expect(err).ToNot(HaveOccurred())
-	//		Expect(res).To(BeNil())
-	//	})
 })
