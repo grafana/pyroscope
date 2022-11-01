@@ -1,7 +1,6 @@
 ---
-name: 'Bug Report'
-about: Create a report to help us improve Phlare. If this doesn’t look right, choose a different [issue
-  type](https://github.com/grafana/phlare/issues/new/choose).
+name: Bug Report
+about: Create a report to help us improve Phlare.
 title: ''
 labels: ''
 assignees: ''
