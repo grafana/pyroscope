@@ -59,7 +59,7 @@ func createMemberlist(t *testing.T, port, memberID int) *memberlist.KV {
 }
 
 func Test_Memberlist(t *testing.T) {
-	stabilityCheckInterval = time.Second
+	stabilityCheckInterval = 100 * time.Millisecond
 
 	objectClient, err := client.NewBucket(context.Background(), client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
