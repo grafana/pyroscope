@@ -5,6 +5,7 @@ import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { selectQueries } from '@webapp/redux/reducers/continuous';
 import {
+  actions,
   fetchExemplarsSingleView,
   fetchSelectionProfile,
 } from '@webapp/redux/reducers/tracing';
@@ -18,6 +19,7 @@ import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { formatTitle } from './formatTitle';
+import heatmapSelectionGif from './heatmapSelection.gif';
 
 import styles from './ExemplarsSingleView.module.scss';
 
@@ -37,6 +39,7 @@ function ExemplarsSingleView() {
           query,
           from,
           until,
+          shouldFetchProfile: exemplarsSingleView.type !== 'pristine',
           ...DEFAULT_HEATMAP_PARAMS,
         })
       );
@@ -71,20 +74,22 @@ function ExemplarsSingleView() {
       case 'loaded':
       case 'reloading': {
         return exemplarsSingleView.profile ? (
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={exemplarsSingleView.profile}
-            colorMode={colorMode}
-            ExportData={
-              <ExportData
-                flamebearer={exemplarsSingleView.profile}
-                exportPNG
-                exportJSON
-                exportPprof
-                exportHTML
-              />
-            }
-          />
+          <Box>
+            <FlamegraphRenderer
+              showCredit={false}
+              profile={exemplarsSingleView.profile}
+              colorMode={colorMode}
+              ExportData={
+                <ExportData
+                  flamebearer={exemplarsSingleView.profile}
+                  exportPNG
+                  exportJSON
+                  exportPprof
+                  exportHTML
+                />
+              }
+            />
+          </Box>
         ) : null;
       }
 
@@ -98,6 +103,10 @@ function ExemplarsSingleView() {
     }
   })();
 
+  const resetProfile = () => {
+    dispatch(actions.resetSingleExemplarsViewProfile());
+  };
+
   const heatmap = (() => {
     switch (exemplarsSingleView.type) {
       case 'loaded':
@@ -108,6 +117,7 @@ function ExemplarsSingleView() {
             onSelection={handleHeatmapSelection}
             timezone={offset === 0 ? 'utc' : 'browser'}
             sampleRate={exemplarsSingleView.profile?.metadata.sampleRate || 100}
+            actionOnSelectionReset={resetProfile}
           />
         ) : (
           <NoData />
@@ -133,7 +143,19 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
-        {exemplarsSingleView.heatmap ? <Box>{flamegraphRenderer}</Box> : null}
+        {!exemplarsSingleView.profile && (
+          <div className={styles.heatmapSelectionGuide}>
+            <p className={styles.title}>
+              Select an area in the heatmap to get started
+            </p>
+            <img
+              className={styles.gif}
+              src={heatmapSelectionGif}
+              alt="heatmap-selection-gif"
+            />
+          </div>
+        )}
+        {exemplarsSingleView.heatmap ? flamegraphRenderer : null}
       </div>
     </div>
   );

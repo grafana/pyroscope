@@ -15,6 +15,7 @@ interface SelectedCoordinates {
   end: SelectedAreaCoordsType | null;
 }
 interface UseHeatmapSelectionProps {
+  actionOnSelectionReset: () => void;
   canvasRef: RefObject<HTMLCanvasElement>;
   resizedSelectedAreaRef: RefObject<HTMLDivElement>;
   heatmapW: number;
@@ -33,6 +34,7 @@ interface UseHeatmapSelection {
 }
 
 export const useHeatmapSelection = ({
+  actionOnSelectionReset,
   canvasRef,
   resizedSelectedAreaRef,
   heatmapW,
@@ -43,6 +45,7 @@ export const useHeatmapSelection = ({
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
 
   const resetSelection = () => {
+    actionOnSelectionReset();
     setSelectedCoordinates(DEFAULT_SELECTED_COORDINATES);
     startCoords = null;
     endCoords = null;

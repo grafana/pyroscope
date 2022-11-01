@@ -35,6 +35,7 @@ describe('Hook: useHeatmapSelection', () => {
           heatmapW: 1234,
           heatmap: heatmapMockData,
           onSelection: () => ({}),
+          actionOnSelectionReset: () => ({}),
         }),
       {
         wrapper: ({ children }) => (

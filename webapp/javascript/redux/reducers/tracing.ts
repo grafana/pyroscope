@@ -100,7 +100,7 @@ export const fetchSingleView = createAsyncThunk<
 
 export const fetchExemplarsSingleView = createAsyncThunk<
   HeatmapOutput,
-  getHeatmapProps,
+  getHeatmapProps & { shouldFetchProfile?: boolean },
   { state: { tracing: TracingState } }
 >('tracing/exemplarsSingleView', async (heatmapProps, thunkAPI) => {
   if (exemplarsSingleViewAbortController) {
@@ -110,14 +110,17 @@ export const fetchExemplarsSingleView = createAsyncThunk<
   exemplarsSingleViewAbortController = new AbortController();
   thunkAPI.signal = exemplarsSingleViewAbortController.signal;
 
+  const { shouldFetchProfile, ...rest } = heatmapProps;
+
   // think of getting params from store
-  const res = await getHeatmap(
-    heatmapProps,
-    exemplarsSingleViewAbortController
-  );
+  const res = await getHeatmap(rest, exemplarsSingleViewAbortController);
 
   if (res.isOk) {
-    return Promise.resolve(res.value);
+    const resValue = shouldFetchProfile
+      ? res.value
+      : { heatmap: res.value.heatmap };
+
+    return Promise.resolve(resValue);
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
@@ -183,6 +186,9 @@ export const tracingSlice = createSlice({
     },
     refresh(state) {
       state.refreshToken = Math.random().toString();
+    },
+    resetSingleExemplarsViewProfile(state) {
+      state.exemplarsSingleView.profile = undefined;
     },
   },
   extraReducers: (builder) => {
