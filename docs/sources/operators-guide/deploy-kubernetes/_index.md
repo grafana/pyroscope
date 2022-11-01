@@ -104,14 +104,12 @@ Use a custom namespace so that you do not have to overwrite the default namespac
 
 ## Query profiles in Grafana
 
-[//TODO]:<> (Upgrade grafana image version to latest dev containing the changes)
-
 1. Install Grafana in the same Kubernetes cluster where you installed Phlare.
 
    ```
    helm upgrade -n phlare-test --install grafana grafana/grafana \
-     --set image.repository=aocenas/grafana \
-     --set image.tag=profiling-ds-2 \
+     --set image.repository=grafana/grafana \
+     --set image.tag=main \
      --set env.GF_FEATURE_TOGGLES_ENABLE=flameGraph \
      --set env.GF_AUTH_ANONYMOUS_ENABLED=true \
      --set env.GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
