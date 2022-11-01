@@ -11,10 +11,13 @@ weight: 10
 
 You can choose from two options to get started with Grafana Phlare:
 
-- The written tutorial provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project. For more information about the different ways to deploy Grafana Phlare, refer to [Grafana Phlare deployment modes]({{< relref "../architecture/deployment-modes/index.md" >}}).
-- The video tutorial uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
+- This **written tutorial** provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project. 
+
+- The **video tutorial** uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
 
   {{< vimeo todo >}}
+
+For more information on the different ways to deploy Phlare, see [Grafana Phlare deployment modes]({{< relref "../architecture/deployment-modes/index.md" >}}).
 
 ## Before you begin
 
