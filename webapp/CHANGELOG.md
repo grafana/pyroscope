@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.53.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.52.0...@pyroscope/webapp@1.53.0) (2022-11-01)
+
+
+### Features
+
+* add sandwich view for table/flamegraph ([#1613](https://github.com/pyroscope-io/pyroscope/issues/1613)) ([870c0b8](https://github.com/pyroscope-io/pyroscope/commit/870c0b8f209b7b669b407f6d3b5214876e671d69))
+
+
+
+
+
 # [1.52.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.10...@pyroscope/webapp@1.52.0) (2022-10-31)
 
 
