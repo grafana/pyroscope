@@ -17,7 +17,7 @@
 | minio | object | `{"buckets":[{"name":"grafana-phlare-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{"phlare.grafana.com/port":"9000","phlare.grafana.com/scrape":"true"},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-phlare"}` | ----------------------------------- |
 | phlare.affinity | object | `{}` |  |
 | phlare.components | object | `{}` |  |
-| phlare.config | string | `"{{- if .Values.minio.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"phlare.fullname\" . }}-minio:9090\"\n    bucket_name: {{(index .Values.minio.buckets 0).name | quote }}\n    access_key_id: {{ .Values.minio.rootUser | quote }}\n    secret_access_key: {{ .Values.minio.rootPassword | quote }}\n{{- end }}\n\nscrape_configs:\n\n  # Example scrape config for pods\n  #\n  # The relabeling allows the actual pod scrape endpoint to be configured via the\n  # following annotations:\n  #\n  # * `phlare.grafana.com/scrape`: Only scrape pods that have a value of `true`\n  # * `phlare.grafana.com/port`: Scrape the pod on the indicated port instead of the default of `8080`.\n  - job_name: 'kubernetes-pods'\n    scrape_interval: \"15s\"\n\n    kubernetes_sd_configs:\n      - role: pod\n\n    relabel_configs:\n      - source_labels: [__meta_kubernetes_pod_annotation_phlare_grafana_com_scrape]\n        action: keep\n        regex: true\n      - source_labels: [__address__, __meta_kubernetes_pod_annotation_phlare_grafana_com_port]\n        action: replace\n        regex: (.+?)(?::\\d+)?;(\\d+)\n        replacement: $1:$2\n        target_label: __address__\n      - action: labelmap\n        regex: __meta_kubernetes_pod_label_(.+)\n      - source_labels: [__meta_kubernetes_namespace]\n        action: replace\n        target_label: namespace\n      - source_labels: [__meta_kubernetes_pod_name]\n        action: replace\n        target_label: pod\n      - source_labels: [__meta_kubernetes_pod_phase]\n        regex: Pending|Succeeded|Failed|Completed\n        action: drop\n"` |  |
+| phlare.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
 | phlare.extraArgs."log.level" | string | `"debug"` |  |
 | phlare.extraEnvVars | object | `{}` |  |
 | phlare.extraLabels | object | `{}` |  |
@@ -48,7 +48,7 @@
 | phlare.serviceAccount.annotations | object | `{}` |  |
 | phlare.serviceAccount.create | bool | `true` |  |
 | phlare.serviceAccount.name | string | `""` |  |
-| phlare.structuredConfig | object | `{}` |  |
+| phlare.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
 | phlare.tolerations | list | `[]` |  |
 
 ----------------------------------------------
