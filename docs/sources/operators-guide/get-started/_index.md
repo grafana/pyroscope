@@ -109,7 +109,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 
 1. Sign in using the default username `admin` and password `admin`.
 
-1. Configure a new Phlare data source to query the local Grafana Phlare server using the following settings:
+1. Use the following settings to configure a Phlare data source to query the local Grafana Phlare server:
 
    | Field | Value                                                                |
    | ----- | -------------------------------------------------------------------- |
