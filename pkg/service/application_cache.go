@@ -2,14 +2,18 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
+type ApplicationWriter interface {
+	CreateOrUpdate(ctx context.Context, application storage.Application) error
+}
+
 type ApplicationCacheService struct {
-	appSvc ApplicationService
+	appSvc ApplicationWriter
 	cache  *cache
 }
 
@@ -18,7 +22,7 @@ type ApplicationCacheServiceConfig struct {
 	TTL  time.Duration
 }
 
-func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc ApplicationService) *ApplicationCacheService {
+func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc ApplicationWriter) *ApplicationCacheService {
 	if config.Size <= 0 {
 		config.Size = 100
 	}
@@ -31,27 +35,46 @@ func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc App
 	return &ApplicationCacheService{appSvc: appSvc, cache: cache}
 }
 
-func (svc ApplicationCacheService) List(ctx context.Context) (apps []storage.Application, err error) {
-	return apps, nil
+// CreateOrUpdate delegates to the underlying service
+// Only when data is different from what's in the cache/is not in the cache
+// Otherwise it does nothing
+func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
+	if _, ok := svc.cache.get(application.Name); ok {
+		fmt.Println("data is in cache")
+		// Is in cache
+		// TODO: Is it different from what's in the cache?
+		// If so
+		// Write to cache
+		// Write to underlying store
+		// Otherwise, don't do anything
+		//return svc.writeToBoth(ctx, application)
+		return nil
+	}
+	fmt.Println("data is not in cache")
+
+	// Not in cache
+	// Could be due to TTL
+	// Or could it be that's a new app
+	return svc.writeToBoth(ctx, application)
 }
 
-func (svc ApplicationCacheService) Get(ctx context.Context, name string) (storage.Application, error) {
-	app := storage.Application{}
-	return app, nil
-}
-
-func (svc ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
-	if err := model.ValidateAppName(application.Name); err != nil {
+func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application storage.Application) error {
+	if err := svc.appSvc.CreateOrUpdate(ctx, application); err != nil {
 		return err
 	}
-
+	fmt.Println("writing to cache")
+	svc.cache.put(application.Name, application)
+	g, ok := svc.cache.get(application.Name)
+	fmt.Println("wrote to cache application", application.Name)
+	fmt.Println("wrote to cache", g)
+	fmt.Println("wrote to cache ok", ok)
 	return nil
 }
 
-func (svc ApplicationCacheService) Delete(ctx context.Context, name string) error {
-	if err := model.ValidateAppName(name); err != nil {
-		return err
-	}
-
-	return nil
-}
+//func (svc ApplicationCacheService) Delete(ctx context.Context, name string) error {
+//	if err := model.ValidateAppName(name); err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
