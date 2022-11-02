@@ -102,6 +102,8 @@ const TIMELINE_SERIES_COLORS = [
   Color.rgb(222, 218, 247),
 ];
 
+const TOP_N_ROWS = 10;
+
 // structured data to display/style table cells
 interface TableValuesData {
   color?: Color;
@@ -246,6 +248,32 @@ function TagExplorerView() {
     return acc;
   }, [] as string[]);
 
+  const sortedGroupsByTotal = [...filteredGroupsData].sort(
+    (a, b) => calculateTotal(b.data.samples) - calculateTotal(a.data.samples)
+  );
+
+  const topNGroups = sortedGroupsByTotal.slice(0, TOP_N_ROWS);
+  const groupsRemainder = sortedGroupsByTotal.slice(
+    TOP_N_ROWS,
+    sortedGroupsByTotal.length
+  );
+
+  const groups =
+    filteredGroupsData.length > TOP_N_ROWS
+      ? [
+          ...topNGroups,
+          {
+            tagName: 'Other',
+            color: Color('#888'),
+            data: {
+              samples: groupsRemainder.reduce((acc: number[], current) => {
+                return acc.concat(current.data.samples);
+              }, []),
+            },
+          } as TimelineGroupData,
+        ]
+      : filteredGroupsData;
+
   return (
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
@@ -271,12 +299,12 @@ function TagExplorerView() {
                 timezone={offset === 0 ? 'utc' : 'browser'}
                 data-testid="timeline-explore-page"
                 id="timeline-chart-explore-page"
-                timelineGroups={filteredGroupsData}
+                timelineGroups={groups}
                 // to not "dim" timelines when "All" option is selected
                 activeGroup={
                   groupByTagValue !== ALL_TAGS ? groupByTagValue : ''
                 }
-                showTagsLegend={filteredGroupsData.length > 1}
+                showTagsLegend={groups.length > 1}
                 handleGroupByTagValueChange={handleGroupByTagValueChange}
                 onSelect={(from, until) =>
                   dispatch(setDateRange({ from, until }))
@@ -301,8 +329,8 @@ function TagExplorerView() {
         >
           <div className={styles.statisticsBox}>
             <div className={styles.pieChartWrapper}>
-              {filteredGroupsData?.length ? (
-                <TotalSamplesChart filteredGroupsData={filteredGroupsData} />
+              {groups?.length ? (
+                <TotalSamplesChart filteredGroupsData={groups} />
               ) : (
                 <LoadingSpinner />
               )}
@@ -312,7 +340,7 @@ function TagExplorerView() {
               whereDropdownItems={whereDropdownItems}
               groupByTag={groupByTag}
               groupByTagValue={groupByTagValue}
-              groupsData={filteredGroupsData}
+              groupsData={groups}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={type === 'loading'}
             />
