@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -39,18 +39,12 @@ func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc App
 // Only when data is different from what's in the cache/is not in the cache
 // Otherwise it does nothing
 func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
-	if _, ok := svc.cache.get(application.Name); ok {
-		fmt.Println("data is in cache")
-		// Is in cache
-		// TODO: Is it different from what's in the cache?
-		// If so
-		// Write to cache
-		// Write to underlying store
-		// Otherwise, don't do anything
-		//return svc.writeToBoth(ctx, application)
+	if cachedApp, ok := svc.cache.get(application.Name); ok {
+		if !svc.isTheSame(application, cachedApp.(storage.Application)) {
+			return svc.writeToBoth(ctx, application)
+		}
 		return nil
 	}
-	fmt.Println("data is not in cache")
 
 	// Not in cache
 	// Could be due to TTL
@@ -62,19 +56,12 @@ func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application
 	if err := svc.appSvc.CreateOrUpdate(ctx, application); err != nil {
 		return err
 	}
-	fmt.Println("writing to cache")
 	svc.cache.put(application.Name, application)
-	g, ok := svc.cache.get(application.Name)
-	fmt.Println("wrote to cache application", application.Name)
-	fmt.Println("wrote to cache", g)
-	fmt.Println("wrote to cache ok", ok)
 	return nil
 }
 
-//func (svc ApplicationCacheService) Delete(ctx context.Context, name string) error {
-//	if err := model.ValidateAppName(name); err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
+func (svc *ApplicationCacheService) isTheSame(app1 storage.Application, app2 storage.Application) bool {
+	// TODO(eh-am): update to a more robust comparison function
+	// See https://pkg.go.dev/reflect#DeepEqual for its drawbacks
+	return reflect.DeepEqual(app1, app2)
+}
