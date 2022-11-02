@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.55.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.54.2...@pyroscope/webapp@1.55.0) (2022-11-02)
+
+
+### Features
+
+* **webapp:** [notifications] support 'warning' status and arbitrary jsx element ([#1656](https://github.com/pyroscope-io/pyroscope/issues/1656)) ([2ec2b07](https://github.com/pyroscope-io/pyroscope/commit/2ec2b073ffaf7699bdba9d1bc29b3fea8ef4b659))
+
+
+
+
+
 ## [1.54.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.54.1...@pyroscope/webapp@1.54.2) (2022-11-02)
 
 **Note:** Version bump only for package @pyroscope/webapp
