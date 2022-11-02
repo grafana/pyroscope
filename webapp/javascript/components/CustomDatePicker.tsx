@@ -71,7 +71,6 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
     <div className="drp-custom">
       <h4>Custom Date Range</h4>
       <div className="from">
-        <label htmlFor="datepicker-from">From: </label>
         <DatePicker
           id="datepicker-from"
           selected={selectFromAsDate}
@@ -83,14 +82,13 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           customInput={
             <TextField
               className={styles.datePickerInput}
-              label="from"
+              label="From:"
               variant="light"
             />
           }
         />
       </div>
       <div className="until">
-        <label htmlFor="datepicker-until">Until: </label>
         <DatePicker
           id="datepicker-until"
           selected={selectUntilAsDate}
@@ -104,7 +102,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           customInput={
             <TextField
               className={styles.datePickerInput}
-              label="until"
+              label="Until:"
               variant="light"
             />
           }
