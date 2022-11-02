@@ -12,8 +12,7 @@ Grafana Phlare is fully integrated with Grafana allowing you to **correlate** wi
   <img alt="Explore UI" src=images/grafana-profiles.gif>
 </p>
 
-[If you want to understand what profiling data looks like, try the profiling experience in play.grafana.com]()
-
+[//TODO]: <> (If you want to understand what profiling data looks like, try the profiling experience in play.grafana.com)
 [//TODO]: <> (link to live demo/play.grafana.com.)
 
 Core features of Grafana Phlare include:
