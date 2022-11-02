@@ -131,7 +131,7 @@ ReduxQuerySync({
       action: continuousActions.setLeftQuery,
     },
     maxNodes: {
-      defaultValue: '1024',
+      defaultValue: '0',
       selector: (state: RootState) => state.continuous.maxNodes,
       action: continuousActions.setMaxNodes,
     },

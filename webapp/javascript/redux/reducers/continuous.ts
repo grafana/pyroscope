@@ -1021,8 +1021,10 @@ export const selectApplicationName = (state: RootState) => {
 
 export const selectAppNamesState = (state: RootState) =>
   state.continuous.appNames;
-export const selectAppNames = (state: RootState) =>
-  state.continuous.appNames.data;
+export const selectAppNames = (state: RootState) => {
+  const sorted = [...state.continuous.appNames.data].sort();
+  return sorted;
+};
 
 export const selectComparisonState = (state: RootState) =>
   state.continuous.comparisonView;

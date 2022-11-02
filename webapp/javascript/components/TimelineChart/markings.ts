@@ -17,7 +17,7 @@ type FlotMarkings = {
 }[];
 
 // Unify these types
-interface Selection {
+export interface Selection {
   from: string;
   to: string;
   color: Color;

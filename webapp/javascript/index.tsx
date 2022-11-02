@@ -80,7 +80,6 @@ function App() {
               </Continuous>
             </Protected>
           </Route>
-
           {isAuthRequired && (
             <Route path={PAGES.SETTINGS}>
               <Protected>

@@ -3,6 +3,64 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.54.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.54.1...@pyroscope/webapp@1.54.2) (2022-11-02)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.54.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.54.0...@pyroscope/webapp@1.54.1) (2022-11-01)
+
+
+### Bug Fixes
+
+* **webapp:** sort appNames alphabetically ([#1655](https://github.com/pyroscope-io/pyroscope/issues/1655)) ([e29d2e2](https://github.com/pyroscope-io/pyroscope/commit/e29d2e29862cf8e21354c194e67f2fd9e376e273))
+
+
+
+
+
+# [1.54.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.53.0...@pyroscope/webapp@1.54.0) (2022-11-01)
+
+
+### Features
+
+* **webapp:** Issue when comparison / diff timelines are out of range ([#1615](https://github.com/pyroscope-io/pyroscope/issues/1615)) ([211ccca](https://github.com/pyroscope-io/pyroscope/commit/211ccca5a03fb78087bdf10b125ad0141b2a5dc9))
+
+
+
+
+
+# [1.53.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.52.0...@pyroscope/webapp@1.53.0) (2022-11-01)
+
+
+### Features
+
+* add sandwich view for table/flamegraph ([#1613](https://github.com/pyroscope-io/pyroscope/issues/1613)) ([870c0b8](https://github.com/pyroscope-io/pyroscope/commit/870c0b8f209b7b669b407f6d3b5214876e671d69))
+
+
+
+
+
+# [1.52.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.10...@pyroscope/webapp@1.52.0) (2022-10-31)
+
+
+### Bug Fixes
+
+* exemplars page shows weird y-axis numbers ([#1644](https://github.com/pyroscope-io/pyroscope/issues/1644)) ([c672ed7](https://github.com/pyroscope-io/pyroscope/commit/c672ed7d4ba601e3b9e45eaf328260f8f4c812ca))
+
+
+### Features
+
+* add a generic Tooltip component ([#1643](https://github.com/pyroscope-io/pyroscope/issues/1643)) ([e04a9a5](https://github.com/pyroscope-io/pyroscope/commit/e04a9a5b8abacbf6c3fad87b1a8aaf2ed1636053))
+* **webapp:** Annotations flot plugin ([#1605](https://github.com/pyroscope-io/pyroscope/issues/1605)) ([fe80686](https://github.com/pyroscope-io/pyroscope/commit/fe80686837953a2f45aa8efc5a7d0a7c0efcc1a8))
+
+
+
+
+
 ## [1.51.10](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.51.9...@pyroscope/webapp@1.51.10) (2022-10-27)
 
 **Note:** Version bump only for package @pyroscope/webapp

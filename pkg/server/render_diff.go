@@ -83,7 +83,7 @@ func (rh *RenderDiffHandler) parseDiffQueryParams(r *http.Request, p *diffParams
 	// Parse the common fields
 	v := r.URL.Query()
 	p.MaxNodes = rh.maxNodesDefault
-	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn > 0 {
+	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn != 0 {
 		p.MaxNodes = mn
 	}
 

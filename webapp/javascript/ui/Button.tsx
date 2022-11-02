@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-common-types';
 import cx from 'classnames';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
-  kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'float';
+  kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'outline' | 'float';
+  // kind?: 'default' | 'primary' | 'secondary' | 'danger' | 'float' | 'outline';
   /** Whether the button is disabled or not */
   disabled?: boolean;
   icon?: IconDefinition;
+  iconNode?: ReactNode;
 
   children?: React.ReactNode;
 
@@ -42,6 +44,7 @@ const Button = React.forwardRef(function Button(
     kind = 'default',
     type = 'button',
     icon,
+    iconNode,
     children,
     grouped,
     onClick,
@@ -74,7 +77,8 @@ const Button = React.forwardRef(function Button(
         getKindStyles(kind),
         className,
         noBox && styles.noBox,
-        !icon && styles.noIcon
+        iconNode && styles.customIcon,
+        !icon && !iconNode && styles.noIcon
       )}
     >
       {icon ? (
@@ -83,6 +87,7 @@ const Button = React.forwardRef(function Button(
           className={children ? styles.iconWithText : ''}
         />
       ) : null}
+      {iconNode}
       {children}
     </button>
   );
@@ -104,6 +109,10 @@ function getKindStyles(kind: ButtonProps['kind']) {
 
     case 'danger': {
       return styles.danger;
+    }
+
+    case 'outline': {
+      return styles.outline;
     }
 
     case 'float': {
