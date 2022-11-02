@@ -373,26 +373,18 @@ function Table({
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
 
-  const numTicks = activeTagProfile?.flamebearer?.numTicks;
-  const sampleRate = activeTagProfile?.metadata?.sampleRate;
-  const units = activeTagProfile?.metadata?.units;
+  const formatter =
+    activeTagProfile &&
+    getFormatter(
+      activeTagProfile.flamebearer.numTicks,
+      activeTagProfile.metadata.sampleRate,
+      activeTagProfile.metadata.units
+    );
 
-  const formatter = useMemo(
-    () =>
-      numTicks &&
-      typeof sampleRate === 'number' &&
-      units &&
-      getFormatter(numTicks, sampleRate, units),
-    [numTicks, sampleRate, units]
-  );
-
-  const formatValue = (v: number) => {
-    if (formatter && typeof sampleRate === 'number') {
-      return `${formatter.format(v, sampleRate)}`;
-    }
-
-    return 0;
-  };
+  const formatValue = (v: number) =>
+    formatter && activeTagProfile
+      ? `${formatter.format(v, activeTagProfile.metadata.sampleRate)}`
+      : 0;
 
   const handleTableRowClick = (value: string) => {
     if (value !== groupByTagValue) {
