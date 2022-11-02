@@ -35,7 +35,7 @@ Core features of Grafana Phlare include:
 
 ## Deploying Grafana Phlare
 
-For information about how to deploy Grafana Phlare, refer to [Deploy Grafana Phlare](https://grafana.com/docs/phlare/latest/operators-guide/deploying-grafana-phlare/).
+For information about how to deploy Grafana Phlare, refer to [Deploy Grafana Phlare](https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/).
 
 ## Getting started
 
