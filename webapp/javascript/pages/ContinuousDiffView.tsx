@@ -22,6 +22,7 @@ import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import ExportData from '@webapp/components/ExportData';
@@ -142,6 +143,14 @@ function ComparisonDiffApp() {
               title={
                 <TimelineTitle titleKey={diffView.profile?.metadata.units} />
               }
+            />
+            <SyncTimelines
+              timeline={leftTimeline}
+              leftSelection={{ from: leftFrom, to: leftUntil }}
+              rightSelection={{ from: rightFrom, to: rightUntil }}
+              onSync={(from, until) => {
+                dispatch(actions.setFromAndUntil({ from, until }));
+              }}
             />
           </LoadingOverlay>
         </Box>

@@ -1,0 +1,14 @@
+.buttons {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+}
+
+.syncButton {
+  margin-left: 0.5em;
+  font-weight: normal;
+}
+
+.ignoreButton {
+  @extend .syncButton;
+}

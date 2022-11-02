@@ -110,11 +110,14 @@ func (h ExemplarsHandler) queryExemplarsParamsFromRequest(r *http.Request, p *qu
 	}
 
 	p.maxNodes = h.MaxNodesDefault
+	if newMaxNodes, ok := MaxNodesFromContext(r.Context()); ok {
+		p.maxNodes = newMaxNodes
+	}
 	var x int
-	if x, err = strconv.Atoi(v.Get("max-nodes")); err == nil && x > 0 {
+	if x, err = strconv.Atoi(v.Get("max-nodes")); err == nil && x != 0 {
 		p.maxNodes = x
 	}
-	if x, err = strconv.Atoi(v.Get("maxNodes")); err == nil && x > 0 {
+	if x, err = strconv.Atoi(v.Get("maxNodes")); err == nil && x != 0 {
 		p.maxNodes = x
 	}
 

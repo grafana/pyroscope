@@ -18,9 +18,11 @@ import ContextMenuHighlight from './ContextMenuHighlight';
 import FlamegraphTooltip from '../../Tooltip/FlamegraphTooltip';
 import ContextMenu from './ContextMenu';
 import LogoLink from './LogoLink';
+import SandwichIcon from '../../SandwichIcon';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
+import type { ViewTypes } from './viewTypes';
 import indexStyles from './styles.module.scss';
 
 interface FlamegraphProps {
@@ -35,16 +37,18 @@ interface FlamegraphProps {
   onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
   setActiveItem: (item: { name: string }) => void;
+  updateView?: (v: ViewTypes) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
-
-  ExportData?: React.ComponentProps<typeof Header>['ExportData'];
 
   ['data-testid']?: string;
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
   toolbarVisible?: boolean;
+  headerVisible?: boolean;
+  disableClick?: boolean;
+  showSingleLevel?: boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -62,13 +66,16 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     highlightQuery,
     zoom,
     toolbarVisible,
+    headerVisible = true,
+    disableClick = false,
+    showSingleLevel = false,
     showCredit,
     setActiveItem,
     selectedItem,
+    updateView,
   } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
-  const { ExportData } = props;
   const { 'data-testid': dataTestId } = props;
   const { palette, setPalette } = props;
 
@@ -211,6 +218,26 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         );
       };
 
+      const OpenInSandwichViewItem = () => {
+        const handleClick = () => {
+          if (updateView) {
+            updateView('sandwich');
+            setActiveItem({ name: barName });
+          }
+        };
+
+        return (
+          <MenuItem
+            key="highlight-similar-nodes"
+            className={indexStyles.sandwichItem}
+            onClick={handleClick}
+          >
+            <SandwichIcon />
+            Open in sandwich view
+          </MenuItem>
+        );
+      };
+
       return [
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
           <FontAwesomeIcon icon={faRedo} />
@@ -219,6 +246,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         CollapseItem(),
         CopyItem(),
         HighlightSimilarNodesItem(),
+        OpenInSandwichViewItem(),
       ];
     },
     [flamegraph, selectedItem]
@@ -287,18 +315,19 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         'vertical-orientation': flamebearer.format === 'double',
       })}
     >
-      <Header
-        format={flamebearer.format}
-        units={flamebearer.units}
-        ExportData={ExportData}
-        palette={palette}
-        setPalette={setPalette}
-        toolbarVisible={toolbarVisible}
-      />
+      {headerVisible && (
+        <Header
+          format={flamebearer.format}
+          units={flamebearer.units}
+          palette={palette}
+          setPalette={setPalette}
+          toolbarVisible={toolbarVisible}
+        />
+      )}
       <div
         data-testid={dataTestId}
         style={{
-          opacity: dataUnavailable ? 0 : 1,
+          opacity: dataUnavailable && !showSingleLevel ? 0 : 1,
         }}
       >
         <canvas
@@ -307,7 +336,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           data-highlightquery={highlightQuery}
           className={clsx('flamegraph-canvas', styles.canvas)}
           ref={canvasRef}
-          onClick={onClick}
+          onClick={!disableClick ? onClick : undefined}
         />
       </div>
       {showCredit ? <LogoLink /> : ''}
@@ -343,7 +372,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
       )}
 
-      {flamegraph && canvasRef && (
+      {!disableClick && flamegraph && canvasRef && (
         <ContextMenu
           canvasRef={canvasRef}
           xyToMenuItems={xyToContextMenuItems}

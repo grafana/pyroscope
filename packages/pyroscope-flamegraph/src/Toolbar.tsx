@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -21,6 +21,7 @@ import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
+// import SandwichIcon from './SandwichIcon';
 
 import styles from './Toolbar.module.css';
 
@@ -68,6 +69,7 @@ export interface ProfileHeaderProps {
   viewDiff: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
   highlightQuery: string;
+  ExportData?: ReactNode;
 
   /** Whether the flamegraph is different from its original state */
   isFlamegraphDirty: boolean;
@@ -103,6 +105,7 @@ const Toolbar = React.memo(
     flamegraphType,
     disableChangingDisplay = false,
     sharedQuery,
+    ExportData = <></>,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -146,6 +149,7 @@ const Toolbar = React.memo(
               updateView={updateView}
             />
           )}
+          {ExportData}
         </div>
       </div>
     );
@@ -400,6 +404,8 @@ function ViewSection({
       <option value="table">Table</option>
       <option value="both">Both</option>
       <option value="flamegraph">Flame</option>
+      {/* TODO(dogfrogfog): uncomment when new toolbar is ready */}
+      {/* <option value="sandwich">Sandwich</option> */}
     </Select>
   );
 
@@ -436,6 +442,15 @@ function ViewSection({
       >
         Flamegraph
       </Button>
+      {/* TODO(dogfrogfog): uncomment when new toolbar is ready */}
+      {/* <Button
+        grouped
+        kind={kindByState('sandwich')}
+        iconNode={<SandwichIcon />}
+        onClick={() => updateView('sandwich')}
+      >
+        Sandwich
+      </Button> */}
     </>
   );
 

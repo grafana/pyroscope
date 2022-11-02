@@ -10,22 +10,10 @@ interface HeaderProps {
 
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
-  //  ExportData: React.ReactElement | JSX.Element | JSX.Element[] | null;
-  //  ExportData: JSX.Element | null;
-  //  ExportData: React.ElementType | null;
-  //  ExportData?: JSX.Element;
-  ExportData?: React.ReactNode;
   toolbarVisible?: boolean;
 }
 export default function Header(props: HeaderProps) {
-  const {
-    format,
-    units,
-    ExportData = <></>,
-    palette,
-    setPalette,
-    toolbarVisible,
-  } = props;
+  const { format, units, palette, setPalette, toolbarVisible } = props;
 
   const unitsToFlamegraphTitle = {
     objects: 'number of objects in RAM per function',
@@ -77,7 +65,6 @@ export default function Header(props: HeaderProps) {
   return (
     <div className={styles.flamegraphHeader}>
       <div>{title}</div>
-      {ExportData ? <div className={styles.buttons}>{ExportData}</div> : <></>}
     </div>
   );
 }
