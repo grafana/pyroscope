@@ -9,7 +9,7 @@ weight: 10
 
 # Get started with Grafana Phlare
 
-You can choose from two options to get started with Grafana Phlare:
+Choose one of the following options to get started with Grafana Phlare:
 
 - The **written tutorial** below provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project. 
 
