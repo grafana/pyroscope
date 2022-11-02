@@ -32,7 +32,7 @@ jobs:
       id: "publish-next"
       with:
         repository: "grafana/website"
-        branch: "phlare-docs" # change to master after launch
+        branch: "master"
         host: "github.com"
         github_pat: "${{ secrets.GH_BOT_ACCESS_TOKEN }}"
         source_folder: "docs/sources"
