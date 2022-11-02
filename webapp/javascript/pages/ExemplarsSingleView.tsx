@@ -15,6 +15,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import StatusMessage from '@webapp/ui/StatusMessage';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { formatTitle } from './formatTitle';
@@ -147,6 +148,10 @@ function ExemplarsSingleView() {
                 className={styles.gif}
                 src={heatmapSelectionGif}
                 alt="heatmap-selection-gif"
+              />
+              <StatusMessage
+                type="info"
+                message="Select an area in the heatmap to get started"
               />
             </div>
           </Box>
