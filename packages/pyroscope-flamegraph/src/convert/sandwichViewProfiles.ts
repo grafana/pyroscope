@@ -51,10 +51,7 @@ export const treeToFlamebearer = (tree: TreeNode): FlamebearerData => {
   return flamebearerData;
 };
 
-const arrayToTree = (
-  nodesArray: TreeNode[],
-  total: number
-): TreeNode => {
+const arrayToTree = (nodesArray: TreeNode[], total: number): TreeNode => {
   const result = {};
   let nestedObj = result;
 
@@ -75,10 +72,12 @@ function dedupTree(node) {
   for (let i = 0; i < node.children.length; i += 1) {
     const currentNode = node.children[i];
     const existingNode = childrenMap[node.children[i].name];
-    if(existingNode !== currentNode) {
+    if (existingNode !== currentNode) {
       existingNode.total[0] += currentNode.total[0];
       existingNode.self[0] += currentNode.self[0];
-      existingNode.children = existingNode.children.concat(currentNode.children);
+      existingNode.children = existingNode.children.concat(
+        currentNode.children
+      );
     }
   }
   node.children = Object.values(childrenMap);
@@ -169,9 +168,7 @@ export function callersFlamebearer(
   processTree(tree);
 
   subtrees.forEach((v, i) => {
-    totalNode.children.push(
-      arrayToTree(v.reverse(), targetFunctionTotals[i])
-    );
+    totalNode.children.push(arrayToTree(v.reverse(), targetFunctionTotals[i]));
   });
 
   dedupTree(totalNode);
@@ -179,7 +176,7 @@ export function callersFlamebearer(
   const flamebearer = treeToFlamebearer(totalNode);
   flamebearer.levels = flamebearer.levels.reverse().slice(0, -1);
 
-  return { ...result, ...flamebearer};
+  return { ...result, ...flamebearer };
 }
 
 export function calleesProfile(f: Flamebearer, nodeName: string): Flamebearer {
