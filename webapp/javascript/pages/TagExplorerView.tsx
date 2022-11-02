@@ -410,7 +410,7 @@ function Table({
     // when groupByTag is not selected table represents single "application without tags" group
     {
       name: 'name',
-      label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
+      label: groupByTag === '' ? 'Application' : 'Tag name',
       sortable: 1,
     },
     { name: 'avgSamples', label: 'Average', sortable: 1 },
