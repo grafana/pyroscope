@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import cx from 'classnames';
 import styles from './StatusMessage.module.scss';
 
 interface StatusMessageProps {
-  type: 'error' | 'success' | 'warning';
+  type: 'error' | 'success' | 'warning' | 'info';
   message: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
 }
 
 export default function StatusMessage({
@@ -21,12 +21,14 @@ export default function StatusMessage({
         return styles.success;
       case 'warning':
         return styles.warning;
+      case 'info':
+        return styles.info;
       default:
         return styles.error;
     }
   };
 
-  return message ? (
+  return (
     <div
       className={cx({
         [styles.statusMessage]: true,
@@ -36,5 +38,5 @@ export default function StatusMessage({
       <div>{message}</div>
       <div className={styles.action}>{action}</div>
     </div>
-  ) : null;
+  );
 }
