@@ -18,7 +18,9 @@ export function buildRenderURL(
   params.set('from', fromOverride || state.from);
   params.set('until', untilOverride || state.until);
   state.refreshToken && params.set('refreshToken', state.refreshToken);
-  state.maxNodes && state.maxNodes !== '0' && params.set('max-nodes', String(state.maxNodes));
+  if (state.maxNodes && state.maxNodes !== '0') {
+    params.set('max-nodes', String(state.maxNodes));
+  }
   state.groupBy && params.set('groupBy', state.groupBy);
   state.groupByValue && params.set('groupByValue', state.groupByValue);
 
@@ -33,7 +35,9 @@ export function buildMergeURLWithQueryID(state: {
   const params = new URLSearchParams();
   params.set('queryID', state.queryID);
   state.refreshToken && params.set('refreshToken', state.refreshToken);
-  state.maxNodes && state.maxNodes !== '0' && params.set('max-nodes', String(state.maxNodes));
+  if (state.maxNodes && state.maxNodes !== '0') {
+    params.set('max-nodes', String(state.maxNodes));
+  }
 
   return `/merge?${params}`;
 }
