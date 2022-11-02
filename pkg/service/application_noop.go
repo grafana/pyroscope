@@ -8,18 +8,18 @@ import (
 
 type NoopApplicationService struct{}
 
-func (NoopApplicationService) CreateOrUpdate(_ context.Context, _ storage.Application) error {
+func (NoopApplicationService) CreateOrUpdate(context.Context, storage.Application) error {
 	return nil
 }
 
-func (NoopApplicationService) List(_ context.Context, _ storage.Application) (apps []storage.Application, err error) {
+func (NoopApplicationService) List(context.Context, storage.Application) (apps []storage.Application, err error) {
 	return apps, err
 }
 
-func (NoopApplicationService) Get(ctx context.Context, name string) (app storage.Application, err error) {
+func (NoopApplicationService) Get(context.Context, string) (app storage.Application, err error) {
 	return app, err
 }
 
-func (NoopApplicationService) Delete(ctx context.Context, name string) error {
+func (NoopApplicationService) Delete(context.Context, string) error {
 	return nil
 }

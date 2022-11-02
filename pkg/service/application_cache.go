@@ -35,8 +35,9 @@ func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc App
 	return &ApplicationCacheService{appSvc: appSvc, cache: cache}
 }
 
-// CreateOrUpdate delegates to the underlying service
-// Only when data is different from what's in the cache/is not in the cache
+// CreateOrUpdate delegates to the underlying service in the following cases:
+// * item is not in the cache
+// * data is different from what's in the cache
 // Otherwise it does nothing
 func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
 	if cachedApp, ok := svc.cache.get(application.Name); ok {
@@ -52,6 +53,7 @@ func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, applicat
 	return svc.writeToBoth(ctx, application)
 }
 
+// writeToBoth writes to both the cache and the underlying service
 func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application storage.Application) error {
 	if err := svc.appSvc.CreateOrUpdate(ctx, application); err != nil {
 		return err
@@ -60,8 +62,9 @@ func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application
 	return nil
 }
 
-func (svc *ApplicationCacheService) isTheSame(app1 storage.Application, app2 storage.Application) bool {
-	// TODO(eh-am): update to a more robust comparison function
-	// See https://pkg.go.dev/reflect#DeepEqual for its drawbacks
+// isTheSame check if 2 applications have the same data
+// TODO(eh-am): update to a more robust comparison function
+// See https://pkg.go.dev/reflect#DeepEqual for its drawbacks
+func (*ApplicationCacheService) isTheSame(app1 storage.Application, app2 storage.Application) bool {
 	return reflect.DeepEqual(app1, app2)
 }
