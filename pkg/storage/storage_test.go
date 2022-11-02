@@ -302,7 +302,7 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -312,7 +312,7 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -324,7 +324,7 @@ var _ = Describe("persistence", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 		Context("persist data between restarts", func() {
@@ -361,7 +361,7 @@ var _ = Describe("persistence", func() {
 				Expect(o.Tree.String()).To(Equal(tree.String()))
 				Expect(s.Close()).ToNot(HaveOccurred())
 
-				s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+				s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 				Expect(err).ToNot(HaveOccurred())
 
 				o2, err := s2.Get(context.TODO(), &GetInput{
@@ -543,7 +543,7 @@ var _ = Describe("querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 			setup()
 		})
@@ -554,7 +554,7 @@ var _ = Describe("querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 			setup()
 		})
@@ -623,7 +623,7 @@ var _ = Describe("CollectGarbage", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -633,7 +633,7 @@ var _ = Describe("CollectGarbage", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -644,7 +644,7 @@ var _ = Describe("Getters", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 

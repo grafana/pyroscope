@@ -11,7 +11,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/adhoc/writer"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
-	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -101,7 +100,7 @@ func Cli(cfg *config.Adhoc, args []string) error {
 		return fmt.Errorf("invalid output format '%s', the only supported output formats are 'html', 'pprof' and 'collapsed'", cfg.OutputFormat)
 	}
 
-	st, err := storage.New(newStorageConfig(cfg), logger, prometheus.DefaultRegisterer, new(health.Controller), service.NoopApplicationService{})
+	st, err := storage.New(newStorageConfig(cfg), logger, prometheus.DefaultRegisterer, new(health.Controller), storage.NoopApplicationService{})
 	if err != nil {
 		return fmt.Errorf("could not initialize storage: %w", err)
 	}

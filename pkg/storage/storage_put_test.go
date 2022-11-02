@@ -3,22 +3,21 @@
 
 package storage
 
-import "time"
-
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
-
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 	"github.com/pyroscope-io/pyroscope/pkg/testing/load"
+	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("storage package", func() {
@@ -26,7 +25,7 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 

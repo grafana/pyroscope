@@ -97,7 +97,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 
-	var metadataSaver storage.ApplicationMetadataSaver = service.NoopApplicationService{}
+	var metadataSaver storage.ApplicationMetadataSaver = storage.NoopApplicationService{}
 	if svc.config.EnableExperimentalAppMetadata {
 		metadataSaver = service.NewApplicationService(svc.database.DB())
 		metadataSaver = service.NewApplicationCacheService(service.ApplicationCacheServiceConfig{}, metadataSaver)

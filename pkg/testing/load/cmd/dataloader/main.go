@@ -49,7 +49,7 @@ func openStorage(path string) (*storage.Storage, error) {
 		CacheEvictThreshold:   0.02,
 		CacheEvictVolume:      0.10,
 		MaxNodesSerialization: 2048,
-	}), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+	}), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), storage.NoopApplicationService{})
 }
 
 func main() {

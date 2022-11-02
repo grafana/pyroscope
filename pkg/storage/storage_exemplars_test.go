@@ -51,7 +51,7 @@ var _ = Describe("Exemplars retrieval", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 
 			put(s, map[string]string{
@@ -168,7 +168,7 @@ var _ = Describe("Exemplars retention policy", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 		Context("when time-based retention policy is defined", func() {
@@ -226,7 +226,7 @@ var _ = Describe("Concurrent exemplars insertion", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), NoopApplicationService{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 		Context("when exemplars ingested concurrently", func() {
