@@ -292,12 +292,12 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
           >
             Flame
           </option>
+          <option
+            value="sandwich"
+          >
+            Sandwich
+          </option>
         </select>
-        <option
-          value="sandwich"
-        >
-          Sandwich
-        </option>
       </div>
     </div>
   </div>
