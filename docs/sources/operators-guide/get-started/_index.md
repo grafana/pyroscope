@@ -15,7 +15,7 @@ Choose one of the following options to get started with Grafana Phlare:
 
 - The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
 
-  {{< vimeo todo >}}
+  {{< vimeo 766316030 >}}
 
 For more information on the different ways to deploy Phlare, see [Grafana Phlare deployment modes]({{< relref "../architecture/deployment-modes/index.md" >}}).
 
@@ -116,7 +116,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
    | Name  | Phlare                                                               |
    | URL   | [http://phlare:4100/](http://phlare:4100/) |
 
-  To learn more about adding data sources, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
+  To learn more about adding data sources, see [Add a data source](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/).
 
 When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](https://grafana.com/docs/grafana/latest/explore/)
-and create dashboard panels using the newly configured Grafana Phlare data source. For more information on working with dashboards with Grafana, see [Panels and visualizations](/docs/grafana/latest/panels-visualizations/) in the Grafana documentation.
+and create dashboard panels using the newly configured Grafana Phlare data source. For more information on working with dashboards with Grafana, see [Panels and visualizations](https://grafana.com/docs/grafana/latest/panels-visualizations/) in the Grafana documentation.
