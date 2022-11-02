@@ -13,6 +13,7 @@ import {
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
@@ -128,6 +129,14 @@ function ComparisonApp() {
                 />
               }
               selectionType="double"
+            />
+            <SyncTimelines
+              timeline={leftTimeline}
+              leftSelection={{ from: leftFrom, to: leftUntil }}
+              rightSelection={{ from: rightFrom, to: rightUntil }}
+              onSync={(from, until) => {
+                dispatch(actions.setFromAndUntil({ from, until }));
+              }}
             />
           </LoadingOverlay>
         </Box>

@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import OutsideClickHandler from 'react-outside-click-handler';
 
 import Button from '@webapp/ui/Button';
-import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
+import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
 import { buildRenderURL } from '@webapp/util/updateRequests';
 import { convertPresetsToDate } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models/src';
@@ -286,7 +286,7 @@ function ExportData(props: ExportDataProps) {
   return (
     <div className={styles.dropdownContainer}>
       <OutsideClickHandler onOutsideClick={() => setToggleMenu(false)}>
-        <Button icon={faBars} onClick={handleToggleMenu} />
+        <Button icon={faShareSquare} onClick={handleToggleMenu} />
         <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
           {exportPNG && (
             <button
