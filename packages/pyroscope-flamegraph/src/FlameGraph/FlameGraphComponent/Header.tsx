@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flamebearer, unitsDescription } from '@pyroscope/models/src';
+import { Flamebearer } from '@pyroscope/models/src';
 import styles from './Header.module.css';
 import { FlamegraphPalette } from './colorPalette';
 import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
@@ -27,6 +27,17 @@ export default function Header(props: HeaderProps) {
     toolbarVisible,
   } = props;
 
+  const unitsToFlamegraphTitle = {
+    objects: 'number of objects in RAM per function',
+    goroutines: 'number of goroutines',
+    bytes: 'amount of RAM per function',
+    samples: 'CPU time per function',
+    lock_nanoseconds: 'time spent waiting on locks per function',
+    lock_samples: 'number of contended locks per function',
+    trace_samples: 'aggregated span duration',
+    '': '',
+  };
+
   const getTitle = () => {
     switch (format) {
       case 'single': {
@@ -37,8 +48,8 @@ export default function Header(props: HeaderProps) {
               role="heading"
               aria-level={2}
             >
-              {unitsDescription[units] && (
-                <>Frame width represents {unitsDescription[units]}</>
+              {unitsToFlamegraphTitle[units] && (
+                <>Frame width represents {unitsToFlamegraphTitle[units]}</>
               )}
             </div>
           </div>

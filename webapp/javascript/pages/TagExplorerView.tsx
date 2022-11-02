@@ -4,8 +4,7 @@ import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@szhsin/react-menu';
 import Color from 'color';
 import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
-import type { Profile, Units } from '@pyroscope/models/src';
-import { unitsDescription } from '@pyroscope/models/src';
+import type { Profile } from '@pyroscope/models/src';
 import Box, { CollapseBox } from '@webapp/ui/Box';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
@@ -39,6 +38,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './TagExplorerView.module.scss';
@@ -316,7 +316,7 @@ function TagExplorerView() {
               groupsData={filteredGroupsData}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={type === 'loading'}
-              units={activeTagProfile?.metadata?.units}
+              activeTagProfile={activeTagProfile}
             />
           </div>
         </CollapseBox>
@@ -359,7 +359,7 @@ function Table({
   groupsData,
   isLoading,
   handleGroupByTagValueChange,
-  units = '',
+  activeTagProfile,
 }: {
   appName: string;
   whereDropdownItems: string[];
@@ -368,10 +368,31 @@ function Table({
   groupsData: TimelineGroupData[];
   isLoading: boolean;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
-  units?: Units;
+  activeTagProfile?: Profile;
 }) {
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
+
+  const numTicks = activeTagProfile?.flamebearer?.numTicks;
+  const sampleRate = activeTagProfile?.metadata?.sampleRate;
+  const units = activeTagProfile?.metadata?.units;
+
+  const formatter = useMemo(
+    () =>
+      numTicks &&
+      typeof sampleRate === 'number' &&
+      units &&
+      getFormatter(numTicks, sampleRate, units),
+    [numTicks, sampleRate, units]
+  );
+
+  const formatValue = (v: number) => {
+    if (formatter && typeof sampleRate === 'number') {
+      return `${formatter.format(v, sampleRate)}`;
+    }
+
+    return 0;
+  };
 
   const handleTableRowClick = (value: string) => {
     if (value !== groupByTagValue) {
@@ -393,8 +414,6 @@ function Table({
     return `?${searchParams.toString()}`;
   };
 
-  const captionByUnits = unitsDescription[units];
-
   const headRow = [
     // when groupByTag is not selected table represents single "application without tags" group
     {
@@ -402,17 +421,9 @@ function Table({
       label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
       sortable: 1,
     },
-    {
-      name: 'avgSamples',
-      label: `avg ${captionByUnits}`,
-      sortable: 1,
-    },
-    {
-      name: 'stdDeviation',
-      label: `std deviation ${captionByUnits}`,
-      sortable: 1,
-    },
-    { name: 'totalSamples', label: `total ${captionByUnits}`, sortable: 1 },
+    { name: 'avgSamples', label: 'Average', sortable: 1 },
+    { name: 'stdDeviation', label: 'Standard Deviation', sortable: 1 },
+    { name: 'totalSamples', label: 'Total', sortable: 1 },
   ];
 
   const groupsTotal = useMemo(
@@ -480,9 +491,9 @@ function Table({
               </div>
             ),
           },
-          { value: mean.toFixed(2) },
-          { value: stdDeviation.toFixed(2) },
-          { value: total },
+          { value: formatValue(mean) },
+          { value: formatValue(stdDeviation) },
+          { value: formatValue(total) },
         ],
       };
       acc.push(row);
