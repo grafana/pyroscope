@@ -138,16 +138,18 @@ function ExemplarsSingleView() {
           {heatmap}
         </Box>
         {!exemplarsSingleView.profile && (
-          <div className={styles.heatmapSelectionGuide}>
-            <p className={styles.title}>
-              Select an area in the heatmap to get started
-            </p>
-            <img
-              className={styles.gif}
-              src={heatmapSelectionGif}
-              alt="heatmap-selection-gif"
-            />
-          </div>
+          <Box>
+            <div className={styles.heatmapSelectionGuide}>
+              <p className={styles.title}>
+                Select an area in the heatmap to get started
+              </p>
+              <img
+                className={styles.gif}
+                src={heatmapSelectionGif}
+                alt="heatmap-selection-gif"
+              />
+            </div>
+          </Box>
         )}
         {exemplarsSingleView.heatmap ? flamegraphRenderer : null}
       </div>
