@@ -5,13 +5,7 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
-import React, {
-  Dispatch,
-  SetStateAction,
-  ReactNode,
-  Component,
-  ComponentProps,
-} from 'react';
+import React, { Dispatch, SetStateAction, ReactNode, Component } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
