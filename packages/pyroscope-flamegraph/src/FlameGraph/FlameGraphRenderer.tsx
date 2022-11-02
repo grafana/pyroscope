@@ -5,13 +5,7 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
-import React, {
-  Dispatch,
-  SetStateAction,
-  ReactNode,
-  Component,
-  ComponentProps,
-} from 'react';
+import React, { Dispatch, SetStateAction, ReactNode, Component } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
@@ -20,11 +14,11 @@ import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
+import Toolbar, { ProfileHeaderProps } from '../Toolbar';
 import {
   calleesProfile,
   callersProfile,
 } from '../convert/sandwichViewProfiles';
-import Toolbar from '../Toolbar';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
@@ -88,7 +82,7 @@ export interface FlamegraphRendererProps {
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
   showCredit?: boolean;
-  ExportData?: ComponentProps<typeof Graph>['ExportData'];
+  ExportData?: ProfileHeaderProps['ExportData'];
   colorMode?: 'light' | 'dark';
 
   /** @deprecated  prefer Profile */
@@ -427,7 +421,6 @@ class FlameGraphRenderer extends Component<
         // data-testid={flamegraphDataTestId}
         showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
-        ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
         setActiveItem={this.setActiveItem}
         selectedItem={this.state.selectedItem}
@@ -554,6 +547,7 @@ class FlameGraphRenderer extends Component<
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
+              ExportData={this.props.ExportData}
             />
           )}
           {this.props.children}
