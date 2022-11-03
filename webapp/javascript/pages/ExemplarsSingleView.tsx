@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -22,6 +23,7 @@ import { formatTitle } from './formatTitle';
 import styles from './ExemplarsSingleView.module.scss';
 
 function ExemplarsSingleView() {
+  const [tabIndex, setTabIndex] = useState(0);
   const { colorMode } = useColorMode();
   const { offset } = useTimeZone();
 
@@ -133,7 +135,31 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
-        {exemplarsSingleView.heatmap ? <Box>{flamegraphRenderer}</Box> : null}
+        {exemplarsSingleView.heatmap ? (
+          <Box>
+            <Tabs
+              selectedIndex={tabIndex}
+              onSelect={(index) => setTabIndex(index)}
+            >
+              <TabList>
+                <Tab>Single</Tab>
+                <Tab>Comparison</Tab>
+                <Tab>Diff</Tab>
+              </TabList>
+              <TabPanel>
+                <Box>{flamegraphRenderer}</Box>
+              </TabPanel>
+              <TabPanel>
+                <Box>
+                  <h1>Comparison tab content</h1>
+                </Box>
+              </TabPanel>
+              <TabPanel>
+                <h1>Diff tab content</h1>
+              </TabPanel>
+            </Tabs>
+          </Box>
+        ) : null}
       </div>
     </div>
   );
