@@ -200,7 +200,9 @@ jobs:
         uses: cypress-io/github-action@v2
         with:
           wait-on: http://localhost:8080/pyroscope
-          start: make server SERVERPARAMS=--config=scripts/oauth-mock/pyroscope-config-base-url.yml
+          start: |
+            node ./scripts/oauth-mock/oauth-mock.js
+            make server SERVERPARAMS=--config=scripts/oauth-mock/pyroscope-config-base-url.yml
           config-file: cypress/integration/auth/cypress.json
         env:
           PYROSCOPE_BASE_URL: 'http://localhost:8080/pyroscope'
