@@ -65,6 +65,10 @@ spec:
               value: {{ $value | quote }}
            {{- end }}
           {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: {{ $values.service.port_name }}
               containerPort: {{ $values.service.port }}
