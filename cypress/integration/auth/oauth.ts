@@ -31,15 +31,4 @@ describe('oauth with mock enabled', () => {
     cy.get('li.pro-menu-item').contains('Sign out').click({ force: true });
     cy.url().should('contain', '/login');
   });
-
-  it('should correctly display forbidden page', () => {
-    cy.visit('/login');
-
-    cy.get('#gitlab-link').should('be.visible');
-
-    cy.get('#gitlab-link').click();
-    cy.url().should('contain', '/forbidden');
-    cy.visit('/logout');
-    cy.url().should('contain', '/login');
-  });
 });
