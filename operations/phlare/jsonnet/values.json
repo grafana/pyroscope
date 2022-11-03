@@ -33,6 +33,7 @@
     "extraArgs": {
       "log.level": "debug"
     },
+    "extraEnvFrom": [],
     "extraEnvVars": {},
     "extraLabels": {},
     "extraVolumeMounts": [],
