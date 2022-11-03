@@ -169,8 +169,8 @@ Modify the Helm deployment by running:
 
 ## Optional: Scrape your own workload's profiles
 
-The Phare chart uses a default configuration that causes its agent to scrape Pods, provided they have the correct annotations.
-This functionailty uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) that might be familar from the Prometheus or Grafna Agent config.
+The Phlare chart uses a default configuration that causes its agent to scrape Pods, provided they have the correct annotations.
+This functionality uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) that might be familar from the Prometheus or Grafna Agent config.
 
 In order to get Phlare to scrape pods, you must add the following annotations to the the pods:
 
