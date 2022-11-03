@@ -186,7 +186,7 @@ jobs:
         with:
           wait-on: http://localhost:8080/pyroscope
           start: make server
-          config-file: cypress/base-url/cypress.json
+          config-file: cypress/integration/auth/cypress.json
         env:
           PYROSCOPE_BASE_URL: 'http://localhost:8080/pyroscope'
           PYROSCOPE_LOG_LEVEL: error
