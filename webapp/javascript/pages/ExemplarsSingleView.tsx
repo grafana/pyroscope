@@ -141,17 +141,14 @@ function ExemplarsSingleView() {
         {!exemplarsSingleView.profile && (
           <Box>
             <div className={styles.heatmapSelectionGuide}>
-              <p className={styles.title}>
-                Select an area in the heatmap to get started
-              </p>
+              <StatusMessage
+                type="info"
+                message="Select an area in the heatmap to get started"
+              />
               <img
                 className={styles.gif}
                 src={heatmapSelectionGif}
                 alt="heatmap-selection-gif"
-              />
-              <StatusMessage
-                type="info"
-                message="Select an area in the heatmap to get started"
               />
             </div>
           </Box>
