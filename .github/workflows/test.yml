@@ -39,11 +39,6 @@ jobs:
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod }}
           key: ${{ runner.os }}-go-mod-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
-      - name: Enfore SSH for github.com
-        run: git config --global url.ssh://git@github.com/.insteadOf https://github.com/
       - name: Go Mod
         run: make check/go/mod
         if: matrix.os == 'ubuntu-latest'
@@ -85,11 +80,6 @@ jobs:
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod }}
           key: ${{ runner.os }}-go-mod-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
-      - name: Enfore SSH for github.com
-        run: git config --global url.ssh://git@github.com/.insteadOf https://github.com/
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -111,9 +101,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -132,9 +119,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -149,9 +133,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -178,9 +159,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.GO_MOD_SSH_PRIVATE_KEY }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
