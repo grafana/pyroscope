@@ -50,6 +50,11 @@ jobs:
           # keep the server quiet
           PYROSCOPE_LOG_LEVEL: error
           ENABLED_SPIES: none
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
 
   cypress-tests-auth:
     runs-on: ubuntu-latest
@@ -96,6 +101,11 @@ jobs:
           # keep the server quiet
           PYROSCOPE_LOG_LEVEL: error
           ENABLED_SPIES: none
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
 
   cypress-tests-base-url:
     runs-on: ubuntu-latest
@@ -142,6 +152,11 @@ jobs:
           # keep the server quiet
           PYROSCOPE_BASE_URL: 'http://localhost:8080/pyroscope'
           PYROSCOPE_LOG_LEVEL: error
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
 
   # Test auth when baseUrl is set
   # We run the same tests from auth
@@ -191,3 +206,8 @@ jobs:
           PYROSCOPE_BASE_URL: 'http://localhost:8080/pyroscope'
           PYROSCOPE_LOG_LEVEL: error
           CYPRESS_BASE_URL: 'http://localhost:8080/pyroscope'
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
