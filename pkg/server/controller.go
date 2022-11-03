@@ -546,10 +546,7 @@ func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http
 			// TODO: technically this should never happen because NewController would return an error
 			logrus.Error("base URL is invalid, some redirects might not work as expected")
 		} else {
-			u.Path = filepath.Join(u.Path, urlStr)
-			urlStr = u.String()
-			// TODO: uncomment
-			//urlStr = filepath.Join(u.Path, urlStr)
+			urlStr = filepath.Join(u.Path, urlStr)
 		}
 	}
 
