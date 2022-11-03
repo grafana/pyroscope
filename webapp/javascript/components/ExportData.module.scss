@@ -38,3 +38,15 @@
 .menuHide {
   display: none;
 }
+
+.toggleMenuButton {
+  height: 37px;
+  padding: 0;
+  margin-left: 2px;
+
+  svg {
+    width: auto !important;
+    height: 18px;
+    margin-top: 4px;
+  }
+}

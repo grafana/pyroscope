@@ -1,22 +1,71 @@
+@value buttonHeight: 37px;
+
 .navbar {
   display: flex;
+  flex-direction: row;
   margin: 10px 0;
-  height: 40px;
+  height: 47px;
   align-items: center;
+  background-color: #2e2e32;
+  border: 1px solid var(--ps-ui-border);
+  padding: 4px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  border-radius: 4px;
+}
+
+.left {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.right {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.viewType {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
 }
 
 .navbar button {
   color: var(--ps-neutral-2);
 }
 
-/* Give same amount of space between all children */
-.navbar > *:not(:first-child) {
-  margin-left: 5px;
-  margin-right: 5px;
+.toggleViewButton {
+  height: buttonHeight;
+  margin: 0 2px;
+  padding: 0;
 }
 
-.space-filler {
-  flex-grow: 1;
+.fitModeButton {
+  height: buttonHeight;
+  margin: 0 2px;
+  padding: 0;
+}
+
+.collapseNodeButton {
+  height: buttonHeight;
+  margin: 0 2px;
+  padding: 0 5px;
+}
+
+.resetViewButton {
+  height: buttonHeight;
+  margin: 0 2px;
+  padding: 0 5px;
+}
+
+.showModeSelect {
+  height: buttonHeight;
+  margin: 0 2px;
 }
 
 .fitModeDropdownMenuItem {
@@ -28,10 +77,18 @@
 
 .fitModeDropdownSmall {
   min-width: 70px;
-  margin: 0;
+  margin: 0 2px;
+  height: buttonHeight;
 }
 
 .fitModeDropdownLarge {
   min-width: 100px;
   margin: 0;
+}
+
+.divider {
+  width: 1px;
+  height: 35px;
+  background-color: #646466;
+  margin: 0 2px;
 }

@@ -9,7 +9,7 @@ import { buildRenderURL } from '@webapp/util/updateRequests';
 import { convertPresetsToDate } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models/src';
 import showModalWithInput from './Modals/ModalWithInput';
-
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import styles from './ExportData.module.scss';
 
 // These are modeled individually since each condition may have different values
@@ -286,7 +286,9 @@ function ExportData(props: ExportDataProps) {
   return (
     <div className={styles.dropdownContainer}>
       <OutsideClickHandler onOutsideClick={() => setToggleMenu(false)}>
-        <Button icon={faShareSquare} onClick={handleToggleMenu} />
+        <Button className={styles.toggleMenuButton} onClick={handleToggleMenu}>
+          <FontAwesomeIcon icon={faShareSquare} />
+        </Button>
         <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
           {exportPNG && (
             <button

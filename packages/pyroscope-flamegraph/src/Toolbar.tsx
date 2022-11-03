@@ -22,13 +22,21 @@ import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
 // import SandwichIcon from './SandwichIcon';
+import {
+  TableIcon,
+  TablePlusFlamegraphIcon,
+  FlamegraphIcon,
+  SandwichIcon,
+  HeadFirstIcon,
+  TailFirstIcon,
+} from './Icons';
 
 import styles from './Toolbar.module.css';
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
 // and see when the buttons start to overlap
-export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
+export const TOOLBAR_MODE_WIDTH_THRESHOLD = 950;
 
 /**
  * Custom hook that returns the size ('large' | 'small')
@@ -88,6 +96,10 @@ export interface ProfileHeaderProps {
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
+const Divider = () => {
+  return <div className={styles.divider} />;
+};
+
 const Toolbar = React.memo(
   ({
     view,
@@ -113,43 +125,49 @@ const Toolbar = React.memo(
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
-          <SharedQueryInput
-            showMode={showMode}
-            onHighlightChange={handleSearchChange}
-            highlightQuery={highlightQuery}
-            sharedQuery={sharedQuery}
-          />
-          {flamegraphType === 'double' && (
-            <DiffView
+          <div className={styles.left}>
+            <SharedQueryInput
               showMode={showMode}
-              viewDiff={viewDiff}
-              updateViewDiff={updateViewDiff}
+              onHighlightChange={handleSearchChange}
+              highlightQuery={highlightQuery}
+              sharedQuery={sharedQuery}
             />
-          )}
-          <div className={styles['space-filler']} />
-          <FitMode
-            showMode={showMode}
-            fitMode={fitMode}
-            updateFitMode={updateFitMode}
-          />
-          <ResetView
-            showMode={showMode}
-            isFlamegraphDirty={isFlamegraphDirty}
-            reset={reset}
-          />
-          <FocusOnSubtree
-            showMode={showMode}
-            selectedNode={selectedNode}
-            onFocusOnSubtree={onFocusOnSubtree}
-          />
-          {!disableChangingDisplay && (
-            <ViewSection
+            {flamegraphType === 'double' && (
+              <DiffView
+                showMode={showMode}
+                viewDiff={viewDiff}
+                updateViewDiff={updateViewDiff}
+              />
+            )}
+          </div>
+          <div className={styles.right}>
+            <FitMode
               showMode={showMode}
-              view={view}
-              updateView={updateView}
+              fitMode={fitMode}
+              updateFitMode={updateFitMode}
             />
-          )}
-          {ExportData}
+            <Divider />
+            <ResetView
+              showMode={showMode}
+              isFlamegraphDirty={isFlamegraphDirty}
+              reset={reset}
+            />
+            <FocusOnSubtree
+              showMode={showMode}
+              selectedNode={selectedNode}
+              onFocusOnSubtree={onFocusOnSubtree}
+            />
+            <Divider />
+            {!disableChangingDisplay && (
+              <ViewSection
+                showMode={showMode}
+                view={view}
+                updateView={updateView}
+              />
+            )}
+            <Divider />
+            {ExportData}
+          </div>
         </div>
       </div>
     );
@@ -193,6 +211,7 @@ function FocusOnSubtree({
       disabled={!selectedNode.isJust}
       onClick={onClick}
       icon={faCompressAlt}
+      className={styles.collapseNodeButton}
     >
       {text}
     </Button>
@@ -230,6 +249,7 @@ function ResetView({
         disabled={!isFlamegraphDirty}
         onClick={reset}
         icon={faUndo}
+        className={styles.resetViewButton}
       >
         {text}
       </Button>
@@ -283,17 +303,41 @@ function FitMode({
       </div>
     </MenuItem>
   ));
+  const getKind = (a) => {
+    return fitMode === a ? 'primary' : 'default';
+  };
+
+  if (showMode === 'small') {
+    return (
+      <Dropdown
+        label={texts.label}
+        ariaLabel="Fit Mode"
+        value={texts[fitMode]}
+        onItemClick={(event) => updateFitMode(event.value as typeof fitMode)}
+        menuButtonClassName={menuButtonClassName}
+      >
+        {menuItems}
+      </Dropdown>
+    );
+  }
 
   return (
-    <Dropdown
-      label={texts.label}
-      ariaLabel="Fit Mode"
-      value={texts[fitMode]}
-      onItemClick={(event) => updateFitMode(event.value as typeof fitMode)}
-      menuButtonClassName={menuButtonClassName}
-    >
-      {menuItems}
-    </Dropdown>
+    <>
+      <Button
+        kind={getKind('HEAD')}
+        onClick={() => updateFitMode('HEAD')}
+        className={styles.fitModeButton}
+      >
+        <HeadFirstIcon />
+      </Button>
+      <Button
+        kind={getKind('TAIL')}
+        onClick={() => updateFitMode('TAIL')}
+        className={styles.fitModeButton}
+      >
+        <TailFirstIcon />
+      </Button>
+    </>
   );
 }
 
@@ -377,7 +421,7 @@ function DiffView({
   };
 
   return (
-    <div className="btn-group viz-switch" data-testid="diff-view">
+    <div className="btn-group" data-testid="diff-view">
       {decideWhatToShow()}
     </div>
   );
@@ -400,12 +444,12 @@ function ViewSection({
       onChange={(e) => {
         updateView(e.target.value as typeof view);
       }}
+      className={styles.showModeSelect}
     >
       <option value="table">Table</option>
       <option value="both">Both</option>
       <option value="flamegraph">Flame</option>
-      {/* TODO(dogfrogfog): uncomment when new toolbar is ready */}
-      {/* <option value="sandwich">Sandwich</option> */}
+      <option value="sandwich">Sandwich</option>
     </Select>
   );
 
@@ -419,38 +463,33 @@ function ViewSection({
   const Buttons = (
     <>
       <Button
-        grouped
         kind={kindByState('table')}
-        icon={faTable}
         onClick={() => updateView('table')}
+        className={styles.toggleViewButton}
       >
-        Table
+        <TableIcon />
       </Button>
       <Button
-        grouped
         kind={kindByState('both')}
-        icon={faColumns}
         onClick={() => updateView('both')}
+        className={styles.toggleViewButton}
       >
-        Both
+        <TablePlusFlamegraphIcon />
       </Button>
       <Button
-        grouped
         kind={kindByState('flamegraph')}
-        icon={faIcicles}
         onClick={() => updateView('flamegraph')}
+        className={styles.toggleViewButton}
       >
-        Flamegraph
+        <FlamegraphIcon />
       </Button>
-      {/* TODO(dogfrogfog): uncomment when new toolbar is ready */}
-      {/* <Button
-        grouped
+      <Button
         kind={kindByState('sandwich')}
-        iconNode={<SandwichIcon />}
         onClick={() => updateView('sandwich')}
+        className={styles.toggleViewButton}
       >
-        Sandwich
-      </Button> */}
+        <SandwichIcon />
+      </Button>
     </>
   );
 
@@ -469,7 +508,7 @@ function ViewSection({
     }
   };
 
-  return <div className="btn-group viz-switch">{decideWhatToShow()}</div>;
+  return <div className={styles.viewType}>{decideWhatToShow()}</div>;
 }
 
 export default Toolbar;
