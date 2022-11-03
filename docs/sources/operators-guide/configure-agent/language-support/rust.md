@@ -15,7 +15,7 @@ There is though the [pprof-rs] crate implementing CPU profiling using the [pprof
 
 ## Example application
 
-The Rust [example application] has implemented an HTTP handler using the following code snippet. The hanlder creates a CPU profile for the given time in seconds and returns the [pprof] file with gzip compression.
+The Rust [example application] has implemented an HTTP handler using the following code snippet. The handler creates a CPU profile for the given time in seconds and returns the [pprof] file with gzip compression.
 
 ```rust
 fn pprof_handler(request: Request<Body>) -> Response<Body> {
