@@ -40,7 +40,7 @@ pip3 install --no-index --find-links=/tmp/wheels -r requirements.txt
 Now the initialization code of your application should be invoking the web server exposing the profiling data:
 
 ```python
-# import continous profiling modules
+# import continuous profiling modules
 from pypprof.net_http import start_pprof_server
 import mprofile
 
