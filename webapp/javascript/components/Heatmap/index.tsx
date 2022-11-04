@@ -25,15 +25,15 @@ interface HeatmapProps {
     startT: number,
     endT: number
   ) => void;
-  timezone: string;
   sampleRate: number;
+  timezone: string;
 }
 
 export function Heatmap({
   heatmap,
   onSelection,
-  timezone,
   sampleRate,
+  timezone,
 }: HeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);

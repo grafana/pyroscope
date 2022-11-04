@@ -16,9 +16,11 @@ import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import StatusMessage from '@webapp/ui/StatusMessage';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { formatTitle } from './formatTitle';
+import heatmapSelectionGif from './heatmapSelection.gif';
 
 import styles from './ExemplarsSingleView.module.scss';
 
@@ -39,6 +41,7 @@ function ExemplarsSingleView() {
           query,
           from,
           until,
+          shouldFetchProfile: !!exemplarsSingleView.profile,
           ...DEFAULT_HEATMAP_PARAMS,
         })
       );
@@ -73,20 +76,22 @@ function ExemplarsSingleView() {
       case 'loaded':
       case 'reloading': {
         return exemplarsSingleView.profile ? (
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={exemplarsSingleView.profile}
-            colorMode={colorMode}
-            ExportData={
-              <ExportData
-                flamebearer={exemplarsSingleView.profile}
-                exportPNG
-                exportJSON
-                exportPprof
-                exportHTML
-              />
-            }
-          />
+          <Box>
+            <FlamegraphRenderer
+              showCredit={false}
+              profile={exemplarsSingleView.profile}
+              colorMode={colorMode}
+              ExportData={
+                <ExportData
+                  flamebearer={exemplarsSingleView.profile}
+                  exportPNG
+                  exportJSON
+                  exportPprof
+                  exportHTML
+                />
+              }
+            />
+          </Box>
         ) : null;
       }
 
@@ -135,6 +140,21 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
+        {!exemplarsSingleView.profile && exemplarsSingleView.heatmap && (
+          <Box>
+            <div className={styles.heatmapSelectionGuide}>
+              <StatusMessage
+                type="info"
+                message="Select an area in the heatmap to get started"
+              />
+              <img
+                className={styles.gif}
+                src={heatmapSelectionGif}
+                alt="heatmap-selection-gif"
+              />
+            </div>
+          </Box>
+        )}
         {exemplarsSingleView.heatmap ? (
           <Box>
             <Tabs
