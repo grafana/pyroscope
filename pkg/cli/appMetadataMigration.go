@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
@@ -50,7 +49,6 @@ func (m *AppMetadataMigrator) Migrate() error {
 	// If they don't exist already
 	for _, a := range appNamesFromOrigin {
 		if _, ok := appMap[a]; !ok {
-			fmt.Println("adding app", a)
 			m.appMetadataSaver.CreateOrUpdate(ctx, storage.Application{
 				Name: a,
 			})

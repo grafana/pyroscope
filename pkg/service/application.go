@@ -41,7 +41,7 @@ func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application st
 
 	tx := svc.db.WithContext(ctx)
 
-	// Only update empty values
+	// Only update the field if it's populated
 	err := tx.Where(storage.Application{
 		Name: application.Name,
 	}).Assign(application).FirstOrCreate(&storage.Application{}).Error
