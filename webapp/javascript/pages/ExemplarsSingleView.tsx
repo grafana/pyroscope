@@ -24,6 +24,9 @@ import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading } from './loading';
 import heatmapSelectionGif from './heatmapSelection.gif';
 
+import Profile from '../../../cypress/fixtures/hotrod-ruby-driver-cpu.json';
+import { diffTwoProfiles } from '@pyroscope/flamegraph/src/convert/diffTwoProfiles';
+
 import styles from './ExemplarsSingleView.module.scss';
 
 function ExemplarsSingleView() {
@@ -97,6 +100,41 @@ function ExemplarsSingleView() {
         );
       }
     }
+  })();
+
+  const diffFlamebearer = (() => {
+    if (!exemplarsSingleView.profile) {
+      return null;
+    }
+
+    const copy = JSON.parse(JSON.stringify(Profile));
+    const copy1 = JSON.parse(JSON.stringify(exemplarsSingleView.profile));
+    // add types
+    const diffProfile = diffTwoProfiles(copy, copy1);
+
+    return (
+      <Box>
+        <LoadingOverlay
+          active={isLoadingOrReloading([exemplarsSingleView.type])}
+          spinnerPosition="baseline"
+        >
+          <FlamegraphRenderer
+            showCredit={false}
+            profile={diffProfile}
+            colorMode={colorMode}
+            ExportData={
+              <ExportData
+                flamebearer={diffProfile}
+                exportPNG
+                exportJSON
+                exportPprof
+                exportHTML
+              />
+            }
+          />
+        </LoadingOverlay>
+      </Box>
+    );
   })();
 
   return (
@@ -190,9 +228,7 @@ function ExemplarsSingleView() {
                 </Box>
               </div>
             </TabPanel>
-            <TabPanel>
-              <h1>Diff tab content</h1>
-            </TabPanel>
+            <TabPanel>{diffFlamebearer}</TabPanel>
           </Tabs>
         ) : null}
       </div>
