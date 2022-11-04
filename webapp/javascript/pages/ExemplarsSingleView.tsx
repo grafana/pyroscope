@@ -142,7 +142,7 @@ function ExemplarsSingleView() {
                   <FlamegraphRenderer
                     showCredit={false}
                     profile={exemplarsSingleView.profile}
-                    colorMode={colorMode as any}
+                    colorMode={colorMode}
                     ExportData={
                       <ExportData
                         flamebearer={exemplarsSingleView.profile}
@@ -166,7 +166,7 @@ function ExemplarsSingleView() {
                     <FlamegraphRenderer
                       showCredit={false}
                       profile={exemplarsSingleView.profile}
-                      colorMode={colorMode as any}
+                      colorMode={colorMode}
                       panesOrientation="vertical"
                       ExportData={
                         <ExportData
