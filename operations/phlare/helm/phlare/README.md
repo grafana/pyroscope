@@ -19,6 +19,7 @@
 | phlare.components | object | `{}` |  |
 | phlare.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
 | phlare.extraArgs."log.level" | string | `"debug"` |  |
+| phlare.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | phlare.extraEnvVars | object | `{}` |  |
 | phlare.extraLabels | object | `{}` |  |
 | phlare.extraVolumeMounts | list | `[]` |  |
