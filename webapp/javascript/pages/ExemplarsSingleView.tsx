@@ -138,7 +138,7 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
-        {!exemplarsSingleView.profile && (
+        {!exemplarsSingleView.profile && exemplarsSingleView.heatmap && (
           <Box>
             <div className={styles.heatmapSelectionGuide}>
               <StatusMessage
