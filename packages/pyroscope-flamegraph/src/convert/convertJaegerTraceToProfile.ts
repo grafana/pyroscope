@@ -46,12 +46,12 @@ export function convertJaegerTraceToProfile(trace: Trace): Profile {
     span.children = map(groups, (group) => {
       const res = group[0];
       for (let i = 1; i < group.length; i += 1) {
-        res.duration += group[i].duration;
+        res.total += group[i].total;
       }
-      childrenDur += res.duration;
+      childrenDur += res.total;
       return res;
     });
-    span.total = span.duration || childrenDur;
+    span.total = Math.max(span.duration, childrenDur);
     span.self = Math.max(0, span.total - childrenDur);
   }
   groupSpans(root, 0);
