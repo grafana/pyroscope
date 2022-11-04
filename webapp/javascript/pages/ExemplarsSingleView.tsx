@@ -11,6 +11,7 @@ import {
 } from '@webapp/redux/reducers/tracing';
 import Box from '@webapp/ui/Box';
 import NoData from '@webapp/ui/NoData';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
@@ -20,6 +21,7 @@ import StatusMessage from '@webapp/ui/StatusMessage';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { formatTitle } from './formatTitle';
+import { isLoadingOrReloading } from './loading';
 import heatmapSelectionGif from './heatmapSelection.gif';
 
 import styles from './ExemplarsSingleView.module.scss';
@@ -71,40 +73,6 @@ function ExemplarsSingleView() {
     );
   };
 
-  const flamegraphRenderer = (() => {
-    switch (exemplarsSingleView.type) {
-      case 'loaded':
-      case 'reloading': {
-        return exemplarsSingleView.profile ? (
-          <Box>
-            <FlamegraphRenderer
-              showCredit={false}
-              profile={exemplarsSingleView.profile}
-              colorMode={colorMode}
-              ExportData={
-                <ExportData
-                  flamebearer={exemplarsSingleView.profile}
-                  exportPNG
-                  exportJSON
-                  exportPprof
-                  exportHTML
-                />
-              }
-            />
-          </Box>
-        ) : null;
-      }
-
-      default: {
-        return (
-          <div className={styles.spinnerWrapper}>
-            <LoadingSpinner />
-          </div>
-        );
-      }
-    }
-  })();
-
   const heatmap = (() => {
     switch (exemplarsSingleView.type) {
       case 'loaded':
@@ -155,30 +123,77 @@ function ExemplarsSingleView() {
             </div>
           </Box>
         )}
-        {exemplarsSingleView.heatmap ? (
-          <Box>
-            <Tabs
-              selectedIndex={tabIndex}
-              onSelect={(index) => setTabIndex(index)}
-            >
-              <TabList>
-                <Tab>Single</Tab>
-                <Tab>Comparison</Tab>
-                <Tab>Diff</Tab>
-              </TabList>
-              <TabPanel>
-                <Box>{flamegraphRenderer}</Box>
-              </TabPanel>
-              <TabPanel>
-                <Box>
-                  <h1>Comparison tab content</h1>
+        {exemplarsSingleView.profile && exemplarsSingleView.heatmap ? (
+          <Tabs
+            selectedIndex={tabIndex}
+            onSelect={(index) => setTabIndex(index)}
+          >
+            <TabList>
+              <Tab>Single</Tab>
+              <Tab>Comparison</Tab>
+              <Tab>Diff</Tab>
+            </TabList>
+            <TabPanel>
+              <Box>
+                <LoadingOverlay
+                  active={isLoadingOrReloading([exemplarsSingleView.type])}
+                  spinnerPosition="baseline"
+                >
+                  <FlamegraphRenderer
+                    showCredit={false}
+                    profile={exemplarsSingleView.profile}
+                    colorMode={colorMode as any}
+                    ExportData={
+                      <ExportData
+                        flamebearer={exemplarsSingleView.profile}
+                        exportPNG
+                        exportJSON
+                        exportPprof
+                        exportHTML
+                      />
+                    }
+                  />
+                </LoadingOverlay>
+              </Box>
+            </TabPanel>
+            <TabPanel>
+              <div className={styles.comparisonTab}>
+                <Box className={styles.comparisonTabHalf}>
+                  <LoadingOverlay
+                    active={isLoadingOrReloading([exemplarsSingleView.type])}
+                    spinnerPosition="baseline"
+                  >
+                    <FlamegraphRenderer
+                      showCredit={false}
+                      profile={exemplarsSingleView.profile}
+                      colorMode={colorMode as any}
+                      panesOrientation="vertical"
+                      ExportData={
+                        <ExportData
+                          flamebearer={exemplarsSingleView.profile}
+                          exportPNG
+                          exportJSON
+                          exportPprof
+                          exportHTML
+                        />
+                      }
+                    />
+                  </LoadingOverlay>
                 </Box>
-              </TabPanel>
-              <TabPanel>
-                <h1>Diff tab content</h1>
-              </TabPanel>
-            </Tabs>
-          </Box>
+                <Box className={styles.comparisonTabHalf}>
+                  <LoadingOverlay
+                    active={isLoadingOrReloading([exemplarsSingleView.type])}
+                    spinnerPosition="baseline"
+                  >
+                    <h3>subtracted profile</h3>
+                  </LoadingOverlay>
+                </Box>
+              </div>
+            </TabPanel>
+            <TabPanel>
+              <h1>Diff tab content</h1>
+            </TabPanel>
+          </Tabs>
         ) : null}
       </div>
     </div>
