@@ -28,15 +28,11 @@ import {
   HeadFirstIcon,
   TailFirstIcon,
 } from './Icons';
+import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 
 import styles from './Toolbar.module.scss';
 
 const cx = classNames.bind(styles);
-
-// arbitrary value
-// as a simple heuristic, try to run the comparison view
-// and see when the buttons start to overlap
-export const TOOLBAR_MODE_WIDTH_THRESHOLD = 950;
 
 /**
  * Custom hook that returns the size ('large' | 'small')
@@ -45,11 +41,17 @@ export const TOOLBAR_MODE_WIDTH_THRESHOLD = 950;
  */
 export type ShowModeType = ReturnType<typeof useSizeMode>;
 
-export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
+export const useSizeMode = (
+  target: React.RefObject<HTMLDivElement>,
+  // arbitrary value
+  // as a simple heuristic, try to run the comparison view
+  // and see when the buttons start to overlap
+  widthTreshhold: number
+) => {
   const [size, setSize] = React.useState<'large' | 'small'>('large');
 
   const calcMode = (width: number) => {
-    if (width < TOOLBAR_MODE_WIDTH_THRESHOLD) {
+    if (width < widthTreshhold) {
       return 'small';
     }
     return 'large';
@@ -68,6 +70,17 @@ export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
   });
 
   return size;
+};
+
+const useShowMode = (widthTreshhold) => {
+  // TODO: merge useShowMode and useSizeMode
+  const ref = React.useRef<HTMLDivElement>(null);
+  const showMode = useSizeMode(ref, widthTreshhold);
+
+  return {
+    ref,
+    showMode,
+  };
 };
 
 export interface ProfileHeaderProps {
@@ -94,11 +107,10 @@ export interface ProfileHeaderProps {
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
+  panesOrientation: 'horizontal' | 'vertical';
 }
 
-const Divider = () => {
-  return <div className={styles.divider} />;
-};
+const Divider = () => <div className={styles.divider} />;
 
 const Toolbar = React.memo(
   ({
@@ -118,56 +130,121 @@ const Toolbar = React.memo(
     disableChangingDisplay = false,
     sharedQuery,
     ExportData = <></>,
+    panesOrientation,
   }: ProfileHeaderProps) => {
-    const toolbarRef = React.useRef<HTMLDivElement>(null);
-    const showMode = useSizeMode(toolbarRef);
-
     return (
-      <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
+      <div role="toolbar">
         <div className={styles.navbar}>
-          <div className={styles.left}>
-            <SharedQueryInput
-              showMode={showMode}
-              onHighlightChange={handleSearchChange}
-              highlightQuery={highlightQuery}
-              sharedQuery={sharedQuery}
-            />
-            {flamegraphType === 'double' && (
-              <DiffView
-                showMode={showMode}
-                viewDiff={viewDiff}
-                updateViewDiff={updateViewDiff}
-              />
-            )}
-          </div>
-          <div className={styles.right}>
-            <FitMode
-              showMode={showMode}
-              fitMode={fitMode}
-              updateFitMode={updateFitMode}
-            />
-            <Divider />
-            <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
-            <FocusOnSubtree
-              selectedNode={selectedNode}
-              onFocusOnSubtree={onFocusOnSubtree}
-            />
-            <Divider />
-            {!disableChangingDisplay && (
-              <ViewSection
-                showMode={showMode}
-                view={view}
-                updateView={updateView}
-              />
-            )}
-            <Divider />
-            {ExportData}
-          </div>
+          <LeftToolbar
+            handleSearchChange={handleSearchChange}
+            highlightQuery={highlightQuery}
+            sharedQuery={sharedQuery}
+            flamegraphType={flamegraphType}
+            viewDiff={viewDiff}
+            updateViewDiff={updateViewDiff}
+            panesOrientation={panesOrientation}
+          />
+          <RightToolbar
+            // showMode={showMode}
+            fitMode={fitMode}
+            updateFitMode={updateFitMode}
+            isFlamegraphDirty={isFlamegraphDirty}
+            reset={reset}
+            selectedNode={selectedNode}
+            onFocusOnSubtree={onFocusOnSubtree}
+            disableChangingDisplay={disableChangingDisplay}
+            view={view}
+            updateView={updateView}
+            ExportData={ExportData}
+            panesOrientation={panesOrientation}
+          />
         </div>
       </div>
     );
   }
 );
+
+const LeftToolbar = ({
+  handleSearchChange,
+  highlightQuery,
+  sharedQuery,
+  flamegraphType,
+  viewDiff,
+  updateViewDiff,
+  panesOrientation,
+}) => {
+  const { ref, showMode } = useShowMode(500);
+
+  return (
+    <div
+      ref={ref}
+      className={cx({
+        [styles.left]: true,
+        widthAuto: panesOrientation === 'vertical',
+      })}
+    >
+      <SharedQueryInput
+        showMode={showMode}
+        onHighlightChange={handleSearchChange}
+        highlightQuery={highlightQuery}
+        sharedQuery={sharedQuery}
+      />
+      {flamegraphType === 'double' && (
+        <DiffView
+          showMode={showMode}
+          viewDiff={viewDiff}
+          updateViewDiff={updateViewDiff}
+        />
+      )}
+    </div>
+  );
+};
+
+export const RightToolbar = ({
+  fitMode,
+  updateFitMode,
+  isFlamegraphDirty,
+  reset,
+  selectedNode,
+  onFocusOnSubtree,
+  disableChangingDisplay,
+  view,
+  updateView,
+  ExportData,
+  panesOrientation,
+}) => {
+  const { ref, showMode } = useShowMode(
+    panesOrientation === 'vertical' ? 491 : 480
+  );
+
+  return (
+    <div
+      ref={ref}
+      className={cx({
+        [styles.right]: true,
+        widthAuto: panesOrientation === 'vertical',
+      })}
+    >
+      <FitMode
+        showMode={showMode}
+        fitMode={fitMode}
+        updateFitMode={updateFitMode}
+      />
+      <Divider />
+      <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
+      <FocusOnSubtree
+        selectedNode={selectedNode}
+        onFocusOnSubtree={onFocusOnSubtree}
+      />
+      <Divider />
+      {!disableChangingDisplay && (
+        <ViewSection showMode={showMode} view={view} updateView={updateView} />
+      )}
+      <Divider />
+      {ExportData}
+    </div>
+  );
+};
 
 function FocusOnSubtree({
   onFocusOnSubtree,
@@ -184,13 +261,17 @@ function FocusOnSubtree({
   );
 
   return (
-    <Button
-      disabled={!selectedNode.isJust}
-      onClick={onClick}
-      className={styles.collapseNodeButton}
-    >
-      <FontAwesomeIcon icon={faCompressAlt} />
-    </Button>
+    <Tooltip placement="top" title="Collapse nodes above">
+      <div>
+        <Button
+          disabled={!selectedNode.isJust}
+          onClick={onClick}
+          className={styles.collapseNodeButton}
+        >
+          <FontAwesomeIcon icon={faCompressAlt} />
+        </Button>
+      </div>
+    </Tooltip>
   );
 }
 
@@ -202,15 +283,19 @@ function ResetView({
   reset: ProfileHeaderProps['reset'];
 }) {
   return (
-    <Button
-      id="reset"
-      data-testid="reset-view"
-      disabled={!isFlamegraphDirty}
-      onClick={reset}
-      className={styles.resetViewButton}
-    >
-      <FontAwesomeIcon icon={faUndo} />
-    </Button>
+    <Tooltip placement="top" title="Reset View">
+      <div>
+        <Button
+          id="reset"
+          data-testid="reset-view"
+          disabled={!isFlamegraphDirty}
+          onClick={reset}
+          className={styles.resetViewButton}
+        >
+          <FontAwesomeIcon icon={faUndo} />
+        </Button>
+      </div>
+    </Tooltip>
   );
 }
 
@@ -265,38 +350,48 @@ function FitMode({
 
   if (showMode === 'small') {
     return (
-      <Dropdown
-        label={texts.label}
-        ariaLabel="Fit Mode"
-        value={texts[fitMode]}
-        onItemClick={(event) => updateFitMode(event.value as typeof fitMode)}
-        menuButtonClassName={menuButtonClassName}
-      >
-        {menuItems}
-      </Dropdown>
+      <Tooltip placement="top" title="Fit Mode">
+        <div>
+          <Dropdown
+            label={texts.label}
+            ariaLabel="Fit Mode"
+            value={texts[fitMode]}
+            onItemClick={(event) =>
+              updateFitMode(event.value as typeof fitMode)
+            }
+            menuButtonClassName={menuButtonClassName}
+          >
+            {menuItems}
+          </Dropdown>
+        </div>
+      </Tooltip>
     );
   }
 
   return (
     <>
-      <Button
-        onClick={() => updateFitMode('HEAD')}
-        className={cx({
-          [styles.fitModeButton]: true,
-          selected: isSelected('HEAD'),
-        })}
-      >
-        <HeadFirstIcon />
-      </Button>
-      <Button
-        onClick={() => updateFitMode('TAIL')}
-        className={cx({
-          [styles.fitModeButton]: true,
-          selected: isSelected('TAIL'),
-        })}
-      >
-        <TailFirstIcon />
-      </Button>
+      <Tooltip placement="top" title="Head First">
+        <Button
+          onClick={() => updateFitMode('HEAD')}
+          className={cx({
+            [styles.fitModeButton]: true,
+            selected: isSelected('HEAD'),
+          })}
+        >
+          <HeadFirstIcon />
+        </Button>
+      </Tooltip>
+      <Tooltip placement="top" title="Tail First">
+        <Button
+          onClick={() => updateFitMode('TAIL')}
+          className={cx({
+            [styles.fitModeButton]: true,
+            selected: isSelected('TAIL'),
+          })}
+        >
+          <TailFirstIcon />
+        </Button>
+      </Tooltip>
     </>
   );
 }
@@ -397,62 +492,74 @@ function ViewSection({
   view: ProfileHeaderProps['view'];
 }) {
   const ViewSelect = (
-    <Select
-      ariaLabel="view"
-      name="view"
-      value={view}
-      onChange={(e) => {
-        updateView(e.target.value as typeof view);
-      }}
-      className={styles.showModeSelect}
-    >
-      <option value="table">Table</option>
-      <option value="both">Both</option>
-      <option value="flamegraph">Flame</option>
-      <option value="sandwich">Sandwich</option>
-    </Select>
+    <Tooltip placement="top" title="View Mode">
+      <div>
+        <Select
+          ariaLabel="view"
+          name="view"
+          value={view}
+          onChange={(e) => {
+            updateView(e.target.value as typeof view);
+          }}
+          className={styles.showModeSelect}
+        >
+          <option value="table">Table</option>
+          <option value="both">Both</option>
+          <option value="flamegraph">Flame</option>
+          <option value="sandwich">Sandwich</option>
+        </Select>
+      </div>
+    </Tooltip>
   );
 
   const isSelected = (name: ViewTypes) => view === name;
 
   const Buttons = (
     <>
-      <Button
-        onClick={() => updateView('table')}
-        className={cx({
-          [styles.toggleViewButton]: true,
-          selected: isSelected('table'),
-        })}
-      >
-        <TableIcon />
-      </Button>
-      <Button
-        onClick={() => updateView('both')}
-        className={cx({
-          [styles.toggleViewButton]: true,
-          selected: isSelected('both'),
-        })}
-      >
-        <TablePlusFlamegraphIcon />
-      </Button>
-      <Button
-        onClick={() => updateView('flamegraph')}
-        className={cx({
-          [styles.toggleViewButton]: true,
-          selected: isSelected('flamegraph'),
-        })}
-      >
-        <FlamegraphIcon />
-      </Button>
-      <Button
-        onClick={() => updateView('sandwich')}
-        className={cx({
-          [styles.toggleViewButton]: true,
-          selected: isSelected('sandwich'),
-        })}
-      >
-        <SandwichIcon />
-      </Button>
+      <Tooltip placement="top" title="Table View">
+        <Button
+          onClick={() => updateView('table')}
+          className={cx({
+            [styles.toggleViewButton]: true,
+            selected: isSelected('table'),
+          })}
+        >
+          <TableIcon />
+        </Button>
+      </Tooltip>
+      <Tooltip placement="top" title="Both View">
+        <Button
+          onClick={() => updateView('both')}
+          className={cx({
+            [styles.toggleViewButton]: true,
+            selected: isSelected('both'),
+          })}
+        >
+          <TablePlusFlamegraphIcon />
+        </Button>
+      </Tooltip>
+      <Tooltip placement="top" title="Flamegraph View">
+        <Button
+          onClick={() => updateView('flamegraph')}
+          className={cx({
+            [styles.toggleViewButton]: true,
+            selected: isSelected('flamegraph'),
+          })}
+        >
+          <FlamegraphIcon />
+        </Button>
+      </Tooltip>
+      <Tooltip placement="top" title="Sandwich View">
+        <Button
+          onClick={() => updateView('sandwich')}
+          className={cx({
+            [styles.toggleViewButton]: true,
+            selected: isSelected('sandwich'),
+          })}
+        >
+          <SandwichIcon />
+        </Button>
+      </Tooltip>
     </>
   );
 

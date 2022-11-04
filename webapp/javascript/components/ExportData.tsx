@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import OutsideClickHandler from 'react-outside-click-handler';
-
+import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import Button from '@webapp/ui/Button';
 import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
 import { buildRenderURL } from '@webapp/util/updateRequests';
@@ -286,9 +286,14 @@ function ExportData(props: ExportDataProps) {
   return (
     <div className={styles.dropdownContainer}>
       <OutsideClickHandler onOutsideClick={() => setToggleMenu(false)}>
-        <Button className={styles.toggleMenuButton} onClick={handleToggleMenu}>
-          <FontAwesomeIcon icon={faShareSquare} />
-        </Button>
+        <Tooltip placement="top" title="Export Data">
+          <Button
+            className={styles.toggleMenuButton}
+            onClick={handleToggleMenu}
+          >
+            <FontAwesomeIcon icon={faShareSquare} />
+          </Button>
+        </Tooltip>
         <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
           {exportPNG && (
             <button

@@ -4,13 +4,12 @@ $buttonHeight: 37px;
   display: flex;
   flex-direction: row;
   margin: 10px 0;
-  height: 47px;
-  align-items: center;
-  background-color: #2e2e32;
-  border: 1px solid var(--ps-ui-border);
-  padding: 4px;
-  flex-wrap: nowrap;
   justify-content: space-between;
+
+  .left,
+  .right {
+    width: calc(50% - 8px);
+  }
 }
 
 .left {
@@ -18,14 +17,29 @@ $buttonHeight: 37px;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  flex-grow: 1;
+  height: 47px;
+  background-color: #2e2e32;
+  border: 1px solid var(--ps-ui-border);
+  padding: 4px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  justify-content: flex-start;
+
+  &.widthAuto {
+    width: auto;
+    border-right-color: transparent;
+  }
 }
 
 .right {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
+  @extend .left;
+
+  justify-content: flex-end;
+
+  &.widthAuto {
+    flex: 1;
+    border-left-color: transparent;
+  }
 }
 
 .viewType {
