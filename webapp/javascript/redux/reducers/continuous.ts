@@ -17,6 +17,8 @@ import * as tagsService from '@webapp/services/tags';
 import * as annotationsService from '@webapp/services/annotations';
 import { RequestAbortedError } from '@webapp/services/base';
 import { appendLabelToQuery } from '@webapp/util/query';
+import { createBiggestInterval } from '@webapp/util/timerange';
+import { formatAsOBject, toUnixTimestamp } from '@webapp/util/formatDate';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
@@ -91,8 +93,6 @@ type DiffView =
   | { type: 'loaded'; profile: Profile }
   | { type: 'reloading'; profile: Profile };
 
-type DiffView2 = ComparisonView;
-
 type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
@@ -135,7 +135,6 @@ interface ContinuousState {
 
   singleView: SingleView;
   diffView: DiffView;
-  diffView2: DiffView2;
   comparisonView: ComparisonView;
   tagExplorerView: TagExplorerView;
   newAnnotation: NewAnnotationState;
@@ -172,10 +171,6 @@ const initialState: ContinuousState = {
   singleView: { type: 'pristine' },
   diffView: { type: 'pristine' },
   comparisonView: {
-    left: { type: 'pristine' },
-    right: { type: 'pristine' },
-  },
-  diffView2: {
     left: { type: 'pristine' },
     right: { type: 'pristine' },
   },
@@ -535,40 +530,58 @@ export const fetchDiffView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const fetchTags = createAsyncThunk(
-  'continuous/fetchTags',
-  async (query: Query, thunkAPI) => {
-    const appName = queryToAppName(query);
-    if (appName.isNothing) {
-      return Promise.reject(
-        new Error(
-          `Query '${appName}' is not a valid app, and it can't have any tags`
-        )
-      );
-    }
-
-    const res = await tagsService.fetchTags(query);
-
-    if (res.isOk) {
-      return Promise.resolve({
-        appName: appName.value,
-        tags: res.value,
-      });
-    }
-
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to load tags',
-        message: res.error.message,
-      })
+export const fetchTags = createAsyncThunk<
+  { appName: string; tags: string[] },
+  Query,
+  { state: { continuous: ContinuousState } }
+>('continuous/fetchTags', async (query: Query, thunkAPI) => {
+  const appName = queryToAppName(query);
+  if (appName.isNothing) {
+    return Promise.reject(
+      new Error(
+        `Query '${appName}' is not a valid app, and it can't have any tags`
+      )
     );
-
-    return Promise.reject(res.error);
   }
-);
 
-export const fetchTagValues = createAsyncThunk(
+  const state = thunkAPI.getState().continuous;
+  const timerange = biggestTimeRangeInUnix(state);
+  const res = await tagsService.fetchTags(
+    query,
+    timerange.from,
+    timerange.until
+  );
+
+  if (res.isOk) {
+    return Promise.resolve({
+      appName: appName.value,
+      tags: res.value,
+    });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load tags',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchTagValues = createAsyncThunk<
+  {
+    appName: string;
+    label: string;
+    values: string[];
+  },
+  {
+    query: Query;
+    label: string;
+  },
+  { state: { continuous: ContinuousState } }
+>(
   'continuous/fetchTagsValues',
   async (payload: { query: Query; label: string }, thunkAPI) => {
     const appName = queryToAppName(payload.query);
@@ -580,9 +593,13 @@ export const fetchTagValues = createAsyncThunk(
       );
     }
 
+    const state = thunkAPI.getState().continuous;
+    const timerange = biggestTimeRangeInUnix(state);
     const res = await tagsService.fetchLabelValues(
       payload.label,
-      payload.query
+      payload.query,
+      timerange.from,
+      timerange.until
     );
 
     if (res.isOk) {
@@ -1102,4 +1119,15 @@ function getNextStateFromPending(
   }
 
   return 'reloading';
+}
+
+function biggestTimeRangeInUnix(state: ContinuousState) {
+  return createBiggestInterval({
+    from: [state.from, state.leftFrom, state.rightFrom]
+      .map(formatAsOBject)
+      .map(toUnixTimestamp),
+    until: [state.until, state.leftUntil, state.leftUntil]
+      .map(formatAsOBject)
+      .map(toUnixTimestamp),
+  });
 }
