@@ -154,14 +154,14 @@ func addIndexesUniqueTableMigration() *gormigrate.Migration {
 
 func createApplicationMetadataTableMigration() *gormigrate.Migration {
 	type application struct {
-		ID              uint   `gorm:"primarykey"`
-		Name            string `gorm:"uniqueIndex;not null;default:null"`
-		SpyName         string
-		SampleRate      uint32
-		Units           string
-		AggregationType string
-		CreatedAt       time.Time
-		UpdatedAt       time.Time
+		ID                 uint   `gorm:"primarykey"`
+		FullyQualifiedName string `gorm:"uniqueIndex;not null;default:null"`
+		SpyName            string
+		SampleRate         uint32
+		Units              string
+		AggregationType    string
+		CreatedAt          time.Time
+		UpdatedAt          time.Time
 	}
 
 	return &gormigrate.Migration{

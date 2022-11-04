@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/sirupsen/logrus"
 )
 
 type AppNamesGetter interface {
@@ -16,12 +17,14 @@ type AppMetadataSaver interface {
 }
 
 type AppMetadataMigrator struct {
+	logger           *logrus.Logger
 	appNamesGetter   AppNamesGetter
 	appMetadataSaver AppMetadataSaver
 }
 
-func NewAppMetadataMigrator(appNamesGetter AppNamesGetter, appMetadataSaver AppMetadataSaver) *AppMetadataMigrator {
+func NewAppMetadataMigrator(logger *logrus.Logger, appNamesGetter AppNamesGetter, appMetadataSaver AppMetadataSaver) *AppMetadataMigrator {
 	return &AppMetadataMigrator{
+		logger:           logger,
 		appNamesGetter:   appNamesGetter,
 		appMetadataSaver: appMetadataSaver,
 	}
@@ -43,18 +46,19 @@ func (m *AppMetadataMigrator) Migrate() error {
 	// Convert slice -> map
 	appMap := make(map[string]storage.Application)
 	for _, a := range apps {
-		appMap[a.Name] = a
+		appMap[a.FullyQualifiedName] = a
 	}
 
 	// If they don't exist already
 	for _, a := range appNamesFromOrigin {
 		if _, ok := appMap[a]; !ok {
+			logrus.Info("Migrating app: ", a)
+			// Write to MetadataSaver
 			m.appMetadataSaver.CreateOrUpdate(ctx, storage.Application{
-				Name: a,
+				FullyQualifiedName: a,
 			})
 		}
 	}
 
-	// Write to MetadataSaver
 	return nil
 }

@@ -22,11 +22,11 @@ var _ = Describe("ApplicationService", func() {
 	})
 
 	app := storage.Application{
-		Name:            "myapp",
-		SampleRate:      100,
-		SpyName:         "gospy",
-		Units:           metadata.SamplesUnits,
-		AggregationType: metadata.AverageAggregationType,
+		FullyQualifiedName: "myapp",
+		SampleRate:         100,
+		SpyName:            "gospy",
+		Units:              metadata.SamplesUnits,
+		AggregationType:    metadata.AverageAggregationType,
 	}
 
 	assertNumOfApps := func(num int) []storage.Application {
@@ -40,7 +40,7 @@ var _ = Describe("ApplicationService", func() {
 		ctx := context.TODO()
 
 		// Create
-		err := svc.CreateOrUpdate(ctx, storage.Application{Name: ""})
+		err := svc.CreateOrUpdate(ctx, storage.Application{FullyQualifiedName: ""})
 		Expect(model.IsValidationError(err)).To(BeTrue())
 
 		// Get
@@ -81,12 +81,12 @@ var _ = Describe("ApplicationService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			err = svc.CreateOrUpdate(ctx, storage.Application{
-				Name:       app.Name,
-				SampleRate: 101,
+				FullyQualifiedName: app.FullyQualifiedName,
+				SampleRate:         101,
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			a, err := svc.Get(ctx, app.Name)
+			a, err := svc.Get(ctx, app.FullyQualifiedName)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Other fields should not be touched
@@ -103,7 +103,7 @@ var _ = Describe("ApplicationService", func() {
 			err := svc.CreateOrUpdate(ctx, app)
 			Expect(err).ToNot(HaveOccurred())
 
-			res, err := svc.Get(ctx, app.Name)
+			res, err := svc.Get(ctx, app.FullyQualifiedName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal(app))
 		})
@@ -122,7 +122,7 @@ var _ = Describe("ApplicationService", func() {
 			Expect(err).ToNot(HaveOccurred())
 			assertNumOfApps(1)
 
-			err = svc.Delete(ctx, app.Name)
+			err = svc.Delete(ctx, app.FullyQualifiedName)
 
 			Expect(err).ToNot(HaveOccurred())
 			assertNumOfApps(0)

@@ -140,9 +140,8 @@ type ApplicationService interface {
 }
 
 type Application struct {
-	// Fully qualified name
 	// Eg app.cpu ({__name__}.{profile_type})
-	Name string `gorm:"index,unique;not null;default:null"`
+	FullyQualifiedName string `gorm:"index,unique;not null;default:null"`
 
 	SpyName         string
 	SampleRate      uint32

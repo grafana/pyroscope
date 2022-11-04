@@ -35,7 +35,7 @@ func (svc ApplicationService) Get(ctx context.Context, name string) (storage.App
 }
 
 func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
-	if err := model.ValidateAppName(application.Name); err != nil {
+	if err := model.ValidateAppName(application.FullyQualifiedName); err != nil {
 		return err
 	}
 
@@ -43,7 +43,7 @@ func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application st
 
 	// Only update the field if it's populated
 	err := tx.Where(storage.Application{
-		Name: application.Name,
+		FullyQualifiedName: application.FullyQualifiedName,
 	}).Assign(application).FirstOrCreate(&storage.Application{}).Error
 	return svc.handleError(err)
 }

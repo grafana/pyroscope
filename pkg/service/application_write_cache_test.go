@@ -24,11 +24,11 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 	AfterEach(s.AfterEach)
 
 	sampleApp := storage.Application{
-		Name:            "myapp",
-		SampleRate:      100,
-		SpyName:         "gospy",
-		Units:           metadata.SamplesUnits,
-		AggregationType: metadata.AverageAggregationType,
+		FullyQualifiedName: "myapp",
+		SampleRate:         100,
+		SpyName:            "gospy",
+		Units:              metadata.SamplesUnits,
+		AggregationType:    metadata.AverageAggregationType,
 	}
 
 	var m mockApplicationWriter
