@@ -12,8 +12,4 @@
     // Since the only way to close the notification is via the close button
     cursor: auto !important;
   }
-
-  [class~='notification__item--warning'] {
-    background-color: #ce9c09;
-  }
 }
