@@ -1,4 +1,4 @@
-@value buttonHeight: 37px;
+$buttonHeight: 37px;
 
 .navbar {
   display: flex;
@@ -11,7 +11,6 @@
   padding: 4px;
   flex-wrap: nowrap;
   justify-content: space-between;
-  border-radius: 4px;
 }
 
 .left {
@@ -40,31 +39,39 @@
 }
 
 .toggleViewButton {
-  height: buttonHeight;
+  height: $buttonHeight;
   margin: 0 2px;
   padding: 0;
+  border-color: transparent;
+  background-color: transparent;
+
+  &.selected {
+    background-color: #3c7150;
+
+    svg {
+      fill: #61c688;
+    }
+  }
 }
 
 .fitModeButton {
-  height: buttonHeight;
-  margin: 0 2px;
-  padding: 0;
+  @extend .toggleViewButton;
 }
 
 .collapseNodeButton {
-  height: buttonHeight;
+  height: $buttonHeight;
   margin: 0 2px;
   padding: 0 5px;
+  background-color: transparent;
+  border-color: transparent;
 }
 
 .resetViewButton {
-  height: buttonHeight;
-  margin: 0 2px;
-  padding: 0 5px;
+  @extend .collapseNodeButton;
 }
 
 .showModeSelect {
-  height: buttonHeight;
+  height: $buttonHeight;
   margin: 0 2px;
 }
 
@@ -78,7 +85,7 @@
 .fitModeDropdownSmall {
   min-width: 70px;
   margin: 0 2px;
-  height: buttonHeight;
+  height: $buttonHeight;
 }
 
 .fitModeDropdownLarge {

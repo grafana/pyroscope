@@ -1,13 +1,12 @@
 import React, { ReactNode } from 'react';
+import classNames from 'classnames/bind';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
-import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
-import { faIcicles } from '@fortawesome/free-solid-svg-icons/faIcicles';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
-import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { Maybe } from 'true-myth';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import useResizeObserver from '@react-hook/resize-observer';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -21,7 +20,6 @@ import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
 import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
-// import SandwichIcon from './SandwichIcon';
 import {
   TableIcon,
   TablePlusFlamegraphIcon,
@@ -31,7 +29,9 @@ import {
   TailFirstIcon,
 } from './Icons';
 
-import styles from './Toolbar.module.css';
+import styles from './Toolbar.module.scss';
+
+const cx = classNames.bind(styles);
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
@@ -147,13 +147,8 @@ const Toolbar = React.memo(
               updateFitMode={updateFitMode}
             />
             <Divider />
-            <ResetView
-              showMode={showMode}
-              isFlamegraphDirty={isFlamegraphDirty}
-              reset={reset}
-            />
+            <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
             <FocusOnSubtree
-              showMode={showMode}
               selectedNode={selectedNode}
               onFocusOnSubtree={onFocusOnSubtree}
             />
@@ -174,31 +169,13 @@ const Toolbar = React.memo(
   }
 );
 
-interface FocusOnSubtreeProps {
-  selectedNode: ProfileHeaderProps['selectedNode'];
-  onFocusOnSubtree: ProfileHeaderProps['onFocusOnSubtree'];
-  showMode: ReturnType<typeof useSizeMode>;
-}
 function FocusOnSubtree({
   onFocusOnSubtree,
   selectedNode,
-  showMode,
-}: FocusOnSubtreeProps) {
-  let text = '';
-  switch (showMode) {
-    case 'small': {
-      text = 'Collapse';
-      break;
-    }
-    case 'large': {
-      text = 'Collapse nodes above';
-      break;
-    }
-
-    default:
-      throw new Error('Wrong mode');
-  }
-
+}: {
+  selectedNode: ProfileHeaderProps['selectedNode'];
+  onFocusOnSubtree: ProfileHeaderProps['onFocusOnSubtree'];
+}) {
   const onClick = selectedNode.mapOr(
     () => {},
     (f) => {
@@ -210,10 +187,9 @@ function FocusOnSubtree({
     <Button
       disabled={!selectedNode.isJust}
       onClick={onClick}
-      icon={faCompressAlt}
       className={styles.collapseNodeButton}
     >
-      {text}
+      <FontAwesomeIcon icon={faCompressAlt} />
     </Button>
   );
 }
@@ -221,39 +197,20 @@ function FocusOnSubtree({
 function ResetView({
   isFlamegraphDirty,
   reset,
-  showMode,
 }: {
-  showMode: ReturnType<typeof useSizeMode>;
   isFlamegraphDirty: ProfileHeaderProps['isFlamegraphDirty'];
   reset: ProfileHeaderProps['reset'];
 }) {
-  let text = '';
-  switch (showMode) {
-    case 'small': {
-      text = 'Reset';
-      break;
-    }
-    case 'large': {
-      text = 'Reset View';
-      break;
-    }
-
-    default:
-      throw new Error('Wrong mode');
-  }
   return (
-    <>
-      <Button
-        id="reset"
-        data-testid="reset-view"
-        disabled={!isFlamegraphDirty}
-        onClick={reset}
-        icon={faUndo}
-        className={styles.resetViewButton}
-      >
-        {text}
-      </Button>
-    </>
+    <Button
+      id="reset"
+      data-testid="reset-view"
+      disabled={!isFlamegraphDirty}
+      onClick={reset}
+      className={styles.resetViewButton}
+    >
+      <FontAwesomeIcon icon={faUndo} />
+    </Button>
   );
 }
 
@@ -303,9 +260,8 @@ function FitMode({
       </div>
     </MenuItem>
   ));
-  const getKind = (a) => {
-    return fitMode === a ? 'primary' : 'default';
-  };
+
+  const isSelected = (a) => fitMode === a;
 
   if (showMode === 'small') {
     return (
@@ -324,16 +280,20 @@ function FitMode({
   return (
     <>
       <Button
-        kind={getKind('HEAD')}
         onClick={() => updateFitMode('HEAD')}
-        className={styles.fitModeButton}
+        className={cx({
+          [styles.fitModeButton]: true,
+          selected: isSelected('HEAD'),
+        })}
       >
         <HeadFirstIcon />
       </Button>
       <Button
-        kind={getKind('TAIL')}
         onClick={() => updateFitMode('TAIL')}
-        className={styles.fitModeButton}
+        className={cx({
+          [styles.fitModeButton]: true,
+          selected: isSelected('TAIL'),
+        })}
       >
         <TailFirstIcon />
       </Button>
@@ -453,40 +413,43 @@ function ViewSection({
     </Select>
   );
 
-  const kindByState = (name: ViewTypes) => {
-    if (view === name) {
-      return 'primary';
-    }
-    return 'default';
-  };
+  const isSelected = (name: ViewTypes) => view === name;
 
   const Buttons = (
     <>
       <Button
-        kind={kindByState('table')}
         onClick={() => updateView('table')}
-        className={styles.toggleViewButton}
+        className={cx({
+          [styles.toggleViewButton]: true,
+          selected: isSelected('table'),
+        })}
       >
         <TableIcon />
       </Button>
       <Button
-        kind={kindByState('both')}
         onClick={() => updateView('both')}
-        className={styles.toggleViewButton}
+        className={cx({
+          [styles.toggleViewButton]: true,
+          selected: isSelected('both'),
+        })}
       >
         <TablePlusFlamegraphIcon />
       </Button>
       <Button
-        kind={kindByState('flamegraph')}
         onClick={() => updateView('flamegraph')}
-        className={styles.toggleViewButton}
+        className={cx({
+          [styles.toggleViewButton]: true,
+          selected: isSelected('flamegraph'),
+        })}
       >
         <FlamegraphIcon />
       </Button>
       <Button
-        kind={kindByState('sandwich')}
         onClick={() => updateView('sandwich')}
-        className={styles.toggleViewButton}
+        className={cx({
+          [styles.toggleViewButton]: true,
+          selected: isSelected('sandwich'),
+        })}
       >
         <SandwichIcon />
       </Button>
