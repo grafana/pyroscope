@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import 'react-dom';
 
 import Spinner from 'react-svg-spinner';
@@ -8,7 +8,6 @@ import {
   selectIsLoadingData,
   selectAppTags,
   actions,
-  fetchTags,
   fetchTagValues,
   selectQueries,
 } from '@webapp/redux/reducers/continuous';
@@ -31,12 +30,6 @@ function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
   const isLoadingData = useAppSelector(selectIsLoadingData);
   const { query } = useAppSelector(selectQueries);
   const tags = useAppSelector(selectAppTags(query));
-
-  useEffect(() => {
-    if (query) {
-      dispatch(fetchTags(query));
-    }
-  }, [query]);
 
   return (
     <>

@@ -47,7 +47,7 @@ function ComparisonDiffApp() {
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
-  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTags, rightTags } = useTags();
   const { leftTimeline, rightTimeline } = useTimelines();
 
   const timelines = useAppSelector(selectTimelineSides);

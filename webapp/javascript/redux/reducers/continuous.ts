@@ -966,6 +966,7 @@ export const continuousSlice = createSlice({
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
       // convert each
+      // TODO(eh-am): don't delete tags if we already have them
       const tags = action.payload.tags.reduce((acc, tag) => {
         acc[tag] = { type: 'pristine' };
         return acc;
@@ -1109,6 +1110,25 @@ export const selectAnnotationsOrDefault = (state: RootState) => {
     return state.continuous.singleView.annotations;
   }
   return [];
+};
+
+export const selectRanges = (rootState: RootState) => {
+  const state = rootState.continuous;
+
+  return {
+    left: {
+      from: state.leftFrom,
+      until: state.leftUntil,
+    },
+    right: {
+      from: state.rightFrom,
+      until: state.rightUntil,
+    },
+    regular: {
+      from: state.from,
+      until: state.until,
+    },
+  };
 };
 
 function getNextStateFromPending(

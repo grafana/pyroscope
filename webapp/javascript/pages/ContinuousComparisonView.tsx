@@ -45,7 +45,7 @@ function ComparisonApp() {
   const { colorMode } = useColorMode();
   usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
-  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTags, rightTags } = useTags();
   const { leftTimeline, rightTimeline } = useTimelines();
   const sharedQuery = useFlamegraphSharedQuery();
 

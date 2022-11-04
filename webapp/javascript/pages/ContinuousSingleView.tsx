@@ -25,6 +25,7 @@ import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
 } from '@webapp/util/features';
+import useTags from '@webapp/hooks/tags.hook';
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
@@ -36,6 +37,7 @@ function ContinuousSingleView() {
   const { colorMode } = useColorMode();
 
   const { query } = useAppSelector(selectQueries);
+  const tags = useTags().regularTags;
   const { from, until, refreshToken, maxNodes } = useAppSelector(
     (state) => state.continuous
   );
