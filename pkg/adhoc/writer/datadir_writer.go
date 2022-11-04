@@ -2,10 +2,10 @@ package writer
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/pyroscope-io/pyroscope/pkg/fs"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
@@ -21,11 +21,7 @@ func NewAdhocDataDirWriter(dataDir string) *AdhocDataDirWriter {
 
 // EnsureExist makes sure the ${dataDir} directory exists in the filesystem
 func (w *AdhocDataDirWriter) EnsureExists() error {
-	if err := os.MkdirAll(w.dataDir, os.ModeDir|os.ModePerm); err != nil {
-		return fmt.Errorf("could not create data directory %s: %w", w.dataDir, err)
-	}
-
-	return nil
+	return fs.EnsureDirExists(w.dataDir)
 }
 
 // Write writes a flamebearer in json format to its dataDir
