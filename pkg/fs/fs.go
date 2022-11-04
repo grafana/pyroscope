@@ -1,4 +1,4 @@
-// package fs contain file system helpers
+// Package fs contain file system helpers
 package fs
 
 import (
