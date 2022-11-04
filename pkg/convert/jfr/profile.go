@@ -62,6 +62,9 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 	if err != nil {
 		return nil, nil, err
 	}
+	defer func() {
+		_ = f.RemoveAll()
+	}()
 
 	jfrField, err := form.ReadField(f, "jfr")
 	if err != nil {
