@@ -64,7 +64,7 @@ const arrayToTree = (nodesArray: TreeNode[], total: number): TreeNode => {
   return result.children[0];
 };
 
-function dedupTree(node) {
+function dedupTree(node: TreeNode) {
   const childrenMap = {};
   for (let i = 0; i < node.children.length; i += 1) {
     childrenMap[node.children[i].name] ||= node.children[i];
@@ -109,7 +109,7 @@ export function calleesFlamebearer(
     self: [0],
     children: [],
   };
-  const processTree = (node) => {
+  const processTree = (node: TreeNode) => {
     if (node.name === nodeName) {
       result.numTicks += node.total[0];
 
@@ -153,7 +153,7 @@ export function callersFlamebearer(
     children: [],
   };
   const processTree = (node, parentNodes = []) => {
-    const currentSubtree = parentNodes.concat([{ ...node, children: [] }]);
+    const currentSubtree = [{ ...node, children: [] }].concat(parentNodes);
 
     if (node.name === nodeName) {
       subtrees.push(currentSubtree);
@@ -167,13 +167,17 @@ export function callersFlamebearer(
   };
   processTree(tree);
 
+  // 1. we first make a regular tree
   subtrees.forEach((v, i) => {
-    totalNode.children.push(arrayToTree(v.reverse(), targetFunctionTotals[i]));
+    totalNode.children.push(arrayToTree(v, targetFunctionTotals[i]));
   });
 
+  // 2. that allows us to use the same dedup function
   dedupTree(totalNode);
 
   const flamebearer = treeToFlamebearer(totalNode);
+
+  // 3. then we reverse levels so that tree goes from bottom to top
   flamebearer.levels = flamebearer.levels.reverse().slice(0, -1);
 
   return { ...result, ...flamebearer };
