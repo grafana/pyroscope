@@ -24,19 +24,19 @@ export default function useTags() {
     if (leftQuery) {
       dispatch(fetchTags(leftQuery));
     }
-  }, [JSON.stringify(ranges.left)]);
+  }, [leftQuery, JSON.stringify(ranges.left)]);
 
   useEffect(() => {
     if (rightQuery) {
       dispatch(fetchTags(rightQuery));
     }
-  }, [JSON.stringify(ranges.right)]);
+  }, [rightQuery, JSON.stringify(ranges.right)]);
 
   useEffect(() => {
     if (query) {
       dispatch(fetchTags(query));
     }
-  }, [JSON.stringify(ranges.regular)]);
+  }, [query, JSON.stringify(ranges.regular)]);
 
   return {
     regularTags,

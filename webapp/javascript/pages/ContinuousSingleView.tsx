@@ -6,10 +6,13 @@ import Box from '@webapp/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import {
   fetchSingleView,
+  setQuery,
   selectQueries,
   setDateRange,
   selectAnnotationsOrDefault,
   addAnnotation,
+  actions,
+  fetchTagValues,
 } from '@webapp/redux/reducers/continuous';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
@@ -17,6 +20,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import TimelineTitle from '@webapp/components/TimelineTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
@@ -142,7 +146,26 @@ function ContinuousSingleView() {
     <div>
       <PageTitle title={formatTitle('Single', query)} />
       <div className="main-wrapper">
-        <Toolbar />
+        <Toolbar
+          onSelectedName={(query) => {
+            dispatch(setQuery(query));
+          }}
+        />
+        <TagsBar
+          query={query}
+          tags={tags}
+          onSetQuery={(q) => {
+            dispatch(actions.setQuery(q));
+
+            if (q === query) {
+              dispatch(actions.refresh());
+            }
+          }}
+          onSelectedLabel={(label, query) => {
+            dispatch(fetchTagValues({ query, label }));
+          }}
+        />
+
         <Box>
           <LoadingOverlay active={isLoadingOrReloading([singleView.type])}>
             <TimelineChartWrapper
