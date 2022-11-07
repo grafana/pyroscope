@@ -1,4 +1,4 @@
-import type { TreeNode } from './sandwichViewProfiles';
+import type { TreeNode } from './flamebearersToTree';
 
 export const tree: TreeNode = {
   name: 'name',
