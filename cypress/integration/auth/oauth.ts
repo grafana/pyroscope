@@ -10,12 +10,18 @@ describe('oauth with mock enabled', () => {
     cy.get('#github-link').should('not.exist');
 
     cy.get('#gitlab-link').click();
-    cy.url().should('contain', '/?query=');
-    // Wait before data load
-    cy.waitForFlamegraphToRender();
-    // cy.get('.spinner-container.loading').should('be.visible');
-    // cy.get('.spinner-container.loading').should('exist');
-    cy.get('.spinner-container').should('exist');
+
+    // When accessing /login directly we should be redirected to the root
+    cy.location().should((loc) => {
+      const removeTrailingSlash = (url: string) => url.replace(/\/+$/, '');
+
+      const basePath = new URL(Cypress.config().baseUrl).pathname;
+
+      expect(removeTrailingSlash(loc.pathname)).to.eq(
+        removeTrailingSlash(basePath)
+      );
+    });
+
     cy.intercept('/api/user');
 
     cy.findByTestId('sidebar-settings').click();
@@ -23,17 +29,6 @@ describe('oauth with mock enabled', () => {
     cy.findByText('Change Password').should('not.exist');
 
     cy.get('li.pro-menu-item').contains('Sign out').click({ force: true });
-    cy.url().should('contain', '/login');
-  });
-
-  it('should correctly display forbidden page', () => {
-    cy.visit('/login');
-
-    cy.get('#gitlab-link').should('be.visible');
-
-    cy.get('#gitlab-link').click();
-    cy.url().should('contain', '/forbidden');
-    cy.visit('/logout');
     cy.url().should('contain', '/login');
   });
 });
