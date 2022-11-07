@@ -41,7 +41,7 @@ type Storage struct {
 	labels     *labels.Labels
 	exemplars  *exemplars
 
-	appSvc ApplicationService
+	appSvc ApplicationMetadataSaver
 	hc     *health.Controller
 
 	// Maintenance tasks are executed exclusively to avoid competition:
@@ -84,7 +84,7 @@ type SampleObserver interface {
 
 // ApplicationMetadataSaver saves application metadata
 type ApplicationMetadataSaver interface {
-	CreateOrUpdate(ctx context.Context, application Application) error
+	CreateOrUpdate(ctx context.Context, application ApplicationMetadata) error
 }
 
 func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller, appSvc ApplicationMetadataSaver) (*Storage, error) {

@@ -34,7 +34,7 @@ var _ = Describe("server", func() {
 						logrus.StandardLogger(),
 						prometheus.NewRegistry(),
 						new(health.Controller),
-						storage.NoopApplicationService{},
+						storage.NoopApplicationMetadataService{},
 					)
 					Expect(err).ToNot(HaveOccurred())
 					defer s.Close()

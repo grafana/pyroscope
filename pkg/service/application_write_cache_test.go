@@ -11,10 +11,10 @@ import (
 )
 
 type mockApplicationWriter struct {
-	onWrite func(application storage.Application) error
+	onWrite func(application storage.ApplicationMetadata) error
 }
 
-func (svc *mockApplicationWriter) CreateOrUpdate(ctx context.Context, application storage.Application) error {
+func (svc *mockApplicationWriter) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
 	return svc.onWrite(application)
 }
 
@@ -23,7 +23,7 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 	BeforeEach(s.BeforeEach)
 	AfterEach(s.AfterEach)
 
-	sampleApp := storage.Application{
+	sampleApp := storage.ApplicationMetadata{
 		FQName:          "myapp",
 		SampleRate:      100,
 		SpyName:         "gospy",
@@ -42,7 +42,7 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 	When("cache is empty", func() {
 		BeforeEach(func() {
 			m = mockApplicationWriter{
-				onWrite: func(application storage.Application) error {
+				onWrite: func(application storage.ApplicationMetadata) error {
 					Expect(application).To(Equal(sampleApp))
 					return nil
 				},
@@ -61,7 +61,7 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 		BeforeEach(func() {
 			n = 0
 			m = mockApplicationWriter{
-				onWrite: func(application storage.Application) error {
+				onWrite: func(application storage.ApplicationMetadata) error {
 					n = n + 1
 					return nil
 				},

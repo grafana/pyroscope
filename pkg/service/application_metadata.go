@@ -9,22 +9,22 @@ import (
 	"gorm.io/gorm"
 )
 
-type ApplicationService struct {
+type ApplicationMetadataService struct {
 	db *gorm.DB
 }
 
-func NewApplicationService(db *gorm.DB) ApplicationService {
-	return ApplicationService{db: db}
+func NewApplicationMetadataService(db *gorm.DB) ApplicationMetadataService {
+	return ApplicationMetadataService{db: db}
 }
 
-func (svc ApplicationService) List(ctx context.Context) (apps []storage.Application, err error) {
+func (svc ApplicationMetadataService) List(ctx context.Context) (apps []storage.ApplicationMetadata, err error) {
 	tx := svc.db.WithContext(ctx)
 	result := tx.Find(&apps)
 	return apps, result.Error
 }
 
-func (svc ApplicationService) Get(ctx context.Context, name string) (storage.Application, error) {
-	app := storage.Application{}
+func (svc ApplicationMetadataService) Get(ctx context.Context, name string) (storage.ApplicationMetadata, error) {
+	app := storage.ApplicationMetadata{}
 	if err := model.ValidateAppName(name); err != nil {
 		return app, err
 	}
@@ -40,7 +40,7 @@ func (svc ApplicationService) Get(ctx context.Context, name string) (storage.App
 	}
 }
 
-func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
+func (svc ApplicationMetadataService) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
 	if err := model.ValidateAppName(application.FQName); err != nil {
 		return err
 	}
@@ -48,16 +48,16 @@ func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application st
 	tx := svc.db.WithContext(ctx)
 
 	// Only update the field if it's populated
-	return tx.Where(storage.Application{
+	return tx.Where(storage.ApplicationMetadata{
 		FQName: application.FQName,
-	}).Assign(application).FirstOrCreate(&storage.Application{}).Error
+	}).Assign(application).FirstOrCreate(&storage.ApplicationMetadata{}).Error
 }
 
-func (svc ApplicationService) Delete(ctx context.Context, name string) error {
+func (svc ApplicationMetadataService) Delete(ctx context.Context, name string) error {
 	if err := model.ValidateAppName(name); err != nil {
 		return err
 	}
 
 	tx := svc.db.WithContext(ctx)
-	return tx.Where("fq_name = ?", name).Delete(storage.Application{}).Error
+	return tx.Where("fq_name = ?", name).Delete(storage.ApplicationMetadata{}).Error
 }

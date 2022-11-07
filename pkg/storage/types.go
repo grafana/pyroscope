@@ -133,7 +133,7 @@ type BadgerDBWithCache interface {
 	Name() string
 }
 
-type Application struct {
+type ApplicationMetadata struct {
 	// Fully Qualified Name. Eg app.cpu ({__name__}.{profile_type})
 	FQName string `gorm:"index,unique;not null;default:null"`
 

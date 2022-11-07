@@ -97,14 +97,14 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 
-	var metadataSaver storage.ApplicationMetadataSaver = storage.NoopApplicationService{}
+	var appMetadataSaver storage.ApplicationMetadataSaver = storage.NoopApplicationMetadataService{}
 	if svc.config.EnableExperimentalAppMetadata {
-		metadataSaver = service.NewApplicationService(svc.database.DB())
-		metadataSaver = service.NewApplicationCacheService(service.ApplicationCacheServiceConfig{}, metadataSaver)
+		appMetadataSaver = service.NewApplicationMetadataService(svc.database.DB())
+		appMetadataSaver = service.NewApplicationCacheService(service.ApplicationCacheServiceConfig{}, appMetadataSaver)
 	}
 
 	storageConfig := storage.NewConfig(svc.config)
-	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController, metadataSaver)
+	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController, appMetadataSaver)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
@@ -118,7 +118,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	}
 
 	if svc.config.EnableExperimentalAppMetadata {
-		migrator := NewAppMetadataMigrator(logger, svc.storage, service.NewApplicationService(svc.database.DB()))
+		migrator := NewAppMetadataMigrator(logger, svc.storage, service.NewApplicationMetadataService(svc.database.DB()))
 		err := migrator.Migrate()
 		if err != nil {
 			svc.logger.Error(err)

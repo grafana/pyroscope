@@ -9,7 +9,7 @@ import (
 )
 
 type ApplicationWriter interface {
-	CreateOrUpdate(ctx context.Context, application storage.Application) error
+	CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error
 }
 
 type ApplicationCacheService struct {
@@ -39,9 +39,9 @@ func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc App
 // * item is not in the cache
 // * data is different from what's in the cache
 // Otherwise it does nothing
-func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
+func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
 	if cachedApp, ok := svc.cache.get(application.FQName); ok {
-		if !svc.isTheSame(application, cachedApp.(storage.Application)) {
+		if !svc.isTheSame(application, cachedApp.(storage.ApplicationMetadata)) {
 			return svc.writeToBoth(ctx, application)
 		}
 		return nil
@@ -54,7 +54,7 @@ func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, applicat
 }
 
 // writeToBoth writes to both the cache and the underlying service
-func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application storage.Application) error {
+func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application storage.ApplicationMetadata) error {
 	if err := svc.appSvc.CreateOrUpdate(ctx, application); err != nil {
 		return err
 	}
@@ -65,6 +65,6 @@ func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application
 // isTheSame check if 2 applications have the same data
 // TODO(eh-am): update to a more robust comparison function
 // See https://pkg.go.dev/reflect#DeepEqual for its drawbacks
-func (*ApplicationCacheService) isTheSame(app1 storage.Application, app2 storage.Application) bool {
+func (*ApplicationCacheService) isTheSame(app1 storage.ApplicationMetadata, app2 storage.ApplicationMetadata) bool {
 	return reflect.DeepEqual(app1, app2)
 }

@@ -33,7 +33,7 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 		return errRetention
 	}
 
-	if err := s.appSvc.CreateOrUpdate(ctx, Application{
+	if err := s.appSvc.CreateOrUpdate(ctx, ApplicationMetadata{
 		FQName:          pi.Key.AppName(),
 		SpyName:         pi.SpyName,
 		SampleRate:      pi.SampleRate,

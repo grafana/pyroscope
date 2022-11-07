@@ -11,17 +11,17 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
-var _ = Describe("ApplicationService", func() {
+var _ = Describe("ApplicationMetadataService", func() {
 	s := new(testSuite)
 	BeforeEach(s.BeforeEach)
 	AfterEach(s.AfterEach)
 
-	var svc service.ApplicationService
+	var svc service.ApplicationMetadataService
 	BeforeEach(func() {
-		svc = service.NewApplicationService(s.DB())
+		svc = service.NewApplicationMetadataService(s.DB())
 	})
 
-	app := storage.Application{
+	app := storage.ApplicationMetadata{
 		FQName:          "myapp",
 		SampleRate:      100,
 		SpyName:         "gospy",
@@ -29,7 +29,7 @@ var _ = Describe("ApplicationService", func() {
 		AggregationType: metadata.AverageAggregationType,
 	}
 
-	assertNumOfApps := func(num int) []storage.Application {
+	assertNumOfApps := func(num int) []storage.ApplicationMetadata {
 		apps, err := svc.List(context.TODO())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(apps)).To(Equal(num))
@@ -40,7 +40,7 @@ var _ = Describe("ApplicationService", func() {
 		ctx := context.TODO()
 
 		// Create
-		err := svc.CreateOrUpdate(ctx, storage.Application{FQName: ""})
+		err := svc.CreateOrUpdate(ctx, storage.ApplicationMetadata{FQName: ""})
 		Expect(err).To(HaveOccurred())
 		Expect(model.IsValidationError(err)).To(BeTrue())
 
@@ -73,7 +73,7 @@ var _ = Describe("ApplicationService", func() {
 			err := svc.CreateOrUpdate(ctx, app)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = svc.CreateOrUpdate(ctx, storage.Application{
+			err = svc.CreateOrUpdate(ctx, storage.ApplicationMetadata{
 				FQName:     app.FQName,
 				SampleRate: 101,
 			})

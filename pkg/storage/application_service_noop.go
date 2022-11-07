@@ -2,22 +2,22 @@ package storage
 
 import "context"
 
-// NoopApplicationService implements same methods as ApplicationService
+// NoopApplicationMetadataService implements same methods as ApplicationMetadataService
 // But it doesn't do anything when called
-type NoopApplicationService struct{}
+type NoopApplicationMetadataService struct{}
 
-func (NoopApplicationService) CreateOrUpdate(context.Context, Application) error {
+func (NoopApplicationMetadataService) CreateOrUpdate(context.Context, ApplicationMetadata) error {
 	return nil
 }
 
-func (NoopApplicationService) List(context.Context, Application) (apps []Application, err error) {
+func (NoopApplicationMetadataService) List(context.Context, ApplicationMetadata) (apps []ApplicationMetadata, err error) {
 	return apps, err
 }
 
-func (NoopApplicationService) Get(context.Context, string) (app Application, err error) {
+func (NoopApplicationMetadataService) Get(context.Context, string) (app ApplicationMetadata, err error) {
 	return app, err
 }
 
-func (NoopApplicationService) Delete(context.Context, string) error {
+func (NoopApplicationMetadataService) Delete(context.Context, string) error {
 	return nil
 }
