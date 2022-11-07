@@ -58,6 +58,12 @@ function ComparisonDiffApp() {
   const { offset } = useTimeZone();
   const timezone = offset === 0 ? 'utc' : 'browser';
 
+  const isLoading = isLoadingOrReloading([
+    diffView.type,
+    timelines.left.type,
+    timelines.right.type,
+  ]);
+
   useEffect(() => {
     if (rightQuery && leftQuery) {
       const fetchData = dispatch(
@@ -108,12 +114,7 @@ function ComparisonDiffApp() {
           }}
         />
         <Box>
-          <LoadingOverlay
-            active={isLoadingOrReloading([
-              timelines.left.type,
-              timelines.right.type,
-            ])}
-          >
+          <LoadingOverlay active={isLoading}>
             <TimelineChartWrapper
               data-testid="timeline-main"
               id="timeline-chart-diff"
@@ -156,9 +157,7 @@ function ComparisonDiffApp() {
         </Box>
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay
-              active={isLoadingOrReloading([timelines.left.type])}
-            >
+            <LoadingOverlay active={isLoading}>
               <TimelineTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
@@ -196,9 +195,7 @@ function ComparisonDiffApp() {
             </LoadingOverlay>
           </Box>
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay
-              active={isLoadingOrReloading([timelines.right.type])}
-            >
+            <LoadingOverlay active={isLoading}>
               <TimelineTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
@@ -237,10 +234,7 @@ function ComparisonDiffApp() {
           </Box>
         </div>
         <Box>
-          <LoadingOverlay
-            active={isLoadingOrReloading([diffView.type])}
-            spinnerPosition="baseline"
-          >
+          <LoadingOverlay active={isLoading} spinnerPosition="baseline">
             <TimelineTitle titleKey="diff" />
             <FlamegraphRenderer
               showCredit={false}

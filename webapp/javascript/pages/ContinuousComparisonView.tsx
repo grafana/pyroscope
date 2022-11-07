@@ -11,6 +11,7 @@ import {
   fetchComparisonSide,
   fetchTagValues,
   selectQueries,
+  selectTimelineSides,
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
@@ -48,6 +49,14 @@ function ComparisonApp() {
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
   const { leftTimeline, rightTimeline } = useTimelines();
   const sharedQuery = useFlamegraphSharedQuery();
+
+  const timelines = useAppSelector(selectTimelineSides);
+  const isLoading = isLoadingOrReloading([
+    comparisonView.left.type,
+    comparisonView.right.type,
+    timelines.left.type,
+    timelines.right.type,
+  ]);
 
   useEffect(() => {
     if (leftQuery) {
@@ -92,12 +101,7 @@ function ComparisonApp() {
           }}
         />
         <Box>
-          <LoadingOverlay
-            active={isLoadingOrReloading([
-              comparisonView.left.type,
-              comparisonView.right.type,
-            ])}
-          >
+          <LoadingOverlay active={isLoading}>
             <TimelineChartWrapper
               data-testid="timeline-main"
               id="timeline-chart-double"
@@ -145,10 +149,7 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
-            <LoadingOverlay
-              active={isLoadingOrReloading([comparisonView.left.type])}
-              spinnerPosition="baseline"
-            >
+            <LoadingOverlay active={isLoading} spinnerPosition="baseline">
               <TimelineTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
@@ -209,10 +210,7 @@ function ComparisonApp() {
           </Box>
 
           <Box className={styles.comparisonPane}>
-            <LoadingOverlay
-              spinnerPosition="baseline"
-              active={isLoadingOrReloading([comparisonView.right.type])}
-            >
+            <LoadingOverlay spinnerPosition="baseline" active={isLoading}>
               <TimelineTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
