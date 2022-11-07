@@ -81,6 +81,12 @@ type groupType struct{}
 
 func (groupType) String() string { return "group" }
 
+func (groupType) AssignValue(dst reflect.Value, src parquet.Value) error { return nil }
+
+func (groupType) ConvertValue(val parquet.Value, typ parquet.Type) (parquet.Value, error) {
+	return val, nil
+}
+
 func (groupType) Kind() parquet.Kind {
 	panic("cannot call Kind on parquet group")
 }
