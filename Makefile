@@ -23,7 +23,7 @@ IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
-GORELEASER_ENV := GIT_BRANCH=$(GIT_BRANCH) GIT_REVISION=$(GIT_REVISION) GIT_LAST_COMMIT_DATE=$(GIT_LAST_COMMIT_DATE) IMAGE_TAG=$(IMAGE_TAG)
+GORELEASER_ENV := GIT_LAST_COMMIT_DATE=$(GIT_LAST_COMMIT_DATE)
 
 # Build flags
 VPREFIX := github.com/grafana/phlare/pkg/util/build
