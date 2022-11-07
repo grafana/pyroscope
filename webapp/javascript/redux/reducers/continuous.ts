@@ -591,6 +591,8 @@ export const fetchTags = createAsyncThunk<
       const timerange = biggestTimeRangeInUnix(state);
 
       const s = state.tags[appName.value];
+
+      // Haven't loaded yet
       if (!s) {
         return true;
       }
@@ -600,6 +602,7 @@ export const fetchTags = createAsyncThunk<
         return false;
       }
 
+      // Any other state that's not loaded
       if (s.type !== 'loaded') {
         return true;
       }
