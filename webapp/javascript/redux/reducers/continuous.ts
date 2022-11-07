@@ -113,6 +113,8 @@ export type TagsState =
   | {
       type: 'loaded';
       tags: Record<string, TagsData>;
+      from: number;
+      until: number;
     }
   | { type: 'failed'; tags: Record<string, TagsData> };
 
@@ -531,44 +533,88 @@ export const fetchDiffView = createAsyncThunk<
 });
 
 export const fetchTags = createAsyncThunk<
-  { appName: string; tags: string[] },
+  { appName: string; tags: string[]; from: number; until: number },
   Query,
   { state: { continuous: ContinuousState } }
->('continuous/fetchTags', async (query: Query, thunkAPI) => {
-  const appName = queryToAppName(query);
-  if (appName.isNothing) {
-    return Promise.reject(
-      new Error(
-        `Query '${appName}' is not a valid app, and it can't have any tags`
-      )
+>(
+  'continuous/fetchTags',
+  async (query: Query, thunkAPI) => {
+    const appName = queryToAppName(query);
+    if (appName.isNothing) {
+      return Promise.reject(
+        new Error(
+          `Query '${appName}' is not a valid app, and it can't have any tags`
+        )
+      );
+    }
+
+    const state = thunkAPI.getState().continuous;
+    const timerange = biggestTimeRangeInUnix(state);
+    const res = await tagsService.fetchTags(
+      query,
+      timerange.from,
+      timerange.until
     );
+
+    if (res.isOk) {
+      return Promise.resolve({
+        appName: appName.value,
+        tags: res.value,
+        from: timerange.from,
+        until: timerange.until,
+      });
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to load tags',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  },
+  {
+    // If we already loaded the tags for that application
+    // And we are trying to load tags for a smaller range
+    // Skip it, since we most likely already have that data
+    condition: (query, thunkAPI) => {
+      const appName = queryToAppName(query);
+      if (appName.isNothing) {
+        throw Error(
+          `Query '${appName}' is not a valid app, and it can't have any tags`
+        );
+      }
+
+      const state = thunkAPI.getState().continuous;
+      const timerange = biggestTimeRangeInUnix(state);
+
+      const s = state.tags[appName.value];
+      if (!s) {
+        return true;
+      }
+
+      // Already loading that tag
+      if (s.type === 'loading') {
+        return false;
+      }
+
+      if (s.type !== 'loaded') {
+        return true;
+      }
+
+      const isInRange = (target: number) => {
+        return target >= s.from && target <= s.until;
+      };
+
+      const isSmallerThanLoaded =
+        isInRange(timerange.from) && isInRange(timerange.until);
+
+      return !isSmallerThanLoaded;
+    },
   }
-
-  const state = thunkAPI.getState().continuous;
-  const timerange = biggestTimeRangeInUnix(state);
-  const res = await tagsService.fetchTags(
-    query,
-    timerange.from,
-    timerange.until
-  );
-
-  if (res.isOk) {
-    return Promise.resolve({
-      appName: appName.value,
-      tags: res.value,
-    });
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed to load tags',
-      message: res.error.message,
-    })
-  );
-
-  return Promise.reject(res.error);
-});
+);
 
 export const fetchTagValues = createAsyncThunk<
   {
@@ -974,6 +1020,8 @@ export const continuousSlice = createSlice({
 
       state.tags[action.payload.appName] = {
         type: 'loaded',
+        from: action.payload.from,
+        until: action.payload.until,
         tags,
       };
     });
