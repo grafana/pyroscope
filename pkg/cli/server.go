@@ -97,11 +97,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 
-	var appMetadataSaver storage.ApplicationMetadataSaver = storage.NoopApplicationMetadataService{}
-	if svc.config.EnableExperimentalAppMetadata {
-		appMetadataSaver = service.NewApplicationMetadataService(svc.database.DB())
-		appMetadataSaver = service.NewApplicationCacheService(service.ApplicationCacheServiceConfig{}, appMetadataSaver)
-	}
+	var appMetadataSaver storage.ApplicationMetadataSaver = service.NewApplicationMetadataService(svc.database.DB())
+	appMetadataSaver = service.NewApplicationCacheService(service.ApplicationCacheServiceConfig{}, appMetadataSaver)
 
 	storageConfig := storage.NewConfig(svc.config)
 	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController, appMetadataSaver)
@@ -117,12 +114,10 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 	}
 
-	if svc.config.EnableExperimentalAppMetadata {
-		migrator := NewAppMetadataMigrator(logger, svc.storage, service.NewApplicationMetadataService(svc.database.DB()))
-		err := migrator.Migrate()
-		if err != nil {
-			svc.logger.Error(err)
-		}
+	migrator := NewAppMetadataMigrator(logger, svc.storage, service.NewApplicationMetadataService(svc.database.DB()))
+	err = migrator.Migrate()
+	if err != nil {
+		svc.logger.Error(err)
 	}
 
 	// this needs to happen after storage is initiated!

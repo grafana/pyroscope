@@ -164,9 +164,6 @@ type Server struct {
 	RemoteRead  RemoteRead  `yaml:"remote-read" mapstructure:"remote-read"`
 
 	DisableExportToFlamegraphDotCom bool `def:"false" desc:"disable exporting to flamegraph.com in the UI" mapstructure:"disable-export-to-flamegraph-dot-com"`
-
-	// TODO(eh-am): remove this
-	EnableExperimentalAppMetadata bool `def:"true" deprecated:"true" desc:"whether to enable the experimental app metadata store" mapstructure:"enable-experimental-app-metadata"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule
