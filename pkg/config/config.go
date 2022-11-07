@@ -165,7 +165,8 @@ type Server struct {
 
 	DisableExportToFlamegraphDotCom bool `def:"false" desc:"disable exporting to flamegraph.com in the UI" mapstructure:"disable-export-to-flamegraph-dot-com"`
 
-	EnableExperimentalAppMetadata bool `def:"false" deprecated:"true" desc:"whether to enable the experimental app metadata store" mapstructure:"enable-experimental-app-metadata"`
+	// TODO(eh-am): remove this
+	EnableExperimentalAppMetadata bool `def:"true" deprecated:"true" desc:"whether to enable the experimental app metadata store" mapstructure:"enable-experimental-app-metadata"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule
