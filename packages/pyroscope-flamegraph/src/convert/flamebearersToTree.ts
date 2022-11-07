@@ -13,8 +13,8 @@ export function flamebearersToTree(
   f1: Profile['flamebearer'],
   f2?: Profile['flamebearer']
 ): TreeNode {
-  const globalLookup = new Map<string, TreeNode>();
-  const treeSpecificLookup = new Map<string, TreeNode>();
+  const globalLookup = {};
+  const treeSpecificLookup = {};
   let root: TreeNode = {
     name: 'total',
     children: [],
