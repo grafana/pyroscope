@@ -20,8 +20,7 @@ async function main() {
     res.status(200).json([{ path: 'allowed-group-example' }]);
   });
 
-  server.service.once('beforeUserinfo', (userInfoResponse, req) => {
-    console.log('beforeUserinfo');
+  server.service.addListener('beforeUserinfo', (userInfoResponse, req) => {
     userInfoResponse.body = {
       id: 1245,
       email: 'test@test.com',
@@ -35,7 +34,7 @@ async function main() {
   await server.issuer.keys.generate('RS256');
 
   // Start the server
-  await server.start(18080, 'localhost');
+  await server.start(18080, '0.0.0.0');
   console.log('Issuer URL:', server.issuer.url); // -> http://localhost:8080
 
   // Do some work with the server

@@ -29,3 +29,8 @@ declare module '*.svg' {
   const content: ShamefulAny;
   export default content;
 }
+
+declare module '*.gif' {
+  const content: ShamefulAny;
+  export default content;
+}

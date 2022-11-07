@@ -186,14 +186,14 @@ func (p *RawProfile) loadPprofFromForm() error {
 		return err
 	}
 
-	// maxMemory 32MB.
-	// TODO(kolesnikovae): If the limit is exceeded, parts will be written
-	//  to disk. It may be better to limit the request body size to be sure
-	//  that they loaded into memory entirely.
 	f, err := multipart.NewReader(bytes.NewReader(p.RawData), boundary).ReadForm(32 << 20)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = f.RemoveAll()
+	}()
+
 	p.Profile, err = form.ReadField(f, formFieldProfile)
 	if err != nil {
 		return err

@@ -55,3 +55,24 @@ for example `yarn dev --progress=profile`
 
 
 Another interesting flag is `--json`, which you can then analyze on https://chrisbateman.github.io/webpack-visualizer/
+
+# Testing baseURL
+It can be a bit of a pain in the ass.
+
+Install nginx
+```
+nginx -c cypress/base-url/nginx.conf -g 'daemon off;'
+```
+
+Then run the server with `PYROSCOPE_BASE_URL=/pyroscope`
+
+## Testing baseURL + auth
+Same as before, but also run the `oauth2-mock-server`:
+```
+node scripts/oauth-mock/oauth-mock.js
+```
+
+Also run the server with
+```
+make dev SERVERPARAMS=--config=scripts/oauth-mock/pyroscope-config-base-url.yml
+```
