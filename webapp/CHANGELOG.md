@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.56.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.2...@pyroscope/webapp@1.56.3) (2022-11-07)
+
+
+### Bug Fixes
+
+* make oauth work when baseUrl is set ([#1673](https://github.com/pyroscope-io/pyroscope/issues/1673)) ([6cc1a2a](https://github.com/pyroscope-io/pyroscope/commit/6cc1a2a75387b0ca4a75ac57191a6a352a072a43))
+
+
+
+
+
 ## [1.56.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.1...@pyroscope/webapp@1.56.2) (2022-11-06)
 
 **Note:** Version bump only for package @pyroscope/webapp
