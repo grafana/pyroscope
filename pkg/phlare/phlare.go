@@ -62,7 +62,8 @@ type Config struct {
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
 
-	ConfigFile string `yaml:"-"`
+	ConfigFile  string `yaml:"-"`
+	ShowVersion bool   `yaml:"-"`
 }
 
 func newDefaultConfig() *Config {
@@ -92,6 +93,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	f.Var(&c.Target, "target", "Comma-separated list of Phlare modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
+	f.BoolVar(&c.ShowVersion, "version", false, "Show the version of phlare and exit")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.AgentConfig.RegisterFlags(f)
@@ -191,6 +193,11 @@ type Phlare struct {
 func New(cfg Config) (*Phlare, error) {
 	logger := initLogger(&cfg.Server)
 	usagestats.Edition("oss")
+
+	if cfg.ShowVersion {
+		fmt.Println(version.Print("phlare"))
+		os.Exit(0)
+	}
 
 	phlare := &Phlare{
 		Cfg:    cfg,
