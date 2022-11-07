@@ -2,7 +2,7 @@ import type { Profile } from '@pyroscope/models/src';
 import decodeFlamebearer, {
   deltaDiffWrapperReverse,
 } from '../FlameGraph/decode';
-import { flamebearersToTree } from './flamebearersToTree';
+import { flamebearersToTree, TreeNode } from './flamebearersToTree';
 
 function subtractFlamebearer(
   f1: Profile['flamebearer'],
@@ -16,11 +16,32 @@ function subtractFlamebearer(
   };
 
   const tree = flamebearersToTree(f1, f2);
-  const processNode = (node, level: number, offset: number) => {
+
+  const updateNumbers = (node: TreeNode): number => {
+    // self is easy
+    node.self[0] = Math.max((node.self[0] || 0) - (node.self[1] || 0), 0);
+
+    // total needs to be recalculated using children
+    if (node.children.length === 0) {
+      node.total[0] = Math.max((node.total[0] || 0) - (node.total[1] || 0), 0);
+    } else {
+      let total = 0;
+      for (let i = 0; i < node.children.length; i += 1) {
+        total += updateNumbers(node.children[i]);
+      }
+      node.total[0] = total;
+    }
+
+    return node.total[0];
+  };
+
+  updateNumbers(tree);
+
+  const processNode = (node: TreeNode, level: number, offset: number) => {
     const { name, children, self, total } = node;
     result.levels[level] ||= [];
-    const newSelf = self[1] ? Math.max(self[0] - self[1], 0) : self[0];
-    const newTotal = total[1] ? Math.max(total[0] - total[1], 0) : total[0];
+    const newSelf = self[0];
+    const newTotal = total[0];
     result.maxSelf = Math.max(result.maxSelf, newSelf);
     if (newTotal === 0) {
       return 0;

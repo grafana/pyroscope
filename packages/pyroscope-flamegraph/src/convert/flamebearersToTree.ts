@@ -1,7 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-
 import type { Profile } from '@pyroscope/models/src';
 
 export interface TreeNode {
@@ -17,47 +13,59 @@ export function flamebearersToTree(
   f1: Profile['flamebearer'],
   f2?: Profile['flamebearer']
 ): TreeNode {
-  const lookup = {};
-  const lookup2 = {};
-  let root: TreeNode;
+  const globalLookup = new Map<string, TreeNode>();
+  const treeSpecificLookup = new Map<string, TreeNode>();
+  let root: TreeNode = {
+    name: 'total',
+    children: [],
+    self: [],
+    total: [],
+    key: '/total',
+  };
+
   (f2 ? [f1, f2] : [f1]).forEach((f, fi) => {
     for (let i = 0; i < f.levels.length; i += 1) {
       for (let j = 0; j < f.levels[i].length; j += 4) {
-        const key2 = [fi, i, j].join('/');
-        const name = f.names[f.levels[i][j + 3]];
-        const offset = f.levels[i][j + 0];
-
-        let parentKey;
+        const treeSpecificKey: string = [fi, i, j].join('/');
+        const name: string = f.names[f.levels[i][j + 3]];
+        const offset: number = f.levels[i][j + 0];
+        const total: number = f.levels[i][j + 1];
+        const self: number = f.levels[i][j + 2];
+        let parentGlobalKey = '';
+        // searching for parent node
         if (i !== 0) {
           const pi = i - 1;
-          for (let k = 0; k < f.levels[pi].length; k += 4) {
-            const parentOffset = f.levels[pi][k + 0];
-            const total = f.levels[pi][k + 1];
+          const parentLevel = f.levels[pi];
+          for (let k = 0; k < parentLevel.length; k += 4) {
+            const parentOffset = parentLevel[k + 0];
+            const total = parentLevel[k + 1];
             if (offset >= parentOffset && offset < parentOffset + total) {
-              const parentKey2 = [fi, pi, k].join('/');
-              const parentObj = lookup2[parentKey2];
-              parentKey = parentObj.key;
+              const parentTreeSpecificKey = [fi, pi, k].join('/');
+              const parentObj = treeSpecificLookup[parentTreeSpecificKey];
+              parentGlobalKey = parentObj.key;
               break;
             }
           }
         }
 
-        const key = [parentKey || '', name].join('/');
-        lookup[key] ||= {
+        const globalKey = [parentGlobalKey || '', name].join('/');
+        const isNewObject = !globalLookup[globalKey];
+        globalLookup[globalKey] ||= {
           name,
           children: [],
           self: [],
           total: [],
-          key,
+          key: globalKey,
         } as TreeNode;
-        const obj = lookup[key];
+        const obj: TreeNode = globalLookup[globalKey];
         obj.total[fi] ||= 0;
-        obj.total[fi] += f.levels[i][j + 1];
+        obj.total[fi] += total;
         obj.self[fi] ||= 0;
-        obj.self[fi] += f.levels[i][j + 2];
-        lookup2[key2] = obj;
-        if (parentKey) {
-          lookup[parentKey].children.push(obj);
+        obj.self[fi] += self;
+        treeSpecificLookup[treeSpecificKey] = obj;
+
+        if (parentGlobalKey && isNewObject) {
+          globalLookup[parentGlobalKey].children.push(obj);
         }
         if (i === 0) {
           root = obj;
