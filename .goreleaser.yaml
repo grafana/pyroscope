@@ -24,9 +24,9 @@ builds:
     ldflags:
       - >
         -extldflags "-static" -s -w
-        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Env.GIT_BRANCH }}"
-        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Env.IMAGE_TAG }}"
-        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .Env.GIT_REVISION }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .ShortCommit }}"
         -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .Env.GIT_LAST_COMMIT_DATE }}"
     id: phlare
   - env:
@@ -36,9 +36,9 @@ builds:
     ldflags:
       - >
         -extldflags "-static" -s -w
-        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Env.GIT_BRANCH }}"
-        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Env.IMAGE_TAG }}"
-        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .Env.GIT_REVISION }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .ShortCommit }}"
         -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .Env.GIT_LAST_COMMIT_DATE }}"
     goos:
       - linux
