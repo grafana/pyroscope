@@ -2,12 +2,24 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
-import type { Flamebearer } from '@pyroscope/models/src';
+import type { Profile } from '@pyroscope/models/src';
 
-export function flamebearersToTree(f1: Flamebearer, f2?: Flamebearer) {
+export interface TreeNode {
+  name: string;
+  key: string;
+  self: number[];
+  total: number[];
+  offset?: number;
+  children: TreeNode[];
+}
+
+export function flamebearersToTree(
+  f1: Profile['flamebearer'],
+  f2?: Profile['flamebearer']
+): TreeNode {
   const lookup = {};
   const lookup2 = {};
-  let root;
+  let root: TreeNode;
   (f2 ? [f1, f2] : [f1]).forEach((f, fi) => {
     for (let i = 0; i < f.levels.length; i += 1) {
       for (let j = 0; j < f.levels[i].length; j += 4) {
@@ -37,7 +49,7 @@ export function flamebearersToTree(f1: Flamebearer, f2?: Flamebearer) {
           self: [],
           total: [],
           key,
-        };
+        } as TreeNode;
         const obj = lookup[key];
         obj.total[fi] ||= 0;
         obj.total[fi] += f.levels[i][j + 1];
