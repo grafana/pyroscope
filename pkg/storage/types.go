@@ -133,12 +133,6 @@ type BadgerDBWithCache interface {
 	Name() string
 }
 
-// TODO: I don't know why but I find ApplicationService name clumsy in this context.
-
-type ApplicationService interface {
-	CreateOrUpdate(context.Context, Application) error
-}
-
 type Application struct {
 	// Fully Qualified Name. Eg app.cpu ({__name__}.{profile_type})
 	FQName string `gorm:"index,unique;not null;default:null"`
