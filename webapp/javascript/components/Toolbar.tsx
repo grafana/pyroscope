@@ -12,9 +12,10 @@ import RefreshButton from './RefreshButton';
 import AppSelector from './AppSelector';
 
 interface ToolbarProps {
-  onSelectedName?: (name: Query) => void;
+  /** callback to be called when an app is selected via the dropdown */
+  onSelectedApp: (name: Query) => void;
 }
-function Toolbar({ onSelectedName }: ToolbarProps) {
+function Toolbar({ onSelectedApp: onSelectedName }: ToolbarProps) {
   const isLoadingData = useAppSelector(selectIsLoadingData);
 
   return (

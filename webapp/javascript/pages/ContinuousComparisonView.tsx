@@ -86,7 +86,7 @@ function ComparisonApp() {
       <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
-          onSelectedName={(query) => {
+          onSelectedApp={(query) => {
             dispatch(actions.setQuery(query));
           }}
         />

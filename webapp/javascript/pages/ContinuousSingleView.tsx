@@ -147,7 +147,7 @@ function ContinuousSingleView() {
       <PageTitle title={formatTitle('Single', query)} />
       <div className="main-wrapper">
         <Toolbar
-          onSelectedName={(query) => {
+          onSelectedApp={(query) => {
             dispatch(setQuery(query));
           }}
         />
