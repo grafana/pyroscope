@@ -62,7 +62,13 @@ var _ = Describe("server", func() {
 	}
 	runServer := func(cfg **config.Config, cb func(s testServices)) {
 		defer GinkgoRecover()
-		s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), storage.NoopApplicationMetadataService{})
+		s, err := storage.New(
+			storage.NewConfig(&(*cfg).Server),
+			logrus.StandardLogger(),
+			prometheus.NewRegistry(),
+			new(health.Controller),
+			storage.NoopApplicationMetadataService{},
+		)
 		Expect(err).ToNot(HaveOccurred())
 		e, _ := exporter.NewExporter(nil, nil)
 		sql, err := sqlstore.Open(&(*cfg).Server)
