@@ -34,11 +34,11 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 	}
 
 	if err := s.appSvc.CreateOrUpdate(ctx, Application{
-		FullyQualifiedName: pi.Key.AppName(),
-		SpyName:            pi.SpyName,
-		SampleRate:         pi.SampleRate,
-		Units:              pi.Units,
-		AggregationType:    pi.AggregationType,
+		FQName:          pi.Key.AppName(),
+		SpyName:         pi.SpyName,
+		SampleRate:      pi.SampleRate,
+		Units:           pi.Units,
+		AggregationType: pi.AggregationType,
 	}); err != nil {
 		s.logger.Error("error saving metadata", err)
 	}

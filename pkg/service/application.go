@@ -20,7 +20,7 @@ func NewApplicationService(db *gorm.DB) ApplicationService {
 func (svc ApplicationService) List(ctx context.Context) (apps []storage.Application, err error) {
 	tx := svc.db.WithContext(ctx)
 	result := tx.Find(&apps)
-	return apps, svc.handleError(result.Error)
+	return apps, result.Error
 }
 
 func (svc ApplicationService) Get(ctx context.Context, name string) (storage.Application, error) {
@@ -30,22 +30,27 @@ func (svc ApplicationService) Get(ctx context.Context, name string) (storage.App
 	}
 
 	tx := svc.db.WithContext(ctx)
-	res := tx.Where("name = ?", name).First(&app)
-	return app, svc.handleError(res.Error)
+	res := tx.Where("fq_name = ?", name).First(&app)
+
+	switch {
+	case errors.Is(res.Error, gorm.ErrRecordNotFound):
+		return app, model.ErrApplicationNotFound
+	default:
+		return app, res.Error
+	}
 }
 
 func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
-	if err := model.ValidateAppName(application.FullyQualifiedName); err != nil {
+	if err := model.ValidateAppName(application.FQName); err != nil {
 		return err
 	}
 
 	tx := svc.db.WithContext(ctx)
 
 	// Only update the field if it's populated
-	err := tx.Where(storage.Application{
-		FullyQualifiedName: application.FullyQualifiedName,
+	return tx.Where(storage.Application{
+		FQName: application.FQName,
 	}).Assign(application).FirstOrCreate(&storage.Application{}).Error
-	return svc.handleError(err)
 }
 
 func (svc ApplicationService) Delete(ctx context.Context, name string) error {
@@ -54,15 +59,5 @@ func (svc ApplicationService) Delete(ctx context.Context, name string) error {
 	}
 
 	tx := svc.db.WithContext(ctx)
-	err := tx.Where("name = ?", name).Delete(storage.Application{}).Error
-	return svc.handleError(err)
-}
-
-func (ApplicationService) handleError(err error) error {
-	switch {
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		return model.ErrApplicationNotFound
-	default:
-		return err
-	}
+	return tx.Where("fq_name = ?", name).Delete(storage.Application{}).Error
 }

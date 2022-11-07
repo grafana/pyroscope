@@ -1,17 +1,19 @@
 package model
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+)
 
 var (
-	ErrApplicationNotFound  = NotFoundError{errors.New("application not found")}
-	ErrApplicationNameEmpty = ValidationError{errors.New("application name can't be empty")}
+	ErrApplicationNotFound = NotFoundError{errors.New("application not found")}
 )
 
 func ValidateAppName(appName string) error {
-	// TODO(eh-am): check for invalid characters, min/max names?
-	// problem is that it needs to be in sync with existing data
-	if appName == "" {
-		return ErrApplicationNameEmpty
+	err := flameql.ValidateAppName(appName)
+	if err != nil {
+		return ValidationError{err}
 	}
 	return nil
 }

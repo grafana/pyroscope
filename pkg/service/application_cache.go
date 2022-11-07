@@ -40,7 +40,7 @@ func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc App
 // * data is different from what's in the cache
 // Otherwise it does nothing
 func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.Application) error {
-	if cachedApp, ok := svc.cache.get(application.FullyQualifiedName); ok {
+	if cachedApp, ok := svc.cache.get(application.FQName); ok {
 		if !svc.isTheSame(application, cachedApp.(storage.Application)) {
 			return svc.writeToBoth(ctx, application)
 		}
@@ -58,7 +58,7 @@ func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application
 	if err := svc.appSvc.CreateOrUpdate(ctx, application); err != nil {
 		return err
 	}
-	svc.cache.put(application.FullyQualifiedName, application)
+	svc.cache.put(application.FQName, application)
 	return nil
 }
 

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -31,7 +32,7 @@ func NewAppMetadataMigrator(logger *logrus.Logger, appNamesGetter AppNamesGetter
 }
 
 // Migrate creates Applications given a list of app names
-func (m *AppMetadataMigrator) Migrate() error {
+func (m *AppMetadataMigrator) Migrate() (err error) {
 	ctx := context.Background()
 
 	// Get all app names
@@ -46,7 +47,7 @@ func (m *AppMetadataMigrator) Migrate() error {
 	// Convert slice -> map
 	appMap := make(map[string]storage.Application)
 	for _, a := range apps {
-		appMap[a.FullyQualifiedName] = a
+		appMap[a.FQName] = a
 	}
 
 	// If they don't exist already
@@ -54,11 +55,14 @@ func (m *AppMetadataMigrator) Migrate() error {
 		if _, ok := appMap[a]; !ok {
 			logrus.Info("Migrating app: ", a)
 			// Write to MetadataSaver
-			m.appMetadataSaver.CreateOrUpdate(ctx, storage.Application{
-				FullyQualifiedName: a,
+			saveErr := m.appMetadataSaver.CreateOrUpdate(ctx, storage.Application{
+				FQName: a,
 			})
+			if err != nil {
+				err = multierror.Append(err, saveErr)
+			}
 		}
 	}
 
-	return nil
+	return err
 }

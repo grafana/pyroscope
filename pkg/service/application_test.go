@@ -22,11 +22,11 @@ var _ = Describe("ApplicationService", func() {
 	})
 
 	app := storage.Application{
-		FullyQualifiedName: "myapp",
-		SampleRate:         100,
-		SpyName:            "gospy",
-		Units:              metadata.SamplesUnits,
-		AggregationType:    metadata.AverageAggregationType,
+		FQName:          "myapp",
+		SampleRate:      100,
+		SpyName:         "gospy",
+		Units:           metadata.SamplesUnits,
+		AggregationType: metadata.AverageAggregationType,
 	}
 
 	assertNumOfApps := func(num int) []storage.Application {
@@ -40,29 +40,22 @@ var _ = Describe("ApplicationService", func() {
 		ctx := context.TODO()
 
 		// Create
-		err := svc.CreateOrUpdate(ctx, storage.Application{FullyQualifiedName: ""})
+		err := svc.CreateOrUpdate(ctx, storage.Application{FQName: ""})
+		Expect(err).To(HaveOccurred())
 		Expect(model.IsValidationError(err)).To(BeTrue())
 
 		// Get
 		_, err = svc.Get(ctx, "")
+		Expect(err).To(HaveOccurred())
 		Expect(model.IsValidationError(err)).To(BeTrue())
 
 		// Delete
 		err = svc.Delete(ctx, "")
+		Expect(err).To(HaveOccurred())
 		Expect(model.IsValidationError(err)).To(BeTrue())
 	})
 
 	Context("create/update", func() {
-		It("creates correctly", func() {
-			ctx := context.TODO()
-			assertNumOfApps(0)
-
-			err := svc.CreateOrUpdate(ctx, storage.Application{})
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(model.ErrApplicationNameEmpty))
-
-			assertNumOfApps(0)
-		})
 		It("upserts", func() {
 			assertNumOfApps(0)
 
@@ -81,12 +74,12 @@ var _ = Describe("ApplicationService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			err = svc.CreateOrUpdate(ctx, storage.Application{
-				FullyQualifiedName: app.FullyQualifiedName,
-				SampleRate:         101,
+				FQName:     app.FQName,
+				SampleRate: 101,
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			a, err := svc.Get(ctx, app.FullyQualifiedName)
+			a, err := svc.Get(ctx, app.FQName)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Other fields should not be touched
@@ -103,7 +96,7 @@ var _ = Describe("ApplicationService", func() {
 			err := svc.CreateOrUpdate(ctx, app)
 			Expect(err).ToNot(HaveOccurred())
 
-			res, err := svc.Get(ctx, app.FullyQualifiedName)
+			res, err := svc.Get(ctx, app.FQName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal(app))
 		})
@@ -122,7 +115,7 @@ var _ = Describe("ApplicationService", func() {
 			Expect(err).ToNot(HaveOccurred())
 			assertNumOfApps(1)
 
-			err = svc.Delete(ctx, app.FullyQualifiedName)
+			err = svc.Delete(ctx, app.FQName)
 
 			Expect(err).ToNot(HaveOccurred())
 			assertNumOfApps(0)
