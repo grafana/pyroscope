@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.56.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.1...@pyroscope/webapp@1.56.2) (2022-11-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.56.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.0...@pyroscope/webapp@1.56.1) (2022-11-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.56.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.55.1...@pyroscope/webapp@1.56.0) (2022-11-04)
+
+
+### Features
+
+* show gif when heatmap has no selection ([#1658](https://github.com/pyroscope-io/pyroscope/issues/1658)) ([2a3243d](https://github.com/pyroscope-io/pyroscope/commit/2a3243de46d27de5d9cbbc9f50dd1089ba517a5b))
+
+
+
+
+
 ## [1.55.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.55.0...@pyroscope/webapp@1.55.1) (2022-11-02)
 
 **Note:** Version bump only for package @pyroscope/webapp

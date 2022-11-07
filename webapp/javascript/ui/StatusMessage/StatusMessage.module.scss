@@ -26,6 +26,12 @@
   font-weight: bold;
 }
 
+.info {
+  background-color: var(--ps-blue-primary);
+  color: var(--ps-neutral-2);
+  font-weight: bold;
+}
+
 .action {
   &:empty {
     display: none;
