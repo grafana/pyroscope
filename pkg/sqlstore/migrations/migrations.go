@@ -153,7 +153,7 @@ func addIndexesUniqueTableMigration() *gormigrate.Migration {
 }
 
 func createApplicationMetadataTableMigration() *gormigrate.Migration {
-	type application struct {
+	type applicationMetadata struct {
 		ID              uint   `gorm:"primarykey"`
 		FQName          string `gorm:"uniqueIndex;not null;default:null"`
 		SpyName         string
@@ -167,10 +167,10 @@ func createApplicationMetadataTableMigration() *gormigrate.Migration {
 	return &gormigrate.Migration{
 		ID: "1667213046",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&application{})
+			return tx.AutoMigrate(&applicationMetadata{})
 		},
 		Rollback: func(tx *gorm.DB) error {
-			return tx.Migrator().DropTable(&application{})
+			return tx.Migrator().DropTable(&applicationMetadata{})
 		},
 	}
 }
