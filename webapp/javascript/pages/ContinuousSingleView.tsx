@@ -154,13 +154,8 @@ function ContinuousSingleView() {
         <TagsBar
           query={query}
           tags={tags}
-          onSetQuery={(q) => {
-            dispatch(actions.setQuery(q));
-
-            if (q === query) {
-              dispatch(actions.refresh());
-            }
-          }}
+          onRefresh={() => dispatch(actions.refresh())}
+          onSetQuery={(q) => dispatch(actions.setQuery(q))}
           onSelectedLabel={(label, query) => {
             dispatch(fetchTagValues({ query, label }));
           }}

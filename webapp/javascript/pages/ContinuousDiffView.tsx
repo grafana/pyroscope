@@ -162,12 +162,8 @@ function ComparisonDiffApp() {
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setLeftQuery(q));
-                  if (leftQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setLeftQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
@@ -202,12 +198,8 @@ function ComparisonDiffApp() {
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setRightQuery(q));
-                  if (rightQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setRightQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
