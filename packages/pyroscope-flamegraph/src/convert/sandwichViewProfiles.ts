@@ -1,18 +1,5 @@
-/* eslint-disable import/prefer-default-export */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-
 import type { Flamebearer } from '@pyroscope/models/src';
-import { flamebearersToTree } from './flamebearersToTree';
-
-export interface TreeNode {
-  name: string;
-  key: string;
-  self: [number];
-  total: [number];
-  offset?: number;
-  children: TreeNode[];
-}
+import { flamebearersToTree, TreeNode } from './flamebearersToTree';
 
 interface FlamebearerData {
   maxSelf: number;
@@ -52,7 +39,7 @@ export const treeToFlamebearer = (tree: TreeNode): FlamebearerData => {
 };
 
 const arrayToTree = (nodesArray: TreeNode[], total: number): TreeNode => {
-  const result = {};
+  const result = {} as TreeNode;
   let nestedObj = result;
 
   nodesArray.forEach(({ name, ...rest }) => {
@@ -65,7 +52,7 @@ const arrayToTree = (nodesArray: TreeNode[], total: number): TreeNode => {
 };
 
 function dedupTree(node: TreeNode) {
-  const childrenMap = {};
+  const childrenMap: { [key: string]: TreeNode } = {};
   for (let i = 0; i < node.children.length; i += 1) {
     childrenMap[node.children[i].name] ||= node.children[i];
   }
@@ -108,7 +95,7 @@ export function calleesFlamebearer(
     total: [],
     self: [0],
     children: [],
-  };
+  } as TreeNode;
   const processTree = (node: TreeNode) => {
     if (node.name === nodeName) {
       result.numTicks += node.total[0];
@@ -142,8 +129,8 @@ export function callersFlamebearer(
     spyName: f.spyName,
   };
 
-  const targetFunctionTotals = [];
-  const subtrees = [];
+  const targetFunctionTotals: number[] = [];
+  const subtrees: TreeNode[][] = [];
 
   const totalNode = {
     name: nodeName,
@@ -151,9 +138,11 @@ export function callersFlamebearer(
     total: [0],
     self: [0],
     children: [],
-  };
-  const processTree = (node, parentNodes = []) => {
-    const currentSubtree = [{ ...node, children: [] }].concat(parentNodes);
+  } as TreeNode;
+  const processTree = (node: TreeNode, parentNodes: TreeNode[] = []) => {
+    const currentSubtree = parentNodes.concat([
+      { ...node, children: [] } as TreeNode,
+    ]);
 
     if (node.name === nodeName) {
       subtrees.push(currentSubtree);
@@ -187,12 +176,7 @@ export function calleesProfile(f: Flamebearer, nodeName: string): Flamebearer {
   const copy = JSON.parse(JSON.stringify(f));
   const calleesResultFlamebearer = calleesFlamebearer(copy, nodeName);
 
-  return {
-    version: 1,
-    // flamebearer: calleesResultFlamebearer,
-    // metadata: copy.metadata,
-    ...calleesResultFlamebearer,
-  };
+  return calleesResultFlamebearer;
 }
 
 export function callersProfile(f: Flamebearer, nodeName: string): Flamebearer {
@@ -200,10 +184,5 @@ export function callersProfile(f: Flamebearer, nodeName: string): Flamebearer {
 
   const callersResultFlamebearer = callersFlamebearer(copy, nodeName);
 
-  return {
-    version: 1,
-    // flamebearer: callersResultFlamebearer,
-    // metadata: copy.metadata,
-    ...callersResultFlamebearer,
-  };
+  return callersResultFlamebearer;
 }

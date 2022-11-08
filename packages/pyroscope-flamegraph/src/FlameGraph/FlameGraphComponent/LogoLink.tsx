@@ -94,7 +94,8 @@ export default function LogoLink() {
       target="_blank"
       rel="noreferrer"
     >
-      {[svgLogo(), <span>Pyroscope</span>]}
+      {svgLogo()}
+      <span>Pyroscope</span>
     </a>
   );
 }

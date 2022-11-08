@@ -36,9 +36,9 @@ import {
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
 import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './TagExplorerView.module.scss';
