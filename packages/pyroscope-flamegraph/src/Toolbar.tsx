@@ -5,6 +5,7 @@ import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
+import { IconDefinition } from '@fortawesome/fontawesome-common-types';
 import { Maybe } from 'true-myth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import useResizeObserver from '@react-hook/resize-observer';
@@ -12,9 +13,8 @@ import useResizeObserver from '@react-hook/resize-observer';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Button from '@webapp/ui/Button';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import Select from '@webapp/ui/Select';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
@@ -28,27 +28,16 @@ import {
   HeadFirstIcon,
   TailFirstIcon,
 } from './Icons';
-import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 
 import styles from './Toolbar.module.scss';
 
 const cx = classNames.bind(styles);
 
-/**
- * Custom hook that returns the size ('large' | 'small')
- * that should be displayed
- * based on the toolbar width
- */
-export type ShowModeType = ReturnType<typeof useSizeMode>;
+export type ShowModeType = 'large' | 'small';
 
-export const useSizeMode = (
-  target: React.RefObject<HTMLDivElement>,
-  // arbitrary value
-  // as a simple heuristic, try to run the comparison view
-  // and see when the buttons start to overlap
-  widthTreshhold: number
-) => {
+const useShowMode = (widthTreshhold: number) => {
   const [size, setSize] = React.useState<'large' | 'small'>('large');
+  const ref = React.useRef<HTMLDivElement>(null);
 
   const calcMode = (width: number) => {
     if (width < widthTreshhold) {
@@ -58,28 +47,20 @@ export const useSizeMode = (
   };
 
   React.useLayoutEffect(() => {
-    if (target.current) {
-      const { width } = target.current.getBoundingClientRect();
+    if (ref.current) {
+      const { width } = ref.current.getBoundingClientRect();
 
       setSize(calcMode(width));
     }
-  }, [target.current]);
+  }, [ref.current]);
 
-  useResizeObserver(target, (entry: ResizeObserverEntry) => {
+  useResizeObserver(ref, (entry: ResizeObserverEntry) => {
     setSize(calcMode(entry.contentRect.width));
   });
 
-  return size;
-};
-
-const useShowMode = (widthTreshhold) => {
-  // TODO: merge useShowMode and useSizeMode
-  const ref = React.useRef<HTMLDivElement>(null);
-  const showMode = useSizeMode(ref, widthTreshhold);
-
   return {
     ref,
-    showMode,
+    size,
   };
 };
 
@@ -143,9 +124,9 @@ const Toolbar = React.memo(
             viewDiff={viewDiff}
             updateViewDiff={updateViewDiff}
             panesOrientation={panesOrientation}
+            view={view}
           />
           <RightToolbar
-            // showMode={showMode}
             fitMode={fitMode}
             updateFitMode={updateFitMode}
             isFlamegraphDirty={isFlamegraphDirty}
@@ -172,26 +153,38 @@ const LeftToolbar = ({
   viewDiff,
   updateViewDiff,
   panesOrientation,
-}) => {
-  const { ref, showMode } = useShowMode(500);
+  view,
+}: Pick<
+  ProfileHeaderProps,
+  | 'handleSearchChange'
+  | 'highlightQuery'
+  | 'sharedQuery'
+  | 'flamegraphType'
+  | 'viewDiff'
+  | 'updateViewDiff'
+  | 'panesOrientation'
+  | 'view'
+>) => {
+  const { ref, size } = useShowMode(480);
 
   return (
     <div
       ref={ref}
       className={cx({
         [styles.left]: true,
-        widthAuto: panesOrientation === 'vertical',
+        [styles.widthAuto]: panesOrientation === 'vertical',
+        [styles.merged]: view === 'flamegraph' || view === 'table',
       })}
     >
       <SharedQueryInput
-        showMode={showMode}
+        showMode={size}
         onHighlightChange={handleSearchChange}
         highlightQuery={highlightQuery}
         sharedQuery={sharedQuery}
       />
       {flamegraphType === 'double' && (
         <DiffView
-          showMode={showMode}
+          showMode={size}
           viewDiff={viewDiff}
           updateViewDiff={updateViewDiff}
         />
@@ -212,8 +205,21 @@ export const RightToolbar = ({
   updateView,
   ExportData,
   panesOrientation,
-}) => {
-  const { ref, showMode } = useShowMode(
+}: Pick<
+  ProfileHeaderProps,
+  | 'fitMode'
+  | 'updateFitMode'
+  | 'isFlamegraphDirty'
+  | 'reset'
+  | 'selectedNode'
+  | 'onFocusOnSubtree'
+  | 'disableChangingDisplay'
+  | 'view'
+  | 'updateView'
+  | 'ExportData'
+  | 'panesOrientation'
+>) => {
+  const { ref, size } = useShowMode(
     panesOrientation === 'vertical' ? 491 : 480
   );
 
@@ -222,11 +228,12 @@ export const RightToolbar = ({
       ref={ref}
       className={cx({
         [styles.right]: true,
-        widthAuto: panesOrientation === 'vertical',
+        [styles.widthAuto]: panesOrientation === 'vertical',
+        [styles.merged]: view === 'flamegraph' || view === 'table',
       })}
     >
       <FitMode
-        showMode={showMode}
+        showMode={size}
         fitMode={fitMode}
         updateFitMode={updateFitMode}
       />
@@ -238,7 +245,7 @@ export const RightToolbar = ({
       />
       <Divider />
       {!disableChangingDisplay && (
-        <ViewSection showMode={showMode} view={view} updateView={updateView} />
+        <ViewSection showMode={size} view={view} updateView={updateView} />
       )}
       <Divider />
       {ExportData}
@@ -304,7 +311,7 @@ function FitMode({
   updateFitMode,
   showMode,
 }: {
-  showMode: ReturnType<typeof useSizeMode>;
+  showMode: ShowModeType;
   fitMode: ProfileHeaderProps['fitMode'];
   updateFitMode: ProfileHeaderProps['updateFitMode'];
 }) {
@@ -339,14 +346,14 @@ function FitMode({
   const menuOptions = [HeadMode, TailMode] as FitModes[];
   const menuItems = menuOptions.map((mode) => (
     <MenuItem key={mode} value={mode}>
-      <div className={styles.fitModeDropdownMenuItem} data-testid={mode}>
+      <div className={styles.dropdownMenuItem} data-testid={mode}>
         {texts[mode]}
         {fitMode === mode ? <CheckIcon /> : null}
       </div>
     </MenuItem>
   ));
 
-  const isSelected = (a) => fitMode === a;
+  const isSelected = (a: FitModes) => fitMode === a;
 
   if (showMode === 'small') {
     return (
@@ -370,23 +377,23 @@ function FitMode({
 
   return (
     <>
-      <Tooltip placement="top" title="Head First">
+      <Tooltip placement="top" title={texts['HEAD']}>
         <Button
           onClick={() => updateFitMode('HEAD')}
           className={cx({
             [styles.fitModeButton]: true,
-            selected: isSelected('HEAD'),
+            [styles.selected]: isSelected('HEAD'),
           })}
         >
           <HeadFirstIcon />
         </Button>
       </Tooltip>
-      <Tooltip placement="top" title="Tail First">
+      <Tooltip placement="top" title={texts['TAIL']}>
         <Button
           onClick={() => updateFitMode('TAIL')}
           className={cx({
             [styles.fitModeButton]: true,
-            selected: isSelected('TAIL'),
+            [styles.selected]: isSelected('TAIL'),
           })}
         >
           <TailFirstIcon />
@@ -401,7 +408,7 @@ function DiffView({
   updateViewDiff,
   showMode,
 }: {
-  showMode: ReturnType<typeof useSizeMode>;
+  showMode: ShowModeType;
   updateViewDiff: ProfileHeaderProps['updateViewDiff'];
   viewDiff: ProfileHeaderProps['viewDiff'];
 }) {
@@ -409,64 +416,66 @@ function DiffView({
     return null;
   }
 
-  const ShowModeSelect = (
-    <Select
-      name="viewDiff"
-      ariaLabel="view-diff"
-      value={viewDiff}
-      onChange={(e) => {
-        updateViewDiff(e.target.value as typeof viewDiff);
-      }}
-    >
-      <option value="self">Self</option>
-      <option value="total">Total</option>
-      <option value="diff">Diff</option>
-    </Select>
+  const diffTypes: Array<{
+    value: ProfileHeaderProps['viewDiff'];
+    label: string;
+    icon: IconDefinition;
+  }> = [
+    { value: 'self', label: 'Self', icon: faListUl },
+    { value: 'total', label: 'Total', icon: faBars },
+    { value: 'diff', label: 'Diff', icon: faAlignLeft },
+  ];
+
+  const dropdownMenuItems = diffTypes.map((mode) => (
+    <MenuItem key={mode.value} value={mode.value}>
+      <div className={styles.dropdownMenuItem} data-testid={mode.value}>
+        {mode.label.split(' ')[0]}
+        {viewDiff === mode.value ? <CheckIcon /> : null}
+      </div>
+    </MenuItem>
+  ));
+
+  const DiffSelect = (
+    <Tooltip placement="top" title="Diff View">
+      <div>
+        <Dropdown
+          label="Diff View"
+          ariaLabel="Diff View"
+          value={viewDiff}
+          onItemClick={(event) => updateViewDiff(event.value)}
+          align="center"
+          menuButtonClassName={styles.diffDropdownButton}
+        >
+          {dropdownMenuItems}
+        </Dropdown>
+      </div>
+    </Tooltip>
   );
 
-  const kindByState = (name: string) => {
-    if (viewDiff === name) {
-      return 'primary';
-    }
-    return 'default';
-  };
-
-  const Buttons = (
-    <>
-      <Button
-        grouped
-        icon={faListUl}
-        kind={kindByState('self')}
-        onClick={() => updateViewDiff('self')}
-      >
-        Self
-      </Button>
-      <Button
-        grouped
-        icon={faBars}
-        kind={kindByState('total')}
-        onClick={() => updateViewDiff('total')}
-      >
-        Total
-      </Button>
-      <Button
-        grouped
-        icon={faAlignLeft}
-        kind={kindByState('diff')}
-        onClick={() => updateViewDiff('diff')}
-      >
-        Diff
-      </Button>
-    </>
-  );
+  const DiffButtons = diffTypes.map(({ label, value, icon }) => {
+    return (
+      <Tooltip key={value} placement="top" title={label}>
+        <Button
+          onClick={() => updateViewDiff(value)}
+          className={cx({
+            [styles.toggleViewButton]: true,
+            [styles.diffTypesButton]: true,
+            selected: viewDiff === value,
+          })}
+        >
+          <FontAwesomeIcon icon={icon} />
+        </Button>
+      </Tooltip>
+    );
+  });
 
   const decideWhatToShow = () => {
     switch (showMode) {
       case 'small': {
-        return ShowModeSelect;
+        return DiffSelect;
       }
       case 'large': {
-        return Buttons;
+        return DiffButtons;
       }
 
       default: {
@@ -487,81 +496,60 @@ function ViewSection({
   updateView,
   showMode,
 }: {
-  showMode: ReturnType<typeof useSizeMode>;
+  showMode: ShowModeType;
   updateView: ProfileHeaderProps['updateView'];
   view: ProfileHeaderProps['view'];
 }) {
+  const options: Array<{
+    label: string;
+    value: ViewTypes;
+    Icon: (props: { fill?: string | undefined }) => JSX.Element;
+  }> = [
+    { label: 'Table View', value: 'table', Icon: TableIcon },
+    { label: 'Both View', value: 'both', Icon: TablePlusFlamegraphIcon },
+    { label: 'Flamegraph View', value: 'flamegraph', Icon: FlamegraphIcon },
+    { label: 'Sandwich View', value: 'sandwich', Icon: SandwichIcon },
+  ];
+
+  const dropdownMenuItems = options.map((mode) => (
+    <MenuItem key={mode.value} value={mode.value}>
+      <div className={styles.dropdownMenuItem} data-testid={mode.value}>
+        {mode.label.split(' ')[0]}
+        {view === mode.value ? <CheckIcon /> : null}
+      </div>
+    </MenuItem>
+  ));
+
   const ViewSelect = (
     <Tooltip placement="top" title="View Mode">
       <div>
-        <Select
-          ariaLabel="view"
-          name="view"
-          value={view}
-          onChange={(e) => {
-            updateView(e.target.value as typeof view);
-          }}
-          className={styles.showModeSelect}
+        <Dropdown
+          label="View Mode"
+          ariaLabel="View Mode"
+          value={options.find((i) => i.value === view)?.label?.split(' ')[0]}
+          onItemClick={(event) => updateView(event.value)}
+          align="center"
+          menuButtonClassName={styles.viewModeDropdownButton}
         >
-          <option value="table">Table</option>
-          <option value="both">Both</option>
-          <option value="flamegraph">Flame</option>
-          <option value="sandwich">Sandwich</option>
-        </Select>
+          {dropdownMenuItems}
+        </Dropdown>
       </div>
     </Tooltip>
   );
 
-  const isSelected = (name: ViewTypes) => view === name;
-
-  const Buttons = (
-    <>
-      <Tooltip placement="top" title="Table View">
-        <Button
-          onClick={() => updateView('table')}
-          className={cx({
-            [styles.toggleViewButton]: true,
-            selected: isSelected('table'),
-          })}
-        >
-          <TableIcon />
-        </Button>
-      </Tooltip>
-      <Tooltip placement="top" title="Both View">
-        <Button
-          onClick={() => updateView('both')}
-          className={cx({
-            [styles.toggleViewButton]: true,
-            selected: isSelected('both'),
-          })}
-        >
-          <TablePlusFlamegraphIcon />
-        </Button>
-      </Tooltip>
-      <Tooltip placement="top" title="Flamegraph View">
-        <Button
-          onClick={() => updateView('flamegraph')}
-          className={cx({
-            [styles.toggleViewButton]: true,
-            selected: isSelected('flamegraph'),
-          })}
-        >
-          <FlamegraphIcon />
-        </Button>
-      </Tooltip>
-      <Tooltip placement="top" title="Sandwich View">
-        <Button
-          onClick={() => updateView('sandwich')}
-          className={cx({
-            [styles.toggleViewButton]: true,
-            selected: isSelected('sandwich'),
-          })}
-        >
-          <SandwichIcon />
-        </Button>
-      </Tooltip>
-    </>
-  );
+  const ViewButtons = options.map(({ label, value, Icon }) => (
+    <Tooltip key={value} placement="top" title={label}>
+      <Button
+        onClick={() => updateView(value)}
+        className={cx({
+          [styles.toggleViewButton]: true,
+          selected: view === value,
+        })}
+      >
+        <Icon />
+      </Button>
+    </Tooltip>
+  ));
 
   const decideWhatToShow = () => {
     switch (showMode) {
@@ -569,7 +557,7 @@ function ViewSection({
         return ViewSelect;
       }
       case 'large': {
-        return Buttons;
+        return ViewButtons;
       }
 
       default: {

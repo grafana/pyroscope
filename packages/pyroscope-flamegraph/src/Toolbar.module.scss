@@ -9,6 +9,10 @@ $buttonHeight: 37px;
   .left,
   .right {
     width: calc(50% - 8px);
+
+    &.merged:not(.widthAuto) {
+      width: 50%;
+    }
   }
 }
 
@@ -25,9 +29,13 @@ $buttonHeight: 37px;
   justify-content: space-between;
   justify-content: flex-start;
 
+  &.merged {
+    border-right-width: 0;
+  }
+
   &.widthAuto {
     width: auto;
-    border-right-color: transparent;
+    border-right-width: 0;
   }
 }
 
@@ -36,9 +44,13 @@ $buttonHeight: 37px;
 
   justify-content: flex-end;
 
+  &.merged {
+    border-left-width: 0;
+  }
+
   &.widthAuto {
     flex: 1;
-    border-left-color: transparent;
+    border-left-width: 0;
   }
 }
 
@@ -62,10 +74,36 @@ $buttonHeight: 37px;
   &.selected {
     background-color: #3c7150;
 
+    &:hover {
+      background-color: #3c7150;
+    }
+
     svg {
       fill: #61c688;
+      color: #61c688;
     }
   }
+}
+
+.viewModeDropdownButton {
+  min-width: 114px;
+  margin-right: 0;
+}
+
+.diffTypesButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    height: 22px;
+    width: 22px !important;
+  }
+}
+
+.diffDropdownButton {
+  text-transform: capitalize;
+  margin-left: 1.5px;
 }
 
 .fitModeButton {
@@ -84,12 +122,7 @@ $buttonHeight: 37px;
   @extend .collapseNodeButton;
 }
 
-.showModeSelect {
-  height: $buttonHeight;
-  margin: 0 2px;
-}
-
-.fitModeDropdownMenuItem {
+.dropdownMenuItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -98,7 +131,7 @@ $buttonHeight: 37px;
 
 .fitModeDropdownSmall {
   min-width: 70px;
-  margin: 0 2px;
+  margin: 0;
   height: $buttonHeight;
 }
 

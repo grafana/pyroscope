@@ -8,8 +8,8 @@ import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
 import { buildRenderURL } from '@webapp/util/updateRequests';
 import { convertPresetsToDate } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models/src';
-import showModalWithInput from './Modals/ModalWithInput';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import showModalWithInput from './Modals/ModalWithInput';
 import styles from './ExportData.module.scss';
 
 // These are modeled individually since each condition may have different values
