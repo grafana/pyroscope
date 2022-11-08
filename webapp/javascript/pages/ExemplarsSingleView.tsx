@@ -46,7 +46,6 @@ function ExemplarsSingleView() {
           query,
           from,
           until,
-          shouldFetchProfile: !!exemplarsSingleView.profile,
           ...DEFAULT_HEATMAP_PARAMS,
         })
       );
@@ -146,7 +145,7 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
-        {!exemplarsSingleView.profile && exemplarsSingleView.heatmap && (
+        {!exemplarsSingleView.selectionProfile && exemplarsSingleView.heatmap && (
           <Box>
             <div className={styles.heatmapSelectionGuide}>
               <StatusMessage
@@ -161,7 +160,7 @@ function ExemplarsSingleView() {
             </div>
           </Box>
         )}
-        {exemplarsSingleView.profile && exemplarsSingleView.heatmap ? (
+        {exemplarsSingleView.selectionProfile && exemplarsSingleView.heatmap ? (
           <Tabs
             selectedIndex={tabIndex}
             onSelect={(index) => setTabIndex(index)}

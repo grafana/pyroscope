@@ -41,8 +41,19 @@ type SingleView =
 type ExemplarsSingleView =
   | { type: 'pristine'; heatmap?: Heatmap | null; profile?: Profile }
   | { type: 'loading'; heatmap?: Heatmap | null; profile?: Profile }
-  | { type: 'loaded'; heatmap: Heatmap | null; profile?: Profile }
-  | { type: 'reloading'; heatmap: Heatmap | null; profile?: Profile };
+  | {
+      type: 'loaded';
+      heatmap: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    }
+  | {
+      type: 'reloading';
+      heatmap: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    };
+
 interface TracingState {
   queryID: string;
   maxNodes: string;
@@ -100,7 +111,7 @@ export const fetchSingleView = createAsyncThunk<
 
 export const fetchExemplarsSingleView = createAsyncThunk<
   HeatmapOutput,
-  getHeatmapProps & { shouldFetchProfile?: boolean },
+  getHeatmapProps,
   { state: { tracing: TracingState } }
 >('tracing/exemplarsSingleView', async (heatmapProps, thunkAPI) => {
   if (exemplarsSingleViewAbortController) {
@@ -110,17 +121,13 @@ export const fetchExemplarsSingleView = createAsyncThunk<
   exemplarsSingleViewAbortController = new AbortController();
   thunkAPI.signal = exemplarsSingleViewAbortController.signal;
 
-  const { shouldFetchProfile, ...rest } = heatmapProps;
-
-  // think of getting params from store
-  const res = await getHeatmap(rest, exemplarsSingleViewAbortController);
+  const res = await getHeatmap(
+    heatmapProps,
+    exemplarsSingleViewAbortController
+  );
 
   if (res.isOk) {
-    const resValue = shouldFetchProfile
-      ? res.value
-      : { heatmap: res.value.heatmap };
-
-    return Promise.resolve(resValue);
+    return Promise.resolve(res.value);
   }
 
   if (res.isErr && res.error instanceof RequestAbortedError) {
@@ -332,7 +339,8 @@ export const tracingSlice = createSlice({
 
     builder.addCase(fetchSelectionProfile.fulfilled, (state, action) => {
       state.exemplarsSingleView.type = 'loaded';
-      state.exemplarsSingleView.profile = action.payload.profile;
+      state.exemplarsSingleView.selectionProfile =
+        action.payload.selectionProfile;
     });
 
     builder.addCase(fetchSelectionProfile.rejected, (state, action) => {
