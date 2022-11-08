@@ -218,7 +218,6 @@ function ComparisonTab({
   return (
     <div className={styles.comparisonTab}>
       <Box className={styles.comparisonTabHalf}>
-        selection profile
         <LoadingOverlay
           active={isLoadingOrReloading([type])}
           spinnerPosition="baseline"
@@ -241,7 +240,6 @@ function ComparisonTab({
         </LoadingOverlay>
       </Box>
       <Box className={styles.comparisonTabHalf}>
-        subtracted profile
         <LoadingOverlay
           active={isLoadingOrReloading([type])}
           spinnerPosition="baseline"
