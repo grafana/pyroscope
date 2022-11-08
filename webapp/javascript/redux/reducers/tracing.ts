@@ -39,8 +39,18 @@ type SingleView =
 // TODO
 
 type ExemplarsSingleView =
-  | { type: 'pristine'; heatmap?: Heatmap | null; profile?: Profile }
-  | { type: 'loading'; heatmap?: Heatmap | null; profile?: Profile }
+  | {
+      type: 'pristine';
+      heatmap?: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    }
+  | {
+      type: 'loading';
+      heatmap?: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    }
   | {
       type: 'loaded';
       heatmap: Heatmap | null;

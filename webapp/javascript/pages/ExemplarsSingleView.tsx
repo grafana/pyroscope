@@ -19,13 +19,16 @@ import ExportData from '@webapp/components/ExportData';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import StatusMessage from '@webapp/ui/StatusMessage';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import { formatTitle } from './formatTitle';
-import { isLoadingOrReloading } from './loading';
-import heatmapSelectionGif from './heatmapSelection.gif';
-
-import Profile from '../../../cypress/fixtures/hotrod-ruby-driver-cpu.json';
+import {
+  FlamegraphRenderer,
+  FlamegraphRendererProps,
+} from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import type { Profile } from '@pyroscope/models/src';
 import { diffTwoProfiles } from '@pyroscope/flamegraph/src/convert/diffTwoProfiles';
+import { subtract } from '@pyroscope/flamegraph/src/convert/subtract';
+import { formatTitle } from './formatTitle';
+import { isLoadingOrReloading, LoadingType } from './loading';
+import heatmapSelectionGif from './heatmapSelection.gif';
 
 import styles from './ExemplarsSingleView.module.scss';
 
@@ -101,40 +104,10 @@ function ExemplarsSingleView() {
     }
   })();
 
-  const diffFlamebearer = (() => {
-    if (!exemplarsSingleView.profile) {
-      return null;
-    }
-
-    const copy = JSON.parse(JSON.stringify(Profile));
-    const copy1 = JSON.parse(JSON.stringify(exemplarsSingleView.profile));
-    // add types
-    const diffProfile = diffTwoProfiles(copy, copy1);
-
-    return (
-      <Box>
-        <LoadingOverlay
-          active={isLoadingOrReloading([exemplarsSingleView.type])}
-          spinnerPosition="baseline"
-        >
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={diffProfile}
-            colorMode={colorMode}
-            ExportData={
-              <ExportData
-                flamebearer={diffProfile}
-                exportPNG
-                exportJSON
-                exportPprof
-                exportHTML
-              />
-            }
-          />
-        </LoadingOverlay>
-      </Box>
-    );
-  })();
+  const subtractedProfile =
+    exemplarsSingleView.profile &&
+    exemplarsSingleView.selectionProfile &&
+    subtract(exemplarsSingleView.profile, exemplarsSingleView.selectionProfile);
 
   return (
     <div>
@@ -160,7 +133,9 @@ function ExemplarsSingleView() {
             </div>
           </Box>
         )}
-        {exemplarsSingleView.selectionProfile && exemplarsSingleView.heatmap ? (
+        {exemplarsSingleView.heatmap &&
+        exemplarsSingleView.selectionProfile &&
+        subtractedProfile ? (
           <Tabs
             selectedIndex={tabIndex}
             onSelect={(index) => setTabIndex(index)}
@@ -171,63 +146,28 @@ function ExemplarsSingleView() {
               <Tab>Diff</Tab>
             </TabList>
             <TabPanel>
-              <Box>
-                <LoadingOverlay
-                  active={isLoadingOrReloading([exemplarsSingleView.type])}
-                  spinnerPosition="baseline"
-                >
-                  <FlamegraphRenderer
-                    showCredit={false}
-                    profile={exemplarsSingleView.profile}
-                    colorMode={colorMode}
-                    ExportData={
-                      <ExportData
-                        flamebearer={exemplarsSingleView.profile}
-                        exportPNG
-                        exportJSON
-                        exportPprof
-                        exportHTML
-                      />
-                    }
-                  />
-                </LoadingOverlay>
-              </Box>
+              <SingleTab
+                colorMode={colorMode}
+                type={exemplarsSingleView.type}
+                selectionProfile={exemplarsSingleView.selectionProfile}
+              />
             </TabPanel>
             <TabPanel>
-              <div className={styles.comparisonTab}>
-                <Box className={styles.comparisonTabHalf}>
-                  <LoadingOverlay
-                    active={isLoadingOrReloading([exemplarsSingleView.type])}
-                    spinnerPosition="baseline"
-                  >
-                    <FlamegraphRenderer
-                      showCredit={false}
-                      profile={exemplarsSingleView.profile}
-                      colorMode={colorMode}
-                      panesOrientation="vertical"
-                      ExportData={
-                        <ExportData
-                          flamebearer={exemplarsSingleView.profile}
-                          exportPNG
-                          exportJSON
-                          exportPprof
-                          exportHTML
-                        />
-                      }
-                    />
-                  </LoadingOverlay>
-                </Box>
-                <Box className={styles.comparisonTabHalf}>
-                  <LoadingOverlay
-                    active={isLoadingOrReloading([exemplarsSingleView.type])}
-                    spinnerPosition="baseline"
-                  >
-                    <h3>subtracted profile</h3>
-                  </LoadingOverlay>
-                </Box>
-              </div>
+              <ComparisonTab
+                colorMode={colorMode}
+                type={exemplarsSingleView.type}
+                subtractedProfile={subtractedProfile}
+                selectionProfile={exemplarsSingleView.selectionProfile}
+              />
             </TabPanel>
-            <TabPanel>{diffFlamebearer}</TabPanel>
+            <TabPanel>
+              <DiffTab
+                colorMode={colorMode}
+                type={exemplarsSingleView.type}
+                subtractedProfile={subtractedProfile}
+                selectionProfile={exemplarsSingleView.selectionProfile}
+              />
+            </TabPanel>
           </Tabs>
         ) : null}
       </div>
@@ -236,3 +176,128 @@ function ExemplarsSingleView() {
 }
 
 export default ExemplarsSingleView;
+
+interface TabProps {
+  colorMode: FlamegraphRendererProps['colorMode'];
+  type: LoadingType;
+  selectionProfile: Profile;
+}
+
+function SingleTab({ colorMode, type, selectionProfile }: TabProps) {
+  return (
+    <Box>
+      <LoadingOverlay
+        active={isLoadingOrReloading([type])}
+        spinnerPosition="baseline"
+      >
+        <FlamegraphRenderer
+          showCredit={false}
+          profile={selectionProfile}
+          colorMode={colorMode}
+          ExportData={
+            <ExportData
+              flamebearer={selectionProfile}
+              exportPNG
+              exportJSON
+              exportPprof
+              exportHTML
+            />
+          }
+        />
+      </LoadingOverlay>
+    </Box>
+  );
+}
+
+function ComparisonTab({
+  colorMode,
+  type,
+  subtractedProfile,
+  selectionProfile,
+}: TabProps & { subtractedProfile: Profile }) {
+  return (
+    <div className={styles.comparisonTab}>
+      <Box className={styles.comparisonTabHalf}>
+        selection profile
+        <LoadingOverlay
+          active={isLoadingOrReloading([type])}
+          spinnerPosition="baseline"
+        >
+          <FlamegraphRenderer
+            showCredit={false}
+            profile={selectionProfile}
+            colorMode={colorMode}
+            panesOrientation="vertical"
+            ExportData={
+              <ExportData
+                flamebearer={selectionProfile}
+                exportPNG
+                exportJSON
+                exportPprof
+                exportHTML
+              />
+            }
+          />
+        </LoadingOverlay>
+      </Box>
+      <Box className={styles.comparisonTabHalf}>
+        subtracted profile
+        <LoadingOverlay
+          active={isLoadingOrReloading([type])}
+          spinnerPosition="baseline"
+        >
+          <FlamegraphRenderer
+            showCredit={false}
+            profile={subtractedProfile}
+            colorMode={colorMode}
+            panesOrientation="vertical"
+            ExportData={
+              <ExportData
+                flamebearer={subtractedProfile}
+                exportPNG
+                exportJSON
+                exportPprof
+                exportHTML
+              />
+            }
+          />
+        </LoadingOverlay>
+      </Box>
+    </div>
+  );
+}
+
+function DiffTab({
+  colorMode,
+  type,
+  subtractedProfile,
+  selectionProfile,
+}: TabProps & { subtractedProfile: Profile }) {
+  const subtractedCopy = JSON.parse(JSON.stringify(subtractedProfile));
+  const selectionCopy = JSON.parse(JSON.stringify(selectionProfile));
+  const diffProfile = diffTwoProfiles(subtractedCopy, selectionCopy);
+
+  return (
+    <Box>
+      <LoadingOverlay
+        active={isLoadingOrReloading([type])}
+        spinnerPosition="baseline"
+      >
+        <FlamegraphRenderer
+          showCredit={false}
+          profile={diffProfile}
+          colorMode={colorMode}
+          ExportData={
+            <ExportData
+              flamebearer={diffProfile}
+              exportPNG
+              exportJSON
+              exportPprof
+              exportHTML
+            />
+          }
+        />
+      </LoadingOverlay>
+    </Box>
+  );
+}
