@@ -32,6 +32,7 @@ import {
   fetchTagExplorerView,
   fetchTagExplorerViewProfile,
   ALL_TAGS,
+  setQuery,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
@@ -251,7 +252,11 @@ function TagExplorerView() {
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
       <div className={styles.tagExplorerView} data-testid="tag-explorer-view">
-        <Toolbar hideTagsBar />
+        <Toolbar
+          onSelectedApp={(query) => {
+            dispatch(setQuery(query));
+          }}
+        />
         <Box>
           <ExploreHeader
             appName={appName}

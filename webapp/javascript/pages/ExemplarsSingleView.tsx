@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import { selectQueries } from '@webapp/redux/reducers/continuous';
+import { selectQueries, setQuery } from '@webapp/redux/reducers/continuous';
 import {
   fetchExemplarsSingleView,
   fetchSelectionProfile,
@@ -133,7 +133,11 @@ function ExemplarsSingleView() {
     <div>
       <PageTitle title={formatTitle('Tracing single', query)} />
       <div className="main-wrapper">
-        <Toolbar />
+        <Toolbar
+          onSelectedApp={(query) => {
+            dispatch(setQuery(query));
+          }}
+        />
         <Box>
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}

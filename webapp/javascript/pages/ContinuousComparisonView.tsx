@@ -46,7 +46,7 @@ function ComparisonApp() {
   const { colorMode } = useColorMode();
   usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
-  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTags, rightTags } = useTags();
   const { leftTimeline, rightTimeline } = useTimelines();
   const sharedQuery = useFlamegraphSharedQuery();
 
@@ -95,8 +95,7 @@ function ComparisonApp() {
       <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
-          hideTagsBar
-          onSelectedName={(query) => {
+          onSelectedApp={(query) => {
             dispatch(actions.setQuery(query));
           }}
         />
@@ -154,12 +153,8 @@ function ComparisonApp() {
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setLeftQuery(q));
-                  if (leftQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setLeftQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
@@ -215,12 +210,8 @@ function ComparisonApp() {
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setRightQuery(q));
-                  if (rightQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setRightQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
