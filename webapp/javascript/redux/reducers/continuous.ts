@@ -10,16 +10,14 @@ import {
 import { fetchAppNames } from '@webapp/services/appNames';
 import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import type { Timeline } from '@webapp/models/timeline';
-import * as tagsService from '@webapp/services/tags';
 import * as annotationsService from '@webapp/services/annotations';
 import { RequestAbortedError } from '@webapp/services/base';
 import { appendLabelToQuery } from '@webapp/util/query';
-import { createBiggestInterval } from '@webapp/util/timerange';
-import { formatAsOBject, toUnixTimestamp } from '@webapp/util/formatDate';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 import { ContinuousState, TagsState } from './continuous/state';
+import { fetchTagValues, fetchTags } from './continuous/tags.thunks';
 
 let singleViewAbortController: AbortController | undefined;
 let sideTimelinesAbortController: AbortController | undefined;
@@ -399,182 +397,6 @@ export const fetchDiffView = createAsyncThunk<
 
   return Promise.reject(res.error);
 });
-
-export const fetchTags = createAsyncThunk<
-  { appName: string; tags: string[]; from: number; until: number },
-  Query,
-  { state: { continuous: ContinuousState } }
->(
-  'continuous/fetchTags',
-  async (query: Query, thunkAPI) => {
-    const appName = queryToAppName(query);
-    if (appName.isNothing) {
-      return Promise.reject(
-        new Error(
-          `Query '${appName}' is not a valid app, and it can't have any tags`
-        )
-      );
-    }
-
-    const state = thunkAPI.getState().continuous;
-    const timerange = biggestTimeRangeInUnix(state);
-    const res = await tagsService.fetchTags(
-      query,
-      timerange.from,
-      timerange.until
-    );
-
-    if (res.isOk) {
-      return Promise.resolve({
-        appName: appName.value,
-        tags: res.value,
-        from: timerange.from,
-        until: timerange.until,
-      });
-    }
-
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to load tags',
-        message: res.error.message,
-      })
-    );
-
-    return Promise.reject(res.error);
-  },
-  {
-    // If we already loaded the tags for that application
-    // And we are trying to load tags for a smaller range
-    // Skip it, since we most likely already have that data
-    condition: (query, thunkAPI) => {
-      const appName = queryToAppName(query);
-      if (appName.isNothing) {
-        throw Error(
-          `Query '${appName}' is not a valid app, and it can't have any tags`
-        );
-      }
-
-      const state = thunkAPI.getState().continuous;
-      const timerange = biggestTimeRangeInUnix(state);
-
-      const s = state.tags[appName.value];
-
-      // Haven't loaded yet
-      if (!s) {
-        return true;
-      }
-
-      // Already loading that tag
-      if (s.type === 'loading') {
-        return false;
-      }
-
-      // Any other state that's not loaded
-      if (s.type !== 'loaded') {
-        return true;
-      }
-
-      const isInRange = (target: number) => {
-        return target >= s.from && target <= s.until;
-      };
-
-      const isSmallerThanLoaded =
-        isInRange(timerange.from) && isInRange(timerange.until);
-
-      return !isSmallerThanLoaded;
-    },
-  }
-);
-
-export const fetchTagValues = createAsyncThunk<
-  {
-    appName: string;
-    label: string;
-    values: string[];
-  },
-  {
-    query: Query;
-    label: string;
-  },
-  { state: { continuous: ContinuousState } }
->(
-  'continuous/fetchTagsValues',
-  async (payload: { query: Query; label: string }, thunkAPI) => {
-    const appName = queryToAppName(payload.query);
-    if (appName.isNothing) {
-      return Promise.reject(
-        new Error(
-          `Query '${appName}' is not a valid app, and it can't have any tags`
-        )
-      );
-    }
-
-    const state = thunkAPI.getState().continuous.tags[appName.value];
-    if (!state || state.type !== 'loaded') {
-      return Promise.reject(
-        new Error(
-          `Trying to load label-values for an unloaded label. This is likely due to a race condition.`
-        )
-      );
-    }
-
-    const res = await tagsService.fetchLabelValues(
-      payload.label,
-      payload.query,
-      state.from,
-      state.until
-    );
-
-    if (res.isOk) {
-      return Promise.resolve({
-        appName: appName.value,
-        label: payload.label,
-        values: res.value,
-      });
-    }
-
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to load tag values',
-        message: res.error.message,
-      })
-    );
-
-    return Promise.reject(res.error);
-  },
-  {
-    condition: ({ query, label }, thunkAPI) => {
-      const appName = queryToAppName(query);
-      if (appName.isNothing) {
-        throw Error(
-          `Query '${appName}' is not a valid app, and it can't have any tags`
-        );
-      }
-
-      const tagState = thunkAPI.getState().continuous.tags[appName.value];
-      if (!tagState || tagState.type !== 'loaded') {
-        return false;
-      }
-
-      const tagValueState = tagState.tags[label];
-
-      // Haven't loaded yet
-      if (!tagValueState) {
-        return true;
-      }
-
-      // Already loading that tag
-      // Or we already loaded it
-      if (tagValueState.type === 'loading' || tagValueState.type === 'loaded') {
-        return false;
-      }
-
-      return true;
-    },
-  }
-);
 
 export const reloadAppNames = createAsyncThunk(
   'names/reloadAppNames',
@@ -1097,13 +919,4 @@ function getNextStateFromPending(
   return 'reloading';
 }
 
-function biggestTimeRangeInUnix(state: ContinuousState) {
-  return createBiggestInterval({
-    from: [state.from, state.leftFrom, state.rightFrom]
-      .map(formatAsOBject)
-      .map(toUnixTimestamp),
-    until: [state.until, state.leftUntil, state.leftUntil]
-      .map(formatAsOBject)
-      .map(toUnixTimestamp),
-  });
-}
+export * from './continuous/tags.thunks';
