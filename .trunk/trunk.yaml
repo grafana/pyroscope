@@ -25,6 +25,7 @@ lint:
     - go-check-mod
     - gofmt@1.19.3
     - golangci-lint@1.50.1
+    - goreleaser-check@1.12.3
     - hadolint@2.10.0
     - isort@5.10.1
     - markdownlint@0.32.2
@@ -36,7 +37,6 @@ lint:
     - taplo@0.7.0
   definitions:
     - name: go-check-mod
-      # files: [go-packages]
       commands:
         - name: lint
           output: pass_fail
@@ -48,10 +48,28 @@ lint:
       environment:
         - name: PATH
           list: ["${env.PATH}"]
+    - name: goreleaser-check
+      commands:
+        - name: lint
+          output: pass_fail
+          run: goreleaser check -f ${target}
+          success_codes: [0, 1]
+          read_output_from: stderr
+      environment:
+        - name: PATH
+          list: ["${env.PATH}"]
+      runtime: go
+      package: github.com/goreleaser/goreleaser
+      version_command:
+        parse_regex: goreleaser version ${semver} .*
+        run: goreleaser --version
   triggers:
     - linters: [go-check-mod]
       targets: [go.mod]
       paths: [go.mod, go.sum, vendor/**]
+    - linters: [goreleaser-check]
+      targets: [.goreleaser.yaml]
+      paths: [.goreleaser.yaml]
   ignore:
     - linters: [ALL]
       paths: ["**/vendor/**"]
