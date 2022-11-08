@@ -18,11 +18,11 @@ lint:
     - black@22.10.0
     - buf-format@1.9.0
     - buf-lint@1.9.0
+    - check-go-mod
     - clippy@1.65.0
     - flake8@5.0.4
     - git-diff-check
     - gitleaks@8.15.0
-    - go-check-mod
     - gofmt@1.19.3
     - golangci-lint@1.50.1
     - goreleaser-check@1.12.3
@@ -36,7 +36,7 @@ lint:
     - svgo@3.0.0
     - taplo@0.7.0
   definitions:
-    - name: go-check-mod
+    - name: check-go-mod
       commands:
         - name: lint
           output: pass_fail
@@ -64,7 +64,7 @@ lint:
         parse_regex: goreleaser version ${semver} .*
         run: goreleaser --version
   triggers:
-    - linters: [go-check-mod]
+    - linters: [check-go-mod]
       targets: [go.mod]
       paths: [go.mod, go.sum, vendor/**]
     - linters: [goreleaser-check]
