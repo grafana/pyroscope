@@ -462,6 +462,7 @@ function getNextStateFromPending(
 
 export * from './continuous/selectors';
 
+export * from './continuous/state';
 export * from './continuous/tags.thunks';
 export * from './continuous/singleView.thunks';
 export * from './continuous/annotations.thunks';
