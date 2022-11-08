@@ -33,6 +33,8 @@ import styles from './Toolbar.module.scss';
 
 const cx = classNames.bind(styles);
 
+export const TOOLBAR_MODE_WIDTH_THRESHOLD = 480;
+
 export type ShowModeType = 'large' | 'small';
 
 const useShowMode = (widthTreshhold: number) => {
@@ -88,7 +90,7 @@ export interface ProfileHeaderProps {
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
-  panesOrientation: 'horizontal' | 'vertical';
+  panesOrientation?: 'horizontal' | 'vertical';
 }
 
 const Divider = () => <div className={styles.divider} />;
@@ -111,7 +113,7 @@ const Toolbar = React.memo(
     disableChangingDisplay = false,
     sharedQuery,
     ExportData = <></>,
-    panesOrientation,
+    panesOrientation = 'horizontal',
   }: ProfileHeaderProps) => {
     return (
       <div role="toolbar">
@@ -165,11 +167,13 @@ const LeftToolbar = ({
   | 'panesOrientation'
   | 'view'
 >) => {
-  const { ref, size } = useShowMode(480);
+  const { ref, size } = useShowMode(TOOLBAR_MODE_WIDTH_THRESHOLD);
 
   return (
     <div
       ref={ref}
+      data-mode={size}
+      data-testid="left-toolbar"
       className={cx({
         [styles.left]: true,
         [styles.widthAuto]: panesOrientation === 'vertical',
@@ -193,7 +197,7 @@ const LeftToolbar = ({
   );
 };
 
-export const RightToolbar = ({
+const RightToolbar = ({
   fitMode,
   updateFitMode,
   isFlamegraphDirty,
@@ -220,12 +224,14 @@ export const RightToolbar = ({
   | 'panesOrientation'
 >) => {
   const { ref, size } = useShowMode(
-    panesOrientation === 'vertical' ? 491 : 480
+    panesOrientation === 'vertical' ? 491 : TOOLBAR_MODE_WIDTH_THRESHOLD
   );
 
   return (
     <div
       ref={ref}
+      data-mode={size}
+      data-testid="right-toolbar"
       className={cx({
         [styles.right]: true,
         [styles.widthAuto]: panesOrientation === 'vertical',
@@ -274,6 +280,7 @@ function FocusOnSubtree({
           disabled={!selectedNode.isJust}
           onClick={onClick}
           className={styles.collapseNodeButton}
+          aria-label="Collapse nodes above"
         >
           <FontAwesomeIcon icon={faCompressAlt} />
         </Button>
@@ -294,10 +301,10 @@ function ResetView({
       <div>
         <Button
           id="reset"
-          data-testid="reset-view"
           disabled={!isFlamegraphDirty}
           onClick={reset}
           className={styles.resetViewButton}
+          aria-label="Reset View"
         >
           <FontAwesomeIcon icon={faUndo} />
         </Button>

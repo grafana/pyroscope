@@ -75,7 +75,14 @@ describe('ProfileHeader', () => {
       />
     );
 
-    expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'large');
+    expect(screen.getByTestId('left-toolbar')).toHaveAttribute(
+      'data-mode',
+      'large'
+    );
+    expect(screen.getByTestId('right-toolbar')).toHaveAttribute(
+      'data-mode',
+      'large'
+    );
     expect(asFragment()).toMatchSnapshot();
 
     setWindowSize('small');
@@ -98,7 +105,15 @@ describe('ProfileHeader', () => {
       />
     );
 
-    expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'small');
+    expect(screen.getByTestId('left-toolbar')).toHaveAttribute(
+      'data-mode',
+      'small'
+    );
+    expect(screen.getByTestId('right-toolbar')).toHaveAttribute(
+      'data-mode',
+      'small'
+    );
+
     expect(asFragment()).toMatchSnapshot();
   });
 
@@ -156,56 +171,6 @@ describe('ProfileHeader', () => {
       screen.getByRole('button', { name: /Reset/ }).click();
 
       expect(onReset).toHaveBeenCalled();
-    });
-
-    it('renders full text when in large screens', () => {
-      setWindowSize('large');
-
-      const component = (
-        <Toolbar
-          view="both"
-          viewDiff="diff"
-          flamegraphType="single"
-          isFlamegraphDirty
-          handleSearchChange={() => {}}
-          reset={onReset}
-          updateFitMode={() => {}}
-          fitMode={HeadMode}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-          highlightQuery=""
-        />
-      );
-      render(component);
-      expect(
-        screen.getByRole('button', { name: 'Reset View' })
-      ).toBeInTheDocument();
-    });
-
-    it('renders short text when in small screens', () => {
-      setWindowSize('small');
-
-      const component = (
-        <Toolbar
-          view="both"
-          viewDiff="diff"
-          flamegraphType="single"
-          isFlamegraphDirty
-          handleSearchChange={() => {}}
-          reset={onReset}
-          updateFitMode={() => {}}
-          fitMode={HeadMode}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-          highlightQuery=""
-        />
-      );
-      render(component);
-      expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
     });
   });
 
@@ -328,54 +293,6 @@ describe('ProfileHeader', () => {
 
       expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999);
     });
-
-    it('shows short text', () => {
-      setWindowSize('small');
-      const component = (
-        <Toolbar
-          view="both"
-          viewDiff="diff"
-          flamegraphType="single"
-          isFlamegraphDirty={false}
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={HeadMode}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-          highlightQuery=""
-        />
-      );
-      render(component);
-      expect(screen.getByRole('button', { name: 'Collapse' })).toBeDisabled();
-    });
-
-    it('shows long text', () => {
-      setWindowSize('large');
-      const component = (
-        <Toolbar
-          view="both"
-          viewDiff="diff"
-          flamegraphType="single"
-          isFlamegraphDirty={false}
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={HeadMode}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-          highlightQuery=""
-        />
-      );
-      render(component);
-      expect(
-        screen.getByRole('button', { name: 'Collapse nodes above' })
-      ).toBeDisabled();
-    });
   });
 
   describe('DiffSection', () => {
@@ -457,26 +374,20 @@ describe('ProfileHeader', () => {
       });
 
       it('changes to Self view', () => {
-        userEvent.selectOptions(
-          screen.getByRole('combobox', { name: /view-diff/ }),
-          screen.getByRole('option', { name: /Self/ })
-        );
+        screen.getByRole('button', { name: /Diff View/ }).click();
+        screen.getByRole('menuitem', { name: /Self/i }).click();
         expect(updateViewDiff).toHaveBeenCalledWith('self');
       });
 
       it('changes to Total view', () => {
-        userEvent.selectOptions(
-          screen.getByRole('combobox', { name: /view-diff/ }),
-          screen.getByRole('option', { name: /Total/ })
-        );
+        screen.getByRole('button', { name: /Diff View/ }).click();
+        screen.getByRole('menuitem', { name: /Total/i }).click();
         expect(updateViewDiff).toHaveBeenCalledWith('total');
       });
 
       it('changes to Diff view', () => {
-        userEvent.selectOptions(
-          screen.getByRole('combobox', { name: /view-diff/ }),
-          screen.getByRole('option', { name: /Diff/ })
-        );
+        screen.getByRole('button', { name: /Diff View/ }).click();
+        screen.getByRole('menuitem', { name: /Diff/ }).click();
         expect(updateViewDiff).toHaveBeenCalledWith('diff');
       });
     });
@@ -526,6 +437,11 @@ describe('ProfileHeader', () => {
         screen.getByRole('button', { name: /Both/ }).click();
         expect(updateView).toHaveBeenCalledWith('both');
       });
+
+      it('changes to Sandwich view', () => {
+        screen.getByRole('button', { name: /Sandwich/ }).click();
+        expect(updateView).toHaveBeenCalledWith('sandwich');
+      });
     });
 
     describe('small mode', () => {
@@ -539,27 +455,27 @@ describe('ProfileHeader', () => {
       });
 
       it('changes to Table view', () => {
-        userEvent.selectOptions(
-          screen.getByRole('combobox', { name: /view/ }),
-          screen.getByRole('option', { name: /Table/ })
-        );
+        screen.getByRole('button', { name: /View Mode/ }).click();
+        screen.getByRole('menuitem', { name: /Table/ }).click();
         expect(updateView).toHaveBeenCalledWith('table');
       });
 
       it('changes to Flamegraph view', () => {
-        userEvent.selectOptions(
-          screen.getByRole('combobox', { name: /view/ }),
-          screen.getByRole('option', { name: /Flame/ })
-        );
+        screen.getByRole('button', { name: /View Mode/ }).click();
+        screen.getByRole('menuitem', { name: /Flame/ }).click();
         expect(updateView).toHaveBeenCalledWith('flamegraph');
       });
 
       it('changes to Both view', () => {
-        userEvent.selectOptions(
-          screen.getByRole('combobox', { name: /view/ }),
-          screen.getByRole('option', { name: /Both/ })
-        );
+        screen.getByRole('button', { name: /View Mode/ }).click();
+        screen.getByRole('menuitem', { name: /Both/ }).click();
         expect(updateView).toHaveBeenCalledWith('both');
+      });
+
+      it('changes to Sandwich view', () => {
+        screen.getByRole('button', { name: /View Mode/ }).click();
+        screen.getByRole('menuitem', { name: /Sandwich/ }).click();
+        expect(updateView).toHaveBeenCalledWith('sandwich');
       });
     });
   });
