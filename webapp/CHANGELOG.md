@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.56.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.4...@pyroscope/webapp@1.56.5) (2022-11-08)
+
+
+### Bug Fixes
+
+* **webapp:** pass from,until when calling /label{-values} ([#1677](https://github.com/pyroscope-io/pyroscope/issues/1677)) ([a82077d](https://github.com/pyroscope-io/pyroscope/commit/a82077dd23148d839b75b46fb11b6b71492eec99))
+
+
+
+
+
 ## [1.56.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.3...@pyroscope/webapp@1.56.4) (2022-11-08)
 
 **Note:** Version bump only for package @pyroscope/webapp
