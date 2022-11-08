@@ -642,13 +642,20 @@ export const fetchTagValues = createAsyncThunk<
       );
     }
 
-    const state = thunkAPI.getState().continuous;
-    const timerange = biggestTimeRangeInUnix(state);
+    const state = thunkAPI.getState().continuous.tags[appName.value];
+    if (!state || state.type !== 'loaded') {
+      return Promise.reject(
+        new Error(
+          `Trying to load label-values for an unloaded label. This is likely due to a race condition.`
+        )
+      );
+    }
+
     const res = await tagsService.fetchLabelValues(
       payload.label,
       payload.query,
-      timerange.from,
-      timerange.until
+      state.from,
+      state.until
     );
 
     if (res.isOk) {
@@ -668,6 +675,36 @@ export const fetchTagValues = createAsyncThunk<
     );
 
     return Promise.reject(res.error);
+  },
+  {
+    condition: ({ query, label }, thunkAPI) => {
+      const appName = queryToAppName(query);
+      if (appName.isNothing) {
+        throw Error(
+          `Query '${appName}' is not a valid app, and it can't have any tags`
+        );
+      }
+
+      const tagState = thunkAPI.getState().continuous.tags[appName.value];
+      if (!tagState || tagState.type !== 'loaded') {
+        return false;
+      }
+
+      const tagValueState = tagState.tags[label];
+
+      // Haven't loaded yet
+      if (!tagValueState) {
+        return true;
+      }
+
+      // Already loading that tag
+      // Or we already loaded it
+      if (tagValueState.type === 'loading' || tagValueState.type === 'loaded') {
+        return false;
+      }
+
+      return true;
+    },
   }
 );
 
