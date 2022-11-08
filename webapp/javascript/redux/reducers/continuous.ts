@@ -1,31 +1,21 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import {
-  renderSingle,
-  renderDiff,
-  renderExplore,
-  RenderOutput,
-  RenderExploreOutput,
-  RenderDiffResponse,
-} from '@webapp/services/render';
 import { fetchAppNames } from '@webapp/services/appNames';
 import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
-import type { Timeline } from '@webapp/models/timeline';
-import * as annotationsService from '@webapp/services/annotations';
-import { RequestAbortedError } from '@webapp/services/base';
-import { appendLabelToQuery } from '@webapp/util/query';
 import type { RootState } from '@webapp/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 import { ContinuousState, TagsState } from './continuous/state';
 import { fetchTagValues, fetchTags } from './continuous/tags.thunks';
-
-let singleViewAbortController: AbortController | undefined;
-let sideTimelinesAbortController: AbortController | undefined;
-let diffViewAbortController: AbortController | undefined;
-let comparisonSideAbortControllerLeft: AbortController | undefined;
-let comparisonSideAbortControllerRight: AbortController | undefined;
-let tagExplorerViewAbortController: AbortController | undefined;
-let tagExplorerViewProfileAbortController: AbortController | undefined;
+import { addAnnotation } from './continuous/annotations.thunks';
+import { fetchSingleView } from './continuous/singleView.thunks';
+import { fetchComparisonSide } from './continuous/comparisonView.thunks';
+import { fetchSideTimelines } from './continuous/timelines.thunks';
+import {
+  fetchTagExplorerView,
+  fetchTagExplorerViewProfile,
+  ALL_TAGS,
+} from './continuous/tagExplorer.thunks';
+import { fetchDiffView } from './continuous/diffView.thunks';
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -76,328 +66,6 @@ const initialState: ContinuousState = {
   },
 };
 
-export const fetchSingleView = createAsyncThunk<
-  RenderOutput,
-  null,
-  { state: { continuous: ContinuousState } }
->('continuous/singleView', async (_, thunkAPI) => {
-  if (singleViewAbortController) {
-    singleViewAbortController.abort();
-  }
-
-  singleViewAbortController = new AbortController();
-  thunkAPI.signal = singleViewAbortController.signal;
-
-  const state = thunkAPI.getState();
-  const res = await renderSingle(state.continuous, singleViewAbortController);
-
-  if (res.isOk) {
-    return Promise.resolve(res.value);
-  }
-
-  if (res.isErr && res.error instanceof RequestAbortedError) {
-    return Promise.reject(res.error);
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed to load single view data',
-      message: res.error.message,
-    })
-  );
-
-  return Promise.reject(res.error);
-});
-
-export const fetchTagExplorerView = createAsyncThunk<
-  RenderExploreOutput,
-  null,
-  { state: { continuous: ContinuousState } }
->('continuous/tagExplorerView', async (_, thunkAPI) => {
-  if (tagExplorerViewAbortController) {
-    tagExplorerViewAbortController.abort();
-  }
-
-  tagExplorerViewAbortController = new AbortController();
-  thunkAPI.signal = tagExplorerViewAbortController.signal;
-
-  const state = thunkAPI.getState();
-  const res = await renderExplore(
-    {
-      query: state.continuous.query,
-      from: state.continuous.from,
-      until: state.continuous.until,
-      groupBy: state.continuous.tagExplorerView.groupByTag,
-      grouByTagValue: state.continuous.tagExplorerView.groupByTagValue,
-      refreshToken: state.continuous.refreshToken,
-    },
-    tagExplorerViewAbortController
-  );
-
-  if (res.isOk) {
-    return Promise.resolve(res.value);
-  }
-
-  if (res.isErr && res.error instanceof RequestAbortedError) {
-    return Promise.reject(res.error);
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed to load explore view data',
-      message: res.error.message,
-    })
-  );
-
-  return Promise.reject(res.error);
-});
-
-export const ALL_TAGS = 'All';
-export const fetchTagExplorerViewProfile = createAsyncThunk<
-  RenderOutput,
-  null,
-  { state: { continuous: ContinuousState } }
->('continuous/fetchTagExplorerViewProfile', async (_, thunkAPI) => {
-  if (tagExplorerViewProfileAbortController) {
-    tagExplorerViewProfileAbortController.abort();
-  }
-
-  tagExplorerViewProfileAbortController = new AbortController();
-  thunkAPI.signal = tagExplorerViewProfileAbortController.signal;
-
-  const state = thunkAPI.getState();
-  const { groupByTag, groupByTagValue } = state.continuous.tagExplorerView;
-  // if "All" option is selected we dont need to modify query to fetch profile
-  const queryProps =
-    ALL_TAGS === groupByTagValue
-      ? { groupBy: groupByTag, query: state.continuous.query }
-      : {
-          query: appendLabelToQuery(
-            state.continuous.query,
-            state.continuous.tagExplorerView.groupByTag,
-            state.continuous.tagExplorerView.groupByTagValue
-          ),
-        };
-  const res = await renderSingle(
-    {
-      ...state.continuous,
-      ...queryProps,
-    },
-    tagExplorerViewProfileAbortController
-  );
-
-  if (res.isOk) {
-    return Promise.resolve(res.value);
-  }
-
-  if (res.isErr && res.error instanceof RequestAbortedError) {
-    return Promise.reject(res.error);
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed to load explore view profile',
-      message: res.error.message,
-    })
-  );
-
-  return Promise.reject(res.error);
-});
-
-export const fetchSideTimelines = createAsyncThunk<
-  { left: Timeline; right: Timeline },
-  null,
-  { state: { continuous: ContinuousState } }
->('continuous/fetchSideTimelines', async (_, thunkAPI) => {
-  if (sideTimelinesAbortController) {
-    sideTimelinesAbortController.abort();
-  }
-
-  sideTimelinesAbortController = new AbortController();
-  thunkAPI.signal = sideTimelinesAbortController.signal;
-
-  const state = thunkAPI.getState();
-
-  const res = await Promise.all([
-    renderSingle(
-      {
-        query: state.continuous.leftQuery || '',
-        from: state.continuous.from,
-        until: state.continuous.until,
-        maxNodes: state.continuous.maxNodes,
-        refreshToken: state.continuous.refreshToken,
-      },
-      sideTimelinesAbortController
-    ),
-    renderSingle(
-      {
-        query: state.continuous.rightQuery || '',
-        from: state.continuous.from,
-        until: state.continuous.until,
-        maxNodes: state.continuous.maxNodes,
-        refreshToken: state.continuous.refreshToken,
-      },
-      sideTimelinesAbortController
-    ),
-  ]);
-
-  if (
-    (res?.[0]?.isErr && res?.[0]?.error instanceof RequestAbortedError) ||
-    (res?.[1]?.isErr && res?.[1]?.error instanceof RequestAbortedError) ||
-    (!res && thunkAPI.signal.aborted)
-  ) {
-    return Promise.reject();
-  }
-
-  if (res?.[0].isOk && res?.[1].isOk) {
-    return Promise.resolve({
-      left: res[0].value.timeline,
-      right: res[1].value.timeline,
-    });
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: `Failed to load the timelines`,
-      message: '',
-      additionalInfo: [
-        res?.[0].error.message,
-        res?.[1].error.message,
-      ] as string[],
-    })
-  );
-
-  return Promise.reject(res && res.filter((a) => a?.isErr).map((a) => a.error));
-});
-
-export const fetchComparisonSide = createAsyncThunk<
-  { side: 'left' | 'right'; data: Pick<RenderOutput, 'profile'> },
-  { side: 'left' | 'right'; query: string },
-  { state: { continuous: ContinuousState } }
->('continuous/fetchComparisonSide', async ({ side, query }, thunkAPI) => {
-  const state = thunkAPI.getState();
-
-  const res = await (() => {
-    switch (side) {
-      case 'left': {
-        if (comparisonSideAbortControllerLeft) {
-          comparisonSideAbortControllerLeft.abort();
-        }
-
-        comparisonSideAbortControllerLeft = new AbortController();
-        thunkAPI.signal = comparisonSideAbortControllerLeft.signal;
-
-        return renderSingle(
-          {
-            ...state.continuous,
-            query,
-
-            from: state.continuous.leftFrom,
-            until: state.continuous.leftUntil,
-          },
-          comparisonSideAbortControllerLeft
-        );
-      }
-      case 'right': {
-        if (comparisonSideAbortControllerRight) {
-          comparisonSideAbortControllerRight.abort();
-        }
-
-        comparisonSideAbortControllerRight = new AbortController();
-        thunkAPI.signal = comparisonSideAbortControllerRight.signal;
-
-        return renderSingle(
-          {
-            ...state.continuous,
-            query,
-
-            from: state.continuous.rightFrom,
-            until: state.continuous.rightUntil,
-          },
-          comparisonSideAbortControllerRight
-        );
-      }
-      default: {
-        throw new Error('invalid side');
-      }
-    }
-  })();
-
-  if (res?.isErr && res?.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
-  }
-
-  if (res.isOk) {
-    return Promise.resolve({
-      side,
-      data: {
-        profile: res.value.profile,
-      },
-    });
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: `Failed to load the ${side} side comparison`,
-      message: res.error.message,
-    })
-  );
-
-  return Promise.reject(res.error);
-});
-
-export const fetchDiffView = createAsyncThunk<
-  { profile: RenderDiffResponse },
-  {
-    leftQuery: string;
-    leftFrom: string;
-    leftUntil: string;
-    rightQuery: string;
-    rightFrom: string;
-    rightUntil: string;
-  },
-  { state: { continuous: ContinuousState } }
->('continuous/diffView', async (params, thunkAPI) => {
-  if (diffViewAbortController) {
-    diffViewAbortController.abort();
-  }
-
-  diffViewAbortController = new AbortController();
-  thunkAPI.signal = diffViewAbortController.signal;
-
-  const state = thunkAPI.getState();
-  const res = await renderDiff(
-    {
-      ...params,
-      maxNodes: state.continuous.maxNodes,
-    },
-    diffViewAbortController
-  );
-
-  if (res.isOk) {
-    return Promise.resolve({ profile: res.value });
-  }
-
-  if (res.isErr && res.error instanceof RequestAbortedError) {
-    return thunkAPI.rejectWithValue({ rejectedWithValue: 'reloading' });
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed to load diff view',
-      message: res.error.message,
-    })
-  );
-
-  return Promise.reject(res.error);
-});
-
 export const reloadAppNames = createAsyncThunk(
   'names/reloadAppNames',
   async (_, thunkAPI) => {
@@ -412,30 +80,6 @@ export const reloadAppNames = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to load app names',
-        message: res.error.message,
-      })
-    );
-
-    return Promise.reject(res.error);
-  }
-);
-
-// TODO(eh-am): support different views
-export const addAnnotation = createAsyncThunk(
-  'continuous/addAnnotation',
-  async (newAnnotation: annotationsService.NewAnnotation, thunkAPI) => {
-    const res = await annotationsService.addAnnotation(newAnnotation);
-
-    if (res.isOk) {
-      return Promise.resolve({
-        annotation: res.value,
-      });
-    }
-
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to add annotation',
         message: res.error.message,
       })
     );
@@ -920,3 +564,9 @@ function getNextStateFromPending(
 }
 
 export * from './continuous/tags.thunks';
+export * from './continuous/singleView.thunks';
+export * from './continuous/annotations.thunks';
+export * from './continuous/comparisonView.thunks';
+export * from './continuous/timelines.thunks';
+export * from './continuous/tagExplorer.thunks';
+export * from './continuous/diffView.thunks';
