@@ -98,7 +98,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 
 	var appMetadataSaver storage.ApplicationMetadataSaver = service.NewApplicationMetadataService(svc.database.DB())
-	appMetadataSaver = service.NewApplicationCacheService(service.ApplicationCacheServiceConfig{}, appMetadataSaver)
+	appMetadataSaver = service.NewApplicationMetadataCacheService(service.ApplicationMetadataCacheServiceConfig{}, appMetadataSaver)
 
 	storageConfig := storage.NewConfig(svc.config)
 	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController, appMetadataSaver)

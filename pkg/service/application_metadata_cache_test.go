@@ -33,10 +33,10 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 
 	var m mockApplicationWriter
 	var svc *service.ApplicationMetadataCacheService
-	var cfg service.ApplicationCacheServiceConfig
+	var cfg service.ApplicationMetadataCacheServiceConfig
 
 	BeforeEach(func() {
-		svc = service.NewApplicationCacheService(cfg, &m)
+		svc = service.NewApplicationMetadataCacheService(cfg, &m)
 	})
 
 	When("cache is empty", func() {
