@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.57.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.9...@pyroscope/webapp@1.57.0) (2022-11-09)
+
+
+### Features
+
+* add single, comparison, diff tabs to heatmap page ([#1672](https://github.com/pyroscope-io/pyroscope/issues/1672)) ([9afe5e5](https://github.com/pyroscope-io/pyroscope/commit/9afe5e564e1fea6fe4026c3180134412ac2930f9))
+
+
+
+
+
 ## [1.56.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.8...@pyroscope/webapp@1.56.9) (2022-11-09)
 
 **Note:** Version bump only for package @pyroscope/webapp
