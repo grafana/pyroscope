@@ -26,7 +26,7 @@ import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import ExportData from '@webapp/components/ExportData';
-import TimelineTitle from '@webapp/components/TimelineTitle';
+import ChartTitle from '@webapp/components/ChartTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import PageTitle from '@webapp/components/PageTitle';
 import { formatTitle } from './formatTitle';
@@ -141,9 +141,7 @@ function ComparisonDiffApp() {
               }}
               selectionType="double"
               timezone={timezone}
-              title={
-                <TimelineTitle titleKey={diffView.profile?.metadata.units} />
-              }
+              title={<ChartTitle titleKey={diffView.profile?.metadata.units} />}
             />
             <SyncTimelines
               timeline={leftTimeline}
@@ -158,7 +156,7 @@ function ComparisonDiffApp() {
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
             <LoadingOverlay active={isLoading}>
-              <TimelineTitle titleKey="baseline" color={leftColor} />
+              <ChartTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
@@ -196,7 +194,7 @@ function ComparisonDiffApp() {
           </Box>
           <Box className="diff-instructions-wrapper-side">
             <LoadingOverlay active={isLoading}>
-              <TimelineTitle titleKey="comparison" color={rightColor} />
+              <ChartTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}
@@ -235,7 +233,7 @@ function ComparisonDiffApp() {
         </div>
         <Box>
           <LoadingOverlay active={isLoading} spinnerPosition="baseline">
-            <TimelineTitle titleKey="diff" />
+            <ChartTitle titleKey="diff" />
             <FlamegraphRenderer
               showCredit={false}
               profile={diffView.profile}

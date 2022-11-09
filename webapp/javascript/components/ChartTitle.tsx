@@ -1,7 +1,7 @@
 import React from 'react';
 import Color from 'color';
 import clsx from 'clsx';
-import styles from './TimelineTitle.module.scss';
+import styles from './ChartTitle.module.scss';
 
 const unitsToFlamegraphTitle = {
   objects: 'Total number of objects in RAM',
@@ -17,19 +17,19 @@ const unitsToFlamegraphTitle = {
   '': '',
 };
 
-interface TimelineTitleProps {
+interface ChartTitleProps {
   color?: Color;
   titleKey?: keyof typeof unitsToFlamegraphTitle;
   className?: string;
 }
 
-export default function TimelineTitle({
+export default function ChartTitle({
   color,
   titleKey = '',
   className,
-}: TimelineTitleProps) {
+}: ChartTitleProps) {
   return (
-    <div className={clsx([styles.timelineTitle, className])}>
+    <div className={clsx([styles.chartTitle, className])}>
       {color && (
         <span
           className={styles.colorReference}
