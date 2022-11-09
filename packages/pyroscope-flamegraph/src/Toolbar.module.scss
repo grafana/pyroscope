@@ -66,10 +66,20 @@ $buttonHeight: 37px;
 
 .toggleViewButton {
   height: $buttonHeight;
+  min-width: auto;
+  width: 40px;
   margin: 0 2px;
   padding: 0;
   border-color: transparent;
   background-color: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
 
   &.selected {
     background-color: var(--ps-fl-toolbar-btn-bg);
@@ -90,13 +100,9 @@ $buttonHeight: 37px;
 }
 
 .diffTypesButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
   svg {
-    height: 22px;
-    width: 22px !important;
+    height: 20px;
+    width: 20px !important;
   }
 }
 
