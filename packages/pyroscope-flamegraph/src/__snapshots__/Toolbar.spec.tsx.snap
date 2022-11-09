@@ -38,10 +38,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           type="button"
         >
           <svg
-            fill="white"
-            height="32px"
             viewBox="0 0 64 64"
-            width="32px"
             xmlns="http://www.w3.org/2000/svg"
           >
             <g
@@ -72,10 +69,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           type="button"
         >
           <svg
-            fill="white"
-            height="32px"
             viewBox="0 0 64 64"
-            width="32px"
             xmlns="http://www.w3.org/2000/svg"
           >
             <g
@@ -172,10 +166,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             type="button"
           >
             <svg
-              fill="white"
-              height="32px"
               viewBox="0 0 64 64"
-              width="32px"
               xmlns="http://www.w3.org/2000/svg"
             >
               <g
@@ -194,10 +185,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             type="button"
           >
             <svg
-              fill="white"
-              height="32px"
               viewBox="0 0 64 64"
-              width="32px"
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
@@ -215,10 +203,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             type="button"
           >
             <svg
-              fill="white"
-              height="32px"
               viewBox="0 0 64 64"
-              width="32px"
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
@@ -233,10 +218,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             type="button"
           >
             <svg
-              fill="white"
-              height="32px"
               viewBox="0 0 64 64"
-              width="32px"
               xmlns="http://www.w3.org/2000/svg"
             >
               <g
