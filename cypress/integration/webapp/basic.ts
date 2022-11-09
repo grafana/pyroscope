@@ -42,15 +42,18 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByRole('combobox', { name: 'view' }).select('Table');
+    cy.findByRole('button', { name: /View Mode/ }).click();
+    cy.findByRole('menuitem', { name: /Table/ }).click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 
-    cy.findByRole('combobox', { name: 'view' }).select('Both');
+    cy.findByRole('button', { name: /View Mode/ }).click();
+    cy.findByRole('menuitem', { name: /Both/ }).click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
-    cy.findByRole('combobox', { name: 'view' }).select('Flame');
+    cy.findByRole('button', { name: /View Mode/ }).click();
+    cy.findByRole('menuitem', { name: /Flame/ }).click();
     cy.findByTestId('table-ui').should('not.exist');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
@@ -144,11 +147,11 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByTestId('reset-view').should('be.disabled');
+    cy.findByRole('button', { name: /Reset/ }).should('be.disabled');
     cy.waitForFlamegraphToRender().click(0, BAR_HEIGHT * 2);
-    cy.findByTestId('reset-view').should('not.be.disabled');
-    cy.findByTestId('reset-view').click();
-    cy.findByTestId('reset-view').should('be.disabled');
+    cy.findByRole('button', { name: /Reset/ }).should('not.be.disabled');
+    cy.findByRole('button', { name: /Reset/ }).click();
+    cy.findByRole('button', { name: /Reset/ }).should('be.disabled');
   });
 
   describe('tooltip', () => {
