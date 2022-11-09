@@ -448,13 +448,14 @@ class FlameGraphRenderer extends Component<
         return (
           <div className={styles.sandwichPane} key="sandwich-pane">
             <div
-              className={clsx(styles.sandwichPaneInfo,
+              className={clsx(
+                styles.sandwichPaneInfo,
                 this.state.panesOrientation === 'vertical'
                   ? styles.vertical
                   : styles.horizontal
               )}
             >
-              <div className={styles.arrow}></div>
+              <div className={styles.arrow} />
               Select a function to view callers/callees sandwich view
             </div>
           </div>
