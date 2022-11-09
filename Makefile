@@ -11,6 +11,8 @@ COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
 
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 IMAGE_PLATFORM = linux/amd64
 BUILDX_ARGS =
 GOPRIVATE=github.com/grafana/frostdb
@@ -88,8 +90,8 @@ go/deps:
 
 .PHONY: go/bin
 go/bin:
-	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) ./cmd/phlare
-	CGO_ENABLED=0 $(GO) build $(GO_FLAGS) ./cmd/profilecli
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build $(GO_FLAGS) ./cmd/phlare
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build $(GO_FLAGS) ./cmd/profilecli
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
@@ -152,10 +154,12 @@ define deploy
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)phlare:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
-		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.image.repository=$(IMAGE_PREFIX)phlare --set phlare.service.port_name=http-metrics
+		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.image.repository=$(IMAGE_PREFIX)phlare --set phlare.service.port_name=http-metrics \
+		--set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null
 endef
 
 .PHONY: docker-image/phlare/build
+docker-image/phlare/build: GOOS=linux GOARCH=amd64
 docker-image/phlare/build: go/bin
 	$(call docker_buildx,--load)
 

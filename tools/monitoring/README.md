@@ -13,6 +13,6 @@ By default it install:
 - Grafana with plugin, datasources and dashboards.
 - An nginx proxy to access all applications.
 
-To access the proxy you just need to port forward using `kubeclt port-forward deployments.apps/nginx -n monitoring 3100:80`.
+To access the proxy you just need to port forward using `kubectl port-forward deployments.apps/nginx -n monitoring 3100:80`.
 
 > You can replace 3100 with the local port of your choice
