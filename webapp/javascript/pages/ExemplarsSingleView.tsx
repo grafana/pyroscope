@@ -14,6 +14,8 @@ import NoData from '@webapp/ui/NoData';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import StatusMessage from '@webapp/ui/StatusMessage';
+import { Tooltip } from '@webapp/ui/Tooltip';
+import { TooltipInfoIcon } from '@webapp/ui/TooltipInfoIcon';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
@@ -227,6 +229,19 @@ function ComparisonTab({
           <ChartTitle
             titleKey="selection_included"
             icon={<HeatmapSelectionIcon />}
+            postfix={
+              <Tooltip
+                placement="top"
+                title={
+                  <div className={styles.titleInfoTooltip}>
+                    Represents the aggregated result of all profiles{' '}
+                    <b>included within</b> the orange "selected area"
+                  </div>
+                }
+              >
+                <TooltipInfoIcon />
+              </Tooltip>
+            }
           />
           <FlamegraphRenderer
             showCredit={false}
@@ -253,6 +268,19 @@ function ComparisonTab({
           <ChartTitle
             titleKey="selection_excluded"
             icon={<HeatmapNoSelectionIcon />}
+            postfix={
+              <Tooltip
+                placement="top"
+                title={
+                  <div className={styles.titleInfoTooltip}>
+                    Represents the aggregated result of all profiles{' '}
+                    <b>excluding</b> the orange "selected area"
+                  </div>
+                }
+              >
+                <TooltipInfoIcon />
+              </Tooltip>
+            }
           />
           <FlamegraphRenderer
             showCredit={false}

@@ -25,6 +25,7 @@ interface ChartTitleProps {
   className?: string;
   color?: Color;
   icon?: ReactNode;
+  postfix?: ReactNode;
   titleKey?: keyof typeof chartTitleKeys;
 }
 
@@ -32,6 +33,7 @@ export default function ChartTitle({
   className,
   color,
   icon,
+  postfix,
   titleKey = '',
 }: ChartTitleProps) {
   return (
@@ -47,6 +49,7 @@ export default function ChartTitle({
         </span>
       )}
       <p className={styles.title}>{chartTitleKeys[titleKey]}</p>
+      {postfix}
     </div>
   );
 }
