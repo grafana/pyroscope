@@ -61,7 +61,7 @@ func copyData(dbCfg *config.DbManager, stCfg *storage.Config) error {
 			"src start: %q end: %q, dst start: %q end: %q", srcSt, srcEt, dstSt, dstEt)
 	}
 
-	s, err := storage.New(stCfg, logrus.StandardLogger(), prometheus.DefaultRegisterer, new(health.Controller))
+	s, err := storage.New(stCfg, logrus.StandardLogger(), prometheus.DefaultRegisterer, new(health.Controller), storage.NoopApplicationMetadataService{})
 	if err != nil {
 		return err
 	}

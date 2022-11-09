@@ -28,7 +28,13 @@ var _ = Describe("render merge test", func() {
 		BeforeEach(func() {
 			(*cfg).Server.APIBindAddr = ":10044"
 			var err error
-			s, err = storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			s, err = storage.New(
+				storage.NewConfig(&(*cfg).Server),
+				logrus.StandardLogger(),
+				prometheus.NewRegistry(),
+				new(health.Controller),
+				storage.NoopApplicationMetadataService{},
+			)
 			Expect(err).ToNot(HaveOccurred())
 			e, _ := exporter.NewExporter(nil, nil)
 			c, _ := New(Config{
