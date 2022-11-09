@@ -45,10 +45,12 @@
   margin-left: 2px;
   border-color: transparent;
   background-color: transparent;
+  min-width: auto;
+  width: 40px;
 
   svg {
     width: auto !important;
     height: 18px;
-    margin-top: 4px;
+    // margin-top: 4px;
   }
 }
