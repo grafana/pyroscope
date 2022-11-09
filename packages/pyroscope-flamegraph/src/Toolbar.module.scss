@@ -29,7 +29,8 @@ $buttonHeight: 37px;
   justify-content: space-between;
   justify-content: flex-start;
 
-  &.merged {
+  &:not(.right).merged {
+    // use :not(.right) because .right extends .left
     border-right-width: 0;
   }
 
