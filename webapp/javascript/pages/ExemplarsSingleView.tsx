@@ -104,7 +104,7 @@ function ExemplarsSingleView() {
     }
   })();
 
-  const subtractedProfile =
+  const differenceProfile =
     exemplarsSingleView.profile &&
     exemplarsSingleView.selectionProfile &&
     subtract(exemplarsSingleView.profile, exemplarsSingleView.selectionProfile);
@@ -135,7 +135,7 @@ function ExemplarsSingleView() {
         )}
         {exemplarsSingleView.heatmap &&
         exemplarsSingleView.selectionProfile &&
-        subtractedProfile ? (
+        differenceProfile ? (
           <Tabs
             selectedIndex={tabIndex}
             onSelect={(index) => setTabIndex(index)}
@@ -156,7 +156,7 @@ function ExemplarsSingleView() {
               <ComparisonTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
-                subtractedProfile={subtractedProfile}
+                differenceProfile={differenceProfile}
                 selectionProfile={exemplarsSingleView.selectionProfile}
               />
             </TabPanel>
@@ -164,7 +164,7 @@ function ExemplarsSingleView() {
               <DiffTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
-                subtractedProfile={subtractedProfile}
+                differenceProfile={differenceProfile}
                 selectionProfile={exemplarsSingleView.selectionProfile}
               />
             </TabPanel>
@@ -212,9 +212,9 @@ function SingleTab({ colorMode, type, selectionProfile }: TabProps) {
 function ComparisonTab({
   colorMode,
   type,
-  subtractedProfile,
+  differenceProfile,
   selectionProfile,
-}: TabProps & { subtractedProfile: Profile }) {
+}: TabProps & { differenceProfile: Profile }) {
   return (
     <div className={styles.comparisonTab}>
       <Box className={styles.comparisonTabHalf}>
@@ -246,12 +246,12 @@ function ComparisonTab({
         >
           <FlamegraphRenderer
             showCredit={false}
-            profile={subtractedProfile}
+            profile={differenceProfile}
             colorMode={colorMode}
             panesOrientation="vertical"
             ExportData={
               <ExportData
-                flamebearer={subtractedProfile}
+                flamebearer={differenceProfile}
                 exportPNG
                 exportJSON
                 exportPprof
@@ -268,10 +268,10 @@ function ComparisonTab({
 function DiffTab({
   colorMode,
   type,
-  subtractedProfile,
+  differenceProfile,
   selectionProfile,
-}: TabProps & { subtractedProfile: Profile }) {
-  const subtractedCopy = JSON.parse(JSON.stringify(subtractedProfile));
+}: TabProps & { differenceProfile: Profile }) {
+  const subtractedCopy = JSON.parse(JSON.stringify(differenceProfile));
   const selectionCopy = JSON.parse(JSON.stringify(selectionProfile));
   const diffProfile = diffTwoProfiles(subtractedCopy, selectionCopy);
 
