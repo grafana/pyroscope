@@ -50,8 +50,8 @@ services:
     build:
       context: java/simple
       dockerfile: Dockerfile
-    cap_add:
-      - SYS_ADMIN
+    security_opt:
+      - seccomp:seccomp.json
     ports:
       - 8083:8080
     networks:
@@ -60,8 +60,8 @@ services:
     build:
       context: java/springboot
       dockerfile: Dockerfile
-    cap_add:
-      - SYS_ADMIN
+    security_opt:
+      - seccomp:seccomp.json
     ports:
       - 8084:8080
     networks:
