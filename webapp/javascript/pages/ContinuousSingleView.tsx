@@ -18,7 +18,7 @@ import useColorMode from '@webapp/hooks/colorMode.hook';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
-import TimelineTitle from '@webapp/components/TimelineTitle';
+import ChartTitle from '@webapp/components/ChartTitle';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -173,7 +173,7 @@ function ContinuousSingleView() {
               }
               height="125px"
               title={
-                <TimelineTitle
+                <ChartTitle
                   className="singleView-timeline-title"
                   titleKey={singleView?.profile?.metadata.units}
                 />
