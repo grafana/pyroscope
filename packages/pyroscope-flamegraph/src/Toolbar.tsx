@@ -409,7 +409,9 @@ function ViewSection({
       <option value="flamegraph">Flame</option>
       {flamegraphType === 'single' ? (
         <option value="sandwich">Sandwich</option>
-      ) : null}
+      ) : (
+        (null as ShamefulAny)
+      )}
     </Select>
   );
 
