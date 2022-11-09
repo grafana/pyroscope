@@ -48,7 +48,18 @@
     background-color: var(--ps-sandwich-pane-info-bg);
     color: var(--ps-neutral-1);
 
-    .arrowLeft {
+    &.vertical {
+      margin: 30px 0;
+
+      .arrow {
+        top: initial;
+        bottom: -15px;
+        left: 20px;
+        transform: rotate(-90deg);
+      }
+    }
+
+    .arrow {
       position: absolute;
       top: 14px;
       left: -20px;
