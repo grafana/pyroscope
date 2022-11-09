@@ -12,12 +12,13 @@ import {
 import Box from '@webapp/ui/Box';
 import NoData from '@webapp/ui/NoData';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import StatusMessage from '@webapp/ui/StatusMessage';
 import Toolbar from '@webapp/components/Toolbar';
 import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
-import LoadingSpinner from '@webapp/ui/LoadingSpinner';
-import StatusMessage from '@webapp/ui/StatusMessage';
+import ChartTitle from '@webapp/components/ChartTitle';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import {
   FlamegraphRenderer,
@@ -28,7 +29,8 @@ import { diffTwoProfiles } from '@pyroscope/flamegraph/src/convert/diffTwoProfil
 import { subtract } from '@pyroscope/flamegraph/src/convert/subtract';
 import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading, LoadingType } from './loading';
-import heatmapSelectionGif from './heatmapSelection.gif';
+import heatmapSelectionPreviewGif from './heatmapSelectionPreview.gif';
+import { HeatmapSelectionIcon, HeatmapNoSelectionIcon } from './HeatmapIcons';
 
 import styles from './ExemplarsSingleView.module.scss';
 
@@ -127,7 +129,7 @@ function ExemplarsSingleView() {
               />
               <img
                 className={styles.gif}
-                src={heatmapSelectionGif}
+                src={heatmapSelectionPreviewGif}
                 alt="heatmap-selection-gif"
               />
             </div>
@@ -222,6 +224,10 @@ function ComparisonTab({
           active={isLoadingOrReloading([type])}
           spinnerPosition="baseline"
         >
+          <ChartTitle
+            titleKey="selection_included"
+            icon={<HeatmapSelectionIcon />}
+          />
           <FlamegraphRenderer
             showCredit={false}
             profile={selectionProfile}
@@ -244,6 +250,10 @@ function ComparisonTab({
           active={isLoadingOrReloading([type])}
           spinnerPosition="baseline"
         >
+          <ChartTitle
+            titleKey="selection_excluded"
+            icon={<HeatmapNoSelectionIcon />}
+          />
           <FlamegraphRenderer
             showCredit={false}
             profile={differenceProfile}
