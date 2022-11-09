@@ -12,7 +12,7 @@ prometheus {
     namespace: 'monitoring',
     grafana_ini+: {
       sections+: {
-        feature_toggles+:{
+        feature_toggles+: {
           enable: 'flameGraph',
         },
       },
