@@ -144,6 +144,7 @@ const Toolbar = React.memo(
           />
           {!disableChangingDisplay && (
             <ViewSection
+              flamegraphType={flamegraphType}
               showMode={showMode}
               view={view}
               updateView={updateView}
@@ -387,10 +388,12 @@ function ViewSection({
   view,
   updateView,
   showMode,
+  flamegraphType,
 }: {
   showMode: ReturnType<typeof useSizeMode>;
   updateView: ProfileHeaderProps['updateView'];
   view: ProfileHeaderProps['view'];
+  flamegraphType: ProfileHeaderProps['flamegraphType'];
 }) {
   const ViewSelect = (
     <Select
@@ -404,7 +407,11 @@ function ViewSection({
       <option value="table">Table</option>
       <option value="both">Both</option>
       <option value="flamegraph">Flame</option>
-      <option value="sandwich">Sandwich</option>
+      {flamegraphType === 'single' ? (
+        <option value="sandwich">Sandwich</option>
+      ) : (
+        (null as ShamefulAny)
+      )}
     </Select>
   );
 
@@ -441,14 +448,16 @@ function ViewSection({
       >
         Flamegraph
       </Button>
-      <Button
-        grouped
-        kind={kindByState('sandwich')}
-        iconNode={<SandwichIcon />}
-        onClick={() => updateView('sandwich')}
-      >
-        Sandwich
-      </Button>
+      {flamegraphType === 'single' ? (
+        <Button
+          grouped
+          kind={kindByState('sandwich')}
+          iconNode={<SandwichIcon />}
+          onClick={() => updateView('sandwich')}
+        >
+          Sandwich
+        </Button>
+      ) : null}
     </>
   );
 
