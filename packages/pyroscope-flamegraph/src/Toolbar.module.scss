@@ -22,7 +22,7 @@ $buttonHeight: 37px;
   flex-wrap: nowrap;
   align-items: center;
   height: 47px;
-  background-color: #2e2e32;
+  background-color: var(--ps-fl-toolbar-bg);
   border: 1px solid var(--ps-ui-border);
   padding: 4px;
   flex-wrap: nowrap;
@@ -72,15 +72,14 @@ $buttonHeight: 37px;
   background-color: transparent;
 
   &.selected {
-    background-color: #3c7150;
+    background-color: var(--ps-fl-toolbar-btn-bg);
 
     &:hover {
-      background-color: #3c7150;
+      background-color: var(--ps-fl-toolbar-btn-bg);
     }
 
     svg {
-      fill: #61c688;
-      color: #61c688;
+      color: var(--ps-fl-toolbar-svg-color);
     }
   }
 }
