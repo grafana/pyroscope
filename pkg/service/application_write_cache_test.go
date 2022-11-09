@@ -32,7 +32,7 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 	}
 
 	var m mockApplicationWriter
-	var svc *service.ApplicationCacheService
+	var svc *service.ApplicationMetadataCacheService
 	var cfg service.ApplicationCacheServiceConfig
 
 	BeforeEach(func() {

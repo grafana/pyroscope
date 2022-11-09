@@ -8,23 +8,23 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-type ApplicationWriter interface {
+type ApplicationMetadataWriter interface {
 	CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error
 }
 
-type ApplicationCacheService struct {
-	appSvc ApplicationWriter
+type ApplicationMetadataCacheService struct {
+	appSvc ApplicationMetadataWriter
 	cache  *cache
 }
 
-type ApplicationCacheServiceConfig struct {
+type ApplicationMetadataCacheServiceConfig struct {
 	Size int
 	TTL  time.Duration
 }
 
-func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc ApplicationWriter) *ApplicationCacheService {
+func NewApplicationMetadataCacheService(config ApplicationMetadataCacheServiceConfig, appSvc ApplicationMetadataWriter) *ApplicationMetadataCacheService {
 	if config.Size <= 0 {
-		config.Size = 100
+		config.Size = 1000
 	}
 
 	if config.TTL <= 0 {
@@ -32,14 +32,14 @@ func NewApplicationCacheService(config ApplicationCacheServiceConfig, appSvc App
 	}
 
 	cache := newCache(config.Size, config.TTL)
-	return &ApplicationCacheService{appSvc: appSvc, cache: cache}
+	return &ApplicationMetadataCacheService{appSvc: appSvc, cache: cache}
 }
 
 // CreateOrUpdate delegates to the underlying service in the following cases:
 // * item is not in the cache
 // * data is different from what's in the cache
 // Otherwise it does nothing
-func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
+func (svc *ApplicationMetadataCacheService) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
 	if cachedApp, ok := svc.cache.get(application.FQName); ok {
 		if !svc.isTheSame(application, cachedApp.(storage.ApplicationMetadata)) {
 			return svc.writeToBoth(ctx, application)
@@ -54,7 +54,7 @@ func (svc *ApplicationCacheService) CreateOrUpdate(ctx context.Context, applicat
 }
 
 // writeToBoth writes to both the cache and the underlying service
-func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application storage.ApplicationMetadata) error {
+func (svc *ApplicationMetadataCacheService) writeToBoth(ctx context.Context, application storage.ApplicationMetadata) error {
 	if err := svc.appSvc.CreateOrUpdate(ctx, application); err != nil {
 		return err
 	}
@@ -65,6 +65,6 @@ func (svc *ApplicationCacheService) writeToBoth(ctx context.Context, application
 // isTheSame check if 2 applications have the same data
 // TODO(eh-am): update to a more robust comparison function
 // See https://pkg.go.dev/reflect#DeepEqual for its drawbacks
-func (*ApplicationCacheService) isTheSame(app1 storage.ApplicationMetadata, app2 storage.ApplicationMetadata) bool {
+func (*ApplicationMetadataCacheService) isTheSame(app1 storage.ApplicationMetadata, app2 storage.ApplicationMetadata) bool {
 	return reflect.DeepEqual(app1, app2)
 }
