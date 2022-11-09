@@ -274,6 +274,11 @@ $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.11.5
 
+$(BIN)/trunk: Makefile
+	@mkdir -p $(@D)
+	curl -L https://trunk.io/releases/trunk -o $(@D)/trunk
+	chmod +x $(@D)/trunk
+
 KIND_CLUSTER = phlare-dev
 
 .PHONY: helm/lint
@@ -283,6 +288,14 @@ helm/lint: $(BIN)/helm
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
 	$(BIN)/goreleaser check
+
+.PHONY: trunk/lint
+trunk/lint: $(BIN)/trunk
+	$(BIN)/trunk check
+
+.PHONY: trunk/fmt
+trunk/fmt: $(BIN)/trunk
+	$(BIN)/trunk fmt
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeval $(BIN)/helm
