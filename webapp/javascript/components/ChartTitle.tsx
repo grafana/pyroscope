@@ -50,9 +50,7 @@ export default function ChartTitle({
           {icon}
         </span>
       )}
-      <p className={styles.title}>
-        {children ? children : chartTitleKeys[titleKey]}
-      </p>
+      <p className={styles.title}>{children || chartTitleKeys[titleKey]}</p>
       {postfix}
     </div>
   );

@@ -22,6 +22,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
 import ChartTitle from '@webapp/components/ChartTitle';
+/* eslint-disable css-modules/no-undef-class */
 import ChartTitleStyles from '@webapp/components/ChartTitle.module.scss';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import {
@@ -237,7 +238,7 @@ function ComparisonTab({
                 title={
                   <div className={styles.titleInfoTooltip}>
                     Represents the aggregated result of all profiles{' '}
-                    <b>included within</b> the orange "selected area"
+                    <b>included within</b> the orange &quot;selected area&quot;
                   </div>
                 }
               >
@@ -276,7 +277,7 @@ function ComparisonTab({
                 title={
                   <div className={styles.titleInfoTooltip}>
                     Represents the aggregated result of all profiles{' '}
-                    <b>excluding</b> the orange "selected area"
+                    <b>excluding</b> the orange &quot;selected area&quot;
                   </div>
                 }
               >
