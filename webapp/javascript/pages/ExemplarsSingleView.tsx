@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import clsx from 'clsx';
 
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
@@ -21,6 +22,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
 import ChartTitle from '@webapp/components/ChartTitle';
+import ChartTitleStyles from '@webapp/components/ChartTitle.module.scss';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
 import {
   FlamegraphRenderer,
@@ -319,6 +321,41 @@ function DiffTab({
         active={isLoadingOrReloading([type])}
         spinnerPosition="baseline"
       >
+        <ChartTitle
+          postfix={
+            <Tooltip
+              placement="top"
+              title={
+                <div className={styles.titleInfoTooltip}>
+                  Represents the diff between an aggregated flamegraph
+                  representing the selected area and an aggregated flamegraph
+                  excluding the selected area
+                </div>
+              }
+            >
+              <TooltipInfoIcon />
+            </Tooltip>
+          }
+        >
+          <span
+            className={clsx(
+              ChartTitleStyles.colorOrIcon,
+              ChartTitleStyles.icon
+            )}
+          >
+            <HeatmapSelectionIcon />
+          </span>
+          Selection-included vs
+          <span
+            className={clsx(
+              ChartTitleStyles.colorOrIcon,
+              ChartTitleStyles.icon
+            )}
+          >
+            <HeatmapNoSelectionIcon />
+          </span>
+          Selection-excluded Diff Flamegraph
+        </ChartTitle>
         <FlamegraphRenderer
           showCredit={false}
           profile={diffProfile}

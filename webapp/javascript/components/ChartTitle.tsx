@@ -15,13 +15,14 @@ const chartTitleKeys = {
 
   baseline: 'Baseline Flamegraph',
   comparison: 'Comparison Flamegraph',
-  selection_included: 'Selection-included exemplar flamegraph',
-  selection_excluded: 'Selection-excluded exemplar flamegraph',
+  selection_included: 'Selection-included Exemplar Flamegraph',
+  selection_excluded: 'Selection-excluded Exemplar Flamegraph',
 
   '': '',
 };
 
 interface ChartTitleProps {
+  children?: ReactNode;
   className?: string;
   color?: Color;
   icon?: ReactNode;
@@ -30,6 +31,7 @@ interface ChartTitleProps {
 }
 
 export default function ChartTitle({
+  children,
   className,
   color,
   icon,
@@ -48,7 +50,9 @@ export default function ChartTitle({
           {icon}
         </span>
       )}
-      <p className={styles.title}>{chartTitleKeys[titleKey]}</p>
+      <p className={styles.title}>
+        {children ? children : chartTitleKeys[titleKey]}
+      </p>
       {postfix}
     </div>
   );

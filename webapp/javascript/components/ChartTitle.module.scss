@@ -10,7 +10,7 @@
     align-self: center;
     width: 12px;
     height: 12px;
-    margin-right: 5px;
+    margin: 0 5px;
     border-radius: 2px;
 
     &.icon {
@@ -24,10 +24,11 @@
   }
 
   .title {
+    display: flex;
+    text-align: center;
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    text-align: center;
     line-height: 18px;
   }
 }
