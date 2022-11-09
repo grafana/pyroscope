@@ -158,7 +158,7 @@ export function callersFlamebearer(
 
   // 1. we first make a regular tree
   subtrees.forEach((v, i) => {
-    totalNode.children.push(arrayToTree(v, targetFunctionTotals[i]));
+    totalNode.children.push(arrayToTree(v.reverse(), targetFunctionTotals[i]));
   });
 
   // 2. that allows us to use the same dedup function
