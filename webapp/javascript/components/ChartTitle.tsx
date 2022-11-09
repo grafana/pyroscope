@@ -1,42 +1,52 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import Color from 'color';
 import clsx from 'clsx';
 import styles from './ChartTitle.module.scss';
 
-const unitsToFlamegraphTitle = {
+const chartTitleKeys = {
   objects: 'Total number of objects in RAM',
   goroutines: 'Total number of goroutines',
   bytes: 'Total amount of RAM',
   samples: 'Total CPU time',
   lock_nanoseconds: 'Total time spent waiting on locks',
   lock_samples: 'Total number of contended locks',
-  baseline: 'Baseline Flamegraph',
-  comparison: 'Comparison Flamegraph',
   diff: 'Baseline vs. Comparison Diff',
   trace_samples: 'Total aggregated span duration',
+
+  baseline: 'Baseline Flamegraph',
+  comparison: 'Comparison Flamegraph',
+  selection_included: 'Selection-included exemplar flamegraph',
+  selection_excluded: 'Selection-excluded exemplar flamegraph',
+
   '': '',
 };
 
 interface ChartTitleProps {
-  color?: Color;
-  titleKey?: keyof typeof unitsToFlamegraphTitle;
   className?: string;
+  color?: Color;
+  icon?: ReactNode;
+  titleKey?: keyof typeof chartTitleKeys;
 }
 
 export default function ChartTitle({
-  color,
-  titleKey = '',
   className,
+  color,
+  icon,
+  titleKey = '',
 }: ChartTitleProps) {
   return (
     <div className={clsx([styles.chartTitle, className])}>
-      {color && (
+      {(icon || color) && (
         <span
-          className={styles.colorReference}
-          style={{ backgroundColor: color.rgb().toString() }}
-        />
+          className={clsx(styles.colorOrIcon, icon && styles.icon)}
+          style={
+            !icon && color ? { backgroundColor: color.rgb().toString() } : {}
+          }
+        >
+          {icon}
+        </span>
       )}
-      <p className={styles.title}>{unitsToFlamegraphTitle[titleKey]}</p>
+      <p className={styles.title}>{chartTitleKeys[titleKey]}</p>
     </div>
   );
 }
