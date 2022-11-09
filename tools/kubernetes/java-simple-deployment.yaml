@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-simple-deployment
+  labels:
+    app: java-simple
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: java-simple
+  template:
+    metadata:
+      labels:
+        app: java-simple
+    spec:
+      containers:
+        - name: java-simple
+          imagePullPolicy: Never
+          securityContext:
+            capabilities:
+              add:
+                - CAP_PERFMON
+          image: cp-java-simple:0.1.0
+          ports:
+            - containerPort: 8080
