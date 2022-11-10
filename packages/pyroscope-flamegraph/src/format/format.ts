@@ -115,7 +115,7 @@ class DurationFormatter {
     }
     const n = samples / sampleRate / this.divider;
 
-    return `${n.toFixed(5)} ${
+    return `${parseFloat(n.toFixed(5))} ${
       this.units ||
       `${this.suffix}${n === 1 || this.suffix.length === 2 ? '' : 's'}`
     }`;
@@ -176,7 +176,7 @@ class NanosecondsFormatter {
   formatPrecise(samples: number) {
     const n = samples / 1000000000 / this.divider;
 
-    return `${n.toFixed(5)} ${this.suffix}${n === 1 ? '' : 's'}`;
+    return `${parseFloat(n.toFixed(5))} ${this.suffix}${n === 1 ? '' : 's'}`;
   }
 }
 
@@ -230,7 +230,7 @@ export class ObjectsFormatter {
   formatPrecise(samples: number) {
     const n = samples / this.divider;
 
-    return `${n.toFixed(5)} ${this.suffix}`;
+    return `${parseFloat(n.toFixed(5))} ${this.suffix}`;
   }
 }
 
@@ -290,6 +290,6 @@ export class BytesFormatter {
   formatPrecise(samples: number) {
     const n = samples / this.divider;
 
-    return `${n.toFixed(5)} ${this.suffix}`;
+    return `${parseFloat(n.toFixed(5))} ${this.suffix}`;
   }
 }

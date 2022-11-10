@@ -15,7 +15,7 @@ describe('format', () => {
     });
   });
 
-  describe('format', () => {
+  describe('format & formatPrecise', () => {
     // TODO is this correct, since we have an enum?
     // unfortunately until we fully migrate to TS
     // we still need to check for a default value
@@ -23,6 +23,8 @@ describe('format', () => {
       const df = getFormatter(80, 2, '' as any);
 
       expect(df.format(0.001, 100)).toBe('< 0.01  ');
+      expect(df.formatPrecise(0.001, 100)).toBe('0.00001  ');
+      expect(df.formatPrecise(0.1, 100)).toBe('0.001  ');
     });
 
     describe('DurationFormatter', () => {
@@ -35,6 +37,7 @@ describe('format', () => {
         expect(df.format(2000, 100)).toBe('20.00 seconds');
         expect(df.format(2012.3, 100)).toBe('20.12 seconds');
         expect(df.format(8000, 100)).toBe('80.00 seconds');
+        expect(df.formatPrecise(0.001, 100)).toBe('0.00001 seconds');
       });
 
       it('correctly formats duration when maxdur = 80', () => {
@@ -45,6 +48,7 @@ describe('format', () => {
         expect(df.format(2000, 100)).toBe('0.33 minutes');
         expect(df.format(2012.3, 100)).toBe('0.34 minutes');
         expect(df.format(8000, 100)).toBe('1.33 minutes');
+        expect(df.formatPrecise(1, 100)).toBe('0.00017 minutes');
       });
 
       it('correctly formats samples duration and return value without units', () => {
@@ -66,6 +70,7 @@ describe('format', () => {
         expect(df.format(2000, 100)).toBe('20.00 seconds');
         expect(df.format(2012.3, 100)).toBe('20.12 seconds');
         expect(df.format(8000, 100)).toBe('80.00 seconds');
+        expect(df.formatPrecise(0.001, 100)).toBe('0.00001 seconds');
       });
 
       it('correctly formats trace_samples duration when maxdur is less than second', () => {
@@ -77,6 +82,7 @@ describe('format', () => {
         expect(df.format(9999, 100)).toBe('99990.00 ms');
         expect(df.format(0.331, 100)).toBe('3.31 ms');
         expect(df.format(0.0001, 100)).toBe('< 0.01 ms');
+        expect(df.formatPrecise(0.0001, 100)).toBe('0.001 ms');
       });
 
       it('correctly formats trace_samples duration when maxdur is less than ms', () => {
@@ -87,6 +93,8 @@ describe('format', () => {
         expect(df.format(0.0091, 100)).toBe('91.00 μs');
         expect(df.format(1.005199, 100)).toBe('10051.99 μs');
         expect(df.format(1.1, 100)).toBe('11000.00 μs');
+        expect(df.format(0.000001, 100)).toBe('< 0.01 μs');
+        expect(df.formatPrecise(0.0000001, 100)).toBe('0.001 μs');
       });
 
       it('correctly formats trace_samples duration when maxdur is hour', () => {
@@ -99,6 +107,7 @@ describe('format', () => {
         expect(df.format(0.02 * hour * 100, 100)).toBe('0.02 hours');
         expect(df.format(0.001 * hour * 100, 100)).toBe('< 0.01 hours');
         expect(df.format(42.1 * hour * 100, 100)).toBe('42.10 hours');
+        expect(df.formatPrecise(0.001 * hour * 100, 100)).toBe('0.001 hours');
       });
 
       it('correctly formats trace_samples duration when maxdur is day', () => {
@@ -110,6 +119,7 @@ describe('format', () => {
         expect(df.format(2.29 * day * 100, 100)).toBe('2.29 days');
         expect(df.format(0.11 * day * 100, 100)).toBe('0.11 days');
         expect(df.format(0.001 * day * 100, 100)).toBe('< 0.01 days');
+        expect(df.formatPrecise(0.001 * day * 100, 100)).toBe('0.001 days');
       });
 
       it('correctly formats trace_samples duration when maxdur = month', () => {
@@ -121,6 +131,7 @@ describe('format', () => {
         expect(df.format(5.142 * month * 100, 100)).toBe('5.14 months');
         expect(df.format(0.88 * month * 100, 100)).toBe('0.88 months');
         expect(df.format(0.008 * month * 100, 100)).toBe('< 0.01 months');
+        expect(df.formatPrecise(0.008 * month * 100, 100)).toBe('0.008 months');
       });
 
       it('correctly formats trace_samples duration when maxdur = year', () => {
@@ -132,6 +143,7 @@ describe('format', () => {
         expect(df.format(3.414 * year * 100, 100)).toBe('3.41 years');
         expect(df.format(0.12 * year * 100, 100)).toBe('0.12 years');
         expect(df.format(0.008 * year * 100, 100)).toBe('< 0.01 years');
+        expect(df.formatPrecise(0.008 * year * 100, 100)).toBe('0.008 years');
       });
     });
 
@@ -194,6 +206,27 @@ describe('format', () => {
       );
     });
 
+    describe('ObjectsFormatter formatPrecise', () => {
+      describe.each([
+        [1, -1, '-1 '],
+        [100_000, -1, '-0.001 K'],
+
+        [1, 1, '1 '],
+        [100_000, 1, '0.001 K'],
+      ])(
+        'new ObjectsFormatter(%i).format(%i, %i)',
+        (maxObjects: number, samples: number, expected: string) => {
+          it(`returns ${expected}`, () => {
+            // sampleRate is not used
+            const sampleRate = NaN;
+            const f = getFormatter(maxObjects, sampleRate, 'objects');
+
+            expect(f.formatPrecise(samples, sampleRate)).toBe(expected);
+          });
+        }
+      );
+    });
+
     describe('BytesFormatter', () => {
       describe.each([
         [1, -1, '-1.00 bytes'], // TODO is this correct?
@@ -223,6 +256,33 @@ describe('format', () => {
             const f = getFormatter(maxObjects, sampleRate, 'bytes');
 
             expect(f.format(samples, sampleRate)).toBe(expected);
+          });
+        }
+      );
+    });
+
+    describe('BytesFormatter', () => {
+      describe.each([
+        [1, -1, '-1 bytes'],
+        [1024, -1, '-0.00098 KB'],
+        [1024 ** 2, -10, '-0.00001 MB'],
+        [1024 ** 3, -10000, '-0.00001 GB'],
+        [1024 ** 4, -10000000, '-0.00001 TB'],
+
+        [1, 1, '1 bytes'],
+        [1024, 1, '0.00098 KB'],
+        [1024 ** 2, 10, '0.00001 MB'],
+        [1024 ** 3, 10000, '0.00001 GB'],
+        [1024 ** 4, 10000000, '0.00001 TB'],
+      ])(
+        'new BytesFormatter(%i).format(%i, %i)',
+        (maxObjects: number, samples: number, expected: string) => {
+          it(`returns ${expected}`, () => {
+            // sampleRate is not used
+            const sampleRate = NaN;
+            const f = getFormatter(maxObjects, sampleRate, 'bytes');
+
+            expect(f.formatPrecise(samples, sampleRate)).toBe(expected);
           });
         }
       );
