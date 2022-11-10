@@ -21,7 +21,7 @@ If you're using maven, add the following dependency to your `pom.xml`:
 <dependency>
   <groupId>com.grafana</groupId>
   <artifactId>jpprof</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.4</version>
 </dependency>
 ```
 
@@ -30,7 +30,7 @@ If you're using gradle, add the following dependency to your `build.gradle`:
 ```groovy
 dependencies {
 // ....
-    implementation 'com.grafana:jpprof:0.1.0'
+    implementation 'com.grafana:jpprof:0.1.4'
 //...
 }
 ```
@@ -104,7 +104,7 @@ This means that you need to run your container with the `SYS_ADMIN` capability a
 
 > async-profiler also requires JVM symbols to be available, use an appropriate docker base image for your JVM version.
 
-Make sure to check out our [docker-compose](https://github.com/grafana/phlare/tree/main/tools/docker-compose) example](https://github.com/grafana/phlare/tree/main/tools/docker-compose).
+Make sure to check out our [docker-compose](https://github.com/grafana/phlare/tree/main/tools/docker-compose) example.
 
 
 ## Scrape Target Configuration
