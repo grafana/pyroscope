@@ -5,54 +5,15 @@ $buttonHeight: 37px;
   flex-direction: row;
   margin: 10px 0;
   justify-content: space-between;
-
-  .left,
-  .right {
-    width: calc(50% - 8px);
-
-    &.merged:not(.widthAuto) {
-      width: 50%;
-    }
-  }
-}
-
-.left {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
   height: 47px;
   background-color: var(--ps-fl-toolbar-bg);
   border: 1px solid var(--ps-ui-border);
   padding: 4px;
-  flex-wrap: nowrap;
-  justify-content: space-between;
-  justify-content: flex-start;
-
-  &:not(.right).merged {
-    // use :not(.right) because .right extends .left
-    border-right-width: 0;
-  }
-
-  &.widthAuto {
-    width: auto;
-    border-right-width: 0;
-  }
+  align-items: center;
 }
 
-.right {
-  @extend .left;
-
-  justify-content: flex-end;
-
-  &.merged {
-    border-left-width: 0;
-  }
-
-  &.widthAuto {
-    flex: 1;
-    border-left-width: 0;
-  }
+.space-filler {
+  flex-grow: 1;
 }
 
 .viewType {
@@ -90,14 +51,15 @@ $buttonHeight: 37px;
     }
 
     svg {
-      color: var(--ps-fl-toolbar-svg-color);
+      color: white;
     }
   }
 }
 
 .viewModeDropdownButton {
   min-width: 114px;
-  margin-right: 0;
+  margin: 0 2px;
+  white-space: nowrap;
 }
 
 .diffTypesButton {
@@ -133,11 +95,15 @@ $buttonHeight: 37px;
   align-items: center;
   justify-content: space-between;
   width: 100%;
+
+  svg {
+    margin-left: 20px;
+  }
 }
 
 .fitModeDropdownSmall {
   min-width: 70px;
-  margin: 0;
+  margin: 0 2px;
   height: $buttonHeight;
 }
 

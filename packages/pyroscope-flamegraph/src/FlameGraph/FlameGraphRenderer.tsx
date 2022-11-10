@@ -550,7 +550,6 @@ class FlameGraphRenderer extends Component<
               highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
               ExportData={this.props.ExportData}
-              panesOrientation={this.state.panesOrientation}
             />
           )}
           {this.props.children}

@@ -75,14 +75,7 @@ describe('ProfileHeader', () => {
       />
     );
 
-    expect(screen.getByTestId('left-toolbar')).toHaveAttribute(
-      'data-mode',
-      'large'
-    );
-    expect(screen.getByTestId('right-toolbar')).toHaveAttribute(
-      'data-mode',
-      'large'
-    );
+    expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'large');
     expect(asFragment()).toMatchSnapshot();
 
     setWindowSize('small');
@@ -105,15 +98,7 @@ describe('ProfileHeader', () => {
       />
     );
 
-    expect(screen.getByTestId('left-toolbar')).toHaveAttribute(
-      'data-mode',
-      'small'
-    );
-    expect(screen.getByTestId('right-toolbar')).toHaveAttribute(
-      'data-mode',
-      'small'
-    );
-
+    expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'small');
     expect(asFragment()).toMatchSnapshot();
   });
 
@@ -424,17 +409,17 @@ describe('ProfileHeader', () => {
       });
 
       it('changes to Table View', () => {
-        screen.getByRole('button', { name: /Table/ }).click();
+        screen.getByRole('button', { name: 'Table' }).click();
         expect(updateView).toHaveBeenCalledWith('table');
       });
 
       it('changes to Flamegraph view', () => {
-        screen.getByRole('button', { name: /Flamegraph/ }).click();
+        screen.getByRole('button', { name: 'Flamegraph' }).click();
         expect(updateView).toHaveBeenCalledWith('flamegraph');
       });
 
-      it('changes to Both view', () => {
-        screen.getByRole('button', { name: /Both/ }).click();
+      it('changes to Table and Flamegraph view', () => {
+        screen.getByRole('button', { name: /Table and Flamegraph/ }).click();
         expect(updateView).toHaveBeenCalledWith('both');
       });
 
@@ -456,19 +441,19 @@ describe('ProfileHeader', () => {
 
       it('changes to Table view', () => {
         screen.getByRole('button', { name: /View Mode/ }).click();
-        screen.getByRole('menuitem', { name: /Table/ }).click();
+        screen.getByRole('menuitem', { name: 'Table' }).click();
         expect(updateView).toHaveBeenCalledWith('table');
       });
 
       it('changes to Flamegraph view', () => {
         screen.getByRole('button', { name: /View Mode/ }).click();
-        screen.getByRole('menuitem', { name: /Flame/ }).click();
+        screen.getByRole('menuitem', { name: 'Flamegraph' }).click();
         expect(updateView).toHaveBeenCalledWith('flamegraph');
       });
 
-      it('changes to Both view', () => {
+      it('changes to Table and Flamegraph view', () => {
         screen.getByRole('button', { name: /View Mode/ }).click();
-        screen.getByRole('menuitem', { name: /Both/ }).click();
+        screen.getByRole('menuitem', { name: /Table and Flamegraph/ }).click();
         expect(updateView).toHaveBeenCalledWith('both');
       });
 

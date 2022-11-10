@@ -33,37 +33,33 @@ import styles from './Toolbar.module.scss';
 
 const cx = classNames.bind(styles);
 
-export const TOOLBAR_MODE_WIDTH_THRESHOLD = 480;
+export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
 
-export type ShowModeType = 'large' | 'small';
+export type ShowModeType = ReturnType<typeof useSizeMode>;
 
-const useShowMode = (widthTreshhold: number) => {
+export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
   const [size, setSize] = React.useState<'large' | 'small'>('large');
-  const ref = React.useRef<HTMLDivElement>(null);
 
   const calcMode = (width: number) => {
-    if (width < widthTreshhold) {
+    if (width < TOOLBAR_MODE_WIDTH_THRESHOLD) {
       return 'small';
     }
     return 'large';
   };
 
   React.useLayoutEffect(() => {
-    if (ref.current) {
-      const { width } = ref.current.getBoundingClientRect();
+    if (target.current) {
+      const { width } = target.current.getBoundingClientRect();
 
       setSize(calcMode(width));
     }
-  }, [ref.current]);
+  }, [target.current]);
 
-  useResizeObserver(ref, (entry: ResizeObserverEntry) => {
+  useResizeObserver(target, (entry: ResizeObserverEntry) => {
     setSize(calcMode(entry.contentRect.width));
   });
 
-  return {
-    ref,
-    size,
-  };
+  return size;
 };
 
 export interface ProfileHeaderProps {
@@ -90,7 +86,6 @@ export interface ProfileHeaderProps {
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
-  panesOrientation?: 'horizontal' | 'vertical';
 }
 
 const Divider = () => <div className={styles.divider} />;
@@ -113,159 +108,54 @@ const Toolbar = React.memo(
     disableChangingDisplay = false,
     sharedQuery,
     ExportData = <></>,
-    panesOrientation = 'horizontal',
   }: ProfileHeaderProps) => {
+    const toolbarRef = React.useRef<HTMLDivElement>(null);
+    const showMode = useSizeMode(toolbarRef);
+
     return (
-      <div role="toolbar">
+      <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
-          <LeftToolbar
-            handleSearchChange={handleSearchChange}
+          <SharedQueryInput
+            showMode={showMode}
+            onHighlightChange={handleSearchChange}
             highlightQuery={highlightQuery}
             sharedQuery={sharedQuery}
-            flamegraphType={flamegraphType}
-            viewDiff={viewDiff}
-            updateViewDiff={updateViewDiff}
-            panesOrientation={panesOrientation}
-            view={view}
           />
-          <RightToolbar
+          {flamegraphType === 'double' && (
+            <DiffView
+              showMode={showMode}
+              viewDiff={viewDiff}
+              updateViewDiff={updateViewDiff}
+            />
+          )}
+          <div className={styles['space-filler']} />
+          <FitMode
+            showMode={showMode}
             fitMode={fitMode}
             updateFitMode={updateFitMode}
-            isFlamegraphDirty={isFlamegraphDirty}
-            reset={reset}
+          />
+          <Divider />
+          <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
+          <FocusOnSubtree
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
-            disableChangingDisplay={disableChangingDisplay}
-            view={view}
-            updateView={updateView}
-            ExportData={ExportData}
-            panesOrientation={panesOrientation}
-            flamegraphType={flamegraphType}
           />
+          <Divider />
+          {!disableChangingDisplay && (
+            <ViewSection
+              flamegraphType={flamegraphType}
+              showMode={showMode}
+              view={view}
+              updateView={updateView}
+            />
+          )}
+          <Divider />
+          {ExportData}
         </div>
       </div>
     );
   }
 );
-
-const LeftToolbar = ({
-  handleSearchChange,
-  highlightQuery,
-  sharedQuery,
-  flamegraphType,
-  viewDiff,
-  updateViewDiff,
-  panesOrientation,
-  view,
-}: Pick<
-  ProfileHeaderProps,
-  | 'handleSearchChange'
-  | 'highlightQuery'
-  | 'sharedQuery'
-  | 'flamegraphType'
-  | 'viewDiff'
-  | 'updateViewDiff'
-  | 'panesOrientation'
-  | 'view'
->) => {
-  const { ref, size } = useShowMode(TOOLBAR_MODE_WIDTH_THRESHOLD);
-
-  return (
-    <div
-      ref={ref}
-      data-mode={size}
-      data-testid="left-toolbar"
-      className={cx({
-        [styles.left]: true,
-        [styles.widthAuto]: panesOrientation === 'vertical',
-        [styles.merged]: view === 'flamegraph' || view === 'table',
-      })}
-    >
-      <SharedQueryInput
-        showMode={size}
-        onHighlightChange={handleSearchChange}
-        highlightQuery={highlightQuery}
-        sharedQuery={sharedQuery}
-      />
-      {flamegraphType === 'double' && (
-        <DiffView
-          showMode={size}
-          viewDiff={viewDiff}
-          updateViewDiff={updateViewDiff}
-        />
-      )}
-    </div>
-  );
-};
-
-const RightToolbar = ({
-  fitMode,
-  updateFitMode,
-  isFlamegraphDirty,
-  reset,
-  selectedNode,
-  onFocusOnSubtree,
-  disableChangingDisplay,
-  view,
-  updateView,
-  ExportData,
-  panesOrientation,
-  flamegraphType,
-}: Pick<
-  ProfileHeaderProps,
-  | 'fitMode'
-  | 'updateFitMode'
-  | 'isFlamegraphDirty'
-  | 'reset'
-  | 'selectedNode'
-  | 'onFocusOnSubtree'
-  | 'disableChangingDisplay'
-  | 'view'
-  | 'updateView'
-  | 'ExportData'
-  | 'panesOrientation'
-  | 'flamegraphType'
->) => {
-  const { ref, size } = useShowMode(
-    panesOrientation === 'vertical' ? 491 : TOOLBAR_MODE_WIDTH_THRESHOLD
-  );
-
-  return (
-    <div
-      ref={ref}
-      data-mode={size}
-      data-testid="right-toolbar"
-      className={cx({
-        [styles.right]: true,
-        [styles.widthAuto]: panesOrientation === 'vertical',
-        [styles.merged]: view === 'flamegraph' || view === 'table',
-      })}
-    >
-      <FitMode
-        showMode={size}
-        fitMode={fitMode}
-        updateFitMode={updateFitMode}
-      />
-      <Divider />
-      <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
-      <FocusOnSubtree
-        selectedNode={selectedNode}
-        onFocusOnSubtree={onFocusOnSubtree}
-      />
-      <Divider />
-      {!disableChangingDisplay && (
-        <ViewSection
-          flamegraphType={flamegraphType}
-          showMode={size}
-          view={view}
-          updateView={updateView}
-        />
-      )}
-      <Divider />
-      {ExportData}
-    </div>
-  );
-};
 
 function FocusOnSubtree({
   onFocusOnSubtree,
@@ -515,20 +405,28 @@ const getViewOptions = (
 }> =>
   flamegraphType === 'single'
     ? [
-        { label: 'Table View', value: 'table', Icon: TableIcon },
-        { label: 'Both View', value: 'both', Icon: TablePlusFlamegraphIcon },
+        { label: 'Table', value: 'table', Icon: TableIcon },
         {
-          label: 'Flamegraph View',
+          label: 'Table and Flamegraph',
+          value: 'both',
+          Icon: TablePlusFlamegraphIcon,
+        },
+        {
+          label: 'Flamegraph',
           value: 'flamegraph',
           Icon: FlamegraphIcon,
         },
-        { label: 'Sandwich View', value: 'sandwich', Icon: SandwichIcon },
+        { label: 'Sandwich', value: 'sandwich', Icon: SandwichIcon },
       ]
     : [
-        { label: 'Table View', value: 'table', Icon: TableIcon },
-        { label: 'Both View', value: 'both', Icon: TablePlusFlamegraphIcon },
+        { label: 'Table', value: 'table', Icon: TableIcon },
         {
-          label: 'Flamegraph View',
+          label: 'Table and Flamegraph',
+          value: 'both',
+          Icon: TablePlusFlamegraphIcon,
+        },
+        {
+          label: 'Flamegraph',
           value: 'flamegraph',
           Icon: FlamegraphIcon,
         },
@@ -550,7 +448,7 @@ function ViewSection({
   const dropdownMenuItems = options.map((mode) => (
     <MenuItem key={mode.value} value={mode.value}>
       <div className={styles.dropdownMenuItem} data-testid={mode.value}>
-        {mode.label.split(' ')[0]}
+        {mode.label}
         {view === mode.value ? <CheckIcon /> : null}
       </div>
     </MenuItem>
@@ -562,9 +460,9 @@ function ViewSection({
         <Dropdown
           label="View Mode"
           ariaLabel="View Mode"
-          value={options.find((i) => i.value === view)?.label?.split(' ')[0]}
+          value={options.find((i) => i.value === view)?.label}
           onItemClick={(event) => updateView(event.value)}
-          align="center"
+          align="end"
           menuButtonClassName={styles.viewModeDropdownButton}
         >
           {dropdownMenuItems}

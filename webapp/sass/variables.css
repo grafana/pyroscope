@@ -84,7 +84,6 @@
   --ps-upload-profile-btn-color: rgba(255, 255, 255, 0.3);
 
   --ps-fl-toolbar-bg: #2c2c30;
-  --ps-fl-toolbar-svg-color: #61c688;
   --ps-fl-toolbar-btn-bg: #3c7150;
 }
 
@@ -135,6 +134,5 @@
   --ps-upload-profile-btn-color: rgba(255, 255, 255, 0.3);
 
   --ps-fl-toolbar-bg: #00000008;
-  --ps-fl-toolbar-svg-color: #fff;
   --ps-fl-toolbar-btn-bg: #3b78e7;
 }
