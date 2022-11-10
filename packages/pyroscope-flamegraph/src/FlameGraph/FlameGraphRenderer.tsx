@@ -443,7 +443,6 @@ class FlameGraphRenderer extends Component<
     );
 
     const sandwichPane = (() => {
-      console.log(this.state.panesOrientation);
       if (this.state.selectedItem.isNothing) {
         return (
           <div className={styles.sandwichPane} key="sandwich-pane">
