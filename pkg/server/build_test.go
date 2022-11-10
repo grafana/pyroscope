@@ -30,7 +30,14 @@ var _ = Describe("server", func() {
 					defer close(done)
 
 					(*cfg).Server.APIBindAddr = ":10044"
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+					s, err := storage.New(
+						storage.NewConfig(&(*cfg).Server),
+						logrus.StandardLogger(),
+						prometheus.NewRegistry(),
+						new(health.Controller),
+						storage.NoopApplicationMetadataService{},
+					)
+
 					Expect(err).ToNot(HaveOccurred())
 					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)

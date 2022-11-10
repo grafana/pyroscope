@@ -19,7 +19,7 @@ import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
-import TimelineTitle from '@webapp/components/TimelineTitle';
+import ChartTitle from '@webapp/components/ChartTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
@@ -127,7 +127,7 @@ function ComparisonApp() {
               }}
               timezone={timezone}
               title={
-                <TimelineTitle
+                <ChartTitle
                   titleKey={isSidesHasSameUnits ? leftSide.metadata.units : ''}
                 />
               }
@@ -149,7 +149,7 @@ function ComparisonApp() {
         >
           <Box className={styles.comparisonPane}>
             <LoadingOverlay active={isLoading} spinnerPosition="baseline">
-              <TimelineTitle titleKey="baseline" color={leftColor} />
+              <ChartTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
@@ -206,7 +206,7 @@ function ComparisonApp() {
 
           <Box className={styles.comparisonPane}>
             <LoadingOverlay spinnerPosition="baseline" active={isLoading}>
-              <TimelineTitle titleKey="comparison" color={rightColor} />
+              <ChartTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}

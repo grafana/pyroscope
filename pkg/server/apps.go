@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
@@ -17,25 +19,36 @@ type DeleteAppInput struct {
 }
 
 func (ctrl *Controller) getAppsHandler() http.HandlerFunc {
-	return NewGetAppsHandler(ctrl.storage, ctrl.httpUtils)
+	svc := service.NewApplicationMetadataService(ctrl.db)
+	return NewGetAppsHandler(svc, ctrl.httpUtils)
 }
 
-func NewGetAppsHandler(s storage.AppGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
+type AppGetter interface {
+	List(ctx context.Context) (apps []storage.ApplicationMetadata, err error)
+}
+
+func NewGetAppsHandler(s AppGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		apps, err := s.GetApps(r.Context())
+		apps, err := s.List(r.Context())
 		if err != nil {
-			httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "")
+			httpUtils.HandleError(r, w, err)
 			return
 		}
-		res := make([]AppInfo, 0, len(apps.Apps))
-		for _, app := range apps.Apps {
-			it := AppInfo{
-				Name: app.Name,
-			}
-			res = append(res, it)
-		}
+
+		//		apps, err := s.GetApps(r.Context())
+		//		if err != nil {
+		//			httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "")
+		//			return
+		//		}
+		//		res := make([]AppInfo, 0, len(apps.Apps))
+		//		for _, app := range apps.Apps {
+		//			it := AppInfo{
+		//				Name: app.Name,
+		//			}
+		//			res = append(res, it)
+		//		}
 		w.WriteHeader(http.StatusOK)
-		httpUtils.WriteResponseJSON(r, w, res)
+		httpUtils.WriteResponseJSON(r, w, apps)
 	}
 }
 
