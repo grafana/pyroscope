@@ -368,11 +368,13 @@ const getTableBody = ({
                 color,
                 'L'
               ),
-              value: (() => (
-                <span title={formatter.format(x.selfLeft, sampleRate)}>
-                  {formatter.format(x.selfLeft, sampleRate)}
-                </span>
-              ))(),
+              value: (() => {
+                const percent = `${((x.selfLeft / numTicks) * 100).toFixed(
+                  2
+                )} %`;
+
+                return <span title={percent}>{percent}</span>;
+              })(),
             },
             {
               style: backgroundImageDiffStyle(
@@ -383,11 +385,13 @@ const getTableBody = ({
                 color,
                 'R'
               ),
-              value: (
-                <span title={formatter.format(x.selfRght, sampleRate)}>
-                  {formatter.format(x.selfRght, sampleRate)}
-                </span>
-              ),
+              value: (() => {
+                const percent = `${((x.selfRght / numTicks) * 100).toFixed(
+                  2
+                )} %`;
+
+                return <span title={percent}>{percent}</span>;
+              })(),
             },
           ],
         });
@@ -411,11 +415,13 @@ const getTableBody = ({
                 color,
                 'L'
               ),
-              value: (() => (
-                <span title={formatter.format(x.totalLeft, sampleRate)}>
-                  {formatter.format(x.totalLeft, sampleRate)}
-                </span>
-              ))(),
+              value: (() => {
+                const percent = `${((x.totalLeft / numTicks) * 100).toFixed(
+                  2
+                )} %`;
+
+                return <span title={percent}>{percent}</span>;
+              })(),
             },
             {
               style: backgroundImageDiffStyle(
@@ -426,11 +432,13 @@ const getTableBody = ({
                 color,
                 'R'
               ),
-              value: (() => (
-                <span title={formatter.format(x.totalRght, sampleRate)}>
-                  {formatter.format(x.totalRght, sampleRate)}
-                </span>
-              ))(),
+              value: (() => {
+                const percent = `${((x.totalRght / numTicks) * 100).toFixed(
+                  2
+                )} %`;
+
+                return <span title={percent}>{percent}</span>;
+              })(),
             },
           ],
         });
@@ -453,11 +461,13 @@ const getTableBody = ({
                 maxSelf,
                 defaultColor
               ),
-              value: (() => (
-                <span title={formatter.format(x.selfDiff, sampleRate)}>
-                  {formatter.format(x.selfDiff, sampleRate)}
-                </span>
-              ))(),
+              value: (() => {
+                const percent = `${((x.selfDiff / numTicks) * 100).toFixed(
+                  2
+                )} %`;
+
+                return <span title={percent}>{percent}</span>;
+              })(),
             },
             {
               style: backgroundImageDiffStyle(
@@ -467,11 +477,13 @@ const getTableBody = ({
                 numTicks / 2,
                 color
               ),
-              value: (() => (
-                <span title={formatter.format(x.totalDiff, sampleRate)}>
-                  {formatter.format(x.totalDiff, sampleRate)}
-                </span>
-              ))(),
+              value: (() => {
+                const percent = `${((x.totalDiff / numTicks) * 100).toFixed(
+                  2
+                )} %`;
+
+                return <span title={percent}>{percent}</span>;
+              })(),
             },
           ],
         });
