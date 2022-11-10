@@ -4,8 +4,14 @@ import clsx from 'clsx';
 
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
+import useTags from '@webapp/hooks/tags.hook';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import { selectQueries, setQuery } from '@webapp/redux/reducers/continuous';
+import {
+  actions,
+  fetchTagValues,
+  selectQueries,
+  setQuery,
+} from '@webapp/redux/reducers/continuous';
 import {
   fetchExemplarsSingleView,
   fetchSelectionProfile,
@@ -18,6 +24,7 @@ import StatusMessage from '@webapp/ui/StatusMessage';
 import { Tooltip } from '@webapp/ui/Tooltip';
 import { TooltipInfoIcon } from '@webapp/ui/TooltipInfoIcon';
 import Toolbar from '@webapp/components/Toolbar';
+import TagsBar from '@webapp/components/TagsBar';
 import PageTitle from '@webapp/components/PageTitle';
 import { Heatmap } from '@webapp/components/Heatmap';
 import ExportData from '@webapp/components/ExportData';
@@ -43,10 +50,11 @@ function ExemplarsSingleView() {
   const [tabIndex, setTabIndex] = useState(0);
   const { colorMode } = useColorMode();
   const { offset } = useTimeZone();
+  const tags = useTags().regularTags;
 
   const { query } = useAppSelector(selectQueries);
-  const { exemplarsSingleView } = useAppSelector((state) => state.tracing);
   const { from, until } = useAppSelector((state) => state.continuous);
+  const { exemplarsSingleView } = useAppSelector((state) => state.tracing);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -125,6 +133,16 @@ function ExemplarsSingleView() {
             dispatch(setQuery(query));
           }}
         />
+        <TagsBar
+          query={query}
+          tags={tags}
+          onRefresh={() => dispatch(actions.refresh())}
+          onSetQuery={(q) => dispatch(actions.setQuery(q))}
+          onSelectedLabel={(label, query) => {
+            dispatch(fetchTagValues({ query, label }));
+          }}
+        />
+
         <Box>
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
