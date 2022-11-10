@@ -2,17 +2,16 @@ const BAR_HEIGHT = 21.5;
 
 // / <reference types="cypress" />
 describe('basic test', () => {
-  it('changes app via the application dropdown', () => {
+  beforeEach(function () {
     const basePath = Cypress.env('basePath') || '';
-    // While the initial values come from the backend
-    // We refresh it here so that we can mock with specific values
+
     cy.intercept(`${basePath}/api/apps`, {
       fixture: 'appNames.json',
     }).as('appNames');
+  });
 
+  it('changes app via the application dropdown', () => {
     cy.visit('/');
-
-    cy.findByLabelText(/Refresh apps/i).click();
     cy.wait(`@appNames`);
 
     cy.get('.navbar').findAllByTestId('toggler').click();

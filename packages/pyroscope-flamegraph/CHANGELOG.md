@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.4...@pyroscope/flamegraph@0.26.0) (2022-11-09)
+
+
+### Bug Fixes
+
+* sandwich view prompt in comparison view ([#1688](https://github.com/pyroscope-io/pyroscope/issues/1688)) ([5f32774](https://github.com/pyroscope-io/pyroscope/commit/5f3277411c28988d811fa23f1029ff556a434578))
+
+
+### Features
+
+* disable sandwich view for diff page ([#1693](https://github.com/pyroscope-io/pyroscope/issues/1693)) ([b47b441](https://github.com/pyroscope-io/pyroscope/commit/b47b4411b97167c4d1b85543c0b062f0358310c2))
+
+
+
+
+
+## [0.25.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.3...@pyroscope/flamegraph@0.25.4) (2022-11-09)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 ## [0.25.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.2...@pyroscope/flamegraph@0.25.3) (2022-11-08)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

@@ -34,7 +34,13 @@ var _ = Describe("server", func() {
 					(*cfg).Server.TLSCertificateFile = filepath.Join(testDataDir, tlsCertificateFile)
 					(*cfg).Server.TLSKeyFile = filepath.Join(testDataDir, tlsKeyFile)
 
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+					s, err := storage.New(
+						storage.NewConfig(&(*cfg).Server),
+						logrus.StandardLogger(),
+						prometheus.NewRegistry(),
+						new(health.Controller),
+						storage.NoopApplicationMetadataService{},
+					)
 					Expect(err).ToNot(HaveOccurred())
 					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)
@@ -74,7 +80,13 @@ var _ = Describe("server", func() {
 					const addr = ":10046"
 					(*cfg).Server.APIBindAddr = addr
 
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+					s, err := storage.New(
+						storage.NewConfig(&(*cfg).Server),
+						logrus.StandardLogger(),
+						prometheus.NewRegistry(),
+						new(health.Controller),
+						storage.NoopApplicationMetadataService{},
+					)
 					Expect(err).ToNot(HaveOccurred())
 					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)

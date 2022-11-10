@@ -140,6 +140,7 @@ const Toolbar = React.memo(
             updateView={updateView}
             ExportData={ExportData}
             panesOrientation={panesOrientation}
+            flamegraphType={flamegraphType}
           />
         </div>
       </div>
@@ -209,6 +210,7 @@ const RightToolbar = ({
   updateView,
   ExportData,
   panesOrientation,
+  flamegraphType,
 }: Pick<
   ProfileHeaderProps,
   | 'fitMode'
@@ -222,6 +224,7 @@ const RightToolbar = ({
   | 'updateView'
   | 'ExportData'
   | 'panesOrientation'
+  | 'flamegraphType'
 >) => {
   const { ref, size } = useShowMode(
     panesOrientation === 'vertical' ? 491 : TOOLBAR_MODE_WIDTH_THRESHOLD
@@ -251,7 +254,12 @@ const RightToolbar = ({
       />
       <Divider />
       {!disableChangingDisplay && (
-        <ViewSection showMode={size} view={view} updateView={updateView} />
+        <ViewSection
+          flamegraphType={flamegraphType}
+          showMode={size}
+          view={view}
+          updateView={updateView}
+        />
       )}
       <Divider />
       {ExportData}
@@ -498,25 +506,46 @@ function DiffView({
   );
 }
 
+const getViewOptions = (
+  flamegraphType: ProfileHeaderProps['flamegraphType']
+): Array<{
+  label: string;
+  value: ViewTypes;
+  Icon: (props: { fill?: string | undefined }) => JSX.Element;
+}> =>
+  flamegraphType === 'single'
+    ? [
+        { label: 'Table View', value: 'table', Icon: TableIcon },
+        { label: 'Both View', value: 'both', Icon: TablePlusFlamegraphIcon },
+        {
+          label: 'Flamegraph View',
+          value: 'flamegraph',
+          Icon: FlamegraphIcon,
+        },
+        { label: 'Sandwich View', value: 'sandwich', Icon: SandwichIcon },
+      ]
+    : [
+        { label: 'Table View', value: 'table', Icon: TableIcon },
+        { label: 'Both View', value: 'both', Icon: TablePlusFlamegraphIcon },
+        {
+          label: 'Flamegraph View',
+          value: 'flamegraph',
+          Icon: FlamegraphIcon,
+        },
+      ];
+
 function ViewSection({
   view,
   updateView,
   showMode,
+  flamegraphType,
 }: {
   showMode: ShowModeType;
   updateView: ProfileHeaderProps['updateView'];
   view: ProfileHeaderProps['view'];
+  flamegraphType: ProfileHeaderProps['flamegraphType'];
 }) {
-  const options: Array<{
-    label: string;
-    value: ViewTypes;
-    Icon: (props: { fill?: string | undefined }) => JSX.Element;
-  }> = [
-    { label: 'Table View', value: 'table', Icon: TableIcon },
-    { label: 'Both View', value: 'both', Icon: TablePlusFlamegraphIcon },
-    { label: 'Flamegraph View', value: 'flamegraph', Icon: FlamegraphIcon },
-    { label: 'Sandwich View', value: 'sandwich', Icon: SandwichIcon },
-  ];
+  const options = getViewOptions(flamegraphType);
 
   const dropdownMenuItems = options.map((mode) => (
     <MenuItem key={mode.value} value={mode.value}>
