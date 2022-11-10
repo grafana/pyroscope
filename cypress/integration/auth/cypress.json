@@ -4,6 +4,6 @@
   "integrationFolder": "cypress/integration/auth",
   "testFiles": "*.ts",
   "retries": {
-    "runMode": 5
+    "runMode": 1
   }
 }

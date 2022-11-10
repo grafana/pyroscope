@@ -60,7 +60,10 @@ func (h ExemplarsHandler) MergeExemplars(w http.ResponseWriter, r *http.Request)
 	}
 
 	maxNodes := h.MaxNodesDefault
-	if req.MaxNodes > 0 {
+	if newMaxNodes, ok := MaxNodesFromContext(r.Context()); ok {
+		maxNodes = newMaxNodes
+	}
+	if req.MaxNodes != 0 {
 		maxNodes = req.MaxNodes
 	}
 

@@ -5,7 +5,7 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
-import React, { Dispatch, SetStateAction } from 'react';
+import React, { Dispatch, SetStateAction, ReactNode, Component } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
@@ -14,7 +14,11 @@ import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
-import Toolbar from '../Toolbar';
+import Toolbar, { ProfileHeaderProps } from '../Toolbar';
+import {
+  calleesProfile,
+  callersProfile,
+} from '../convert/sandwichViewProfiles';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
@@ -78,7 +82,7 @@ export interface FlamegraphRendererProps {
   panesOrientation?: 'horizontal' | 'vertical';
   showPyroscopeLogo?: boolean;
   showCredit?: boolean;
-  ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
+  ExportData?: ProfileHeaderProps['ExportData'];
   colorMode?: 'light' | 'dark';
 
   /** @deprecated  prefer Profile */
@@ -91,7 +95,7 @@ export interface FlamegraphRendererProps {
     id: string;
   };
 
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface FlamegraphRendererState {
@@ -119,7 +123,7 @@ interface FlamegraphRendererState {
   palette: typeof DefaultPalette;
 }
 
-class FlameGraphRenderer extends React.Component<
+class FlameGraphRenderer extends Component<
   FlamegraphRendererProps,
   FlamegraphRendererState
 > {
@@ -341,6 +345,13 @@ class FlameGraphRenderer extends React.Component<
   };
 
   updateView = (newView: ViewTypes) => {
+    if (newView === 'sandwich') {
+      this.setState({
+        searchQuery: '',
+        flamegraphConfigs: this.resetFlamegraphState,
+      });
+    }
+
     this.setState({
       view: newView,
     });
@@ -410,10 +421,10 @@ class FlameGraphRenderer extends React.Component<
         // data-testid={flamegraphDataTestId}
         showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
-        ExportData={this.props.ExportData || <></>}
         highlightQuery={this.getHighlightQuery()}
         setActiveItem={this.setActiveItem}
         selectedItem={this.state.selectedItem}
+        updateView={this.updateView}
         fitMode={this.state.fitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
@@ -431,9 +442,93 @@ class FlameGraphRenderer extends React.Component<
       />
     );
 
+    const sandwichPane = (() => {
+      console.log(this.state.panesOrientation);
+      if (this.state.selectedItem.isNothing) {
+        return (
+          <div className={styles.sandwichPane} key="sandwich-pane">
+            <div
+              className={clsx(
+                styles.sandwichPaneInfo,
+                this.state.panesOrientation === 'vertical'
+                  ? styles.vertical
+                  : styles.horizontal
+              )}
+            >
+              <div className={styles.arrow} />
+              Select a function to view callers/callees sandwich view
+            </div>
+          </div>
+        );
+      }
+
+      const callersFlamebearer = callersProfile(
+        this.state.flamebearer,
+        this.state.selectedItem.value
+      );
+      const calleesFlamebearer = calleesProfile(
+        this.state.flamebearer,
+        this.state.selectedItem.value
+      );
+      const sandwitchGraph = (myCustomParams: {
+        flamebearer: Flamebearer;
+        headerVisible?: boolean;
+        showSingleLevel?: boolean;
+      }) => (
+        <Graph
+          disableClick
+          showCredit={this.props.showCredit as boolean}
+          highlightQuery=""
+          setActiveItem={this.setActiveItem}
+          selectedItem={this.state.selectedItem}
+          fitMode={this.state.fitMode}
+          zoom={this.state.flamegraphConfigs.zoom}
+          focusedNode={this.state.flamegraphConfigs.focusedNode}
+          onZoom={this.onFlamegraphZoom}
+          onFocusOnNode={this.onFocusOnNode}
+          onReset={this.onReset}
+          isDirty={this.isDirty}
+          palette={this.state.palette}
+          toolbarVisible={toolbarVisible}
+          setPalette={(p) =>
+            this.setState({
+              palette: p,
+            })
+          }
+          {...myCustomParams}
+        />
+      );
+
+      return (
+        <div className={styles.sandwichPane} key="sandwich-pane">
+          <div className={styles.sandwichTop}>
+            <span className={styles.name}>Callers</span>
+            {/* todo(dogfrogfog): to allow left/right click on the node we should
+            store Graph component we clicking and append action only on to
+            this component
+            will be implemented i nnext PR */}
+            {sandwitchGraph({ flamebearer: callersFlamebearer })}
+          </div>
+          <div className={styles.sandwichBottom}>
+            <span className={styles.name}>Callees</span>
+            {sandwitchGraph({
+              flamebearer: calleesFlamebearer,
+              headerVisible: false,
+              showSingleLevel: true,
+            })}
+          </div>
+        </div>
+      );
+    })();
+
     const dataUnavailable =
       !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
-    const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
+    const panes = decidePanesOrder(
+      this.state.view,
+      flameGraphPane,
+      tablePane,
+      sandwichPane
+    );
 
     return (
       <div data-flamegraph-color-mode={this.props.colorMode || 'dark'}>
@@ -455,6 +550,7 @@ class FlameGraphRenderer extends React.Component<
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
+              ExportData={this.props.ExportData}
             />
           )}
           {this.props.children}
@@ -492,7 +588,8 @@ class FlameGraphRenderer extends React.Component<
 function decidePanesOrder(
   view: FlamegraphRendererState['view'],
   flamegraphPane: JSX.Element | null,
-  tablePane: JSX.Element
+  tablePane: JSX.Element,
+  sandwichPane: JSX.Element
 ) {
   switch (view) {
     case 'table': {
@@ -500,6 +597,9 @@ function decidePanesOrder(
     }
     case 'flamegraph': {
       return [flamegraphPane];
+    }
+    case 'sandwich': {
+      return [tablePane, sandwichPane];
     }
 
     case 'both': {

@@ -38,6 +38,18 @@ $svg-side-margin: 40px;
     .tickValues {
       margin: -10px 0px;
       width: 30px;
+
+      .tickValue {
+        position: relative;
+        height: 20px;
+
+        span {
+          position: absolute;
+          display: block;
+          width: 40px;
+          right: 0;
+        }
+      }
     }
 
     .ticksContainer {

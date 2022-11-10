@@ -13,13 +13,29 @@ import { appendLabelToQuery } from '@webapp/util/query';
 import QueryInput from '@webapp/components/QueryInput/QueryInput';
 
 interface TagsBarProps {
-  onSetQuery: (q: Query) => void;
+  /** callback for when a label is selected */
   onSelectedLabel: (label: string, query: Query) => void;
-  query: Query;
+  /** the state with existing tags */
   tags: TagsState;
+
+  /** the current query */
+  query: Query;
+  /** callback for when a new query is selected */
+  onSetQuery: (q: Query) => void;
+  /** callback for when the same query is submitted again */
+  onRefresh: () => void;
 }
 
-function TagsBar({ onSetQuery, query, tags, onSelectedLabel }: TagsBarProps) {
+/*
+ * Tag Selector + Query Input component
+ */
+function TagsBar({
+  onSetQuery,
+  query,
+  tags,
+  onSelectedLabel,
+  onRefresh,
+}: TagsBarProps) {
   const CustomDropdown = (() => {
     const noTagsAvailable = (
       <Dropdown label="Select Tag">
@@ -74,7 +90,11 @@ function TagsBar({ onSetQuery, query, tags, onSelectedLabel }: TagsBarProps) {
       <QueryInput
         initialQuery={query}
         onSubmit={(q) => {
-          onSetQuery(brandQuery(q));
+          if (q === query) {
+            onRefresh();
+          } else {
+            onSetQuery(brandQuery(q));
+          }
         }}
       />
     </div>

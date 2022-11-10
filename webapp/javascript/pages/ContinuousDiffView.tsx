@@ -22,10 +22,11 @@ import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import ExportData from '@webapp/components/ExportData';
-import TimelineTitle from '@webapp/components/TimelineTitle';
+import ChartTitle from '@webapp/components/ChartTitle';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import PageTitle from '@webapp/components/PageTitle';
 import { formatTitle } from './formatTitle';
@@ -46,7 +47,7 @@ function ComparisonDiffApp() {
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
-  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTags, rightTags } = useTags();
   const { leftTimeline, rightTimeline } = useTimelines();
 
   const timelines = useAppSelector(selectTimelineSides);
@@ -56,6 +57,12 @@ function ComparisonDiffApp() {
 
   const { offset } = useTimeZone();
   const timezone = offset === 0 ? 'utc' : 'browser';
+
+  const isLoading = isLoadingOrReloading([
+    diffView.type,
+    timelines.left.type,
+    timelines.right.type,
+  ]);
 
   useEffect(() => {
     if (rightQuery && leftQuery) {
@@ -101,18 +108,12 @@ function ComparisonDiffApp() {
       <PageTitle title={formatTitle('Diff', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
-          hideTagsBar
-          onSelectedName={(query) => {
+          onSelectedApp={(query) => {
             dispatch(actions.setQuery(query));
           }}
         />
         <Box>
-          <LoadingOverlay
-            active={isLoadingOrReloading([
-              timelines.left.type,
-              timelines.right.type,
-            ])}
-          >
+          <LoadingOverlay active={isLoading}>
             <TimelineChartWrapper
               data-testid="timeline-main"
               id="timeline-chart-diff"
@@ -139,27 +140,27 @@ function ComparisonDiffApp() {
               }}
               selectionType="double"
               timezone={timezone}
-              title={
-                <TimelineTitle titleKey={diffView.profile?.metadata.units} />
-              }
+              title={<ChartTitle titleKey={diffView.profile?.metadata.units} />}
+            />
+            <SyncTimelines
+              timeline={leftTimeline}
+              leftSelection={{ from: leftFrom, to: leftUntil }}
+              rightSelection={{ from: rightFrom, to: rightUntil }}
+              onSync={(from, until) => {
+                dispatch(actions.setFromAndUntil({ from, until }));
+              }}
             />
           </LoadingOverlay>
         </Box>
         <div className="diff-instructions-wrapper">
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay
-              active={isLoadingOrReloading([timelines.left.type])}
-            >
-              <TimelineTitle titleKey="baseline" color={leftColor} />
+            <LoadingOverlay active={isLoading}>
+              <ChartTitle titleKey="baseline" color={leftColor} />
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setLeftQuery(q));
-                  if (leftQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setLeftQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
@@ -187,19 +188,13 @@ function ComparisonDiffApp() {
             </LoadingOverlay>
           </Box>
           <Box className="diff-instructions-wrapper-side">
-            <LoadingOverlay
-              active={isLoadingOrReloading([timelines.right.type])}
-            >
-              <TimelineTitle titleKey="comparison" color={rightColor} />
+            <LoadingOverlay active={isLoading}>
+              <ChartTitle titleKey="comparison" color={rightColor} />
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setRightQuery(q));
-                  if (rightQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setRightQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
@@ -228,11 +223,8 @@ function ComparisonDiffApp() {
           </Box>
         </div>
         <Box>
-          <LoadingOverlay
-            active={isLoadingOrReloading([diffView.type])}
-            spinnerPosition="baseline"
-          >
-            <TimelineTitle titleKey="diff" />
+          <LoadingOverlay active={isLoading} spinnerPosition="baseline">
+            <ChartTitle titleKey="diff" />
             <FlamegraphRenderer
               showCredit={false}
               profile={diffView.profile}

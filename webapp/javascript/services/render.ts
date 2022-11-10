@@ -217,7 +217,7 @@ export async function getHeatmap(
 }
 
 export interface SelectionProfileOutput {
-  profile: Profile;
+  selectionProfile: Profile;
 }
 
 export interface selectionProfileProps {
@@ -261,7 +261,7 @@ export async function getHeatmapSelectionProfile(
 
     if (parsed.success) {
       return Result.ok({
-        profile: parsed.data,
+        selectionProfile: parsed.data,
       });
     }
 

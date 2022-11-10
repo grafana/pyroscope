@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/fs"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore/migrations"
 )
 
@@ -52,6 +53,10 @@ func (s *SQLStore) Ping(ctx context.Context) error {
 }
 
 func (s *SQLStore) openSQLiteDB() (err error) {
+	err = fs.EnsureDirExists(s.config.StoragePath)
+	if err != nil {
+		return err
+	}
 	path := filepath.Join(s.config.StoragePath, "pyroscope.sqlite3")
 	if s.config.Database.URL != "" {
 		path = s.config.Database.URL

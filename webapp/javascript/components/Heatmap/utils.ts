@@ -119,7 +119,7 @@ export const getTicks = (
   max: number,
   options: TickOptions,
   sampleRate?: number
-) => {
+): string[] => {
   let formatter;
   if (sampleRate && options.formatter) {
     formatter = (v: number) => options.formatter.format(v, sampleRate, false);

@@ -32,10 +32,12 @@ import {
   fetchTagExplorerView,
   fetchTagExplorerViewProfile,
   ALL_TAGS,
+  setQuery,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
 import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
 
@@ -250,7 +252,11 @@ function TagExplorerView() {
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
       <div className={styles.tagExplorerView} data-testid="tag-explorer-view">
-        <Toolbar hideTagsBar />
+        <Toolbar
+          onSelectedApp={(query) => {
+            dispatch(setQuery(query));
+          }}
+        />
         <Box>
           <ExploreHeader
             appName={appName}
@@ -315,6 +321,7 @@ function TagExplorerView() {
               groupsData={filteredGroupsData}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={type === 'loading'}
+              activeTagProfile={activeTagProfile}
             />
           </div>
         </CollapseBox>
@@ -357,6 +364,7 @@ function Table({
   groupsData,
   isLoading,
   handleGroupByTagValueChange,
+  activeTagProfile,
 }: {
   appName: string;
   whereDropdownItems: string[];
@@ -365,9 +373,23 @@ function Table({
   groupsData: TimelineGroupData[];
   isLoading: boolean;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
+  activeTagProfile?: Profile;
 }) {
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
+
+  const formatter =
+    activeTagProfile &&
+    getFormatter(
+      activeTagProfile.flamebearer.numTicks,
+      activeTagProfile.metadata.sampleRate,
+      activeTagProfile.metadata.units
+    );
+
+  const formatValue = (v: number) =>
+    formatter && activeTagProfile
+      ? `${formatter.format(v, activeTagProfile.metadata.sampleRate)}`
+      : 0;
 
   const handleTableRowClick = (value: string) => {
     if (value !== groupByTagValue) {
@@ -393,12 +415,12 @@ function Table({
     // when groupByTag is not selected table represents single "application without tags" group
     {
       name: 'name',
-      label: `${groupByTag === '' ? 'App' : 'Tag'} name`,
+      label: groupByTag === '' ? 'Application' : 'Tag name',
       sortable: 1,
     },
-    { name: 'avgSamples', label: 'avg samples', sortable: 1 },
-    { name: 'stdDeviation', label: 'std deviation samples', sortable: 1 },
-    { name: 'totalSamples', label: 'total samples', sortable: 1 },
+    { name: 'avgSamples', label: 'Average', sortable: 1 },
+    { name: 'stdDeviation', label: 'Standard Deviation', sortable: 1 },
+    { name: 'totalSamples', label: 'Total', sortable: 1 },
   ];
 
   const groupsTotal = useMemo(
@@ -466,9 +488,9 @@ function Table({
               </div>
             ),
           },
-          { value: mean.toFixed(2) },
-          { value: stdDeviation.toFixed(2) },
-          { value: total },
+          { value: formatValue(mean) },
+          { value: formatValue(stdDeviation) },
+          { value: formatValue(total) },
         ],
       };
       acc.push(row);

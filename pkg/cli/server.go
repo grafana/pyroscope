@@ -90,10 +90,18 @@ func newServerService(c *config.Server) (*serverService, error) {
 		Path:      c.StoragePath,
 	}
 
+	svc.database, err = sqlstore.Open(c)
+	if err != nil {
+		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
+	}
+
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 
+	var appMetadataSaver storage.ApplicationMetadataSaver = service.NewApplicationMetadataService(svc.database.DB())
+	appMetadataSaver = service.NewApplicationMetadataCacheService(service.ApplicationMetadataCacheServiceConfig{}, appMetadataSaver)
+
 	storageConfig := storage.NewConfig(svc.config)
-	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController)
+	svc.storage, err = storage.New(storageConfig, svc.logger, prometheus.DefaultRegisterer, svc.healthController, appMetadataSaver)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
@@ -106,9 +114,10 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 	}
 
-	svc.database, err = sqlstore.Open(c)
+	migrator := NewAppMetadataMigrator(logger, svc.storage, service.NewApplicationMetadataService(svc.database.DB()))
+	err = migrator.Migrate()
 	if err != nil {
-		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
+		svc.logger.Error(err)
 	}
 
 	// this needs to happen after storage is initiated!

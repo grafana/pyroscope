@@ -11,14 +11,16 @@ import {
   fetchComparisonSide,
   fetchTagValues,
   selectQueries,
+  selectTimelineSides,
 } from '@webapp/redux/reducers/continuous';
 import SideTimelineComparator from '@webapp/components/SideTimelineComparator';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import SyncTimelines from '@webapp/components/TimelineChart/SyncTimelines';
 import Toolbar from '@webapp/components/Toolbar';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
-import TimelineTitle from '@webapp/components/TimelineTitle';
+import ChartTitle from '@webapp/components/ChartTitle';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
@@ -45,9 +47,17 @@ function ComparisonApp() {
   const { colorMode } = useColorMode();
   usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
-  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTags, rightTags } = useTags();
   const { leftTimeline, rightTimeline } = useTimelines();
   const sharedQuery = useFlamegraphSharedQuery();
+
+  const timelines = useAppSelector(selectTimelineSides);
+  const isLoading = isLoadingOrReloading([
+    comparisonView.left.type,
+    comparisonView.right.type,
+    timelines.left.type,
+    timelines.right.type,
+  ]);
 
   useEffect(() => {
     if (leftQuery) {
@@ -111,18 +121,12 @@ function ComparisonApp() {
       <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
         <Toolbar
-          hideTagsBar
-          onSelectedName={(query) => {
+          onSelectedApp={(query) => {
             dispatch(actions.setQuery(query));
           }}
         />
         <Box>
-          <LoadingOverlay
-            active={isLoadingOrReloading([
-              comparisonView.left.type,
-              comparisonView.right.type,
-            ])}
-          >
+          <LoadingOverlay active={isLoading}>
             <TimelineChartWrapper
               data-testid="timeline-main"
               id="timeline-chart-double"
@@ -149,11 +153,19 @@ function ComparisonApp() {
               }}
               timezone={timezone}
               title={
-                <TimelineTitle
+                <ChartTitle
                   titleKey={isSidesHasSameUnits ? leftSide.metadata.units : ''}
                 />
               }
               selectionType="double"
+            />
+            <SyncTimelines
+              timeline={leftTimeline}
+              leftSelection={{ from: leftFrom, to: leftUntil }}
+              rightSelection={{ from: rightFrom, to: rightUntil }}
+              onSync={(from, until) => {
+                dispatch(actions.setFromAndUntil({ from, until }));
+              }}
             />
           </LoadingOverlay>
         </Box>
@@ -162,12 +174,9 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
-            <LoadingOverlay
-              active={isLoadingOrReloading([comparisonView.left.type])}
-              spinnerPosition="baseline"
-            >
+            <LoadingOverlay active={isLoading} spinnerPosition="baseline">
               <div className={styles.timelineTitleWrapper}>
-                <TimelineTitle titleKey="baseline" color={leftColor} />
+                <ChartTitle titleKey="baseline" color={leftColor} />
                 <SideTimelineComparator
                   onCompare={handleCompare}
                   selection={{
@@ -186,15 +195,12 @@ function ComparisonApp() {
                   }}
                 />
               </div>
+
               <TagsBar
                 query={leftQuery}
                 tags={leftTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setLeftQuery(q));
-                  if (leftQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setLeftQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
@@ -245,22 +251,15 @@ function ComparisonApp() {
           </Box>
 
           <Box className={styles.comparisonPane}>
-            <LoadingOverlay
-              spinnerPosition="baseline"
-              active={isLoadingOrReloading([comparisonView.right.type])}
-            >
+            <LoadingOverlay spinnerPosition="baseline" active={isLoading}>
               <div className={styles.timelineTitleWrapper}>
-                <TimelineTitle titleKey="comparison" color={rightColor} />
+                <ChartTitle titleKey="comparison" color={rightColor} />
               </div>
               <TagsBar
                 query={rightQuery}
                 tags={rightTags}
-                onSetQuery={(q) => {
-                  dispatch(actions.setRightQuery(q));
-                  if (rightQuery === q) {
-                    dispatch(actions.refresh());
-                  }
-                }}
+                onRefresh={() => dispatch(actions.refresh())}
+                onSetQuery={(q) => dispatch(actions.setRightQuery(q))}
                 onSelectedLabel={(label, query) => {
                   dispatch(fetchTagValues({ query, label }));
                 }}
