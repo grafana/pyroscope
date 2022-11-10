@@ -386,10 +386,20 @@ function Table({
       activeTagProfile.metadata.units
     );
 
-  const formatValue = (v: number) =>
-    formatter && activeTagProfile
-      ? `${formatter.format(v, activeTagProfile.metadata.sampleRate)}`
-      : 0;
+  const formatValue = (v: number) => {
+    const formatterResult =
+      formatter && activeTagProfile
+        ? `${formatter.format(v, activeTagProfile.metadata.sampleRate)}`
+        : 0;
+
+    if (String(formatterResult).includes('< 0.01')) {
+      return formatter
+        ? formatter.formatPrecise(v, activeTagProfile.metadata.sampleRate)
+        : 0;
+    }
+
+    return formatterResult;
+  };
 
   const handleTableRowClick = (value: string) => {
     if (value !== groupByTagValue) {
