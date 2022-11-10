@@ -252,7 +252,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         return (
           <MenuItem key="fit-mode" onClick={handleClick}>
             {/* todo: add icons */}
-            Fit mode: {isHeadFirst ? 'tail first' : 'heat first'}
+            Fit mode: {isHeadFirst ? 'tail first' : 'head first'}
           </MenuItem>
         );
       };
