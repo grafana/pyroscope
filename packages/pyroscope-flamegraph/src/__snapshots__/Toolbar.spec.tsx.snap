@@ -367,7 +367,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
             class="rc-menu-button dropdownMenuButton viewModeDropdownButton"
             type="button"
           >
-            Table
+            Table and Flamegraph
           </button>
           <div
             class="rc-menu-container"
