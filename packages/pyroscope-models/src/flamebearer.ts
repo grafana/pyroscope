@@ -40,7 +40,8 @@ export type Flamebearer = {
 
 export type addTicks =
   | { format: 'double'; leftTicks: number; rightTicks: number }
-  | { format: 'single' };
+  // todoL: remove left/right ticks
+  | { format: 'single'; leftTicks?: number; rightTicks?: number };
 
 export const singleFF = {
   format: 'single' as const,

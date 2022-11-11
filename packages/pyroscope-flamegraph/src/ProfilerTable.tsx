@@ -38,6 +38,8 @@ interface DoubleCell {
   totalLeft: number;
   totalRght: number;
   totalDiff: number;
+  leftTicks: number;
+  rightTicks: number;
 }
 type DoubleSortByKeys = keyof DoubleCell & 'name';
 
@@ -59,7 +61,9 @@ function generateCellDouble(
   ff: typeof doubleFF,
   cell: DoubleCell,
   level: number[],
-  j: number
+  j: number,
+  leftTicks: number,
+  rightTicks: number
 ) {
   const c = cell;
 
@@ -72,6 +76,8 @@ function generateCellDouble(
   c.totalLeft = zero(c.totalLeft) + ff.getBarTotalLeft(level, j);
   c.totalRght = zero(c.totalRght) + ff.getBarTotalRght(level, j);
   c.totalDiff = zero(c.totalDiff) + ff.getBarTotalDiff(level, j);
+  c.leftTicks = leftTicks;
+  c.rightTicks = rightTicks;
   return c;
 }
 
@@ -83,7 +89,7 @@ function generateTable(
   if (!flamebearer) {
     return table;
   }
-  const { names, levels, format } = flamebearer;
+  const { names, levels, format, leftTicks, rightTicks } = flamebearer;
   const ff = format !== 'double' ? singleFF : doubleFF;
 
   const hash: Record<string, (DoubleCell | SingleCell) & { name: string }> = {};
@@ -100,7 +106,14 @@ function generateTable(
       if (format === 'single') {
         generateCellSingle(singleFF, hash[name] as SingleCell, level, j);
       } else {
-        generateCellDouble(doubleFF, hash[name] as DoubleCell, level, j);
+        generateCellDouble(
+          doubleFF,
+          hash[name] as DoubleCell,
+          level,
+          j,
+          leftTicks,
+          rightTicks
+        );
       }
     }
   }
@@ -369,7 +382,7 @@ const getTableBody = ({
                 'L'
               ),
               value: (() => {
-                const percent = `${((x.selfLeft / numTicks) * 100).toFixed(
+                const percent = `${((x.selfLeft / x.leftTicks) * 100).toFixed(
                   2
                 )} %`;
 
@@ -386,7 +399,7 @@ const getTableBody = ({
                 'R'
               ),
               value: (() => {
-                const percent = `${((x.selfRght / numTicks) * 100).toFixed(
+                const percent = `${((x.selfRght / x.rightTicks) * 100).toFixed(
                   2
                 )} %`;
 
@@ -416,7 +429,7 @@ const getTableBody = ({
                 'L'
               ),
               value: (() => {
-                const percent = `${((x.totalLeft / numTicks) * 100).toFixed(
+                const percent = `${((x.totalLeft / x.leftTicks) * 100).toFixed(
                   2
                 )} %`;
 
@@ -433,7 +446,7 @@ const getTableBody = ({
                 'R'
               ),
               value: (() => {
-                const percent = `${((x.totalRght / numTicks) * 100).toFixed(
+                const percent = `${((x.totalRght / x.rightTicks) * 100).toFixed(
                   2
                 )} %`;
 
@@ -462,7 +475,7 @@ const getTableBody = ({
                 defaultColor
               ),
               value: (() => {
-                const percent = `${((x.selfDiff / numTicks) * 100).toFixed(
+                const percent = `${((x.selfDiff / x.leftTicks) * 100).toFixed(
                   2
                 )} %`;
 
@@ -478,7 +491,7 @@ const getTableBody = ({
                 color
               ),
               value: (() => {
-                const percent = `${((x.totalDiff / numTicks) * 100).toFixed(
+                const percent = `${((x.totalDiff / x.rightTicks) * 100).toFixed(
                   2
                 )} %`;
 
