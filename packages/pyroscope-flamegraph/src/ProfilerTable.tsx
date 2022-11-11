@@ -111,8 +111,8 @@ function generateTable(
           hash[name] as DoubleCell,
           level,
           j,
-          leftTicks,
-          rightTicks
+          leftTicks as number,
+          rightTicks as number
         );
       }
     }
