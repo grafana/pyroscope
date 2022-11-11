@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.27.0...@pyroscope/flamegraph@0.28.0) (2022-11-11)
+
+
+### Features
+
+* enable "reset view" button when table item is highlighted ([#1703](https://github.com/pyroscope-io/pyroscope/issues/1703)) ([7b1bfd5](https://github.com/pyroscope-io/pyroscope/commit/7b1bfd55a3d6186877104e7e164323ee9a4d4f34))
+
+
+
+
+
 # [0.27.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.26.0...@pyroscope/flamegraph@0.27.0) (2022-11-10)
 
 
