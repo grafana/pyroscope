@@ -318,7 +318,6 @@ class FlameGraphRenderer extends Component<
       if (name === this.state.selectedItem.value) {
         this.setState({
           selectedItem: Maybe.nothing(),
-          isFlamegraphDirty: true,
         });
         return;
       }
