@@ -244,7 +244,6 @@ export function SidebarComponent() {
               <MenuItem
                 active={isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE)}
                 icon={<ExemplarsIcon />}
-                className={styles.exemplarsItem}
               >
                 Exemplars
                 <NavLink
@@ -256,7 +255,6 @@ export function SidebarComponent() {
               <MenuItem
                 active={isRouteActive(PAGES.TRACING_EXEMPLARS_MERGE)}
                 icon={<MergeExemplarsIcon />}
-                className={styles.exemplarsItem}
               >
                 Merge Exemplars
                 <NavLink

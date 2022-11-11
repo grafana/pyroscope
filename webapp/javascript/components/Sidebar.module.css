@@ -31,16 +31,3 @@
   padding: 10px 0;
   text-align: center;
 }
-
-/* workaround for exemplars icons
- * since the icons have a padding around it 
- * we have to set a height bigger than normal
- * which makes the whole menuitem bigger
- * hence a max-height
- * */
-/* .exemplarsItem [class*='pro-inner-item'] {
-  max-height: 49px;
-}
-.exemplarsItem [class*='pro-icon-wrapper'] {
-  margin-left: -9px;
-} */
