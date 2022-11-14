@@ -7,6 +7,7 @@ import {
   numberWithCommas,
   formatPercent,
   ratioToPercent,
+  percentDiff,
 } from '../format/format';
 import {
   FlamegraphPalette,
@@ -253,10 +254,4 @@ function formatDouble(
     },
     tooltipData: [newLeft, newRight],
   };
-}
-
-function percentDiff(leftPercent: number, rightPercent: number): number {
-  // difference between 2 percents
-  // https://en.wikipedia.org/wiki/Relative_change_and_difference
-  return ((rightPercent - leftPercent) / leftPercent) * 100;
 }
