@@ -23,7 +23,7 @@ $buttonHeight: 37px;
 }
 
 .navbar button {
-  color: var(--ps-neutral-2);
+  color: var(--ps-toolbar-icon-color);
 }
 
 .toggleViewButton {
@@ -115,6 +115,6 @@ $buttonHeight: 37px;
 .divider {
   width: 1px;
   height: 35px;
-  background-color: #646466;
+  background-color: var(--ps-ui-border);
   margin: 0 2px;
 }

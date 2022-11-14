@@ -222,6 +222,10 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       };
 
       const OpenInSandwichViewItem = () => {
+        if (!updateView) {
+          return null;
+        }
+
         const handleClick = () => {
           if (updateView) {
             updateView('sandwich');
@@ -271,7 +275,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         HighlightSimilarNodesItem(),
         OpenInSandwichViewItem(),
         FitModeItem(),
-      ];
+      ].filter(Boolean) as JSX.Element[];
     },
     [flamegraph, selectedItem, fitMode]
   );

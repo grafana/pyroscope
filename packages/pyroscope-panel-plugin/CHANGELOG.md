@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.75...@pyroscope/panel-plugin@1.4.0) (2022-11-14)
+
+
+### Features
+
+* **panel-plugin:** allow setting different views ([#1712](https://github.com/pyroscope-io/pyroscope/issues/1712)) ([058099c](https://github.com/pyroscope-io/pyroscope/commit/058099c857d80c3dc2f1c7c7a99391bd75c72178))
+
+
+
+
+
+## [1.3.75](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.74...@pyroscope/panel-plugin@1.3.75) (2022-11-14)
+
+**Note:** Version bump only for package @pyroscope/panel-plugin
+
+
+
+
+
 ## [1.3.74](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.73...@pyroscope/panel-plugin@1.3.74) (2022-11-14)
 
 

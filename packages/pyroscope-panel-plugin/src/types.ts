@@ -6,4 +6,5 @@ export interface SimpleOptions {
   seriesCountSize: SeriesSize;
 
   showToolbar: boolean;
+  displayOnly: 'flamegraph' | 'table' | 'both' | 'sandwich' | 'off';
 }

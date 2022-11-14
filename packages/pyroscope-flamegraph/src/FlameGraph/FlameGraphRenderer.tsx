@@ -425,7 +425,7 @@ class FlameGraphRenderer extends Component<
         highlightQuery={this.getHighlightQuery()}
         setActiveItem={this.setActiveItem}
         selectedItem={this.state.selectedItem}
-        updateView={this.updateView}
+        updateView={this.props.onlyDisplay ? undefined : this.updateView}
         fitMode={this.state.fitMode}
         updateFitMode={this.updateFitMode}
         zoom={this.state.flamegraphConfigs.zoom}
