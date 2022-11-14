@@ -5,8 +5,6 @@ import { SimpleOptions } from './types';
 import { SimplePanel } from './SimplePanel';
 import '@pyroscope/flamegraph/dist/index.css';
 import './styles.css';
-// TODO: this should NOT be required, let's refactor
-import '@pyroscope/webapp/sass/profile.scss';
 
 // Since our webpack config generates a single css file
 // We have to load it somehow
