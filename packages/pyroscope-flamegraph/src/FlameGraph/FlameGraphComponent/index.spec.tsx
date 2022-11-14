@@ -20,6 +20,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        updateFitMode={() => ({})}
         selectedItem={Maybe.nothing()}
         setActiveItem={() => ({})}
         showCredit
@@ -46,6 +47,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        updateFitMode={() => ({})}
         selectedItem={Maybe.nothing()}
         setActiveItem={() => ({})}
         showCredit
@@ -83,6 +85,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        updateFitMode={() => ({})}
         selectedItem={Maybe.nothing()}
         setActiveItem={() => ({})}
         showCredit
@@ -117,6 +120,7 @@ describe('FlamegraphComponent', () => {
 
       const { rerender } = render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -152,6 +156,7 @@ describe('FlamegraphComponent', () => {
 
       rerender(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -187,6 +192,7 @@ describe('FlamegraphComponent', () => {
 
       render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -228,6 +234,7 @@ describe('FlamegraphComponent', () => {
     it('renders when type is single', () => {
       render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -255,6 +262,7 @@ describe('FlamegraphComponent', () => {
       const flamebearer = TestData.DiffTree;
       render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit

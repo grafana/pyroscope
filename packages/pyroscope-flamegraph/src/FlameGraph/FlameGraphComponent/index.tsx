@@ -18,17 +18,19 @@ import ContextMenuHighlight from './ContextMenuHighlight';
 import FlamegraphTooltip from '../../Tooltip/FlamegraphTooltip';
 import ContextMenu from './ContextMenu';
 import LogoLink from './LogoLink';
-import { SandwichIcon } from '../../Icons';
+import { SandwichIcon, HeadFirstIcon, TailFirstIcon } from '../../Icons';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
 import type { ViewTypes } from './viewTypes';
+import { FitModes, HeadMode, TailMode } from '../../fitMode/fitMode';
 import indexStyles from './styles.module.scss';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
   focusedNode: ConstructorParameters<typeof Flamegraph>[2];
   fitMode: ConstructorParameters<typeof Flamegraph>[3];
+  updateFitMode: (f: FitModes) => void;
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
   showCredit: boolean;
@@ -63,6 +65,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     flamebearer,
     focusedNode,
     fitMode,
+    updateFitMode,
     highlightQuery,
     zoom,
     toolbarVisible,
@@ -238,6 +241,26 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         );
       };
 
+      const FitModeItem = () => {
+        const isHeadFirst = fitMode === HeadMode;
+
+        const handleClick = () => {
+          const newValues = isHeadFirst ? TailMode : HeadMode;
+          updateFitMode(newValues);
+        };
+
+        return (
+          <MenuItem
+            className={indexStyles.fitModeItem}
+            key="fit-mode"
+            onClick={handleClick}
+          >
+            {isHeadFirst ? <TailFirstIcon /> : <HeadFirstIcon />}
+            Show text {isHeadFirst ? 'tail first' : 'head first'}
+          </MenuItem>
+        );
+      };
+
       return [
         <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
           <FontAwesomeIcon icon={faRedo} />
@@ -247,9 +270,10 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         CopyItem(),
         HighlightSimilarNodesItem(),
         OpenInSandwichViewItem(),
+        FitModeItem(),
       ];
     },
-    [flamegraph, selectedItem]
+    [flamegraph, selectedItem, fitMode]
   );
 
   const constructCanvas = () => {
