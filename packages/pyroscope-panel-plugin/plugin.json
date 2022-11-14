@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
   "type": "panel",
-  "name": "pyroscope-panel",
+  "name": "Pyroscope Flamegraph",
   "id": "pyroscope-panel",
   "info": {
     "description": "Pyroscope plugin for grafana",
