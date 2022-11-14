@@ -13,6 +13,7 @@ const (
 	BytesUnits           Units = "bytes"
 	LockNanosecondsUnits Units = "lock_nanoseconds"
 	LockSamplesUnits     Units = "lock_samples"
+	ExceptionsUnits      Units = "exceptions"
 )
 
 type AggregationType string

@@ -78,6 +78,34 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 		Units:       metadata.LockNanosecondsUnits,
 		Cumulative:  true,
 	},
+	"cpu": {
+		Units:   metadata.SamplesUnits,
+		Sampled: true,
+	},
+	"wall": {
+		Units:   metadata.SamplesUnits,
+		Sampled: true,
+	},
+	"lock-count": {
+		DisplayName: "mutex_count",
+		Units:       metadata.LockSamplesUnits,
+	},
+	"lock-time": {
+		DisplayName: "mutex_duration",
+		Units:       metadata.LockNanosecondsUnits,
+	},
+	"alloc-samples": {
+		DisplayName: "alloc_objects",
+		Units:       metadata.ObjectsUnits,
+	},
+	"alloc-size": {
+		DisplayName: "alloc_space",
+		Units:       metadata.BytesUnits,
+	},
+	"exception": {
+		DisplayName: "exceptions",
+		Units:       metadata.ExceptionsUnits,
+	},
 }
 
 type pprof struct {
