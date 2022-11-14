@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.74](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.73...@pyroscope/panel-plugin@1.3.74) (2022-11-14)
+
+
+### Bug Fixes
+
+* **panel-plugin:** remove leaky css ([#1709](https://github.com/pyroscope-io/pyroscope/issues/1709)) ([bc28930](https://github.com/pyroscope-io/pyroscope/commit/bc28930093b0b8494b073a45252ce361dba1a382))
+
+
+
+
+
 ## [1.3.73](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/panel-plugin@1.3.72...@pyroscope/panel-plugin@1.3.73) (2022-11-14)
 
 **Note:** Version bump only for package @pyroscope/panel-plugin
