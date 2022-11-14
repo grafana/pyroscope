@@ -18,7 +18,7 @@ import ContextMenuHighlight from './ContextMenuHighlight';
 import FlamegraphTooltip from '../../Tooltip/FlamegraphTooltip';
 import ContextMenu from './ContextMenu';
 import LogoLink from './LogoLink';
-import { SandwichIcon } from '../../Icons';
+import { SandwichIcon, HeadFirstIcon, TailFirstIcon } from '../../Icons';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
@@ -250,8 +250,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         };
 
         return (
-          <MenuItem key="fit-mode" onClick={handleClick}>
-            {/* todo: add icons */}
+          <MenuItem
+            className={indexStyles.fitModeItem}
+            key="fit-mode"
+            onClick={handleClick}
+          >
+            {isHeadFirst ? <TailFirstIcon /> : <HeadFirstIcon />}
             Show text {isHeadFirst ? 'tail first' : 'head first'}
           </MenuItem>
         );
