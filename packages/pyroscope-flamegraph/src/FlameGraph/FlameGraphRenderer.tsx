@@ -427,6 +427,7 @@ class FlameGraphRenderer extends Component<
         selectedItem={this.state.selectedItem}
         updateView={this.updateView}
         fitMode={this.state.fitMode}
+        updateFitMode={this.updateFitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
         onZoom={this.onFlamegraphZoom}
@@ -482,6 +483,7 @@ class FlameGraphRenderer extends Component<
           setActiveItem={this.setActiveItem}
           selectedItem={this.state.selectedItem}
           fitMode={this.state.fitMode}
+          updateFitMode={this.updateFitMode}
           zoom={this.state.flamegraphConfigs.zoom}
           focusedNode={this.state.flamegraphConfigs.focusedNode}
           onZoom={this.onFlamegraphZoom}

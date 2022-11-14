@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.29.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.28.0...@pyroscope/flamegraph@0.29.0) (2022-11-14)
+
+
+### Features
+
+* add Fit Mode to Context Menu ([#1698](https://github.com/pyroscope-io/pyroscope/issues/1698)) ([082a971](https://github.com/pyroscope-io/pyroscope/commit/082a9715d5aed80682fc1f38988a927ca0bbcd93))
+
+
+
+
+
 # [0.28.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.27.0...@pyroscope/flamegraph@0.28.0) (2022-11-11)
 
 
