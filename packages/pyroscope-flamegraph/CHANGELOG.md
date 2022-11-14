@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.29.1...@pyroscope/flamegraph@0.30.0) (2022-11-14)
+
+
+### Features
+
+* **panel-plugin:** allow setting different views ([#1712](https://github.com/pyroscope-io/pyroscope/issues/1712)) ([058099c](https://github.com/pyroscope-io/pyroscope/commit/058099c857d80c3dc2f1c7c7a99391bd75c72178))
+
+
+
+
+
 ## [0.29.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.29.0...@pyroscope/flamegraph@0.29.1) (2022-11-14)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
