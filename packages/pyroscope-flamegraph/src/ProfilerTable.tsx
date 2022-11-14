@@ -559,7 +559,8 @@ export interface ProfilerTableProps {
 
 export default function ProfilerTable({
   flamebearer,
-  viewDiff,
+  // todo: remove param dependency
+  viewDiff = 'diff',
   fitMode,
   handleTableItemClick,
   highlightQuery,
