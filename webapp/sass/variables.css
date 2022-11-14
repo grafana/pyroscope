@@ -85,6 +85,7 @@
 
   --ps-fl-toolbar-bg: #2c2c30;
   --ps-fl-toolbar-btn-bg: #3c7150;
+  --ps-toolbar-icon-color: #ffffff;
 }
 
 [data-theme='light'],
@@ -135,4 +136,5 @@
 
   --ps-fl-toolbar-bg: #00000008;
   --ps-fl-toolbar-btn-bg: #3b78e7;
+  --ps-toolbar-icon-color: #5f6367;
 }
