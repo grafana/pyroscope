@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { centerTimelineData } from '@webapp/components/TimelineChart/centerTimelineData';
 import { TimelineData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
-import { formatAsOBject } from '@webapp/util/formatDate';
+import { getSelectionBoundaries } from '@webapp/components/TimelineChart/SyncTimelines/getSelectionBoundaries';
 import { Selection } from '../markings';
 
 interface UseSyncParams {
@@ -37,20 +37,6 @@ const isInRange = (
   selectionTo: number
 ) => {
   return selectionFrom + timeOffset >= from && selectionTo - timeOffset <= to;
-};
-
-export const getSelectionBoundaries = (selection: Selection) => {
-  if (selection.from.startsWith('now') || selection.to.startsWith('now')) {
-    return {
-      from: new Date(formatAsOBject(selection.from)).getTime(),
-      to: new Date(formatAsOBject(selection.to)).getTime(),
-    };
-  }
-
-  return {
-    from: Number(selection.from) * 1000,
-    to: Number(selection.to) * 1000,
-  };
 };
 
 export function useSync({

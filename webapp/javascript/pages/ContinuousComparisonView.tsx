@@ -26,6 +26,7 @@ import useColorMode from '@webapp/hooks/colorMode.hook';
 import { isExportToFlamegraphDotComEnabled } from '@webapp/util/features';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import PageTitle from '@webapp/components/PageTitle';
+import { Query } from '@webapp/models/query';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, {
@@ -40,21 +41,32 @@ import { isLoadingOrReloading } from './loading';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const { leftFrom, rightFrom, leftUntil, rightUntil, refreshToken } =
-    useAppSelector(selectContinuousState);
+  const {
+    leftFrom,
+    rightFrom,
+    leftUntil,
+    rightUntil,
+    refreshToken,
+    from,
+    until,
+  } = useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
   usePopulateLeftRightQuery();
-  const comparisonView = useAppSelector(selectComparisonState);
+  const {
+    left: comparisonLeft,
+    right: comparisonRight,
+    comparisonMode,
+  } = useAppSelector(selectComparisonState);
   const { leftTags, rightTags } = useTags();
   const { leftTimeline, rightTimeline } = useTimelines();
   const sharedQuery = useFlamegraphSharedQuery();
 
   const timelines = useAppSelector(selectTimelineSides);
   const isLoading = isLoadingOrReloading([
-    comparisonView.left.type,
-    comparisonView.right.type,
+    comparisonLeft.type,
+    comparisonRight.type,
     timelines.left.type,
     timelines.right.type,
   ]);
@@ -80,8 +92,8 @@ function ComparisonApp() {
     return undefined;
   }, [rightFrom, rightUntil, rightQuery, refreshToken]);
 
-  const leftSide = comparisonView.left.profile;
-  const rightSide = comparisonView.right.profile;
+  const leftSide = comparisonLeft.profile;
+  const rightSide = comparisonRight.profile;
   const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftSide);
   const exportToFlamegraphDotComRightFn =
     useExportToFlamegraphDotCom(rightSide);
@@ -106,25 +118,63 @@ function ComparisonApp() {
     rightFrom: string;
     rightTo: string;
   }) => {
-    dispatch(actions.setRight({ from: rightFrom, until: rightTo }));
-    dispatch(actions.setLeft({ from: leftFrom, until: leftTo }));
     dispatch(
       actions.setFromAndUntil({
         from,
         until,
       })
     );
+    dispatch(actions.setRight({ from: rightFrom, until: rightTo }));
+    dispatch(actions.setLeft({ from: leftFrom, until: leftTo }));
+  };
+
+  const setComparisonMode = (mode: {
+    active: boolean;
+    period: {
+      label: string;
+      ms: number;
+    };
+  }) => {
+    dispatch(actions.setComparisonMode(mode));
+  };
+
+  const handleSelectMain = (from: string, until: string) => {
+    setComparisonMode({
+      ...comparisonMode,
+      active: false,
+    });
+    dispatch(actions.setFromAndUntil({ from, until }));
+  };
+
+  const handleSelectLeft = (from: string, until: string) => {
+    setComparisonMode({
+      ...comparisonMode,
+      active: false,
+    });
+    dispatch(actions.setLeft({ from, until }));
+  };
+
+  const handleSelectRight = (from: string, until: string) => {
+    setComparisonMode({
+      ...comparisonMode,
+      active: false,
+    });
+    dispatch(actions.setRight({ from, until }));
+  };
+
+  const handleSelectedApp = (query: Query) => {
+    setComparisonMode({
+      ...comparisonMode,
+      active: false,
+    });
+    dispatch(actions.setQuery(query));
   };
 
   return (
     <div>
       <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <div className="main-wrapper">
-        <Toolbar
-          onSelectedApp={(query) => {
-            dispatch(actions.setQuery(query));
-          }}
-        />
+        <Toolbar onSelectedApp={handleSelectedApp} />
         <Box>
           <LoadingOverlay active={isLoading}>
             <TimelineChartWrapper
@@ -134,9 +184,7 @@ function ComparisonApp() {
               height="125px"
               timelineA={leftTimeline}
               timelineB={rightTimeline}
-              onSelect={(from, until) => {
-                dispatch(actions.setFromAndUntil({ from, until }));
-              }}
+              onSelect={handleSelectMain}
               selection={{
                 left: {
                   from: leftFrom,
@@ -160,6 +208,7 @@ function ComparisonApp() {
               selectionType="double"
             />
             <SyncTimelines
+              comparisonModeActive={comparisonMode.active}
               timeline={leftTimeline}
               leftSelection={{ from: leftFrom, to: leftUntil }}
               rightSelection={{ from: rightFrom, to: rightUntil }}
@@ -178,8 +227,12 @@ function ComparisonApp() {
               <div className={styles.timelineTitleWrapper}>
                 <ChartTitle titleKey="baseline" color={leftColor} />
                 <SideTimelineComparator
+                  setComparisonMode={setComparisonMode}
+                  comparisonMode={comparisonMode}
                   onCompare={handleCompare}
                   selection={{
+                    from,
+                    until,
                     left: {
                       from: leftFrom,
                       to: leftUntil,
@@ -241,9 +294,7 @@ function ComparisonApp() {
                     },
                   }}
                   selectionType="single"
-                  onSelect={(from, until) => {
-                    dispatch(actions.setLeft({ from, until }));
-                  }}
+                  onSelect={handleSelectLeft}
                   timezone={timezone}
                 />
               </FlamegraphRenderer>
@@ -300,9 +351,7 @@ function ComparisonApp() {
                     },
                   }}
                   selectionType="single"
-                  onSelect={(from, until) => {
-                    dispatch(actions.setRight({ from, until }));
-                  }}
+                  onSelect={handleSelectRight}
                   timezone={timezone}
                 />
               </FlamegraphRenderer>

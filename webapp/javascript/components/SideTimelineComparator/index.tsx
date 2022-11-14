@@ -1,126 +1,128 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import classNames from 'classnames/bind';
 import Button from '@webapp/ui/Button';
 import { Popover, PopoverBody } from '@webapp/ui/Popover';
 import { Portal } from '@webapp/ui/Portal';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  markingsFromSelection,
-  Selection,
-} from '@webapp/components/TimelineChart/markings';
+import { Selection } from '@webapp/components/TimelineChart/markings';
+import { getSelectionBoundaries } from '@webapp/components/TimelineChart/SyncTimelines/getSelectionBoundaries';
+import { comparisonPeriods } from './periods';
 import styles from './styles.module.scss';
-
-interface SideTimelineComparatorProps {
-  onCompare: (params: {
-    from: string;
-    until: string;
-    leftFrom: string;
-    leftTo: string;
-    rightFrom: string;
-    rightTo: string;
-  }) => void;
-  selection: {
-    left: Selection;
-    right: Selection;
-  };
-}
 
 const cx = classNames.bind(styles);
 
-const buttons = [
-  [
-    {
-      label: '1 hour prior',
-      ms: 3600 * 1000,
-    },
-    {
-      label: '12 hours prior',
-      ms: 43200 * 1000,
-    },
-    {
-      label: '24 hours prior',
-      ms: 86400 * 1000,
-    },
-  ],
-  [
-    {
-      label: '1 week prior',
-      ms: 604800 * 1000,
-    },
-    {
-      label: '2 weeks prior',
-      ms: 1209600 * 1000,
-    },
-    {
-      label: '30 days prior',
-      ms: 2592000 * 1000,
-    },
-  ],
-];
-
-const defaultPeriod = {
-  label: 'Compare',
-  ms: 0,
+type Boudaries = {
+  from: string;
+  until: string;
+  leftFrom: string;
+  leftTo: string;
+  rightFrom: string;
+  rightTo: string;
 };
 
-function usePrevious(selection: SideTimelineComparatorProps['selection']) {
-  const ref = useRef<SideTimelineComparatorProps['selection']>();
-  useEffect(() => {
-    ref.current = selection;
-  }, [selection]);
-  return ref.current;
+interface SideTimelineComparatorProps {
+  onCompare: (params: Boudaries) => void;
+  selection: {
+    left: Selection;
+    right: Selection;
+    from: string;
+    until: string;
+  };
+  comparisonMode: {
+    active: boolean;
+    period: {
+      label: string;
+      ms: number;
+    };
+  };
+  setComparisonMode: (
+    params: SideTimelineComparatorProps['comparisonMode']
+  ) => void;
 }
+
+const getNewBoundaries = ({
+  selection,
+  period,
+}: {
+  selection: SideTimelineComparatorProps['selection'];
+  period: SideTimelineComparatorProps['comparisonMode']['period'];
+}) => {
+  const { from: comparisonSelectionFrom, to: comparisonSelectionTo } =
+    getSelectionBoundaries(selection.right);
+
+  const diff = comparisonSelectionTo - comparisonSelectionFrom;
+
+  return {
+    from: String(comparisonSelectionTo - period.ms - diff * 2),
+    until: String(comparisonSelectionTo),
+    leftFrom: String(comparisonSelectionTo - period.ms - diff),
+    leftTo: String(comparisonSelectionTo - period.ms),
+    rightFrom: String(comparisonSelectionFrom),
+    rightTo: String(comparisonSelectionTo),
+  };
+};
 
 export default function SideTimelineComparator({
   onCompare,
   selection,
+  setComparisonMode,
+  comparisonMode,
 }: SideTimelineComparatorProps) {
+  const [previousSelection, setPreviousSelection] = useState<Boudaries | null>(
+    null
+  );
   const refContainer = useRef(null);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [period, setPeriod] = useState(defaultPeriod);
 
-  const prevSelection = usePrevious(selection);
+  const { active, period } = comparisonMode;
 
-  useEffect(() => {
-    // reset previous period if selection has changed
-    if (
-      !menuVisible &&
-      prevSelection &&
-      (selection.left.from !== prevSelection.left.from ||
-        selection.left.to !== prevSelection.left.to ||
-        selection.right.from !== prevSelection.right.from ||
-        selection.right.to !== prevSelection.right.to)
-    ) {
-      setPeriod(defaultPeriod);
-    }
-  }, [selection, prevSelection, menuVisible]);
-
-  const [
-    {
-      xaxis: { from: comparisonSelectionFrom, to: comparisonSelectionTo },
-    },
-  ] = markingsFromSelection('single', {
-    ...selection.right,
-  } as Selection);
+  const { from: comparisonSelectionFrom, to: comparisonSelectionTo } =
+    getSelectionBoundaries(selection.right);
 
   const diff = comparisonSelectionTo - comparisonSelectionFrom;
 
-  const fullLength = period.ms
-    ? comparisonSelectionTo - (comparisonSelectionTo - period.ms - diff * 2)
-    : null;
+  const fullLength =
+    comparisonSelectionTo - (comparisonSelectionTo - period.ms - diff * 2);
 
   const percent = fullLength ? (diff / fullLength) * 100 : null;
 
-  const handleClick = ({ ms, label }: { ms: number; label: string }) => {
-    setPeriod({ ms, label });
-    onCompare({
-      from: String(comparisonSelectionTo - ms - diff * 2),
-      until: String(comparisonSelectionTo),
-      leftFrom: String(comparisonSelectionTo - ms - diff),
-      leftTo: String(comparisonSelectionTo - ms),
-      rightFrom: String(comparisonSelectionFrom),
-      rightTo: String(comparisonSelectionTo),
+  const handleSelectPeriod = (period: { label: string; ms: number }) => {
+    setComparisonMode({
+      ...comparisonMode,
+      period,
+    });
+
+    if (comparisonMode.active) {
+      const newBoundaries = getNewBoundaries({ period, selection });
+
+      onCompare(newBoundaries);
+    }
+  };
+
+  const hanleToggleComparison = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const active = e.target.checked;
+
+    if (active) {
+      setPreviousSelection({
+        from: selection.from,
+        until: selection.until,
+        leftFrom: selection.left.from,
+        leftTo: selection.left.to,
+        rightFrom: selection.right.from,
+        rightTo: selection.right.to,
+      });
+
+      const newBoundaries = getNewBoundaries({ period, selection });
+
+      onCompare(newBoundaries);
+    } else if (previousSelection) {
+      onCompare(previousSelection);
+    }
+
+    setComparisonMode({
+      ...comparisonMode,
+      active,
     });
   };
 
@@ -160,7 +162,14 @@ export default function SideTimelineComparator({
 
   return (
     <div className={styles.wrapper} ref={refContainer}>
-      <span className={styles.caption}>Set to&nbsp;&nbsp;</span>
+      <span className={styles.caption}>
+        <input
+          onChange={hanleToggleComparison}
+          checked={active}
+          type="checkbox"
+          className={styles.toggleCompare}
+        />
+      </span>
       <Button
         data-testid="open-comparator-button"
         onClick={() => setMenuVisible(!menuVisible)}
@@ -184,7 +193,7 @@ export default function SideTimelineComparator({
               <PopoverBody className={styles.body}>
                 <div className={styles.subtitle}>Set baseline to:</div>
                 <div className={styles.buttons}>
-                  {buttons.map((arr, i) => {
+                  {comparisonPeriods.map((arr, i) => {
                     return (
                       <div
                         key={`preset-${i + 1}`}
@@ -202,7 +211,7 @@ export default function SideTimelineComparator({
                               key={b.label}
                               data-testid={b.label}
                               onClick={() => {
-                                handleClick(b);
+                                handleSelectPeriod(b);
                               }}
                               className={styles.priorButton}
                             >

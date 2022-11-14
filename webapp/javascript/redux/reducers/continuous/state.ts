@@ -65,6 +65,14 @@ type ComparisonView = {
     | { type: 'loading'; profile?: Profile }
     | { type: 'loaded'; profile: Profile }
     | { type: 'reloading'; profile: Profile };
+
+  comparisonMode: {
+    active: boolean;
+    period: {
+      label: string;
+      ms: number;
+    };
+  };
 };
 
 type DiffView =
