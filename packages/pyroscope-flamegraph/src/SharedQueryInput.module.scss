@@ -2,15 +2,20 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  flex-grow: 1;
+  max-width: 300px;
 }
 
 .search {
   background: var(--ps-immutable-off-white);
   transition: background-color ease-out 0.1s;
   font: inherit;
-  margin-right: 8px;
+  margin-right: 1.5px;
   border: 1px solid var(--ps-ui-border);
-  width: 300px;
+  display: flex;
+  flex-grow: 1;
+  height: 37px;
+  width: 100%;
 
   &,
   &::placeholder {
@@ -38,7 +43,7 @@
 }
 
 .search-small {
-  width: 150px;
+  width: 100%;
 }
 
 .icon {
