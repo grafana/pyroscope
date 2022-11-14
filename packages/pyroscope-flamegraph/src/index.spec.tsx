@@ -323,7 +323,7 @@ describe.only('positions', () => {
 
       expect(getByTestId('table-ui')).toBeInTheDocument();
       expect(getByTestId('flamegraph-view')).toBeInTheDocument();
-      expect(queryByRole('combobox', { name: 'view' })).toBeInTheDocument();
+      expect(queryByRole('button', { name: 'View Mode' })).toBeInTheDocument();
     });
 
     it('should restrict changing view when "onlyDisplay" is set', () => {

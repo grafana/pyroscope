@@ -3,6 +3,53 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.58.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.58.2...@pyroscope/webapp@1.58.3) (2022-11-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.58.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.58.1...@pyroscope/webapp@1.58.2) (2022-11-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.58.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.58.0...@pyroscope/webapp@1.58.1) (2022-11-11)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.58.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.57.1...@pyroscope/webapp@1.58.0) (2022-11-10)
+
+
+### Features
+
+* **flamegraph:** Redesign flamegraph toolbar to allow for more interactions ([#1674](https://github.com/pyroscope-io/pyroscope/issues/1674)) ([646501a](https://github.com/pyroscope-io/pyroscope/commit/646501a3816df6f069454213ac7884198f35cd0b))
+
+
+
+
+
+## [1.57.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.57.0...@pyroscope/webapp@1.57.1) (2022-11-10)
+
+
+### Bug Fixes
+
+* add TagsBar component to exemplars single view ([#1696](https://github.com/pyroscope-io/pyroscope/issues/1696)) ([8817502](https://github.com/pyroscope-io/pyroscope/commit/88175023c0db3756a726034b2ea7a5df32a3d25e))
+* heatmap y-axis value with "<" ([#1694](https://github.com/pyroscope-io/pyroscope/issues/1694)) ([76e5748](https://github.com/pyroscope-io/pyroscope/commit/76e574870829082a56963d82c2ede049bba743eb))
+
+
+
+
+
 # [1.57.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.56.9...@pyroscope/webapp@1.57.0) (2022-11-09)
 
 

@@ -258,6 +258,7 @@ class FlameGraphRenderer extends Component<
         ...this.state.flamegraphConfigs,
         ...this.initialFlamegraphState,
       },
+      selectedItem: Maybe.nothing(),
     });
   };
 
@@ -310,6 +311,7 @@ class FlameGraphRenderer extends Component<
 
   setActiveItem = (item: { name: string }) => {
     const { name } = item;
+    this.setState({ isFlamegraphDirty: true });
 
     // if clicking on the same item, undo the search
     if (this.state.selectedItem.isJust) {
@@ -318,7 +320,6 @@ class FlameGraphRenderer extends Component<
           selectedItem: Maybe.nothing(),
         });
         return;
-        //        name = '';
       }
     }
 
@@ -426,6 +427,7 @@ class FlameGraphRenderer extends Component<
         selectedItem={this.state.selectedItem}
         updateView={this.updateView}
         fitMode={this.state.fitMode}
+        updateFitMode={this.updateFitMode}
         zoom={this.state.flamegraphConfigs.zoom}
         focusedNode={this.state.flamegraphConfigs.focusedNode}
         onZoom={this.onFlamegraphZoom}
@@ -443,7 +445,6 @@ class FlameGraphRenderer extends Component<
     );
 
     const sandwichPane = (() => {
-      console.log(this.state.panesOrientation);
       if (this.state.selectedItem.isNothing) {
         return (
           <div className={styles.sandwichPane} key="sandwich-pane">
@@ -482,6 +483,7 @@ class FlameGraphRenderer extends Component<
           setActiveItem={this.setActiveItem}
           selectedItem={this.state.selectedItem}
           fitMode={this.state.fitMode}
+          updateFitMode={this.updateFitMode}
           zoom={this.state.flamegraphConfigs.zoom}
           focusedNode={this.state.flamegraphConfigs.focusedNode}
           onZoom={this.onFlamegraphZoom}
