@@ -258,6 +258,7 @@ class FlameGraphRenderer extends Component<
         ...this.state.flamegraphConfigs,
         ...this.initialFlamegraphState,
       },
+      selectedItem: Maybe.nothing(),
     });
   };
 
@@ -310,6 +311,7 @@ class FlameGraphRenderer extends Component<
 
   setActiveItem = (item: { name: string }) => {
     const { name } = item;
+    this.setState({ isFlamegraphDirty: true });
 
     // if clicking on the same item, undo the search
     if (this.state.selectedItem.isJust) {
@@ -318,7 +320,6 @@ class FlameGraphRenderer extends Component<
           selectedItem: Maybe.nothing(),
         });
         return;
-        //        name = '';
       }
     }
 
@@ -443,14 +444,18 @@ class FlameGraphRenderer extends Component<
     );
 
     const sandwichPane = (() => {
-      // TODO(dogfrogfog): remove when new toolbar is ready
-      return <></>;
-
       if (this.state.selectedItem.isNothing) {
         return (
           <div className={styles.sandwichPane} key="sandwich-pane">
-            <div className={styles.sandwichPaneInfo}>
-              <div className={styles.arrowLeft} />
+            <div
+              className={clsx(
+                styles.sandwichPaneInfo,
+                this.state.panesOrientation === 'vertical'
+                  ? styles.vertical
+                  : styles.horizontal
+              )}
+            >
+              <div className={styles.arrow} />
               Select a function to view callers/callees sandwich view
             </div>
           </div>
@@ -459,13 +464,11 @@ class FlameGraphRenderer extends Component<
 
       const callersFlamebearer = callersProfile(
         this.state.flamebearer,
-        // TODO(dogfrogfog): change empty string to this.state.selectedItem.value when new toolbar is ready
-        '' // this.state.selectedItem.value
+        this.state.selectedItem.value
       );
       const calleesFlamebearer = calleesProfile(
         this.state.flamebearer,
-        // TODO(dogfrogfog): change empty string to this.state.selectedItem.value when new toolbar is ready
-        '' // this.state.selectedItem.value
+        this.state.selectedItem.value
       );
       const sandwitchGraph = (myCustomParams: {
         flamebearer: Flamebearer;

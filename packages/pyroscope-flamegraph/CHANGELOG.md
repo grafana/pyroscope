@@ -3,6 +3,68 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.27.0...@pyroscope/flamegraph@0.28.0) (2022-11-11)
+
+
+### Features
+
+* enable "reset view" button when table item is highlighted ([#1703](https://github.com/pyroscope-io/pyroscope/issues/1703)) ([7b1bfd5](https://github.com/pyroscope-io/pyroscope/commit/7b1bfd55a3d6186877104e7e164323ee9a4d4f34))
+
+
+
+
+
+# [0.27.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.26.0...@pyroscope/flamegraph@0.27.0) (2022-11-10)
+
+
+### Features
+
+* **flamegraph:** Redesign flamegraph toolbar to allow for more interactions ([#1674](https://github.com/pyroscope-io/pyroscope/issues/1674)) ([646501a](https://github.com/pyroscope-io/pyroscope/commit/646501a3816df6f069454213ac7884198f35cd0b))
+
+
+
+
+
+# [0.26.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.4...@pyroscope/flamegraph@0.26.0) (2022-11-09)
+
+
+### Bug Fixes
+
+* sandwich view prompt in comparison view ([#1688](https://github.com/pyroscope-io/pyroscope/issues/1688)) ([5f32774](https://github.com/pyroscope-io/pyroscope/commit/5f3277411c28988d811fa23f1029ff556a434578))
+
+
+### Features
+
+* disable sandwich view for diff page ([#1693](https://github.com/pyroscope-io/pyroscope/issues/1693)) ([b47b441](https://github.com/pyroscope-io/pyroscope/commit/b47b4411b97167c4d1b85543c0b062f0358310c2))
+
+
+
+
+
+## [0.25.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.3...@pyroscope/flamegraph@0.25.4) (2022-11-09)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.25.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.2...@pyroscope/flamegraph@0.25.3) (2022-11-08)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.25.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.1...@pyroscope/flamegraph@0.25.2) (2022-11-06)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 ## [0.25.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.25.0...@pyroscope/flamegraph@0.25.1) (2022-11-02)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

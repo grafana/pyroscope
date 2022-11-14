@@ -39,10 +39,31 @@ type SingleView =
 // TODO
 
 type ExemplarsSingleView =
-  | { type: 'pristine'; heatmap?: Heatmap | null; profile?: Profile }
-  | { type: 'loading'; heatmap?: Heatmap | null; profile?: Profile }
-  | { type: 'loaded'; heatmap: Heatmap | null; profile?: Profile }
-  | { type: 'reloading'; heatmap: Heatmap | null; profile?: Profile };
+  | {
+      type: 'pristine';
+      heatmap?: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    }
+  | {
+      type: 'loading';
+      heatmap?: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    }
+  | {
+      type: 'loaded';
+      heatmap: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    }
+  | {
+      type: 'reloading';
+      heatmap: Heatmap | null;
+      profile?: Profile;
+      selectionProfile?: Profile;
+    };
+
 interface TracingState {
   queryID: string;
   maxNodes: string;
@@ -110,7 +131,6 @@ export const fetchExemplarsSingleView = createAsyncThunk<
   exemplarsSingleViewAbortController = new AbortController();
   thunkAPI.signal = exemplarsSingleViewAbortController.signal;
 
-  // think of getting params from store
   const res = await getHeatmap(
     heatmapProps,
     exemplarsSingleViewAbortController
@@ -329,7 +349,8 @@ export const tracingSlice = createSlice({
 
     builder.addCase(fetchSelectionProfile.fulfilled, (state, action) => {
       state.exemplarsSingleView.type = 'loaded';
-      state.exemplarsSingleView.profile = action.payload.profile;
+      state.exemplarsSingleView.selectionProfile =
+        action.payload.selectionProfile;
     });
 
     builder.addCase(fetchSelectionProfile.rejected, (state, action) => {

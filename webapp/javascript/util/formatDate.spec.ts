@@ -1,4 +1,8 @@
-import { readableRange, formatAsOBject } from '@webapp/util/formatDate';
+import {
+  readableRange,
+  formatAsOBject,
+  toUnixTimestamp,
+} from '@webapp/util/formatDate';
 import * as dateFns from 'date-fns';
 import timezoneMock from 'timezone-mock';
 
@@ -106,6 +110,17 @@ describe('FormatDate', () => {
       expect(formatAsOBject('1624192489001999999')).toEqual(
         new Date('2021-06-20T12:34:49.002Z')
       );
+    });
+  });
+
+  describe('toUnixTimestamp', () => {
+    it('works', () => {
+      expect(toUnixTimestamp(new Date('2021-06-20T12:34:49.002Z'))).toBe(
+        1624192489
+      );
+
+      // epoch
+      expect(toUnixTimestamp(new Date(0))).toBe(0);
     });
   });
 });

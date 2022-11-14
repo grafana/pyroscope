@@ -18,7 +18,7 @@ import ContextMenuHighlight from './ContextMenuHighlight';
 import FlamegraphTooltip from '../../Tooltip/FlamegraphTooltip';
 import ContextMenu from './ContextMenu';
 import LogoLink from './LogoLink';
-import SandwichIcon from '../../SandwichIcon';
+import { SandwichIcon } from '../../Icons';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
@@ -232,7 +232,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             className={indexStyles.sandwichItem}
             onClick={handleClick}
           >
-            <SandwichIcon />
+            <SandwichIcon fill="black" />
             Open in sandwich view
           </MenuItem>
         );

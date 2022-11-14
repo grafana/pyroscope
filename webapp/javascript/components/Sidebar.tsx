@@ -9,10 +9,9 @@ import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
 import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
-import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
-import { faChartLine } from '@fortawesome/free-solid-svg-icons/faChartLine';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
 import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
+
 import Sidebar, {
   MenuItem,
   SidebarHeader,
@@ -34,6 +33,11 @@ import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
+import {
+  AdhocIcon,
+  ExemplarsIcon,
+  MergeExemplarsIcon,
+} from './SidebarCustomIcons';
 import styles from './Sidebar.module.css';
 import { PAGES } from '../pages/constants';
 import { mountURL } from '../services/base';
@@ -113,7 +117,7 @@ export function SidebarComponent() {
   const adhoc = (
     <SubMenu
       title="Adhoc Profiling"
-      icon={<Icon icon={faHandPointRight} />}
+      icon={<AdhocIcon />}
       active={isAdhocActive}
       defaultOpen={isAdhocActive}
       data-testid="sidebar-adhoc"
@@ -228,7 +232,7 @@ export function SidebarComponent() {
           {isTracingActive && (
             <SubMenu
               title="Tracing Exemplars"
-              icon={<Icon icon={faChartLine} />}
+              icon={<ExemplarsIcon />}
               active={isTracingActive}
               defaultOpen={isTracingActive}
             >
@@ -239,7 +243,7 @@ export function SidebarComponent() {
               )}
               <MenuItem
                 active={isRouteActive(PAGES.TRACING_EXEMPLARS_SINGLE)}
-                icon={<Icon icon={faWindowMaximize} />}
+                icon={<ExemplarsIcon />}
               >
                 Exemplars
                 <NavLink
@@ -250,7 +254,7 @@ export function SidebarComponent() {
               </MenuItem>
               <MenuItem
                 active={isRouteActive(PAGES.TRACING_EXEMPLARS_MERGE)}
-                icon={<Icon icon={faWindowMaximize} />}
+                icon={<MergeExemplarsIcon />}
               >
                 Merge Exemplars
                 <NavLink

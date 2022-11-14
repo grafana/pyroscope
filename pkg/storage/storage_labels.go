@@ -84,6 +84,7 @@ func (s *Storage) GetValuesByQuery(_ context.Context, in GetLabelValuesByQueryIn
 }
 
 // GetAppNames returns the list of all app's names
+// It works by querying the __name__ label
 func (s *Storage) GetAppNames(ctx context.Context) []string {
 	appNames := make([]string, 0)
 
