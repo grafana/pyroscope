@@ -302,22 +302,6 @@ body,
   }
 }
 
-.viz-switch {
-  .btn {
-    padding-left: 12px;
-    padding-right: 12px;
-    border: none;
-    &.active {
-      background-color: var(--ps-green-primary);
-      color: #222;
-    }
-  }
-
-  & + .viz-switch {
-    margin-left: 10px;
-  }
-}
-
 .navbar-space-filler {
   flex-grow: 1;
 }
