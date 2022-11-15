@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.31.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.30.1...@pyroscope/flamegraph@0.31.0) (2022-11-15)
+
+
+### Features
+
+* **webapp:** Make explore page show precise numbers in table ([#1695](https://github.com/pyroscope-io/pyroscope/issues/1695)) ([5b47c71](https://github.com/pyroscope-io/pyroscope/commit/5b47c71b6a1e85c39b4ac21b1eaeddf85bad0d94))
+
+
+
+
+
 ## [0.30.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.30.0...@pyroscope/flamegraph@0.30.1) (2022-11-15)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
