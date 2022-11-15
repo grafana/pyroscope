@@ -1,5 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-import { add, format } from 'date-fns';
+import { add, format, getUnixTime } from 'date-fns';
 
 const multiplierMapping = new Map(
   Object.entries({
@@ -130,4 +130,11 @@ export function timezoneToOffset(timezone: 'utc' | 'browser'): number {
   // FIXME: this does not account for arbitrary timezones
   // eg one that is not the user's browser
   return new Date().getTimezoneOffset();
+}
+
+/**
+ * given a Date returns its representation in unix timestamp
+ */
+export function toUnixTimestamp(d: Date) {
+  return getUnixTime(d);
 }

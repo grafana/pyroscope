@@ -11,8 +11,6 @@ import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 // this is just to guarantee code is compiling
 // and the callbacks are being called correctly
 describe('FlamegraphComponent', () => {
-  const ExportData = <div>ExportData</div>;
-
   const setPalette = (p: FlamegraphPalette) => {};
   it('renders', () => {
     const onZoom = jest.fn();
@@ -22,6 +20,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        updateFitMode={() => ({})}
         selectedItem={Maybe.nothing()}
         setActiveItem={() => ({})}
         showCredit
@@ -34,7 +33,6 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
-        ExportData={ExportData}
         palette={DefaultPalette}
         setPalette={setPalette}
       />
@@ -49,6 +47,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        updateFitMode={() => ({})}
         selectedItem={Maybe.nothing()}
         setActiveItem={() => ({})}
         showCredit
@@ -61,7 +60,6 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
-        ExportData={ExportData}
         palette={DefaultPalette}
         setPalette={setPalette}
       />
@@ -87,6 +85,7 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
+        updateFitMode={() => ({})}
         selectedItem={Maybe.nothing()}
         setActiveItem={() => ({})}
         showCredit
@@ -99,7 +98,6 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
-        ExportData={ExportData}
         palette={DefaultPalette}
         setPalette={setPalette}
       />
@@ -122,6 +120,7 @@ describe('FlamegraphComponent', () => {
 
       const { rerender } = render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -134,7 +133,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
         />
@@ -158,6 +156,7 @@ describe('FlamegraphComponent', () => {
 
       rerender(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -170,7 +169,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
         />
@@ -194,6 +192,7 @@ describe('FlamegraphComponent', () => {
 
       render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -206,7 +205,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
         />
@@ -236,6 +234,7 @@ describe('FlamegraphComponent', () => {
     it('renders when type is single', () => {
       render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -248,7 +247,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
           toolbarVisible
@@ -258,13 +256,13 @@ describe('FlamegraphComponent', () => {
       expect(screen.queryByRole('heading', { level: 2 })).toHaveTextContent(
         'Frame width represents CPU time per function'
       );
-      expect(screen.getByText('ExportData')).toBeInTheDocument();
     });
 
     it('renders when type is "double"', () => {
       const flamebearer = TestData.DiffTree;
       render(
         <FlamegraphComponent
+          updateFitMode={() => ({})}
           selectedItem={Maybe.nothing()}
           setActiveItem={() => ({})}
           showCredit
@@ -277,7 +275,6 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={flamebearer}
-          ExportData={ExportData}
           palette={DefaultPalette}
           setPalette={setPalette}
           toolbarVisible
@@ -289,7 +286,6 @@ describe('FlamegraphComponent', () => {
       );
 
       expect(screen.getByTestId('flamegraph-legend')).toBeInTheDocument();
-      expect(screen.getByText('ExportData')).toBeInTheDocument();
     });
   });
 });

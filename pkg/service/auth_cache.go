@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
@@ -75,7 +75,7 @@ func (c *cache) put(k string, v interface{}) {
 
 func (c *cache) get(k string) (interface{}, bool) {
 	x, found := c.c.Get(k)
-	if found {
+	if !found {
 		return nil, false
 	}
 	if v, ok := x.(cachedItem); ok && time.Since(v.created) < c.ttl {

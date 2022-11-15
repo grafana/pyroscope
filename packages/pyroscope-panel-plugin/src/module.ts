@@ -5,8 +5,6 @@ import { SimpleOptions } from './types';
 import { SimplePanel } from './SimplePanel';
 import '@pyroscope/flamegraph/dist/index.css';
 import './styles.css';
-// TODO: this should NOT be required, let's refactor
-import '@pyroscope/webapp/sass/profile.scss';
 
 // Since our webpack config generates a single css file
 // We have to load it somehow
@@ -21,11 +19,27 @@ loadPluginCss({
 export const plugin = new PanelPlugin<SimpleOptions>(
   SimplePanel
 ).setPanelOptions((builder) => {
-  return builder.addBooleanSwitch({
-    description:
-      'Whether to show the toolbar. Keep in mind most of the same functionality can be accessed by right-clicking the flamegraph.',
-    path: 'showToolbar',
-    name: 'Show toolbar',
-    defaultValue: false,
-  });
+  return builder
+    .addBooleanSwitch({
+      description:
+        'Whether to show the toolbar. Keep in mind most of the same functionality can be accessed by right-clicking the flamegraph.',
+      path: 'showToolbar',
+      name: 'Show toolbar',
+      defaultValue: false,
+    })
+    .addSelect({
+      path: 'displayOnly',
+      name: 'Display only',
+      description: 'Only display a single view, not allowing to change',
+      defaultValue: 'flamegraph',
+      settings: {
+        options: [
+          { value: 'flamegraph', label: 'Flamegraph' },
+          { value: 'table', label: 'Table' },
+          { value: 'both', label: 'Flamegraph + Table' },
+          { value: 'sandwich', label: 'Sandwich' },
+          { value: 'off', label: 'Off' },
+        ],
+      },
+    });
 });

@@ -2,17 +2,16 @@ const BAR_HEIGHT = 21.5;
 
 // / <reference types="cypress" />
 describe('basic test', () => {
-  it('changes app via the application dropdown', () => {
+  beforeEach(function () {
     const basePath = Cypress.env('basePath') || '';
-    // While the initial values come from the backend
-    // We refresh it here so that we can mock with specific values
+
     cy.intercept(`${basePath}/api/apps`, {
       fixture: 'appNames.json',
     }).as('appNames');
+  });
 
+  it('changes app via the application dropdown', () => {
     cy.visit('/');
-
-    cy.findByLabelText(/Refresh apps/i).click();
     cy.wait(`@appNames`);
 
     cy.get('.navbar').findAllByTestId('toggler').click();
@@ -42,15 +41,18 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByRole('combobox', { name: 'view' }).select('Table');
+    cy.findByRole('button', { name: /View Mode/ }).click();
+    cy.findByRole('menuitem', { name: 'Table' }).click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 
-    cy.findByRole('combobox', { name: 'view' }).select('Both');
+    cy.findByRole('button', { name: /View Mode/ }).click();
+    cy.findByRole('menuitem', { name: 'Table and Flamegraph' }).click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
-    cy.findByRole('combobox', { name: 'view' }).select('Flame');
+    cy.findByRole('button', { name: /View Mode/ }).click();
+    cy.findByRole('menuitem', { name: 'Flamegraph' }).click();
     cy.findByTestId('table-ui').should('not.exist');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
@@ -144,11 +146,11 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByTestId('reset-view').should('be.disabled');
+    cy.findByRole('button', { name: /Reset/ }).should('be.disabled');
     cy.waitForFlamegraphToRender().click(0, BAR_HEIGHT * 2);
-    cy.findByTestId('reset-view').should('not.be.disabled');
-    cy.findByTestId('reset-view').click();
-    cy.findByTestId('reset-view').should('be.disabled');
+    cy.findByRole('button', { name: /Reset/ }).should('not.be.disabled');
+    cy.findByRole('button', { name: /Reset/ }).click();
+    cy.findByRole('button', { name: /Reset/ }).should('be.disabled');
   });
 
   describe('tooltip', () => {

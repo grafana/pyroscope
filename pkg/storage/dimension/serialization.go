@@ -12,6 +12,9 @@ import (
 const currentVersion = 1
 
 func (s *Dimension) Serialize(w io.Writer) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+
 	_, err := varint.Write(w, currentVersion)
 	if err != nil {
 		return err

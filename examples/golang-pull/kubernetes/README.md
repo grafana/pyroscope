@@ -20,12 +20,10 @@ helm repo add pyroscope-io https://pyroscope-io.github.io/helm-chart
 helm install demo pyroscope-io/pyroscope -f values.yaml
 ```
 
-Note that we apply configuration defined in `values.yaml`: Pyroscope uses exactly the same discovery mechanisms as
+Note that we apply configuration defined in `values.yaml`: Pyroscope uses the same discovery mechanisms as
 Prometheus does in order to ensure smooth user experience, and it fully supports
-[Kubernetes Service Discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config):
+[Kubernetes Service Discovery](https://pyroscope.io/docs/golang-pull-mode/#kubernetes-service-discovery):
 
-<details>
-    <summary>values.yaml</summary>
 
 ```yaml
 ---
@@ -69,8 +67,6 @@ pyroscopeConfigs:
         regex: __meta_kubernetes_pod_annotation_pyroscope_io_profile_(.+)
         replacement: __profile_$1
 ```
-
-</details>
 
 ### 3. Deploy Hot R.O.D. application
 

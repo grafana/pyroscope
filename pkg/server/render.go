@@ -247,10 +247,13 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 	}
 
 	p.maxNodes = rh.maxNodesDefault
-	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn > 0 {
+	if newMaxNodes, ok := MaxNodesFromContext(r.Context()); ok {
+		p.maxNodes = newMaxNodes
+	}
+	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn != 0 {
 		p.maxNodes = mn
 	}
-	if mn, err := strconv.Atoi(v.Get("maxNodes")); err == nil && mn > 0 {
+	if mn, err := strconv.Atoi(v.Get("maxNodes")); err == nil && mn != 0 {
 		p.maxNodes = mn
 	}
 

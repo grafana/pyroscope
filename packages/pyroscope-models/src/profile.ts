@@ -26,6 +26,7 @@ export const units = [
   'lock_samples',
   'lock_nanoseconds',
   'trace_samples',
+  'exceptions',
 ];
 
 // accept the defined units
@@ -37,7 +38,7 @@ export const UnitsSchema = z.preprocess((u) => {
     }
   }
   return '';
-}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', 'trace_samples', '']));
+}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', 'trace_samples', 'exceptions', '']));
 
 export const MetadataSchema = z.object({
   // Optional fields since adhoc may be missing them

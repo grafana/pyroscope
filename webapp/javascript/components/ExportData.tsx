@@ -2,14 +2,14 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import OutsideClickHandler from 'react-outside-click-handler';
-
+import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import Button from '@webapp/ui/Button';
-import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
+import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
 import { buildRenderURL } from '@webapp/util/updateRequests';
 import { convertPresetsToDate } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models/src';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import showModalWithInput from './Modals/ModalWithInput';
-
 import styles from './ExportData.module.scss';
 
 // These are modeled individually since each condition may have different values
@@ -286,7 +286,14 @@ function ExportData(props: ExportDataProps) {
   return (
     <div className={styles.dropdownContainer}>
       <OutsideClickHandler onOutsideClick={() => setToggleMenu(false)}>
-        <Button icon={faBars} onClick={handleToggleMenu} />
+        <Tooltip placement="top" title="Export Data">
+          <Button
+            className={styles.toggleMenuButton}
+            onClick={handleToggleMenu}
+          >
+            <FontAwesomeIcon icon={faShareSquare} />
+          </Button>
+        </Tooltip>
         <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
           {exportPNG && (
             <button

@@ -12,13 +12,13 @@ import (
 
 // Migrate executes all migrations UP that did not run yet.
 //
-// 1. Migrations must be backward compatible and only extend the schema.
-// 2. Migration ID must be a unix epoch time in seconds (use 'date +%s').
-// 3. Although in the current shape schema downgrades are not supported,
-//    Rollback function must be also provided, and migrations must not import
-//    any models in order to avoid side effects: instead, the type should be
-//    explicitly defined within the migration body.
-// 4. Migration code must be tested within the corresponding service package.
+//  1. Migrations must be backward compatible and only extend the schema.
+//  2. Migration ID must be a unix epoch time in seconds (use 'date +%s').
+//  3. Although in the current shape schema downgrades are not supported,
+//     Rollback function must be also provided, and migrations must not import
+//     any models in order to avoid side effects: instead, the type should be
+//     explicitly defined within the migration body.
+//  4. Migration code must be tested within the corresponding service package.
 //
 // A note on schema downgrades (not supported yet):
 //
@@ -30,11 +30,11 @@ import (
 // v0.4.4 can't know which actions should be taken to revert the database from
 // v0.4.5, but not vice-versa (unless they use the same source of migration
 // scripts). There are some options:
-//  - Changes can be reverted with the later version (that is installed before
-//    the application downgrade) or with an independent tool – in containerized
-//    deployments this can cause significant difficulties.
-//  - Store migrations (as raw SQL scripts) in the database itself or elsewhere
-//    locally/remotely.
+//   - Changes can be reverted with the later version (that is installed before
+//     the application downgrade) or with an independent tool – in containerized
+//     deployments this can cause significant difficulties.
+//   - Store migrations (as raw SQL scripts) in the database itself or elsewhere
+//     locally/remotely.
 //
 // Before we have a very strong reason to perform a schema downgrade or violate
 // the schema backward compatibility guaranties, we should follow the basic
@@ -50,6 +50,7 @@ func Migrate(db *gorm.DB, c *config.Server) error {
 		createAPIKeyTableMigration(),
 		createAnnotationsTableMigration(),
 		addIndexesUniqueTableMigration(),
+		createApplicationMetadataTableMigration(),
 	}).Migrate()
 }
 
@@ -147,6 +148,29 @@ func addIndexesUniqueTableMigration() *gormigrate.Migration {
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Migrator().DropIndex(&annotation{}, "idx_appname_timestamp")
+		},
+	}
+}
+
+func createApplicationMetadataTableMigration() *gormigrate.Migration {
+	type applicationMetadata struct {
+		ID              uint   `gorm:"primarykey"`
+		FQName          string `gorm:"uniqueIndex;not null;default:null"`
+		SpyName         string
+		SampleRate      uint32
+		Units           string
+		AggregationType string
+		CreatedAt       time.Time
+		UpdatedAt       time.Time
+	}
+
+	return &gormigrate.Migration{
+		ID: "1667213046",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.AutoMigrate(&applicationMetadata{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Migrator().DropTable(&applicationMetadata{})
 		},
 	}
 }
