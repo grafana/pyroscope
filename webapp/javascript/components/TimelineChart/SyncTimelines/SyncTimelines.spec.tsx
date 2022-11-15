@@ -1,7 +1,8 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import SyncTimelines from './index';
-import { getTitle, getSelectionBoundaries } from './useSync';
+import { getTitle } from './useSync';
+import { getSelectionBoundaries } from './getSelectionBoundaries';
 import { Selection } from '../markings';
 
 const from = 1666790156;
@@ -29,6 +30,7 @@ const propsWhenActive = {
     from: '1666791459',
     to: String(to),
   },
+  comparisonModeActive: false,
 };
 
 const propsWhenHidden = {
@@ -51,6 +53,7 @@ const propsWhenHidden = {
     from: '1666779140',
     to: '1666779296',
   },
+  comparisonModeActive: false,
 };
 
 const { getByRole, queryByText } = screen;

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { fetchAppNames } from '@webapp/services/appNames';
 import { Query } from '@webapp/models/query';
+import { defaultcomparisonPeriod } from '@webapp/components/SideTimelineComparator/periods';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 import { ContinuousState, TagsState } from './continuous/state';
@@ -30,6 +31,10 @@ const initialState: ContinuousState = {
   comparisonView: {
     left: { type: 'pristine' },
     right: { type: 'pristine' },
+    comparisonMode: {
+      active: false,
+      period: defaultcomparisonPeriod,
+    },
   },
   tags: {},
   tagExplorerView: {
@@ -158,6 +163,10 @@ export const continuousSlice = createSlice({
 
     refresh(state) {
       state.refreshToken = Math.random().toString();
+    },
+
+    setComparisonMode(state, action) {
+      state.comparisonView.comparisonMode = action.payload;
     },
   },
 

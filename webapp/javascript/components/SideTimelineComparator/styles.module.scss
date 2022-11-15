@@ -1,0 +1,132 @@
+.wrapper {
+  position: relative;
+}
+
+.menu {
+  width: 350px;
+}
+
+.caption {
+  font-weight: bold;
+  font-size: 14px;
+
+  @media (max-width: 1300px) {
+    display: none;
+  }
+}
+
+.openButtonIcon {
+  margin-left: 5px;
+  height: 14px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 15px;
+  justify-content: space-between;
+
+  .buttonsCol {
+    display: flex;
+    flex-direction: column;
+    width: calc(50% - 4px);
+  }
+}
+
+.priorButton {
+  margin-bottom: 5px;
+}
+
+.hidden {
+  display: none;
+}
+
+.subtitle {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 5px;
+
+  .periodLabel {
+    border-bottom: 1px solid white;
+  }
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+  padding-bottom: 40px;
+
+  .timeline {
+    background-color: black;
+    height: 40px;
+    border: 1px solid grey;
+    width: 100%;
+
+    .timelineBox {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: row;
+      position: relative;
+
+      .selection {
+        background-color: green;
+        height: 100%;
+        position: absolute;
+      }
+    }
+  }
+
+  .legend {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+    position: absolute;
+    top: 40px;
+
+    .legendLine {
+      width: 100%;
+      background-color: white;
+      height: 1px;
+      position: relative;
+
+      &::before {
+        content: '';
+        width: 1px;
+        height: 12px;
+        background-color: white;
+        position: absolute;
+        left: 0;
+        top: -5px;
+      }
+
+      &::after {
+        content: '';
+        width: 1px;
+        height: 12px;
+        background-color: white;
+        position: absolute;
+        right: 0;
+        top: -5px;
+      }
+    }
+
+    .legendCaption {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+  }
+}
+
+.toggleCompare {
+  margin-right: 10px;
+}
