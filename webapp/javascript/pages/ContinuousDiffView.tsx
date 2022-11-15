@@ -143,6 +143,7 @@ function ComparisonDiffApp() {
               title={<ChartTitle titleKey={diffView.profile?.metadata.units} />}
             />
             <SyncTimelines
+              isDataLoading={isLoading}
               timeline={leftTimeline}
               leftSelection={{ from: leftFrom, to: leftUntil }}
               rightSelection={{ from: rightFrom, to: rightUntil }}

@@ -17,6 +17,7 @@ interface SyncTimelinesProps {
   };
   onSync: (from: string, until: string) => void;
   comparisonModeActive?: boolean;
+  isDataLoading?: boolean;
 }
 
 function SyncTimelines({
@@ -25,6 +26,7 @@ function SyncTimelines({
   rightSelection,
   onSync,
   comparisonModeActive = false,
+  isDataLoading = false,
 }: SyncTimelinesProps) {
   const { isWarningHidden, onIgnore, title, onSyncClick } = useSync({
     timeline,
@@ -33,7 +35,7 @@ function SyncTimelines({
     onSync,
   });
 
-  if (isWarningHidden || comparisonModeActive) {
+  if (isWarningHidden || comparisonModeActive || isDataLoading) {
     return null;
   }
 

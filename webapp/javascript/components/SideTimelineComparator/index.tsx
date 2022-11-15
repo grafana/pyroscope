@@ -162,14 +162,12 @@ export default function SideTimelineComparator({
 
   return (
     <div className={styles.wrapper} ref={refContainer}>
-      <span className={styles.caption}>
-        <input
-          onChange={hanleToggleComparison}
-          checked={active}
-          type="checkbox"
-          className={styles.toggleCompare}
-        />
-      </span>
+      <input
+        onChange={hanleToggleComparison}
+        checked={active}
+        type="checkbox"
+        className={styles.toggleCompare}
+      />
       <Button
         data-testid="open-comparator-button"
         onClick={() => setMenuVisible(!menuVisible)}
@@ -183,7 +181,7 @@ export default function SideTimelineComparator({
       <span className={styles.caption}>&nbsp;&nbsp;to comparison</span>
       <Portal container={refContainer.current}>
         <Popover
-          anchorPoint={{ x: 'calc(100% - 300px)', y: 42 }}
+          anchorPoint={{ x: 'calc(100% - 350px)', y: 42 }}
           isModalOpen
           setModalOpenStatus={() => setMenuVisible(false)}
           className={cx({ [styles.menu]: true, [styles.hidden]: !menuVisible })}
@@ -191,7 +189,11 @@ export default function SideTimelineComparator({
           {menuVisible ? (
             <>
               <PopoverBody className={styles.body}>
-                <div className={styles.subtitle}>Set baseline to:</div>
+                <div className={styles.subtitle}>
+                  Set baseline&nbsp;
+                  <span className={styles.periodLabel}>{period.label}</span>
+                  &nbsp;to comparison
+                </div>
                 <div className={styles.buttons}>
                   {comparisonPeriods.map((arr, i) => {
                     return (

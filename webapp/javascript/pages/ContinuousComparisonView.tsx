@@ -208,6 +208,7 @@ function ComparisonApp() {
               selectionType="double"
             />
             <SyncTimelines
+              isDataLoading={isLoading}
               comparisonModeActive={comparisonMode.active}
               timeline={leftTimeline}
               leftSelection={{ from: leftFrom, to: leftUntil }}

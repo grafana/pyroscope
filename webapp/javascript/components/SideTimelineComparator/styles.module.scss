@@ -3,12 +3,16 @@
 }
 
 .menu {
-  width: 300px;
+  width: 350px;
 }
 
 .caption {
   font-weight: bold;
   font-size: 14px;
+
+  @media (max-width: 1300px) {
+    display: none;
+  }
 }
 
 .openButtonIcon {
@@ -46,6 +50,10 @@
   font-weight: bold;
   font-size: 16px;
   margin-bottom: 5px;
+
+  .periodLabel {
+    border-bottom: 1px solid white;
+  }
 }
 
 .preview {
