@@ -12,6 +12,7 @@ const chartTitleKeys = {
   lock_samples: 'Total number of contended locks',
   diff: 'Baseline vs. Comparison Diff',
   trace_samples: 'Total aggregated span duration',
+  exceptions: 'Total number of exceptions thrown',
 
   baseline: 'Baseline Flamegraph',
   comparison: 'Comparison Flamegraph',

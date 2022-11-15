@@ -41,6 +41,8 @@ export const humanizeUnits = (u: UnitsType) => {
       return 'Lock Nanoseconds';
     case 'trace_samples':
       return 'Trace Samples';
+    case 'exceptions':
+      return 'Exceptions';
   }
 };
 

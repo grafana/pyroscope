@@ -31,6 +31,7 @@ export type Flamebearer = {
     | 'lock_samples'
     | 'lock_nanoseconds'
     | 'trace_samples'
+    | 'exceptions'
     | '';
   spyName: SpyName;
   // format: 'double' | 'single';
