@@ -196,7 +196,7 @@ const tableFormatDouble: {
   { sortable: 1, name: 'name', label: 'Location' },
   { sortable: 1, name: 'baseline', label: 'Baseline', default: true },
   { sortable: 1, name: 'comparison', label: 'Comparison' },
-  { sortable: 1, name: 'diff', label: 'Diff' },
+  { sortable: 0, name: 'diff', label: 'Diff' },
 ];
 
 function Table({
