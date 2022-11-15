@@ -196,7 +196,7 @@ const tableFormatDouble: {
   { sortable: 1, name: 'name', label: 'Location' },
   { sortable: 1, name: 'baseline', label: 'Baseline', default: true },
   { sortable: 1, name: 'comparison', label: 'Comparison' },
-  { sortable: 0, name: 'diff', label: 'Diff' },
+  { sortable: 1, name: 'diff', label: 'Diff' },
 ];
 
 function Table({
@@ -287,6 +287,10 @@ const getTableBody = ({
         );
         break;
       }
+      // todo: add sort for ProfileTable diff column
+      // case 'diff': {
+      //   break;
+      // }
       default:
         sorted = tableBodyCells;
         break;
@@ -316,7 +320,7 @@ const getTableBody = ({
     color: Color,
     style: CSSProperties
   ): BodyRow => ({
-    'data-row': `${x.name};${x.self};${x.total};${x.type}`,
+    'data-row': `${x.type};${x.name};${x.self};${x.total}`,
     isRowSelected: isRowSelected(x.name),
     onClick: () => handleTableItemClick(x),
     cells: [
@@ -362,7 +366,7 @@ const getTableBody = ({
     }
 
     return {
-      'data-row': `${x.name};${x.self};${x.total};${x.type}`,
+      'data-row': `${x.type};${x.name};${x.totalLeft};${x.leftTicks};${x.totalRght};${x.rightTicks}`,
       isRowSelected: isRowSelected(x.name),
       onClick: () => handleTableItemClick(x),
       cells: [
@@ -451,6 +455,7 @@ export default function ProfilerTable({
         numTicks={flamebearer.numTicks}
         sampleRate={flamebearer.sampleRate}
         units={flamebearer.units}
+        palette={palette}
       />
     </>
   );

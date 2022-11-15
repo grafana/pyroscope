@@ -169,7 +169,7 @@ interface Formatter {
   format(samples: number, sampleRate: number): string;
 }
 
-function formatDouble(
+export function formatDouble(
   {
     formatter,
     sampleRate,

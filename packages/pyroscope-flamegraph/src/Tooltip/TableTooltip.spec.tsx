@@ -3,6 +3,7 @@ import React, { useRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Units } from '@pyroscope/models/src';
+import { DefaultPalette } from '../FlameGraph/FlameGraphComponent/colorPalette';
 
 import TableTooltip, { TableTooltipProps } from './TableTooltip';
 
@@ -23,15 +24,15 @@ function TestTable(props: Omit<TableTooltipProps, 'tableBodyRef'>) {
 }
 
 describe('TableTooltip', () => {
-  const renderTable = (
-    props: Omit<TableTooltipProps, 'tableBodyRef' | 'palette'>
-  ) => render(<TestTable {...props} />);
+  const renderTable = (props: Omit<TableTooltipProps, 'tableBodyRef'>) =>
+    render(<TestTable {...props} />);
 
   it('should render TableTooltip', () => {
     const props = {
       numTicks: 100,
       sampleRate: 100,
       units: 'samples' as Units,
+      palette: DefaultPalette,
     };
 
     renderTable(props);
