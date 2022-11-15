@@ -68,6 +68,7 @@ $pieChartWidth: 300px;
 
   .tagExplorerTable {
     width: 100%;
+    font-variant-numeric: lining-nums tabular-nums;
 
     thead,
     tbody tr:nth-child(2n):not(:hover) {
@@ -79,7 +80,8 @@ $pieChartWidth: 300px;
 
       td {
         font-weight: initial;
-        text-align: center;
+        text-align: left;
+        font-family: monospace;
       }
 
       tr.activeTagRow {
