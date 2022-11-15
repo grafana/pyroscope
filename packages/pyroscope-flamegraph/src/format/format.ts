@@ -110,6 +110,18 @@ class DurationFormatter {
         }`
       : nStr;
   }
+
+  formatPrecise(samples: number, sampleRate: number) {
+    if (this.enableSubsecondPrecision) {
+      sampleRate /= 1e6;
+    }
+    const n = samples / sampleRate / this.divider;
+
+    return `${parseFloat(n.toFixed(5))} ${
+      this.units ||
+      `${this.suffix}${n === 1 || this.suffix.length === 2 ? '' : 's'}`
+    }`;
+  }
 }
 
 // this is a class and not a function because we can save some time by
@@ -162,6 +174,12 @@ class NanosecondsFormatter {
 
     return `${nStr} ${this.suffix}${n === 1 ? '' : 's'}`;
   }
+
+  formatPrecise(samples: number) {
+    const n = samples / 1000000000 / this.divider;
+
+    return `${parseFloat(n.toFixed(5))} ${this.suffix}${n === 1 ? '' : 's'}`;
+  }
 }
 
 export class ObjectsFormatter {
@@ -209,6 +227,12 @@ export class ObjectsFormatter {
       nStr = '< 0.01';
     }
     return `${nStr} ${this.suffix}`;
+  }
+
+  formatPrecise(samples: number) {
+    const n = samples / this.divider;
+
+    return `${parseFloat(n.toFixed(5))} ${this.suffix}`;
   }
 }
 
@@ -263,5 +287,11 @@ export class BytesFormatter {
     }
 
     return `${nStr} ${this.suffix}`;
+  }
+
+  formatPrecise(samples: number) {
+    const n = samples / this.divider;
+
+    return `${parseFloat(n.toFixed(5))} ${this.suffix}`;
   }
 }

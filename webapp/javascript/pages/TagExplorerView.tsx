@@ -40,6 +40,11 @@ import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
 import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
+import {
+  addSpaces,
+  getIntegerSpaceLengthForString,
+  getTableIntegerSpaceLengthByColumn,
+} from './formatTableData';
 
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './TagExplorerView.module.scss';
@@ -111,12 +116,44 @@ interface TableValuesData {
   stdDeviation: number;
   total: number;
   tagName: string;
+  totalLabel: string;
+  stdDeviationLabel: string;
+  meanLabel: string;
 }
 
-const calculateTableData = (
-  groupsData: TimelineGroupData[]
-): TableValuesData[] =>
-  groupsData.reduce((acc, { tagName, data, color }) => {
+const formatValue = ({
+  value,
+  formatter,
+  profile,
+}: {
+  value: number;
+  formatter?: ReturnType<typeof getFormatter>;
+  profile?: Profile;
+}) => {
+  const formatterResult =
+    formatter && profile
+      ? `${formatter.format(value, profile.metadata.sampleRate)}`
+      : '0';
+
+  if (String(formatterResult).includes('< 0.01')) {
+    return formatter && profile
+      ? formatter.formatPrecise(value, profile.metadata.sampleRate)
+      : '0';
+  }
+
+  return formatterResult;
+};
+
+const calculateTableData = ({
+  data,
+  formatter,
+  profile,
+}: {
+  data: TimelineGroupData[];
+  formatter?: ReturnType<typeof getFormatter>;
+  profile?: Profile;
+}): TableValuesData[] =>
+  data.reduce((acc, { tagName, data, color }) => {
     const mean = calculateMean(data.samples);
     const total = calculateTotal(data.samples);
     const stdDeviation = calculateStdDeviation(data.samples, mean);
@@ -127,6 +164,13 @@ const calculateTableData = (
       mean,
       total,
       stdDeviation,
+      meanLabel: formatValue({ value: mean, formatter, profile }),
+      stdDeviationLabel: formatValue({
+        value: stdDeviation,
+        formatter,
+        profile,
+      }),
+      totalLabel: formatValue({ value: total, formatter, profile }),
     });
 
     return acc;
@@ -386,11 +430,6 @@ function Table({
       activeTagProfile.metadata.units
     );
 
-  const formatValue = (v: number) =>
-    formatter && activeTagProfile
-      ? `${formatter.format(v, activeTagProfile.metadata.sampleRate)}`
-      : 0;
-
   const handleTableRowClick = (value: string) => {
     if (value !== groupByTagValue) {
       handleGroupByTagValueChange(value);
@@ -431,7 +470,41 @@ function Table({
     [groupsData]
   );
 
-  const tableValuesData = calculateTableData(groupsData);
+  const tableValuesData = calculateTableData({
+    data: groupsData,
+    formatter,
+    profile: activeTagProfile,
+  });
+
+  const tableIntegerSpaceLengthByColumn =
+    getTableIntegerSpaceLengthByColumn(tableValuesData);
+
+  const formattedTableData = tableValuesData.map((v) => {
+    const meanLength = getIntegerSpaceLengthForString(v.meanLabel);
+    const stdDeviationLength = getIntegerSpaceLengthForString(
+      v.stdDeviationLabel
+    );
+    const totalLength = getIntegerSpaceLengthForString(v.totalLabel);
+
+    return {
+      ...v,
+      totalLabel: addSpaces(
+        tableIntegerSpaceLengthByColumn.total,
+        totalLength,
+        v.totalLabel
+      ),
+      stdDeviationLabel: addSpaces(
+        tableIntegerSpaceLengthByColumn.stdDeviation,
+        stdDeviationLength,
+        v.stdDeviationLabel
+      ),
+      meanLabel: addSpaces(
+        tableIntegerSpaceLengthByColumn.mean,
+        meanLength,
+        v.meanLabel
+      ),
+    };
+  });
 
   const { sortByDirection, sortBy, updateSortParams } = useTableSort(headRow);
 
@@ -441,30 +514,33 @@ function Table({
 
     switch (sortBy) {
       case 'name':
-        sorted = tableValuesData.sort(
+        sorted = formattedTableData.sort(
           (a, b) => m * a.tagName.localeCompare(b.tagName)
         );
         break;
       case 'totalSamples':
-        sorted = tableValuesData.sort((a, b) => m * (a.total - b.total));
+        sorted = formattedTableData.sort((a, b) => m * (a.total - b.total));
         break;
       case 'avgSamples':
-        sorted = tableValuesData.sort((a, b) => m * (a.mean - b.mean));
+        sorted = formattedTableData.sort((a, b) => m * (a.mean - b.mean));
         break;
       case 'stdDeviation':
-        sorted = tableValuesData.sort(
+        sorted = formattedTableData.sort(
           (a, b) => m * (a.stdDeviation - b.stdDeviation)
         );
         break;
       default:
-        sorted = tableValuesData;
+        sorted = formattedTableData;
     }
 
     return sorted;
   })();
 
   const bodyRows = sortedTableValuesData.reduce(
-    (acc, { tagName, color, total, mean, stdDeviation }): BodyRow[] => {
+    (
+      acc,
+      { tagName, color, total, totalLabel, stdDeviationLabel, meanLabel }
+    ): BodyRow[] => {
       const percentage = (total / groupsTotal) * 100;
       const row = {
         isRowSelected: isTagSelected(tagName),
@@ -488,9 +564,9 @@ function Table({
               </div>
             ),
           },
-          { value: formatValue(mean) },
-          { value: formatValue(stdDeviation) },
-          { value: formatValue(total) },
+          { value: meanLabel },
+          { value: stdDeviationLabel },
+          { value: totalLabel },
         ],
       };
       acc.push(row);
