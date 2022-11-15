@@ -26,7 +26,7 @@ export const units = [
   'lock_samples',
   'lock_nanoseconds',
   'trace_samples',
-  'exceptions'
+  'exceptions',
 ];
 
 // accept the defined units
