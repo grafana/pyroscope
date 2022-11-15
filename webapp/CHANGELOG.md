@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.60.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.59.1...@pyroscope/webapp@1.60.0) (2022-11-15)
+
+
+### Features
+
+* **webapp:** Add relative time period dropdown to comparison / diff view ([#1638](https://github.com/pyroscope-io/pyroscope/issues/1638)) ([23cf747](https://github.com/pyroscope-io/pyroscope/commit/23cf7474ec57c920dbc1f230cf3045fdc9a8b305))
+
+
+
+
+
 ## [1.59.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.59.0...@pyroscope/webapp@1.59.1) (2022-11-15)
 
 **Note:** Version bump only for package @pyroscope/webapp
