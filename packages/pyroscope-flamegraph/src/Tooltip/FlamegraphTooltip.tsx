@@ -7,7 +7,7 @@ import {
   numberWithCommas,
   formatPercent,
   ratioToPercent,
-  percentDiff,
+  diffPercent,
 } from '../format/format';
 import {
   FlamegraphPalette,
@@ -222,7 +222,7 @@ export function formatDouble(
     tooltipType: 'flamegraph',
   };
 
-  const totalDiff = percentDiff(leftPercent, rightPercent);
+  const totalDiff = diffPercent(leftPercent, rightPercent);
 
   let tooltipDiffColor = '';
   if (totalDiff > 0) {

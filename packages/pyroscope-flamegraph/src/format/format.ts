@@ -14,7 +14,7 @@ export function ratioToPercent(ratio: number) {
   return Math.round(10000 * ratio) / 100;
 }
 
-export function percentDiff(leftPercent: number, rightPercent: number): number {
+export function diffPercent(leftPercent: number, rightPercent: number): number {
   // difference between 2 percents
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
   return ((rightPercent - leftPercent) / leftPercent) * 100;

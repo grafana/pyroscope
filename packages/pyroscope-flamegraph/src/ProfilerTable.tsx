@@ -10,7 +10,7 @@ import TableUI, {
   TableBodyType,
 } from '@webapp/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
-import { getFormatter, ratioToPercent, percentDiff } from './format/format';
+import { getFormatter, ratioToPercent, diffPercent } from './format/format';
 import {
   colorBasedOnPackageName,
   defaultColor,
@@ -87,7 +87,7 @@ function generateTable(
   if (!flamebearer) {
     return table;
   }
-  const { names, levels, format, leftTicks, rightTicks } = flamebearer;
+  const { names, levels, format } = flamebearer;
   const ff = format !== 'double' ? singleFF : doubleFF;
 
   const hash: Record<string, (DoubleCell | SingleCell) & { name: string }> = {};
@@ -109,8 +109,8 @@ function generateTable(
           hash[name] as DoubleCell,
           level,
           j,
-          leftTicks as number,
-          rightTicks as number
+          flamebearer.leftTicks,
+          flamebearer.rightTicks
         );
       }
     }
@@ -343,7 +343,7 @@ const getTableBody = ({
     const leftPercent = ratioToPercent(x.totalLeft / x.leftTicks);
     const rghtPercent = ratioToPercent(x.totalRght / x.rightTicks);
 
-    const totalDiff = percentDiff(leftPercent, rghtPercent);
+    const totalDiff = diffPercent(leftPercent, rghtPercent);
 
     let diffCellColor = '';
     if (totalDiff > 0) {
