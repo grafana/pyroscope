@@ -217,6 +217,11 @@ const tooltipTitles: Record<
     formattedValue: 'Samples',
     total: '% of total samples',
   },
+  exceptions: {
+    percent: '% of thrown exceptions',
+    formattedValue: 'Thrown exceptions',
+    total: '% of total thrown exceptions',
+  },
   '': {
     percent: 'Percentage',
     formattedValue: 'Units',
