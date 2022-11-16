@@ -688,7 +688,7 @@ function ExploreHeader({
   return (
     <div className={styles.header} data-testid="explore-header">
       <span className={styles.title}>{appName.unwrapOr('')}</span>
-      <div className={styles.query}>
+      <div className={styles.queryGrouppedBy}>
         <span className={styles.selectName}>grouped by</span>
         <Dropdown
           label="select tag"
@@ -713,6 +713,7 @@ function ExploreHeader({
             selectedTagValue || ALL_TAGS
           }`}
           onItemClick={handleGroupByValueClick}
+          menuButtonClassName={styles.whereSelectButton}
         >
           {/* always show "All" option */}
           {[ALL_TAGS, ...whereDropdownItems].map((tagGroupName) => (

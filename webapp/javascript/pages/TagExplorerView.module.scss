@@ -10,6 +10,11 @@ $pieChartWidth: 300px;
       border-color: var(--ps-selected-app);
       color: var(--ps-selected-app);
     }
+
+    .whereSelectButton {
+      flex-shrink: 1;
+      text-align: left;
+    }
   }
 
   .timelineWrapper,
@@ -30,10 +35,11 @@ $pieChartWidth: 300px;
   }
 
   .title {
-    display: inline-block;
+    display: inline-flex;
     font-weight: 500;
     font-size: 18px;
     margin-right: 5px;
+    flex-shrink: 0;
   }
 
   .buttons {
@@ -55,15 +61,22 @@ $pieChartWidth: 300px;
     }
   }
 
+  .queryGrouppedBy {
+    @extend .query;
+
+    flex-shrink: 0;
+  }
+
+  .selectName {
+    font-weight: 500;
+    color: var(--ps-right-click-info);
+    margin-right: 5px;
+    flex-shrink: 0;
+  }
+
   .query {
     display: flex;
     align-items: center;
-
-    .selectName {
-      font-weight: 500;
-      color: var(--ps-right-click-info);
-      margin-right: 5px;
-    }
   }
 
   .tagExplorerTable {
