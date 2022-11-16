@@ -62,8 +62,9 @@ const PieChart = ({
         label: {
           show: true,
           radius: 0.7,
-          threshold: 0.17,
-          formatter: (label: string) => label,
+          threshold: 0.05,
+          formatter: (_: string, data: { percent: number }) =>
+            `${data.percent.toFixed(2)}%`,
         },
       },
     },
