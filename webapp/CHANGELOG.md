@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.61.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.60.0...@pyroscope/webapp@1.61.0) (2022-11-16)
+
+
+### Features
+
+* **webapp:** Show top 10 items in Explore page ([#1663](https://github.com/pyroscope-io/pyroscope/issues/1663)) ([73544fb](https://github.com/pyroscope-io/pyroscope/commit/73544fb22f67bda9a27a0519a5b07c45523099a4))
+
+
+
+
+
 # [1.60.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.59.1...@pyroscope/webapp@1.60.0) (2022-11-15)
 
 
