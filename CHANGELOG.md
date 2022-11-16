@@ -1,3 +1,44 @@
+# [0.34.0](https://github.com/pyroscope-io/pyroscope/compare/v0.33.0...v0.34.0) (2022-11-16)
+
+
+### Bug Fixes
+
+* add TagsBar component to exemplars single view ([#1696](https://github.com/pyroscope-io/pyroscope/issues/1696)) ([8817502](https://github.com/pyroscope-io/pyroscope/commit/88175023c0db3756a726034b2ea7a5df32a3d25e))
+* **backend:** fix cache ([#1664](https://github.com/pyroscope-io/pyroscope/issues/1664)) ([04ab88a](https://github.com/pyroscope-io/pyroscope/commit/04ab88a1d6c7c8fabefe5a46bf69c3137de25d06))
+* exemplars page shows weird y-axis numbers ([#1644](https://github.com/pyroscope-io/pyroscope/issues/1644)) ([c672ed7](https://github.com/pyroscope-io/pyroscope/commit/c672ed7d4ba601e3b9e45eaf328260f8f4c812ca))
+* heatmap y-axis value with "<" ([#1694](https://github.com/pyroscope-io/pyroscope/issues/1694)) ([76e5748](https://github.com/pyroscope-io/pyroscope/commit/76e574870829082a56963d82c2ede049bba743eb))
+* make /apps respect remoteRead ([#1645](https://github.com/pyroscope-io/pyroscope/issues/1645)) ([3e85b17](https://github.com/pyroscope-io/pyroscope/commit/3e85b174b0e3b9960e531d318f0db827ac666290))
+* make oauth work when baseUrl is set ([#1673](https://github.com/pyroscope-io/pyroscope/issues/1673)) ([6cc1a2a](https://github.com/pyroscope-io/pyroscope/commit/6cc1a2a75387b0ca4a75ac57191a6a352a072a43))
+* **panel-plugin:** remove leaky css ([#1709](https://github.com/pyroscope-io/pyroscope/issues/1709)) ([bc28930](https://github.com/pyroscope-io/pyroscope/commit/bc28930093b0b8494b073a45252ce361dba1a382))
+* remove tmp multipart files ([#1678](https://github.com/pyroscope-io/pyroscope/issues/1678)) ([6a1b631](https://github.com/pyroscope-io/pyroscope/commit/6a1b6310e0f51ed1423a87550a296f5e80c8149d))
+* sandwich view prompt in comparison view ([#1688](https://github.com/pyroscope-io/pyroscope/issues/1688)) ([5f32774](https://github.com/pyroscope-io/pyroscope/commit/5f3277411c28988d811fa23f1029ff556a434578))
+* Update a few function names on comments ([#1676](https://github.com/pyroscope-io/pyroscope/issues/1676)) ([59a339f](https://github.com/pyroscope-io/pyroscope/commit/59a339f2bb7f205dc5b823f80fc71ceab5b28d95))
+* **webapp:** make ui consistent when request is cancelled ([#1635](https://github.com/pyroscope-io/pyroscope/issues/1635)) ([d9b8290](https://github.com/pyroscope-io/pyroscope/commit/d9b8290a498fb658b206fc0d6253f6b206e21b9e))
+* **webapp:** pass from,until when calling /label{-values} ([#1677](https://github.com/pyroscope-io/pyroscope/issues/1677)) ([a82077d](https://github.com/pyroscope-io/pyroscope/commit/a82077dd23148d839b75b46fb11b6b71492eec99))
+* **webapp:** sort appNames alphabetically ([#1655](https://github.com/pyroscope-io/pyroscope/issues/1655)) ([e29d2e2](https://github.com/pyroscope-io/pyroscope/commit/e29d2e29862cf8e21354c194e67f2fd9e376e273))
+
+
+### Features
+
+* add a generic Tooltip component ([#1643](https://github.com/pyroscope-io/pyroscope/issues/1643)) ([e04a9a5](https://github.com/pyroscope-io/pyroscope/commit/e04a9a5b8abacbf6c3fad87b1a8aaf2ed1636053))
+* add Fit Mode to Context Menu ([#1698](https://github.com/pyroscope-io/pyroscope/issues/1698)) ([082a971](https://github.com/pyroscope-io/pyroscope/commit/082a9715d5aed80682fc1f38988a927ca0bbcd93))
+* add sandwich view for table/flamegraph ([#1613](https://github.com/pyroscope-io/pyroscope/issues/1613)) ([870c0b8](https://github.com/pyroscope-io/pyroscope/commit/870c0b8f209b7b669b407f6d3b5214876e671d69))
+* add single, comparison, diff tabs to heatmap page ([#1672](https://github.com/pyroscope-io/pyroscope/issues/1672)) ([9afe5e5](https://github.com/pyroscope-io/pyroscope/commit/9afe5e564e1fea6fe4026c3180134412ac2930f9))
+* disable sandwich view for diff page ([#1693](https://github.com/pyroscope-io/pyroscope/issues/1693)) ([b47b441](https://github.com/pyroscope-io/pyroscope/commit/b47b4411b97167c4d1b85543c0b062f0358310c2))
+* enable "reset view" button when table item is highlighted ([#1703](https://github.com/pyroscope-io/pyroscope/issues/1703)) ([7b1bfd5](https://github.com/pyroscope-io/pyroscope/commit/7b1bfd55a3d6186877104e7e164323ee9a4d4f34))
+* **flamegraph:** Redesign flamegraph toolbar to allow for more interactions ([#1674](https://github.com/pyroscope-io/pyroscope/issues/1674)) ([646501a](https://github.com/pyroscope-io/pyroscope/commit/646501a3816df6f069454213ac7884198f35cd0b))
+* **panel-plugin:** allow setting different views ([#1712](https://github.com/pyroscope-io/pyroscope/issues/1712)) ([058099c](https://github.com/pyroscope-io/pyroscope/commit/058099c857d80c3dc2f1c7c7a99391bd75c72178))
+* show gif when heatmap has no selection ([#1658](https://github.com/pyroscope-io/pyroscope/issues/1658)) ([2a3243d](https://github.com/pyroscope-io/pyroscope/commit/2a3243de46d27de5d9cbbc9f50dd1089ba517a5b))
+* store application metadata ([#1649](https://github.com/pyroscope-io/pyroscope/issues/1649)) ([eb2d86e](https://github.com/pyroscope-io/pyroscope/commit/eb2d86e17cd966275dad1c8dc0a2c13725e52c8e))
+* **webapp:** [notifications] support 'warning' status and arbitrary jsx element ([#1656](https://github.com/pyroscope-io/pyroscope/issues/1656)) ([2ec2b07](https://github.com/pyroscope-io/pyroscope/commit/2ec2b073ffaf7699bdba9d1bc29b3fea8ef4b659))
+* **webapp:** Add relative time period dropdown to comparison / diff view ([#1638](https://github.com/pyroscope-io/pyroscope/issues/1638)) ([23cf747](https://github.com/pyroscope-io/pyroscope/commit/23cf7474ec57c920dbc1f230cf3045fdc9a8b305))
+* **webapp:** Annotations flot plugin ([#1605](https://github.com/pyroscope-io/pyroscope/issues/1605)) ([fe80686](https://github.com/pyroscope-io/pyroscope/commit/fe80686837953a2f45aa8efc5a7d0a7c0efcc1a8))
+* **webapp:** Issue when comparison / diff timelines are out of range ([#1615](https://github.com/pyroscope-io/pyroscope/issues/1615)) ([211ccca](https://github.com/pyroscope-io/pyroscope/commit/211ccca5a03fb78087bdf10b125ad0141b2a5dc9))
+* **webapp:** Make explore page show precise numbers in table ([#1695](https://github.com/pyroscope-io/pyroscope/issues/1695)) ([5b47c71](https://github.com/pyroscope-io/pyroscope/commit/5b47c71b6a1e85c39b4ac21b1eaeddf85bad0d94))
+* **webapp:** Show top 10 items in Explore page ([#1663](https://github.com/pyroscope-io/pyroscope/issues/1663)) ([73544fb](https://github.com/pyroscope-io/pyroscope/commit/73544fb22f67bda9a27a0519a5b07c45523099a4))
+
+
+
 # [0.33.0](https://github.com/pyroscope-io/pyroscope/compare/v0.32.0...v0.33.0) (2022-10-22)
 
 
