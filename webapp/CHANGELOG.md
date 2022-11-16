@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.62.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.61.0...@pyroscope/webapp@1.62.0) (2022-11-16)
+
+
+### Features
+
+* **webapp:** render pie slice label as percent in tag explorer ([#1721](https://github.com/pyroscope-io/pyroscope/issues/1721)) ([79018aa](https://github.com/pyroscope-io/pyroscope/commit/79018aab7f5d089615c29b37a06a30cba237b522))
+
+
+
+
+
 # [1.61.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.60.0...@pyroscope/webapp@1.61.0) (2022-11-16)
 
 
