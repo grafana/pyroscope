@@ -160,7 +160,7 @@ func getContainerIDFromCGroup(line string) string {
 	if parts != nil {
 		return parts[1]
 	}
-	parts = cgroupV2ScopePattern.FindStringSubmatch(line)
+	parts = cgroupScopePattern.FindStringSubmatch(line)
 	if parts != nil {
 		return parts[1]
 	}
@@ -168,7 +168,7 @@ func getContainerIDFromCGroup(line string) string {
 }
 
 var (
-	kubePattern          = regexp.MustCompile(`\d+:.+:/kubepods/[^/]+/pod[^/]+/([0-9a-f]{64})`)
-	dockerPattern        = regexp.MustCompile(`\d+:.+:/docker/pod[^/]+/([0-9a-f]{64})`)
-	cgroupV2ScopePattern = regexp.MustCompile(`^0::.*/(?:docker-|cri-containerd-)([0-9a-f]{64})\.scope$`)
+	kubePattern        = regexp.MustCompile(`\d+:.+:/kubepods/[^/]+/pod[^/]+/([0-9a-f]{64})`)
+	dockerPattern      = regexp.MustCompile(`\d+:.+:/docker/pod[^/]+/([0-9a-f]{64})`)
+	cgroupScopePattern = regexp.MustCompile(`^\d+:.*/(?:docker-|cri-containerd-)([0-9a-f]{64})\.scope$`)
 )

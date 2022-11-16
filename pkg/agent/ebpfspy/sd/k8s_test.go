@@ -32,3 +32,20 @@ func TestDockerCgroupsV2(t *testing.T) {
 		t.Fatalf("wrong cid %s != %s", cid, expected)
 	}
 }
+
+func TestCRI(t *testing.T) {
+	statusContainerID := "containerd://a534eb629135e43beb13213976e37bb2ab95cba4c0d1d0b4e27c6bc4d8091b83"
+	cgroup := "12:cpuset:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod471203d1_984f_477e_9c35_db96487ffe5e.slice/cri-containerd-a534eb629135e43beb13213976e37bb2ab95cba4c0d1d0b4e27c6bc4d8091b83.scope"
+	cid := getContainerIDFromCGroup(cgroup)
+	expected := "a534eb629135e43beb13213976e37bb2ab95cba4c0d1d0b4e27c6bc4d8091b83"
+	if cid != expected {
+		t.Fatalf("wrong cid %s != %s", cid, expected)
+	}
+	cid, err := getContainerIDFromK8S(statusContainerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cid != expected {
+		t.Fatalf("wrong cid %s != %s", cid, expected)
+	}
+}
