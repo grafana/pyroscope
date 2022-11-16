@@ -4,7 +4,6 @@ import Color from 'color';
 import TooltipWrapper, {
   ITooltipWrapperProps,
 } from '@webapp/components/TimelineChart/TooltipWrapper';
-import { PieChartTooltipProps } from '../PieChartTooltip';
 import styles from './styles.module.scss';
 import 'react-flot/flot/jquery.flot.pie';
 import './Interactivity.plugin';
@@ -15,17 +14,23 @@ export type PieChartDataItem = {
   color: Color | string | undefined;
 };
 
+interface TooltipProps {
+  label?: string;
+  percent?: number;
+  value?: number;
+}
+
 interface PieChartProps {
   data: PieChartDataItem[];
   width: string;
   height: string;
   id: string;
-  onHoverTooltip?: React.FC<PieChartTooltipProps>;
+  onHoverTooltip?: React.FC<TooltipProps>;
 }
 
 const setOnHoverDisplayTooltip = (
-  data: PieChartTooltipProps & ITooltipWrapperProps,
-  onHoverTooltip: React.FC<PieChartTooltipProps>
+  data: TooltipProps & ITooltipWrapperProps,
+  onHoverTooltip: React.FC<TooltipProps>
 ) => {
   const TooltipBody = onHoverTooltip;
 
@@ -75,7 +80,7 @@ const PieChart = ({
       clickable: false,
     },
     pieChartTooltip: onHoverTooltip
-      ? (tooltipData: PieChartTooltipProps & ITooltipWrapperProps) =>
+      ? (tooltipData: TooltipProps & ITooltipWrapperProps) =>
           setOnHoverDisplayTooltip(tooltipData, onHoverTooltip)
       : null,
   };
