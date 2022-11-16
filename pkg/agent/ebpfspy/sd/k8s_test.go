@@ -35,7 +35,8 @@ func TestDockerCgroupsV2(t *testing.T) {
 
 func TestCRI(t *testing.T) {
 	statusContainerID := "containerd://a534eb629135e43beb13213976e37bb2ab95cba4c0d1d0b4e27c6bc4d8091b83"
-	cgroup := "12:cpuset:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod471203d1_984f_477e_9c35_db96487ffe5e.slice/cri-containerd-a534eb629135e43beb13213976e37bb2ab95cba4c0d1d0b4e27c6bc4d8091b83.scope"
+	cgroup := "12:cpuset:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod471203d1_984f_477e_9c35_db96487ffe5e.slice/" +
+		"cri-containerd-a534eb629135e43beb13213976e37bb2ab95cba4c0d1d0b4e27c6bc4d8091b83.scope"
 	cid := getContainerIDFromCGroup(cgroup)
 	expected := "a534eb629135e43beb13213976e37bb2ab95cba4c0d1d0b4e27c6bc4d8091b83"
 	if cid != expected {
