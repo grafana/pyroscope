@@ -515,7 +515,7 @@ const getTableBody = ({
   return rows.length > 0
     ? { bodyRows: rows, type: 'filled' as const }
     : {
-        value: <div className="unsupported-format">Unsupported</div>,
+        value: <div className="unsupported-format">No items found</div>,
         type: 'not-filled' as const,
       };
 };
