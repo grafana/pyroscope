@@ -15,13 +15,15 @@
   max-height: 440px;
 
   li {
+    padding: 10px 30px;
+
     &.selected {
       background-color: var(--ps-blue-highlight);
     }
 
     input {
+      padding: 0;
       border: none;
-      padding: 10px 30px;
       width: 100%;
       text-align: left;
       white-space: nowrap;
