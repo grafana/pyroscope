@@ -76,7 +76,7 @@ type LabelValuesGetter interface {
 }
 
 type AppNameGetter interface {
-	GetAppNames(ctx context.Context) []string
+	GetAppNames(ctx context.Context) ([]string, error)
 }
 
 type AppGetter interface {

@@ -1,10 +1,11 @@
 package admin
 
 import (
-	"github.com/pyroscope-io/pyroscope/pkg/server"
-	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"net/http"
 	"os"
+
+	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -42,8 +43,8 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 	httpUtils := httputils.NewDefaultHelper(logger)
 	// Routes
 
-	r.HandleFunc("/v1/apps", server.NewGetAppNamesHandler(ctrl.storage, httpUtils)).Methods("GET")
-	r.HandleFunc("/v1/apps", server.NewDeleteAppHandler(ctrl.storage, httpUtils)).Methods("DELETE")
+	r.HandleFunc("/v1/apps", server.NewGetAppNamesHandler(ctrl.appService, httpUtils)).Methods("GET")
+	r.HandleFunc("/v1/apps", server.NewDeleteAppHandler(ctrl.appService, httpUtils)).Methods("DELETE")
 	r.HandleFunc("/v1/users/{username}", ctrl.UpdateUserHandler).Methods("PATCH")
 	r.HandleFunc("/v1/storage/cleanup", ctrl.StorageCleanupHandler).Methods("PUT")
 

@@ -231,8 +231,14 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			appsRouter.Methods(http.MethodDelete).Handler(h)
 		}
 	} else {
-		appsRouter.Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
-		appsRouter.Methods(http.MethodDelete).Handler(authorizer.RequireAdminRole(ctrl.deleteAppsHandler()))
+		// TODO: move to api package
+		appMetadataSvc := service.NewApplicationMetadataService(ctrl.db)
+		appSvc := service.NewApplicationService(appMetadataSvc, ctrl.storage)
+
+		appsRouter.Methods(http.MethodGet).Handler(http.HandlerFunc(NewGetAppsHandler(appSvc, ctrl.httpUtils)))
+		appsRouter.Methods(http.MethodDelete).Handler(
+			authorizer.RequireAdminRole(http.HandlerFunc(NewDeleteAppHandler(appSvc, ctrl.httpUtils))),
+		)
 	}
 
 	ingestRouter := r.Path("/ingest").Subrouter()

@@ -53,7 +53,7 @@ func (svc ApplicationMetadataService) CreateOrUpdate(ctx context.Context, applic
 	}).Assign(application).FirstOrCreate(&storage.ApplicationMetadata{}).Error
 }
 
-func (svc ApplicationMetadataService) Delete(ctx context.Context, name string) error {
+func (svc ApplicationMetadataService) DeleteApp(ctx context.Context, name string) error {
 	if err := model.ValidateAppName(name); err != nil {
 		return err
 	}

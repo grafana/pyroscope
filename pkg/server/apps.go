@@ -35,30 +35,18 @@ func NewGetAppsHandler(s AppGetter, httpUtils httputils.Utils) func(w http.Respo
 			return
 		}
 
-		//		apps, err := s.GetApps(r.Context())
-		//		if err != nil {
-		//			httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "")
-		//			return
-		//		}
-		//		res := make([]AppInfo, 0, len(apps.Apps))
-		//		for _, app := range apps.Apps {
-		//			it := AppInfo{
-		//				Name: app.Name,
-		//			}
-		//			res = append(res, it)
-		//		}
 		w.WriteHeader(http.StatusOK)
 		httpUtils.WriteResponseJSON(r, w, apps)
 	}
 }
 
-func (ctrl *Controller) getAppNames() http.HandlerFunc {
-	return NewGetAppNamesHandler(ctrl.storage, ctrl.httpUtils)
-}
-
 func NewGetAppNamesHandler(s storage.AppNameGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		appNames := s.GetAppNames(r.Context())
+		appNames, err := s.GetAppNames(r.Context())
+		if err != nil {
+			httpUtils.HandleError(r, w, err)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		httpUtils.WriteResponseJSON(r, w, appNames)
 	}
