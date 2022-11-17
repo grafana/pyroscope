@@ -75,18 +75,6 @@ type LabelValuesGetter interface {
 	GetValuesByQuery(ctx context.Context, in GetLabelValuesByQueryInput) (GetLabelValuesByQueryOutput, error)
 }
 
-type AppNameGetter interface {
-	GetAppNames(ctx context.Context) ([]string, error)
-}
-
-type AppGetter interface {
-	GetApps(ctx context.Context) (GetAppsOutput, error)
-}
-
-type AppDeleter interface {
-	DeleteApp(ctx context.Context, appName string) error
-}
-
 // Other functions from storage.Storage:
 // type Backend interface {
 // 	Put(ctx context.Context, pi *PutInput) error

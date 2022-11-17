@@ -7,15 +7,19 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type AppDeleter interface {
+	DeleteApp(ctx context.Context, appName string) error
+}
+
 type ApplicationService struct {
 	appMetadataSvc ApplicationMetadataService
-	storageDeleter storage.AppDeleter
+	storageDeleter AppDeleter
 }
 
 // NewApplicationService creates an ApplicationService
 // Which just delegates to its underlying ApplicationMetadataService
 // Except when deleting, which is then forward to both ApplicationMetadataService and storageDeleter
-func NewApplicationService(appMetadataSvc ApplicationMetadataService, storageDeleter storage.AppDeleter) ApplicationService {
+func NewApplicationService(appMetadataSvc ApplicationMetadataService, storageDeleter AppDeleter) ApplicationService {
 	return ApplicationService{
 		appMetadataSvc: appMetadataSvc,
 		storageDeleter: storageDeleter,
