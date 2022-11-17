@@ -538,7 +538,7 @@ class FlameGraphRenderer extends Component<
           {toolbarVisible && (
             <Toolbar
               sharedQuery={this.props.sharedQuery}
-              disableChangingDisplay={!!this.props.onlyDisplay}
+              enableChangingDisplay={!this.props.onlyDisplay}
               flamegraphType={this.state.flamebearer.format}
               view={this.state.view}
               viewDiff={this.state.viewDiff}

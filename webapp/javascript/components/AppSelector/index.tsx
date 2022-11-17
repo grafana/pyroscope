@@ -21,12 +21,17 @@ interface AppSelectorProps {
   // Comparison/Diff View pages provide {onSelectedName} func which
   // handle propagating query to left/right flamegraphs
   onSelectedName?: (name: Query) => void;
+
+  filterApp?: (names: string) => boolean;
 }
 
-const AppSelector = ({ onSelectedName }: AppSelectorProps) => {
+const AppSelector = ({
+  onSelectedName,
+  filterApp = () => true,
+}: AppSelectorProps) => {
   const dispatch = useAppDispatch();
   const appNamesState = useAppSelector(selectAppNamesState);
-  const appNames = useAppSelector(selectAppNames);
+  const appNames = useAppSelector(selectAppNames).filter(filterApp);
   const { query } = useAppSelector(selectQueries);
   const appName = queryToAppName(query).mapOr('', (q) =>
     appNames.indexOf(q) !== -1 ? q : ''

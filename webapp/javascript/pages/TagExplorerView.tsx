@@ -44,6 +44,7 @@ import {
   addSpaces,
   getIntegerSpaceLengthForString,
   getTableIntegerSpaceLengthByColumn,
+  formatValue,
 } from './formatTableData';
 
 // eslint-disable-next-line css-modules/no-unused-class
@@ -123,29 +124,6 @@ interface TableValuesData {
   stdDeviationLabel: string;
   meanLabel: string;
 }
-
-const formatValue = ({
-  value,
-  formatter,
-  profile,
-}: {
-  value: number;
-  formatter?: ReturnType<typeof getFormatter>;
-  profile?: Profile;
-}) => {
-  const formatterResult =
-    formatter && profile
-      ? `${formatter.format(value, profile.metadata.sampleRate)}`
-      : '0';
-
-  if (String(formatterResult).includes('< 0.01')) {
-    return formatter && profile
-      ? formatter.formatPrecise(value, profile.metadata.sampleRate)
-      : '0';
-  }
-
-  return formatterResult;
-};
 
 const calculateTableData = ({
   data,
@@ -325,6 +303,14 @@ function TagExplorerView() {
         ]
       : filteredGroupsData;
 
+  const formatter =
+    activeTagProfile &&
+    getFormatter(
+      activeTagProfile.flamebearer.numTicks,
+      activeTagProfile.metadata.sampleRate,
+      activeTagProfile.metadata.units
+    );
+
   return (
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
@@ -385,7 +371,11 @@ function TagExplorerView() {
           <div className={styles.statisticsBox}>
             <div className={styles.pieChartWrapper}>
               {groups?.length ? (
-                <TotalSamplesChart filteredGroupsData={groups} />
+                <TotalSamplesChart
+                  formatter={formatter}
+                  filteredGroupsData={groups}
+                  profile={activeTagProfile}
+                />
               ) : (
                 <LoadingSpinner />
               )}
@@ -399,6 +389,7 @@ function TagExplorerView() {
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={type === 'loading'}
               activeTagProfile={activeTagProfile}
+              formatter={formatter}
             />
           </div>
         </CollapseBox>
@@ -442,6 +433,7 @@ function Table({
   isLoading,
   handleGroupByTagValueChange,
   activeTagProfile,
+  formatter,
 }: {
   appName: string;
   whereDropdownItems: string[];
@@ -451,17 +443,10 @@ function Table({
   isLoading: boolean;
   handleGroupByTagValueChange: (groupedByTagValue: string) => void;
   activeTagProfile?: Profile;
+  formatter?: ReturnType<typeof getFormatter>;
 }) {
   const { search } = useLocation();
   const isTagSelected = (tag: string) => tag === groupByTagValue;
-
-  const formatter =
-    activeTagProfile &&
-    getFormatter(
-      activeTagProfile.flamebearer.numTicks,
-      activeTagProfile.metadata.sampleRate,
-      activeTagProfile.metadata.units
-    );
 
   const handleTableRowClick = (value: string) => {
     // prevent clicking on single "application without tags" group row or Other row
@@ -688,7 +673,7 @@ function ExploreHeader({
   return (
     <div className={styles.header} data-testid="explore-header">
       <span className={styles.title}>{appName.unwrapOr('')}</span>
-      <div className={styles.query}>
+      <div className={styles.queryGrouppedBy}>
         <span className={styles.selectName}>grouped by</span>
         <Dropdown
           label="select tag"
@@ -713,6 +698,7 @@ function ExploreHeader({
             selectedTagValue || ALL_TAGS
           }`}
           onItemClick={handleGroupByValueClick}
+          menuButtonClassName={styles.whereSelectButton}
         >
           {/* always show "All" option */}
           {[ALL_TAGS, ...whereDropdownItems].map((tagGroupName) => (

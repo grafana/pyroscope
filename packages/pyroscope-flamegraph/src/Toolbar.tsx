@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, isValidElement } from 'react';
 import classNames from 'classnames/bind';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
@@ -64,7 +64,7 @@ export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
 
 export interface ProfileHeaderProps {
   view: ViewTypes;
-  disableChangingDisplay?: boolean;
+  enableChangingDisplay?: boolean;
   flamegraphType: 'single' | 'double';
   viewDiff: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
@@ -105,9 +105,9 @@ const Toolbar = React.memo(
     selectedNode,
     onFocusOnSubtree,
     flamegraphType,
-    disableChangingDisplay = false,
+    enableChangingDisplay = true,
     sharedQuery,
-    ExportData = <></>,
+    ExportData,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -140,17 +140,23 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          <Divider />
-          {!disableChangingDisplay && (
-            <ViewSection
-              flamegraphType={flamegraphType}
-              showMode={showMode}
-              view={view}
-              updateView={updateView}
-            />
-          )}
-          <Divider />
-          {ExportData}
+          {enableChangingDisplay ? (
+            <>
+              <Divider />
+              <ViewSection
+                flamegraphType={flamegraphType}
+                showMode={showMode}
+                view={view}
+                updateView={updateView}
+              />
+            </>
+          ) : null}
+          {isValidElement(ExportData) ? (
+            <>
+              <Divider />
+              {ExportData}
+            </>
+          ) : null}
         </div>
       </div>
     );

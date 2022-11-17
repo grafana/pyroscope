@@ -2,7 +2,6 @@ import React from 'react';
 import * as ReactDOM from 'react-dom';
 import injectTooltip from '@webapp/components/TimelineChart/injectTooltip';
 import { ITooltipWrapperProps } from '@webapp/components/TimelineChart/TooltipWrapper';
-import { PieChartTooltipProps } from '../PieChartTooltip';
 
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
@@ -26,7 +25,14 @@ type PositionType = {
     function onPlotHover(_: unknown, pos: PositionType, obj: ObjType) {
       const options = plot.getOptions() as jquery.flot.plotOptions & {
         pieChartTooltip: (
-          props: Omit<ITooltipWrapperProps & PieChartTooltipProps, 'children'>
+          props: Omit<
+            ITooltipWrapperProps & {
+              label?: string;
+              percent?: number;
+              value?: number;
+            },
+            'children'
+          >
         ) => React.ReactElement;
       };
       const tooltip = options?.pieChartTooltip;

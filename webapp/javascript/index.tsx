@@ -31,7 +31,7 @@ import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
 import TracingSingleView from './pages/TracingSingleView';
-import ExemplarsSingleView from './pages/ExemplarsSingleView';
+import ExemplarsSingleView from './pages/exemplars/ExemplarsSingleView';
 
 function App() {
   return (

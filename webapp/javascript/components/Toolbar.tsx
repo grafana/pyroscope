@@ -14,15 +14,17 @@ import AppSelector from './AppSelector';
 interface ToolbarProps {
   /** callback to be called when an app is selected via the dropdown */
   onSelectedApp: (name: Query) => void;
+
+  filterApp?: React.ComponentProps<typeof AppSelector>['filterApp'];
 }
-function Toolbar({ onSelectedApp: onSelectedName }: ToolbarProps) {
+function Toolbar({ onSelectedApp: onSelectedName, filterApp }: ToolbarProps) {
   const isLoadingData = useAppSelector(selectIsLoadingData);
 
   return (
     <>
       <div className="navbar">
         <div className={classNames('labels')}>
-          <AppSelector onSelectedName={onSelectedName} />
+          <AppSelector onSelectedName={onSelectedName} filterApp={filterApp} />
         </div>
         <div className="navbar-space-filler" />
         <div
