@@ -376,7 +376,7 @@ class FlameGraphRenderer extends Component<
   // so that the flamegraph doesn't rerender unnecessarily
   isDirty = () => {
     return (
-      !this.state.selectedItem.isNothing ||
+      this.state.selectedItem.isJust ||
       JSON.stringify(this.initialFlamegraphState) !==
         JSON.stringify(this.state.flamegraphConfigs)
     );
