@@ -64,7 +64,7 @@ export const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
 
 export interface ProfileHeaderProps {
   view: ViewTypes;
-  disableChangingDisplay?: boolean;
+  enableChangingDisplay?: boolean;
   flamegraphType: 'single' | 'double';
   viewDiff: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
@@ -105,7 +105,7 @@ const Toolbar = React.memo(
     selectedNode,
     onFocusOnSubtree,
     flamegraphType,
-    disableChangingDisplay = false,
+    enableChangingDisplay = true,
     sharedQuery,
     ExportData,
   }: ProfileHeaderProps) => {
@@ -140,7 +140,7 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          {!disableChangingDisplay ? (
+          {enableChangingDisplay ? (
             <>
               <Divider />
               <ViewSection
