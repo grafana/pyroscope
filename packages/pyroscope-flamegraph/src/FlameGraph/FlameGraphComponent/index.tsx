@@ -266,8 +266,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       };
 
       const ResetItem = () => {
-        const isResetDisabled =
-          !(selectedItem.isJust && selectedItem.value) && !dirty;
+        const isResetDisabled = selectedItem.isNothing && !dirty;
 
         return (
           <MenuItem key="reset" disabled={isResetDisabled} onClick={onReset}>
