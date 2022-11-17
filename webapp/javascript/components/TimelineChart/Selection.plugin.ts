@@ -114,6 +114,8 @@ const handleHeight = 22;
     }
 
     function onMouseDown(e: EventType) {
+      const opts = plot.getOptions();
+
       if (e.which != 1)
         // only accept left-click
         return;
@@ -138,33 +140,39 @@ const handleHeight = 22;
         };
       }
 
-      const offset = placeholder.offset();
-      const plotOffset = plot.getPlotOffset();
-      const { left, right } = getPlotSelection();
-      const clickX = getCursorPositionX(e);
-      const dragSide = getDragSide({
-        x: clickX,
-        leftSelectionX: left,
-        rightSelectionX: right,
-      });
+      if (opts?.selection?.selectionType === 'single') {
+        const { left, right } = getPlotSelection();
+        const clickX = getCursorPositionX(e);
+        const dragSide = getDragSide({
+          x: clickX,
+          leftSelectionX: left,
+          rightSelectionX: right,
+        });
 
-      if (dragSide) {
-        setCursor('grabbing');
-      }
+        if (dragSide) {
+          setCursor('grabbing');
+        }
 
-      if (dragSide === 'right') {
-        setSelectionPos(selection.first, {
-          pageX: left - plotOffset.left + offset.left + plotOffset.left,
-        } as EventType);
-      } else if (dragSide === 'left') {
-        setSelectionPos(selection.first, {
-          pageX: right - plotOffset.left + offset.left + plotOffset.left,
-        } as EventType);
+        const offset = placeholder.offset();
+        const plotOffset = plot.getPlotOffset();
+
+        if (dragSide === 'right') {
+          setSelectionPos(selection.first, {
+            pageX: left - plotOffset.left + offset.left + plotOffset.left,
+          } as EventType);
+        } else if (dragSide === 'left') {
+          setSelectionPos(selection.first, {
+            pageX: right - plotOffset.left + offset.left + plotOffset.left,
+          } as EventType);
+        } else {
+          setSelectionPos(selection.first, e);
+        }
+
+        (selection.selectingSide as 'left' | 'right' | null) = dragSide;
       } else {
         setSelectionPos(selection.first, e);
       }
 
-      (selection.selectingSide as 'left' | 'right' | null) = dragSide;
       selection.active = true;
 
       // this is a bit silly, but we have to use a closure to be
