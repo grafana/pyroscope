@@ -548,7 +548,7 @@ class FlameGraphRenderer extends Component<
               updateViewDiff={this.updateViewDiff}
               updateFitMode={this.updateFitMode}
               fitMode={this.state.fitMode}
-              isFlamegraphDirty={this.state.isFlamegraphDirty}
+              isFlamegraphDirty={this.isDirty()}
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
