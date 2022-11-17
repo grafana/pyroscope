@@ -311,7 +311,6 @@ class FlameGraphRenderer extends Component<
 
   setActiveItem = (item: { name: string }) => {
     const { name } = item;
-    this.setState({ isFlamegraphDirty: true });
 
     // if clicking on the same item, undo the search
     if (this.state.selectedItem.isJust) {
