@@ -88,8 +88,7 @@ export interface ProfileHeaderProps {
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
-const Divider = ({ visible = true }: { visible?: boolean }) =>
-  visible ? <div className={styles.divider} /> : null;
+const Divider = () => <div className={styles.divider} />;
 
 const Toolbar = React.memo(
   ({
@@ -141,15 +140,17 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          <Divider visible={!disableChangingDisplay} />
-          {!disableChangingDisplay && (
-            <ViewSection
-              flamegraphType={flamegraphType}
-              showMode={showMode}
-              view={view}
-              updateView={updateView}
-            />
-          )}
+          {!disableChangingDisplay ? (
+            <>
+              <Divider />
+              <ViewSection
+                flamegraphType={flamegraphType}
+                showMode={showMode}
+                view={view}
+                updateView={updateView}
+              />
+            </>
+          ) : null}
           {isValidElement(ExportData) ? (
             <>
               <Divider />
