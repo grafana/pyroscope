@@ -39,12 +39,13 @@ import {
 import type { Profile } from '@pyroscope/models/src';
 import { diffTwoProfiles } from '@pyroscope/flamegraph/src/convert/diffTwoProfiles';
 import { subtract } from '@pyroscope/flamegraph/src/convert/subtract';
-import { formatTitle } from './formatTitle';
-import { isLoadingOrReloading, LoadingType } from './loading';
+import { formatTitle } from '../formatTitle';
+import { isLoadingOrReloading, LoadingType } from '../loading';
 import heatmapSelectionPreviewGif from './heatmapSelectionPreview.gif';
 import { HeatmapSelectionIcon, HeatmapNoSelectionIcon } from './HeatmapIcons';
 
 import styles from './ExemplarsSingleView.module.scss';
+import { filterNonCPU } from './filterNonCPU';
 
 function ExemplarsSingleView() {
   const [tabIndex, setTabIndex] = useState(0);
@@ -132,6 +133,7 @@ function ExemplarsSingleView() {
           onSelectedApp={(query) => {
             dispatch(setQuery(query));
           }}
+          filterApp={filterNonCPU}
         />
         <TagsBar
           query={query}
