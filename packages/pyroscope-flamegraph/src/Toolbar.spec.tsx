@@ -60,14 +60,12 @@ describe('ProfileHeader', () => {
     const { asFragment, rerender } = render(
       <Toolbar
         view="both"
-        viewDiff="diff"
         flamegraphType="single"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
         fitMode={HeadMode}
         updateView={() => {}}
-        updateViewDiff={() => {}}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -83,14 +81,12 @@ describe('ProfileHeader', () => {
     rerender(
       <Toolbar
         view="both"
-        viewDiff="diff"
         flamegraphType="single"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
         fitMode={TailMode}
         updateView={() => {}}
-        updateViewDiff={() => {}}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -115,7 +111,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          viewDiff="diff"
           flamegraphType="single"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -123,7 +118,6 @@ describe('ProfileHeader', () => {
           updateFitMode={() => {}}
           fitMode={HeadMode}
           updateView={() => {}}
-          updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
@@ -137,7 +131,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          viewDiff="diff"
           flamegraphType="single"
           isFlamegraphDirty
           handleSearchChange={() => {}}
@@ -145,7 +138,6 @@ describe('ProfileHeader', () => {
           updateFitMode={() => {}}
           fitMode={HeadMode}
           updateView={() => {}}
-          updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
@@ -166,7 +158,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          viewDiff="diff"
           flamegraphType="single"
           isFlamegraphDirty
           handleSearchChange={onChange}
@@ -174,7 +165,6 @@ describe('ProfileHeader', () => {
           updateFitMode={() => {}}
           fitMode={HeadMode}
           updateView={() => {}}
-          updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
@@ -192,14 +182,12 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
-        viewDiff="diff"
         flamegraphType="single"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={updateFitMode}
         fitMode={HeadMode}
         updateView={() => {}}
-        updateViewDiff={() => {}}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -235,7 +223,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          viewDiff="diff"
           flamegraphType="single"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -243,7 +230,6 @@ describe('ProfileHeader', () => {
           updateFitMode={() => {}}
           fitMode={HeadMode}
           updateView={() => {}}
-          updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
@@ -258,7 +244,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          viewDiff="diff"
           flamegraphType="single"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -266,7 +251,6 @@ describe('ProfileHeader', () => {
           updateFitMode={() => {}}
           fitMode={HeadMode}
           updateView={() => {}}
-          updateViewDiff={() => {}}
           selectedNode={Maybe.just({ i: 999, j: 999 })}
           onFocusOnSubtree={onFocusOnSubtree}
           highlightQuery=""
@@ -277,191 +261,6 @@ describe('ProfileHeader', () => {
       screen.getByRole('button', { name: /Collapse/ }).click();
 
       expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999);
-    });
-  });
-
-  describe('DiffSection', () => {
-    const updateViewDiff = jest.fn();
-    const component = (
-      <Toolbar
-        view="both"
-        viewDiff="diff"
-        flamegraphType="double"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={() => {}}
-        fitMode={HeadMode}
-        updateView={() => {}}
-        updateViewDiff={updateViewDiff}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-        highlightQuery=""
-      />
-    );
-
-    it('doesnt render if viewDiff is not set', () => {
-      render(
-        <Toolbar
-          view="both"
-          viewDiff="diff"
-          flamegraphType="single"
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={HeadMode}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          isFlamegraphDirty={false}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-          highlightQuery=""
-        />
-      );
-
-      expect(screen.queryByTestId('diff-view')).toBeNull();
-    });
-
-    describe('large mode', () => {
-      beforeEach(() => {
-        setWindowSize('large');
-        render(component);
-      });
-
-      afterEach(() => {
-        jest.clearAllMocks();
-      });
-
-      it('changes to Self View', () => {
-        screen.getByRole('button', { name: /Self/ }).click();
-        expect(updateViewDiff).toHaveBeenCalledWith('self');
-      });
-
-      it('changes to Total View', () => {
-        screen.getByRole('button', { name: /Total/ }).click();
-        expect(updateViewDiff).toHaveBeenCalledWith('total');
-      });
-
-      it('changes to Diff View', () => {
-        screen.getByRole('button', { name: /Diff/ }).click();
-        expect(updateViewDiff).toHaveBeenCalledWith('diff');
-      });
-    });
-
-    describe('small mode', () => {
-      beforeEach(() => {
-        setWindowSize('small');
-        render(component);
-      });
-
-      afterEach(() => {
-        jest.clearAllMocks();
-      });
-
-      it('changes to Self view', () => {
-        screen.getByRole('button', { name: /Diff View/ }).click();
-        screen.getByRole('menuitem', { name: /Self/i }).click();
-        expect(updateViewDiff).toHaveBeenCalledWith('self');
-      });
-
-      it('changes to Total view', () => {
-        screen.getByRole('button', { name: /Diff View/ }).click();
-        screen.getByRole('menuitem', { name: /Total/i }).click();
-        expect(updateViewDiff).toHaveBeenCalledWith('total');
-      });
-
-      it('changes to Diff view', () => {
-        screen.getByRole('button', { name: /Diff View/ }).click();
-        screen.getByRole('menuitem', { name: /Diff/ }).click();
-        expect(updateViewDiff).toHaveBeenCalledWith('diff');
-      });
-    });
-  });
-
-  describe('ViewSection', () => {
-    const updateView = jest.fn();
-    const component = (
-      <Toolbar
-        view="both"
-        viewDiff="diff"
-        flamegraphType="single"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={() => {}}
-        fitMode={HeadMode}
-        updateView={updateView}
-        updateViewDiff={() => {}}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-        highlightQuery=""
-      />
-    );
-
-    describe('large mode', () => {
-      beforeEach(() => {
-        setWindowSize('large');
-        render(component);
-      });
-
-      afterEach(() => {
-        jest.clearAllMocks();
-      });
-
-      it('changes to Table View', () => {
-        screen.getByRole('button', { name: 'Table' }).click();
-        expect(updateView).toHaveBeenCalledWith('table');
-      });
-
-      it('changes to Flamegraph view', () => {
-        screen.getByRole('button', { name: 'Flamegraph' }).click();
-        expect(updateView).toHaveBeenCalledWith('flamegraph');
-      });
-
-      it('changes to Table and Flamegraph view', () => {
-        screen.getByRole('button', { name: /Table and Flamegraph/ }).click();
-        expect(updateView).toHaveBeenCalledWith('both');
-      });
-
-      it('changes to Sandwich view', () => {
-        screen.getByRole('button', { name: /Sandwich/ }).click();
-        expect(updateView).toHaveBeenCalledWith('sandwich');
-      });
-    });
-
-    describe('small mode', () => {
-      beforeEach(() => {
-        setWindowSize('small');
-        render(component);
-      });
-
-      afterEach(() => {
-        jest.clearAllMocks();
-      });
-
-      it('changes to Table view', () => {
-        screen.getByRole('button', { name: /View Mode/ }).click();
-        screen.getByRole('menuitem', { name: 'Table' }).click();
-        expect(updateView).toHaveBeenCalledWith('table');
-      });
-
-      it('changes to Flamegraph view', () => {
-        screen.getByRole('button', { name: /View Mode/ }).click();
-        screen.getByRole('menuitem', { name: 'Flamegraph' }).click();
-        expect(updateView).toHaveBeenCalledWith('flamegraph');
-      });
-
-      it('changes to Table and Flamegraph view', () => {
-        screen.getByRole('button', { name: /View Mode/ }).click();
-        screen.getByRole('menuitem', { name: /Table and Flamegraph/ }).click();
-        expect(updateView).toHaveBeenCalledWith('both');
-      });
-
-      it('changes to Sandwich view', () => {
-        screen.getByRole('button', { name: /View Mode/ }).click();
-        screen.getByRole('menuitem', { name: /Sandwich/ }).click();
-        expect(updateView).toHaveBeenCalledWith('sandwich');
-      });
     });
   });
 });

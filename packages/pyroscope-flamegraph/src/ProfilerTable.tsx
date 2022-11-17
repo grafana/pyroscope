@@ -10,7 +10,7 @@ import TableUI, {
   TableBodyType,
 } from '@webapp/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
-import { getFormatter } from './format/format';
+import { getFormatter, ratioToPercent, diffPercent } from './format/format';
 import {
   colorBasedOnPackageName,
   defaultColor,
@@ -38,9 +38,9 @@ interface DoubleCell {
   totalLeft: number;
   totalRght: number;
   totalDiff: number;
+  leftTicks: number;
+  rightTicks: number;
 }
-type DoubleSortByKeys = keyof DoubleCell & 'name';
-
 function generateCellSingle(
   ff: typeof singleFF,
   cell: SingleCell,
@@ -59,7 +59,9 @@ function generateCellDouble(
   ff: typeof doubleFF,
   cell: DoubleCell,
   level: number[],
-  j: number
+  j: number,
+  leftTicks: number,
+  rightTicks: number
 ) {
   const c = cell;
 
@@ -72,6 +74,8 @@ function generateCellDouble(
   c.totalLeft = zero(c.totalLeft) + ff.getBarTotalLeft(level, j);
   c.totalRght = zero(c.totalRght) + ff.getBarTotalRght(level, j);
   c.totalDiff = zero(c.totalDiff) + ff.getBarTotalDiff(level, j);
+  c.leftTicks = leftTicks;
+  c.rightTicks = rightTicks;
   return c;
 }
 
@@ -100,7 +104,14 @@ function generateTable(
       if (format === 'single') {
         generateCellSingle(singleFF, hash[name] as SingleCell, level, j);
       } else {
-        generateCellDouble(doubleFF, hash[name] as DoubleCell, level, j);
+        generateCellDouble(
+          doubleFF,
+          hash[name] as DoubleCell,
+          level,
+          j,
+          flamebearer.leftTicks,
+          flamebearer.rightTicks
+        );
       }
     }
   }
@@ -128,7 +139,7 @@ function backgroundImageStyle(a: number, b: number, color: Color) {
 // - _: render both diff color
 // - L: only render diff color on the left, if the left is longer than the right (better, green)
 // - R: only render diff color on the right, if the right is longer than the left (worse, red)
-function backgroundImageDiffStyle(
+export function backgroundImageDiffStyle(
   palette: FlamegraphPalette,
   a: number,
   b: number,
@@ -176,63 +187,29 @@ const tableFormatSingle: {
   { sortable: 1, name: 'total', label: 'Total' },
 ];
 
-const tableFormatDiffDef: Record<
-  string,
-  {
-    sortable: number;
-    name:
-      | 'name'
-      | 'selfLeft'
-      | 'selfRght'
-      | 'selfDiff'
-      | 'totalLeft'
-      | 'totalRght'
-      | 'totalDiff';
-    label: string;
-    default?: boolean;
-  }
-> = {
-  name: { sortable: 1, name: 'name', label: 'Location' },
-  selfLeft: {
-    sortable: 1,
-    name: 'selfLeft',
-    label: 'Self (Left)',
-    default: true,
-  },
-  selfRght: { sortable: 1, name: 'selfRght', label: 'Self (Right)' },
-  selfDiff: {
-    sortable: 1,
-    name: 'selfDiff',
-    label: 'Self (Diff)',
-    default: true,
-  },
-  totalLeft: {
-    sortable: 1,
-    name: 'totalLeft',
-    label: 'Total (Left)',
-    default: true,
-  },
-  totalRght: { sortable: 1, name: 'totalRght', label: 'Total (Right)' },
-  totalDiff: { sortable: 1, name: 'totalDiff', label: 'Total (Diff)' },
-};
-
-const tableFormatDiff = ((def) => ({
-  diff: [def.name, def.selfDiff, def.totalDiff],
-  self: [def.name, def.selfLeft, def.selfRght],
-  total: [def.name, def.totalLeft, def.totalRght],
-}))(tableFormatDiffDef);
+const tableFormatDouble: {
+  sortable: number;
+  name: 'name' | 'baseline' | 'comparison' | 'diff';
+  label: string;
+  default?: boolean;
+}[] = [
+  { sortable: 1, name: 'name', label: 'Location' },
+  { sortable: 1, name: 'baseline', label: 'Baseline', default: true },
+  { sortable: 1, name: 'comparison', label: 'Comparison' },
+  { sortable: 0, name: 'diff', label: 'Diff' },
+];
 
 function Table({
   tableBodyRef,
   flamebearer,
-  viewDiff,
+  isDoubles,
   fitMode,
   handleTableItemClick,
   highlightQuery,
   selectedItem,
   palette,
-}: ProfilerTableProps) {
-  const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
+}: ProfilerTableProps & { isDoubles: boolean }) {
+  const tableFormat = isDoubles ? tableFormatDouble : tableFormatSingle;
   const tableSortProps = useTableSort(tableFormat);
   const table = {
     headRow: tableFormat,
@@ -240,7 +217,7 @@ function Table({
       flamebearer,
       sortBy: tableSortProps.sortBy,
       sortByDirection: tableSortProps.sortByDirection,
-      viewDiff,
+      isDoubles,
       fitMode,
       handleTableItemClick,
       highlightQuery,
@@ -264,13 +241,14 @@ interface GetTableBodyRowsProps
   extends Omit<ProfilerTableProps, 'tableBodyRef'> {
   sortBy: string;
   sortByDirection: string;
+  isDoubles: boolean;
 }
 
 const getTableBody = ({
   flamebearer,
   sortBy,
   sortByDirection,
-  viewDiff,
+  isDoubles,
   fitMode,
   handleTableItemClick,
   highlightQuery,
@@ -296,14 +274,26 @@ const getTableBody = ({
         sorted = tableBodyCells.sort((a, b) => m * (a[sortBy] - b[sortBy]));
         break;
       }
-
-      // sorting by all other fields means it must be a double
-      default: {
+      case 'baseline': {
+        sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
+          (a, b) => m * (a.totalLeft / a.leftTicks - b.totalLeft / b.leftTicks)
+        );
+        break;
+      }
+      case 'comparison': {
         sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
           (a, b) =>
-            m * (a[sortBy as DoubleSortByKeys] - b[sortBy as DoubleSortByKeys])
+            m * (a.totalRght / a.rightTicks - b.totalRght / b.rightTicks)
         );
+        break;
       }
+      // todo: add sort for ProfileTable diff column
+      // case 'diff': {
+      //   break;
+      // }
+      default:
+        sorted = tableBodyCells;
+        break;
     }
   }
 
@@ -330,7 +320,7 @@ const getTableBody = ({
     color: Color,
     style: CSSProperties
   ): BodyRow => ({
-    'data-row': `${x.name};${x.self};${x.total};${x.type}`,
+    'data-row': `${x.type};${x.name};${x.self};${x.total}`,
     isRowSelected: isRowSelected(x.name),
     onClick: () => handleTableItemClick(x),
     cells: [
@@ -346,141 +336,52 @@ const getTableBody = ({
     ],
   });
 
-  const getDoubleRow = (() => {
-    switch (viewDiff) {
-      case 'self':
-        return (
-          x: DoubleCell & { name: string },
-          color: Color,
-          style: CSSProperties
-        ): BodyRow & { type: 'self' } => ({
-          type: 'self',
-          isRowSelected: isRowSelected(x.name),
-          onClick: () => handleTableItemClick(x),
-          cells: [
-            { value: nameCell(x, style) },
-            {
-              style: backgroundImageDiffStyle(
-                palette,
-                x.selfLeft,
-                x.selfRght,
-                maxSelf,
-                color,
-                'L'
-              ),
-              value: (() => (
-                <span title={formatter.format(x.selfLeft, sampleRate)}>
-                  {formatter.format(x.selfLeft, sampleRate)}
-                </span>
-              ))(),
-            },
-            {
-              style: backgroundImageDiffStyle(
-                palette,
-                x.selfLeft,
-                x.selfRght,
-                maxSelf,
-                color,
-                'R'
-              ),
-              value: (
-                <span title={formatter.format(x.selfRght, sampleRate)}>
-                  {formatter.format(x.selfRght, sampleRate)}
-                </span>
-              ),
-            },
-          ],
-        });
-      case 'total':
-        return (
-          x: DoubleCell & { name: string },
-          color: Color,
-          style: CSSProperties
-        ): BodyRow & { type: 'total' } => ({
-          type: 'total',
-          isRowSelected: isRowSelected(x.name),
-          onClick: () => handleTableItemClick(x),
-          cells: [
-            { value: nameCell(x, style) },
-            {
-              style: backgroundImageDiffStyle(
-                palette,
-                x.totalLeft,
-                x.totalRght,
-                numTicks / 2,
-                color,
-                'L'
-              ),
-              value: (() => (
-                <span title={formatter.format(x.totalLeft, sampleRate)}>
-                  {formatter.format(x.totalLeft, sampleRate)}
-                </span>
-              ))(),
-            },
-            {
-              style: backgroundImageDiffStyle(
-                palette,
-                x.totalLeft,
-                x.totalRght,
-                numTicks / 2,
-                color,
-                'R'
-              ),
-              value: (() => (
-                <span title={formatter.format(x.totalRght, sampleRate)}>
-                  {formatter.format(x.totalRght, sampleRate)}
-                </span>
-              ))(),
-            },
-          ],
-        });
-      case 'diff':
-        return (
-          x: DoubleCell & { name: string },
-          color: Color,
-          style: CSSProperties
-        ): BodyRow & { type: 'diff' } => ({
-          type: 'diff',
-          isRowSelected: isRowSelected(x.name),
-          onClick: () => handleTableItemClick(x),
-          cells: [
-            { value: nameCell(x, style) },
-            {
-              style: backgroundImageDiffStyle(
-                palette,
-                x.selfLeft,
-                x.selfRght,
-                maxSelf,
-                defaultColor
-              ),
-              value: (() => (
-                <span title={formatter.format(x.selfDiff, sampleRate)}>
-                  {formatter.format(x.selfDiff, sampleRate)}
-                </span>
-              ))(),
-            },
-            {
-              style: backgroundImageDiffStyle(
-                palette,
-                x.totalLeft,
-                x.totalRght,
-                numTicks / 2,
-                color
-              ),
-              value: (() => (
-                <span title={formatter.format(x.totalDiff, sampleRate)}>
-                  {formatter.format(x.totalDiff, sampleRate)}
-                </span>
-              ))(),
-            },
-          ],
-        });
-      default:
-        return (): { type: 'unsupported' } => ({
-          type: 'unsupported',
-        });
+  const getDoubleRow = (
+    x: DoubleCell & { name: string },
+    style: CSSProperties
+  ): BodyRow => {
+    const leftPercent = ratioToPercent(x.totalLeft / x.leftTicks);
+    const rghtPercent = ratioToPercent(x.totalRght / x.rightTicks);
+
+    const totalDiff = diffPercent(leftPercent, rghtPercent);
+
+    let diffCellColor = '';
+    if (totalDiff > 0) {
+      diffCellColor = palette.badColor.rgb().string();
+    } else if (totalDiff < 0) {
+      diffCellColor = palette.goodColor.rgb().string();
     }
-  })();
+
+    let diffValue = '';
+    if (!x.totalLeft) {
+      // this is a new function
+      diffValue = '(new)';
+    } else if (!x.totalRght) {
+      // this function has been removed
+      diffValue = '(removed)';
+    } else if (totalDiff > 0) {
+      diffValue = `(+${totalDiff.toFixed(2)}%)`;
+    } else if (totalDiff < 0) {
+      diffValue = `(${totalDiff.toFixed(2)}%)`;
+    }
+
+    return {
+      'data-row': `${x.type};${x.name};${x.totalLeft};${x.leftTicks};${x.totalRght};${x.rightTicks}`,
+      isRowSelected: isRowSelected(x.name),
+      onClick: () => handleTableItemClick(x),
+      cells: [
+        { value: nameCell(x, style) },
+        { value: `${leftPercent} %` },
+        { value: `${rghtPercent} %` },
+        {
+          value: diffValue,
+          style: {
+            color: diffCellColor,
+          },
+        },
+      ],
+    };
+  };
 
   const rows = sorted
     .filter((x) => {
@@ -492,7 +393,7 @@ const getTableBody = ({
     })
     .reduce((acc, x) => {
       const pn = getPackageNameFromStackTrace(spyName, x.name);
-      const color = viewDiff
+      const color = isDoubles
         ? defaultColor
         : colorBasedOnPackageName(palette, pn);
       const style = {
@@ -500,11 +401,7 @@ const getTableBody = ({
       };
 
       if (x.type === 'double') {
-        const doubleRow = getDoubleRow(x, color, style);
-
-        if (doubleRow.type === 'unsupported') return acc;
-
-        acc.push(doubleRow);
+        acc.push(getDoubleRow(x, style));
         return acc;
       }
 
@@ -522,7 +419,6 @@ const getTableBody = ({
 
 export interface ProfilerTableProps {
   flamebearer: Flamebearer;
-  viewDiff?: 'diff' | 'total' | 'self' | false;
   fitMode: FitModes;
   handleTableItemClick: (tableItem: { name: string }) => void;
   highlightQuery: string;
@@ -534,7 +430,6 @@ export interface ProfilerTableProps {
 
 export default function ProfilerTable({
   flamebearer,
-  viewDiff,
   fitMode,
   handleTableItemClick,
   highlightQuery,
@@ -544,11 +439,11 @@ export default function ProfilerTable({
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
   return (
-    <>
+    <div data-testid="table-view">
       <Table
         tableBodyRef={tableBodyRef}
         flamebearer={flamebearer}
-        viewDiff={viewDiff}
+        isDoubles={flamebearer.format === 'double'}
         fitMode={fitMode}
         highlightQuery={highlightQuery}
         handleTableItemClick={handleTableItemClick}
@@ -560,7 +455,8 @@ export default function ProfilerTable({
         numTicks={flamebearer.numTicks}
         sampleRate={flamebearer.sampleRate}
         units={flamebearer.units}
+        palette={palette}
       />
-    </>
+    </div>
   );
 }

@@ -62,18 +62,6 @@ $buttonHeight: 37px;
   white-space: nowrap;
 }
 
-.diffTypesButton {
-  svg {
-    height: 20px;
-    width: 20px !important;
-  }
-}
-
-.diffDropdownButton {
-  text-transform: capitalize;
-  margin-left: 1.5px;
-}
-
 .fitModeButton {
   @extend .toggleViewButton;
 }

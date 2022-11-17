@@ -1,11 +1,7 @@
 import React, { ReactNode, isValidElement } from 'react';
 import classNames from 'classnames/bind';
-import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
-import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
-import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
-import { IconDefinition } from '@fortawesome/fontawesome-common-types';
 import { Maybe } from 'true-myth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import useResizeObserver from '@react-hook/resize-observer';
@@ -66,7 +62,6 @@ export interface ProfileHeaderProps {
   view: ViewTypes;
   enableChangingDisplay?: boolean;
   flamegraphType: 'single' | 'double';
-  viewDiff: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
   highlightQuery: string;
   ExportData?: ReactNode;
@@ -78,7 +73,6 @@ export interface ProfileHeaderProps {
   updateFitMode: (f: FitModes) => void;
   fitMode: FitModes;
   updateView: (s: ViewTypes) => void;
-  updateViewDiff: (s: 'diff' | 'total' | 'self') => void;
 
   /**
    * Refers to the node that has been selected in the flamegraph
@@ -93,7 +87,6 @@ const Divider = () => <div className={styles.divider} />;
 const Toolbar = React.memo(
   ({
     view,
-    viewDiff,
     handleSearchChange,
     highlightQuery,
     isFlamegraphDirty,
@@ -101,7 +94,6 @@ const Toolbar = React.memo(
     updateFitMode,
     fitMode,
     updateView,
-    updateViewDiff,
     selectedNode,
     onFocusOnSubtree,
     flamegraphType,
@@ -121,13 +113,6 @@ const Toolbar = React.memo(
             highlightQuery={highlightQuery}
             sharedQuery={sharedQuery}
           />
-          {flamegraphType === 'double' && (
-            <DiffView
-              showMode={showMode}
-              viewDiff={viewDiff}
-              updateViewDiff={updateViewDiff}
-            />
-          )}
           <div className={styles['space-filler']} />
           <FitMode
             showMode={showMode}
@@ -311,94 +296,6 @@ function FitMode({
         </Button>
       </Tooltip>
     </>
-  );
-}
-
-function DiffView({
-  viewDiff,
-  updateViewDiff,
-  showMode,
-}: {
-  showMode: ShowModeType;
-  updateViewDiff: ProfileHeaderProps['updateViewDiff'];
-  viewDiff: ProfileHeaderProps['viewDiff'];
-}) {
-  if (!viewDiff) {
-    return null;
-  }
-
-  const diffTypes: Array<{
-    value: ProfileHeaderProps['viewDiff'];
-    label: string;
-    icon: IconDefinition;
-  }> = [
-    { value: 'self', label: 'Self', icon: faListUl },
-    { value: 'total', label: 'Total', icon: faBars },
-    { value: 'diff', label: 'Diff', icon: faAlignLeft },
-  ];
-
-  const dropdownMenuItems = diffTypes.map((mode) => (
-    <MenuItem key={mode.value} value={mode.value}>
-      <div className={styles.dropdownMenuItem} data-testid={mode.value}>
-        {mode.label.split(' ')[0]}
-        {viewDiff === mode.value ? <CheckIcon /> : null}
-      </div>
-    </MenuItem>
-  ));
-
-  const DiffSelect = (
-    <Tooltip placement="top" title="Diff View">
-      <div>
-        <Dropdown
-          label="Diff View"
-          ariaLabel="Diff View"
-          value={viewDiff}
-          onItemClick={(event) => updateViewDiff(event.value)}
-          align="center"
-          menuButtonClassName={styles.diffDropdownButton}
-        >
-          {dropdownMenuItems}
-        </Dropdown>
-      </div>
-    </Tooltip>
-  );
-
-  const DiffButtons = diffTypes.map(({ label, value, icon }) => {
-    return (
-      <Tooltip key={value} placement="top" title={label}>
-        <Button
-          onClick={() => updateViewDiff(value)}
-          className={cx({
-            [styles.toggleViewButton]: true,
-            [styles.diffTypesButton]: true,
-            selected: viewDiff === value,
-          })}
-        >
-          <FontAwesomeIcon icon={icon} />
-        </Button>
-      </Tooltip>
-    );
-  });
-
-  const decideWhatToShow = () => {
-    switch (showMode) {
-      case 'small': {
-        return DiffSelect;
-      }
-      case 'large': {
-        return DiffButtons;
-      }
-
-      default: {
-        throw new Error(`Invalid option: '${showMode}'`);
-      }
-    }
-  };
-
-  return (
-    <div className="btn-group" data-testid="diff-view">
-      {decideWhatToShow()}
-    </div>
   );
 }
 

@@ -105,7 +105,6 @@ interface FlamegraphRendererState {
   view: NonNullable<FlamegraphRendererProps['onlyDisplay']>;
   panesOrientation: NonNullable<FlamegraphRendererProps['panesOrientation']>;
 
-  viewDiff: 'diff' | 'total' | 'self';
   fitMode: 'HEAD' | 'TAIL';
   flamebearer: NonNullable<FlamegraphRendererProps['flamebearer']>;
 
@@ -147,7 +146,6 @@ class FlameGraphRenderer extends Component<
     this.state = {
       isFlamegraphDirty: false,
       view: this.props.onlyDisplay ? this.props.onlyDisplay : 'both',
-      viewDiff: 'diff',
       fitMode: 'HEAD',
       flamebearer: mountFlamebearer(props),
 
@@ -338,13 +336,6 @@ class FlameGraphRenderer extends Component<
     return this.state.searchQuery;
   };
 
-  // This in fact seems refers to the diff table
-  updateViewDiff = (newView: 'total' | 'self' | 'diff') => {
-    this.setState({
-      viewDiff: newView,
-    });
-  };
-
   updateView = (newView: ViewTypes) => {
     if (newView === 'sandwich') {
       this.setState({
@@ -402,9 +393,6 @@ class FlameGraphRenderer extends Component<
         <ProfilerTable
           data-testid="table-view"
           flamebearer={this.state.flamebearer}
-          viewDiff={
-            this.state.flamebearer?.format === 'double' && this.state.viewDiff
-          }
           fitMode={this.state.fitMode}
           highlightQuery={this.state.searchQuery}
           selectedItem={this.state.selectedItem}
@@ -541,11 +529,9 @@ class FlameGraphRenderer extends Component<
               enableChangingDisplay={!this.props.onlyDisplay}
               flamegraphType={this.state.flamebearer.format}
               view={this.state.view}
-              viewDiff={this.state.viewDiff}
               handleSearchChange={this.onSearchChange}
               reset={this.onReset}
               updateView={this.updateView}
-              updateViewDiff={this.updateViewDiff}
               updateFitMode={this.updateFitMode}
               fitMode={this.state.fitMode}
               isFlamegraphDirty={this.state.isFlamegraphDirty}
