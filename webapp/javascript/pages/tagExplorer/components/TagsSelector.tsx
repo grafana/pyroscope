@@ -7,7 +7,6 @@ import { appendLabelToQuery } from '@webapp/util/query';
 import { brandQuery } from '@webapp/models/query';
 import { PAGES } from '@webapp/pages/constants';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
-import { Tooltip } from '@webapp/ui/Tooltip';
 import styles from './TagsSelector.module.scss';
 
 const emptyTagsTag = 'No tags available';
@@ -86,21 +85,19 @@ function TagSelector({
       <ul className={styles.tags}>
         {tags.map((tag) => (
           <li className={sideTag === tag ? styles.selected : ''} key={tag}>
-            <Tooltip placement="top" title={tag}>
-              <input
-                type="button"
-                onClick={
-                  tag !== emptyTagsTag
-                    ? () =>
-                        setSelectedTags((currState) => ({
-                          ...currState,
-                          [tagsSideName]: tag,
-                        }))
-                    : undefined
-                }
-                value={tag}
-              />
-            </Tooltip>
+            <input
+              type="button"
+              onClick={
+                tag !== emptyTagsTag
+                  ? () =>
+                      setSelectedTags((currState) => ({
+                        ...currState,
+                        [tagsSideName]: tag,
+                      }))
+                  : undefined
+              }
+              value={tag}
+            />
           </li>
         ))}
       </ul>
@@ -123,6 +120,7 @@ function TagSelector({
 
   return (
     <ModalWithToggle
+      modalClassName={styles.tagSelector}
       isModalOpen={isModalOpen}
       setModalOpenStatus={setModalOpenStatus}
       customHandleOutsideClick={handleOutsideClick}
