@@ -239,9 +239,6 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           </svg>
         </button>
       </div>
-      <div
-        class="divider"
-      />
     </div>
   </div>
 </DocumentFragment>
@@ -374,9 +371,6 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
           />
         </div>
       </div>
-      <div
-        class="divider"
-      />
     </div>
   </div>
 </DocumentFragment>

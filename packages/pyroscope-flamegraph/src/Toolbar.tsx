@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, isValidElement } from 'react';
 import classNames from 'classnames/bind';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
@@ -88,7 +88,8 @@ export interface ProfileHeaderProps {
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
-const Divider = () => <div className={styles.divider} />;
+const Divider = ({ visible = true }: { visible?: boolean }) =>
+  visible ? <div className={styles.divider} /> : null;
 
 const Toolbar = React.memo(
   ({
@@ -107,7 +108,7 @@ const Toolbar = React.memo(
     flamegraphType,
     disableChangingDisplay = false,
     sharedQuery,
-    ExportData = <></>,
+    ExportData,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -140,7 +141,7 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          <Divider />
+          <Divider visible={!disableChangingDisplay} />
           {!disableChangingDisplay && (
             <ViewSection
               flamegraphType={flamegraphType}
@@ -149,8 +150,12 @@ const Toolbar = React.memo(
               updateView={updateView}
             />
           )}
-          <Divider />
-          {ExportData}
+          {isValidElement(ExportData) ? (
+            <>
+              <Divider />
+              {ExportData}
+            </>
+          ) : null}
         </div>
       </div>
     );
