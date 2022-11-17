@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 
 	"github.com/hashicorp/go-multierror"
@@ -75,11 +75,7 @@ func (c *Client) GetAppsNames() (names AppNames, err error) {
 }
 
 func (c *Client) DeleteApp(name string) (err error) {
-	// we are kinda robbing here
-	// since the server and client are defined in the same package
-	payload := server.DeleteAppInput{
-		Name: name,
-	}
+	payload := api.DeleteAppInput{Name: name}
 
 	marshalledPayload, err := json.Marshal(payload)
 	if err != nil {

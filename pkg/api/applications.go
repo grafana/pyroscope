@@ -39,16 +39,6 @@ func (h *ApplicationsHandler) GetApps(w http.ResponseWriter, r *http.Request) {
 	h.httpUtils.WriteResponseJSON(r, w, apps)
 }
 
-//	func (h *ApplicationsHandler) GetAppNames(w http.ResponseWriter, r *http.Request) {
-//		apps, err := h.svc.GetAppNames(r.Context())
-//		if err != nil {
-//			h.httpUtils.HandleError(r, w, err)
-//			return
-//		}
-//
-//		w.WriteHeader(http.StatusOK)
-//		h.httpUtils.WriteResponseJSON(r, w, apps)
-//	}
 type DeleteAppInput struct {
 	Name string `json:"name"`
 }
