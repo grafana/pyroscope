@@ -120,7 +120,7 @@ function TagSelector({
 
   return (
     <ModalWithToggle
-      modalClassName={styles.tagSelector}
+      modalClassName={styles.tagsSelector}
       isModalOpen={isModalOpen}
       setModalOpenStatus={setModalOpenStatus}
       customHandleOutsideClick={handleOutsideClick}
