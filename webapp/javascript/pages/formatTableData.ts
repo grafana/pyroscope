@@ -1,4 +1,6 @@
+import { Profile } from '@pyroscope/models/src';
 import Color from 'color';
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 
 export interface TableValuesData {
   color?: Color;
@@ -60,3 +62,28 @@ export function getTableIntegerSpaceLengthByColumn(data: TableValuesData[]) {
     { mean: 1, stdDeviation: 1, total: 1 }
   );
 }
+
+export const formatValue = ({
+  value,
+  formatter,
+  profile,
+}: {
+  value?: number;
+  formatter?: ReturnType<typeof getFormatter>;
+  profile?: Profile;
+}) => {
+  if (!formatter || !profile || typeof value !== 'number') {
+    return '0';
+  }
+
+  const formatterResult = `${formatter.format(
+    value,
+    profile.metadata.sampleRate
+  )}`;
+
+  if (String(formatterResult).includes('< 0.01')) {
+    return formatter.formatPrecise(value, profile.metadata.sampleRate);
+  }
+
+  return formatterResult;
+};

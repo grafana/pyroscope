@@ -1,14 +1,23 @@
 import React, { useMemo } from 'react';
 import { TimelineGroupData } from '@webapp/components/TimelineChart/TimelineChartWrapper';
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
+import { Profile } from '@pyroscope/models/src';
 import PieChart, { PieChartDataItem } from './PieChart';
-import PieChartTooltip, { PieChartTooltipProps } from './PieChartTooltip';
+import PieChartTooltip from './PieChartTooltip';
 import { calculateTotal } from '../../../math';
+import { formatValue } from '../../../formatTableData';
 
 interface TotalSamplesChartProps {
   filteredGroupsData: TimelineGroupData[];
+  profile?: Profile;
+  formatter?: ReturnType<typeof getFormatter>;
 }
 
-const TotalSamplesChart = ({ filteredGroupsData }: TotalSamplesChartProps) => {
+const TotalSamplesChart = ({
+  filteredGroupsData,
+  formatter,
+  profile,
+}: TotalSamplesChartProps) => {
   const pieChartData: PieChartDataItem[] = useMemo(() => {
     return filteredGroupsData.length
       ? filteredGroupsData.map((d) => ({
@@ -25,10 +34,10 @@ const TotalSamplesChart = ({ filteredGroupsData }: TotalSamplesChartProps) => {
       id="total-samples-chart"
       height="280px"
       width="280px"
-      onHoverTooltip={(data: PieChartTooltipProps) => (
+      onHoverTooltip={(data) => (
         <PieChartTooltip
           label={data.label}
-          value={data.value}
+          value={formatValue({ formatter, profile, value: data.value })}
           percent={data.percent}
         />
       )}

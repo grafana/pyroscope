@@ -1,10 +1,10 @@
 import React from 'react';
 import styles from './styles.module.scss';
 
-export interface PieChartTooltipProps {
+interface PieChartTooltipProps {
   label?: string;
   percent?: number;
-  value?: number;
+  value?: string;
 }
 
 const PieChartTooltip = (props: PieChartTooltipProps) => {
@@ -14,7 +14,7 @@ const PieChartTooltip = (props: PieChartTooltipProps) => {
       <table className={styles.table}>
         <thead>
           <tr>
-            <td>Total samples</td>
+            <td>Total</td>
             <td>Percentage</td>
           </tr>
         </thead>
