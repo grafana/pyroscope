@@ -20,7 +20,7 @@ import (
 type Controller struct {
 	log            *logrus.Logger
 	httpUtils      httputils.Utils
-	appService     *service.ApplicationService
+	appService     service.ApplicationService
 	userService    UserService
 	storageService StorageService
 }
@@ -35,7 +35,7 @@ type StorageService interface {
 
 func NewController(
 	log *logrus.Logger,
-	appService *service.ApplicationService,
+	appService service.ApplicationService,
 	userService UserService,
 	storageService StorageService) *Controller {
 	return &Controller{

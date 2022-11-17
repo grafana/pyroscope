@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -57,12 +59,19 @@ func (c *Client) GetAppsNames() (names AppNames, err error) {
 		return names, multierror.Append(ErrStatusCodeNotOK, err)
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&names)
+	// Strip all data except fqname
+	var apps []storage.ApplicationMetadata
+	err = json.NewDecoder(resp.Body).Decode(&apps)
 	if err != nil {
 		return names, multierror.Append(ErrDecodingResponse, err)
 	}
 
-	return names, nil
+	appNames := make([]string, len(apps))
+	for i, appName := range apps {
+		appNames[i] = appName.FQName
+	}
+
+	return appNames, nil
 }
 
 func (c *Client) DeleteApp(name string) (err error) {

@@ -15,15 +15,15 @@ type ApplicationService struct {
 // NewApplicationService creates an ApplicationService
 // Which just delegates to its underlying ApplicationMetadataService
 // Except when deleting, which is then forward to both ApplicationMetadataService and storageDeleter
-func NewApplicationService(appMetadataSvc ApplicationMetadataService, storageDeleter storage.AppDeleter) *ApplicationService {
-	return &ApplicationService{
+func NewApplicationService(appMetadataSvc ApplicationMetadataService, storageDeleter storage.AppDeleter) ApplicationService {
+	return ApplicationService{
 		appMetadataSvc: appMetadataSvc,
 		storageDeleter: storageDeleter,
 	}
 }
 
 // List delegates to ApplicationMetadataService
-func (svc *ApplicationService) List(ctx context.Context) (apps []storage.ApplicationMetadata, err error) {
+func (svc ApplicationService) List(ctx context.Context) (apps []storage.ApplicationMetadata, err error) {
 	return svc.appMetadataSvc.List(ctx)
 }
 
@@ -38,8 +38,8 @@ func (svc ApplicationService) CreateOrUpdate(ctx context.Context, application st
 	return svc.appMetadataSvc.CreateOrUpdate(ctx, application)
 }
 
-// DeleteApp deletes apps from both storage and ApplicationMetadata
-func (svc ApplicationService) DeleteApp(ctx context.Context, name string) error {
+// Delete deletes apps from both storage and ApplicationMetadata
+func (svc ApplicationService) Delete(ctx context.Context, name string) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {

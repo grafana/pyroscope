@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -18,16 +17,7 @@ type DeleteAppInput struct {
 	Name string `json:"name"`
 }
 
-func (ctrl *Controller) getAppsHandler() http.HandlerFunc {
-	svc := service.NewApplicationMetadataService(ctrl.db)
-	return NewGetAppsHandler(svc, ctrl.httpUtils)
-}
-
-type AppGetter interface {
-	List(ctx context.Context) (apps []storage.ApplicationMetadata, err error)
-}
-
-func NewGetAppsHandler(s AppGetter, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
+func NewGetAppsHandler(s *service.ApplicationService, httpUtils httputils.Utils) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		apps, err := s.List(r.Context())
 		if err != nil {
