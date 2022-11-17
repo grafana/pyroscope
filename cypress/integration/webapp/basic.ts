@@ -185,7 +185,7 @@ describe('basic test', () => {
         .should('not.be.visible');
     });
 
-    it('works in comparison view', () => {
+    it('flamegraph tooltip works in comparison view', () => {
       const findFlamegraph = (n: number) => {
         const query = `> :nth-child(${n})`;
 
@@ -276,7 +276,7 @@ describe('basic test', () => {
         .should('not.be.visible');
     });
 
-    it('works in diff view', () => {
+    it('flamegraph tooltip works in diff view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu-diff.json',
         times: 3,
@@ -307,6 +307,60 @@ describe('basic test', () => {
       cy.findByTestId('tooltip-table').should(
         'have.text',
         'BaselineComparisonDiffShare of CPU:100%100%CPU Time:9.91 seconds9.87 secondsSamples:991987'
+      );
+    });
+
+    it('table tooltip works in single view', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+        times: 3,
+      }).as('render');
+
+      cy.visit('/');
+
+      cy.wait('@render');
+
+      cy.findByTestId('table-view')
+        .findByTestId('tooltip')
+        .should('not.be.visible');
+      cy.get('div.spinner-container.loaded');
+
+      cy.findByTestId('table-view').trigger('mousemove', 150, 80);
+      cy.findByTestId('table-view')
+        .findByTestId('tooltip')
+        .should('be.visible');
+
+      cy.findByTestId('tooltip-table').should(
+        'have.text',
+        'Self (% of total CPU)Total (% of total CPU)CPU Time:0.02 seconds(0.20%)0.03 seconds(0.30%)'
+      );
+    });
+
+    it('table tooltip works in diff view', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu-diff.json',
+        times: 3,
+      }).as('render');
+
+      cy.visit(
+        '/comparison-diff?query=testapp%7B%7D&rightQuery=testapp%7B%7D&leftQuery=testapp%7B%7D&leftFrom=1&leftUntil=1&rightFrom=1&rightUntil=1&from=now-5m'
+      );
+
+      cy.wait('@render');
+
+      cy.findByTestId('table-view')
+        .findByTestId('tooltip')
+        .should('not.be.visible');
+      cy.get('div.spinner-container.loaded');
+
+      cy.findByTestId('table-view').trigger('mousemove', 150, 80);
+      cy.findByTestId('table-view')
+        .findByTestId('tooltip')
+        .should('be.visible');
+
+      cy.findByTestId('tooltip-table').should(
+        'have.text',
+        'BaselineComparisonDiffShare of CPU:100%99.8%(-0.20%)CPU Time:9.91 seconds9.85 secondsSamples:991985'
       );
     });
   });

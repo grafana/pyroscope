@@ -439,7 +439,7 @@ export default function ProfilerTable({
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
   return (
-    <>
+    <div data-testid="table-view">
       <Table
         tableBodyRef={tableBodyRef}
         flamebearer={flamebearer}
@@ -457,6 +457,6 @@ export default function ProfilerTable({
         units={flamebearer.units}
         palette={palette}
       />
-    </>
+    </div>
   );
 }
