@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.63.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.62.1...@pyroscope/webapp@1.63.0) (2022-11-17)
+
+
+### Bug Fixes
+
+* tag explorer long tag overflow ([#1718](https://github.com/pyroscope-io/pyroscope/issues/1718)) ([b5ee72a](https://github.com/pyroscope-io/pyroscope/commit/b5ee72a651c00dae29e0651ba77e6c587f81c21f))
+
+
+### Features
+
+* pie chart tooltip show units ([#1720](https://github.com/pyroscope-io/pyroscope/issues/1720)) ([8d5d658](https://github.com/pyroscope-io/pyroscope/commit/8d5d65869f8f66833b782e97e45261e460272beb))
+* **webapp:** filter out apps that are not cpu in exemplars page ([#1722](https://github.com/pyroscope-io/pyroscope/issues/1722)) ([100f943](https://github.com/pyroscope-io/pyroscope/commit/100f943d8b90e294de0ae076ae32f2a9846a1aa2))
+
+
+
+
+
 ## [1.62.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.62.0...@pyroscope/webapp@1.62.1) (2022-11-17)
 
 **Note:** Version bump only for package @pyroscope/webapp
