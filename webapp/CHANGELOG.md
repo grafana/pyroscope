@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.64.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.63.1...@pyroscope/webapp@1.64.0) (2022-11-17)
+
+
+### Features
+
+* show percentages for diff table instead of absolute values ([#1697](https://github.com/pyroscope-io/pyroscope/issues/1697)) ([71efcb8](https://github.com/pyroscope-io/pyroscope/commit/71efcb868b14ff3771faa5858dd781eba0787bd8))
+
+
+
+
+
 ## [1.63.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.63.0...@pyroscope/webapp@1.63.1) (2022-11-17)
 
 **Note:** Version bump only for package @pyroscope/webapp
