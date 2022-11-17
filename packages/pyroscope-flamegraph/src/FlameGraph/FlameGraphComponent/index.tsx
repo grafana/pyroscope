@@ -265,11 +265,20 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         );
       };
 
+      const ResetItem = () => {
+        const isResetDisabled =
+          !(selectedItem.isJust && selectedItem.value) && !dirty;
+
+        return (
+          <MenuItem key="reset" disabled={isResetDisabled} onClick={onReset}>
+            <FontAwesomeIcon icon={faRedo} />
+            Reset View
+          </MenuItem>
+        );
+      };
+
       return [
-        <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
-          <FontAwesomeIcon icon={faRedo} />
-          Reset View
-        </MenuItem>,
+        ResetItem(),
         CollapseItem(),
         CopyItem(),
         HighlightSimilarNodesItem(),
