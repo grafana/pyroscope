@@ -56,18 +56,3 @@ func (svc ApplicationService) Delete(ctx context.Context, name string) error {
 
 	return g.Wait()
 }
-
-// GetAppNames fetches all applications and returns only its names
-func (svc ApplicationService) GetAppNames(ctx context.Context) ([]string, error) {
-	apps, err := svc.List(ctx)
-	if err != nil {
-		return []string{}, err
-	}
-
-	appNames := make([]string, len(apps))
-	for i, appName := range apps {
-		appNames[i] = appName.FQName
-	}
-
-	return appNames, nil
-}
