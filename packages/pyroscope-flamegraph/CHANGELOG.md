@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.0...@pyroscope/flamegraph@0.32.1) (2022-11-18)
+
+
+### Bug Fixes
+
+* make reset view available in sandwich mode context menu ([#1731](https://github.com/pyroscope-io/pyroscope/issues/1731)) ([e41bcaf](https://github.com/pyroscope-io/pyroscope/commit/e41bcaf5cbfc3458958132aa4f54998aedcd8328))
+
+
+
+
+
 # [0.32.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.31.2...@pyroscope/flamegraph@0.32.0) (2022-11-17)
 
 
