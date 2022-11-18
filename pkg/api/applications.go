@@ -46,18 +46,13 @@ func (h *ApplicationsHandler) DeleteApp(w http.ResponseWriter, r *http.Request) 
 
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
-		h.httpUtils.WriteError(r, w, http.StatusBadRequest, err, "")
+		h.httpUtils.HandleError(r, w, err)
 		return
 	}
 
 	err = h.svc.Delete(r.Context(), payload.Name)
 	if err != nil {
-		// TODO how to distinguish
-		// it was a bad request
-		// or an internal server error
-		h.httpUtils.WriteError(r, w, http.StatusInternalServerError, err, "")
+		h.httpUtils.HandleError(r, w, err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
