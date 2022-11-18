@@ -1,4 +1,4 @@
-/* eslint-disable eqeqeq */
+/* eslint eqeqeq: "off" */
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
 import clamp from './clamp';
 import extractRange from './extractRange';
