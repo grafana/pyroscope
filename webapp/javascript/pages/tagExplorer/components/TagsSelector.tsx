@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Redirect, useLocation } from 'react-router-dom';
+import cl from 'classnames';
 
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { actions } from '@webapp/redux/reducers/continuous';
@@ -86,7 +87,7 @@ function TagSelector({
         {tags.map((tag) => (
           <li
             title={tag}
-            className={sideTag === tag ? styles.selected : ''}
+            className={cl({ [styles.selected]: sideTag === tag })}
             key={tag}
           >
             <input
