@@ -224,7 +224,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	}
 
 	// FIXME: not optimal, unify this with the remoteReadHandler at the top
-	//authorizer := authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log))
 	appsRouter := apiRouter.PathPrefix("/apps").Subrouter()
 	if ctrl.config.RemoteRead.Enabled {
 		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)

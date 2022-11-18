@@ -51,7 +51,7 @@ func (svc ApplicationService) Delete(ctx context.Context, name string) error {
 	})
 
 	g.Go(func() error {
-		return svc.appMetadataSvc.DeleteApp(ctx, name)
+		return svc.appMetadataSvc.Delete(ctx, name)
 	})
 
 	return g.Wait()
