@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 )
 
 type ApplicationMetadataWriter interface {
-	CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error
+	CreateOrUpdate(ctx context.Context, application appmetadata.ApplicationMetadata) error
 }
 
 type ApplicationMetadataCacheService struct {
@@ -39,9 +39,9 @@ func NewApplicationMetadataCacheService(config ApplicationMetadataCacheServiceCo
 // * item is not in the cache
 // * data is different from what's in the cache
 // Otherwise it does nothing
-func (svc *ApplicationMetadataCacheService) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
+func (svc *ApplicationMetadataCacheService) CreateOrUpdate(ctx context.Context, application appmetadata.ApplicationMetadata) error {
 	if cachedApp, ok := svc.cache.get(application.FQName); ok {
-		if !svc.isTheSame(application, cachedApp.(storage.ApplicationMetadata)) {
+		if !svc.isTheSame(application, cachedApp.(appmetadata.ApplicationMetadata)) {
 			return svc.writeToBoth(ctx, application)
 		}
 		return nil
@@ -54,7 +54,7 @@ func (svc *ApplicationMetadataCacheService) CreateOrUpdate(ctx context.Context, 
 }
 
 // writeToBoth writes to both the cache and the underlying service
-func (svc *ApplicationMetadataCacheService) writeToBoth(ctx context.Context, application storage.ApplicationMetadata) error {
+func (svc *ApplicationMetadataCacheService) writeToBoth(ctx context.Context, application appmetadata.ApplicationMetadata) error {
 	if err := svc.appSvc.CreateOrUpdate(ctx, application); err != nil {
 		return err
 	}
@@ -65,6 +65,6 @@ func (svc *ApplicationMetadataCacheService) writeToBoth(ctx context.Context, app
 // isTheSame check if 2 applications have the same data
 // TODO(eh-am): update to a more robust comparison function
 // See https://pkg.go.dev/reflect#DeepEqual for its drawbacks
-func (*ApplicationMetadataCacheService) isTheSame(app1 storage.ApplicationMetadata, app2 storage.ApplicationMetadata) bool {
+func (*ApplicationMetadataCacheService) isTheSame(app1 appmetadata.ApplicationMetadata, app2 appmetadata.ApplicationMetadata) bool {
 	return reflect.DeepEqual(app1, app2)
 }

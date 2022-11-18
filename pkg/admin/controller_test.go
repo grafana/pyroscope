@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,11 +21,11 @@ import (
 )
 
 type mockStorage struct {
-	getAppsResult []storage.ApplicationMetadata
+	getAppsResult []appmetadata.ApplicationMetadata
 	deleteResult  error
 }
 
-func (m mockStorage) List(ctx context.Context) ([]storage.ApplicationMetadata, error) {
+func (m mockStorage) List(ctx context.Context) ([]appmetadata.ApplicationMetadata, error) {
 	return m.getAppsResult, nil
 }
 
@@ -54,7 +54,7 @@ var _ = Describe("controller", func() {
 		// create a server
 		BeforeEach(func() {
 			appSvc = mockStorage{
-				getAppsResult: []storage.ApplicationMetadata{
+				getAppsResult: []appmetadata.ApplicationMetadata{
 					{FQName: "app1"},
 					{FQName: "app2"},
 				},

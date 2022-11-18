@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -60,7 +60,7 @@ func (c *Client) GetAppsNames() (names AppNames, err error) {
 	}
 
 	// Strip all data except fqname
-	var apps []storage.ApplicationMetadata
+	var apps []appmetadata.ApplicationMetadata
 	err = json.NewDecoder(resp.Body).Decode(&apps)
 	if err != nil {
 		return names, multierror.Append(ErrDecodingResponse, err)

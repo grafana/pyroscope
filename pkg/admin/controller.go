@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -34,7 +34,7 @@ type StorageService interface {
 }
 
 type ApplicationListerAndDeleter interface {
-	List(ctx context.Context) (apps []storage.ApplicationMetadata, err error)
+	List(ctx context.Context) (apps []appmetadata.ApplicationMetadata, err error)
 	Delete(ctx context.Context, name string) error
 }
 

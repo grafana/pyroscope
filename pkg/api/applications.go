@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 type ApplicationListerAndDeleter interface {
-	List(context.Context) ([]storage.ApplicationMetadata, error)
+	List(context.Context) ([]appmetadata.ApplicationMetadata, error)
 	Delete(ctx context.Context, name string) error
 }
 

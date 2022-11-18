@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"gorm.io/gorm"
 )
 
@@ -17,14 +17,14 @@ func NewApplicationMetadataService(db *gorm.DB) ApplicationMetadataService {
 	return ApplicationMetadataService{db: db}
 }
 
-func (svc ApplicationMetadataService) List(ctx context.Context) (apps []storage.ApplicationMetadata, err error) {
+func (svc ApplicationMetadataService) List(ctx context.Context) (apps []appmetadata.ApplicationMetadata, err error) {
 	tx := svc.db.WithContext(ctx)
 	result := tx.Find(&apps)
 	return apps, result.Error
 }
 
-func (svc ApplicationMetadataService) Get(ctx context.Context, name string) (storage.ApplicationMetadata, error) {
-	app := storage.ApplicationMetadata{}
+func (svc ApplicationMetadataService) Get(ctx context.Context, name string) (appmetadata.ApplicationMetadata, error) {
+	app := appmetadata.ApplicationMetadata{}
 	if err := model.ValidateAppName(name); err != nil {
 		return app, err
 	}
@@ -40,7 +40,7 @@ func (svc ApplicationMetadataService) Get(ctx context.Context, name string) (sto
 	}
 }
 
-func (svc ApplicationMetadataService) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
+func (svc ApplicationMetadataService) CreateOrUpdate(ctx context.Context, application appmetadata.ApplicationMetadata) error {
 	if err := model.ValidateAppName(application.FQName); err != nil {
 		return err
 	}
@@ -48,9 +48,9 @@ func (svc ApplicationMetadataService) CreateOrUpdate(ctx context.Context, applic
 	tx := svc.db.WithContext(ctx)
 
 	// Only update the field if it's populated
-	return tx.Where(storage.ApplicationMetadata{
+	return tx.Where(appmetadata.ApplicationMetadata{
 		FQName: application.FQName,
-	}).Assign(application).FirstOrCreate(&storage.ApplicationMetadata{}).Error
+	}).Assign(application).FirstOrCreate(&appmetadata.ApplicationMetadata{}).Error
 }
 
 func (svc ApplicationMetadataService) Delete(ctx context.Context, name string) error {
@@ -59,5 +59,5 @@ func (svc ApplicationMetadataService) Delete(ctx context.Context, name string) e
 	}
 
 	tx := svc.db.WithContext(ctx)
-	return tx.Where("fq_name = ?", name).Delete(storage.ApplicationMetadata{}).Error
+	return tx.Where("fq_name = ?", name).Delete(appmetadata.ApplicationMetadata{}).Error
 }

@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
@@ -21,7 +21,7 @@ var _ = Describe("ApplicationMetadataService", func() {
 		svc = service.NewApplicationMetadataService(s.DB())
 	})
 
-	app := storage.ApplicationMetadata{
+	app := appmetadata.ApplicationMetadata{
 		FQName:          "myapp",
 		SampleRate:      100,
 		SpyName:         "gospy",
@@ -29,7 +29,7 @@ var _ = Describe("ApplicationMetadataService", func() {
 		AggregationType: metadata.AverageAggregationType,
 	}
 
-	assertNumOfApps := func(num int) []storage.ApplicationMetadata {
+	assertNumOfApps := func(num int) []appmetadata.ApplicationMetadata {
 		apps, err := svc.List(context.TODO())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(apps)).To(Equal(num))
@@ -40,7 +40,7 @@ var _ = Describe("ApplicationMetadataService", func() {
 		ctx := context.TODO()
 
 		// Create
-		err := svc.CreateOrUpdate(ctx, storage.ApplicationMetadata{FQName: ""})
+		err := svc.CreateOrUpdate(ctx, appmetadata.ApplicationMetadata{FQName: ""})
 		Expect(err).To(HaveOccurred())
 		Expect(model.IsValidationError(err)).To(BeTrue())
 
@@ -73,7 +73,7 @@ var _ = Describe("ApplicationMetadataService", func() {
 			err := svc.CreateOrUpdate(ctx, app)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = svc.CreateOrUpdate(ctx, storage.ApplicationMetadata{
+			err = svc.CreateOrUpdate(ctx, appmetadata.ApplicationMetadata{
 				FQName:     app.FQName,
 				SampleRate: 101,
 			})

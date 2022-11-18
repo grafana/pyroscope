@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,8 +13,8 @@ type AppNamesGetter interface {
 }
 
 type AppMetadataSaver interface {
-	CreateOrUpdate(_ context.Context, _ storage.ApplicationMetadata) error
-	List(context.Context) ([]storage.ApplicationMetadata, error)
+	CreateOrUpdate(_ context.Context, _ appmetadata.ApplicationMetadata) error
+	List(context.Context) ([]appmetadata.ApplicationMetadata, error)
 }
 
 type AppMetadataMigrator struct {
@@ -45,7 +45,7 @@ func (m *AppMetadataMigrator) Migrate() (err error) {
 	// TODO skip if not necessary
 
 	// Convert slice -> map
-	appMap := make(map[string]storage.ApplicationMetadata)
+	appMap := make(map[string]appmetadata.ApplicationMetadata)
 	for _, a := range apps {
 		appMap[a.FQName] = a
 	}
@@ -55,7 +55,7 @@ func (m *AppMetadataMigrator) Migrate() (err error) {
 		if _, ok := appMap[a]; !ok {
 			logrus.Info("Migrating app: ", a)
 			// Write to MetadataSaver
-			saveErr := m.appMetadataSaver.CreateOrUpdate(ctx, storage.ApplicationMetadata{
+			saveErr := m.appMetadataSaver.CreateOrUpdate(ctx, appmetadata.ApplicationMetadata{
 				FQName: a,
 			})
 			if err != nil {
