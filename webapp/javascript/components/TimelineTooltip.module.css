@@ -1,0 +1,22 @@
+.time {
+  font-size: 14px;
+}
+
+.valueWrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  font-size: 14px;
+}
+
+.valueColor {
+  width: 20px;
+  height: 6px;
+  border-radius: 3px;
+  margin-right: 8px;
+}
+
+.closest {
+  font-weight: bold;
+  margin-left: 8px;
+}
