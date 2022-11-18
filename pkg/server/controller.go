@@ -207,7 +207,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		AdhocService: service.NewAdhocService(
 			ctrl.config.MaxNodesRender,
 			ctrl.config.AdhocDataPath),
-		ApplicationService: appSvc,
+		ApplicationListerAndDeleter: appSvc,
 	})
 
 	apiRouter.Use(

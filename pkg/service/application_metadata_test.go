@@ -50,7 +50,7 @@ var _ = Describe("ApplicationMetadataService", func() {
 		Expect(model.IsValidationError(err)).To(BeTrue())
 
 		// Delete
-		err = svc.Delete(ctx, "")
+		err = svc.DeleteApp(ctx, "")
 		Expect(err).To(HaveOccurred())
 		Expect(model.IsValidationError(err)).To(BeTrue())
 	})
@@ -115,7 +115,7 @@ var _ = Describe("ApplicationMetadataService", func() {
 			Expect(err).ToNot(HaveOccurred())
 			assertNumOfApps(1)
 
-			err = svc.Delete(ctx, app.FQName)
+			err = svc.DeleteApp(ctx, app.FQName)
 
 			Expect(err).ToNot(HaveOccurred())
 			assertNumOfApps(0)
@@ -123,7 +123,7 @@ var _ = Describe("ApplicationMetadataService", func() {
 
 		It("doesn't fail when app doesn't exist", func() {
 			ctx := context.TODO()
-			err := svc.Delete(ctx, "non_existing_app")
+			err := svc.DeleteApp(ctx, "non_existing_app")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

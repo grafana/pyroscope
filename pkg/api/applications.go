@@ -9,19 +9,17 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-type ApplicationService interface {
+type ApplicationListerAndDeleter interface {
 	List(context.Context) ([]storage.ApplicationMetadata, error)
-	Get(ctx context.Context, name string) (storage.ApplicationMetadata, error)
-	CreateOrUpdate(context.Context, storage.ApplicationMetadata) error
 	Delete(ctx context.Context, name string) error
 }
 
 type ApplicationsHandler struct {
-	svc       ApplicationService
+	svc       ApplicationListerAndDeleter
 	httpUtils httputils.Utils
 }
 
-func NewApplicationsHandler(svc ApplicationService, httpUtils httputils.Utils) *ApplicationsHandler {
+func NewApplicationsHandler(svc ApplicationListerAndDeleter, httpUtils httputils.Utils) *ApplicationsHandler {
 	return &ApplicationsHandler{
 		svc:       svc,
 		httpUtils: httpUtils,

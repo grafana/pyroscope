@@ -24,7 +24,7 @@ type Services struct {
 	api.APIKeyService
 	api.AnnotationsService
 	api.AdhocService
-	api.ApplicationService
+	api.ApplicationListerAndDeleter
 }
 
 func New(m *mux.Router, s Services) *Router {
@@ -97,7 +97,7 @@ func (r *Router) RegisterAdhocHandlers() {
 }
 
 func (r *Router) RegisterApplicationHandlers() {
-	h := api.NewApplicationsHandler(r.ApplicationService, httputils.NewDefaultHelper(r.Logger))
+	h := api.NewApplicationsHandler(r.ApplicationListerAndDeleter, httputils.NewDefaultHelper(r.Logger))
 	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultHelper(r.Logger))
 
 	x := r.PathPrefix("/apps").Subrouter()

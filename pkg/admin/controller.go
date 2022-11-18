@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	"github.com/pyroscope-io/pyroscope/pkg/service"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -20,7 +20,7 @@ import (
 type Controller struct {
 	log            *logrus.Logger
 	httpUtils      httputils.Utils
-	appService     service.ApplicationService
+	appService     ApplicationListerAndDeleter
 	userService    UserService
 	storageService StorageService
 }
@@ -33,9 +33,14 @@ type StorageService interface {
 	Cleanup(ctx context.Context) error
 }
 
+type ApplicationListerAndDeleter interface {
+	List(ctx context.Context) (apps []storage.ApplicationMetadata, err error)
+	Delete(ctx context.Context, name string) error
+}
+
 func NewController(
 	log *logrus.Logger,
-	appService service.ApplicationService,
+	appService ApplicationListerAndDeleter,
 	userService UserService,
 	storageService StorageService) *Controller {
 	return &Controller{
