@@ -26,12 +26,17 @@ import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
 import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
+import { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
+import { Profile } from '@pyroscope/models/src';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
 } from '@webapp/util/features';
 import useTags from '@webapp/hooks/tags.hook';
-import { TimelineTooltip } from '@webapp/components/TimelineTooltip';
+import {
+  TimelineTooltip,
+  TimelineTooltipProps,
+} from '@webapp/components/TimelineTooltip';
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
@@ -188,56 +193,23 @@ function ContinuousSingleView() {
                   return null;
                 }
 
-                const { profile } = singleView;
-
-                const formatter = getFormatter(
-                  profile.flamebearer.numTicks,
-                  profile.metadata.sampleRate,
-                  profile.metadata.units
-                );
-
                 // TODO: when this could be undefined?
                 if (!data.timeLabel) {
                   return null;
                 }
 
-                if (!data.values) {
-                  return null;
-                }
+                const values = prepareTimelineTooltipContent(
+                  singleView.profile,
+                  query,
+                  data
+                );
 
-                // Filter non empty values
-                const newValues = data.values
-                  .map((a) => {
-                    return {
-                      label: query,
-                      // TODO: horrible API
-                      value: a?.closest?.[1],
-                    };
-                  })
-                  // Sometimes closest is null
-                  .filter((a) => {
-                    return a.value;
-                  })
-                  .map((a) => {
-                    return {
-                      ...a,
-                      value: formatter.format(
-                        a.value,
-                        profile.metadata.sampleRate,
-                        true
-                      ),
-                    };
-                  });
-
-                if (newValues.length <= 0) {
+                if (values.length <= 0) {
                   return null;
                 }
 
                 return (
-                  <TimelineTooltip
-                    timeLabel={data.timeLabel}
-                    items={newValues}
-                  />
+                  <TimelineTooltip timeLabel={data.timeLabel} items={values} />
                 );
               }}
             />
@@ -253,6 +225,45 @@ function ContinuousSingleView() {
         </Box>
       </div>
     </div>
+  );
+}
+
+// Converts data from TimelineChartWrapper into TimelineTooltip
+function prepareTimelineTooltipContent(
+  profile: Profile,
+  query: string,
+  data: ExploreTooltipProps
+): TimelineTooltipProps['items'] {
+  const formatter = getFormatter(
+    profile.flamebearer.numTicks,
+    profile.metadata.sampleRate,
+    profile.metadata.units
+  );
+
+  if (!data.values) {
+    return [];
+  }
+
+  // Filter non empty values
+  return (
+    data.values
+      .map((a) => {
+        return {
+          label: query,
+          // TODO: horrible API
+          value: a?.closest?.[1],
+        };
+      })
+      // Sometimes closest is null
+      .filter((a) => {
+        return a.value;
+      })
+      .map((a) => {
+        return {
+          ...a,
+          value: formatter.format(a.value, profile.metadata.sampleRate, true),
+        };
+      })
   );
 }
 
