@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
@@ -44,9 +45,10 @@ type DeleteAppInput struct {
 func (h *ApplicationsHandler) DeleteApp(w http.ResponseWriter, r *http.Request) {
 	var payload DeleteAppInput
 
+	fmt.Println("calling delete app")
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
-		h.httpUtils.HandleError(r, w, err)
+		h.httpUtils.HandleError(r, w, httputils.JSONError{Err: err})
 		return
 	}
 

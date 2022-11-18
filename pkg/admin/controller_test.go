@@ -1,3 +1,4 @@
+// TODO: move most of these tests to pkg/api
 package admin_test
 
 import (
@@ -111,6 +112,12 @@ var _ = Describe("controller", func() {
 
 			Context("when there's an error", func() {
 				Context("with the payload", func() {
+					BeforeEach(func() {
+						appSvc = mockStorage{
+							deleteResult: model.ValidationError{},
+						}
+					})
+
 					It("returns BadRequest", func() {
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer([]byte(``)))
 						Expect(err).ToNot(HaveOccurred())

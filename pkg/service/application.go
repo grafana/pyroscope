@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 type AppDeleter interface {
@@ -26,7 +28,12 @@ func NewApplicationService(appMetadataSvc ApplicationMetadataService, storageDel
 // Delete deletes apps from both storage and ApplicationMetadata
 // It first deletes from storage and only then deletes its metadata
 func (svc ApplicationService) Delete(ctx context.Context, name string) error {
-	err := svc.storageDeleter.DeleteApp(ctx, name)
+	err := model.ValidateAppName(name)
+	if err != nil {
+		return err
+	}
+
+	err = svc.storageDeleter.DeleteApp(ctx, name)
 	if err != nil {
 		return err
 	}
