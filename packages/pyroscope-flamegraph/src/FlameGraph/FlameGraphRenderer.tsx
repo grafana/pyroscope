@@ -309,7 +309,6 @@ class FlameGraphRenderer extends Component<
 
   setActiveItem = (item: { name: string }) => {
     const { name } = item;
-    this.setState({ isFlamegraphDirty: true });
 
     // if clicking on the same item, undo the search
     if (this.state.selectedItem.isJust) {
@@ -368,8 +367,9 @@ class FlameGraphRenderer extends Component<
   // so that the flamegraph doesn't rerender unnecessarily
   isDirty = () => {
     return (
+      this.state.selectedItem.isJust ||
       JSON.stringify(this.initialFlamegraphState) !==
-      JSON.stringify(this.state.flamegraphConfigs)
+        JSON.stringify(this.state.flamegraphConfigs)
     );
   };
 
@@ -534,7 +534,7 @@ class FlameGraphRenderer extends Component<
               updateView={this.updateView}
               updateFitMode={this.updateFitMode}
               fitMode={this.state.fitMode}
-              isFlamegraphDirty={this.state.isFlamegraphDirty}
+              isFlamegraphDirty={this.isDirty()}
               selectedNode={this.state.flamegraphConfigs.zoom}
               highlightQuery={this.state.searchQuery}
               onFocusOnSubtree={this.onFocusOnNode}
