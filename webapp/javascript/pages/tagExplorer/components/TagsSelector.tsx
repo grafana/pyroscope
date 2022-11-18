@@ -84,7 +84,11 @@ function TagSelector({
       </span>
       <ul className={styles.tags}>
         {tags.map((tag) => (
-          <li className={sideTag === tag ? styles.selected : ''} key={tag}>
+          <li
+            title={tag}
+            className={sideTag === tag ? styles.selected : ''}
+            key={tag}
+          >
             <input
               type="button"
               onClick={
