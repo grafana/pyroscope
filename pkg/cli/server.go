@@ -114,17 +114,19 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 	}
 
-	migrator := NewAppMetadataMigrator(logger, svc.storage, service.NewApplicationMetadataService(svc.database.DB()))
+	appMetadataSvc := service.NewApplicationMetadataService(svc.database.DB())
+	migrator := NewAppMetadataMigrator(logger, svc.storage, appMetadataSvc)
 	err = migrator.Migrate()
 	if err != nil {
 		svc.logger.Error(err)
 	}
+	appSvc := service.NewApplicationService(appMetadataSvc, svc.storage)
 
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
 		userService := service.NewUserService(svc.database.DB())
-		adminController := admin.NewController(svc.logger, svc.storage, userService, svc.storage)
+		adminController := admin.NewController(svc.logger, appSvc, userService, svc.storage)
 		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)

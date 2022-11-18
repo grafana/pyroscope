@@ -24,6 +24,7 @@ type Services struct {
 	api.APIKeyService
 	api.AnnotationsService
 	api.AdhocService
+	api.ApplicationListerAndDeleter
 }
 
 func New(m *mux.Router, s Services) *Router {
@@ -93,4 +94,13 @@ func (r *Router) RegisterAdhocHandlers() {
 	x.Methods(http.MethodGet).PathPrefix("/profile/{id:[0-9a-f]+}").HandlerFunc(h.GetProfile)
 	x.Methods(http.MethodGet).PathPrefix("/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}").HandlerFunc(h.GetProfileDiff)
 	x.Methods(http.MethodPost).PathPrefix("/upload").HandlerFunc(h.Upload)
+}
+
+func (r *Router) RegisterApplicationHandlers() {
+	h := api.NewApplicationsHandler(r.ApplicationListerAndDeleter, httputils.NewDefaultHelper(r.Logger))
+	authorizer := authz.NewAuthorizer(r.Services.Logger, httputils.NewDefaultHelper(r.Logger))
+
+	x := r.PathPrefix("/apps").Subrouter()
+	x.Methods(http.MethodGet).HandlerFunc(h.GetApps)
+	x.Methods(http.MethodDelete).Handler(authorizer.RequireAdminRole(http.HandlerFunc(h.DeleteApp)))
 }

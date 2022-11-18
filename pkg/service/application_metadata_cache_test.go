@@ -5,16 +5,16 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
 type mockApplicationWriter struct {
-	onWrite func(application storage.ApplicationMetadata) error
+	onWrite func(application appmetadata.ApplicationMetadata) error
 }
 
-func (svc *mockApplicationWriter) CreateOrUpdate(ctx context.Context, application storage.ApplicationMetadata) error {
+func (svc *mockApplicationWriter) CreateOrUpdate(ctx context.Context, application appmetadata.ApplicationMetadata) error {
 	return svc.onWrite(application)
 }
 
@@ -23,7 +23,7 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 	BeforeEach(s.BeforeEach)
 	AfterEach(s.AfterEach)
 
-	sampleApp := storage.ApplicationMetadata{
+	sampleApp := appmetadata.ApplicationMetadata{
 		FQName:          "myapp",
 		SampleRate:      100,
 		SpyName:         "gospy",
@@ -42,7 +42,7 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 	When("cache is empty", func() {
 		BeforeEach(func() {
 			m = mockApplicationWriter{
-				onWrite: func(application storage.ApplicationMetadata) error {
+				onWrite: func(application appmetadata.ApplicationMetadata) error {
 					Expect(application).To(Equal(sampleApp))
 					return nil
 				},
@@ -61,7 +61,7 @@ var _ = Describe("ApplicationWriteCacheService", func() {
 		BeforeEach(func() {
 			n = 0
 			m = mockApplicationWriter{
-				onWrite: func(application storage.ApplicationMetadata) error {
+				onWrite: func(application appmetadata.ApplicationMetadata) error {
 					n = n + 1
 					return nil
 				},

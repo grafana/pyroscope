@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -84,7 +85,7 @@ type SampleObserver interface {
 
 // ApplicationMetadataSaver saves application metadata
 type ApplicationMetadataSaver interface {
-	CreateOrUpdate(ctx context.Context, application ApplicationMetadata) error
+	CreateOrUpdate(ctx context.Context, application appmetadata.ApplicationMetadata) error
 }
 
 func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller, appSvc ApplicationMetadataSaver) (*Storage, error) {

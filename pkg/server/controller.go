@@ -195,6 +195,9 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ctrl.userService = service.NewUserService(ctrl.db)
 	ctrl.annotationsService = service.NewAnnotationsService(ctrl.db)
 
+	appMetadataSvc := service.NewApplicationMetadataService(ctrl.db)
+	appSvc := service.NewApplicationService(appMetadataSvc, ctrl.storage)
+
 	apiRouter := router.New(r.PathPrefix("/api").Subrouter(), router.Services{
 		Logger:             ctrl.log,
 		APIKeyService:      service.NewAPIKeyService(ctrl.db),
@@ -204,6 +207,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		AdhocService: service.NewAdhocService(
 			ctrl.config.MaxNodesRender,
 			ctrl.config.AdhocDataPath),
+		ApplicationListerAndDeleter: appSvc,
 	})
 
 	apiRouter.Use(
@@ -220,7 +224,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	}
 
 	// FIXME: not optimal, unify this with the remoteReadHandler at the top
-	authorizer := authz.NewAuthorizer(ctrl.log, httputils.NewDefaultHelper(ctrl.log))
 	appsRouter := apiRouter.PathPrefix("/apps").Subrouter()
 	if ctrl.config.RemoteRead.Enabled {
 		h, err := ctrl.remoteReadHandler(ctrl.config.RemoteRead)
@@ -231,8 +234,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 			appsRouter.Methods(http.MethodDelete).Handler(h)
 		}
 	} else {
-		appsRouter.Methods(http.MethodGet).Handler(ctrl.getAppsHandler())
-		appsRouter.Methods(http.MethodDelete).Handler(authorizer.RequireAdminRole(ctrl.deleteAppsHandler()))
+		apiRouter.RegisterApplicationHandlers()
 	}
 
 	ingestRouter := r.Path("/ingest").Subrouter()

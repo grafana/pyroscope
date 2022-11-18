@@ -6,9 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
-	pstorage "github.com/pyroscope-io/pyroscope/pkg/storage"
 	"net/http"
+
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -16,16 +17,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
-type Storage interface {
-	pstorage.AppNameGetter
-	pstorage.AppGetter
-	pstorage.AppDeleter
-}
-
 type Controller struct {
 	log            *logrus.Logger
 	httpUtils      httputils.Utils
-	storage        Storage
+	appService     ApplicationListerAndDeleter
 	userService    UserService
 	storageService StorageService
 }
@@ -38,15 +33,20 @@ type StorageService interface {
 	Cleanup(ctx context.Context) error
 }
 
+type ApplicationListerAndDeleter interface {
+	List(ctx context.Context) (apps []appmetadata.ApplicationMetadata, err error)
+	Delete(ctx context.Context, name string) error
+}
+
 func NewController(
 	log *logrus.Logger,
-	storage Storage,
+	appService ApplicationListerAndDeleter,
 	userService UserService,
 	storageService StorageService) *Controller {
 	return &Controller{
 		log: log,
 
-		storage:        storage,
+		appService:     appService,
 		userService:    userService,
 		storageService: storageService,
 	}

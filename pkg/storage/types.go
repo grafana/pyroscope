@@ -8,7 +8,6 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -58,33 +57,9 @@ type GetLabelValuesByQueryOutput struct {
 	Values []string
 }
 
-type AppInfo struct {
-	Name string
-}
-
-type GetAppsOutput struct {
-	Apps []AppInfo
-}
-
-type DeleteAppInput struct {
-	Name string
-}
-
 type LabelValuesGetter interface {
 	GetValues(ctx context.Context, key string, cb func(v string) bool)
 	GetValuesByQuery(ctx context.Context, in GetLabelValuesByQueryInput) (GetLabelValuesByQueryOutput, error)
-}
-
-type AppNameGetter interface {
-	GetAppNames(ctx context.Context) []string
-}
-
-type AppGetter interface {
-	GetApps(ctx context.Context) (GetAppsOutput, error)
-}
-
-type AppDeleter interface {
-	DeleteApp(ctx context.Context, appName string) error
 }
 
 // Other functions from storage.Storage:
@@ -131,14 +106,4 @@ type BadgerDBWithCache interface {
 	DBInstance() *badger.DB
 	CacheInstance() *cache.Cache
 	Name() string
-}
-
-type ApplicationMetadata struct {
-	// Fully Qualified Name. Eg app.cpu ({__name__}.{profile_type})
-	FQName string `gorm:"index,unique;not null;default:null" json:"name"`
-
-	SpyName         string                   `json:"spyName,omitempty"`
-	SampleRate      uint32                   `json:"sampleRate,omitempty"`
-	Units           metadata.Units           `json:"units,omitempty"`
-	AggregationType metadata.AggregationType `json:"-"`
 }
