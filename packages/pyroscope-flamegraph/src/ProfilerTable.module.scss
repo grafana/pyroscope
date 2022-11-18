@@ -1,0 +1,19 @@
+.tableWrapper {
+  max-height: 800px;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--ps-ui-border);
+    border-radius: 0px;
+  }
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    border: 1px solid var(--ps-ui-border);
+    border-left: none;
+  }
+}

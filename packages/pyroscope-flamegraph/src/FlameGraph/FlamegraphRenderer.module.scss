@@ -38,6 +38,12 @@
   flex: 1;
 }
 
+.tablePane {
+  &.vertical {
+    margin-right: 0;
+  }
+}
+
 .sandwichPane {
   .sandwichPaneInfo {
     display: inline-block;
