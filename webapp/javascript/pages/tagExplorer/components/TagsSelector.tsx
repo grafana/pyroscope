@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Redirect, useLocation } from 'react-router-dom';
+import cl from 'classnames';
 
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { actions } from '@webapp/redux/reducers/continuous';
@@ -84,7 +85,11 @@ function TagSelector({
       </span>
       <ul className={styles.tags}>
         {tags.map((tag) => (
-          <li className={sideTag === tag ? styles.selected : ''} key={tag}>
+          <li
+            title={tag}
+            className={cl({ [styles.selected]: sideTag === tag })}
+            key={tag}
+          >
             <input
               type="button"
               onClick={
@@ -120,6 +125,7 @@ function TagSelector({
 
   return (
     <ModalWithToggle
+      modalClassName={styles.tagsSelector}
       isModalOpen={isModalOpen}
       setModalOpenStatus={setModalOpenStatus}
       customHandleOutsideClick={handleOutsideClick}
