@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.65.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.64.1...@pyroscope/webapp@1.65.0) (2022-11-19)
+
+
+### Features
+
+* make tag explorer modal adapt to content ([#1733](https://github.com/pyroscope-io/pyroscope/issues/1733)) ([7bdd8a4](https://github.com/pyroscope-io/pyroscope/commit/7bdd8a4f9ab79eeec0fa21afcf5db7c6dcb54fa0))
+
+
+
+
+
 ## [1.64.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.64.0...@pyroscope/webapp@1.64.1) (2022-11-18)
 
 **Note:** Version bump only for package @pyroscope/webapp
