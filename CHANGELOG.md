@@ -1,3 +1,24 @@
+## [0.34.1](https://github.com/pyroscope-io/pyroscope/compare/v0.34.0...v0.34.1) (2022-11-19)
+
+
+### Bug Fixes
+
+* delete app also deletes metadata ([#1736](https://github.com/pyroscope-io/pyroscope/issues/1736)) ([c485edd](https://github.com/pyroscope-io/pyroscope/commit/c485edd42e68684230f0ec0228b0e7949a5b6bf9))
+* **ebpf:** update regexps for sd cgroupv1 matching ([#1719](https://github.com/pyroscope-io/pyroscope/issues/1719)) ([ebc951d](https://github.com/pyroscope-io/pyroscope/commit/ebc951da393c555f2a285074d46dd470ba8c0014))
+* make reset view available in sandwich mode context menu ([#1731](https://github.com/pyroscope-io/pyroscope/issues/1731)) ([e41bcaf](https://github.com/pyroscope-io/pyroscope/commit/e41bcaf5cbfc3458958132aa4f54998aedcd8328))
+* tag explorer long tag overflow ([#1718](https://github.com/pyroscope-io/pyroscope/issues/1718)) ([b5ee72a](https://github.com/pyroscope-io/pyroscope/commit/b5ee72a651c00dae29e0651ba77e6c587f81c21f))
+
+
+### Features
+
+* make tag explorer modal adapt to content ([#1733](https://github.com/pyroscope-io/pyroscope/issues/1733)) ([7bdd8a4](https://github.com/pyroscope-io/pyroscope/commit/7bdd8a4f9ab79eeec0fa21afcf5db7c6dcb54fa0))
+* pie chart tooltip show units ([#1720](https://github.com/pyroscope-io/pyroscope/issues/1720)) ([8d5d658](https://github.com/pyroscope-io/pyroscope/commit/8d5d65869f8f66833b782e97e45261e460272beb))
+* show percentages for diff table instead of absolute values ([#1697](https://github.com/pyroscope-io/pyroscope/issues/1697)) ([71efcb8](https://github.com/pyroscope-io/pyroscope/commit/71efcb868b14ff3771faa5858dd781eba0787bd8))
+* **webapp:** filter out apps that are not cpu in exemplars page ([#1722](https://github.com/pyroscope-io/pyroscope/issues/1722)) ([100f943](https://github.com/pyroscope-io/pyroscope/commit/100f943d8b90e294de0ae076ae32f2a9846a1aa2))
+* **webapp:** render pie slice label as percent in tag explorer ([#1721](https://github.com/pyroscope-io/pyroscope/issues/1721)) ([79018aa](https://github.com/pyroscope-io/pyroscope/commit/79018aab7f5d089615c29b37a06a30cba237b522))
+
+
+
 # [0.34.0](https://github.com/pyroscope-io/pyroscope/compare/v0.33.0...v0.34.0) (2022-11-16)
 
 
