@@ -1,0 +1,15 @@
+.tableView {
+  &:hover {
+    :global {
+      .data-tooltip {
+        display: block;
+      }
+    }
+  }
+
+  :global {
+    .data-tooltip {
+      display: none;
+    }
+  }
+}
