@@ -1,12 +1,3 @@
-/* eslint-disable 
-@typescript-eslint/no-unsafe-member-access, 
-@typescript-eslint/no-unsafe-call, 
-func-names, 
-@typescript-eslint/no-unsafe-return, 
-@typescript-eslint/no-unsafe-assignment,
-no-undef,
-prefer-destructuring
-*/
 import React from 'react';
 import * as ReactDOM from 'react-dom';
 import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
@@ -66,13 +57,13 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
           data: Omit<ITooltipWrapperProps & ExploreTooltipProps, 'children'>
         ) => React.ReactElement;
       };
-      const onHoverDisplayTooltip = options.onHoverDisplayTooltip;
+      const { onHoverDisplayTooltip } = options;
       const { xaxis } = plot.getAxes() as ShamefulAny;
       const data = plot.getData();
 
       if (onHoverDisplayTooltip && exploreTooltip?.length) {
         const align = params.canvasX > plot.width() / 2 ? 'left' : 'right';
-        const timezone = options.xaxis!.timezone;
+        const { timezone } = options.xaxis!;
 
         const timeLabel = getFormatLabel({
           date: params.xToTime,

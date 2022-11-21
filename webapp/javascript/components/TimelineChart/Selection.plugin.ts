@@ -1,16 +1,36 @@
-/* eslint-disable */
+/* eslint eqeqeq: "off" 
+  -- TODO: Initial logic used == instead of ===  */
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
-import { PlotType, EventHolderType, EventType } from './types';
 import clamp from './clamp';
 import extractRange from './extractRange';
 
 const handleWidth = 4;
 const handleHeight = 22;
 
+interface IPlot extends jquery.flot.plot, jquery.flot.plotOptions {
+  clearSelection: (preventEvent: boolean) => void;
+  getSelection: () => void;
+}
+
+interface IFlotOptions extends jquery.flot.plotOptions {
+  selection?: {
+    selectionType: 'single' | 'double';
+    mode?: 'x' | 'y';
+    minSize: number;
+    boundaryColor?: string;
+    overlayColor?: string;
+    shape: CanvasLineJoin;
+    color: string;
+    selectionWithHandler: boolean;
+  };
+}
+
+type EventType = { pageX: number; pageY: number; which?: number };
+
 (function ($) {
-  function init(plot: PlotType) {
+  function init(plot: IPlot) {
     const placeholder = plot.getPlaceholder();
-    var selection = {
+    const selection = {
       first: { x: -1, y: -1 },
       second: { x: -1, y: -1 },
       show: false,
@@ -23,23 +43,14 @@ const handleHeight = 22;
     // the navigation plugin, this should be massaged a bit to fit
     // the Flot cases here better and reused. Doing this would
     // make this plugin much slimmer.
-    var savedhandlers: any = {};
+    const savedhandlers: ShamefulAny = {};
 
-    var mouseUpHandler:
-      | boolean
-      | JQuery.TypeEventHandler<
-          Document,
-          undefined,
-          Document,
-          Document,
-          'mouseup'
-        >
-      | null = null;
+    let mouseUpHandler: ShamefulAny = null;
 
     function getCursorPositionX(e: EventType) {
       const plotOffset = plot.getPlotOffset();
       const offset = placeholder.offset();
-      return clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
+      return clamp(0, plot.width(), e.pageX - offset!.left - plotOffset.left);
     }
 
     function getPlotSelection() {
@@ -47,14 +58,14 @@ const handleHeight = 22;
       // this function returns left X and right X coords of visible user selection (translates opts.grid.markings to X coords)
       const o = plot.getOptions();
       const plotOffset = plot.getPlotOffset();
-      const extractedX = extractRange(plot as jquery.flot.plot & PlotType, 'x');
+      const extractedX = extractRange(plot, 'x');
 
       return {
         left:
-          Math.floor(extractedX.axis.p2c(o.grid.markings[0]?.xaxis.from)) +
+          Math.floor(extractedX.axis.p2c(o.grid!.markings[0]?.xaxis.from)) +
           plotOffset.left,
         right:
-          Math.floor(extractedX.axis.p2c(o.grid.markings[0]?.xaxis.to)) +
+          Math.floor(extractedX.axis.p2c(o.grid!.markings[0]?.xaxis.to)) +
           plotOffset.left,
       };
     }
@@ -74,7 +85,13 @@ const handleHeight = 22;
       const isRightSelecting =
         Math.abs(x + plotOffset.left - rightSelectionX) <= 5;
 
-      return isLeftSelecting ? 'left' : isRightSelecting ? 'right' : null;
+      if (isLeftSelecting) {
+        return 'left';
+      }
+      if (isRightSelecting) {
+        return 'right';
+      }
+      return null;
     }
 
     function setCursor(type: string) {
@@ -82,9 +99,9 @@ const handleHeight = 22;
     }
 
     function onMouseMove(e: EventType) {
-      const o = plot.getOptions();
+      const options: IFlotOptions = plot.getOptions();
 
-      if (o?.selection?.selectionType === 'single') {
+      if (options?.selection?.selectionType === 'single') {
         const { left, right } = getPlotSelection();
         const clickX = getCursorPositionX(e);
         const dragSide = getDragSide({
@@ -114,6 +131,8 @@ const handleHeight = 22;
     }
 
     function onMouseDown(e: EventType) {
+      const options: IFlotOptions = plot.getOptions();
+
       if (e.which != 1)
         // only accept left-click
         return;
@@ -138,33 +157,39 @@ const handleHeight = 22;
         };
       }
 
-      const offset = placeholder.offset();
-      const plotOffset = plot.getPlotOffset();
-      const { left, right } = getPlotSelection();
-      const clickX = getCursorPositionX(e);
-      const dragSide = getDragSide({
-        x: clickX,
-        leftSelectionX: left,
-        rightSelectionX: right,
-      });
+      if (options?.selection?.selectionType === 'single') {
+        const { left, right } = getPlotSelection();
+        const clickX = getCursorPositionX(e);
+        const dragSide = getDragSide({
+          x: clickX,
+          leftSelectionX: left,
+          rightSelectionX: right,
+        });
 
-      if (dragSide) {
-        setCursor('grabbing');
-      }
+        if (dragSide) {
+          setCursor('grabbing');
+        }
 
-      if (dragSide === 'right') {
-        setSelectionPos(selection.first, {
-          pageX: left - plotOffset.left + offset.left + plotOffset.left,
-        } as EventType);
-      } else if (dragSide === 'left') {
-        setSelectionPos(selection.first, {
-          pageX: right - plotOffset.left + offset.left + plotOffset.left,
-        } as EventType);
+        const offset = placeholder.offset();
+        const plotOffset = plot.getPlotOffset();
+
+        if (dragSide === 'right') {
+          setSelectionPos(selection.first, {
+            pageX: left - plotOffset.left + offset!.left + plotOffset.left,
+          } as EventType);
+        } else if (dragSide === 'left') {
+          setSelectionPos(selection.first, {
+            pageX: right - plotOffset.left + offset!.left + plotOffset.left,
+          } as EventType);
+        } else {
+          setSelectionPos(selection.first, e);
+        }
+
+        (selection.selectingSide as 'left' | 'right' | null) = dragSide;
       } else {
         setSelectionPos(selection.first, e);
       }
 
-      (selection.selectingSide as 'left' | 'right' | null) = dragSide;
       selection.active = true;
 
       // this is a bit silly, but we have to use a closure to be
@@ -205,13 +230,13 @@ const handleHeight = 22;
 
       if (!selection.show) return null;
 
-      var r: any = {},
-        c1: any = selection.first,
-        c2: any = selection.second;
-      $.each(plot.getAxes(), function (name, axis) {
+      const r: ShamefulAny = {};
+      const c1 = selection.first;
+      const c2 = selection.second;
+      $.each(plot.getAxes(), function (name, axis: ShamefulAny) {
         if (axis.used) {
-          var p1 = axis.c2p(c1[axis.direction]),
-            p2 = axis.c2p(c2[axis.direction]);
+          const p1 = axis.c2p(c1[axis.direction as 'x' | 'y']);
+          const p2 = axis.c2p(c2[axis.direction as 'x' | 'y']);
           r[name] = { from: Math.min(p1, p2), to: Math.max(p1, p2) };
         }
       });
@@ -219,7 +244,7 @@ const handleHeight = 22;
     }
 
     function triggerSelectedEvent() {
-      var r: any = getSelection();
+      const r = getSelection();
 
       placeholder.trigger('plotselected', [r]);
 
@@ -236,16 +261,16 @@ const handleHeight = 22;
     }
 
     function setSelectionPos(pos: { x: number; y: number }, e: EventType) {
-      var o = plot.getOptions();
-      var offset = placeholder.offset();
-      var plotOffset = plot.getPlotOffset();
-      pos.x = clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
-      pos.y = clamp(0, plot.height(), e.pageY - offset.top - plotOffset.top);
+      const options: IFlotOptions = plot.getOptions();
+      const offset = placeholder.offset();
+      const plotOffset = plot.getPlotOffset();
+      pos.x = clamp(0, plot.width(), e.pageX - offset!.left - plotOffset.left);
+      pos.y = clamp(0, plot.height(), e.pageY - offset!.top - plotOffset.top);
 
-      if (o.selection.mode == 'y')
+      if (options?.selection?.mode == 'y')
         pos.x = pos == selection.first ? 0 : plot.width();
 
-      if (o.selection.mode == 'x')
+      if (options?.selection?.mode == 'x')
         pos.y = pos == selection.first ? 0 : plot.height();
     }
 
@@ -267,38 +292,10 @@ const handleHeight = 22;
       }
     }
 
-    function setSelection(ranges: any, preventEvent: any) {
-      var axis,
-        range,
-        o = plot.getOptions();
-
-      if (o.selection.mode == 'y') {
-        selection.first.x = 0;
-        selection.second.x = plot.width();
-      } else {
-        range = extractRange(plot as jquery.flot.plot & PlotType, 'x');
-
-        selection.first.x = range.axis.p2c(range.from);
-        selection.second.x = range.axis.p2c(range.to);
-      }
-
-      if (o.selection.mode == 'x') {
-        selection.first.y = 0;
-        selection.second.y = plot.height();
-      } else {
-        range = extractRange(plot as jquery.flot.plot & PlotType, 'y');
-
-        selection.first.y = range.axis.p2c(range.from);
-        selection.second.y = range.axis.p2c(range.to);
-      }
-
-      selection.show = true;
-      plot.triggerRedrawOverlay();
-      if (!preventEvent && selectionIsSane()) triggerSelectedEvent();
-    }
-
     function selectionIsSane() {
-      var minSize = plot.getOptions().selection.minSize;
+      const options: IFlotOptions = plot.getOptions();
+      const minSize = options?.selection?.minSize || 5;
+
       return (
         Math.abs(selection.second.x - selection.first.x) >= minSize &&
         Math.abs(selection.second.y - selection.first.y) >= minSize
@@ -306,50 +303,43 @@ const handleHeight = 22;
     }
 
     plot.clearSelection = clearSelection;
-    plot.setSelection = setSelection;
     plot.getSelection = getSelection;
 
-    plot.hooks.bindEvents.push(function (
-      plot: PlotType,
-      eventHolder: EventHolderType
-    ) {
-      var o = plot.getOptions();
-      if (o.selection.mode != null) {
+    plot.hooks!.bindEvents!.push(function (plot, eventHolder) {
+      const options: IFlotOptions = plot.getOptions();
+      if (options?.selection?.mode != null) {
         eventHolder.mousemove(onMouseMove);
         eventHolder.mousedown(onMouseDown);
       }
     });
 
-    plot.hooks.drawOverlay.push(function (
-      plot: PlotType,
-      ctx: CanvasRenderingContext2D
-    ) {
+    plot.hooks!.drawOverlay!.push(function (plot, ctx) {
       // draw selection
       if (selection.show && selectionIsSane()) {
         const plotOffset = plot.getPlotOffset();
-        const o = plot.getOptions();
+        const options: IFlotOptions = plot.getOptions();
 
         ctx.save();
         ctx.translate(plotOffset.left, plotOffset.top);
 
-        var c = ($ as any).color.parse(o.selection.color);
+        const c = ($ as ShamefulAny).color.parse(options?.selection?.color);
 
         ctx.strokeStyle = c.scale('a', 0.8).toString();
         ctx.lineWidth = 1;
-        ctx.lineJoin = o.selection.shape;
+        ctx.lineJoin = options.selection!.shape;
         ctx.fillStyle = c.scale('a', 0.4).toString();
 
-        var x = Math.min(selection.first.x, selection.second.x) + 0.5,
-          y = Math.min(selection.first.y, selection.second.y) + 0.5,
-          w = Math.abs(selection.second.x - selection.first.x) - 1,
-          h = Math.abs(selection.second.y - selection.first.y) - 1;
+        const x = Math.min(selection.first.x, selection.second.x) + 0.5;
+        const y = Math.min(selection.first.y, selection.second.y) + 0.5;
+        const w = Math.abs(selection.second.x - selection.first.x) - 1;
+        const h = Math.abs(selection.second.y - selection.first.y) - 1;
 
         if (selection.selectingSide) {
-          ctx.fillStyle = o.selection.overlayColor || 'transparent';
+          ctx.fillStyle = options?.selection?.overlayColor || 'transparent';
           ctx.fillRect(x, y, w, h);
           drawHorizontalSelectionLines({
             ctx,
-            opts: o,
+            opts: options,
             leftX: x,
             rightX: x + w,
             yMax: h,
@@ -357,7 +347,7 @@ const handleHeight = 22;
           });
           drawVerticalSelectionLines({
             ctx,
-            opts: o,
+            opts: options,
             leftX: x,
             rightX: x + w,
             yMax: h,
@@ -374,7 +364,7 @@ const handleHeight = 22;
             handleWidth,
             handleHeight,
             2,
-            o.selection.boundaryColor
+            options?.selection?.boundaryColor
           );
         } else {
           ctx.fillRect(x, y, w, h);
@@ -385,21 +375,15 @@ const handleHeight = 22;
       }
     });
 
-    plot.hooks.draw.push(function (
-      plot: PlotType,
-      ctx: CanvasRenderingContext2D
-    ) {
-      const opts = plot.getOptions();
+    plot.hooks!.draw!.push(function (plot, ctx) {
+      const options: IFlotOptions = plot.getOptions();
 
       if (
-        opts?.selection?.selectionType === 'single' &&
-        opts?.selection?.selectionWithHandler
+        options?.selection?.selectionType === 'single' &&
+        options?.selection?.selectionWithHandler
       ) {
         const plotOffset = plot.getPlotOffset();
-        const extractedY = extractRange(
-          plot as jquery.flot.plot & PlotType,
-          'y'
-        );
+        const extractedY = extractRange(plot, 'y');
         const { left, right } = getPlotSelection();
 
         const yMax =
@@ -407,12 +391,12 @@ const handleHeight = 22;
         const yMin = 0 + plotOffset.top;
 
         // draw selection overlay
-        ctx.fillStyle = opts.selection.overlayColor || 'transparent';
+        ctx.fillStyle = options.selection.overlayColor || 'transparent';
         ctx.fillRect(left, yMin, right - left, yMax - plotOffset.top);
 
         drawHorizontalSelectionLines({
           ctx,
-          opts,
+          opts: options,
           leftX: left,
           rightX: right,
           yMax,
@@ -420,7 +404,7 @@ const handleHeight = 22;
         });
         drawVerticalSelectionLines({
           ctx,
-          opts,
+          opts: options,
           leftX: left + 0.5,
           rightX: right - 0.5,
           yMax,
@@ -430,20 +414,16 @@ const handleHeight = 22;
       }
     });
 
-    plot.hooks.shutdown.push(function (
-      plot: PlotType,
-      eventHolder: EventHolderType
-    ) {
+    plot.hooks!.shutdown!.push(function (plot, eventHolder) {
       eventHolder.unbind('mousemove', onMouseMove);
       eventHolder.unbind('mousedown', onMouseDown);
 
-      if (mouseUpHandler)
-        ($ as any)(document).unbind('mouseup', mouseUpHandler);
+      if (mouseUpHandler) $(document).unbind('mouseup', mouseUpHandler);
     });
   }
 
-  ($ as any).plot.plugins.push({
-    init: init,
+  $.plot.plugins.push({
+    init,
     options: {
       selection: {
         mode: null, // one of null, "x", "y" or "xy"
@@ -478,7 +458,7 @@ const drawVerticalSelectionLines = ({
     const lineWidth =
       opts.grid.markings?.[opts.grid.markings?.length - 1].lineWidth || 1;
     const subPixel = lineWidth / 2 || 0;
-    //left line
+    // left line
     ctx.beginPath();
     ctx.strokeStyle = opts.selection.boundaryColor;
     ctx.lineWidth = lineWidth;
@@ -503,7 +483,7 @@ const drawVerticalSelectionLines = ({
       );
     }
 
-    //right line
+    // right line
     ctx.beginPath();
     ctx.strokeStyle = opts.selection.boundaryColor;
     ctx.lineWidth = lineWidth;
@@ -578,18 +558,18 @@ function drawRoundedRect(
   width: number,
   height: number,
   radius: number,
-  fillColor: string
+  fillColor?: string
 ) {
-  var K = (4 * (Math.SQRT2 - 1)) / 3;
-  var right = left + width;
-  var bottom = top + height;
+  const K = (4 * (Math.SQRT2 - 1)) / 3;
+  const right = left + width;
+  const bottom = top + height;
   ctx.beginPath();
   ctx.setLineDash([]);
   // top left
   ctx.moveTo(left + radius, top);
   // top right
   ctx.lineTo(right - radius, top);
-  //right top
+  // right top
   ctx.bezierCurveTo(
     right + radius * (K - 1),
     top,
@@ -598,9 +578,9 @@ function drawRoundedRect(
     right,
     top + radius
   );
-  //right bottom
+  // right bottom
   ctx.lineTo(right, bottom - radius);
-  //bottom right
+  // bottom right
   ctx.bezierCurveTo(
     right,
     bottom + radius * (K - 1),
@@ -609,9 +589,9 @@ function drawRoundedRect(
     right - radius,
     bottom
   );
-  //bottom left
+  // bottom left
   ctx.lineTo(left + radius, bottom);
-  //left bottom
+  // left bottom
   ctx.bezierCurveTo(
     left + radius * (1 - K),
     bottom,
@@ -620,9 +600,9 @@ function drawRoundedRect(
     left,
     bottom - radius
   );
-  //left top
+  // left top
   ctx.lineTo(left, top + radius);
-  //top left again
+  // top left again
   ctx.bezierCurveTo(
     left,
     top + radius * (1 - K),
