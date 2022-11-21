@@ -57,29 +57,27 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
 
   - Option A) For monolithic mode the file `environments/default/main.jsonnet`, should look like;
 
-       ```jsonnet
-       local phlare = import 'phlare/jsonnet/phlare/phlare.libsonnet';
-       local tk = import 'tk';
+    ```jsonnet
+    local phlare = import 'phlare/jsonnet/phlare/phlare.libsonnet';
+    local tk = import 'tk';
 
-       phlare.new(overrides={
-         namespace: tk.env.spec.namespace,
-       })
-       ```
+    phlare.new(overrides={
+      namespace: tk.env.spec.namespace,
+    })
+    ```
+
   - Option B) For micro services mode the file `environments/default/main.jsonnet`, should look like;
 
-       ```jsonnet
-       local phlare = import 'phlare/jsonnet/phlare/phlare.libsonnet';
-       local valuesMicroServices = import 'phlare/jsonnet/values-micro-services.json';
-       local tk = import 'tk';
+    ```jsonnet
+    local phlare = import 'phlare/jsonnet/phlare/phlare.libsonnet';
+    local valuesMicroServices = import 'phlare/jsonnet/values-micro-services.json';
+    local tk = import 'tk';
 
-       phlare.new(overrides={
-         namespace: tk.env.spec.namespace,
-         values+: valuesMicroServices,
-       })
-       ```
-
-   ```
-
+    phlare.new(overrides={
+      namespace: tk.env.spec.namespace,
+      values+: valuesMicroServices,
+    })
+    ```
 1. Generate the Kubernetes YAML manifests and store them in the `./manifests` directory:
 
    ```console
