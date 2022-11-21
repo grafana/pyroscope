@@ -326,6 +326,11 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
 	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name phlare-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
 
+deploy-demo: $(BIN)/kind
+	docker build -t cp-java-simple:0.1.0 ./tools/docker-compose/java/simple
+	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) cp-java-simple:0.1.0
+	kubectl  --context="kind-$(KIND_CLUSTER)" apply -f ./tools/kubernetes/java-simple-deployment.yaml
+
 .PHONY: docs/%
 docs/%:
 	$(MAKE) -C docs $*
