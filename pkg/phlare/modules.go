@@ -7,6 +7,7 @@ import (
 	"os"
 
 	grpchealth "github.com/bufbuild/connect-grpchealth-go"
+	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/kv/codec"
@@ -269,6 +270,8 @@ func (f *Phlare) initServer() (services.Service, error) {
 
 	// register grpc-gateway api
 	f.Server.HTTP.NewRoute().PathPrefix("/api").Handler(f.grpcGatewayMux)
+	// register fgprof
+	f.Server.HTTP.Path("/debug/fgprof").Handler(fgprof.Handler())
 
 	// register status service providing config and buildinfo at grpc gateway
 	if err := commonv1.RegisterStatusServiceHandlerServer(context.Background(), f.grpcGatewayMux, f.statusService()); err != nil {
