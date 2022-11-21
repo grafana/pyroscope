@@ -9,7 +9,7 @@ function subtractFlamebearer(
   f2: Profile['flamebearer']
 ): Profile['flamebearer'] {
   const result: Profile['flamebearer'] = {
-    numTicks: f1.numTicks - f2.numTicks,
+    numTicks: 0,
     maxSelf: 0,
     names: [],
     levels: [],
@@ -20,12 +20,13 @@ function subtractFlamebearer(
   const updateNumbers = (node: TreeNode): number => {
     // self is easy
     node.self[0] = Math.max((node.self[0] || 0) - (node.self[1] || 0), 0);
+    result.numTicks += node.self[0];
 
     // total needs to be recalculated using children
     if (node.children.length === 0) {
       node.total[0] = Math.max((node.total[0] || 0) - (node.total[1] || 0), 0);
     } else {
-      let total = 0;
+      let total = node.self[0];
       for (let i = 0; i < node.children.length; i += 1) {
         total += updateNumbers(node.children[i]);
       }
