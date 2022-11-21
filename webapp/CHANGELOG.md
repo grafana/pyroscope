@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.65.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.1...@pyroscope/webapp@1.65.2) (2022-11-21)
+
+
+### Bug Fixes
+
+* tag explorer loading spinner ([#1748](https://github.com/pyroscope-io/pyroscope/issues/1748)) ([c1c83c2](https://github.com/pyroscope-io/pyroscope/commit/c1c83c290997b5b93e86ce7f7c29eaa49d809ee7))
+
+
+
+
+
 ## [1.65.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.0...@pyroscope/webapp@1.65.1) (2022-11-21)
 
 **Note:** Version bump only for package @pyroscope/webapp
