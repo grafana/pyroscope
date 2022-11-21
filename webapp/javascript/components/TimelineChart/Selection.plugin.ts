@@ -1,4 +1,5 @@
-/* eslint eqeqeq: "off" */
+/* eslint eqeqeq: "off" 
+  -- TODO: Initial logic used == instead of ===  */
 // extending logic of Flot's selection plugin (react-flot/flot/jquery.flot.selection)
 import clamp from './clamp';
 import extractRange from './extractRange';
