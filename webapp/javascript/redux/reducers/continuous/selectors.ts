@@ -36,7 +36,9 @@ export const selectIsLoadingData = (state: RootState) => {
     loadingStates.includes(state.continuous.leftTimeline.type) ||
     loadingStates.includes(state.continuous.rightTimeline.type) ||
     // Exemplars
-    loadingStates.includes(state.tracing.exemplarsSingleView.type)
+    loadingStates.includes(state.tracing.exemplarsSingleView.type) ||
+    // Tag Explorer
+    loadingStates.includes(state.continuous.tagExplorerView.type)
   );
 };
 
