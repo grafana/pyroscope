@@ -9,13 +9,25 @@ prefer-destructuring
 */
 import React from 'react';
 import * as ReactDOM from 'react-dom';
-import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
 import getFormatLabel from './getFormatLabel';
 import clamp from './clamp';
 import injectTooltip from './injectTooltip';
 import { ITooltipWrapperProps } from './TooltipWrapper';
 
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
+
+// TooltipCallbackProps refers to the data available for the tooltip body construction
+export interface TooltipCallbackProps {
+  timeLabel: string;
+  values: Array<{
+    closest: number[];
+    color: number[];
+    // TODO: remove this
+    tagName: string;
+  }>;
+  coordsToCanvasPos?: jquery.flot.axis['p2c'];
+  canvasX?: number;
+}
 
 (function ($: JQueryStatic) {
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
@@ -63,7 +75,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
     plot.hooks!.drawOverlay!.push(() => {
       const options = plot.getOptions() as jquery.flot.plotOptions & {
         onHoverDisplayTooltip?: (
-          data: Omit<ITooltipWrapperProps & ExploreTooltipProps, 'children'>
+          data: Omit<ITooltipWrapperProps & TooltipCallbackProps, 'children'>
         ) => React.ReactElement;
       };
       const onHoverDisplayTooltip = options.onHoverDisplayTooltip;
@@ -83,6 +95,7 @@ const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
         const values = data?.map((dataSeries, i) => {
           // Sometimes we also pass a tagName/color
           // Eg in tagExplorer page
+          // TODO: use generics
           const d = dataSeries as jquery.flot.dataSeries & {
             tagName: string;
             color: { color: number[] };

@@ -3,18 +3,11 @@ import Color from 'color';
 import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { Profile } from '@pyroscope/models/src';
 import { TimelineTooltip } from '../../TimelineTooltip';
+import { TooltipCallbackProps } from '../Tooltip.plugin';
 
-export interface ExploreTooltipProps {
-  timeLabel: string;
-  values: Array<{
-    closest: number[];
-    color: number[];
-    tagName: string;
-  }>;
+type ExploreTooltipProps = TooltipCallbackProps & {
   profile?: Profile;
-  coordsToCanvasPos?: jquery.flot.axis['p2c'];
-  canvasX?: number;
-}
+};
 
 const ExploreTooltip: FC<ExploreTooltipProps> = ({
   timeLabel,

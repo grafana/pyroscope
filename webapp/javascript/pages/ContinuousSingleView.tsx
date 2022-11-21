@@ -26,7 +26,7 @@ import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
 import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
-import { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
+import { TooltipCallbackProps } from '@webapp/components/TimelineChart/Tooltip.plugin';
 import { Profile } from '@pyroscope/models/src';
 import {
   isExportToFlamegraphDotComEnabled,
@@ -209,7 +209,7 @@ function ContinuousSingleView() {
 
 function createTooltip(
   query: string,
-  data: ExploreTooltipProps,
+  data: TooltipCallbackProps,
   profile?: Profile
 ) {
   if (!profile) {
@@ -229,7 +229,7 @@ function createTooltip(
 function prepareTimelineTooltipContent(
   profile: Profile,
   query: string,
-  data: ExploreTooltipProps
+  data: TooltipCallbackProps
 ): TimelineTooltipProps['items'] {
   const formatter = getFormatter(
     profile.flamebearer.numTicks,
