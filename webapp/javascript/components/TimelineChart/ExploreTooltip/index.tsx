@@ -5,8 +5,8 @@ import { Profile } from '@pyroscope/models/src';
 import { TimelineTooltip } from '../../TimelineTooltip';
 
 export interface ExploreTooltipProps {
-  timeLabel?: string;
-  values?: Array<{
+  timeLabel: string;
+  values: Array<{
     closest: number[];
     color: number[];
     tagName: string;
@@ -56,14 +56,6 @@ const ExploreTooltip: FC<ExploreTooltipProps> = ({
 
     return '0';
   };
-
-  if (!timeLabel) {
-    return null;
-  }
-
-  if (!values || values.length <= 0) {
-    return null;
-  }
 
   const items = values.map((v) => {
     return {

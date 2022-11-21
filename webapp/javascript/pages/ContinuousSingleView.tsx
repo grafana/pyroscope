@@ -188,30 +188,9 @@ function ContinuousSingleView() {
               annotations={annotations}
               selectionType="single"
               ContextMenu={contextMenu}
-              onHoverDisplayTooltip={(data) => {
-                if (!singleView || !singleView.profile) {
-                  return null;
-                }
-
-                // TODO: when this could be undefined?
-                if (!data.timeLabel) {
-                  return null;
-                }
-
-                const values = prepareTimelineTooltipContent(
-                  singleView.profile,
-                  query,
-                  data
-                );
-
-                if (values.length <= 0) {
-                  return null;
-                }
-
-                return (
-                  <TimelineTooltip timeLabel={data.timeLabel} items={values} />
-                );
-              }}
+              onHoverDisplayTooltip={(data) =>
+                createTooltip(query, data, singleView.profile)
+              }
             />
           </LoadingOverlay>
         </Box>
@@ -228,6 +207,24 @@ function ContinuousSingleView() {
   );
 }
 
+function createTooltip(
+  query: string,
+  data: ExploreTooltipProps,
+  profile?: Profile
+) {
+  if (!profile) {
+    return null;
+  }
+
+  const values = prepareTimelineTooltipContent(profile, query, data);
+
+  if (values.length <= 0) {
+    return null;
+  }
+
+  return <TimelineTooltip timeLabel={data.timeLabel} items={values} />;
+}
+
 // Converts data from TimelineChartWrapper into TimelineTooltip
 function prepareTimelineTooltipContent(
   profile: Profile,
@@ -239,10 +236,6 @@ function prepareTimelineTooltipContent(
     profile.metadata.sampleRate,
     profile.metadata.units
   );
-
-  if (!data.values) {
-    return [];
-  }
 
   // Filter non empty values
   return (
