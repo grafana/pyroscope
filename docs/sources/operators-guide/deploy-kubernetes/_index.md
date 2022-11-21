@@ -119,7 +119,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
      --set-string 'podAnnotations.phlare\.grafana\.com/scrape=true' \
      --set-string 'podAnnotations.phlare\.grafana\.com/port=6060'
    ```
-   For details, see [Deploy Grafana on Kubernetes](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/).
+   For details, see [Deploy Grafana on Kubernetes](/docs/grafana/latest/setup-grafana/installation/kubernetes/).
 
 1. Port-forward Grafana to `localhost`, by using the `kubectl` command:
 
@@ -136,11 +136,11 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    | Name  | Phlare                                                       |
    | URL   | http://phlare-querier.phlare-test.svc.cluster.local.:4100/   |
 
-   To add a data source, see [Add a data source](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/).
+   To add a data source, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
 1. Verify success:
 
-   You should be able to query profiles in [Grafana Explore](https://grafana.com/docs/grafana/latest/explore/),
+   You should be able to query profiles in [Grafana Explore](/docs/grafana/latest/explore/),
    as well as create dashboard panels by using your newly configured Phlare data source.
 
 ## Optional: Persistently add data source:

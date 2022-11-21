@@ -2,6 +2,7 @@
 title: "Grafana Phlare documentation"
 menuTitle: "Grafana Phlare"
 weight: 1
+description: "Grafana Phlare documentation"
 keywords:
   - Grafana Phlare
   - Grafana profiles

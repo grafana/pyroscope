@@ -11,7 +11,7 @@ weight: 10
 
 Choose one of the following options to get started with Grafana Phlare:
 
-- The **written tutorial** below provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project. 
+- The **written tutorial** below provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project.
 
 - The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
 
@@ -26,8 +26,8 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 ## Download and configure Phlare
 
 1. Download Grafana Phlare.
-  
-    You can use Docker or download a binary to install Phlare. 
+
+    You can use Docker or download a binary to install Phlare.
 
     - To install with Docker, run the following command:
 
@@ -48,8 +48,8 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 
 1. Start Phlare.
 
-    To run Grafana Phlare as a monolith and with local filesystem storage, you can create your own file, or use a demo configuration file. 
-    
+    To run Grafana Phlare as a monolith and with local filesystem storage, you can create your own file, or use a demo configuration file.
+
     - To create your own file, write the following YAML configuration to a file called `demo.yaml`:
 
       ```yaml
@@ -84,7 +84,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
         ./phlare --config.file=./demo.yaml
         ```
 
-1. Verify that Phlare is ready. Grafana Phlare listens on port `4100`. 
+1. Verify that Phlare is ready. Grafana Phlare listens on port `4100`.
 
       ```bash
       curl localhost:4100/ready
@@ -116,7 +116,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
    | Name  | Phlare                                                               |
    | URL   | [http://phlare:4100/](http://phlare:4100/) |
 
-  To learn more about adding data sources, see [Add a data source](https://grafana.com/docs/grafana/latest/datasources/add-a-data-source/).
+  To learn more about adding data sources, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
-When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](https://grafana.com/docs/grafana/latest/explore/)
-and create dashboard panels using the newly configured Grafana Phlare data source. For more information on working with dashboards with Grafana, see [Panels and visualizations](https://grafana.com/docs/grafana/latest/panels-visualizations/) in the Grafana documentation.
+When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](/docs/grafana/latest/explore/)
+and create dashboard panels using the newly configured Grafana Phlare data source. For more information on working with dashboards with Grafana, see [Panels and visualizations](/docs/grafana/latest/panels-visualizations/) in the Grafana documentation.
