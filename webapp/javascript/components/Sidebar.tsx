@@ -29,7 +29,11 @@ import {
 } from '@webapp/redux/reducers/ui';
 // import useColorMode from '@webapp/hooks/colorMode.hook';
 import { useLocation, NavLink } from 'react-router-dom';
-import { isAdhocUIEnabled, isAuthRequired } from '@webapp/util/features';
+import {
+  isAdhocUIEnabled,
+  isAuthRequired,
+  isExemplarsPageEnabled,
+} from '@webapp/util/features';
 import Icon from '@webapp/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
@@ -229,7 +233,7 @@ export function SidebarComponent() {
             </MenuItem>
           </SubMenu>
           {isAdhocUIEnabled && adhoc}
-          {isTracingActive && (
+          {isExemplarsPageEnabled && (
             <SubMenu
               title="Tracing Exemplars"
               icon={<ExemplarsIcon />}
