@@ -189,9 +189,7 @@ func (s *sortedSample) Swap(i, j int) {
 	s.hashes[i], s.hashes[j] = s.hashes[j], s.hashes[i]
 }
 
-var (
-	currentTime = time.Now
-)
+var currentTime = time.Now
 
 // Normalize normalizes the profile by:
 //   - Removing all duplicate samples (summing their values).
@@ -206,6 +204,8 @@ func (p *Profile) Normalize() {
 	if p.TimeNanos == 0 {
 		p.TimeNanos = currentTime().UnixNano()
 	}
+
+	p.ensureHasMapping()
 
 	// first we sort the samples location ids.
 	hashes := p.hasher.Hashes(p.Sample)
@@ -249,6 +249,29 @@ func (p *Profile) Normalize() {
 
 	// Remove references to removed samples.
 	p.clearSampleReferences(removedSamples)
+}
+
+// ensureHasMapping ensures all locations have at least a mapping.
+func (p *Profile) ensureHasMapping() {
+	var mId uint64
+	for _, m := range p.Mapping {
+		if mId < m.Id {
+			mId = m.Id
+		}
+	}
+	var fake *profilev1.Mapping
+	for _, l := range p.Location {
+		if l.MappingId == 0 {
+			if fake == nil {
+				fake = &profilev1.Mapping{
+					Id:          mId + 1,
+					MemoryLimit: ^uint64(0),
+				}
+				p.Mapping = append(p.Mapping, fake)
+			}
+			l.MappingId = fake.Id
+		}
+	}
 }
 
 func (p *Profile) clearSampleReferences(samples []*profilev1.Sample) {
