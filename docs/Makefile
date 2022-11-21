@@ -17,4 +17,4 @@ test:
 
 .PHONY: validate
 validate:
-	docker run -v $(CURDIR)/sources:/docs/sources --rm grafana/doc-validator:latest /docs/sources
+	docker run -v $(CURDIR)/sources:/docs/sources --rm grafana/doc-validator:v1.5.0 /docs/sources
