@@ -285,6 +285,9 @@ KIND_CLUSTER = phlare-dev
 helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/phlare/helm/phlare/
 
+helm/docs: $(BIN)/helm
+	docker run --rm --volume "$(CURDIR)/operations/phlare/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
+
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
 	$(BIN)/goreleaser check

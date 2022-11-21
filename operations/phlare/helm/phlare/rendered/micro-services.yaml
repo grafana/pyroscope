@@ -12,7 +12,7 @@ kind: ServiceAccount
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -358,7 +358,7 @@ kind: ConfigMap
 metadata:
   name: phlare-dev-config
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -410,7 +410,7 @@ kind: ClusterRole
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -436,7 +436,7 @@ kind: ClusterRoleBinding
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -524,7 +524,7 @@ kind: Service
 metadata:
   name: phlare-dev-memberlist
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -550,7 +550,7 @@ kind: Service
 metadata:
   name: phlare-dev-agent
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -574,7 +574,7 @@ kind: Service
 metadata:
   name: phlare-dev-distributor
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -598,7 +598,7 @@ kind: Service
 metadata:
   name: phlare-dev-ingester
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -622,7 +622,7 @@ kind: Service
 metadata:
   name: phlare-dev-ingester-headless
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -646,7 +646,7 @@ kind: Service
 metadata:
   name: phlare-dev-querier
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -670,7 +670,7 @@ kind: Deployment
 metadata:
   name: phlare-dev-agent
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -686,7 +686,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
+        checksum/config: 4c3dc2db2f3d41992cdb7a1e003284e1f3b852067d370a81fd613629a7cb8142
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
@@ -747,7 +747,7 @@ kind: Deployment
 metadata:
   name: phlare-dev-distributor
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -763,7 +763,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
+        checksum/config: 4c3dc2db2f3d41992cdb7a1e003284e1f3b852067d370a81fd613629a7cb8142
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
@@ -823,7 +823,7 @@ kind: Deployment
 metadata:
   name: phlare-dev-querier
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -839,7 +839,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
+        checksum/config: 4c3dc2db2f3d41992cdb7a1e003284e1f3b852067d370a81fd613629a7cb8142
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
@@ -994,7 +994,7 @@ kind: StatefulSet
 metadata:
   name: phlare-dev-ingester
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -1012,7 +1012,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7c20a01bc6043e69edf62dff49315f54bec766171f3cc006fa8854bbbc1631c1
+        checksum/config: 4c3dc2db2f3d41992cdb7a1e003284e1f3b852067d370a81fd613629a7cb8142
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
