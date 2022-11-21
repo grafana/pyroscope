@@ -5,7 +5,7 @@ kind: ServiceAccount
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -17,7 +17,7 @@ kind: ConfigMap
 metadata:
   name: phlare-dev-config
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -62,7 +62,7 @@ kind: ClusterRole
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -88,7 +88,7 @@ kind: ClusterRoleBinding
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -108,7 +108,7 @@ kind: Service
 metadata:
   name: phlare-dev-memberlist
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -134,7 +134,7 @@ kind: Service
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -158,7 +158,7 @@ kind: Service
 metadata:
   name: phlare-dev-headless
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -182,7 +182,7 @@ kind: StatefulSet
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.0
+    helm.sh/chart: phlare-0.1.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.1.0"
@@ -200,7 +200,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 277489e0f364872f2b0179c330220e8df857e2ef34773edb29c200cd8771f56b
+        checksum/config: 6e8c7666812b4fd3271cfd632104da3b8b9f2c5db345c18fe122af475ea81e61
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
