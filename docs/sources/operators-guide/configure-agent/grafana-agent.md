@@ -8,4 +8,4 @@ weight: 30
 
 Continuous profiling support in the [Grafana Agent] is coming soon.
 
-[Grafana Agent]: https://grafana.com/docs/agent/latest/
+[Grafana Agent]: /docs/agent/latest/
