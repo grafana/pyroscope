@@ -187,4 +187,4 @@ jobs:
           git config --global url."https://grafanabot:${{ secrets.GRAFANABOT_PAT }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
           make docker-image/phlare/deploy-dev-001
         env:
-          GITHUB_TOKEN: ${{ secrets.GRAFANABOT_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
