@@ -278,6 +278,7 @@ type singleBlockQuerier struct {
 	tables []tableReader
 
 	openLock              sync.Mutex
+	opened                bool
 	tsBoundaryPerRowGroup []minMax
 	index                 *index.Reader
 	strings               inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]
@@ -719,8 +720,7 @@ func (q *singleBlockQuerier) readTSBoundaries(ctx context.Context) (minMax, []mi
 	return tsBoundary, tsBoundaryPerRowGroup, nil
 }
 
-func newByteSliceFromBucketReader(bucketReader phlareobjstore.BucketReader, path string) (index.RealByteSlice, error) {
-	ctx := context.Background()
+func newByteSliceFromBucketReader(ctx context.Context, bucketReader phlareobjstore.BucketReader, path string) (index.RealByteSlice, error) {
 	f, err := bucketReader.Get(ctx, path)
 	if err != nil {
 		return nil, err
@@ -735,6 +735,22 @@ func newByteSliceFromBucketReader(bucketReader phlareobjstore.BucketReader, path
 }
 
 func (q *singleBlockQuerier) open(ctx context.Context) error {
+	q.openLock.Lock()
+	defer q.openLock.Unlock()
+
+	// already open
+	if q.opened {
+		return nil
+	}
+	if err := q.openFiles(ctx); err != nil {
+		return err
+	}
+	q.opened = true
+	return nil
+}
+
+// openFiles opens the parquet and tsdb files so they are ready for usage.
+func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	start := time.Now()
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - open")
 	defer func() {
@@ -744,33 +760,33 @@ func (q *singleBlockQuerier) open(ctx context.Context) error {
 		)
 		sp.Finish()
 	}()
-	q.openLock.Lock()
-	defer q.openLock.Unlock()
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// open tsdb index
+		indexBytes, err := newByteSliceFromBucketReader(ctx, q.bucketReader, block.IndexFilename)
+		if err != nil {
+			return errors.Wrap(err, "error reading tsdb index")
+		}
 
-	// already open
-	if q.index != nil {
+		q.index, err = index.NewReader(indexBytes)
+		if err != nil {
+			return errors.Wrap(err, "opening tsdb index")
+		}
 		return nil
-	}
-
-	// open tsdb index
-	indexBytes, err := newByteSliceFromBucketReader(q.bucketReader, block.IndexFilename)
-	if err != nil {
-		return errors.Wrap(err, "error reading tsdb index")
-	}
-
-	q.index, err = index.NewReader(indexBytes)
-	if err != nil {
-		return errors.Wrap(err, "opening tsdb index")
-	}
+	})
 
 	// open parquet files
-	for _, x := range q.tables {
-		if err := x.open(contextWithBlockMetrics(ctx, q.metrics), q.bucketReader); err != nil {
-			return err
-		}
+	for _, tableReader := range q.tables {
+		tableReader := tableReader
+		g.Go(func() error {
+			if err := tableReader.open(contextWithBlockMetrics(ctx, q.metrics), q.bucketReader); err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
-	return nil
+	return g.Wait()
 }
 
 type parquetReader[M Models, P schemav1.PersisterName] struct {
