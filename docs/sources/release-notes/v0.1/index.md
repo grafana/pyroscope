@@ -21,7 +21,7 @@ From the first release you can expect:
 
 ![Grafana Phlare UI](phlare-ui.png)
 
-Ready to give it a try, follow our [getting started](https://grafana.com/docs/phlare/latest/operators-guide/get-started/) documentation.
+Ready to give it a try, follow our [getting started]({{< relref "../../operators-guide/get-started/" >}}) documentation.
 
 > **Note:** This is an early release and there are a couple of limitations:
 >
