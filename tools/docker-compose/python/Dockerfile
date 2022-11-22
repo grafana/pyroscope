@@ -1,4 +1,4 @@
-FROM python:3.10 as builder
+FROM --platform=linux/amd64 python:3.10 AS builder
 
 # Install build-base to allow for compilation of the profiling agent.
 RUN apt-get update && apt-get install -y build-essential git
@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y build-essential git
 COPY requirements.txt .
 RUN pip3 wheel --wheel-dir=/tmp/wheels -r requirements.txt
 
-FROM python:3.10
+FROM --platform=linux/amd64 python:3.10
 
 # Copy over the directory containing wheels for the profiling agent.
 COPY --from=builder /tmp/wheels /tmp/wheels
