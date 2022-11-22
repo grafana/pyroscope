@@ -6,7 +6,7 @@ import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
-import type { ExploreTooltipProps } from '@webapp/components/TimelineChart/ExploreTooltip';
+import type { TooltipCallbackProps } from '@webapp/components/TimelineChart/Tooltip.plugin';
 import type { ITooltipWrapperProps } from './TooltipWrapper';
 import TooltipWrapper from './TooltipWrapper';
 import TimelineChart from './TimelineChart';
@@ -83,7 +83,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
-  onHoverDisplayTooltip?: React.FC<ExploreTooltipProps>;
+  onHoverDisplayTooltip?: React.FC<TooltipCallbackProps>;
 
   /** list of annotations timestamp, to be rendered as markings */
   annotations?: { timestamp: number; content: string }[];
@@ -241,11 +241,11 @@ class TimelineChartWrapper extends React.Component<
   };
 
   setOnHoverDisplayTooltip = (
-    data: ITooltipWrapperProps & ExploreTooltipProps
+    data: ITooltipWrapperProps & TooltipCallbackProps
   ) => {
     const tooltipContent = [];
 
-    const TooltipBody: React.FC<ExploreTooltipProps> | undefined =
+    const TooltipBody: React.FC<TooltipCallbackProps> | undefined =
       this.props?.onHoverDisplayTooltip;
 
     if (TooltipBody) {
@@ -280,7 +280,7 @@ class TimelineChartWrapper extends React.Component<
 
     // TODO: unify with renderSingle
     const onHoverDisplayTooltip = (
-      data: ITooltipWrapperProps & ExploreTooltipProps
+      data: ITooltipWrapperProps & TooltipCallbackProps
     ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
@@ -326,7 +326,7 @@ class TimelineChartWrapper extends React.Component<
 
     // TODO: unify with renderMultiple
     const onHoverDisplayTooltip = (
-      data: ITooltipWrapperProps & ExploreTooltipProps
+      data: ITooltipWrapperProps & TooltipCallbackProps
     ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
