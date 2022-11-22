@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/treesvg"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/history"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
@@ -157,7 +158,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		res := rh.mountRenderResponse(flame, appName, p.gi, p.maxNodes, annotations)
 		rh.httpUtils.WriteResponseJSON(r, w, res)
-	case "pprof":
+	case "pprof", "tree-svg":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
 			// TODO(petethepig): not sure if this conversion is right
 			Unit:      string(out.Units),
@@ -165,7 +166,18 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		out, err := proto.Marshal(pprof)
 		if err == nil {
-			rh.httpUtils.WriteResponseFile(r, w, fmt.Sprintf("%v.pprof", filename), out)
+			if p.format == "tree-svg" {
+				out, err = treesvg.ToSVG(out)
+				if err != nil {
+					rh.httpUtils.WriteInternalServerError(r, w, err, "failed to parse pprof")
+					return
+				}
+				w.Header().Add("Content-Type", "image/svg+xml")
+				w.WriteHeader(200)
+				w.Write(out)
+			} else {
+				rh.httpUtils.WriteResponseFile(r, w, fmt.Sprintf("%v.pprof", filename), out)
+			}
 		} else {
 			rh.httpUtils.WriteInternalServerError(r, w, err, "failed to serialize data")
 		}

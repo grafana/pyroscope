@@ -584,7 +584,7 @@ func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
 
 func expectFormats(format string) error {
 	switch format {
-	case "json", "pprof", "collapsed", "html", "":
+	case "json", "pprof", "collapsed", "html", "tree-svg", "":
 		return nil
 	default:
 		return errUnknownFormat
