@@ -1,6 +1,7 @@
 $buttonHeight: 37px;
 
 .navbar {
+  position: relative;
   display: flex;
   flex-direction: row;
   margin: 10px 0;
@@ -105,4 +106,32 @@ $buttonHeight: 37px;
   height: 35px;
   background-color: var(--ps-ui-border);
   margin: 0 2px;
+}
+
+.moreButton {
+  border-radius: 4px;
+  border: none;
+  padding: 0 5px;
+  height: 35px;
+
+  &.hidden {
+    display: none;
+  }
+
+  &:hover {
+    cursor: pointer;
+    background-color: var(--ps-ui-element-bg-highlight);
+  }
+}
+
+.navbarCollapsedItems {
+  display: flex;
+  position: absolute;
+  right: 0;
+  top: 50px;
+  height: 47px;
+  background-color: var(--ps-fl-toolbar-bg);
+  border: 1px solid var(--ps-ui-border);
+  padding: 4px;
+  z-index: 1;
 }
