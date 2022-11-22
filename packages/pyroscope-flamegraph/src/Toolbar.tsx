@@ -70,6 +70,7 @@ export const useSizeMode = (target: RefObject<HTMLDivElement>) => {
 const useMoreButton = (target: RefObject<HTMLDivElement>) => {
   const [isCollapsed, setCollapsedStatus] = useState(true);
   const [collapsedItemsNumber, setCollapsedItemsNumber] = useState(0);
+  const [breakpoints, setBreakpoints] = useState<number[]>([]);
 
   // useLayoutEffect(() => {
   //   if (target.current) {
@@ -84,12 +85,23 @@ const useMoreButton = (target: RefObject<HTMLDivElement>) => {
   };
 
   useResizeObserver(target, (entry: ResizeObserverEntry) => {
-    const isOverflown = entry.target.scrollWidth - entry.target.clientWidth;
-    if(isOverflown) {
-      setCollapsedItemsNumber(v => v + 1)
+    const isOverflown = entry.target.scrollWidth - entry.target.clientWidth > 0;
+    const { width } = entry.contentRect;
+
+    if (isOverflown) {
+      setCollapsedItemsNumber(v => v + 1);
+      setBreakpoints(v => v.concat([width]));
     }
-    // implement correct calculations when toolbar is collapsed
-    // and we make screen wider
+
+    if (!isOverflown && width >= breakpoints[breakpoints.length - 1]) {
+      setCollapsedItemsNumber(v => v - 1);
+      setBreakpoints(v => {
+        v.pop();
+        return v;
+      })
+    }
+
+    setCollapsedStatus(true)
   });
 
   return {
