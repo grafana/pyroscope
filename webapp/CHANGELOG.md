@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.66.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.4...@pyroscope/webapp@1.66.0) (2022-11-22)
+
+
+### Features
+
+* **webapp:** add tooltip to main timeline in single view ([#1742](https://github.com/pyroscope-io/pyroscope/issues/1742)) ([508946c](https://github.com/pyroscope-io/pyroscope/commit/508946cf034d2f9aedae03c71429fc05d313897d))
+
+
+
+
+
 ## [1.65.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.3...@pyroscope/webapp@1.65.4) (2022-11-21)
 
 **Note:** Version bump only for package @pyroscope/webapp
