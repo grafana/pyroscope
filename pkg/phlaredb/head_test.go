@@ -335,6 +335,7 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 		"testdata/profile",
 		"testdata/profile_uncompressed",
 		"testdata/profile_python",
+		"testdata/profile_java",
 	}
 
 	head := newTestHead(t)
