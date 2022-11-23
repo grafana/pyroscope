@@ -79,8 +79,6 @@ export default function Dropdown({
     </MenuButton>
   );
 
-  console.log('label', label);
-
   return (
     <Menu
       id={id}
