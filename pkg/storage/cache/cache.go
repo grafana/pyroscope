@@ -274,7 +274,7 @@ func (c *Cache) DeletePrefix(prefix string) error {
 	return c.db.DropPrefix([]byte(c.prefix + prefix))
 }
 
-func (c *Cache) DiscardPrefix(prefix string) {
+func (c *Cache) DiscardPrefix(prefix string) error {
 	for _, b := range c.buckets {
 		b.lock.Lock()
 		for k, e := range b.values {
@@ -284,6 +284,7 @@ func (c *Cache) DiscardPrefix(prefix string) {
 		}
 		b.lock.Unlock()
 	}
+	return nil
 }
 
 func (b *bucket) deleteEntry(e *entry) {

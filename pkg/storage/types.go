@@ -87,8 +87,8 @@ type BadgerDB interface {
 
 type CacheLayer interface {
 	Put(key string, val interface{})
-	Evict(percent float64)
-	WriteBack()
+	Evict(percent float64) (int, error)
+	WriteBack() (int, int, error)
 	Delete(key string) error
 	Discard(key string)
 	DiscardPrefix(prefix string) error
