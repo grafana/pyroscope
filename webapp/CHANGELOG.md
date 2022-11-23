@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.0...@pyroscope/webapp@1.66.1) (2022-11-23)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix dropdown menu opening ([#1755](https://github.com/pyroscope-io/pyroscope/issues/1755)) ([0b1acef](https://github.com/pyroscope-io/pyroscope/commit/0b1acef9c5d5a2a268f952a529d12f784d257842))
+
+
+
+
+
 # [1.66.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.4...@pyroscope/webapp@1.66.0) (2022-11-22)
 
 
