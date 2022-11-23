@@ -68,10 +68,13 @@ func TestNormalizeProfile(t *testing.T) {
 		Sample: []*profilev1.Sample{
 			{LocationId: []uint64{2, 3}, Value: []int64{0, 1}, Label: []*profilev1.Label{}},
 		},
-		Mapping: []*profilev1.Mapping{},
+		Mapping: []*profilev1.Mapping{{
+			Id:          1,
+			MemoryLimit: ^uint64(0),
+		}},
 		Location: []*profilev1.Location{
-			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}, {FunctionId: 3, Line: 3}}},
-			{Id: 3, Line: []*profilev1.Line{{FunctionId: 3, Line: 1}, {FunctionId: 4, Line: 3}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}, {FunctionId: 3, Line: 3}}},
+			{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3, Line: 1}, {FunctionId: 4, Line: 3}}},
 		},
 		Function: []*profilev1.Function{
 			{Id: 2, Name: 6, SystemName: 7, Filename: 8, StartLine: 1},
@@ -135,6 +138,19 @@ func TestRemoveDuplicateSampleStacktraces(t *testing.T) {
 
 	require.Equal(t, 0, countSampleDuplicates(p), "duplicates should be removed")
 	require.Equal(t, total-duplicate, len(p.Sample), "unexpected total samples")
+}
+
+func TestEmptyMappingJava(t *testing.T) {
+	p, err := OpenFile("testdata/profile_java")
+	require.NoError(t, err)
+	require.Len(t, p.Mapping, 0)
+
+	p.Normalize()
+	require.Len(t, p.Mapping, 1)
+
+	for _, loc := range p.Location {
+		require.Equal(t, loc.MappingId, uint64(1))
+	}
 }
 
 func countSampleDuplicates(p *Profile) int {
