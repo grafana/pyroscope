@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { ControlledMenu } from '@webapp/ui/Menu';
+/* eslint-disable react/jsx-props-no-spreading */
+import React, { useEffect } from 'react';
+import { ControlledMenu, useMenuState } from '@webapp/ui/Menu';
 import { ContextMenuProps as PluginContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
 
 interface ContextMenuProps {
@@ -12,19 +13,19 @@ interface ContextMenuProps {
 
 function ContextMenu(props: ContextMenuProps) {
   const { position, children } = props;
-  const [isOpen, setOpen] = useState(false);
+  const [menuProps, toggleMenu] = useMenuState({ transition: true });
 
   // https://github.com/szhsin/react-menu/issues/2#issuecomment-719166062
   useEffect(() => {
-    setOpen(true);
+    toggleMenu(true);
   }, []);
 
   return (
     <>
       <ControlledMenu
-        isOpen={isOpen}
+        {...menuProps}
         anchorPoint={{ x: position.pageX, y: position.pageY }}
-        onClose={() => setOpen(false)}
+        onClose={() => toggleMenu(false)}
       >
         {children}
       </ControlledMenu>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
-import type { ClickEvent } from '@szhsin/react-menu';
+import type { ClickEvent } from '@webapp/ui/Menu';
 import Color from 'color';
 import TotalSamplesChart from '@webapp/pages/tagExplorer/components/TotalSamplesChart';
 import type { Profile } from '@pyroscope/models/src';

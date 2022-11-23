@@ -40,6 +40,7 @@ export const DiffLegendPaletteDropdown = (
       <div ref={legendRef} className={styles.dropdownWrapper}>
         <Dropdown
           label="Select a palette"
+          align="end"
           menuButton={
             <MenuButton
               className={cx(

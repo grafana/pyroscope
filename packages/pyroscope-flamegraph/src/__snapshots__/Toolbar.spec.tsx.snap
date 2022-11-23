@@ -277,14 +277,11 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
           aria-expanded="false"
           aria-haspopup="true"
           aria-label="Fit Mode"
-          class="rc-menu-button dropdownMenuButton fitModeDropdownSmall"
+          class="szh-menu-button dropdownMenuButton fitModeDropdownSmall"
           type="button"
         >
           Tail
         </button>
-        <div
-          class="rc-menu-container"
-        />
       </div>
       <div
         class="divider"
@@ -361,14 +358,11 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
             aria-expanded="false"
             aria-haspopup="true"
             aria-label="View Mode"
-            class="rc-menu-button dropdownMenuButton viewModeDropdownButton"
+            class="szh-menu-button dropdownMenuButton viewModeDropdownButton"
             type="button"
           >
             Table and Flamegraph
           </button>
-          <div
-            class="rc-menu-container"
-          />
         </div>
       </div>
     </div>
