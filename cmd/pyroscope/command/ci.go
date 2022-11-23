@@ -61,9 +61,9 @@ func newCiInstallCmd(cfg *config.CI) *cobra.Command {
 	return cmd
 }
 
-func isTestFile(path string) bool {
+func isTestFile(p string) bool {
 	// TODO: is this enough?
-	return strings.HasSuffix(path, "_test.go")
+	return strings.HasSuffix(p, "_test.go")
 }
 
 func install(basePath string, appName string) error {
