@@ -38,7 +38,7 @@ export async function renderSingle(
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
   // TODO
-  const response = await request(`${url}&format=json`, {
+  const response = await request(`${url}&format=tree-svg`, {
     signal: controller?.signal,
   });
 
