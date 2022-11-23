@@ -91,6 +91,7 @@ const (
 	QuantileLabel = "quantile"
 
 	AppNameLabel       = "__name__"
+	SpyNameLabel       = "__spy_name__"
 	ProfileLabelPrefix = "__profile_"
 	ProfilePathLabel   = ProfileLabelPrefix + "path__"
 	ProfileNameLabel   = ProfileLabelPrefix + "name__"

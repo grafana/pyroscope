@@ -1,0 +1,8 @@
+.highlightContextMenu {
+  position: absolute;
+  pointer-events: none;
+  /* make it a bit lighter so that it's easier to distinguish when both highlights are on */
+  background: #ffffff8c;
+  mix-blend-mode: overlay;
+  z-index: 2;
+}

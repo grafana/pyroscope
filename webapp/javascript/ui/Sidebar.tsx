@@ -11,9 +11,7 @@ import {
   MenuItemProps,
   SubMenuProps,
 } from 'react-pro-sidebar';
-import { IconProps } from '@ui/Icon';
-
-import styles from './Sidebar.module.css';
+import { IconProps } from '@webapp/ui/Icon';
 import './Sidebar.scss';
 
 export interface SidebarProps {
@@ -39,11 +37,7 @@ export default function Sidebar(props: SidebarProps) {
 type Icon = React.ReactElement<IconProps>;
 
 export function MenuItem(props: MenuItemProps & { icon: Icon }) {
-  const { icon } = props;
-  let { className } = props;
-  if (icon) {
-    className = `${className} ${styles.menuWithIcon}`;
-  }
+  const { className } = props;
 
   return <RProMenuItem {...props} className={className} />;
 }

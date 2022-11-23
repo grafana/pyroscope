@@ -7,13 +7,15 @@ import (
 	"path/filepath"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -32,18 +34,24 @@ var _ = Describe("server", func() {
 					(*cfg).Server.TLSCertificateFile = filepath.Join(testDataDir, tlsCertificateFile)
 					(*cfg).Server.TLSKeyFile = filepath.Join(testDataDir, tlsKeyFile)
 
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+					s, err := storage.New(
+						storage.NewConfig(&(*cfg).Server),
+						logrus.StandardLogger(),
+						prometheus.NewRegistry(),
+						new(health.Controller),
+						storage.NoopApplicationMetadataService{},
+					)
 					Expect(err).ToNot(HaveOccurred())
+					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)
 					c, _ := New(Config{
 						Configuration:           &(*cfg).Server,
 						Storage:                 s,
-						MetricsExporter:         e,
+						Ingester:                parser.New(logrus.StandardLogger(), s, e),
 						Logger:                  logrus.New(),
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),
 						Notifier:                mockNotifier{},
-						Adhoc:                   mockAdhocServer{},
 					})
 					c.dir = http.Dir(testDataDir)
 
@@ -72,18 +80,24 @@ var _ = Describe("server", func() {
 					const addr = ":10046"
 					(*cfg).Server.APIBindAddr = addr
 
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+					s, err := storage.New(
+						storage.NewConfig(&(*cfg).Server),
+						logrus.StandardLogger(),
+						prometheus.NewRegistry(),
+						new(health.Controller),
+						storage.NoopApplicationMetadataService{},
+					)
 					Expect(err).ToNot(HaveOccurred())
+					defer s.Close()
 					e, _ := exporter.NewExporter(nil, nil)
 					c, _ := New(Config{
 						Configuration:           &(*cfg).Server,
 						Storage:                 s,
-						MetricsExporter:         e,
+						Ingester:                parser.New(logrus.StandardLogger(), s, e),
 						Logger:                  logrus.New(),
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),
 						Notifier:                mockNotifier{},
-						Adhoc:                   mockAdhocServer{},
 					})
 					c.dir = http.Dir(testDataDir)
 

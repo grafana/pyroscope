@@ -1,0 +1,31 @@
+.popup {
+  background-color: var(--ps-ui-foreground);
+}
+
+.popup button.button:focus {
+  box-shadow: none;
+}
+
+.title {
+  color: var(--ps-neutral-2);
+}
+
+.input {
+  outline: none;
+  color: var(--ps-neutral-2);
+  background-color: var(--ps-ui-element-bg-primary);
+  border: 1px solid var(--ps-ui-border);
+  border-radius: 4px;
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: none;
+  border: 1px solid var(--ps-ui-border);
+}
+
+.validationMessage {
+  color: var(--ps-neutral-2);
+  font-weight: bold;
+  background-color: var(--ps-red-primary);
+}

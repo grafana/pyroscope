@@ -12,13 +12,13 @@ type route struct {
 }
 
 func (ctrl *Controller) addRoutes(router *mux.Router, routes []route,
-	middleware ...func(http.HandlerFunc) http.HandlerFunc) {
+	middleware ...mux.MiddlewareFunc) {
 	for _, r := range routes {
-		router.HandleFunc(r.pattern, ctrl.trackMetrics(r.pattern)(chain(r.handler, middleware...)))
+		router.HandleFunc(r.pattern, ctrl.trackMetrics(r.pattern)(chain(r.handler, middleware...)).ServeHTTP)
 	}
 }
 
-func chain(f http.HandlerFunc, middleware ...func(http.HandlerFunc) http.HandlerFunc) http.HandlerFunc {
+func chain(f http.Handler, middleware ...mux.MiddlewareFunc) http.Handler {
 	if len(middleware) == 0 {
 		return f
 	}

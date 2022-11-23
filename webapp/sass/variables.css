@@ -1,0 +1,142 @@
+:root {
+  --ps-neutral-1: #000000;
+  --ps-neutral-2: #ffffff;
+  --ps-neutral-9: #ffffff08; /* lighter background for table */
+
+  /*
+
+  Colors for the PS UI
+  Depth from furthest back to closest front:
+    1. --ps-ui-background: #2c2c30:   furthest back darkest color in the UI
+    2. --ps-ui-foreground: #212124:   sidebar, box, panel, immediately above background
+    3. --ps-ui-element-bg-primary:    background of "flat" ui elements, such as buttons, dropdown buttons, etc.
+    4. --ps-ui-element-bg-highlight:  highlight of ui elements, selected app, table highlight, 
+  */
+
+  --ps-ui-element-bg-primary: #2c2c30; /* non-selected button background, highlighted button text (when buttons are green) */
+  --ps-ui-element-bg-highlight: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
+
+  --ps-ui-background: #0e0e13; /* background furthest back color */
+  --ps-ui-border: #3b3b44; /* Note: same as --ps-grey-primary */
+  --ps-disabled-button-text: #404047; /* disabled button text */
+  --ps-ui-foreground: #212124; /* sidebar background and "panel"/"box" background */
+  --ps-ui-foreground-text: #d8d8d8; /* sidebar text and date picker text */
+  --ps-dropdown-background: #2c2c30; /* dropdown background */
+  --ps-sidebar-separator: #d8d8d833; /* sidebar separation lines color */
+
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip header */
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+  --ps-sandwich-pane-info-bg: #f2cd50; /* flamegraph sandwich pane info */
+
+  --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-shadow: #000000; /* dropdown shadow */
+
+  --ps-button-switch-bg: #2ecc40; /* 3 button switch selected button background */
+  --ps-button-switch-bg-highlight: #61ea71; /* 3 button switch selected button background when hovered*/
+  --ps-button-switch-text: #242428; /* 3 button switch selected button text */
+
+  --ps-table-highlight-row-bg: #2ecc40; /* table selected row background */
+  --ps-table-highlight-row-text: #000000; /* table selected row text */
+  --ps-table-row-text-shadow: #000000; /* table selected row text */
+
+  --ps-selected-app: #df8b53; /* active selected app color in dropdown */
+  --ps-select-modal-title: #888; /* selected modal title */
+
+  --ps-blue-primary: #3b78e7; /* Standard blue for button, instructions text (right) */
+  --ps-blue-highlight: #578ae9; /* highlight (hover) blue */
+  --ps-blue-disabled: #5374b0; /* disabled blue */
+
+  --ps-green-primary: #2ecc40; /* standard green for button */
+  --ps-green-highlight: #61ea71; /* highlight (hover) green */
+  --ps-green-disabled: #85c985; /* disabled green */
+
+  --ps-red-primary: #dc3545; /* standard red for button */
+  --ps-red-highlight: #e4606d; /* highlight (hover) red */
+  --ps-red-disabled: #eb8c95; /* disabled red */
+
+  --ps-grey-primary: #3b3b44;
+  --ps-grey-highlight: #47474e;
+  --ps-grey-disabled: #404047;
+
+  --ps-immutable-green-button-text: #242428;
+  --ps-immutable-google-button: #e84d3c; /* sign up with google button */
+  --ps-immutable-google-button-hover: #e53825; /* sign up with google hover */
+  --ps-immutable-gitlab-button: #fc6d26; /* sign up with gitlab button */
+  --ps-immutable-gitlab-button-hover: #fc5c0d; /* sign up with gitlab hover */
+  --ps-immutable-gitlab-button: #3b3b44;
+  --ps-immutable-gitlab-button-hover: #47474e;
+  --ps-immutable-gradient-0: #d1283980; /* used for gradient */
+  --ps-immutable-gradient-1: #3dc1d3cc; /* used for gradient */
+
+  --ps-immutable-off-white: #e6e6e6; /* input background, intro pages text, google,gitlab,github buttons text, */
+  --ps-immutable-linked-border: #eb7b18; /* linked border color */
+  --ps-immutable-white: #ffffff; /* white: Use only when it should be white regardless of color mode */
+  --ps-immutable-placeholder-text: #333333; /* placeholder text color */
+
+  --ps-upload-profile-area-border: #4d4d4d;
+  --ps-upload-profile-area-bg: #2c2c30;
+  --ps-upload-profile-btn-bg: #2c2c30;
+  --ps-upload-profile-icon: #575a6d;
+  --ps-upload-profile-btn-color: rgba(255, 255, 255, 0.3);
+
+  --ps-fl-toolbar-bg: #2c2c30;
+  --ps-fl-toolbar-btn-bg: #3c7150;
+  --ps-toolbar-icon-color: #ffffff;
+
+  --ps-mui-tooltip-background: #3b3b44;
+}
+
+[data-theme='light'],
+[data-flamegraph-color-mode='light'] {
+  --ps-neutral-1: #ffffff;
+  --ps-neutral-2: #000000;
+  --ps-neutral-9: #00000008; /* lighter background for table */
+
+  --ps-ui-element-bg-primary: #f8f8f8; /* non-selected button background, highlighted button text (when buttons are green) */
+  --ps-ui-element-bg-highlight: #c4c4c4; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
+
+  --ps-ui-background: #eaeaea; /* original: background furthest back color */
+  --ps-ui-border: #cccccc; /* border color */
+  --ps-disabled-button-text: #cccccc; /* disabled button text */
+  --ps-ui-foreground: #f8f8f8; /* sidebar background and "panel"/"box" background */
+  --ps-ui-foreground-text: #272727; /* sidebar text and datepicker text */
+  --ps-dropdown-background: #f8f8f8; /* dropdown background */
+  --ps-sidebar-separator: #0000004d; /* sidebar separation lines color */
+
+  --ps-tooltip-bg: #ffffff; /* tooltip header background */
+  --ps-tooltip-text: #000000; /* tooltip header text */
+  --ps-tooltip-header-bg: #d8d8d8; /* flamegraph tooltip heeader */
+  --ps-right-click-info: #9a9aa0; /* flamegraph tooltip right click info */
+  --ps-sandwich-pane-info-bg: #3b78e7; /* flamegraph sandwich pane info */
+
+  --ps-dropdown-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='black' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  --ps-dropdown-shadow: #00000052; /* dropdown shadow */
+
+  --ps-button-switch-bg: #3b78e7; /* 3 button switch selected button background */
+  --ps-button-switch-bg-highlight: #578ae9; /* 3 button switch selected button background when hovered*/
+  --ps-button-switch-text: #ffffff; /* 3 button switch selected button text */
+
+  --ps-table-highlight-row-bg: #3b78e7; /* table selected row background */
+  --ps-table-highlight-row-text: #ffffff; /* table selected row text */
+  --ps-table-row-text-shadow: #ffffff; /* table selected row text */
+  --ps-selected-app: #3b78e7; /* active selected app color in dropdown */
+  --ps-select-modal-title: #888; /* selected modal title */
+
+  --ps-green-primary: #0bdb79; /* standard green */
+  --ps-green-highlight: #5bdc9e; /* highlight (hover) green */
+  --ps-green-disabled: #00a757; /* disabled green */
+
+  --ps-upload-profile-area-border: #d8d8d8;
+  --ps-upload-profile-area-bg: #f8f8f8;
+  --ps-upload-profile-btn-bg: #f8f8f8;
+  --ps-upload-profile-icon: #cccccc;
+  --ps-upload-profile-btn-color: rgba(255, 255, 255, 0.3);
+
+  --ps-fl-toolbar-bg: #00000008;
+  --ps-fl-toolbar-btn-bg: #3b78e7;
+  --ps-toolbar-icon-color: #5f6367;
+
+  --ps-mui-tooltip-background: #5f6367;
+}

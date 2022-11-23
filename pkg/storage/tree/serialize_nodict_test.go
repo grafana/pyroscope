@@ -3,7 +3,7 @@ package tree
 import (
 	"bytes"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
 )
 
@@ -17,7 +17,7 @@ var _ = Describe("tree package", func() {
 			tree.Insert([]byte("a;c"), uint64(2))
 
 			var buf bytes.Buffer
-			tree.SerializeNoDict(1024, &buf)
+			tree.SerializeTruncateNoDict(1024, &buf)
 			Expect(buf.Bytes()).To(Equal(serializationExample))
 		})
 	})

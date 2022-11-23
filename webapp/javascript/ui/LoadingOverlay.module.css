@@ -1,0 +1,20 @@
+.loadingOverlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+
+  /* ignore all pointer events */
+  pointer-events: all;
+  z-index: 99;
+  transition: all 0.5s ease-in-out;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.unactive {
+  background: initial;
+  display: none;
+}

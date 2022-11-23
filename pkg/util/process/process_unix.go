@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package process
@@ -23,7 +24,7 @@ func Exists(pid int) bool {
 	return s != "Z"
 }
 
-// SendProcess send signal s to the process p.
+// SendSignal sends signal s to the process p.
 //
 // The call ignores SIGCHLD (which is sent to the parent of a child process
 // when it exits, is interrupted, or resumes after being interrupted.)

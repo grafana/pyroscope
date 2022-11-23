@@ -1,5 +1,7 @@
 package tree
 
+import "bytes"
+
 type Format string
 
 const (
@@ -18,6 +20,8 @@ type Flamebearer struct {
 	Units      string `json:"units"`
 	Format     Format `json:"format"`
 }
+
+var lostDuringRenderingName = jsonableSlice("other")
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 	t.RLock()
@@ -53,10 +57,10 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			var ok bool
 			if i, ok = nameLocationCache[name]; !ok {
 				i = len(res.Names)
-				nameLocationCache[name] = i
 				if i == 0 {
 					name = "total"
 				}
+				nameLocationCache[name] = i
 				res.Names = append(res.Names, name)
 			}
 
@@ -75,7 +79,12 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 
 			xOffset += int(tn.Self)
 			otherTotal := uint64(0)
+			var otherNode *treeNode
 			for _, n := range tn.ChildrenNodes {
+				if bytes.Equal(n.Name, lostDuringRenderingName) {
+					otherTotal += n.Total
+					continue
+				}
 				if n.Total >= minVal {
 					xOffsets = append([]int{xOffset}, xOffsets...)
 					levels = append([]int{level + 1}, levels...)
@@ -86,14 +95,14 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 				}
 			}
 			if otherTotal != 0 {
-				n := &treeNode{
-					Name:  jsonableSlice("other"),
+				otherNode = &treeNode{
+					Name:  lostDuringRenderingName,
 					Total: otherTotal,
 					Self:  otherTotal,
 				}
 				xOffsets = append([]int{xOffset}, xOffsets...)
 				levels = append([]int{level + 1}, levels...)
-				nodes = append([]*treeNode{n}, nodes...)
+				nodes = append([]*treeNode{otherNode}, nodes...)
 			}
 		}
 	}

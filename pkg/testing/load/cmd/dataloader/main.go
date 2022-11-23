@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing/load"
 )
@@ -47,7 +49,7 @@ func openStorage(path string) (*storage.Storage, error) {
 		CacheEvictThreshold:   0.02,
 		CacheEvictVolume:      0.10,
 		MaxNodesSerialization: 2048,
-	}), logrus.StandardLogger(), prometheus.NewRegistry())
+	}), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller), storage.NoopApplicationMetadataService{})
 }
 
 func main() {
@@ -65,15 +67,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	c.WriteFn = func(input *storage.PutInput) {
-		if err = x.Put(input); err != nil {
+	c.WriteFn = func(input load.Input) {
+		if err = x.Put(context.TODO(), &storage.PutInput{
+			StartTime:       input.StartTime,
+			EndTime:         input.EndTime,
+			Key:             input.Key,
+			Val:             input.Val,
+			SpyName:         input.SpyName,
+			SampleRate:      input.SampleRate,
+			Units:           input.Units,
+			AggregationType: input.AggregationType,
+		}); err != nil {
 			fmt.Println(err)
 		}
 	}
 
 	s := load.NewStorageWriteSuite(c.StorageWriteSuiteConfig)
 	for name, appConfig := range c.Apps {
-		s.AddApp(name, appConfig)
+		s.AddAppWithConfig(name, appConfig)
 	}
 
 	start := time.Now()

@@ -3,7 +3,7 @@ package tree
 import (
 	"bytes"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 )
@@ -21,7 +21,7 @@ var _ = Describe("tree", func() {
 		})
 	})
 
-	Describe("Serialize", func() {
+	Describe("SerializeTruncate", func() {
 		d := dict.New()
 		tree := New()
 		tree.Insert([]byte("a;b"), uint64(1))
@@ -29,16 +29,16 @@ var _ = Describe("tree", func() {
 
 		It("serializes tree", func() {
 			var buf bytes.Buffer
-			tree.Serialize(d, 1024, &buf)
+			tree.SerializeTruncate(d, 1024, &buf)
 			Expect(buf.Bytes()).To(Equal(dictSerializeExample))
 		})
 
 		Context("Ran 1000000 times", func() {
 			var buf1 bytes.Buffer
-			tree.Serialize(d, 1024, &buf1)
+			tree.SerializeTruncate(d, 1024, &buf1)
 			It("returns the same result", func() {
 				var buf2 bytes.Buffer
-				tree.Serialize(d, 1024, &buf2)
+				tree.SerializeTruncate(d, 1024, &buf2)
 				Expect(buf2).To(Equal(buf1))
 			})
 		})

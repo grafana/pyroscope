@@ -1,0 +1,3 @@
+{
+  "errors": ["api key name can't be empty", "unknown role"]
+}

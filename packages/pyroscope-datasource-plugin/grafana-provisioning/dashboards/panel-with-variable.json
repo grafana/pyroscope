@@ -1,0 +1,110 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "iteration": 1641304888885,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "showToolbar": false
+      },
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "$query",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "$query",
+      "type": "pyroscope-panel"
+    }
+  ],
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": true,
+          "text": "pyroscope.server.inuse_objects",
+          "value": "pyroscope.server.inuse_objects"
+        },
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "query",
+        "options": [
+          {
+            "selected": false,
+            "text": "pyroscope.server.cpu",
+            "value": "pyroscope.server.cpu"
+          },
+          {
+            "selected": false,
+            "text": "pyroscope.server.alloc_objects",
+            "value": "pyroscope.server.alloc_objects"
+          },
+          {
+            "selected": false,
+            "text": "pyroscope.server.alloc_space",
+            "value": "pyroscope.server.alloc_space"
+          },
+          {
+            "selected": true,
+            "text": "pyroscope.server.inuse_objects",
+            "value": "pyroscope.server.inuse_objects"
+          }
+        ],
+        "query": "pyroscope.server.cpu,pyroscope.server.alloc_objects,pyroscope.server.alloc_space,pyroscope.server.inuse_objects",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Panel with variable",
+  "uid": "panel-with-variable",
+  "version": 1
+}

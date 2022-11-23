@@ -5,12 +5,7 @@ import path from 'path';
 export function getStyleLoaders() {
   return [
     {
-      test: /\.css$/,
-      // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
-      use: ['style-loader', 'css-loader'],
-    },
-    {
-      test: /\.scss$/,
+      test: /\.(css|scss)$/,
       use: [
         MiniCssExtractPlugin.loader,
         {
@@ -18,20 +13,18 @@ export function getStyleLoaders() {
           options: {
             importLoaders: 2,
             url: true,
-            sourceMap: true,
           },
         },
         {
           loader: 'postcss-loader',
           options: {
-            sourceMap: true,
             config: { path: __dirname },
           },
         },
         {
           loader: 'sass-loader',
           options: {
-            sourceMap: true,
+            //           sourceMap: true,
           },
         },
       ],
@@ -44,12 +37,16 @@ export function getAlias() {
     // rc-trigger uses babel-runtime which has internal dependency to core-js@2
     // this alias maps that dependency to core-js@t3
     'core-js/library/fn': 'core-js/stable',
-    '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
-    '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
-    '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
-    '@pyroscope/redux': path.resolve(
+    '@webapp': path.resolve(__dirname, '../../webapp/javascript'),
+
+    // https://github.com/reactjs/react-transition-group/issues/556#issuecomment-544512681
+    'dom-helpers/addClass': path.resolve(
       __dirname,
-      '../../webapp/javascript/redux'
+      '../../node_modules/dom-helpers/class/addClass'
+    ),
+    'dom-helpers/removeClass': path.resolve(
+      __dirname,
+      '../../node_modules/dom-helpers/class/removeClass'
     ),
   };
 }
@@ -61,35 +58,42 @@ export function getJsLoader() {
       exclude: /node_modules/,
       use: [
         {
-          loader: 'babel-loader',
+          loader: 'esbuild-loader',
           options: {
-            cacheDirectory: true,
-            babelrc: true,
-
-            plugins: ['@babel/plugin-transform-runtime'],
-            // Note: order is bottom-to-top and/or right-to-left
-            presets: [
-              [
-                '@babel/preset-env',
-                {
-                  targets: {
-                    browsers: 'last 3 versions',
-                  },
-                  useBuiltIns: 'entry',
-                  corejs: 3,
-                  modules: false,
-                },
-              ],
-              [
-                '@babel/preset-typescript',
-                {
-                  allowNamespaces: true,
-                },
-              ],
-              '@babel/preset-react',
-            ],
+            loader: 'tsx', // Or 'ts' if you don't need tsx
+            target: 'es2015',
           },
         },
+        //        {
+        //          loader: 'babel-loader',
+        //          options: {
+        //            cacheDirectory: true,
+        //            babelrc: true,
+        //
+        //            plugins: ['@babel/plugin-transform-runtime'],
+        //            // Note: order is bottom-to-top and/or right-to-left
+        //            presets: [
+        //              [
+        //                '@babel/preset-env',
+        //                {
+        //                  targets: {
+        //                    browsers: 'last 3 versions',
+        //                  },
+        //                  useBuiltIns: 'entry',
+        //                  corejs: 3,
+        //                  modules: false,
+        //                },
+        //              ],
+        //              [
+        //                '@babel/preset-typescript',
+        //                {
+        //                  allowNamespaces: true,
+        //                },
+        //              ],
+        //              '@babel/preset-react',
+        //            ],
+        //          },
+        //        },
       ],
     },
   ];

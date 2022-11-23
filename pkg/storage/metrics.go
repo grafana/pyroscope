@@ -8,8 +8,9 @@ import (
 )
 
 type metrics struct {
-	putTotal              prometheus.Counter
-	getTotal              prometheus.Counter
+	putTotal prometheus.Counter
+	getTotal prometheus.Counter
+
 	retentionTaskDuration prometheus.Summary
 	evictionTaskDuration  prometheus.Summary
 	writeBackTaskDuration prometheus.Summary
@@ -25,6 +26,12 @@ type metrics struct {
 
 	evictionsDuration *prometheus.SummaryVec
 	writeBackDuration *prometheus.SummaryVec
+
+	exemplarsWriteBytes            prometheus.Summary
+	exemplarsReadBytes             prometheus.Summary
+	exemplarsRemovedTotal          prometheus.Counter
+	exemplarsDiscardedTotal        prometheus.Counter
+	exemplarsRetentionTaskDuration prometheus.Summary
 }
 
 func newMetrics(r prometheus.Registerer) *metrics {
@@ -98,6 +105,30 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			Help:       "duration of write-back writes (triggered periodically)",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}, name),
+
+		exemplarsWriteBytes: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_exemplars_write_bytes",
+			Help:       "bytes written to exemplars storage",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		exemplarsReadBytes: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_exemplars_read_bytes",
+			Help:       "bytes read from exemplars storage",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		exemplarsRemovedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_storage_exemplars_removed_total",
+			Help: "number of exemplars removed from storage based on the retention policy",
+		}),
+		exemplarsDiscardedTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_storage_exemplars_discarded_total",
+			Help: "number of exemplars discarded",
+		}),
+		exemplarsRetentionTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_exemplars_retention_task_duration_seconds",
+			Help:       "time taken to enforce exemplars retention policy",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
 	}
 }
 

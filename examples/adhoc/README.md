@@ -5,9 +5,26 @@ Check [adhoc documentation](https://pyroscope.io/docs/agent-configuration-adhoc)
 
 Note: The example programs are toy examples but they share some interesting properties: their running time should take around 1 minute, and their profiling data should change slightly from run to run (making them good examples for comparison / diff mode visualizations).
 
-### exec mode
+### Push Mode
+If the application to profile is already using an agent or has some integration with the HTTP API,
+push mode can be used to profile the application without any configuration change.
 
+#### Golang adhoc (push)
+```
+# no spy is supported, --push is not needed (but can still be provided):
+pyroscope adhoc go run adhoc-push.go
+```
+#### Python adhoc (using pip package)
+```
+# pyspy is autodetected, --push is mandatory.
+# Note that you need pyroscope-io >= 0.6.0 for this to work.
+pyroscope adhoc --push python adhoc-push.py
+```
+
+
+### Exec mode
 For languages with a supported spy and no other pyroscope integration, this is the easiest way to get profiling data.
+For example, this method will work for python or ruby _without_ the pip/gem instrumented in the code.
 
 ```
 # Run with spy-name autodetected.
@@ -17,7 +34,8 @@ pyroscope adhoc python adhoc-spy.py
 pyroscope adhoc --spy-name pyspy ./adhoc-spy.py
 ```
 
-### connect mode
+### Connect mode
+#### Profile a process that is already running
 
 If the profiled process is already running, it's possible to attach to it instead, indicating its PID through the `--pid` flag:
 
@@ -31,37 +49,7 @@ python adhoc-spy.py &
 sudo pyroscope adhoc --spy-name pyspy --pid 841690
 ```
 
-### push mode
-
-If the application to profile is already using an agent or has some integration with the HTTP API,
-push mode can be used to profile the application without any configuration change.
-
-There are two possibilities:
-- A language with a supported spy is used, and the `spy-name` is autodetected.
-  In this case, `--push` flag must be used, as pyroscope defaults to `exec` mode.
-- Either the `spy-name` is not autodetected or the language has no spy support.
-  In this case, `--push` flag can be omitted.
-
-Let's see the different options:
-
-```
-# pyspy is autodetected, --push is mandatory.
-# Note that you need pyroscope-io >= 0.6.0 for this to work.
-pyroscope adhoc --push python adhoc-push.py
-```
-
-```
-# no spy is detected automatically, --push is not needed (but can still be provided):
-# Note that you need pyroscope-io >= 0.6.0 for this to work.
-pyroscope adhoc ./adhoc-push.py
-```
-
-```
-# no spy is supported, --push is not needed (but can still be provided):
-pyroscope adhoc go run adhoc-push.go
-```
-
-### pull mode
+### Pull mode
 
 If the application to profile supports pull-mode, that is, it's already running a HTTP server
 and serving profiling data in a supported format, like `pprof`,

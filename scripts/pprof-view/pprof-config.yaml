@@ -1,0 +1,62 @@
+---
+# type SampleTypeConfig struct {
+#   Units       string `json:"units,omitempty"`
+#   DisplayName string `json:"display-name,omitempty"`
+#   Aggregation string `json:"aggregation,omitempty"`
+#   Cumulative  bool   `json:"cumulative,omitempty"`
+#   Sampled     bool   `json:"sampled,omitempty"`
+# }
+
+cpu:
+  samples:
+    display-name: cpu
+    units: samples
+    sampled: true
+
+mem-js:
+  objects:
+    units: objects
+    aggregation: avg
+  space:
+    units: bytes
+    aggregation: avg
+
+mem:
+  inuse_objects:
+    units: objects
+    aggregation: avg
+  inuse_space:
+    units: bytes
+    aggregation: avg
+  alloc_objects:
+    units: objects
+    cumulative: true
+  alloc_space:
+    units: bytes
+    cumulative: true
+
+goroutines:
+  goroutine:
+    display-name: goroutines
+    units: objects
+    aggregation: average
+
+mutex:
+  contentions:
+    display-name: mutex-contentions
+    units: objects
+    aggregation: average
+  delay:
+    display-name: mutex-delay
+    units: nanoseconds
+    aggregation: average
+
+block:
+  contentions:
+    display-name: block-contentions
+    units: objects
+    aggregation: average
+  delay:
+    display-name: block-delay
+    units: nanoseconds
+    aggregation: average

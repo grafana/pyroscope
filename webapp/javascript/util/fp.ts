@@ -1,4 +1,4 @@
-import { Maybe } from 'true-myth';
+import { Maybe, Result } from 'true-myth';
 import type { Unwrapped } from 'true-myth/maybe';
 
 // Should be used in situation where we are absolutely
@@ -9,5 +9,5 @@ const throwUnwrapErr = () => {
   throw new Error('Failed to unwrap');
 };
 
-export { Maybe, throwUnwrapErr };
+export { Maybe, Result, throwUnwrapErr };
 export type { Unwrapped as UnwrapMaybe };

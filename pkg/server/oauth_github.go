@@ -6,23 +6,24 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
+
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-type oauthHanlderGithub struct {
+type oauthHandlerGithub struct {
 	oauthBase
 	allowedOrganizations []string
 }
 
-func newGithubHandler(cfg config.GithubOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGithub, error) {
+func newGithubHandler(cfg config.GithubOauth, baseURL string, log *logrus.Logger) (*oauthHandlerGithub, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
 	}
 
-	h := &oauthHanlderGithub{
+	h := &oauthHandlerGithub{
 		oauthBase: oauthBase{
 			config: &oauth2.Config{
 				ClientID:     cfg.ClientID,
@@ -51,7 +52,7 @@ type githubOrganizations struct {
 	Login string
 }
 
-func (o oauthHanlderGithub) userAuth(client *http.Client) (string, error) {
+func (o oauthHandlerGithub) userAuth(client *http.Client) (extUserInfo, error) {
 	type userProfileResponse struct {
 		ID        int64
 		Email     string
@@ -61,37 +62,41 @@ func (o oauthHanlderGithub) userAuth(client *http.Client) (string, error) {
 
 	resp, err := client.Get(o.apiURL + "/user")
 	if err != nil {
-		return "", fmt.Errorf("failed to get oauth user info: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to get oauth user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var userProfile userProfileResponse
 	err = json.NewDecoder(resp.Body).Decode(&userProfile)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode user profile response: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to decode user profile response: %w", err)
+	}
+	u := extUserInfo{
+		Name:  userProfile.Login,
+		Email: userProfile.Email,
 	}
 
 	if len(o.allowedOrganizations) == 0 {
-		return userProfile.Login, nil
+		return u, nil
 	}
 
 	organizations, err := o.fetchOrganizations(client)
 	if err != nil {
-		return "", fmt.Errorf("failed to get organizations: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to get organizations: %w", err)
 	}
 
 	for _, allowed := range o.allowedOrganizations {
 		for _, member := range organizations {
 			if member.Login == allowed {
-				return userProfile.Login, nil
+				return u, nil
 			}
 		}
 	}
 
-	return "", errForbidden
+	return extUserInfo{}, errForbidden
 }
 
-func (o oauthHanlderGithub) fetchOrganizations(client *http.Client) ([]githubOrganizations, error) {
+func (o oauthHandlerGithub) fetchOrganizations(client *http.Client) ([]githubOrganizations, error) {
 	orgsURL := o.apiURL + "/user/orgs"
 	more := true
 	organizations := make([]githubOrganizations, 0)
@@ -120,6 +125,6 @@ func (o oauthHanlderGithub) fetchOrganizations(client *http.Client) ([]githubOrg
 	return organizations, nil
 }
 
-func (o oauthHanlderGithub) getOauthBase() oauthBase {
+func (o oauthHandlerGithub) getOauthBase() oauthBase {
 	return o.oauthBase
 }

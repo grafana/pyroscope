@@ -13,5 +13,3 @@ services:
     ports:
       - '5000:5000'
     build: ''
-    cap_add:
-      - SYS_PTRACE

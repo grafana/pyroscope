@@ -30,11 +30,10 @@ warningCode = 0
 [rule.argument-limit]
   arguments = [5]
 [rule.max-public-structs]
-  arguments = [4]
+  arguments = [10]
 [rule.empty-block]
 [rule.superfluous-else]
-[rule.confusing-naming]
-[rule.get-return]
+# [rule.get-return]
 [rule.modifies-parameter]
 [rule.confusing-results]
 [rule.deep-exit]
@@ -67,12 +66,12 @@ warningCode = 0
 
 # Custom rules. We use a revive fork available here: https://github.com/pyroscope-io/revive
 # See Makefile `lint` section for how to use the fork
-[rule.byte-array-limit]
-  arguments = [7]
+#[rule.byte-array-limit]
+#  arguments = [7]
 
 # These are pretty much disabled
 [rule.cognitive-complexity]
-  arguments = [50]
+  arguments = [55]
 
 [rule.cyclomatic]
   arguments = [50]

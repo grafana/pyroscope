@@ -1,0 +1,49 @@
+.settingsWrapper {
+  padding: 30px;
+}
+
+.settingsNav {
+  display: flex;
+  margin: 0 0 0 30px;
+}
+
+.settingsNav li {
+  display: flex;
+}
+
+.navLink {
+  margin-right: 15px;
+  padding: 10px 5px;
+  text-decoration: none;
+  position: relative;
+  color: var(--ps-ui-foreground-text);
+}
+
+.navLinkActive {
+  color: var(--ps-neutral-2);
+}
+
+/*Active link underline*/
+.navLinkActive::before {
+  display: block;
+  content: ' ';
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  height: 4px;
+  bottom: 6px;
+  border-radius: 2px;
+  background: var(--ps-blue-primary);
+}
+
+.settingsWrapper h1 {
+  margin: 20px 30px;
+}
+
+.settingsWrapper h2 {
+  margin-top: 0;
+}
+
+.settingsWrapper h4 {
+  margin: 5px 0;
+}

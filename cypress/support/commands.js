@@ -28,7 +28,7 @@ import '@testing-library/cypress/add-commands';
 import { addMatchImageSnapshotCommand } from 'cypress-image-snapshot/command';
 
 addMatchImageSnapshotCommand({
-  failureThreshold: 0.05,
+  failureThreshold: 0.15,
   capture: 'viewport',
 });
 
@@ -45,5 +45,23 @@ Cypress.Commands.overwrite(
     } else {
       cy.log('Screenshot comparison is disabled');
     }
+  }
+);
+
+// cy.findByTestId('my-container').get('waitForFlamegraphToRender')
+// or
+// cy.waitForFlamegraphToRender()
+Cypress.Commands.add(
+  'waitForFlamegraphToRender',
+  { prevSubject: 'optional' },
+  ($element) => {
+    // it's important to use find/get since the caller requires a DOM element
+    if ($element) {
+      return cy
+        .wrap($element)
+        .find('[data-testid="flamegraph-canvas"][data-state="rendered"]');
+    }
+
+    return cy.get('[data-testid="flamegraph-canvas"][data-state="rendered"]');
   }
 );

@@ -3,11 +3,14 @@ package spy
 
 import (
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
 type Spy interface {
 	Stop() error
-	Snapshot(cb func(*Labels, []byte, uint64, error))
+	Snapshot(cb func(*Labels, []byte, uint64) error) error
 }
 
 type Resettable interface {
@@ -24,6 +27,7 @@ const (
 	ProfileAllocSpace   ProfileType = "alloc_space"
 
 	Go     = "gospy"
+	EBPF   = "ebpfspy"
 	Python = "pyspy"
 	Ruby   = "rbspy"
 )
@@ -32,27 +36,34 @@ func (t ProfileType) IsCumulative() bool {
 	return t == ProfileAllocObjects || t == ProfileAllocSpace
 }
 
-func (t ProfileType) Units() string {
+func (t ProfileType) Units() metadata.Units {
 	if t == ProfileInuseObjects || t == ProfileAllocObjects {
-		return "objects"
+		return metadata.ObjectsUnits
 	}
 	if t == ProfileInuseSpace || t == ProfileAllocSpace {
-		return "bytes"
+		return metadata.BytesUnits
 	}
 
-	return "samples"
+	return metadata.SamplesUnits
 }
 
-func (t ProfileType) AggregationType() string {
+func (t ProfileType) AggregationType() metadata.AggregationType {
 	if t == ProfileInuseObjects || t == ProfileInuseSpace {
-		return "average"
+		return metadata.AverageAggregationType
 	}
 
-	return "sum"
+	return metadata.SumAggregationType
 }
 
 // TODO: this interface is not the best as different spies have different arguments
-type SpyIntitializer func(pid int, profileType ProfileType, sampleRate uint32, disableGCRuns bool) (Spy, error)
+type InitParams struct {
+	Pid           int
+	ProfileType   ProfileType
+	SampleRate    uint32
+	DisableGCRuns bool
+	Logger        log.Logger
+}
+type SpyIntitializer func(InitParams) (Spy, error)
 
 var (
 	supportedSpiesMap map[string]SpyIntitializer
@@ -60,18 +71,7 @@ var (
 )
 
 var autoDetectionMapping = map[string]string{
-	"python":  "pyspy",
-	"python2": "pyspy",
-	"python3": "pyspy",
-	"uwsgi":   "pyspy",
-	"pipenv":  "pyspy",
-
 	"php": "phpspy",
-
-	"ruby":   "rbspy",
-	"bundle": "rbspy",
-	"rails":  "rbspy",
-	"rake":   "rbspy",
 
 	"dotnet": "dotnetspy",
 }

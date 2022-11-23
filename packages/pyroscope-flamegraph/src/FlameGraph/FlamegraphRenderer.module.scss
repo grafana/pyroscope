@@ -1,0 +1,93 @@
+.flamegraphContainer {
+  width: 100%;
+}
+
+/* We take a gamble here and assume only 2 items will exist */
+.flamegraphContainer > *:first-child {
+  margin-right: 8px;
+}
+.flamegraphContainer > *:nth-child(2) {
+  margin-left: 8px;
+  /*  width: 50%; */
+}
+
+.createdBy {
+  color: white;
+  text-align: center;
+  margin: 10px 0;
+}
+.createdBy a {
+  color: #199bef !important;
+}
+
+.horizontal {
+  flex-direction: row;
+}
+
+.vertical {
+  /* reverse, since by default the table is on the left in the DOM */
+  flex-direction: column-reverse;
+}
+
+.panesWrapper {
+  display: flex;
+}
+
+.tablePane,
+.sandwichPane {
+  flex: 1;
+}
+
+.sandwichPane {
+  .sandwichPaneInfo {
+    display: inline-block;
+    position: relative;
+    margin: 30px 0 0 10px;
+    padding: 8px;
+    border-radius: 5px;
+    background-color: var(--ps-sandwich-pane-info-bg);
+    color: var(--ps-neutral-1);
+
+    &.vertical {
+      margin: 30px 0;
+
+      .arrow {
+        top: initial;
+        bottom: -15px;
+        left: 20px;
+        transform: rotate(-90deg);
+      }
+    }
+
+    .arrow {
+      position: absolute;
+      top: 14px;
+      left: -20px;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 8px 20px 8px 0;
+      border-color: transparent var(--ps-sandwich-pane-info-bg) transparent
+        transparent;
+    }
+  }
+
+  .sandwichTop {
+    margin-bottom: 10px;
+  }
+
+  .sandwichTop,
+  .sandwichBottom {
+    display: flex;
+
+    .name {
+      writing-mode: vertical-rl;
+      transform: rotate(-180deg);
+      padding: 5px 0;
+    }
+  }
+
+  .sandwichBottom span {
+    text-align: right;
+  }
+}

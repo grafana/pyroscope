@@ -1,17 +1,17 @@
 import React from 'react';
-import { useDispatch } from 'react-redux';
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
 
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import { refresh } from '../redux/actions';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import { actions } from '@webapp/redux/reducers/continuous';
 
 function RefreshButton() {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   return (
     <Button
       data-testid="refresh-btn"
       icon={faSyncAlt}
-      onClick={() => dispatch(refresh())}
+      onClick={() => dispatch(actions.refresh())}
     />
   );
 }

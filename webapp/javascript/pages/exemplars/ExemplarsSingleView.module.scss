@@ -1,0 +1,41 @@
+.heatmapTitle {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 18px;
+}
+
+.spinnerWrapper {
+  text-align: center;
+}
+
+.heatmapSelectionGuide {
+  text-align: center;
+
+  .gif {
+    width: 480px;
+  }
+}
+
+.comparisonTab {
+  display: flex;
+
+  .comparisonTabHalf {
+    flex: 1;
+    width: calc(50% - 15px);
+    margin: 0 15px;
+
+    &:first-child {
+      margin-left: 0;
+    }
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+}
+
+.titleInfoTooltip {
+  width: 180px;
+}

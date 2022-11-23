@@ -1,0 +1,11 @@
+// TODO:
+// Importing sanitize.css from a nested tag, would keep the @import
+// Eg pyro-flamegraph{@import "~sanitize.css";
+// However that does not happen when inlining
+@import './sanitize.css/sanitize';
+@import './sanitize.css/forms';
+
+:focus-visible {
+  /* sanitize uses dotted, let's use the browser's default */
+  outline: revert !important;
+}

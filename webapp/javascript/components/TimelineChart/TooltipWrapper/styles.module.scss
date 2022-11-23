@@ -1,0 +1,24 @@
+.tooltip {
+  z-index: 2;
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  background-color: var(--ps-tooltip-bg);
+  box-shadow: 1px 2px 4px 0px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: var(--ps-tooltip-text);
+  pointer-events: none;
+
+  // Don't show anything when there's no body
+  // Otherwise an empty box will be shown
+  &:empty {
+    display: none;
+  }
+}
+
+.hidden {
+  display: none;
+}

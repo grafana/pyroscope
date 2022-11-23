@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
 )
 
@@ -16,7 +16,7 @@ var _ = Describe("FlamebearerStruct", func() {
 			tree.Insert([]byte("a;c"), uint64(2))
 
 			f := tree.FlamebearerStruct(1024)
-			Expect(f.Names).To(ConsistOf("total", "a", "b", "c"))
+			Expect(f.Names).To(Equal([]string{"total", "a", "c", "b"}))
 			Expect(f.Levels).To(Equal([][]int{
 				// i+0 = x offset (delta encoded)
 				// i+1 = total

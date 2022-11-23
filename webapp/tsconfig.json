@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "include": [
+    "../lib",
+    "./javascript/**/*.tsx",
+    "./javascript/**/*.ts",
+    "./javascript/**/*.js",
+    "./javascript/**/*.jsx"
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@webapp/*": ["./javascript/*"]
+    }
+  }
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/server"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/sirupsen/logrus"
 )
@@ -262,8 +263,8 @@ Outside:
 			EndTime:         et,
 			SpyName:         "gospy",
 			SampleRate:      100,
-			Units:           "samples",
-			AggregationType: "sum",
+			Units:           metadata.SamplesUnits,
+			AggregationType: metadata.SumAggregationType,
 			Trie:            t,
 		})
 		l.pauseMutex.RUnlock()

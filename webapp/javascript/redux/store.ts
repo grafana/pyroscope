@@ -1,87 +1,151 @@
-import thunkMiddleware from 'redux-thunk';
-import { createStore, applyMiddleware } from 'redux';
-import { composeWithDevTools } from 'redux-devtools-extension';
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from 'redux-persist';
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
 import ReduxQuerySync from 'redux-query-sync';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
-import rootReducer from './reducers';
 import history from '../util/history';
 
-import viewsReducer from './reducers/views';
-import {
-  setLeftFrom,
-  setLeftUntil,
-  setRightFrom,
-  setRightUntil,
-  setFrom,
-  setUntil,
-  setMaxNodes,
-  setQuery,
-} from './actions';
+import settingsReducer from './reducers/settings';
+import userReducer from './reducers/user';
+import continuousReducer, {
+  actions as continuousActions,
+} from './reducers/continuous';
+import tracingReducer, { actions as tracingActions } from './reducers/tracing';
+import serviceDiscoveryReducer from './reducers/serviceDiscovery';
+import adhocReducer from './reducers/adhoc';
+import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
-import { parseLabels, encodeLabels } from '../util/key';
-
-const enhancer = composeWithDevTools(
-  applyMiddleware(thunkMiddleware)
-  // updateUrl(["from", "until", "labels"]),
-  // persistState(["from", "until", "labels"]),
-);
-
-const store = configureStore({
-  reducer: {
-    root: rootReducer,
-    views: viewsReducer,
-  },
-  // middleware: [thunkMiddleware],
+const reducer = combineReducers({
+  settings: settingsReducer,
+  user: userReducer,
+  serviceDiscovery: serviceDiscoveryReducer,
+  ui: persistReducer(uiPersistConfig, uiStore),
+  continuous: continuousReducer,
+  tracing: tracingReducer,
+  adhoc: adhocReducer,
 });
 
-const defaultName = window.initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu'
-);
+// Most times we will display a (somewhat) user friendly message toast
+// But it's still useful to have the actual error logged to the console
+export const logErrorMiddleware: Middleware = () => (next) => (action) => {
+  next(action);
+  if (action?.error) {
+    console.error(action.error);
+  }
+};
 
+const store = configureStore({
+  reducer,
+  // https://github.com/reduxjs/redux-toolkit/issues/587#issuecomment-824927971
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActionPaths: ['error'],
+
+        // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
+        // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
+        ignoredActions: [
+          FLUSH,
+          REHYDRATE,
+          PAUSE,
+          PERSIST,
+          PURGE,
+          REGISTER,
+          'adhoc/uploadFile/pending',
+          'adhoc/uploadFile/fulfilled',
+        ],
+      },
+    }).concat([logErrorMiddleware]),
+});
+
+export const persistor = persistStore(store);
+
+// This is a bi-directional sync between the query parameters and the redux store
+// It works as follows:
+// * When URL query changes, It will dispatch the action
+// * When the store changes (the field set in selector), the query param is updated
+// For more info see the implementation at
+// https://github.com/Treora/redux-query-sync/blob/master/src/redux-query-sync.js
 ReduxQuerySync({
-  store, // your Redux store
+  store,
   params: {
     from: {
       defaultValue: 'now-1h',
-      selector: (state) => state.root.from,
-      action: setFrom,
+      selector: (state: RootState) => state.continuous.from,
+      action: continuousActions.setFrom,
     },
     until: {
       defaultValue: 'now',
-      selector: (state) => state.root.until,
-      action: setUntil,
+      selector: (state: RootState) => state.continuous.until,
+      action: continuousActions.setUntil,
     },
     leftFrom: {
       defaultValue: 'now-1h',
-      selector: (state) => state.root.leftFrom,
-      action: setLeftFrom,
+      selector: (state: RootState) => state.continuous.leftFrom,
+      action: continuousActions.setLeftFrom,
     },
     leftUntil: {
       defaultValue: 'now-30m',
-      selector: (state) => state.root.leftUntil,
-      action: setLeftUntil,
+      selector: (state: RootState) => state.continuous.leftUntil,
+      action: continuousActions.setLeftUntil,
     },
     rightFrom: {
       defaultValue: 'now-30m',
-      selector: (state) => state.root.rightFrom,
-      action: setRightFrom,
+      selector: (state: RootState) => state.continuous.rightFrom,
+      action: continuousActions.setRightFrom,
     },
     rightUntil: {
       defaultValue: 'now',
-      selector: (state) => state.root.rightUntil,
-      action: setRightUntil,
+      selector: (state: RootState) => state.continuous.rightUntil,
+      action: continuousActions.setRightUntil,
     },
     query: {
-      defaultValue: `${defaultName || 'pyroscope.server.cpu'}{}`,
-      selector: (state) => state.root.query,
-      action: setQuery,
+      defaultvalue: '',
+      selector: (state: RootState) => state.continuous.query,
+      action: continuousActions.setQuery,
+    },
+    queryID: {
+      defaultvalue: '',
+      selector: (state: RootState) => state.tracing.queryID,
+      action: tracingActions.setQueryID,
+    },
+    rightQuery: {
+      defaultvalue: '',
+      selector: (state: RootState) => state.continuous.rightQuery,
+      action: continuousActions.setRightQuery,
+    },
+    leftQuery: {
+      defaultvalue: '',
+      selector: (state: RootState) => state.continuous.leftQuery,
+      action: continuousActions.setLeftQuery,
     },
     maxNodes: {
-      defaultValue: '1024',
-      selector: (state) => state.root.maxNodes,
-      action: setMaxNodes,
+      defaultValue: '0',
+      selector: (state: RootState) => state.continuous.maxNodes,
+      action: continuousActions.setMaxNodes,
+    },
+    groupBy: {
+      defaultValue: '',
+      selector: (state: RootState) =>
+        state.continuous.tagExplorerView.groupByTag,
+      action: continuousActions.setTagExplorerViewGroupByTag,
+    },
+    groupByValue: {
+      defaultValue: '',
+      selector: (state: RootState) =>
+        state.continuous.tagExplorerView.groupByTagValue,
+      action: continuousActions.setTagExplorerViewGroupByTagValue,
     },
   },
   initialTruth: 'location',

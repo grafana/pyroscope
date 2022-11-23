@@ -1,0 +1,51 @@
+.buttonContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.buttonContainer > :not(:last-child) {
+  margin-bottom: 15px;
+}
+
+.buttonGithub {
+  background-color: var(--ps-immutable-github-button);
+}
+
+.buttonGithub:hover {
+  background-color: var(--ps-immutable-github-button-hover);
+}
+
+.buttonGitlab {
+  background-color: var(--ps-immutable-gitlab-button);
+}
+
+.buttonGitlab svg {
+  width: 1em;
+  vertical-align: -0.125em;
+}
+
+.buttonGitlab:hover {
+  background-color: var(--ps-immutable-gitlab-button-hover);
+}
+
+.buttonGoogle {
+  background-color: var(--ps-immutable-google-button);
+}
+
+.buttonGoogle svg {
+  width: 1em;
+  vertical-align: -0.125em;
+}
+
+.buttonGoogle:hover {
+  background-color: var(--ps-immutable-google-button-hover);
+}
+
+.buttonGithub,
+.buttonGoogle,
+.buttonGitlab {
+  color: var(--ps-immutable-off-white);
+}

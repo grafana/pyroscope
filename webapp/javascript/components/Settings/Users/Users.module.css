@@ -1,0 +1,23 @@
+.searchContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.searchContainer button {
+  padding: 5px 20px;
+}
+
+.usersTable {
+  margin: 20px 0;
+  width: 100%;
+}
+
+/* todo: make sure this style works (it doesn't) */
+.usersTableEmptyMessage {
+  text-align: center;
+  color: var(--ps-ui-foreground-text);
+}
+
+.actionContainer {
+  margin: 10px 0px;
+}

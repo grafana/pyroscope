@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package disk
@@ -8,12 +9,14 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
-func FreeSpace(storagePath string) (bytesize.ByteSize, error) {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(storagePath, &fs)
-	if err != nil {
-		return 0, err
+func Usage(path string) (UsageStats, error) {
+	var fs syscall.Statfs_t
+	if err := syscall.Statfs(path, &fs); err != nil {
+		return UsageStats{}, err
 	}
-
-	return bytesize.ByteSize(fs.Bavail) * bytesize.ByteSize(fs.Bsize), nil
+	u := UsageStats{
+		Total:     bytesize.ByteSize(fs.Blocks) * bytesize.ByteSize(fs.Bsize),
+		Available: bytesize.ByteSize(fs.Bavail) * bytesize.ByteSize(fs.Bsize),
+	}
+	return u, nil
 }

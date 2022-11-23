@@ -1,3 +1,4 @@
+//go:build dotnetspy
 // +build dotnetspy
 
 package dotnetspy
@@ -15,8 +16,8 @@ func init() {
 	spy.RegisterSpy("dotnetspy", Start)
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
-	s := newSession(pid)
+func Start(params spy.InitParams) (spy.Spy, error) {
+	s := newSession(params.Pid)
 	_ = s.start()
 	return &DotnetSpy{session: s}, nil
 }
@@ -29,12 +30,12 @@ func (s *DotnetSpy) Reset() {
 	s.reset = true
 }
 
-func (s *DotnetSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
+func (s *DotnetSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	if !s.reset {
-		return
+		return nil
 	}
 	s.reset = false
-	_ = s.session.flush(func(name []byte, v uint64) {
-		cb(nil, name, v, nil)
+	return s.session.flush(func(name []byte, v uint64) error {
+		return cb(nil, name, v)
 	})
 }

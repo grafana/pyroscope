@@ -1,0 +1,110 @@
+.tooltip {
+  position: absolute;
+  white-space: nowrap;
+  border: 1px solid var(--ps-ui-border);
+  display: none;
+  z-index: 2;
+  background-color: var(--ps-ui-border);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 16px;
+  padding: 4px 8px;
+  cursor: default;
+
+  &::before {
+    content: '';
+    width: 0;
+    height: 0;
+    margin: auto;
+    position: absolute;
+    border: 6px solid transparent;
+  }
+}
+
+.visible {
+  @extend .tooltip;
+
+  display: block;
+}
+
+%top-before {
+  border-top: 6px solid var(--ps-ui-border);
+  bottom: -13px;
+  left: 0;
+  right: 0;
+}
+
+%bottom-before {
+  border-bottom: 6px solid var(--ps-ui-border);
+  top: -13px;
+  left: 0;
+  right: 0;
+}
+
+%right-before {
+  border-right: 6px solid var(--ps-ui-border);
+  left: -13px;
+  top: 0;
+  bottom: 0;
+}
+
+%left-before {
+  border-left: 6px solid var(--ps-ui-border);
+  right: -13px;
+  top: 0;
+  bottom: 0;
+}
+
+.top {
+  @extend .tooltip;
+
+  bottom: calc(100% + 7px);
+
+  &::before {
+    @extend %top-before;
+  }
+}
+
+.bottom {
+  @extend .tooltip;
+
+  top: calc(100% + 7px);
+
+  &::before {
+    @extend %bottom-before;
+  }
+}
+
+.right {
+  @extend .tooltip;
+
+  left: calc(100% + 7px);
+
+  &::before {
+    @extend %right-before;
+  }
+}
+
+.left {
+  @extend .tooltip;
+
+  right: calc(100% + 7px);
+
+  &::before {
+    @extend %left-before;
+  }
+}
+
+// trick to increase specificity to win against default classes
+.muiTooltip.muiTooltip {
+  border: 1px solid var(--ps-mui-tooltip-background);
+  background-color: var(--ps-mui-tooltip-background);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 16px;
+  padding: 4px 8px;
+}
+
+.muiTooltipArrow.muiTooltipArrow {
+  color: var(--ps-mui-tooltip-background);
+}

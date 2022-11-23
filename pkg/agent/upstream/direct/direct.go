@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"context"
 	"runtime/debug"
 	"sync"
 
@@ -15,14 +16,14 @@ import (
 const upstreamThreads = 1
 
 type Direct struct {
-	storage  *storage.Storage
+	storage  storage.Putter
 	exporter storage.MetricsExporter
 	queue    chan *upstream.UploadJob
 	stop     chan struct{}
 	wg       sync.WaitGroup
 }
 
-func New(s *storage.Storage, e storage.MetricsExporter) *Direct {
+func New(s storage.Putter, e storage.MetricsExporter) *Direct {
 	return &Direct{
 		storage:  s,
 		exporter: e,
@@ -80,7 +81,7 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 	}
 
 	j.Trie.Iterate(cb)
-	if err = u.storage.Put(pi); err != nil {
+	if err = u.storage.Put(context.TODO(), pi); err != nil {
 		logrus.WithError(err).Error("failed to store a local profile")
 	}
 }

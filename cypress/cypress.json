@@ -1,0 +1,9 @@
+{
+  "video": false,
+  "baseUrl": "http://localhost:4040",
+  "integrationFolder": "cypress/integration/webapp",
+  "testFiles": "*.ts",
+  "retries": {
+    "runMode": 5
+  }
+}

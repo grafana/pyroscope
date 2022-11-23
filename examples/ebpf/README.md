@@ -1,6 +1,6 @@
 ## eBPF Example
 
-** Note: Due to permission this docker-compose example can only be run on linux **
+**Note: Due to permission this docker-compose example can only be run on linux**
 
 To run the example run the following commands:
 ```

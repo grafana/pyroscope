@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build go1.8
 // +build go1.8
 
 package config
@@ -343,7 +344,7 @@ func WithIdleConnTimeout(timeout time.Duration) HTTPClientOption {
 	}
 }
 
-// NewClient returns a http.Client using the specified http.RoundTripper.
+// newClient returns a http.Client using the specified http.RoundTripper.
 func newClient(rt http.RoundTripper) *http.Client {
 	return &http.Client{Transport: rt}
 }
@@ -870,7 +871,7 @@ func (s Secret) MarshalYAML() (interface{}, error) {
 	return nil, nil
 }
 
-//UnmarshalYAML implements the yaml.Unmarshaler interface for Secrets.
+// UnmarshalYAML implements the yaml.Unmarshaler interface for Secrets.
 func (s *Secret) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain Secret
 	return unmarshal((*plain)(s))

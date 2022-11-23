@@ -1,2 +1,4 @@
 air: air
-webpack: yarn dev --watch
+frontend: yarn start
+webpack-standalone: yarn dev:standalone
+# example: go run ./examples/golang-push/simple/main.go

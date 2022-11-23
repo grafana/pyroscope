@@ -1,9 +1,11 @@
 package segment
 
 import (
+	"bytes"
 	"errors"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
@@ -33,7 +35,9 @@ func NewKey(labels map[string]string) *Key { return &Key{labels: labels} }
 
 func ParseKey(name string) (*Key, error) {
 	k := &Key{labels: make(map[string]string)}
-	p := parser{parserState: nameParserState}
+	p := parserPool.Get().(*parser)
+	defer parserPool.Put(p)
+	p.reset()
 	var err error
 	for _, r := range name + "{" {
 		switch p.parserState {
@@ -53,8 +57,24 @@ func ParseKey(name string) (*Key, error) {
 
 type parser struct {
 	parserState ParserState
-	key         string
-	value       string
+	key         *bytes.Buffer
+	value       *bytes.Buffer
+}
+
+var parserPool = sync.Pool{
+	New: func() any {
+		return &parser{
+			parserState: nameParserState,
+			key:         new(bytes.Buffer),
+			value:       new(bytes.Buffer),
+		}
+	},
+}
+
+func (p *parser) reset() {
+	p.parserState = nameParserState
+	p.key.Reset()
+	p.value.Reset()
 }
 
 // ParseKey's nameParserState switch case
@@ -62,45 +82,45 @@ func (p *parser) nameParserCase(r int32, k *Key) error {
 	switch r {
 	case '{':
 		p.parserState = tagKeyParserState
-		appName := strings.TrimSpace(p.value)
+		appName := strings.TrimSpace(p.value.String())
 		if err := flameql.ValidateAppName(appName); err != nil {
 			return err
 		}
 		k.labels["__name__"] = appName
 	default:
-		p.value += string(r)
+		p.value.WriteRune(r)
 	}
 	return nil
 }
 
 // ParseKey's tagKeyParserState switch case
-func (p *parser) tagKeyParserCase(r int32) {
+func (p *parser) tagKeyParserCase(r rune) {
 	switch r {
 	case '}':
 		p.parserState = doneParserState
 	case '=':
 		p.parserState = tagValueParserState
-		p.value = ""
+		p.value.Reset()
 	default:
-		p.key += string(r)
+		p.key.WriteRune(r)
 	}
 }
 
 // ParseKey's tagValueParserState switch case
-func (p *parser) tagValueParserCase(r int32, k *Key) error {
+func (p *parser) tagValueParserCase(r rune, k *Key) error {
 	switch r {
 	case ',', '}':
 		p.parserState = tagKeyParserState
-		key := strings.TrimSpace(p.key)
+		key := strings.TrimSpace(p.key.String())
 		if !flameql.IsTagKeyReserved(key) {
 			if err := flameql.ValidateTagKey(key); err != nil {
 				return err
 			}
 		}
-		k.labels[key] = strings.TrimSpace(p.value)
-		p.key = ""
+		k.labels[key] = strings.TrimSpace(p.value.String())
+		p.key.Reset()
 	default:
-		p.value += string(r)
+		p.value.WriteRune(r)
 	}
 	return nil
 }
@@ -108,6 +128,20 @@ func (p *parser) tagValueParserCase(r int32, k *Key) error {
 func (k *Key) SegmentKey() string {
 	return k.Normalized()
 }
+
+const ProfileIDLabelName = "profile_id"
+
+func (k *Key) HasProfileID() bool {
+	v, ok := k.labels[ProfileIDLabelName]
+	return ok && v != ""
+}
+
+func (k *Key) ProfileID() (string, bool) {
+	id, ok := k.labels[ProfileIDLabelName]
+	return id, ok
+}
+
+func AppSegmentKey(appName string) string { return appName + "{}" }
 
 func TreeKey(k string, depth int, unixTime int64) string {
 	return k + ":" + strconv.Itoa(depth) + ":" + strconv.FormatInt(unixTime, 10)

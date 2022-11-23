@@ -15,7 +15,7 @@ func BenchmarkProfile_Get(b *testing.B) {
 	buf, _ := os.ReadFile("testdata/cpu.pprof")
 	g, _ := gzip.NewReader(bytes.NewReader(buf))
 	p, _ := ParsePprof(g)
-	noop := func(labels *spy.Labels, name []byte, val int) {}
+	noop := func(labels *spy.Labels, name []byte, val int) error { return nil }
 	b.ResetTimer()
 
 	b.Run("ByteBufferPool", func(b *testing.B) {

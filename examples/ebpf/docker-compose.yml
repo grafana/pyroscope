@@ -11,6 +11,7 @@ services:
     image: 'pyroscope/pyroscope:latest'
     user: root
     privileged: true
+    pid: 'host'
     volumes:
       - /lib/modules:/lib/modules
     command:

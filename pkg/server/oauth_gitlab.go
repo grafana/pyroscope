@@ -11,18 +11,18 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type oauthHanlderGitlab struct {
+type oauthHandlerGitlab struct {
 	oauthBase
 	allowedGroups []string
 }
 
-func newGitlabHandler(cfg config.GitlabOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGitlab, error) {
+func newOauthGitlabHandler(cfg config.GitlabOauth, baseURL string, log *logrus.Logger) (*oauthHandlerGitlab, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
 	}
 
-	h := &oauthHanlderGitlab{
+	h := &oauthHandlerGitlab{
 		oauthBase: oauthBase{
 			config: &oauth2.Config{
 				ClientID:     cfg.ClientID,
@@ -51,7 +51,7 @@ type gitlabGroups struct {
 	Path string
 }
 
-func (o oauthHanlderGitlab) userAuth(client *http.Client) (string, error) {
+func (o oauthHandlerGitlab) userAuth(client *http.Client) (extUserInfo, error) {
 	type userProfileResponse struct {
 		ID        int64
 		Email     string
@@ -61,37 +61,40 @@ func (o oauthHanlderGitlab) userAuth(client *http.Client) (string, error) {
 
 	resp, err := client.Get(o.oauthBase.apiURL + "/user")
 	if err != nil {
-		return "", fmt.Errorf("failed to get oauth user info: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to get oauth user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var userProfile userProfileResponse
 	err = json.NewDecoder(resp.Body).Decode(&userProfile)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode user profile response: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to decode user profile response: %w", err)
 	}
-
+	u := extUserInfo{
+		Name:  userProfile.Username,
+		Email: userProfile.Email,
+	}
 	if len(o.allowedGroups) == 0 {
-		return userProfile.Username, nil
+		return u, nil
 	}
 
 	groups, err := o.fetchGroups(client)
 	if err != nil {
-		return "", fmt.Errorf("failed to get groups: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to get groups: %w", err)
 	}
 
 	for _, allowed := range o.allowedGroups {
 		for _, member := range groups {
 			if member.Path == allowed {
-				return userProfile.Username, nil
+				return u, nil
 			}
 		}
 	}
 
-	return "", errForbidden
+	return extUserInfo{}, errForbidden
 }
 
-func (o oauthHanlderGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, error) {
+func (o oauthHandlerGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, error) {
 	groupsURL := o.apiURL + "/groups"
 	more := true
 	groups := make([]gitlabGroups, 0)
@@ -120,6 +123,6 @@ func (o oauthHanlderGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, er
 	return groups, nil
 }
 
-func (o oauthHanlderGitlab) getOauthBase() oauthBase {
+func (o oauthHandlerGitlab) getOauthBase() oauthBase {
 	return o.oauthBase
 }

@@ -1,0 +1,6 @@
+runtime.main;main.main;main.slowFunction;main.work 1
+runtime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.netpoll;runtime.kevent 25
+runtime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.netpollBreak;runtime.write;runtime.write1 1
+runtime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.stopm;runtime.mPark;runtime.notesleep;runtime.semasleep;runtime.pthread_cond_wait 16
+runtime.mcall;runtime.park_m;runtime.schedule;runtime.resetspinning;runtime.wakep;runtime.startm;runtime.notewakeup;runtime.semawakeup;runtime.pthread_cond_signal 3
+runtime.mcall;runtime.park_m;runtime.resetForSleep;runtime.resettimer;runtime.modtimer;runtime.wakeNetPoller;runtime.wakep;runtime.startm;runtime.notewakeup;runtime.semawakeup;runtime.pthread_cond_signal 1

@@ -1,0 +1,5 @@
+{
+  "name": "some-api-key",
+  "role": "ReadOnly",
+  "ttlSeconds": 60
+}

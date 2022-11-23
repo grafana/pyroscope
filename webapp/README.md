@@ -35,6 +35,44 @@ import Button from '@ui/Button';
 
 To be able to do that, you need to add the alias to the following files:
 * `.storybook/main.js`
-* `scripts/webpack/webpack.common.js`
+* `scripts/webpack/shared.ts`
 * `tsconfig.json`
 * `jest.config.js`
+
+# Developing the webapp/templates page
+By default, developing pages other than the index require a bit of setup:
+
+
+For example, acessing http://locahlost:4040/forbidden won't work
+To be able to access it, update the variable `pages` in `scripts/webpack.common.ts` to allow building all pages when in dev mode.
+
+Beware, this will make the (local) build slower.
+
+# Investigating webpack speed
+Run with `--progress=profile` to get more info.
+
+for example `yarn dev --progress=profile`
+
+
+Another interesting flag is `--json`, which you can then analyze on https://chrisbateman.github.io/webpack-visualizer/
+
+# Testing baseURL
+It can be a bit of a pain in the ass.
+
+Install nginx
+```
+nginx -c cypress/base-url/nginx.conf -g 'daemon off;'
+```
+
+Then run the server with `PYROSCOPE_BASE_URL=/pyroscope`
+
+## Testing baseURL + auth
+Same as before, but also run the `oauth2-mock-server`:
+```
+node scripts/oauth-mock/oauth-mock.js
+```
+
+Also run the server with
+```
+make dev SERVERPARAMS=--config=scripts/oauth-mock/pyroscope-config-base-url.yml
+```

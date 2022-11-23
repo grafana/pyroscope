@@ -1,0 +1,13 @@
+---
+apiVersion: 1
+
+datasources:
+  - name: Pyroscope
+    type: pyroscope-datasource
+    access: proxy
+    orgId: 1
+    uid: pyroscope
+    jsonData:
+      path: http://pyroscope:4040
+    # secureJsonData:
+    #   apiKey: {YOUR_API_KEY}

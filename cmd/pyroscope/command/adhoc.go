@@ -17,8 +17,18 @@ func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
 		Long: `adhoc command is a complete toolset to profile a process and save the profiling
 results.
 
-These results are then available to be visualized through the 'Adhoc Profiling'
-section in the UI (available through 'pyroscope server').
+These results are generated in two different ways:
+- Pyroscope stores the profiling data in its native format and data directory
+by default. These profiles are then available for analysis using pyroscope UI
+(the 'Adhoc Profiling' section), which requires a running pyroscope server.
+This output can be disabled with '--no-json-output'.
+- Pyroscope also generates profiling data in an external format.
+Depending on the number of generated profiles, pyroscope will generate either
+a file or a directory, in the directory where pyroscope is run from.
+The currently supported formats are standalone HTML (which can then be
+shared or directly open in a browser to analyze), pprof or collapsed
+(these last two can then be shared and used with either pyroscope UI or other
+tooling). The flag '--output-format' is used to specify this format.
 
 There are multiple ways to gather the profiling data, and not all of them are
 available for all the languages.

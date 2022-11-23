@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
@@ -12,20 +13,15 @@ type DeleteInput struct {
 	Key *segment.Key
 }
 
-func (s *Storage) Delete(di *DeleteInput) error {
+func (s *Storage) Delete(_ context.Context, di *DeleteInput) error {
 	return s.deleteSegmentAndRelatedData(di.Key)
 }
 
 func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 	sk := k.SegmentKey()
-
-	// Drop trees from disk.
-	if err := s.trees.DropPrefix(treePrefix.key(sk)); err != nil {
+	if err := s.trees.DiscardPrefix(sk); err != nil {
 		return err
 	}
-	// Discarding cached items is necessary because otherwise
-	// those would be written back to disk on eviction.
-	s.trees.DiscardPrefix(sk)
 	for key, value := range k.Labels() {
 		d, ok := s.lookupDimensionKV(key, value)
 		if !ok {
@@ -53,7 +49,7 @@ func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 // It does so by deleting Segments, Dictionaries, Trees, Dimensions and Labels
 // It's an idempotent call, ie. if the app already does not exist, no error is triggered.
 // TODO cancelation?
-func (s *Storage) DeleteApp(appname string) error {
+func (s *Storage) DeleteApp(_ context.Context, appname string) error {
 	/***********************************/
 	/*      V a l i d a t i o n s      */
 	/***********************************/

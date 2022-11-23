@@ -3,6 +3,7 @@ package upstream
 import (
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
@@ -12,8 +13,8 @@ type UploadJob struct {
 	EndTime         time.Time
 	SpyName         string
 	SampleRate      uint32
-	Units           string
-	AggregationType string
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 	Trie            *transporttrie.Trie
 }
 

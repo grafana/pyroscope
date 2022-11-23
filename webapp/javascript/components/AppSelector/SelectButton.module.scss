@@ -1,0 +1,55 @@
+.button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  width: 100%;
+  justify-content: space-between;
+  padding-left: 10px;
+  padding-right: 10px;
+  overflow: hidden;
+  height: 35px;
+
+  & > div {
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+  }
+
+  &:hover {
+    background-color: var(--ps-ui-element-bg-highlight);
+  }
+
+  &.isSelected {
+    background-color: var(--ps-blue-primary);
+  }
+}
+
+.itemIcon {
+  width: 18px !important;
+  display: flex;
+  flex-shrink: 0;
+  margin-right: 10px;
+}
+
+.pyroscopeLogo {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.appName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  margin-left: 10px;
+}

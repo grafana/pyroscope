@@ -1,0 +1,17 @@
+---
+auth:
+  signup-default-role: Admin
+  internal:
+    enabled: true
+
+  gitlab:
+    enabled: true
+    api-url: http://localhost:18080
+    auth-url: http://localhost:18080/authorize
+    token-url: http://localhost:18080/token
+    client-id: 42fe36a3c42334416f36f71049aa5efe
+    client-secret: 16f36f71049aa5efe42fe36a3c423344
+    # allowed-groups:
+    #   - allowed-group-example
+storage-path: tmp/oauth-mock-storage
+log-level: debug

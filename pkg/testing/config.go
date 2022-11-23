@@ -1,7 +1,7 @@
 package testing
 
 import (
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
@@ -21,6 +21,13 @@ func WithConfig(cb func(cfg **config.Config)) {
 
 				MaxNodesSerialization: 2048,
 				MaxNodesRender:        2048,
+				Database: config.Database{
+					Type: "sqlite3",
+				},
+
+				Auth: config.Auth{
+					SignupDefaultRole: "admin",
+				},
 			},
 		}
 	})

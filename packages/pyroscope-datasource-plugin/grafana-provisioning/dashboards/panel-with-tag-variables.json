@@ -1,0 +1,100 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "iteration": 1641309987641,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 17,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "showToolbar": false
+      },
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "simple.golang.app.cpu{function=\"$function\"}",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "simple.golang.app.cpu",
+      "type": "pyroscope-panel"
+    }
+  ],
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": true,
+          "text": "fast",
+          "value": "fast"
+        },
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "function",
+        "options": [
+          {
+            "selected": false,
+            "text": "slow",
+            "value": "slow"
+          },
+          {
+            "selected": true,
+            "text": "fast",
+            "value": "fast"
+          }
+        ],
+        "query": "slow,fast",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Panel with variable for tags",
+  "uid": "panel-with-tag-variable",
+  "version": 2
+}

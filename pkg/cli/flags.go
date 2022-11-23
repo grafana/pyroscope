@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -108,6 +110,7 @@ func Unmarshal(vpr *viper.Viper, cfg interface{}) error {
 		mapstructure.ComposeDecodeHookFunc(
 			// Function to add a special type for «env. mode»
 			stringToByteSize,
+			stringToSameSite,
 			// Function to support net.IP
 			mapstructure.StringToIPHookFunc(),
 			// Appended by the two default functions
@@ -126,6 +129,17 @@ func stringToByteSize(_, t reflect.Type, data interface{}) (interface{}, error) 
 		return data, nil
 	}
 	return bytesize.Parse(stringData)
+}
+
+func stringToSameSite(_, t reflect.Type, data interface{}) (interface{}, error) {
+	if t != reflect.TypeOf(http.SameSiteStrictMode) {
+		return data, nil
+	}
+	stringData, ok := data.(string)
+	if !ok {
+		return data, nil
+	}
+	return parseSameSite(stringData)
 }
 
 type options struct {
@@ -181,6 +195,45 @@ func (df *durFlag) Type() string {
 	return t.String()
 }
 
+type sameSiteFlag http.SameSite
+
+func (sf *sameSiteFlag) String() string {
+	switch http.SameSite(*sf) {
+	case http.SameSiteLaxMode:
+		return "Lax"
+	case http.SameSiteStrictMode:
+		return "Strict"
+	default:
+		return "None"
+	}
+}
+
+func (sf *sameSiteFlag) Set(value string) error {
+	v, err := parseSameSite(value)
+	if err != nil {
+		return err
+	}
+	*sf = sameSiteFlag(v)
+	return nil
+}
+
+func parseSameSite(s string) (http.SameSite, error) {
+	switch strings.ToLower(s) {
+	case "lax":
+		return http.SameSiteLaxMode, nil
+	case "strict":
+		return http.SameSiteStrictMode, nil
+	case "none":
+		return http.SameSiteNoneMode, nil
+	default:
+		return http.SameSiteDefaultMode, fmt.Errorf("unknown SameSite ")
+	}
+}
+
+func (sf *sameSiteFlag) Type() string {
+	return reflect.TypeOf(http.SameSite(*sf)).String()
+}
+
 type byteSizeFlag bytesize.ByteSize
 
 func (bs *byteSizeFlag) String() string {
@@ -212,6 +265,7 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, vpr *viper.Viper, 
 	o := &options{
 		replacements: map[string]string{
 			"<installPrefix>":           getInstallPrefix(),
+			"<defaultAdhocDataPath>":    util.DataDirectory(),
 			"<defaultAgentConfigPath>":  defaultAgentConfigPath(),
 			"<defaultAgentLogFilePath>": defaultAgentLogFilePath(),
 			"<supportedProfilers>":      strings.Join(spy.SupportedExecSpies(), ", "),
@@ -263,6 +317,20 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 		}
 
 		switch field.Type {
+		case reflect.TypeOf(http.SameSiteStrictMode):
+			valP := fieldV.Addr().Interface().(*http.SameSite)
+			val := (*sameSiteFlag)(valP)
+			var defaultVal http.SameSite
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = parseSameSite(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			*val = (sameSiteFlag)(defaultVal)
+			flagSet.Var(val, nameVal, descVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf([]string{}):
 			val := fieldV.Addr().Interface().(*[]string)
 			val2 := (*arrayFlags)(val)

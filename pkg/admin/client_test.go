@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
@@ -60,7 +60,7 @@ var _ = Describe("client", func() {
 				handler = http.NewServeMux()
 				handler.HandleFunc("/v1/apps", func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(200)
-					_, _ = fmt.Fprintf(w, `["name1", "name2"]`)
+					_, _ = fmt.Fprintf(w, `[{ "name": "name1"}, {"name": "name2" }]`)
 				})
 			})
 

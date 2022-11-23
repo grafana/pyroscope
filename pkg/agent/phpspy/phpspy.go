@@ -1,10 +1,11 @@
+//go:build phpspy
 // +build phpspy
 
 // Package phpspy is a wrapper around this library called phpspy written in Rust
 package phpspy
 
 // #cgo darwin LDFLAGS: -L../../../third_party/phpspy -lphpspy
-// #cgo linux,!musl LDFLAGS: -L../../../third_party/phpspy -lphpspy -ldl -lunwind -lrt
+// #cgo linux,!musl LDFLAGS: -L../../../third_party/phpspy -lphpspy -ldl -lrt
 // #cgo linux,musl LDFLAGS: -L../../../third_party/phpspy -lphpspy
 // #include "../../../third_party/phpspy/phpspy.h"
 import "C"
@@ -32,7 +33,7 @@ type PhpSpy struct {
 	pid int
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
+func Start(params spy.InitParams) (spy.Spy, error) {
 	dataBuf := make([]byte, bufferLength)
 	dataPtr := unsafe.Pointer(&dataBuf[0])
 
@@ -43,7 +44,7 @@ func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
 	// TODO: handle this better
 	time.Sleep(1 * time.Second)
 
-	r := C.phpspy_init(C.int(pid), errorPtr, C.int(bufferLength))
+	r := C.phpspy_init(C.int(params.Pid), errorPtr, C.int(bufferLength))
 
 	if r < 0 {
 		return nil, errors.New(string(errorBuf[:-r]))
@@ -54,7 +55,7 @@ func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
 		dataBuf:  dataBuf,
 		errorBuf: errorBuf,
 		errorPtr: errorPtr,
-		pid:      pid,
+		pid:      params.Pid,
 	}, nil
 }
 
@@ -67,13 +68,12 @@ func (s *PhpSpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *PhpSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
+func (s *PhpSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	r := C.phpspy_snapshot(C.int(s.pid), s.dataPtr, C.int(bufferLength), s.errorPtr, C.int(bufferLength))
 	if r < 0 {
-		cb(nil, nil, 0, errors.New(string(s.errorBuf[:-r])))
-	} else {
-		cb(nil, trimSemicolon(s.dataBuf[:r]), 1, nil)
+		return errors.New(string(s.errorBuf[:-r]))
 	}
+	return cb(nil, trimSemicolon(s.dataBuf[:r]), 1)
 }
 
 func init() {

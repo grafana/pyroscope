@@ -1,13 +1,17 @@
 package segment
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime/trace"
 	"sync"
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 )
 
 type streeNode struct {
@@ -145,51 +149,43 @@ func normalizeTime(t time.Time) time.Time {
 // 	outside              // | | S E            0/1                      0/1
 // 	overlap              // | S | E            <1                       <1
 // 	contain              // S | | E            1/1                      <1
-func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, relationship *big.Rat)) {
-	rel := sn.relationship(st, et)
-	if sn.present && (rel == contain || rel == match) {
-		cb(sn, big.NewRat(1, 1))
+func (sn *streeNode) get(ctx context.Context, s *Segment, st, et time.Time, cb func(*streeNode, *big.Rat)) {
+	r := sn.relationship(st, et)
+	trace.Logf(ctx, traceCatNodeGet, "D=%d T=%v P=%v R=%v", sn.depth, sn.time.Unix(), sn.present, r)
+	switch r {
+	case outside:
 		return
+	case inside, overlap:
+		// Defer to children.
+	case contain, match:
+		// Take the node as is.
+		if sn.present {
+			cb(sn, big.NewRat(1, 1))
+			return
+		}
 	}
-	if rel == outside {
-		return
-	}
-
-	// inside or overlap
-	if sn.present && sn.isLeaf() {
-		// TODO: I did not test this logic as extensively as I would love to.
-		//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
+	trace.Log(ctx, traceCatNodeGet, "drill down")
+	// Whether child nodes are outside the retention period.
+	if sn.time.Before(s.watermarks.levels[sn.depth-1]) && sn.present {
+		trace.Log(ctx, traceCatNodeGet, "sampled")
+		// Create a sampled tree from the current node.
 		cb(sn, sn.overlapRead(st, et))
 		return
 	}
-
-	// if current node doesn't have a tree present or has children, defer to children
+	// Traverse nodes recursively.
 	for _, v := range sn.children {
 		if v != nil {
-			v.get(st, et, cb)
+			v.get(ctx, s, st, et, cb)
 		}
 	}
 }
 
-func (sn *streeNode) isLeaf() bool {
-	if len(sn.children) == 0 {
-		return true
-	}
-	var x int
-	for i := range sn.children {
-		if sn.children[i] == nil {
-			x++
-		}
-	}
-	return x == len(sn.children)
-}
-
-// deleteDataBefore returns true if the node should be deleted
+// deleteDataBefore returns true if the node should be deleted.
 func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 	if sn.isAfter(t.AbsoluteTime) && t.Levels == nil {
 		return false, nil
 	}
-	isBefore := t.isBefore(sn)
+	remove := t.isToBeDeleted(sn)
 	for i, v := range sn.children {
 		if v == nil {
 			continue
@@ -202,7 +198,7 @@ func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 			sn.children[i] = nil
 		}
 	}
-	return isBefore, nil
+	return remove, nil
 }
 
 func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
@@ -210,8 +206,8 @@ func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t 
 		return false, nil
 	}
 	var err error
-	isBefore := t.isBefore(sn)
-	if isBefore {
+	remove := t.isToBeDeleted(sn)
+	if remove {
 		if err = cb(sn.depth, sn.time); err != nil {
 			return false, err
 		}
@@ -224,7 +220,7 @@ func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t 
 			return false, err
 		}
 	}
-	return isBefore, nil
+	return remove, nil
 }
 
 type Segment struct {
@@ -233,8 +229,8 @@ type Segment struct {
 
 	spyName         string
 	sampleRate      uint32
-	units           string
-	aggregationType string
+	units           metadata.Units
+	aggregationType metadata.AggregationType
 
 	watermarks
 }
@@ -339,19 +335,36 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 	return nil
 }
 
-// TODO: simplify arguments
-// TODO: validate st < et
+const (
+	traceRegionGet  = "segment.Get"
+	traceCatGet     = traceRegionGet
+	traceCatNodeGet = "node.get"
+)
+
+//revive:disable-next-line:get-return callback
 func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
+	// TODO: simplify arguments
+	// TODO: validate st < et
+	s.GetContext(context.Background(), st, et, cb)
+}
+
+//revive:disable-next-line:get-return callback
+func (s *Segment) GetContext(ctx context.Context, st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
+	defer trace.StartRegion(ctx, traceRegionGet).End()
 	s.m.RLock()
 	defer s.m.RUnlock()
-
+	if st.Before(s.watermarks.absoluteTime) {
+		trace.Logf(ctx, traceCatGet, "start time %s is outside the retention period; set to %s", st, s.watermarks.absoluteTime)
+		st = s.watermarks.absoluteTime
+	}
 	st, et = normalize(st, et)
 	if s.root == nil {
+		trace.Log(ctx, traceCatGet, "empty")
 		return
 	}
 	// divider := int(et.Sub(st) / durations[0])
 	v := newVis()
-	s.root.get(st, et, func(sn *streeNode, r *big.Rat) {
+	s.root.get(ctx, s, st, et, func(sn *streeNode, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
 		v.add(sn, r, true)
 		cb(sn.depth, sn.samples, sn.writes, sn.time, r)
@@ -397,28 +410,25 @@ func (s *Segment) WalkNodesToDelete(t *RetentionPolicy, cb func(depth int, t tim
 	return s.root.walkNodesToDelete(t.normalize(), cb)
 }
 
-// TODO: this should be refactored
-func (s *Segment) SetMetadata(spyName string, sampleRate uint32, units, aggregationType string) {
-	s.spyName = spyName
-	s.sampleRate = sampleRate
-	s.units = units
-	s.aggregationType = aggregationType
+func (s *Segment) SetMetadata(md metadata.Metadata) {
+	s.m.Lock()
+	s.spyName = md.SpyName
+	s.sampleRate = md.SampleRate
+	s.units = md.Units
+	s.aggregationType = md.AggregationType
+	s.m.Unlock()
 }
 
-func (s *Segment) SpyName() string {
-	return s.spyName
-}
-
-func (s *Segment) SampleRate() uint32 {
-	return s.sampleRate
-}
-
-func (s *Segment) Units() string {
-	return s.units
-}
-
-func (s *Segment) AggregationType() string {
-	return s.aggregationType
+func (s *Segment) GetMetadata() metadata.Metadata {
+	s.m.Lock()
+	md := metadata.Metadata{
+		SpyName:         s.spyName,
+		SampleRate:      s.sampleRate,
+		Units:           s.units,
+		AggregationType: s.aggregationType,
+	}
+	s.m.Unlock()
+	return md
 }
 
 var zeroTime time.Time

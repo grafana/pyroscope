@@ -1,7 +1,7 @@
 package dimension
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -70,12 +70,12 @@ var _ = Describe("dimension", func() {
 		It("works correctly", func() {
 			d1 := New()
 			v := []string{
-				"ride-sharing-app.cpu{hostname=40dfbd6616c3,region=us-west-1,vehicle=scooter}",
-				"ride-sharing-app.cpu{hostname=4ef76b35f112,region=us-east-1,vehicle=scooter}",
-				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=eu-west-1,vehicle=scooter}",
-				"ride-sharing-app.cpu{hostname=680222ce937b,region=eu-west-1,vehicle=scooter}",
-				"ride-sharing-app.cpu{hostname=904af763ff84,region=us-east-1,vehicle=scooter}",
-				"ride-sharing-app.cpu{hostname=a985ede2759f,region=us-west-1,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=40dfbd6616c3,region=eu-north,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=4ef76b35f112,region=us-east,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=ap-south,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=680222ce937b,region=ap-south,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=904af763ff84,region=us-east,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=a985ede2759f,region=eu-north,vehicle=scooter}",
 			}
 			for _, k := range v {
 				d1.Insert(Key(k))
@@ -83,22 +83,22 @@ var _ = Describe("dimension", func() {
 
 			d2 := New()
 			v = []string{
-				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=eu-west-1,vehicle=bike}",
-				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=eu-west-1,vehicle=car}",
-				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=eu-west-1,vehicle=scooter}",
-				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=eu-west-1}",
-				"ride-sharing-app.cpu{hostname=680222ce937b,region=eu-west-1,vehicle=bike}",
-				"ride-sharing-app.cpu{hostname=680222ce937b,region=eu-west-1,vehicle=car}",
-				"ride-sharing-app.cpu{hostname=680222ce937b,region=eu-west-1,vehicle=scooter}",
-				"ride-sharing-app.cpu{hostname=680222ce937b,region=eu-west-1}",
+				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=ap-south,vehicle=bike}",
+				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=ap-south,vehicle=car}",
+				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=ap-south,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=5fec370dfb99,region=ap-south}",
+				"ride-sharing-app.cpu{hostname=680222ce937b,region=ap-south,vehicle=bike}",
+				"ride-sharing-app.cpu{hostname=680222ce937b,region=ap-south,vehicle=car}",
+				"ride-sharing-app.cpu{hostname=680222ce937b,region=ap-south,vehicle=scooter}",
+				"ride-sharing-app.cpu{hostname=680222ce937b,region=ap-south}",
 			}
 			for _, k := range v {
 				d2.Insert(Key(k))
 			}
 
 			Expect(Intersection(d1, d2)).To(ConsistOf([]Key{
-				Key("ride-sharing-app.cpu{hostname=5fec370dfb99,region=eu-west-1,vehicle=scooter}"),
-				Key("ride-sharing-app.cpu{hostname=680222ce937b,region=eu-west-1,vehicle=scooter}"),
+				Key("ride-sharing-app.cpu{hostname=5fec370dfb99,region=ap-south,vehicle=scooter}"),
+				Key("ride-sharing-app.cpu{hostname=680222ce937b,region=ap-south,vehicle=scooter}"),
 			}))
 		})
 	})

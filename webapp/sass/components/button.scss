@@ -10,7 +10,7 @@
 
   cursor: pointer;
 
-  border: 1px solid $btn-border-color;
+  border: 1px solid var(--ps-ui-border);
   border-radius: 4px;
   background: $btn-color;
 
@@ -19,25 +19,23 @@
   }
 
   &:disabled {
-    color: rgba(255, 255, 255, 0.3);
-    color: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--ps-ui-foreground-text);
+    color: 1px solid var(--ps-neutral-9);
     pointer-events: none;
   }
 }
 
 // inspired by .viz-switch .btn
 .btn.primary {
-  $active-color: #269f34;
-
-  background-color: $active-color;
-  border-left-color: $active-color;
-  border-right-color: $active-color;
-  border-top-color: $active-color;
-  border-bottom-color: $active-color;
+  background-color: var(--ps-green-disabled);
+  border-left-color: var(--ps-green-disabled);
+  border-right-color: var(--ps-green-disabled);
+  border-top-color: var(--ps-green-disabled);
+  border-bottom-color: var(--ps-green-disabled);
   transition: 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
   font-weight: 600;
 
   &:hover {
-    background-color: #2ecc40;
+    background-color: var(--ps-green-primary);
   }
 }

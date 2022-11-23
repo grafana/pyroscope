@@ -1,9 +1,0 @@
-// This file is called "Adhoc" since it should apply to all pages
-
-// All panels should have the same height
-// So that when tabs are changed there's no content shift
-.tabPanel {
-  // it should fit 5 rows plus  some the header size
-  $tdHeight: 25px;
-  height: calc($tdHeight * 5 + 40px);
-}

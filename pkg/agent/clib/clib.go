@@ -1,3 +1,4 @@
+//go:build clib
 // +build clib
 
 // Package main deals with ruby / python / php integrations

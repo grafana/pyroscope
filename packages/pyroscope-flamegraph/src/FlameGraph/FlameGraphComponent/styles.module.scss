@@ -1,0 +1,10 @@
+.flamegraphPane {
+  flex: 1;
+  position: relative;
+
+  .fitModeItem svg,
+  .sandwichItem svg {
+    width: 1em;
+    margin-right: 10px;
+  }
+}

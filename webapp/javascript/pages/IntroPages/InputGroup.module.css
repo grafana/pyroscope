@@ -1,0 +1,13 @@
+.inputGroup,
+.inputGroup > input {
+  margin: 0;
+  width: 100%;
+}
+
+.inputGroup:last-child {
+  margin-bottom: 20px;
+}
+
+.inputGroup > h4 {
+  margin: 10px 0;
+}

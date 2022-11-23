@@ -1,0 +1,7 @@
+[
+  { "name": "pyroscope.server.alloc_objects" },
+  { "name": "pyroscope.server.alloc_space" },
+  { "name": "pyroscope.server.cpu" },
+  { "name": "pyroscope.server.inuse_objects" },
+  { "name": "pyroscope.server.inuse_space" }
+]

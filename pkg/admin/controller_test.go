@@ -1,45 +1,65 @@
+// TODO: move most of these tests to pkg/api
 package admin_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
+	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
+
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 type mockStorage struct {
-	getAppNamesResult []string
-	deleteResult      error
+	getAppsResult []appmetadata.ApplicationMetadata
+	deleteResult  error
 }
 
-func (m mockStorage) GetAppNames() []string {
-	return m.getAppNamesResult
+func (m mockStorage) List(ctx context.Context) ([]appmetadata.ApplicationMetadata, error) {
+	return m.getAppsResult, nil
 }
 
-func (m mockStorage) DeleteApp(appname string) error {
+func (m mockStorage) Delete(ctx context.Context, appname string) error {
 	return m.deleteResult
+}
+
+type mockUserService struct{}
+
+func (mockUserService) UpdateUserByName(context.Context, string, model.UpdateUserParams) (model.User, error) {
+	return model.User{}, nil
+}
+
+type mockStorageService struct{}
+
+func (mockStorageService) Cleanup(context.Context) error {
+	return nil
 }
 
 var _ = Describe("controller", func() {
 	Describe("/v1/apps", func() {
 		var svr *admin.Server
 		var response *httptest.ResponseRecorder
-		var storage admin.Storage
+		var appSvc admin.ApplicationListerAndDeleter
 
 		// create a server
 		BeforeEach(func() {
-			storage = mockStorage{
-				getAppNamesResult: []string{"app1", "app2"},
-				deleteResult:      nil,
+			appSvc = mockStorage{
+				getAppsResult: []appmetadata.ApplicationMetadata{
+					{FQName: "app1"},
+					{FQName: "app2"},
+				},
+				deleteResult: nil,
 			}
 		})
 
@@ -47,8 +67,7 @@ var _ = Describe("controller", func() {
 			// create a null logger, since we aren't interested
 			logger, _ := test.NewNullLogger()
 
-			svc := admin.NewService(storage)
-			ctrl := admin.NewController(logger, svc)
+			ctrl := admin.NewController(logger, appSvc, mockUserService{}, mockStorageService{})
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
 
@@ -69,7 +88,7 @@ var _ = Describe("controller", func() {
 					Expect(err).To(BeNil())
 
 					Expect(response.Code).To(Equal(http.StatusOK))
-					Expect(string(body)).To(Equal(`["app1","app2"]
+					Expect(string(body)).To(Equal(`[{"name":"app1"},{"name":"app2"}]
 `))
 				})
 
@@ -81,7 +100,7 @@ var _ = Describe("controller", func() {
 				It("returns StatusOK", func() {
 					// we are kinda robbing here
 					// since the server and client are defined in the same package
-					payload := admin.DeleteAppInput{Name: "myapp"}
+					payload := api.DeleteAppInput{Name: "myapp"}
 					marshalledPayload, err := json.Marshal(payload)
 					request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 					Expect(err).ToNot(HaveOccurred())
@@ -93,6 +112,12 @@ var _ = Describe("controller", func() {
 
 			Context("when there's an error", func() {
 				Context("with the payload", func() {
+					BeforeEach(func() {
+						appSvc = mockStorage{
+							deleteResult: model.ValidationError{},
+						}
+					})
+
 					It("returns BadRequest", func() {
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer([]byte(``)))
 						Expect(err).ToNot(HaveOccurred())
@@ -104,7 +129,7 @@ var _ = Describe("controller", func() {
 
 				Context("with the server", func() {
 					BeforeEach(func() {
-						storage = mockStorage{
+						appSvc = mockStorage{
 							deleteResult: fmt.Errorf("error"),
 						}
 					})
@@ -112,7 +137,7 @@ var _ = Describe("controller", func() {
 					It("returns InternalServerError", func() {
 						// we are kinda robbing here
 						// since the server and client are defined in the same package
-						payload := admin.DeleteAppInput{Name: "myapp"}
+						payload := api.DeleteAppInput{Name: "myapp"}
 						marshalledPayload, err := json.Marshal(payload)
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 						Expect(err).ToNot(HaveOccurred())

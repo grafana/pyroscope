@@ -23,9 +23,11 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
+	profile "github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -43,10 +45,10 @@ func DefaultConfig() *Config {
 				Params: url.Values{
 					"seconds": []string{"10"},
 				},
-				SampleTypes: map[string]*SampleTypeConfig{
+				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"samples": {
 						DisplayName: "cpu",
-						Units:       "samples",
+						Units:       metadata.SamplesUnits,
 						Sampled:     true,
 					},
 				},
@@ -54,22 +56,65 @@ func DefaultConfig() *Config {
 			"mem": {
 				Path:   "/debug/pprof/heap",
 				Params: nil, // url.Values{"gc": []string{"1"}},
-				SampleTypes: map[string]*SampleTypeConfig{
+				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"inuse_objects": {
-						Units:       "objects",
-						Aggregation: "avg",
+						Units:       metadata.ObjectsUnits,
+						Aggregation: metadata.AverageAggregationType,
 					},
 					"alloc_objects": {
-						Units:      "objects",
+						Units:      metadata.ObjectsUnits,
 						Cumulative: true,
 					},
 					"inuse_space": {
-						Units:       "bytes",
-						Aggregation: "avg",
+						Units:       metadata.BytesUnits,
+						Aggregation: metadata.AverageAggregationType,
 					},
 					"alloc_space": {
-						Units:      "bytes",
+						Units:      metadata.BytesUnits,
 						Cumulative: true,
+					},
+				},
+			},
+			"goroutines": {
+				Path:   "/debug/pprof/goroutine",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"goroutine": {
+						DisplayName: "goroutines",
+						Units:       metadata.GoroutinesUnits,
+						Aggregation: metadata.AverageAggregationType,
+					},
+				},
+			},
+			"mutex": {
+				Path:   "/debug/pprof/mutex",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "mutex_count",
+						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
+					},
+					"delay": {
+						DisplayName: "mutex_duration",
+						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
+					},
+				},
+			},
+			"block": {
+				Path:   "/debug/pprof/block",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "block_count",
+						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
+					},
+					"delay": {
+						DisplayName: "block_duration",
+						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
 					},
 				},
 			},
@@ -118,25 +163,11 @@ type Profile struct {
 	// A set of query parameters with which the target is scraped.
 	Params url.Values `yaml:"params,omitempty"`
 	// SampleTypes contains overrides for pprof sample types.
-	SampleTypes map[string]*SampleTypeConfig `yaml:"sample-types,omitempty"`
+	SampleTypes map[string]*profile.SampleTypeConfig `yaml:"sample-types,omitempty"`
 	// AllSampleTypes specifies whether to parse samples of
 	// types not listed in SampleTypes member.
 	AllSampleTypes bool `yaml:"all-sample-types,omitempty"`
 	// TODO(kolesnikovae): Overrides for interval, timeout, and limits?
-}
-
-type SampleTypeConfig struct {
-	Units       string `yaml:"units,omitempty"`
-	DisplayName string `yaml:"display-name,omitempty"`
-
-	// TODO(kolesnikovae): Introduce Kind?
-	//  In Go, we have at least the following combinations:
-	//  instant:    Aggregation:avg && !Cumulative && !Sampled
-	//  cumulative: Aggregation:sum && Cumulative  && !Sampled
-	//  delta:      Aggregation:sum && !Cumulative && Sampled
-	Aggregation string `yaml:"aggregation,omitempty"`
-	Cumulative  bool   `yaml:"cumulative,omitempty"`
-	Sampled     bool   `yaml:"sampled,omitempty"`
 }
 
 // SetDirectory joins any relative file paths with dir.

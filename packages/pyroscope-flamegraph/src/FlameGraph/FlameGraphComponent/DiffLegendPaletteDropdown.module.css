@@ -1,0 +1,40 @@
+.diffPaletteDropdown {
+  max-width: 510px;
+  min-width: 292px;
+  width: inherit;
+  padding-right: 20px !important;
+}
+
+.dropdownWrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+.diffPaletteDropdown > div {
+  margin-bottom: 0px;
+  display: flex;
+}
+
+.diffPaletteDropdown::after {
+  top: 0px;
+}
+
+.dropdownItem {
+  width: 100%;
+  display: flex;
+}
+
+.dropdownItem svg {
+  margin-left: 1em;
+  fill: var(--ps-neutral-2);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  margin-left: auto;
+  margin-right: auto;
+  width: 300px;
+  height: 45px;
+}

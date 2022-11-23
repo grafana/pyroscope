@@ -8,9 +8,6 @@ describe('smoke', () => {
 
     cy.visit('http://localhost:3000/d/single-panel/pyroscope-demo?orgId=1');
 
-    // Hopefully there should not be any visual changes here
-    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
-      'grafana-simple-golang-app-cpu'
-    );
+    cy.findByTestId('flamegraph-canvas').should('exist');
   });
 });

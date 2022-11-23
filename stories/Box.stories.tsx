@@ -1,8 +1,9 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import Box from '@ui/Box';
+import Box, { CollapseBox } from '@ui/Box';
 import Button from '@ui/Button';
 import { ComponentMeta } from '@storybook/react';
+import '../webapp/sass/profile.scss';
 
 export default {
   title: 'Components/Box',
@@ -22,4 +23,16 @@ export const BoxWithButtonNoPadding = () => (
   <Box noPadding>
     <h1>Hello, world</h1>
   </Box>
+);
+
+export const CollapseBoxWithContent = () => (
+  <CollapseBox title="Title">
+    <h1>Hello, world</h1>
+  </CollapseBox>
+);
+
+export const CollapseBoxWhenTitleIsEmptyString = () => (
+  <CollapseBox title="">
+    <h1>Hello, world</h1>
+  </CollapseBox>
 );

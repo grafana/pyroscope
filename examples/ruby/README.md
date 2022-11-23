@@ -1,5 +1,6 @@
-### Pyroscope Rideshare Example
-![ruby_example_architecture_05](https://user-images.githubusercontent.com/23323466/135726784-0c367d3f-c9e5-4e3f-91be-761d4d6d21b1.gif)
+## Continuous Profiling for Ruby applications
+### Profiling a Ruby Rideshare App with Pyroscope
+![ruby_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369670-ba6fe5ce-eab0-4824-94dd-c72255efc063.gif)
 
 Note: For documentation on the Pyroscope ruby gem visit [our website](https://pyroscope.io/docs/ruby/)
 ## Background
@@ -9,9 +10,9 @@ In this example we show a simplified, basic use case of Pyroscope. We simulate a
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
 We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/ruby/docker-compose.yml))
-- us-east-1
-- us-west-1
-- eu-west-1
+- us-east
+- eu-north
+- ap-south
 
 One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In this case, we have two natural divisions, and so we "tag" our data to represent those:
 - `region`: statically tags the region of the server running the code
@@ -65,7 +66,7 @@ What this example will do is run all the code mentioned above and also send some
 ![ruby_first_slide_01-01](https://user-images.githubusercontent.com/23323466/139566972-2f04b826-d05c-4307-9b60-4376840001ab.jpg)
 
 
-The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function. 
+The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function.
 
 The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `order_car()` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
 - Something is wrong with the `/car` endpoint code
@@ -76,9 +77,9 @@ To analyze this we can select one or more tags from the "Select Tag" dropdown:
 ![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
 ## Narrowing in on the Issue Using Tags
-Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `us-west-1` region, where it alternates between high-cpu times and low-cpu times.
+Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
 
-We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period. 
+We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period.
 
 ![ruby_second_slide_01](https://user-images.githubusercontent.com/23323466/139566994-f3f8c2f3-6bc4-40ca-ac4e-8fc862d0c0ad.jpg)
 
@@ -106,6 +107,6 @@ We have been beta testing this feature with several different companies and some
 - Etc...
 
 ### Future Roadmap
-We would love for you to try out this example and see what ways you can adapt this to your ruby application. Continuous profiling has become an increasingly popular tool for the monitoring and debugging of performance issues (arguably the fourth pillar of observability). 
+We would love for you to try out this example and see what ways you can adapt this to your ruby application. Continuous profiling has become an increasingly popular tool for the monitoring and debugging of performance issues (arguably the fourth pillar of observability).
 
-We'd love to continue to improve this gem by adding things like integrations with popular tools, memory profiling, etc. and we would love to hear what features _you would like to see_. 
+We'd love to continue to improve this gem by adding things like integrations with popular tools, memory profiling, etc. and we would love to hear what features _you would like to see_.

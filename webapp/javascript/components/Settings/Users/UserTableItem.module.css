@@ -1,0 +1,20 @@
+.role {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.role button {
+  padding-right: 20px !important;
+  min-width: 105px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.actions button {
+  margin: 5px;
+}

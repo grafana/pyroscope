@@ -3,7 +3,12 @@
 set -e
 
 CURRENT_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-echo "-X github.com/pyroscope-io/pyroscope/pkg/build.Time=$CURRENT_TIME"
+if [ -z $NO_BUILD_TIME_TAG ]
+then
+  echo "-X github.com/pyroscope-io/pyroscope/pkg/build.Time=$CURRENT_TIME"
+else
+  echo "-X github.com/pyroscope-io/pyroscope/pkg/build.Time=NO_BUILD_TIME_TAG"
+fi
 
 # we don't copy .git to docker context, so in docker context we use git-info
 if [ -d ".git" ]

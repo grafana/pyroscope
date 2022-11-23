@@ -1,0 +1,173 @@
+$svg-side-margin: 40px;
+
+.heatmapContainer {
+  position: relative;
+  width: calc(100% - $svg-side-margin * 2);
+  margin: auto auto 10px auto;
+  min-height: 100px;
+  user-select: none;
+
+  span[role='progressbar'] {
+    display: block;
+    text-align: center;
+    padding-top: 45px;
+  }
+
+  .heatmapSvg {
+    width: 100%;
+    cursor: crosshair;
+
+    .selectionContainer {
+      width: 100%;
+    }
+  }
+
+  .yAxis {
+    left: -40px;
+    width: 40px;
+    position: absolute;
+    display: flex;
+
+    .axisUnits {
+      position: absolute;
+      top: -30px;
+      width: 60px;
+      font-size: 14px;
+    }
+
+    .tickValues {
+      margin: -10px 0px;
+      width: 30px;
+
+      .tickValue {
+        position: relative;
+        height: 20px;
+
+        span {
+          position: absolute;
+          display: block;
+          width: 40px;
+          right: 0;
+        }
+      }
+    }
+
+    .ticksContainer {
+      border-right: 1px solid var(--ps-neutral-2);
+    }
+  }
+
+  .xAxis {
+    width: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+
+    .tickValues {
+      flex-direction: row;
+
+      .tickValue {
+        width: 1px;
+        height: 20px;
+        position: relative;
+      }
+
+      span {
+        width: 115px;
+        display: inline-block;
+        position: absolute;
+        left: -60px;
+      }
+
+      .tickValue:first-child {
+        visibility: hidden;
+      }
+    }
+
+    .ticksContainer {
+      position: relative;
+      left: -1px;
+      width: calc(100% + 1px);
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      height: 10px;
+      margin-left: 0;
+      border-top: 1px solid var(--ps-neutral-2);
+
+      .tick {
+        width: 1px;
+        height: 8px;
+
+        &:first-child {
+          visibility: hidden;
+        }
+      }
+    }
+  }
+
+  .tickValues {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+
+    .tickValue {
+      font-size: 12px;
+      text-align: center;
+
+      &.yTickValue {
+        text-align: right;
+      }
+    }
+  }
+
+  .ticksContainer {
+    margin-left: 2px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 8px;
+  }
+
+  .tick {
+    height: 1px;
+    background-color: var(--ps-neutral-2);
+  }
+
+  .selectedAreaBlock {
+    cursor: crosshair;
+    position: absolute;
+  }
+
+  .legend {
+    position: absolute;
+    right: -40px;
+    top: -30px;
+
+    .units {
+      display: block;
+      font-size: 14px;
+      height: 20px;
+      margin-bottom: 10px;
+      line-height: 20px;
+    }
+
+    .colorLabelContainer {
+      display: flex;
+      align-items: center;
+      justify-content: right;
+
+      .label {
+        font-size: 10px;
+        line-height: 10px;
+        padding-right: 3px;
+      }
+
+      .color {
+        width: 12px;
+        height: 12px;
+        margin-bottom: 2px;
+      }
+    }
+  }
+}

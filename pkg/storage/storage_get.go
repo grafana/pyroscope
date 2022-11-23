@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sort"
+	"runtime/trace"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 type GetInput struct {
@@ -21,19 +21,37 @@ type GetInput struct {
 	EndTime   time.Time
 	Key       *segment.Key
 	Query     *flameql.Query
+	// TODO: make this a part of the query
+	GroupBy string
 }
 
 type GetOutput struct {
-	Tree       *tree.Tree
-	Timeline   *segment.Timeline
-	SpyName    string
-	SampleRate uint32
-	Units      string
+	Tree     *tree.Tree
+	Timeline *segment.Timeline
+	Groups   map[string]*segment.Timeline
+	Count    uint64
+
+	// TODO: Replace with metadata.Metadata
+	SpyName         string
+	SampleRate      uint32
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
+
+	Telemetry map[string]interface{}
 }
 
-const averageAggregationType = "average"
+const (
+	averageAggregationType = "average"
 
-func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
+	traceTaskGet        = "storage.Get"
+	traceCatGetKey      = traceTaskGet
+	traceCatGetCallback = traceTaskGet + ".Callback"
+)
+
+func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
+	var t *trace.Task
+	ctx, t = trace.NewTask(ctx, traceTaskGet)
+	defer t.End()
 	logger := logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
 		"endTime":   gi.EndTime.String(),
@@ -46,7 +64,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		dimensionKeys = s.dimensionKeysByKey(gi.Key)
 	case gi.Query != nil:
 		logger = logger.WithField("query", gi.Query)
-		dimensionKeys = s.dimensionKeysByQuery(gi.Query)
+		dimensionKeys = s.dimensionKeysByQuery(ctx, gi.Query)
 	default:
 		// Should never happen.
 		return nil, fmt.Errorf("key or query must be specified")
@@ -54,14 +72,26 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	s.getTotal.Inc()
 	logger.Debug("storage.Get")
+	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
+
+	// Profiles can be fetched by ID using query – this should be deprecated,
+	// and GetExemplar should be used instead.
+	if gi.Query != nil {
+		out, ok, err := s.tryGetExemplar(ctx, gi)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			return out, nil
+		}
+	}
 
 	var (
 		resultTrie  *tree.Tree
 		lastSegment *segment.Segment
 		writesTotal uint64
-
-		aggregationType = "sum"
-		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		timeline    = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		timelines   = make(map[string]*segment.Timeline)
 	)
 
 	for _, k := range dimensionKeys() {
@@ -78,15 +108,24 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		}
 
 		st := res.(*segment.Segment)
-		if st.AggregationType() == averageAggregationType {
-			aggregationType = averageAggregationType
+		timelineKey := "*"
+		if v, ok := parsedKey.Labels()[gi.GroupBy]; ok {
+			timelineKey = v
+		}
+		if _, ok := timelines[timelineKey]; !ok {
+			timelines[timelineKey] = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 		}
 
 		timeline.PopulateTimeline(st)
+		timelines[timelineKey].PopulateTimeline(st)
 		lastSegment = st
 
-		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
+		trace.Logf(ctx, traceCatGetCallback, "segment_key=%s", key)
+		st.GetContext(ctx, gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+			tk := parsedKey.TreeKey(depth, t)
+			res, ok = s.trees.Lookup(tk)
+			trace.Logf(ctx, traceCatGetCallback, "tree_found=%v time=%d r=%v", ok, t.Unix(), r)
+			if ok {
 				x := res.(*tree.Tree).Clone(r)
 				writesTotal += writes
 				if resultTrie == nil {
@@ -102,112 +141,63 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		return nil, nil
 	}
 
-	if writesTotal > 0 && aggregationType == averageAggregationType {
+	md := lastSegment.GetMetadata()
+	switch md.AggregationType {
+	case averageAggregationType, "avg":
 		resultTrie = resultTrie.Clone(big.NewRat(1, int64(writesTotal)))
 	}
 
 	return &GetOutput{
-		Tree:       resultTrie,
-		Timeline:   timeline,
-		SpyName:    lastSegment.SpyName(),
-		SampleRate: lastSegment.SampleRate(),
-		Units:      lastSegment.Units(),
+		Tree:            resultTrie,
+		Timeline:        timeline,
+		Groups:          timelines,
+		SpyName:         md.SpyName,
+		SampleRate:      md.SampleRate,
+		Units:           md.Units,
+		AggregationType: md.AggregationType,
+		Count:           writesTotal,
 	}, nil
 }
 
-//revive:disable-next-line:get-return callback is used
-func (s *Storage) GetKeys(cb func(string) bool) { s.labels.GetKeys(cb) }
-
-//revive:disable-next-line:get-return callback is used
-func (s *Storage) GetValues(key string, cb func(v string) bool) {
-	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.config.hideApplications, v) {
-			return cb(v)
+func (s *Storage) tryGetExemplar(ctx context.Context, gi *GetInput) (*GetOutput, bool, error) {
+	ids := make([]string, 0, len(gi.Query.Matchers))
+	for _, m := range gi.Query.Matchers {
+		if m.Key != segment.ProfileIDLabelName {
+			continue
 		}
-		return true
+		if m.Op != flameql.OpEqual {
+			return nil, true, fmt.Errorf("only '=' operator is allowed for %q label", segment.ProfileIDLabelName)
+		}
+		ids = append(ids, m.Value)
+	}
+	if len(ids) == 0 {
+		return nil, false, nil
+	}
+
+	m, err := s.MergeExemplars(ctx, MergeExemplarsInput{
+		AppName:    gi.Query.AppName,
+		StartTime:  gi.StartTime,
+		EndTime:    gi.EndTime,
+		ProfileIDs: ids,
 	})
-}
-
-func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
-	parsedQuery, err := flameql.ParseQuery(query)
 	if err != nil {
-		return err
+		return nil, true, err
 	}
 
-	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
-	if err != nil {
-		return err
-	}
-	dimensionKeys := s.dimensionKeysByKey(segmentKey)
+	out := GetOutput{
+		Tree:  m.Tree,
+		Count: m.Count,
 
-	resultSet := map[string]bool{}
-	for _, dk := range dimensionKeys() {
-		dkParsed, _ := segment.ParseKey(string(dk))
-		if dkParsed.AppName() == parsedQuery.AppName {
-			for k := range dkParsed.Labels() {
-				resultSet[k] = true
-			}
-		}
+		Timeline: segment.GenerateTimeline(gi.StartTime, gi.EndTime),
+		Groups:   make(map[string]*segment.Timeline),
+
+		SpyName:         m.Metadata.SpyName,
+		SampleRate:      m.Metadata.SampleRate,
+		Units:           m.Metadata.Units,
+		AggregationType: m.Metadata.AggregationType,
 	}
 
-	resultList := []string{}
-	for v := range resultSet {
-		resultList = append(resultList, v)
-	}
-
-	sort.Strings(resultList)
-	for _, v := range resultList {
-		if !cb(v) {
-			break
-		}
-	}
-	return nil
-}
-
-func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string) bool) error {
-	parsedQuery, err := flameql.ParseQuery(query)
-	if err != nil {
-		return err
-	}
-
-	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
-	if err != nil {
-		return err
-	}
-	dimensionKeys := s.dimensionKeysByKey(segmentKey)
-
-	resultSet := map[string]bool{}
-	for _, dk := range dimensionKeys() {
-		dkParsed, _ := segment.ParseKey(string(dk))
-		if v, ok := dkParsed.Labels()[label]; ok {
-			resultSet[v] = true
-		}
-	}
-
-	resultList := []string{}
-	for v := range resultSet {
-		resultList = append(resultList, v)
-	}
-
-	sort.Strings(resultList)
-	for _, v := range resultList {
-		if !cb(v) {
-			break
-		}
-	}
-	return nil
-}
-
-// GetAppNames returns the list of all app's names
-func (s *Storage) GetAppNames() []string {
-	appNames := make([]string, 0)
-
-	s.GetValues("__name__", func(v string) bool {
-		appNames = append(appNames, v)
-		return true
-	})
-
-	return appNames
+	return &out, true, nil
 }
 
 func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.Key {
@@ -257,8 +247,8 @@ func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.K
 		&dimension.Dimension{Keys: dimension.Union(n...)})
 }
 
-func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Key {
-	return func() []dimension.Key { return s.execQuery(context.TODO(), qry) }
+func (s *Storage) dimensionKeysByQuery(ctx context.Context, qry *flameql.Query) func() []dimension.Key {
+	return func() []dimension.Key { return s.execQuery(ctx, qry) }
 }
 
 func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {

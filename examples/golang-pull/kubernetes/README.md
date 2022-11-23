@@ -20,12 +20,10 @@ helm repo add pyroscope-io https://pyroscope-io.github.io/helm-chart
 helm install demo pyroscope-io/pyroscope -f values.yaml
 ```
 
-Note that we apply configuration defined in `values.yaml`: Pyroscope uses exactly the same discovery mechanisms as
+Note that we apply configuration defined in `values.yaml`: Pyroscope uses the same discovery mechanisms as
 Prometheus does in order to ensure smooth user experience, and it fully supports
-[Kubernetes Service Discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config):
+[Kubernetes Service Discovery](https://pyroscope.io/docs/golang-pull-mode/#kubernetes-service-discovery):
 
-<details>
-    <summary>values.yaml</summary>
 
 ```yaml
 ---
@@ -70,14 +68,12 @@ pyroscopeConfigs:
         replacement: __profile_$1
 ```
 
-</details>
-
 ### 3. Deploy Hot R.O.D. application
 
-As a sample application we use slightly modified Jaeger [Hot R.O.D.](https://github.com/jaegertracing/jaeger/tree/master/examples/hotrod) demo – 
+As a sample application we use slightly modified Jaeger [Hot R.O.D.](https://github.com/jaegertracing/jaeger/tree/master/examples/hotrod) demo –
 the only difference is that we enabled built-in Go `pprof` HTTP endpoints. You can find the modified code in the [hotrod-goland](https://github.com/pyroscope-io/hotrod-golang) repository.
 
-Kubernetes resources are defined in [`manifests.yaml`](manifests.yaml): notice pod labels defined – by this we instruct Pyroscope to 
+Kubernetes resources are defined in [`manifests.yaml`](manifests.yaml): notice pod labels defined – by this we instruct Pyroscope to
 scrape cpu and memory profiles at `:6060`:
 ```yaml
 pyroscope.io/scrape: "true"

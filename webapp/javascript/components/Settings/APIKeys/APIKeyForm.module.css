@@ -1,0 +1,8 @@
+.keyOutput {
+  max-width: 40%;
+}
+
+.rolesTooltip > *:not(:first-child) {
+  font-weight: normal;
+  margin-top: 12px;
+}

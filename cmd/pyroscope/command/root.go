@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/sirupsen/logrus"
@@ -18,22 +17,22 @@ func Execute() error {
 	rootCmd.SilenceErrors = true
 
 	subcommands := []*cobra.Command{
+		newAdhocCmd(&cfg.Adhoc),
+		newAdminCmd(&cfg.Admin),
 		newAgentCmd(&cfg.Agent),
 		newConnectCmd(&cfg.Connect),
+		newEBPFSpyCmd(&cfg.EBPF),
 		newConvertCmd(&cfg.Convert),
 		newDbManagerCmd(&config.CombinedDbManager{DbManager: &cfg.DbManager, Server: &cfg.Server}),
 		newExecCmd(&cfg.Exec),
 		newServerCmd(&cfg.Server),
 		newVersionCmd(),
-		newAdminCmd(&cfg.Admin),
-	}
-
-	// Feature flag for adhoc mode
-	if _, ok := os.LookupEnv("PYROSCOPE_EXPERIMENTAL_ADHOC"); ok {
-		subcommands = append(subcommands, newAdhocCmd(&cfg.Adhoc))
 	}
 
 	for _, c := range subcommands {
+		if c == nil {
+			continue
+		}
 		addHelpSubcommand(c)
 		c.HasHelpSubCommands()
 		rootCmd.AddCommand(c)

@@ -1,0 +1,39 @@
+.statusMessage {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1em 0;
+  padding: 0.5em;
+}
+
+.success {
+  color: var(--ps-neutral-2);
+  background-color: var(--ps-green-disabled);
+  padding: 10px;
+}
+
+.error {
+  color: var(--ps-neutral-2);
+  font-weight: bold;
+  background-color: var(--ps-red-primary);
+}
+
+.warning {
+  background-color: #f2cd51;
+  color: var(--ps-immutable-placeholder-text);
+  font-weight: bold;
+}
+
+.info {
+  background-color: var(--ps-blue-primary);
+  color: var(--ps-neutral-2);
+  font-weight: bold;
+}
+
+.action {
+  &:empty {
+    display: none;
+  }
+}

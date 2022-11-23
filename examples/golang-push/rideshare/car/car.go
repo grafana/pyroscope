@@ -1,7 +1,10 @@
 package car
 
-import "rideshare/utility"
+import (
+	"context"
+	"rideshare/utility"
+)
 
-func OrderCar(search_radius int64) {
-	utility.FindNearestVehicle(search_radius, "car")
+func OrderCar(ctx context.Context, searchRadius int64) {
+	utility.FindNearestVehicle(ctx, searchRadius, "car")
 }

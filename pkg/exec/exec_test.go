@@ -1,10 +1,12 @@
+//go:build debugspy
 // +build debugspy
+
 // ^ this test requires debugspy to be enabled so to run this test make sure to include -tags debugspy
 
 package exec
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"

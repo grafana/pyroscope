@@ -1,8 +1,6 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,79 +8,52 @@ import (
 	"net/url"
 
 	"github.com/golang/protobuf/proto"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
 var _ = Describe("server", func() {
-	query := "pyroscope.server.alloc_objects{}"
-	formedBody := &RenderDiffParams{
-		Query: &query,
-		From:  "now-1h",
-		Until: "now",
-		Left: RenderTreeParams{
-			From:  "now-1h",
-			Until: "now",
-		},
-
-		Right: RenderTreeParams{
-			From:  "now-30m",
-			Until: "now",
-		},
-		Format: "json",
-	}
-
-	formedBodyJSON, err := json.Marshal(formedBody)
-	if err != nil {
-		panic(err)
-	}
-
-	malFormedBody := &RenderDiffParams{
-
-		Until: "now",
-		Left: RenderTreeParams{
-			From:  "now-1h",
-			Until: "now",
-		},
-
-		Right: RenderTreeParams{
-			From:  "",
-			Until: "now",
-		},
-	}
-
-	malFormedBodyJSON, err := json.Marshal(malFormedBody)
-	if err != nil {
-		panic(err)
-	}
 	var httpServer *httptest.Server
+	var s *storage.Storage
 
 	testing.WithConfig(func(cfg **config.Config) {
 		BeforeEach(func() {
 			(*cfg).Server.APIBindAddr = ":10044"
-			s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			var err error
+			s, err = storage.New(
+				storage.NewConfig(&(*cfg).Server),
+				logrus.StandardLogger(),
+				prometheus.NewRegistry(),
+				new(health.Controller),
+				storage.NoopApplicationMetadataService{},
+			)
 			Expect(err).ToNot(HaveOccurred())
 			e, _ := exporter.NewExporter(nil, nil)
 			c, _ := New(Config{
 				Configuration:           &(*cfg).Server,
 				Storage:                 s,
-				MetricsExporter:         e,
+				Ingester:                parser.New(logrus.StandardLogger(), s, e),
 				Logger:                  logrus.New(),
 				MetricsRegisterer:       prometheus.NewRegistry(),
 				ExportedMetricsRegistry: prometheus.NewRegistry(),
 				Notifier:                mockNotifier{},
-				Adhoc:                   mockAdhocServer{},
 			})
-			h, _ := c.mux()
+			h, _ := c.serverMux()
 			httpServer = httptest.NewServer(h)
+		})
+		JustAfterEach(func() {
+			s.Close()
+			httpServer.Close()
 		})
 		Context("/render", func() {
 			It("supports name and query parameters", func() {
@@ -101,15 +72,6 @@ var _ = Describe("server", func() {
 				Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
 
 				resp, err = http.Get(fmt.Sprintf("%s/render", httpServer.URL))
-				Expect(err).ToNot(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
-
-				// POST Method
-				resp, err = http.Post(fmt.Sprintf("%s/render-diff", httpServer.URL), "application/json", bytes.NewBuffer(formedBodyJSON))
-				Expect(err).ToNot(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-				resp, err = http.Post(fmt.Sprintf("%s/render-diff", httpServer.URL), "application/json", bytes.NewBuffer(malFormedBodyJSON))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
 			})

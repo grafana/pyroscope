@@ -1,13 +1,16 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/model/appmetadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -19,20 +22,36 @@ type PutInput struct {
 	Val             *tree.Tree
 	SpyName         string
 	SampleRate      uint32
-	Units           string
-	AggregationType string
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
 }
 
-func (s *Storage) Put(pi *PutInput) error {
-	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
-	s.putMutex.Lock()
-	defer s.putMutex.Unlock()
-
+func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
+	if s.hc.IsOutOfDiskSpace() {
+		return errOutOfSpace
+	}
 	if pi.StartTime.Before(s.retentionPolicy().LowerTimeBoundary()) {
 		return errRetention
 	}
 
+	if err := s.appSvc.CreateOrUpdate(ctx, appmetadata.ApplicationMetadata{
+		FQName:          pi.Key.AppName(),
+		SpyName:         pi.SpyName,
+		SampleRate:      pi.SampleRate,
+		Units:           pi.Units,
+		AggregationType: pi.AggregationType,
+	}); err != nil {
+		s.logger.Error("error saving metadata", err)
+	}
+
 	s.putTotal.Inc()
+	if pi.Key.HasProfileID() {
+		if err := s.ensureAppSegmentExists(pi); err != nil {
+			return err
+		}
+		return s.exemplars.insert(ctx, pi)
+	}
+
 	s.logger.WithFields(logrus.Fields{
 		"startTime":       pi.StartTime.String(),
 		"endTime":         pi.EndTime.String(),
@@ -42,8 +61,8 @@ func (s *Storage) Put(pi *PutInput) error {
 		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
 
-	for k, v := range pi.Key.Labels() {
-		s.labels.Put(k, v)
+	if err := s.labels.PutLabels(pi.Key.Labels()); err != nil {
+		return fmt.Errorf("unable to write labels: %w", err)
 	}
 
 	sk := pi.Key.SegmentKey()
@@ -64,9 +83,14 @@ func (s *Storage) Put(pi *PutInput) error {
 	}
 
 	st := r.(*segment.Segment)
-	st.SetMetadata(pi.SpyName, pi.SampleRate, pi.Units, pi.AggregationType)
-	samples := pi.Val.Samples()
+	st.SetMetadata(metadata.Metadata{
+		SpyName:         pi.SpyName,
+		SampleRate:      pi.SampleRate,
+		Units:           pi.Units,
+		AggregationType: pi.AggregationType,
+	})
 
+	samples := pi.Val.Samples()
 	err = st.Put(pi.StartTime, pi.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := pi.Key.TreeKey(depth, t)
 		res, err := s.trees.GetOrCreate(tk)

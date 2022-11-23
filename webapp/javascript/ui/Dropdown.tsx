@@ -2,12 +2,16 @@ import React from 'react';
 import {
   ClickEvent,
   Menu,
+  MenuProps,
   MenuHeader,
   SubMenu as LibSubmenu,
   MenuItem as LibMenuItem,
   MenuButton as LibMenuButton,
   FocusableItem as LibFocusableItem,
+  MenuGroup as LibMenuGroup,
 } from '@szhsin/react-menu';
+
+import cx from 'classnames';
 import styles from './Dropdown.module.scss';
 
 export interface DropdownProps {
@@ -17,6 +21,7 @@ export interface DropdownProps {
   disabled?: boolean;
   ['data-testid']?: string;
   className?: string;
+  menuButtonClassName?: string;
 
   /** Dropdown label */
   label: string;
@@ -28,6 +33,19 @@ export interface DropdownProps {
 
   /** Event that fires when an item is activated*/
   onItemClick?: (event: ClickEvent) => void;
+
+  overflow?: MenuProps['overflow'];
+  position?: MenuProps['position'];
+  direction?: MenuProps['direction'];
+  align?: MenuProps['align'];
+  viewScroll?: MenuProps['viewScroll'];
+  arrow?: MenuProps['arrow'];
+  offsetX?: MenuProps['offsetX'];
+  offsetY?: MenuProps['offsetY'];
+
+  ariaLabel?: MenuProps['aria-label'];
+
+  menuButton?: JSX.Element;
 }
 
 export default function Dropdown({
@@ -38,22 +56,45 @@ export default function Dropdown({
   value,
   label,
   onItemClick,
+  overflow,
+  position,
+  direction,
+  align,
+  viewScroll,
+  arrow,
+  offsetX,
+  offsetY,
+  menuButtonClassName = '',
+  ariaLabel,
   ...props
 }: DropdownProps) {
+  const menuButtonComponent = props.menuButton || (
+    <MenuButton
+      aria-label={ariaLabel}
+      className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
+      disabled={disabled}
+      type="button"
+    >
+      {value || label}
+    </MenuButton>
+  );
+
   return (
     <Menu
       id={id}
-      className={`${className} ${styles.dropdownMenu}`}
+      aria-label={ariaLabel}
+      className={cx(className, styles.dropdownMenu)}
       data-testid={props['data-testid']}
       onItemClick={onItemClick}
-      menuButton={
-        <MenuButton
-          className={`${styles.dropdownMenuButton}`}
-          disabled={disabled}
-        >
-          {value || label}
-        </MenuButton>
-      }
+      overflow={overflow}
+      position={position}
+      direction={direction}
+      align={align}
+      viewScroll={viewScroll}
+      arrow={arrow}
+      offsetX={offsetX}
+      offsetY={offsetY}
+      menuButton={menuButtonComponent}
     >
       <MenuHeader>{label}</MenuHeader>
       {children}
@@ -63,5 +104,6 @@ export default function Dropdown({
 
 export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
-export const MenuButton = LibMenuButton;
+export const MenuButton = LibMenuButton as ShamefulAny;
 export const FocusableItem = LibFocusableItem;
+export const MenuGroup = LibMenuGroup;

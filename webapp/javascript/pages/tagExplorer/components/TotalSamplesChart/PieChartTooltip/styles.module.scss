@@ -1,0 +1,25 @@
+.wrapper {
+  font-size: 12px;
+  padding-bottom: 4px;
+  color: var(--ps-tooltip-text);
+  font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+}
+
+.title {
+  text-align: center;
+  padding: 0 0 8px 0;
+}
+
+.table {
+  display: table;
+  background: var(--ps-tooltip-bg);
+  width: 100%;
+  text-align: center;
+
+  th,
+  td {
+    border: 1px solid var(--ps-tooltip-header-bg);
+    padding: 5px;
+    font-weight: normal;
+  }
+}

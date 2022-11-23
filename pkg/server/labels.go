@@ -3,58 +3,47 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-func (ctrl *Controller) labelsHandler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("query")
-
-	keys := make([]string, 0)
-	if query != "" {
-		ctrl.storage.GetKeysByQuery(query, func(k string) bool {
-			keys = append(keys, k)
-			return true
-		})
-	} else {
-		ctrl.storage.GetKeys(func(k string) bool {
-			keys = append(keys, k)
-			return true
-		})
-	}
-
-	b, err := json.Marshal(keys)
-	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
-		return
-	}
-	_, _ = w.Write(b)
+func (ctrl *Controller) labelsHandler() http.HandlerFunc {
+	return NewLabelsHandler(ctrl.storage, ctrl.httpUtils).ServeHTTP
 }
 
-func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Request) {
-	labelName := r.URL.Query().Get("label")
-	query := r.URL.Query().Get("query")
+func NewLabelsHandler(s storage.LabelsGetter, httpUtils httputils.Utils) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		v := r.URL.Query()
 
-	if labelName == "" {
-		ctrl.writeInvalidParameterError(w, errLabelIsRequired)
-		return
-	}
+		in := storage.GetLabelKeysByQueryInput{
+			StartTime: attime.Parse(v.Get("from")),
+			EndTime:   attime.Parse(v.Get("until")),
+			Query:     v.Get("query"),
+		}
 
-	values := make([]string, 0)
-	if query != "" {
-		ctrl.storage.GetValuesByQuery(labelName, query, func(v string) bool {
-			values = append(values, v)
-			return true
-		})
-	} else {
-		ctrl.storage.GetValues(labelName, func(v string) bool {
-			values = append(values, v)
-			return true
-		})
-	}
+		keys := make([]string, 0)
+		if in.Query != "" {
+			output, err := s.GetKeysByQuery(ctx, in)
+			if err != nil {
+				httpUtils.WriteInvalidParameterError(r, w, err)
+				return
+			}
+			keys = append(keys, output.Keys...)
+		} else {
+			s.GetKeys(ctx, func(k string) bool {
+				keys = append(keys, k)
+				return true
+			})
+		}
 
-	b, err := json.Marshal(values)
-	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
-		return
+		b, err := json.Marshal(keys)
+		if err != nil {
+			httpUtils.WriteJSONEncodeError(r, w, err)
+			return
+		}
+		_, _ = w.Write(b)
 	}
-	_, _ = w.Write(b)
 }

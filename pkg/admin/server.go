@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
+
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -37,9 +40,15 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 
 	as.Handler = r
 
+	httpUtils := httputils.NewDefaultHelper(logger)
 	// Routes
-	r.HandleFunc("/v1/apps", as.ctrl.HandleGetApps).Methods("GET")
-	r.HandleFunc("/v1/apps", as.ctrl.HandleDeleteApp).Methods("DELETE")
+
+	applicationsHandler := api.NewApplicationsHandler(ctrl.appService, httpUtils)
+	r.HandleFunc("/v1/apps", applicationsHandler.GetApps).Methods("GET")
+	r.HandleFunc("/v1/apps", applicationsHandler.DeleteApp).Methods("DELETE")
+
+	r.HandleFunc("/v1/users/{username}", ctrl.UpdateUserHandler).Methods("PATCH")
+	r.HandleFunc("/v1/storage/cleanup", ctrl.StorageCleanupHandler).Methods("PUT")
 
 	// Global middlewares
 	r.Use(logginMiddleware)

@@ -1,0 +1,23 @@
+.divider {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.divider > div {
+  flex: 2;
+  align-content: center;
+}
+
+.divider > div:nth-child(2) {
+  flex: 4;
+}
+
+.divider hr {
+  margin: 20px 0px 20px 0px;
+  background-color: white;
+  opacity: 1;
+  box-shadow: none;
+  border-bottom-style: none;
+  border-top-style: 1px solid white;
+}

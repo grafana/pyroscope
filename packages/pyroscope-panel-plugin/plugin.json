@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "panel",
+  "name": "Pyroscope Flamegraph",
+  "id": "pyroscope-panel",
+  "info": {
+    "description": "Pyroscope plugin for grafana",
+    "author": {
+      "name": "Pyroscope",
+      "url": "https://pyroscope.io/"
+    },
+    "keywords": ["callstack", "profiling"],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://pyroscope.io"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/grafana/grafana-starter-panel/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=7.3.0",
+    "plugins": []
+  }
+}

@@ -8,13 +8,29 @@
     "esModuleInterop": true,
     "sourceMap": true,
     "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "paths": {
-      "@utils/*": ["./webapp/javascript/util/*"],
-      "@models/*": ["./webapp/javascript/models/*"],
-      "@ui/*": ["./webapp/javascript/ui/*"],
-      "@pyroscope/redux/*": ["./webapp/javascript/redux/*"]
+      "@webapp/*": ["./webapp/javascript/*"],
+      "@ui/*": ["./webapp/javascript/ui/*"]
     },
-    "plugins": [{ "name": "typescript-plugin-css-modules" }]
+    "types": ["node"],
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strict": true,
+    "resolveJsonModule": true
   },
-  "exclude": ["node_modules"]
+  // ts-node is currently only used by webpack
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "include": ["./lib", "./webapp/javascript/"],
+  "exclude": [
+    "webapp/javascript/**/*.spec.ts",
+    "webapp/javascript/**/*.spec.tsx",
+    "**/node_modules",
+    "**/.*/"
+  ]
 }

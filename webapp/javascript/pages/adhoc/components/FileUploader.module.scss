@@ -1,0 +1,88 @@
+.container {
+  // same color as canvas-container
+  background-color: var(--ps-ui-foreground);
+
+  padding: 5px 0;
+  margin: 5px 0;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  height: auto !important;
+
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+.dragAndDropContainer {
+  border: dashed;
+  border-color: var(--ps-upload-profile-area-border);
+  border-radius: 1em;
+  box-shadow: 0 0px 13px 0 rgb(0 0 0 / 30%);
+  background-color: var(--ps-upload-profile-area-bg);
+  padding: 15px 0;
+}
+
+.iconContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+
+  svg {
+    width: 85px;
+    height: 54px;
+    fill: var(--ps-upload-profile-icon);
+  }
+}
+
+.headerMain {
+  font-size: 16px;
+  text-align: center;
+  vertical-align: middle;
+  margin: 0 0 10px 0;
+}
+
+.uploadWrapper {
+  text-align: center;
+}
+
+.uploadBtnPreLabel {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #5d607c;
+  margin: 0;
+  display: block;
+}
+
+.uploadBtnWrapper {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.uploadButton {
+  min-width: 200px;
+  margin: 10px 0 0;
+  padding: 8px;
+  border-style: solid;
+  border-width: 1px;
+
+  &.disabled {
+    background-color: var(--ps-upload-profile-btn-bg);
+    border-color: var(--ps-ui-border);
+    color: var(--ps-disabled-button-text) !important;
+  }
+}
+
+.activeDropdownItem {
+  background-color: var(--ps-ui-element-bg-highlight);
+  color: var(--ps-selected-app);
+}
+
+.dropdowns {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 10px;
+}

@@ -1,0 +1,27 @@
+.flamegraphHeader {
+  padding-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+
+  align-items: flex-start;
+}
+
+.flamegraphHeader > div:first-child {
+  width: 100%;
+}
+
+.flamegraphHeader button {
+  /* margin: auto;
+  display: block; */
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+}
+
+.flamegraphTitle {
+  width: 100%;
+  display: block;
+  text-align: center;
+}

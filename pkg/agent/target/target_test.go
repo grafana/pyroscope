@@ -1,3 +1,4 @@
+//go:build debugspy
 // +build debugspy
 
 package target
@@ -6,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 

@@ -1,0 +1,23 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+
+  .tagName {
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+
+    .tagColor {
+      display: inline-block;
+      width: 20px;
+      height: 6px;
+      border-radius: 3px;
+      margin-right: 5px;
+    }
+  }
+}
+
+.faded {
+  opacity: 0.5;
+}

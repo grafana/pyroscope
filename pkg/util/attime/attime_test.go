@@ -3,7 +3,7 @@ package attime
 import (
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -24,6 +24,9 @@ var _ = Describe("attime", func() {
 				Expect(Parse("now-1")).To(BeTemporally("~", time.Now()))
 				Expect(Parse("20200101")).To(BeTemporally("~", time.Unix(1577836800, 0)))
 				Expect(Parse("1577836800")).To(BeTemporally("~", time.Unix(1577836800, 0)))
+				Expect(Parse("1577836800001")).To(BeTemporally("~", time.Unix(1577836800, 1000000)))
+				Expect(Parse("1577836800000001")).To(BeTemporally("~", time.Unix(1577836800, 1000)))
+				Expect(Parse("1577836800000000001")).To(BeTemporally("~", time.Unix(1577836800, 1)))
 			})
 		})
 	})

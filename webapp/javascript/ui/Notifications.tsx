@@ -4,10 +4,15 @@ import ReactNotification, {
   ReactNotificationOptions,
   DismissOptions,
 } from 'react-notifications-component';
-import 'react-notifications-component/dist/theme.css';
+import 'react-notifications-component/dist/scss/notification.scss';
+import styles from './Notifications.module.scss';
 
 export default function Notifications() {
-  return <ReactNotification />;
+  return (
+    <div className={styles.notificationsComponent}>
+      <ReactNotification />
+    </div>
+  );
 }
 
 const defaultParams: Partial<ReactNotificationOptions> = {
@@ -19,12 +24,37 @@ const defaultParams: Partial<ReactNotificationOptions> = {
 
 export type NotificationOptions = {
   title?: string;
-  message: string;
-  type: 'success' | 'danger' | 'info';
+  message: string | JSX.Element;
+  additionalInfo?: string[];
+  type: 'success' | 'danger' | 'info' | 'warning';
 
   dismiss?: DismissOptions;
-  onRemoval?: ((id: string, removedBy: any) => void) | undefined;
+  onRemoval?: ((id: string, removedBy: ShamefulAny) => void) | undefined;
 };
+
+function Message({
+  message,
+  additionalInfo,
+}: {
+  message: string | JSX.Element;
+  additionalInfo?: string[];
+}) {
+  const msg = typeof message === 'string' ? <p>{message}</p> : message;
+  return (
+    <div>
+      {msg}
+      {additionalInfo && <h4>Additional Info:</h4>}
+
+      {additionalInfo && (
+        <ul>
+          {additionalInfo.map((a) => {
+            return <li key={a}>{a}</li>;
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export const store = {
   addNotification({
@@ -33,16 +63,21 @@ export const store = {
     type,
     dismiss,
     onRemoval,
+    additionalInfo,
   }: NotificationOptions) {
     dismiss = dismiss || {
       duration: 5000,
+      pauseOnHover: true,
+      click: false,
+      touch: false,
       showIcon: true,
+      onScreen: true,
     };
 
     libStore.addNotification({
       ...defaultParams,
       title,
-      message,
+      message: <Message message={message} additionalInfo={additionalInfo} />,
       type,
       dismiss,
       onRemoval,

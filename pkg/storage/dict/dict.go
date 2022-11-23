@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
+	"github.com/valyala/bytebufferpool"
 )
 
 type (
@@ -69,10 +70,23 @@ func (t *Dict) readValue(key Key, w io.Writer) bool {
 	}
 }
 
-func (t *Dict) Put(val Value) Key {
+var writerPool = sync.Pool{New: func() any { return varint.NewWriter() }}
+
+func (t *Dict) PutValue(val Value, dst io.Writer) {
 	t.m.Lock()
 	defer t.m.Unlock()
-	var buf bytes.Buffer
-	t.root.findNodeAt(val, &buf)
-	return buf.Bytes()
+	vw := writerPool.Get().(varint.Writer)
+	defer writerPool.Put(vw)
+	t.root.findNodeAt(val, vw, dst)
+}
+
+var bufferPool bytebufferpool.Pool
+
+func (t *Dict) Put(val Value) Key {
+	b := bufferPool.Get()
+	defer bufferPool.Put(b)
+	t.PutValue(val, b)
+	k := make([]byte, b.Len())
+	copy(k, b.B)
+	return k
 }
