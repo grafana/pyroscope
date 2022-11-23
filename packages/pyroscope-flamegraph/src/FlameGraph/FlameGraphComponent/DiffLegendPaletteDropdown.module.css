@@ -25,7 +25,7 @@
   display: flex;
 }
 
-.diffPaletteDropdown ::global(.rc-menu-item) {
+.diffPaletteDropdown ::global(.szh-menu-item) {
   display: flex;
 }
 

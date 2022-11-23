@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { ClickEvent } from '@szhsin/react-menu';
+import type { ClickEvent } from '@webapp/ui/Menu';
 import { formatRelative } from 'date-fns';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
