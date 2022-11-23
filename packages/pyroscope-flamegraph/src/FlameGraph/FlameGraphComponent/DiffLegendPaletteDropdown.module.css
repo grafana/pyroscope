@@ -25,10 +25,6 @@
   display: flex;
 }
 
-.diffPaletteDropdown ::global(.szh-menu-item) {
-  display: flex;
-}
-
 .dropdownItem svg {
   margin-left: 1em;
   fill: var(--ps-neutral-2);
