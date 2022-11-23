@@ -59,6 +59,8 @@ type Adhoc struct {
 
 	// Pull mode configuration
 	URL string `def:"" desc:"URL to gather profiling data from" mapstructure:"url"`
+
+	StripTimestamp bool `def:"false" desc:"whether to strip the timestamp in the filename" mapstructure:"strip-timestamp"`
 }
 
 type Agent struct {
@@ -425,5 +427,5 @@ func (r RemoteWriteTarget) String() string {
 }
 
 type CI struct {
-	ApplicationName string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
+	ApplicationName string `def:"ci" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
 }
