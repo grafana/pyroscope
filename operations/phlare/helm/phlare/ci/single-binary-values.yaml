@@ -1,5 +1,1 @@
 ---
-phlare:
-  image:
-    # This is temporary until the docker hub image is public
-    repository: simonswine/fire
