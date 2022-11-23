@@ -27,6 +27,7 @@ type Config struct {
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
 	Admin     Admin     `skip:"true" mapstructure:",squash"`
 	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
+	CI        CI        `skip:"true" mapstructure:",squash"`
 }
 
 type Adhoc struct {
@@ -421,4 +422,8 @@ func (r RemoteWriteTarget) String() string {
 	}
 
 	return fmt.Sprintf("Address: %s\nAuthToken: %s\nTags: %s\nTimeout: %s\nQueueSize: %d\nQueueWorkers %d", r.Address, authToken, tags, r.Timeout.String(), r.QueueSize, r.QueueWorkers)
+}
+
+type CI struct {
+	ApplicationName string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
 }
