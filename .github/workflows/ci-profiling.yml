@@ -30,6 +30,6 @@ jobs:
       - run: ./bin/pyroscope ci install ./pkg
       - run: mkdir -p profiles
       - run: ./bin/pyroscope adhoc --strip-timestamp --data-path=profiles --output-format=pprof go test $(go list ./pkg/... | grep -v agent)
-      - uses: pyroscope-io/flamegraph.com-github-action
+      - uses: pyroscope-io/flamegraph.com-github-action@main
         with:
           file: profiles/ci.cpu.pprof
