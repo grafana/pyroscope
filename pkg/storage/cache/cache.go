@@ -3,16 +3,19 @@ package cache
 import (
 	"bytes"
 	"container/list"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
 )
 
 type Cache struct {
@@ -23,11 +26,11 @@ type Cache struct {
 	prefix string
 	ttl    int64
 
-	buckets map[uint64]*bucket
+	buckets []*bucket
 }
 
 type bucket struct {
-	lock   sync.Mutex
+	m      sync.Mutex
 	values map[string]*entry
 	freqs  *list.List
 	len    int
@@ -38,6 +41,7 @@ type Config struct {
 	*Metrics
 	Codec
 
+	Buckets int
 	// Prefix for badger DB keys.
 	Prefix string
 	// TTL specifies number of seconds an item can reside in cache after
@@ -68,10 +72,10 @@ type Metrics struct {
 }
 
 type entry struct {
+	persisted      int64
 	key            string
 	value          interface{}
 	freqNode       *list.Element
-	persisted      bool
 	lastAccessTime int64
 }
 
@@ -80,18 +84,22 @@ type listEntry struct {
 	freq    int
 }
 
-const cacheBuckets = 16 // TODO(kolesnikovae): Heuristics?
+const defaultCacheBuckets = 64
 
 func New(c Config) *Cache {
+	buckets := c.Buckets
+	if buckets == 0 {
+		buckets = defaultCacheBuckets
+	}
 	v := &Cache{
 		db:      c.DB,
 		codec:   c.Codec,
 		metrics: c.Metrics,
 		prefix:  c.Prefix,
 		ttl:     int64(c.TTL.Seconds()),
-		buckets: make(map[uint64]*bucket, cacheBuckets),
+		buckets: make([]*bucket, buckets),
 	}
-	for i := uint64(0); i < cacheBuckets; i++ {
+	for i := 0; i < buckets; i++ {
 		v.buckets[i] = &bucket{
 			values: make(map[string]*entry),
 			freqs:  list.New(),
@@ -100,8 +108,265 @@ func New(c Config) *Cache {
 	return v
 }
 
+// Size reports approximate number of entries in the cache.
+func (c *Cache) Size() uint64 {
+	var v int
+	for _, b := range c.buckets {
+		b.m.Lock()
+		v += b.len
+		b.m.Unlock()
+	}
+	return uint64(v)
+}
+
+func (c *Cache) Put(key string, val interface{}) {
+	b := c.bucket([]byte(key))
+	b.m.Lock()
+	b.set(key, val)
+	b.m.Unlock()
+}
+
+func (c *Cache) Lookup(key string) (interface{}, bool) {
+	b := c.bucket([]byte(key))
+	b.m.Lock()
+	v, err := c.get(b, key)
+	b.m.Unlock()
+	return v, v != nil && err == nil
+}
+
+func (c *Cache) GetOrCreate(key string) (interface{}, error) {
+	b := c.bucket([]byte(key))
+	b.m.Lock()
+	defer b.m.Unlock()
+	v, err := c.get(b, key)
+	if err != nil {
+		return nil, err
+	}
+	if v != nil {
+		return v, nil
+	}
+	v = c.codec.New(key)
+	b.set(key, v)
+	return v, nil
+}
+
+func (c *Cache) get(b *bucket, key string) (v interface{}, err error) {
+	c.metrics.ReadsCounter.Inc()
+	e, ok := b.values[key]
+	if ok {
+		b.increment(e)
+		return e.value, nil
+	}
+	c.metrics.MissesCounter.Inc()
+	err = c.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(c.prefix + key))
+		if err != nil {
+			return err
+		}
+		return item.Value(func(val []byte) error {
+			c.metrics.DBReads.Observe(float64(len(val)))
+			v, err = c.codec.Deserialize(bytes.NewReader(val), key)
+			return err
+		})
+	})
+	switch {
+	case err == nil:
+	case errors.Is(err, badger.ErrKeyNotFound):
+		return nil, nil
+	default:
+		return nil, err
+	}
+	if v == nil {
+		return nil, nil
+	}
+	b.set(key, v)
+	return v, nil
+}
+
+func (c *Cache) Delete(key string) error {
+	b := c.bucket([]byte(key))
+	b.m.Lock()
+	defer b.m.Unlock()
+	if e, ok := b.values[key]; ok {
+		b.deleteEntry(e)
+	}
+	return c.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(c.prefix + key))
+	})
+}
+
+func (c *Cache) Discard(key string) {
+	b := c.bucket([]byte(key))
+	b.m.Lock()
+	if e, ok := b.values[key]; ok {
+		b.deleteEntry(e)
+	}
+	b.m.Unlock()
+}
+
+func (c *Cache) DeletePrefix(prefix string) error {
+	c.DiscardPrefix(prefix)
+	return c.db.DropPrefix([]byte(c.prefix + prefix))
+}
+
+func (c *Cache) DiscardPrefix(prefix string) {
+	g, _ := errgroup.WithContext(context.Background())
+	for _, b := range c.buckets {
+		g.Go(func() error {
+			b.m.Lock()
+			defer b.m.Unlock()
+			for k, e := range b.values {
+				if strings.HasPrefix(k, prefix) {
+					b.deleteEntry(e)
+				}
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
+}
+
 func (c *Cache) bucket(k []byte) *bucket {
-	return c.buckets[xxhash.Sum64(k)%cacheBuckets]
+	return c.buckets[xxhash.Sum64(k)%uint64(len(c.buckets))]
+}
+
+func (c *Cache) Flush() error { return c.Evict(1) }
+
+// Evict performs cache evictions. The difference between Evict and WriteBack is that evictions happen when cache grows
+// above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
+// See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
+func (c *Cache) Evict(percent float64) error {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(c.metrics.EvictionsDuration.Observe))
+	defer timer.ObserveDuration()
+	g, _ := errgroup.WithContext(context.Background())
+	for _, b := range c.buckets {
+		g.Go(func() error {
+			return c.evictBucket(int(float64(b.len)*percent), b)
+		})
+	}
+	return g.Wait()
+}
+
+func (c *Cache) evictBucket(count int, b *bucket) (err error) {
+	batch := c.newWriteBatch()
+	defer func() {
+		err = batch.flush()
+	}()
+	b.m.Lock()
+	modified := make([]*entry, 0, len(b.values)/4)
+	for i := 0; i < count; {
+		place := b.freqs.Front()
+		if place == nil {
+			return nil
+		}
+		for e := range place.Value.(*listEntry).entries {
+			if i >= count {
+				break
+			}
+			if atomic.SwapInt64(&e.persisted, 1) == 0 {
+				modified = append(modified, e)
+			} else {
+				// The entry has not been changed since the last
+				// time it was written at write back procedure.
+				b.deleteEntry(e)
+			}
+			i++
+		}
+	}
+	b.m.Unlock()
+	for _, e := range modified {
+		if atomic.LoadInt64(&e.persisted) == 0 {
+			// If the entry has been modified since b.m.Unlock()
+			// we leave it in the cache, even if it had to be
+			// evicted. The reason is that otherwise it will be
+			// loaded into memory again causing extra memory
+			// pressure the eviction mechanism is aimed to tackle.
+			continue
+		}
+		if err = batch.write(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cache) WriteBack() error {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(c.metrics.WriteBackDuration.Observe))
+	defer timer.ObserveDuration()
+	var evictBefore int64
+	if c.ttl > 0 {
+		evictBefore = time.Now().Unix() - c.ttl
+	}
+	g, _ := errgroup.WithContext(context.Background())
+	for _, b := range c.buckets {
+		g.Go(func() error {
+			return c.writeBackBucket(evictBefore, b)
+		})
+	}
+	return g.Wait()
+}
+
+func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (err error) {
+	batch := c.newWriteBatch()
+	defer func() {
+		err = batch.flush()
+	}()
+	b.m.Lock()
+	modified := make([]*entry, 0, len(b.values)/4)
+	for _, e := range b.values {
+		if atomic.SwapInt64(&e.persisted, 1) == 0 {
+			modified = append(modified, e)
+		} else if e.lastAccessTime < evictBefore {
+			// The entry has not been changed since the last
+			// time it was written at write back procedure and
+			// its TTL has expired. The entry can be removed safely.
+			b.deleteEntry(e)
+		}
+	}
+	b.m.Unlock()
+	for _, e := range modified {
+		// Note that entry.value could be modified after b.m.Unlock(),
+		// so at this point e.persisted might be set to false, which is
+		// fine: in the worst case we will write same data next time.
+		if err = batch.write(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cache) newWriteBatch() *writeBatch {
+	return &writeBatch{c: c, wb: c.db.NewWriteBatch()}
+}
+
+func (b *bucket) remEntry(place *list.Element, e *entry) {
+	entries := place.Value.(*listEntry).entries
+	delete(entries, e)
+	if len(entries) == 0 {
+		b.freqs.Remove(place)
+	}
+}
+
+func (b *bucket) set(key string, value interface{}) {
+	e, ok := b.values[key]
+	if ok {
+		e.value = value
+		atomic.SwapInt64(&e.persisted, 1)
+		b.increment(e)
+		return
+	}
+	e = new(entry)
+	e.key = key
+	e.value = value
+	b.values[key] = e
+	b.increment(e)
+	b.len++
+}
+
+func (b *bucket) deleteEntry(e *entry) {
+	delete(b.values, e.key)
+	b.remEntry(e.freqNode, e)
+	b.len--
 }
 
 func (b *bucket) increment(e *entry) {
@@ -138,253 +403,7 @@ func (b *bucket) increment(e *entry) {
 	}
 }
 
-func (b *bucket) remEntry(place *list.Element, e *entry) {
-	entries := place.Value.(*listEntry).entries
-	delete(entries, e)
-	if len(entries) == 0 {
-		b.freqs.Remove(place)
-	}
-}
-
-// Size reports approximate number of entries in the cache.
-func (c *Cache) Size() uint64 {
-	var v int
-	for _, b := range c.buckets {
-		b.lock.Lock()
-		v += b.len
-		b.lock.Unlock()
-	}
-	return uint64(v)
-}
-
-func (c *Cache) Put(key string, val interface{}) {
-	b := c.bucket([]byte(key))
-	b.lock.Lock()
-	b.set(key, val)
-	b.lock.Unlock()
-}
-
-func (b *bucket) set(key string, value interface{}) {
-	e, ok := b.values[key]
-	if ok {
-		e.value = value
-		e.persisted = false
-		b.increment(e)
-		return
-	}
-	e = new(entry)
-	e.key = key
-	e.value = value
-	b.values[key] = e
-	b.increment(e)
-	b.len++
-}
-
-func (c *Cache) Lookup(key string) (interface{}, bool) {
-	b := c.bucket([]byte(key))
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	v, err := c.get(b, key)
-	if v == nil || err != nil {
-		return nil, false
-	}
-	return v, true
-}
-
-func (c *Cache) GetOrCreate(key string) (interface{}, error) {
-	b := c.bucket([]byte(key))
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	v, err := c.get(b, key)
-	if err != nil {
-		return nil, err
-	}
-	if v != nil {
-		return v, nil
-	}
-	v = c.codec.New(key)
-	b.set(key, v)
-	return v, nil
-}
-
-func (c *Cache) get(b *bucket, key string) (interface{}, error) {
-	c.metrics.ReadsCounter.Inc()
-	e, ok := b.values[key]
-	if ok {
-		b.increment(e)
-		return e.value, nil
-	}
-	// Value doesn't exist in cache, load from DB.
-	c.metrics.MissesCounter.Inc()
-	var buf []byte // TODO(kolesnikovae): Use buffer pool?
-	err := c.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(c.prefix + key))
-		if err != nil {
-			return err
-		}
-		buf, err = item.ValueCopy(buf)
-		return err
-	})
-	switch {
-	case err == nil:
-	case errors.Is(err, badger.ErrKeyNotFound):
-		return nil, nil
-	default:
-		return nil, err
-	}
-	c.metrics.DBReads.Observe(float64(len(buf)))
-	v, err := c.codec.Deserialize(bytes.NewReader(buf), key)
-	if err != nil || v == nil {
-		return nil, err
-	}
-	// Add entry to cache.
-	e = new(entry)
-	e.key = key
-	e.value = v
-	b.values[key] = e
-	b.increment(e)
-	b.len++
-	return v, nil
-}
-
-func (c *Cache) Delete(key string) error {
-	b := c.bucket([]byte(key))
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	if e, ok := b.values[key]; ok {
-		b.deleteEntry(e)
-	}
-	return c.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(c.prefix + key))
-	})
-}
-
-func (c *Cache) Discard(key string) {
-	b := c.bucket([]byte(key))
-	b.lock.Lock()
-	if e, ok := b.values[key]; ok {
-		b.deleteEntry(e)
-	}
-	b.lock.Unlock()
-}
-
-func (c *Cache) DeletePrefix(prefix string) error {
-	// TODO: Lock the whole cache?
-	c.DiscardPrefix(prefix)
-	return c.db.DropPrefix([]byte(c.prefix + prefix))
-}
-
-func (c *Cache) DiscardPrefix(prefix string) error {
-	for _, b := range c.buckets {
-		b.lock.Lock()
-		for k, e := range b.values {
-			if strings.HasPrefix(k, prefix) {
-				b.deleteEntry(e)
-			}
-		}
-		b.lock.Unlock()
-	}
-	return nil
-}
-
-func (b *bucket) deleteEntry(e *entry) {
-	delete(b.values, e.key)
-	b.remEntry(e.freqNode, e)
-	b.len--
-}
-
-func (c *Cache) Flush() error {
-	_, err := c.Evict(1)
-	return err
-}
-
-// Evict performs cache evictions. The difference between Evict and WriteBack is that evictions happen when cache grows
-// above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
-// See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
-func (c *Cache) Evict(percent float64) (evicted int, err error) {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(c.metrics.EvictionsDuration.Observe))
-	defer timer.ObserveDuration()
-	var e int
-	// TODO(kolesnikovae): Run concurrently?
-	for _, b := range c.buckets {
-		b.lock.Lock()
-		e, err = c.evictBucket(int(float64(b.len)*percent), b)
-		b.lock.Unlock()
-		evicted += e
-		if err != nil {
-			return evicted, err
-		}
-	}
-	return evicted, err
-}
-
-func (c *Cache) evictBucket(count int, b *bucket) (evicted int, err error) {
-	batch := c.newWriteBatch()
-	defer func() {
-		err = batch.flush()
-	}()
-	for i := 0; i < count; {
-		if place := b.freqs.Front(); place != nil {
-			for e := range place.Value.(*listEntry).entries {
-				if i >= count {
-					return evicted, nil
-				}
-				if !e.persisted {
-					if err = batch.write(e); err != nil {
-						return evicted, err
-					}
-				}
-				b.deleteEntry(e)
-				evicted++
-				i++
-			}
-		}
-	}
-	return evicted, nil
-}
-
-func (c *Cache) WriteBack() (persisted, evicted int, err error) {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(c.metrics.WriteBackDuration.Observe))
-	defer timer.ObserveDuration()
-	var evictBefore int64
-	if c.ttl > 0 {
-		evictBefore = time.Now().Unix() - c.ttl
-	}
-	var p, ev int
-	// TODO(kolesnikovae): Run concurrently?
-	for _, b := range c.buckets {
-		b.lock.Lock()
-		p, ev, err = c.writeBackBucket(evictBefore, b)
-		b.lock.Unlock()
-		persisted += p
-		evicted += ev
-		if err != nil {
-			return persisted, evicted, nil
-		}
-	}
-	return persisted, evicted, nil
-}
-
-func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (persisted, evicted int, err error) {
-	batch := c.newWriteBatch()
-	defer func() {
-		err = batch.flush()
-	}()
-	for _, e := range b.values {
-		if !e.persisted {
-			if err = batch.write(e); err != nil {
-				return persisted, evicted, err
-			}
-			e.persisted = true
-			persisted++
-		}
-		if e.lastAccessTime < evictBefore {
-			b.deleteEntry(e)
-			evicted++
-		}
-	}
-	return persisted, evicted, nil
-}
+// TODO(kolesnikovae): batch pool?
 
 type writeBatch struct {
 	c  *Cache
@@ -393,10 +412,6 @@ type writeBatch struct {
 	count int
 	size  int
 	err   error
-}
-
-func (c *Cache) newWriteBatch() *writeBatch {
-	return &writeBatch{c: c, wb: c.db.NewWriteBatch()}
 }
 
 func (b *writeBatch) flush() error {
@@ -410,7 +425,7 @@ func (b *writeBatch) flush() error {
 }
 
 func (b *writeBatch) write(e *entry) error {
-	var buf bytes.Buffer // TODO(kolesnikovae): Use pool with batch?
+	var buf bytes.Buffer
 	if err := b.c.codec.Serialize(&buf, e.key, e.value); err != nil {
 		b.err = fmt.Errorf("serialize: %w", err)
 		return b.err
