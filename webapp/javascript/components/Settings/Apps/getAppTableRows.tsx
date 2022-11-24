@@ -3,7 +3,7 @@ import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 
 import Button from '@webapp/ui/Button';
 import Icon from '@webapp/ui/Icon';
-import { App, Apps } from '@webapp/models/app';
+import { App } from '@webapp/models/app';
 import type { BodyRow } from '@webapp/ui/Table';
 import confirmDelete from '@webapp/components/Modals/ConfirmDelete';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
@@ -39,7 +39,7 @@ function DeleteButton(props: DeleteButtorProps) {
 }
 
 export function getAppTableRows(
-  displayApps: Apps,
+  displayApps: App[],
   appsInProcessing: string[],
   handleDeleteApp: (app: App) => void
 ): BodyRow[] {

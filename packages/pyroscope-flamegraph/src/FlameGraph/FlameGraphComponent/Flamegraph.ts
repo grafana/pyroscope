@@ -7,6 +7,7 @@ import {
   doubleFF,
   SpyName,
 } from '@pyroscope/models/src';
+import type { Units } from '@pyroscope/models/src';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine
@@ -82,7 +83,8 @@ export default class Flamegraph {
       // keep type narrow https://stackoverflow.com/q/54333982
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       spyName: this.flamebearer.spyName as SpyName,
-      units: this.flamebearer.units,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      units: this.flamebearer.units as Units,
       maxSelf: this.flamebearer.maxSelf,
 
       rangeMin,

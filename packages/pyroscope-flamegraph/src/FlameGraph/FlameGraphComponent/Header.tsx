@@ -24,7 +24,7 @@ export default function Header(props: HeaderProps) {
     lock_samples: 'number of contended locks per function',
     trace_samples: 'aggregated span duration',
     exceptions: 'number of exceptions thrown',
-    '': '',
+    unknown: '',
   };
 
   const getTitle = () => {
