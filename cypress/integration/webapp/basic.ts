@@ -138,7 +138,6 @@ describe('basic test', () => {
       });
   });
 
-  //
   it('validates "Reset View" button works', () => {
     cy.intercept('**/render*', {
       fixture: 'simple-golang-app-cpu.json',
@@ -221,7 +220,7 @@ describe('basic test', () => {
       findFlamegraph(1)
         .findByTestId('flamegraph-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       findFlamegraph(1)
         .findByTestId('tooltip-title')
@@ -255,7 +254,7 @@ describe('basic test', () => {
       findFlamegraph(2)
         .findByTestId('flamegraph-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       findFlamegraph(2)
         .findByTestId('tooltip-title')
@@ -301,7 +300,7 @@ describe('basic test', () => {
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       cy.findByTestId('tooltip-title').should('have.text', 'total');
       cy.findByTestId('tooltip-table').should(
@@ -328,7 +327,7 @@ describe('basic test', () => {
       cy.findByTestId('table-view').trigger('mousemove', 150, 80);
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       cy.findByTestId('tooltip-table').should(
         'have.text',
@@ -356,7 +355,7 @@ describe('basic test', () => {
       cy.findByTestId('table-view').trigger('mousemove', 150, 80);
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       cy.findByTestId('tooltip-table').should(
         'have.text',
