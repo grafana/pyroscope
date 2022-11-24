@@ -513,11 +513,28 @@ class FlameGraphRenderer extends Component<
       );
     })();
 
-    const graphvizPane = (
-      <div key="graphviz-pane">
-        <Graphviz dot={toGraphviz(this.state.flamebearer)} />
-      </div>
-    );
+    const graphvizPane = (() => {
+      // TODO: prevent crashing comparison view
+      const dot =
+        this.state.flamebearer.metadata?.format &&
+        this.state.flamebearer.flamebearer?.levels
+          ? toGraphviz(this.state.flamebearer)
+          : null;
+
+      return (
+        <div className={styles.graphVizPane} key="graphviz-pane">
+          {dot ? (
+            <Graphviz
+              // props https://www.npmjs.com/package/d3-graphviz#creating-a-graphviz-renderer
+              options={{ zoom: true, width: '100%' }}
+              dot={dot}
+            />
+          ) : (
+            <div>NO DATA</div>
+          )}
+        </div>
+      );
+    })();
 
     const dataUnavailable =
       !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
