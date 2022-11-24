@@ -15,10 +15,12 @@ import Graph from './FlameGraphComponent';
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar, { ProfileHeaderProps } from '../Toolbar';
+import {Graphviz} from 'graphviz-react';
 import {
   calleesProfile,
   callersProfile,
 } from '../convert/sandwichViewProfiles';
+import toGraphviz from '../convert/toGraphviz';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
@@ -511,11 +513,14 @@ class FlameGraphRenderer extends Component<
       );
     })();
 
+    console.log(this.state)
+    const graphvizPane = <Graphviz dot={toGraphviz(this.state.flamebearer)} />;
+
     const dataUnavailable =
       !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
     const panes = decidePanesOrder(
       this.state.view,
-      flameGraphPane,
+      graphvizPane,
       tablePane,
       sandwichPane
     );
