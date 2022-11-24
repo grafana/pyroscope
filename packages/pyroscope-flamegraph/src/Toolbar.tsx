@@ -2,6 +2,7 @@ import React, { ReactNode, isValidElement } from 'react';
 import classNames from 'classnames/bind';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
+import { faProjectDiagram } from '@fortawesome/free-solid-svg-icons/faProjectDiagram';
 import { Maybe } from 'true-myth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import useResizeObserver from '@react-hook/resize-observer';
@@ -320,6 +321,11 @@ const getViewOptions = (
           Icon: FlamegraphIcon,
         },
         { label: 'Sandwich', value: 'sandwich', Icon: SandwichIcon },
+        {
+          label: 'GraphViz',
+          value: 'graphviz',
+          Icon: () => <FontAwesomeIcon icon={faProjectDiagram} />,
+        },
       ]
     : [
         { label: 'Table', value: 'table', Icon: TableIcon },

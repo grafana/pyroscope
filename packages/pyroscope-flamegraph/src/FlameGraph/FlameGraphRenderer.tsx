@@ -15,7 +15,7 @@ import Graph from './FlameGraphComponent';
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar, { ProfileHeaderProps } from '../Toolbar';
-import {Graphviz} from 'graphviz-react';
+import { Graphviz } from 'graphviz-react';
 import {
   calleesProfile,
   callersProfile,
@@ -513,16 +513,20 @@ class FlameGraphRenderer extends Component<
       );
     })();
 
-    console.log(this.state)
-    const graphvizPane = <Graphviz dot={toGraphviz(this.state.flamebearer)} />;
+    const graphvizPane = (
+      <div key="graphviz-pane">
+        <Graphviz dot={toGraphviz(this.state.flamebearer)} />
+      </div>
+    );
 
     const dataUnavailable =
       !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
     const panes = decidePanesOrder(
       this.state.view,
-      graphvizPane,
+      flameGraphPane,
       tablePane,
-      sandwichPane
+      sandwichPane,
+      graphvizPane
     );
 
     return (
@@ -582,7 +586,8 @@ function decidePanesOrder(
   view: FlamegraphRendererState['view'],
   flamegraphPane: JSX.Element | null,
   tablePane: JSX.Element,
-  sandwichPane: JSX.Element
+  sandwichPane: JSX.Element,
+  graphvizPane: JSX.Element
 ) {
   switch (view) {
     case 'table': {
@@ -597,6 +602,10 @@ function decidePanesOrder(
 
     case 'both': {
       return [tablePane, flamegraphPane];
+    }
+
+    case 'graphviz': {
+      return [graphvizPane];
     }
     default: {
       throw new Error(`Invalid view '${view}'`);
