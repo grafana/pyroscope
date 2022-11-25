@@ -163,7 +163,7 @@ const Toolbar = memo(
     ExportData,
   }: ProfileHeaderProps) => {
     const toolbarRef = useRef<HTMLDivElement>(null);
-    const showMode = useSizeMode(toolbarRef);
+    const showMode = useSizeMode();
 
     const fitModeItem = {
       el: (
