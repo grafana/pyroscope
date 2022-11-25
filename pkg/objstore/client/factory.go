@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/thanos-io/objstore"
 
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 	"github.com/grafana/phlare/pkg/objstore/client/parquet"
 	"github.com/grafana/phlare/pkg/objstore/providers/azure"
+	"github.com/grafana/phlare/pkg/objstore/providers/cos"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	"github.com/grafana/phlare/pkg/objstore/providers/gcs"
 	"github.com/grafana/phlare/pkg/objstore/providers/s3"
@@ -35,6 +35,8 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobjstore.Buc
 		backendClient, err = azure.NewBucketClient(cfg.Azure, name, logger)
 	case Swift:
 		backendClient, err = swift.NewBucketClient(cfg.Swift, name, logger)
+	case COS:
+		backendClient, err = cos.NewBucketClient(cfg.COS, name, logger)
 	case Filesystem:
 		backendClient, err = filesystem.NewBucket(cfg.Filesystem.Directory)
 	default:
