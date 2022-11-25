@@ -12,6 +12,7 @@ import (
 	"github.com/thanos-io/objstore"
 
 	"github.com/grafana/phlare/pkg/objstore/providers/azure"
+	"github.com/grafana/phlare/pkg/objstore/providers/cos"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	"github.com/grafana/phlare/pkg/objstore/providers/gcs"
 	"github.com/grafana/phlare/pkg/objstore/providers/s3"
@@ -31,6 +32,9 @@ const (
 	// Swift is the value for the Openstack Swift storage backend.
 	Swift = "swift"
 
+	// COS is the value for the Tencent Cloud COS storage backend.
+	COS = "cos"
+
 	// Filesystem is the value for the filesystem storage backend.
 	Filesystem = "filesystem"
 
@@ -39,7 +43,7 @@ const (
 )
 
 var (
-	SupportedBackends = []string{S3, GCS, Azure, Swift, Filesystem}
+	SupportedBackends = []string{S3, GCS, Azure, Swift, Filesystem, COS}
 
 	ErrUnsupportedStorageBackend        = errors.New("unsupported storage backend")
 	ErrInvalidCharactersInStoragePrefix = errors.New("storage prefix contains invalid characters, it may only contain digits and English alphabet letters")
@@ -53,6 +57,7 @@ type StorageBackendConfig struct {
 	GCS        gcs.Config        `yaml:"gcs"`
 	Azure      azure.Config      `yaml:"azure"`
 	Swift      swift.Config      `yaml:"swift"`
+	COS        cos.Config        `yaml:"cos"`
 	Filesystem filesystem.Config `yaml:"filesystem"`
 }
 
@@ -72,6 +77,7 @@ func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(pref
 	cfg.Azure.RegisterFlagsWithPrefix(prefix, f, logger)
 	cfg.Swift.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Filesystem.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir, f)
+	cfg.COS.RegisterFlagsWithPrefix(prefix, f)
 	f.StringVar(&cfg.Backend, prefix+"backend", Filesystem, fmt.Sprintf("Backend storage to use. Supported backends are: %s.", strings.Join(cfg.supportedBackends(), ", ")))
 }
 
@@ -84,13 +90,14 @@ func (cfg *StorageBackendConfig) Validate() error {
 		return ErrUnsupportedStorageBackend
 	}
 
-	if cfg.Backend == S3 {
-		if err := cfg.S3.Validate(); err != nil {
-			return err
-		}
+	switch cfg.Backend {
+	case S3:
+		return cfg.S3.Validate()
+	case COS:
+		return cfg.COS.Validate()
+	default:
+		return nil
 	}
-
-	return nil
 }
 
 // Config holds configuration for accessing long-term storage.
