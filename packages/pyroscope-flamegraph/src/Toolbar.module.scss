@@ -114,10 +114,6 @@ $buttonHeight: 37px;
   padding: 0 5px;
   height: 35px;
 
-  &.hidden {
-    display: none;
-  }
-
   &:hover {
     cursor: pointer;
     background-color: var(--ps-ui-element-bg-highlight);

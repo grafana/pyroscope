@@ -43,7 +43,7 @@ export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
 export type ShowModeType = ReturnType<typeof useSizeMode>;
 
 // todo: remove this logic
-export const useSizeMode = (target: RefObject<HTMLDivElement>) => {
+export const useSizeMode = () => {
   return 'large';
 };
 
@@ -55,15 +55,16 @@ const MORE_BUTTON_WIDTH = 16;
 const calculateCollapsedItems = (
   clientWidth: number,
   collapsedItemsNumber: number,
-  itemsW: number[],
+  itemsW: number[]
 ) => {
-  const availableToolbarItemsWidth = collapsedItemsNumber === 0
-    ? clientWidth - QUERY_INPUT_WIDTH
-    : clientWidth - QUERY_INPUT_WIDTH - MORE_BUTTON_WIDTH;
+  const availableToolbarItemsWidth =
+    collapsedItemsNumber === 0
+      ? clientWidth - QUERY_INPUT_WIDTH
+      : clientWidth - QUERY_INPUT_WIDTH - MORE_BUTTON_WIDTH;
 
   let collapsedItems = 0;
   let visibleItemsWidth = 0;
-  itemsW.forEach(v => {
+  itemsW.forEach((v) => {
     visibleItemsWidth += v;
     if (availableToolbarItemsWidth <= visibleItemsWidth) {
       collapsedItems += 1;
@@ -73,7 +74,10 @@ const calculateCollapsedItems = (
   return collapsedItems;
 };
 
-const useMoreButton = (target: RefObject<HTMLDivElement>, toolbarItemsWidth: number[]) => {
+const useMoreButton = (
+  target: RefObject<HTMLDivElement>,
+  toolbarItemsWidth: number[]
+) => {
   const [isCollapsed, setCollapsedStatus] = useState(true);
   const [collapsedItemsNumber, setCollapsedItemsNumber] = useState(0);
 
@@ -82,21 +86,21 @@ const useMoreButton = (target: RefObject<HTMLDivElement>, toolbarItemsWidth: num
       const collapsedItems = calculateCollapsedItems(
         target.current.clientWidth,
         collapsedItemsNumber,
-        toolbarItemsWidth,
+        toolbarItemsWidth
       );
       setCollapsedItemsNumber(collapsedItems);
     }
   }, [target.current, toolbarItemsWidth]);
 
   const handleMoreClick = () => {
-    setCollapsedStatus(v => !v);
+    setCollapsedStatus((v) => !v);
   };
 
   useResizeObserver(target, (entry: ResizeObserverEntry) => {
     const collapsedItems = calculateCollapsedItems(
       entry.target.clientWidth,
       collapsedItemsNumber,
-      toolbarItemsWidth,
+      toolbarItemsWidth
     );
 
     setCollapsedItemsNumber(collapsedItems);
@@ -107,7 +111,7 @@ const useMoreButton = (target: RefObject<HTMLDivElement>, toolbarItemsWidth: num
     isCollapsed,
     handleMoreClick,
     collapsedItemsNumber,
-  }
+  };
 };
 
 export interface ProfileHeaderProps {
@@ -139,7 +143,7 @@ const Divider = () => <div className={styles.divider} />;
 type ToolbarItemType = {
   width: number;
   el: ReactNode;
-}
+};
 
 const Toolbar = memo(
   ({
@@ -187,29 +191,35 @@ const Toolbar = memo(
           />
         </>
       ),
-      width: TOOLBAR_SQUARE_WIDTH
-    };
-    const viewSectionItem = enableChangingDisplay ? {
-      el:
-        <>
-          <Divider />
-          <ViewSection
-            flamegraphType={flamegraphType}
-            showMode={showMode}
-            view={view}
-            updateView={updateView}
-          />
-        </>,
-      width: TOOLBAR_SQUARE_WIDTH * 4
-    } : null;
-    const exportDataItem = isValidElement(ExportData) ? {
-      el:
-        <>
-          <Divider />
-          {ExportData}
-        </>,
       width: TOOLBAR_SQUARE_WIDTH,
-    } : null;
+    };
+    const viewSectionItem = enableChangingDisplay
+      ? {
+          el: (
+            <>
+              <Divider />
+              <ViewSection
+                flamegraphType={flamegraphType}
+                showMode={showMode}
+                view={view}
+                updateView={updateView}
+              />
+            </>
+          ),
+          width: TOOLBAR_SQUARE_WIDTH * 4,
+        }
+      : null;
+    const exportDataItem = isValidElement(ExportData)
+      ? {
+          el: (
+            <>
+              <Divider />
+              {ExportData}
+            </>
+          ),
+          width: TOOLBAR_SQUARE_WIDTH,
+        }
+      : null;
 
     const filteredToolbarItems = [
       fitModeItem,
@@ -217,31 +227,34 @@ const Toolbar = memo(
       focusOnSubtree,
       viewSectionItem,
       exportDataItem,
-    ].filter(v => v !== null) as ToolbarItemType[];
-    const toolbarItemsWidth = filteredToolbarItems.reduce((acc, v) => ([...acc, v.width]), [] as number[]);
+    ].filter((v) => v !== null) as ToolbarItemType[];
+    const toolbarItemsWidth = filteredToolbarItems.reduce(
+      (acc, v) => [...acc, v.width],
+      [] as number[]
+    );
 
-    const {
-      isCollapsed,
-      collapsedItemsNumber,
-      handleMoreClick,
-    } = useMoreButton(toolbarRef, toolbarItemsWidth);
+    const { isCollapsed, collapsedItemsNumber, handleMoreClick } =
+      useMoreButton(toolbarRef, toolbarItemsWidth);
 
-    const toolbarFilteredItems = filteredToolbarItems.reduce((acc, v, i, arr) => {
-      const isHiddenItem = i > arr.length - 1 - collapsedItemsNumber;
+    const toolbarFilteredItems = filteredToolbarItems.reduce(
+      (acc, v, i, arr) => {
+        const isHiddenItem = i > arr.length - 1 - collapsedItemsNumber;
 
-      if (isHiddenItem) {
-        acc.hidden.push(v);
-      } else {
-        acc.visible.push(v);
-      }
+        if (isHiddenItem) {
+          acc.hidden.push(v);
+        } else {
+          acc.visible.push(v);
+        }
 
-      return acc;
-    }, { visible: [] as ToolbarItemType[], hidden: [] as ToolbarItemType[] });
+        return acc;
+      },
+      { visible: [] as ToolbarItemType[], hidden: [] as ToolbarItemType[] }
+    );
 
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
-          <div className={styles.left}>
+          <div>
             <SharedQueryInput
               width={QUERY_INPUT_WIDTH}
               showMode={showMode}
@@ -250,27 +263,30 @@ const Toolbar = memo(
               sharedQuery={sharedQuery}
             />
           </div>
-          <div className={styles.right}>
+          <div>
             <div className={styles.itemsContainer}>
               {toolbarFilteredItems.visible.map((v, i) => (
+                // eslint-disable-next-line react/no-array-index-key
                 <div key={i} className={styles.item} style={{ width: v.width }}>
                   {v.el}
                 </div>
               ))}
-              {collapsedItemsNumber !== 0 &&
-                <button
-                  onClick={handleMoreClick}
-                  className={styles.moreButton}
-                >
+              {collapsedItemsNumber !== 0 && (
+                <button onClick={handleMoreClick} className={styles.moreButton}>
                   <FontAwesomeIcon icon={faEllipsisV} />
                 </button>
-              }
+              )}
             </div>
           </div>
           {!isCollapsed && (
             <div className={styles.navbarCollapsedItems}>
               {toolbarFilteredItems.hidden.map((v, i) => (
-                <div key={i} className={styles.item} style={{ width: v.width }}>
+                <div
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={i}
+                  className={styles.item}
+                  style={{ width: v.width }}
+                >
                   {v.el}
                 </div>
               ))}
