@@ -85,7 +85,10 @@ type listEntry struct {
 	freq    int
 }
 
-const defaultCacheBuckets = 8
+const (
+	defaultCacheBuckets    = 8
+	defaultCacheBucketSize = 1 << 10
+)
 
 func New(c Config) *Cache {
 	buckets := c.Buckets
@@ -102,7 +105,7 @@ func New(c Config) *Cache {
 	}
 	for i := 0; i < buckets; i++ {
 		v.buckets[i] = &bucket{
-			values: make(map[string]*entry),
+			values: make(map[string]*entry, defaultCacheBucketSize),
 			freqs:  list.New(),
 		}
 	}
@@ -253,7 +256,7 @@ func (c *Cache) Evict(percent float64) error {
 }
 
 func (c *Cache) evictBucket(percent float64, b *bucket) (err error) {
-	w := c.newBatchedWriter()
+	w := newBatchedWriter(c)
 	defer func() {
 		err = w.flush()
 	}()
@@ -304,7 +307,7 @@ func (c *Cache) WriteBack() error {
 }
 
 func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (err error) {
-	w := c.newBatchedWriter()
+	w := newBatchedWriter(c)
 	defer func() {
 		err = w.flush()
 	}()
@@ -321,8 +324,21 @@ func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (err error) {
 	return b.writeEntries(w, entries)
 }
 
-func (c *Cache) newBatchedWriter() *batchedWriter {
-	return &batchedWriter{c: c, wb: c.db.NewWriteBatch()}
+func (b *bucket) writeEntries(w *batchedWriter, entries []*entry) (err error) {
+	for _, e := range entries {
+		e.m.Lock()
+		if !e.persisted {
+			err = w.write(e)
+		}
+		if e.markedForRemoval {
+			b.deleteEntry(e)
+		}
+		e.m.Unlock()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *bucket) remEntry(place *list.Element, e *entry) {
@@ -389,7 +405,9 @@ func (b *bucket) increment(e *entry) {
 	}
 }
 
-// TODO(kolesnikovae): batch pool?
+func newBatchedWriter(c *Cache) *batchedWriter {
+	return &batchedWriter{c: c, wb: c.db.NewWriteBatch()}
+}
 
 type batchedWriter struct {
 	c  *Cache
@@ -410,25 +428,8 @@ func (b *batchedWriter) flush() error {
 	return b.wb.Flush()
 }
 
-func (b *bucket) writeEntries(w *batchedWriter, entries []*entry) (err error) {
-	for _, e := range entries {
-		e.m.Lock()
-		if !e.persisted {
-			err = w.write(e)
-		}
-		if e.markedForRemoval {
-			b.deleteEntry(e)
-		}
-		e.m.Unlock()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (b *batchedWriter) write(e *entry) error {
-	var buf bytes.Buffer
+	var buf bytes.Buffer // TODO(kolesnikovae): Pool?
 	if err := b.c.codec.Serialize(&buf, e.key, e.value); err != nil {
 		b.err = fmt.Errorf("serialize: %w", err)
 		return b.err
