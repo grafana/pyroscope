@@ -12,6 +12,7 @@ interface SharedQueryProps {
   onHighlightChange: ProfileHeaderProps['handleSearchChange'];
   highlightQuery: ProfileHeaderProps['highlightQuery'];
   sharedQuery: ProfileHeaderProps['sharedQuery'];
+  width: number;
 }
 
 const usePreviousSyncEnabled = (syncEnabled?: string | boolean) => {
@@ -29,6 +30,7 @@ const SharedQueryInput = ({
   showMode,
   highlightQuery,
   sharedQuery,
+  width,
 }: SharedQueryProps) => {
   const prevSyncEnabled = usePreviousSyncEnabled(sharedQuery?.syncEnabled);
 
@@ -85,7 +87,7 @@ const SharedQueryInput = ({
   );
 
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} style={{ width }}>
       <Input
         testId="flamegraph-search"
         className={inputClassName}

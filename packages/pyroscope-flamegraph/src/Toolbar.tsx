@@ -42,66 +42,65 @@ export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
 
 export type ShowModeType = ReturnType<typeof useSizeMode>;
 
+// todo: remove this logic
 export const useSizeMode = (target: RefObject<HTMLDivElement>) => {
-  const [size, setSize] = useState<'large' | 'small'>('large');
+  return 'large';
+};
 
-  const calcMode = (width: number) => {
-    if (width < TOOLBAR_MODE_WIDTH_THRESHOLD) {
-      return 'small';
+const QUERY_INPUT_WIDTH = 175;
+// 4 is marginLeft(2px) + marginRight(2px). also we can simulate divider side margins here
+const TOOLBAR_SQUARE_WIDTH = 40 + 4;
+const MORE_BUTTON_WIDTH = 16;
+
+const calculateCollapsedItems = (
+  clientWidth: number,
+  collapsedItemsNumber: number,
+  itemsW: number[],
+) => {
+  const availableToolbarItemsWidth = collapsedItemsNumber === 0
+    ? clientWidth - QUERY_INPUT_WIDTH
+    : clientWidth - QUERY_INPUT_WIDTH - MORE_BUTTON_WIDTH;
+
+  let collapsedItems = 0;
+  let visibleItemsWidth = 0;
+  itemsW.forEach(v => {
+    visibleItemsWidth += v;
+    if (availableToolbarItemsWidth <= visibleItemsWidth) {
+      collapsedItems += 1;
     }
-    return 'large';
-  };
+  });
+
+  return collapsedItems;
+};
+
+const useMoreButton = (target: RefObject<HTMLDivElement>, toolbarItemsWidth: number[]) => {
+  const [isCollapsed, setCollapsedStatus] = useState(true);
+  const [collapsedItemsNumber, setCollapsedItemsNumber] = useState(0);
 
   useLayoutEffect(() => {
     if (target.current) {
-      const { width } = target.current.getBoundingClientRect();
-
-      setSize(calcMode(width));
+      const collapsedItems = calculateCollapsedItems(
+        target.current.clientWidth,
+        collapsedItemsNumber,
+        toolbarItemsWidth,
+      );
+      setCollapsedItemsNumber(collapsedItems);
     }
-  }, [target.current]);
-
-  useResizeObserver(target, (entry: ResizeObserverEntry) => {
-    setSize(calcMode(entry.contentRect.width));
-  });
-
-  return size;
-};
-
-const useMoreButton = (target: RefObject<HTMLDivElement>) => {
-  const [isCollapsed, setCollapsedStatus] = useState(true);
-  const [collapsedItemsNumber, setCollapsedItemsNumber] = useState(0);
-  const [breakpoints, setBreakpoints] = useState<number[]>([]);
-
-  // useLayoutEffect(() => {
-  //   if (target.current) {
-  //     const { width } = target.current.getBoundingClientRect();
-
-  //     // implement correct calculation of hidden items on initial render (?)
-  //   }
-  // }, [target.current]);
+  }, [target.current, toolbarItemsWidth]);
 
   const handleMoreClick = () => {
     setCollapsedStatus(v => !v);
   };
 
   useResizeObserver(target, (entry: ResizeObserverEntry) => {
-    const isOverflown = entry.target.scrollWidth - entry.target.clientWidth > 0;
-    const { width } = entry.contentRect;
+    const collapsedItems = calculateCollapsedItems(
+      entry.target.clientWidth,
+      collapsedItemsNumber,
+      toolbarItemsWidth,
+    );
 
-    if (isOverflown) {
-      setCollapsedItemsNumber(v => v + 1);
-      setBreakpoints(v => v.concat([width]));
-    }
-
-    if (!isOverflown && width >= breakpoints[breakpoints.length - 1]) {
-      setCollapsedItemsNumber(v => v - 1);
-      setBreakpoints(v => {
-        v.pop();
-        return v;
-      })
-    }
-
-    setCollapsedStatus(true)
+    setCollapsedItemsNumber(collapsedItems);
+    setCollapsedStatus(true);
   });
 
   return {
@@ -137,6 +136,11 @@ export interface ProfileHeaderProps {
 
 const Divider = () => <div className={styles.divider} />;
 
+type ToolbarItemType = {
+  width: number;
+  el: ReactNode;
+}
+
 const Toolbar = memo(
   ({
     view,
@@ -156,65 +160,73 @@ const Toolbar = memo(
   }: ProfileHeaderProps) => {
     const toolbarRef = useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
-    const {
-      isCollapsed,
-      collapsedItemsNumber,
-      handleMoreClick,
-    } = useMoreButton(toolbarRef);
 
-    const searchItem = (
-      <>
-        <SharedQueryInput
-          showMode={showMode}
-          onHighlightChange={handleSearchChange}
-          highlightQuery={highlightQuery}
-          sharedQuery={sharedQuery}
-        />
-        <div className={styles['space-filler']} />
-      </>
-    );
-    const fitModeItem = (
-      <>
-        <FitMode
+    const fitModeItem = {
+      el: (
+        <>
+          <FitMode
             showMode={showMode}
             fitMode={fitMode}
             updateFitMode={updateFitMode}
           />
-        <Divider />
-      </>
-    );
-    const resetItem = <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />;
-    const focusOnSubtree =
-      <FocusOnSubtree
-        selectedNode={selectedNode}
-        onFocusOnSubtree={onFocusOnSubtree}
-      />;
-    const viewSectionItem = enableChangingDisplay ?
-      <>
-        <Divider />
-        <ViewSection
-          flamegraphType={flamegraphType}
-          showMode={showMode}
-          view={view}
-          updateView={updateView}
-        />
-      </> : null;
-    const exportDataItem = isValidElement(ExportData) ?
-      <>
-        <Divider />
-        {ExportData}
-      </> : null;
+          <Divider />
+        </>
+      ),
+      width: TOOLBAR_SQUARE_WIDTH * 2,
+    };
+    const resetItem = {
+      el: <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />,
+      width: TOOLBAR_SQUARE_WIDTH,
+    };
+    const focusOnSubtree = {
+      el: (
+        <>
+          <FocusOnSubtree
+            selectedNode={selectedNode}
+            onFocusOnSubtree={onFocusOnSubtree}
+          />
+        </>
+      ),
+      width: TOOLBAR_SQUARE_WIDTH
+    };
+    const viewSectionItem = enableChangingDisplay ? {
+      el:
+        <>
+          <Divider />
+          <ViewSection
+            flamegraphType={flamegraphType}
+            showMode={showMode}
+            view={view}
+            updateView={updateView}
+          />
+        </>,
+      width: TOOLBAR_SQUARE_WIDTH * 4
+    } : null;
+    const exportDataItem = isValidElement(ExportData) ? {
+      el:
+        <>
+          <Divider />
+          {ExportData}
+        </>,
+      width: TOOLBAR_SQUARE_WIDTH,
+    } : null;
 
-    const toolbarItems = [
-      searchItem,
+    const filteredToolbarItems = [
       fitModeItem,
       resetItem,
       focusOnSubtree,
       viewSectionItem,
       exportDataItem,
-    ].filter(v => v !== null);
+    ].filter(v => v !== null) as ToolbarItemType[];
+    const toolbarItemsWidth = filteredToolbarItems.reduce((acc, v) => ([...acc, v.width]), [] as number[]);
 
-    const toolbarFilteredItems = toolbarItems.reduce((acc, v, i, arr) => {
+    const {
+      isCollapsed,
+      collapsedItemsNumber,
+      handleMoreClick,
+    } = useMoreButton(toolbarRef, toolbarItemsWidth);
+
+    const toolbarFilteredItems = filteredToolbarItems.reduce((acc, v, i, arr) => {
       const isHiddenItem = i > arr.length - 1 - collapsedItemsNumber;
 
       if (isHiddenItem) {
@@ -224,22 +236,44 @@ const Toolbar = memo(
       }
 
       return acc;
-    }, { visible: [] as ReactNode[], hidden: [] as ReactNode[] });
+    }, { visible: [] as ToolbarItemType[], hidden: [] as ToolbarItemType[] });
 
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
-          {toolbarFilteredItems.visible.map(v => v)}
-          {collapsedItemsNumber !== 0 &&
-            <button
-              onClick={handleMoreClick}
-              className={styles.moreButton}
-            >
-              <FontAwesomeIcon icon={faEllipsisV} />
-            </button>}
+          <div className={styles.left}>
+            <SharedQueryInput
+              width={QUERY_INPUT_WIDTH}
+              showMode={showMode}
+              onHighlightChange={handleSearchChange}
+              highlightQuery={highlightQuery}
+              sharedQuery={sharedQuery}
+            />
+          </div>
+          <div className={styles.right}>
+            <div className={styles.itemsContainer}>
+              {toolbarFilteredItems.visible.map((v, i) => (
+                <div key={i} className={styles.item} style={{ width: v.width }}>
+                  {v.el}
+                </div>
+              ))}
+              {collapsedItemsNumber !== 0 &&
+                <button
+                  onClick={handleMoreClick}
+                  className={styles.moreButton}
+                >
+                  <FontAwesomeIcon icon={faEllipsisV} />
+                </button>
+              }
+            </div>
+          </div>
           {!isCollapsed && (
             <div className={styles.navbarCollapsedItems}>
-              {toolbarFilteredItems.hidden.map(v => v)}
+              {toolbarFilteredItems.hidden.map((v, i) => (
+                <div key={i} className={styles.item} style={{ width: v.width }}>
+                  {v.el}
+                </div>
+              ))}
             </div>
           )}
         </div>

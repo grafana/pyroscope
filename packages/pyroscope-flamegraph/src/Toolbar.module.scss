@@ -13,10 +13,6 @@ $buttonHeight: 37px;
   align-items: center;
 }
 
-.space-filler {
-  flex-grow: 1;
-}
-
 .viewType {
   display: flex;
   flex-direction: row;
@@ -105,7 +101,11 @@ $buttonHeight: 37px;
   width: 1px;
   height: 35px;
   background-color: var(--ps-ui-border);
-  margin: 0 2px;
+}
+
+.itemsContainer, 
+.item {
+  display: flex;
 }
 
 .moreButton {
