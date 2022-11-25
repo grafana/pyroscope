@@ -21,22 +21,21 @@ func (r *rubyGenerator) function(name string, nodes []*node) {
 	for _, n := range nodes {
 		delegations := []string{}
 		for _, c := range n.calls {
-			delegations = append(delegations, fmt.Sprintf(`%s("%s")`, c.name, c.parameter))
+			delegations = append(delegations, fmt.Sprintf(`%s(%s)`, c.name, c.parameter))
 		}
-		cases = append(cases, fmt.Sprintf(`when "%s"
-      i = 0
-      while i < %d; i +=1 ; end
-
+		cases = append(cases, fmt.Sprintf(`when %s
+      while i < %d; i += 1 ; end
       %s`, n.key, n.self*multiplier, strings.Join(delegations, "\n      ")))
+	}
 
-		r.functions = append(r.functions, fmt.Sprintf(`
+	r.functions = append(r.functions, fmt.Sprintf(`
 def %s(val)
+	i = 0
   case val
   %s
   end
 end
 `, name, strings.Join(cases, "\n  ")))
-	}
 }
 
 func (r *rubyGenerator) program(mainKey string) string {
@@ -51,7 +50,7 @@ end
 
 %s
 while true
-  main("%s")
+  main(%s)
 end
 
 `, strings.Join(r.functions, "\n"), mainKey)

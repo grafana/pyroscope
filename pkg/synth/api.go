@@ -57,10 +57,15 @@ func GenerateCode(t *tree.Tree, lang string) (string, error) {
 	allFunctions := map[string][]string{}
 
 	var mainKey string
+	j := 0
 
 	t.IterateStacks(func(_ string, self uint64, stack []string) {
 		newStack := []string{}
 		for _, s := range stack {
+			if s == "other" {
+				s = fmt.Sprintf("%s_%d", s, j)
+				j++
+			}
 			newStack = append(newStack, fg.functionName(s))
 		}
 		newStack = append(newStack, "main")
