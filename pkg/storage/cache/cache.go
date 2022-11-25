@@ -9,7 +9,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
@@ -72,11 +71,13 @@ type Metrics struct {
 }
 
 type entry struct {
-	persisted      int64
-	key            string
-	value          interface{}
-	freqNode       *list.Element
-	lastAccessTime int64
+	m                sync.Mutex
+	key              string
+	value            interface{}
+	freqNode         *list.Element
+	persisted        bool
+	markedForRemoval bool
+	lastAccessTime   int64
 }
 
 type listEntry struct {
@@ -84,7 +85,7 @@ type listEntry struct {
 	freq    int
 }
 
-const defaultCacheBuckets = 64
+const defaultCacheBuckets = 8
 
 func New(c Config) *Cache {
 	buckets := c.Buckets
@@ -154,7 +155,9 @@ func (c *Cache) get(b *bucket, key string) (v interface{}, err error) {
 	c.metrics.ReadsCounter.Inc()
 	e, ok := b.values[key]
 	if ok {
+		e.m.Lock()
 		b.increment(e)
+		e.m.Unlock()
 		return e.value, nil
 	}
 	c.metrics.MissesCounter.Inc()
@@ -212,6 +215,7 @@ func (c *Cache) DeletePrefix(prefix string) error {
 func (c *Cache) DiscardPrefix(prefix string) {
 	g, _ := errgroup.WithContext(context.Background())
 	for _, b := range c.buckets {
+		b := b
 		g.Go(func() error {
 			b.m.Lock()
 			defer b.m.Unlock()
@@ -240,54 +244,46 @@ func (c *Cache) Evict(percent float64) error {
 	defer timer.ObserveDuration()
 	g, _ := errgroup.WithContext(context.Background())
 	for _, b := range c.buckets {
+		b := b
 		g.Go(func() error {
-			return c.evictBucket(int(float64(b.len)*percent), b)
+			return c.evictBucket(percent, b)
 		})
 	}
 	return g.Wait()
 }
 
-func (c *Cache) evictBucket(count int, b *bucket) (err error) {
-	batch := c.newWriteBatch()
+func (c *Cache) evictBucket(percent float64, b *bucket) (err error) {
+	w := c.newBatchedWriter()
 	defer func() {
-		err = batch.flush()
+		err = w.flush()
 	}()
 	b.m.Lock()
-	modified := make([]*entry, 0, len(b.values)/4)
+	count := int(float64(b.len) * percent)
+	entries := make([]*entry, 0, len(b.values)/4)
 	for i := 0; i < count; {
 		place := b.freqs.Front()
 		if place == nil {
+			b.m.Unlock()
 			return nil
 		}
 		for e := range place.Value.(*listEntry).entries {
 			if i >= count {
 				break
 			}
-			if atomic.SwapInt64(&e.persisted, 1) == 0 {
-				modified = append(modified, e)
-			} else {
-				// The entry has not been changed since the last
-				// time it was written at write back procedure.
-				b.deleteEntry(e)
-			}
+			e.m.Lock()
+			e.markedForRemoval = true
+			entries = append(entries, e)
+			e.m.Unlock()
 			i++
 		}
 	}
 	b.m.Unlock()
-	for _, e := range modified {
-		if atomic.LoadInt64(&e.persisted) == 0 {
-			// If the entry has been modified since b.m.Unlock()
-			// we leave it in the cache, even if it had to be
-			// evicted. The reason is that otherwise it will be
-			// loaded into memory again causing extra memory
-			// pressure the eviction mechanism is aimed to tackle.
-			continue
-		}
-		if err = batch.write(e); err != nil {
-			return err
-		}
-	}
-	return nil
+	// If the entry has been modified since b.m.Unlock() we leave
+	// it in the cache, even if it had to be evicted. The reason
+	// is that otherwise it will be loaded into memory again very
+	// likely, causing extra memory pressure the eviction mechanism
+	// is aimed to tackle.
+	return b.writeEntries(w, entries)
 }
 
 func (c *Cache) WriteBack() error {
@@ -299,6 +295,7 @@ func (c *Cache) WriteBack() error {
 	}
 	g, _ := errgroup.WithContext(context.Background())
 	for _, b := range c.buckets {
+		b := b
 		g.Go(func() error {
 			return c.writeBackBucket(evictBefore, b)
 		})
@@ -307,36 +304,25 @@ func (c *Cache) WriteBack() error {
 }
 
 func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (err error) {
-	batch := c.newWriteBatch()
+	w := c.newBatchedWriter()
 	defer func() {
-		err = batch.flush()
+		err = w.flush()
 	}()
 	b.m.Lock()
-	modified := make([]*entry, 0, len(b.values)/4)
+	entries := make([]*entry, 0, len(b.values)/4)
 	for _, e := range b.values {
-		if atomic.SwapInt64(&e.persisted, 1) == 0 {
-			modified = append(modified, e)
-		} else if e.lastAccessTime < evictBefore {
-			// The entry has not been changed since the last
-			// time it was written at write back procedure and
-			// its TTL has expired. The entry can be removed safely.
-			b.deleteEntry(e)
+		e.m.Lock()
+		if e.lastAccessTime < evictBefore {
+			e.markedForRemoval = true
 		}
+		e.m.Unlock()
 	}
 	b.m.Unlock()
-	for _, e := range modified {
-		// Note that entry.value could be modified after b.m.Unlock(),
-		// so at this point e.persisted might be set to false, which is
-		// fine: in the worst case we will write same data next time.
-		if err = batch.write(e); err != nil {
-			return err
-		}
-	}
-	return nil
+	return b.writeEntries(w, entries)
 }
 
-func (c *Cache) newWriteBatch() *writeBatch {
-	return &writeBatch{c: c, wb: c.db.NewWriteBatch()}
+func (c *Cache) newBatchedWriter() *batchedWriter {
+	return &batchedWriter{c: c, wb: c.db.NewWriteBatch()}
 }
 
 func (b *bucket) remEntry(place *list.Element, e *entry) {
@@ -349,18 +335,18 @@ func (b *bucket) remEntry(place *list.Element, e *entry) {
 
 func (b *bucket) set(key string, value interface{}) {
 	e, ok := b.values[key]
-	if ok {
-		e.value = value
-		atomic.SwapInt64(&e.persisted, 1)
-		b.increment(e)
-		return
+	if !ok {
+		e = new(entry)
+		b.len++
 	}
-	e = new(entry)
+	e.m.Lock()
 	e.key = key
 	e.value = value
+	e.persisted = false
+	e.markedForRemoval = false
 	b.values[key] = e
 	b.increment(e)
-	b.len++
+	e.m.Unlock()
 }
 
 func (b *bucket) deleteEntry(e *entry) {
@@ -405,7 +391,7 @@ func (b *bucket) increment(e *entry) {
 
 // TODO(kolesnikovae): batch pool?
 
-type writeBatch struct {
+type batchedWriter struct {
 	c  *Cache
 	wb *badger.WriteBatch
 
@@ -414,7 +400,7 @@ type writeBatch struct {
 	err   error
 }
 
-func (b *writeBatch) flush() error {
+func (b *batchedWriter) flush() error {
 	if b.err != nil {
 		return b.err
 	}
@@ -424,7 +410,24 @@ func (b *writeBatch) flush() error {
 	return b.wb.Flush()
 }
 
-func (b *writeBatch) write(e *entry) error {
+func (b *bucket) writeEntries(w *batchedWriter, entries []*entry) (err error) {
+	for _, e := range entries {
+		e.m.Lock()
+		if !e.persisted {
+			err = w.write(e)
+		}
+		if e.markedForRemoval {
+			b.deleteEntry(e)
+		}
+		e.m.Unlock()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *batchedWriter) write(e *entry) error {
 	var buf bytes.Buffer
 	if err := b.c.codec.Serialize(&buf, e.key, e.value); err != nil {
 		b.err = fmt.Errorf("serialize: %w", err)

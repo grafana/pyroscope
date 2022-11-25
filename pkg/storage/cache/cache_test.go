@@ -53,56 +53,51 @@ var _ = Describe("cache", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			reg := prometheus.NewRegistry()
-			c= New(Config{
-			DB:     db,
-			Codec:  fakeCodec{},
-			Prefix: "p:",
-			Metrics: &Metrics{
-				MissesCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-					Name: "cache_test_miss",
-				}),
-				ReadsCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-					Name: "storage_test_read",
-				}),
-				DBWrites: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-					Name: "storage_test_write",
-				}),
-				DBReads: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-					Name: "storage_test_reads",
-				}),
-				EvictionsDuration: promauto.With(reg).NewSummary(prometheus.SummaryOpts{
-					Name: "storage_test_evictions",
-				}),
-				WriteBackDuration: promauto.With(reg).NewSummary(prometheus.SummaryOpts{
-					Name: "storage_test_write_back",
-				}),
-			},})
+			c = New(Config{
+				DB:     db,
+				Codec:  fakeCodec{},
+				Prefix: "p:",
+				Metrics: &Metrics{
+					MissesCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+						Name: "cache_test_miss",
+					}),
+					ReadsCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+						Name: "storage_test_read",
+					}),
+					DBWrites: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+						Name: "storage_test_write",
+					}),
+					DBReads: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+						Name: "storage_test_reads",
+					}),
+					EvictionsDuration: promauto.With(reg).NewSummary(prometheus.SummaryOpts{
+						Name: "storage_test_evictions",
+					}),
+					WriteBackDuration: promauto.With(reg).NewSummary(prometheus.SummaryOpts{
+						Name: "storage_test_write_back",
+					}),
+				}})
 		})
 	})
 
 	It("works properly", func() {
-		done := make(chan interface{})
-		go func() {
-			for i := 0; i < 200; i++ {
-				c.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
-			}
+		for i := 0; i < 200; i++ {
+			c.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
+		}
 
-			v, err := c.GetOrCreate("foo-199")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(v).To(Equal("bar-199"))
+		v, err := c.GetOrCreate("foo-199")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v).To(Equal("bar-199"))
 
-			v, err = c.GetOrCreate("foo-1")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(v).To(Equal("bar-1"))
+		v, err = c.GetOrCreate("foo-1")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v).To(Equal("bar-1"))
 
-			v, err = c.GetOrCreate("foo-1234")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(v).To(Equal(fakeCodecEmptyStub))
-			c.Flush()
-
-			close(done)
-		}()
-		Eventually(done, 3).Should(BeClosed())
+		v, err = c.GetOrCreate("foo-1234")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v).To(Equal(fakeCodecEmptyStub))
+		err = c.Flush()
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("discard prefix", func() {
@@ -110,7 +105,7 @@ var _ = Describe("cache", func() {
 			const (
 				prefixToDelete = "0:"
 				prefixToKeep   = "1:"
-				n              = 5 * defaultBatchSize
+				n              = 10 << 10
 			)
 
 			for i := 0; i < n; i++ {
@@ -130,7 +125,7 @@ var _ = Describe("cache", func() {
 			_, ok = c.Lookup(k)
 			Expect(ok).To(BeTrue())
 
-			Expect(c.DiscardPrefix(prefixToDelete)).ToNot(HaveOccurred())
+			Expect(c.DeletePrefix(prefixToDelete)).ToNot(HaveOccurred())
 
 			v, err = c.GetOrCreate(k)
 			Expect(err).ToNot(HaveOccurred())

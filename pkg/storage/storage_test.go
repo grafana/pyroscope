@@ -370,6 +370,7 @@ var _ = Describe("persistence", func() {
 					Key:       appKey,
 				})
 				Expect(err).ToNot(HaveOccurred())
+				Expect(o2).ToNot(BeNil())
 				Expect(o2.Tree).ToNot(BeNil())
 				Expect(o2.Tree.String()).To(Equal(tree.String()))
 				Expect(s2.Close()).ToNot(HaveOccurred())

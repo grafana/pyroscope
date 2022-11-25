@@ -19,7 +19,7 @@ func (s *Storage) Delete(_ context.Context, di *DeleteInput) error {
 
 func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 	sk := k.SegmentKey()
-	if err := s.trees.DiscardPrefix(sk); err != nil {
+	if err := s.trees.DeletePrefix(sk); err != nil {
 		return err
 	}
 	for key, value := range k.Labels() {
@@ -177,12 +177,12 @@ func (s *Storage) DeleteApp(_ context.Context, appname string) error {
 	appWithCurlyBrackets := appname + "{"
 
 	s.logger.Debugf("deleting trees with prefix %s\n", appWithCurlyBrackets)
-	if err = s.trees.DiscardPrefix(appWithCurlyBrackets); err != nil {
+	if err = s.trees.DeletePrefix(appWithCurlyBrackets); err != nil {
 		return err
 	}
 
 	s.logger.Debugf("deleting segments with prefix %s\n", appWithCurlyBrackets)
-	if err = s.segments.DiscardPrefix(appWithCurlyBrackets); err != nil {
+	if err = s.segments.DeletePrefix(appWithCurlyBrackets); err != nil {
 		return err
 	}
 
