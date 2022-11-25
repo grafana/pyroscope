@@ -8,15 +8,22 @@ import (
 const multiplier = 1000
 
 type rubyGenerator struct {
-	functions []string
 }
 
 func newRubyGenerator() *rubyGenerator {
 	return &rubyGenerator{}
 }
 
-func (r *rubyGenerator) function(name string, nodes []*node) {
+func (r *rubyGenerator) newFile(name string) {
+
+}
+
+func (r *rubyGenerator) function(name string, nodes []*node) string {
 	cases := []string{}
+
+	if len(nodes) > 1000 {
+		nodes = nodes[:1000]
+	}
 
 	for _, n := range nodes {
 		delegations := []string{}
@@ -28,30 +35,38 @@ func (r *rubyGenerator) function(name string, nodes []*node) {
       %s`, n.key, n.self*multiplier, strings.Join(delegations, "\n      ")))
 	}
 
-	r.functions = append(r.functions, fmt.Sprintf(`
+	return fmt.Sprintf(`
 def %s(val)
 	i = 0
   case val
   %s
   end
 end
-`, name, strings.Join(cases, "\n  ")))
+`, name, strings.Join(cases, "\n  "))
 }
 
-func (r *rubyGenerator) program(mainKey string) string {
+func (r *rubyGenerator) program(mainKey string, requires []string) string {
+	newRequires := []string{}
+	for _, r := range requires {
+		if r != "main.rb" {
+			newRequires = append(newRequires, fmt.Sprintf(`require_relative "./%s"`, r))
+		}
+	}
+
 	return fmt.Sprintf(`
 
-require "pyroscope"
+	require "pyroscope"
+%s
+
 
 Pyroscope.configure do |config|
   config.app_name = ENV["PYROSCOPE_APPLICATION_NAME"] || "synthesized-ruby-code"
   config.server_address = ENV["PYROSCOPE_SERVER_ADDRESS"] || "http://localhost:4040"
 end
 
-%s
 while true
   main(%s)
 end
 
-`, strings.Join(r.functions, "\n"), mainKey)
+`, strings.Join(newRequires, "\n"), mainKey)
 }

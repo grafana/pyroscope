@@ -15,8 +15,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
-
-	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 )
 
 var sessionMutex sync.Mutex
@@ -26,13 +24,6 @@ var session *agent.ProfileSession
 func Start(applicationName *C.char, spyName *C.char, serverAddress *C.char, authToken *C.char, sampleRate C.int, withSubprocesses C.int, logLevel *C.char) int {
 	sessionMutex.Lock()
 	defer sessionMutex.Unlock()
-
-	pyspy.Blocking = false
-
-	if err := performOSChecks(); pyspy.Blocking && err != nil {
-		logger.Errorf("error happened when starting profiling session: %v", err)
-		return -1
-	}
 
 	address := C.GoString(serverAddress)
 	// Override the address to use when the environment variable is defined.

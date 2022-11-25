@@ -35,3 +35,6 @@ func main() {
 
 	fmt.Println(must.NotError(synth.GenerateCode(t, "ruby")))
 }
+
+// to run this:
+// rm -rf examples/ruby/simple2/* && go run ./scripts/synth/main.go cpu.pprof | tee git.patch | git apply --directory examples/ruby/simple2

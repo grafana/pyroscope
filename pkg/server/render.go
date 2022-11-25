@@ -269,5 +269,5 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
 
-	return expectFormats(p.format)
+	return nil
 }

@@ -4,17 +4,17 @@ import (
 	"strconv"
 )
 
-type keyNamesGenerator struct {
+type keyNamesSanitizer struct {
 	mapping map[string]string
 }
 
-func newKeyNamesGenerator() *keyNamesGenerator {
-	return &keyNamesGenerator{
+func newKeyNamesSanitizer() *keyNamesSanitizer {
+	return &keyNamesSanitizer{
 		mapping: make(map[string]string),
 	}
 }
 
-func (f *keyNamesGenerator) key(name string) string {
+func (f *keyNamesSanitizer) sanitize(name string) string {
 	if _, ok := f.mapping[name]; !ok {
 		f.mapping[name] = strconv.Itoa(len(f.mapping))
 	}
