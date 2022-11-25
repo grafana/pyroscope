@@ -88,7 +88,7 @@ func (rh *RenderDiffHandler) parseDiffQueryParams(r *http.Request, p *diffParams
 	}
 
 	p.Format = v.Get("format")
-	return expectFormats(p.Format)
+	return nil
 }
 
 func (ctrl *Controller) renderDiffHandler() http.HandlerFunc {
