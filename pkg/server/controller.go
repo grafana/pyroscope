@@ -582,15 +582,6 @@ func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
 	}
 }
 
-func expectFormats(format string) error {
-	switch format {
-	case "json", "pprof", "collapsed", "html", "":
-		return nil
-	default:
-		return errUnknownFormat
-	}
-}
-
 func (ctrl *Controller) logginMiddleware(next http.Handler) http.Handler {
 	if ctrl.config.LogLevel == "debug" {
 		// log to Stdout using Apache Common Log Format

@@ -20,6 +20,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"github.com/pyroscope-io/pyroscope/pkg/synth"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
@@ -32,6 +33,7 @@ var (
 
 type renderParams struct {
 	format   string
+	lang     string
 	maxNodes int
 	gi       *storage.GetInput
 
@@ -105,11 +107,6 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := expectFormats(p.format); err != nil {
-		rh.httpUtils.WriteInvalidParameterError(r, w, errUnknownFormat)
-		return
-	}
-
 	out, err := rh.storage.Get(r.Context(), p.gi)
 	var appName string
 	if p.gi.Key != nil {
@@ -169,6 +166,14 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			rh.httpUtils.WriteInternalServerError(r, w, err, "failed to serialize data")
 		}
+	case "code":
+		code, err := synth.GenerateCode(out.Tree, p.lang)
+		if err == nil {
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte(code))
+		} else {
+			rh.httpUtils.WriteInternalServerError(r, w, err, "failed to serialize data")
+		}
 	case "collapsed":
 		collapsed := out.Tree.Collapsed()
 		rh.httpUtils.WriteResponseFile(r, w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
@@ -192,6 +197,8 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			rh.httpUtils.WriteJSONEncodeError(r, w, err)
 			return
 		}
+	default:
+		rh.httpUtils.WriteInvalidParameterError(r, w, errUnknownFormat)
 	}
 }
 
@@ -227,6 +234,7 @@ func (rh *RenderHandler) renderParametersFromRequest(r *http.Request, p *renderP
 
 	k := v.Get("name")
 	q := v.Get("query")
+	p.lang = v.Get("lang")
 	p.gi.GroupBy = v.Get("groupBy")
 
 	switch {
