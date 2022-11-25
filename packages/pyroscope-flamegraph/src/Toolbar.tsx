@@ -273,15 +273,17 @@ const Toolbar = memo(
                 </div>
               ))}
               {collapsedItemsNumber !== 0 && (
-                <button
-                  onClick={handleMoreClick}
-                  className={cx({
-                    [styles.moreButton]: true,
-                    [styles.active]: !isCollapsed,
-                  })}
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} />
-                </button>
+                <Tooltip placement="top" title="More button">
+                  <button
+                    onClick={handleMoreClick}
+                    className={cx({
+                      [styles.moreButton]: true,
+                      [styles.active]: !isCollapsed,
+                    })}
+                    >
+                    <FontAwesomeIcon icon={faEllipsisV} />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
