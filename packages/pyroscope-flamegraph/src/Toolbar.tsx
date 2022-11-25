@@ -206,7 +206,8 @@ const Toolbar = memo(
               />
             </>
           ),
-          width: TOOLBAR_SQUARE_WIDTH * 4,
+          // sandwich view is hidden in diff view
+          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3),
         }
       : null;
     const exportDataItem = isValidElement(ExportData)
@@ -272,7 +273,13 @@ const Toolbar = memo(
                 </div>
               ))}
               {collapsedItemsNumber !== 0 && (
-                <button onClick={handleMoreClick} className={styles.moreButton}>
+                <button
+                  onClick={handleMoreClick}
+                  className={cx({
+                    [styles.moreButton]: true,
+                    [styles.active]: !isCollapsed,
+                  })}
+                >
                   <FontAwesomeIcon icon={faEllipsisV} />
                 </button>
               )}
