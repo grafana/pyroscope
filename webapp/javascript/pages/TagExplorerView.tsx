@@ -670,6 +670,12 @@ function ExploreHeader({
     handleGroupByTagValueChange(e.value);
   };
 
+  useEffect(() => {
+    if (tagKeys.length && !selectedTag) {
+      handleGroupByTagChange(tagKeys[0]);
+    }
+  }, [tagKeys, selectedTag]);
+
   return (
     <div className={styles.header} data-testid="explore-header">
       <span className={styles.title}>{appName.unwrapOr('')}</span>
