@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"time"
 
 	"github.com/grafana/dskit/flagext"
@@ -90,9 +91,12 @@ func (c *ScrapeConfig) Validate() error {
 	if c.Scheme == "" {
 		c.Scheme = defaults.Scheme
 	}
-	if c.ProfilingConfig == nil || c.ProfilingConfig.PprofConfig == nil {
+	switch {
+	case c.ProfilingConfig == nil:
 		c.ProfilingConfig = defaults.ProfilingConfig
-	} else {
+	case c.ProfilingConfig.PprofConfig == nil:
+		c.ProfilingConfig.PprofConfig = defaults.ProfilingConfig.PprofConfig
+	default:
 		for pt, pc := range defaults.ProfilingConfig.PprofConfig {
 			if c.ProfilingConfig.PprofConfig[pt] == nil {
 				c.ProfilingConfig.PprofConfig[pt] = pc
@@ -105,6 +109,12 @@ func (c *ScrapeConfig) Validate() error {
 			if c.ProfilingConfig.PprofConfig[pt].Path == "" {
 				c.ProfilingConfig.PprofConfig[pt].Path = pc.Path
 			}
+		}
+	}
+	// If path prefix is specified, add to PprofConfig path
+	if c.ProfilingConfig.PprofPrefix != "" {
+		for pt := range c.ProfilingConfig.PprofConfig {
+			c.ProfilingConfig.PprofConfig[pt].Path = filepath.Join(c.ProfilingConfig.PprofPrefix, c.ProfilingConfig.PprofConfig[pt].Path)
 		}
 	}
 
