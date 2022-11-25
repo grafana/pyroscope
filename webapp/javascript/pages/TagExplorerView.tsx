@@ -331,7 +331,7 @@ function TagExplorerView() {
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
           <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
-            {type === 'loading' ? (
+            {type === 'loading' || type === 'reloading' ? (
               <LoadingSpinner />
             ) : (
               <TimelineChartWrapper

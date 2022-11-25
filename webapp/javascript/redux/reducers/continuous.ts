@@ -337,7 +337,7 @@ export const continuousSlice = createSlice({
     /*******************************/
 
     builder.addCase(fetchTagExplorerView.pending, (state) => {
-      switch (state.diffView.type) {
+      switch (state.tagExplorerView.type) {
         // if we are fetching but there's already data
         // it's considered a 'reload'
         case 'reloading':
@@ -379,7 +379,7 @@ export const continuousSlice = createSlice({
       state.tagExplorerView = {
         ...state.tagExplorerView,
         activeTagProfile: action.payload.profile,
-        type: 'loaded',
+        type: state.tagExplorerView.type,
       };
     });
 
