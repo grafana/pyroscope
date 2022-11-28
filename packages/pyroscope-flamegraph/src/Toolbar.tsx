@@ -48,8 +48,8 @@ const calculateCollapsedItems = (
 ) => {
   const availableToolbarItemsWidth =
     collapsedItemsNumber === 0
-      ? clientWidth - QUERY_INPUT_WIDTH
-      : clientWidth - QUERY_INPUT_WIDTH - MORE_BUTTON_WIDTH;
+      ? clientWidth - QUERY_INPUT_WIDTH - 5
+      : clientWidth - QUERY_INPUT_WIDTH - MORE_BUTTON_WIDTH - 5;
 
   let collapsedItems = 0;
   let visibleItemsWidth = 0;
