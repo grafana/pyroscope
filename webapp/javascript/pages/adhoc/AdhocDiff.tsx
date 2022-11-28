@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import 'react-dom';
-
 import { Maybe } from '@webapp/util/fp';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import { Profile } from '@pyroscope/models/src';
 import FileList from '@webapp/components/FileList';
-import 'react-tabs/style/react-tabs.css';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@webapp/components/ExportData';
 import {
@@ -22,6 +19,7 @@ import {
   uploadFile,
 } from '@webapp/redux/reducers/adhoc';
 import useColorMode from '@webapp/hooks/colorMode.hook';
+import { Tabs, Tab, TabPanel } from '@webapp/ui/Tabs';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 import FileUploader from './components/FileUploader';
@@ -98,73 +96,67 @@ function AdhocDiff() {
         >
           <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs
-              selectedIndex={tabIndexLeft}
-              onSelect={(index) => setTabIndexLeft(index)}
+              value={tabIndexLeft}
+              onChange={(e, value) => setTabIndexLeft(value)}
             >
-              <TabList>
-                <Tab>Upload</Tab>
-                <Tab>Pyroscope data</Tab>
-              </TabList>
-              <TabPanel>
-                <FileUploader
+              <Tab label="Upload" />
+              <Tab label="Pyroscope data" />
+            </Tabs>
+            <TabPanel visible={tabIndexLeft === 0}>
+              <FileUploader
+                className={adhocStyles.tabPanel}
+                setFile={async ({ file, spyName, units }) => {
+                  await dispatch(
+                    uploadFile({ file, spyName, units, side: 'left' })
+                  );
+                  setTabIndexLeft(1);
+                }}
+              />
+            </TabPanel>
+            <TabPanel visible={tabIndexLeft === 1}>
+              {profilesList.type === 'loaded' && (
+                <FileList
                   className={adhocStyles.tabPanel}
-                  setFile={async ({ file, spyName, units }) => {
-                    await dispatch(
-                      uploadFile({ file, spyName, units, side: 'left' })
-                    );
-                    setTabIndexLeft(1);
+                  profilesList={profilesList.profilesList}
+                  selectedProfileId={selectedProfileIdLeft}
+                  onProfileSelected={(id: string) => {
+                    dispatch(fetchProfile({ id, side: 'left' }));
                   }}
                 />
-              </TabPanel>
-              <TabPanel>
-                {profilesList.type === 'loaded' && (
-                  <FileList
-                    className={adhocStyles.tabPanel}
-                    profilesList={profilesList.profilesList}
-                    selectedProfileId={selectedProfileIdLeft}
-                    onProfileSelected={(id: string) => {
-                      dispatch(fetchProfile({ id, side: 'left' }));
-                    }}
-                  />
-                )}
-              </TabPanel>
-              <TabPanel />
-            </Tabs>
+              )}
+            </TabPanel>
           </Box>
           <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs
-              selectedIndex={tabIndexRight}
-              onSelect={(index) => setTabIndexRight(index)}
+              value={tabIndexRight}
+              onChange={(e, value) => setTabIndexRight(value)}
             >
-              <TabList>
-                <Tab>Upload</Tab>
-                <Tab>Pyroscope data</Tab>
-              </TabList>
-              <TabPanel>
-                <FileUploader
+              <Tab label="Upload" />
+              <Tab label="Pyroscope data" />
+            </Tabs>
+            <TabPanel visible={tabIndexRight === 0}>
+              <FileUploader
+                className={adhocStyles.tabPanel}
+                setFile={async ({ file, spyName, units }) => {
+                  await dispatch(
+                    uploadFile({ file, spyName, units, side: 'right' })
+                  );
+                  setTabIndexRight(1);
+                }}
+              />
+            </TabPanel>
+            <TabPanel visible={tabIndexRight === 1}>
+              {profilesList.type === 'loaded' && (
+                <FileList
                   className={adhocStyles.tabPanel}
-                  setFile={async ({ file, spyName, units }) => {
-                    await dispatch(
-                      uploadFile({ file, spyName, units, side: 'right' })
-                    );
-                    setTabIndexRight(1);
+                  profilesList={profilesList.profilesList}
+                  selectedProfileId={selectedProfileIdRight}
+                  onProfileSelected={(id: string) => {
+                    dispatch(fetchProfile({ id, side: 'right' }));
                   }}
                 />
-              </TabPanel>
-              <TabPanel>
-                {profilesList.type === 'loaded' && (
-                  <FileList
-                    className={adhocStyles.tabPanel}
-                    profilesList={profilesList.profilesList}
-                    selectedProfileId={selectedProfileIdRight}
-                    onProfileSelected={(id: string) => {
-                      dispatch(fetchProfile({ id, side: 'right' }));
-                    }}
-                  />
-                )}
-              </TabPanel>
-              <TabPanel />
-            </Tabs>
+              )}
+            </TabPanel>
           </Box>
         </div>
         <Box>{flamegraph(diffProfile, exportToFlamegraphDotComFn)}</Box>
