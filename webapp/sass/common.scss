@@ -85,6 +85,13 @@ tt {
     }
   }
 
+  &.flamegraph-table-doubles th,
+  &.flamegraph-table-doubles td {
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
+  }
+
   .symbol-name {
     font-size: 14px;
     font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;

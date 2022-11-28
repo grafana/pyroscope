@@ -1,5 +1,6 @@
 import React, { useRef, RefObject, CSSProperties } from 'react';
 import type Color from 'color';
+import cl from 'classnames';
 import type { Maybe } from 'true-myth';
 import { doubleFF, singleFF, Flamebearer } from '@pyroscope/models/src';
 // until ui is moved to its own package this should do it
@@ -232,7 +233,7 @@ function Table({
       {...tableSortProps}
       tableBodyRef={tableBodyRef}
       table={table}
-      className="flamegraph-table"
+      className={cl('flamegraph-table', { 'flamegraph-table-doubles': isDoubles })}
     />
   );
 }
