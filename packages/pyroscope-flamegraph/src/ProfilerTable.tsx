@@ -233,7 +233,9 @@ function Table({
       {...tableSortProps}
       tableBodyRef={tableBodyRef}
       table={table}
-      className={cl('flamegraph-table', { 'flamegraph-table-doubles': isDoubles })}
+      className={cl('flamegraph-table', {
+        'flamegraph-table-doubles': isDoubles,
+      })}
     />
   );
 }
