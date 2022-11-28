@@ -53,26 +53,26 @@ $buttonHeight: 37px;
   }
 }
 
-.viewModeDropdownButton {
-  min-width: 114px;
-  margin: 0 2px;
-  white-space: nowrap;
-}
-
 .fitModeButton {
   @extend .toggleViewButton;
 }
 
 .collapseNodeButton {
+  min-width: initial;
+  width: 40px;
   height: $buttonHeight;
   margin: 0 2px;
-  padding: 0 5px;
+  padding: 0;
   background-color: transparent;
   border-color: transparent;
 }
 
 .resetViewButton {
   @extend .collapseNodeButton;
+  width: 40px;
+  min-width: initial;
+  margin: 0 2px;
+  padding: 0;
 }
 
 .dropdownMenuItem {
@@ -114,13 +114,14 @@ $buttonHeight: 37px;
   padding: 0 5px;
   height: 35px;
 
-  &.active {
-    color: var(--ps-button-switch-bg-highlight);
+  &.active,
+  &.active:hover {
+    background-color: var(--ps-fl-toolbar-btn-bg);
   }
-
+  
   &:hover {
-    cursor: pointer;
     background-color: var(--ps-ui-element-bg-highlight);
+    cursor: pointer;
   }
 }
 

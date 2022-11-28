@@ -200,7 +200,6 @@ const Toolbar = memo(
               <Divider />
               <ViewSection
                 flamegraphType={flamegraphType}
-                showMode={showMode}
                 view={view}
                 updateView={updateView}
               />
@@ -273,14 +272,14 @@ const Toolbar = memo(
                 </div>
               ))}
               {collapsedItemsNumber !== 0 && (
-                <Tooltip placement="top" title="More button">
+                <Tooltip placement="top" title="More">
                   <button
                     onClick={handleMoreClick}
                     className={cx({
                       [styles.moreButton]: true,
                       [styles.active]: !isCollapsed,
                     })}
-                    >
+                  >
                     <FontAwesomeIcon icon={faEllipsisV} />
                   </button>
                 </Tooltip>
@@ -346,17 +345,15 @@ function ResetView({
 }) {
   return (
     <Tooltip placement="top" title="Reset View">
-      <div>
-        <Button
-          id="reset"
-          disabled={!isFlamegraphDirty}
-          onClick={reset}
-          className={styles.resetViewButton}
-          aria-label="Reset View"
-        >
-          <FontAwesomeIcon icon={faUndo} />
-        </Button>
-      </div>
+      <Button
+        id="reset"
+        disabled={!isFlamegraphDirty}
+        onClick={reset}
+        className={styles.resetViewButton}
+        aria-label="Reset View"
+      >
+        <FontAwesomeIcon icon={faUndo} />
+      </Button>
     </Tooltip>
   );
 }
@@ -434,6 +431,7 @@ function FitMode({
     <>
       <Tooltip placement="top" title={texts['HEAD']}>
         <Button
+          data-testid="head-first-button"
           onClick={() => updateFitMode('HEAD')}
           className={cx({
             [styles.fitModeButton]: true,
@@ -445,6 +443,7 @@ function FitMode({
       </Tooltip>
       <Tooltip placement="top" title={texts['TAIL']}>
         <Button
+          data-testid="tail-first-button"
           onClick={() => updateFitMode('TAIL')}
           className={cx({
             [styles.fitModeButton]: true,
@@ -497,72 +496,31 @@ const getViewOptions = (
 function ViewSection({
   view,
   updateView,
-  showMode,
   flamegraphType,
 }: {
-  showMode: ShowModeType;
   updateView: ProfileHeaderProps['updateView'];
   view: ProfileHeaderProps['view'];
   flamegraphType: ProfileHeaderProps['flamegraphType'];
 }) {
   const options = getViewOptions(flamegraphType);
 
-  const dropdownMenuItems = options.map((mode) => (
-    <MenuItem key={mode.value} value={mode.value}>
-      <div className={styles.dropdownMenuItem} data-testid={mode.value}>
-        {mode.label}
-        {view === mode.value ? <CheckIcon /> : null}
-      </div>
-    </MenuItem>
-  ));
-
-  const ViewSelect = (
-    <Tooltip placement="top" title="View Mode">
-      <div>
-        <Dropdown
-          label="View Mode"
-          ariaLabel="View Mode"
-          value={options.find((i) => i.value === view)?.label}
-          onItemClick={(event) => updateView(event.value)}
-          align="end"
-          menuButtonClassName={styles.viewModeDropdownButton}
-        >
-          {dropdownMenuItems}
-        </Dropdown>
-      </div>
-    </Tooltip>
+  return (
+    <div className={styles.viewType}>
+      {options.map(({ label, value, Icon }) => (
+        <Tooltip key={value} placement="top" title={label}>
+          <Button
+            onClick={() => updateView(value)}
+            className={cx({
+              [styles.toggleViewButton]: true,
+              selected: view === value,
+            })}
+          >
+            <Icon />
+          </Button>
+        </Tooltip>
+      ))}
+    </div>
   );
-
-  const ViewButtons = options.map(({ label, value, Icon }) => (
-    <Tooltip key={value} placement="top" title={label}>
-      <Button
-        onClick={() => updateView(value)}
-        className={cx({
-          [styles.toggleViewButton]: true,
-          selected: view === value,
-        })}
-      >
-        <Icon />
-      </Button>
-    </Tooltip>
-  ));
-
-  const decideWhatToShow = () => {
-    switch (showMode) {
-      case 'small': {
-        return ViewSelect;
-      }
-      case 'large': {
-        return ViewButtons;
-      }
-
-      default: {
-        throw new Error(`Invalid option: '${showMode}'`);
-      }
-    }
-  };
-
-  return <div className={styles.viewType}>{decideWhatToShow()}</div>;
 }
 
 export default Toolbar;
