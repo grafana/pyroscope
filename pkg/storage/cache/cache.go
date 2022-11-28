@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -84,14 +86,14 @@ type listEntry struct {
 }
 
 const (
-	defaultCacheBuckets    = 8
+	defaultMaxCacheBuckets = 32
 	defaultCacheBucketSize = 1 << 10
 )
 
 func New(c Config) *Cache {
 	buckets := c.Buckets
 	if buckets == 0 {
-		buckets = defaultCacheBuckets
+		buckets = int(math.Max(float64(runtime.NumCPU()*8), float64(defaultMaxCacheBuckets)))
 	}
 	v := &Cache{
 		db:      c.DB,
