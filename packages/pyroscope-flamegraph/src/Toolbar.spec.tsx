@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from 'true-myth';
-import Toolbar, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './Toolbar';
+import Toolbar from './Toolbar';
 import { HeadMode, TailMode } from './fitMode/fitMode';
 
 // since 'react-debounce-input' uses lodash.debounce under the hood
@@ -13,51 +13,25 @@ jest.mock('lodash.debounce', () =>
   })
 );
 
-function setWindowSize(s: 'small' | 'large') {
-  const boundingClientRect = {
-    x: 0,
-    y: 0,
-    bottom: 0,
-    right: 0,
-    toJSON: () => {},
-    height: 0,
-    top: 0,
-    left: 0,
-  };
-
-  switch (s) {
-    case 'large': {
-      // https://github.com/jsdom/jsdom/issues/653#issuecomment-606323844
-      window.HTMLElement.prototype.getBoundingClientRect = function () {
-        return {
-          ...boundingClientRect,
-          width: TOOLBAR_MODE_WIDTH_THRESHOLD,
-        };
-      };
-      break;
-    }
-    case 'small': {
-      // https://github.com/jsdom/jsdom/issues/653#issuecomment-606323844
-      window.HTMLElement.prototype.getBoundingClientRect = function () {
-        return {
-          ...boundingClientRect,
-          width: TOOLBAR_MODE_WIDTH_THRESHOLD - 1,
-        };
-      };
-      break;
-    }
-
-    default: {
-      throw new Error('Wrong value');
-    }
-  }
-}
-
 describe('ProfileHeader', () => {
-  it('shifts between visualization modes', () => {
-    setWindowSize('large');
+  beforeAll(() => {
+    window.HTMLElement.prototype.getBoundingClientRect = function () {
+      return {
+        x: 0,
+        y: 0,
+        bottom: 0,
+        right: 0,
+        toJSON: () => { },
+        height: 0,
+        top: 0,
+        left: 0,
+        width: 900,
+      };
+    };
+  });
 
-    const { asFragment, rerender } = render(
+  it('should render toolbar correctly', () => {
+    const { asFragment } = render(
       <Toolbar
         view="both"
         flamegraphType="single"
@@ -73,28 +47,7 @@ describe('ProfileHeader', () => {
       />
     );
 
-    expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'large');
-    expect(asFragment()).toMatchSnapshot();
-
-    setWindowSize('small');
-
-    rerender(
-      <Toolbar
-        view="both"
-        flamegraphType="single"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={() => {}}
-        fitMode={TailMode}
-        updateView={() => {}}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-        highlightQuery=""
-      />
-    );
-
-    expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'small');
+    expect(screen.getByRole('toolbar')).toBeInTheDocument();
     expect(asFragment()).toMatchSnapshot();
   });
 
@@ -204,15 +157,13 @@ describe('ProfileHeader', () => {
     });
 
     it('updates to HEAD first', () => {
-      screen.getByRole('button', { name: 'Fit Mode' }).click();
-      screen.getByRole('menuitem', { name: /Head/i }).click();
+      screen.getByRole('button', { name: 'Head first' }).click();
 
       expect(updateFitMode).toHaveBeenCalledWith(HeadMode);
     });
 
     it('updates to TAIL first', () => {
-      screen.getByRole('button', { name: 'Fit Mode' }).click();
-      screen.getByRole('menuitem', { name: /Tail/i }).click();
+      screen.getByRole('button', { name: 'Tail first' }).click();
 
       expect(updateFitMode).toHaveBeenCalledWith(TailMode);
     });

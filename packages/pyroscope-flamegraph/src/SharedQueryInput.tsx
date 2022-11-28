@@ -5,10 +5,9 @@ import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import Input from '@pyroscope/webapp/javascript/ui/Input';
 import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import styles from './SharedQueryInput.module.scss';
-import type { ProfileHeaderProps, ShowModeType } from './Toolbar';
+import type { ProfileHeaderProps } from './Toolbar';
 
 interface SharedQueryProps {
-  showMode: ShowModeType;
   onHighlightChange: ProfileHeaderProps['handleSearchChange'];
   highlightQuery: ProfileHeaderProps['highlightQuery'];
   sharedQuery: ProfileHeaderProps['sharedQuery'];
@@ -27,7 +26,6 @@ const usePreviousSyncEnabled = (syncEnabled?: string | boolean) => {
 
 const SharedQueryInput = ({
   onHighlightChange,
-  showMode,
   highlightQuery,
   sharedQuery,
   width,
@@ -81,9 +79,9 @@ const SharedQueryInput = ({
   const inputClassName = useMemo(
     () =>
       `${sharedQuery ? styles.searchWithSync : styles.search} ${
-        showMode === 'small' ? styles['search-small'] : ''
-      } ${sharedQuery?.syncEnabled ? styles['search-synced'] : ''}`,
-    [sharedQuery, showMode]
+        sharedQuery?.syncEnabled ? styles['search-synced'] : ''
+      }`,
+    [sharedQuery]
   );
 
   return (

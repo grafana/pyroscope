@@ -41,7 +41,7 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByRole('button').click();
+    cy.findByTestId('table').click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 

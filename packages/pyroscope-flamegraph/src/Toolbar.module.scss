@@ -75,28 +75,6 @@ $buttonHeight: 37px;
   padding: 0;
 }
 
-.dropdownMenuItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-
-  svg {
-    margin-left: 20px;
-  }
-}
-
-.fitModeDropdownSmall {
-  min-width: 70px;
-  margin: 0 2px;
-  height: $buttonHeight;
-}
-
-.fitModeDropdownLarge {
-  min-width: 100px;
-  margin: 0;
-}
-
 .divider {
   width: 1px;
   height: 35px;

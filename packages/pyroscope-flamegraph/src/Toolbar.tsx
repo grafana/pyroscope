@@ -18,13 +18,11 @@ import useResizeObserver from '@react-hook/resize-observer';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Button from '@webapp/ui/Button';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
-import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
+import { FitModes } from './fitMode/fitMode';
 import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
-import CheckIcon from './FlameGraph/FlameGraphComponent/CheckIcon';
 import {
   TableIcon,
   TablePlusFlamegraphIcon,
@@ -37,15 +35,6 @@ import {
 import styles from './Toolbar.module.scss';
 
 const cx = classNames.bind(styles);
-
-export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
-
-export type ShowModeType = ReturnType<typeof useSizeMode>;
-
-// todo: remove this logic
-export const useSizeMode = () => {
-  return 'large';
-};
 
 const QUERY_INPUT_WIDTH = 175;
 // 4 is marginLeft(2px) + marginRight(2px). also we can simulate divider side margins here
@@ -83,8 +72,9 @@ const useMoreButton = (
 
   useLayoutEffect(() => {
     if (target.current) {
+      const { width } = target.current.getBoundingClientRect();
       const collapsedItems = calculateCollapsedItems(
-        target.current.clientWidth,
+        width,
         collapsedItemsNumber,
         toolbarItemsWidth
       );
@@ -97,8 +87,9 @@ const useMoreButton = (
   };
 
   useResizeObserver(target, (entry: ResizeObserverEntry) => {
+    const { width } = entry.target.getBoundingClientRect();
     const collapsedItems = calculateCollapsedItems(
-      entry.target.clientWidth,
+      width,
       collapsedItemsNumber,
       toolbarItemsWidth
     );
@@ -163,16 +154,11 @@ const Toolbar = memo(
     ExportData,
   }: ProfileHeaderProps) => {
     const toolbarRef = useRef<HTMLDivElement>(null);
-    const showMode = useSizeMode();
 
     const fitModeItem = {
       el: (
         <>
-          <FitMode
-            showMode={showMode}
-            fitMode={fitMode}
-            updateFitMode={updateFitMode}
-          />
+          <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
           <Divider />
         </>
       ),
@@ -252,12 +238,11 @@ const Toolbar = memo(
     );
 
     return (
-      <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
+      <div role="toolbar" ref={toolbarRef}>
         <div className={styles.navbar}>
           <div>
             <SharedQueryInput
               width={QUERY_INPUT_WIDTH}
-              showMode={showMode}
               onHighlightChange={handleSearchChange}
               highlightQuery={highlightQuery}
               sharedQuery={sharedQuery}
@@ -361,77 +346,16 @@ function ResetView({
 function FitMode({
   fitMode,
   updateFitMode,
-  showMode,
 }: {
-  showMode: ShowModeType;
   fitMode: ProfileHeaderProps['fitMode'];
   updateFitMode: ProfileHeaderProps['updateFitMode'];
 }) {
-  let texts = {
-    label: '',
-    [HeadMode]: '',
-    [TailMode]: '',
-  };
-  let menuButtonClassName = '';
-  switch (showMode) {
-    case 'small':
-      texts = {
-        label: 'Fit',
-        [HeadMode]: 'Head',
-        [TailMode]: 'Tail',
-      };
-      menuButtonClassName = styles.fitModeDropdownSmall;
-      break;
-    case 'large':
-      texts = {
-        label: 'Prefer to Fit',
-        [HeadMode]: 'Head first',
-        [TailMode]: 'Tail first',
-      };
-      menuButtonClassName = styles.fitModeDropdownLarge;
-      break;
-    default: {
-      throw new Error('Wrong mode');
-    }
-  }
-
-  const menuOptions = [HeadMode, TailMode] as FitModes[];
-  const menuItems = menuOptions.map((mode) => (
-    <MenuItem key={mode} value={mode}>
-      <div className={styles.dropdownMenuItem} data-testid={mode}>
-        {texts[mode]}
-        {fitMode === mode ? <CheckIcon /> : null}
-      </div>
-    </MenuItem>
-  ));
-
   const isSelected = (a: FitModes) => fitMode === a;
-
-  if (showMode === 'small') {
-    return (
-      <Tooltip placement="top" title="Fit Mode">
-        <div>
-          <Dropdown
-            label={texts.label}
-            ariaLabel="Fit Mode"
-            value={texts[fitMode]}
-            onItemClick={(event) =>
-              updateFitMode(event.value as typeof fitMode)
-            }
-            menuButtonClassName={menuButtonClassName}
-          >
-            {menuItems}
-          </Dropdown>
-        </div>
-      </Tooltip>
-    );
-  }
 
   return (
     <>
-      <Tooltip placement="top" title={texts['HEAD']}>
+      <Tooltip placement="top" title="Head first">
         <Button
-          data-testid="head-first-button"
           onClick={() => updateFitMode('HEAD')}
           className={cx({
             [styles.fitModeButton]: true,
@@ -441,9 +365,8 @@ function FitMode({
           <HeadFirstIcon />
         </Button>
       </Tooltip>
-      <Tooltip placement="top" title={texts['TAIL']}>
+      <Tooltip placement="top" title="Tail first">
         <Button
-          data-testid="tail-first-button"
           onClick={() => updateFitMode('TAIL')}
           className={cx({
             [styles.fitModeButton]: true,
