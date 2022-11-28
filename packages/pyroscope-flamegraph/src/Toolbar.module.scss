@@ -81,7 +81,7 @@ $buttonHeight: 37px;
   background-color: var(--ps-ui-border);
 }
 
-.itemsContainer, 
+.itemsContainer,
 .item {
   display: flex;
 }
@@ -96,7 +96,7 @@ $buttonHeight: 37px;
   &.active:hover {
     background-color: var(--ps-fl-toolbar-btn-bg);
   }
-  
+
   &:hover {
     background-color: var(--ps-ui-element-bg-highlight);
     cursor: pointer;
