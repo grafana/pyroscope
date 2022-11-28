@@ -315,8 +315,9 @@ func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (err error) {
 	entries := make([]*entry, 0, len(b.values)/4)
 	for _, e := range b.values {
 		e.m.Lock()
-		if e.lastAccessTime < evictBefore {
-			e.markedForRemoval = true
+		e.markedForRemoval = e.lastAccessTime < evictBefore
+		if !e.persisted || e.markedForRemoval {
+			entries = append(entries, e)
 		}
 		e.m.Unlock()
 	}
@@ -328,15 +329,16 @@ func (b *bucket) writeEntries(w *batchedWriter, entries []*entry) (err error) {
 	for _, e := range entries {
 		e.m.Lock()
 		if !e.persisted {
-			err = w.write(e)
+			if err = w.write(e); err != nil {
+				e.m.Unlock()
+				return err
+			}
+			e.persisted = true
 		}
 		if e.markedForRemoval {
 			b.deleteEntry(e)
 		}
 		e.m.Unlock()
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
