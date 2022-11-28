@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.4...@pyroscope/webapp@1.66.5) (2022-11-28)
+
+
+### Bug Fixes
+
+* move sandwich view message to correct location ([#1767](https://github.com/pyroscope-io/pyroscope/issues/1767)) ([6720c3f](https://github.com/pyroscope-io/pyroscope/commit/6720c3f2de303b25f2031d8c09bbb330561ddde4))
+
+
+
+
+
 ## [1.66.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.3...@pyroscope/webapp@1.66.4) (2022-11-28)
 
 
