@@ -1,7 +1,6 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom';
 import { randomId } from '@webapp/util/randomId';
-import { PlotType } from './types';
 
 // Pre calculated once
 // TODO(eh-am): does this work with multiple contextMenus?
@@ -19,7 +18,7 @@ export interface ContextMenuProps {
 }
 
 (function ($: JQueryStatic) {
-  function init(plot: jquery.flot.plot & jquery.flot.plotOptions & PlotType) {
+  function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
     const placeholder = plot.getPlaceholder();
 
     function onClick(
@@ -52,11 +51,11 @@ export interface ContextMenuProps {
     // Register events and shutdown
     // It's important to bind/unbind to the SAME element
     // Since a plugin may be register/unregistered multiple times due to react re-rendering
-    plot.hooks.bindEvents.push(function () {
+    plot.hooks!.bindEvents!.push(function () {
       placeholder.bind('plotclick', onClick);
     });
 
-    plot.hooks.shutdown.push(function () {
+    plot.hooks!.shutdown!.push(function () {
       placeholder.unbind('plotclick', onClick);
 
       const container = inject($);

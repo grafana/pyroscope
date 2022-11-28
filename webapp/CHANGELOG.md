@@ -3,6 +3,55 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.0...@pyroscope/webapp@1.66.1) (2022-11-23)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix dropdown menu opening ([#1755](https://github.com/pyroscope-io/pyroscope/issues/1755)) ([0b1acef](https://github.com/pyroscope-io/pyroscope/commit/0b1acef9c5d5a2a268f952a529d12f784d257842))
+
+
+
+
+
+# [1.66.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.4...@pyroscope/webapp@1.66.0) (2022-11-22)
+
+
+### Features
+
+* **webapp:** add tooltip to main timeline in single view ([#1742](https://github.com/pyroscope-io/pyroscope/issues/1742)) ([508946c](https://github.com/pyroscope-io/pyroscope/commit/508946cf034d2f9aedae03c71429fc05d313897d))
+
+
+
+
+
+## [1.65.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.3...@pyroscope/webapp@1.65.4) (2022-11-21)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.65.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.2...@pyroscope/webapp@1.65.3) (2022-11-21)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.65.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.1...@pyroscope/webapp@1.65.2) (2022-11-21)
+
+
+### Bug Fixes
+
+* tag explorer loading spinner ([#1748](https://github.com/pyroscope-io/pyroscope/issues/1748)) ([c1c83c2](https://github.com/pyroscope-io/pyroscope/commit/c1c83c290997b5b93e86ce7f7c29eaa49d809ee7))
+
+
+
+
+
 ## [1.65.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.65.0...@pyroscope/webapp@1.65.1) (2022-11-21)
 
 **Note:** Version bump only for package @pyroscope/webapp

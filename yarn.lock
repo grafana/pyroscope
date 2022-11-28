@@ -4859,12 +4859,13 @@
     regenerator-runtime "^0.13.7"
     resolve-from "^5.0.0"
 
-"@szhsin/react-menu@^1.10.1":
-  version "1.11.0"
-  resolved "https://registry.yarnpkg.com/@szhsin/react-menu/-/react-menu-1.11.0.tgz#3b4929d5cf5bb676eac3dc962da3029080b82bc2"
-  integrity sha512-kaW/IpcokmyVwX7WGe6ijQI/xQDw5nQXUKyiioy40dm5gt45+Lo7cqGVUoy7Qj8275Q9tgN6hcazWX/DCcYUfQ==
+"@szhsin/react-menu@3.3.0":
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/@szhsin/react-menu/-/react-menu-3.3.0.tgz#66b921b31938a665b665f80e24d9ca2800360c45"
+  integrity sha512-GZfPLey2ZSVDaRtALuqH611cSM8QBujztYqLDqrqbWkTCwXrdob9G8PaBapBR/5hyW6dqDKJzFfcthZE3/iMpg==
   dependencies:
     prop-types "^15.7.2"
+    react-transition-state "^1.1.5"
 
 "@szmarczak/http-timer@^4.0.0":
   version "4.0.6"
@@ -19019,6 +19020,11 @@ react-transition-group@^4.4.5:
     dom-helpers "^5.0.1"
     loose-envify "^1.4.0"
     prop-types "^15.6.2"
+
+react-transition-state@^1.1.5:
+  version "1.1.5"
+  resolved "https://registry.yarnpkg.com/react-transition-state/-/react-transition-state-1.1.5.tgz#22accee21d0011b1d0245be24b6262ae67f494c3"
+  integrity sha512-ITY2mZqc2dWG2eitJkYNdcSFW8aKeOlkL2A/vowRrLL8GH3J6Re/SpD/BLvQzrVOTqjsP0b5S9N10vgNNzwMUQ==
 
 react-universal-interface@^0.6.2:
   version "0.6.2"

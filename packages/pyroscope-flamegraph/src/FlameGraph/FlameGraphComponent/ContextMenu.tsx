@@ -1,5 +1,6 @@
+/* eslint-disable react/jsx-props-no-spreading, import/no-extraneous-dependencies */
 import React from 'react';
-import { ControlledMenu, useMenuState } from '@szhsin/react-menu';
+import { ControlledMenu, useMenuState } from '@webapp/ui/Menu';
 import styles from './ContextMenu.module.scss';
 
 type xyToMenuItems = (x: number, y: number) => JSX.Element[];
@@ -19,7 +20,7 @@ export interface ContextMenuProps {
 }
 
 export default function ContextMenu(props: ContextMenuProps) {
-  const { openMenu, closeMenu, ...menuProps } = useMenuState(false);
+  const [menuProps, toggleMenu] = useMenuState({ transition: true });
   const [anchorPoint, setAnchorPoint] = React.useState({ x: 0, y: 0 });
   const { canvasRef } = props;
   const [menuItems, setMenuItems] = React.useState<JSX.Element[]>([]);
@@ -30,13 +31,13 @@ export default function ContextMenu(props: ContextMenuProps) {
   } = props;
 
   const onClose = () => {
-    closeMenu();
+    toggleMenu(false);
 
     onCloseCallback();
   };
 
   React.useEffect(() => {
-    closeMenu();
+    toggleMenu(false);
 
     // use closure to "cache" the current canvas reference
     // so that when cleaning up, it points to a valid canvas
@@ -52,15 +53,13 @@ export default function ContextMenu(props: ContextMenuProps) {
       const items = xyToMenuItems(e.offsetX, e.offsetY);
       setMenuItems(items);
 
-      //      console.log('set menu items', items);
-
       // TODO
       // if the menu becomes too large, it may overflow to outside the screen
       const x = e.clientX;
       const y = e.clientY + 20;
 
       setAnchorPoint({ x, y });
-      openMenu();
+      toggleMenu(true);
 
       onOpenCallback(e.offsetX, e.offsetY);
     };
@@ -75,10 +74,8 @@ export default function ContextMenu(props: ContextMenuProps) {
 
   return (
     <ControlledMenu
+      {...menuProps}
       className={styles.dummy}
-      menuItemFocus={menuProps.menuItemFocus}
-      isMounted={menuProps.isMounted}
-      isOpen={menuProps.isOpen}
       anchorPoint={anchorPoint}
       onClose={onClose}
     >

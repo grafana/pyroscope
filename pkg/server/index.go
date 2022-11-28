@@ -21,6 +21,7 @@ type Flags struct {
 	SignupEnabled                   bool `json:"signupEnabled"`
 	ExportToFlamegraphDotComEnabled bool `json:"exportToFlamegraphDotComEnabled"`
 	IsAuthRequired                  bool `json:"isAuthRequired"`
+	ExemplarsPageEnabled            bool `json:"exemplarsPageEnabled"`
 }
 
 type IndexHandlerConfig struct {
@@ -49,6 +50,7 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 			SignupEnabled:                   ctrl.config.Auth.Internal.SignupEnabled,
 			ExportToFlamegraphDotComEnabled: !ctrl.config.DisableExportToFlamegraphDotCom,
 			IsAuthRequired:                  ctrl.isAuthRequired(),
+			ExemplarsPageEnabled:            ctrl.config.EnableExperimentalExemplarsPage,
 		},
 		BaseURL: ctrl.config.BaseURL,
 	}
