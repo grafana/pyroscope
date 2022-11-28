@@ -180,7 +180,12 @@ function TagExplorerView() {
     }
   }, [query]);
 
-  const { groupByTag, groupByTagValue, type } = tagExplorerView;
+  const {
+    groupByTag,
+    groupByTagValue,
+    groupsLoadingType,
+    activeTagProfileLoadingType,
+  } = tagExplorerView;
 
   useEffect(() => {
     if (from && until && query && groupByTagValue) {
@@ -202,7 +207,7 @@ function TagExplorerView() {
     groupsData: TimelineGroupData[];
     activeTagProfile?: Profile;
   } => {
-    switch (tagExplorerView.type) {
+    switch (tagExplorerView.groupsLoadingType) {
       case 'loaded':
       case 'reloading':
         const groups = Object.entries(tagExplorerView.groups).reduce(
@@ -218,10 +223,10 @@ function TagExplorerView() {
           [] as TimelineGroupData[]
         );
 
-        if (groups.length > 0) {
+        if (groups.length > 0 && tagExplorerView?.activeTagProfile) {
           return {
             groupsData: groups,
-            activeTagProfile: tagExplorerView?.activeTagProfile,
+            activeTagProfile: tagExplorerView.activeTagProfile,
           };
         }
 
@@ -311,6 +316,13 @@ function TagExplorerView() {
       activeTagProfile.metadata.units
     );
 
+  const dataLoading =
+    groupsLoadingType === 'loading' ||
+    groupsLoadingType === 'reloading' ||
+    activeTagProfileLoadingType === 'loading';
+
+  console.log('dataLoading', dataLoading);
+
   return (
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
@@ -331,7 +343,7 @@ function TagExplorerView() {
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
           <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
-            {type === 'loading' || type === 'reloading' ? (
+            {dataLoading ? (
               <LoadingSpinner />
             ) : (
               <TimelineChartWrapper
@@ -387,7 +399,7 @@ function TagExplorerView() {
               groupByTagValue={groupByTagValue}
               groupsData={groups}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
-              isLoading={type === 'loading'}
+              isLoading={dataLoading}
               activeTagProfile={activeTagProfile}
               formatter={formatter}
             />
@@ -395,7 +407,7 @@ function TagExplorerView() {
         </CollapseBox>
         <Box>
           <div className={styles.flamegraphWrapper}>
-            {type === 'loading' ? (
+            {dataLoading ? (
               <LoadingSpinner />
             ) : (
               <FlamegraphRenderer

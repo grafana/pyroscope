@@ -38,7 +38,12 @@ export const selectIsLoadingData = (state: RootState) => {
     // Exemplars
     loadingStates.includes(state.tracing.exemplarsSingleView.type) ||
     // Tag Explorer
-    loadingStates.includes(state.continuous.tagExplorerView.type)
+    loadingStates.includes(
+      state.continuous.tagExplorerView.groupsLoadingType
+    ) ||
+    loadingStates.includes(
+      state.continuous.tagExplorerView.activeTagProfileLoadingType
+    )
   );
 };
 

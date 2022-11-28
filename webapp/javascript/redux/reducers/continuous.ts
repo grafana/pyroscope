@@ -40,7 +40,8 @@ const initialState: ContinuousState = {
   tagExplorerView: {
     groupByTag: '',
     groupByTagValue: '',
-    type: 'pristine',
+    groupsLoadingType: 'pristine',
+    activeTagProfileLoadingType: 'pristine',
     groups: {},
   },
   newAnnotation: { type: 'pristine' },
@@ -337,14 +338,14 @@ export const continuousSlice = createSlice({
     /*******************************/
 
     builder.addCase(fetchTagExplorerView.pending, (state) => {
-      switch (state.tagExplorerView.type) {
+      switch (state.tagExplorerView.groupsLoadingType) {
         // if we are fetching but there's already data
         // it's considered a 'reload'
         case 'reloading':
         case 'loaded': {
           state.tagExplorerView = {
             ...state.tagExplorerView,
-            type: 'reloading',
+            groupsLoadingType: 'reloading',
           };
           break;
         }
@@ -352,7 +353,7 @@ export const continuousSlice = createSlice({
         default: {
           state.tagExplorerView = {
             ...state.tagExplorerView,
-            type: 'loading',
+            groupsLoadingType: 'loading',
           };
         }
       }
@@ -362,8 +363,7 @@ export const continuousSlice = createSlice({
       state.tagExplorerView = {
         ...state.tagExplorerView,
         ...action.payload,
-        activeTagProfile: action.payload.profile,
-        type: 'loaded',
+        groupsLoadingType: 'loaded',
       };
     });
 
@@ -373,13 +373,20 @@ export const continuousSlice = createSlice({
     /*      Tag Explorer View Profile      */
     /***************************************/
 
-    builder.addCase(fetchTagExplorerViewProfile.pending, () => {});
+    builder.addCase(fetchTagExplorerViewProfile.pending, (state) => {
+      state.tagExplorerView = {
+        ...state.tagExplorerView,
+        activeTagProfileLoadingType: state.tagExplorerView.activeTagProfile
+          ? 'reloading'
+          : 'loading',
+      };
+    });
 
     builder.addCase(fetchTagExplorerViewProfile.fulfilled, (state, action) => {
       state.tagExplorerView = {
         ...state.tagExplorerView,
         activeTagProfile: action.payload.profile,
-        type: state.tagExplorerView.type,
+        activeTagProfileLoadingType: 'loaded',
       };
     });
 
