@@ -237,7 +237,7 @@ func (c *Cache) bucket(k []byte) *bucket {
 	return c.buckets[xxhash.Sum64(k)%uint64(len(c.buckets))]
 }
 
-func (c *Cache) Flush() error { return c.Evict(1) }
+func (c *Cache) Flush() error { return c.writeBack(true) }
 
 // Evict performs cache evictions. The difference between Evict and WriteBack is that evictions happen when cache grows
 // above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
@@ -290,6 +290,10 @@ func (c *Cache) evictBucket(percent float64, b *bucket) (err error) {
 }
 
 func (c *Cache) WriteBack() error {
+	return c.writeBack(false)
+}
+
+func (c *Cache) writeBack(force bool) error {
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(c.metrics.WriteBackDuration.Observe))
 	defer timer.ObserveDuration()
 	var evictBefore int64
@@ -300,13 +304,13 @@ func (c *Cache) WriteBack() error {
 	for _, b := range c.buckets {
 		b := b
 		g.Go(func() error {
-			return c.writeBackBucket(evictBefore, b)
+			return c.writeBackBucket(evictBefore, b, force)
 		})
 	}
 	return g.Wait()
 }
 
-func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (err error) {
+func (c *Cache) writeBackBucket(evictBefore int64, b *bucket, force bool) (err error) {
 	w := newBatchedWriter(c)
 	defer func() {
 		err = w.flush()
@@ -316,7 +320,7 @@ func (c *Cache) writeBackBucket(evictBefore int64, b *bucket) (err error) {
 	for _, e := range b.values {
 		e.m.Lock()
 		e.markedForRemoval = e.lastAccessTime < evictBefore
-		if !e.persisted || e.markedForRemoval {
+		if force || !e.persisted || e.markedForRemoval {
 			entries = append(entries, e)
 		}
 		e.m.Unlock()
