@@ -202,7 +202,9 @@ function ComparisonApp() {
               timezone={timezone}
               title={
                 <ChartTitle
-                  titleKey={isSidesHasSameUnits ? leftSide.metadata.units : ''}
+                  titleKey={
+                    isSidesHasSameUnits ? leftSide.metadata.units : undefined
+                  }
                 />
               }
               selectionType="double"
