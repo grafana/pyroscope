@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.3...@pyroscope/webapp@1.66.4) (2022-11-28)
+
+
+### Bug Fixes
+
+* make table rows only take one line ([#1765](https://github.com/pyroscope-io/pyroscope/issues/1765)) ([6d33d42](https://github.com/pyroscope-io/pyroscope/commit/6d33d426b4f94833059fea5ca995bb5aa9dd022a))
+
+
+
+
+
 ## [1.66.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.2...@pyroscope/webapp@1.66.3) (2022-11-28)
 
 **Note:** Version bump only for package @pyroscope/webapp
