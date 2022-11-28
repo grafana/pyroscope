@@ -90,6 +90,12 @@ tt {
     width: 130px;
     min-width: 130px;
     max-width: 130px;
+
+    &:first-child {
+      width: auto;
+      min-width: auto;
+      max-width: auto;
+    }
   }
 
   .symbol-name {
