@@ -71,13 +71,11 @@ type Metrics struct {
 }
 
 type entry struct {
-	m                sync.Mutex
-	key              string
-	value            interface{}
-	freqNode         *list.Element
-	persisted        bool
-	markedForRemoval bool
-	lastAccessTime   int64
+	key            string
+	value          interface{}
+	freqNode       *list.Element
+	persisted      bool
+	lastAccessTime int64
 }
 
 type listEntry struct {
@@ -158,9 +156,7 @@ func (c *Cache) get(b *bucket, key string) (v interface{}, err error) {
 	c.metrics.ReadsCounter.Inc()
 	e, ok := b.values[key]
 	if ok {
-		e.m.Lock()
 		b.increment(e)
-		e.m.Unlock()
 		return e.value, nil
 	}
 	c.metrics.MissesCounter.Inc()
@@ -261,37 +257,26 @@ func (c *Cache) evictBucket(percent float64, b *bucket) (err error) {
 		err = w.flush()
 	}()
 	b.m.Lock()
+	defer b.m.Unlock()
 	count := int(float64(b.len) * percent)
-	entries := make([]*entry, 0, len(b.values)/4)
-	for i := 0; i < count; {
-		place := b.freqs.Front()
-		if place == nil {
-			b.m.Unlock()
-			return nil
-		}
+	place := b.freqs.Front()
+	for i := 0; place != nil && i < count; place = b.freqs.Front() {
 		for e := range place.Value.(*listEntry).entries {
 			if i >= count {
 				break
 			}
-			e.m.Lock()
-			e.markedForRemoval = true
-			entries = append(entries, e)
-			e.m.Unlock()
-			i++
+			b.deleteEntry(e)
+			if !e.persisted {
+				if err = w.write(e); err != nil {
+					return err
+				}
+			}
 		}
 	}
-	b.m.Unlock()
-	// If the entry has been modified since b.m.Unlock() we leave
-	// it in the cache, even if it had to be evicted. The reason
-	// is that otherwise it will be loaded into memory again very
-	// likely, causing extra memory pressure the eviction mechanism
-	// is aimed to tackle.
-	return b.writeEntries(w, entries)
+	return nil
 }
 
-func (c *Cache) WriteBack() error {
-	return c.writeBack(false)
-}
+func (c *Cache) WriteBack() error { return c.writeBack(false) }
 
 func (c *Cache) writeBack(force bool) error {
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(c.metrics.WriteBackDuration.Observe))
@@ -316,33 +301,17 @@ func (c *Cache) writeBackBucket(evictBefore int64, b *bucket, force bool) (err e
 		err = w.flush()
 	}()
 	b.m.Lock()
-	entries := make([]*entry, 0, len(b.values)/4)
+	defer b.m.Unlock()
 	for _, e := range b.values {
-		e.m.Lock()
-		e.markedForRemoval = e.lastAccessTime < evictBefore
-		if force || !e.persisted || e.markedForRemoval {
-			entries = append(entries, e)
-		}
-		e.m.Unlock()
-	}
-	b.m.Unlock()
-	return b.writeEntries(w, entries)
-}
-
-func (b *bucket) writeEntries(w *batchedWriter, entries []*entry) (err error) {
-	for _, e := range entries {
-		e.m.Lock()
-		if !e.persisted {
+		if !e.persisted || force {
 			if err = w.write(e); err != nil {
-				e.m.Unlock()
 				return err
 			}
 			e.persisted = true
 		}
-		if e.markedForRemoval {
+		if e.lastAccessTime < evictBefore {
 			b.deleteEntry(e)
 		}
-		e.m.Unlock()
 	}
 	return nil
 }
@@ -361,14 +330,11 @@ func (b *bucket) set(key string, value interface{}) {
 		e = new(entry)
 		b.len++
 	}
-	e.m.Lock()
 	e.key = key
 	e.value = value
 	e.persisted = false
-	e.markedForRemoval = false
 	b.values[key] = e
 	b.increment(e)
-	e.m.Unlock()
 }
 
 func (b *bucket) deleteEntry(e *entry) {
