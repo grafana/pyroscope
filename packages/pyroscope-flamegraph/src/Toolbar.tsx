@@ -509,6 +509,7 @@ function ViewSection({
       {options.map(({ label, value, Icon }) => (
         <Tooltip key={value} placement="top" title={label}>
           <Button
+            data-testid={value}
             onClick={() => updateView(value)}
             className={cx({
               [styles.toggleViewButton]: true,
