@@ -16,6 +16,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/valyala/bytebufferpool"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -405,14 +406,20 @@ func (b *batchedWriter) flush() error {
 	return b.wb.Flush()
 }
 
+var bufPool bytebufferpool.Pool
+
 func (b *batchedWriter) write(e *entry) error {
-	var buf bytes.Buffer // TODO(kolesnikovae): Pool?
-	if err := b.c.codec.Serialize(&buf, e.key, e.value); err != nil {
+	buf := bufPool.Get()
+	defer bufPool.Put(buf)
+	if err := b.c.codec.Serialize(buf, e.key, e.value); err != nil {
 		b.err = fmt.Errorf("serialize: %w", err)
 		return b.err
 	}
 	k := []byte(b.c.prefix + e.key)
-	v := buf.Bytes()
+	v := make([]byte, buf.Len())
+	// Note that the copy is required because badger DB
+	// references value bytes, and we use buffer pool.
+	copy(v, buf.Bytes())
 	if b.size+len(v) >= int(b.c.db.MaxBatchSize()) || b.count+1 >= int(b.c.db.MaxBatchCount()) {
 		if err := b.wb.Flush(); err != nil {
 			b.err = err
