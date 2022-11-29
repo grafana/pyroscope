@@ -8,6 +8,7 @@
   font-size: 12px;
   visibility: hidden;
   z-index: 2;
+  pointer-events: none;
 
   &.flamegraphDiffTooltip {
     width: 450px;
