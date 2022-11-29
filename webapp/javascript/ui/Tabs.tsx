@@ -10,14 +10,23 @@ import styles from './Tabs.module.scss';
 
 const Tabs = ({ children, value, onChange }: TabsProps) => {
   return (
-    <MuiTabs className={styles.tabs} value={value} onChange={onChange}>
+    <MuiTabs
+      TabIndicatorProps={{
+        hidden: true, // hide indicator
+      }}
+      className={styles.tabs}
+      value={value}
+      onChange={onChange}
+    >
       {children}
     </MuiTabs>
   );
 };
 
 const Tab = ({ label, ...rest }: TabProps) => {
-  return <MuiTab className={styles.tab} {...rest} label={label} />;
+  return (
+    <MuiTab disableRipple className={styles.tab} {...rest} label={label} />
+  );
 };
 
 const TabPanel = ({
