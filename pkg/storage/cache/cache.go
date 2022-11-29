@@ -123,10 +123,10 @@ func (c *Cache) Size() uint64 {
 	return uint64(v)
 }
 
-func (c *Cache) Put(key string, val interface{}) {
-	b := c.bucket([]byte(key))
+func (c *Cache) Put(k string, v interface{}) {
+	b := c.bucket([]byte(k))
 	b.m.Lock()
-	b.set(key, val)
+	b.set(k, v, false)
 	b.m.Unlock()
 }
 
@@ -150,7 +150,7 @@ func (c *Cache) GetOrCreate(key string) (interface{}, error) {
 		return v, nil
 	}
 	v = c.codec.New(key)
-	b.set(key, v)
+	b.set(key, v, false)
 	return v, nil
 }
 
@@ -183,7 +183,7 @@ func (c *Cache) get(b *bucket, key string) (v interface{}, err error) {
 	if v == nil {
 		return nil, nil
 	}
-	b.set(key, v)
+	b.set(key, v, true)
 	return v, nil
 }
 
@@ -261,17 +261,20 @@ func (c *Cache) evictBucket(percent float64, b *bucket) (err error) {
 	b.m.Lock()
 	defer b.m.Unlock()
 	count := int(float64(b.len) * percent)
-	place := b.freqs.Front()
-	for i := 0; place != nil && i < count; place = b.freqs.Front() {
-		for e := range place.Value.(*listEntry).entries {
-			if i >= count {
-				break
-			}
-			b.deleteEntry(e)
-			if !e.persisted {
-				if err = w.write(e); err != nil {
-					return err
+	for i := 0; i < count; {
+		if place := b.freqs.Front(); place != nil {
+			for e := range place.Value.(*listEntry).entries {
+				if i >= count {
+					return nil
 				}
+				if !e.persisted {
+					if err = w.write(e); err != nil {
+						return err
+					}
+					e.persisted = true
+				}
+				b.deleteEntry(e)
+				i++
 			}
 		}
 	}
@@ -326,7 +329,7 @@ func (b *bucket) remEntry(place *list.Element, e *entry) {
 	}
 }
 
-func (b *bucket) set(key string, value interface{}) {
+func (b *bucket) set(key string, value interface{}, persisted bool) {
 	e, ok := b.values[key]
 	if !ok {
 		e = new(entry)
@@ -334,7 +337,7 @@ func (b *bucket) set(key string, value interface{}) {
 	}
 	e.key = key
 	e.value = value
-	e.persisted = false
+	e.persisted = persisted
 	b.values[key] = e
 	b.increment(e)
 }
