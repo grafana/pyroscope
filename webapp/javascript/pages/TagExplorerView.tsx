@@ -396,7 +396,9 @@ function TagExplorerView() {
         <Box>
           <div className={styles.flamegraphWrapper}>
             {type === 'loading' ? (
-              <LoadingSpinner />
+              <div className={styles.loaderContainer}>
+                <LoadingSpinner />
+              </div>
             ) : (
               <FlamegraphRenderer
                 showCredit={false}

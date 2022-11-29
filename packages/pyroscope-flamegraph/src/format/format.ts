@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { Units } from '@pyroscope/models/src';
+import { Units } from '@pyroscope/models/src/units';
 
 export function numberWithCommas(x: number): string {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
