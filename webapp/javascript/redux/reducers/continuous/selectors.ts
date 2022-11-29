@@ -11,11 +11,9 @@ export const selectApplicationName = (state: RootState) => {
   return appName.map((q) => q.split('{')[0]).unwrapOrElse(() => '');
 };
 
-export const selectAppNamesState = (state: RootState) =>
-  state.continuous.appNames;
+export const selectAppNamesState = (state: RootState) => state.continuous.apps;
 export const selectAppNames = (state: RootState) => {
-  const sorted = [...state.continuous.appNames.data].sort();
-  return sorted;
+  return state.continuous.apps.data.map((a) => a.name).sort();
 };
 
 export const selectComparisonState = (state: RootState) =>

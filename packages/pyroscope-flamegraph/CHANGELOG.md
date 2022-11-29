@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.4...@pyroscope/flamegraph@0.32.5) (2022-11-28)
+
+
+### Bug Fixes
+
+* make table rows only take one line ([#1765](https://github.com/pyroscope-io/pyroscope/issues/1765)) ([6d33d42](https://github.com/pyroscope-io/pyroscope/commit/6d33d426b4f94833059fea5ca995bb5aa9dd022a))
+
+
+
+
+
+## [0.32.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.3...@pyroscope/flamegraph@0.32.4) (2022-11-28)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 ## [0.32.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.2...@pyroscope/flamegraph@0.32.3) (2022-11-23)
 
 

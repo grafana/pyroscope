@@ -1,7 +1,7 @@
 import type { Profile, Groups } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import type { Annotation } from '@webapp/models/annotation';
-import type { AppNames } from '@webapp/models/appNames';
+import type { App } from '@webapp/models/app';
 
 type NewAnnotationState =
   | {
@@ -111,10 +111,10 @@ export interface ContinuousState {
   newAnnotation: NewAnnotationState;
   tags: Tags;
 
-  appNames:
-    | { type: 'loaded'; data: AppNames }
-    | { type: 'reloading'; data: AppNames }
-    | { type: 'failed'; data: AppNames };
+  apps:
+    | { type: 'loaded'; data: App[] }
+    | { type: 'reloading'; data: App[] }
+    | { type: 'failed'; data: App[] };
 
   // Since both comparison and diff use the same timeline
   // Makes sense storing them separately

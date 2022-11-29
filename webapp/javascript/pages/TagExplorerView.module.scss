@@ -20,12 +20,15 @@ $pieChartWidth: 300px;
   .timelineWrapper,
   .flamegraphWrapper {
     min-height: 125px;
-    text-align: center;
 
     span[role='progressbar'] {
       display: inline-block;
       margin-top: 50px;
     }
+  }
+
+  .loaderContainer {
+    text-align: center;
   }
 
   .tableDescription {

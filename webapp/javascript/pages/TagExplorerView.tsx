@@ -344,7 +344,9 @@ function TagExplorerView() {
           />
           <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
             {dataLoading ? (
-              <LoadingSpinner />
+              <div className={styles.loaderContainer}>
+                <LoadingSpinner />
+              </div>
             ) : (
               <TimelineChartWrapper
                 selectionType="double"
@@ -408,7 +410,9 @@ function TagExplorerView() {
         <Box>
           <div className={styles.flamegraphWrapper}>
             {dataLoading ? (
-              <LoadingSpinner />
+              <div className={styles.loaderContainer}>
+                <LoadingSpinner />
+              </div>
             ) : (
               <FlamegraphRenderer
                 showCredit={false}
@@ -611,7 +615,14 @@ function Table({
   const table = {
     headRow,
     ...(isLoading
-      ? { type: 'not-filled' as const, value: <LoadingSpinner /> }
+      ? {
+          type: 'not-filled' as const,
+          value: (
+            <div className={styles.loaderContainer}>
+              <LoadingSpinner />
+            </div>
+          ),
+        }
       : { type: 'filled' as const, bodyRows }),
   };
 

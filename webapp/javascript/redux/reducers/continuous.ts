@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchAppNames } from '@webapp/services/appNames';
+import { fetchApps } from '@webapp/services/apps';
 import { Query } from '@webapp/models/query';
 import { defaultcomparisonPeriod } from '@webapp/components/SideTimelineComparator/periods';
 import { addNotification } from './notifications';
@@ -46,7 +46,7 @@ const initialState: ContinuousState = {
   },
   newAnnotation: { type: 'pristine' },
 
-  appNames: {
+  apps: {
     type: 'loaded',
     data: [],
   },
@@ -75,7 +75,7 @@ export const reloadAppNames = createAsyncThunk(
   'names/reloadAppNames',
   async (_, thunkAPI) => {
     // TODO, retries?
-    const res = await fetchAppNames();
+    const res = await fetchApps();
 
     if (res.isOk) {
       return Promise.resolve(res.value);
@@ -430,13 +430,13 @@ export const continuousSlice = createSlice({
     /*      App Names      */
     /***********************/
     builder.addCase(reloadAppNames.fulfilled, (state, action) => {
-      state.appNames = { type: 'loaded', data: action.payload };
+      state.apps = { type: 'loaded', data: action.payload };
     });
     builder.addCase(reloadAppNames.pending, (state) => {
-      state.appNames = { type: 'reloading', data: state.appNames.data };
+      state.apps = { type: 'reloading', data: state.apps.data };
     });
     builder.addCase(reloadAppNames.rejected, (state) => {
-      state.appNames = { type: 'failed', data: state.appNames.data };
+      state.apps = { type: 'failed', data: state.apps.data };
     });
 
     /*****************/

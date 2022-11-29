@@ -1,4 +1,4 @@
-import { Apps, appsModel } from '@webapp/models/app';
+import { App, appsModel } from '@webapp/models/app';
 import { Result } from '@webapp/util/fp';
 import type { ZodError } from 'zod';
 import type { RequestError } from './base';
@@ -9,15 +9,16 @@ export interface FetchAppsError {
 }
 
 export async function fetchApps(): Promise<
-  Result<Apps, RequestError | ZodError>
+  Result<App[], RequestError | ZodError>
 > {
   const response = await request('/api/apps');
 
   if (response.isOk) {
+    console.log(response);
     return parseResponse(response, appsModel);
   }
 
-  return Result.err<Apps, RequestError>(response.error);
+  return Result.err<App[], RequestError>(response.error);
 }
 
 export async function deleteApp(data: {
