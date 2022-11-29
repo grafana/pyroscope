@@ -20,7 +20,6 @@ import {
 import { fitIntoTableCell, FitModes } from './fitMode/fitMode';
 import { isMatch } from './search';
 import type { FlamegraphPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
-import styles from './ProfilerTable.module.scss';
 
 const zero = (v?: number) => v || 0;
 
@@ -443,7 +442,7 @@ export default function ProfilerTable({
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
   return (
-    <div className={styles.tableView} data-testid="table-view">
+    <div data-testid="table-view">
       <Table
         tableBodyRef={tableBodyRef}
         flamebearer={flamebearer}

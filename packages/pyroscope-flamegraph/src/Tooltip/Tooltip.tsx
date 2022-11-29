@@ -144,13 +144,9 @@ export function Tooltip({
   return (
     <div
       data-testid="tooltip"
-      className={clsx(
-        styles.tooltip,
-        {
-          [styles.flamegraphDiffTooltip]: content.tooltipData.length > 1,
-        },
-        'data-tooltip'
-      )}
+      className={clsx(styles.tooltip, {
+        [styles.flamegraphDiffTooltip]: content.tooltipData.length > 1,
+      })}
       style={style}
       ref={tooltipRef}
     >
