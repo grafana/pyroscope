@@ -250,6 +250,12 @@ const Toolbar = memo(
           </div>
           <div>
             <div className={styles.itemsContainer}>
+              {toolbarFilteredItems.visible.map((v, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <div key={i} className={styles.item} style={{ width: v.width }}>
+                  {v.el}
+                </div>
+              ))}
               {collapsedItemsNumber !== 0 && (
                 <Tooltip placement="top" title="More">
                   <button
@@ -263,12 +269,6 @@ const Toolbar = memo(
                   </button>
                 </Tooltip>
               )}
-              {toolbarFilteredItems.visible.map((v, i) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <div key={i} className={styles.item} style={{ width: v.width }}>
-                  {v.el}
-                </div>
-              ))}
             </div>
           </div>
           {!isCollapsed && (
