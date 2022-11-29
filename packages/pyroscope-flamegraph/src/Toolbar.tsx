@@ -53,7 +53,7 @@ const calculateCollapsedItems = (
 
   let collapsedItems = 0;
   let visibleItemsWidth = 0;
-  itemsW.forEach((v) => {
+  itemsW.reverse().forEach((v) => {
     visibleItemsWidth += v;
     if (availableToolbarItemsWidth <= visibleItemsWidth) {
       collapsedItems += 1;
@@ -223,8 +223,8 @@ const Toolbar = memo(
       useMoreButton(toolbarRef, toolbarItemsWidth);
 
     const toolbarFilteredItems = filteredToolbarItems.reduce(
-      (acc, v, i, arr) => {
-        const isHiddenItem = i > arr.length - 1 - collapsedItemsNumber;
+      (acc, v, i) => {
+        const isHiddenItem = i < collapsedItemsNumber;
 
         if (isHiddenItem) {
           acc.hidden.push(v);
@@ -250,13 +250,7 @@ const Toolbar = memo(
           </div>
           <div>
             <div className={styles.itemsContainer}>
-              {toolbarFilteredItems.visible.map((v, i) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <div key={i} className={styles.item} style={{ width: v.width }}>
-                  {v.el}
-                </div>
-              ))}
-              {collapsedItemsNumber !== 0 && (
+            {collapsedItemsNumber !== 0 && (
                 <Tooltip placement="top" title="More">
                   <button
                     onClick={handleMoreClick}
@@ -269,6 +263,12 @@ const Toolbar = memo(
                   </button>
                 </Tooltip>
               )}
+              {toolbarFilteredItems.visible.map((v, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <div key={i} className={styles.item} style={{ width: v.width }}>
+                  {v.el}
+                </div>
+              ))}
             </div>
           </div>
           {!isCollapsed && (
