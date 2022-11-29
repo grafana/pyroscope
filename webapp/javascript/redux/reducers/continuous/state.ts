@@ -25,14 +25,46 @@ type SingleView =
       annotations: Annotation[];
     };
 
-type TagExplorerView = {
-  groupsLoadingType: 'pristine' | 'loading' | 'loaded' | 'reloading';
-  groups: Groups;
+type TagExplorerView = GroupByType & GroupsLoadingType & ActiveProfileType;
+
+type GroupByType = {
   groupByTag: string;
   groupByTagValue: string;
-  activeTagProfile?: Profile;
-  activeTagProfileLoadingType: 'pristine' | 'loading' | 'loaded' | 'reloading';
 };
+
+type GroupsLoadingType =
+  | {
+      groupsLoadingType: 'pristine';
+      groups: Groups;
+    }
+  | {
+      groupsLoadingType: 'loading';
+      groups: Groups;
+    }
+  | {
+      groupsLoadingType: 'loaded';
+      groups: Groups;
+    }
+  | {
+      groupsLoadingType: 'reloading';
+      groups: Groups;
+    };
+
+type ActiveProfileType =
+  | {
+      activeTagProfileLoadingType: 'pristine';
+    }
+  | {
+      activeTagProfileLoadingType: 'loading';
+    }
+  | {
+      activeTagProfileLoadingType: 'loaded';
+      activeTagProfile: Profile;
+    }
+  | {
+      activeTagProfileLoadingType: 'reloading';
+      activeTagProfile: Profile;
+    };
 
 type ComparisonView = {
   left:

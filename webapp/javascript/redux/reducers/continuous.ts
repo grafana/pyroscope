@@ -374,12 +374,21 @@ export const continuousSlice = createSlice({
     /***************************************/
 
     builder.addCase(fetchTagExplorerViewProfile.pending, (state) => {
-      state.tagExplorerView = {
-        ...state.tagExplorerView,
-        activeTagProfileLoadingType: state.tagExplorerView.activeTagProfile
-          ? 'reloading'
-          : 'loading',
-      };
+      switch (state.tagExplorerView.activeTagProfileLoadingType) {
+        case 'loaded':
+        case 'reloading':
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            activeTagProfileLoadingType: 'reloading',
+          };
+          break;
+
+        default:
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            activeTagProfileLoadingType: 'loading',
+          };
+      }
     });
 
     builder.addCase(fetchTagExplorerViewProfile.fulfilled, (state, action) => {

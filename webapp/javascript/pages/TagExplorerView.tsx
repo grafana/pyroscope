@@ -223,7 +223,12 @@ function TagExplorerView() {
           [] as TimelineGroupData[]
         );
 
-        if (groups.length > 0 && tagExplorerView?.activeTagProfile) {
+        if (
+          groups.length > 0 &&
+          (activeTagProfileLoadingType === 'loaded' ||
+            activeTagProfileLoadingType === 'reloading') &&
+          tagExplorerView?.activeTagProfile
+        ) {
           return {
             groupsData: groups,
             activeTagProfile: tagExplorerView.activeTagProfile,
