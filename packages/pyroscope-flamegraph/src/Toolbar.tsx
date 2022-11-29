@@ -250,7 +250,7 @@ const Toolbar = memo(
           </div>
           <div>
             <div className={styles.itemsContainer}>
-            {collapsedItemsNumber !== 0 && (
+              {collapsedItemsNumber !== 0 && (
                 <Tooltip placement="top" title="More">
                   <button
                     onClick={handleMoreClick}
