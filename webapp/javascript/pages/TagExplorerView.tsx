@@ -321,8 +321,6 @@ function TagExplorerView() {
     groupsLoadingType === 'reloading' ||
     activeTagProfileLoadingType === 'loading';
 
-  console.log('dataLoading', dataLoading);
-
   return (
     <>
       <PageTitle title={formatTitle('Tag Explorer View', query)} />
