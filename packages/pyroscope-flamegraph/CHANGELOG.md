@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.5...@pyroscope/flamegraph@0.32.6) (2022-11-29)
+
+
+### Bug Fixes
+
+* **flamegraph:** Make table tooltip invisible when user not hovering on table ([#1749](https://github.com/pyroscope-io/pyroscope/issues/1749)) ([5210aa7](https://github.com/pyroscope-io/pyroscope/commit/5210aa72724f7ac2f2c639fe6584d565d7ae1b75))
+
+
+
+
+
 ## [0.32.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.4...@pyroscope/flamegraph@0.32.5) (2022-11-28)
 
 
