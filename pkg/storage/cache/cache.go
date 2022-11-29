@@ -87,14 +87,14 @@ type listEntry struct {
 }
 
 const (
-	defaultMaxCacheBuckets = 32
+	defaultMaxCacheBuckets = 1
 	defaultCacheBucketSize = 1 << 10
 )
 
 func New(c Config) *Cache {
 	buckets := c.Buckets
 	if buckets == 0 {
-		buckets = int(math.Max(float64(runtime.NumCPU()*8), float64(defaultMaxCacheBuckets)))
+		buckets = int(math.Max(float64(runtime.NumCPU()), float64(defaultMaxCacheBuckets)))
 	}
 	v := &Cache{
 		db:      c.DB,
@@ -125,14 +125,14 @@ func (c *Cache) Size() uint64 {
 }
 
 func (c *Cache) Put(k string, v interface{}) {
-	b := c.bucket([]byte(k))
+	b := c.bucket(k)
 	b.m.Lock()
 	b.set(k, v, false)
 	b.m.Unlock()
 }
 
 func (c *Cache) Lookup(key string) (interface{}, bool) {
-	b := c.bucket([]byte(key))
+	b := c.bucket(key)
 	b.m.Lock()
 	v, err := c.get(b, key)
 	b.m.Unlock()
@@ -140,7 +140,7 @@ func (c *Cache) Lookup(key string) (interface{}, bool) {
 }
 
 func (c *Cache) GetOrCreate(key string) (interface{}, error) {
-	b := c.bucket([]byte(key))
+	b := c.bucket(key)
 	b.m.Lock()
 	defer b.m.Unlock()
 	v, err := c.get(b, key)
@@ -151,7 +151,7 @@ func (c *Cache) GetOrCreate(key string) (interface{}, error) {
 		return v, nil
 	}
 	v = c.codec.New(key)
-	b.set(key, v, false)
+	b.set(key, v, true)
 	return v, nil
 }
 
@@ -174,22 +174,14 @@ func (c *Cache) get(b *bucket, key string) (v interface{}, err error) {
 			return err
 		})
 	})
-	switch {
-	case err == nil:
-	case errors.Is(err, badger.ErrKeyNotFound):
-		return nil, nil
-	default:
-		return nil, err
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		err = nil
 	}
-	if v == nil {
-		return nil, nil
-	}
-	b.set(key, v, true)
-	return v, nil
+	return v, err
 }
 
 func (c *Cache) Delete(key string) error {
-	b := c.bucket([]byte(key))
+	b := c.bucket(key)
 	b.m.Lock()
 	defer b.m.Unlock()
 	if e, ok := b.values[key]; ok {
@@ -201,7 +193,7 @@ func (c *Cache) Delete(key string) error {
 }
 
 func (c *Cache) Discard(key string) {
-	b := c.bucket([]byte(key))
+	b := c.bucket(key)
 	b.m.Lock()
 	if e, ok := b.values[key]; ok {
 		b.deleteEntry(e)
@@ -232,8 +224,8 @@ func (c *Cache) DiscardPrefix(prefix string) {
 	_ = g.Wait()
 }
 
-func (c *Cache) bucket(k []byte) *bucket {
-	return c.buckets[xxhash.Sum64(k)%uint64(len(c.buckets))]
+func (c *Cache) bucket(k string) *bucket {
+	return c.buckets[xxhash.Sum64String(k)%uint64(len(c.buckets))]
 }
 
 func (c *Cache) Flush() error { return c.writeBack(true) }
@@ -268,14 +260,15 @@ func (c *Cache) evictBucket(percent float64, b *bucket) (err error) {
 				if i >= count {
 					return nil
 				}
+				// Entry is evicted from memory even
+				// if it has not been stored on disk.
+				i++
+				b.deleteEntry(e)
 				if !e.persisted {
 					if err = w.write(e); err != nil {
 						return err
 					}
-					e.persisted = true
 				}
-				b.deleteEntry(e)
-				i++
 			}
 		}
 	}
