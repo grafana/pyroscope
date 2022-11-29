@@ -11,11 +11,9 @@ export const selectApplicationName = (state: RootState) => {
   return appName.map((q) => q.split('{')[0]).unwrapOrElse(() => '');
 };
 
-export const selectAppNamesState = (state: RootState) =>
-  state.continuous.appNames;
+export const selectAppNamesState = (state: RootState) => state.continuous.apps;
 export const selectAppNames = (state: RootState) => {
-  const sorted = [...state.continuous.appNames.data].sort();
-  return sorted;
+  return state.continuous.apps.data.map((a) => a.name).sort();
 };
 
 export const selectComparisonState = (state: RootState) =>
@@ -36,7 +34,9 @@ export const selectIsLoadingData = (state: RootState) => {
     loadingStates.includes(state.continuous.leftTimeline.type) ||
     loadingStates.includes(state.continuous.rightTimeline.type) ||
     // Exemplars
-    loadingStates.includes(state.tracing.exemplarsSingleView.type)
+    loadingStates.includes(state.tracing.exemplarsSingleView.type) ||
+    // Tag Explorer
+    loadingStates.includes(state.continuous.tagExplorerView.type)
   );
 };
 

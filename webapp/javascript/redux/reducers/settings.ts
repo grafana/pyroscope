@@ -1,7 +1,7 @@
 import { createSlice, combineReducers } from '@reduxjs/toolkit';
 import { Users, type User } from '@webapp/models/users';
 import { APIKey, APIKeys } from '@webapp/models/apikeys';
-import { Apps, type App } from '@webapp/models/app';
+import { App } from '@webapp/models/app';
 
 import {
   fetchUsers,
@@ -39,7 +39,7 @@ const apiKeysInitialState: DataWithStatus<APIKeys> = {
   data: undefined,
 };
 
-const appsInitialState: DataWithStatus<Apps> = {
+const appsInitialState: DataWithStatus<App[]> = {
   type: FetchStatus.pristine,
   data: undefined,
 };

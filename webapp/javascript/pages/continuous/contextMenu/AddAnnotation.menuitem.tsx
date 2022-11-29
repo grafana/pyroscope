@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
-import { MenuItem, applyStatics } from '@webapp/ui/Menu';
+import { MenuItem } from '@webapp/ui/Menu';
 import {
   Popover,
   PopoverBody,
@@ -101,10 +101,5 @@ function AddAnnotation(props: AddAnnotationProps) {
     </>
   );
 }
-
-// TODO: get rid of this in v3
-// https://szhsin.github.io/react-menu-v2/docs#utils-apply-statics
-// https://github.com/pyroscope-io/pyroscope/issues/1525
-applyStatics(MenuItem)(AddAnnotation);
 
 export default AddAnnotation;

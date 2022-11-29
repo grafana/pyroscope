@@ -1,4 +1,5 @@
 import { SpyName } from './spyName';
+import { Units } from './units';
 /**
  * @deprecated one should use the Profile model
  */
@@ -23,16 +24,8 @@ export type Flamebearer = {
    * Sample Rate, used in text information
    */
   sampleRate: number;
-  units:
-    | 'samples'
-    | 'objects'
-    | 'goroutines'
-    | 'bytes'
-    | 'lock_samples'
-    | 'lock_nanoseconds'
-    | 'trace_samples'
-    | 'exceptions'
-    | '';
+  units: Units;
+
   spyName: SpyName;
   // format: 'double' | 'single';
   //  leftTicks?: number;

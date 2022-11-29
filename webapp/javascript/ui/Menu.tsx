@@ -2,7 +2,8 @@ import {
   Menu,
   MenuItem,
   ControlledMenu,
-  applyStatics,
+  useMenuState,
 } from '@szhsin/react-menu';
+import type { ClickEvent } from '@szhsin/react-menu';
 
-export { ControlledMenu, Menu, MenuItem, applyStatics };
+export { ControlledMenu, Menu, MenuItem, useMenuState, ClickEvent };

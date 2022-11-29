@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "name": "pyroscope-oss",
   "private": true,
-  "version": "0.34.1",
+  "version": "0.35.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -180,7 +180,7 @@
     "@react-hook/resize-observer": "^1.2.4",
     "@react-hook/window-size": "^3.0.7",
     "@reduxjs/toolkit": "^1.6.2",
-    "@szhsin/react-menu": "^1.10.1",
+    "@szhsin/react-menu": "3.3.0",
     "@types/copy-webpack-plugin": "^6.0.0",
     "@types/react": "^17.0.0",
     "@types/react-notifications-component": "^3.1.1",
