@@ -14,7 +14,6 @@ export async function fetchApps(): Promise<
   const response = await request('/api/apps');
 
   if (response.isOk) {
-    console.log(response);
     return parseResponse(response, appsModel);
   }
 
