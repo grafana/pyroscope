@@ -197,7 +197,7 @@ const tableFormatDouble: {
   { sortable: 1, name: 'name', label: 'Location' },
   { sortable: 1, name: 'baseline', label: 'Baseline', default: true },
   { sortable: 1, name: 'comparison', label: 'Comparison' },
-  { sortable: 0, name: 'diff', label: 'Diff' },
+  { sortable: 1, name: 'diff', label: 'Diff' },
 ];
 
 function Table({
@@ -290,10 +290,23 @@ const getTableBody = ({
         );
         break;
       }
-      // todo: add sort for ProfileTable diff column
-      // case 'diff': {
-      //   break;
-      // }
+      case 'diff': {
+        sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
+          (a, b) => {
+            const totalDiffA = diffPercent(
+              ratioToPercent(a.totalLeft / a.leftTicks),
+              ratioToPercent(a.totalRght / a.rightTicks)
+            );
+            const totalDiffB = diffPercent(
+              ratioToPercent(b.totalLeft / b.leftTicks),
+              ratioToPercent(b.totalRght / b.rightTicks)
+            );
+
+            return m * (totalDiffA - totalDiffB);
+          }
+        );
+        break;
+      }
       default:
         sorted = tableBodyCells;
         break;
@@ -356,7 +369,7 @@ const getTableBody = ({
     }
 
     let diffValue = '';
-    if (!x.totalLeft) {
+    if (!x.totalLeft || totalDiff === Infinity) {
       // this is a new function
       diffValue = '(new)';
     } else if (!x.totalRght) {
