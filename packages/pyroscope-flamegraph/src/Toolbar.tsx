@@ -183,15 +183,15 @@ const Toolbar = memo(
     };
     const viewSectionItem = enableChangingDisplay
       ? {
-        el: (
-          <ViewSection
-            flamegraphType={flamegraphType}
-            view={view}
-            updateView={updateView}
-          />
+          el: (
+            <ViewSection
+              flamegraphType={flamegraphType}
+              view={view}
+              updateView={updateView}
+            />
           ),
           // sandwich view is hidden in diff view
-        width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3), // 1px is to display divider
+          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3), // 1px is to display divider
         }
       : null;
     const exportDataItem = isValidElement(ExportData)

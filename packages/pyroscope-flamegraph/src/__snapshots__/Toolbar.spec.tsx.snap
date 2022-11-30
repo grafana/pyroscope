@@ -133,7 +133,7 @@ exports[`ProfileHeader should render toolbar correctly 1`] = `
           </div>
           <div
             class="item"
-            style="width: 44px;"
+            style="width: 45px;"
           >
             <div
               aria-label="Collapse nodes above"
@@ -163,14 +163,14 @@ exports[`ProfileHeader should render toolbar correctly 1`] = `
                 </svg>
               </button>
             </div>
+            <div
+              class="divider"
+            />
           </div>
           <div
             class="item"
             style="width: 176px;"
           >
-            <div
-              class="divider"
-            />
             <div
               class="viewType"
             >
