@@ -292,7 +292,6 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-view')
         .findByTestId('tooltip')
         .should('not.be.visible');
-      cy.get('div.spinner-container.loaded');
 
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-view')
@@ -319,7 +318,6 @@ describe('basic test', () => {
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
         .should('not.be.visible');
-      cy.get('div.spinner-container.loaded');
 
       cy.findByTestId('table-view').trigger('mousemove', 150, 80);
       cy.findByTestId('table-view')
@@ -347,7 +345,6 @@ describe('basic test', () => {
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
         .should('not.be.visible');
-      cy.get('div.spinner-container.loaded');
 
       cy.findByTestId('table-view').trigger('mousemove', 150, 80);
       cy.findByTestId('table-view')

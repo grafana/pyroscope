@@ -92,8 +92,8 @@ const PieChart = ({
         id={id}
         options={options}
         data={data}
-        width={height}
-        height={width}
+        width={width}
+        height={height}
       />
     </div>
   );

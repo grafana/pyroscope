@@ -70,20 +70,6 @@ body {
   flex-direction: row;
 }
 
-.spinner-container {
-  margin: 0 10px;
-  visibility: hidden;
-
-  &.visible {
-    visibility: visible;
-  }
-}
-
-//.canvas-container {
-//  padding: 10px;
-//  width: 100%;
-//}
-
 body {
   // this is the width of GitHub README page. so we're targeting this width so that it looks good for demo gif
   min-width: 838px;
@@ -122,35 +108,6 @@ body {
 
 $pane-width: 6px;
 
-//.panes-wrapper {
-//
-//  .pane {
-////    flex: 1;
-//    //  margin: 0 $pane-width;
-//    //width: 50%;
-//
-////    .flamegraph-header {
-////      padding-bottom: 5px;
-////      display: flex;
-////      justify-content: space-between;
-////
-////      .row {
-////        display: flex;
-////        justify-content: center;
-////      }
-////    }
-//
-////    &.vertical-orientation {
-////      width: 100%;
-////      //padding: 10px;
-////    }
-//
-//    &.hidden {
-//      display: none;
-//    }
-//  }
-//}
-//
 .diff-instructions-wrapper {
   display: flex;
   gap: 15px;
