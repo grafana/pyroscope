@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.8...@pyroscope/webapp@1.66.9) (2022-11-30)
+
+
+### Bug Fixes
+
+* update tag explorer dropdown ([#1772](https://github.com/pyroscope-io/pyroscope/issues/1772)) ([e04abd7](https://github.com/pyroscope-io/pyroscope/commit/e04abd7704861ac4bc0b7d0d9a420c37ab628a7a))
+
+
+
+
+
 ## [1.66.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.7...@pyroscope/webapp@1.66.8) (2022-11-29)
 
 **Note:** Version bump only for package @pyroscope/webapp
