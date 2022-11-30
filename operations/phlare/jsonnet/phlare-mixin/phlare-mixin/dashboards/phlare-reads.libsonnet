@@ -3,7 +3,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
 (import 'dashboard-utils.libsonnet') {
   grafanaDashboards+: {
     local dashboards = self,
-    local http_route = '.*pyroscope.*|.*labelvalues.*|.*profiletypes.*|.*selectprofiles.*',
+    local http_route = '.*merge.*|.*series.*|.*type.*',
     'phlare-reads.json': {
                            local cfg = self,
 
