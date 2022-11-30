@@ -13,7 +13,6 @@ import TimelineChartWrapper, {
 } from '@webapp/components/TimelineChart/TimelineChartWrapper';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
 import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
-import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import TagsSelector from '@webapp/pages/tagExplorer/components/TagsSelector';
 import TableUI, { useTableSort, BodyRow } from '@webapp/ui/Table';
 import useColorMode from '@webapp/hooks/colorMode.hook';
@@ -38,6 +37,7 @@ import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
 import ExploreTooltip from '@webapp/components/TimelineChart/ExploreTooltip';
 import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
+import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
 import {
@@ -46,7 +46,6 @@ import {
   getTableIntegerSpaceLengthByColumn,
   formatValue,
 } from './formatTableData';
-
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
@@ -331,9 +330,7 @@ function TagExplorerView() {
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
           <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
-            {type === 'loading' ? (
-              <LoadingSpinner />
-            ) : (
+            <LoadingOverlay active={type === 'loading'}>
               <TimelineChartWrapper
                 selectionType="double"
                 mode="multiple"
@@ -360,7 +357,7 @@ function TagExplorerView() {
                   />
                 )}
               />
-            )}
+            </LoadingOverlay>
           </div>
         </Box>
         <CollapseBox
@@ -370,15 +367,11 @@ function TagExplorerView() {
         >
           <div className={styles.statisticsBox}>
             <div className={styles.pieChartWrapper}>
-              {groups?.length ? (
-                <TotalSamplesChart
-                  formatter={formatter}
-                  filteredGroupsData={groups}
-                  profile={activeTagProfile}
-                />
-              ) : (
-                <LoadingSpinner />
-              )}
+              <TotalSamplesChart
+                formatter={formatter}
+                filteredGroupsData={groups}
+                profile={activeTagProfile}
+              />
             </div>
             <Table
               appName={appName.unwrapOr('')}
@@ -395,11 +388,7 @@ function TagExplorerView() {
         </CollapseBox>
         <Box>
           <div className={styles.flamegraphWrapper}>
-            {type === 'loading' ? (
-              <div className={styles.loaderContainer}>
-                <LoadingSpinner />
-              </div>
-            ) : (
+            <LoadingOverlay active={type === 'loading'}>
               <FlamegraphRenderer
                 showCredit={false}
                 profile={activeTagProfile}
@@ -418,7 +407,7 @@ function TagExplorerView() {
                   )
                 }
               />
-            )}
+            </LoadingOverlay>
           </div>
         </Box>
       </div>
@@ -601,7 +590,7 @@ function Table({
   const table = {
     headRow,
     ...(isLoading
-      ? { type: 'not-filled' as const, value: <LoadingSpinner /> }
+      ? { type: 'not-filled' as const, value: <LoadingOverlay active /> }
       : { type: 'filled' as const, bodyRows }),
   };
 

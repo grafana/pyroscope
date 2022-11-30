@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactFlot from 'react-flot';
 import Color from 'color';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import TooltipWrapper, {
   ITooltipWrapperProps,
 } from '@webapp/components/TimelineChart/TooltipWrapper';
@@ -86,14 +87,22 @@ const PieChart = ({
       : null,
   };
 
+  if (!data.length) {
+    return (
+      <div style={{ width, height }} className={styles.chartSkeleton}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   return (
     <div className={styles.wrapper}>
       <ReactFlot
         id={id}
         options={options}
         data={data}
-        width={height}
-        height={width}
+        width={width}
+        height={height}
       />
     </div>
   );
