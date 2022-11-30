@@ -386,6 +386,7 @@ function TagExplorerView() {
                 formatter={formatter}
                 filteredGroupsData={groups}
                 profile={activeTagProfile}
+                isLoading={dataLoading}
               />
             </div>
             <Table
