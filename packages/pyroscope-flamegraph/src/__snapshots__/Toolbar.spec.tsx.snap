@@ -29,7 +29,7 @@ exports[`ProfileHeader should render toolbar correctly 1`] = `
         >
           <div
             class="item"
-            style="width: 88px;"
+            style="width: 93px;"
           >
             <button
               aria-label="Head first"
@@ -133,7 +133,7 @@ exports[`ProfileHeader should render toolbar correctly 1`] = `
           </div>
           <div
             class="item"
-            style="width: 45px;"
+            style="width: 49px;"
           >
             <div
               aria-label="Collapse nodes above"
