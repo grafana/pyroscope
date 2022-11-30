@@ -330,15 +330,17 @@ function ResetView({
 }) {
   return (
     <Tooltip placement="top" title="Reset View">
-      <Button
-        id="reset"
-        disabled={!isFlamegraphDirty}
-        onClick={reset}
-        className={styles.resetViewButton}
-        aria-label="Reset View"
-      >
-        <FontAwesomeIcon icon={faUndo} />
-      </Button>
+      <span>
+        <Button
+          id="reset"
+          disabled={!isFlamegraphDirty}
+          onClick={reset}
+          className={styles.resetViewButton}
+          aria-label="Reset View"
+        >
+          <FontAwesomeIcon icon={faUndo} />
+        </Button>
+      </span>
     </Tooltip>
   );
 }
