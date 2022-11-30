@@ -202,7 +202,7 @@ func captureResponseBody(data []byte, bodyBytesLeft int, buf *bytes.Buffer) int 
 	}
 	if len(data) > bodyBytesLeft {
 		buf.Write(data[:bodyBytesLeft])
-		io.WriteString(buf, "...")
+		_, _ = io.WriteString(buf, "...")
 		return 0
 	} else {
 		buf.Write(data)
