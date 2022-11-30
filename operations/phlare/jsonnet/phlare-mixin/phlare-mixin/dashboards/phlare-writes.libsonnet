@@ -83,6 +83,30 @@ local utils = import 'mixin-utils/utils.libsonnet';
                                 dashboards['phlare-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*')] + dashboards['phlare-writes.json'].clusterMatchers,
                               )
                             )
+                          )
+                          .addRow(
+                            local long_desc = |||
+                              Ingesters maintain a local Head per-tenant. Each
+                              Head maintains the active profiling series; Then
+                              the head gets periodically compacted into a block
+                              on disk. This panel shows the estimated size of
+                              the Head in memory for all ingesters.
+                            |||;
+                            $.row('Ingester - Head')
+                            .addPanel(
+                              local short_desc = 'Head size in bytes per table type';
+                              $.panel(short_desc) +
+                              $.panelDescription(short_desc, long_desc,) +
+                              $.queryPanel('sum(phlare_head_size_bytes{%s}) by (type)' % dashboards['phlare-writes.json'].ingesterSelector, '{{type}}') +
+                              { yaxes: $.yaxes('bytes') },
+                            )
+                            .addPanel(
+                              local short_desc = 'Head size in bytes per pod';
+                              $.panel(short_desc) +
+                              $.panelDescription(short_desc, long_desc,) +
+                              $.queryPanel('sum(phlare_head_size_bytes{%s}) by (instance)' % dashboards['phlare-writes.json'].ingesterSelector, '{{instance}}') +
+                              { yaxes: $.yaxes('bytes') },
+                            )
                           ),
   },
 }
