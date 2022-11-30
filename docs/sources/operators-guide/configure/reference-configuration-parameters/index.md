@@ -177,7 +177,7 @@ tracing:
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
-  # filesystem.
+  # filesystem, cos.
   # CLI flag: -storage.backend
   [backend: <string> | default = "filesystem"]
 
@@ -196,6 +196,69 @@ storage:
   # The swift_storage_backend block configures the connection to OpenStack
   # Object Storage (Swift) object storage backend.
   [swift: <swift_storage_backend>]
+
+  cos:
+    # COS bucket name
+    # CLI flag: -storage.cos.bucket
+    [bucket: <string> | default = ""]
+
+    # COS region name
+    # CLI flag: -storage.cos.region
+    [region: <string> | default = ""]
+
+    # COS app id
+    # CLI flag: -storage.cos.app-id
+    [app_id: <string> | default = ""]
+
+    # COS storage endpoint
+    # CLI flag: -storage.cos.endpoint
+    [endpoint: <string> | default = ""]
+
+    # COS secret key
+    # CLI flag: -storage.cos.secret-key
+    [secret_key: <string> | default = ""]
+
+    # COS secret id
+    # CLI flag: -storage.cos.secret-id
+    [secret_id: <string> | default = ""]
+
+    http:
+      # The time an idle connection will remain idle before closing.
+      # CLI flag: -storage.cos.http.idle-conn-timeout
+      [idle_conn_timeout: <duration> | default = 1m30s]
+
+      # The amount of time the client will wait for a servers response headers.
+      # CLI flag: -storage.cos.http.response-header-timeout
+      [response_header_timeout: <duration> | default = 2m]
+
+      # If the client connects to COS via HTTPS and this option is enabled, the
+      # client will accept any certificate and hostname.
+      # CLI flag: -storage.cos.http.insecure-skip-verify
+      [insecure_skip_verify: <boolean> | default = false]
+
+      # Maximum time to wait for a TLS handshake. 0 means no limit.
+      # CLI flag: -storage.cos.tls-handshake-timeout
+      [tls_handshake_timeout: <duration> | default = 10s]
+
+      # The time to wait for a server's first response headers after fully
+      # writing the request headers if the request has an Expect header. 0 to
+      # send the request body immediately.
+      # CLI flag: -storage.cos.expect-continue-timeout
+      [expect_continue_timeout: <duration> | default = 1s]
+
+      # Maximum number of idle (keep-alive) connections across all hosts. 0
+      # means no limit.
+      # CLI flag: -storage.cos.max-idle-connections
+      [max_idle_connections: <int> | default = 100]
+
+      # Maximum number of idle (keep-alive) connections to keep per-host. If 0,
+      # a built-in default value is used.
+      # CLI flag: -storage.cos.max-idle-connections-per-host
+      [max_idle_connections_per_host: <int> | default = 100]
+
+      # Maximum number of connections per host. 0 means no limit.
+      # CLI flag: -storage.cos.max-connections-per-host
+      [max_connections_per_host: <int> | default = 0]
 
   # The filesystem_storage_backend block configures the usage of local file
   # system as object storage backend.
