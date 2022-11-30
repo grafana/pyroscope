@@ -216,7 +216,8 @@ func (f *Phlare) initServer() (services.Service, error) {
 	prometheus.MustRegister(version.NewCollector("phlare"))
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("phlare_", f.reg)
-	// TODO(cyril) figure why this is locking the bidi stream see https://github.com/grafana/phlare/issues/231
+	// Not all default middleware works with http2 so we'll add then manually.
+	// see https://github.com/grafana/phlare/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 
 	serv, err := server.New(f.Cfg.Server)
@@ -237,22 +238,19 @@ func (f *Phlare) initServer() (services.Service, error) {
 		return svs
 	}
 
-	// sounds like logging is the problem. see https://github.com/grafana/phlare/issues/231
+	httpMetric, err := util.NewHTTPMetricMiddleware(f.Server.HTTP, f.Cfg.Server.MetricsNamespace, f.Cfg.Server.Registerer)
+	if err != nil {
+		return nil, err
+	}
 	defaultHTTPMiddleware := []middleware.Interface{
 		middleware.Tracer{
 			RouteMatcher: f.Server.HTTP,
 		},
-		// middleware.Log{
-		// 	Log:                   f.Server.Log,
-		// 	LogRequestAtInfoLevel: f.Cfg.Server.LogRequestAtInfoLevel,
-		// },
-		// middleware.Instrument{
-		// 	RouteMatcher:     router,
-		// 	Duration:         requestDuration,
-		// 	RequestBodySize:  receivedMessageSize,
-		// 	ResponseBodySize: sentMessageSize,
-		// 	InflightRequests: inflightRequests,
-		// },
+		util.Log{
+			Log:                   f.Server.Log,
+			LogRequestAtInfoLevel: f.Cfg.Server.LogRequestAtInfoLevel,
+		},
+		httpMetric,
 	}
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
 
