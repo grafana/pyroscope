@@ -315,6 +315,22 @@ const SimpleTree = {
 //
 // TODO a test saying going over rendering an empty flamegraph
 describe.only('positions', () => {
+  beforeAll(() => {
+    window.HTMLElement.prototype.getBoundingClientRect = function () {
+      return {
+        x: 0,
+        y: 0,
+        bottom: 0,
+        right: 0,
+        toJSON: () => {},
+        height: 0,
+        top: 0,
+        left: 0,
+        width: 900,
+      };
+    };
+  });
+
   describe('Allow changing visualization mode', () => {
     it('should allow changing view when "onlyDisplay" is not set', () => {
       const { getByTestId, queryByRole } = render(
@@ -323,7 +339,9 @@ describe.only('positions', () => {
 
       expect(getByTestId('table-ui')).toBeInTheDocument();
       expect(getByTestId('flamegraph-view')).toBeInTheDocument();
-      expect(queryByRole('button', { name: 'View Mode' })).toBeInTheDocument();
+      expect(getByTestId('flamegraph')).toBeInTheDocument();
+      expect(getByTestId('both')).toBeInTheDocument();
+      expect(getByTestId('table')).toBeInTheDocument();
     });
 
     it('should restrict changing view when "onlyDisplay" is set', () => {

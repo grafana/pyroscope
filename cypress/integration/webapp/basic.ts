@@ -41,18 +41,15 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByRole('button', { name: /View Mode/ }).click();
-    cy.findByRole('menuitem', { name: 'Table' }).click();
+    cy.findByTestId('table').click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 
-    cy.findByRole('button', { name: /View Mode/ }).click();
-    cy.findByRole('menuitem', { name: 'Table and Flamegraph' }).click();
+    cy.findByTestId('both').click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
-    cy.findByRole('button', { name: /View Mode/ }).click();
-    cy.findByRole('menuitem', { name: 'Flamegraph' }).click();
+    cy.findByTestId('flamegraph').click();
     cy.findByTestId('table-ui').should('not.exist');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
