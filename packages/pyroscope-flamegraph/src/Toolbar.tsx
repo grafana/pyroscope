@@ -39,7 +39,9 @@ const cx = classNames.bind(styles);
 const DIVIDER_WIDTH = 5;
 const QUERY_INPUT_WIDTH = 175;
 // 40: square width, 2: left margin, 2: right margin
-const TOOLBAR_SQUARE_WIDTH = 40 + 2 + 2;
+const LEFT_MARGIN = 2;
+const RIGHT_MARGIN = 2;
+const TOOLBAR_SQUARE_WIDTH = 40 + LEFT_MARGIN + RIGHT_MARGIN;
 const MORE_BUTTON_WIDTH = 16;
 
 const calculateCollapsedItems = (
