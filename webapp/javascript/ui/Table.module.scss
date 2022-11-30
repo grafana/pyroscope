@@ -2,7 +2,7 @@
   width: 100%;
   table-layout: fixed;
 
-  thead th {
+  .tableHead th {
     &.sortable {
       cursor: pointer;
       user-select: none;
@@ -29,12 +29,12 @@
     }
   }
 
-  thead,
-  tbody tr:nth-child(2n) {
+  .tableHead,
+  .tableBody tr:nth-child(2n) {
     background-color: var(--ps-neutral-9);
   }
 
-  tbody {
+  .tableBody {
     cursor: pointer;
 
     td {

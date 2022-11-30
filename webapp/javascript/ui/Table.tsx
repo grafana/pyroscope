@@ -107,7 +107,7 @@ function Table({
       })}
       data-testid="table-ui"
     >
-      <thead>
+      <thead className={styles.tableHead}>
         <tr>
           {table.headRow.map(
             ({ sortable, label, name, ...rest }, idx: number) =>
@@ -135,7 +135,7 @@ function Table({
           )}
         </tr>
       </thead>
-      <tbody ref={tableBodyRef}>
+      <tbody className={styles.tableBody} ref={tableBodyRef}>
         {table.type === 'not-filled' ? (
           <tr className={table?.bodyClassName}>
             <td colSpan={table.headRow.length}>{table.value}</td>
