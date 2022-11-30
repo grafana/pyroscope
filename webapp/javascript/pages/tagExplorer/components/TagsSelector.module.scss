@@ -1,5 +1,11 @@
 .tagsSelector {
   width: auto;
+  max-width: 70vw;
+  min-width: 120px;
+
+  & > div:nth-child(2) div {
+    min-width: 150px;
+  }
 }
 
 .title {
@@ -27,7 +33,7 @@
     input {
       border: none;
       padding: 10px 30px;
-      width: 100%;
+      max-width: 100%;
       text-align: left;
       white-space: nowrap;
       overflow: hidden;

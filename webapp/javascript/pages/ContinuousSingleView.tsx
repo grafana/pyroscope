@@ -24,12 +24,19 @@ import TagsBar from '@webapp/components/TagsBar';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import PageTitle from '@webapp/components/PageTitle';
 import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
+import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { LoadingOverlay } from '@webapp/ui/LoadingOverlay';
+import { TooltipCallbackProps } from '@webapp/components/TimelineChart/Tooltip.plugin';
+import { Profile } from '@pyroscope/models/src';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
 } from '@webapp/util/features';
 import useTags from '@webapp/hooks/tags.hook';
+import {
+  TimelineTooltip,
+  TimelineTooltipProps,
+} from '@webapp/components/TimelineTooltip';
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
@@ -181,6 +188,9 @@ function ContinuousSingleView() {
               annotations={annotations}
               selectionType="single"
               ContextMenu={contextMenu}
+              onHoverDisplayTooltip={(data) =>
+                createTooltip(query, data, singleView.profile)
+              }
             />
           </LoadingOverlay>
         </Box>
@@ -194,6 +204,59 @@ function ContinuousSingleView() {
         </Box>
       </div>
     </div>
+  );
+}
+
+function createTooltip(
+  query: string,
+  data: TooltipCallbackProps,
+  profile?: Profile
+) {
+  if (!profile) {
+    return null;
+  }
+
+  const values = prepareTimelineTooltipContent(profile, query, data);
+
+  if (values.length <= 0) {
+    return null;
+  }
+
+  return <TimelineTooltip timeLabel={data.timeLabel} items={values} />;
+}
+
+// Converts data from TimelineChartWrapper into TimelineTooltip
+function prepareTimelineTooltipContent(
+  profile: Profile,
+  query: string,
+  data: TooltipCallbackProps
+): TimelineTooltipProps['items'] {
+  const formatter = getFormatter(
+    profile.flamebearer.numTicks,
+    profile.metadata.sampleRate,
+    profile.metadata.units
+  );
+
+  // Filter non empty values
+  return (
+    data.values
+      .map((a) => {
+        return {
+          label: query,
+          // TODO: horrible API
+          value: a?.closest?.[1],
+        };
+      })
+      // Sometimes closest is null
+      .filter((a) => {
+        return a.value;
+      })
+      .map((a) => {
+        return {
+          ...a,
+          value: formatter.format(a.value, profile.metadata.sampleRate, true),
+        };
+      })
   );
 }
 

@@ -1,6 +1,7 @@
 $buttonHeight: 37px;
 
 .navbar {
+  position: relative;
   display: flex;
   flex-direction: row;
   margin: 10px 0;
@@ -10,10 +11,7 @@ $buttonHeight: 37px;
   border: 1px solid var(--ps-ui-border);
   padding: 4px;
   align-items: center;
-}
-
-.space-filler {
-  flex-grow: 1;
+  z-index: 2;
 }
 
 .viewType {
@@ -56,53 +54,64 @@ $buttonHeight: 37px;
   }
 }
 
-.viewModeDropdownButton {
-  min-width: 114px;
-  margin: 0 2px;
-  white-space: nowrap;
-}
-
 .fitModeButton {
   @extend .toggleViewButton;
 }
 
 .collapseNodeButton {
+  min-width: initial;
+  width: 40px;
   height: $buttonHeight;
   margin: 0 2px;
-  padding: 0 5px;
+  padding: 0;
   background-color: transparent;
   border-color: transparent;
 }
 
 .resetViewButton {
   @extend .collapseNodeButton;
-}
-
-.dropdownMenuItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-
-  svg {
-    margin-left: 20px;
-  }
-}
-
-.fitModeDropdownSmall {
-  min-width: 70px;
+  width: 40px;
+  min-width: initial;
   margin: 0 2px;
-  height: $buttonHeight;
-}
-
-.fitModeDropdownLarge {
-  min-width: 100px;
-  margin: 0;
+  padding: 0;
 }
 
 .divider {
   width: 1px;
   height: 35px;
   background-color: var(--ps-ui-border);
-  margin: 0 2px;
+}
+
+.itemsContainer,
+.item {
+  display: flex;
+}
+
+.moreButton {
+  border-radius: 4px;
+  border: none;
+  padding: 0 5px;
+  height: 35px;
+
+  &.active,
+  &.active:hover {
+    background-color: var(--ps-fl-toolbar-btn-bg);
+  }
+
+  &:hover {
+    background-color: var(--ps-ui-element-bg-highlight);
+    cursor: pointer;
+  }
+}
+
+.navbarCollapsedItems {
+  display: flex;
+  position: absolute;
+  right: 0;
+  top: 50px;
+  height: 47px;
+  background-color: var(--ps-fl-toolbar-bg);
+  border: 1px solid var(--ps-ui-border);
+  padding: 4px;
+  z-index: 1;
 }

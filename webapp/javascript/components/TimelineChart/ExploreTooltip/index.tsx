@@ -2,19 +2,12 @@ import React, { FC, useMemo } from 'react';
 import Color from 'color';
 import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
 import { Profile } from '@pyroscope/models/src';
-import styles from './styles.module.scss';
+import { TimelineTooltip } from '../../TimelineTooltip';
+import { TooltipCallbackProps } from '../Tooltip.plugin';
 
-export interface ExploreTooltipProps {
-  timeLabel?: string;
-  values?: Array<{
-    closest: number[];
-    color: number[];
-    tagName: string;
-  }>;
+type ExploreTooltipProps = TooltipCallbackProps & {
   profile?: Profile;
-  coordsToCanvasPos?: jquery.flot.axis['p2c'];
-  canvasX?: number;
-}
+};
 
 const ExploreTooltip: FC<ExploreTooltipProps> = ({
   timeLabel,
@@ -44,37 +37,28 @@ const ExploreTooltip: FC<ExploreTooltipProps> = ({
 
   const formatValue = (v: number) => {
     if (formatter && typeof sampleRate === 'number') {
-      return `${formatter.format(v, sampleRate)} (${((v / total) * 100).toFixed(
-        2
-      )}%)`;
+      const value = formatter.format(v, sampleRate);
+      let percentage = (v / total) * 100;
+
+      if (Number.isNaN(percentage)) {
+        percentage = 0;
+      }
+
+      return `${value} (${percentage.toFixed(2)}%)`;
     }
 
-    return 0;
+    return '0';
   };
 
-  return (
-    <div>
-      <div className={styles.time}>{timeLabel}</div>
-      {values?.length
-        ? values.map((v) => {
-            return (
-              <div key={v?.tagName} className={styles.valueWrapper}>
-                <div
-                  className={styles.valueColor}
-                  style={{
-                    backgroundColor: Color.rgb(v.color).toString(),
-                  }}
-                />
-                <div>{v.tagName}:</div>
-                <div className={styles.closest}>
-                  {formatValue(v?.closest?.[1] || 0)}
-                </div>
-              </div>
-            );
-          })
-        : null}
-    </div>
-  );
+  const items = values.map((v) => {
+    return {
+      label: v.tagName || '',
+      color: Color.rgb(v.color),
+      value: formatValue(v?.closest?.[1] || 0),
+    };
+  });
+
+  return <TimelineTooltip timeLabel={timeLabel} items={items} />;
 };
 
 export default ExploreTooltip;

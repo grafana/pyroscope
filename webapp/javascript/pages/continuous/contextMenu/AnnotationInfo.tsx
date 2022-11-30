@@ -1,6 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { Dispatch, SetStateAction } from 'react';
-import { MenuItem, applyStatics } from '@webapp/ui/Menu';
 import { Popover, PopoverBody, PopoverFooter } from '@webapp/ui/Popover';
 import Button from '@webapp/ui/Button';
 import { Portal } from '@webapp/ui/Portal';
@@ -68,7 +67,5 @@ const AnnotationInfo = ({
     </Portal>
   );
 };
-
-applyStatics(MenuItem)(AnnotationInfo);
 
 export default AnnotationInfo;

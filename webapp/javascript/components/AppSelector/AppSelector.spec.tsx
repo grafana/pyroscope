@@ -10,19 +10,24 @@ import {
 import { configureStore } from '@reduxjs/toolkit';
 import { continuousSlice } from '@webapp/redux/reducers/continuous';
 import { Result } from '@webapp/util/fp';
-import * as appNames from '@webapp/services/appNames';
+import * as apps from '@webapp/services/apps';
+import { App } from '@webapp/models/app';
 import AppSelector from '.';
 import { MENU_ITEM_ROLE } from './SelectButton';
 
-jest.mock('@webapp/services/appNames');
+jest.mock('@webapp/services/apps');
+
+const fetchAppsMock = apps.fetchApps as jest.MockedFunction<
+  typeof apps.fetchApps
+>;
 
 const { getByTestId, queryByRole, getByRole, findByRole } = screen;
-const mockAppNames = [
-  'single',
-  'double.cpu',
-  'double.space',
-  'triple.app.cpu',
-  'triple.app.objects',
+const mockApps: App[] = [
+  { name: 'single', units: 'unknown', spyName: 'unknown' },
+  { name: 'double.cpu', units: 'unknown', spyName: 'unknown' },
+  { name: 'double.space', units: 'unknown', spyName: 'unknown' },
+  { name: 'triple.app.cpu', units: 'unknown', spyName: 'unknown' },
+  { name: 'triple.app.objects', units: 'unknown', spyName: 'unknown' },
 ];
 
 interface RenderOpts extends Omit<RenderOptions, 'queries'> {
@@ -51,7 +56,9 @@ function render(
 
 describe('AppSelector', () => {
   it('refreshes the list of apps', async () => {
-    (appNames as any).fetchAppNames.mockResolvedValueOnce(Result.ok(['myapp']));
+    fetchAppsMock.mockResolvedValueOnce(
+      Result.ok([{ name: 'myapp', units: 'unknown', spyName: 'unknown' }])
+    );
     render(<AppSelector />);
 
     // Initial state
@@ -74,14 +81,14 @@ describe('AppSelector', () => {
 
 describe('AppSelector', () => {
   it('gets the list of apps, iterracts with it', async () => {
-    (appNames as any).fetchAppNames.mockResolvedValueOnce(Result.ok());
+    fetchAppsMock.mockResolvedValueOnce(Result.ok(mockApps));
 
     const ui = render(<AppSelector />, {
       preloadedState: {
         continuous: {
-          appNames: {
+          apps: {
             type: 'loaded',
-            data: mockAppNames,
+            data: mockApps,
           },
           tagExplorerView: {
             groupByTag: '',
@@ -143,14 +150,14 @@ describe('AppSelector', () => {
 
 describe('AppSelector', () => {
   it('filters apps by query input', async () => {
-    (appNames as any).fetchAppNames.mockResolvedValueOnce(Result.ok());
+    fetchAppsMock.mockResolvedValueOnce(Result.ok(mockApps));
 
     const renderUI = render(<AppSelector />, {
       preloadedState: {
         continuous: {
-          appNames: {
+          apps: {
             type: 'loaded',
-            data: mockAppNames,
+            data: mockApps,
           },
         },
       },

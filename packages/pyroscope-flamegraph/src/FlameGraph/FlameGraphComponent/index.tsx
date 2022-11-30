@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-expressions */
+/* eslint-disable no-unused-expressions, import/no-extraneous-dependencies */
 import React, { useCallback, useRef } from 'react';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -6,7 +6,7 @@ import { faRedo } from '@fortawesome/free-solid-svg-icons/faRedo';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faHighlighter } from '@fortawesome/free-solid-svg-icons/faHighlighter';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
-import { MenuItem } from '@szhsin/react-menu';
+import { MenuItem } from '@webapp/ui/Menu';
 import useResizeObserver from '@react-hook/resize-observer';
 import { Maybe } from 'true-myth';
 import debounce from 'lodash.debounce';
@@ -235,7 +235,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
         return (
           <MenuItem
-            key="highlight-similar-nodes"
+            key="open-in-sandwich-view"
             className={indexStyles.sandwichItem}
             onClick={handleClick}
           >

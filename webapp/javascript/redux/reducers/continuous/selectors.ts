@@ -11,36 +11,13 @@ export const selectApplicationName = (state: RootState) => {
   return appName.map((q) => q.split('{')[0]).unwrapOrElse(() => '');
 };
 
-export const selectAppNamesState = (state: RootState) =>
-  state.continuous.appNames;
+export const selectAppNamesState = (state: RootState) => state.continuous.apps;
 export const selectAppNames = (state: RootState) => {
-  const sorted = [...state.continuous.appNames.data].sort();
-  return sorted;
+  return state.continuous.apps.data.map((a) => a.name).sort();
 };
 
 export const selectComparisonState = (state: RootState) =>
   state.continuous.comparisonView;
-
-export const selectIsLoadingData = (state: RootState) => {
-  const loadingStates = ['loading', 'reloading'];
-
-  // TODO: should we check if timelines are being reloaded too?
-  return (
-    loadingStates.includes(state.continuous.singleView.type) ||
-    // Comparison
-    loadingStates.includes(state.continuous.comparisonView.left.type) ||
-    loadingStates.includes(state.continuous.comparisonView.right.type) ||
-    // Diff
-    loadingStates.includes(state.continuous.diffView.type) ||
-    // Timeline Sides
-    loadingStates.includes(state.continuous.leftTimeline.type) ||
-    loadingStates.includes(state.continuous.rightTimeline.type) ||
-    // Exemplars
-    loadingStates.includes(state.tracing.exemplarsSingleView.type) ||
-    // Tag Explorer
-    loadingStates.includes(state.continuous.tagExplorerView.type)
-  );
-};
 
 export const selectAppTags = (query?: Query) => (state: RootState) => {
   if (query) {

@@ -1,0 +1,20 @@
+.tabs {
+  border-bottom: 1px solid var(--ps-immutable-off-white);
+}
+
+.tab {
+  &:global(.MuiButtonBase-root) {
+    color: var(--ps-neutral-2);
+    text-transform: none;
+    font-size: 16px;
+    border-radius: 5px 5px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+  }
+
+  &:global(.MuiButtonBase-root.Mui-selected) {
+    color: black;
+    background-color: var(--ps-immutable-white);
+    border-color: var(--ps-immutable-off-white);
+  }
+}

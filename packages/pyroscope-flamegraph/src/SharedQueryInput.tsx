@@ -5,13 +5,13 @@ import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import Input from '@pyroscope/webapp/javascript/ui/Input';
 import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import styles from './SharedQueryInput.module.scss';
-import type { ProfileHeaderProps, ShowModeType } from './Toolbar';
+import type { ProfileHeaderProps } from './Toolbar';
 
 interface SharedQueryProps {
-  showMode: ShowModeType;
   onHighlightChange: ProfileHeaderProps['handleSearchChange'];
   highlightQuery: ProfileHeaderProps['highlightQuery'];
   sharedQuery: ProfileHeaderProps['sharedQuery'];
+  width: number;
 }
 
 const usePreviousSyncEnabled = (syncEnabled?: string | boolean) => {
@@ -26,9 +26,9 @@ const usePreviousSyncEnabled = (syncEnabled?: string | boolean) => {
 
 const SharedQueryInput = ({
   onHighlightChange,
-  showMode,
   highlightQuery,
   sharedQuery,
+  width,
 }: SharedQueryProps) => {
   const prevSyncEnabled = usePreviousSyncEnabled(sharedQuery?.syncEnabled);
 
@@ -79,13 +79,13 @@ const SharedQueryInput = ({
   const inputClassName = useMemo(
     () =>
       `${sharedQuery ? styles.searchWithSync : styles.search} ${
-        showMode === 'small' ? styles['search-small'] : ''
-      } ${sharedQuery?.syncEnabled ? styles['search-synced'] : ''}`,
-    [sharedQuery, showMode]
+        sharedQuery?.syncEnabled ? styles['search-synced'] : ''
+      }`,
+    [sharedQuery]
   );
 
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} style={{ width }}>
       <Input
         testId="flamegraph-search"
         className={inputClassName}

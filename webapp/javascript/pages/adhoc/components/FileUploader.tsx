@@ -10,10 +10,7 @@ import {
   SpyNameFirstClass,
   SpyNameFirstClassType,
 } from '@pyroscope/models/src/spyName';
-import {
-  units as possibleUnits,
-  UnitsType,
-} from '@pyroscope/models/src/profile';
+import { units as possibleUnits, UnitsType } from '@pyroscope/models/src';
 import { humanizeSpyname, isJSONFile, humanizeUnits } from './humanize';
 import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';

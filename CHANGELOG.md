@@ -1,3 +1,20 @@
+# [0.35.0](https://github.com/pyroscope-io/pyroscope/compare/v0.34.1...v0.35.0) (2022-11-28)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix dropdown menu opening ([#1755](https://github.com/pyroscope-io/pyroscope/issues/1755)) ([0b1acef](https://github.com/pyroscope-io/pyroscope/commit/0b1acef9c5d5a2a268f952a529d12f784d257842))
+* make table rows only take one line ([#1765](https://github.com/pyroscope-io/pyroscope/issues/1765)) ([6d33d42](https://github.com/pyroscope-io/pyroscope/commit/6d33d426b4f94833059fea5ca995bb5aa9dd022a))
+* move sandwich view message to correct location ([#1767](https://github.com/pyroscope-io/pyroscope/issues/1767)) ([6720c3f](https://github.com/pyroscope-io/pyroscope/commit/6720c3f2de303b25f2031d8c09bbb330561ddde4))
+* tag explorer loading spinner ([#1748](https://github.com/pyroscope-io/pyroscope/issues/1748)) ([c1c83c2](https://github.com/pyroscope-io/pyroscope/commit/c1c83c290997b5b93e86ce7f7c29eaa49d809ee7))
+
+
+### Features
+
+* **webapp:** add tooltip to main timeline in single view ([#1742](https://github.com/pyroscope-io/pyroscope/issues/1742)) ([508946c](https://github.com/pyroscope-io/pyroscope/commit/508946cf034d2f9aedae03c71429fc05d313897d))
+
+
+
 ## [0.34.1](https://github.com/pyroscope-io/pyroscope/compare/v0.34.0...v0.34.1) (2022-11-19)
 
 

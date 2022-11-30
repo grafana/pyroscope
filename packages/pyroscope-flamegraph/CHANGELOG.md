@@ -3,6 +3,58 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.33.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.6...@pyroscope/flamegraph@0.33.0) (2022-11-30)
+
+
+### Features
+
+* fix toolbar on narrow screens ([#1754](https://github.com/pyroscope-io/pyroscope/issues/1754)) ([78b27d8](https://github.com/pyroscope-io/pyroscope/commit/78b27d8cc8a93149c79f6d4103e8ae81d7b3b024))
+
+
+
+
+
+## [0.32.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.5...@pyroscope/flamegraph@0.32.6) (2022-11-29)
+
+
+### Bug Fixes
+
+* **flamegraph:** Make table tooltip invisible when user not hovering on table ([#1749](https://github.com/pyroscope-io/pyroscope/issues/1749)) ([5210aa7](https://github.com/pyroscope-io/pyroscope/commit/5210aa72724f7ac2f2c639fe6584d565d7ae1b75))
+
+
+
+
+
+## [0.32.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.4...@pyroscope/flamegraph@0.32.5) (2022-11-28)
+
+
+### Bug Fixes
+
+* make table rows only take one line ([#1765](https://github.com/pyroscope-io/pyroscope/issues/1765)) ([6d33d42](https://github.com/pyroscope-io/pyroscope/commit/6d33d426b4f94833059fea5ca995bb5aa9dd022a))
+
+
+
+
+
+## [0.32.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.3...@pyroscope/flamegraph@0.32.4) (2022-11-28)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.32.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.2...@pyroscope/flamegraph@0.32.3) (2022-11-23)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix dropdown menu opening ([#1755](https://github.com/pyroscope-io/pyroscope/issues/1755)) ([0b1acef](https://github.com/pyroscope-io/pyroscope/commit/0b1acef9c5d5a2a268f952a529d12f784d257842))
+
+
+
+
+
 ## [0.32.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.1...@pyroscope/flamegraph@0.32.2) (2022-11-21)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
