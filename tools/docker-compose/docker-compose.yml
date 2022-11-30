@@ -66,6 +66,14 @@ services:
       - 8084:8080
     networks:
       - phlare
+  golang:
+    build:
+      context: golang
+      dockerfile: Dockerfile
+    ports:
+      - 8085:6060
+    networks:
+      - phlare
 
 volumes:
   data:

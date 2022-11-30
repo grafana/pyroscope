@@ -48,3 +48,7 @@ scrape_configs:
         mutex: { enabled: false }
         memory:
           path: /debug/pprof/heap
+  - job_name: "golang"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["golang:6060"]
