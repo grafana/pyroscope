@@ -248,7 +248,7 @@ $(BIN)/gomodifytags: Makefile go.mod
 
 $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.14.0
+	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.17.0
 
 $(BIN)/tk: Makefile go.mod $(BIN)/jb
 	@mkdir -p $(@D)
