@@ -175,24 +175,23 @@ const Toolbar = memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
+          <Divider />
         </>
       ),
-      width: TOOLBAR_SQUARE_WIDTH,
+      // + 1 is to see divider
+      width: TOOLBAR_SQUARE_WIDTH + 1,
     };
     const viewSectionItem = enableChangingDisplay
       ? {
-          el: (
-            <>
-              <Divider />
-              <ViewSection
-                flamegraphType={flamegraphType}
-                view={view}
-                updateView={updateView}
-              />
-            </>
+        el: (
+          <ViewSection
+            flamegraphType={flamegraphType}
+            view={view}
+            updateView={updateView}
+          />
           ),
           // sandwich view is hidden in diff view
-          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3),
+        width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3), // 1px is to display divider
         }
       : null;
     const exportDataItem = isValidElement(ExportData)
