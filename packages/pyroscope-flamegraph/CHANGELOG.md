@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.34.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.33.0...@pyroscope/flamegraph@0.34.0) (2022-11-30)
+
+
+### Features
+
+* **flamegraph:** allow sorting by diff percentage ([#1776](https://github.com/pyroscope-io/pyroscope/issues/1776)) ([8d9c838](https://github.com/pyroscope-io/pyroscope/commit/8d9c838d7b96daf1e1aa482b1f2d0820bd81f8ed))
+
+
+
+
+
 # [0.33.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.6...@pyroscope/flamegraph@0.33.0) (2022-11-30)
 
 
