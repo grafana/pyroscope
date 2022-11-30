@@ -369,7 +369,7 @@ const getTableBody = ({
     }
 
     let diffValue = '';
-    if (!x.totalLeft) {
+    if (!x.totalLeft || totalDiff === Infinity) {
       // this is a new function
       diffValue = '(new)';
     } else if (!x.totalRght) {
