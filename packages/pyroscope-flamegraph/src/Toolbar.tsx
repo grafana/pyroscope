@@ -36,9 +36,10 @@ import styles from './Toolbar.module.scss';
 
 const cx = classNames.bind(styles);
 
+const DIVIDER_WIDTH = 5;
 const QUERY_INPUT_WIDTH = 175;
-// 4 is marginLeft(2px) + marginRight(2px). also we can simulate divider side margins here
-const TOOLBAR_SQUARE_WIDTH = 40 + 4;
+// 40: square width, 2: left margin, 2: right margin
+const TOOLBAR_SQUARE_WIDTH = 40 + 2 + 2;
 const MORE_BUTTON_WIDTH = 16;
 
 const calculateCollapsedItems = (
@@ -162,7 +163,7 @@ const Toolbar = memo(
           <Divider />
         </>
       ),
-      width: TOOLBAR_SQUARE_WIDTH * 2,
+      width: TOOLBAR_SQUARE_WIDTH * 2 + DIVIDER_WIDTH,
     };
     const resetItem = {
       el: <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />,
@@ -178,8 +179,7 @@ const Toolbar = memo(
           <Divider />
         </>
       ),
-      // + 1 is to see divider
-      width: TOOLBAR_SQUARE_WIDTH + 1,
+      width: TOOLBAR_SQUARE_WIDTH + DIVIDER_WIDTH,
     };
     const viewSectionItem = enableChangingDisplay
       ? {
@@ -202,7 +202,7 @@ const Toolbar = memo(
               {ExportData}
             </>
           ),
-          width: TOOLBAR_SQUARE_WIDTH,
+          width: TOOLBAR_SQUARE_WIDTH + DIVIDER_WIDTH,
         }
       : null;
 
