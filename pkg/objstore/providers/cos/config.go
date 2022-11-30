@@ -34,7 +34,7 @@ func (c *Config) Validate() error {
 	}
 
 	if empty(c.Bucket) || empty(c.AppID) || empty(c.Region) || empty(c.SecretID) || empty(c.SecretKey) {
-		return errors.New("cos config ")
+		return errors.New("invalid cos configuration, bucket, app_id, region, secret_id and secret_key must be set")
 	}
 	return nil
 }
