@@ -79,7 +79,7 @@ $buttonHeight: 37px;
 .divider {
   width: 1px;
   margin: 0 2px;
-  height: 35px;
+  height: $buttonHeight;
   background-color: var(--ps-ui-border);
 }
 
@@ -92,7 +92,7 @@ $buttonHeight: 37px;
   border-radius: 4px;
   border: none;
   padding: 0 5px;
-  height: 35px;
+  height: $buttonHeight;
 
   &.active,
   &.active:hover {
