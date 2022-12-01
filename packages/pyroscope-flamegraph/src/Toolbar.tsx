@@ -36,9 +36,11 @@ import styles from './Toolbar.module.scss';
 
 const cx = classNames.bind(styles);
 
+const DIVIDER_WIDTH = 5;
 const QUERY_INPUT_WIDTH = 175;
-// 4 is marginLeft(2px) + marginRight(2px). also we can simulate divider side margins here
-const TOOLBAR_SQUARE_WIDTH = 40 + 4;
+const LEFT_MARGIN = 2;
+const RIGHT_MARGIN = 2;
+const TOOLBAR_SQUARE_WIDTH = 40 + LEFT_MARGIN + RIGHT_MARGIN;
 const MORE_BUTTON_WIDTH = 16;
 
 const calculateCollapsedItems = (
@@ -162,7 +164,7 @@ const Toolbar = memo(
           <Divider />
         </>
       ),
-      width: TOOLBAR_SQUARE_WIDTH * 2,
+      width: TOOLBAR_SQUARE_WIDTH * 2 + DIVIDER_WIDTH,
     };
     const resetItem = {
       el: <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />,
@@ -175,24 +177,22 @@ const Toolbar = memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
+          <Divider />
         </>
       ),
-      width: TOOLBAR_SQUARE_WIDTH,
+      width: TOOLBAR_SQUARE_WIDTH + DIVIDER_WIDTH,
     };
     const viewSectionItem = enableChangingDisplay
       ? {
           el: (
-            <>
-              <Divider />
-              <ViewSection
-                flamegraphType={flamegraphType}
-                view={view}
-                updateView={updateView}
-              />
-            </>
+            <ViewSection
+              flamegraphType={flamegraphType}
+              view={view}
+              updateView={updateView}
+            />
           ),
           // sandwich view is hidden in diff view
-          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3),
+          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3), // 1px is to display divider
         }
       : null;
     const exportDataItem = isValidElement(ExportData)
@@ -203,7 +203,7 @@ const Toolbar = memo(
               {ExportData}
             </>
           ),
-          width: TOOLBAR_SQUARE_WIDTH,
+          width: TOOLBAR_SQUARE_WIDTH + DIVIDER_WIDTH,
         }
       : null;
 
@@ -330,15 +330,17 @@ function ResetView({
 }) {
   return (
     <Tooltip placement="top" title="Reset View">
-      <Button
-        id="reset"
-        disabled={!isFlamegraphDirty}
-        onClick={reset}
-        className={styles.resetViewButton}
-        aria-label="Reset View"
-      >
-        <FontAwesomeIcon icon={faUndo} />
-      </Button>
+      <span>
+        <Button
+          id="reset"
+          disabled={!isFlamegraphDirty}
+          onClick={reset}
+          className={styles.resetViewButton}
+          aria-label="Reset View"
+        >
+          <FontAwesomeIcon icon={faUndo} />
+        </Button>
+      </span>
     </Tooltip>
   );
 }
