@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.15](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.14...@pyroscope/webapp@1.66.15) (2022-12-01)
+
+
+### Bug Fixes
+
+* tags loading ([#1784](https://github.com/pyroscope-io/pyroscope/issues/1784)) ([fb4fee8](https://github.com/pyroscope-io/pyroscope/commit/fb4fee858d749c61362c5a95c20fc0213d1e3a7c))
+
+
+
+
+
 ## [1.66.14](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.13...@pyroscope/webapp@1.66.14) (2022-12-01)
 
 **Note:** Version bump only for package @pyroscope/webapp
