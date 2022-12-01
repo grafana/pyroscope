@@ -6,7 +6,6 @@ import {
   TabsProps,
   TabProps,
 } from '@mui/material';
-import Box from '@webapp/ui/Box';
 import styles from './Tabs.module.scss';
 
 interface TabPanelProps {
@@ -35,7 +34,6 @@ export function Tab({ label, ...rest }: TabProps) {
     <MuiTab disableRipple className={styles.tab} {...rest} label={label} />
   );
 }
-Box;
 
 export function TabPanel({ children, value, index, ...other }: TabPanelProps) {
   return (
@@ -46,7 +44,7 @@ export function TabPanel({ children, value, index, ...other }: TabPanelProps) {
       aria-labelledby={`tab-${index}`}
       {...other}
     >
-      {value === index && <Box>{children}</Box>}
+      {value === index && <div>{children}</div>}
     </div>
   );
 }
