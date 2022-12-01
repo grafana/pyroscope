@@ -39,10 +39,10 @@
     width: calc(100% - 10px * 2);
     margin: 10px;
     display: table; /* although this is the default, users may have an overwrite */
-    background: var(--ps-tooltip-bg);
-
+    
     th,
     td {
+      background-color: var(--ps-tooltip-bg);
       border: 1px solid var(--ps-tooltip-header-bg);
       padding: 5px;
       font-weight: normal;
