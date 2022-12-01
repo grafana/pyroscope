@@ -101,7 +101,7 @@ function AdhocComparison() {
               <Tab label="Upload" />
               <Tab label="Pyroscope data" />
             </Tabs>
-            <TabPanel visible={tabIndexLeft === 0}>
+            <TabPanel value={tabIndexLeft} index={0}>
               <FileUploader
                 className={adhocStyles.tabPanel}
                 setFile={async ({ file, spyName, units }) => {
@@ -112,7 +112,7 @@ function AdhocComparison() {
                 }}
               />
             </TabPanel>
-            <TabPanel visible={tabIndexLeft === 1}>
+            <TabPanel value={tabIndexLeft} index={1}>
               {profilesList.type === 'loaded' && (
                 <FileList
                   className={adhocStyles.tabPanel}
@@ -135,7 +135,7 @@ function AdhocComparison() {
               <Tab label="Upload" />
               <Tab label="Pyroscope data" />
             </Tabs>
-            <TabPanel visible={tabIndexRight === 0}>
+            <TabPanel value={tabIndexRight} index={0}>
               <FileUploader
                 className={adhocStyles.tabPanel}
                 setFile={async ({ file, spyName, units }) => {
@@ -151,7 +151,7 @@ function AdhocComparison() {
                 }}
               />
             </TabPanel>
-            <TabPanel visible={tabIndexRight === 1}>
+            <TabPanel value={tabIndexRight} index={1}>
               {profilesList.type === 'loaded' && (
                 <FileList
                   className={adhocStyles.tabPanel}

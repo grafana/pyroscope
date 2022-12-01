@@ -76,10 +76,10 @@ function AdhocSingle() {
           <Tab label="Upload" />
           <Tab label="Pyroscope data" />
         </Tabs>
-        <TabPanel visible={currentTab === 0}>
+        <TabPanel value={currentTab} index={0}>
           <FileUploader className={adhocStyles.tabPanel} setFile={setFile} />
         </TabPanel>
-        <TabPanel visible={currentTab === 1}>
+        <TabPanel value={currentTab} index={1}>
           {profilesList.type === 'loaded' && (
             <FileList
               className={adhocStyles.tabPanel}

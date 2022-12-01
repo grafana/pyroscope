@@ -6,9 +6,16 @@ import {
   TabsProps,
   TabProps,
 } from '@mui/material';
+import Box from '@webapp/ui/Box';
 import styles from './Tabs.module.scss';
 
-const Tabs = ({ children, value, onChange }: TabsProps) => {
+interface TabPanelProps {
+  index: number;
+  value: number;
+  children: React.ReactNode;
+}
+
+export function Tabs({ children, value, onChange }: TabsProps) {
   return (
     <MuiTabs
       TabIndicatorProps={{
@@ -21,22 +28,25 @@ const Tabs = ({ children, value, onChange }: TabsProps) => {
       {children}
     </MuiTabs>
   );
-};
+}
 
-const Tab = ({ label, ...rest }: TabProps) => {
+export function Tab({ label, ...rest }: TabProps) {
   return (
     <MuiTab disableRipple className={styles.tab} {...rest} label={label} />
   );
-};
+}
+Box;
 
-const TabPanel = ({
-  visible,
-  children,
-}: {
-  children: React.ReactNode;
-  visible: boolean;
-}) => {
-  return visible ? <div>{children}</div> : null;
-};
-
-export { Tabs, Tab, TabPanel };
+export function TabPanel({ children, value, index, ...other }: TabPanelProps) {
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tabpanel-${index}`}
+      aria-labelledby={`tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box>{children}</Box>}
+    </div>
+  );
+}
