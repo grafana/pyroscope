@@ -453,6 +453,7 @@ export default function ProfilerTable({
         palette={palette}
         selectedItem={selectedItem}
       />
+      {/* // to test */}
       <TableTooltip
         tableBodyRef={tableBodyRef}
         numTicks={flamebearer.numTicks}
