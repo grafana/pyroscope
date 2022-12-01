@@ -39,7 +39,7 @@
     width: calc(100% - 10px * 2);
     margin: 10px;
     display: table; /* although this is the default, users may have an overwrite */
-    
+
     th,
     td {
       background-color: var(--ps-tooltip-bg);
