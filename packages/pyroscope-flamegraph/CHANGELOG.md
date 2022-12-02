@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.1...@pyroscope/flamegraph@0.34.2) (2022-12-02)
+
+
+### Bug Fixes
+
+* **flamegraph:** increase specificity of flamegraph tooltip table styling ([#1778](https://github.com/pyroscope-io/pyroscope/issues/1778)) ([6648fc5](https://github.com/pyroscope-io/pyroscope/commit/6648fc59b1da14aa7146a0b5dc3f72c29733c63e))
+
+
+
+
+
 ## [0.34.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.0...@pyroscope/flamegraph@0.34.1) (2022-12-01)
 
 
