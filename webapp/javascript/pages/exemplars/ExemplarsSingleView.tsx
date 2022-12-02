@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import clsx from 'clsx';
-
+import { Tabs, Tab, TabPanel } from '@webapp/ui/Tabs';
 import useColorMode from '@webapp/hooks/colorMode.hook';
 import useTimeZone from '@webapp/hooks/timeZone.hook';
 import useTags from '@webapp/hooks/tags.hook';
@@ -167,23 +166,20 @@ function ExemplarsSingleView() {
         {exemplarsSingleView.heatmap &&
         exemplarsSingleView.selectionProfile &&
         differenceProfile ? (
-          <Tabs
-            selectedIndex={tabIndex}
-            onSelect={(index) => setTabIndex(index)}
-          >
-            <TabList>
-              <Tab>Single</Tab>
-              <Tab>Comparison</Tab>
-              <Tab>Diff</Tab>
-            </TabList>
-            <TabPanel>
+          <>
+            <Tabs value={tabIndex} onChange={(e, value) => setTabIndex(value)}>
+              <Tab label="Single" />
+              <Tab label="Comparison" />
+              <Tab label="Diff" />
+            </Tabs>
+            <TabPanel visible={tabIndex === 0}>
               <SingleTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
                 selectionProfile={exemplarsSingleView.selectionProfile}
               />
             </TabPanel>
-            <TabPanel>
+            <TabPanel visible={tabIndex === 1}>
               <ComparisonTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
@@ -191,7 +187,7 @@ function ExemplarsSingleView() {
                 selectionProfile={exemplarsSingleView.selectionProfile}
               />
             </TabPanel>
-            <TabPanel>
+            <TabPanel visible={tabIndex === 2}>
               <DiffTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
@@ -199,7 +195,7 @@ function ExemplarsSingleView() {
                 selectionProfile={exemplarsSingleView.selectionProfile}
               />
             </TabPanel>
-          </Tabs>
+          </>
         ) : null}
       </div>
     </div>

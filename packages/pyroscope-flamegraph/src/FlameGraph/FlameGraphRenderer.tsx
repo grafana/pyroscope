@@ -57,7 +57,7 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
   const noop: Flamebearer = {
     format: 'single',
     names: [],
-    units: '',
+    units: 'unknown',
     levels: [[]],
     spyName: 'unknown',
     numTicks: 0,

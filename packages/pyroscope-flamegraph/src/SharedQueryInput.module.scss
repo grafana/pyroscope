@@ -3,7 +3,6 @@
   flex-direction: row;
   align-items: center;
   flex-grow: 1;
-  max-width: 300px;
 }
 
 .search {
@@ -40,10 +39,6 @@
 
 .search:focus {
   background: var(--ps-immutable-white);
-}
-
-.search-small {
-  width: 100%;
 }
 
 .icon {

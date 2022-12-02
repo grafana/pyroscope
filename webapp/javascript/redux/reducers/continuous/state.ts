@@ -1,7 +1,7 @@
 import type { Profile, Groups } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
 import type { Annotation } from '@webapp/models/annotation';
-import type { AppNames } from '@webapp/models/appNames';
+import type { App } from '@webapp/models/app';
 
 type NewAnnotationState =
   | {
@@ -25,32 +25,45 @@ type SingleView =
       annotations: Annotation[];
     };
 
-type TagExplorerView =
+type TagExplorerView = GroupByType & GroupsLoadingType & ActiveProfileType;
+
+type GroupByType = {
+  groupByTag: string;
+  groupByTagValue: string;
+};
+
+type GroupsLoadingType =
   | {
-      type: 'pristine';
+      groupsLoadingType: 'pristine';
       groups: Groups;
-      groupByTag: string;
-      groupByTagValue: string;
     }
   | {
-      type: 'loading';
+      groupsLoadingType: 'loading';
       groups: Groups;
-      groupByTag: string;
-      groupByTagValue: string;
     }
   | {
-      type: 'loaded';
+      groupsLoadingType: 'loaded';
       groups: Groups;
-      groupByTag: string;
-      activeTagProfile?: Profile;
-      groupByTagValue: string;
     }
   | {
-      type: 'reloading';
+      groupsLoadingType: 'reloading';
       groups: Groups;
-      groupByTag: string;
-      activeTagProfile?: Profile;
-      groupByTagValue: string;
+    };
+
+type ActiveProfileType =
+  | {
+      activeTagProfileLoadingType: 'pristine';
+    }
+  | {
+      activeTagProfileLoadingType: 'loading';
+    }
+  | {
+      activeTagProfileLoadingType: 'loaded';
+      activeTagProfile: Profile;
+    }
+  | {
+      activeTagProfileLoadingType: 'reloading';
+      activeTagProfile: Profile;
     };
 
 type ComparisonView = {
@@ -130,10 +143,10 @@ export interface ContinuousState {
   newAnnotation: NewAnnotationState;
   tags: Tags;
 
-  appNames:
-    | { type: 'loaded'; data: AppNames }
-    | { type: 'reloading'; data: AppNames }
-    | { type: 'failed'; data: AppNames };
+  apps:
+    | { type: 'loaded'; data: App[] }
+    | { type: 'reloading'; data: App[] }
+    | { type: 'failed'; data: App[] };
 
   // Since both comparison and diff use the same timeline
   // Makes sense storing them separately

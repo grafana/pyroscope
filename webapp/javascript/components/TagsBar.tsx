@@ -11,7 +11,8 @@ import { Query, brandQuery } from '@webapp/models/query';
 import Input from '@webapp/ui/Input';
 import { appendLabelToQuery } from '@webapp/util/query';
 import QueryInput from '@webapp/components/QueryInput/QueryInput';
-
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import styles from './TagsBar.module.scss';
 interface TagsBarProps {
   /** callback for when a label is selected */
   onSelectedLabel: (label: string, query: Query) => void;
@@ -185,17 +186,28 @@ function LabelsSubmenu({
   };
 
   const Items = Object.entries(tags).map(([tag, tagValues]) => {
+    const onChange = (open: boolean) => {
+      if (open && tagValues.type !== 'loaded') {
+        onSelectedLabel(tag);
+      }
+    };
+
+    const values =
+      tagValues.type === 'loaded' ? (
+        <MenuGroup takeOverflow>{GetTagValues(tag, tagValues)}</MenuGroup>
+      ) : (
+        <div className={styles.loadingWrapper}>
+          <LoadingSpinner />
+        </div>
+      );
+
     return (
       <SubMenu
         key={tag}
         overflow="auto"
         position="initial"
-        onChange={(open) => {
-          // we are opening the menu for the first time
-          if (open && tagValues.type !== 'loaded') {
-            onSelectedLabel(tag);
-          }
-        }}
+        onChange={() => onChange(true)}
+        onMenuChange={({ open }) => onChange(open)}
         label={() => (
           <span
             className="tag-content"
@@ -207,7 +219,7 @@ function LabelsSubmenu({
         )}
       >
         {GetFilter(tag)}
-        <MenuGroup takeOverflow>{GetTagValues(tag, tagValues)}</MenuGroup>
+        {values}
       </SubMenu>
     );
   });

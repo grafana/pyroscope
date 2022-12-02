@@ -222,7 +222,7 @@ const tooltipTitles: Record<
     formattedValue: 'Thrown exceptions',
     total: '% of total thrown exceptions',
   },
-  '': {
+  unknown: {
     percent: 'Percentage',
     formattedValue: 'Units',
     total: '% of total units',

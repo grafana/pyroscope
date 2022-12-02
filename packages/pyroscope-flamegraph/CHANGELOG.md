@@ -3,6 +3,69 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.0...@pyroscope/flamegraph@0.34.1) (2022-12-01)
+
+
+### Bug Fixes
+
+* small toolbar fixes ([#1777](https://github.com/pyroscope-io/pyroscope/issues/1777)) ([196c6d8](https://github.com/pyroscope-io/pyroscope/commit/196c6d84adeb91efb4a8e4ee9606b5bdcb6a31f4))
+
+
+
+
+
+# [0.34.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.33.0...@pyroscope/flamegraph@0.34.0) (2022-11-30)
+
+
+### Features
+
+* **flamegraph:** allow sorting by diff percentage ([#1776](https://github.com/pyroscope-io/pyroscope/issues/1776)) ([8d9c838](https://github.com/pyroscope-io/pyroscope/commit/8d9c838d7b96daf1e1aa482b1f2d0820bd81f8ed))
+
+
+
+
+
+# [0.33.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.6...@pyroscope/flamegraph@0.33.0) (2022-11-30)
+
+
+### Features
+
+* fix toolbar on narrow screens ([#1754](https://github.com/pyroscope-io/pyroscope/issues/1754)) ([78b27d8](https://github.com/pyroscope-io/pyroscope/commit/78b27d8cc8a93149c79f6d4103e8ae81d7b3b024))
+
+
+
+
+
+## [0.32.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.5...@pyroscope/flamegraph@0.32.6) (2022-11-29)
+
+
+### Bug Fixes
+
+* **flamegraph:** Make table tooltip invisible when user not hovering on table ([#1749](https://github.com/pyroscope-io/pyroscope/issues/1749)) ([5210aa7](https://github.com/pyroscope-io/pyroscope/commit/5210aa72724f7ac2f2c639fe6584d565d7ae1b75))
+
+
+
+
+
+## [0.32.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.4...@pyroscope/flamegraph@0.32.5) (2022-11-28)
+
+
+### Bug Fixes
+
+* make table rows only take one line ([#1765](https://github.com/pyroscope-io/pyroscope/issues/1765)) ([6d33d42](https://github.com/pyroscope-io/pyroscope/commit/6d33d426b4f94833059fea5ca995bb5aa9dd022a))
+
+
+
+
+
+## [0.32.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.3...@pyroscope/flamegraph@0.32.4) (2022-11-28)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 ## [0.32.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.32.2...@pyroscope/flamegraph@0.32.3) (2022-11-23)
 
 

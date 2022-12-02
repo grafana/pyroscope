@@ -1,6 +1,6 @@
 import React, { useCallback, RefObject, Dispatch, SetStateAction } from 'react';
+import { Units } from '@pyroscope/models/src/units';
 
-import type { Units } from '@pyroscope/models/src';
 import type { FlamegraphPalette } from '../FlameGraph/FlameGraphComponent/colorPalette';
 import { Tooltip, TooltipData } from './Tooltip';
 import { formatDouble } from './FlamegraphTooltip';

@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchAppNames } from '@webapp/services/appNames';
+import { fetchApps } from '@webapp/services/apps';
 import { Query } from '@webapp/models/query';
 import { defaultcomparisonPeriod } from '@webapp/components/SideTimelineComparator/periods';
 import { addNotification } from './notifications';
@@ -40,12 +40,13 @@ const initialState: ContinuousState = {
   tagExplorerView: {
     groupByTag: '',
     groupByTagValue: '',
-    type: 'pristine',
+    groupsLoadingType: 'pristine',
+    activeTagProfileLoadingType: 'pristine',
     groups: {},
   },
   newAnnotation: { type: 'pristine' },
 
-  appNames: {
+  apps: {
     type: 'loaded',
     data: [],
   },
@@ -74,7 +75,7 @@ export const reloadAppNames = createAsyncThunk(
   'names/reloadAppNames',
   async (_, thunkAPI) => {
     // TODO, retries?
-    const res = await fetchAppNames();
+    const res = await fetchApps();
 
     if (res.isOk) {
       return Promise.resolve(res.value);
@@ -337,14 +338,14 @@ export const continuousSlice = createSlice({
     /*******************************/
 
     builder.addCase(fetchTagExplorerView.pending, (state) => {
-      switch (state.diffView.type) {
+      switch (state.tagExplorerView.groupsLoadingType) {
         // if we are fetching but there's already data
         // it's considered a 'reload'
         case 'reloading':
         case 'loaded': {
           state.tagExplorerView = {
             ...state.tagExplorerView,
-            type: 'reloading',
+            groupsLoadingType: 'reloading',
           };
           break;
         }
@@ -352,7 +353,7 @@ export const continuousSlice = createSlice({
         default: {
           state.tagExplorerView = {
             ...state.tagExplorerView,
-            type: 'loading',
+            groupsLoadingType: 'loading',
           };
         }
       }
@@ -362,8 +363,7 @@ export const continuousSlice = createSlice({
       state.tagExplorerView = {
         ...state.tagExplorerView,
         ...action.payload,
-        activeTagProfile: action.payload.profile,
-        type: 'loaded',
+        groupsLoadingType: 'loaded',
       };
     });
 
@@ -373,13 +373,29 @@ export const continuousSlice = createSlice({
     /*      Tag Explorer View Profile      */
     /***************************************/
 
-    builder.addCase(fetchTagExplorerViewProfile.pending, () => {});
+    builder.addCase(fetchTagExplorerViewProfile.pending, (state) => {
+      switch (state.tagExplorerView.activeTagProfileLoadingType) {
+        case 'loaded':
+        case 'reloading':
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            activeTagProfileLoadingType: 'reloading',
+          };
+          break;
+
+        default:
+          state.tagExplorerView = {
+            ...state.tagExplorerView,
+            activeTagProfileLoadingType: 'loading',
+          };
+      }
+    });
 
     builder.addCase(fetchTagExplorerViewProfile.fulfilled, (state, action) => {
       state.tagExplorerView = {
         ...state.tagExplorerView,
         activeTagProfile: action.payload.profile,
-        type: 'loaded',
+        activeTagProfileLoadingType: 'loaded',
       };
     });
 
@@ -423,13 +439,13 @@ export const continuousSlice = createSlice({
     /*      App Names      */
     /***********************/
     builder.addCase(reloadAppNames.fulfilled, (state, action) => {
-      state.appNames = { type: 'loaded', data: action.payload };
+      state.apps = { type: 'loaded', data: action.payload };
     });
     builder.addCase(reloadAppNames.pending, (state) => {
-      state.appNames = { type: 'reloading', data: state.appNames.data };
+      state.apps = { type: 'reloading', data: state.apps.data };
     });
     builder.addCase(reloadAppNames.rejected, (state) => {
-      state.appNames = { type: 'failed', data: state.appNames.data };
+      state.apps = { type: 'failed', data: state.apps.data };
     });
 
     /*****************/

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SpyNameSchema } from './spyName';
+import { UnitsSchema } from './units';
 
 export const FlamebearerSchema = z.object({
   names: z.array(
@@ -15,30 +16,6 @@ export const FlamebearerSchema = z.object({
   numTicks: z.number(),
   maxSelf: z.number(),
 });
-
-export type UnitsType = typeof units[number];
-
-export const units = [
-  'samples',
-  'objects',
-  'goroutines',
-  'bytes',
-  'lock_samples',
-  'lock_nanoseconds',
-  'trace_samples',
-  'exceptions',
-];
-
-// accept the defined units
-// and convert anything else to empty string
-export const UnitsSchema = z.preprocess((u) => {
-  if (typeof u === 'string') {
-    if (units.includes(u)) {
-      return u;
-    }
-  }
-  return '';
-}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', 'trace_samples', 'exceptions', '']));
 
 export const MetadataSchema = z.object({
   // Optional fields since adhoc may be missing them
@@ -69,4 +46,3 @@ export const FlamebearerProfileSchema = z.object({
 });
 
 export type Profile = z.infer<typeof FlamebearerProfileSchema>;
-export type Units = z.infer<typeof UnitsSchema>;

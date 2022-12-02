@@ -41,18 +41,15 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByRole('button', { name: /View Mode/ }).click();
-    cy.findByRole('menuitem', { name: 'Table' }).click();
+    cy.findByTestId('table').click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 
-    cy.findByRole('button', { name: /View Mode/ }).click();
-    cy.findByRole('menuitem', { name: 'Table and Flamegraph' }).click();
+    cy.findByTestId('both').click();
     cy.findByTestId('table-ui').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
-    cy.findByRole('button', { name: /View Mode/ }).click();
-    cy.findByRole('menuitem', { name: 'Flamegraph' }).click();
+    cy.findByTestId('flamegraph').click();
     cy.findByTestId('table-ui').should('not.exist');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
@@ -138,7 +135,6 @@ describe('basic test', () => {
       });
   });
 
-  //
   it('validates "Reset View" button works', () => {
     cy.intercept('**/render*', {
       fixture: 'simple-golang-app-cpu.json',
@@ -221,7 +217,7 @@ describe('basic test', () => {
       findFlamegraph(1)
         .findByTestId('flamegraph-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       findFlamegraph(1)
         .findByTestId('tooltip-title')
@@ -255,7 +251,7 @@ describe('basic test', () => {
       findFlamegraph(2)
         .findByTestId('flamegraph-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       findFlamegraph(2)
         .findByTestId('tooltip-title')
@@ -296,12 +292,11 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-view')
         .findByTestId('tooltip')
         .should('not.be.visible');
-      cy.get('div.spinner-container.loaded');
 
       cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       cy.findByTestId('tooltip-title').should('have.text', 'total');
       cy.findByTestId('tooltip-table').should(
@@ -323,12 +318,11 @@ describe('basic test', () => {
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
         .should('not.be.visible');
-      cy.get('div.spinner-container.loaded');
 
       cy.findByTestId('table-view').trigger('mousemove', 150, 80);
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       cy.findByTestId('tooltip-table').should(
         'have.text',
@@ -351,12 +345,11 @@ describe('basic test', () => {
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
         .should('not.be.visible');
-      cy.get('div.spinner-container.loaded');
 
       cy.findByTestId('table-view').trigger('mousemove', 150, 80);
       cy.findByTestId('table-view')
         .findByTestId('tooltip')
-        .should('be.visible');
+        .should('have.css', 'visibility', 'visible');
 
       cy.findByTestId('tooltip-table').should(
         'have.text',

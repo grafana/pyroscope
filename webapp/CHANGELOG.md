@@ -3,6 +3,130 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.15](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.14...@pyroscope/webapp@1.66.15) (2022-12-01)
+
+
+### Bug Fixes
+
+* tags loading ([#1784](https://github.com/pyroscope-io/pyroscope/issues/1784)) ([fb4fee8](https://github.com/pyroscope-io/pyroscope/commit/fb4fee858d749c61362c5a95c20fc0213d1e3a7c))
+
+
+
+
+
+## [1.66.14](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.13...@pyroscope/webapp@1.66.14) (2022-12-01)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.13](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.12...@pyroscope/webapp@1.66.13) (2022-11-30)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.12](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.11...@pyroscope/webapp@1.66.12) (2022-11-30)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.11](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.10...@pyroscope/webapp@1.66.11) (2022-11-30)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.10](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.9...@pyroscope/webapp@1.66.10) (2022-11-30)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.8...@pyroscope/webapp@1.66.9) (2022-11-30)
+
+
+### Bug Fixes
+
+* update tag explorer dropdown ([#1772](https://github.com/pyroscope-io/pyroscope/issues/1772)) ([e04abd7](https://github.com/pyroscope-io/pyroscope/commit/e04abd7704861ac4bc0b7d0d9a420c37ab628a7a))
+
+
+
+
+
+## [1.66.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.7...@pyroscope/webapp@1.66.8) (2022-11-29)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.6...@pyroscope/webapp@1.66.7) (2022-11-29)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.5...@pyroscope/webapp@1.66.6) (2022-11-29)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.4...@pyroscope/webapp@1.66.5) (2022-11-28)
+
+
+### Bug Fixes
+
+* move sandwich view message to correct location ([#1767](https://github.com/pyroscope-io/pyroscope/issues/1767)) ([6720c3f](https://github.com/pyroscope-io/pyroscope/commit/6720c3f2de303b25f2031d8c09bbb330561ddde4))
+
+
+
+
+
+## [1.66.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.3...@pyroscope/webapp@1.66.4) (2022-11-28)
+
+
+### Bug Fixes
+
+* make table rows only take one line ([#1765](https://github.com/pyroscope-io/pyroscope/issues/1765)) ([6d33d42](https://github.com/pyroscope-io/pyroscope/commit/6d33d426b4f94833059fea5ca995bb5aa9dd022a))
+
+
+
+
+
+## [1.66.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.2...@pyroscope/webapp@1.66.3) (2022-11-28)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.66.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.1...@pyroscope/webapp@1.66.2) (2022-11-28)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.66.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.0...@pyroscope/webapp@1.66.1) (2022-11-23)
 
 

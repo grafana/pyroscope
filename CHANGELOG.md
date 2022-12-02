@@ -1,3 +1,38 @@
+## [0.35.1](https://github.com/pyroscope-io/pyroscope/compare/v0.35.0...v0.35.1) (2022-12-01)
+
+
+### Bug Fixes
+
+* **flamegraph:** Make table tooltip invisible when user not hovering on table ([#1749](https://github.com/pyroscope-io/pyroscope/issues/1749)) ([5210aa7](https://github.com/pyroscope-io/pyroscope/commit/5210aa72724f7ac2f2c639fe6584d565d7ae1b75))
+* small toolbar fixes ([#1777](https://github.com/pyroscope-io/pyroscope/issues/1777)) ([196c6d8](https://github.com/pyroscope-io/pyroscope/commit/196c6d84adeb91efb4a8e4ee9606b5bdcb6a31f4))
+* tags loading ([#1784](https://github.com/pyroscope-io/pyroscope/issues/1784)) ([fb4fee8](https://github.com/pyroscope-io/pyroscope/commit/fb4fee858d749c61362c5a95c20fc0213d1e3a7c))
+* update tag explorer dropdown ([#1772](https://github.com/pyroscope-io/pyroscope/issues/1772)) ([e04abd7](https://github.com/pyroscope-io/pyroscope/commit/e04abd7704861ac4bc0b7d0d9a420c37ab628a7a))
+
+
+### Features
+
+* fix toolbar on narrow screens ([#1754](https://github.com/pyroscope-io/pyroscope/issues/1754)) ([78b27d8](https://github.com/pyroscope-io/pyroscope/commit/78b27d8cc8a93149c79f6d4103e8ae81d7b3b024))
+* **flamegraph:** allow sorting by diff percentage ([#1776](https://github.com/pyroscope-io/pyroscope/issues/1776)) ([8d9c838](https://github.com/pyroscope-io/pyroscope/commit/8d9c838d7b96daf1e1aa482b1f2d0820bd81f8ed))
+
+
+
+# [0.35.0](https://github.com/pyroscope-io/pyroscope/compare/v0.34.1...v0.35.0) (2022-11-28)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix dropdown menu opening ([#1755](https://github.com/pyroscope-io/pyroscope/issues/1755)) ([0b1acef](https://github.com/pyroscope-io/pyroscope/commit/0b1acef9c5d5a2a268f952a529d12f784d257842))
+* make table rows only take one line ([#1765](https://github.com/pyroscope-io/pyroscope/issues/1765)) ([6d33d42](https://github.com/pyroscope-io/pyroscope/commit/6d33d426b4f94833059fea5ca995bb5aa9dd022a))
+* move sandwich view message to correct location ([#1767](https://github.com/pyroscope-io/pyroscope/issues/1767)) ([6720c3f](https://github.com/pyroscope-io/pyroscope/commit/6720c3f2de303b25f2031d8c09bbb330561ddde4))
+* tag explorer loading spinner ([#1748](https://github.com/pyroscope-io/pyroscope/issues/1748)) ([c1c83c2](https://github.com/pyroscope-io/pyroscope/commit/c1c83c290997b5b93e86ce7f7c29eaa49d809ee7))
+
+
+### Features
+
+* **webapp:** add tooltip to main timeline in single view ([#1742](https://github.com/pyroscope-io/pyroscope/issues/1742)) ([508946c](https://github.com/pyroscope-io/pyroscope/commit/508946cf034d2f9aedae03c71429fc05d313897d))
+
+
+
 ## [0.34.1](https://github.com/pyroscope-io/pyroscope/compare/v0.34.0...v0.34.1) (2022-11-19)
 
 

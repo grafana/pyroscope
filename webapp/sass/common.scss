@@ -57,9 +57,9 @@ tt {
 
     border-left: 1px solid var(--ps-ui-border);
     border-bottom: 1px solid var(--ps-ui-border);
-    width: 130px;
-    min-width: 130px;
-    max-width: 130px;
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
 
     span {
       text-shadow: 0 0 1px var(--ps-table-row-text-shadow);
@@ -82,6 +82,19 @@ tt {
       bottom: 0;
       top: 0;
       margin: auto;
+    }
+  }
+
+  &.flamegraph-table-doubles th,
+  &.flamegraph-table-doubles td {
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
+
+    &:first-child {
+      width: auto;
+      min-width: auto;
+      max-width: auto;
     }
   }
 

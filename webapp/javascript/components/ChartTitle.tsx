@@ -13,13 +13,12 @@ const chartTitleKeys = {
   diff: 'Baseline vs. Comparison Diff',
   trace_samples: 'Total aggregated span duration',
   exceptions: 'Total number of exceptions thrown',
+  unknown: '',
 
   baseline: 'Baseline Flamegraph',
   comparison: 'Comparison Flamegraph',
   selection_included: 'Selection-included Exemplar Flamegraph',
   selection_excluded: 'Selection-excluded Exemplar Flamegraph',
-
-  '': '',
 };
 
 interface ChartTitleProps {
@@ -37,7 +36,7 @@ export default function ChartTitle({
   color,
   icon,
   postfix,
-  titleKey = '',
+  titleKey = 'unknown',
 }: ChartTitleProps) {
   return (
     <div className={clsx([styles.chartTitle, className])}>
