@@ -22,6 +22,7 @@ type Writer struct {
 	storage        *storage.Storage
 
 	adhocDataDirWriter *AdhocDataDirWriter
+	stripTimestamp     bool
 }
 
 func NewWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) Writer {
@@ -32,6 +33,7 @@ func NewWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) Wr
 		logger:             logger,
 		storage:            st,
 		adhocDataDirWriter: NewAdhocDataDirWriter(cfg.DataPath),
+		stripTimestamp:     cfg.StripTimestamp,
 	}
 }
 
@@ -71,7 +73,8 @@ func (w Writer) Write(t0, t1 time.Time) error {
 			continue
 		}
 
-		if err := ew.write(name, out); err != nil {
+		// TODO: Remove stripTimestamp flag and instead receive a formatter
+		if err := ew.write(name, out, w.stripTimestamp); err != nil {
 			w.logger.WithError(err).Error("saving output file")
 			continue
 		}

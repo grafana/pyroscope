@@ -58,7 +58,7 @@ func newExternalWriter(format string, maxNodesRender int, now time.Time) (*exter
 	}, nil
 }
 
-func (w *externalWriter) write(name string, out *storage.GetOutput) error {
+func (w *externalWriter) write(name string, out *storage.GetOutput, stripTimestamp bool) error {
 	if w.format == "none" {
 		return nil
 	}
@@ -70,6 +70,10 @@ func (w *externalWriter) write(name string, out *storage.GetOutput) error {
 	}
 
 	filename := fmt.Sprintf("%s-%s.%s", name, w.now.Format("2006-01-02-15-04-05"), ext)
+	if stripTimestamp {
+		filename = fmt.Sprintf("%s.%s", name, ext)
+	}
+
 	path := filepath.Join(w.dataDir, filename)
 
 	f, err := os.Create(path)

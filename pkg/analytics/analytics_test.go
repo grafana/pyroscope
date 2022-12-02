@@ -71,7 +71,13 @@ var _ = Describe("analytics", func() {
 					defer httpServer.Close()
 					host = httpServer.URL
 
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+					s, err := storage.New(
+						storage.NewConfig(&(*cfg).Server),
+						logrus.StandardLogger(),
+						prometheus.NewRegistry(),
+						new(health.Controller),
+						storage.NoopApplicationMetadataService{},
+					)
 					Expect(err).ToNot(HaveOccurred())
 
 					analytics := NewService(&(*cfg).Server, s, &mockStatsProvider{})
@@ -109,7 +115,13 @@ var _ = Describe("analytics", func() {
 					defer httpServer.Close()
 					host = httpServer.URL
 
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+					s, err := storage.New(
+						storage.NewConfig(&(*cfg).Server),
+						logrus.StandardLogger(),
+						prometheus.NewRegistry(),
+						new(health.Controller),
+						storage.NoopApplicationMetadataService{},
+					)
 					Expect(err).ToNot(HaveOccurred())
 
 					stats := map[string]int{
