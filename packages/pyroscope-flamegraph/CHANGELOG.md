@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.2...@pyroscope/flamegraph@0.34.3) (2022-12-02)
+
+
+### Bug Fixes
+
+* **webapp:** toolbar overlaps annotation ([#1785](https://github.com/pyroscope-io/pyroscope/issues/1785)) ([24722d2](https://github.com/pyroscope-io/pyroscope/commit/24722d2843539deef587781612d3ccee89e2e9d5))
+
+
+
+
+
 ## [0.34.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.1...@pyroscope/flamegraph@0.34.2) (2022-12-02)
 
 
