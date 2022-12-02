@@ -167,6 +167,8 @@ class TimelineChartWrapper extends React.Component<
         mode: 'time',
         timezone: props.timezone,
         reserveSpace: false,
+        // according to https://github.com/flot/flot/blob/master/API.md#customizing-the-axes
+        minTickSize: [3, 'second'],
       },
     };
 
