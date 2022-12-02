@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.66.17](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.16...@pyroscope/webapp@1.66.17) (2022-12-02)
+
+
+### Bug Fixes
+
+* **webapp:** timeline ticks overlapping ([#1786](https://github.com/pyroscope-io/pyroscope/issues/1786)) ([1a6b52d](https://github.com/pyroscope-io/pyroscope/commit/1a6b52d98dac60272ff5753542b7e9a598546dbd))
+
+
+
+
+
 ## [1.66.16](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.15...@pyroscope/webapp@1.66.16) (2022-12-02)
 
 **Note:** Version bump only for package @pyroscope/webapp
