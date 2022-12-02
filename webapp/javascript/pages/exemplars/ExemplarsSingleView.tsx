@@ -172,14 +172,14 @@ function ExemplarsSingleView() {
               <Tab label="Comparison" />
               <Tab label="Diff" />
             </Tabs>
-            <TabPanel visible={tabIndex === 0}>
+            <TabPanel value={tabIndex} index={0}>
               <SingleTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
                 selectionProfile={exemplarsSingleView.selectionProfile}
               />
             </TabPanel>
-            <TabPanel visible={tabIndex === 1}>
+            <TabPanel value={tabIndex} index={1}>
               <ComparisonTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
@@ -187,7 +187,7 @@ function ExemplarsSingleView() {
                 selectionProfile={exemplarsSingleView.selectionProfile}
               />
             </TabPanel>
-            <TabPanel visible={tabIndex === 2}>
+            <TabPanel value={tabIndex} index={2}>
               <DiffTab
                 colorMode={colorMode}
                 type={exemplarsSingleView.type}
