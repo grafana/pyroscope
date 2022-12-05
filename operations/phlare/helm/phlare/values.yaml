@@ -42,6 +42,8 @@ phlare:
 
   podSecurityContext:
     fsGroup: 10001
+    runAsUser: 10001
+    runAsNonRoot: true
 
   securityContext:
     {}
