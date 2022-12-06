@@ -4,39 +4,97 @@
   display: flex;
   align-items: center;
   position: relative;
+}
 
-  .refreshButton {
-    margin-left: 5px;
-  }
+.refreshButton {
+  margin-left: 5px;
+}
 
-  .appSelectorModal {
-    height: auto;
-    width: auto;
-    right: unset;
-    left: -100px;
-    z-index: 999;
-    max-width: calc(100vw - 290px);
-  }
+.appSelectorModal {
+  height: auto;
+  width: auto;
+  right: unset;
+  left: -100px;
+  z-index: 999;
+  max-width: calc(100vw - 290px);
+}
 
-  .headerTitle {
-    margin-left: 10px;
-    color: var(--ps-select-modal-title);
-    font-weight: 700;
-    font-size: 0.8em;
-  }
+.header {
+  display: flex;
+}
 
-  .search {
-    background: var(--ps-immutable-off-white);
-    color: var(--ps-immutable-placeholder-text);
-    border: 1px solid var(--ps-ui-border);
-    margin: 10px 0 10px 10px;
-  }
+.headerTitle {
+  margin-left: 10px;
+  color: var(--ps-select-modal-title);
+  font-weight: 700;
+  font-size: 0.8em;
+}
 
-  .noData {
-    width: 600px;
-    height: 300px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.searchInput {
+  height: 40px;
+  background: var(--ps-immutable-off-white);
+  color: var(--ps-immutable-placeholder-text);
+  border: 1px solid var(--ps-ui-border);
+  margin: 10px 0 10px 10px;
+}
+
+.filter {
+  margin: 10px;
+  min-height: 40px;
+  display: flex;
+
+  &.active {
+    background-color: pink;
   }
+}
+
+.filterName {
+  margin: 0;
+  padding: 0;
+  min-width: 100px;
+  line-height: 40px;
+  color: var(--ps-select-modal-title);
+}
+
+.iconsContainer,
+.profileTypesContainer {
+  display: flex;
+}
+
+.profileTypesContainer {
+  flex-wrap: wrap;
+}
+
+.icon {
+  cursor: pointer;
+  border: 1px solid var(--ps-ui-border);
+  width: 40px;
+  height: 40px;
+  margin-right: 5px;
+  text-align: center;
+  line-height: 40px;
+
+  &.active {
+    background-color: yellow;
+  }
+}
+
+.profileType {
+  cursor: pointer;
+  border-radius: 10px;
+  background-color: lightblue;
+  margin: 0 5px 5px 0;
+  padding: 0 5px;
+
+  &.active {
+    background-color: blue;
+  }
+}
+
+.noData {
+  width: 600px;
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
+import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
+import cl from 'classnames';
 
+import type { App } from '@webapp/models/app';
 import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import {
   actions,
-  selectAppNames,
   reloadAppNames,
   selectQueries,
   selectAppNamesState,
@@ -15,6 +18,7 @@ import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
 import SelectButton from './SelectButton';
+import { SPY_NAMES_ICONS } from './LanguagesIcons';
 import styles from './AppSelector.module.scss';
 
 interface AppSelectorProps {
@@ -31,10 +35,17 @@ const AppSelector = ({
 }: AppSelectorProps) => {
   const dispatch = useAppDispatch();
   const appNamesState = useAppSelector(selectAppNamesState);
-  const appNames = useAppSelector(selectAppNames).filter(filterApp);
+  const appNamesData = appNamesState.data.filter((v) => filterApp(v.name));
+
   const { query } = useAppSelector(selectQueries);
-  const appName = queryToAppName(query).mapOr('', (q) =>
-    appNames.indexOf(q) !== -1 ? q : ''
+  const app = queryToAppName(query).mapOr(
+    { name: '', spyName: '', units: '' },
+    (q) =>
+      appNamesData.find((v) => v.name === q) || {
+        name: '',
+        spyName: '',
+        units: '',
+      }
   );
 
   const selectAppName = (name: string) => {
@@ -51,8 +62,8 @@ const AppSelector = ({
       Application:&nbsp;
       <SelectorModalWithToggler
         selectAppName={selectAppName}
-        appNames={appNames}
-        appName={appName}
+        appNamesData={appNamesData}
+        app={app as App}
       />
       <Button
         aria-label="Refresh Apps"
@@ -101,35 +112,73 @@ const getGroups = (filteredAppNames: string[]) => {
 };
 
 interface SelectorModalWithTogglerProps {
-  appNames: string[];
+  app: App;
+  appNamesData: App[];
   selectAppName: (name: string) => void;
-  appName: string;
 }
 
 const SelectorModalWithToggler = ({
-  appNames,
+  app,
+  appNamesData,
   selectAppName,
-  appName,
 }: SelectorModalWithTogglerProps) => {
-  const [filter, setFilter] = useState('');
+  const [filters, setFilters] = useState({
+    search: '',
+    spyName: '',
+    profileType: '',
+  });
   const [isModalOpen, setModalOpenStatus] = useState(false);
 
   // selected is an array of strings
   //  0 corresponds to string of group / app name selected in the left pane
   //  1 corresponds to string of app name selected in the right pane
   const [selected, setSelected] = useState<string[]>([]);
-  const filteredAppNames = useMemo(
-    // filtered names by search input
+  const filteredApps = useMemo(
     () =>
-      appNames.filter((n: string) =>
-        n.toLowerCase().includes(filter.trim().toLowerCase())
-      ),
-    [filter, appNames]
+      appNamesData.filter((n) => {
+        const { search, spyName, profileType } = filters;
+        if (!search && !spyName && !profileType) {
+          return true;
+        }
+
+        if (search) {
+          return n.name
+            .toLowerCase()
+            .includes(filters.search.trim().toLowerCase());
+        }
+
+        if (spyName) {
+          return n.spyName === spyName;
+        }
+
+        if (profileType) {
+          return n.name.includes(profileType);
+        }
+
+        return '';
+      }),
+    [filters, appNamesData]
+  );
+
+  const filteredAppNames = filteredApps.map((v) => v.name);
+  const { spyNames, profileTypes } = appNamesData.reduce(
+    (acc, v) => {
+      if (acc.spyNames.indexOf(v.spyName) === -1) {
+        acc.spyNames.push(v.spyName);
+      }
+
+      const propfileType = v.name.split('.').pop() as string;
+      if (acc.profileTypes.indexOf(propfileType) === -1) {
+        acc.profileTypes.push(propfileType);
+      }
+
+      return acc;
+    },
+    { spyNames: [] as string[], profileTypes: [] as string[] }
   );
 
   const groups = useMemo(() => getGroups(filteredAppNames), [filteredAppNames]);
-
-  const profileTypes = useMemo(() => {
+  const profiles = useMemo(() => {
     if (!selected?.[0]) {
       return [];
     }
@@ -163,29 +212,41 @@ const SelectorModalWithToggler = ({
   };
 
   useEffect(() => {
-    if (appName && !selected.length && groups.length) {
-      if (groups.indexOf(appName) !== -1) {
-        setSelected([appName]);
+    if (app.name && !selected.length && groups.length) {
+      if (groups.indexOf(app.name) !== -1) {
+        setSelected([app.name]);
         setModalOpenStatus(false);
       } else {
-        setSelected([getGroupNameFromAppName(groups, appName), appName]);
+        setSelected([getGroupNameFromAppName(groups, app.name), app.name]);
       }
     }
-  }, [appName, selected, groups]);
+  }, [app.name, selected, groups]);
 
   const listHeight = useMemo(() => {
     const height = (window?.innerHeight || 0) - 160;
 
     const listRequiredHeight =
       // 35 is list item height
-      Math.max(groups?.length || 0, profileTypes?.length || 0) * 35;
+      Math.max(groups?.length || 0, profiles?.length || 0) * 35;
 
     if (height && listRequiredHeight) {
       return height >= listRequiredHeight ? 'auto' : `${height}px`;
     }
 
     return 'auto';
-  }, [groups, profileTypes]);
+  }, [groups, profiles]);
+
+  const handleFilterChange = (
+    k: 'search' | 'spyName' | 'profileType',
+    v: string
+  ) => {
+    setFilters((prevFilters) => {
+      if (prevFilters[k] === v) {
+        return { ...prevFilters, [k]: '' };
+      }
+      return { ...prevFilters, [k]: v };
+    });
+  };
 
   return (
     <ModalWithToggle
@@ -200,35 +261,78 @@ const SelectorModalWithToggler = ({
           </div>
         ) : null
       }
-      toggleText={appName || 'Select application'}
+      toggleText={app.name || 'Select application'}
       headerEl={
-        <>
-          <div className={styles.headerTitle}>SELECT APPLICATION</div>
-          <Input
-            name="application seach"
-            type="text"
-            placeholder="Type an app"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className={styles.search}
-            testId="application-search"
-          />
-        </>
+        <div className={styles.header}>
+          <div>
+            <div className={styles.headerTitle}>SELECT APPLICATION</div>
+            <Input
+              name="application seach"
+              type="text"
+              placeholder="Type an app"
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className={styles.searchInput}
+              testId="application-search"
+            />
+          </div>
+          <div>
+            <div className={styles.headerTitle}>
+              <FontAwesomeIcon icon={faSlidersH} /> FILTERS
+            </div>
+            <div>
+              <div className={styles.filter}>
+                <div className={styles.filterName}>Language</div>
+                <div className={styles.iconsContainer}>
+                  {spyNames.map((v) => (
+                    <div
+                      key={v}
+                      data-testid={v}
+                      className={cl(styles.icon, {
+                        [styles.active]: v === filters.spyName,
+                      })}
+                      onClick={() => handleFilterChange('spyName', v)}
+                    >
+                      {SPY_NAMES_ICONS[v]}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.filter}>
+                <div className={styles.filterName}>Profile type</div>
+                <div className={styles.profileTypesContainer}>
+                  {profileTypes.map((v) => (
+                    <div
+                      key={v}
+                      data-testid={v}
+                      className={cl(styles.profileType, {
+                        [styles.active]: v === filters.profileType,
+                      })}
+                      onClick={() => handleFilterChange('profileType', v)}
+                    >
+                      {v}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       }
       leftSideEl={groups.map((name) => (
         <SelectButton
           name={name}
           onClick={() => onSelect({ index: 0, name })}
-          fullList={appNames}
+          fullList={filteredAppNames}
           isSelected={selected?.[0] === name}
           key={name}
         />
       ))}
-      rightSideEl={profileTypes.map((name) => (
+      rightSideEl={profiles.map((name) => (
         <SelectButton
           name={name}
           onClick={() => onSelect({ index: 1, name })}
-          fullList={appNames}
+          fullList={filteredAppNames}
           isSelected={selected?.[1] === name}
           key={name}
         />

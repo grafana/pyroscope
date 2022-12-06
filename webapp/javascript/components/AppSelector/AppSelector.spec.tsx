@@ -24,10 +24,11 @@ const fetchAppsMock = apps.fetchApps as jest.MockedFunction<
 const { getByTestId, queryByRole, getByRole, findByRole } = screen;
 const mockApps: App[] = [
   { name: 'single', units: 'unknown', spyName: 'unknown' },
-  { name: 'double.cpu', units: 'unknown', spyName: 'unknown' },
-  { name: 'double.space', units: 'unknown', spyName: 'unknown' },
-  { name: 'triple.app.cpu', units: 'unknown', spyName: 'unknown' },
-  { name: 'triple.app.objects', units: 'unknown', spyName: 'unknown' },
+  { name: 'double.cpu', units: 'unknown', spyName: 'rbspy' },
+  { name: 'double.space', units: 'unknown', spyName: 'gospy' },
+  { name: 'triple.app.cpu', units: 'unknown', spyName: 'javaspy' },
+  { name: 'triple.app.objects', units: 'unknown', spyName: 'javaspy' },
+  { name: 'singlesingle', units: 'unknown', spyName: 'rbspy' },
 ];
 
 interface RenderOpts extends Omit<RenderOptions, 'queries'> {
@@ -57,7 +58,7 @@ function render(
 describe('AppSelector', () => {
   it('refreshes the list of apps', async () => {
     fetchAppsMock.mockResolvedValueOnce(
-      Result.ok([{ name: 'myapp', units: 'unknown', spyName: 'unknown' }])
+      Result.ok([{ name: 'myapp', units: 'unknown', spyName: 'dotnetspy' }])
     );
     render(<AppSelector />);
 
@@ -77,9 +78,7 @@ describe('AppSelector', () => {
     expect(await findByRole('progressbar')).not.toBeInTheDocument();
     getByRole(MENU_ITEM_ROLE, { name: 'myapp' });
   });
-});
 
-describe('AppSelector', () => {
   it('gets the list of apps, iterracts with it', async () => {
     fetchAppsMock.mockResolvedValueOnce(Result.ok(mockApps));
 
@@ -146,9 +145,7 @@ describe('AppSelector', () => {
       ).toBeInTheDocument();
     });
   });
-});
 
-describe('AppSelector', () => {
   it('filters apps by query input', async () => {
     fetchAppsMock.mockResolvedValueOnce(Result.ok(mockApps));
 
@@ -180,5 +177,106 @@ describe('AppSelector', () => {
         queryByRole(MENU_ITEM_ROLE, { name: 'triple.app' })
       ).toBeInTheDocument();
     });
+  });
+
+  it('filters apps by chosen language (spyName)', async () => {
+    fetchAppsMock.mockResolvedValueOnce(Result.ok(mockApps));
+
+    const renderUI = render(<AppSelector />, {
+      preloadedState: {
+        continuous: {
+          apps: {
+            type: 'loaded',
+            data: mockApps,
+          },
+        },
+      },
+    });
+
+    getByTestId('toggler').click();
+    const rubyFilter = renderUI.getByTestId('rbspy');
+    fireEvent.click(rubyFilter);
+
+    // should render ruby apps (rbspy) from different groups
+    await waitFor(() => {
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
+      ).toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
+      ).toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'single' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
+      ).not.toBeInTheDocument();
+    });
+
+    const javaFilter = renderUI.getByTestId('javaspy');
+    fireEvent.click(javaFilter);
+
+    // should render rust apps (javaspy) from the same group
+    await waitFor(() => {
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app' })
+      ).toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'single' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
+      ).not.toBeInTheDocument();
+      expect(
+        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('filters apps by chosen profile type', async () => {
+    fetchAppsMock.mockResolvedValueOnce(Result.ok(mockApps));
+
+    const renderUI = render(<AppSelector />, {
+      preloadedState: {
+        continuous: {
+          apps: {
+            type: 'loaded',
+            data: mockApps,
+          },
+        },
+      },
+    });
+
+    getByTestId('toggler').click();
+    const cpuProfileType = renderUI.getByTestId('cpu');
+    fireEvent.click(cpuProfileType);
+
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
+    ).toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.cpu' })
+    ).toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'single' })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
+    ).not.toBeInTheDocument();
   });
 });
