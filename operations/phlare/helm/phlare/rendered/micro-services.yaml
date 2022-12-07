@@ -698,6 +698,8 @@ spec:
       serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
       containers:
         - name: "agent"
           securityContext:
@@ -775,6 +777,8 @@ spec:
       serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
       containers:
         - name: "distributor"
           securityContext:
@@ -851,6 +855,8 @@ spec:
       serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
       containers:
         - name: "querier"
           securityContext:
@@ -1024,6 +1030,8 @@ spec:
       serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
       containers:
         - name: "ingester"
           securityContext:
