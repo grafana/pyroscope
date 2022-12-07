@@ -64,7 +64,9 @@
       "phlare.grafana.com/scrape": "true"
     },
     "podSecurityContext": {
-      "fsGroup": 10001
+      "fsGroup": 10001,
+      "runAsNonRoot": true,
+      "runAsUser": 10001
     },
     "replicaCount": 1,
     "resources": {},

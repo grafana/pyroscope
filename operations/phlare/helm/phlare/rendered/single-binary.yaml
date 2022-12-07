@@ -212,6 +212,8 @@ spec:
       serviceAccountName: phlare-dev
       securityContext:
         fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
       containers:
         - name: "phlare"
           securityContext:
