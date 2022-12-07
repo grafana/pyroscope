@@ -16,7 +16,7 @@ COPY grafana/flamegraph/src/ flamegraph/src/
 RUN cd phlare-datasource && yarn build
 RUN cd flamegraph && yarn build
 
-FROM golang:1.19.2-alpine as go-builder
+FROM golang:1.19.4-alpine as go-builder
 
 WORKDIR /build
 COPY grafana/phlare-datasource/go.mod grafana/phlare-datasource/go.sum grafana/phlare-datasource/Magefile.go grafana/phlare-datasource/
