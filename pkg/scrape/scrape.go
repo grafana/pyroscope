@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"io"
 	"math"
 	"net/http"
@@ -422,6 +423,12 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 
 	profile := sl.scraper.profile
 	sl.scraper.profile = profile.Push(buf.Bytes(), sl.scraper.cumulative)
+	if sl.scraper.cumulative && profile.SampleTypeConfig != nil {
+		if sl.scraper.mergers == nil {
+			sl.scraper.mergers = cumulativepprof.NewMergers()
+		}
+		profile.MergeCumulative(sl.scraper.mergers)
+	}
 	return sl.scraper.ingester.Ingest(ctx, &ingestion.IngestInput{
 		Profile: profile,
 		Metadata: ingestion.Metadata{
@@ -443,6 +450,7 @@ type scraper struct {
 
 	ingester ingestion.Ingester
 	profile  *pprof.RawProfile
+	mergers  *cumulativepprof.Mergers
 
 	cumulative bool
 	spyName    string

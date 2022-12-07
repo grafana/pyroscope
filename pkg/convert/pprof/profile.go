@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
+	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"io"
 	"mime/multipart"
 	"sync"
@@ -54,10 +56,10 @@ func (p *RawProfile) Push(profile []byte, cumulative bool) *RawProfile {
 	p.m.Lock()
 	p.Profile = profile
 	p.RawData = nil
-	n := &RawProfile{
-		SampleTypeConfig: p.SampleTypeConfig,
-	}
 	if cumulative {
+		n := &RawProfile{
+			SampleTypeConfig: p.SampleTypeConfig,
+		}
 		// N.B the parser state is only propagated
 		// after successful Parse call.
 		n.PreviousProfile = p.Profile
@@ -65,6 +67,39 @@ func (p *RawProfile) Push(profile []byte, cumulative bool) *RawProfile {
 	}
 	p.m.Unlock()
 	return p.next
+}
+
+func (p *RawProfile) MergeCumulative(ms *cumulativepprof.Mergers) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if p.PreviousProfile == nil {
+		return
+	}
+	m := ms.SelectMerger(p.SampleTypeConfig)
+	if m == nil {
+		return
+	}
+	mergedProfile, err := m.Merge(p.PreviousProfile, p.Profile)
+	if err != nil {
+		return
+	}
+	var mergedProfileBytes bytes.Buffer
+	err = mergedProfile.Write(&mergedProfileBytes)
+	if err != nil {
+		return
+	}
+	p.Profile = mergedProfileBytes.Bytes()
+	p.PreviousProfile = nil
+	p.SampleTypeConfig = map[string]*tree.SampleTypeConfig{}
+	for name, sampleType := range m.SampleTypeConfig {
+		p.SampleTypeConfig[name] = &tree.SampleTypeConfig{
+			Units:       metadata.Units(sampleType.Units),
+			DisplayName: sampleType.Units,
+			Aggregation: metadata.AggregationType(sampleType.Aggregation),
+			Cumulative:  sampleType.Cumulative,
+			Sampled:     sampleType.Sampled,
+		}
+	}
 }
 
 const (
