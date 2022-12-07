@@ -279,4 +279,44 @@ describe('AppSelector', () => {
       queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
     ).not.toBeInTheDocument();
   });
+
+  it('filters apps by chosen language (spyName) and profile type', () => {
+    fetchAppsMock.mockResolvedValueOnce(Result.ok(mockApps));
+
+    const renderUI = render(<AppSelector />, {
+      preloadedState: {
+        continuous: {
+          apps: {
+            type: 'loaded',
+            data: mockApps,
+          },
+        },
+      },
+    });
+
+    getByTestId('toggler').click();
+    const rubyFilter = renderUI.getByTestId('rbspy');
+    fireEvent.click(rubyFilter);
+    const cpuProfileType = renderUI.getByRole('button', { name: 'cpu' });
+    fireEvent.click(cpuProfileType);
+
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
+    ).toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.cpu' })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'single' })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
+    ).not.toBeInTheDocument();
+    expect(
+      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
+    ).not.toBeInTheDocument();
+  });
 });
