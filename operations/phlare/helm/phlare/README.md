@@ -40,6 +40,8 @@
 | phlare.podAnnotations."phlare.grafana.com/port" | string | `"4100"` |  |
 | phlare.podAnnotations."phlare.grafana.com/scrape" | string | `"true"` |  |
 | phlare.podSecurityContext.fsGroup | int | `10001` |  |
+| phlare.podSecurityContext.runAsNonRoot | bool | `true` |  |
+| phlare.podSecurityContext.runAsUser | int | `10001` |  |
 | phlare.replicaCount | int | `1` |  |
 | phlare.resources | object | `{}` |  |
 | phlare.securityContext | object | `{}` |  |
