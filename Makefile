@@ -65,12 +65,12 @@ build: go/bin plugin/datasource/build ## Build all packages
 
 
 .PHONY: release
-release: ## Create a release
+release: $(BIN)/goreleaser ## Create a release
 	$(GORELEASER_ENV) \
 	$(BIN)/goreleaser release -p=16 --rm-dist
 
 .PHONY: release/prepare
-release/prepare: ## Prepare a release
+release/prepare: $(BIN)/goreleaser ## Prepare a release
 	$(GORELEASER_ENV) \
 	$(BIN)/goreleaser release -p=16 --rm-dist --snapshot
 
