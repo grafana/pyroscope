@@ -18,7 +18,7 @@ import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
 import SelectButton from './SelectButton';
-import { SPY_NAMES_ICONS } from './LanguagesIcons';
+import { SPY_NAMES_ICONS } from './SpyNameIcons';
 import styles from './AppSelector.module.scss';
 
 interface AppSelectorProps {
@@ -285,7 +285,8 @@ const SelectorModalWithToggler = ({
                 <div className={styles.filterName}>Language</div>
                 <div className={styles.iconsContainer}>
                   {spyNames.map((v) => (
-                    <div
+                    <button
+                      type="button"
                       key={v}
                       data-testid={v}
                       className={cl(styles.icon, {
@@ -294,7 +295,7 @@ const SelectorModalWithToggler = ({
                       onClick={() => handleFilterChange('spyName', v)}
                     >
                       {SPY_NAMES_ICONS[v]}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -302,16 +303,16 @@ const SelectorModalWithToggler = ({
                 <div className={styles.filterName}>Profile type</div>
                 <div className={styles.profileTypesContainer}>
                   {profileTypes.map((v) => (
-                    <div
+                    <button
+                      type="button"
                       key={v}
-                      data-testid={v}
                       className={cl(styles.profileType, {
                         [styles.active]: v === filters.profileType,
                       })}
                       onClick={() => handleFilterChange('profileType', v)}
                     >
                       {v}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

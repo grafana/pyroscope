@@ -257,7 +257,7 @@ describe('AppSelector', () => {
     });
 
     getByTestId('toggler').click();
-    const cpuProfileType = renderUI.getByTestId('cpu');
+    const cpuProfileType = renderUI.getByRole('button', { name: 'cpu' });
     fireEvent.click(cpuProfileType);
 
     expect(
@@ -278,5 +278,10 @@ describe('AppSelector', () => {
     expect(
       queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
     ).not.toBeInTheDocument();
+  });
+
+  // todo: implement
+  it.skip('filter apps by chosen language and profile type', () => {
+    
   });
 });

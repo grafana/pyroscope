@@ -14,3 +14,13 @@ export const SPY_NAMES_ICONS: { [k: string]: ReactNode } = {
   ebpfspy: <FontAwesomeIcon icon={faAmbulance} />,
   unknown: <FontAwesomeIcon icon={faAmbulance} />,
 };
+
+// gospy
+// pyspy
+// phpspy
+// pyroscope-rs
+// dotnetspy
+// ebpfspy
+// rbspy
+// nodespy
+// javaspy

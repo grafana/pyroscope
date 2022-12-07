@@ -66,28 +66,33 @@
 }
 
 .icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   cursor: pointer;
-  border: 1px solid var(--ps-ui-border);
+  border-color: var(--ps-app-selector-filter);
   width: 40px;
   height: 40px;
   margin-right: 5px;
-  text-align: center;
   line-height: 40px;
 
   &.active {
-    background-color: yellow;
+    border: 3px solid var(--ps-tooltip-header-bg);
   }
 }
 
 .profileType {
+  border: none;
+  line-height: 25px;
   cursor: pointer;
   border-radius: 10px;
-  background-color: lightblue;
+  background-color: var(--ps-app-selector-filter);
   margin: 0 5px 5px 0;
-  padding: 0 5px;
+  padding: 0 10px;
+  color: var(--ps-tooltip-text);
 
   &.active {
-    background-color: blue;
+    background-color: var(--ps-tooltip-header-bg);
   }
 }
 
