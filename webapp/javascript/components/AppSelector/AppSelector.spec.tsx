@@ -279,9 +279,4 @@ describe('AppSelector', () => {
       queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
     ).not.toBeInTheDocument();
   });
-
-  // todo: implement
-  it.skip('filter apps by chosen language and profile type', () => {
-    
-  });
 });

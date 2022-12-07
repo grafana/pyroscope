@@ -137,25 +137,23 @@ const SelectorModalWithToggler = ({
     () =>
       appNamesData.filter((n) => {
         const { search, spyName, profileType } = filters;
-        if (!search && !spyName && !profileType) {
-          return true;
-        }
+        let matchFilters = true;
 
-        if (search) {
-          return n.name
+        if (search && matchFilters) {
+          matchFilters = n.name
             .toLowerCase()
             .includes(filters.search.trim().toLowerCase());
         }
 
-        if (spyName) {
-          return n.spyName === spyName;
+        if (spyName && matchFilters) {
+          matchFilters = n.spyName === spyName;
         }
 
-        if (profileType) {
-          return n.name.includes(profileType);
+        if (profileType && matchFilters) {
+          matchFilters = n.name.includes(profileType);
         }
 
-        return '';
+        return matchFilters;
       }),
     [filters, appNamesData]
   );
