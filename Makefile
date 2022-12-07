@@ -65,24 +65,32 @@ build: go/bin plugin/datasource/build ## Build all packages
 
 
 .PHONY: release
-release: $(BIN)/goreleaser ## Create a release
+release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
+	# remove local git tags coming from helm chart release
+	git tag -d $(shell git tag -l "phlare-*")
+	# ensure there is a docker cli command
+	@which docker || { apt-get update && apt-get install -y docker.io; } 
+	@docker info > /dev/null
+
+.PHONY: release
+release: release/prereq ## Create a release
 	$(GORELEASER_ENV) \
-	$(BIN)/goreleaser release -p=16 --rm-dist
+	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist
 
 .PHONY: release/prepare
-release/prepare: $(BIN)/goreleaser ## Prepare a release
+release/prepare: release/prereq ## Prepare a release
 	$(GORELEASER_ENV) \
-	$(BIN)/goreleaser release -p=16 --rm-dist --snapshot
+	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist --snapshot
 
 .PHONY: release/build/all
-release/build/all: $(BIN)/goreleaser ## Build all release binaries
+release/build/all: release/prereq ## Build all release binaries
 	$(GORELEASER_ENV) \
-	$(BIN)/goreleaser build -p 16 --snapshot --rm-dist
+	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot
 
 .PHONY: release/build
-release/build: $(BIN)/goreleaser ## Build current platform release binaries
+release/build: release/prereq ## Build current platform release binaries
 	$(GORELEASER_ENV) \
-	$(BIN)/goreleaser build -p 16 --snapshot --rm-dist --single-target
+	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot --single-target
 
 .PHONY: go/deps
 go/deps:
