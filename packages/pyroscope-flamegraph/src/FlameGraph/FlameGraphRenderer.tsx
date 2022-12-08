@@ -526,7 +526,7 @@ class FlameGraphRenderer extends Component<
           {dot ? (
             <Graphviz
               // props https://www.npmjs.com/package/d3-graphviz#creating-a-graphviz-renderer
-              options={{ zoom: true, width: '100%' }}
+              options={{ zoom: true, width: '150%', height: '100%', scale: 1 }}
               dot={dot}
             />
           ) : (
