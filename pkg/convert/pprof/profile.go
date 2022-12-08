@@ -94,7 +94,7 @@ func (p *RawProfile) MergeCumulative(ms *cumulativepprof.Mergers) {
 	for name, sampleType := range m.SampleTypeConfig {
 		p.SampleTypeConfig[name] = &tree.SampleTypeConfig{
 			Units:       metadata.Units(sampleType.Units),
-			DisplayName: sampleType.Units,
+			DisplayName: sampleType.DisplayName,
 			Aggregation: metadata.AggregationType(sampleType.Aggregation),
 			Cumulative:  sampleType.Cumulative,
 			Sampled:     sampleType.Sampled,
