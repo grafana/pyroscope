@@ -210,15 +210,12 @@ const SelectorModalWithToggler = ({
   };
 
   useEffect(() => {
-    if (app.name && !selected.length && groups.length) {
-      if (groups.indexOf(app.name) !== -1) {
-        setSelected([app.name]);
-        setModalOpenStatus(false);
-      } else {
-        setSelected([getGroupNameFromAppName(groups, app.name), app.name]);
-      }
+    if (groups.indexOf(app.name) !== -1) {
+      setSelected([app.name]);
+    } else {
+      setSelected([getGroupNameFromAppName(groups, app.name), app.name]);
     }
-  }, [app.name, selected, groups]);
+  }, [app.name]);
 
   const listHeight = useMemo(() => {
     const height = (window?.innerHeight || 0) - 160;

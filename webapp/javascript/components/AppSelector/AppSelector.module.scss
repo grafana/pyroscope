@@ -16,7 +16,6 @@
   right: unset;
   left: -100px;
   z-index: 999;
-  max-width: calc(100vw - 290px);
 }
 
 .header {
@@ -56,6 +55,7 @@
 .profileTypesContainer {
   display: flex;
   flex-wrap: wrap;
+  min-width: 250px;
 }
 
 .profileTypesContainer {
@@ -70,7 +70,7 @@
   border-color: var(--ps-app-selector-filter);
   width: 40px;
   height: 40px;
-  margin-right: 5px;
+  margin: 0 5px 5px 0;
   line-height: 40px;
 
   &.active {
