@@ -521,6 +521,8 @@ class FlameGraphRenderer extends Component<
           ? toGraphviz(this.state.flamebearer)
           : null;
 
+      console.log(dot);
+
       return (
         <div className={styles.graphVizPane} key="graphviz-pane">
           {dot ? (
