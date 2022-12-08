@@ -55,11 +55,11 @@
 .iconsContainer,
 .profileTypesContainer {
   display: flex;
+  flex-wrap: wrap;
 }
 
 .profileTypesContainer {
   flex-wrap: wrap;
-  min-width: 250px;
 }
 
 .icon {
