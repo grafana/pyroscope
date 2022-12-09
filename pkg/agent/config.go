@@ -7,14 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/prometheus/prometheus/discovery/http"
-
 	"github.com/grafana/dskit/flagext"
 	"github.com/parca-dev/parca/pkg/config"
 	parcaconfig "github.com/parca-dev/parca/pkg/config"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/discovery/http"
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
 
