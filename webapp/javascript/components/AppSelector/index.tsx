@@ -186,7 +186,7 @@ const SelectorModalWithToggler = ({
   );
 
   const groups = useMemo(() => getGroups(filteredAppNames), [filteredAppNames]);
-  const profiles = useMemo(() => {
+  const profilesNames = useMemo(() => {
     if (!selected?.[0]) {
       return [];
     }
@@ -233,14 +233,14 @@ const SelectorModalWithToggler = ({
 
     const listRequiredHeight =
       // 35 is list item height
-      Math.max(groups?.length || 0, profiles?.length || 0) * 35;
+      Math.max(groups?.length || 0, profilesNames?.length || 0) * 35;
 
     if (height && listRequiredHeight) {
       return height >= listRequiredHeight ? 'auto' : `${height}px`;
     }
 
     return 'auto';
-  }, [groups, profiles]);
+  }, [groups, profilesNames]);
 
   const handleFilterChange = (
     k: 'search' | 'spyName' | 'profileType',
@@ -338,7 +338,7 @@ const SelectorModalWithToggler = ({
           key={name}
         />
       ))}
-      rightSideEl={profiles.map((name) => (
+      rightSideEl={profilesNames.map((name) => (
         <SelectButton
           name={name}
           onClick={() => onSelect({ index: 1, name })}
