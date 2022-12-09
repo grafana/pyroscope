@@ -38,13 +38,13 @@ const AppSelector = ({
   const appNamesData = appNamesState.data.filter((v) => filterApp(v.name));
 
   const { query } = useAppSelector(selectQueries);
-  const app = queryToAppName(query).mapOr(
-    { name: '', spyName: '', units: '' },
+  const app: App = queryToAppName(query).mapOr(
+    { name: '', spyName: 'unknown', units: 'unknown' },
     (q) =>
       appNamesData.find((v) => v.name === q) || {
         name: '',
-        spyName: '',
-        units: '',
+        spyName: 'unknown',
+        units: 'unknown',
       }
   );
 
@@ -63,7 +63,7 @@ const AppSelector = ({
       <SelectorModalWithToggler
         selectAppName={selectAppName}
         appNamesData={appNamesData}
-        app={app as App}
+        app={app}
       />
       <Button
         aria-label="Refresh Apps"

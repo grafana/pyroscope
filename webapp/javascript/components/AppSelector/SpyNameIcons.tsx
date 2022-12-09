@@ -2,6 +2,8 @@ import React, { ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faQuestion } from '@fortawesome/free-solid-svg-icons/faQuestion';
 
+import type { SpyNameFirstClassType } from '@pyroscope/models/src/spyName';
+
 const GoIcon = () => {
   return (
     <svg
@@ -440,7 +442,7 @@ AAAYdEVYdGV4aWY6UGl4ZWxZRGltZW5zaW9uADI5NuHaAT4AAAAASUVORK5CYII="
   );
 };
 
-export const SPY_NAMES_ICONS: { [k: string]: ReactNode } = {
+export const SPY_NAMES_ICONS: { [k in SpyNameFirstClassType | 'unknown']: ReactNode } = {
   rbspy: <RubyIcon />,
   'pyroscope-rs': <RustIcon />,
   pyspy: <PythonIcon />,
