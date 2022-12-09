@@ -2,10 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
-import { Maybe } from 'true-myth';
 import cl from 'classnames';
 
-import type { SpyNameFirstClassType } from '@pyroscope/models/src/spyName';
 import type { App } from '@webapp/models/app';
 import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
@@ -21,6 +19,7 @@ import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
 import SelectButton from './SelectButton';
 import { SPY_NAMES_ICONS } from './SpyNameIcons';
+import useFilters from './useFilters';
 import styles from './AppSelector.module.scss';
 
 interface AppSelectorProps {
@@ -37,9 +36,9 @@ const AppSelector = ({
 }: AppSelectorProps) => {
   const dispatch = useAppDispatch();
   const appNamesState = useAppSelector(selectAppNamesState);
-  const apps = appNamesState.data.filter((v) => filterApp(v.name));
-
   const { query } = useAppSelector(selectQueries);
+
+  const apps = appNamesState.data.filter((v) => filterApp(v.name));
   const app: App = queryToAppName(query).mapOr(
     { name: '', spyName: 'unknown', units: 'unknown' },
     (q) =>
@@ -119,71 +118,24 @@ interface SelectorModalWithTogglerProps {
   selectAppName: (name: string) => void;
 }
 
-type FiltersType = {
-  search: Maybe<string>;
-  spyName: Maybe<SpyNameFirstClassType | 'unknown'>;
-  profileType: Maybe<string>;
-};
-
 const SelectorModalWithToggler = ({
   app,
   apps,
   selectAppName,
 }: SelectorModalWithTogglerProps) => {
-  const [filters, setFilters] = useState<FiltersType>({
-    search: Maybe.nothing(),
-    spyName: Maybe.nothing(),
-    profileType: Maybe.nothing(),
-  });
   const [isModalOpen, setModalOpenStatus] = useState(false);
+  const {
+    filters,
+    filteredAppNames,
+    spyNameValues,
+    profileTypeValues,
+    handleFilterChange,
+  } = useFilters(apps);
 
   // selected is an array of strings
   //  0 corresponds to string of group / app name selected in the left pane
   //  1 corresponds to string of app name selected in the right pane
   const [selected, setSelected] = useState<string[]>([]);
-  const filteredApps = useMemo(
-    () =>
-      apps.filter((n) => {
-        const { search, spyName, profileType } = filters;
-        let matchFilters = true;
-
-        if (search.isJust && matchFilters) {
-          matchFilters = n.name
-            .toLowerCase()
-            .includes(search.value.trim().toLowerCase());
-        }
-
-        if (spyName.isJust && matchFilters) {
-          matchFilters = n.spyName === spyName.value;
-        }
-
-        if (profileType.isJust && matchFilters) {
-          matchFilters = n.name.includes(profileType.value);
-        }
-
-        return matchFilters;
-      }),
-    [filters, apps]
-  );
-
-  const filteredAppNames = filteredApps.map((v) => v.name);
-  const { spyNames, profileTypes } = apps.reduce(
-    (acc, v) => {
-      // use as SpyNameFirstClassType because for now we support only first class types
-      const appSpyName = v.spyName as SpyNameFirstClassType;
-      if (acc.spyNames.indexOf(appSpyName) === -1) {
-        acc.spyNames.push(appSpyName);
-      }
-
-      const propfileType = v.name.split('.').pop() as string;
-      if (acc.profileTypes.indexOf(propfileType) === -1) {
-        acc.profileTypes.push(propfileType);
-      }
-
-      return acc;
-    },
-    { spyNames: [] as SpyNameFirstClassType[], profileTypes: [] as string[] }
-  );
 
   const groups = useMemo(() => getGroups(filteredAppNames), [filteredAppNames]);
   const profilesNames = useMemo(() => {
@@ -242,21 +194,6 @@ const SelectorModalWithToggler = ({
     return 'auto';
   }, [groups, profilesNames]);
 
-  const handleFilterChange = (
-    k: 'search' | 'spyName' | 'profileType',
-    v: string
-  ) => {
-    setFilters((prevFilters) => {
-      const prevFilterValue = prevFilters[k];
-
-      if (prevFilterValue.isJust && prevFilterValue.value === v) {
-        return { ...prevFilters, [k]: Maybe.nothing() };
-      }
-
-      return { ...prevFilters, [k]: Maybe.just(v) };
-    });
-  };
-
   return (
     <ModalWithToggle
       isModalOpen={isModalOpen}
@@ -293,7 +230,7 @@ const SelectorModalWithToggler = ({
               <div className={styles.filter}>
                 <div className={styles.filterName}>Language</div>
                 <div className={styles.iconsContainer}>
-                  {spyNames.map((v) => (
+                  {spyNameValues.map((v) => (
                     <button
                       type="button"
                       key={v}
@@ -311,7 +248,7 @@ const SelectorModalWithToggler = ({
               <div className={styles.filter}>
                 <div className={styles.filterName}>Profile type</div>
                 <div className={styles.profileTypesContainer}>
-                  {profileTypes.map((v) => (
+                  {profileTypeValues.map((v) => (
                     <button
                       type="button"
                       key={v}
