@@ -212,6 +212,7 @@ const SelectorModalWithToggler = ({
   useEffect(() => {
     if (groups.indexOf(app.name) !== -1) {
       setSelected([app.name]);
+      setModalOpenStatus(false);
     } else {
       setSelected([getGroupNameFromAppName(groups, app.name), app.name]);
     }
