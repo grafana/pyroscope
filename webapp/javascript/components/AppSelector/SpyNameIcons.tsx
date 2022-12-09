@@ -442,7 +442,9 @@ AAAYdEVYdGV4aWY6UGl4ZWxZRGltZW5zaW9uADI5NuHaAT4AAAAASUVORK5CYII="
   );
 };
 
-export const SPY_NAMES_ICONS: { [k in SpyNameFirstClassType | 'unknown']: ReactNode } = {
+export const SPY_NAMES_ICONS: {
+  [k in SpyNameFirstClassType | 'unknown']: ReactNode;
+} = {
   rbspy: <RubyIcon />,
   'pyroscope-rs': <RustIcon />,
   pyspy: <PythonIcon />,

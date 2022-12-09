@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
+import { Maybe } from 'true-myth';
 import cl from 'classnames';
 
+import type { SpyNameFirstClassType } from '@pyroscope/models/src/spyName';
 import type { App } from '@webapp/models/app';
 import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
@@ -35,13 +37,13 @@ const AppSelector = ({
 }: AppSelectorProps) => {
   const dispatch = useAppDispatch();
   const appNamesState = useAppSelector(selectAppNamesState);
-  const appNamesData = appNamesState.data.filter((v) => filterApp(v.name));
+  const apps = appNamesState.data.filter((v) => filterApp(v.name));
 
   const { query } = useAppSelector(selectQueries);
   const app: App = queryToAppName(query).mapOr(
     { name: '', spyName: 'unknown', units: 'unknown' },
     (q) =>
-      appNamesData.find((v) => v.name === q) || {
+      apps.find((v) => v.name === q) || {
         name: '',
         spyName: 'unknown',
         units: 'unknown',
@@ -62,7 +64,7 @@ const AppSelector = ({
       Application:&nbsp;
       <SelectorModalWithToggler
         selectAppName={selectAppName}
-        appNamesData={appNamesData}
+        apps={apps}
         app={app}
       />
       <Button
@@ -113,19 +115,25 @@ const getGroups = (filteredAppNames: string[]) => {
 
 interface SelectorModalWithTogglerProps {
   app: App;
-  appNamesData: App[];
+  apps: App[];
   selectAppName: (name: string) => void;
 }
 
+type FiltersType = {
+  search: Maybe<string>;
+  spyName: Maybe<SpyNameFirstClassType | 'unknown'>;
+  profileType: Maybe<string>;
+};
+
 const SelectorModalWithToggler = ({
   app,
-  appNamesData,
+  apps,
   selectAppName,
 }: SelectorModalWithTogglerProps) => {
-  const [filters, setFilters] = useState({
-    search: '',
-    spyName: '',
-    profileType: '',
+  const [filters, setFilters] = useState<FiltersType>({
+    search: Maybe.nothing(),
+    spyName: Maybe.nothing(),
+    profileType: Maybe.nothing(),
   });
   const [isModalOpen, setModalOpenStatus] = useState(false);
 
@@ -135,34 +143,36 @@ const SelectorModalWithToggler = ({
   const [selected, setSelected] = useState<string[]>([]);
   const filteredApps = useMemo(
     () =>
-      appNamesData.filter((n) => {
+      apps.filter((n) => {
         const { search, spyName, profileType } = filters;
         let matchFilters = true;
 
-        if (search && matchFilters) {
+        if (search.isJust && matchFilters) {
           matchFilters = n.name
             .toLowerCase()
-            .includes(filters.search.trim().toLowerCase());
+            .includes(search.value.trim().toLowerCase());
         }
 
-        if (spyName && matchFilters) {
-          matchFilters = n.spyName === spyName;
+        if (spyName.isJust && matchFilters) {
+          matchFilters = n.spyName === spyName.value;
         }
 
-        if (profileType && matchFilters) {
-          matchFilters = n.name.includes(profileType);
+        if (profileType.isJust && matchFilters) {
+          matchFilters = n.name.includes(profileType.value);
         }
 
         return matchFilters;
       }),
-    [filters, appNamesData]
+    [filters, apps]
   );
 
   const filteredAppNames = filteredApps.map((v) => v.name);
-  const { spyNames, profileTypes } = appNamesData.reduce(
+  const { spyNames, profileTypes } = apps.reduce(
     (acc, v) => {
-      if (acc.spyNames.indexOf(v.spyName) === -1) {
-        acc.spyNames.push(v.spyName);
+      // use as SpyNameFirstClassType because for now we support only first class types
+      const appSpyName = v.spyName as SpyNameFirstClassType;
+      if (acc.spyNames.indexOf(appSpyName) === -1) {
+        acc.spyNames.push(appSpyName);
       }
 
       const propfileType = v.name.split('.').pop() as string;
@@ -172,7 +182,7 @@ const SelectorModalWithToggler = ({
 
       return acc;
     },
-    { spyNames: [] as string[], profileTypes: [] as string[] }
+    { spyNames: [] as SpyNameFirstClassType[], profileTypes: [] as string[] }
   );
 
   const groups = useMemo(() => getGroups(filteredAppNames), [filteredAppNames]);
@@ -237,10 +247,13 @@ const SelectorModalWithToggler = ({
     v: string
   ) => {
     setFilters((prevFilters) => {
-      if (prevFilters[k] === v) {
-        return { ...prevFilters, [k]: '' };
+      const prevFilterValue = prevFilters[k];
+
+      if (prevFilterValue.isJust && prevFilterValue.value === v) {
+        return { ...prevFilters, [k]: Maybe.nothing() };
       }
-      return { ...prevFilters, [k]: v };
+
+      return { ...prevFilters, [k]: Maybe.just(v) };
     });
   };
 
@@ -266,7 +279,7 @@ const SelectorModalWithToggler = ({
               name="application seach"
               type="text"
               placeholder="Type an app"
-              value={filters.search}
+              value={filters.search.unwrapOr('')}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               className={styles.searchInput}
               testId="application-search"
@@ -286,7 +299,7 @@ const SelectorModalWithToggler = ({
                       key={v}
                       data-testid={v}
                       className={cl(styles.icon, {
-                        [styles.active]: v === filters.spyName,
+                        [styles.active]: v === filters.spyName.unwrapOr(''),
                       })}
                       onClick={() => handleFilterChange('spyName', v)}
                     >
@@ -303,7 +316,7 @@ const SelectorModalWithToggler = ({
                       type="button"
                       key={v}
                       className={cl(styles.profileType, {
-                        [styles.active]: v === filters.profileType,
+                        [styles.active]: v === filters.profileType.unwrapOr(''),
                       })}
                       onClick={() => handleFilterChange('profileType', v)}
                     >
