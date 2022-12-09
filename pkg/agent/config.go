@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/prometheus/prometheus/discovery/http"
+
 	"github.com/grafana/dskit/flagext"
 	"github.com/parca-dev/parca/pkg/config"
 	parcaconfig "github.com/parca-dev/parca/pkg/config"
@@ -139,6 +141,7 @@ func (c *ScrapeConfig) Validate() error {
 type ServiceDiscoveryConfig struct {
 	StaticConfigs       discovery.StaticConfig `yaml:"static_configs"`
 	KubernetesSDConfigs []*kubernetes.SDConfig `yaml:"kubernetes_sd_configs,omitempty"`
+	HTTPSDConfigs       []*http.SDConfig       `yaml:"http_sd_configs,omitempty"`
 }
 
 func (cfg ServiceDiscoveryConfig) Configs() (res discovery.Configs) {
@@ -146,6 +149,9 @@ func (cfg ServiceDiscoveryConfig) Configs() (res discovery.Configs) {
 		res = append(res, x)
 	}
 	for _, x := range cfg.KubernetesSDConfigs {
+		res = append(res, x)
+	}
+	for _, x := range cfg.HTTPSDConfigs {
 		res = append(res, x)
 	}
 	return res
