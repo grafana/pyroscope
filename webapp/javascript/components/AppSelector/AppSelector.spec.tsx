@@ -219,7 +219,7 @@ describe('AppSelector', () => {
     const javaFilter = renderUI.getByTestId('javaspy');
     fireEvent.click(javaFilter);
 
-    // should render rust apps (javaspy) from the same group
+    // should render java apps (javaspy) from the same group
     await waitFor(() => {
       expect(
         queryByRole(MENU_ITEM_ROLE, { name: 'triple.app' })
