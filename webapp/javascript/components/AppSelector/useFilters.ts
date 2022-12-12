@@ -37,9 +37,14 @@ const useFilters = (apps: App[]) => {
           { newValue: [] as (SpyName | string)[], shouldAddValue: true }
         );
 
+        const existingValue = shouldAddValue ? [...newValue, v] : newValue;
+
         return {
           ...prevFilters,
-          [k]: Maybe.just(shouldAddValue ? [...newValue, v] : newValue),
+          [k]:
+            existingValue.length > 0
+              ? Maybe.just(existingValue)
+              : Maybe.nothing(),
         };
       }
 
@@ -61,12 +66,12 @@ const useFilters = (apps: App[]) => {
         const { search, spyNames, profileTypes } = filters;
         let matchFilters = true;
 
-        if (search.isJust && search.value.length > 0 && matchFilters) {
+        if (search.isJust && matchFilters) {
           matchFilters = n.name
             .toLowerCase()
             .includes(search.value.trim().toLowerCase());
         }
-        if (spyNames.isJust && spyNames.value.length > 0 && matchFilters) {
+        if (spyNames.isJust && matchFilters) {
           matchFilters =
             spyNames.value.indexOf(n.spyName as SpyNameFirstClassType) !== -1;
         }
