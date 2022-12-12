@@ -210,12 +210,14 @@ describe('AppSelector', () => {
     const javaFilter = renderUI.getByTestId('javaspy');
     fireEvent.click(javaFilter);
 
-    // should render java apps (javaspy) from the same group
+    // should render java apps (javaspy) + ruby apps (rbspy) from the same group
     await waitFor(() => {
       const menuItems = queryAllByRole(MENU_ITEM_ROLE);
 
-      expect(menuItems).toHaveLength(1);
-      expect(menuItems[0].title).toBe('triple.app');
+      expect(menuItems).toHaveLength(3);
+      expect(menuItems[0].title).toBe('double.cpu');
+      expect(menuItems[1].title).toBe('triple.app');
+      expect(menuItems[2].title).toBe('singlesingle');
     });
   });
 
