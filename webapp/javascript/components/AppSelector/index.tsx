@@ -238,17 +238,15 @@ const SelectorModalWithToggler = ({
           <div>
             <div className={styles.headerTitle}>
               <FontAwesomeIcon icon={faSlidersH} /> FILTERS
-              <Tooltip placement="right" title="Reset filters">
-                <button
-                  className={styles.resetFilters}
-                  disabled={
-                    filters.profileType.isNothing && filters.spyName.isNothing
-                  }
-                  onClick={resetClickableFilters}
-                >
-                  <FontAwesomeIcon icon={faUndo} />
-                </button>
-              </Tooltip>
+              <button
+                className={styles.resetFilters}
+                disabled={
+                  filters.profileType.isNothing && filters.spyName.isNothing
+                }
+                onClick={resetClickableFilters}
+              >
+                <FontAwesomeIcon icon={faUndo} />
+              </button>
             </div>
             <div>
               <div className={styles.filter}>
