@@ -15,10 +15,11 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import Button from '@webapp/ui/Button';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import { Tooltip } from '@webapp/ui/Tooltip';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
 import SelectButton from './SelectButton';
-import { SPY_NAMES_ICONS } from './SpyNameIcons';
+import { SPY_NAMES_TOOLTIPS, SPY_NAMES_ICONS } from './SpyNameIcons';
 import useFilters from './useFilters';
 import styles from './AppSelector.module.scss';
 
@@ -241,17 +242,19 @@ const SelectorModalWithToggler = ({
                 <div className={styles.filterName}>Language</div>
                 <div className={styles.iconsContainer}>
                   {spyNameValues.map((v) => (
-                    <button
-                      type="button"
-                      key={v}
-                      data-testid={v}
-                      className={cl(styles.icon, {
-                        [styles.active]: v === filters.spyName.unwrapOr(''),
-                      })}
-                      onClick={() => handleFilterChange('spyName', v)}
-                    >
-                      {SPY_NAMES_ICONS[v]}
-                    </button>
+                    <Tooltip placement="top" title={SPY_NAMES_TOOLTIPS[v]}>
+                      <button
+                        type="button"
+                        key={v}
+                        data-testid={v}
+                        className={cl(styles.icon, {
+                          [styles.active]: v === filters.spyName.unwrapOr(''),
+                        })}
+                        onClick={() => handleFilterChange('spyName', v)}
+                      >
+                        {SPY_NAMES_ICONS[v]}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
               </div>

@@ -442,6 +442,19 @@ AAAYdEVYdGV4aWY6UGl4ZWxZRGltZW5zaW9uADI5NuHaAT4AAAAASUVORK5CYII="
   );
 };
 
+export const SPY_NAMES_TOOLTIPS = {
+  rbspy: 'ruby',
+  'pyroscope-rs': 'rust',
+  pyspy: 'python',
+  javaspy: 'java',
+  phpspy: 'php',
+  nodespy: 'nodejs',
+  gospy: 'go',
+  dotnetspy: '.net',
+  ebpfspy: 'eBPF',
+  unknown: 'unknown',
+};
+
 export const SPY_NAMES_ICONS: {
   [k in SpyNameFirstClassType | 'unknown']: ReactNode;
 } = {
