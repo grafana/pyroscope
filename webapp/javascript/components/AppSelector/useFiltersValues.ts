@@ -6,15 +6,15 @@ import type { SpyNameFirstClassType } from '@pyroscope/models/src/spyName';
 
 type FiltersType = {
   search: Maybe<string>;
-  spyName: Maybe<SpyNameFirstClassType | 'unknown'>;
-  profileType: Maybe<string>;
+  spyNames: Maybe<(SpyNameFirstClassType | 'unknown')[]>;
+  profileTypes: Maybe<string[]>;
 };
 
 const useFiltersValues = (apps: App[]) => {
   const [filters, setFilters] = useState<FiltersType>({
     search: Maybe.nothing(),
-    spyName: Maybe.nothing(),
-    profileType: Maybe.nothing(),
+    spyNames: Maybe.nothing(),
+    profileTypes: Maybe.nothing(),
   });
 
   const { spyNameValues, profileTypeValues } = apps.reduce(

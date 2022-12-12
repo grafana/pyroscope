@@ -19,6 +19,7 @@ import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import { Tooltip } from '@webapp/ui/Tooltip';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
+import { SpyNameFirstClassType } from '@pyroscope/models/src';
 import SelectButton from './SelectButton';
 import { SPY_NAMES_TOOLTIPS, SPY_NAMES_ICONS } from './SpyNameIcons';
 import useFilters from './useFilters';
@@ -241,7 +242,7 @@ const SelectorModalWithToggler = ({
               <button
                 className={styles.resetFilters}
                 disabled={
-                  filters.profileType.isNothing && filters.spyName.isNothing
+                  filters.profileTypes.isNothing && filters.spyNames.isNothing
                 }
                 onClick={resetClickableFilters}
               >
@@ -259,9 +260,14 @@ const SelectorModalWithToggler = ({
                         key={v}
                         data-testid={v}
                         className={cl(styles.icon, {
-                          [styles.active]: v === filters.spyName.unwrapOr(''),
+                          [styles.active]:
+                            filters.spyNames
+                              .unwrapOr(
+                                [] as (SpyNameFirstClassType | 'unknown')[]
+                              )
+                              .indexOf(v) !== -1,
                         })}
-                        onClick={() => handleFilterChange('spyName', v)}
+                        onClick={() => handleFilterChange('spyNames', v)}
                       >
                         {SPY_NAMES_ICONS[v]}
                       </button>
@@ -277,9 +283,12 @@ const SelectorModalWithToggler = ({
                       type="button"
                       key={v}
                       className={cl(styles.profileType, {
-                        [styles.active]: v === filters.profileType.unwrapOr(''),
+                        [styles.active]:
+                          filters.profileTypes
+                            .unwrapOr([] as string[])
+                            .indexOf(v) !== -1,
                       })}
-                      onClick={() => handleFilterChange('profileType', v)}
+                      onClick={() => handleFilterChange('profileTypes', v)}
                     >
                       {v}
                     </button>
