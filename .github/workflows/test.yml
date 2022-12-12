@@ -113,20 +113,6 @@ jobs:
       - name: Build image Phlare
         run: make docker-image/phlare/build "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
-  build-image-grafana:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Build image
-        run: make docker-image/grafana/build "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
-
   build-push:
     if: github.event_name == 'push' && github.repository == 'grafana/phlare'
     runs-on: ubuntu-latest
