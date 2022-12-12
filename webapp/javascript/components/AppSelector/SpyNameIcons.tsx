@@ -443,14 +443,14 @@ AAAYdEVYdGV4aWY6UGl4ZWxZRGltZW5zaW9uADI5NuHaAT4AAAAASUVORK5CYII="
 };
 
 export const SPY_NAMES_TOOLTIPS = {
-  rbspy: 'ruby',
-  'pyroscope-rs': 'rust',
-  pyspy: 'python',
-  javaspy: 'java',
-  phpspy: 'php',
-  nodespy: 'nodejs',
-  gospy: 'go',
-  dotnetspy: '.net',
+  rbspy: 'Ruby',
+  'pyroscope-rs': 'Rust',
+  pyspy: 'Python',
+  javaspy: 'Java',
+  phpspy: 'Php',
+  nodespy: 'Nodejs',
+  gospy: 'Go',
+  dotnetspy: '.Net',
   ebpfspy: 'eBPF',
   unknown: 'unknown',
 };
