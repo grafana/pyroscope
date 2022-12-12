@@ -46,7 +46,7 @@
 | phlare.resources | object | `{}` |  |
 | phlare.securityContext | object | `{}` |  |
 | phlare.service.port | int | `4100` |  |
-| phlare.service.port_name | string | `"http"` |  |
+| phlare.service.port_name | string | `"http2"` |  |
 | phlare.service.type | string | `"ClusterIP"` |  |
 | phlare.serviceAccount.annotations | object | `{}` |  |
 | phlare.serviceAccount.create | bool | `true` |  |
