@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
@@ -112,18 +112,21 @@ const getGroups = (filteredAppNames: string[]) => {
   return groupOrApp;
 };
 
-const getSelectedApp = (appName: string, groups: string[], selected: string[]) => {
+const getSelectedApp = (
+  appName: string,
+  groups: string[],
+  selected: string[]
+) => {
   const isFirstLevel = !!(groups.indexOf(appName) !== -1);
 
-  if(selected.length !== 0) {
+  if (selected.length !== 0) {
     return selected;
   }
 
-  if(isFirstLevel) {
+  if (isFirstLevel) {
     return [appName];
-  } else {
-    return [getGroupNameFromAppName(groups, appName), appName];
   }
+  return [getGroupNameFromAppName(groups, appName), appName];
 };
 
 interface SelectorModalWithTogglerProps {

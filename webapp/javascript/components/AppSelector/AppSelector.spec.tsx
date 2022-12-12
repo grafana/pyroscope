@@ -21,7 +21,8 @@ const fetchAppsMock = apps.fetchApps as jest.MockedFunction<
   typeof apps.fetchApps
 >;
 
-const { getByTestId, queryByRole, getByRole, findByRole } = screen;
+const { getByTestId, queryByRole, getByRole, findByRole, queryAllByRole } =
+  screen;
 const mockApps: App[] = [
   { name: 'single', units: 'unknown', spyName: 'unknown' },
   { name: 'double.cpu', units: 'unknown', spyName: 'rbspy' },
@@ -199,21 +200,11 @@ describe('AppSelector', () => {
 
     // should render ruby apps (rbspy) from different groups
     await waitFor(() => {
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
-      ).toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
-      ).toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'single' })
-      ).not.toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
-      ).not.toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
-      ).not.toBeInTheDocument();
+      const menuItems = queryAllByRole(MENU_ITEM_ROLE);
+
+      expect(menuItems).toHaveLength(2);
+      expect(menuItems[0].title).toBe('double.cpu');
+      expect(menuItems[1].title).toBe('singlesingle');
     });
 
     const javaFilter = renderUI.getByTestId('javaspy');
@@ -221,24 +212,10 @@ describe('AppSelector', () => {
 
     // should render java apps (javaspy) from the same group
     await waitFor(() => {
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app' })
-      ).toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'single' })
-      ).not.toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
-      ).not.toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
-      ).not.toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
-      ).not.toBeInTheDocument();
-      expect(
-        queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
-      ).not.toBeInTheDocument();
+      const menuItems = queryAllByRole(MENU_ITEM_ROLE);
+
+      expect(menuItems).toHaveLength(1);
+      expect(menuItems[0].title).toBe('triple.app');
     });
   });
 
@@ -260,24 +237,11 @@ describe('AppSelector', () => {
     const cpuProfileType = renderUI.getByRole('button', { name: 'cpu' });
     fireEvent.click(cpuProfileType);
 
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
-    ).toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.cpu' })
-    ).toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'single' })
-    ).not.toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
-    ).not.toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
-    ).not.toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
-    ).not.toBeInTheDocument();
+    const menuItems = queryAllByRole(MENU_ITEM_ROLE);
+
+    expect(menuItems).toHaveLength(2);
+    expect(menuItems[0].title).toBe('double.cpu');
+    expect(menuItems[1].title).toBe('triple.app.cpu');
   });
 
   it('filters apps by chosen language (spyName) and profile type', () => {
@@ -300,23 +264,9 @@ describe('AppSelector', () => {
     const cpuProfileType = renderUI.getByRole('button', { name: 'cpu' });
     fireEvent.click(cpuProfileType);
 
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'double.cpu' })
-    ).toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.cpu' })
-    ).not.toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'single' })
-    ).not.toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'singlesingle' })
-    ).not.toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'double.space' })
-    ).not.toBeInTheDocument();
-    expect(
-      queryByRole(MENU_ITEM_ROLE, { name: 'triple.app.objects' })
-    ).not.toBeInTheDocument();
+    const menuItems = queryAllByRole(MENU_ITEM_ROLE);
+
+    expect(menuItems).toHaveLength(1);
+    expect(menuItems[0].title).toBe('double.cpu');
   });
 });
