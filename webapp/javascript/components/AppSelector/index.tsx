@@ -112,6 +112,20 @@ const getGroups = (filteredAppNames: string[]) => {
   return groupOrApp;
 };
 
+const getSelectedApp = (appName: string, groups: string[], selected: string[]) => {
+  const isFirstLevel = !!(groups.indexOf(appName) !== -1);
+
+  if(selected.length !== 0) {
+    return selected;
+  }
+
+  if(isFirstLevel) {
+    return [appName];
+  } else {
+    return [getGroupNameFromAppName(groups, appName), appName];
+  }
+};
+
 interface SelectorModalWithTogglerProps {
   app: App;
   apps: App[];
@@ -138,19 +152,21 @@ const SelectorModalWithToggler = ({
   const [selected, setSelected] = useState<string[]>([]);
 
   const groups = useMemo(() => getGroups(filteredAppNames), [filteredAppNames]);
+  const selectedApp = getSelectedApp(app.name, groups, selected);
+
   const profilesNames = useMemo(() => {
-    if (!selected?.[0]) {
+    if (!selectedApp?.[0]) {
       return [];
     }
 
-    const filtered = getGroupMembers(filteredAppNames, selected?.[0]);
+    const filtered = getGroupMembers(filteredAppNames, selectedApp?.[0]);
 
     if (filtered.length > 1) {
       return filtered;
     }
 
     return [];
-  }, [selected, groups, filteredAppNames]);
+  }, [selectedApp, groups, filteredAppNames]);
 
   const onSelect = ({ index, name }: { index: number; name: string }) => {
     const filtered = getGroupMembers(filteredAppNames, name);
@@ -160,7 +176,7 @@ const SelectorModalWithToggler = ({
       setModalOpenStatus(false);
     }
 
-    const arr = Array.from(selected);
+    const arr = Array.from(selectedApp);
 
     if (index === 0 && arr?.length > 1) {
       arr.pop();
@@ -170,15 +186,6 @@ const SelectorModalWithToggler = ({
 
     setSelected(arr);
   };
-
-  useEffect(() => {
-    if (groups.indexOf(app.name) !== -1) {
-      setSelected([app.name]);
-      setModalOpenStatus(false);
-    } else {
-      setSelected([getGroupNameFromAppName(groups, app.name), app.name]);
-    }
-  }, [app.name]);
 
   const listHeight = useMemo(() => {
     const height = (window?.innerHeight || 0) - 160;
@@ -271,7 +278,7 @@ const SelectorModalWithToggler = ({
           name={name}
           onClick={() => onSelect({ index: 0, name })}
           fullList={filteredAppNames}
-          isSelected={selected?.[0] === name}
+          isSelected={selectedApp?.[0] === name}
           key={name}
         />
       ))}
@@ -280,7 +287,7 @@ const SelectorModalWithToggler = ({
           name={name}
           onClick={() => onSelect({ index: 1, name })}
           fullList={filteredAppNames}
-          isSelected={selected?.[1] === name}
+          isSelected={selectedApp?.[1] === name}
           key={name}
         />
       ))}
