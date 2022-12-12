@@ -61,13 +61,12 @@ const useFilters = (apps: App[]) => {
         const { search, spyNames, profileTypes } = filters;
         let matchFilters = true;
 
-        if (search.isJust && matchFilters) {
+        if (search.isJust && search.value.length > 0 && matchFilters) {
           matchFilters = n.name
             .toLowerCase()
             .includes(search.value.trim().toLowerCase());
         }
-
-        if (spyNames.isJust && matchFilters) {
+        if (spyNames.isJust && spyNames.value.length > 0 && matchFilters) {
           matchFilters =
             spyNames.value.indexOf(n.spyName as SpyNameFirstClassType) !== -1;
         }
@@ -80,8 +79,6 @@ const useFilters = (apps: App[]) => {
               return matchFilters;
             }
           }
-
-          return false;
         }
 
         return matchFilters;
