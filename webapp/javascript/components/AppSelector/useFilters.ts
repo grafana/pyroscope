@@ -23,6 +23,14 @@ const useFilters = (apps: App[]) => {
     });
   };
 
+  const resetClickableFilters = () => {
+    setFilters((v) => ({
+      ...v,
+      spyName: Maybe.nothing(),
+      profileType: Maybe.nothing(),
+    }));
+  };
+
   const filteredApps = useMemo(
     () =>
       apps.filter((n) => {
@@ -54,6 +62,7 @@ const useFilters = (apps: App[]) => {
     filteredAppNames: filteredApps.map((v) => v.name),
     spyNameValues,
     profileTypeValues,
+    resetClickableFilters,
   };
 };
 

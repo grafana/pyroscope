@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
+import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import cl from 'classnames';
 
 import type { App } from '@webapp/models/app';
@@ -148,6 +149,7 @@ const SelectorModalWithToggler = ({
     spyNameValues,
     profileTypeValues,
     handleFilterChange,
+    resetClickableFilters,
   } = useFilters(apps);
 
   // selected is an array of strings
@@ -236,6 +238,17 @@ const SelectorModalWithToggler = ({
           <div>
             <div className={styles.headerTitle}>
               <FontAwesomeIcon icon={faSlidersH} /> FILTERS
+              <Tooltip placement="right" title="Reset filters">
+                <button
+                  className={styles.resetFilters}
+                  disabled={
+                    filters.profileType.isNothing && filters.spyName.isNothing
+                  }
+                  onClick={resetClickableFilters}
+                >
+                  <FontAwesomeIcon icon={faUndo} />
+                </button>
+              </Tooltip>
             </div>
             <div>
               <div className={styles.filter}>

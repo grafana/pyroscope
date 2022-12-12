@@ -23,6 +23,7 @@
 }
 
 .headerTitle {
+  position: relative;
   margin-left: 10px;
   color: var(--ps-select-modal-title);
   font-weight: 700;
@@ -105,4 +106,18 @@
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.resetFilters {
+  position: absolute;
+  left: 100px;
+  top: -5px;
+  border: none;
+  color: var(--ps-immutable-white);
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    color: var(--ps-disabled-button-text);
+  }
 }
