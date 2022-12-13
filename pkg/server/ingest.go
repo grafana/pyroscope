@@ -29,6 +29,8 @@ type ingestHandler struct {
 	ingester  ingestion.Ingester
 	onSuccess func(*ingestion.IngestInput)
 	httpUtils httputils.Utils
+
+	disableCumulativeMerge bool
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
@@ -36,15 +38,16 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.Metadata.SpyName)
 		ctrl.appStats.Add(hashString(pi.Metadata.Key.AppName()))
-	}, ctrl.httpUtils)
+	}, ctrl.httpUtils, ctrl.config.DisableExperimentalCumulativeMerge)
 }
 
-func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils) http.Handler {
+func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils, disableCumulativeMerge bool) http.Handler {
 	return ingestHandler{
-		log:       log,
-		ingester:  p,
-		onSuccess: onSuccess,
-		httpUtils: httpUtils,
+		log:                    log,
+		ingester:               p,
+		onSuccess:              onSuccess,
+		httpUtils:              httpUtils,
+		disableCumulativeMerge: disableCumulativeMerge,
 	}
 }
 
@@ -164,7 +167,9 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 			FormDataContentType: contentType,
 			RawData:             b,
 		}
-		p.MergeCumulative(cumulativepprof.NewMergers())
+		if !h.disableCumulativeMerge {
+			p.MergeCumulative(cumulativepprof.NewMergers())
+		}
 		input.Profile = p
 	}
 
