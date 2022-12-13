@@ -83,7 +83,7 @@ jobs:
       - name: Run linter
         run: make lint
       - name: Check helm manifests
-        run: make helm/check
+        run: make helm/check check/unstaged-changes
 
   test-docs:
     runs-on: ubuntu-latest
