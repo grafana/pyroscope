@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"io"
 	"net/http"
 	"strconv"
@@ -159,10 +160,12 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		}
 
 	case strings.Contains(contentType, "multipart/form-data"):
-		input.Profile = &pprof.RawProfile{
+		p := &pprof.RawProfile{
 			FormDataContentType: contentType,
 			RawData:             b,
 		}
+		p.MergeCumulative(cumulativepprof.NewMergers())
+		input.Profile = p
 	}
 
 	if input.Profile == nil {

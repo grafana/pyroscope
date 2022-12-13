@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"io"
 	"mime/multipart"
@@ -72,34 +71,28 @@ func (p *RawProfile) Push(profile []byte, cumulative bool) *RawProfile {
 func (p *RawProfile) MergeCumulative(ms *cumulativepprof.Mergers) {
 	p.m.Lock()
 	defer p.m.Unlock()
+	if p.Profile == nil && p.PreviousProfile == nil && p.RawData != nil && p.FormDataContentType != "" {
+		err := p.loadPprofFromForm()
+		if err != nil {
+			return
+		}
+	}
 	if p.PreviousProfile == nil {
 		return
 	}
-	m := ms.SelectMerger(p.SampleTypeConfig)
-	if m == nil {
-		return
-	}
-	mergedProfile, err := m.Merge(p.PreviousProfile, p.Profile)
+	merged, stConfig, err := ms.Merge(p.PreviousProfile, p.Profile, p.SampleTypeConfig)
 	if err != nil {
 		return
 	}
 	var mergedProfileBytes bytes.Buffer
-	err = mergedProfile.Write(&mergedProfileBytes)
+	err = merged.Write(&mergedProfileBytes)
 	if err != nil {
 		return
 	}
 	p.Profile = mergedProfileBytes.Bytes()
 	p.PreviousProfile = nil
-	p.SampleTypeConfig = map[string]*tree.SampleTypeConfig{}
-	for name, sampleType := range m.SampleTypeConfig {
-		p.SampleTypeConfig[name] = &tree.SampleTypeConfig{
-			Units:       metadata.Units(sampleType.Units),
-			DisplayName: sampleType.DisplayName,
-			Aggregation: metadata.AggregationType(sampleType.Aggregation),
-			Cumulative:  sampleType.Cumulative,
-			Sampled:     sampleType.Sampled,
-		}
-	}
+	p.SampleTypeConfig = stConfig
+	p.RawData = nil
 }
 
 const (
