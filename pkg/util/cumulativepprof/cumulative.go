@@ -113,12 +113,10 @@ func (m *Mergers) Merge(prev, cur []byte, sampleTypeConfig map[string]*tree.Samp
 			if cfg.DisplayName == "block_count" {
 				return m.Block.Merge(prev, p)
 			}
-
 		}
 		return nil, nil, fmt.Errorf("unkown profile: %v %v", p.SampleType, sampleTypeConfig)
 	}
 	return nil, nil, fmt.Errorf("unknown profile %v %v", p.SampleType, sampleTypeConfig)
-
 }
 
 func (m *Merger) Merge(prev []byte, cur *pprofile.Profile) (*pprofile.Profile, map[string]*tree.SampleTypeConfig, error) {
