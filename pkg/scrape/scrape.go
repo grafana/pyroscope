@@ -65,9 +65,11 @@ type scrapePool struct {
 	// set of hashes.
 	activeTargets  map[uint64]*Target
 	droppedTargets []*Target
+
+	disableCumulativeMerge bool
 }
 
-func newScrapePool(cfg *config.Config, p ingestion.Ingester, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, p ingestion.Ingester, logger logrus.FieldLogger, m *metrics, disableCumulativeMerge bool) (*scrapePool, error) {
 	m.pools.Inc()
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
@@ -88,6 +90,7 @@ func newScrapePool(cfg *config.Config, p ingestion.Ingester, logger logrus.Field
 
 		metrics:     m,
 		poolMetrics: m.poolMetrics(cfg.JobName),
+		disableCumulativeMerge: disableCumulativeMerge,
 	}
 
 	return &sp, nil
@@ -105,6 +108,8 @@ func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop 
 		delta:       d,
 		interval:    i,
 		timeout:     t,
+
+		disableCumulativeMerge: sp.disableCumulativeMerge,
 	}
 	x.ctx, x.cancel = context.WithCancel(sp.ctx)
 	return &x
@@ -324,6 +329,8 @@ type scrapeLoop struct {
 	delta    time.Duration
 	interval time.Duration
 	timeout  time.Duration
+
+	disableCumulativeMerge bool
 }
 
 func (sl *scrapeLoop) run() {
@@ -421,7 +428,8 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 	}
 
 	profile := sl.scraper.profile
-	sl.scraper.profile = profile.Push(buf.Bytes(), sl.scraper.cumulative)
+	sl.scraper.profile = profile.Push(buf.Bytes(), sl.scraper.cumulative, !sl.disableCumulativeMerge)
+
 	return sl.scraper.ingester.Ingest(ctx, &ingestion.IngestInput{
 		Profile: profile,
 		Metadata: ingestion.Metadata{
