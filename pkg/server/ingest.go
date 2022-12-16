@@ -3,12 +3,13 @@ package server
 import (
 	"bytes"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert/speedscope"
 	"github.com/sirupsen/logrus"
@@ -38,7 +39,7 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.Metadata.SpyName)
 		ctrl.appStats.Add(hashString(pi.Metadata.Key.AppName()))
-	}, ctrl.httpUtils, ctrl.config.DisableExperimentalCumulativeMerge)
+	}, ctrl.httpUtils, ctrl.config.DisableCumulativeMerge)
 }
 
 func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils, disableCumulativeMerge bool) http.Handler {

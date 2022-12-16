@@ -170,7 +170,7 @@ type Server struct {
 
 	EnableExperimentalExemplarsPage bool `def:"false" desc:"whether to enable the experimental exemplars page" mapstructure:"enable-experimental-exemplars-page"`
 
-	DisableExperimentalCumulativeMerge bool `def:"false" desc:"whether to disable the experimental cumulative profiles merge" mapstructure:"disable-experimental-cumulative-merge"`
+	DisableCumulativeMerge bool `def:"false" desc:"whether to disable cumulative profiles merge" mapstructure:"disable-cumulative-merge"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule
