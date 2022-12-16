@@ -39,7 +39,7 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.Metadata.SpyName)
 		ctrl.appStats.Add(hashString(pi.Metadata.Key.AppName()))
-	}, ctrl.httpUtils, ctrl.config.DisableCumulativeMerge)
+	}, ctrl.httpUtils, !ctrl.config.RemoteWrite.Enabled)
 }
 
 func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils, disableCumulativeMerge bool) http.Handler {

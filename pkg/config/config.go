@@ -169,8 +169,6 @@ type Server struct {
 	DisableExportToFlamegraphDotCom bool `def:"false" desc:"disable exporting to flamegraph.com in the UI" mapstructure:"disable-export-to-flamegraph-dot-com"`
 
 	EnableExperimentalExemplarsPage bool `def:"false" desc:"whether to enable the experimental exemplars page" mapstructure:"enable-experimental-exemplars-page"`
-
-	DisableCumulativeMerge bool `def:"false" desc:"whether to disable cumulative profiles merge" mapstructure:"disable-cumulative-merge"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule

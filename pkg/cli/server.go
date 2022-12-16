@@ -202,7 +202,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		svc.logger.WithField("component", "scrape-manager"),
 		ingester,
 		defaultMetricsRegistry,
-		svc.config.DisableCumulativeMerge || !svc.config.RemoteWrite.Enabled)
+		!svc.config.RemoteWrite.Enabled)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,
