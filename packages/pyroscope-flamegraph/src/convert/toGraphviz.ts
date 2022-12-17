@@ -1,6 +1,6 @@
 import { Profile } from 'packages/pyroscope-models/src';
 
-import decodeFlamebearer  from '../FlameGraph/decode';
+import decodeFlamebearer from '../FlameGraph/decode';
 import { flamebearersToTree, TreeNode } from './flamebearersToTree';
 
 function renderLabels(obj) {
@@ -47,8 +47,6 @@ function renderNode(n: TreeNode, index: number, maxSelf: number, maxTotal: numbe
     fontsize: fontsize,
     shape: 'box',
     tooltip: `${name} (${dur})`,
-    color: color, // TODO
-    fillcolor: fillcolor, // TODO
   };
   return `N${index} ${renderLabels(labels)}`;
 }
@@ -153,7 +151,6 @@ function renderEdge(
     label: dur,
     weight: weight,
     penwidth: penwidth,
-    color: color,
     tooltip: tooltip,
     labeltooltip: tooltip,
   };

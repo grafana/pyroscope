@@ -514,21 +514,37 @@ class FlameGraphRenderer extends Component<
     })();
 
     const graphvizPane = (() => {
+      const { flamebearer } = this.state;
       // TODO: prevent crashing comparison view
       const dot =
-        this.state.flamebearer.metadata?.format &&
-        this.state.flamebearer.flamebearer?.levels
-          ? toGraphviz(this.state.flamebearer)
+        // @ts-ignore
+        flamebearer.metadata?.format && flamebearer.flamebearer?.levels
+          ? // @ts-ignore
+            toGraphviz(flamebearer)
           : null;
 
-      console.log(dot);
+      // Graphviz doesn't update position and scale value on rerender
+      // so image sometimes moves out of the screen
+      // to fix it we remounting graphViz component by updating key
+      const key = `graphviz-pane-${
+        // @ts-ignore
+        flamebearer?.appName || String(new Date().valueOf())
+      }`;
 
       return (
-        <div className={styles.graphVizPane} key="graphviz-pane">
+        <div className={styles.graphVizPane} key={key}>
           {dot ? (
             <Graphviz
-              // props https://www.npmjs.com/package/d3-graphviz#creating-a-graphviz-renderer
-              options={{ zoom: true, width: '100%' }}
+              // options https://github.com/magjac/d3-graphviz#supported-options
+              options={{
+                zoom: true,
+                width: '150%',
+                height: '100%',
+                scale: 1,
+                // 'true' by default, but causes warning
+                // https://github.com/magjac/d3-graphviz/blob/master/README.md#defining-the-hpcc-jswasm-script-tag
+                useWorker: false,
+              }}
               dot={dot}
             />
           ) : (
