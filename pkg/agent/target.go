@@ -234,6 +234,7 @@ func (t *Target) fetchProfile(ctx context.Context, profileType string, buf io.Wr
 			return err
 		}
 		req.Header.Set("User-Agent", userAgentHeader)
+		req.Header.Set("Accept-Encoding", "gzip")
 
 		t.req = req
 	}
