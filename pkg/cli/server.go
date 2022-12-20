@@ -201,7 +201,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
 		ingester,
-		defaultMetricsRegistry)
+		defaultMetricsRegistry,
+		!svc.config.RemoteWrite.Enabled)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,

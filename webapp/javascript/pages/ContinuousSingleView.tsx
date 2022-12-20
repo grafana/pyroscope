@@ -114,6 +114,7 @@ function ContinuousSingleView() {
       case 'reloading': {
         return {
           data: singleView.timeline,
+          color: colorMode === 'light' ? '#3b78e7' : undefined,
         };
       }
 

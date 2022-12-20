@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
+
 	"github.com/pyroscope-io/pyroscope/pkg/convert/speedscope"
 	"github.com/sirupsen/logrus"
 
@@ -28,6 +30,8 @@ type ingestHandler struct {
 	ingester  ingestion.Ingester
 	onSuccess func(*ingestion.IngestInput)
 	httpUtils httputils.Utils
+
+	disableCumulativeMerge bool
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
@@ -35,15 +39,16 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.Metadata.SpyName)
 		ctrl.appStats.Add(hashString(pi.Metadata.Key.AppName()))
-	}, ctrl.httpUtils)
+	}, ctrl.httpUtils, !ctrl.config.RemoteWrite.Enabled)
 }
 
-func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils) http.Handler {
+func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils, disableCumulativeMerge bool) http.Handler {
 	return ingestHandler{
-		log:       log,
-		ingester:  p,
-		onSuccess: onSuccess,
-		httpUtils: httpUtils,
+		log:                    log,
+		ingester:               p,
+		onSuccess:              onSuccess,
+		httpUtils:              httpUtils,
+		disableCumulativeMerge: disableCumulativeMerge,
 	}
 }
 
@@ -159,10 +164,14 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		}
 
 	case strings.Contains(contentType, "multipart/form-data"):
-		input.Profile = &pprof.RawProfile{
+		p := &pprof.RawProfile{
 			FormDataContentType: contentType,
 			RawData:             b,
 		}
+		if !h.disableCumulativeMerge {
+			p.MergeCumulative(cumulativepprof.NewMergers())
+		}
+		input.Profile = p
 	}
 
 	if input.Profile == nil {

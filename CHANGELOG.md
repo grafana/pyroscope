@@ -1,3 +1,21 @@
+# [0.36.0](https://github.com/pyroscope-io/pyroscope/compare/v0.35.1...v0.36.0) (2022-12-16)
+
+
+### Bug Fixes
+
+* build packages/pyroscope-datasource-plugin/docker-compose.yml ([76cf195](https://github.com/pyroscope-io/pyroscope/commit/76cf1959029973ea6be57cb8026f613ef60d52de))
+* build packages/pyroscope-datasource-plugin/docker-compose.yml ([0168ae2](https://github.com/pyroscope-io/pyroscope/commit/0168ae22ea24f452a1b7dfb0a8e9dc649aa7312d))
+* **flamegraph:** increase specificity of flamegraph tooltip table styling ([#1778](https://github.com/pyroscope-io/pyroscope/issues/1778)) ([6648fc5](https://github.com/pyroscope-io/pyroscope/commit/6648fc59b1da14aa7146a0b5dc3f72c29733c63e))
+* **webapp:** timeline ticks overlapping ([#1786](https://github.com/pyroscope-io/pyroscope/issues/1786)) ([1a6b52d](https://github.com/pyroscope-io/pyroscope/commit/1a6b52d98dac60272ff5753542b7e9a598546dbd))
+* **webapp:** toolbar overlaps annotation ([#1785](https://github.com/pyroscope-io/pyroscope/issues/1785)) ([24722d2](https://github.com/pyroscope-io/pyroscope/commit/24722d2843539deef587781612d3ccee89e2e9d5))
+
+
+### Features
+
+* cumulative pprof merge for pull mode ([#1794](https://github.com/pyroscope-io/pyroscope/issues/1794)) ([89265cd](https://github.com/pyroscope-io/pyroscope/commit/89265cd7f6b1d6fe57fc10b67a1b3c97ef4aa635))
+
+
+
 ## [0.35.1](https://github.com/pyroscope-io/pyroscope/compare/v0.35.0...v0.35.1) (2022-12-01)
 
 

@@ -1,8 +1,8 @@
-FROM golang:1.15.6
+FROM golang:1.19
 
 WORKDIR /go/src/app
 
-COPY main.go ./main.go
+COPY main.go go.mod go.sum ./
 
 RUN go get -d ./
 RUN go build -o main .
