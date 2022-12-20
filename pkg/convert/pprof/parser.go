@@ -23,7 +23,6 @@ type Parser struct {
 	spyName             string
 	labels              map[string]string
 	skipExemplars       bool
-	streamingParser     bool
 	sampleTypes         map[string]*tree.SampleTypeConfig
 	stackFrameFormatter StackFrameFormatter
 
@@ -36,7 +35,6 @@ type ParserConfig struct {
 	SpyName             string
 	Labels              map[string]string
 	SkipExemplars       bool
-	StreamingParser     bool
 	SampleTypes         map[string]*tree.SampleTypeConfig
 	StackFrameFormatter StackFrameFormatter
 }
@@ -67,7 +65,7 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 
 func (p *Parser) Reset() { p.cache = make(tree.LabelsCache) }
 
-func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time,  bs []byte) error {
+func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error {
 	b := bytes.NewReader(bs)
 	return DecodePool(b, func(profile *tree.Profile) error {
 		return p.Convert(ctx, startTime, endTime, profile)
