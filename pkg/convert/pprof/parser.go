@@ -1,9 +1,9 @@
 package pprof
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -12,11 +12,18 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
+type ParserInterface interface {
+	ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error
+	GetSampleTypesFilter() func(string) bool
+	SetSampleTypesFilter(func(string) bool)
+}
+
 type Parser struct {
 	putter              storage.Putter
 	spyName             string
 	labels              map[string]string
 	skipExemplars       bool
+	streamingParser     bool
 	sampleTypes         map[string]*tree.SampleTypeConfig
 	stackFrameFormatter StackFrameFormatter
 
@@ -29,6 +36,7 @@ type ParserConfig struct {
 	SpyName             string
 	Labels              map[string]string
 	SkipExemplars       bool
+	StreamingParser     bool
 	SampleTypes         map[string]*tree.SampleTypeConfig
 	StackFrameFormatter StackFrameFormatter
 }
@@ -59,7 +67,8 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 
 func (p *Parser) Reset() { p.cache = make(tree.LabelsCache) }
 
-func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, b io.Reader) error {
+func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time,  bs []byte) error {
+	b := bytes.NewReader(bs)
 	return DecodePool(b, func(profile *tree.Profile) error {
 		return p.Convert(ctx, startTime, endTime, profile)
 	})
@@ -233,4 +242,12 @@ func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
 		}
 	}
 	return -1
+}
+
+func (p *Parser) GetSampleTypesFilter() func(string) bool {
+	return p.sampleTypesFilter
+}
+
+func (p *Parser) SetSampleTypesFilter(f func(string) bool) {
+	p.sampleTypesFilter = f
 }

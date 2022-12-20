@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof/streaming"
 	"io"
 	"mime/multipart"
 	"sync"
@@ -18,7 +19,7 @@ type RawProfile struct {
 	// parser is stateful: it holds parsed previous profile
 	// which is necessary for cumulative profiles that require
 	// two consecutive profiles.
-	parser *Parser
+	parser ParserInterface
 	// References the next profile in the sequence (cumulative type only).
 	next *RawProfile
 
@@ -30,7 +31,9 @@ type RawProfile struct {
 	Profile          []byte // Represents raw pprof data.
 	PreviousProfile  []byte // Used for cumulative type only.
 	SkipExemplars    bool
+	StreamingParser  bool
 	SampleTypeConfig map[string]*tree.SampleTypeConfig
+	// todo configure parser here
 }
 
 func (p *RawProfile) ContentType() string {
@@ -138,35 +141,46 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 		if p.SampleTypeConfig != nil {
 			sampleTypes = p.SampleTypeConfig
 		}
-		p.parser = NewParser(ParserConfig{
-			SpyName:             md.SpyName,
-			Labels:              md.Key.Labels(),
-			Putter:              putter,
-			SampleTypes:         sampleTypes,
-			SkipExemplars:       p.SkipExemplars,
-			StackFrameFormatter: StackFrameFormatterForSpyName(md.SpyName),
-		})
+
+		if p.StreamingParser {
+			p.parser = streaming.NewStreamingParser(streaming.ParserConfig{
+				SpyName:       md.SpyName,
+				Labels:        md.Key.Labels(),
+				Putter:        putter,
+				SampleTypes:   sampleTypes,
+				SkipExemplars: p.SkipExemplars,
+			})
+		} else {
+			p.parser = NewParser(ParserConfig{
+				SpyName:             md.SpyName,
+				Labels:              md.Key.Labels(),
+				Putter:              putter,
+				SampleTypes:         sampleTypes,
+				SkipExemplars:       p.SkipExemplars,
+				StackFrameFormatter: StackFrameFormatterForSpyName(md.SpyName),
+			})
+		}
 
 		if p.PreviousProfile != nil {
 			// Ignore non-cumulative samples from the PreviousProfile
 			// to avoid duplicates: although, presence of PreviousProfile
 			// tells that there are cumulative sample types, it may also
 			// include regular ones.
-			filter := p.parser.sampleTypesFilter
-			p.parser.sampleTypesFilter = func(s string) bool {
+			filter := p.parser.GetSampleTypesFilter()
+			p.parser.SetSampleTypesFilter(func(s string) bool {
 				if filter != nil {
 					return filter(s) && sampleTypes[s].Cumulative
 				}
 				return sampleTypes[s].Cumulative
-			}
-			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, bytes.NewReader(p.PreviousProfile)); err != nil {
+			})
+			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.PreviousProfile); err != nil {
 				return err
 			}
-			p.parser.sampleTypesFilter = filter
+			p.parser.SetSampleTypesFilter(filter)
 		}
 	}
 
-	if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, bytes.NewReader(p.Profile)); err != nil {
+	if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.Profile); err != nil {
 		return err
 	}
 
