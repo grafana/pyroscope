@@ -26,7 +26,7 @@ const (
 
 	lineFunctionID = 1
 
-	funcId   = 1
+	funcID   = 1
 	funcName = 2
 
 	sampleLocationID = 1

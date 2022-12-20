@@ -35,7 +35,7 @@ type MoleculeParser struct {
 	// todo state reset for comulative
 	profile             []byte
 	strings_            [][]byte
-	profileIdLabelIndex int
+	profileIDLabelIndex int
 	sampleTypesParsed   []valueType
 	periodType          valueType
 	period              int
@@ -43,10 +43,8 @@ type MoleculeParser struct {
 	tmpBuf1             *codec.Buffer
 	tmpBuf2             *codec.Buffer
 
-	functions_ []function
-	locations_ []location //todo try mimic locationSlice?
-	//functions           map[int64]function
-	//locations           map[int64]location //todo try mimic locationSlice?
+	functions []function
+	locations []location
 
 	indexes []int
 	types   []int
@@ -90,7 +88,6 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 		p.profile = bs
 	}
 	return p.parsePprofDecompressed()
-
 }
 func (p *MoleculeParser) parsePprofDecompressed() error {
 	var err error
@@ -177,19 +174,19 @@ func (p *MoleculeParser) parseStructs() error {
 			p.sampleTypesParsed = append(p.sampleTypesParsed, st)
 
 		case profLocation:
-			nLocations += 1
+			nLocations++
 		case profFunction:
-			nFunctions += 1
+			nFunctions++
 		case profStringTable:
 			if bytes.Equal(value.Bytes, profileIDLabel) {
-				p.profileIdLabelIndex = len(p.strings_)
+				p.profileIDLabelIndex = len(p.strings_)
 			}
 			p.strings_ = append(p.strings_, value.Bytes)
 		}
 		return true, nil
 	})
-	p.functions_ = make([]function, 0, nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
-	p.locations_ = make([]location, 0, nLocations)
+	p.functions = make([]function, 0, nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
+	p.locations = make([]location, 0, nLocations)
 
 	return err
 }
@@ -207,20 +204,19 @@ func (p *MoleculeParser) parseStructs2() error {
 			if err != nil {
 				return false, err
 			}
-			p.locations_ = append(p.locations_, loc)
+			p.locations = append(p.locations, loc)
 		case profFunction:
 			p.tmpBuf1.Reset(value.Bytes)
 			f, err := parseFunction(p.tmpBuf1)
 			if err != nil {
 				return false, err
 			}
-			p.functions_ = append(p.functions_, f)
+			p.functions = append(p.functions, f)
 		}
 		return true, nil
 	})
-	p.finder = NewFinder(p.functions_, p.locations_)
+	p.finder = NewFinder(p.functions, p.locations)
 	return err
-
 }
 
 func (p *MoleculeParser) checkKnownSampleTypes() error {
@@ -272,7 +268,7 @@ func parseFunction(buffer *codec.Buffer) (function, error) {
 	var l = function{}
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
-		case funcId:
+		case funcID:
 			l.id = value.Number
 		case funcName:
 			l.name = int(value.Number)
@@ -412,7 +408,7 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 			continue
 		}
 		////todo should we remove labels with Label.num?
-		if j := findLabelIndex(p.tmpLabels, p.profileIdLabelIndex); j >= 0 {
+		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
 			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
 			if p.skipExemplars {
 				continue
@@ -420,7 +416,6 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 		}
 		newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
 	}
-
 	return err
 }
 
