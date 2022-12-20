@@ -55,7 +55,7 @@ type MoleculeParser struct {
 	tmpLabels []label
 	tmpStack  [][]byte
 
-	finder      Finder
+	finder Finder
 }
 
 func (p *MoleculeParser) string(i int) ([]byte, error) {
@@ -181,7 +181,7 @@ func (p *MoleculeParser) parseStructs() error {
 		case profFunction:
 			nFunctions += 1
 		case profStringTable:
-			if bytes.Equal(value.Bytes, profileIdLabel) {
+			if bytes.Equal(value.Bytes, profileIDLabel) {
 				p.profileIdLabelIndex = len(p.strings_)
 			}
 			p.strings_ = append(p.strings_, value.Bytes)
@@ -243,17 +243,17 @@ func (p *MoleculeParser) checkKnownSampleTypes() error {
 	return nil
 }
 
-func parseLocation(buffer, tmpBuf *codec.Buffer) ( location, error) {
+func parseLocation(buffer, tmpBuf *codec.Buffer) (location, error) {
 	var l = location{}
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
-		case locId:
+		case locID:
 			l.id = value.Number
 		case locLine:
 			tmpBuf.Reset(value.Bytes)
 			err := molecule.MessageEach(tmpBuf, func(field int32, value molecule.Value) (bool, error) {
 				switch field {
-				case lineFunctionId:
+				case lineFunctionID:
 					l.addFunction(value.Number)
 				}
 				return true, nil
@@ -267,7 +267,7 @@ func parseLocation(buffer, tmpBuf *codec.Buffer) ( location, error) {
 	return l, err
 }
 
-func parseFunction(buffer *codec.Buffer) ( function, error) {
+func parseFunction(buffer *codec.Buffer) (function, error) {
 	//todo try to pass a pointer to a struct to write?
 	var l = function{}
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
@@ -353,7 +353,7 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
-		case sampleLocationId:
+		case sampleLocationID:
 			switch value.WireType {
 			case codec.WireBytes:
 				p.tmpBuf2.Reset(value.Bytes)
@@ -406,7 +406,7 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 	}
 
 	for i, vi := range p.indexes {
-		_=i
+		_ = i
 		v := uint64(p.tmpValues[vi])
 		if v == 0 {
 			continue

@@ -7,7 +7,6 @@ import (
 	"sort"
 )
 
-
 type Labels []label
 
 func (l Labels) Len() int           { return len(l) }
@@ -30,7 +29,6 @@ func (l Labels) Hash() uint64 {
 }
 
 // sample type -> labels hash -> entry
-
 
 type LabelsCache map[int]map[uint64]*LabelsCacheEntry
 
@@ -106,7 +104,7 @@ func (c LabelsCache) Remove(sampleType int, h uint64) {
 func CopyLabels(labels Labels) Labels {
 	l := make(Labels, len(labels))
 	for i, v := range labels {
-		l[i] = CopyLabel(v)
+		l[i] = copyLabel(v)
 	}
 	return l
 }
@@ -116,12 +114,12 @@ func CutLabel(labels Labels, i int) Labels {
 	c := make(Labels, 0, len(labels)-1)
 	for j, label := range labels {
 		if i != j {
-			c = append(c, CopyLabel(label))
+			c = append(c, copyLabel(label))
 		}
 	}
 	return c
 }
 
-func CopyLabel(label label) label {
+func copyLabel(label label) label {
 	return label
 }

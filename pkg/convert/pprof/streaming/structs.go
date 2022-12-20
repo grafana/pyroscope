@@ -21,15 +21,15 @@ const (
 	stType = 1
 	stUnit = 2
 
-	locId   = 1
+	locID   = 1
 	locLine = 4
 
-	lineFunctionId = 1
+	lineFunctionID = 1
 
 	funcId   = 1
 	funcName = 2
 
-	sampleLocationId = 1
+	sampleLocationID = 1
 	sampleValue      = 2
 	sampleLabel      = 3
 
@@ -38,16 +38,15 @@ const (
 )
 
 var (
-	profileIdLabel = []byte(segment.ProfileIDLabelName)
+	profileIDLabel = []byte(segment.ProfileIDLabelName)
 )
-
 
 type valueType struct {
 	Type int
 	unit int
 }
 type function struct {
-	id uint64
+	id   uint64
 	name int
 }
 type location struct {

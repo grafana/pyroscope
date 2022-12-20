@@ -21,9 +21,9 @@ import (
 // making optimized access possible.
 //
 // Taking advantage of this, the finder will try to:
-// - Use direct access to functions and locations indexed by IDs when possible
-//   (sorting location and function sequences if needed).
-// - Use a map based cache otherwise.
+//   - Use direct access to functions and locations indexed by IDs when possible
+//     (sorting location and function sequences if needed).
+//   - Use a map based cache otherwise.
 func NewFinder(functions []function, locations []location) Finder {
 	return &finder{functions: functions, locations: locations, lf: nil, ff: nil}
 }
@@ -79,8 +79,8 @@ func (f mapfunctionFinder) Findfunction(id uint64) (*function, bool) {
 type finder struct {
 	functions []function
 	locations []location
-	lf locationFinder
-	ff functionFinder
+	lf        locationFinder
+	ff        functionFinder
 }
 
 func (f *finder) Findlocation(id uint64) (*location, bool) {
@@ -105,7 +105,7 @@ func (f *finder) Findfunction(id uint64) (*function, bool) {
 	return f.ff.Findfunction(id)
 }
 
-func locationSlice(locations[]location) (slicelocationFinder, bool) {
+func locationSlice(locations []location) (slicelocationFinder, bool) {
 	// Check if it's already sorted first
 	max := uint64(0)
 	sorted := true
@@ -131,13 +131,13 @@ func locationSlice(locations[]location) (slicelocationFinder, bool) {
 
 func locationMap(locations []location) maplocationFinder {
 	m := make(map[uint64]*location, len(locations))
-	for _, l := range locations {
-		m[l.id] = &l
+	for i := range locations {
+		m[locations[i].id] = &locations[i]
 	}
 	return maplocationFinder(m)
 }
 
-func functionSlice(functions [] function) (slicefunctionFinder, bool) {
+func functionSlice(functions []function) (slicefunctionFinder, bool) {
 	// Check if it's already sorted first
 	max := uint64(0)
 	sorted := true
@@ -161,10 +161,10 @@ func functionSlice(functions [] function) (slicefunctionFinder, bool) {
 	return slicefunctionFinder(functions), true
 }
 
-func functionMap(functions[]function) mapfunctionFinder {
+func functionMap(functions []function) mapfunctionFinder {
 	m := make(map[uint64]*function, len(functions))
-	for _, f := range functions {
-		m[f.id] = &f
+	for i := range functions {
+		m[functions[i].id] = &functions[i]
 	}
 	return m
 }
