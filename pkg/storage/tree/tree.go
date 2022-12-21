@@ -169,23 +169,6 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	return n.ChildrenNodes[i]
 }
 
-func (n *treeNode) insertNoCopy(targetLabel []byte) *treeNode {
-	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
-		return bytes.Compare(n.ChildrenNodes[i].Name, targetLabel) >= 0
-	})
-	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
-		l := targetLabel
-		//l := make([]byte, len(targetLabel))
-		//copy(l, targetLabel)
-		child := newNode(l)
-		n.ChildrenNodes = append(n.ChildrenNodes, child)
-		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
-		n.ChildrenNodes[i] = child
-	}
-	return n.ChildrenNodes[i]
-}
-
-
 func (n *treeNode) removeAt(i int) {
 	n.ChildrenNodes[i] = nil
 	n.ChildrenNodes = append(n.ChildrenNodes[:i], n.ChildrenNodes[i+1:]...)
@@ -254,18 +237,6 @@ func (t *Tree) InsertStack(stack [][]byte, v uint64) {
 	n.Total += v
 	n.Self += v
 }
-
-func (t *Tree) InsertStackNoCopy(stack [][]byte, v uint64) {
-	n := t.root
-	for j := range stack {
-		n.Total += v
-		n = n.insertNoCopy(stack[j])
-	}
-	// Leaf.
-	n.Total += v
-	n.Self += v
-}
-
 
 func (t *Tree) InsertStackString(stack []string, v uint64) {
 	n := t.root
