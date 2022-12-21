@@ -30,7 +30,7 @@ func (*StacktracePersister) Schema() *parquet.Schema {
 	return stacktracesSchema
 }
 
-func (*StacktracePersister) SortingColumns() SortingColumns {
+func (*StacktracePersister) SortingColumns() parquet.SortingOption {
 	return parquet.SortingColumns(
 		parquet.Ascending("ID"),
 		parquet.Ascending("LocationIDs", "list", "element"),
