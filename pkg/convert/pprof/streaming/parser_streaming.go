@@ -32,7 +32,6 @@ type MoleculeParser struct {
 	endTime   time.Time
 	ctx       context.Context
 
-	// todo state reset for comulative
 	profile             []byte
 	strings             [][]byte
 	profileIDLabelIndex int
@@ -113,6 +112,8 @@ func (p *MoleculeParser) parsePprofDecompressed() error {
 	}
 	return p.iterate(newCache, p.put)
 }
+
+// todo return pointer and resolve strings once
 func (p *MoleculeParser) resolveSampleType(v int) (valueType, bool) {
 	for _, vt := range p.sampleTypesParsed {
 		if vt.Type == v {
@@ -121,8 +122,9 @@ func (p *MoleculeParser) resolveSampleType(v int) (valueType, bool) {
 	}
 	return valueType{}, false
 }
+
 func (p *MoleculeParser) iterate(newCache LabelsCache, fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
-	for stt, entries := range newCache { //todo make st string, not []byte
+	for stt, entries := range newCache {
 		t, ok := p.resolveSampleType(stt)
 		if !ok {
 			continue
