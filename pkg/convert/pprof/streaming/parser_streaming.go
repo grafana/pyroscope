@@ -34,7 +34,7 @@ type MoleculeParser struct {
 
 	// todo state reset for comulative
 	profile             []byte
-	strings_            [][]byte
+	strings             [][]byte
 	profileIDLabelIndex int
 	sampleTypesParsed   []valueType
 	periodType          valueType
@@ -57,10 +57,10 @@ type MoleculeParser struct {
 }
 
 func (p *MoleculeParser) string(i int) ([]byte, error) {
-	if i < 0 || i >= len(p.strings_) {
+	if i < 0 || i >= len(p.strings) {
 		return nil, fmt.Errorf("string out of bound %d", i)
 	}
-	return p.strings_[i], nil
+	return p.strings[i], nil
 }
 
 func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error {
@@ -91,7 +91,7 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 }
 func (p *MoleculeParser) parsePprofDecompressed() error {
 	var err error
-	p.strings_ = make([][]byte, 0, 256) // todo sane default? count? reuse?
+	p.strings = make([][]byte, 0, 256) // todo sane default? count? reuse?
 	p.sampleTypesParsed = make([]valueType, 0, 4)
 	p.mainBuf = codec.NewBuffer(nil)
 	p.tmpBuf1 = codec.NewBuffer(nil)
@@ -111,10 +111,7 @@ func (p *MoleculeParser) parsePprofDecompressed() error {
 	if err = p.parseSamples(newCache); err != nil {
 		return err
 	}
-	if err = p.iterate(newCache, p.put); err != nil {
-		return err
-	}
-	return nil
+	return p.iterate(newCache, p.put)
 }
 func (p *MoleculeParser) resolveSampleType(v int) (valueType, bool) {
 	for _, vt := range p.sampleTypesParsed {
@@ -179,9 +176,9 @@ func (p *MoleculeParser) parseStructs() error {
 			nFunctions++
 		case profStringTable:
 			if bytes.Equal(value.Bytes, profileIDLabel) {
-				p.profileIDLabelIndex = len(p.strings_)
+				p.profileIDLabelIndex = len(p.strings)
 			}
-			p.strings_ = append(p.strings_, value.Bytes)
+			p.strings = append(p.strings, value.Bytes)
 		}
 		return true, nil
 	})
@@ -306,47 +303,73 @@ func (p *MoleculeParser) parseSamples(newCache LabelsCache) error {
 	})
 	return err
 }
-func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache) error {
+func (p *MoleculeParser) addLocation(lID uint64) error {
+	loc, ok := p.finder.Findlocation(lID)
+	if ok {
+		if err := p.addStackFrame(loc.fn1); err != nil {
+			return err
+		}
+		if loc.extraFn != nil {
+			for i := 0; i < len(loc.extraFn); i++ {
+				fID := loc.extraFn[i]
+				if err := p.addStackFrame(fID); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+func (p *MoleculeParser) addStackFrame(fID uint64) error {
+	if fID == 0 {
+		return nil
+	}
+	f, ok := p.finder.Findfunction(fID)
+	if !ok {
+		return nil
+	}
+
+	name, err := p.string(f.name)
+	if err != nil {
+		return err
+	}
+	p.tmpStack = append(p.tmpStack, name)
+	return nil
+}
+func (p *MoleculeParser) reverseStack() {
+	s := p.tmpStack
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+func (p *MoleculeParser) resetSample() {
 	p.tmpValues = p.tmpValues[:0]
 	p.tmpLabels = p.tmpLabels[:0]
 	if p.tmpStack == nil {
 		p.tmpStack = make([][]byte, 0, 64+16)
 	}
 	p.tmpStack = p.tmpStack[:0]
-	addStackFrame := func(fID uint64) error {
-		if fID == 0 {
-			return nil
-		}
-		f, ok := p.finder.Findfunction(fID)
-		if !ok {
-			return nil
-		}
+}
 
-		name, err := p.string(f.name)
-		if err != nil {
-			return err
+func (p *MoleculeParser) createTrees(newCache LabelsCache) {
+	for i, vi := range p.indexes {
+		_ = i
+		v := uint64(p.tmpValues[vi])
+		if v == 0 {
+			continue
 		}
-		p.tmpStack = append(p.tmpStack, name)
-		return nil
-	}
-	addLocation := func(id uint64) error {
-		loc, ok := p.finder.Findlocation(id)
-		if ok {
-			if err := addStackFrame(loc.fn1); err != nil {
-				return err
-			}
-			if loc.extraFn != nil {
-				for i := 0; i < len(loc.extraFn); i++ {
-					fID := loc.extraFn[i]
-					if err := addStackFrame(fID); err != nil {
-						return err
-					}
-				}
+		////todo should we remove labels with Label.num?
+		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
+			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
+			if p.skipExemplars {
+				continue
 			}
 		}
-		return nil
+		newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
 	}
-
+}
+func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache) error {
+	p.resetSample()
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case sampleLocationID:
@@ -354,7 +377,7 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 			case codec.WireBytes:
 				p.tmpBuf2.Reset(value.Bytes)
 				err := molecule.PackedRepeatedEach(p.tmpBuf2, codec.FieldType_UINT64, func(value molecule.Value) (bool, error) {
-					err := addLocation(value.Number)
+					err := p.addLocation(value.Number)
 					if err != nil {
 						return false, err
 					}
@@ -364,7 +387,7 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 					return false, err
 				}
 			case codec.WireVarint:
-				if err := addLocation(value.Number); err != nil {
+				if err := p.addLocation(value.Number); err != nil {
 					return false, err
 				}
 			}
@@ -396,26 +419,9 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 		return true, nil
 	})
 
-	s := p.tmpStack
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
+	p.reverseStack()
 
-	for i, vi := range p.indexes {
-		_ = i
-		v := uint64(p.tmpValues[vi])
-		if v == 0 {
-			continue
-		}
-		////todo should we remove labels with Label.num?
-		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
-			if p.skipExemplars {
-				continue
-			}
-		}
-		newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
-	}
+	p.createTrees(newCache)
 	return err
 }
 
