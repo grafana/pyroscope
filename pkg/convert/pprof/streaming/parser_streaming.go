@@ -356,7 +356,6 @@ func (p *MoleculeParser) createTrees(newCache LabelsCache) {
 		if v == 0 {
 			continue
 		}
-		////todo should we remove labels with Label.num?
 		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
 			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
 			if p.skipExemplars {
