@@ -245,8 +245,7 @@ func parseLocation(buffer, tmpBuf *codec.Buffer) (location, error) {
 		case locLine:
 			tmpBuf.Reset(value.Bytes)
 			err := molecule.MessageEach(tmpBuf, func(field int32, value molecule.Value) (bool, error) {
-				switch field {
-				case lineFunctionID:
+				if field == lineFunctionID {
 					l.addFunction(value.Number)
 				}
 				return true, nil
@@ -291,8 +290,7 @@ func parseLabel(buffer *codec.Buffer) (label, error) {
 func (p *MoleculeParser) parseSamples(newCache LabelsCache) error {
 	p.mainBuf.Reset(p.profile)
 	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case profSample:
+		if profSample == field {
 			p.tmpBuf1.Reset(value.Bytes)
 			err := p.parseSample(p.tmpBuf1, newCache)
 			if err != nil {
