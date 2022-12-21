@@ -1,6 +1,10 @@
 package streaming
 
-import "github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+import (
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/richardartoul/molecule"
+	"github.com/richardartoul/molecule/src/codec"
+)
 
 const (
 	profSampleType        = 1
@@ -66,4 +70,71 @@ func (l *location) addFunction(fn uint64) {
 		return
 	}
 	l.extraFn = append(l.extraFn, fn) //todo compare 1 field + slice,2 fields + slice, slice-only
+}
+
+func parseLocation(buffer, tmpBuf *codec.Buffer) (location, error) {
+	var l = location{}
+	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
+		switch field {
+		case locID:
+			l.id = value.Number
+		case locLine:
+			tmpBuf.Reset(value.Bytes)
+			err := molecule.MessageEach(tmpBuf, func(field int32, value molecule.Value) (bool, error) {
+				if field == lineFunctionID {
+					l.addFunction(value.Number)
+				}
+				return true, nil
+			})
+			if err != nil {
+				return false, err
+			}
+		}
+		return true, nil
+	})
+	return l, err
+}
+
+func parseFunction(buffer *codec.Buffer) (function, error) {
+	//todo try to pass a pointer to a struct to write?
+	var l = function{}
+	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
+		switch field {
+		case funcID:
+			l.id = value.Number
+		case funcName:
+			l.name = int(value.Number)
+		}
+		return true, nil
+	})
+	return l, err
+}
+
+func parseLabel(buffer *codec.Buffer) (label, error) {
+	var l = label{}
+	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
+		switch field {
+		case labelKey:
+			l.k = int(value.Number)
+		case labelStr:
+			l.v = int(value.Number)
+		}
+		return true, nil
+	})
+	return l, err
+}
+
+func parseValueType(buffer *codec.Buffer) (valueType, error) {
+	var unit int
+	var sType int
+	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
+		switch field {
+		case stUnit:
+			unit = int(value.Number)
+		case stType:
+			sType = int(value.Number)
+		}
+		return true, nil
+	})
+	return valueType{unit: unit, Type: sType}, err
 }

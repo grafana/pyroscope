@@ -16,6 +16,15 @@ import (
 	"time"
 )
 
+type ParserConfig struct {
+	Putter        storage.Putter
+	SpyName       string
+	Labels        map[string]string
+	SkipExemplars bool
+	SampleTypes   map[string]*tree.SampleTypeConfig
+	//StackFrameFormatter StackFrameFormatter
+}
+
 type MoleculeParser struct {
 	putter        storage.Putter
 	spyName       string
@@ -55,13 +64,29 @@ type MoleculeParser struct {
 	finder Finder
 }
 
-func (p *MoleculeParser) string(i int) ([]byte, error) {
-	if i < 0 || i >= len(p.strings) {
-		return nil, fmt.Errorf("string out of bound %d", i)
+func NewStreamingParser(config ParserConfig) *MoleculeParser {
+	//if config.StackFrameFormatter == nil {//todo
+	//	config.StackFrameFormatter = &pprof.UnsafeFunctionNameFormatter{}
+	//}
+	return &MoleculeParser{
+		putter:        config.Putter,
+		spyName:       config.SpyName,
+		labels:        config.Labels,
+		sampleTypes:   config.SampleTypes,
+		skipExemplars: config.SkipExemplars,
+
+		previousCache:     make(LabelsCache),
+		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
 	}
-	return p.strings[i], nil
 }
 
+func (p *MoleculeParser) GetSampleTypesFilter() func(string) bool {
+	return p.sampleTypesFilter
+}
+
+func (p *MoleculeParser) SetSampleTypesFilter(f func(string) bool) {
+	p.sampleTypesFilter = f
+}
 func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error {
 	p.startTime = startTime
 	p.endTime = endTime
@@ -88,6 +113,7 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 	}
 	return p.parsePprofDecompressed()
 }
+
 func (p *MoleculeParser) parsePprofDecompressed() error {
 	var err error
 	p.strings = make([][]byte, 0, 256) // todo sane default? count? reuse?
@@ -111,37 +137,6 @@ func (p *MoleculeParser) parsePprofDecompressed() error {
 		return err
 	}
 	return p.iterate(newCache, p.put)
-}
-
-// todo return pointer and resolve strings once
-func (p *MoleculeParser) resolveSampleType(v int) (valueType, bool) {
-	for _, vt := range p.sampleTypesParsed {
-		if vt.Type == v {
-			return vt, true
-		}
-	}
-	return valueType{}, false
-}
-
-func (p *MoleculeParser) iterate(newCache LabelsCache, fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
-	for stt, entries := range newCache {
-		t, ok := p.resolveSampleType(stt)
-		if !ok {
-			continue
-		}
-
-		for h, e := range entries {
-			keep, err := fn(t, e.Labels, e.Tree)
-			if err != nil {
-				return err
-			}
-			if !keep {
-				newCache.Remove(stt, h)
-			}
-		}
-	}
-	p.previousCache = newCache
-	return nil
 }
 
 // step 1
@@ -238,57 +233,6 @@ func (p *MoleculeParser) checkKnownSampleTypes() error {
 	return nil
 }
 
-func parseLocation(buffer, tmpBuf *codec.Buffer) (location, error) {
-	var l = location{}
-	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case locID:
-			l.id = value.Number
-		case locLine:
-			tmpBuf.Reset(value.Bytes)
-			err := molecule.MessageEach(tmpBuf, func(field int32, value molecule.Value) (bool, error) {
-				if field == lineFunctionID {
-					l.addFunction(value.Number)
-				}
-				return true, nil
-			})
-			if err != nil {
-				return false, err
-			}
-		}
-		return true, nil
-	})
-	return l, err
-}
-
-func parseFunction(buffer *codec.Buffer) (function, error) {
-	//todo try to pass a pointer to a struct to write?
-	var l = function{}
-	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case funcID:
-			l.id = value.Number
-		case funcName:
-			l.name = int(value.Number)
-		}
-		return true, nil
-	})
-	return l, err
-}
-func parseLabel(buffer *codec.Buffer) (label, error) {
-	var l = label{}
-	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case labelKey:
-			l.k = int(value.Number)
-		case labelStr:
-			l.v = int(value.Number)
-		}
-		return true, nil
-	})
-	return l, err
-}
-
 func (p *MoleculeParser) parseSamples(newCache LabelsCache) error {
 	p.mainBuf.Reset(p.profile)
 	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
@@ -303,70 +247,7 @@ func (p *MoleculeParser) parseSamples(newCache LabelsCache) error {
 	})
 	return err
 }
-func (p *MoleculeParser) addLocation(lID uint64) error {
-	loc, ok := p.finder.Findlocation(lID)
-	if ok {
-		if err := p.addStackFrame(loc.fn1); err != nil {
-			return err
-		}
-		if loc.extraFn != nil {
-			for i := 0; i < len(loc.extraFn); i++ {
-				fID := loc.extraFn[i]
-				if err := p.addStackFrame(fID); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-func (p *MoleculeParser) addStackFrame(fID uint64) error {
-	if fID == 0 {
-		return nil
-	}
-	f, ok := p.finder.Findfunction(fID)
-	if !ok {
-		return nil
-	}
 
-	name, err := p.string(f.name)
-	if err != nil {
-		return err
-	}
-	p.tmpStack = append(p.tmpStack, name)
-	return nil
-}
-func (p *MoleculeParser) reverseStack() {
-	s := p.tmpStack
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-}
-func (p *MoleculeParser) resetSample() {
-	p.tmpValues = p.tmpValues[:0]
-	p.tmpLabels = p.tmpLabels[:0]
-	if p.tmpStack == nil {
-		p.tmpStack = make([][]byte, 0, 64+16)
-	}
-	p.tmpStack = p.tmpStack[:0]
-}
-
-func (p *MoleculeParser) createTrees(newCache LabelsCache) {
-	for i, vi := range p.indexes {
-		_ = i
-		v := uint64(p.tmpValues[vi])
-		if v == 0 {
-			continue
-		}
-		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
-			if p.skipExemplars {
-				continue
-			}
-		}
-		newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
-	}
-}
 func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache) error {
 	p.resetSample()
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
@@ -418,41 +299,108 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 		return true, nil
 	})
 
-	p.reverseStack()
+	reverseStack(p.tmpStack)
 
 	p.createTrees(newCache)
 	return err
 }
 
-func findLabelIndex(tmpLabels []label, k int) int {
-	for i, l := range tmpLabels {
-		if l.k == k {
-			return i
+func (p *MoleculeParser) resetSample() {
+	p.tmpValues = p.tmpValues[:0]
+	p.tmpLabels = p.tmpLabels[:0]
+	if p.tmpStack == nil {
+		p.tmpStack = make([][]byte, 0, 64+16)
+	}
+	p.tmpStack = p.tmpStack[:0]
+}
+
+func (p *MoleculeParser) addLocation(lID uint64) error {
+	loc, ok := p.finder.Findlocation(lID)
+	if ok {
+		if err := p.addStackFrame(loc.fn1); err != nil {
+			return err
+		}
+		if loc.extraFn != nil {
+			for i := 0; i < len(loc.extraFn); i++ {
+				fID := loc.extraFn[i]
+				if err := p.addStackFrame(fID); err != nil {
+					return err
+				}
+			}
 		}
 	}
-	return -1
+	return nil
 }
-func parseValueType(buffer *codec.Buffer) (valueType, error) {
-	var unit int
-	var sType int
-	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case stUnit:
-			unit = int(value.Number)
-		case stType:
-			sType = int(value.Number)
+func (p *MoleculeParser) addStackFrame(fID uint64) error {
+	if fID == 0 {
+		return nil
+	}
+	f, ok := p.finder.Findfunction(fID)
+	if !ok {
+		return nil
+	}
+
+	name, err := p.string(f.name)
+	if err != nil {
+		return err
+	}
+	p.tmpStack = append(p.tmpStack, name)
+	return nil
+}
+
+func (p *MoleculeParser) string(i int) ([]byte, error) {
+	if i < 0 || i >= len(p.strings) {
+		return nil, fmt.Errorf("string out of bound %d", i)
+	}
+	return p.strings[i], nil
+}
+
+// todo return pointer and resolve strings once
+func (p *MoleculeParser) resolveSampleType(v int) (valueType, bool) {
+	for _, vt := range p.sampleTypesParsed {
+		if vt.Type == v {
+			return vt, true
 		}
-		return true, nil
-	})
-	return valueType{unit: unit, Type: sType}, err
+	}
+	return valueType{}, false
 }
 
-func (p *MoleculeParser) GetSampleTypesFilter() func(string) bool {
-	return p.sampleTypesFilter
+func (p *MoleculeParser) iterate(newCache LabelsCache, fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
+	for stt, entries := range newCache {
+		t, ok := p.resolveSampleType(stt)
+		if !ok {
+			continue
+		}
+
+		for h, e := range entries {
+			keep, err := fn(t, e.Labels, e.Tree)
+			if err != nil {
+				return err
+			}
+			if !keep {
+				newCache.Remove(stt, h)
+			}
+		}
+	}
+	p.previousCache = newCache
+	return nil
 }
 
-func (p *MoleculeParser) SetSampleTypesFilter(f func(string) bool) {
-	p.sampleTypesFilter = f
+func (p *MoleculeParser) createTrees(newCache LabelsCache) {
+	for i, vi := range p.indexes {
+		_ = i
+		v := uint64(p.tmpValues[vi])
+		if v == 0 {
+			continue
+		}
+		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
+			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
+			if p.skipExemplars {
+				continue
+			}
+		}
+		newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
+	}
 }
 
 func (p *MoleculeParser) put(st valueType, l Labels, t *tree.Tree) (keep bool, err error) {
@@ -531,29 +479,6 @@ func (p *MoleculeParser) buildName(sampleTypeName string, labels map[string]stri
 	return segment.NewKey(labels)
 }
 
-func NewStreamingParser(config ParserConfig) *MoleculeParser {
-	//if config.StackFrameFormatter == nil {//todo
-	//	config.StackFrameFormatter = &pprof.UnsafeFunctionNameFormatter{}
-	//}
-	return &MoleculeParser{
-		putter:        config.Putter,
-		spyName:       config.SpyName,
-		labels:        config.Labels,
-		sampleTypes:   config.SampleTypes,
-		skipExemplars: config.SkipExemplars,
-
-		previousCache:     make(LabelsCache),
-		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
-	}
-}
-
-func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(string) bool {
-	return func(s string) bool {
-		_, ok := sampleTypes[s]
-		return ok
-	}
-}
-
 func (p *MoleculeParser) sampleRate() uint32 {
 	if p.period <= 0 || p.periodType.unit <= 0 {
 		return 0
@@ -574,11 +499,23 @@ func (p *MoleculeParser) sampleRate() uint32 {
 	return uint32(time.Second / (sampleUnit * time.Duration(p.period)))
 }
 
-type ParserConfig struct {
-	Putter        storage.Putter
-	SpyName       string
-	Labels        map[string]string
-	SkipExemplars bool
-	SampleTypes   map[string]*tree.SampleTypeConfig
-	//StackFrameFormatter StackFrameFormatter
+func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(string) bool {
+	return func(s string) bool {
+		_, ok := sampleTypes[s]
+		return ok
+	}
+}
+
+func findLabelIndex(tmpLabels []label, k int) int {
+	for i, l := range tmpLabels {
+		if l.k == k {
+			return i
+		}
+	}
+	return -1
+}
+func reverseStack(s [][]byte) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }
