@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof/streaming"
+	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"io"
 	"mime/multipart"
 	"sync"
@@ -37,7 +37,6 @@ type RawProfile struct {
 	SkipExemplars    bool
 	StreamingParser  bool
 	SampleTypeConfig map[string]*tree.SampleTypeConfig
-	// todo configure parser here
 }
 
 func (p *RawProfile) ContentType() string {
@@ -121,6 +120,7 @@ const (
 	formFieldPreviousProfile, formFilePreviousProfile   = "prev_profile", "profile.pprof"
 	formFieldSampleTypeConfig, formFileSampleTypeConfig = "sample_type_config", "sample_type_config.json"
 )
+
 var (
 	ErrCumulativeMergeNoPreviousProfile = errors.New("no previous profile for cumulative merge")
 )
