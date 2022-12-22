@@ -60,8 +60,9 @@ type location struct {
 	id uint64
 
 	fn1 uint64
-	//fn2     int64
-	extraFn []uint64
+	fn2 uint64
+
+	extraFn []uint64 // todo maybe try make it a pointer to a slice?
 }
 
 type line struct {
@@ -98,12 +99,17 @@ func (l *location) addFunction(fn uint64) {
 		l.fn1 = fn
 		return
 	}
+	if l.fn2 == noFunction {
+		l.fn2 = fn
+		return
+	}
 	l.extraFn = append(l.extraFn, fn) //todo compare 1 field + slice,2 fields + slice, slice-only
 }
 
 func parseLocation(buffer, tmpBuf *codec.Buffer, l *location) error {
 	l.id = 0
 	l.fn1 = noFunction
+	l.fn2 = noFunction
 	l.extraFn = nil
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {

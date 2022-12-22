@@ -312,6 +312,9 @@ func (p *MoleculeParser) addStackLocation(lID uint64) error {
 		if err := p.addStackFrame(loc.fn1); err != nil {
 			return err
 		}
+		if err := p.addStackFrame(loc.fn2); err != nil {
+			return err
+		}
 		if loc.extraFn != nil {
 			for i := 0; i < len(loc.extraFn); i++ {
 				fID := loc.extraFn[i]
@@ -324,7 +327,8 @@ func (p *MoleculeParser) addStackLocation(lID uint64) error {
 	return nil
 }
 func (p *MoleculeParser) addStackFrame(fID uint64) error {
-	if fID == 0 {
+	//if fID == 0 {
+	if fID == noFunction {
 		return nil
 	}
 	f, ok := p.finder.FindFunction(fID)
@@ -387,12 +391,12 @@ func (p *MoleculeParser) createTrees(newCache LabelsCache) {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
+			//newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
+		//newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
 	}
 }
 
