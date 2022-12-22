@@ -64,6 +64,27 @@ type label struct {
 	k, v int64
 }
 
+type sample struct {
+	tmpValues   []int64
+	tmpLabels   []label
+	tmpStack    [][]byte
+	tmpStackLoc []uint64
+}
+
+func (s *sample) preAllocate(nSampleTypes int) {
+	// 64 is max pc for golang + speculative number of inlines
+	s.tmpStack = make([][]byte, 0, 64+8)
+	s.tmpStackLoc = make([]uint64, 0, 64+8)
+	s.tmpValues = make([]int64, 0, nSampleTypes)
+}
+
+func (s *sample) resetSample() {
+	s.tmpValues = s.tmpValues[:0]
+	s.tmpLabels = s.tmpLabels[:0]
+	s.tmpStack = s.tmpStack[:0]
+	s.tmpStackLoc = s.tmpStackLoc[:0]
+}
+
 func (l *location) addFunction(fn uint64) {
 	if l.fn1 == 0 {
 		l.fn1 = fn

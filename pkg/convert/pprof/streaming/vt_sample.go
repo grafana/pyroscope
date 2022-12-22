@@ -6,28 +6,18 @@ import (
 	"io"
 )
 
-type sample struct {
-	tmpValues []int64
-	tmpLabels []label
-	tmpStack  [][]byte
-}
-
-func (s *sample) preAllocate(nSampleTypes int) {
-	s.tmpStack = make([][]byte, 0, 64+8) // 64 is max pc for golang + speculative number of inlines
-	s.tmpValues = make([]int64, 0, nSampleTypes)
-}
-
-func (s *sample) resetSample() {
-	s.tmpValues = s.tmpValues[:0]
-	s.tmpLabels = s.tmpLabels[:0]
-	s.tmpStack = s.tmpStack[:0]
-}
-
 func (p *MoleculeParser) parseSampleVT(buffer []byte, newCache LabelsCache) error {
 	p.tmpSample.resetSample()
-	err := p.UnmarshalSampleVT(buffer)
+	err := p.tmpSample.UnmarshalSampleVT(buffer, &p.tmpLabel)
 	if err != nil {
 		return err
+	}
+
+	for i := range p.tmpSample.tmpStackLoc {
+		err = p.addStackLocation(p.tmpSample.tmpStackLoc[i])
+		if err != nil {
+			return err
+		}
 	}
 	reverseStack(p.tmpSample.tmpStack)
 
@@ -35,7 +25,7 @@ func (p *MoleculeParser) parseSampleVT(buffer []byte, newCache LabelsCache) erro
 
 	return nil
 }
-func (p *MoleculeParser) UnmarshalSampleVT(dAtA []byte) error {
+func (s *sample) UnmarshalSampleVT(dAtA []byte, tmpLabel *label) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -81,11 +71,12 @@ func (p *MoleculeParser) UnmarshalSampleVT(dAtA []byte) error {
 						break
 					}
 				}
-				err := p.addStackLocation(v)
-				if err != nil {
-					return err
-				}
+				//err := p.addStackLocation(v)
+				//if err != nil {
+				//	return err
+				//}
 				//m.LocationId = append(m.LocationId, v)
+				s.tmpStackLoc = append(s.tmpStackLoc, v)
 			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
@@ -140,10 +131,11 @@ func (p *MoleculeParser) UnmarshalSampleVT(dAtA []byte) error {
 						}
 					}
 					//m.LocationId = append(m.LocationId, v)
-					err := p.addStackLocation(v)
-					if err != nil {
-						return err
-					}
+					//err := p.addStackLocation(v)
+					//if err != nil {
+					//	return err
+					//}
+					s.tmpStackLoc = append(s.tmpStackLoc, v)
 				}
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field LocationId", wireType)
@@ -166,7 +158,7 @@ func (p *MoleculeParser) UnmarshalSampleVT(dAtA []byte) error {
 					}
 				}
 				//m.Value = append(m.Value, v)
-				p.tmpSample.tmpValues = append(p.tmpSample.tmpValues, v)
+				s.tmpValues = append(s.tmpValues, v)
 			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
@@ -221,8 +213,7 @@ func (p *MoleculeParser) UnmarshalSampleVT(dAtA []byte) error {
 						}
 					}
 					//m.Value = append(m.Value, v)
-					p.tmpSample.tmpValues = append(p.tmpSample.tmpValues, v)
-
+					s.tmpValues = append(s.tmpValues, v)
 				}
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
@@ -261,11 +252,11 @@ func (p *MoleculeParser) UnmarshalSampleVT(dAtA []byte) error {
 			//	return err
 			//}
 
-			if err := p.tmpLabel.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if err := tmpLabel.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			if p.tmpLabel.v != 0 {
-				p.tmpSample.tmpLabels = append(p.tmpSample.tmpLabels, p.tmpLabel)
+			if tmpLabel.v != 0 {
+				s.tmpLabels = append(s.tmpLabels, *tmpLabel)
 			}
 			iNdEx = postIndex
 		default:
