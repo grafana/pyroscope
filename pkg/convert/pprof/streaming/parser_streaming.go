@@ -43,7 +43,7 @@ type MoleculeParser struct {
 
 	profile             []byte
 	strings             [][]byte
-	profileIDLabelIndex int
+	profileIDLabelIndex int64
 	sampleTypesParsed   []valueType
 	periodType          valueType
 	period              int
@@ -55,11 +55,10 @@ type MoleculeParser struct {
 	locations []location
 
 	indexes []int
-	types   []int
+	types   []int64
 
-	tmpValues []int64
-	tmpLabels []label
-	tmpStack  [][]byte
+	tmpSample sample
+	tmpLabel  label
 
 	finder finder
 
@@ -168,7 +167,7 @@ func (p *MoleculeParser) parseStructs() error {
 
 func (p *MoleculeParser) addString(s []byte) {
 	if bytes.Equal(s, profileIDLabel) {
-		p.profileIDLabelIndex = len(p.strings)
+		p.profileIDLabelIndex = int64(len(p.strings))
 	}
 	p.strings = append(p.strings, s)
 }
@@ -202,7 +201,7 @@ func (p *MoleculeParser) addLocation(l *location) {
 
 func (p *MoleculeParser) checkKnownSampleTypes() error {
 	p.indexes = make([]int, 0, len(p.sampleTypesParsed))
-	p.types = make([]int, 0, len(p.sampleTypesParsed))
+	p.types = make([]int64, 0, len(p.sampleTypesParsed))
 	for i, s := range p.sampleTypesParsed {
 		ssType, err := p.string(s.Type)
 		if err != nil {
@@ -216,7 +215,8 @@ func (p *MoleculeParser) checkKnownSampleTypes() error {
 	if len(p.indexes) == 0 {
 		return fmt.Errorf("unknown sample types")
 	}
-	p.tmpValues = make([]int64, len(p.indexes))
+	p.tmpSample.preAllocate(len(p.indexes))
+	//p.tmpValues = make([]int64, len(p.indexes))
 	return nil
 }
 
@@ -224,11 +224,16 @@ func (p *MoleculeParser) parseSamples(newCache LabelsCache) error {
 	p.mainBuf.Reset(p.profile)
 	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
 		if profSample == field {
-			p.tmpBuf1.Reset(value.Bytes)
-			err := p.parseSample(p.tmpBuf1, newCache)
+			err := p.parseSampleVT(value.Bytes, newCache)
 			if err != nil {
 				return false, err
 			}
+			//p.tmpBuf1.Reset(value.Bytes)
+			//
+			//err := p.parseSample(p.tmpBuf1, newCache)
+			//if err != nil {
+			//	return false, err
+			//}
 		}
 		return true, nil
 	})
@@ -236,7 +241,7 @@ func (p *MoleculeParser) parseSamples(newCache LabelsCache) error {
 }
 
 func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache) error {
-	p.resetSample()
+	p.tmpSample.resetSample()
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case sampleLocationID:
@@ -264,14 +269,14 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 			case codec.WireBytes:
 				p.tmpBuf2.Reset(value.Bytes)
 				err := molecule.PackedRepeatedEach(p.tmpBuf2, codec.FieldType_UINT64, func(value molecule.Value) (bool, error) {
-					p.tmpValues = append(p.tmpValues, int64(value.Number))
+					p.tmpSample.tmpValues = append(p.tmpSample.tmpValues, int64(value.Number))
 					return true, nil
 				})
 				if err != nil {
 					return false, err
 				}
 			case codec.WireVarint:
-				p.tmpValues = append(p.tmpValues, int64(value.Number))
+				p.tmpSample.tmpValues = append(p.tmpSample.tmpValues, int64(value.Number))
 			}
 		case sampleLabel:
 			p.tmpBuf2.Reset(value.Bytes)
@@ -280,25 +285,16 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 				return false, err
 			}
 			if l.v != 0 {
-				p.tmpLabels = append(p.tmpLabels, l)
+				p.tmpSample.tmpLabels = append(p.tmpSample.tmpLabels, l)
 			}
 		}
 		return true, nil
 	})
 
-	reverseStack(p.tmpStack)
+	reverseStack(p.tmpSample.tmpStack)
 
 	p.createTrees(newCache)
 	return err
-}
-
-func (p *MoleculeParser) resetSample() {
-	p.tmpValues = p.tmpValues[:0]
-	p.tmpLabels = p.tmpLabels[:0]
-	if p.tmpStack == nil {
-		p.tmpStack = make([][]byte, 0, 64+16)
-	}
-	p.tmpStack = p.tmpStack[:0]
 }
 
 func (p *MoleculeParser) addStackLocation(lID uint64) error {
@@ -332,11 +328,11 @@ func (p *MoleculeParser) addStackFrame(fID uint64) error {
 	//	return err
 	//}
 	//p.tmpStack = append(p.tmpStack, name)
-	p.tmpStack = append(p.tmpStack, p.strings[f.name])
+	p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, p.strings[f.name])
 	return nil
 }
 
-func (p *MoleculeParser) string(i int) ([]byte, error) {
+func (p *MoleculeParser) string(i int64) ([]byte, error) {
 	//if i < 0 || i >= len(p.strings) {
 	//	return nil, fmt.Errorf("string out of bound %d", i)
 	//}
@@ -344,7 +340,7 @@ func (p *MoleculeParser) string(i int) ([]byte, error) {
 }
 
 // todo return pointer and resolve strings once
-func (p *MoleculeParser) resolveSampleType(v int) (valueType, bool) {
+func (p *MoleculeParser) resolveSampleType(v int64) (valueType, bool) {
 	for _, vt := range p.sampleTypesParsed {
 		if vt.Type == v {
 			return vt, true
@@ -377,17 +373,17 @@ func (p *MoleculeParser) iterate(newCache LabelsCache, fn func(st valueType, l L
 func (p *MoleculeParser) createTrees(newCache LabelsCache) {
 	for i, vi := range p.indexes {
 		_ = i
-		v := uint64(p.tmpValues[vi])
+		v := uint64(p.tmpSample.tmpValues[vi])
 		if v == 0 {
 			continue
 		}
-		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			//newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
+		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
+			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		//newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
+		newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
 	}
 }
 
@@ -494,7 +490,7 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 	}
 }
 
-func findLabelIndex(tmpLabels []label, k int) int {
+func findLabelIndex(tmpLabels []label, k int64) int {
 	for i, l := range tmpLabels {
 		if l.k == k {
 			return i

@@ -30,7 +30,7 @@ func (l Labels) Hash() uint64 {
 
 // sample type -> labels hash -> entry
 
-type LabelsCache map[int]map[uint64]*LabelsCacheEntry
+type LabelsCache map[int64]map[uint64]*LabelsCacheEntry
 
 type LabelsCacheEntry struct {
 	Labels
@@ -41,7 +41,7 @@ func NewCacheEntry(l Labels) *LabelsCacheEntry {
 	return &LabelsCacheEntry{Tree: tree.New(), Labels: CopyLabels(l)}
 }
 
-func (c LabelsCache) GetOrCreateTree(sampleType int, l Labels) *LabelsCacheEntry {
+func (c LabelsCache) GetOrCreateTree(sampleType int64, l Labels) *LabelsCacheEntry {
 	p, ok := c[sampleType]
 	if !ok {
 		e := NewCacheEntry(l)
@@ -57,7 +57,7 @@ func (c LabelsCache) GetOrCreateTree(sampleType int, l Labels) *LabelsCacheEntry
 	return e
 }
 
-func (c LabelsCache) GetOrCreateTreeByHash(sampleType int, l Labels, h uint64) *LabelsCacheEntry {
+func (c LabelsCache) GetOrCreateTreeByHash(sampleType int64, l Labels, h uint64) *LabelsCacheEntry {
 	p, ok := c[sampleType]
 	if !ok {
 		e := NewCacheEntry(l)
@@ -72,7 +72,7 @@ func (c LabelsCache) GetOrCreateTreeByHash(sampleType int, l Labels, h uint64) *
 	return e
 }
 
-func (c LabelsCache) Get(sampleType int, h uint64) (*LabelsCacheEntry, bool) {
+func (c LabelsCache) Get(sampleType int64, h uint64) (*LabelsCacheEntry, bool) {
 	p, ok := c[sampleType]
 	if !ok {
 		return nil, false
@@ -81,7 +81,7 @@ func (c LabelsCache) Get(sampleType int, h uint64) (*LabelsCacheEntry, bool) {
 	return x, ok
 }
 
-func (c LabelsCache) Put(sampleType int, e *LabelsCacheEntry) {
+func (c LabelsCache) Put(sampleType int64, e *LabelsCacheEntry) {
 	p, ok := c[sampleType]
 	if !ok {
 		p = make(map[uint64]*LabelsCacheEntry)
@@ -90,7 +90,7 @@ func (c LabelsCache) Put(sampleType int, e *LabelsCacheEntry) {
 	p[e.Hash()] = e
 }
 
-func (c LabelsCache) Remove(sampleType int, h uint64) {
+func (c LabelsCache) Remove(sampleType int64, h uint64) {
 	p, ok := c[sampleType]
 	if !ok {
 		return

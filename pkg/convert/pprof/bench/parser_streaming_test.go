@@ -101,9 +101,7 @@ func TestUmarshalParserOne(t *testing.T) {
 
 func TestCompare(t *testing.T) {
 
-
-
-	for _, c := range  readCorpus("/home/korniltsev/Downloads/pprofs_short") {
+	for _, c := range readCorpus("/home/korniltsev/Downloads/pprofs_short") {
 		testOne(t, c)
 	}
 
@@ -112,17 +110,15 @@ func TestCompare(t *testing.T) {
 	}
 }
 
-
 func testOne(t *testing.T, c *testcase) {
-
 
 	key, _ := segment.ParseKey("foo.bar")
 	mock1 := &MockPutter{keep: true}
 	profile1 := pprof.RawProfile{
-		Profile: c.profile,
-		PreviousProfile: c.prev,
+		Profile:          c.profile,
+		PreviousProfile:  c.prev,
 		SampleTypeConfig: c.config,
-		StreamingParser: true,
+		StreamingParser:  true,
 	}
 	if c.prev != nil {
 		fmt.Println("foo")
@@ -131,12 +127,14 @@ func testOne(t *testing.T, c *testcase) {
 
 	mock2 := &MockPutter{keep: true}
 	profile2 := pprof.RawProfile{
-		Profile: c.profile,
-		PreviousProfile: c.prev,
+		Profile:          c.profile,
+		PreviousProfile:  c.prev,
 		SampleTypeConfig: c.config,
 	}
-	profile2.Parse(context.TODO(), mock2, nil, ingestion.Metadata{Key: key})
-
+	err := profile2.Parse(context.TODO(), mock2, nil, ingestion.Metadata{Key: key})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if len(mock1.puts) != len(mock2.puts) {
 		t.Fatalf("put mismatch")
@@ -156,9 +154,9 @@ func testOne(t *testing.T, c *testcase) {
 		it := mock1.puts[i].Val.String()
 		jit := mock2.puts[i].Val.String()
 		if it != jit {
-			t.Fatalf("mismatch ---\n" +
-				"%s\n" +
-				"---\n" +
+			t.Fatalf("mismatch ---\n"+
+				"%s\n"+
+				"---\n"+
 				"%s\n====", it, jit)
 		}
 		fmt.Printf("ok %s %d \n", k1, len(it))

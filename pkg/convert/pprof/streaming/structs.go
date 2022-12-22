@@ -46,12 +46,12 @@ var (
 )
 
 type valueType struct {
-	Type int
-	unit int
+	Type int64
+	unit int64
 }
 type function struct {
 	id   uint64
-	name int
+	name int64
 }
 type location struct {
 	id uint64
@@ -61,7 +61,7 @@ type location struct {
 	extraFn []uint64
 }
 type label struct {
-	k, v int
+	k, v int64
 }
 
 func (l *location) addFunction(fn uint64) {
@@ -106,7 +106,7 @@ func parseFunction(buffer *codec.Buffer, f *function) error {
 		case funcID:
 			f.id = value.Number
 		case funcName:
-			f.name = int(value.Number)
+			f.name = int64(value.Number)
 		}
 		return true, nil
 	})
@@ -118,9 +118,9 @@ func parseLabel(buffer *codec.Buffer) (label, error) {
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case labelKey:
-			l.k = int(value.Number)
+			l.k = int64(value.Number)
 		case labelStr:
-			l.v = int(value.Number)
+			l.v = int64(value.Number)
 		}
 		return true, nil
 	})
@@ -133,9 +133,9 @@ func parseValueType(buffer *codec.Buffer, vt *valueType) error {
 	return molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case stUnit:
-			vt.unit = int(value.Number)
+			vt.unit = int64(value.Number)
 		case stType:
-			vt.Type = int(value.Number)
+			vt.Type = int64(value.Number)
 		}
 		return true, nil
 	})
