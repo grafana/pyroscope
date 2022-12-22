@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
+	"github.com/pyroscope-io/client/pyroscope"
 )
 
 //go:noinline
@@ -23,7 +23,7 @@ func slowFunction() {
 }
 
 func main() {
-	profiler.Start(profiler.Config{
+	pyroscope.Start(pyroscope.Config{
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   "http://pyroscope:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
 		Tags: map[string]string{
