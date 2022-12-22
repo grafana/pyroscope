@@ -47,13 +47,15 @@ type MoleculeParser struct {
 	profileIDLabelIndex int64
 	sampleTypesParsed   []valueType
 	periodType          valueType
-	period              int
+	period              int64
 	mainBuf             *codec.Buffer
 	tmpBuf1             *codec.Buffer
 	tmpBuf2             *codec.Buffer
 
-	functions []function
-	locations []location
+	nFunctions int
+	nLocations int
+	functions  []function
+	locations  []location
 
 	indexes []int
 	types   []int64
@@ -153,13 +155,14 @@ func (p *MoleculeParser) parsePprofDecompressed() (err error) {
 // - count number of locations and functions
 
 func (p *MoleculeParser) parseStructs() error {
+	//err := p.UnmarshalVTStructs(p.profile)
 	err := p.pp.parse(p.profile, profileCallbacks{
 		string:     p.addString,
 		sampleType: p.addSampleType,
 		periodType: p.addPeriodType,
 	})
 	if err == nil {
-		p.period = p.pp.period
+		//p.period = p.pp.period
 		p.functions = make([]function, 0, p.pp.nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
 		p.locations = make([]location, 0, p.pp.nLocations)
 	}
