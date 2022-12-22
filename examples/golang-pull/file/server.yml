@@ -1,0 +1,9 @@
+---
+log-level: debug
+scrape-configs:
+  - job-name: testing
+    enabled-profiles: [cpu, mem, goroutines, mutex, block]
+    file-sd-configs:
+      - refresh-interval: 10s
+        files:
+          - '/targets.json'
