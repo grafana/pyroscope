@@ -115,7 +115,11 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 	} else {
 		p.profile = bs
 	}
-	return p.parsePprofDecompressed()
+	err := p.parsePprofDecompressed()
+	if err != nil {
+
+	}
+	return err
 }
 
 func (p *MoleculeParser) parsePprofDecompressed() (err error) {

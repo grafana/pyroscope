@@ -103,7 +103,7 @@ func (l *location) addFunction(fn uint64) {
 
 func parseLocation(buffer, tmpBuf *codec.Buffer, l *location) error {
 	l.id = 0
-	l.fn1 = 0
+	l.fn1 = noFunction
 	l.extraFn = nil
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {

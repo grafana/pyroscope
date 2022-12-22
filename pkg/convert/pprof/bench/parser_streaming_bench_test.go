@@ -147,7 +147,10 @@ func BenchmarkUnmarshal(b *testing.B) {
 					Putter:      putter,
 				})
 
-			parser.ParsePprof(context.TODO(), now, now, t.profile)
+			err := parser.ParsePprof(context.TODO(), now, now, t.profile)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 
 	}
@@ -169,7 +172,10 @@ func BenchmarkStreaming(b *testing.B) {
 					Putter:      putter,
 				})
 
-			parser.ParsePprof(context.TODO(), now, now, profile)
+			err := parser.ParsePprof(context.TODO(), now, now, profile)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 
 	}
@@ -187,7 +193,10 @@ func BenchmarkUnmarshalBig(b *testing.B) {
 					Putter:      putter,
 				})
 
-			parser.ParsePprof(context.TODO(), now, now, t.profile)
+			err := parser.ParsePprof(context.TODO(), now, now, t.profile)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 
 	}
@@ -209,7 +218,10 @@ func BenchmarkStreamingBig(b *testing.B) {
 					Putter:      putter,
 				})
 
-			parser.ParsePprof(context.TODO(), now, now, profile)
+			err := parser.ParsePprof(context.TODO(), now, now, profile)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 
 	}
@@ -227,7 +239,10 @@ func BenchmarkSingleSmallMolecule(b *testing.B) {
 		config := t.config
 		profile := t.profile
 		parser := streaming.NewStreamingParser(streaming.ParserConfig{SampleTypes: config, Putter: putter})
-		parser.ParsePprof(context.TODO(), now, now, profile)
+		err := parser.ParsePprof(context.TODO(), now, now, profile)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -238,7 +253,10 @@ func BenchmarkSingleSmallUnmarshal(b *testing.B) {
 		config := t.config
 		profile := t.profile
 		parser := pprof.NewParser(pprof.ParserConfig{SampleTypes: config, Putter: putter})
-		parser.ParsePprof(context.TODO(), now, now, profile)
+		err := parser.ParsePprof(context.TODO(), now, now, profile)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -249,7 +267,10 @@ func BenchmarkSingleBigMolecule(b *testing.B) {
 		config := t.config
 		profile := t.profile
 		parser := streaming.NewStreamingParser(streaming.ParserConfig{SampleTypes: config, Putter: putter})
-		parser.ParsePprof(context.TODO(), now, now, profile)
+		err := parser.ParsePprof(context.TODO(), now, now, profile)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -260,6 +281,9 @@ func BenchmarkSingleBigUnmarshal(b *testing.B) {
 		config := t.config
 		profile := t.profile
 		parser := pprof.NewParser(pprof.ParserConfig{SampleTypes: config, Putter: putter})
-		parser.ParsePprof(context.TODO(), now, now, profile)
+		err := parser.ParsePprof(context.TODO(), now, now, profile)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
