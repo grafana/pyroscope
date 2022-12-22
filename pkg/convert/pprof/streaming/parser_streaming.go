@@ -36,6 +36,7 @@ type MoleculeParser struct {
 	sampleTypesFilter func(string) bool
 
 	previousCache LabelsCache
+	newCache      LabelsCache
 
 	startTime time.Time
 	endTime   time.Time
@@ -138,11 +139,11 @@ func (p *MoleculeParser) parsePprofDecompressed() (err error) {
 		return err
 	}
 
-	newCache := make(LabelsCache)
-	if err = p.parseSamples(newCache); err != nil {
+	p.newCache = make(LabelsCache)
+	if err = p.parseSamples(); err != nil {
 		return err
 	}
-	return p.iterate(newCache, p.put)
+	return p.iterate(p.put)
 }
 
 // step 1
@@ -220,24 +221,25 @@ func (p *MoleculeParser) checkKnownSampleTypes() error {
 	return nil
 }
 
-func (p *MoleculeParser) parseSamples(newCache LabelsCache) error {
-	p.mainBuf.Reset(p.profile)
-	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
-		if profSample == field {
-			err := p.parseSampleVT(value.Bytes, newCache)
-			if err != nil {
-				return false, err
-			}
-			//p.tmpBuf1.Reset(value.Bytes)
-			//
-			//err := p.parseSample(p.tmpBuf1, newCache)
-			//if err != nil {
-			//	return false, err
-			//}
-		}
-		return true, nil
-	})
-	return err
+func (p *MoleculeParser) parseSamples() error {
+	return p.UnmarshalVTProfileSamples(p.profile)
+	//p.mainBuf.Reset(p.profile)
+	//err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
+	//	if profSample == field {
+	//		err := p.parseSampleVT(value.Bytes)
+	//		if err != nil {
+	//			return false, err
+	//		}
+	//		//p.tmpBuf1.Reset(value.Bytes)
+	//		//
+	//		//err := p.parseSample(p.tmpBuf1, newCache)
+	//		//if err != nil {
+	//		//	return false, err
+	//		//}
+	//	}
+	//	return true, nil
+	//})
+	//return err
 }
 
 func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache) error {
@@ -349,8 +351,8 @@ func (p *MoleculeParser) resolveSampleType(v int64) (valueType, bool) {
 	return valueType{}, false
 }
 
-func (p *MoleculeParser) iterate(newCache LabelsCache, fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
-	for stt, entries := range newCache {
+func (p *MoleculeParser) iterate(fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
+	for stt, entries := range p.newCache {
 		t, ok := p.resolveSampleType(stt)
 		if !ok {
 			continue
@@ -362,11 +364,11 @@ func (p *MoleculeParser) iterate(newCache LabelsCache, fn func(st valueType, l L
 				return err
 			}
 			if !keep {
-				newCache.Remove(stt, h)
+				p.newCache.Remove(stt, h)
 			}
 		}
 	}
-	p.previousCache = newCache
+	p.previousCache = p.newCache
 	return nil
 }
 
@@ -378,12 +380,12 @@ func (p *MoleculeParser) createTrees(newCache LabelsCache) {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			//newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
+			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		//newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
+		newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
 	}
 }
 

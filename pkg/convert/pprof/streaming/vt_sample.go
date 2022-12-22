@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-func (p *MoleculeParser) parseSampleVT(buffer []byte, newCache LabelsCache) error {
+func (p *MoleculeParser) parseSampleVT(buffer []byte) error {
 	p.tmpSample.resetSample()
 	err := p.tmpSample.UnmarshalSampleVT(buffer, &p.tmpLabel)
 	if err != nil {
@@ -21,7 +21,7 @@ func (p *MoleculeParser) parseSampleVT(buffer []byte, newCache LabelsCache) erro
 	}
 	reverseStack(p.tmpSample.tmpStack)
 
-	p.createTrees(newCache)
+	p.createTrees(p.newCache)
 
 	return nil
 }
