@@ -72,8 +72,10 @@ func (l *location) addFunction(fn uint64) {
 	l.extraFn = append(l.extraFn, fn) //todo compare 1 field + slice,2 fields + slice, slice-only
 }
 
-func parseLocation(buffer, tmpBuf *codec.Buffer) (location, error) {
-	var l = location{}
+func parseLocation(buffer, tmpBuf *codec.Buffer, l *location) error {
+	l.id = 0
+	l.fn1 = 0
+	l.extraFn = nil
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case locID:
@@ -92,22 +94,23 @@ func parseLocation(buffer, tmpBuf *codec.Buffer) (location, error) {
 		}
 		return true, nil
 	})
-	return l, err
+	return err
 }
 
-func parseFunction(buffer *codec.Buffer) (function, error) {
+func parseFunction(buffer *codec.Buffer, f *function) error {
 	//todo try to pass a pointer to a struct to write?
-	var l = function{}
+	f.id = 0
+	f.name = 0
 	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case funcID:
-			l.id = value.Number
+			f.id = value.Number
 		case funcName:
-			l.name = int(value.Number)
+			f.name = int(value.Number)
 		}
 		return true, nil
 	})
-	return l, err
+	return err
 }
 
 func parseLabel(buffer *codec.Buffer) (label, error) {

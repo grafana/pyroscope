@@ -57,9 +57,11 @@ type MoleculeParser struct {
 	indexes []int
 	types   []int
 
-	tmpValues []int64
-	tmpLabels []label
-	tmpStack  [][]byte
+	tmpValues   []int64
+	tmpLabels   []label
+	tmpStack    [][]byte
+	tmpLocation *location
+	tmpFunction *function
 
 	finder Finder
 }
@@ -77,6 +79,9 @@ func NewStreamingParser(config ParserConfig) *MoleculeParser {
 
 		previousCache:     make(LabelsCache),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
+
+		tmpLocation: &location{},
+		tmpFunction: &function{},
 	}
 }
 
@@ -190,22 +195,24 @@ func (p *MoleculeParser) parseStructs() error {
 // - parse functions
 func (p *MoleculeParser) parseStructs2() error {
 	p.mainBuf.Reset(p.profile)
+	l := p.tmpLocation
+	f := p.tmpFunction
 	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case profLocation:
 			p.tmpBuf1.Reset(value.Bytes)
-			loc, err := parseLocation(p.tmpBuf1, p.tmpBuf2)
+			err := parseLocation(p.tmpBuf1, p.tmpBuf2, l)
 			if err != nil {
 				return false, err
 			}
-			p.locations = append(p.locations, loc)
+			p.locations = append(p.locations, *l)
 		case profFunction:
 			p.tmpBuf1.Reset(value.Bytes)
-			f, err := parseFunction(p.tmpBuf1)
+			err := parseFunction(p.tmpBuf1, f)
 			if err != nil {
 				return false, err
 			}
-			p.functions = append(p.functions, f)
+			p.functions = append(p.functions, *f)
 		}
 		return true, nil
 	})
@@ -394,12 +401,12 @@ func (p *MoleculeParser) createTrees(newCache LabelsCache) {
 			continue
 		}
 		if j := findLabelIndex(p.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
+			//newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpLabels, j)).InsertStack(p.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
+		//newCache.GetOrCreateTree(p.types[i], p.tmpLabels).InsertStack(p.tmpStack, v)
 	}
 }
 
