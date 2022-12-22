@@ -53,6 +53,9 @@ type function struct {
 	id   uint64
 	name int64
 }
+
+const noFunction = 0xffffffffffffffff
+
 type location struct {
 	id uint64
 
@@ -60,6 +63,11 @@ type location struct {
 	//fn2     int64
 	extraFn []uint64
 }
+
+type line struct {
+	functionID uint64
+}
+
 type label struct {
 	k, v int64
 }
@@ -86,7 +94,7 @@ func (s *sample) resetSample() {
 }
 
 func (l *location) addFunction(fn uint64) {
-	if l.fn1 == 0 {
+	if l.fn1 == noFunction {
 		l.fn1 = fn
 		return
 	}
