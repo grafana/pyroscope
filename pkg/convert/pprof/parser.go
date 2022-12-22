@@ -223,12 +223,12 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
 			if j := labelIndex(x, s.Label, segment.ProfileIDLabelName); j >= 0 {
 				// Regardless of whether we should skip exemplars or not, the value
 				// should be appended to the exemplar baseline profile (w/o ProfileID label).
-				c.GetOrCreateTree(types[i], tree.CutLabel(s.Label, j)).InsertStack(stack, v)
+				//c.GetOrCreateTree(types[i], tree.CutLabel(s.Label, j)).InsertStack(stack, v)
 				if p.skipExemplars {
 					continue
 				}
 			}
-			c.GetOrCreateTree(types[i], s.Label).InsertStack(stack, v)
+			//c.GetOrCreateTree(types[i], s.Label).InsertStack(stack, v)
 		}
 		stack = stack[:0]
 	}
