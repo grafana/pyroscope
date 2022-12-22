@@ -127,17 +127,125 @@ func parseLabel(buffer *codec.Buffer) (label, error) {
 	return l, err
 }
 
-func parseValueType(buffer *codec.Buffer) (valueType, error) {
-	var unit int
-	var sType int
-	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
+func parseValueType(buffer *codec.Buffer, vt *valueType) error {
+	vt.unit = 0
+	vt.Type = 0
+	return molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
 		switch field {
 		case stUnit:
-			unit = int(value.Number)
+			vt.unit = int(value.Number)
 		case stType:
-			sType = int(value.Number)
+			vt.Type = int(value.Number)
 		}
 		return true, nil
 	})
-	return valueType{unit: unit, Type: sType}, err
+}
+
+type profileCallbacks struct {
+	string     func(s []byte)
+	periodType func(pt *valueType)
+	sampleType func(pt *valueType)
+	function   func(f *function)
+	location   func(f *location)
+}
+
+type profileParser struct {
+	mainBuf    *codec.Buffer
+	tmpBuf1    *codec.Buffer
+	tmpBuf2    *codec.Buffer
+	period     int
+	nFunctions int
+	nLocations int
+
+	tmpValueType valueType
+	function     function
+	location     location
+}
+
+func (p *profileParser) parse(profile []byte, callbacks profileCallbacks) error {
+	p.period = 0
+	p.nFunctions = 0
+	p.nLocations = 0
+	if p.mainBuf == nil {
+		p.mainBuf = codec.NewBuffer(profile)
+	} else {
+		p.mainBuf.Reset(profile)
+	}
+	vt := &p.tmpValueType
+	f := &p.function
+	l := &p.location
+	nFunctions := 0
+	nLocations := 0
+	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
+		switch field {
+		case profPeriod:
+			p.period = int(value.Number)
+		case profPeriodType:
+			if callbacks.periodType != nil {
+				if p.tmpBuf1 == nil {
+					p.tmpBuf1 = codec.NewBuffer(value.Bytes)
+				} else {
+					p.tmpBuf1.Reset(value.Bytes)
+				}
+				err := parseValueType(p.tmpBuf1, vt)
+				if err != nil {
+					return false, nil
+				}
+				callbacks.periodType(vt)
+			}
+		case profSampleType:
+			if callbacks.sampleType != nil {
+				if p.tmpBuf1 == nil {
+					p.tmpBuf1 = codec.NewBuffer(value.Bytes)
+				} else {
+					p.tmpBuf1.Reset(value.Bytes)
+				}
+				err := parseValueType(p.tmpBuf1, vt)
+				if err != nil {
+					return false, nil
+				}
+				callbacks.sampleType(vt)
+			}
+		case profLocation:
+			nLocations++
+			if callbacks.location != nil {
+				if p.tmpBuf1 == nil {
+					p.tmpBuf1 = codec.NewBuffer(value.Bytes)
+				} else {
+					p.tmpBuf1.Reset(value.Bytes)
+				}
+				if p.tmpBuf2 == nil {
+					p.tmpBuf2 = codec.NewBuffer(nil)
+				}
+				err := parseLocation(p.tmpBuf1, p.tmpBuf2, l)
+				if err != nil {
+					return false, err
+				}
+				callbacks.location(l)
+			}
+		case profFunction:
+			nFunctions++
+			if callbacks.function != nil {
+				if p.tmpBuf1 == nil {
+					p.tmpBuf1 = codec.NewBuffer(value.Bytes)
+				} else {
+					p.tmpBuf1.Reset(value.Bytes)
+				}
+				err := parseFunction(p.tmpBuf1, f)
+				if err != nil {
+					return false, err
+				}
+				callbacks.function(f)
+			}
+		case profStringTable:
+			if callbacks.string != nil {
+				callbacks.string(value.Bytes)
+			}
+		}
+		return true, nil
+	})
+	p.nFunctions = nFunctions
+	p.nLocations = nLocations
+	return err
+
 }

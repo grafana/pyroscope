@@ -57,13 +57,13 @@ type MoleculeParser struct {
 	indexes []int
 	types   []int
 
-	tmpValues   []int64
-	tmpLabels   []label
-	tmpStack    [][]byte
-	tmpLocation *location
-	tmpFunction *function
+	tmpValues []int64
+	tmpLabels []label
+	tmpStack  [][]byte
 
 	finder Finder
+
+	pp profileParser
 }
 
 func NewStreamingParser(config ParserConfig) *MoleculeParser {
@@ -79,9 +79,6 @@ func NewStreamingParser(config ParserConfig) *MoleculeParser {
 
 		previousCache:     make(LabelsCache),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
-
-		tmpLocation: &location{},
-		tmpFunction: &function{},
 	}
 }
 
@@ -130,7 +127,7 @@ func (p *MoleculeParser) parsePprofDecompressed() error {
 	if err = p.parseStructs(); err != nil {
 		return err
 	}
-	if err = p.parseStructs2(); err != nil {
+	if err = p.parseFunctionsAndLocations(); err != nil {
 		return err
 	}
 	if err = p.checkKnownSampleTypes(); err != nil {
@@ -149,75 +146,53 @@ func (p *MoleculeParser) parsePprofDecompressed() error {
 // - parse periodType
 // - parse sampleType
 // - count number of locations and functions
+
 func (p *MoleculeParser) parseStructs() error {
-	p.mainBuf.Reset(p.profile)
-	nFunctions := 0
-	nLocations := 0
-	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case profPeriod:
-			p.period = int(value.Number)
-		case profPeriodType:
-			p.tmpBuf1.Reset(value.Bytes)
-			periodType, err := parseValueType(p.tmpBuf1)
-			if err != nil {
-				return false, nil
-			}
-			p.periodType = periodType
-		case profSampleType:
-			p.tmpBuf1.Reset(value.Bytes)
-			st, err := parseValueType(p.tmpBuf1)
-			if err != nil {
-				return false, err
-			}
-			p.sampleTypesParsed = append(p.sampleTypesParsed, st)
-
-		case profLocation:
-			nLocations++
-		case profFunction:
-			nFunctions++
-		case profStringTable:
-			if bytes.Equal(value.Bytes, profileIDLabel) {
-				p.profileIDLabelIndex = len(p.strings)
-			}
-			p.strings = append(p.strings, value.Bytes)
-		}
-		return true, nil
+	err := p.pp.parse(p.profile, profileCallbacks{
+		string:     p.addString,
+		sampleType: p.addSampleType,
+		periodType: p.addPeriodType,
 	})
-	p.functions = make([]function, 0, nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
-	p.locations = make([]location, 0, nLocations)
-
+	if err == nil {
+		p.period = p.pp.period
+		p.functions = make([]function, 0, p.pp.nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
+		p.locations = make([]location, 0, p.pp.nLocations)
+	}
 	return err
 }
 
-// step 2
-// - parse locations
-// - parse functions
-func (p *MoleculeParser) parseStructs2() error {
-	p.mainBuf.Reset(p.profile)
-	l := p.tmpLocation
-	f := p.tmpFunction
-	err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case profLocation:
-			p.tmpBuf1.Reset(value.Bytes)
-			err := parseLocation(p.tmpBuf1, p.tmpBuf2, l)
-			if err != nil {
-				return false, err
-			}
-			p.locations = append(p.locations, *l)
-		case profFunction:
-			p.tmpBuf1.Reset(value.Bytes)
-			err := parseFunction(p.tmpBuf1, f)
-			if err != nil {
-				return false, err
-			}
-			p.functions = append(p.functions, *f)
-		}
-		return true, nil
+func (p *MoleculeParser) addString(s []byte) {
+	if bytes.Equal(s, profileIDLabel) {
+		p.profileIDLabelIndex = len(p.strings)
+	}
+	p.strings = append(p.strings, s)
+}
+
+func (p *MoleculeParser) addSampleType(st *valueType) {
+	p.sampleTypesParsed = append(p.sampleTypesParsed, *st)
+}
+
+func (p *MoleculeParser) addPeriodType(pt *valueType) {
+	p.periodType = *pt
+}
+
+func (p *MoleculeParser) parseFunctionsAndLocations() error {
+	err := p.pp.parse(p.profile, profileCallbacks{
+		function: p.addFunction,
+		location: p.addLocation,
 	})
-	p.finder = NewFinder(p.functions, p.locations)
+	if err == nil {
+		p.finder = NewFinder(p.functions, p.locations)
+	}
 	return err
+}
+
+func (p *MoleculeParser) addFunction(f *function) {
+	p.functions = append(p.functions, *f)
+}
+
+func (p *MoleculeParser) addLocation(l *location) {
+	p.locations = append(p.locations, *l)
 }
 
 func (p *MoleculeParser) checkKnownSampleTypes() error {
@@ -264,7 +239,7 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 			case codec.WireBytes:
 				p.tmpBuf2.Reset(value.Bytes)
 				err := molecule.PackedRepeatedEach(p.tmpBuf2, codec.FieldType_UINT64, func(value molecule.Value) (bool, error) {
-					err := p.addLocation(value.Number)
+					err := p.addStackLocation(value.Number)
 					if err != nil {
 						return false, err
 					}
@@ -274,7 +249,7 @@ func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache)
 					return false, err
 				}
 			case codec.WireVarint:
-				if err := p.addLocation(value.Number); err != nil {
+				if err := p.addStackLocation(value.Number); err != nil {
 					return false, err
 				}
 			}
@@ -321,7 +296,7 @@ func (p *MoleculeParser) resetSample() {
 	p.tmpStack = p.tmpStack[:0]
 }
 
-func (p *MoleculeParser) addLocation(lID uint64) error {
+func (p *MoleculeParser) addStackLocation(lID uint64) error {
 	loc, ok := p.finder.Findlocation(lID)
 	if ok {
 		if err := p.addStackFrame(loc.fn1); err != nil {
