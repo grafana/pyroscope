@@ -116,8 +116,13 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 	return p.parsePprofDecompressed()
 }
 
-func (p *MoleculeParser) parsePprofDecompressed() error {
-	var err error
+func (p *MoleculeParser) parsePprofDecompressed() (err error) {
+	defer func() {
+		if recover() != nil {
+			err = fmt.Errorf("parse panic")
+		}
+	}()
+
 	p.strings = make([][]byte, 0, 256) // todo sane default? count? reuse?
 	p.sampleTypesParsed = make([]valueType, 0, 4)
 	p.mainBuf = codec.NewBuffer(nil)
@@ -322,18 +327,19 @@ func (p *MoleculeParser) addStackFrame(fID uint64) error {
 		return nil
 	}
 
-	name, err := p.string(f.name)
-	if err != nil {
-		return err
-	}
-	p.tmpStack = append(p.tmpStack, name)
+	//name, err := p.string(f.name)
+	//if err != nil {
+	//	return err
+	//}
+	//p.tmpStack = append(p.tmpStack, name)
+	p.tmpStack = append(p.tmpStack, p.strings[f.name])
 	return nil
 }
 
 func (p *MoleculeParser) string(i int) ([]byte, error) {
-	if i < 0 || i >= len(p.strings) {
-		return nil, fmt.Errorf("string out of bound %d", i)
-	}
+	//if i < 0 || i >= len(p.strings) {
+	//	return nil, fmt.Errorf("string out of bound %d", i)
+	//}
 	return p.strings[i], nil
 }
 
