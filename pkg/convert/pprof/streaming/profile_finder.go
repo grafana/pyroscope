@@ -4,108 +4,49 @@ import (
 	"sort"
 )
 
-// NewFinder creates an efficient finder for functions or locations in a profile.
-//
-// It exists to abstract the details of how functions and locations exist in a pprof profile,
-// and make it easy to provide an efficient implementation depending on the actual profile format,
-// as location and function finding is a recurrent operation while processing pprof profiles.
-//
-// The [pprof format description](https://github.com/google/pprof/tree/master/proto#general-structure-of-a-profile)
-// describes that both locations and functions have unique nonzero ids.
-// A [comment in the proto file](https://github.com/google/pprof/blob/master/proto/profile.proto#L164-L166)
-// goes further: _A profile could use instruction addresses or any integer sequence as ids_.
-//
-// Based on this, any uint64 value (except 0) can appear as ids, and a map based cache can be used in that case.
-// In practice, [go runtime](https://github.com/golang/go/blob/master/src/runtime/pprof/proto.go#L537)
-// generates profiles where locations and functions use consecutive IDs starting from 1,
-// making optimized access possible.
-//
-// Taking advantage of this, the finder will try to:
-//   - Use direct access to functions and locations indexed by IDs when possible
-//     (sorting location and function sequences if needed).
-//   - Use a map based cache otherwise.
-func NewFinder(functions []function, locations []location) Finder {
-	return &finder{functions: functions, locations: locations, lf: nil, ff: nil}
-}
-
-type Finder interface {
-	functionFinder
-	locationFinder
-}
-
-// Find location in a profile based on its ID
-type locationFinder interface {
-	Findlocation(id uint64) (*location, bool)
-}
-
-// Find function in a profile based on its ID
-type functionFinder interface {
-	Findfunction(id uint64) (*function, bool)
-}
-
-type slicelocationFinder []location
-
-func (f slicelocationFinder) Findlocation(id uint64) (*location, bool) {
-	if id == 0 || id > uint64(len(f)) {
-		return nil, false
+func NewFinder(functions []function, locations []location) finder {
+	res := finder{functions: functions, locations: locations}
+	if !locationSlice(locations) {
+		res.locationsMap = locationMap(locations)
 	}
-	return &f[id-1], true
-}
-
-type maplocationFinder map[uint64]*location
-
-func (f maplocationFinder) Findlocation(id uint64) (*location, bool) {
-	loc, ok := f[id]
-	return loc, ok
-}
-
-type slicefunctionFinder []function
-
-func (f slicefunctionFinder) Findfunction(id uint64) (*function, bool) {
-	if id == 0 || id > uint64(len(f)) {
-		return nil, false
+	if !functionSlice(functions) {
+		res.functionsMap = functionMap(functions)
 	}
-	return &f[id-1], true
+	return res
 }
 
-type mapfunctionFinder map[uint64]*function
-
-func (f mapfunctionFinder) Findfunction(id uint64) (*function, bool) {
-	fun, ok := f[id]
-	return fun, ok
-}
-
-// finder is a lazy implementation of Finder, that will be using the most efficient function and location finder.
 type finder struct {
-	functions []function
-	locations []location
-	lf        locationFinder
-	ff        functionFinder
+	functions    []function
+	locations    []location
+	functionsMap map[uint64]*function
+	locationsMap map[uint64]*location
 }
 
-func (f *finder) Findlocation(id uint64) (*location, bool) {
-	if f.lf == nil {
-		var ok bool
-		f.lf, ok = locationSlice(f.locations)
-		if !ok {
-			f.lf = locationMap(f.locations)
+func (f *finder) FindLocation(id uint64) (*location, bool) {
+	if f.locationsMap == nil {
+		idx := id - 1
+		if idx >= uint64(len(f.locations)) {
+			return nil, false
 		}
+		return &f.locations[idx], true
 	}
-	return f.lf.Findlocation(id)
+	l, ok := f.locationsMap[id]
+	return l, ok
 }
 
-func (f *finder) Findfunction(id uint64) (*function, bool) {
-	if f.ff == nil {
-		var ok bool
-		f.ff, ok = functionSlice(f.functions)
-		if !ok {
-			f.ff = functionMap(f.functions)
+func (f *finder) FindFunction(id uint64) (*function, bool) {
+	if f.functionsMap == nil {
+		idx := id - 1
+		if idx >= uint64(len(f.functions)) {
+			return nil, false
 		}
+		return &f.functions[idx], true
 	}
-	return f.ff.Findfunction(id)
+	ff, ok := f.functionsMap[id]
+	return ff, ok
 }
 
-func locationSlice(locations []location) (slicelocationFinder, bool) {
+func locationSlice(locations []location) (ok bool) {
 	// Check if it's already sorted first
 	max := uint64(0)
 	sorted := true
@@ -119,25 +60,25 @@ func locationSlice(locations []location) (slicelocationFinder, bool) {
 	}
 	if max > uint64(len(locations)) {
 		// IDs are not consecutive numbers starting at 1, a slice is not good enough
-		return nil, false
+		return false
 	}
 	if !sorted {
 		sort.Slice(locations, func(i, j int) bool {
 			return locations[i].id < locations[j].id
 		})
 	}
-	return slicelocationFinder(locations), true
+	return true
 }
 
-func locationMap(locations []location) maplocationFinder {
+func locationMap(locations []location) map[uint64]*location {
 	m := make(map[uint64]*location, len(locations))
 	for i := range locations {
 		m[locations[i].id] = &locations[i]
 	}
-	return maplocationFinder(m)
+	return m
 }
 
-func functionSlice(functions []function) (slicefunctionFinder, bool) {
+func functionSlice(functions []function) (ok bool) {
 	// Check if it's already sorted first
 	max := uint64(0)
 	sorted := true
@@ -151,17 +92,17 @@ func functionSlice(functions []function) (slicefunctionFinder, bool) {
 	}
 	if max > uint64(len(functions)) {
 		// IDs are not consecutive numbers starting at one, this won't work
-		return nil, false
+		return false
 	}
 	if !sorted {
 		sort.Slice(functions, func(i, j int) bool {
 			return functions[i].id < functions[j].id
 		})
 	}
-	return slicefunctionFinder(functions), true
+	return true
 }
 
-func functionMap(functions []function) mapfunctionFinder {
+func functionMap(functions []function) map[uint64]*function {
 	m := make(map[uint64]*function, len(functions))
 	for i := range functions {
 		m[functions[i].id] = &functions[i]

@@ -61,7 +61,7 @@ type MoleculeParser struct {
 	tmpLabels []label
 	tmpStack  [][]byte
 
-	finder Finder
+	finder finder
 
 	pp profileParser
 }
@@ -297,7 +297,7 @@ func (p *MoleculeParser) resetSample() {
 }
 
 func (p *MoleculeParser) addStackLocation(lID uint64) error {
-	loc, ok := p.finder.Findlocation(lID)
+	loc, ok := p.finder.FindLocation(lID)
 	if ok {
 		if err := p.addStackFrame(loc.fn1); err != nil {
 			return err
@@ -317,7 +317,7 @@ func (p *MoleculeParser) addStackFrame(fID uint64) error {
 	if fID == 0 {
 		return nil
 	}
-	f, ok := p.finder.Findfunction(fID)
+	f, ok := p.finder.FindFunction(fID)
 	if !ok {
 		return nil
 	}
