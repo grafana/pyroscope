@@ -91,33 +91,33 @@ func (p *MoleculeParser) SetSampleTypesFilter(f func(string) bool) {
 	p.sampleTypesFilter = f
 }
 func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error {
+	var err error
 	p.startTime = startTime
 	p.endTime = endTime
 	p.ctx = ctx
-	defer func() { p.ctx = nil }()
+
 	if len(bs) < 2 {
 		return fmt.Errorf("failed to read pprof profile header")
 	}
 	if bs[0] == 0x1f && bs[1] == 0x8b {
-		gzipr, err := gzip.NewReader(bytes.NewReader(bs))
+		var gzipr *gzip.Reader
+		gzipr, err = gzip.NewReader(bytes.NewReader(bs))
 		if err != nil {
 			return fmt.Errorf("failed to create pprof profile zip reader: %w", err)
 		}
 		defer gzipr.Close()
 		buf := bytebufferpool.Get()
-		defer bytebufferpool.Put(buf)
-		if _, err = io.Copy(buf, gzipr); err != nil {
-			return err
+		if _, err = io.Copy(buf, gzipr); err == nil {
+			p.profile = buf.Bytes()
+			err = p.parsePprofDecompressed()
+			bytebufferpool.Put(buf)
 		}
-		p.profile = buf.Bytes()
-		defer func() { p.profile = nil }()
 	} else {
 		p.profile = bs
+		err = p.parsePprofDecompressed()
 	}
-	err := p.parsePprofDecompressed()
-	if err != nil {
-
-	}
+	p.profile = nil
+	p.ctx = nil
 	return err
 }
 
