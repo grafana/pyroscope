@@ -42,7 +42,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.Convert(context.Background(), start, end, p)
+			err = w.Convert(context.Background(), start, end, p, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -79,7 +79,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.Convert(context.Background(), start, end, p)
+			err = w.Convert(context.Background(), start, end, p, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -119,7 +119,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.Convert(context.Background(), start, end, p)
+			err = w.Convert(context.Background(), start, end, p, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ingester.actual).To(HaveLen(2))
 			sort.Slice(ingester.actual, func(i, j int) bool {
@@ -172,7 +172,7 @@ var _ = Describe("pprof parser", func() {
 			SkipExemplars: skipExemplars,
 		})
 
-		err = w.Convert(context.Background(), start, end, p)
+		err = w.Convert(context.Background(), start, end, p, false)
 		Expect(err).ToNot(HaveOccurred())
 		m = make(map[string]*storage.PutInput)
 		for _, x := range putter.actual {
@@ -264,7 +264,7 @@ var _ = Describe("custom pprof parsing", func() {
 			SpyName: spyName,
 		})
 
-		err = w.Convert(context.TODO(), start, end, p)
+		err = w.Convert(context.TODO(), start, end, p, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ingester.actual).To(HaveLen(2))
 		sort.Slice(ingester.actual, func(i, j int) bool {
