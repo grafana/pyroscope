@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-func (p *MoleculeParser) parseSampleVT(buffer []byte) error {
+func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 	p.tmpSample.resetSample()
 	err := p.tmpSample.UnmarshalSampleVT(buffer, &p.tmpLabel)
 	if err != nil {

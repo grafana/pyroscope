@@ -26,7 +26,7 @@ type ParserConfig struct {
 	//StackFrameFormatter StackFrameFormatter
 }
 
-type MoleculeParser struct {
+type VTStreamingParser struct {
 	putter        storage.Putter
 	spyName       string
 	labels        map[string]string
@@ -70,11 +70,11 @@ type MoleculeParser struct {
 	finder finder
 }
 
-func NewStreamingParser(config ParserConfig) *MoleculeParser {
+func NewStreamingParser(config ParserConfig) *VTStreamingParser {
 	//if config.StackFrameFormatter == nil {//todo
 	//	config.StackFrameFormatter = &pprof.UnsafeFunctionNameFormatter{}
 	//}
-	return &MoleculeParser{
+	return &VTStreamingParser{
 		putter:        config.Putter,
 		spyName:       config.SpyName,
 		labels:        config.Labels,
@@ -86,7 +86,7 @@ func NewStreamingParser(config ParserConfig) *MoleculeParser {
 	}
 }
 
-func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulative bool) (err error) {
+func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulative bool) (err error) {
 	p.startTime = startTime
 	p.endTime = endTime
 	p.ctx = ctx
@@ -119,7 +119,7 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 	return err
 }
 
-func (p *MoleculeParser) parsePprofDecompressed() (err error) {
+func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 	defer func() {
 		if recover() != nil {
 			err = fmt.Errorf("parse panic")
@@ -152,7 +152,7 @@ func (p *MoleculeParser) parsePprofDecompressed() (err error) {
 // - parse periodType
 // - parse sampleType
 // - count number of locations, functions, strings
-func (p *MoleculeParser) countStructs() error {
+func (p *VTStreamingParser) countStructs() error {
 	err := p.UnmarshalVTStructs(p.profile)
 	if err == nil {
 		p.functions = make([]function, 0, p.nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
@@ -162,22 +162,22 @@ func (p *MoleculeParser) countStructs() error {
 	return err
 }
 
-func (p *MoleculeParser) addString(s []byte) {
+func (p *VTStreamingParser) addString(s []byte) {
 	if bytes.Equal(s, profileIDLabel) {
 		p.profileIDLabelIndex = int64(len(p.strings))
 	}
 	p.strings = append(p.strings, s)
 }
 
-func (p *MoleculeParser) addSampleType(st *valueType) {
+func (p *VTStreamingParser) addSampleType(st *valueType) {
 	p.sampleTypesParsed = append(p.sampleTypesParsed, *st)
 }
 
-func (p *MoleculeParser) addPeriodType(pt *valueType) {
+func (p *VTStreamingParser) addPeriodType(pt *valueType) {
 	p.periodType = *pt
 }
 
-func (p *MoleculeParser) parseFunctionsAndLocations() error {
+func (p *VTStreamingParser) parseFunctionsAndLocations() error {
 	err := p.UnmarshalVTFunctionsAndLocations(p.profile)
 	if err == nil {
 		p.finder = newFinder(p.functions, p.locations)
@@ -185,15 +185,15 @@ func (p *MoleculeParser) parseFunctionsAndLocations() error {
 	return err
 }
 
-func (p *MoleculeParser) addFunction(f *function) {
+func (p *VTStreamingParser) addFunction(f *function) {
 	p.functions = append(p.functions, *f)
 }
 
-func (p *MoleculeParser) addLocation(l *location) {
+func (p *VTStreamingParser) addLocation(l *location) {
 	p.locations = append(p.locations, *l)
 }
 
-func (p *MoleculeParser) checkKnownSampleTypes() error {
+func (p *VTStreamingParser) checkKnownSampleTypes() error {
 	p.indexes = make([]int, 0, len(p.sampleTypesParsed))
 	p.types = make([]int64, 0, len(p.sampleTypesParsed))
 	for i, s := range p.sampleTypesParsed {
@@ -222,7 +222,7 @@ func (p *MoleculeParser) checkKnownSampleTypes() error {
 	return nil
 }
 
-func (p *MoleculeParser) parseSamples() error {
+func (p *VTStreamingParser) parseSamples() error {
 	return p.UnmarshalVTProfileSamples(p.profile)
 	//p.mainBuf.Reset(p.profile)
 	//err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
@@ -243,7 +243,7 @@ func (p *MoleculeParser) parseSamples() error {
 	//return err
 }
 
-func (p *MoleculeParser) addStackLocation(lID uint64) error {
+func (p *VTStreamingParser) addStackLocation(lID uint64) error {
 	loc, ok := p.finder.FindLocation(lID)
 	if ok {
 		if err := p.addStackFrame(loc.fn1); err != nil {
@@ -263,7 +263,7 @@ func (p *MoleculeParser) addStackLocation(lID uint64) error {
 	}
 	return nil
 }
-func (p *MoleculeParser) addStackFrame(fID uint64) error {
+func (p *VTStreamingParser) addStackFrame(fID uint64) error {
 	//if fID == 0 {
 	if fID == noFunction {
 		return nil
@@ -282,7 +282,7 @@ func (p *MoleculeParser) addStackFrame(fID uint64) error {
 	return nil
 }
 
-func (p *MoleculeParser) string(i int64) ([]byte, error) {
+func (p *VTStreamingParser) string(i int64) ([]byte, error) {
 	//if i < 0 || i >= len(p.strings) {
 	//	return nil, fmt.Errorf("string out of bound %d", i)
 	//}
@@ -290,7 +290,7 @@ func (p *MoleculeParser) string(i int64) ([]byte, error) {
 }
 
 // todo return pointer and resolve strings once
-func (p *MoleculeParser) resolveSampleType(v int64) (valueType, bool) {
+func (p *VTStreamingParser) resolveSampleType(v int64) (valueType, bool) {
 	for _, vt := range p.sampleTypesParsed {
 		if vt.Type == v {
 			return vt, true
@@ -299,7 +299,7 @@ func (p *MoleculeParser) resolveSampleType(v int64) (valueType, bool) {
 	return valueType{}, false
 }
 
-func (p *MoleculeParser) iterate(fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
+func (p *VTStreamingParser) iterate(fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
 	for stt, entries := range p.newCache {
 		t, ok := p.resolveSampleType(stt)
 		if !ok {
@@ -320,7 +320,7 @@ func (p *MoleculeParser) iterate(fn func(st valueType, l Labels, t *tree.Tree) (
 	return nil
 }
 
-func (p *MoleculeParser) createTrees(newCache LabelsCache) {
+func (p *VTStreamingParser) createTrees(newCache LabelsCache) {
 	for i, vi := range p.indexes {
 		_ = i
 		v := uint64(p.tmpSample.tmpValues[vi])
@@ -337,7 +337,7 @@ func (p *MoleculeParser) createTrees(newCache LabelsCache) {
 	}
 }
 
-func (p *MoleculeParser) put(st valueType, l Labels, t *tree.Tree) (keep bool, err error) {
+func (p *VTStreamingParser) put(st valueType, l Labels, t *tree.Tree) (keep bool, err error) {
 	sampleTypeBytes, err := p.string(st.Type)
 	if err != nil {
 		return false, err
@@ -387,7 +387,7 @@ func (p *MoleculeParser) put(st valueType, l Labels, t *tree.Tree) (keep bool, e
 	return sampleTypeConfig.Cumulative, err
 }
 
-func (p *MoleculeParser) ResolveLabels(l Labels) map[string]string {
+func (p *VTStreamingParser) ResolveLabels(l Labels) map[string]string {
 	m := make(map[string]string, len(l))
 	for _, l := range l {
 		if l.k != 0 {
@@ -405,7 +405,7 @@ func (p *MoleculeParser) ResolveLabels(l Labels) map[string]string {
 	return m
 }
 
-func (p *MoleculeParser) buildName(sampleTypeName string, labels map[string]string) *segment.Key {
+func (p *VTStreamingParser) buildName(sampleTypeName string, labels map[string]string) *segment.Key {
 	for k, v := range p.labels {
 		labels[k] = v
 	}
@@ -413,7 +413,7 @@ func (p *MoleculeParser) buildName(sampleTypeName string, labels map[string]stri
 	return segment.NewKey(labels)
 }
 
-func (p *MoleculeParser) sampleRate() uint32 {
+func (p *VTStreamingParser) sampleRate() uint32 {
 	if p.period <= 0 || p.periodType.unit <= 0 {
 		return 0
 	}

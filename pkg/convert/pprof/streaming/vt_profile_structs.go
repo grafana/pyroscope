@@ -6,7 +6,7 @@ import (
 )
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
+func (m *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	m.period = 0

@@ -7,7 +7,7 @@ import (
 )
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *MoleculeParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error {
+func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
