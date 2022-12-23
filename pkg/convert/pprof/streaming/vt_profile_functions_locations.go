@@ -7,7 +7,7 @@ import (
 )
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error {
+func (p *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -65,15 +65,15 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(m.SampleType) == cap(m.SampleType) {
-			//	m.SampleType = append(m.SampleType, &ValueType{})
+			//if len(p.SampleType) == cap(p.SampleType) {
+			//	p.SampleType = append(p.SampleType, &ValueType{})
 			//} else {
-			//	m.SampleType = m.SampleType[:len(m.SampleType)+1]
-			//	if m.SampleType[len(m.SampleType)-1] == nil {
-			//		m.SampleType[len(m.SampleType)-1] = &ValueType{}
+			//	p.SampleType = p.SampleType[:len(p.SampleType)+1]
+			//	if p.SampleType[len(p.SampleType)-1] == nil {
+			//		p.SampleType[len(p.SampleType)-1] = &ValueType{}
 			//	}
 			//}
-			//if err := m.SampleType[len(m.SampleType)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			//if err := p.SampleType[len(p.SampleType)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 			//	return err
 			//}
 			iNdEx = postIndex
@@ -106,15 +106,15 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(m.Sample) == cap(m.Sample) {
-			//	m.Sample = append(m.Sample, &Sample{})
+			//if len(p.Sample) == cap(p.Sample) {
+			//	p.Sample = append(p.Sample, &Sample{})
 			//} else {
-			//	m.Sample = m.Sample[:len(m.Sample)+1]
-			//	if m.Sample[len(m.Sample)-1] == nil {
-			//		m.Sample[len(m.Sample)-1] = &Sample{}
+			//	p.Sample = p.Sample[:len(p.Sample)+1]
+			//	if p.Sample[len(p.Sample)-1] == nil {
+			//		p.Sample[len(p.Sample)-1] = &Sample{}
 			//	}
 			//}
-			//if err := m.Sample[len(m.Sample)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			//if err := p.Sample[len(p.Sample)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 			//	return err
 			//}
 			iNdEx = postIndex
@@ -147,15 +147,15 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(m.Mapping) == cap(m.Mapping) {
-			//	m.Mapping = append(m.Mapping, &Mapping{})
+			//if len(p.Mapping) == cap(p.Mapping) {
+			//	p.Mapping = append(p.Mapping, &Mapping{})
 			//} else {
-			//	m.Mapping = m.Mapping[:len(m.Mapping)+1]
-			//	if m.Mapping[len(m.Mapping)-1] == nil {
-			//		m.Mapping[len(m.Mapping)-1] = &Mapping{}
+			//	p.Mapping = p.Mapping[:len(p.Mapping)+1]
+			//	if p.Mapping[len(p.Mapping)-1] == nil {
+			//		p.Mapping[len(p.Mapping)-1] = &Mapping{}
 			//	}
 			//}
-			//if err := m.Mapping[len(m.Mapping)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			//if err := p.Mapping[len(p.Mapping)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 			//	return err
 			//}
 			iNdEx = postIndex
@@ -188,16 +188,16 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(m.Location) == cap(m.Location) {
-			//	m.Location = append(m.Location, &Location{})
+			//if len(p.Location) == cap(p.Location) {
+			//	p.Location = append(p.Location, &Location{})
 			//} else {
-			//	m.Location = m.Location[:len(m.Location)+1]
-			//	if m.Location[len(m.Location)-1] == nil {
-			//		m.Location[len(m.Location)-1] = &Location{}
+			//	p.Location = p.Location[:len(p.Location)+1]
+			//	if p.Location[len(p.Location)-1] == nil {
+			//		p.Location[len(p.Location)-1] = &Location{}
 			//	}
 			//}
-			m.locations = append(m.locations, location{})
-			if err := m.locations[len(m.locations)-1].UnmarshalVT(dAtA[iNdEx:postIndex], &m.tmpLine); err != nil {
+			p.locations = append(p.locations, location{})
+			if err := p.locations[len(p.locations)-1].UnmarshalVT(dAtA[iNdEx:postIndex], &p.tmpLine); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -230,16 +230,16 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(m.Function) == cap(m.Function) {
-			//	m.Function = append(m.Function, &Function{})
+			//if len(p.Function) == cap(p.Function) {
+			//	p.Function = append(p.Function, &Function{})
 			//} else {
-			//	m.Function = m.Function[:len(m.Function)+1]
-			//	if m.Function[len(m.Function)-1] == nil {
-			//		m.Function[len(m.Function)-1] = &Function{}
+			//	p.Function = p.Function[:len(p.Function)+1]
+			//	if p.Function[len(p.Function)-1] == nil {
+			//		p.Function[len(p.Function)-1] = &Function{}
 			//	}
 			//}
-			m.functions = append(m.functions, function{})
-			if err := m.functions[len(m.functions)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			p.functions = append(p.functions, function{})
+			if err := p.functions[len(p.functions)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -275,15 +275,15 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			}
 			s := dAtA[iNdEx:postIndex]
 			if bytes.Equal(s, profileIDLabel) {
-				m.profileIDLabelIndex = int64(len(m.strings))
+				p.profileIDLabelIndex = int64(len(p.strings))
 			}
-			m.strings = append(m.strings, s)
+			p.strings = append(p.strings, s)
 			iNdEx = postIndex
 		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DropFrames", wireType)
 			}
-			//m.DropFrames = 0
+			//p.DropFrames = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -293,7 +293,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.DropFrames |= int64(b&0x7F) << shift
+				//p.DropFrames |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -302,7 +302,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeepFrames", wireType)
 			}
-			//m.KeepFrames = 0
+			//p.KeepFrames = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -312,7 +312,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.KeepFrames |= int64(b&0x7F) << shift
+				//p.KeepFrames |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -321,7 +321,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimeNanos", wireType)
 			}
-			//m.TimeNanos = 0
+			//p.TimeNanos = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -331,7 +331,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.TimeNanos |= int64(b&0x7F) << shift
+				//p.TimeNanos |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -340,7 +340,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DurationNanos", wireType)
 			}
-			//m.DurationNanos = 0
+			//p.DurationNanos = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -350,7 +350,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.DurationNanos |= int64(b&0x7F) << shift
+				//p.DurationNanos |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -384,10 +384,10 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if m.PeriodType == nil {
-			//	m.PeriodType = &ValueType{}
+			//if p.PeriodType == nil {
+			//	p.PeriodType = &ValueType{}
 			//}
-			//if err := m.PeriodType.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			//if err := p.PeriodType.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 			//	return err
 			//}
 			iNdEx = postIndex
@@ -395,7 +395,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field period", wireType)
 			}
-			//m.Period = 0
+			//p.Period = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -405,7 +405,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.Period |= int64(b&0x7F) << shift
+				//p.Period |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -461,8 +461,8 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 				//	}
 				//}
 				//elementCount = count
-				//if elementCount != 0 && len(m.Comment) == 0 && cap(m.Comment) < elementCount {
-				//	m.Comment = make([]int64, 0, elementCount)
+				//if elementCount != 0 && len(p.Comment) == 0 && cap(p.Comment) < elementCount {
+				//	p.Comment = make([]int64, 0, elementCount)
 				//}
 				for iNdEx < postIndex {
 					var v int64
@@ -480,7 +480,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 							break
 						}
 					}
-					//m.Comment = append(m.Comment, v)
+					//p.Comment = append(p.Comment, v)
 				}
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Comment", wireType)
@@ -489,7 +489,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DefaultSampleType", wireType)
 			}
-			//m.DefaultSampleType = 0
+			//p.DefaultSampleType = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -499,7 +499,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.DefaultSampleType |= int64(b&0x7F) << shift
+				//p.DefaultSampleType |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -517,7 +517,7 @@ func (m *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			//if (iNdEx + skippy) > l {
 			//	return io.ErrUnexpectedEOF
 			//}
-			//m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			//p.unknownFields = append(p.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
 			//iNdEx += skippy
 		}
 	}
