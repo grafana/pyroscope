@@ -142,7 +142,7 @@ func readCorpusItemFile(fname string) *testcase {
 
 func BenchmarkUnmarshal(b *testing.B) {
 	now := time.Now()
-	testcases := readCorpus("/home/korniltsev/Downloads/pprofs_short")
+	testcases := readCorpus(corpusSmall)
 	for i := 0; i < b.N; i++ {
 		for _, t := range testcases {
 
@@ -163,7 +163,7 @@ func BenchmarkUnmarshal(b *testing.B) {
 
 func BenchmarkStreaming(b *testing.B) {
 	now := time.Now()
-	testcases := readCorpus("/home/korniltsev/Downloads/pprofs_short")
+	testcases := readCorpus(corpusSmall)
 
 	for i := 0; i < b.N; i++ {
 		for _, t := range testcases {
@@ -188,7 +188,7 @@ func BenchmarkStreaming(b *testing.B) {
 
 func BenchmarkUnmarshalBig(b *testing.B) {
 	now := time.Now()
-	testcases := readCorpus("/home/korniltsev/Downloads/pprofs")
+	testcases := readCorpus(corpusBig)
 	for i := 0; i < b.N; i++ {
 		for _, t := range testcases {
 
@@ -207,9 +207,13 @@ func BenchmarkUnmarshalBig(b *testing.B) {
 	}
 }
 
+const corpusBig = "/Users/korniltsev/Downloads/pprofs/big"
+const corpusSmall = "/Users/korniltsev/Downloads/pprofs/small"
+
 func BenchmarkStreamingBig(b *testing.B) {
 	now := time.Now()
-	testcases := readCorpus("/home/korniltsev/Downloads/pprofs")
+
+	testcases := readCorpus(corpusBig)
 
 	for i := 0; i < b.N; i++ {
 		for _, t := range testcases {
@@ -232,10 +236,10 @@ func BenchmarkStreamingBig(b *testing.B) {
 	}
 }
 
-var smallDir = "/home/korniltsev/Downloads/pprofs_short"
-var smallItemIndex = 0
-var bigDir = "/home/korniltsev/Downloads/pprofs"
-var bigItemIndex = 0
+//var smallDir = "/home/korniltsev/Downloads/pprofs_short"
+//var smallItemIndex = 0
+//var bigDir = "/home/korniltsev/Downloads/pprofs"
+//var bigItemIndex = 0
 
 var small_pprof = "/Users/korniltsev/Downloads/small_pprof.txt"
 var big_pprof = "/Users/korniltsev/Downloads/big_pprof.txt"
