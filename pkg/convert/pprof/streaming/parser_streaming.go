@@ -39,12 +39,12 @@ type MoleculeParser struct {
 	previousCache LabelsCache
 	newCache      LabelsCache
 
-	startTime time.Time
-	endTime   time.Time
-	ctx       context.Context
+	startTime  time.Time
+	endTime    time.Time
+	ctx        context.Context
+	profile    []byte
+	cumulative bool
 
-	profile             []byte
-	strings             [][]byte
 	profileIDLabelIndex int64
 	sampleTypesParsed   []valueType
 	periodType          valueType
@@ -53,9 +53,10 @@ type MoleculeParser struct {
 	tmpBuf1             *codec.Buffer
 	tmpBuf2             *codec.Buffer
 
-	nFunctions int
 	nStrings   int
+	nFunctions int
 	nLocations int
+	strings    [][]byte
 	functions  []function
 	locations  []location
 
@@ -85,17 +86,11 @@ func NewStreamingParser(config ParserConfig) *MoleculeParser {
 	}
 }
 
-func (p *MoleculeParser) GetSampleTypesFilter() func(string) bool {
-	return p.sampleTypesFilter
-}
-
-func (p *MoleculeParser) SetSampleTypesFilter(f func(string) bool) {
-	p.sampleTypesFilter = f
-}
-func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) (err error) {
+func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulative bool) (err error) {
 	p.startTime = startTime
 	p.endTime = endTime
 	p.ctx = ctx
+	p.cumulative = cumulative
 
 	if len(bs) < 2 {
 		err = fmt.Errorf("failed to read pprof profile header")
@@ -206,9 +201,17 @@ func (p *MoleculeParser) checkKnownSampleTypes() error {
 		if err != nil {
 			return err
 		}
-		if p.sampleTypesFilter(string(ssType)) {
-			p.indexes = append(p.indexes, i)
-			p.types = append(p.types, s.Type)
+		st := string(ssType)
+		if p.sampleTypesFilter(st) {
+			if p.cumulative {
+				if p.sampleTypes[st].Cumulative {
+					p.indexes = append(p.indexes, i)
+					p.types = append(p.types, s.Type)
+				}
+			} else {
+				p.indexes = append(p.indexes, i)
+				p.types = append(p.types, s.Type)
+			}
 		}
 	}
 	if len(p.indexes) == 0 {

@@ -13,9 +13,7 @@ import (
 )
 
 type ParserInterface interface {
-	ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error
-	GetSampleTypesFilter() func(string) bool
-	SetSampleTypesFilter(func(string) bool)
+	ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulative bool) error
 }
 
 type Parser struct {
@@ -65,15 +63,15 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 
 func (p *Parser) Reset() { p.cache = make(tree.LabelsCache) }
 
-func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error {
+func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulative bool) error {
 	b := bytes.NewReader(bs)
 	return DecodePool(b, func(profile *tree.Profile) error {
-		return p.Convert(ctx, startTime, endTime, profile)
+		return p.Convert(ctx, startTime, endTime, profile, cumulative)
 	})
 }
 
-func (p *Parser) Convert(ctx context.Context, startTime, endTime time.Time, profile *tree.Profile) error {
-	return p.iterate(profile, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
+func (p *Parser) Convert(ctx context.Context, startTime, endTime time.Time, profile *tree.Profile, cumulative bool) error {
+	return p.iterate(profile, cumulative, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		if vt.Type >= int64(len(profile.StringTable)) {
 			return false, fmt.Errorf("sample value type is invalid: %d", vt.Type)
 		}
@@ -151,9 +149,9 @@ func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
 	return e.Tree, true
 }
 
-func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
+func (p *Parser) iterate(x *tree.Profile, cumulative bool, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
 	c := make(tree.LabelsCache)
-	p.readTrees(x, c, tree.NewFinder(x))
+	p.readTrees(x, c, tree.NewFinder(x), cumulative)
 	for sampleType, entries := range c {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
 			for h, e := range entries {
@@ -172,15 +170,23 @@ func (p *Parser) iterate(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Lab
 }
 
 // readTrees generates trees from the profile populating c.
-func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder) {
+func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder, cumulative bool) {
 	// SampleType value indexes.
 	indexes := make([]int, 0, len(x.SampleType))
 	// Corresponding type IDs used as the main cache keys.
 	types := make([]int64, 0, len(x.SampleType))
 	for i, s := range x.SampleType {
-		if p.sampleTypesFilter != nil && p.sampleTypesFilter(x.StringTable[s.Type]) {
-			indexes = append(indexes, i)
-			types = append(types, s.Type)
+		st := x.StringTable[s.Type]
+		if p.sampleTypesFilter != nil && p.sampleTypesFilter(st) {
+			if cumulative {
+				if p.sampleTypes[st].Cumulative {
+					indexes = append(indexes, i)
+					types = append(types, s.Type)
+				}
+			} else {
+				indexes = append(indexes, i)
+				types = append(types, s.Type)
+			}
 		}
 	}
 	if len(indexes) == 0 {
@@ -241,12 +247,4 @@ func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
 		}
 	}
 	return -1
-}
-
-func (p *Parser) GetSampleTypesFilter() func(string) bool {
-	return p.sampleTypesFilter
-}
-
-func (p *Parser) SetSampleTypesFilter(f func(string) bool) {
-	p.sampleTypesFilter = f
 }

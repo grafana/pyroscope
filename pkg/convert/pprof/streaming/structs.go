@@ -79,6 +79,7 @@ type sample struct {
 }
 
 func (s *sample) preAllocate(nSampleTypes int) {
+	//todo just reslice
 	// 64 is max pc for golang + speculative number of inlines
 	s.tmpStack = make([][]byte, 0, 64+8)
 	s.tmpStackLoc = make([]uint64, 0, 64+8)
