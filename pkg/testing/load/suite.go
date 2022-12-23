@@ -51,7 +51,7 @@ func NewStorageWriteSuite(c StorageWriteSuiteConfig) *StorageWriteSuite {
 		panic("WriteFn is required")
 	}
 	if s.period == 0 {
-		panic("period duration is required")
+		panic("Period duration is required")
 	}
 	if s.sources == 0 {
 		panic("Number of sources is required")

@@ -1301,7 +1301,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			}
 		case 11:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field periodType", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PeriodType", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1337,7 +1337,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 12:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field period", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Period", wireType)
 			}
 			m.Period = 0
 			for shift := uint(0); ; shift += 7 {
