@@ -50,7 +50,12 @@ func readCorpusItemI(dir string, i int) *testcase {
 }
 
 func readCorpusItem(dir string, file fs.FileInfo) *testcase {
-	bs, err := ioutil.ReadFile(dir + "/" + file.Name())
+	fname := dir + "/" + file.Name()
+	return readCorpusItemFile(fname)
+}
+
+func readCorpusItemFile(fname string) *testcase {
+	bs, err := ioutil.ReadFile(fname)
 	if err != nil {
 		panic(err)
 	}
@@ -232,8 +237,11 @@ var smallItemIndex = 0
 var bigDir = "/home/korniltsev/Downloads/pprofs"
 var bigItemIndex = 0
 
+var small_pprof = "/Users/korniltsev/Downloads/small_pprof.txt"
+var big_pprof = "/Users/korniltsev/Downloads/big_pprof.txt"
+
 func BenchmarkSingleSmallMolecule(b *testing.B) {
-	t := readCorpusItemI(smallDir, smallItemIndex)
+	t := readCorpusItemFile(small_pprof)
 	now := time.Now()
 	for i := 0; i < b.N; i++ {
 		config := t.config
@@ -247,7 +255,7 @@ func BenchmarkSingleSmallMolecule(b *testing.B) {
 }
 
 func BenchmarkSingleSmallUnmarshal(b *testing.B) {
-	t := readCorpusItemI(smallDir, smallItemIndex)
+	t := readCorpusItemFile(small_pprof)
 	now := time.Now()
 	for i := 0; i < b.N; i++ {
 		config := t.config
@@ -261,7 +269,7 @@ func BenchmarkSingleSmallUnmarshal(b *testing.B) {
 }
 
 func BenchmarkSingleBigMolecule(b *testing.B) {
-	t := readCorpusItemI(bigDir, bigItemIndex)
+	t := readCorpusItemFile(big_pprof)
 	now := time.Now()
 	for i := 0; i < b.N; i++ {
 		config := t.config
@@ -275,7 +283,7 @@ func BenchmarkSingleBigMolecule(b *testing.B) {
 }
 
 func BenchmarkSingleBigUnmarshal(b *testing.B) {
-	t := readCorpusItemI(bigDir, bigItemIndex)
+	t := readCorpusItemFile(big_pprof)
 	now := time.Now()
 	for i := 0; i < b.N; i++ {
 		config := t.config

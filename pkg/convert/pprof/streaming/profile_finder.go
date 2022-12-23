@@ -1,6 +1,7 @@
 package streaming
 
 import (
+	"fmt"
 	"sort"
 )
 
@@ -38,6 +39,9 @@ func (f *finder) FindLocation(id uint64) (*location, bool) {
 //go:noinline
 func (f *finder) FindFunction(id uint64) (*function, bool) {
 	if f.functionsMap == nil {
+		if id == 0 {
+			fmt.Println("hui")
+		}
 		idx := id - 1
 		//if idx >= uint64(len(f.functions)) {
 		//	return nil, false

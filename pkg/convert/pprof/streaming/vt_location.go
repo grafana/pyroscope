@@ -8,6 +8,7 @@ import (
 func (m *location) UnmarshalVT(dAtA []byte, tmpLine *line) error {
 	m.id = 0
 	m.fn1 = noFunction
+	m.fn2 = noFunction
 	m.extraFn = nil
 	l := len(dAtA)
 	iNdEx := 0

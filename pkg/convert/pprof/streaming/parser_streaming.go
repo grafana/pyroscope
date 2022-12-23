@@ -9,7 +9,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/richardartoul/molecule"
 	"github.com/richardartoul/molecule/src/codec"
 	"github.com/valyala/bytebufferpool"
 	"io"
@@ -53,6 +52,7 @@ type MoleculeParser struct {
 	tmpBuf2             *codec.Buffer
 
 	nFunctions int
+	nStrings   int
 	nLocations int
 	functions  []function
 	locations  []location
@@ -62,10 +62,9 @@ type MoleculeParser struct {
 
 	tmpSample sample
 	tmpLabel  label
+	tmpLine   line
 
 	finder finder
-
-	pp profileParser
 }
 
 func NewStreamingParser(config ParserConfig) *MoleculeParser {
@@ -129,7 +128,6 @@ func (p *MoleculeParser) parsePprofDecompressed() (err error) {
 		}
 	}()
 
-	p.strings = make([][]byte, 0, 256) // todo sane default? count? reuse?
 	p.sampleTypesParsed = make([]valueType, 0, 4)
 	p.mainBuf = codec.NewBuffer(nil)
 	p.tmpBuf1 = codec.NewBuffer(nil)
@@ -153,22 +151,15 @@ func (p *MoleculeParser) parsePprofDecompressed() (err error) {
 }
 
 // step 1
-// - collect strings
 // - parse periodType
 // - parse sampleType
-// - count number of locations and functions
-
+// - count number of locations, functions, strings
 func (p *MoleculeParser) parseStructs() error {
 	err := p.UnmarshalVTStructs(p.profile)
-	//err := p.pp.parse(p.profile, profileCallbacks{
-	//	string:     p.addString,
-	//	sampleType: p.addSampleType,
-	//	periodType: p.addPeriodType,
-	//})
 	if err == nil {
-		//p.period = p.pp.period
-		p.functions = make([]function, 0, p.pp.nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
-		p.locations = make([]location, 0, p.pp.nLocations)
+		p.functions = make([]function, 0, p.nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
+		p.locations = make([]location, 0, p.nLocations) // reuse between parsers?
+		p.strings = make([][]byte, 0, p.nStrings)
 	}
 	return err
 }
@@ -189,10 +180,7 @@ func (p *MoleculeParser) addPeriodType(pt *valueType) {
 }
 
 func (p *MoleculeParser) parseFunctionsAndLocations() error {
-	err := p.pp.parse(p.profile, profileCallbacks{
-		function: p.addFunction,
-		location: p.addLocation,
-	})
+	err := p.UnmarshalVTFunctionsAndLocations(p.profile)
 	if err == nil {
 		p.finder = NewFinder(p.functions, p.locations)
 	}
@@ -247,63 +235,6 @@ func (p *MoleculeParser) parseSamples() error {
 	//	return true, nil
 	//})
 	//return err
-}
-
-func (p *MoleculeParser) parseSample(buffer *codec.Buffer, newCache LabelsCache) error {
-	p.tmpSample.resetSample()
-	err := molecule.MessageEach(buffer, func(field int32, value molecule.Value) (bool, error) {
-		switch field {
-		case sampleLocationID:
-			switch value.WireType {
-			case codec.WireBytes:
-				p.tmpBuf2.Reset(value.Bytes)
-				err := molecule.PackedRepeatedEach(p.tmpBuf2, codec.FieldType_UINT64, func(value molecule.Value) (bool, error) {
-					err := p.addStackLocation(value.Number)
-					if err != nil {
-						return false, err
-					}
-					return true, nil
-				})
-				if err != nil {
-					return false, err
-				}
-			case codec.WireVarint:
-				if err := p.addStackLocation(value.Number); err != nil {
-					return false, err
-				}
-			}
-
-		case sampleValue:
-			switch value.WireType {
-			case codec.WireBytes:
-				p.tmpBuf2.Reset(value.Bytes)
-				err := molecule.PackedRepeatedEach(p.tmpBuf2, codec.FieldType_UINT64, func(value molecule.Value) (bool, error) {
-					p.tmpSample.tmpValues = append(p.tmpSample.tmpValues, int64(value.Number))
-					return true, nil
-				})
-				if err != nil {
-					return false, err
-				}
-			case codec.WireVarint:
-				p.tmpSample.tmpValues = append(p.tmpSample.tmpValues, int64(value.Number))
-			}
-		case sampleLabel:
-			p.tmpBuf2.Reset(value.Bytes)
-			l, err := parseLabel(p.tmpBuf2)
-			if err != nil {
-				return false, err
-			}
-			if l.v != 0 {
-				p.tmpSample.tmpLabels = append(p.tmpSample.tmpLabels, l)
-			}
-		}
-		return true, nil
-	})
-
-	reverseStack(p.tmpSample.tmpStack)
-
-	p.createTrees(newCache)
-	return err
 }
 
 func (p *MoleculeParser) addStackLocation(lID uint64) error {

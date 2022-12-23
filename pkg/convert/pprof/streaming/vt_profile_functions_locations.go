@@ -1,17 +1,14 @@
 package streaming
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
 
-func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
+func (m *MoleculeParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
-	m.period = 0
-	m.nStrings = 0
-	m.nFunctions = 0
-	m.nLocations = 0
 	for iNdEx < l {
 		//preIndex := iNdEx
 		var wire uint64
@@ -67,17 +64,17 @@ func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.sampleTypesParsed) == cap(m.sampleTypesParsed) {
-				m.sampleTypesParsed = append(m.sampleTypesParsed, valueType{})
-			} else {
-				m.sampleTypesParsed = m.sampleTypesParsed[:len(m.sampleTypesParsed)+1]
-				//if m.sampleTypesParsed[len(m.sampleTypesParsed)-1] == nil {
-				//	m.sampleTypesParsed[len(m.sampleTypesParsed)-1] = &sampleTypesParsed{}
-				//}
-			}
-			if err := m.sampleTypesParsed[len(m.sampleTypesParsed)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
+			//if len(m.SampleType) == cap(m.SampleType) {
+			//	m.SampleType = append(m.SampleType, &ValueType{})
+			//} else {
+			//	m.SampleType = m.SampleType[:len(m.SampleType)+1]
+			//	if m.SampleType[len(m.SampleType)-1] == nil {
+			//		m.SampleType[len(m.SampleType)-1] = &ValueType{}
+			//	}
+			//}
+			//if err := m.SampleType[len(m.SampleType)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			//	return err
+			//}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -198,10 +195,10 @@ func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
 			//		m.Location[len(m.Location)-1] = &Location{}
 			//	}
 			//}
-			//if err := m.Location[len(m.Location)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-			//	return err
-			//}
-			m.nLocations++
+			m.locations = append(m.locations, location{})
+			if err := m.locations[len(m.locations)-1].UnmarshalVT(dAtA[iNdEx:postIndex], &m.tmpLine); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -240,10 +237,10 @@ func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
 			//		m.Function[len(m.Function)-1] = &Function{}
 			//	}
 			//}
-			//if err := m.Function[len(m.Function)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-			//	return err
-			//}
-			m.nFunctions++
+			m.functions = append(m.functions, function{})
+			if err := m.functions[len(m.functions)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -275,12 +272,11 @@ func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//s := dAtA[iNdEx:postIndex]
-			//if bytes.Equal(s, profileIDLabel) {
-			//	m.profileIDLabelIndex = int64(len(m.strings))
-			//}
-			//m.strings = append(m.strings, s)
-			m.nStrings++
+			s := dAtA[iNdEx:postIndex]
+			if bytes.Equal(s, profileIDLabel) {
+				m.profileIDLabelIndex = int64(len(m.strings))
+			}
+			m.strings = append(m.strings, s)
 			iNdEx = postIndex
 		case 7:
 			if wireType != 0 {
@@ -390,15 +386,15 @@ func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
 			//if m.PeriodType == nil {
 			//	m.PeriodType = &ValueType{}
 			//}
-			if err := m.periodType.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
+			//if err := m.PeriodType.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			//	return err
+			//}
 			iNdEx = postIndex
 		case 12:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field period", wireType)
 			}
-			m.period = 0
+			//m.Period = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -408,7 +404,7 @@ func (m *MoleculeParser) UnmarshalVTStructs(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.period |= int64(b&0x7F) << shift
+				//m.Period |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

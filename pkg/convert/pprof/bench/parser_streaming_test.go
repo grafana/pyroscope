@@ -101,13 +101,13 @@ func TestUmarshalParserOne(t *testing.T) {
 
 func TestCompare(t *testing.T) {
 
-	for _, c := range readCorpus("/home/korniltsev/Downloads/pprofs_short") {
+	for _, c := range readCorpus("/Users/korniltsev/Downloads/pprofs_sync") {
 		testOne(t, c)
 	}
 
-	for _, c := range readCorpus("/home/korniltsev/Downloads/pprofs") {
-		testOne(t, c)
-	}
+	//for _, c := range readCorpus("/home/korniltsev/Downloads/pprofs") {
+	//	testOne(t, c)
+	//}
 }
 
 func testOne(t *testing.T, c *testcase) {
