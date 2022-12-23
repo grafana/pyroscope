@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (m *line) UnmarshalVT(dAtA []byte) error {
 	m.functionID = 0
 	l := len(dAtA)

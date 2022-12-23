@@ -25,6 +25,8 @@ func (p *MoleculeParser) parseSampleVT(buffer []byte) error {
 
 	return nil
 }
+
+// revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (s *sample) UnmarshalSampleVT(dAtA []byte, tmpLabel *label) error {
 	l := len(dAtA)
 	iNdEx := 0

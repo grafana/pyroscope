@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (m *label) UnmarshalVT(dAtA []byte) error {
 	m.k = 0
 	m.v = 0

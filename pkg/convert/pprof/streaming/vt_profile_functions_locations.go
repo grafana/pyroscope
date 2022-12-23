@@ -6,6 +6,7 @@ import (
 	"io"
 )
 
+// revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (m *MoleculeParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -426,7 +427,6 @@ func (m *MoleculeParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error {
 						break
 					}
 				}
-				//m.Comment = append(m.Comment, v)
 			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {

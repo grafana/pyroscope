@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-func NewFinder(functions []function, locations []location) finder {
+func newFinder(functions []function, locations []location) finder {
 	res := finder{functions: functions, locations: locations}
 	if !locationSlice(locations) {
 		res.locationsMap = locationMap(locations)

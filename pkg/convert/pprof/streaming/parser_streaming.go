@@ -93,7 +93,6 @@ func (p *MoleculeParser) SetSampleTypesFilter(f func(string) bool) {
 	p.sampleTypesFilter = f
 }
 func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) (err error) {
-
 	p.startTime = startTime
 	p.endTime = endTime
 	p.ctx = ctx
@@ -122,7 +121,7 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 	}
 	p.ctx = nil
 	p.profile = nil
-	return
+	return err
 }
 
 func (p *MoleculeParser) parsePprofDecompressed() (err error) {
@@ -186,7 +185,7 @@ func (p *MoleculeParser) addPeriodType(pt *valueType) {
 func (p *MoleculeParser) parseFunctionsAndLocations() error {
 	err := p.UnmarshalVTFunctionsAndLocations(p.profile)
 	if err == nil {
-		p.finder = NewFinder(p.functions, p.locations)
+		p.finder = newFinder(p.functions, p.locations)
 	}
 	return err
 }
