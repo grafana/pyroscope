@@ -104,22 +104,15 @@ func (c LabelsCache) Remove(sampleType int64, h uint64) {
 func CopyLabels(labels Labels) Labels {
 	l := make(Labels, len(labels))
 	for i, v := range labels {
-		l[i] = copyLabel(v)
+		l[i] = v
 	}
 	return l
 }
 
 // CutLabel creates a copy of labels without label i.
 func CutLabel(labels Labels, i int) Labels {
-	c := make(Labels, 0, len(labels)-1)
-	for j, label := range labels {
-		if i != j {
-			c = append(c, copyLabel(label))
-		}
-	}
+	c := make(Labels, len(labels)-1)
+	copy(c[:i], labels[:i])
+	copy(c[i:], labels[i+1:])
 	return c
-}
-
-func copyLabel(label label) label {
-	return label
 }
