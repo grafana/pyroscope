@@ -32,11 +32,12 @@ type RawProfile struct {
 	RawData             []byte // Represents raw request body as per ingestion API.
 	FormDataContentType string // Set optionally, if RawData is multipart form.
 	// Initializes lazily on Parse, if not present.
-	Profile          []byte // Represents raw pprof data.
-	PreviousProfile  []byte // Used for cumulative type only.
-	SkipExemplars    bool
-	StreamingParser  bool
-	SampleTypeConfig map[string]*tree.SampleTypeConfig
+	Profile             []byte // Represents raw pprof data.
+	PreviousProfile     []byte // Used for cumulative type only.
+	SkipExemplars       bool
+	StreamingParser     bool
+	PoolStreamingParser bool
+	SampleTypeConfig    map[string]*tree.SampleTypeConfig
 }
 
 func (p *RawProfile) ContentType() string {
@@ -192,13 +193,20 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 		}
 
 		if p.StreamingParser {
-			p.parser = streaming.NewStreamingParser(streaming.ParserConfig{
+			parser := streaming.VTStreamingParserFromPool(streaming.ParserConfig{
 				SpyName:       md.SpyName,
 				Labels:        md.Key.Labels(),
 				Putter:        putter,
 				SampleTypes:   sampleTypes,
 				SkipExemplars: p.SkipExemplars,
 			})
+			p.parser = parser
+			if p.PoolStreamingParser {
+				defer func() {
+					parser.ReturnToPool()
+					p.parser = nil
+				}()
+			}
 		} else {
 			p.parser = NewParser(ParserConfig{
 				SpyName:             md.SpyName,

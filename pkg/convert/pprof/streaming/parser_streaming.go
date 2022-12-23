@@ -11,6 +11,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/valyala/bytebufferpool"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -32,9 +33,6 @@ type VTStreamingParser struct {
 	sampleTypesConfig map[string]*tree.SampleTypeConfig
 
 	sampleTypesFilter func(string) bool
-
-	previousCache LabelsCache
-	newCache      LabelsCache
 
 	startTime  time.Time
 	endTime    time.Time
@@ -61,23 +59,15 @@ type VTStreamingParser struct {
 	tmpLabel  label
 	tmpLine   line
 
-	finder finder
+	finder        finder
+	previousCache LabelsCache
+	newCache      LabelsCache
 }
 
 func NewStreamingParser(config ParserConfig) *VTStreamingParser {
-	//if config.StackFrameFormatter == nil {//todo
-	//	config.StackFrameFormatter = &pprof.UnsafeFunctionNameFormatter{}
-	//}
-	return &VTStreamingParser{
-		putter:            config.Putter,
-		spyName:           config.SpyName,
-		labels:            config.Labels,
-		sampleTypesConfig: config.SampleTypes,
-		skipExemplars:     config.SkipExemplars,
-
-		previousCache:     make(LabelsCache),
-		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
-	}
+	res := &VTStreamingParser{}
+	res.Reset(config)
+	return res
 }
 
 func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulative bool) (err error) {
@@ -148,6 +138,7 @@ func (p *VTStreamingParser) countStructs() error {
 		p.locations = grow(p.locations, p.nLocations)
 		p.strings = grow(p.strings, p.nStrings)
 		p.sampleTypes = grow(p.sampleTypes, p.nSampleTypes)
+		p.profileIDLabelIndex = 0
 	}
 	return err
 }
@@ -339,6 +330,24 @@ func (p *VTStreamingParser) put(st *valueType, l Labels, t *tree.Tree) (keep boo
 	return sampleTypeConfig.Cumulative, err
 }
 
+var vtStreamingParserPool = sync.Pool{New: func() any {
+	return &VTStreamingParser{}
+}}
+
+func VTStreamingParserFromPool(config ParserConfig) *VTStreamingParser {
+	res := vtStreamingParserPool.Get().(*VTStreamingParser)
+	res.Reset(config)
+	return res
+}
+
+func (p *VTStreamingParser) ReturnToPool() {
+	if p != nil {
+		p.previousCache = nil
+		p.newCache = nil
+		vtStreamingParserPool.Put(p)
+	}
+}
+
 func (p *VTStreamingParser) ResolveLabels(l Labels) map[string]string {
 	m := make(map[string]string, len(l))
 	for _, l := range l {
@@ -376,6 +385,16 @@ func (p *VTStreamingParser) sampleRate() uint32 {
 	}
 
 	return uint32(time.Second / (sampleUnit * time.Duration(p.period)))
+}
+
+func (p *VTStreamingParser) Reset(config ParserConfig) {
+	p.putter = config.Putter
+	p.spyName = config.SpyName
+	p.labels = config.Labels
+	p.sampleTypesConfig = config.SampleTypes
+	p.skipExemplars = config.SkipExemplars
+	p.previousCache = make(LabelsCache)
+	p.sampleTypesFilter = filterKnownSamples(config.SampleTypes)
 }
 
 func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(string) bool {
