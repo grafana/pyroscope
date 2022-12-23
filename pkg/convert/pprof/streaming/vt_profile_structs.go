@@ -68,15 +68,16 @@ func (m *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.sampleTypesParsed) == cap(m.sampleTypesParsed) {
-				m.sampleTypesParsed = append(m.sampleTypesParsed, valueType{})
-			} else {
-				m.sampleTypesParsed = m.sampleTypesParsed[:len(m.sampleTypesParsed)+1]
-				//if m.sampleTypesParsed[len(m.sampleTypesParsed)-1] == nil {
-				//	m.sampleTypesParsed[len(m.sampleTypesParsed)-1] = &sampleTypesParsed{}
-				//}
-			}
-			if err := m.sampleTypesParsed[len(m.sampleTypesParsed)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			//if len(m.sampleTypesParsed) == cap(m.sampleTypesParsed) {
+			//	m.sampleTypesParsed = append(m.sampleTypesParsed, valueType{})
+			//} else {
+			//	m.sampleTypesParsed = m.sampleTypesParsed[:len(m.sampleTypesParsed)+1]
+			//	//if m.sampleTypesParsed[len(m.sampleTypesParsed)-1] == nil {
+			//	//	m.sampleTypesParsed[len(m.sampleTypesParsed)-1] = &sampleTypesParsed{}
+			//	//}
+			//}
+			m.sampleTypes = append(m.sampleTypes, valueType{})
+			if err := m.sampleTypes[len(m.sampleTypes)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

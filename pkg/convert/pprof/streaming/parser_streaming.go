@@ -9,7 +9,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/richardartoul/molecule/src/codec"
 	"github.com/valyala/bytebufferpool"
 	"io"
 	"time"
@@ -27,11 +26,11 @@ type ParserConfig struct {
 }
 
 type VTStreamingParser struct {
-	putter        storage.Putter
-	spyName       string
-	labels        map[string]string
-	skipExemplars bool
-	sampleTypes   map[string]*tree.SampleTypeConfig
+	putter            storage.Putter
+	spyName           string
+	labels            map[string]string
+	skipExemplars     bool
+	sampleTypesConfig map[string]*tree.SampleTypeConfig
 	//stackFrameFormatter pprof.StackFrameFormatter
 
 	sampleTypesFilter func(string) bool
@@ -45,20 +44,16 @@ type VTStreamingParser struct {
 	profile    []byte
 	cumulative bool
 
+	nStrings            int
 	profileIDLabelIndex int64
-	sampleTypesParsed   []valueType
-	periodType          valueType
+	nFunctions          int
+	nLocations          int
 	period              int64
-	mainBuf             *codec.Buffer
-	tmpBuf1             *codec.Buffer
-	tmpBuf2             *codec.Buffer
-
-	nStrings   int
-	nFunctions int
-	nLocations int
-	strings    [][]byte
-	functions  []function
-	locations  []location
+	periodType          valueType
+	sampleTypes         []valueType
+	strings             [][]byte
+	functions           []function
+	locations           []location
 
 	indexes []int
 	types   []int64
@@ -75,11 +70,11 @@ func NewStreamingParser(config ParserConfig) *VTStreamingParser {
 	//	config.StackFrameFormatter = &pprof.UnsafeFunctionNameFormatter{}
 	//}
 	return &VTStreamingParser{
-		putter:        config.Putter,
-		spyName:       config.SpyName,
-		labels:        config.Labels,
-		sampleTypes:   config.SampleTypes,
-		skipExemplars: config.SkipExemplars,
+		putter:            config.Putter,
+		spyName:           config.SpyName,
+		labels:            config.Labels,
+		sampleTypesConfig: config.SampleTypes,
+		skipExemplars:     config.SkipExemplars,
 
 		previousCache:     make(LabelsCache),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
@@ -126,10 +121,7 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 		}
 	}()
 
-	p.sampleTypesParsed = make([]valueType, 0, 4)
-	p.mainBuf = codec.NewBuffer(nil)
-	p.tmpBuf1 = codec.NewBuffer(nil)
-	p.tmpBuf2 = codec.NewBuffer(nil)
+	p.sampleTypes = make([]valueType, 0, 4)
 
 	if err = p.countStructs(); err != nil {
 		return err
@@ -170,7 +162,7 @@ func (p *VTStreamingParser) addString(s []byte) {
 }
 
 func (p *VTStreamingParser) addSampleType(st *valueType) {
-	p.sampleTypesParsed = append(p.sampleTypesParsed, *st)
+	p.sampleTypes = append(p.sampleTypes, *st)
 }
 
 func (p *VTStreamingParser) addPeriodType(pt *valueType) {
@@ -194,9 +186,9 @@ func (p *VTStreamingParser) addLocation(l *location) {
 }
 
 func (p *VTStreamingParser) checkKnownSampleTypes() error {
-	p.indexes = make([]int, 0, len(p.sampleTypesParsed))
-	p.types = make([]int64, 0, len(p.sampleTypesParsed))
-	for i, s := range p.sampleTypesParsed {
+	p.indexes = make([]int, 0, len(p.sampleTypes))
+	p.types = make([]int64, 0, len(p.sampleTypes))
+	for i, s := range p.sampleTypes {
 		ssType, err := p.string(s.Type)
 		if err != nil {
 			return err
@@ -204,7 +196,7 @@ func (p *VTStreamingParser) checkKnownSampleTypes() error {
 		st := string(ssType)
 		if p.sampleTypesFilter(st) {
 			if p.cumulative {
-				if p.sampleTypes[st].Cumulative {
+				if p.sampleTypesConfig[st].Cumulative {
 					p.indexes = append(p.indexes, i)
 					p.types = append(p.types, s.Type)
 				}
@@ -291,7 +283,7 @@ func (p *VTStreamingParser) string(i int64) ([]byte, error) {
 
 // todo return pointer and resolve strings once
 func (p *VTStreamingParser) resolveSampleType(v int64) (valueType, bool) {
-	for _, vt := range p.sampleTypesParsed {
+	for _, vt := range p.sampleTypes {
 		if vt.Type == v {
 			return vt, true
 		}
@@ -343,7 +335,7 @@ func (p *VTStreamingParser) put(st valueType, l Labels, t *tree.Tree) (keep bool
 		return false, err
 	}
 	sampleType := string(sampleTypeBytes) //todo convert once
-	sampleTypeConfig, ok := p.sampleTypes[sampleType]
+	sampleTypeConfig, ok := p.sampleTypesConfig[sampleType]
 	if !ok {
 		return false, fmt.Errorf("sample value type is unknown")
 	}
