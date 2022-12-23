@@ -13,6 +13,7 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 	p.nStrings = 0
 	p.nFunctions = 0
 	p.nLocations = 0
+	p.nSampleTypes = 0
 	for iNdEx < l {
 		//preIndex := iNdEx
 		var wire uint64
@@ -76,10 +77,7 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			//	//	p.sampleTypesParsed[len(p.sampleTypesParsed)-1] = &sampleTypesParsed{}
 			//	//}
 			//}
-			p.sampleTypes = append(p.sampleTypes, valueType{})
-			if err := p.sampleTypes[len(p.sampleTypes)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
+			p.nSampleTypes++
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {

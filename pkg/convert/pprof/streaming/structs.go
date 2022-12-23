@@ -46,6 +46,9 @@ var (
 type valueType struct {
 	Type int64
 	unit int64
+
+	resolvedType string
+	resolvedUnit string
 }
 type function struct {
 	id   uint64
@@ -78,12 +81,17 @@ type sample struct {
 	tmpStackLoc []uint64
 }
 
-func (s *sample) preAllocate(nSampleTypes int) {
-	//todo just reslice
+func (s *sample) reset() {
 	// 64 is max pc for golang + speculative number of inlines
-	s.tmpStack = make([][]byte, 0, 64+8)
-	s.tmpStackLoc = make([]uint64, 0, 64+8)
-	s.tmpValues = make([]int64, 0, nSampleTypes)
+	if s.tmpStack == nil {
+		s.tmpStack = make([][]byte, 0, 64+8)
+		s.tmpStackLoc = make([]uint64, 0, 64+8)
+		s.tmpValues = make([]int64, 0, 4)
+	} else {
+		s.tmpStack = s.tmpStack[:0]
+		s.tmpStackLoc = s.tmpStackLoc[:0]
+		s.tmpValues = s.tmpValues[:0]
+	}
 }
 
 func (s *sample) resetSample() {

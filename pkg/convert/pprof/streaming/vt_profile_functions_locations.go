@@ -65,17 +65,10 @@ func (p *VTStreamingParser) UnmarshalVTFunctionsAndLocations(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(p.SampleType) == cap(p.SampleType) {
-			//	p.SampleType = append(p.SampleType, &ValueType{})
-			//} else {
-			//	p.SampleType = p.SampleType[:len(p.SampleType)+1]
-			//	if p.SampleType[len(p.SampleType)-1] == nil {
-			//		p.SampleType[len(p.SampleType)-1] = &ValueType{}
-			//	}
-			//}
-			//if err := p.SampleType[len(p.SampleType)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-			//	return err
-			//}
+			p.sampleTypes = append(p.sampleTypes, valueType{})
+			if err := p.sampleTypes[len(p.sampleTypes)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {

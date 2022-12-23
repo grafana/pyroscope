@@ -48,6 +48,7 @@ type VTStreamingParser struct {
 	profileIDLabelIndex int64
 	nFunctions          int
 	nLocations          int
+	nSampleTypes        int
 	period              int64
 	periodType          valueType
 	sampleTypes         []valueType
@@ -121,8 +122,6 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 		}
 	}()
 
-	p.sampleTypes = make([]valueType, 0, 4)
-
 	if err = p.countStructs(); err != nil {
 		return err
 	}
@@ -147,9 +146,10 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 func (p *VTStreamingParser) countStructs() error {
 	err := p.UnmarshalVTStructs(p.profile)
 	if err == nil {
-		p.functions = make([]function, 0, p.nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
-		p.locations = make([]location, 0, p.nLocations) // reuse between parsers?
-		p.strings = make([][]byte, 0, p.nStrings)
+		p.functions = grow(p.functions, p.nFunctions)
+		p.locations = grow(p.locations, p.nLocations)
+		p.strings = grow(p.strings, p.nStrings)
+		p.sampleTypes = grow(p.sampleTypes, p.nSampleTypes)
 	}
 	return err
 }
@@ -161,38 +161,26 @@ func (p *VTStreamingParser) addString(s []byte) {
 	p.strings = append(p.strings, s)
 }
 
-func (p *VTStreamingParser) addSampleType(st *valueType) {
-	p.sampleTypes = append(p.sampleTypes, *st)
-}
-
-func (p *VTStreamingParser) addPeriodType(pt *valueType) {
-	p.periodType = *pt
-}
-
 func (p *VTStreamingParser) parseFunctionsAndLocations() error {
 	err := p.UnmarshalVTFunctionsAndLocations(p.profile)
 	if err == nil {
 		p.finder = newFinder(p.functions, p.locations)
+		for i := range p.sampleTypes {
+			p.sampleTypes[i].resolvedType = string(p.string(p.sampleTypes[i].Type))
+			p.sampleTypes[i].resolvedUnit = string(p.string(p.sampleTypes[i].unit))
+		}
+		p.periodType.resolvedType = string(p.string(p.periodType.Type))
+		p.periodType.resolvedUnit = string(p.string(p.periodType.unit))
 	}
 	return err
 }
 
-func (p *VTStreamingParser) addFunction(f *function) {
-	p.functions = append(p.functions, *f)
-}
-
-func (p *VTStreamingParser) addLocation(l *location) {
-	p.locations = append(p.locations, *l)
-}
-
 func (p *VTStreamingParser) checkKnownSampleTypes() error {
-	p.indexes = make([]int, 0, len(p.sampleTypes))
-	p.types = make([]int64, 0, len(p.sampleTypes))
+	p.indexes = grow(p.indexes, len(p.sampleTypes))
+	p.types = grow(p.types, len(p.sampleTypes))
 	for i, s := range p.sampleTypes {
-		ssType, err := p.string(s.Type)
-		if err != nil {
-			return err
-		}
+		ssType := p.string(s.Type)
+
 		st := string(ssType)
 		if p.sampleTypesFilter(st) {
 			if p.cumulative {
@@ -209,30 +197,13 @@ func (p *VTStreamingParser) checkKnownSampleTypes() error {
 	if len(p.indexes) == 0 {
 		return fmt.Errorf("unknown sample types")
 	}
-	p.tmpSample.preAllocate(len(p.indexes))
-	//p.tmpValues = make([]int64, len(p.indexes))
+	p.tmpSample.reset()
+
 	return nil
 }
 
 func (p *VTStreamingParser) parseSamples() error {
 	return p.UnmarshalVTProfileSamples(p.profile)
-	//p.mainBuf.Reset(p.profile)
-	//err := molecule.MessageEach(p.mainBuf, func(field int32, value molecule.Value) (bool, error) {
-	//	if profSample == field {
-	//		err := p.parseSampleVT(value.Bytes)
-	//		if err != nil {
-	//			return false, err
-	//		}
-	//		//p.tmpBuf1.Reset(value.Bytes)
-	//		//
-	//		//err := p.parseSample(p.tmpBuf1, newCache)
-	//		//if err != nil {
-	//		//	return false, err
-	//		//}
-	//	}
-	//	return true, nil
-	//})
-	//return err
 }
 
 func (p *VTStreamingParser) addStackLocation(lID uint64) error {
@@ -274,11 +245,8 @@ func (p *VTStreamingParser) addStackFrame(fID uint64) error {
 	return nil
 }
 
-func (p *VTStreamingParser) string(i int64) ([]byte, error) {
-	//if i < 0 || i >= len(p.strings) {
-	//	return nil, fmt.Errorf("string out of bound %d", i)
-	//}
-	return p.strings[i], nil
+func (p *VTStreamingParser) string(i int64) []byte {
+	return p.strings[i]
 }
 
 // todo return pointer and resolve strings once
@@ -330,7 +298,7 @@ func (p *VTStreamingParser) createTrees(newCache LabelsCache) {
 }
 
 func (p *VTStreamingParser) put(st valueType, l Labels, t *tree.Tree) (keep bool, err error) {
-	sampleTypeBytes, err := p.string(st.Type)
+	sampleTypeBytes := st.resolvedType
 	if err != nil {
 		return false, err
 	}
@@ -368,7 +336,7 @@ func (p *VTStreamingParser) put(st valueType, l Labels, t *tree.Tree) (keep bool
 		pi.Units = sampleTypeConfig.Units
 	} else {
 		// TODO(petethepig): this conversion is questionable
-		unitsBytes, err := p.string(st.unit)
+		unitsBytes := st.resolvedUnit
 		pi.Units = metadata.Units(unitsBytes)
 		if err != nil {
 			return false, err
@@ -383,14 +351,8 @@ func (p *VTStreamingParser) ResolveLabels(l Labels) map[string]string {
 	m := make(map[string]string, len(l))
 	for _, l := range l {
 		if l.k != 0 {
-			sk, err := p.string(l.k)
-			if err != nil {
-				continue
-			}
-			sv, err := p.string(l.v)
-			if err != nil {
-				continue
-			}
+			sk := p.string(l.k)
+			sv := p.string(l.v)
 			m[string(sk)] = string(sv)
 		}
 	}
@@ -410,16 +372,15 @@ func (p *VTStreamingParser) sampleRate() uint32 {
 		return 0
 	}
 	sampleUnit := time.Nanosecond
-	u, err := p.string(p.periodType.unit)
-	if err == nil {
-		switch string(u) { // todo convert once?
-		case "microseconds":
-			sampleUnit = time.Microsecond
-		case "milliseconds":
-			sampleUnit = time.Millisecond
-		case "seconds":
-			sampleUnit = time.Second
-		}
+	u := p.periodType.resolvedUnit
+
+	switch u {
+	case "microseconds":
+		sampleUnit = time.Microsecond
+	case "milliseconds":
+		sampleUnit = time.Millisecond
+	case "seconds":
+		sampleUnit = time.Second
 	}
 
 	return uint32(time.Second / (sampleUnit * time.Duration(p.period)))
@@ -444,4 +405,11 @@ func reverseStack(s [][]byte) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
+}
+
+func grow[T any](it []T, n int) []T {
+	if it == nil || n > cap(it) {
+		return make([]T, 0, n)
+	}
+	return it[:0]
 }
