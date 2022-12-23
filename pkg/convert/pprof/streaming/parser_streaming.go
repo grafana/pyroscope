@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var PPROFBufPool = bytebufferpool.Pool{}
+
 type ParserConfig struct {
 	Putter        storage.Putter
 	SpyName       string
@@ -104,14 +106,14 @@ func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time
 		if err != nil {
 			err = fmt.Errorf("failed to create pprof profile zip reader: %w", err)
 		} else {
-			buf := bytebufferpool.Get()
+			buf := PPROFBufPool.Get()
 			if _, err = io.Copy(buf, gzipr); err != nil {
 				err = fmt.Errorf("failed to decompress gzip: %w", err)
 			} else {
 				p.profile = buf.Bytes()
 				err = p.parsePprofDecompressed()
 			}
-			bytebufferpool.Put(buf)
+			PPROFBufPool.Put(buf)
 			_ = gzipr.Close()
 		}
 	} else {
