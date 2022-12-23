@@ -90,35 +90,37 @@ func (p *MoleculeParser) GetSampleTypesFilter() func(string) bool {
 func (p *MoleculeParser) SetSampleTypesFilter(f func(string) bool) {
 	p.sampleTypesFilter = f
 }
-func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) error {
-	var err error
+func (p *MoleculeParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte) (err error) {
+
 	p.startTime = startTime
 	p.endTime = endTime
 	p.ctx = ctx
 
 	if len(bs) < 2 {
-		return fmt.Errorf("failed to read pprof profile header")
-	}
-	if bs[0] == 0x1f && bs[1] == 0x8b {
+		err = fmt.Errorf("failed to read pprof profile header")
+	} else if bs[0] == 0x1f && bs[1] == 0x8b {
 		var gzipr *gzip.Reader
 		gzipr, err = gzip.NewReader(bytes.NewReader(bs))
 		if err != nil {
-			return fmt.Errorf("failed to create pprof profile zip reader: %w", err)
-		}
-		defer gzipr.Close()
-		buf := bytebufferpool.Get()
-		if _, err = io.Copy(buf, gzipr); err == nil {
-			p.profile = buf.Bytes()
-			err = p.parsePprofDecompressed()
+			err = fmt.Errorf("failed to create pprof profile zip reader: %w", err)
+		} else {
+			buf := bytebufferpool.Get()
+			if _, err = io.Copy(buf, gzipr); err != nil {
+				err = fmt.Errorf("failed to decompress gzip: %w", err)
+			} else {
+				p.profile = buf.Bytes()
+				err = p.parsePprofDecompressed()
+			}
 			bytebufferpool.Put(buf)
+			_ = gzipr.Close()
 		}
 	} else {
 		p.profile = bs
 		err = p.parsePprofDecompressed()
 	}
-	p.profile = nil
 	p.ctx = nil
-	return err
+	p.profile = nil
+	return
 }
 
 func (p *MoleculeParser) parsePprofDecompressed() (err error) {
@@ -133,7 +135,7 @@ func (p *MoleculeParser) parsePprofDecompressed() (err error) {
 	p.tmpBuf1 = codec.NewBuffer(nil)
 	p.tmpBuf2 = codec.NewBuffer(nil)
 
-	if err = p.parseStructs(); err != nil {
+	if err = p.countStructs(); err != nil {
 		return err
 	}
 	if err = p.parseFunctionsAndLocations(); err != nil {
@@ -154,7 +156,7 @@ func (p *MoleculeParser) parsePprofDecompressed() (err error) {
 // - parse periodType
 // - parse sampleType
 // - count number of locations, functions, strings
-func (p *MoleculeParser) parseStructs() error {
+func (p *MoleculeParser) countStructs() error {
 	err := p.UnmarshalVTStructs(p.profile)
 	if err == nil {
 		p.functions = make([]function, 0, p.nFunctions) //todo reuse these for consecutive parse calls? if cap is enough ?
@@ -322,12 +324,12 @@ func (p *MoleculeParser) createTrees(newCache LabelsCache) {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			//newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
+			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		//newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
+		newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
 	}
 }
 
