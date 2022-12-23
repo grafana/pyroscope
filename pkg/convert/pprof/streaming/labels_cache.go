@@ -15,7 +15,7 @@ func (l Labels) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 
 func (l Labels) Hash() uint64 {
 	h := xxhash.New()
-	t := make([]byte, 16)
+	var t [16]byte
 	sort.Sort(l)
 	for _, x := range l {
 		if x.v == 0 {
@@ -23,7 +23,7 @@ func (l Labels) Hash() uint64 {
 		}
 		binary.LittleEndian.PutUint64(t[0:8], uint64(x.k))
 		binary.LittleEndian.PutUint64(t[8:16], uint64(x.v))
-		_, _ = h.Write(t)
+		_, _ = h.Write(t[:])
 	}
 	return h.Sum64()
 }
@@ -103,9 +103,7 @@ func (c LabelsCache) Remove(sampleType int64, h uint64) {
 
 func CopyLabels(labels Labels) Labels {
 	l := make(Labels, len(labels))
-	for i, v := range labels {
-		l[i] = v
-	}
+	copy(l, labels)
 	return l
 }
 

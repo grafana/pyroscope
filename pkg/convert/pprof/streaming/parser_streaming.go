@@ -22,7 +22,6 @@ type ParserConfig struct {
 	Labels        map[string]string
 	SkipExemplars bool
 	SampleTypes   map[string]*tree.SampleTypeConfig
-	//StackFrameFormatter StackFrameFormatter
 }
 
 type VTStreamingParser struct {
@@ -31,7 +30,6 @@ type VTStreamingParser struct {
 	labels            map[string]string
 	skipExemplars     bool
 	sampleTypesConfig map[string]*tree.SampleTypeConfig
-	//stackFrameFormatter pprof.StackFrameFormatter
 
 	sampleTypesFilter func(string) bool
 
@@ -236,11 +234,6 @@ func (p *VTStreamingParser) addStackFrame(fID uint64) error {
 		return nil
 	}
 
-	//name, err := p.string(f.name)
-	//if err != nil {
-	//	return err
-	//}
-	//p.tmpStack = append(p.tmpStack, name)
 	p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, p.strings[f.name])
 	return nil
 }
@@ -249,17 +242,16 @@ func (p *VTStreamingParser) string(i int64) []byte {
 	return p.strings[i]
 }
 
-// todo return pointer and resolve strings once
-func (p *VTStreamingParser) resolveSampleType(v int64) (valueType, bool) {
-	for _, vt := range p.sampleTypes {
-		if vt.Type == v {
-			return vt, true
+func (p *VTStreamingParser) resolveSampleType(v int64) (*valueType, bool) {
+	for i := range p.sampleTypes {
+		if p.sampleTypes[i].Type == v {
+			return &p.sampleTypes[i], true
 		}
 	}
-	return valueType{}, false
+	return nil, false
 }
 
-func (p *VTStreamingParser) iterate(fn func(st valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
+func (p *VTStreamingParser) iterate(fn func(st *valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
 	for stt, entries := range p.newCache {
 		t, ok := p.resolveSampleType(stt)
 		if !ok {
@@ -297,12 +289,12 @@ func (p *VTStreamingParser) createTrees(newCache LabelsCache) {
 	}
 }
 
-func (p *VTStreamingParser) put(st valueType, l Labels, t *tree.Tree) (keep bool, err error) {
+func (p *VTStreamingParser) put(st *valueType, l Labels, t *tree.Tree) (keep bool, err error) {
 	sampleTypeBytes := st.resolvedType
 	if err != nil {
 		return false, err
 	}
-	sampleType := string(sampleTypeBytes) //todo convert once
+	sampleType := sampleTypeBytes
 	sampleTypeConfig, ok := p.sampleTypesConfig[sampleType]
 	if !ok {
 		return false, fmt.Errorf("sample value type is unknown")
