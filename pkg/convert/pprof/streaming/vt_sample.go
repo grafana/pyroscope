@@ -13,13 +13,12 @@ func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 		return err
 	}
 
-	for i := range p.tmpSample.tmpStackLoc {
+	for i := len(p.tmpSample.tmpStackLoc) - 1; i >= 0; i-- {
 		err = p.addStackLocation(p.tmpSample.tmpStackLoc[i])
 		if err != nil {
 			return err
 		}
 	}
-	reverseStack(p.tmpSample.tmpStack)
 
 	p.createTrees(p.newCache)
 

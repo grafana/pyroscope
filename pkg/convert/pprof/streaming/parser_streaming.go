@@ -182,20 +182,21 @@ func (p *VTStreamingParser) parseSamples() error {
 func (p *VTStreamingParser) addStackLocation(lID uint64) error {
 	loc, ok := p.finder.FindLocation(lID)
 	if ok {
-		if err := p.addStackFrame(loc.fn1); err != nil {
-			return err
-		}
-		if err := p.addStackFrame(loc.fn2); err != nil {
-			return err
-		}
 		if loc.extraFn != nil {
-			for i := 0; i < len(loc.extraFn); i++ {
+			for i := len(loc.extraFn) - 1; i >= 0; i-- {
 				fID := loc.extraFn[i]
 				if err := p.addStackFrame(fID); err != nil {
 					return err
 				}
 			}
 		}
+		if err := p.addStackFrame(loc.fn2); err != nil {
+			return err
+		}
+		if err := p.addStackFrame(loc.fn1); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
@@ -396,11 +397,6 @@ func findLabelIndex(tmpLabels []uint64, k int64) int {
 		}
 	}
 	return -1
-}
-func reverseStack(s [][]byte) {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
 }
 
 func grow[T any](it []T, n int) []T {
