@@ -1,7 +1,6 @@
 package streaming
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -23,29 +22,18 @@ type finder struct {
 	locationsMap map[uint64]*location
 }
 
-//go:noinline
 func (f *finder) FindLocation(id uint64) (*location, bool) {
 	if f.locationsMap == nil {
 		idx := id - 1
-		//if idx >= uint64(len(f.locations)) {
-		//	return nil, false
-		//}
 		return &f.locations[idx], true
 	}
 	l, ok := f.locationsMap[id]
 	return l, ok
 }
 
-//go:noinline
 func (f *finder) FindFunction(id uint64) (*function, bool) {
 	if f.functionsMap == nil {
-		if id == 0 {
-			fmt.Println("hui")
-		}
 		idx := id - 1
-		//if idx >= uint64(len(f.functions)) {
-		//	return nil, false
-		//}
 		return &f.functions[idx], true
 	}
 	ff, ok := f.functionsMap[id]

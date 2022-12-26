@@ -215,7 +215,6 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder, c
 		}
 		// Insert tree nodes.
 		for i, vi := range indexes {
-			_ = i
 			v := uint64(s.Value[vi])
 			if v == 0 {
 				continue
