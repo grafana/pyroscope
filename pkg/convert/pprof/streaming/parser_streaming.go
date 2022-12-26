@@ -388,7 +388,7 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 	}
 }
 
-func findLabelIndex(tmpLabels []labelPacked, k int64) int {
+func findLabelIndex(tmpLabels []uint64, k int64) int {
 	for i, l := range tmpLabels {
 		lk := int64(l >> 32)
 		if lk == k {

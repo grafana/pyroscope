@@ -73,12 +73,11 @@ type line struct {
 // from,to into profile buffer
 type istr uint64
 
-// k<<32|v
-type labelPacked uint64
-
 type sample struct {
-	tmpValues   []int64
-	tmpLabels   []labelPacked
+	tmpValues []int64
+	// k<<32|v
+	//type labelPacked uint64
+	tmpLabels   []uint64
 	tmpStack    [][]byte
 	tmpStackLoc []uint64
 }
@@ -89,7 +88,7 @@ func (s *sample) reset() {
 		s.tmpStack = make([][]byte, 0, 64+8)
 		s.tmpStackLoc = make([]uint64, 0, 64+8)
 		s.tmpValues = make([]int64, 0, 4)
-		s.tmpLabels = make([]labelPacked, 0, 4)
+		s.tmpLabels = make([]uint64, 0, 4)
 	} else {
 		s.tmpStack = s.tmpStack[:0]
 		s.tmpStackLoc = s.tmpStackLoc[:0]

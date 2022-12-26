@@ -28,7 +28,6 @@ func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
-	var tmpLabel labelPacked
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -254,8 +253,8 @@ func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
 			//if err := m.Label[len(m.Label)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 			//	return err
 			//}
-
-			if err := tmpLabel.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			tmpLabel, err := UnmarshalVTLabel(dAtA[iNdEx:postIndex])
+			if err != nil {
 				return err
 			}
 			v := tmpLabel & 0xffffffff
