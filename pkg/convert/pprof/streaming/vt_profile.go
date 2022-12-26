@@ -1,19 +1,31 @@
 package streaming
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
 
+const (
+	opFlagCountStructs = 1 << 0
+	opFlagParseStructs = 1 << 1
+	opFlagParseSamples = 1 << 2
+)
+
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
+func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error {
 	l := len(dAtA)
 	iNdEx := 0
-	p.period = 0
-	p.nStrings = 0
-	p.nFunctions = 0
-	p.nLocations = 0
-	p.nSampleTypes = 0
+	countStructs := opFlag&opFlagCountStructs == opFlagCountStructs
+	parseStructs := opFlag&opFlagParseStructs == opFlagParseStructs
+	parseSamples := opFlag&opFlagParseSamples == opFlagParseSamples
+	if countStructs {
+		p.period = 0
+		p.nStrings = 0
+		p.nFunctions = 0
+		p.nLocations = 0
+		p.nSampleTypes = 0
+	}
 	for iNdEx < l {
 		//preIndex := iNdEx
 		var wire uint64
@@ -69,15 +81,15 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(p.sampleTypesParsed) == cap(p.sampleTypesParsed) {
-			//	p.sampleTypesParsed = append(p.sampleTypesParsed, valueType{})
-			//} else {
-			//	p.sampleTypesParsed = p.sampleTypesParsed[:len(p.sampleTypesParsed)+1]
-			//	//if p.sampleTypesParsed[len(p.sampleTypesParsed)-1] == nil {
-			//	//	p.sampleTypesParsed[len(p.sampleTypesParsed)-1] = &sampleTypesParsed{}
-			//	//}
-			//}
-			p.nSampleTypes++
+			if countStructs {
+				p.nSampleTypes++
+			}
+			if parseStructs {
+				p.sampleTypes = append(p.sampleTypes, valueType{})
+				if err := p.sampleTypes[len(p.sampleTypes)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -108,17 +120,11 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(p.Sample) == cap(p.Sample) {
-			//	p.Sample = append(p.Sample, &Sample{})
-			//} else {
-			//	p.Sample = p.Sample[:len(p.Sample)+1]
-			//	if p.Sample[len(p.Sample)-1] == nil {
-			//		p.Sample[len(p.Sample)-1] = &Sample{}
-			//	}
-			//}
-			//if err := p.Sample[len(p.Sample)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-			//	return err
-			//}
+			if parseSamples {
+				if err := p.parseSampleVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -149,17 +155,6 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(p.Mapping) == cap(p.Mapping) {
-			//	p.Mapping = append(p.Mapping, &Mapping{})
-			//} else {
-			//	p.Mapping = p.Mapping[:len(p.Mapping)+1]
-			//	if p.Mapping[len(p.Mapping)-1] == nil {
-			//		p.Mapping[len(p.Mapping)-1] = &Mapping{}
-			//	}
-			//}
-			//if err := p.Mapping[len(p.Mapping)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-			//	return err
-			//}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -190,18 +185,15 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(p.Location) == cap(p.Location) {
-			//	p.Location = append(p.Location, &Location{})
-			//} else {
-			//	p.Location = p.Location[:len(p.Location)+1]
-			//	if p.Location[len(p.Location)-1] == nil {
-			//		p.Location[len(p.Location)-1] = &Location{}
-			//	}
-			//}
-			//if err := p.Location[len(p.Location)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-			//	return err
-			//}
-			p.nLocations++
+			if countStructs {
+				p.nLocations++
+			}
+			if parseStructs {
+				p.locations = append(p.locations, location{})
+				if err := p.locations[len(p.locations)-1].UnmarshalVT(dAtA[iNdEx:postIndex], &p.tmpLine); err != nil {
+					return err
+				}
+			}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -232,18 +224,15 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if len(p.Function) == cap(p.Function) {
-			//	p.Function = append(p.Function, &Function{})
-			//} else {
-			//	p.Function = p.Function[:len(p.Function)+1]
-			//	if p.Function[len(p.Function)-1] == nil {
-			//		p.Function[len(p.Function)-1] = &Function{}
-			//	}
-			//}
-			//if err := p.Function[len(p.Function)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-			//	return err
-			//}
-			p.nFunctions++
+			if countStructs {
+				p.nFunctions++
+			}
+			if parseStructs {
+				p.functions = append(p.functions, function{})
+				if err := p.functions[len(p.functions)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			}
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -275,12 +264,16 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//s := dAtA[iNdEx:postIndex]
-			//if bytes.Equal(s, profileIDLabel) {
-			//	p.profileIDLabelIndex = int64(len(p.strings))
-			//}
-			//p.strings = append(p.strings, s)
-			p.nStrings++
+			if countStructs {
+				p.nStrings++
+			}
+			if parseStructs {
+				s := dAtA[iNdEx:postIndex]
+				if bytes.Equal(s, profileIDLabel) {
+					p.profileIDLabelIndex = int64(len(p.strings))
+				}
+				p.strings = append(p.strings, s)
+			}
 			iNdEx = postIndex
 		case 7:
 			if wireType != 0 {
@@ -387,11 +380,10 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			//if p.PeriodType == nil {
-			//	p.PeriodType = &ValueType{}
-			//}
-			if err := p.periodType.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			if parseStructs {
+				if err := p.periodType.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		case 12:
@@ -456,17 +448,6 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				//var elementCount int
-				//var count int
-				//for _, integer := range dAtA[iNdEx:postIndex] {
-				//	if integer < 128 {
-				//		count++
-				//	}
-				//}
-				//elementCount = count
-				//if elementCount != 0 && len(p.Comment) == 0 && cap(p.Comment) < elementCount {
-				//	p.Comment = make([]int64, 0, elementCount)
-				//}
 				for iNdEx < postIndex {
 					var v int64
 					for shift := uint(0); ; shift += 7 {
@@ -508,19 +489,6 @@ func (p *VTStreamingParser) UnmarshalVTStructs(dAtA []byte) error {
 			}
 		default:
 			return ErrUnknownField
-			//iNdEx = preIndex
-			//skippy, err := skip(dAtA[iNdEx:])
-			//if err != nil {
-			//	return err
-			//}
-			//if (skippy < 0) || (iNdEx+skippy) < 0 {
-			//	return ErrInvalidLength
-			//}
-			//if (iNdEx + skippy) > l {
-			//	return io.ErrUnexpectedEOF
-			//}
-			//p.unknownFields = append(p.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			//iNdEx += skippy
 		}
 	}
 

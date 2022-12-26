@@ -132,7 +132,7 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 // - parse sampleType
 // - count number of locations, functions, strings
 func (p *VTStreamingParser) countStructs() error {
-	err := p.UnmarshalVTStructs(p.profile)
+	err := p.UnmarshalVTProfile(p.profile, opFlagCountStructs)
 	if err == nil {
 		p.functions = grow(p.functions, p.nFunctions)
 		p.locations = grow(p.locations, p.nLocations)
@@ -151,7 +151,7 @@ func (p *VTStreamingParser) addString(s []byte) {
 }
 
 func (p *VTStreamingParser) parseFunctionsAndLocations() error {
-	err := p.UnmarshalVTFunctionsAndLocations(p.profile)
+	err := p.UnmarshalVTProfile(p.profile, opFlagParseStructs)
 	if err == nil {
 		p.finder = newFinder(p.functions, p.locations)
 		for i := range p.sampleTypes {
@@ -185,7 +185,7 @@ func (p *VTStreamingParser) checkKnownSampleTypes() error {
 }
 
 func (p *VTStreamingParser) parseSamples() error {
-	return p.UnmarshalVTProfileSamples(p.profile)
+	return p.UnmarshalVTProfile(p.profile, opFlagParseSamples)
 }
 
 func (p *VTStreamingParser) addStackLocation(lID uint64) error {
