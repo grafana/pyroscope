@@ -34,11 +34,11 @@ type VTStreamingParser struct {
 
 	sampleTypesFilter func(string) bool
 
-	startTime  time.Time
-	endTime    time.Time
-	ctx        context.Context
-	profile    []byte
-	cumulative bool
+	startTime      time.Time
+	endTime        time.Time
+	ctx            context.Context
+	profile        []byte
+	cumulativeOnly bool
 
 	nStrings            int
 	profileIDLabelIndex int64
@@ -70,11 +70,11 @@ func NewStreamingParser(config ParserConfig) *VTStreamingParser {
 	return res
 }
 
-func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulative bool) (err error) {
+func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulativeOnly bool) (err error) {
 	p.startTime = startTime
 	p.endTime = endTime
 	p.ctx = ctx
-	p.cumulative = cumulative
+	p.cumulativeOnly = cumulativeOnly
 
 	if len(bs) < 2 {
 		err = fmt.Errorf("failed to read pprof profile header")
@@ -172,12 +172,7 @@ func (p *VTStreamingParser) checkKnownSampleTypes() error {
 
 		st := string(ssType)
 		if p.sampleTypesFilter(st) {
-			if p.cumulative {
-				if p.sampleTypesConfig[st].Cumulative {
-					p.indexes = append(p.indexes, i)
-					p.types = append(p.types, s.Type)
-				}
-			} else {
+			if !p.cumulativeOnly || (p.cumulativeOnly && p.sampleTypesConfig[st].Cumulative) {
 				p.indexes = append(p.indexes, i)
 				p.types = append(p.types, s.Type)
 			}

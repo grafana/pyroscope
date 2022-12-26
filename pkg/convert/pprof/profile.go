@@ -219,7 +219,12 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 		}
 
 		if p.PreviousProfile != nil {
-			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.PreviousProfile, true); err != nil {
+			// Ignore non-cumulative samples from the PreviousProfile
+			// to avoid duplicates: although, presence of PreviousProfile
+			// tells that there are cumulative sample types, it may also
+			// include regular ones.
+			cumulativeOnly := true
+			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.PreviousProfile, cumulativeOnly); err != nil {
 				return err
 			}
 		}
