@@ -7,22 +7,18 @@ import (
 	"sort"
 )
 
-type Labels []label
+type Labels []labelPacked
 
 func (l Labels) Len() int           { return len(l) }
-func (l Labels) Less(i, j int) bool { return l[i].k < l[j].k }
+func (l Labels) Less(i, j int) bool { return l[i] < l[j] }
 func (l Labels) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 
 func (l Labels) Hash() uint64 {
 	h := xxhash.New()
-	var t [16]byte
+	var t [8]byte
 	sort.Sort(l)
 	for _, x := range l {
-		if x.v == 0 {
-			continue
-		}
-		binary.LittleEndian.PutUint64(t[0:8], uint64(x.k))
-		binary.LittleEndian.PutUint64(t[8:16], uint64(x.v))
+		binary.LittleEndian.PutUint64(t[0:8], uint64(x))
 		_, _ = h.Write(t[:])
 	}
 	return h.Sum64()

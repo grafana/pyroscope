@@ -56,8 +56,8 @@ type VTStreamingParser struct {
 	types   []int64
 
 	tmpSample sample
-	tmpLabel  label
-	tmpLine   line
+	//tmpLabel  labelPacked
+	tmpLine line //todo allocate on stack
 
 	finder        finder
 	previousCache LabelsCache
@@ -339,10 +339,12 @@ func (p *VTStreamingParser) ReturnToPool() {
 
 func (p *VTStreamingParser) ResolveLabels(l Labels) map[string]string {
 	m := make(map[string]string, len(l))
-	for _, l := range l {
-		if l.k != 0 {
-			sk := p.string(l.k)
-			sv := p.string(l.v)
+	for _, label := range l {
+		k := label >> 32
+		if k != 0 {
+			v := label & 0xffffffff
+			sk := p.string(int64(k))
+			sv := p.string(int64(v))
 			m[string(sk)] = string(sv)
 		}
 	}
@@ -393,9 +395,10 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 	}
 }
 
-func findLabelIndex(tmpLabels []label, k int64) int {
+func findLabelIndex(tmpLabels []labelPacked, k int64) int {
 	for i, l := range tmpLabels {
-		if l.k == k {
+		lk := int64(l >> 32)
+		if lk == k {
 			return i
 		}
 	}

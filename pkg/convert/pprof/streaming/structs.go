@@ -70,13 +70,12 @@ type line struct {
 	functionID uint64
 }
 
-type label struct {
-	k, v int64
-}
+// k<<32|v
+type labelPacked uint64
 
 type sample struct {
 	tmpValues   []int64
-	tmpLabels   []label
+	tmpLabels   []labelPacked
 	tmpStack    [][]byte
 	tmpStackLoc []uint64
 }
@@ -87,7 +86,7 @@ func (s *sample) reset() {
 		s.tmpStack = make([][]byte, 0, 64+8)
 		s.tmpStackLoc = make([]uint64, 0, 64+8)
 		s.tmpValues = make([]int64, 0, 4)
-		s.tmpLabels = make([]label, 0, 4)
+		s.tmpLabels = make([]labelPacked, 0, 4)
 	} else {
 		s.tmpStack = s.tmpStack[:0]
 		s.tmpStackLoc = s.tmpStackLoc[:0]

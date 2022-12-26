@@ -8,7 +8,7 @@ import (
 
 func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 	p.tmpSample.reset()
-	err := p.tmpSample.UnmarshalSampleVT(buffer, &p.tmpLabel)
+	err := p.tmpSample.UnmarshalSampleVT(buffer)
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,8 @@ func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 }
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (s *sample) UnmarshalSampleVT(dAtA []byte, tmpLabel *label) error {
+func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
+	var tmpLabel labelPacked
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -257,8 +258,9 @@ func (s *sample) UnmarshalSampleVT(dAtA []byte, tmpLabel *label) error {
 			if err := tmpLabel.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			if tmpLabel.v != 0 {
-				s.tmpLabels = append(s.tmpLabels, *tmpLabel)
+			v := tmpLabel & 0xffffffff
+			if v != 0 {
+				s.tmpLabels = append(s.tmpLabels, tmpLabel)
 			}
 			iNdEx = postIndex
 		default:

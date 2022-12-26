@@ -6,9 +6,9 @@ import (
 )
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *label) UnmarshalVT(dAtA []byte) error {
-	m.k = 0
-	m.v = 0
+func (m *labelPacked) UnmarshalVT(dAtA []byte) error {
+	k := int64(0)
+	v := int64(0)
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -41,7 +41,7 @@ func (m *label) UnmarshalVT(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
 			}
-			m.k = 0
+			k = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -51,7 +51,7 @@ func (m *label) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.k |= int64(b&0x7F) << shift
+				k |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -60,7 +60,7 @@ func (m *label) UnmarshalVT(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Str", wireType)
 			}
-			m.v = 0
+			v = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -70,7 +70,7 @@ func (m *label) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.v |= int64(b&0x7F) << shift
+				v |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -115,24 +115,12 @@ func (m *label) UnmarshalVT(dAtA []byte) error {
 			}
 		default:
 			return ErrUnknownField
-			//iNdEx = preIndex
-			//skippy, err := skip(dAtA[iNdEx:])
-			//if err != nil {
-			//	return err
-			//}
-			//if (skippy < 0) || (iNdEx+skippy) < 0 {
-			//	return ErrInvalidLength
-			//}
-			//if (iNdEx + skippy) > l {
-			//	return io.ErrUnexpectedEOF
-			//}
-			//m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			//iNdEx += skippy
 		}
 	}
 
 	if iNdEx > l {
 		return io.ErrUnexpectedEOF
 	}
+	*m = labelPacked(k<<32 | v)
 	return nil
 }
