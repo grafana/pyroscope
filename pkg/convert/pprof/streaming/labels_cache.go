@@ -28,9 +28,9 @@ func (l Labels) Hash() uint64 {
 	return h.Sum64()
 }
 
-// sample type -> labels hash -> entry
+// sample type index -> labels hash -> entry
 
-type LabelsCache map[int64]map[uint64]*LabelsCacheEntry
+type LabelsCache map[int]map[uint64]*LabelsCacheEntry
 
 type LabelsCacheEntry struct {
 	Labels
@@ -41,11 +41,11 @@ func NewCacheEntry(l Labels) *LabelsCacheEntry {
 	return &LabelsCacheEntry{Tree: tree.New(), Labels: CopyLabels(l)}
 }
 
-func (c LabelsCache) GetOrCreateTree(sampleType int64, l Labels) *LabelsCacheEntry {
-	p, ok := c[sampleType]
+func (c LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *LabelsCacheEntry {
+	p, ok := c[sampleTypeIndex]
 	if !ok {
 		e := NewCacheEntry(l)
-		c[sampleType] = map[uint64]*LabelsCacheEntry{l.Hash(): e}
+		c[sampleTypeIndex] = map[uint64]*LabelsCacheEntry{l.Hash(): e}
 		return e
 	}
 	h := l.Hash()
@@ -57,23 +57,8 @@ func (c LabelsCache) GetOrCreateTree(sampleType int64, l Labels) *LabelsCacheEnt
 	return e
 }
 
-func (c LabelsCache) GetOrCreateTreeByHash(sampleType int64, l Labels, h uint64) *LabelsCacheEntry {
-	p, ok := c[sampleType]
-	if !ok {
-		e := NewCacheEntry(l)
-		c[sampleType] = map[uint64]*LabelsCacheEntry{h: e}
-		return e
-	}
-	e, found := p[h]
-	if !found {
-		e = NewCacheEntry(l)
-		p[h] = e
-	}
-	return e
-}
-
-func (c LabelsCache) Get(sampleType int64, h uint64) (*LabelsCacheEntry, bool) {
-	p, ok := c[sampleType]
+func (c LabelsCache) Get(sampleTypeIndex int, h uint64) (*LabelsCacheEntry, bool) {
+	p, ok := c[sampleTypeIndex]
 	if !ok {
 		return nil, false
 	}
@@ -81,23 +66,14 @@ func (c LabelsCache) Get(sampleType int64, h uint64) (*LabelsCacheEntry, bool) {
 	return x, ok
 }
 
-func (c LabelsCache) Put(sampleType int64, e *LabelsCacheEntry) {
-	p, ok := c[sampleType]
-	if !ok {
-		p = make(map[uint64]*LabelsCacheEntry)
-		c[sampleType] = p
-	}
-	p[e.Hash()] = e
-}
-
-func (c LabelsCache) Remove(sampleType int64, h uint64) {
-	p, ok := c[sampleType]
+func (c LabelsCache) Remove(sampleTypeIndex int, h uint64) {
+	p, ok := c[sampleTypeIndex]
 	if !ok {
 		return
 	}
 	delete(p, h)
 	if len(p) == 0 {
-		delete(c, sampleType)
+		delete(c, sampleTypeIndex)
 	}
 }
 

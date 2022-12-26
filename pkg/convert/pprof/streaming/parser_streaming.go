@@ -235,20 +235,17 @@ func (p *VTStreamingParser) resolveSampleType(v int64) (*valueType, bool) {
 	return nil, false
 }
 
-func (p *VTStreamingParser) iterate(fn func(st *valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
-	for stt, entries := range p.newCache {
-		t, ok := p.resolveSampleType(stt)
-		if !ok {
-			continue
-		}
+func (p *VTStreamingParser) iterate(fn func(stIndex int, st *valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
+	for stIndex, entries := range p.newCache {
+		t := &p.sampleTypes[stIndex]
 
 		for h, e := range entries {
-			keep, err := fn(t, e.Labels, e.Tree)
+			keep, err := fn(stIndex, t, e.Labels, e.Tree)
 			if err != nil {
 				return err
 			}
 			if !keep {
-				p.newCache.Remove(stt, h)
+				p.newCache.Remove(stIndex, h)
 			}
 		}
 	}
@@ -257,27 +254,23 @@ func (p *VTStreamingParser) iterate(fn func(st *valueType, l Labels, t *tree.Tre
 }
 
 func (p *VTStreamingParser) createTrees(newCache LabelsCache) {
-	for i, vi := range p.indexes {
-		_ = i
+	for _, vi := range p.indexes {
 		v := uint64(p.tmpSample.tmpValues[vi])
 		if v == 0 {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			newCache.GetOrCreateTree(p.types[i], CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
+			newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		newCache.GetOrCreateTree(p.types[i], p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
+		newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
 	}
 }
 
-func (p *VTStreamingParser) put(st *valueType, l Labels, t *tree.Tree) (keep bool, err error) {
+func (p *VTStreamingParser) put(stIndex int, st *valueType, l Labels, t *tree.Tree) (keep bool, err error) {
 	sampleTypeBytes := st.resolvedType
-	if err != nil {
-		return false, err
-	}
 	sampleType := sampleTypeBytes
 	sampleTypeConfig, ok := p.sampleTypesConfig[sampleType]
 	if !ok {
@@ -292,7 +285,7 @@ func (p *VTStreamingParser) put(st *valueType, l Labels, t *tree.Tree) (keep boo
 	// Cumulative profiles require two consecutive samples,
 	// therefore we have to cache this trie.
 	if sampleTypeConfig.Cumulative {
-		prev, found := p.previousCache.Get(st.Type, l.Hash())
+		prev, found := p.previousCache.Get(stIndex, l.Hash())
 		if !found {
 			// Keep the current entry in cache.
 			return true, nil
