@@ -193,19 +193,23 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 		}
 
 		if p.StreamingParser {
-			parser := streaming.VTStreamingParserFromPool(streaming.ParserConfig{
+			config := streaming.ParserConfig{
 				SpyName:       md.SpyName,
 				Labels:        md.Key.Labels(),
 				Putter:        putter,
 				SampleTypes:   sampleTypes,
 				SkipExemplars: p.SkipExemplars,
-			})
-			p.parser = parser
+			}
 			if p.PoolStreamingParser {
+				parser := streaming.VTStreamingParserFromPool(config)
+				p.parser = parser
 				defer func() {
+					parser.ResetCache()
 					parser.ReturnToPool()
 					p.parser = nil
 				}()
+			} else {
+				streaming.NewStreamingParser(config)
 			}
 		} else {
 			p.parser = NewParser(ParserConfig{

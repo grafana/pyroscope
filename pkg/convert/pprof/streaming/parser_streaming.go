@@ -335,10 +335,13 @@ func VTStreamingParserFromPool(config ParserConfig) *VTStreamingParser {
 	return res
 }
 
+func (p *VTStreamingParser) ResetCache() {
+	p.previousCache = nil
+	p.newCache = nil
+}
+
 func (p *VTStreamingParser) ReturnToPool() {
 	if p != nil {
-		p.previousCache = nil
-		p.newCache = nil
 		vtStreamingParserPool.Put(p)
 	}
 }
