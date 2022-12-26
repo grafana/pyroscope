@@ -87,18 +87,13 @@ func (s *sample) reset() {
 		s.tmpStack = make([][]byte, 0, 64+8)
 		s.tmpStackLoc = make([]uint64, 0, 64+8)
 		s.tmpValues = make([]int64, 0, 4)
+		s.tmpLabels = make([]label, 0, 4)
 	} else {
 		s.tmpStack = s.tmpStack[:0]
 		s.tmpStackLoc = s.tmpStackLoc[:0]
 		s.tmpValues = s.tmpValues[:0]
+		s.tmpLabels = s.tmpLabels[:0]
 	}
-}
-
-func (s *sample) resetSample() {
-	s.tmpValues = s.tmpValues[:0]
-	s.tmpLabels = s.tmpLabels[:0]
-	s.tmpStack = s.tmpStack[:0]
-	s.tmpStackLoc = s.tmpStackLoc[:0]
 }
 
 func (l *location) addFunction(fn uint64) {

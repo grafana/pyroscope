@@ -181,8 +181,6 @@ func (p *VTStreamingParser) checkKnownSampleTypes() error {
 	if len(p.indexes) == 0 {
 		return fmt.Errorf("unknown sample types")
 	}
-	p.tmpSample.reset()
-
 	return nil
 }
 
