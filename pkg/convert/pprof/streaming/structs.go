@@ -70,6 +70,9 @@ type line struct {
 	functionID uint64
 }
 
+// from,to into profile buffer
+type istr uint64
+
 // k<<32|v
 type labelPacked uint64
 

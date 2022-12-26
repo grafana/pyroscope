@@ -6,7 +6,8 @@ import (
 )
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *location) UnmarshalVT(dAtA []byte, tmpLine *line) error {
+func (m *location) UnmarshalVT(dAtA []byte) error {
+	var tmpLine line
 	m.id = 0
 	m.fn1 = noFunction
 	m.fn2 = noFunction

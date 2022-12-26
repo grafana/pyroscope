@@ -190,7 +190,7 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 			}
 			if parseStructs {
 				p.locations = append(p.locations, location{})
-				if err := p.locations[len(p.locations)-1].UnmarshalVT(dAtA[iNdEx:postIndex], &p.tmpLine); err != nil {
+				if err := p.locations[len(p.locations)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			}
@@ -272,7 +272,8 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 				if bytes.Equal(s, profileIDLabel) {
 					p.profileIDLabelIndex = int64(len(p.strings))
 				}
-				p.strings = append(p.strings, s)
+				ps := istr(iNdEx<<32 | postIndex)
+				p.strings = append(p.strings, ps)
 			}
 			iNdEx = postIndex
 		case 7:

@@ -48,7 +48,7 @@ type VTStreamingParser struct {
 	period              int64
 	periodType          valueType
 	sampleTypes         []valueType
-	strings             [][]byte
+	strings             []istr
 	functions           []function
 	locations           []location
 
@@ -56,8 +56,6 @@ type VTStreamingParser struct {
 	types   []int64
 
 	tmpSample sample
-	//tmpLabel  labelPacked
-	tmpLine line //todo allocate on stack
 
 	finder        finder
 	previousCache LabelsCache
@@ -143,13 +141,6 @@ func (p *VTStreamingParser) countStructs() error {
 	return err
 }
 
-func (p *VTStreamingParser) addString(s []byte) {
-	if bytes.Equal(s, profileIDLabel) {
-		p.profileIDLabelIndex = int64(len(p.strings))
-	}
-	p.strings = append(p.strings, s)
-}
-
 func (p *VTStreamingParser) parseFunctionsAndLocations() error {
 	err := p.UnmarshalVTProfile(p.profile, opFlagParseStructs)
 	if err == nil {
@@ -218,12 +209,14 @@ func (p *VTStreamingParser) addStackFrame(fID uint64) error {
 		return nil
 	}
 
-	p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, p.strings[f.name])
+	ps := p.strings[f.name]
+	p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, p.profile[(ps>>32):(ps&0xffffffff)])
 	return nil
 }
 
 func (p *VTStreamingParser) string(i int64) []byte {
-	return p.strings[i]
+	ps := p.strings[i]
+	return p.profile[(ps >> 32):(ps & 0xffffffff)]
 }
 
 func (p *VTStreamingParser) resolveSampleType(v int64) (*valueType, bool) {
