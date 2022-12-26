@@ -178,12 +178,7 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder, c
 	for i, s := range x.SampleType {
 		st := x.StringTable[s.Type]
 		if p.sampleTypesFilter != nil && p.sampleTypesFilter(st) {
-			if cumulative {
-				if p.sampleTypes[st].Cumulative {
-					indexes = append(indexes, i)
-					types = append(types, s.Type)
-				}
-			} else {
+			if !cumulative || (cumulative && p.sampleTypes[st].Cumulative) {
 				indexes = append(indexes, i)
 				types = append(types, s.Type)
 			}
