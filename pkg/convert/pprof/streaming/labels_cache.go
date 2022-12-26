@@ -14,7 +14,8 @@ func (l Labels) Less(i, j int) bool { return l[i] < l[j] }
 func (l Labels) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 
 func (l Labels) Hash() uint64 {
-	h := xxhash.New()
+	h := xxhash.Digest{}
+	h.Reset()
 	var t [8]byte
 	sort.Sort(l)
 	for _, x := range l {
