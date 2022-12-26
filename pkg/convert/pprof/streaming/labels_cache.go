@@ -4,8 +4,8 @@ import "C"
 import (
 	"encoding/binary"
 	"github.com/cespare/xxhash/v2"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof/streaming/msort"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"golang.org/x/exp/slices"
 )
 
 type Labels []uint64
@@ -19,7 +19,7 @@ func (l Labels) Hash() uint64 {
 	h.Reset()
 	var t [8]byte
 	//sort.Sort(l) // slice to interface conversion does an allocation for a slice header copy
-	msort.SliceUint64(l) // using no slice to
+	slices.Sort(l)
 	for _, x := range l {
 		binary.LittleEndian.PutUint64(t[0:8], uint64(x))
 		_, _ = h.Write(t[:])
