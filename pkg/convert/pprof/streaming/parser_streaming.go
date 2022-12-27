@@ -118,7 +118,7 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 		return err
 	}
 
-	p.newCache = make(LabelsCache)
+	p.newCache.Reset()
 	if err = p.parseSamples(); err != nil {
 		return err
 	}
@@ -230,7 +230,10 @@ func (p *VTStreamingParser) resolveSampleType(v int64) (*valueType, bool) {
 }
 
 func (p *VTStreamingParser) iterate(fn func(stIndex int, st *valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
-	for stIndex, entries := range p.newCache {
+	for stIndex, entries := range p.newCache.sampleTypes {
+		if entries == nil {
+			continue
+		}
 		t := &p.sampleTypes[stIndex]
 
 		for h, e := range entries {
@@ -243,7 +246,8 @@ func (p *VTStreamingParser) iterate(fn func(stIndex int, st *valueType, l Labels
 			}
 		}
 	}
-	p.previousCache = p.newCache
+	p.previousCache, p.newCache = p.newCache, p.previousCache
+	p.newCache.Reset()
 	return nil
 }
 
@@ -321,8 +325,8 @@ func VTStreamingParserFromPool(config ParserConfig) *VTStreamingParser {
 }
 
 func (p *VTStreamingParser) ResetCache() {
-	p.previousCache = nil
-	p.newCache = nil
+	p.previousCache.Reset()
+	p.newCache.Reset()
 }
 
 func (p *VTStreamingParser) ReturnToPool() {
@@ -378,7 +382,8 @@ func (p *VTStreamingParser) Reset(config ParserConfig) {
 	p.labels = config.Labels
 	p.sampleTypesConfig = config.SampleTypes
 	p.skipExemplars = config.SkipExemplars
-	p.previousCache = make(LabelsCache)
+	p.previousCache.Reset()
+	p.newCache.Reset()
 	p.sampleTypesFilter = filterKnownSamples(config.SampleTypes)
 }
 

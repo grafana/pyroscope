@@ -29,7 +29,19 @@ func (l Labels) Hash() uint64 {
 
 // sample type index -> labels hash -> entry
 
-type LabelsCache map[int]map[uint64]*LabelsCacheEntry
+type LabelsCache struct {
+	sampleTypes []map[uint64]*LabelsCacheEntry
+}
+
+func (c *LabelsCache) Reset() {
+	if c.sampleTypes == nil {
+		c.sampleTypes = make([]map[uint64]*LabelsCacheEntry, 4, 4)
+	} else {
+		for i := range c.sampleTypes {
+			c.sampleTypes[i] = nil
+		}
+	}
+}
 
 type LabelsCacheEntry struct {
 	Labels
@@ -40,11 +52,16 @@ func NewCacheEntry(l Labels) *LabelsCacheEntry {
 	return &LabelsCacheEntry{Tree: tree.New(), Labels: CopyLabels(l)}
 }
 
-func (c LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *LabelsCacheEntry {
-	p, ok := c[sampleTypeIndex]
-	if !ok {
+func (c *LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *LabelsCacheEntry {
+	if sampleTypeIndex >= len(c.sampleTypes) {
+		newSampleTypes := make([]map[uint64]*LabelsCacheEntry, sampleTypeIndex+1, sampleTypeIndex+1)
+		copy(newSampleTypes, c.sampleTypes)
+		c.sampleTypes = newSampleTypes
+	}
+	p := c.sampleTypes[sampleTypeIndex]
+	if p == nil {
 		e := NewCacheEntry(l)
-		c[sampleTypeIndex] = map[uint64]*LabelsCacheEntry{l.Hash(): e}
+		c.sampleTypes[sampleTypeIndex] = map[uint64]*LabelsCacheEntry{l.Hash(): e}
 		return e
 	}
 	h := l.Hash()
@@ -56,23 +73,29 @@ func (c LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *LabelsCache
 	return e
 }
 
-func (c LabelsCache) Get(sampleTypeIndex int, h uint64) (*LabelsCacheEntry, bool) {
-	p, ok := c[sampleTypeIndex]
-	if !ok {
+func (c *LabelsCache) Get(sampleTypeIndex int, h uint64) (*LabelsCacheEntry, bool) {
+	if sampleTypeIndex >= len(c.sampleTypes) {
+		return nil, false
+	}
+	p := c.sampleTypes[sampleTypeIndex]
+	if p == nil {
 		return nil, false
 	}
 	x, ok := p[h]
 	return x, ok
 }
 
-func (c LabelsCache) Remove(sampleTypeIndex int, h uint64) {
-	p, ok := c[sampleTypeIndex]
-	if !ok {
+func (c *LabelsCache) Remove(sampleTypeIndex int, h uint64) {
+	if sampleTypeIndex >= len(c.sampleTypes) {
+		return
+	}
+	p := c.sampleTypes[sampleTypeIndex]
+	if p == nil {
 		return
 	}
 	delete(p, h)
 	if len(p) == 0 {
-		delete(c, sampleTypeIndex)
+		c.sampleTypes[sampleTypeIndex] = nil
 	}
 }
 
