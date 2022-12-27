@@ -20,7 +20,7 @@ func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 		}
 	}
 
-	p.createTrees(p.newCache)
+	p.createTrees()
 
 	return nil
 }

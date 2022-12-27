@@ -27,82 +27,108 @@ func (l Labels) Hash() uint64 {
 	return h.Sum64()
 }
 
-// sample type index -> labels hash -> entry
-
 type LabelsCache struct {
-	sampleTypes []map[uint64]*LabelsCacheEntry
+	// sample type -> labels hash -> index to labelRefs and trees
+	indices []map[uint64]int
+	// A label reference points to the subset in labels:
+	// Hight 32 bits is the start offset, lower 32 bits is the subset size.
+	labelRefs []uint64
+	labels    []uint64 // Packed label Key and Value indices
+	trees     []*tree.Tree
 }
 
 func (c *LabelsCache) Reset() {
-	if c.sampleTypes == nil {
-		c.sampleTypes = make([]map[uint64]*LabelsCacheEntry, 4, 4)
+	if c.indices == nil {
+		c.indices = make([]map[uint64]int, 4, 4)
 	} else {
-		for i := range c.sampleTypes {
-			c.sampleTypes[i] = nil
+		for i := range c.indices {
+			c.indices[i] = nil
 		}
+		for i := range c.trees {
+			c.trees[i] = nil
+		}
+		c.labelRefs = c.labelRefs[:0]
+		c.labels = c.labels[:0]
+		c.trees = c.trees[:0]
 	}
 }
 
-type LabelsCacheEntry struct {
-	Labels
-	*tree.Tree
-}
-
-func NewCacheEntry(l Labels) *LabelsCacheEntry {
-	return &LabelsCacheEntry{Tree: tree.New(), Labels: CopyLabels(l)}
-}
-
-func (c *LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *LabelsCacheEntry {
-	if sampleTypeIndex >= len(c.sampleTypes) {
-		newSampleTypes := make([]map[uint64]*LabelsCacheEntry, sampleTypeIndex+1, sampleTypeIndex+1)
-		copy(newSampleTypes, c.sampleTypes)
-		c.sampleTypes = newSampleTypes
+func (c *LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *tree.Tree {
+	if sampleTypeIndex >= len(c.indices) {
+		newSampleTypes := make([]map[uint64]int, sampleTypeIndex+1, sampleTypeIndex+1)
+		copy(newSampleTypes, c.indices)
+		c.indices = newSampleTypes
 	}
-	p := c.sampleTypes[sampleTypeIndex]
+	p := c.indices[sampleTypeIndex]
 	if p == nil {
-		e := NewCacheEntry(l)
-		c.sampleTypes[sampleTypeIndex] = map[uint64]*LabelsCacheEntry{l.Hash(): e}
-		return e
+		e, t := c.newCacheEntry(l)
+		c.indices[sampleTypeIndex] = map[uint64]int{l.Hash(): e}
+		return t
 	}
 	h := l.Hash()
 	e, found := p[h]
-	if !found {
-		e = NewCacheEntry(l)
-		p[h] = e
+	if found {
+		return c.trees[e]
 	}
-	return e
+	e, t := c.newCacheEntry(l)
+	p[h] = e
+	return t
 }
 
-func (c *LabelsCache) Get(sampleTypeIndex int, h uint64) (*LabelsCacheEntry, bool) {
-	if sampleTypeIndex >= len(c.sampleTypes) {
+func (c *LabelsCache) Get(sampleTypeIndex int, h uint64) (*tree.Tree, bool) {
+	if sampleTypeIndex >= len(c.indices) {
 		return nil, false
 	}
-	p := c.sampleTypes[sampleTypeIndex]
+	p := c.indices[sampleTypeIndex]
 	if p == nil {
 		return nil, false
 	}
 	x, ok := p[h]
-	return x, ok
+	return c.trees[x], ok
 }
 
 func (c *LabelsCache) Remove(sampleTypeIndex int, h uint64) {
-	if sampleTypeIndex >= len(c.sampleTypes) {
+	if sampleTypeIndex >= len(c.indices) {
 		return
 	}
-	p := c.sampleTypes[sampleTypeIndex]
+	p := c.indices[sampleTypeIndex]
 	if p == nil {
 		return
 	}
 	delete(p, h)
 	if len(p) == 0 {
-		c.sampleTypes[sampleTypeIndex] = nil
+		c.indices[sampleTypeIndex] = nil
 	}
 }
 
-func CopyLabels(labels Labels) Labels {
-	l := make(Labels, len(labels))
-	copy(l, labels)
-	return l
+func (c *LabelsCache) newCacheEntry(l Labels) (int, *tree.Tree) {
+	from := len(c.labels)
+	for _, u := range l {
+		c.labels = append(c.labels, u)
+	}
+	to := len(c.labels)
+	res := len(c.labelRefs)
+	c.labelRefs = append(c.labelRefs, uint64(from<<32|to))
+	t := tree.New()
+	c.trees = append(c.trees, t)
+	return res, t
+}
+
+func (c *LabelsCache) iterate(f func(sampleTypeIndex int, l Labels, lh uint64, t *tree.Tree) error) error {
+	for sampleTypeIndex, p := range c.indices {
+		if p == nil {
+			continue
+		}
+		for h, x := range p {
+			labelRef := c.labelRefs[x]
+			l := c.labels[labelRef>>32 : labelRef&0xffffffff]
+			err := f(sampleTypeIndex, l, h, c.trees[x])
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // CutLabel creates a copy of labels without label i.

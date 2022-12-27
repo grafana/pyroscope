@@ -229,41 +229,39 @@ func (p *VTStreamingParser) resolveSampleType(v int64) (*valueType, bool) {
 	return nil, false
 }
 
-func (p *VTStreamingParser) iterate(fn func(stIndex int, st *valueType, l Labels, t *tree.Tree) (keep bool, err error)) error {
-	for stIndex, entries := range p.newCache.sampleTypes {
-		if entries == nil {
-			continue
-		}
+func (p *VTStreamingParser) iterate(fn func(stIndex int, st *valueType, l Labels, tree *tree.Tree) (keep bool, err error)) error {
+	err := p.newCache.iterate(func(stIndex int, l Labels, lh uint64, tree *tree.Tree) error {
 		t := &p.sampleTypes[stIndex]
-
-		for h, e := range entries {
-			keep, err := fn(stIndex, t, e.Labels, e.Tree)
-			if err != nil {
-				return err
-			}
-			if !keep {
-				p.newCache.Remove(stIndex, h)
-			}
+		keep, err := fn(stIndex, t, l, tree)
+		if err != nil {
+			return err
 		}
+		if !keep {
+			p.newCache.Remove(stIndex, lh)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	p.previousCache, p.newCache = p.newCache, p.previousCache
 	p.newCache.Reset()
 	return nil
 }
 
-func (p *VTStreamingParser) createTrees(newCache LabelsCache) {
+func (p *VTStreamingParser) createTrees() {
 	for _, vi := range p.indexes {
 		v := uint64(p.tmpSample.tmpValues[vi])
 		if v == 0 {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
+			p.newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
+		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
 	}
 }
 
