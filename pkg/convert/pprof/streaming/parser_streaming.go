@@ -196,7 +196,6 @@ func (p *VTStreamingParser) addStackLocation(lID uint64) error {
 		if err := p.addStackFrame(loc.fn1); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
@@ -229,10 +228,10 @@ func (p *VTStreamingParser) resolveSampleType(v int64) (*valueType, bool) {
 	return nil, false
 }
 
-func (p *VTStreamingParser) iterate(fn func(stIndex int, st *valueType, l Labels, tree *tree.Tree) (keep bool, err error)) error {
-	err := p.newCache.iterate(func(stIndex int, l Labels, lh uint64, tree *tree.Tree) error {
+func (p *VTStreamingParser) iterate(fn func(stIndex int, st *valueType, l Labels, tr *tree.Tree) (keep bool, err error)) error {
+	err := p.newCache.iterate(func(stIndex int, l Labels, lh uint64, tr *tree.Tree) error {
 		t := &p.sampleTypes[stIndex]
-		keep, err := fn(stIndex, t, l, tree)
+		keep, err := fn(stIndex, t, l, tr)
 		if err != nil {
 			return err
 		}

@@ -123,5 +123,4 @@ func UnmarshalVTLabel(dAtA []byte) (uint64, error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 	return uint64(k<<32 | v), nil
-
 }
