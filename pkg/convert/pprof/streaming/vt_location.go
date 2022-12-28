@@ -5,13 +5,21 @@ import (
 	"io"
 )
 
+// location references into functions slice as packed uint64(from << 32 | to)
+type locationFunctions struct {
+	functions []uint64
+}
+
+func (l *locationFunctions) reset() {
+	l.functions = l.functions[:0]
+}
+
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *location) UnmarshalVT(dAtA []byte) error {
+func (m *location) UnmarshalVT(dAtA []byte, functions *locationFunctions) error {
 	var tmpLine line
 	m.id = 0
-	m.fn1 = noFunction
-	m.fn2 = noFunction
-	m.extraFn = nil
+	m.functionsRef = 0
+	refFrom := len(functions.functions)
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -130,7 +138,7 @@ func (m *location) UnmarshalVT(dAtA []byte) error {
 			if err := tmpLine.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.addFunction(tmpLine.functionID)
+			functions.functions = append(functions.functions, tmpLine.functionID)
 			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {
@@ -173,5 +181,8 @@ func (m *location) UnmarshalVT(dAtA []byte) error {
 	if iNdEx > l {
 		return io.ErrUnexpectedEOF
 	}
+	refTo := len(functions.functions)
+	ref := uint64(refFrom<<32 | refTo)
+	m.functionsRef = ref
 	return nil
 }

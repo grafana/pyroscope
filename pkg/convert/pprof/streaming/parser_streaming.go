@@ -52,6 +52,8 @@ type VTStreamingParser struct {
 	functions           []function
 	locations           []location
 
+	functionRefs locationFunctions
+
 	indexes []int
 	types   []int64
 
@@ -142,6 +144,7 @@ func (p *VTStreamingParser) countStructs() error {
 }
 
 func (p *VTStreamingParser) parseFunctionsAndLocations() error {
+	p.functionRefs.reset()
 	err := p.UnmarshalVTProfile(p.profile, opFlagParseStructs)
 	if err == nil {
 		p.finder = newFinder(p.functions, p.locations)
@@ -182,28 +185,17 @@ func (p *VTStreamingParser) parseSamples() error {
 func (p *VTStreamingParser) addStackLocation(lID uint64) error {
 	loc, ok := p.finder.FindLocation(lID)
 	if ok {
-		if loc.extraFn != nil {
-			for i := len(loc.extraFn) - 1; i >= 0; i-- {
-				fID := loc.extraFn[i]
-				if err := p.addStackFrame(fID); err != nil {
-					return err
-				}
+		ref := loc.functionsRef
+		functions := p.functionRefs.functions[(ref >> 32):(ref & 0xffffffff)]
+		for i := len(functions) - 1; i >= 0; i-- {
+			if err := p.addStackFrame(functions[i]); err != nil {
+				return err
 			}
-		}
-		if err := p.addStackFrame(loc.fn2); err != nil {
-			return err
-		}
-		if err := p.addStackFrame(loc.fn1); err != nil {
-			return err
 		}
 	}
 	return nil
 }
 func (p *VTStreamingParser) addStackFrame(fID uint64) error {
-	//if fID == 0 {
-	if fID == noFunction {
-		return nil
-	}
 	f, ok := p.finder.FindFunction(fID)
 	if !ok {
 		return nil

@@ -55,15 +55,16 @@ type function struct {
 	name int64
 }
 
-const noFunction = 0xffffffffffffffff
+//const noFunction = 0xffffffffffffffff
 
 type location struct {
 	id uint64
-
-	fn1 uint64
-	fn2 uint64
-
-	extraFn []uint64 // todo maybe try make it a pointer to a slice?
+	// packed from << 32 | to into values
+	functionsRef uint64
+	//fn1 uint64
+	//fn2 uint64
+	//
+	//extraFn []uint64 // todo maybe try make it a pointer to a slice?
 }
 
 type line struct {
@@ -95,16 +96,4 @@ func (s *sample) reset() {
 		s.tmpValues = s.tmpValues[:0]
 		s.tmpLabels = s.tmpLabels[:0]
 	}
-}
-
-func (l *location) addFunction(fn uint64) {
-	if l.fn1 == noFunction {
-		l.fn1 = fn
-		return
-	}
-	if l.fn2 == noFunction {
-		l.fn2 = fn
-		return
-	}
-	l.extraFn = append(l.extraFn, fn) //todo compare 1 field + slice,2 fields + slice, slice-only
 }
