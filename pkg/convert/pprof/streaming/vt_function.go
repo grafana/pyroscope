@@ -3,6 +3,7 @@ package streaming
 import (
 	"fmt"
 	"io"
+	"math"
 )
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
@@ -58,7 +59,7 @@ func (m *function) UnmarshalVT(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
 			}
-			m.name = 0
+			name := int64(0)
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -68,11 +69,15 @@ func (m *function) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.name |= int64(b&0x7F) << shift
+				name |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			if name < 0 || name > math.MaxInt32 {
+				return fmt.Errorf("wromg mamae %d", name)
+			}
+			m.name = int32(name)
 		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field SystemName", wireType)
@@ -96,7 +101,7 @@ func (m *function) UnmarshalVT(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Filename", wireType)
 			}
-			//m.Filename = 0
+			filename := int64(0)
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -106,11 +111,15 @@ func (m *function) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.Filename |= int64(b&0x7F) << shift
+				filename |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			if filename < 0 || filename > math.MaxInt32 {
+				return fmt.Errorf("wromg filename %d", filename)
+			}
+			m.filename = int32(filename)
 		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field StartLine", wireType)

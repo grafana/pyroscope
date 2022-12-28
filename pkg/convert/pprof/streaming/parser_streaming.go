@@ -15,6 +15,15 @@ import (
 	"time"
 )
 
+type StackFormatter int
+
+const (
+	// StackFrameFormatterGo use only function name
+	StackFrameFormatterGo = 0
+	// StackFrameFormatterRuby use function name, line number, function name
+	StackFrameFormatterRuby = 1
+)
+
 var PPROFBufPool = bytebufferpool.Pool{}
 
 type ParserConfig struct {
@@ -23,6 +32,7 @@ type ParserConfig struct {
 	Labels        map[string]string
 	SkipExemplars bool
 	SampleTypes   map[string]*tree.SampleTypeConfig
+	Formatter     StackFormatter
 }
 
 type VTStreamingParser struct {
@@ -31,6 +41,7 @@ type VTStreamingParser struct {
 	labels            map[string]string
 	skipExemplars     bool
 	sampleTypesConfig map[string]*tree.SampleTypeConfig
+	Formatter         StackFormatter
 
 	sampleTypesFilter func(string) bool
 
@@ -52,7 +63,7 @@ type VTStreamingParser struct {
 	functions           []function
 	locations           []location
 
-	functionRefs locationFunctions
+	lineRefs locationFunctions
 
 	indexes []int
 	types   []int64
@@ -144,7 +155,7 @@ func (p *VTStreamingParser) countStructs() error {
 }
 
 func (p *VTStreamingParser) parseFunctionsAndLocations() error {
-	p.functionRefs.reset()
+	p.lineRefs.reset()
 	err := p.UnmarshalVTProfile(p.profile, opFlagParseStructs)
 	if err == nil {
 		p.finder = newFinder(p.functions, p.locations)
@@ -185,24 +196,38 @@ func (p *VTStreamingParser) parseSamples() error {
 func (p *VTStreamingParser) addStackLocation(lID uint64) error {
 	loc, ok := p.finder.FindLocation(lID)
 	if ok {
-		ref := loc.functionsRef
-		functions := p.functionRefs.functions[(ref >> 32):(ref & 0xffffffff)]
-		for i := len(functions) - 1; i >= 0; i-- {
-			if err := p.addStackFrame(functions[i]); err != nil {
+		ref := loc.linesRef
+		lines := p.lineRefs.lines[(ref >> 32):(ref & 0xffffffff)]
+		for i := len(lines) - 1; i >= 0; i-- {
+			if err := p.addStackFrame(&lines[i]); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
 }
-func (p *VTStreamingParser) addStackFrame(fID uint64) error {
+
+func (p *VTStreamingParser) addStackFrame(l *line) error {
+	fID := l.functionID
 	f, ok := p.finder.FindFunction(fID)
 	if !ok {
 		return nil
 	}
-
-	ps := p.strings[f.name]
-	p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, p.profile[(ps>>32):(ps&0xffffffff)])
+	switch p.Formatter {
+	case StackFrameFormatterRuby:
+		pFuncName := p.strings[f.name]
+		pFileName := p.strings[f.filename]
+		frame := []byte(fmt.Sprintf("%s:%d - %s",
+			p.profile[(pFileName>>32):(pFileName&0xffffffff)],
+			l.line,
+			p.profile[(pFuncName>>32):(pFuncName&0xffffffff)]))
+		p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, frame)
+	default:
+	case StackFrameFormatterGo:
+		pFuncName := p.strings[f.name]
+		frame := p.profile[(pFuncName >> 32):(pFuncName & 0xffffffff)]
+		p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, frame)
+	}
 	return nil
 }
 
@@ -374,6 +399,7 @@ func (p *VTStreamingParser) Reset(config ParserConfig) {
 	p.previousCache.Reset()
 	p.newCache.Reset()
 	p.sampleTypesFilter = filterKnownSamples(config.SampleTypes)
+	p.Formatter = config.Formatter
 }
 
 func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(string) bool {
@@ -398,4 +424,11 @@ func grow[T any](it []T, n int) []T {
 		return make([]T, 0, n)
 	}
 	return it[:0]
+}
+
+func StackFrameFormatterForSpyName(spyName string) StackFormatter {
+	if spyName == "rbspy" {
+		return StackFrameFormatterRuby
+	}
+	return StackFrameFormatterGo
 }

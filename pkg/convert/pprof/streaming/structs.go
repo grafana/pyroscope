@@ -51,8 +51,9 @@ type valueType struct {
 	resolvedUnit string
 }
 type function struct {
-	id   uint64
-	name int64
+	id       uint64
+	name     int32
+	filename int32
 }
 
 //const noFunction = 0xffffffffffffffff
@@ -60,15 +61,12 @@ type function struct {
 type location struct {
 	id uint64
 	// packed from << 32 | to into values
-	functionsRef uint64
-	//fn1 uint64
-	//fn2 uint64
-	//
-	//extraFn []uint64 // todo maybe try make it a pointer to a slice?
+	linesRef uint64
 }
 
 type line struct {
 	functionID uint64
+	line       int64
 }
 
 // from,to into profile buffer

@@ -8,6 +8,7 @@ import (
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (m *line) UnmarshalVT(dAtA []byte) error {
 	m.functionID = 0
+	m.line = 0
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -59,7 +60,7 @@ func (m *line) UnmarshalVT(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Line", wireType)
 			}
-			//m.Line = 0
+			iline := int64(0)
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -69,26 +70,14 @@ func (m *line) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				//m.Line |= int64(b&0x7F) << shift
+				iline |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.line = iline
 		default:
 			return ErrUnknownField
-			//iNdEx = preIndex
-			//skippy, err := skip(dAtA[iNdEx:])
-			//if err != nil {
-			//	return err
-			//}
-			//if (skippy < 0) || (iNdEx+skippy) < 0 {
-			//	return ErrInvalidLength
-			//}
-			//if (iNdEx + skippy) > l {
-			//	return io.ErrUnexpectedEOF
-			//}
-			//m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			//iNdEx += skippy
 		}
 	}
 

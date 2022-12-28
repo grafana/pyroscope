@@ -199,6 +199,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 				Putter:        putter,
 				SampleTypes:   sampleTypes,
 				SkipExemplars: p.SkipExemplars,
+				Formatter:     streaming.StackFrameFormatterForSpyName(md.SpyName),
 			}
 			if p.PoolStreamingParser {
 				parser := streaming.VTStreamingParserFromPool(config)
