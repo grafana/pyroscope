@@ -2,10 +2,11 @@ package streaming
 
 import "C"
 import (
-	"encoding/binary"
 	"github.com/cespare/xxhash/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"golang.org/x/exp/slices"
+	"reflect"
+	"unsafe"
 )
 
 type Labels []uint64
@@ -14,17 +15,19 @@ func (l Labels) Len() int           { return len(l) }
 func (l Labels) Less(i, j int) bool { return l[i] < l[j] }
 func (l Labels) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 
+var zeroHash = xxhash.Sum64(nil)
+
 func (l Labels) Hash() uint64 {
-	h := xxhash.Digest{}
-	h.Reset()
-	var t [8]byte
-	//sort.Sort(l) // slice to interface conversion does an allocation for a slice header copy
-	slices.Sort(l)
-	for _, x := range l {
-		binary.LittleEndian.PutUint64(t[0:8], uint64(x))
-		_, _ = h.Write(t[:])
+	if len(l) == 0 {
+		return zeroHash
 	}
-	return h.Sum64()
+	slices.Sort(l) //sort.Sort(l) // slice to interface conversion does an allocation for a slice header copy
+	var raw []byte
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&raw))
+	sh.Data = uintptr(unsafe.Pointer(&l[0]))
+	sh.Len = len(l) * 8
+	sh.Cap = len(l) * 8
+	return xxhash.Sum64(raw)
 }
 
 type LabelsCache struct {

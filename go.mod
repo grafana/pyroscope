@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.37
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cespare/xxhash/v2 v2.1.2
+	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/clarkduvall/hyperloglog v0.0.0-20171127014514-a0107a5d8004
 	github.com/cosmtrek/air v1.12.2
@@ -63,7 +63,7 @@ require (
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0
 	golang.org/x/crypto v0.1.0
-	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15
+	golang.org/x/exp v0.0.0-20221227203929-1b447090c38c
 	golang.org/x/net v0.1.0
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
