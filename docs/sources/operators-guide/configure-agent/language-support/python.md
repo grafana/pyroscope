@@ -62,3 +62,70 @@ pprof -http :6060 "http://127.0.0.1:8081/debug/pprof/profile?seconds=5"
 ```
 
 [pprof]: https://github.com/google/pprof
+
+## How to instrument a Django application
+
+You can use [django-pypprof], a wrapper around pypprof to add the endpoints to
+your Django applications. The following instructions are provided as information,
+refer to django-pypprof's documentation for up-to-date instructions.
+
+[django-pypprof]: https://gitlab.com/prologin/tech/packages/django-pypprof
+
+First, install the required Python modules:
+
+```shell
+# Add the modules to the requirements.txt file
+cat >> requirements.txt <<EOF
+--extra-index-url=https://gitlab.com/api/v4/groups/prologin/-/packages/pypi/simple
+django-pypprof==1.0.0
+EOF
+
+# Build the module's wheels locally
+pip3 wheel --wheel-dir=/tmp/wheels -r requirements.txt
+
+# Install the modules
+pip3 install --no-index --find-links=/tmp/wheels -r requirements.txt
+```
+
+In your Django settings, add `django_pypprof` to your `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+    ...
+    'django_pypprof',
+    ...
+]
+```
+
+Add the endpoints to your `urls.py`:
+
+```python
+urlpatterns = [
+    ...
+    path('debug/pprof/', include('django_pypprof.urls')),
+    ...
+]
+```
+
+### Configuration of django-pypprof
+
+You can configure the sample rate of `mprofile` by adding the following setting:
+
+```python
+PPROF_SAMPLE_RATE = 128 * 1024 # the default
+```
+
+### Configuration of scrape targets
+
+Use the following profiling configuration when configuring a Django scrape target:
+
+```yaml
+profiling_config:
+  pprof_config:
+    block:
+      enabled: false
+    mutex:
+      enabled: false
+    memory:
+      path: /debug/pprof/heap
+```
