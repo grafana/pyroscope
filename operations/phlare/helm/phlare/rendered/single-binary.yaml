@@ -144,9 +144,9 @@ spec:
   type: ClusterIP
   ports:
     - port: 4100
-      targetPort: http
+      targetPort: http2
       protocol: TCP
-      name: http
+      name: http2
   selector:
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
@@ -168,9 +168,9 @@ spec:
   type: ClusterIP
   ports:
     - port: 4100
-      targetPort: http
+      targetPort: http2
       protocol: TCP
-      name: http
+      name: http2
   selector:
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
@@ -227,7 +227,7 @@ spec:
             - "-config.file=/etc/phlare/config.yaml"
             - "-log.level=debug"
           ports:
-            - name: http
+            - name: http2
               containerPort: 4100
               protocol: TCP
             - name: memberlist
@@ -236,7 +236,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /ready
-              port: http
+              port: http2
           volumeMounts:
             - name: config
               mountPath: /etc/phlare/config.yaml
