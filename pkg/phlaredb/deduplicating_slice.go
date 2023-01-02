@@ -111,7 +111,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 	if s.buffer == nil {
 		s.buffer = parquet.NewBuffer(
 			s.persister.Schema(),
-			s.persister.SortingColumns(),
+			parquet.SortingRowGroupConfig(s.persister.SortingColumns()),
 			parquet.ColumnBufferCapacity(s.cfg.MaxBufferRowCount),
 		)
 	}
