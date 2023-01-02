@@ -7,11 +7,6 @@ import (
 	"github.com/segmentio/parquet-go"
 )
 
-type SortingColumns interface {
-	parquet.RowGroupOption
-	parquet.WriterOption
-}
-
 type PersisterName interface {
 	Name() string
 }
@@ -21,7 +16,7 @@ type Persister[T any] interface {
 	Schema() *parquet.Schema
 	Deconstruct(parquet.Row, uint64, T) parquet.Row
 	Reconstruct(parquet.Row) (uint64, T, error)
-	SortingColumns() SortingColumns
+	SortingColumns() parquet.SortingOption
 }
 
 type ReadWriter[T any, P Persister[T]] struct{}
@@ -32,7 +27,7 @@ func (*ReadWriter[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
 		rows      = make([]parquet.Row, len(elements))
 	)
 
-	buffer := parquet.NewBuffer(persister.Schema(), persister.SortingColumns())
+	buffer := parquet.NewBuffer(persister.Schema(), parquet.SortingRowGroupConfig(persister.SortingColumns()))
 
 	for pos := range rows {
 		rows[pos] = persister.Deconstruct(rows[pos], uint64(pos), elements[pos])

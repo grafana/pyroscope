@@ -123,9 +123,15 @@ func (groupType) Decode(_ encoding.Values, _ []byte, _ encoding.Encoding) (encod
 	panic("cannot decode parquet group")
 }
 
+func (groupType) EstimateDecodeSize(_ int, _ []byte, _ encoding.Encoding) int {
+	panic("cannot estimate decode size of parquet group")
+}
+
 func (groupType) Length() int { return 0 }
 
-func (groupType) EstimateSize(int) int64 { return 0 }
+func (groupType) EstimateSize(int) int { return 0 }
+
+func (groupType) EstimateNumValues(int) int { return 0 }
 
 func (groupType) ColumnOrder() *format.ColumnOrder { return nil }
 

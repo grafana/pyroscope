@@ -26,7 +26,7 @@ func (*StringPersister) Schema() *parquet.Schema {
 	return stringsSchema
 }
 
-func (*StringPersister) SortingColumns() SortingColumns {
+func (*StringPersister) SortingColumns() parquet.SortingOption {
 	return parquet.SortingColumns(
 		parquet.Ascending("ID"),
 		parquet.Ascending("String"),
