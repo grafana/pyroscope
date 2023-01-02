@@ -19,7 +19,7 @@ func (*LocationPersister) Schema() *parquet.Schema {
 	return locationsSchema
 }
 
-func (*LocationPersister) SortingColumns() SortingColumns {
+func (*LocationPersister) SortingColumns() parquet.SortingOption {
 	return parquet.SortingColumns(
 		parquet.Ascending("Id"),
 		parquet.Ascending("MappingId"),

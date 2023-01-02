@@ -100,7 +100,7 @@ func (*ProfilePersister) Schema() *parquet.Schema {
 	return profilesSchema
 }
 
-func (*ProfilePersister) SortingColumns() SortingColumns {
+func (*ProfilePersister) SortingColumns() parquet.SortingOption {
 	return parquet.SortingColumns(
 		parquet.Ascending("SeriesIndex"),
 		parquet.Ascending("TimeNanos"),

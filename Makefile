@@ -61,15 +61,14 @@ go/test:
 	$(GO) test $(GO_TEST_FLAGS) ./...
 
 .PHONY: build
-build: go/bin plugin/datasource/build ## Build all packages
-
+build: go/bin
 
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 	# remove local git tags coming from helm chart release
 	git tag -d $(shell git tag -l "phlare-*")
 	# ensure there is a docker cli command
-	@which docker || { apt-get update && apt-get install -y docker.io; } 
+	@which docker || { apt-get update && apt-get install -y docker.io; }
 	@docker info > /dev/null
 
 .PHONY: release
@@ -111,25 +110,6 @@ go/mod:
 	GO111MODULE=on go mod download
 	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
-	cd ./grafana/phlare-datasource/ && GO111MODULE=on go mod download
-	cd ./grafana/phlare-datasource/ && GO111MODULE=on go mod verify
-	cd ./grafana/phlare-datasource/ && GO111MODULE=on go mod tidy
-
-
-.PHONY: plugin/datasource/build
-plugin/datasource/build: $(BIN)/mage
-	pushd ./grafana/phlare-datasource && \
-	yarn install && yarn build && \
-	$(BIN)/mage -v \
-
-.PHONY: plugin/flamegraph/build
-plugin/flamegraph/build:
-	pushd ./grafana/flamegraph && \
-	yarn install && yarn build
-
-.PHONY: start/grafana
-start/grafana: plugin/datasource/build plugin/flamegraph/build
-	./tools/grafana-phlare
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -152,10 +132,6 @@ define docker_buildx
 	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
 endef
 
-define docker_buildx_grafana
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION)  -t $(IMAGE_PREFIX)grafana-phlare:$(IMAGE_TAG) -f grafana/Dockerfile .
-endef
-
 define deploy
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	# Load image into nodes
@@ -174,14 +150,6 @@ docker-image/phlare/build: go/bin
 .PHONY: docker-image/phlare/push
 docker-image/phlare/push: go/bin
 	$(call docker_buildx,--push)
-
-.PHONY: docker-image/grafana/build
-docker-image/grafana/build:
-	$(call docker_buildx_grafana,--load)
-
-.PHONY: docker-image/grafana/push
-docker-image/grafana/push:
-	$(call docker_buildx_grafana,--push)
 
 define UPDATER_CONFIG_JSON
 {
