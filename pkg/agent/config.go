@@ -13,6 +13,7 @@ import (
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/discovery/http"
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
 
@@ -139,6 +140,7 @@ func (c *ScrapeConfig) Validate() error {
 type ServiceDiscoveryConfig struct {
 	StaticConfigs       discovery.StaticConfig `yaml:"static_configs"`
 	KubernetesSDConfigs []*kubernetes.SDConfig `yaml:"kubernetes_sd_configs,omitempty"`
+	HTTPSDConfigs       []*http.SDConfig       `yaml:"http_sd_configs,omitempty"`
 }
 
 func (cfg ServiceDiscoveryConfig) Configs() (res discovery.Configs) {
@@ -146,6 +148,9 @@ func (cfg ServiceDiscoveryConfig) Configs() (res discovery.Configs) {
 		res = append(res, x)
 	}
 	for _, x := range cfg.KubernetesSDConfigs {
+		res = append(res, x)
+	}
+	for _, x := range cfg.HTTPSDConfigs {
 		res = append(res, x)
 	}
 	return res
