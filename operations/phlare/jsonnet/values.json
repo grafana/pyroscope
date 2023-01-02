@@ -73,7 +73,7 @@
     "securityContext": {},
     "service": {
       "port": 4100,
-      "port_name": "http",
+      "port_name": "http2",
       "type": "ClusterIP"
     },
     "serviceAccount": {
