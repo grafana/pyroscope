@@ -1246,6 +1246,10 @@ static_configs:
 kubernetes_sd_configs:
    [ - <kubernetes_sd_config> ... ]
 
+# List of HTTP service discovery configurations.
+http_sd_configs:
+   [ - <http_sd_config> ... ]
+
 # Sets the `Authorization` header on every scrape request with the
 # configured username and password.
 # password and password_file are mutually exclusive.

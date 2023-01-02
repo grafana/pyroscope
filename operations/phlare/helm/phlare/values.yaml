@@ -9,7 +9,7 @@ phlare:
     repository: grafana/phlare
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "0.1.0"
+    tag: "0.1.1"
 
   extraArgs:
     log.level: debug
@@ -135,10 +135,11 @@ phlare:
     storage:
       backend: s3
       s3:
-        endpoint: "{{ include "phlare.fullname" . }}-minio:9090"
+        endpoint: "{{ include "phlare.fullname" . }}-minio:9000"
         bucket_name: {{(index .Values.minio.buckets 0).name | quote }}
         access_key_id: {{ .Values.minio.rootUser | quote }}
         secret_access_key: {{ .Values.minio.rootPassword | quote }}
+        insecure: true
     {{- end }}
 
     scrape_configs:

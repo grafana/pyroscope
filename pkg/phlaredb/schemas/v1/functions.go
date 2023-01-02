@@ -18,7 +18,7 @@ func (*FunctionPersister) Schema() *parquet.Schema {
 	return functionsSchema
 }
 
-func (*FunctionPersister) SortingColumns() SortingColumns {
+func (*FunctionPersister) SortingColumns() parquet.SortingOption {
 	return parquet.SortingColumns(
 		parquet.Ascending("Id"),
 		parquet.Ascending("Name"),
