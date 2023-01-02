@@ -139,28 +139,6 @@ jobs:
         run: |
           make docker-image/phlare/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
-  build-push-grafana:
-    if: github.event_name == 'push' && github.repository == 'grafana/phlare'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Login to GCR
-        uses: docker/login-action@v2
-        with:
-          registry: us.gcr.io
-          username: _json_key
-          password: ${{ secrets.GCR_JSON_KEY }}
-      - name: Build & push multi-arch image
-        id: build-push-grafana
-        run: |
-          make docker-image/grafana/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
-
   deploy-phlare-dev-001:
     if: github.event_name == 'push' && github.repository == 'grafana/phlare'
     runs-on: ubuntu-latest
