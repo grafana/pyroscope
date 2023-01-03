@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package ingester.v1alpha1;
 
-import "types/v1alpha1/types.proto";
 import "push/v1alpha1/push.proto";
+import "types/v1alpha1/types.proto";
 
 service IngesterService {
   rpc Push(push.v1alpha1.PushRequest) returns (push.v1alpha1.PushResponse) {}
