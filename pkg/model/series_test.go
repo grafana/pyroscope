@@ -3,50 +3,50 @@ package model
 import (
 	"testing"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 func TestMergeSeries(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		in   [][]*commonv1.Series
-		out  []*commonv1.Series
+		in   [][]*typesv1alpha1.Series
+		out  []*typesv1alpha1.Series
 	}{
 		{
 			name: "empty",
-			in:   [][]*commonv1.Series{},
-			out:  []*commonv1.Series(nil),
+			in:   [][]*typesv1alpha1.Series{},
+			out:  []*typesv1alpha1.Series(nil),
 		},
 		{
 			name: "merge two series",
-			in: [][]*commonv1.Series{
+			in: [][]*typesv1alpha1.Series{
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1alpha1.Point{{Timestamp: 1, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 2, Value: 2}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1alpha1.Point{{Timestamp: 2, Value: 2}}},
 				},
 			},
-			out: []*commonv1.Series{
-				{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
+			out: []*typesv1alpha1.Series{
+				{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1alpha1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
 			},
 		},
 		{
 			name: "merge multiple series",
-			in: [][]*commonv1.Series{
+			in: [][]*typesv1alpha1.Series{
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}}},
-					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1alpha1.Point{{Timestamp: 1, Value: 1}}},
+					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*typesv1alpha1.Point{{Timestamp: 1, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 2, Value: 2}}},
-					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{Timestamp: 3, Value: 3}}},
+					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1alpha1.Point{{Timestamp: 2, Value: 2}}},
+					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*typesv1alpha1.Point{{Timestamp: 3, Value: 3}}},
 				},
 			},
-			out: []*commonv1.Series{
-				{Labels: LabelsFromStrings("foor", "bar"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
-				{Labels: LabelsFromStrings("foor", "buzz"), Points: []*commonv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 3, Value: 3}}},
+			out: []*typesv1alpha1.Series{
+				{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1alpha1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
+				{Labels: LabelsFromStrings("foor", "buzz"), Points: []*typesv1alpha1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 3, Value: 3}}},
 			},
 		},
 	} {

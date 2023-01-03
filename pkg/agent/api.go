@@ -8,19 +8,19 @@ import (
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
-	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
-	"github.com/grafana/phlare/pkg/gen/agent/v1/agentv1connect"
+	agentv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1alpha1"
+	"github.com/grafana/phlare/api/gen/proto/go/agent/v1alpha1/agentv1alpha1connect"
 )
 
-func (a *Agent) GetTargets(ctx context.Context, req *agentv1.GetTargetsRequest) (*agentv1.GetTargetsResponse, error) {
-	showActive := req.State == agentv1.State_STATE_UNSPECIFIED || req.State == agentv1.State_STATE_ACTIVE
-	showDropped := req.State == agentv1.State_STATE_UNSPECIFIED || req.State == agentv1.State_STATE_DROPPED
+func (a *Agent) GetTargets(ctx context.Context, req *agentv1alpha1.GetTargetsRequest) (*agentv1alpha1.GetTargetsResponse, error) {
+	showActive := req.State == agentv1alpha1.State_STATE_UNSPECIFIED || req.State == agentv1alpha1.State_STATE_ACTIVE
+	showDropped := req.State == agentv1alpha1.State_STATE_UNSPECIFIED || req.State == agentv1alpha1.State_STATE_DROPPED
 
-	resp := agentv1.GetTargetsResponse{}
+	resp := agentv1alpha1.GetTargetsResponse{}
 
 	if showActive {
 		targetsActive := a.ActiveTargets()
-		resp.ActiveTargets = make([]*agentv1.Target, 0, len(targetsActive))
+		resp.ActiveTargets = make([]*agentv1alpha1.Target, 0, len(targetsActive))
 		for group, tg := range targetsActive {
 			for _, t := range tg {
 				lastErrStr := ""
@@ -30,7 +30,7 @@ func (a *Agent) GetTargets(ctx context.Context, req *agentv1.GetTargetsRequest) 
 				}
 
 				var err error
-				resp.ActiveTargets = append(resp.ActiveTargets, &agentv1.Target{
+				resp.ActiveTargets = append(resp.ActiveTargets, &agentv1alpha1.Target{
 					Labels:           t.Labels().Map(),
 					DiscoveredLabels: t.Target.DiscoveredLabels().Map(),
 					ScrapePool:       group,
@@ -55,9 +55,9 @@ func (a *Agent) GetTargets(ctx context.Context, req *agentv1.GetTargetsRequest) 
 
 	if showDropped {
 		tDropped := a.DroppedTargets()
-		resp.DroppedTargets = make([]*agentv1.Target, 0, len(tDropped))
+		resp.DroppedTargets = make([]*agentv1alpha1.Target, 0, len(tDropped))
 		for _, t := range tDropped {
-			resp.DroppedTargets = append(resp.DroppedTargets, &agentv1.Target{
+			resp.DroppedTargets = append(resp.DroppedTargets, &agentv1alpha1.Target{
 				Labels:           t.Labels().Map(),
 				DiscoveredLabels: t.Target.DiscoveredLabels().Map(),
 				ScrapeUrl:        t.URL().String(),
@@ -72,7 +72,7 @@ type connectAgent struct {
 	*Agent
 }
 
-func (ca *connectAgent) GetTargets(ctx context.Context, req *connect.Request[agentv1.GetTargetsRequest]) (*connect.Response[agentv1.GetTargetsResponse], error) {
+func (ca *connectAgent) GetTargets(ctx context.Context, req *connect.Request[agentv1alpha1.GetTargetsRequest]) (*connect.Response[agentv1alpha1.GetTargetsResponse], error) {
 	resp, err := ca.Agent.GetTargets(ctx, req.Msg)
 	if err != nil {
 		return nil, err
@@ -81,6 +81,6 @@ func (ca *connectAgent) GetTargets(ctx context.Context, req *connect.Request[age
 	return connect.NewResponse(resp), nil
 }
 
-func (a *Agent) ConnectHandler() agentv1connect.AgentServiceHandler {
+func (a *Agent) ConnectHandler() agentv1alpha1connect.AgentServiceHandler {
 	return &connectAgent{a}
 }

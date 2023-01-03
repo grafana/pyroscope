@@ -9,8 +9,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
@@ -30,11 +30,11 @@ type BidiClientMerge[Req any, Res any] interface {
 }
 
 type Request interface {
-	*ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest
+	*ingestv1alpha1.MergeProfilesStacktracesRequest | *ingestv1alpha1.MergeProfilesLabelsRequest
 }
 
 type Response interface {
-	*ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse
+	*ingestv1alpha1.MergeProfilesStacktracesResponse | *ingestv1alpha1.MergeProfilesLabelsResponse
 }
 
 type MergeResult[R any] interface {
@@ -51,7 +51,7 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 	ingesterAddr string
 
 	err      error
-	curr     *ingestv1.ProfileSets
+	curr     *ingestv1alpha1.ProfileSets
 	currIdx  int
 	keep     []bool
 	keepSent bool // keepSent is true if we have sent the keep request to the ingester.
@@ -81,12 +81,12 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 		if !s.keepSent {
 			var err error
 			switch bidi := (s.bidi).(type) {
-			case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
-				err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			case BidiClientMerge[*ingestv1alpha1.MergeProfilesStacktracesRequest, *ingestv1alpha1.MergeProfilesStacktracesResponse]:
+				err = bidi.Send(&ingestv1alpha1.MergeProfilesStacktracesRequest{
 					Profiles: s.keep,
 				})
-			case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
-				err = bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
+			case BidiClientMerge[*ingestv1alpha1.MergeProfilesLabelsRequest, *ingestv1alpha1.MergeProfilesLabelsResponse]:
+				err = bidi.Send(&ingestv1alpha1.MergeProfilesLabelsRequest{
 					Profiles: s.keep,
 				})
 			}
@@ -95,16 +95,16 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 				return false
 			}
 		}
-		var selectedProfiles *ingestv1.ProfileSets
+		var selectedProfiles *ingestv1alpha1.ProfileSets
 		switch bidi := (s.bidi).(type) {
-		case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
+		case BidiClientMerge[*ingestv1alpha1.MergeProfilesStacktracesRequest, *ingestv1alpha1.MergeProfilesStacktracesResponse]:
 			res, err := bidi.Receive()
 			if err != nil {
 				s.err = err
 				return false
 			}
 			selectedProfiles = res.SelectedProfiles
-		case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
+		case BidiClientMerge[*ingestv1alpha1.MergeProfilesLabelsRequest, *ingestv1alpha1.MergeProfilesLabelsResponse]:
 			res, err := bidi.Receive()
 			if err != nil {
 				s.err = err
@@ -148,14 +148,14 @@ func (s *mergeIterator[R, Req, Res]) At() ProfileWithLabels {
 func (s *mergeIterator[R, Req, Res]) Result() (R, error) {
 	var result R
 	switch bidi := (s.bidi).(type) {
-	case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
+	case BidiClientMerge[*ingestv1alpha1.MergeProfilesStacktracesRequest, *ingestv1alpha1.MergeProfilesStacktracesResponse]:
 		res, err := bidi.Receive()
 		if err != nil {
 			s.err = err
 			return result, err
 		}
 		result = any(res.Result).(R)
-	case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
+	case BidiClientMerge[*ingestv1alpha1.MergeProfilesLabelsRequest, *ingestv1alpha1.MergeProfilesLabelsResponse]:
 		res, err := bidi.Receive()
 		if err != nil {
 			s.err = err
@@ -287,11 +287,11 @@ type stacktraces struct {
 
 // selectMergeStacktraces selects the  profile from each ingester by deduping them and request merges of stacktraces of them.
 func selectMergeStacktraces(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
-	mergeResults := make([]MergeResult[*ingestv1.MergeProfilesStacktracesResult], len(responses))
+	mergeResults := make([]MergeResult[*ingestv1alpha1.MergeProfilesStacktracesResult], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	for i, resp := range responses {
-		it := NewMergeIterator[*ingestv1.MergeProfilesStacktracesResult](
-			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]]{
+		it := NewMergeIterator[*ingestv1alpha1.MergeProfilesStacktracesResult](
+			ctx, responseFromIngesters[BidiClientMerge[*ingestv1alpha1.MergeProfilesStacktracesRequest, *ingestv1alpha1.MergeProfilesStacktracesResponse]]{
 				addr:     resp.addr,
 				response: resp.response,
 			})
@@ -304,7 +304,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 	}
 
 	// Collects the results in parallel.
-	results := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(iters))
+	results := make([]*ingestv1alpha1.MergeProfilesStacktracesResult, 0, len(iters))
 	s := lo.Synchronize()
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
@@ -327,7 +327,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 }
 
 // mergeProfilesStacktracesResult merges the results of multiple MergeProfilesStacktraces into a single result.
-func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktracesResult) []stacktraces {
+func mergeProfilesStacktracesResult(results []*ingestv1alpha1.MergeProfilesStacktracesResult) []stacktraces {
 	merge := phlaremodel.MergeBatchMergeStacktraces(results...)
 	result := make([]stacktraces, 0, len(merge.Stacktraces))
 	for _, st := range merge.Stacktraces {
@@ -345,7 +345,7 @@ func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktraces
 
 type ProfileValue struct {
 	Ts         int64
-	Lbs        []*commonv1.LabelPair
+	Lbs        []*typesv1alpha1.LabelPair
 	LabelsHash uint64
 	Value      float64
 }
@@ -360,11 +360,11 @@ func (p ProfileValue) Timestamp() model.Time {
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
 func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
-	mergeResults := make([]MergeResult[[]*commonv1.Series], len(responses))
+	mergeResults := make([]MergeResult[[]*typesv1alpha1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	for i, resp := range responses {
-		it := NewMergeIterator[[]*commonv1.Series](
-			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]]{
+		it := NewMergeIterator[[]*typesv1alpha1.Series](
+			ctx, responseFromIngesters[BidiClientMerge[*ingestv1alpha1.MergeProfilesLabelsRequest, *ingestv1alpha1.MergeProfilesLabelsResponse]]{
 				addr:     resp.addr,
 				response: resp.response,
 			})
@@ -377,7 +377,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 	}
 
 	// Collects the results in parallel.
-	results := make([][]*commonv1.Series, 0, len(iters))
+	results := make([][]*typesv1alpha1.Series, 0, len(iters))
 	s := lo.Synchronize()
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
@@ -406,12 +406,12 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 }
 
 type seriesIterator struct {
-	point []*commonv1.Point
+	point []*typesv1alpha1.Point
 
 	curr ProfileValue
 }
 
-func newSeriesIterator(lbs []*commonv1.LabelPair, points []*commonv1.Point) *seriesIterator {
+func newSeriesIterator(lbs []*typesv1alpha1.LabelPair, points []*typesv1alpha1.Point) *seriesIterator {
 	return &seriesIterator{
 		point: points,
 

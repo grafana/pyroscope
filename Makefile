@@ -30,7 +30,7 @@ GORELEASER_ENV := GIT_LAST_COMMIT_DATE=$(GIT_LAST_COMMIT_DATE)
 # Build flags
 VPREFIX := github.com/grafana/phlare/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
-GO_FLAGS     := -ldflags "-extldflags \"-static\" -s -w $(GO_LDFLAGS)" -tags netgo -mod=mod
+GO_FLAGS     := -ldflags "-extldflags \"-static\" -s -w $(GO_LDFLAGS)" -tags netgo
 
 .PHONY: help
 help: ## Describe useful make targets
@@ -47,7 +47,7 @@ test: go/test ## Run unit tests
 
 .PHONY: generate
 generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-connect-go-mux $(BIN)/gomodifytags ## Regenerate protobuf
-	rm -rf pkg/gen/ pkg/openapiv2/gen
+	rm -Rf api/openapiv2/gen/ api/gen
 	PATH=$(BIN) $(BIN)/buf generate
 	PATH=$(BIN):$(PATH) ./tools/add-parquet-tags.sh
 	go run ./tools/doc-generator/ ./docs/sources/operators-guide/configure/reference-configuration-parameters/index.template > docs/sources/operators-guide/configure/reference-configuration-parameters/index.md
@@ -108,7 +108,8 @@ go/lint: $(BIN)/golangci-lint
 .PHONY: go/mod
 go/mod:
 	GO111MODULE=on go mod download
-	GO111MODULE=on go mod verify
+	# doesn't work for go workspace
+	# GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
 
 .PHONY: fmt

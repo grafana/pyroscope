@@ -1,0 +1,710 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "agent/v1alpha1/agent.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AgentService"
+    },
+    {
+      "name": "PusherService"
+    },
+    {
+      "name": "IngesterService"
+    },
+    {
+      "name": "QuerierService"
+    },
+    {
+      "name": "StatusService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/targets": {
+      "get": {
+        "summary": "Retrieve information about targets.",
+        "operationId": "AgentService_GetTargets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1alpha1GetTargetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "STATE_UNSPECIFIED",
+              "STATE_ACTIVE",
+              "STATE_DROPPED"
+            ],
+            "default": "STATE_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "AgentService"
+        ]
+      }
+    },
+    "/api/v1alpha1/status/buildinfo": {
+      "get": {
+        "summary": "Retrieve build information about the binary",
+        "operationId": "StatusService_GetBuildInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1alpha1GetBuildInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1alpha1/status/config": {
+      "get": {
+        "summary": "Retrieve the running config",
+        "operationId": "StatusService_GetConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1alpha1/status/config/default": {
+      "get": {
+        "operationId": "StatusService_GetDefaultConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1alpha1/status/config/diff": {
+      "get": {
+        "summary": "Retrieve the diff config to the defaults",
+        "operationId": "StatusService_GetDiffConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "apiHttpBody": {
+      "type": "object",
+      "properties": {
+        "contentType": {
+          "type": "string",
+          "description": "The HTTP Content-Type header value specifying the content type of the body."
+        },
+        "data": {
+          "type": "string",
+          "format": "byte",
+          "description": "The HTTP request/response body as raw binary."
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          },
+          "description": "Application specific response metadata. Must be set in the first response\nfor streaming APIs."
+        }
+      },
+      "description": "Message that represents an arbitrary HTTP body. It should only be used for\npayload formats that can't be represented as JSON, such as raw binary or\nan HTML page.\n\n\nThis message can be used both in streaming and non-streaming API methods in\nthe request as well as the response.\n\nIt can be used as a top-level request field, which is convenient if one\nwants to extract parameters from either the URL or HTTP template into the\nrequest fields and also want access to the raw HTTP body.\n\nExample:\n\n    message GetResourceRequest {\n      // A unique request id.\n      string request_id = 1;\n\n      // The raw HTTP body is bound to this field.\n      google.api.HttpBody http_body = 2;\n\n    }\n\n    service ResourceService {\n      rpc GetResource(GetResourceRequest)\n        returns (google.api.HttpBody);\n      rpc UpdateResource(google.api.HttpBody)\n        returns (google.protobuf.Empty);\n\n    }\n\nExample with streaming methods:\n\n    service CaldavService {\n      rpc GetCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n      rpc UpdateCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n\n    }\n\nUse of this type only changes how the request and response bodies are\nhandled, all other features will continue to work unchanged."
+    },
+    "ingesterv1alpha1LabelNamesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ingesterv1alpha1LabelValuesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ingesterv1alpha1ProfileTypesResponse": {
+      "type": "object",
+      "properties": {
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1ProfileType"
+          }
+        }
+      }
+    },
+    "ingesterv1alpha1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Labels"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n\nExample 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\nExample 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\n\nJSON\n\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "querierv1alpha1LabelNamesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "querierv1alpha1LabelValuesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "querierv1alpha1ProfileTypesResponse": {
+      "type": "object",
+      "properties": {
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1ProfileType"
+          }
+        }
+      }
+    },
+    "querierv1alpha1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Labels"
+          }
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1alpha1FlameGraph": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Level"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxSelf": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1alpha1FlushResponse": {
+      "type": "object"
+    },
+    "v1alpha1GetBuildInfoData": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "buildUser": {
+          "type": "string"
+        },
+        "buildDate": {
+          "type": "string"
+        },
+        "goVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1GetBuildInfoResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/v1alpha1GetBuildInfoData"
+        }
+      }
+    },
+    "v1alpha1GetTargetsResponse": {
+      "type": "object",
+      "properties": {
+        "activeTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Target"
+          }
+        },
+        "droppedTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Target"
+          }
+        }
+      }
+    },
+    "v1alpha1Health": {
+      "type": "string",
+      "enum": [
+        "HEALTH_UNSPECIFIED",
+        "HEALTH_UP",
+        "HEALTH_DOWN"
+      ],
+      "default": "HEALTH_UNSPECIFIED"
+    },
+    "v1alpha1LabelPair": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1Labels": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        }
+      }
+    },
+    "v1alpha1Level": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      }
+    },
+    "v1alpha1MergeProfilesLabelsResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1alpha1ProfileSets",
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Series"
+          },
+          "title": "The list of series for the profile with their respective value"
+        }
+      }
+    },
+    "v1alpha1MergeProfilesStacktracesResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1alpha1ProfileSets",
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
+        },
+        "result": {
+          "$ref": "#/definitions/v1alpha1MergeProfilesStacktracesResult",
+          "title": "The list of stracktraces for the profile with their respective value"
+        }
+      }
+    },
+    "v1alpha1MergeProfilesStacktracesResult": {
+      "type": "object",
+      "properties": {
+        "stacktraces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1StacktraceSample"
+          },
+          "title": "The list of stracktraces with their respective value"
+        },
+        "functionNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1alpha1Point": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "double"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "Milliseconds unix timestamp"
+        }
+      }
+    },
+    "v1alpha1ProfileSets": {
+      "type": "object",
+      "properties": {
+        "labelsSets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Labels"
+          }
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1SeriesProfile"
+          }
+        }
+      }
+    },
+    "v1alpha1ProfileType": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sampleType": {
+          "type": "string"
+        },
+        "sampleUnit": {
+          "type": "string"
+        },
+        "periodType": {
+          "type": "string"
+        },
+        "periodUnit": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1PushResponse": {
+      "type": "object"
+    },
+    "v1alpha1RawProfileSeries": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1RawSample"
+          },
+          "title": "samples are the set of profile bytes"
+        }
+      },
+      "title": "RawProfileSeries represents the pprof profile and its associated labels"
+    },
+    "v1alpha1RawSample": {
+      "type": "object",
+      "properties": {
+        "rawProfile": {
+          "type": "string",
+          "format": "byte",
+          "title": "raw_profile is the set of bytes of the pprof profile"
+        },
+        "ID": {
+          "type": "string",
+          "title": "unique ID of the profile"
+        }
+      },
+      "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1alpha1SelectMergeStacktracesResponse": {
+      "type": "object",
+      "properties": {
+        "flamegraph": {
+          "$ref": "#/definitions/v1alpha1FlameGraph"
+        }
+      }
+    },
+    "v1alpha1SelectProfilesRequest": {
+      "type": "object",
+      "properties": {
+        "labelSelector": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1alpha1ProfileType"
+        },
+        "start": {
+          "type": "string",
+          "format": "int64"
+        },
+        "end": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1alpha1SelectSeriesResponse": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Series"
+          }
+        }
+      }
+    },
+    "v1alpha1Series": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1LabelPair"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Point"
+          }
+        }
+      }
+    },
+    "v1alpha1SeriesProfile": {
+      "type": "object",
+      "properties": {
+        "labelIndex": {
+          "type": "integer",
+          "format": "int32",
+          "title": "The labels index of the series"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
+        }
+      }
+    },
+    "v1alpha1StacktraceSample": {
+      "type": "object",
+      "properties": {
+        "functionIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1alpha1State": {
+      "type": "string",
+      "enum": [
+        "STATE_UNSPECIFIED",
+        "STATE_ACTIVE",
+        "STATE_DROPPED"
+      ],
+      "default": "STATE_UNSPECIFIED"
+    },
+    "v1alpha1Target": {
+      "type": "object",
+      "properties": {
+        "discoveredLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Contains labels before any processing."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Labels as they are attached to ingested profiles."
+        },
+        "scrapePool": {
+          "type": "string",
+          "title": "Name of the scrape pool used"
+        },
+        "scrapeUrl": {
+          "type": "string",
+          "description": "URL that is used for retrieving the profile."
+        },
+        "lastError": {
+          "type": "string",
+          "description": "Contains the error if the last attempted scrape has failed."
+        },
+        "lastScrape": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Timestamp of last scrape"
+        },
+        "lastScrapeDuration": {
+          "type": "string",
+          "description": "Duation of last scrape."
+        },
+        "health": {
+          "$ref": "#/definitions/v1alpha1Health",
+          "description": "Health of last scrape."
+        },
+        "scrapeTimeout": {
+          "type": "string",
+          "description": "Timeout duration for the scrape request."
+        },
+        "scrapeInterval": {
+          "type": "string",
+          "description": "Interval how often profiles are scraped."
+        }
+      }
+    }
+  }
+}

@@ -27,9 +27,9 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
@@ -278,7 +278,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 	return out, nil
 }
 
-func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
+func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1alpha1.LabelPair) error {
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
@@ -357,7 +357,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	return nil
 }
 
-func labelsForProfile(p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
+func labelsForProfile(p *profilev1.Profile, externalLabels ...*typesv1alpha1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
 	// build label set per sample type before references are rewritten
 	var (
 		sb                                             strings.Builder
@@ -403,37 +403,37 @@ func labelsForProfile(p *profilev1.Profile, externalLabels ...*commonv1.LabelPai
 }
 
 // LabelValues returns the possible label values for a given label name.
-func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
+func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1alpha1.LabelValuesRequest]) (*connect.Response[ingestv1alpha1.LabelValuesResponse], error) {
 	values, err := h.index.ix.LabelValues(req.Msg.Name, nil)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&ingestv1.LabelValuesResponse{
+	return connect.NewResponse(&ingestv1alpha1.LabelValuesResponse{
 		Names: values,
 	}), nil
 }
 
 // LabelValues returns the possible label values for a given label name.
-func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1alpha1.LabelNamesRequest]) (*connect.Response[ingestv1alpha1.LabelNamesResponse], error) {
 	values, err := h.index.ix.LabelNames(nil)
 	if err != nil {
 		return nil, err
 	}
 	sort.Strings(values)
-	return connect.NewResponse(&ingestv1.LabelNamesResponse{
+	return connect.NewResponse(&ingestv1alpha1.LabelNamesResponse{
 		Names: values,
 	}), nil
 }
 
 // ProfileTypes returns the possible profile types.
-func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1alpha1.ProfileTypesRequest]) (*connect.Response[ingestv1alpha1.ProfileTypesResponse], error) {
 	values, err := h.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
 	if err != nil {
 		return nil, err
 	}
 	sort.Strings(values)
 
-	profileTypes := make([]*commonv1.ProfileType, len(values))
+	profileTypes := make([]*typesv1alpha1.ProfileType, len(values))
 	for i, v := range values {
 		tp, err := phlaremodel.ParseProfileTypeSelector(v)
 		if err != nil {
@@ -442,7 +442,7 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 		profileTypes[i] = tp
 	}
 
-	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
+	return connect.NewResponse(&ingestv1alpha1.ProfileTypesResponse{
 		ProfileTypes: profileTypes,
 	}), nil
 }
@@ -457,7 +457,7 @@ func (h *Head) InRange(start, end model.Time) bool {
 	return b.InRange(start, end)
 }
 
-func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
+func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1alpha1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Head")
 	defer sp.Finish()
 	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
@@ -468,11 +468,11 @@ func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.Sele
 	return h.index.SelectProfiles(selectors, model.Time(params.Start), model.Time(params.End))
 }
 
-func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
+func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1alpha1.MergeProfilesStacktracesResult, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Head")
 	defer sp.Finish()
 
-	stacktraceSamples := map[uint64]*ingestv1.StacktraceSample{}
+	stacktraceSamples := map[uint64]*ingestv1alpha1.StacktraceSample{}
 	names := []string{}
 	functions := map[int64]int{}
 
@@ -518,7 +518,7 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 					fnIds = append(fnIds, int32(pos))
 				}
 			}
-			stacktraceSamples[s.StacktraceID] = &ingestv1.StacktraceSample{
+			stacktraceSamples[s.StacktraceID] = &ingestv1alpha1.StacktraceSample{
 				FunctionIds: fnIds,
 				Value:       s.Value,
 			}
@@ -527,18 +527,18 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return &ingestv1.MergeProfilesStacktracesResult{
+	return &ingestv1alpha1.MergeProfilesStacktracesResult{
 		Stacktraces:   lo.Values(stacktraceSamples),
 		FunctionNames: names,
 	}, nil
 }
 
-func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
+func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1alpha1.Series, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Head")
 	defer sp.Finish()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := map[string]*commonv1.Series{}
+	seriesByLabels := map[string]*typesv1alpha1.Series{}
 	labelBuf := make([]byte, 0, 1024)
 	defer rows.Close()
 
@@ -553,9 +553,9 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 			labelsByString = string(labelBuf)
 			labelsByFingerprint[p.fp] = labelsByString
 			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &commonv1.Series{
+				seriesByLabels[labelsByString] = &typesv1alpha1.Series{
 					Labels: p.Labels().WithLabels(by...),
-					Points: []*commonv1.Point{
+					Points: []*typesv1alpha1.Point{
 						{
 							Timestamp: int64(p.Timestamp()),
 							Value:     float64(p.Total()),
@@ -566,7 +566,7 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 			}
 		}
 		series := seriesByLabels[labelsByString]
-		series.Points = append(series.Points, &commonv1.Point{
+		series.Points = append(series.Points, &typesv1alpha1.Point{
 			Timestamp: int64(p.Timestamp()),
 			Value:     float64(p.Total()),
 		})
@@ -644,7 +644,7 @@ func (it *ProfileSelectorIterator) Err() error {
 	return nil
 }
 
-func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1alpha1.SeriesRequest]) (*connect.Response[ingestv1alpha1.SeriesResponse], error) {
 	selectors := make([][]*labels.Matcher, 0, len(req.Msg.Matchers))
 	for _, m := range req.Msg.Matchers {
 		s, err := parser.ParseMetricSelector(m)
@@ -653,7 +653,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 		}
 		selectors = append(selectors, s)
 	}
-	response := &ingestv1.SeriesResponse{}
+	response := &ingestv1alpha1.SeriesResponse{}
 	uniqu := map[model.Fingerprint]struct{}{}
 	for _, selector := range selectors {
 		if err := h.index.forMatchingLabels(selector, func(lbs phlaremodel.Labels, fp model.Fingerprint) error {
@@ -661,7 +661,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 				return nil
 			}
 			uniqu[fp] = struct{}{}
-			response.LabelsSet = append(response.LabelsSet, &commonv1.Labels{Labels: lbs})
+			response.LabelsSet = append(response.LabelsSet, &typesv1alpha1.Labels{Labels: lbs})
 			return nil
 		}); err != nil {
 			return nil, err

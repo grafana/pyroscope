@@ -15,8 +15,8 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 
-	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	ingesterv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	pushv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1"
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
@@ -65,7 +65,7 @@ type ingesterFlusherCompat struct {
 }
 
 func (i *ingesterFlusherCompat) Flush() {
-	_, err := i.Ingester.Flush(context.TODO(), connect.NewRequest(&ingesterv1.FlushRequest{}))
+	_, err := i.Ingester.Flush(context.TODO(), connect.NewRequest(&ingesterv1alpha1.FlushRequest{}))
 	if err != nil {
 		level.Error(i.Ingester.logger).Log("msg", "flush failed", "err", err)
 	}
@@ -179,8 +179,8 @@ func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) err
 	return f(instance)
 }
 
-func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
+func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1alpha1.PushRequest]) (*connect.Response[pushv1alpha1.PushResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1alpha1.PushResponse], error) {
 		level.Debug(instance.logger).Log("msg", "message received by ingester push")
 		for _, series := range req.Msg.Series {
 			for _, sample := range series.Samples {
@@ -199,7 +199,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 				p.ReturnToVTPool()
 			}
 		}
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return connect.NewResponse(&pushv1alpha1.PushResponse{}), nil
 	})
 }
 
@@ -215,7 +215,7 @@ func (i *Ingester) stopping(_ error) error {
 	return errs.Err()
 }
 
-func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
+func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1alpha1.FlushRequest]) (*connect.Response[ingesterv1alpha1.FlushResponse], error) {
 	i.instancesMtx.RLock()
 	defer i.instancesMtx.RUnlock()
 	for _, inst := range i.instances {
@@ -224,7 +224,7 @@ func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.Fl
 		}
 	}
 
-	return connect.NewResponse(&ingesterv1.FlushResponse{}), nil
+	return connect.NewResponse(&ingesterv1alpha1.FlushResponse{}), nil
 }
 
 func (i *Ingester) TransferOut(ctx context.Context) error {

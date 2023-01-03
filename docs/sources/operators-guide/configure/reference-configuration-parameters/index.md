@@ -117,12 +117,16 @@ client:
 
       [min_version: <int> | default = ]
 
+      [max_version: <int> | default = ]
+
   [bearer_token: <string> | default = ""]
 
   [bearer_token_file: <string> | default = ""]
 
   proxy_url:
     [url: <url> | default = ]
+
+  [proxy_connect_header: <map of string to []config.Secret> | default = ]
 
   tls_config:
     [ca_file: <string> | default = ""]
@@ -136,6 +140,8 @@ client:
     [insecure_skip_verify: <boolean> | default = ]
 
     [min_version: <int> | default = ]
+
+    [max_version: <int> | default = ]
 
   [follow_redirects: <boolean> | default = ]
 
@@ -317,6 +323,16 @@ The `server` block configures the HTTP and gRPC server of the launched service(s
 # CLI flag: -server.grpc-conn-limit
 [grpc_listen_conn_limit: <int> | default = 0]
 
+# Comma-separated list of cipher suites to use. If blank, the default Go cipher
+# suites is used.
+# CLI flag: -server.tls-cipher-suites
+[tls_cipher_suites: <string> | default = ""]
+
+# Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11,
+# VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
+# CLI flag: -server.tls-min-version
+[tls_min_version: <string> | default = ""]
+
 http_tls_config:
   # HTTP server cert path.
   # CLI flag: -server.http-tls-cert-path
@@ -334,16 +350,6 @@ http_tls_config:
   # CLI flag: -server.http-tls-ca-path
   [client_ca_file: <string> | default = ""]
 
-  [cipher_suites: <list of ints> | default = ]
-
-  [curve_preferences: <list of ints> | default = ]
-
-  [min_version: <int> | default = ]
-
-  [max_version: <int> | default = ]
-
-  [prefer_server_cipher_suites: <boolean> | default = ]
-
 grpc_tls_config:
   # GRPC TLS server cert path.
   # CLI flag: -server.grpc-tls-cert-path
@@ -360,16 +366,6 @@ grpc_tls_config:
   # GRPC TLS Client CA path.
   # CLI flag: -server.grpc-tls-ca-path
   [client_ca_file: <string> | default = ""]
-
-  [cipher_suites: <list of ints> | default = ]
-
-  [curve_preferences: <list of ints> | default = ]
-
-  [min_version: <int> | default = ]
-
-  [max_version: <int> | default = ]
-
-  [prefer_server_cipher_suites: <boolean> | default = ]
 
 # Register the intrumentation handlers (/metrics etc).
 # CLI flag: -server.register-instrumentation

@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
@@ -240,7 +240,7 @@ func (ii *BitPrefixInvertedIndex) LabelValues(name string, shard *shard.Annotati
 }
 
 // Delete a fingerprint with the given label pairs.
-func (ii *BitPrefixInvertedIndex) Delete(labels []*commonv1.LabelPair, fp model.Fingerprint) {
+func (ii *BitPrefixInvertedIndex) Delete(labels []*typesv1alpha1.LabelPair, fp model.Fingerprint) {
 	localShard := index.NewShard(0, uint32(len(ii.shards)))
 	idx := int(fp >> (64 - localShard.RequiredBits()))
 	ii.shards[idx].delete(labels, fp)

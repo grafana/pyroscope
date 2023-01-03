@@ -7,13 +7,13 @@ package ingester
 
 // 	d, err := New(cfg, log.NewNopLogger(), nil, profileStore)
 // 	require.NoError(t, err)
-// 	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
-// 		Series: []*pushv1.RawProfileSeries{
+// 	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1alpha1.PushRequest{
+// 		Series: []*pushv1alpha1.RawProfileSeries{
 // 			{
 // 				Labels: []*commonv1.LabelPair{
 // 					{Name: "__name__", Value: "memory"},
 // 				},
-// 				Samples: []*pushv1.RawSample{
+// 				Samples: []*pushv1alpha1.RawSample{
 // 					{
 // 						RawProfile: generateProfile(
 // 							t, "inuse_space", "bytes", "space", "bytes", time.Now().Add(-1*time.Minute),
@@ -76,14 +76,14 @@ func Test_QueryMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	rawProfile := testProfile(t)
-	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{
+	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1alpha1.PushRequest{
+		Series: []*pushv1alpha1.RawProfileSeries{
 			{
 				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-central1"},
 				},
-				Samples: []*pushv1.RawSample{
+				Samples: []*pushv1alpha1.RawSample{
 					{
 						RawProfile: rawProfile,
 					},
@@ -94,7 +94,7 @@ func Test_QueryMetadata(t *testing.T) {
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-east1"},
 				},
-				Samples: []*pushv1.RawSample{
+				Samples: []*pushv1alpha1.RawSample{
 					{
 						RawProfile: rawProfile,
 					},
@@ -105,10 +105,10 @@ func Test_QueryMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	clusterRes, err := d.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
+	clusterRes, err := d.LabelValues(context.Background(), connect.NewRequest(&ingestv1alpha1.LabelValuesRequest{Name: "cluster"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"us-central1", "us-east1"}, clusterRes.Msg.Names)
-	typeRes, err := d.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
+	typeRes, err := d.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1alpha1.ProfileTypesRequest{}))
 	require.NoError(t, err)
 	expectedTypes := []string{
 		"memory:inuse_space:bytes:space:bytes",
@@ -133,15 +133,15 @@ func Test_selectProfiles(t *testing.T) {
 	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
 	require.NoError(t, err)
 
-	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{
+	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1alpha1.PushRequest{
+		Series: []*pushv1alpha1.RawProfileSeries{
 			{
 				Labels: []*commonv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-central1"},
 					{Name: "foo", Value: "bar"},
 				},
-				Samples: []*pushv1.RawSample{
+				Samples: []*pushv1alpha1.RawSample{
 					{
 						RawProfile: generateProfile(
 							t, "inuse_space", "bytes", "space", "bytes", time.Unix(1, 0),
@@ -159,7 +159,7 @@ func Test_selectProfiles(t *testing.T) {
 					{Name: "__name__", Value: "memory"},
 					{Name: "cluster", Value: "us-east1"},
 				},
-				Samples: []*pushv1.RawSample{
+				Samples: []*pushv1alpha1.RawSample{
 					{
 						RawProfile: generateProfile(
 							t, "inuse_space", "bytes", "space", "bytes", time.Unix(2, 0),
@@ -178,9 +178,9 @@ func Test_selectProfiles(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	res, err := d.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1.SelectProfilesRequest{
+	res, err := d.SelectProfiles(context.Background(), connect.NewRequest(&ingestv1alpha1.SelectProfilesRequest{
 		LabelSelector: `{cluster=~".*"}`,
-		Type: &ingestv1.ProfileType{
+		Type: &ingestv1alpha1.ProfileType{
 			Name:       "memory",
 			SampleType: "inuse_space",
 			SampleUnit: "bytes",
@@ -215,7 +215,7 @@ func Test_selectProfiles(t *testing.T) {
 		}
 	}
 
-	symbolsReponse, err := d.SymbolizeStacktraces(context.Background(), connect.NewRequest(&ingestv1.SymbolizeStacktraceRequest{Ids: stackTracesID}))
+	symbolsReponse, err := d.SymbolizeStacktraces(context.Background(), connect.NewRequest(&ingestv1alpha1.SymbolizeStacktraceRequest{Ids: stackTracesID}))
 	require.NoError(t, err)
 
 	var stacktraces []string

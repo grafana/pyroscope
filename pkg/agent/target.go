@@ -23,9 +23,9 @@ import (
 	"github.com/prometheus/prometheus/util/pool"
 	"golang.org/x/net/context/ctxhttp"
 
-	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	agentv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1alpha1"
+	pushv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/tenant"
 )
 
@@ -120,7 +120,7 @@ type Target struct {
 	lastError          error
 	lastScrape         time.Time
 	lastScrapeDuration time.Duration
-	health             agentv1.Health
+	health             agentv1alpha1.Health
 	lastScrapeSize     int
 
 	scrapeClient         *http.Client
@@ -181,7 +181,7 @@ func (t *Target) scrape(ctx context.Context) {
 
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
 		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t.Labels().String(), "err", err)
-		t.health = agentv1.Health_HEALTH_DOWN
+		t.health = agentv1alpha1.Health_HEALTH_DOWN
 		t.lastScrapeDuration = time.Since(start)
 		t.lastError = err
 		t.lastScrape = start
@@ -192,25 +192,25 @@ func (t *Target) scrape(ctx context.Context) {
 	if len(b) > 0 {
 		t.lastScrapeSize = len(b)
 	}
-	t.health = agentv1.Health_HEALTH_UP
+	t.health = agentv1alpha1.Health_HEALTH_UP
 	t.lastScrapeDuration = time.Since(start)
 	t.lastError = nil
 	t.lastScrape = start
 	// todo retry strategy
-	req := &pushv1.PushRequest{}
-	series := &pushv1.RawProfileSeries{
-		Labels: make([]*commonv1.LabelPair, 0, len(t.labels)),
+	req := &pushv1alpha1.PushRequest{}
+	series := &pushv1alpha1.RawProfileSeries{
+		Labels: make([]*typesv1alpha1.LabelPair, 0, len(t.labels)),
 	}
 	for _, l := range t.labels {
 		if strings.HasPrefix(l.Name, "__") && l.Name != labels.MetricName {
 			continue
 		}
-		series.Labels = append(series.Labels, &commonv1.LabelPair{
+		series.Labels = append(series.Labels, &typesv1alpha1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		})
 	}
-	series.Samples = []*pushv1.RawSample{
+	series.Samples = []*pushv1alpha1.RawSample{
 		{
 			RawProfile: b,
 		},
@@ -321,7 +321,7 @@ func (t *Target) LastScrapeDuration() time.Duration {
 }
 
 // Health returns the last known health state of the target.
-func (t *Target) Health() agentv1.Health {
+func (t *Target) Health() agentv1alpha1.Health {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
 

@@ -10,8 +10,6 @@ bin
 
 /cmd/phlare/data
 data/
-go.work
-go.work.sum
 .DS_Store
 
 node_modules

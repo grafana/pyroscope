@@ -28,18 +28,18 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
+	agentv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1alpha1"
+	"github.com/grafana/phlare/api/gen/proto/go/agent/v1alpha1/agentv1alpha1connect"
+	ingesterv1alpha1connect "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1/ingesterv1alpha1connect"
+	"github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1/pushv1alpha1connect"
+	"github.com/grafana/phlare/api/gen/proto/go/querier/v1alpha1/querierv1alpha1connect"
+	statusv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/status/v1alpha1"
+	"github.com/grafana/phlare/api/openapiv2"
 	"github.com/grafana/phlare/pkg/agent"
 	"github.com/grafana/phlare/pkg/distributor"
-	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
-	"github.com/grafana/phlare/pkg/gen/agent/v1/agentv1connect"
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
-	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
-	"github.com/grafana/phlare/pkg/gen/querier/v1/querierv1connect"
 	"github.com/grafana/phlare/pkg/ingester"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
-	"github.com/grafana/phlare/pkg/openapiv2"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/usagestats"
@@ -87,12 +87,12 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	// Those API are not meant to stay but allows us for testing through Grafana.
 	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
 	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
-	querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, q, f.auth)
+	querierv1alpha1connect.RegisterQuerierServiceHandler(f.Server.HTTP, q, f.auth)
 
 	return q, nil
 }
 
-func (f *Phlare) getPusherClient() pushv1connect.PusherServiceClient {
+func (f *Phlare) getPusherClient() pushv1alpha1connect.PusherServiceClient {
 	return f.pusherClient
 }
 
@@ -120,7 +120,7 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 	// initialise direct pusher, this overwrites the default HTTP client
 	f.pusherClient = d
 
-	pushv1connect.RegisterPusherServiceHandler(f.Server.HTTP, d, f.auth)
+	pushv1alpha1connect.RegisterPusherServiceHandler(f.Server.HTTP, d, f.auth)
 	return d, nil
 }
 
@@ -132,11 +132,11 @@ func (f *Phlare) initAgent() (services.Service, error) {
 	f.agent = a
 
 	// register endpoint at grpc gateway
-	if err := agentv1.RegisterAgentServiceHandlerServer(context.Background(), f.grpcGatewayMux, a); err != nil {
+	if err := agentv1alpha1.RegisterAgentServiceHandlerServer(context.Background(), f.grpcGatewayMux, a); err != nil {
 		return nil, err
 	}
 
-	agentv1connect.RegisterAgentServiceHandler(f.Server.HTTP, a.ConnectHandler())
+	agentv1alpha1connect.RegisterAgentServiceHandler(f.Server.HTTP, a.ConnectHandler())
 	return a, nil
 }
 
@@ -206,9 +206,9 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 	if err != nil {
 		return nil, err
 	}
-	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
+	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1alpha1connect.IngesterServiceName))
 	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
-	ingesterv1connect.RegisterIngesterServiceHandler(f.Server.HTTP, ingester, f.auth)
+	ingesterv1alpha1connect.RegisterIngesterServiceHandler(f.Server.HTTP, ingester, f.auth)
 	return ingester, nil
 }
 
@@ -272,7 +272,7 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Server.HTTP.Path("/debug/fgprof").Handler(fgprof.Handler())
 
 	// register status service providing config and buildinfo at grpc gateway
-	if err := commonv1.RegisterStatusServiceHandlerServer(context.Background(), f.grpcGatewayMux, f.statusService()); err != nil {
+	if err := statusv1alpha1.RegisterStatusServiceHandlerServer(context.Background(), f.grpcGatewayMux, f.statusService()); err != nil {
 		return nil, err
 	}
 
@@ -318,17 +318,17 @@ func (f *Phlare) initUsageReport() (services.Service, error) {
 }
 
 type statusService struct {
-	commonv1.UnimplementedStatusServiceServer
+	statusv1alpha1.UnimplementedStatusServiceServer
 	configYaml    string
 	defaultConfig *Config
 	actualConfig  *Config
 }
 
-func (s *statusService) GetBuildInfo(ctx context.Context, req *commonv1.GetBuildInfoRequest) (*commonv1.GetBuildInfoResponse, error) {
+func (s *statusService) GetBuildInfo(ctx context.Context, req *statusv1alpha1.GetBuildInfoRequest) (*statusv1alpha1.GetBuildInfoResponse, error) {
 	version := build.GetVersion()
-	return &commonv1.GetBuildInfoResponse{
+	return &statusv1alpha1.GetBuildInfoResponse{
 		Status: "success",
-		Data: &commonv1.GetBuildInfoData{
+		Data: &statusv1alpha1.GetBuildInfoData{
 			Version:   version.Version,
 			Revision:  build.Revision,
 			Branch:    version.Branch,
@@ -344,7 +344,7 @@ const (
 	yamlContentType = "text/plain; charset=utf-8"
 )
 
-func (s *statusService) GetConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+func (s *statusService) GetConfig(ctx context.Context, req *statusv1alpha1.GetConfigRequest) (*httpbody.HttpBody, error) {
 	body, err := yaml.Marshal(s.actualConfig)
 	if err != nil {
 		return nil, err
@@ -356,7 +356,7 @@ func (s *statusService) GetConfig(ctx context.Context, req *commonv1.GetConfigRe
 	}, nil
 }
 
-func (s *statusService) GetDefaultConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+func (s *statusService) GetDefaultConfig(ctx context.Context, req *statusv1alpha1.GetConfigRequest) (*httpbody.HttpBody, error) {
 	body, err := yaml.Marshal(s.defaultConfig)
 	if err != nil {
 		return nil, err
@@ -368,7 +368,7 @@ func (s *statusService) GetDefaultConfig(ctx context.Context, req *commonv1.GetC
 	}, nil
 }
 
-func (s *statusService) GetDiffConfig(ctx context.Context, req *commonv1.GetConfigRequest) (*httpbody.HttpBody, error) {
+func (s *statusService) GetDiffConfig(ctx context.Context, req *statusv1alpha1.GetConfigRequest) (*httpbody.HttpBody, error) {
 	aBody, err := yaml.Marshal(s.actualConfig)
 	if err != nil {
 		return nil, err
@@ -403,7 +403,7 @@ func (s *statusService) GetDiffConfig(ctx context.Context, req *commonv1.GetConf
 	}, nil
 }
 
-func (f *Phlare) statusService() commonv1.StatusServiceServer {
+func (f *Phlare) statusService() statusv1alpha1.StatusServiceServer {
 	return &statusService{
 		actualConfig:  &f.Cfg,
 		defaultConfig: newDefaultConfig(),

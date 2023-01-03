@@ -9,14 +9,14 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	query "github.com/grafana/phlare/pkg/phlaredb/query"
 )
 
-func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
+func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1alpha1.MergeProfilesStacktracesResult, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 	// clone the rows to be able to iterate over them twice
@@ -30,7 +30,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	)
 	defer it.Close()
 
-	stacktraceAggrValues := map[int64]*ingestv1.StacktraceSample{}
+	stacktraceAggrValues := map[int64]*ingestv1alpha1.StacktraceSample{}
 
 	for it.Next() {
 		values := it.At().Values
@@ -40,7 +40,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 				sample.Value += values[1][i].Int64()
 				continue
 			}
-			stacktraceAggrValues[values[0][i].Int64()] = &ingestv1.StacktraceSample{
+			stacktraceAggrValues[values[0][i].Int64()] = &ingestv1alpha1.StacktraceSample{
 				Value: values[1][i].Int64(),
 			}
 		}
@@ -48,7 +48,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	return b.resolveSymbols(ctx, stacktraceAggrValues)
 }
 
-func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrByID map[int64]*ingestv1.StacktraceSample) (*ingestv1.MergeProfilesStacktracesResult, error) {
+func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrByID map[int64]*ingestv1alpha1.StacktraceSample) (*ingestv1alpha1.MergeProfilesStacktracesResult, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "ResolveSymbols - Block")
 	defer sp.Finish()
 	locationsByStacktraceID := map[int64][]uint64{}
@@ -171,13 +171,13 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 		samples.FunctionIds = functionIDs
 	}
 
-	return &ingestv1.MergeProfilesStacktracesResult{
+	return &ingestv1alpha1.MergeProfilesStacktracesResult{
 		Stacktraces:   lo.Values(stacktraceAggrByID),
 		FunctionNames: names,
 	}, nil
 }
 
-func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
+func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1alpha1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 
@@ -186,7 +186,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	defer it.Close()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := map[string]*commonv1.Series{}
+	seriesByLabels := map[string]*typesv1alpha1.Series{}
 	labelBuf := make([]byte, 0, 1024)
 
 	for it.Next() {
@@ -202,9 +202,9 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 			labelsByString = string(labelBuf)
 			labelsByFingerprint[p.Fingerprint()] = labelsByString
 			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &commonv1.Series{
+				seriesByLabels[labelsByString] = &typesv1alpha1.Series{
 					Labels: p.Labels().WithLabels(by...),
-					Points: []*commonv1.Point{
+					Points: []*typesv1alpha1.Point{
 						{
 							Timestamp: int64(p.Timestamp()),
 							Value:     float64(total),
@@ -215,7 +215,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 			}
 		}
 		series := seriesByLabels[labelsByString]
-		series.Points = append(series.Points, &commonv1.Point{
+		series.Points = append(series.Points, &typesv1alpha1.Point{
 			Timestamp: int64(p.Timestamp()),
 			Value:     float64(total),
 		})
