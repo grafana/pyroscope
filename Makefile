@@ -166,11 +166,6 @@ define UPDATER_CONFIG_JSON
       "file_path": "ksonnet/environments/phlare/waves/dev.libsonnet",
       "jsonnet_key": "phlare",
       "jsonnet_value": "$(IMAGE_PREFIX)phlare:$(IMAGE_TAG)"
-    },
-	{
-      "file_path": "ksonnet/environments/phlare/waves/dev.libsonnet",
-      "jsonnet_key": "grafana",
-      "jsonnet_value": "$(IMAGE_PREFIX)grafana-phlare:$(IMAGE_TAG)"
     }
   ]
 }
