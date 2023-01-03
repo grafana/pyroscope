@@ -110,6 +110,7 @@ go/mod:
 	GO111MODULE=on go mod download
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
+	go work sync
 	GO111MODULE=on go mod tidy
 
 .PHONY: fmt
