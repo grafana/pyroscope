@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/pprof"
@@ -267,24 +267,24 @@ func TestHeadIngestStacktraces(t *testing.T) {
 
 func TestHeadLabelValues(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &typesv1alpha1.LabelPair{Name: "job", Value: "foo"}, &typesv1alpha1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &typesv1alpha1.LabelPair{Name: "job", Value: "bar"}, &typesv1alpha1.LabelPair{Name: "namespace", Value: "phlare"}))
 
-	res, err := head.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
+	res, err := head.LabelValues(context.Background(), connect.NewRequest(&ingestv1alpha1.LabelValuesRequest{Name: "cluster"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{}, res.Msg.Names)
 
-	res, err = head.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "job"}))
+	res, err = head.LabelValues(context.Background(), connect.NewRequest(&ingestv1alpha1.LabelValuesRequest{Name: "job"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
 }
 
 func TestHeadLabelNames(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "job", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &typesv1alpha1.LabelPair{Name: "job", Value: "foo"}, &typesv1alpha1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &typesv1alpha1.LabelPair{Name: "job", Value: "bar"}, &typesv1alpha1.LabelPair{Name: "namespace", Value: "phlare"}))
 
-	res, err := head.LabelNames(context.Background(), connect.NewRequest(&ingestv1.LabelNamesRequest{}))
+	res, err := head.LabelNames(context.Background(), connect.NewRequest(&ingestv1alpha1.LabelNamesRequest{}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "job", "namespace"}, res.Msg.Names)
 }
@@ -305,25 +305,25 @@ func TestHeadSeries(t *testing.T) {
 		Set("__unit__", "unit").
 		Set("__profile_type__", ":type:unit:type:unit").
 		Labels()
-	res, err := head.Series(context.Background(), connect.NewRequest(&ingestv1.SeriesRequest{Matchers: []string{`{job="foo"}`}}))
+	res, err := head.Series(context.Background(), connect.NewRequest(&ingestv1alpha1.SeriesRequest{Matchers: []string{`{job="foo"}`}}))
 	require.NoError(t, err)
-	require.Equal(t, []*commonv1.Labels{{Labels: expected}}, res.Msg.LabelsSet)
+	require.Equal(t, []*typesv1alpha1.Labels{{Labels: expected}}, res.Msg.LabelsSet)
 }
 
 func TestHeadProfileTypes(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "foo"}, &commonv1.LabelPair{Name: "job", Value: "foo"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &commonv1.LabelPair{Name: "__name__", Value: "bar"}, &commonv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &typesv1alpha1.LabelPair{Name: "__name__", Value: "foo"}, &typesv1alpha1.LabelPair{Name: "job", Value: "foo"}, &typesv1alpha1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &typesv1alpha1.LabelPair{Name: "__name__", Value: "bar"}, &typesv1alpha1.LabelPair{Name: "namespace", Value: "phlare"}))
 
-	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
+	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1alpha1.ProfileTypesRequest{}))
 	require.NoError(t, err)
-	require.Equal(t, []*commonv1.ProfileType{
+	require.Equal(t, []*typesv1alpha1.ProfileType{
 		mustParseProfileSelector(t, "bar:type:unit:type:unit"),
 		mustParseProfileSelector(t, "foo:type:unit:type:unit"),
 	}, res.Msg.ProfileTypes)
 }
 
-func mustParseProfileSelector(t testing.TB, selector string) *commonv1.ProfileType {
+func mustParseProfileSelector(t testing.TB, selector string) *typesv1alpha1.ProfileType {
 	ps, err := phlaremodel.ParseProfileTypeSelector(selector)
 	require.NoError(t, err)
 	return ps

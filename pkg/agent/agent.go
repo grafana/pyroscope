@@ -9,12 +9,12 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/prometheus/discovery"
 
-	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
-	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
+	agentv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1alpha1"
+	"github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1/pushv1alpha1connect"
 )
 
 type Agent struct {
-	agentv1.UnimplementedAgentServiceServer
+	agentv1alpha1.UnimplementedAgentServiceServer
 
 	Config *Config
 	services.Service
@@ -33,7 +33,7 @@ type TargetManager interface {
 	ActiveTargets() map[string][]Target
 }
 
-type PusherClientProvider func() pushv1connect.PusherServiceClient
+type PusherClientProvider func() pushv1alpha1connect.PusherServiceClient
 
 func New(config *Config, logger log.Logger, pusherClientProvider PusherClientProvider) (*Agent, error) {
 	a := &Agent{

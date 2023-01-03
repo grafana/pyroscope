@@ -7,8 +7,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	querierv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 )
 
 func Test_ExportToFlamebearer(t *testing.T) {
@@ -50,7 +50,7 @@ func Test_ExportToFlamebearer(t *testing.T) {
 					value:     1,
 				},
 			}),
-		), &commonv1.ProfileType{
+		), &typesv1alpha1.ProfileType{
 			ID:         "memory:inuse_space:bytes:space:bytes",
 			Name:       "memory",
 			SampleType: "inuse_space",
@@ -61,7 +61,7 @@ func Test_ExportToFlamebearer(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
-var f *querierv1.FlameGraph
+var f *querierv1alpha1.FlameGraph
 
 func BenchmarkFlamegraph(b *testing.B) {
 	stacks := make([]stacktraces, 2000)

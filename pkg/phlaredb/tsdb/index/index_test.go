@@ -34,7 +34,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/encoding"
 	"github.com/prometheus/prometheus/util/testutil"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
@@ -50,7 +50,7 @@ type series struct {
 
 type mockIndex struct {
 	series map[storage.SeriesRef]series
-	// we're forced to use a anonymous struct here because we can't use commonv1.LabelPair as it's not comparable.
+	// we're forced to use a anonymous struct here because we can't use typesv1alpha1.LabelPair as it's not comparable.
 	postings map[struct{ Name, Value string }][]storage.SeriesRef
 	symbols  map[string]struct{}
 }
@@ -364,7 +364,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 	for i, ls := range lbls {
 		flbls[i] = make(phlaremodel.Labels, 0, len(ls))
 		for _, l := range ls {
-			flbls[i] = append(flbls[i], &commonv1.LabelPair{Name: l.Name, Value: l.Value})
+			flbls[i] = append(flbls[i], &typesv1alpha1.LabelPair{Name: l.Name, Value: l.Value})
 		}
 	}
 

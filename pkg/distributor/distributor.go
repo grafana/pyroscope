@@ -22,8 +22,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	pushv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/pprof"
@@ -32,7 +32,7 @@ import (
 )
 
 type PushClient interface {
-	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+	Push(context.Context, *connect.Request[pushv1alpha1.PushRequest]) (*connect.Response[pushv1alpha1.PushResponse], error)
 }
 
 // todo: move to non global metrics.
@@ -112,7 +112,7 @@ func (d *Distributor) stopping(_ error) error {
 	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
 }
 
-func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1alpha1.PushRequest]) (*connect.Response[pushv1alpha1.PushResponse], error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -191,7 +191,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 	case err := <-tracker.err:
 		return nil, err
 	case <-tracker.done:
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return connect.NewResponse(&pushv1alpha1.PushResponse{}), nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -233,8 +233,8 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 		return err
 	}
 
-	req := connect.NewRequest(&pushv1.PushRequest{
-		Series: make([]*pushv1.RawProfileSeries, 0, len(profileTrackers)),
+	req := connect.NewRequest(&pushv1alpha1.PushRequest{
+		Series: make([]*pushv1alpha1.RawProfileSeries, 0, len(profileTrackers)),
 	})
 
 	for _, p := range profileTrackers {
@@ -246,7 +246,7 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 }
 
 type profileTracker struct {
-	profile     *pushv1.RawProfileSeries
+	profile     *pushv1alpha1.RawProfileSeries
 	minSuccess  int
 	maxFailures int
 	succeeded   atomic.Int32
@@ -260,7 +260,7 @@ type pushTracker struct {
 	err            chan error
 }
 
-func labelsString(ls []*commonv1.LabelPair) string {
+func labelsString(ls []*typesv1alpha1.LabelPair) string {
 	var b bytes.Buffer
 	b.WriteByte('{')
 	for i, l := range ls {

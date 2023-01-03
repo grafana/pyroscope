@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	"github.com/grafana/phlare/pkg/pprof/testhelper"
 )
 

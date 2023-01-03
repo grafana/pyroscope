@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 )
 
 // This test ensures that the structs that are stored and the used schema matches

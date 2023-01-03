@@ -8,8 +8,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
@@ -17,7 +17,7 @@ import (
 type ProfileBuilder struct {
 	*profilev1.Profile
 	uuid.UUID
-	Labels []*commonv1.LabelPair
+	Labels []*typesv1alpha1.LabelPair
 }
 
 func NewProfileBuilder(ts int64) *ProfileBuilder {
@@ -29,7 +29,7 @@ func NewProfileBuilder(ts int64) *ProfileBuilder {
 			},
 		},
 		UUID: uuid.New(),
-		Labels: []*commonv1.LabelPair{
+		Labels: []*typesv1alpha1.LabelPair{
 			{
 				Name:  "job",
 				Value: "foo",
@@ -63,7 +63,7 @@ func (m *ProfileBuilder) MemoryProfile() *ProfileBuilder {
 		Unit: 2,
 		Type: 1,
 	}
-	m.Labels = append(m.Labels, &commonv1.LabelPair{
+	m.Labels = append(m.Labels, &typesv1alpha1.LabelPair{
 		Name:  model.MetricNameLabel,
 		Value: "memory",
 	})
@@ -73,7 +73,7 @@ func (m *ProfileBuilder) MemoryProfile() *ProfileBuilder {
 
 func (m *ProfileBuilder) WithLabels(lv ...string) *ProfileBuilder {
 	for i := 0; i < len(lv); i += 2 {
-		m.Labels = append(m.Labels, &commonv1.LabelPair{
+		m.Labels = append(m.Labels, &typesv1alpha1.LabelPair{
 			Name:  lv[i],
 			Value: lv[i+1],
 		})
@@ -104,7 +104,7 @@ func (m *ProfileBuilder) CPUProfile() *ProfileBuilder {
 		Unit: 2,
 		Type: 1,
 	}
-	m.Labels = append(m.Labels, &commonv1.LabelPair{
+	m.Labels = append(m.Labels, &typesv1alpha1.LabelPair{
 		Name:  model.MetricNameLabel,
 		Value: "process_cpu",
 	})

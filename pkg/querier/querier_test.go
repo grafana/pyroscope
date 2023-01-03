@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	querierv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1alpha1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
@@ -35,24 +35,24 @@ func Test_QuerySampleType(t *testing.T) {
 		switch addr {
 		case "1":
 			q.On("ProfileTypes", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*commonv1.ProfileType{
+				Return(connect.NewResponse(&ingestv1alpha1.ProfileTypesResponse{
+					ProfileTypes: []*typesv1alpha1.ProfileType{
 						{ID: "foo"},
 						{ID: "bar"},
 					},
 				}), nil)
 		case "2":
 			q.On("ProfileTypes", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*commonv1.ProfileType{
+				Return(connect.NewResponse(&ingestv1alpha1.ProfileTypesResponse{
+					ProfileTypes: []*typesv1alpha1.ProfileType{
 						{ID: "bar"},
 						{ID: "buzz"},
 					},
 				}), nil)
 		case "3":
 			q.On("ProfileTypes", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*commonv1.ProfileType{
+				Return(connect.NewResponse(&ingestv1alpha1.ProfileTypesResponse{
+					ProfileTypes: []*typesv1alpha1.ProfileType{
 						{ID: "buzz"},
 						{ID: "foo"},
 					},
@@ -62,7 +62,7 @@ func Test_QuerySampleType(t *testing.T) {
 	}, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
-	out, err := querier.ProfileTypes(context.Background(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+	out, err := querier.ProfileTypes(context.Background(), connect.NewRequest(&querierv1alpha1.ProfileTypesRequest{}))
 	ids := make([]string, 0, len(out.Msg.ProfileTypes))
 	for _, pt := range out.Msg.ProfileTypes {
 		ids = append(ids, pt.ID)
@@ -72,7 +72,7 @@ func Test_QuerySampleType(t *testing.T) {
 }
 
 func Test_QueryLabelValues(t *testing.T) {
-	req := connect.NewRequest(&querierv1.LabelValuesRequest{Name: "foo"})
+	req := connect.NewRequest(&querierv1alpha1.LabelValuesRequest{Name: "foo"})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
@@ -83,11 +83,11 @@ func Test_QueryLabelValues(t *testing.T) {
 		q := newFakeQuerier()
 		switch addr {
 		case "1":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{"foo", "bar"}}), nil)
+			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1alpha1.LabelValuesResponse{Names: []string{"foo", "bar"}}), nil)
 		case "2":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{"bar", "buzz"}}), nil)
+			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1alpha1.LabelValuesResponse{Names: []string{"bar", "buzz"}}), nil)
 		case "3":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{"buzz", "foo"}}), nil)
+			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1alpha1.LabelValuesResponse{Names: []string{"buzz", "foo"}}), nil)
 		}
 		return q, nil
 	}, log.NewLogfmtLogger(os.Stdout))
@@ -99,7 +99,7 @@ func Test_QueryLabelValues(t *testing.T) {
 }
 
 func Test_QueryLabelNames(t *testing.T) {
-	req := connect.NewRequest(&querierv1.LabelNamesRequest{})
+	req := connect.NewRequest(&querierv1alpha1.LabelNamesRequest{})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
@@ -110,11 +110,11 @@ func Test_QueryLabelNames(t *testing.T) {
 		q := newFakeQuerier()
 		switch addr {
 		case "1":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1alpha1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
 		case "2":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"bar", "buzz"}}), nil)
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1alpha1.LabelNamesResponse{Names: []string{"bar", "buzz"}}), nil)
 		case "3":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1alpha1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
 		}
 		return q, nil
 	}, log.NewLogfmtLogger(os.Stdout))
@@ -128,8 +128,8 @@ func Test_QueryLabelNames(t *testing.T) {
 func Test_Series(t *testing.T) {
 	foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar")
 	foobuzzlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "buzz")
-	req := connect.NewRequest(&querierv1.SeriesRequest{Matchers: []string{`{foo="bar"}`}})
-	ingesterReponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*commonv1.Labels{
+	req := connect.NewRequest(&querierv1alpha1.SeriesRequest{Matchers: []string{`{foo="bar"}`}})
+	ingesterReponse := connect.NewResponse(&ingestv1alpha1.SeriesResponse{LabelsSet: []*typesv1alpha1.Labels{
 		{Labels: foobarlabels.Labels()},
 		{Labels: foobuzzlabels.Labels()},
 	}})
@@ -155,64 +155,64 @@ func Test_Series(t *testing.T) {
 	require.NoError(t, err)
 	out, err := querier.Series(context.Background(), req)
 	require.NoError(t, err)
-	require.Equal(t, []*commonv1.Labels{
+	require.Equal(t, []*typesv1alpha1.Labels{
 		{Labels: foobarlabels.Labels()},
 		{Labels: foobuzzlabels.Labels()},
 	}, out.Msg.LabelsSet)
 }
 
 func Test_SelectMergeStacktraces(t *testing.T) {
-	req := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+	req := connect.NewRequest(&querierv1alpha1.SelectMergeStacktracesRequest{
 		LabelSelector: `{app="foo"}`,
 		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
 		Start:         0,
 		End:           2,
 	})
-	bidi1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
+	bidi1 := newFakeBidiClientStacktraces([]*ingestv1alpha1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1alpha1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
-			Profiles: []*ingestv1.SeriesProfile{
+			Profiles: []*ingestv1alpha1.SeriesProfile{
 				{Timestamp: 1, LabelIndex: 0},
 				{Timestamp: 2, LabelIndex: 1},
 				{Timestamp: 2, LabelIndex: 0},
 			},
 		},
 	})
-	bidi2 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
+	bidi2 := newFakeBidiClientStacktraces([]*ingestv1alpha1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1alpha1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
-			Profiles: []*ingestv1.SeriesProfile{
+			Profiles: []*ingestv1alpha1.SeriesProfile{
 				{Timestamp: 1, LabelIndex: 1},
 				{Timestamp: 1, LabelIndex: 0},
 				{Timestamp: 2, LabelIndex: 1},
 			},
 		},
 	})
-	bidi3 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
+	bidi3 := newFakeBidiClientStacktraces([]*ingestv1alpha1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1alpha1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
-			Profiles: []*ingestv1.SeriesProfile{
+			Profiles: []*ingestv1alpha1.SeriesProfile{
 				{Timestamp: 1, LabelIndex: 1},
 				{Timestamp: 1, LabelIndex: 0},
 				{Timestamp: 2, LabelIndex: 0},
@@ -259,72 +259,72 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	require.Len(t, selected, 4)
 	require.Equal(t,
 		[]testProfile{
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 1, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 1, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 2, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 2, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}}}},
 		}, selected)
 }
 
 func TestSelectSeries(t *testing.T) {
-	req := connect.NewRequest(&querierv1.SelectSeriesRequest{
+	req := connect.NewRequest(&querierv1alpha1.SelectSeriesRequest{
 		LabelSelector: `{app="foo"}`,
 		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
 		Start:         0,
 		End:           2,
 		Step:          0.001,
 	})
-	bidi1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
+	bidi1 := newFakeBidiClientSeries([]*ingestv1alpha1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1alpha1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
-			Profiles: []*ingestv1.SeriesProfile{
+			Profiles: []*ingestv1alpha1.SeriesProfile{
 				{Timestamp: 1, LabelIndex: 0},
 				{Timestamp: 2, LabelIndex: 1},
 				{Timestamp: 2, LabelIndex: 0},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
-	bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
+	}, &typesv1alpha1.Series{Labels: foobarlabels, Points: []*typesv1alpha1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+	bidi2 := newFakeBidiClientSeries([]*ingestv1alpha1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1alpha1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
-			Profiles: []*ingestv1.SeriesProfile{
+			Profiles: []*ingestv1alpha1.SeriesProfile{
 				{Timestamp: 1, LabelIndex: 1},
 				{Timestamp: 1, LabelIndex: 0},
 				{Timestamp: 2, LabelIndex: 1},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
-	bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
+	}, &typesv1alpha1.Series{Labels: foobarlabels, Points: []*typesv1alpha1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+	bidi3 := newFakeBidiClientSeries([]*ingestv1alpha1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1alpha1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
-			Profiles: []*ingestv1.SeriesProfile{
+			Profiles: []*ingestv1alpha1.SeriesProfile{
 				{Timestamp: 1, LabelIndex: 1},
 				{Timestamp: 1, LabelIndex: 0},
 				{Timestamp: 2, LabelIndex: 0},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+	}, &typesv1alpha1.Series{Labels: foobarlabels, Points: []*typesv1alpha1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
@@ -347,8 +347,8 @@ func TestSelectSeries(t *testing.T) {
 	res, err := querier.SelectSeries(context.Background(), req)
 	require.NoError(t, err)
 	// Only 2 results are used since the 3rd not required because of replication.
-	testhelper.EqualProto(t, []*commonv1.Series{
-		{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
+	testhelper.EqualProto(t, []*typesv1alpha1.Series{
+		{Labels: foobarlabels, Points: []*typesv1alpha1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
 	}, res.Msg.Series)
 	var selected []testProfile
 	selected = append(selected, bidi1.kept...)
@@ -363,10 +363,10 @@ func TestSelectSeries(t *testing.T) {
 	require.Len(t, selected, 4)
 	require.Equal(t,
 		[]testProfile{
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 1, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 1, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 2, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 2, Labels: &typesv1alpha1.Labels{Labels: []*typesv1alpha1.LabelPair{{Name: "app", Value: "foo"}}}},
 		}, selected)
 }
 
@@ -379,14 +379,14 @@ func newFakeQuerier() *fakeQuerierIngester {
 	return &fakeQuerierIngester{}
 }
 
-func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
+func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Request[ingestv1alpha1.LabelValuesRequest]) (*connect.Response[ingestv1alpha1.LabelValuesResponse], error) {
 	var (
 		args = f.Called(ctx, req)
-		res  *connect.Response[ingestv1.LabelValuesResponse]
+		res  *connect.Response[ingestv1alpha1.LabelValuesResponse]
 		err  error
 	)
 	if args[0] != nil {
-		res = args[0].(*connect.Response[ingestv1.LabelValuesResponse])
+		res = args[0].(*connect.Response[ingestv1alpha1.LabelValuesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)
@@ -394,14 +394,14 @@ func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Requ
 	return res, err
 }
 
-func (f *fakeQuerierIngester) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+func (f *fakeQuerierIngester) LabelNames(ctx context.Context, req *connect.Request[ingestv1alpha1.LabelNamesRequest]) (*connect.Response[ingestv1alpha1.LabelNamesResponse], error) {
 	var (
 		args = f.Called(ctx, req)
-		res  *connect.Response[ingestv1.LabelNamesResponse]
+		res  *connect.Response[ingestv1alpha1.LabelNamesResponse]
 		err  error
 	)
 	if args[0] != nil {
-		res = args[0].(*connect.Response[ingestv1.LabelNamesResponse])
+		res = args[0].(*connect.Response[ingestv1alpha1.LabelNamesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)
@@ -409,14 +409,14 @@ func (f *fakeQuerierIngester) LabelNames(ctx context.Context, req *connect.Reque
 	return res, err
 }
 
-func (f *fakeQuerierIngester) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+func (f *fakeQuerierIngester) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1alpha1.ProfileTypesRequest]) (*connect.Response[ingestv1alpha1.ProfileTypesResponse], error) {
 	var (
 		args = f.Called(ctx, req)
-		res  *connect.Response[ingestv1.ProfileTypesResponse]
+		res  *connect.Response[ingestv1alpha1.ProfileTypesResponse]
 		err  error
 	)
 	if args[0] != nil {
-		res = args[0].(*connect.Response[ingestv1.ProfileTypesResponse])
+		res = args[0].(*connect.Response[ingestv1alpha1.ProfileTypesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)
@@ -425,14 +425,14 @@ func (f *fakeQuerierIngester) ProfileTypes(ctx context.Context, req *connect.Req
 	return res, err
 }
 
-func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[ingestv1alpha1.SeriesRequest]) (*connect.Response[ingestv1alpha1.SeriesResponse], error) {
 	var (
 		args = f.Called(ctx, req)
-		res  *connect.Response[ingestv1.SeriesResponse]
+		res  *connect.Response[ingestv1alpha1.SeriesResponse]
 		err  error
 	)
 	if args[0] != nil {
-		res = args[0].(*connect.Response[ingestv1.SeriesResponse])
+		res = args[0].(*connect.Response[ingestv1alpha1.SeriesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)
@@ -443,19 +443,19 @@ func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[i
 
 type testProfile struct {
 	Ts     int64
-	Labels *commonv1.Labels
+	Labels *typesv1alpha1.Labels
 }
 
 type fakeBidiClientStacktraces struct {
-	profiles chan *ingestv1.ProfileSets
-	batches  []*ingestv1.ProfileSets
+	profiles chan *ingestv1alpha1.ProfileSets
+	batches  []*ingestv1alpha1.ProfileSets
 	kept     []testProfile
-	cur      *ingestv1.ProfileSets
+	cur      *ingestv1alpha1.ProfileSets
 }
 
-func newFakeBidiClientStacktraces(batches []*ingestv1.ProfileSets) *fakeBidiClientStacktraces {
+func newFakeBidiClientStacktraces(batches []*ingestv1alpha1.ProfileSets) *fakeBidiClientStacktraces {
 	res := &fakeBidiClientStacktraces{
-		profiles: make(chan *ingestv1.ProfileSets, 1),
+		profiles: make(chan *ingestv1alpha1.ProfileSets, 1),
 	}
 	res.profiles <- batches[0]
 	batches = batches[1:]
@@ -463,7 +463,7 @@ func newFakeBidiClientStacktraces(batches []*ingestv1.ProfileSets) *fakeBidiClie
 	return res
 }
 
-func (f *fakeBidiClientStacktraces) Send(in *ingestv1.MergeProfilesStacktracesRequest) error {
+func (f *fakeBidiClientStacktraces) Send(in *ingestv1alpha1.MergeProfilesStacktracesRequest) error {
 	if in.Request != nil {
 		return nil
 	}
@@ -484,12 +484,12 @@ func (f *fakeBidiClientStacktraces) Send(in *ingestv1.MergeProfilesStacktracesRe
 	return nil
 }
 
-func (f *fakeBidiClientStacktraces) Receive() (*ingestv1.MergeProfilesStacktracesResponse, error) {
+func (f *fakeBidiClientStacktraces) Receive() (*ingestv1alpha1.MergeProfilesStacktracesResponse, error) {
 	profiles := <-f.profiles
 	if profiles == nil {
-		return &ingestv1.MergeProfilesStacktracesResponse{
-			Result: &ingestv1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1.StacktraceSample{
+		return &ingestv1alpha1.MergeProfilesStacktracesResponse{
+			Result: &ingestv1alpha1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1alpha1.StacktraceSample{
 					{FunctionIds: []int32{0, 1, 2}, Value: 1},
 				},
 				FunctionNames: []string{"foo", "bar", "buzz"},
@@ -497,7 +497,7 @@ func (f *fakeBidiClientStacktraces) Receive() (*ingestv1.MergeProfilesStacktrace
 		}, nil
 	}
 	f.cur = profiles
-	return &ingestv1.MergeProfilesStacktracesResponse{
+	return &ingestv1alpha1.MergeProfilesStacktracesResponse{
 		SelectedProfiles: profiles,
 	}, nil
 }
@@ -505,17 +505,17 @@ func (f *fakeBidiClientStacktraces) CloseRequest() error  { return nil }
 func (f *fakeBidiClientStacktraces) CloseResponse() error { return nil }
 
 type fakeBidiClientSeries struct {
-	profiles chan *ingestv1.ProfileSets
-	batches  []*ingestv1.ProfileSets
+	profiles chan *ingestv1alpha1.ProfileSets
+	batches  []*ingestv1alpha1.ProfileSets
 	kept     []testProfile
-	cur      *ingestv1.ProfileSets
+	cur      *ingestv1alpha1.ProfileSets
 
-	result []*commonv1.Series
+	result []*typesv1alpha1.Series
 }
 
-func newFakeBidiClientSeries(batches []*ingestv1.ProfileSets, result ...*commonv1.Series) *fakeBidiClientSeries {
+func newFakeBidiClientSeries(batches []*ingestv1alpha1.ProfileSets, result ...*typesv1alpha1.Series) *fakeBidiClientSeries {
 	res := &fakeBidiClientSeries{
-		profiles: make(chan *ingestv1.ProfileSets, 1),
+		profiles: make(chan *ingestv1alpha1.ProfileSets, 1),
 	}
 	res.profiles <- batches[0]
 	batches = batches[1:]
@@ -524,7 +524,7 @@ func newFakeBidiClientSeries(batches []*ingestv1.ProfileSets, result ...*commonv
 	return res
 }
 
-func (f *fakeBidiClientSeries) Send(in *ingestv1.MergeProfilesLabelsRequest) error {
+func (f *fakeBidiClientSeries) Send(in *ingestv1alpha1.MergeProfilesLabelsRequest) error {
 	if in.Request != nil {
 		return nil
 	}
@@ -545,15 +545,15 @@ func (f *fakeBidiClientSeries) Send(in *ingestv1.MergeProfilesLabelsRequest) err
 	return nil
 }
 
-func (f *fakeBidiClientSeries) Receive() (*ingestv1.MergeProfilesLabelsResponse, error) {
+func (f *fakeBidiClientSeries) Receive() (*ingestv1alpha1.MergeProfilesLabelsResponse, error) {
 	profiles := <-f.profiles
 	if profiles == nil {
-		return &ingestv1.MergeProfilesLabelsResponse{
+		return &ingestv1alpha1.MergeProfilesLabelsResponse{
 			Series: f.result,
 		}, nil
 	}
 	f.cur = profiles
-	return &ingestv1.MergeProfilesLabelsResponse{
+	return &ingestv1alpha1.MergeProfilesLabelsResponse{
 		SelectedProfiles: profiles,
 	}, nil
 }
@@ -588,7 +588,7 @@ func TestRangeSeries(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		in   []ProfileValue
-		out  []*commonv1.Series
+		out  []*typesv1alpha1.Series
 	}{
 		{
 			name: "single series",
@@ -600,9 +600,9 @@ func TestRangeSeries(t *testing.T) {
 				{Ts: 4, Value: 4},
 				{Ts: 5, Value: 5},
 			},
-			out: []*commonv1.Series{
+			out: []*typesv1alpha1.Series{
 				{
-					Points: []*commonv1.Point{
+					Points: []*typesv1alpha1.Point{
 						{Timestamp: 1, Value: 2},
 						{Timestamp: 2, Value: 2},
 						{Timestamp: 3, Value: 3},
@@ -625,10 +625,10 @@ func TestRangeSeries(t *testing.T) {
 				{Ts: 4, Value: 4, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 				{Ts: 5, Value: 5, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 			},
-			out: []*commonv1.Series{
+			out: []*typesv1alpha1.Series{
 				{
 					Labels: foobarlabels,
-					Points: []*commonv1.Point{
+					Points: []*typesv1alpha1.Point{
 						{Timestamp: 1, Value: 1},
 						{Timestamp: 2, Value: 1},
 						{Timestamp: 4, Value: 4},
@@ -637,7 +637,7 @@ func TestRangeSeries(t *testing.T) {
 				},
 				{
 					Labels: foobuzzlabels,
-					Points: []*commonv1.Point{
+					Points: []*typesv1alpha1.Point{
 						{Timestamp: 1, Value: 1},
 						{Timestamp: 3, Value: 2},
 						{Timestamp: 4, Value: 8},
@@ -672,7 +672,7 @@ func TestRangeSeries(t *testing.T) {
 // 			return nil, err
 // 		}
 // 		res, err := c.Check(ctx, &grpc_health_v1.HealthCheckRequest{
-// 			Service: ingestv1.IngesterService_ServiceDesc.ServiceName,
+// 			Service: ingestv1alpha1.IngesterService_ServiceDesc.ServiceName,
 // 		})
 // 		if err != nil {
 // 			return nil, err
@@ -686,8 +686,8 @@ func TestRangeSeries(t *testing.T) {
 // 			return nil, err
 // 		}
 // 		now := time.Now()
-// 		err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
-// 			Request: &ingestv1.SelectProfilesRequest{
+// 		err = bidi.Send(&ingestv1alpha1.MergeProfilesStacktracesRequest{
+// 			Request: &ingestv1alpha1.SelectProfilesRequest{
 // 				LabelSelector: `{namespace="phlare-dev-001"}`,
 // 				Type:          profileType,
 // 				Start:         int64(model.TimeFromUnixNano(now.Add(-30 * time.Minute).UnixNano())),

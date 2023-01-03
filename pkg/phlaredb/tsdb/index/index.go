@@ -36,7 +36,7 @@ import (
 	tsdb_enc "github.com/prometheus/prometheus/tsdb/encoding"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/encoding"
@@ -1973,7 +1973,7 @@ func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta
 			return 0, errors.Wrap(err, "lookup label value")
 		}
 
-		*lbls = append(*lbls, &commonv1.LabelPair{Name: ln, Value: lv})
+		*lbls = append(*lbls, &typesv1alpha1.LabelPair{Name: ln, Value: lv})
 	}
 
 	// Read the chunks meta data.

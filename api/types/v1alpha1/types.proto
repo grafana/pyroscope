@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package types.v1alpha1;
+
+message LabelPair {
+  string name = 1;
+  string value = 2;
+}
+
+message ProfileType {
+  string ID = 1;
+  string name = 2;
+  string sample_type = 4;
+  string sample_unit = 5;
+  string period_type = 6;
+  string period_unit = 7;
+}
+
+message Labels {
+  // LabelPair is the key value pairs to identify the corresponding profile
+  repeated LabelPair labels = 1;
+}
+
+message Series {
+  repeated LabelPair labels = 1;
+  repeated Point points = 2;
+}
+
+message Point {
+  double value = 1;
+  // Milliseconds unix timestamp
+  int64 timestamp = 2;
+}
