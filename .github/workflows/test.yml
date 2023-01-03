@@ -142,7 +142,7 @@ jobs:
   deploy-phlare-dev-001:
     if: github.event_name == 'push' && github.repository == 'grafana/phlare'
     runs-on: ubuntu-latest
-    needs: [build-push, build-push-grafana]
+    needs: [build-push]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
