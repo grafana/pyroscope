@@ -34,8 +34,8 @@ const getBodyRows = (
   return keys.reduce((acc, k) => {
     acc.push({
       cells: [
-        { value: k.name },
         { value: k.id },
+        { value: k.name },
         { value: k.role },
         { value: formatRelative(k.createdAt, now) },
         {
@@ -64,11 +64,11 @@ const getBodyRows = (
 };
 
 const headRow = [
+  { name: '', label: 'Id', sortable: 0 },
   { name: '', label: 'Name', sortable: 0 },
   { name: '', label: 'Role', sortable: 0 },
   { name: '', label: 'Creation date', sortable: 0 },
   { name: '', label: 'Expiration date', sortable: 0 },
-  { name: '', label: 'Role', 'aria-label': 'Actions', sortable: 0 },
 ];
 
 const ApiKeys = () => {
