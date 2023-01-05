@@ -14,8 +14,8 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 
-	querierv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1alpha1"
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
@@ -34,7 +34,7 @@ func (q *Querier) LabelValuesHandler(w http.ResponseWriter, req *http.Request) {
 	)
 
 	if label == "__name__" {
-		response, err := q.ProfileTypes(req.Context(), connect.NewRequest(&querierv1alpha1.ProfileTypesRequest{}))
+		response, err := q.ProfileTypes(req.Context(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -43,7 +43,7 @@ func (q *Querier) LabelValuesHandler(w http.ResponseWriter, req *http.Request) {
 			res = append(res, t.ID)
 		}
 	} else {
-		response, err := q.LabelValues(req.Context(), connect.NewRequest(&querierv1alpha1.LabelValuesRequest{}))
+		response, err := q.LabelValues(req.Context(), connect.NewRequest(&querierv1.LabelValuesRequest{}))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -86,7 +86,7 @@ func (q *Querier) RenderHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
-func parseSelectProfilesRequest(req *http.Request) (*querierv1alpha1.SelectMergeStacktracesRequest, *typesv1alpha1.ProfileType, error) {
+func parseSelectProfilesRequest(req *http.Request) (*querierv1.SelectMergeStacktracesRequest, *typesv1.ProfileType, error) {
 	selector, ptype, err := parseQuery(req)
 	if err != nil {
 		return nil, nil, err
@@ -103,7 +103,7 @@ func parseSelectProfilesRequest(req *http.Request) (*querierv1alpha1.SelectMerge
 		}
 		start = end.Add(-from)
 	}
-	return &querierv1alpha1.SelectMergeStacktracesRequest{
+	return &querierv1.SelectMergeStacktracesRequest{
 		Start:         int64(start),
 		End:           int64(end),
 		LabelSelector: selector,
@@ -111,7 +111,7 @@ func parseSelectProfilesRequest(req *http.Request) (*querierv1alpha1.SelectMerge
 	}, ptype, nil
 }
 
-func parseQuery(req *http.Request) (string, *typesv1alpha1.ProfileType, error) {
+func parseQuery(req *http.Request) (string, *typesv1.ProfileType, error) {
 	q := req.Form.Get("query")
 	if q == "" {
 		return "", nil, fmt.Errorf("query is required")

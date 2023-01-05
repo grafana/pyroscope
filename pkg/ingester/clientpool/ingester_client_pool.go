@@ -14,21 +14,21 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
-	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1/ingesterv1alpha1connect"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/phlare/pkg/util"
 )
 
 type BidiClientMergeProfilesStacktraces interface {
-	Send(*ingestv1alpha1.MergeProfilesStacktracesRequest) error
-	Receive() (*ingestv1alpha1.MergeProfilesStacktracesResponse, error)
+	Send(*ingestv1.MergeProfilesStacktracesRequest) error
+	Receive() (*ingestv1.MergeProfilesStacktracesResponse, error)
 	CloseRequest() error
 	CloseResponse() error
 }
 
 type BidiClientMergeProfilesLabels interface {
-	Send(*ingestv1alpha1.MergeProfilesLabelsRequest) error
-	Receive() (*ingestv1alpha1.MergeProfilesLabelsResponse, error)
+	Send(*ingestv1.MergeProfilesLabelsRequest) error
+	Receive() (*ingestv1.MergeProfilesLabelsResponse, error)
 	CloseRequest() error
 	CloseResponse() error
 }
@@ -67,7 +67,7 @@ func PoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
 			return nil, err
 		}
 		return &ingesterPoolClient{
-			IngesterServiceClient: ingesterv1alpha1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+addr, options...),
+			IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+addr, options...),
 			HealthClient:          grpc_health_v1.NewHealthClient(conn),
 			Closer:                conn,
 		}, nil
@@ -75,7 +75,7 @@ func PoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
 }
 
 type ingesterPoolClient struct {
-	ingesterv1alpha1connect.IngesterServiceClient
+	ingesterv1connect.IngesterServiceClient
 	grpc_health_v1.HealthClient
 	io.Closer
 }

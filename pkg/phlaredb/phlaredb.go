@@ -27,8 +27,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/objstore/client"
@@ -303,7 +303,7 @@ func (f *PhlareDB) querierFor(start, end model.Time) Queriers {
 	return blocks
 }
 
-func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1alpha1.MergeProfilesStacktracesRequest, ingestv1alpha1.MergeProfilesStacktracesResponse]) error {
+func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesStacktraces")
 	defer sp.Finish()
 
@@ -328,7 +328,7 @@ func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect
 
 	queriers := f.querierFor(model.Time(request.Start), model.Time(request.End))
 
-	result := make([]*ingestv1alpha1.MergeProfilesStacktracesResult, 0, len(queriers))
+	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
 	var lock sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -342,9 +342,9 @@ func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect
 		}
 		// send batches of profiles to client and filter via bidi stream.
 		selectedProfiles, err := filterProfiles[
-			BidiServerMerge[*ingestv1alpha1.MergeProfilesStacktracesResponse, *ingestv1alpha1.MergeProfilesStacktracesRequest],
-			*ingestv1alpha1.MergeProfilesStacktracesResponse,
-			*ingestv1alpha1.MergeProfilesStacktracesRequest](ctx, profiles, 2048, stream)
+			BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest],
+			*ingestv1.MergeProfilesStacktracesResponse,
+			*ingestv1.MergeProfilesStacktracesRequest](ctx, profiles, 2048, stream)
 		if err != nil {
 			return err
 		}
@@ -365,7 +365,7 @@ func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect
 
 	// Signals the end of the profile streaming by sending an empty response.
 	// This allows the client to not block other streaming ingesters.
-	if err := stream.Send(&ingestv1alpha1.MergeProfilesStacktracesResponse{}); err != nil {
+	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 		return err
 	}
 
@@ -374,7 +374,7 @@ func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect
 	}
 
 	// sends the final result to the client.
-	err = stream.Send(&ingestv1alpha1.MergeProfilesStacktracesResponse{
+	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: phlaremodel.MergeBatchMergeStacktraces(result...),
 	})
 	if err != nil {
@@ -387,7 +387,7 @@ func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect
 	return nil
 }
 
-func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1alpha1.MergeProfilesLabelsRequest, ingestv1alpha1.MergeProfilesLabelsResponse]) error {
+func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesLabels")
 	defer sp.Finish()
 
@@ -414,7 +414,7 @@ func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.Bidi
 	)
 
 	queriers := f.querierFor(model.Time(request.Start), model.Time(request.End))
-	result := make([][]*typesv1alpha1.Series, 0, len(queriers))
+	result := make([][]*typesv1.Series, 0, len(queriers))
 	g, ctx := errgroup.WithContext(ctx)
 	s := lo.Synchronize()
 	// Start streaming profiles from all stores in order.
@@ -427,9 +427,9 @@ func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.Bidi
 		}
 		// send batches of profiles to client and filter via bidi stream.
 		selectedProfiles, err := filterProfiles[
-			BidiServerMerge[*ingestv1alpha1.MergeProfilesLabelsResponse, *ingestv1alpha1.MergeProfilesLabelsRequest],
-			*ingestv1alpha1.MergeProfilesLabelsResponse,
-			*ingestv1alpha1.MergeProfilesLabelsRequest](ctx, profiles, 2048, stream)
+			BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest],
+			*ingestv1.MergeProfilesLabelsResponse,
+			*ingestv1.MergeProfilesLabelsRequest](ctx, profiles, 2048, stream)
 		if err != nil {
 			return err
 		}
@@ -451,7 +451,7 @@ func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.Bidi
 
 	// Signals the end of the profile streaming by sending an empty request.
 	// This allows the client to not block other streaming ingesters.
-	if err := stream.Send(&ingestv1alpha1.MergeProfilesLabelsResponse{}); err != nil {
+	if err := stream.Send(&ingestv1.MergeProfilesLabelsResponse{}); err != nil {
 		return err
 	}
 
@@ -460,7 +460,7 @@ func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.Bidi
 	}
 
 	// sends the final result to the client.
-	err = stream.Send(&ingestv1alpha1.MergeProfilesLabelsResponse{
+	err = stream.Send(&ingestv1.MergeProfilesLabelsResponse{
 		Series: phlaremodel.MergeSeries(result...),
 	})
 	if err != nil {
@@ -485,14 +485,14 @@ type labelWithIndex struct {
 
 // filterProfiles sends profiles to the client and filters them via the bidi stream.
 func filterProfiles[B BidiServerMerge[Res, Req],
-	Res *ingestv1alpha1.MergeProfilesStacktracesResponse | *ingestv1alpha1.MergeProfilesLabelsResponse,
-	Req *ingestv1alpha1.MergeProfilesStacktracesRequest | *ingestv1alpha1.MergeProfilesLabelsRequest](
+	Res *ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse,
+	Req *ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest](
 	ctx context.Context, profiles iter.Iterator[Profile], batchProfileSize int, stream B,
 ) ([]Profile, error) {
 	selection := []Profile{}
-	selectProfileResult := &ingestv1alpha1.ProfileSets{
-		Profiles:   make([]*ingestv1alpha1.SeriesProfile, 0, batchProfileSize),
-		LabelsSets: make([]*typesv1alpha1.Labels, 0, batchProfileSize),
+	selectProfileResult := &ingestv1.ProfileSets{
+		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
+		LabelsSets: make([]*typesv1.Labels, 0, batchProfileSize),
 	}
 	if err := iter.ReadBatch(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
 		sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles - Filtering batch")
@@ -516,9 +516,9 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 					index:  len(selectProfileResult.LabelsSets),
 				}
 				seriesByFP[profile.Fingerprint()] = lblsIdx
-				selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &typesv1alpha1.Labels{Labels: profile.Labels()})
+				selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &typesv1.Labels{Labels: profile.Labels()})
 			}
-			selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1alpha1.SeriesProfile{
+			selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
 				LabelIndex: int32(lblsIdx.index),
 				Timestamp:  int64(profile.Timestamp()),
 			})
@@ -527,12 +527,12 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 		sp.LogFields(otlog.String("msg", "sending batch to client"))
 		var err error
 		switch s := BidiServerMerge[Res, Req](stream).(type) {
-		case BidiServerMerge[*ingestv1alpha1.MergeProfilesStacktracesResponse, *ingestv1alpha1.MergeProfilesStacktracesRequest]:
-			err = s.Send(&ingestv1alpha1.MergeProfilesStacktracesResponse{
+		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
+			err = s.Send(&ingestv1.MergeProfilesStacktracesResponse{
 				SelectedProfiles: selectProfileResult,
 			})
-		case BidiServerMerge[*ingestv1alpha1.MergeProfilesLabelsResponse, *ingestv1alpha1.MergeProfilesLabelsRequest]:
-			err = s.Send(&ingestv1alpha1.MergeProfilesLabelsResponse{
+		case BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest]:
+			err = s.Send(&ingestv1.MergeProfilesLabelsResponse{
 				SelectedProfiles: selectProfileResult,
 			})
 		}
@@ -551,12 +551,12 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 		// handle response for the batch.
 		var selected []bool
 		switch s := BidiServerMerge[Res, Req](stream).(type) {
-		case BidiServerMerge[*ingestv1alpha1.MergeProfilesStacktracesResponse, *ingestv1alpha1.MergeProfilesStacktracesRequest]:
+		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
 			selectionResponse, err := s.Receive()
 			if err == nil {
 				selected = selectionResponse.Profiles
 			}
-		case BidiServerMerge[*ingestv1alpha1.MergeProfilesLabelsResponse, *ingestv1alpha1.MergeProfilesLabelsRequest]:
+		case BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest]:
 			selectionResponse, err := s.Receive()
 			if err == nil {
 				selected = selectionResponse.Profiles

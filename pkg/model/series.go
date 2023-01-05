@@ -5,17 +5,17 @@ import (
 
 	"github.com/samber/lo"
 
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
 
-func MergeSeries(series ...[]*typesv1alpha1.Series) []*typesv1alpha1.Series {
+func MergeSeries(series ...[]*typesv1.Series) []*typesv1.Series {
 	if len(series) == 0 {
 		return nil
 	}
 	if len(series) == 1 {
 		return series[0]
 	}
-	seriesByFingerprint := map[uint64]*typesv1alpha1.Series{}
+	seriesByFingerprint := map[uint64]*typesv1.Series{}
 	for _, s := range series {
 		for _, s := range s {
 			hash := Labels(s.Labels).Hash()

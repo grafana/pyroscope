@@ -3,29 +3,29 @@ package model
 import (
 	"testing"
 
-	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/phlare/pkg/testhelper"
 )
 
 func TestMergeBatchResponse(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		in       []*ingestv1alpha1.MergeProfilesStacktracesResult
-		expected *ingestv1alpha1.MergeProfilesStacktracesResult
+		in       []*ingestv1.MergeProfilesStacktracesResult
+		expected *ingestv1.MergeProfilesStacktracesResult
 	}{
 		{
 			name: "empty",
-			in:   []*ingestv1alpha1.MergeProfilesStacktracesResult{},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
+			in:   []*ingestv1.MergeProfilesStacktracesResult{},
+			expected: &ingestv1.MergeProfilesStacktracesResult{
 				Stacktraces:   nil,
 				FunctionNames: nil,
 			},
 		},
 		{
 			name: "single",
-			in: []*ingestv1alpha1.MergeProfilesStacktracesResult{
+			in: []*ingestv1.MergeProfilesStacktracesResult{
 				{
-					Stacktraces: []*ingestv1alpha1.StacktraceSample{
+					Stacktraces: []*ingestv1.StacktraceSample{
 						{
 							FunctionIds: []int32{0, 1},
 							Value:       1,
@@ -38,8 +38,8 @@ func TestMergeBatchResponse(t *testing.T) {
 					FunctionNames: []string{"my", "other", "stack"},
 				},
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{0, 1},
 						Value:       1,
@@ -54,9 +54,9 @@ func TestMergeBatchResponse(t *testing.T) {
 		},
 		{
 			name: "multiple",
-			in: []*ingestv1alpha1.MergeProfilesStacktracesResult{
+			in: []*ingestv1.MergeProfilesStacktracesResult{
 				{
-					Stacktraces: []*ingestv1alpha1.StacktraceSample{
+					Stacktraces: []*ingestv1.StacktraceSample{
 						{
 							FunctionIds: []int32{0, 1},
 							Value:       1,
@@ -73,7 +73,7 @@ func TestMergeBatchResponse(t *testing.T) {
 					FunctionNames: []string{"my", "other", "stack", "foo"},
 				},
 				{
-					Stacktraces: []*ingestv1alpha1.StacktraceSample{
+					Stacktraces: []*ingestv1.StacktraceSample{
 						{
 							FunctionIds: []int32{0, 1},
 							Value:       1,
@@ -90,8 +90,8 @@ func TestMergeBatchResponse(t *testing.T) {
 					FunctionNames: []string{"my", "other", "stack", "bar"},
 				},
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{4},
 						Value:       5,

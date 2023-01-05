@@ -22,9 +22,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	pushv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1"
-	"github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1/pushv1alpha1connect"
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/testhelper"
@@ -40,19 +40,19 @@ func Test_ConnectPush(t *testing.T) {
 	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
-	mux.Handle(pushv1alpha1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
+	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
 	s := httptest.NewServer(mux)
 	defer s.Close()
 
-	client := pushv1alpha1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
 
-	resp, err := client.Push(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&pushv1alpha1.PushRequest{
-		Series: []*pushv1alpha1.RawProfileSeries{
+	resp, err := client.Push(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*typesv1alpha1.LabelPair{
+				Labels: []*typesv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
-				Samples: []*pushv1alpha1.RawSample{
+				Samples: []*pushv1.RawSample{
 					{
 						RawProfile: testProfile(t),
 					},
@@ -72,13 +72,13 @@ func Test_Replication(t *testing.T) {
 		"3": newFakeIngester(t, true),
 	}
 	ctx := tenant.InjectTenantID(context.Background(), "foo")
-	req := connect.NewRequest(&pushv1alpha1.PushRequest{
-		Series: []*pushv1alpha1.RawProfileSeries{
+	req := connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*typesv1alpha1.LabelPair{
+				Labels: []*typesv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
-				Samples: []*pushv1alpha1.RawSample{
+				Samples: []*pushv1.RawSample{
 					{
 						RawProfile: testProfile(t),
 					},
@@ -138,21 +138,21 @@ func testProfile(t *testing.T) []byte {
 
 type fakeIngester struct {
 	t        testing.TB
-	requests []*pushv1alpha1.PushRequest
+	requests []*pushv1.PushRequest
 	fail     bool
 	testhelper.FakePoolClient
 
 	mtx sync.Mutex
 }
 
-func (i *fakeIngester) Push(_ context.Context, req *connect.Request[pushv1alpha1.PushRequest]) (*connect.Response[pushv1alpha1.PushResponse], error) {
+func (i *fakeIngester) Push(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	i.mtx.Lock()
 	defer i.mtx.Unlock()
 	i.requests = append(i.requests, req.Msg)
 	if i.fail {
 		return nil, errors.New("foo")
 	}
-	res := connect.NewResponse(&pushv1alpha1.PushResponse{})
+	res := connect.NewResponse(&pushv1.PushResponse{})
 	return res, nil
 }
 

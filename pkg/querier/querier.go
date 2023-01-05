@@ -21,9 +21,9 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
-	querierv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1alpha1"
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
@@ -96,12 +96,12 @@ func (q *Querier) stopping(_ error) error {
 	return services.StopManagerAndAwaitStopped(context.Background(), q.subservices)
 }
 
-func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querierv1alpha1.ProfileTypesRequest]) (*connect.Response[querierv1alpha1.ProfileTypesResponse], error) {
+func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1alpha1.ProfileType, error) {
-		res, err := ic.ProfileTypes(childCtx, connect.NewRequest(&ingestv1alpha1.ProfileTypesRequest{}))
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.ProfileType, error) {
+		res, err := ic.ProfileTypes(childCtx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +111,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 		return nil, err
 	}
 	var profileTypeIDs []string
-	profileTypes := make(map[string]*typesv1alpha1.ProfileType)
+	profileTypes := make(map[string]*typesv1.ProfileType)
 	for _, response := range responses {
 		for _, profileType := range response.response {
 			if _, ok := profileTypes[profileType.ID]; !ok {
@@ -121,8 +121,8 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 		}
 	}
 	sort.Strings(profileTypeIDs)
-	result := &querierv1alpha1.ProfileTypesResponse{
-		ProfileTypes: make([]*typesv1alpha1.ProfileType, 0, len(profileTypes)),
+	result := &querierv1.ProfileTypesResponse{
+		ProfileTypes: make([]*typesv1.ProfileType, 0, len(profileTypes)),
 	}
 	for _, id := range profileTypeIDs {
 		result.ProfileTypes = append(result.ProfileTypes, profileTypes[id])
@@ -130,7 +130,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 	return connect.NewResponse(result), nil
 }
 
-func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv1alpha1.LabelValuesRequest]) (*connect.Response[querierv1alpha1.LabelValuesResponse], error) {
+func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues")
 	defer func() {
 		sp.LogFields(
@@ -139,7 +139,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 		sp.Finish()
 	}()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelValues(childCtx, connect.NewRequest(&ingestv1alpha1.LabelValuesRequest{
+		res, err := ic.LabelValues(childCtx, connect.NewRequest(&ingestv1.LabelValuesRequest{
 			Name: req.Msg.Name,
 		}))
 		if err != nil {
@@ -151,16 +151,16 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1alpha1.LabelValuesResponse{
+	return connect.NewResponse(&querierv1.LabelValuesResponse{
 		Names: uniqueSortedStrings(responses),
 	}), nil
 }
 
-func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[querierv1alpha1.LabelNamesRequest]) (*connect.Response[querierv1alpha1.LabelNamesResponse], error) {
+func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelNames(childCtx, connect.NewRequest(&ingestv1alpha1.LabelNamesRequest{}))
+		res, err := ic.LabelNames(childCtx, connect.NewRequest(&ingestv1.LabelNamesRequest{}))
 		if err != nil {
 			return nil, err
 		}
@@ -170,12 +170,12 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[querierv1
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1alpha1.LabelNamesResponse{
+	return connect.NewResponse(&querierv1.LabelNamesResponse{
 		Names: uniqueSortedStrings(responses),
 	}), nil
 }
 
-func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1alpha1.SeriesRequest]) (*connect.Response[querierv1alpha1.SeriesResponse], error) {
+func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer func() {
 		sp.LogFields(
@@ -183,8 +183,8 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1alph
 		)
 		sp.Finish()
 	}()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1alpha1.Labels, error) {
-		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1alpha1.SeriesRequest{
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
+		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
 			Matchers: req.Msg.Matchers,
 		}))
 		if err != nil {
@@ -195,18 +195,18 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1alph
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&querierv1alpha1.SeriesResponse{
+	return connect.NewResponse(&querierv1.SeriesResponse{
 		LabelsSet: lo.UniqBy(
-			lo.FlatMap(responses, func(r responseFromIngesters[[]*typesv1alpha1.Labels], _ int) []*typesv1alpha1.Labels {
+			lo.FlatMap(responses, func(r responseFromIngesters[[]*typesv1.Labels], _ int) []*typesv1.Labels {
 				return r.response
 			}),
-			func(t *typesv1alpha1.Labels) uint64 {
+			func(t *typesv1.Labels) uint64 {
 				return phlaremodel.Labels(t.Labels).Hash()
 			}),
 	}), nil
 }
 
-func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1alpha1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1alpha1.SelectMergeStacktracesResponse], error) {
+func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	defer func() {
 		sp.LogFields(
@@ -238,8 +238,8 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	for _, r := range responses {
 		r := r
 		g.Go(func() error {
-			return r.response.Send(&ingestv1alpha1.MergeProfilesStacktracesRequest{
-				Request: &ingestv1alpha1.SelectProfilesRequest{
+			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
+				Request: &ingestv1.SelectProfilesRequest{
 					LabelSelector: req.Msg.LabelSelector,
 					Start:         req.Msg.Start,
 					End:           req.Msg.End,
@@ -257,12 +257,12 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&querierv1alpha1.SelectMergeStacktracesResponse{
+	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
 		Flamegraph: NewFlameGraph(newTree(st)),
 	}), nil
 }
 
-func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1alpha1.SelectSeriesRequest]) (*connect.Response[querierv1alpha1.SelectSeriesResponse], error) {
+func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries")
 	defer func() {
 		sp.LogFields(
@@ -307,8 +307,8 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	for _, r := range responses {
 		r := r
 		g.Go(func() error {
-			return r.response.Send(&ingestv1alpha1.MergeProfilesLabelsRequest{
-				Request: &ingestv1alpha1.SelectProfilesRequest{
+			return r.response.Send(&ingestv1.MergeProfilesLabelsRequest{
+				Request: &ingestv1.SelectProfilesRequest{
 					LabelSelector: req.Msg.LabelSelector,
 					Start:         start,
 					End:           req.Msg.End,
@@ -330,7 +330,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInternal, it.Err())
 	}
 
-	return connect.NewResponse(&querierv1alpha1.SelectSeriesResponse{
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{
 		Series: result,
 	}), nil
 }
@@ -338,9 +338,9 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 // rangeSeries aggregates profiles into series.
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
-func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*typesv1alpha1.Series {
+func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*typesv1.Series {
 	defer it.Close()
-	seriesMap := make(map[uint64]*typesv1alpha1.Series)
+	seriesMap := make(map[uint64]*typesv1.Series)
 
 	if !it.Next() {
 		return nil
@@ -355,9 +355,9 @@ Outer:
 			// find or create series
 			series, ok := seriesMap[it.At().LabelsHash]
 			if !ok {
-				seriesMap[it.At().LabelsHash] = &typesv1alpha1.Series{
+				seriesMap[it.At().LabelsHash] = &typesv1.Series{
 					Labels: it.At().Lbs,
-					Points: []*typesv1alpha1.Point{
+					Points: []*typesv1.Point{
 						{Value: it.At().Value, Timestamp: currentStep},
 					},
 				}
@@ -375,7 +375,7 @@ Outer:
 				continue
 			}
 			// Next step is missing
-			series.Points = append(series.Points, &typesv1alpha1.Point{
+			series.Points = append(series.Points, &typesv1.Point{
 				Value:     it.At().Value,
 				Timestamp: currentStep,
 			})
