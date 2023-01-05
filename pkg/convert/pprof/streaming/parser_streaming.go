@@ -127,8 +127,8 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 	if err = p.parseFunctionsAndLocations(); err != nil {
 		return err
 	}
-	if err = p.checkKnownSampleTypes(); err != nil {
-		return err
+	if !p.haveKnownSampleTypes() {
+		return nil //todo return error
 	}
 
 	p.newCache.Reset()
@@ -169,7 +169,7 @@ func (p *VTStreamingParser) parseFunctionsAndLocations() error {
 	return err
 }
 
-func (p *VTStreamingParser) checkKnownSampleTypes() error {
+func (p *VTStreamingParser) haveKnownSampleTypes() bool {
 	p.indexes = grow(p.indexes, len(p.sampleTypes))
 	p.types = grow(p.types, len(p.sampleTypes))
 	for i, s := range p.sampleTypes {
@@ -184,9 +184,9 @@ func (p *VTStreamingParser) checkKnownSampleTypes() error {
 		}
 	}
 	if len(p.indexes) == 0 {
-		return fmt.Errorf("unknown sample types")
+		return false
 	}
-	return nil
+	return true
 }
 
 func (p *VTStreamingParser) parseSamples() error {
