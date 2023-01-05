@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
 )
@@ -44,7 +44,7 @@ func init() {
 const DefaultIndexShards = 32
 
 type Interface interface {
-	Add(labels []*typesv1alpha1.LabelPair, fp model.Fingerprint) labels.Labels
+	Add(labels []*typesv1.LabelPair, fp model.Fingerprint) labels.Labels
 	Lookup(matchers []*labels.Matcher, shard *shard.Annotation) ([]model.Fingerprint, error)
 	LabelNames(shard *shard.Annotation) ([]string, error)
 	LabelValues(name string, shard *shard.Annotation) ([]string, error)
@@ -120,7 +120,7 @@ var (
 	}
 )
 
-func labelsSeriesIDHash(ls []*typesv1alpha1.LabelPair) uint32 {
+func labelsSeriesIDHash(ls []*typesv1.LabelPair) uint32 {
 	b64 := base64Pool.Get().(*bytes.Buffer)
 	defer func() {
 		base64Pool.Put(b64)
@@ -130,7 +130,7 @@ func labelsSeriesIDHash(ls []*typesv1alpha1.LabelPair) uint32 {
 	return binary.BigEndian.Uint32(buf)
 }
 
-func labelsSeriesID(ls []*typesv1alpha1.LabelPair, dest []byte) {
+func labelsSeriesID(ls []*typesv1.LabelPair, dest []byte) {
 	buf := bufferPool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
@@ -143,7 +143,7 @@ func labelsSeriesID(ls []*typesv1alpha1.LabelPair, dest []byte) {
 }
 
 // Backwards-compatible with model.Metric.String()
-func labelsString(b *bytes.Buffer, ls []*typesv1alpha1.LabelPair) {
+func labelsString(b *bytes.Buffer, ls []*typesv1.LabelPair) {
 	// metrics name is used in the store for computing shards.
 	// see chunk/schema_util.go for more details. `labelsString()`
 	for _, l := range ls {
@@ -228,7 +228,7 @@ func (ii *InvertedIndex) LabelValues(name string, shard *shard.Annotation) ([]st
 }
 
 // Delete a fingerprint with the given label pairs.
-func (ii *InvertedIndex) Delete(labels []*typesv1alpha1.LabelPair, fp model.Fingerprint) {
+func (ii *InvertedIndex) Delete(labels []*typesv1.LabelPair, fp model.Fingerprint) {
 	shard := ii.shards[labelsSeriesIDHash(labels)%ii.totalShards]
 	shard.delete(labels, fp)
 }
@@ -266,7 +266,7 @@ func copyString(s string) string {
 // add metric to the index; return all the name/value pairs as a fresh
 // sorted slice, referencing 'interned' strings from the index so that
 // no references are retained to the memory of `metric`.
-func (shard *indexShard) add(metric []*typesv1alpha1.LabelPair, fp model.Fingerprint) phlaremodel.Labels {
+func (shard *indexShard) add(metric []*typesv1.LabelPair, fp model.Fingerprint) phlaremodel.Labels {
 	shard.mtx.Lock()
 	defer shard.mtx.Unlock()
 
@@ -295,7 +295,7 @@ func (shard *indexShard) add(metric []*typesv1alpha1.LabelPair, fp model.Fingerp
 		copy(fingerprints.fps[j+1:], fingerprints.fps[j:])
 		fingerprints.fps[j] = fp
 		values.fps[fingerprints.value] = fingerprints
-		internedLabels[i] = &typesv1alpha1.LabelPair{Name: values.name, Value: fingerprints.value}
+		internedLabels[i] = &typesv1.LabelPair{Name: values.name, Value: fingerprints.value}
 	}
 	sort.Sort(internedLabels)
 	return internedLabels
@@ -412,7 +412,7 @@ func (shard *indexShard) labelValues(
 	return extractor(values)
 }
 
-func (shard *indexShard) delete(labels []*typesv1alpha1.LabelPair, fp model.Fingerprint) {
+func (shard *indexShard) delete(labels []*typesv1.LabelPair, fp model.Fingerprint) {
 	shard.mtx.Lock()
 	defer shard.mtx.Unlock()
 

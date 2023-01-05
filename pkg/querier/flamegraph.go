@@ -5,8 +5,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/samber/lo"
 
-	querierv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1alpha1"
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
 
 type stackNode struct {
@@ -15,7 +15,7 @@ type stackNode struct {
 	node    *node
 }
 
-func NewFlameGraph(t *tree) *querierv1alpha1.FlameGraph {
+func NewFlameGraph(t *tree) *querierv1.FlameGraph {
 	var total, max int64
 	for _, node := range t.root {
 		total += node.total
@@ -88,14 +88,14 @@ func NewFlameGraph(t *tree) *querierv1alpha1.FlameGraph {
 			prev += l[i] + l[i+1]
 		}
 	}
-	levels := make([]*querierv1alpha1.Level, len(result))
+	levels := make([]*querierv1.Level, len(result))
 	for i := range levels {
-		levels[i] = &querierv1alpha1.Level{
+		levels[i] = &querierv1.Level{
 			Values: result[i],
 		}
 	}
 
-	return &querierv1alpha1.FlameGraph{
+	return &querierv1.FlameGraph{
 		Names:   names,
 		Levels:  levels,
 		Total:   total,
@@ -104,7 +104,7 @@ func NewFlameGraph(t *tree) *querierv1alpha1.FlameGraph {
 }
 
 // ExportToFlamebearer exports the flamegraph to a Flamebearer struct.
-func ExportToFlamebearer(fg *querierv1alpha1.FlameGraph, profileType *typesv1alpha1.ProfileType) *flamebearer.FlamebearerProfile {
+func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
 	unit := metadata.Units(profileType.SampleUnit)
 	sampleRate := uint32(100)
 

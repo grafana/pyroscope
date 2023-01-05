@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 )
 

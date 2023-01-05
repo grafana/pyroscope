@@ -30,7 +30,7 @@ import (
 	wwtracing "github.com/weaveworks/common/tracing"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	pushv1alpha1connect "github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1/pushv1alpha1connect"
+	pushv1connect "github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/agent"
 	"github.com/grafana/phlare/pkg/cfg"
 	"github.com/grafana/phlare/pkg/distributor"
@@ -180,7 +180,7 @@ type Phlare struct {
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
 	agent              *agent.Agent
-	pusherClient       pushv1alpha1connect.PusherServiceClient
+	pusherClient       pushv1connect.PusherServiceClient
 	usageReport        *usagestats.Reporter
 
 	storageBucket objstore.Bucket
@@ -228,7 +228,7 @@ func New(cfg Config) (*Phlare, error) {
 	phlare.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.MultitenancyEnabled))
 
 	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
-	phlare.pusherClient = pushv1alpha1connect.NewPusherServiceClient(pusherHTTPClient,
+	phlare.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient,
 		cfg.AgentConfig.ClientConfig.URL.String(),
 		phlare.auth,
 	)

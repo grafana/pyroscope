@@ -18,8 +18,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	ingesterv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
-	pushv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/push/v1alpha1"
+	ingesterv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
@@ -75,11 +75,11 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
 
-	req := &connect.Request[pushv1alpha1.PushRequest]{
-		Msg: &pushv1alpha1.PushRequest{
-			Series: []*pushv1alpha1.RawProfileSeries{
+	req := &connect.Request[pushv1.PushRequest]{
+		Msg: &pushv1.PushRequest{
+			Series: []*pushv1.RawProfileSeries{
 				{
-					Samples: []*pushv1alpha1.RawSample{
+					Samples: []*pushv1.RawSample{
 						{
 							ID:         uuid.NewString(),
 							RawProfile: testProfile(t),
@@ -97,19 +97,19 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "buzz"), req)
 	require.NoError(t, err)
 
-	labelNames, err := ing.LabelNames(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1alpha1.LabelNamesRequest{}))
+	labelNames, err := ing.LabelNames(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "foo"}, labelNames.Msg.Names)
 
-	labelNames, err = ing.LabelNames(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1alpha1.LabelNamesRequest{}))
+	labelNames, err = ing.LabelNames(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelNamesRequest{}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"__period_type__", "__period_unit__", "__profile_type__", "__type__", "__unit__", "buzz"}, labelNames.Msg.Names)
 
-	labelsValues, err := ing.LabelValues(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1alpha1.LabelValuesRequest{Name: "foo"}))
+	labelsValues, err := ing.LabelValues(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "foo"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"bar"}, labelsValues.Msg.Names)
 
-	labelsValues, err = ing.LabelValues(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1alpha1.LabelValuesRequest{Name: "buzz"}))
+	labelsValues, err = ing.LabelValues(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&ingesterv1.LabelValuesRequest{Name: "buzz"}))
 	require.NoError(t, err)
 	require.Equal(t, []string{"bazz"}, labelsValues.Msg.Names)
 

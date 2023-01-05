@@ -7,15 +7,15 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 
-	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 )
 
-func MergeBatchMergeStacktraces(responses ...*ingestv1alpha1.MergeProfilesStacktracesResult) *ingestv1alpha1.MergeProfilesStacktracesResult {
+func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesResult) *ingestv1.MergeProfilesStacktracesResult {
 	var (
-		result      *ingestv1alpha1.MergeProfilesStacktracesResult
+		result      *ingestv1.MergeProfilesStacktracesResult
 		posByName   map[string]int32
 		hasher      StacktracesHasher
-		stacktraces = map[uint64]*ingestv1alpha1.StacktraceSample{}
+		stacktraces = map[uint64]*ingestv1.StacktraceSample{}
 	)
 
 	for _, resp := range responses {
@@ -89,7 +89,7 @@ func MergeBatchMergeStacktraces(responses ...*ingestv1alpha1.MergeProfilesStackt
 
 	// ensure nil will always be the empty response
 	if result == nil {
-		result = &ingestv1alpha1.MergeProfilesStacktracesResult{}
+		result = &ingestv1.MergeProfilesStacktracesResult{}
 	}
 
 	// sort stacktraces by function name
@@ -121,7 +121,7 @@ func (h StacktracesHasher) Hashes(fnIds []int32) uint64 {
 }
 
 // sortStacktraces sorts the stacktraces by function name
-func sortStacktraces(r *ingestv1alpha1.MergeProfilesStacktracesResult) {
+func sortStacktraces(r *ingestv1.MergeProfilesStacktracesResult) {
 	sort.Slice(r.Stacktraces, func(i, j int) bool {
 		pos := 0
 		for {

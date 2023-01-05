@@ -11,8 +11,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	ingestv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1alpha1"
-	typesv1alpha1 "github.com/grafana/phlare/api/gen/proto/go/types/v1alpha1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	pprofth "github.com/grafana/phlare/pkg/pprof/testhelper"
@@ -23,7 +23,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		in       func() []*pprofth.ProfileBuilder
-		expected *ingestv1alpha1.MergeProfilesStacktracesResult
+		expected *ingestv1.MergeProfilesStacktracesResult
 	}{
 		{
 			name: "single profile",
@@ -35,8 +35,8 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{0, 1},
 						Value:       4,
@@ -62,8 +62,8 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				}
 				return
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{0, 1},
 						Value:       12000,
@@ -97,8 +97,8 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				}
 				return
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{0, 1},
 						Value:       12000,
@@ -135,9 +135,9 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			q := NewBlockQuerier(context.Background(), b)
 			require.NoError(t, q.Sync(context.Background()))
 
-			profiles, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingestv1alpha1.SelectProfilesRequest{
+			profiles, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
-				Type: &typesv1alpha1.ProfileType{
+				Type: &typesv1.ProfileType{
 					Name:       "process_cpu",
 					SampleType: "cpu",
 					SampleUnit: "nanoseconds",
@@ -166,7 +166,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		in       func() []*pprofth.ProfileBuilder
-		expected *ingestv1alpha1.MergeProfilesStacktracesResult
+		expected *ingestv1.MergeProfilesStacktracesResult
 	}{
 		{
 			name: "single profile",
@@ -178,8 +178,8 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{0, 1},
 						Value:       4,
@@ -205,8 +205,8 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				}
 				return
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{0, 1},
 						Value:       12000,
@@ -240,8 +240,8 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				}
 				return
 			},
-			expected: &ingestv1alpha1.MergeProfilesStacktracesResult{
-				Stacktraces: []*ingestv1alpha1.StacktraceSample{
+			expected: &ingestv1.MergeProfilesStacktracesResult{
+				Stacktraces: []*ingestv1.StacktraceSample{
 					{
 						FunctionIds: []int32{0, 1},
 						Value:       12000,
@@ -268,9 +268,9 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			for _, p := range tc.in() {
 				require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 			}
-			profiles, err := db.head.SelectMatchingProfiles(ctx, &ingestv1alpha1.SelectProfilesRequest{
+			profiles, err := db.head.SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
-				Type: &typesv1alpha1.ProfileType{
+				Type: &typesv1.ProfileType{
 					Name:       "process_cpu",
 					SampleType: "cpu",
 					SampleUnit: "nanoseconds",
@@ -299,7 +299,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		in       func() []*pprofth.ProfileBuilder
-		expected []*typesv1alpha1.Series
+		expected []*typesv1.Series
 		by       []string
 	}{
 		{
@@ -312,10 +312,10 @@ func TestMergeSampleByLabels(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: []*typesv1alpha1.Series{
+			expected: []*typesv1.Series{
 				{
-					Labels: []*typesv1alpha1.LabelPair{},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 7}},
+					Labels: []*typesv1.LabelPair{},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 7}},
 				},
 			},
 		},
@@ -336,14 +336,14 @@ func TestMergeSampleByLabels(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: []*typesv1alpha1.Series{
+			expected: []*typesv1.Series{
 				{
-					Labels: []*typesv1alpha1.LabelPair{{Name: "foo", Value: "bar"}},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "bar"}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 				{
-					Labels: []*typesv1alpha1.LabelPair{{Name: "foo", Value: "buzz"}},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 1}},
+					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "buzz"}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}},
 				},
 			},
 		},
@@ -364,10 +364,10 @@ func TestMergeSampleByLabels(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: []*typesv1alpha1.Series{
+			expected: []*typesv1.Series{
 				{
-					Labels: []*typesv1alpha1.LabelPair{},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Labels: []*typesv1.LabelPair{},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 			},
 		},
@@ -395,9 +395,9 @@ func TestMergeSampleByLabels(t *testing.T) {
 			q := NewBlockQuerier(context.Background(), b)
 			require.NoError(t, q.Sync(context.Background()))
 
-			profileIt, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingestv1alpha1.SelectProfilesRequest{
+			profileIt, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
-				Type: &typesv1alpha1.ProfileType{
+				Type: &typesv1.ProfileType{
 					Name:       "process_cpu",
 					SampleType: "cpu",
 					SampleUnit: "nanoseconds",
@@ -424,7 +424,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		in       func() []*pprofth.ProfileBuilder
-		expected []*typesv1alpha1.Series
+		expected []*typesv1.Series
 		by       []string
 	}{
 		{
@@ -437,10 +437,10 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: []*typesv1alpha1.Series{
+			expected: []*typesv1.Series{
 				{
-					Labels: []*typesv1alpha1.LabelPair{},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 7}},
+					Labels: []*typesv1.LabelPair{},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 7}},
 				},
 			},
 		},
@@ -461,14 +461,14 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: []*typesv1alpha1.Series{
+			expected: []*typesv1.Series{
 				{
-					Labels: []*typesv1alpha1.LabelPair{{Name: "foo", Value: "bar"}},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "bar"}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 				{
-					Labels: []*typesv1alpha1.LabelPair{{Name: "foo", Value: "buzz"}},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 1}},
+					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "buzz"}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}},
 				},
 			},
 		},
@@ -489,10 +489,10 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 				ps = append(ps, p)
 				return
 			},
-			expected: []*typesv1alpha1.Series{
+			expected: []*typesv1.Series{
 				{
-					Labels: []*typesv1alpha1.LabelPair{},
-					Points: []*typesv1alpha1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Labels: []*typesv1.LabelPair{},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
 				},
 			},
 		},
@@ -511,9 +511,9 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 				require.NoError(t, db.Head().Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 			}
 
-			profileIt, err := db.Head().SelectMatchingProfiles(ctx, &ingestv1alpha1.SelectProfilesRequest{
+			profileIt, err := db.Head().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
-				Type: &typesv1alpha1.ProfileType{
+				Type: &typesv1.ProfileType{
 					Name:       "process_cpu",
 					SampleType: "cpu",
 					SampleUnit: "nanoseconds",
@@ -544,9 +544,9 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 	require.NoError(b, err)
 // 	require.NoError(b, q.open(context.TODO()))
 
-// 	stacktraceAggrValues := map[int64]*ingestv1alpha1.StacktraceSample{}
+// 	stacktraceAggrValues := map[int64]*ingestv1.StacktraceSample{}
 // 	for i := 0; i < 1000; i++ {
-// 		stacktraceAggrValues[int64(i)] = &ingestv1alpha1.StacktraceSample{
+// 		stacktraceAggrValues[int64(i)] = &ingestv1.StacktraceSample{
 // 			Value: 1,
 // 		}
 // 	}
@@ -670,7 +670,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 
 // 			merger, err := q.queriers[0].SelectMerge(ctx, SelectMergeRequest{
 // 				LabelSelector: `{}`,
-// 				Type: &typesv1alpha1.ProfileType{
+// 				Type: &typesv1.ProfileType{
 // 					Name:       "process_cpu",
 // 					SampleType: "cpu",
 // 					SampleUnit: "nanoseconds",
