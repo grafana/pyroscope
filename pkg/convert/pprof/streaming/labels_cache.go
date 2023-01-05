@@ -1,6 +1,5 @@
 package streaming
 
-import "C"
 import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
