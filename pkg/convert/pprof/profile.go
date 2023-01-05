@@ -210,7 +210,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 					p.parser = nil
 				}()
 			} else {
-				streaming.NewStreamingParser(config)
+				p.parser = streaming.NewStreamingParser(config)
 			}
 		} else {
 			p.parser = NewParser(ParserConfig{
