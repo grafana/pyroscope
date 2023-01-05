@@ -1,0 +1,22 @@
+[
+  {
+    "application": "hotrod",
+    "spy-name": "gospy",
+    "labels": {
+      "env": "dev"
+    },
+    "targets": [
+      "hotrod:6060"
+    ]
+  },
+  {
+    "application": "last-app",
+    "spy-name": "gospy",
+    "labels": {
+      "env": "dev"
+    },
+    "targets": [
+      "app:6060"
+    ]
+  }
+]
