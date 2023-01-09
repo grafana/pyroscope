@@ -42,8 +42,8 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
       For example, for Linux with the AMD64 architecture:
 
       ```bash
-      curl -fLo phlare https://github.com/grafana/phlare/releases/latest/download/phlare-linux-amd64
-      chmod +x phlare
+      # Download Grafana Phlare v0.1.1 and unpack it to the current folder
+      curl -fL https://github.com/grafana/phlare/releases/download/v0.1.1/phlare_0.1.1_linux_amd64.tar.gz | tar xvz
       ```
 
 1. Start Phlare.
