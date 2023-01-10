@@ -15,8 +15,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
-
-	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
+	//"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 )
 
 var sessionMutex sync.Mutex

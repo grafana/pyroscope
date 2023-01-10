@@ -17,7 +17,7 @@ func Benchmark_ProfileParser(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser.Reset()
-		if err = parser.iterate(p, readNoOp); err != nil {
+		if err = parser.iterate(p, false, readNoOp); err != nil {
 			b.Error(err)
 		}
 	}

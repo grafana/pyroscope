@@ -94,7 +94,7 @@ func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error
 		Labels:      nil,
 	})
 
-	if err = pw.Convert(context.TODO(), time.Time{}, time.Time{}, p); err != nil {
+	if err = pw.Convert(context.TODO(), time.Time{}, time.Time{}, p, false); err != nil {
 		return fmt.Errorf("parsing pprof: %w", err)
 	}
 
