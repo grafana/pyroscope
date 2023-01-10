@@ -1,10 +1,13 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState, ReactNode, CSSProperties, RefObject } from 'react';
+import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons/faChevronRight';
 import clsx from 'clsx';
 
 // eslint-disable-next-line css-modules/no-unused-class
 import styles from './Table.module.scss';
 import LoadingSpinner from './LoadingSpinner';
+import Button from './Button';
 
 interface CustomProp {
   [k: string]: string | CSSProperties | ReactNode | number | undefined;
@@ -106,78 +109,86 @@ function Table({
       <LoadingSpinner />
     </div>
   ) : (
-    <table
-      className={clsx(styles.table, {
-        [className || '']: className,
-      })}
-      data-testid="table-ui"
-    >
-      <thead>
-        <tr>
-          {table.headRow.map(
-            ({ sortable, label, name, ...rest }, idx: number) =>
-              !sortable || table.type === 'not-filled' || !hasSort ? (
-                // eslint-disable-next-line react/no-array-index-key
-                <th key={idx} {...rest}>
-                  {label}
-                </th>
-              ) : (
-                <th
-                  {...rest}
+    <>
+      <table
+        className={clsx(styles.table, {
+          [className || '']: className,
+        })}
+        data-testid="table-ui"
+      >
+        <thead>
+          <tr>
+            {table.headRow.map(
+              ({ sortable, label, name, ...rest }, idx: number) =>
+                !sortable || table.type === 'not-filled' || !hasSort ? (
                   // eslint-disable-next-line react/no-array-index-key
-                  key={idx}
-                  className={styles.sortable}
-                  onClick={() => updateSortParams(name)}
-                >
-                  {label}
-                  <span
-                    className={clsx(styles.sortArrow, {
-                      [styles[sortByDirection]]: sortBy === name,
-                    })}
-                  />
-                </th>
-              )
-          )}
-        </tr>
-      </thead>
-      <tbody ref={tableBodyRef}>
-        {table.type === 'not-filled' ? (
-          <tr className={table?.bodyClassName}>
-            <td colSpan={table.headRow.length}>{table.value}</td>
+                  <th key={idx} {...rest}>
+                    {label}
+                  </th>
+                ) : (
+                  <th
+                    {...rest}
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={idx}
+                    className={styles.sortable}
+                    onClick={() => updateSortParams(name)}
+                  >
+                    {label}
+                    <span
+                      className={clsx(styles.sortArrow, {
+                        [styles[sortByDirection]]: sortBy === name,
+                      })}
+                    />
+                  </th>
+                )
+            )}
           </tr>
-        ) : (
-          paginate(table.bodyRows, currPage, itemsPerPage).map(
-            ({ cells, isRowSelected, isRowDisabled, className, ...rest }) => {
-              // The problem is that when you switch apps or time-range and the function
-              // names stay the same it leads to an issue where rows don't get re-rendered
-              // So we force a rerender each time.
-              const renderID = Math.random();
+        </thead>
+        <tbody ref={tableBodyRef}>
+          {table.type === 'not-filled' ? (
+            <tr className={table?.bodyClassName}>
+              <td colSpan={table.headRow.length}>{table.value}</td>
+            </tr>
+          ) : (
+            paginate(table.bodyRows, currPage, itemsPerPage).map(
+              ({ cells, isRowSelected, isRowDisabled, className, ...rest }) => {
+                // The problem is that when you switch apps or time-range and the function
+                // names stay the same it leads to an issue where rows don't get re-rendered
+                // So we force a rerender each time.
+                const renderID = Math.random();
 
-              return (
-                <tr
-                  key={renderID}
-                  {...rest}
-                  className={clsx(className, {
-                    [styles.isRowSelected]: isRowSelected,
-                    [styles.isRowDisabled]: isRowDisabled,
-                  })}
-                >
-                  {cells &&
-                    cells.map(
-                      ({ style, value, ...rest }: Cell, index: number) => (
-                        // eslint-disable-next-line react/no-array-index-key
-                        <td key={renderID + index} style={style} {...rest}>
-                          {value}
-                        </td>
-                      )
-                    )}
-                </tr>
-              );
-            }
-          )
-        )}
-      </tbody>
-    </table>
+                return (
+                  <tr
+                    key={renderID}
+                    {...rest}
+                    className={clsx(className, {
+                      [styles.isRowSelected]: isRowSelected,
+                      [styles.isRowDisabled]: isRowDisabled,
+                    })}
+                  >
+                    {cells &&
+                      cells.map(
+                        ({ style, value, ...rest }: Cell, index: number) => (
+                          // eslint-disable-next-line react/no-array-index-key
+                          <td key={renderID + index} style={style} {...rest}>
+                            {value}
+                          </td>
+                        )
+                      )}
+                  </tr>
+                );
+              }
+            )
+          )}
+        </tbody>
+      </table>
+      <PaginationNavigation
+        bodyRows={table.type === 'filled' ? table.bodyRows : undefined}
+        itemsPerPage={itemsPerPage}
+        currPage={currPage}
+        setCurrPage={setCurrPage}
+      />
+    </>
   );
 }
 
@@ -191,6 +202,51 @@ function paginate(
   }
 
   return bodyRows.slice(currPage * itemsPerPage, itemsPerPage * (currPage + 1));
+}
+
+interface PaginationNavigationProps {
+  bodyRows?: Extract<Table, { type: 'filled' }>['bodyRows'];
+  currPage: number;
+  itemsPerPage?: TableProps['itemsPerPage'];
+  setCurrPage: (i: number) => void;
+}
+
+function PaginationNavigation({
+  itemsPerPage,
+  currPage,
+  setCurrPage,
+  bodyRows,
+}: PaginationNavigationProps) {
+  if (!itemsPerPage) {
+    return null;
+  }
+
+  const isThereNextPage = bodyRows
+    ? paginate(bodyRows, currPage + 1, itemsPerPage).length > 0
+    : false;
+
+  const isTherePreviousPage = bodyRows
+    ? paginate(bodyRows, currPage - 1, itemsPerPage).length > 0
+    : false;
+
+  return (
+    <nav>
+      <Button
+        aria-label="Previous Page"
+        disabled={!isTherePreviousPage}
+        kind="float"
+        icon={faChevronLeft}
+        onClick={() => setCurrPage(currPage - 1)}
+      />
+      <Button
+        disabled={!isThereNextPage}
+        aria-label="Next Page"
+        kind="float"
+        icon={faChevronRight}
+        onClick={() => setCurrPage(currPage + 1)}
+      />
+    </nav>
+  );
 }
 
 export default Table;
