@@ -230,7 +230,7 @@ function PaginationNavigation({
     : false;
 
   return (
-    <nav>
+    <nav className={styles.pagination}>
       <Button
         aria-label="Previous Page"
         disabled={!isTherePreviousPage}
