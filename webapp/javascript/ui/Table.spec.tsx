@@ -1,6 +1,7 @@
+import React from 'react';
 import { renderHook, act } from '@testing-library/react-hooks';
-
-import { useTableSort } from './Table';
+import { render, within, screen } from '@testing-library/react';
+import Table, { useTableSort } from './Table';
 
 const mockHeadRow = [
   { name: 'self', label: 'test col2', sortable: 1 },
@@ -59,5 +60,62 @@ describe('Hook: useTableSort', () => {
       sortBy: 'name',
       sortByDirection: 'asc',
     });
+  });
+});
+
+describe('pagination', () => {
+  const header = [{ name: 'id', label: 'Id' }];
+  const rows = [
+    { cells: [{ value: 1 }] },
+    { cells: [{ value: 2 }] },
+    { cells: [{ value: 3 }] },
+  ];
+
+  it('does not paginate by default', async () => {
+    render(
+      <Table table={{ type: 'filled', headRow: header, bodyRows: rows }} />
+    );
+
+    const tbody = document.getElementsByTagName('tbody')[0];
+    const items = await within(tbody).findAllByRole('row');
+    expect(items).toHaveLength(rows.length);
+  });
+
+  it('paginates', async () => {
+    render(
+      <Table
+        itemsPerPage={1}
+        table={{
+          type: 'filled',
+          headRow: header,
+          bodyRows: rows,
+        }}
+      />
+    );
+
+    const tbody = document.getElementsByTagName('tbody')[0];
+
+    // First page
+    expect(screen.getByLabelText('Previous Page')).toBeDisabled();
+    expect(screen.getByLabelText('Next Page')).toBeEnabled();
+    let items = await within(tbody).findAllByRole('row');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('1');
+
+    // Second page
+    screen.getByLabelText('Next Page').click();
+    expect(screen.getByLabelText('Previous Page')).toBeEnabled();
+    expect(screen.getByLabelText('Next Page')).toBeEnabled();
+    items = await within(tbody).findAllByRole('row');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('2');
+
+    // Third page
+    screen.getByLabelText('Next Page').click();
+    expect(screen.getByLabelText('Previous Page')).toBeEnabled();
+    expect(screen.getByLabelText('Next Page')).toBeDisabled();
+    items = await within(tbody).findAllByRole('row');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('3');
   });
 });
