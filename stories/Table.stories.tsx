@@ -1,32 +1,26 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import Table, {
-  useTableSort,
-  BodyRow,
-  TableBodyType,
-} from '../webapp/javascript/ui/Table';
+import Table from '../webapp/javascript/ui/Table';
 import { randomId } from '../webapp/javascript/util/randomId';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import '../webapp/sass/profile.scss';
-
-const Template: ComponentStory<typeof Table> = (args) => <Table {...args} />;
 
 export default {
   title: 'Components/Table',
   component: Table,
 } as ComponentMeta<typeof Table>;
 
-const items = Array.from({ length: 20 }).map(() => {
+const items = Array.from({ length: 20 }).map((a, i) => {
   return {
-    id: randomId(),
-    value: Math.random(),
+    id: i,
+    value: randomId(),
   };
 });
 
 export const MyTable = () => {
   const headRow = [
-    { name: '', label: 'Id', sortable: 0 },
-    { name: '', label: 'Value', sortable: 0 },
+    { name: '', label: 'Id', sortable: 1 },
+    { name: '', label: 'Value', sortable: 1 },
   ];
 
   const bodyRows = items.map((a) => {
@@ -38,6 +32,7 @@ export const MyTable = () => {
 
   return (
     <Table
+      itemsPerPage={5}
       table={{
         type: 'filled',
         headRow,
