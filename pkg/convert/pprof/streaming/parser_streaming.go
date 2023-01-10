@@ -9,6 +9,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/util"
 	"github.com/valyala/bytebufferpool"
 	"io"
 	"sync"
@@ -33,6 +34,7 @@ type ParserConfig struct {
 	SkipExemplars bool
 	SampleTypes   map[string]*tree.SampleTypeConfig
 	Formatter     StackFormatter
+	ArenasEnabled bool
 }
 
 type VTStreamingParser struct {
@@ -42,6 +44,7 @@ type VTStreamingParser struct {
 	skipExemplars     bool
 	sampleTypesConfig map[string]*tree.SampleTypeConfig
 	Formatter         StackFormatter
+	ArenasEnabled     bool
 
 	sampleTypesFilter func(string) bool
 
@@ -73,6 +76,7 @@ type VTStreamingParser struct {
 	finder        finder
 	previousCache LabelsCache
 	newCache      LabelsCache
+	arena         *util.ArenaWrapper
 }
 
 func NewStreamingParser(config ParserConfig) *VTStreamingParser {
@@ -80,7 +84,9 @@ func NewStreamingParser(config ParserConfig) *VTStreamingParser {
 	res.Reset(config)
 	return res
 }
-
+func (p *VTStreamingParser) FreeArena() {
+	p.arena.Free()
+}
 func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulativeOnly bool) (err error) {
 	p.startTime = startTime
 	p.endTime = endTime
@@ -272,12 +278,12 @@ func (p *VTStreamingParser) createTrees() {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			p.newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
+			p.newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStackA(p.arena, p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
+		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStackA(p.arena, p.tmpSample.tmpStack, v)
 	}
 }
 
@@ -400,6 +406,12 @@ func (p *VTStreamingParser) Reset(config ParserConfig) {
 	p.newCache.Reset()
 	p.sampleTypesFilter = filterKnownSamples(config.SampleTypes)
 	p.Formatter = config.Formatter
+	p.ArenasEnabled = config.ArenasEnabled
+	if config.ArenasEnabled {
+		p.arena = util.NewArenaWrapper()
+		p.previousCache.arena = p.arena
+		p.newCache.arena = p.arena
+	}
 }
 
 func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(string) bool {

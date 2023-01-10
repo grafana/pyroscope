@@ -3,6 +3,7 @@ package streaming
 import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/util"
 	"golang.org/x/exp/slices"
 	"reflect"
 	"unsafe"
@@ -37,6 +38,8 @@ type LabelsCache struct {
 	labelRefs []uint64
 	labels    []uint64 // Packed label Key and Value indices
 	trees     []*tree.Tree
+
+	arena *util.ArenaWrapper
 }
 
 func (c *LabelsCache) Reset() {
@@ -63,7 +66,7 @@ func (c *LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *tree.Tree 
 	}
 	p := c.indices[sampleTypeIndex]
 	if p == nil {
-		e, t := c.newCacheEntry(l)
+		e, t := c.newCacheEntryA( l)
 		c.indices[sampleTypeIndex] = map[uint64]int{l.Hash(): e}
 		return t
 	}
@@ -72,7 +75,7 @@ func (c *LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *tree.Tree 
 	if found {
 		return c.trees[e]
 	}
-	e, t := c.newCacheEntry(l)
+	e, t := c.newCacheEntryA(l)
 	p[h] = e
 	return t
 }

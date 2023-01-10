@@ -1,0 +1,28 @@
+goos: linux
+goarch: amd64
+pkg: github.com/pyroscope-io/pyroscope/pkg/convert/pprof/bench
+cpu: AMD Ryzen 9 5950X 16-Core Processor            
+BenchmarkSingleSmallMolecule
+BenchmarkSingleSmallMolecule-32    	    1506	    841841 ns/op
+BenchmarkSingleSmallMolecule-32    	    1388	    845749 ns/op
+BenchmarkSingleSmallMolecule-32    	    1216	    872025 ns/op
+BenchmarkSingleSmallMolecule-32    	    1226	    895097 ns/op
+BenchmarkSingleSmallMolecule-32    	    1424	    843252 ns/op
+BenchmarkSingleSmallMolecule-32    	    1228	    887379 ns/op
+BenchmarkSingleSmallMolecule-32    	    1362	    831425 ns/op
+BenchmarkSingleSmallMolecule-32    	    1384	    850910 ns/op
+BenchmarkSingleSmallMolecule-32    	    1390	    841401 ns/op
+BenchmarkSingleSmallMolecule-32    	    1441	    856807 ns/op
+BenchmarkSingleBigMolecule
+BenchmarkSingleBigMolecule-32      	      85	  13526936 ns/op
+BenchmarkSingleBigMolecule-32      	      82	  13596805 ns/op
+BenchmarkSingleBigMolecule-32      	      88	  13745138 ns/op
+BenchmarkSingleBigMolecule-32      	      87	  14758189 ns/op
+BenchmarkSingleBigMolecule-32      	      86	  13620206 ns/op
+BenchmarkSingleBigMolecule-32      	      85	  13142385 ns/op
+BenchmarkSingleBigMolecule-32      	      84	  13336093 ns/op
+BenchmarkSingleBigMolecule-32      	      84	  13600174 ns/op
+BenchmarkSingleBigMolecule-32      	      88	  13973721 ns/op
+BenchmarkSingleBigMolecule-32      	      87	  13977148 ns/op
+PASS
+ok  	github.com/pyroscope-io/pyroscope/pkg/convert/pprof/bench	37.147s
