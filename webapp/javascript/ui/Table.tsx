@@ -84,6 +84,8 @@ interface TableProps {
   tableBodyRef?: RefObject<HTMLTableSectionElement>;
   className?: string;
   isLoading?: boolean;
+  /* enables pagination */
+  itemsPerPage?: number;
 }
 
 function Table({
@@ -94,8 +96,11 @@ function Table({
   tableBodyRef,
   className,
   isLoading,
+  itemsPerPage,
 }: TableProps) {
   const hasSort = sortByDirection && sortBy && updateSortParams;
+  const [currPage, setCurrPage] = useState(0);
+
   return isLoading ? (
     <div className={styles.loadingSpinner}>
       <LoadingSpinner />
@@ -141,7 +146,7 @@ function Table({
             <td colSpan={table.headRow.length}>{table.value}</td>
           </tr>
         ) : (
-          table.bodyRows?.map(
+          paginate(table.bodyRows, currPage, itemsPerPage).map(
             ({ cells, isRowSelected, isRowDisabled, className, ...rest }) => {
               // The problem is that when you switch apps or time-range and the function
               // names stay the same it leads to an issue where rows don't get re-rendered
@@ -174,6 +179,18 @@ function Table({
       </tbody>
     </table>
   );
+}
+
+function paginate(
+  bodyRows: Extract<Table, { type: 'filled' }>['bodyRows'],
+  currPage: number,
+  itemsPerPage?: TableProps['itemsPerPage']
+) {
+  if (!itemsPerPage) {
+    return bodyRows;
+  }
+
+  return bodyRows.slice(currPage * itemsPerPage, itemsPerPage * (currPage + 1));
 }
 
 export default Table;

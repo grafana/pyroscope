@@ -1,6 +1,7 @@
+import React from 'react';
 import { renderHook, act } from '@testing-library/react-hooks';
-
-import { useTableSort } from './Table';
+import { render, within, screen } from '@testing-library/react';
+import Table, { useTableSort } from './Table';
 
 const mockHeadRow = [
   { name: 'self', label: 'test col2', sortable: 1 },
@@ -59,5 +60,42 @@ describe('Hook: useTableSort', () => {
       sortBy: 'name',
       sortByDirection: 'asc',
     });
+  });
+});
+
+describe.only('pagination', () => {
+  const header = [{ name: 'id', label: 'Id' }];
+  const rows = Array.from({ length: 10 }).map((item, index) => {
+    return {
+      cells: [{ value: index }],
+    };
+  });
+
+  it('does not paginate by default', async () => {
+    render(
+      <Table table={{ type: 'filled', headRow: header, bodyRows: rows }} />
+    );
+
+    const tbody = document.getElementsByTagName('tbody')[0];
+    const items = await within(tbody).findAllByRole('row');
+    expect(items).toHaveLength(10);
+  });
+
+  it('paginates', async () => {
+    render(
+      <Table
+        itemsPerPage={1}
+        table={{
+          type: 'filled',
+          headRow: header,
+          bodyRows: rows,
+        }}
+      />
+    );
+
+    const tbody = document.getElementsByTagName('tbody')[0];
+    const items = await within(tbody).findAllByRole('row');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('0');
   });
 });
