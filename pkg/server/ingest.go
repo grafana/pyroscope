@@ -167,6 +167,8 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		p := &pprof.RawProfile{
 			FormDataContentType: contentType,
 			RawData:             b,
+			StreamingParser:     true,
+			PoolStreamingParser: true,
 		}
 		if !h.disableCumulativeMerge {
 			p.MergeCumulative(cumulativepprof.NewMergers())
