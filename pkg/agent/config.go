@@ -122,16 +122,18 @@ func (c *ScrapeConfig) Validate() error {
 	if c.JobName == "" {
 		return fmt.Errorf("job_name is empty")
 	}
-	if c.ScrapeTimeout > c.ScrapeInterval {
-		return fmt.Errorf("scrape timeout must be larger or equal to inverval for: %v", c.JobName)
-	}
+	// Validate the scrape and timeout internal configuration. When /debug/pprof/profile scraping
+	// is enabled we need to make sure there is enough time to complete the scrape.
 	if c.ScrapeTimeout == 0 {
-		c.ScrapeTimeout = c.ScrapeInterval
+		c.ScrapeTimeout = c.ScrapeInterval + model.Duration(3*time.Second)
+	}
+	if c.ScrapeTimeout <= c.ScrapeInterval {
+		return fmt.Errorf("scrape timeout must be larger or equal to interval for: %v", c.JobName)
 	}
 
 	if cfg, ok := c.ProfilingConfig.PprofConfig[pprofProcessCPU]; ok {
-		if *cfg.Enabled && c.ScrapeTimeout < model.Duration(time.Second*2) {
-			return fmt.Errorf("%v scrape_timeout must be at least 2 seconds in %v", pprofProcessCPU, c.JobName)
+		if *cfg.Enabled && c.ScrapeInterval < model.Duration(time.Second*2) {
+			return fmt.Errorf("%v scrape_interval must be at least 2 seconds in %v", pprofProcessCPU, c.JobName)
 		}
 	}
 	return nil
