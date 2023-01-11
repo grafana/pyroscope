@@ -228,7 +228,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 				}
 
 				if pcfg, found := tg.config.ProfilingConfig.PprofConfig[profType]; found && pcfg.Delta {
-					params.Add("seconds", strconv.Itoa(int(time.Duration(tg.config.ScrapeInterval)/time.Second)))
+					params.Add("seconds", strconv.Itoa(int(time.Duration(tg.config.ScrapeInterval)/time.Second)-1))
 				}
 				targets = append(targets, &Target{
 					Target:               scrape.NewTarget(lbls, origLabels, params),
