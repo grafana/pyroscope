@@ -14,8 +14,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/phlare/pkg/util"
 )
 

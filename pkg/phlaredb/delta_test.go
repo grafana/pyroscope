@@ -8,8 +8,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/pprof"
@@ -60,7 +60,7 @@ func TestComputeDelta(t *testing.T) {
 
 func newProfileSchema(p *profilev1.Profile, name string) ([]*schemav1.Profile, []phlaremodel.Labels) {
 	var (
-		labels, seriesRefs = labelsForProfile(p, &commonv1.LabelPair{Name: model.MetricNameLabel, Value: name})
+		labels, seriesRefs = labelsForProfile(p, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})
 		ps                 = make([]*schemav1.Profile, len(labels))
 	)
 	for idxType := range labels {

@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
@@ -36,7 +36,7 @@ func Test_QuerySampleType(t *testing.T) {
 		case "1":
 			q.On("ProfileTypes", mock.Anything, mock.Anything).
 				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*commonv1.ProfileType{
+					ProfileTypes: []*typesv1.ProfileType{
 						{ID: "foo"},
 						{ID: "bar"},
 					},
@@ -44,7 +44,7 @@ func Test_QuerySampleType(t *testing.T) {
 		case "2":
 			q.On("ProfileTypes", mock.Anything, mock.Anything).
 				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*commonv1.ProfileType{
+					ProfileTypes: []*typesv1.ProfileType{
 						{ID: "bar"},
 						{ID: "buzz"},
 					},
@@ -52,7 +52,7 @@ func Test_QuerySampleType(t *testing.T) {
 		case "3":
 			q.On("ProfileTypes", mock.Anything, mock.Anything).
 				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*commonv1.ProfileType{
+					ProfileTypes: []*typesv1.ProfileType{
 						{ID: "buzz"},
 						{ID: "foo"},
 					},
@@ -129,7 +129,7 @@ func Test_Series(t *testing.T) {
 	foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar")
 	foobuzzlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "buzz")
 	req := connect.NewRequest(&querierv1.SeriesRequest{Matchers: []string{`{foo="bar"}`}})
-	ingesterReponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*commonv1.Labels{
+	ingesterReponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*typesv1.Labels{
 		{Labels: foobarlabels.Labels()},
 		{Labels: foobuzzlabels.Labels()},
 	}})
@@ -155,7 +155,7 @@ func Test_Series(t *testing.T) {
 	require.NoError(t, err)
 	out, err := querier.Series(context.Background(), req)
 	require.NoError(t, err)
-	require.Equal(t, []*commonv1.Labels{
+	require.Equal(t, []*typesv1.Labels{
 		{Labels: foobarlabels.Labels()},
 		{Labels: foobuzzlabels.Labels()},
 	}, out.Msg.LabelsSet)
@@ -170,12 +170,12 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	})
 	bidi1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
 			Profiles: []*ingestv1.SeriesProfile{
@@ -187,12 +187,12 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	})
 	bidi2 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
 			Profiles: []*ingestv1.SeriesProfile{
@@ -204,12 +204,12 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	})
 	bidi3 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
 			Profiles: []*ingestv1.SeriesProfile{
@@ -259,10 +259,10 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	require.Len(t, selected, 4)
 	require.Equal(t,
 		[]testProfile{
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
 		}, selected)
 }
 
@@ -276,12 +276,12 @@ func TestSelectSeries(t *testing.T) {
 	})
 	bidi1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
 			Profiles: []*ingestv1.SeriesProfile{
@@ -290,15 +290,15 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 2, LabelIndex: 0},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+	}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
 	bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
 			Profiles: []*ingestv1.SeriesProfile{
@@ -307,15 +307,15 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 2, LabelIndex: 1},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+	}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
 	bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{
+			LabelsSets: []*typesv1.Labels{
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
 				},
 				{
-					Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}},
+					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
 				},
 			},
 			Profiles: []*ingestv1.SeriesProfile{
@@ -324,7 +324,7 @@ func TestSelectSeries(t *testing.T) {
 				{Timestamp: 2, LabelIndex: 0},
 			},
 		},
-	}, &commonv1.Series{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+	}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
@@ -347,8 +347,8 @@ func TestSelectSeries(t *testing.T) {
 	res, err := querier.SelectSeries(context.Background(), req)
 	require.NoError(t, err)
 	// Only 2 results are used since the 3rd not required because of replication.
-	testhelper.EqualProto(t, []*commonv1.Series{
-		{Labels: foobarlabels, Points: []*commonv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
+	testhelper.EqualProto(t, []*typesv1.Series{
+		{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
 	}, res.Msg.Series)
 	var selected []testProfile
 	selected = append(selected, bidi1.kept...)
@@ -363,10 +363,10 @@ func TestSelectSeries(t *testing.T) {
 	require.Len(t, selected, 4)
 	require.Equal(t,
 		[]testProfile{
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 1, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 2, Labels: &commonv1.Labels{Labels: []*commonv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
 		}, selected)
 }
 
@@ -443,7 +443,7 @@ func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[i
 
 type testProfile struct {
 	Ts     int64
-	Labels *commonv1.Labels
+	Labels *typesv1.Labels
 }
 
 type fakeBidiClientStacktraces struct {
@@ -510,10 +510,10 @@ type fakeBidiClientSeries struct {
 	kept     []testProfile
 	cur      *ingestv1.ProfileSets
 
-	result []*commonv1.Series
+	result []*typesv1.Series
 }
 
-func newFakeBidiClientSeries(batches []*ingestv1.ProfileSets, result ...*commonv1.Series) *fakeBidiClientSeries {
+func newFakeBidiClientSeries(batches []*ingestv1.ProfileSets, result ...*typesv1.Series) *fakeBidiClientSeries {
 	res := &fakeBidiClientSeries{
 		profiles: make(chan *ingestv1.ProfileSets, 1),
 	}
@@ -588,7 +588,7 @@ func TestRangeSeries(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		in   []ProfileValue
-		out  []*commonv1.Series
+		out  []*typesv1.Series
 	}{
 		{
 			name: "single series",
@@ -600,9 +600,9 @@ func TestRangeSeries(t *testing.T) {
 				{Ts: 4, Value: 4},
 				{Ts: 5, Value: 5},
 			},
-			out: []*commonv1.Series{
+			out: []*typesv1.Series{
 				{
-					Points: []*commonv1.Point{
+					Points: []*typesv1.Point{
 						{Timestamp: 1, Value: 2},
 						{Timestamp: 2, Value: 2},
 						{Timestamp: 3, Value: 3},
@@ -625,10 +625,10 @@ func TestRangeSeries(t *testing.T) {
 				{Ts: 4, Value: 4, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 				{Ts: 5, Value: 5, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 			},
-			out: []*commonv1.Series{
+			out: []*typesv1.Series{
 				{
 					Labels: foobarlabels,
-					Points: []*commonv1.Point{
+					Points: []*typesv1.Point{
 						{Timestamp: 1, Value: 1},
 						{Timestamp: 2, Value: 1},
 						{Timestamp: 4, Value: 4},
@@ -637,7 +637,7 @@ func TestRangeSeries(t *testing.T) {
 				},
 				{
 					Labels: foobuzzlabels,
-					Points: []*commonv1.Point{
+					Points: []*typesv1.Point{
 						{Timestamp: 1, Value: 1},
 						{Timestamp: 3, Value: 2},
 						{Timestamp: 4, Value: 8},

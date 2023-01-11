@@ -23,12 +23,12 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
-var allPostingsKey = &commonv1.LabelPair{}
+var allPostingsKey = &typesv1.LabelPair{}
 
 // AllPostingsKey returns the label key that is used to store the postings list of all existing IDs.
 func AllPostingsKey() (name, value string) {
@@ -361,7 +361,7 @@ func (p *MemPostings) Add(id storage.SeriesRef, lset phlaremodel.Labels) {
 	p.mtx.Unlock()
 }
 
-func (p *MemPostings) addFor(id storage.SeriesRef, l *commonv1.LabelPair) {
+func (p *MemPostings) addFor(id storage.SeriesRef, l *typesv1.LabelPair) {
 	nm, ok := p.m[l.Name]
 	if !ok {
 		nm = map[string][]storage.SeriesRef{}

@@ -3,7 +3,7 @@ package model
 import (
 	"testing"
 
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/phlare/pkg/testhelper"
 )
 

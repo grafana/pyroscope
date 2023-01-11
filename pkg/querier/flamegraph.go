@@ -5,8 +5,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/samber/lo"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
 
 type stackNode struct {
@@ -104,7 +104,7 @@ func NewFlameGraph(t *tree) *querierv1.FlameGraph {
 }
 
 // ExportToFlamebearer exports the flamegraph to a Flamebearer struct.
-func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *commonv1.ProfileType) *flamebearer.FlamebearerProfile {
+func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
 	unit := metadata.Units(profileType.SampleUnit)
 	sampleRate := uint32(100)
 

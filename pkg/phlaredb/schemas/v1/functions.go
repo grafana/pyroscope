@@ -3,7 +3,7 @@ package v1
 import (
 	"github.com/segmentio/parquet-go"
 
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 )
 
 var functionsSchema = parquet.SchemaOf(&profilev1.Function{})

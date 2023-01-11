@@ -15,8 +15,8 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 
-	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	ingesterv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"

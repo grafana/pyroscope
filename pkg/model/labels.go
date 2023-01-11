@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
 
 var seps = []byte{'\xff'}
@@ -27,7 +27,7 @@ const (
 
 // Labels is a sorted set of labels. Order has to be guaranteed upon
 // instantiation.
-type Labels []*commonv1.LabelPair
+type Labels []*typesv1.LabelPair
 
 func (ls Labels) Len() int           { return len(ls) }
 func (ls Labels) Swap(i, j int)      { ls[i], ls[j] = ls[j], ls[i] }
@@ -137,7 +137,7 @@ func (ls Labels) ToPrometheusLabels() labels.Labels {
 }
 
 func (ls Labels) WithoutPrivateLabels() Labels {
-	res := make([]*commonv1.LabelPair, 0, len(ls))
+	res := make([]*typesv1.LabelPair, 0, len(ls))
 	for _, l := range ls {
 		if !strings.HasPrefix(l.Name, "__") {
 			res = append(res, l)
@@ -178,7 +178,7 @@ func (ls Labels) Get(name string) string {
 func (ls Labels) Clone() Labels {
 	result := make(Labels, len(ls))
 	for i, l := range ls {
-		result[i] = &commonv1.LabelPair{
+		result[i] = &typesv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		}
@@ -187,7 +187,7 @@ func (ls Labels) Clone() Labels {
 }
 
 // LabelPairsString returns a string representation of the label pairs.
-func LabelPairsString(lbs []*commonv1.LabelPair) string {
+func LabelPairsString(lbs []*typesv1.LabelPair) string {
 	var b bytes.Buffer
 	b.WriteByte('{')
 	for i, l := range lbs {
@@ -204,14 +204,14 @@ func LabelPairsString(lbs []*commonv1.LabelPair) string {
 }
 
 // StringToLabelsPairs converts a string representation of label pairs to a slice of label pairs.
-func StringToLabelsPairs(s string) ([]*commonv1.LabelPair, error) {
+func StringToLabelsPairs(s string) ([]*typesv1.LabelPair, error) {
 	matchers, err := parser.ParseMetricSelector(s)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*commonv1.LabelPair, len(matchers))
+	result := make([]*typesv1.LabelPair, len(matchers))
 	for i := range matchers {
-		result[i] = &commonv1.LabelPair{
+		result[i] = &typesv1.LabelPair{
 			Name:  matchers[i].Name,
 			Value: matchers[i].Value,
 		}
@@ -226,7 +226,7 @@ func LabelsFromStrings(ss ...string) Labels {
 	}
 	var res Labels
 	for i := 0; i < len(ss); i += 2 {
-		res = append(res, &commonv1.LabelPair{Name: ss[i], Value: ss[i+1]})
+		res = append(res, &typesv1.LabelPair{Name: ss[i], Value: ss[i+1]})
 	}
 
 	sort.Sort(res)
@@ -234,10 +234,10 @@ func LabelsFromStrings(ss ...string) Labels {
 }
 
 // CloneLabelPairs clones the label pairs.
-func CloneLabelPairs(lbs []*commonv1.LabelPair) []*commonv1.LabelPair {
-	result := make([]*commonv1.LabelPair, len(lbs))
+func CloneLabelPairs(lbs []*typesv1.LabelPair) []*typesv1.LabelPair {
+	result := make([]*typesv1.LabelPair, len(lbs))
 	for i, l := range lbs {
-		result[i] = &commonv1.LabelPair{
+		result[i] = &typesv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		}
@@ -247,7 +247,7 @@ func CloneLabelPairs(lbs []*commonv1.LabelPair) []*commonv1.LabelPair {
 
 // Compare compares the two label sets.
 // The result will be 0 if a==b, <0 if a < b, and >0 if a > b.
-func CompareLabelPairs(a []*commonv1.LabelPair, b []*commonv1.LabelPair) int {
+func CompareLabelPairs(a []*typesv1.LabelPair, b []*typesv1.LabelPair) int {
 	l := len(a)
 	if len(b) < l {
 		l = len(b)
@@ -275,14 +275,14 @@ func CompareLabelPairs(a []*commonv1.LabelPair, b []*commonv1.LabelPair) int {
 type LabelsBuilder struct {
 	base Labels
 	del  []string
-	add  []*commonv1.LabelPair
+	add  []*typesv1.LabelPair
 }
 
 // NewLabelsBuilder returns a new LabelsBuilder.
 func NewLabelsBuilder(base Labels) *LabelsBuilder {
 	b := &LabelsBuilder{
 		del: make([]string, 0, 5),
-		add: make([]*commonv1.LabelPair, 0, 5),
+		add: make([]*typesv1.LabelPair, 0, 5),
 	}
 	b.Reset(base)
 	return b
@@ -325,7 +325,7 @@ func (b *LabelsBuilder) Set(n, v string) *LabelsBuilder {
 			return b
 		}
 	}
-	b.add = append(b.add, &commonv1.LabelPair{Name: n, Value: v})
+	b.add = append(b.add, &typesv1.LabelPair{Name: n, Value: v})
 
 	return b
 }
