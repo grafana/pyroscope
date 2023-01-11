@@ -27,9 +27,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
@@ -519,7 +519,7 @@ type Querier interface {
 	InRange(start, end model.Time) bool
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
-	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error)
+	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile

@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	v1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
@@ -28,13 +28,13 @@ func TestIndex(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 10; j++ {
-				lb1 := phlaremodel.Labels([]*commonv1.LabelPair{
+				lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "__sample__type__", Value: "bytes"},
 					{Name: "bar", Value: fmt.Sprint(j)},
 				})
 				sort.Sort(lb1)
-				lb2 := phlaremodel.Labels([]*commonv1.LabelPair{
+				lb2 := phlaremodel.Labels([]*typesv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "__sample__type__", Value: "count"},
 					{Name: "bar", Value: fmt.Sprint(j)},
@@ -90,13 +90,13 @@ func TestWriteRead(t *testing.T) {
 	require.NoError(t, err)
 
 	for j := 0; j < 10; j++ {
-		lb1 := phlaremodel.Labels([]*commonv1.LabelPair{
+		lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
 			{Name: "__name__", Value: "memory"},
 			{Name: "__sample__type__", Value: "bytes"},
 			{Name: "bar", Value: fmt.Sprint(j)},
 		})
 		sort.Sort(lb1)
-		lb2 := phlaremodel.Labels([]*commonv1.LabelPair{
+		lb2 := phlaremodel.Labels([]*typesv1.LabelPair{
 			{Name: "__name__", Value: "memory"},
 			{Name: "__sample__type__", Value: "count"},
 			{Name: "bar", Value: fmt.Sprint(j)},

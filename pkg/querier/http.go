@@ -14,8 +14,8 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
@@ -86,7 +86,7 @@ func (q *Querier) RenderHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // render/render?format=json&from=now-12h&until=now&query=pyroscope.server.cpu
-func parseSelectProfilesRequest(req *http.Request) (*querierv1.SelectMergeStacktracesRequest, *commonv1.ProfileType, error) {
+func parseSelectProfilesRequest(req *http.Request) (*querierv1.SelectMergeStacktracesRequest, *typesv1.ProfileType, error) {
 	selector, ptype, err := parseQuery(req)
 	if err != nil {
 		return nil, nil, err
@@ -111,7 +111,7 @@ func parseSelectProfilesRequest(req *http.Request) (*querierv1.SelectMergeStackt
 	}, ptype, nil
 }
 
-func parseQuery(req *http.Request) (string, *commonv1.ProfileType, error) {
+func parseQuery(req *http.Request) (string, *typesv1.ProfileType, error) {
 	q := req.Form.Get("query")
 	if q == "" {
 		return "", nil, fmt.Errorf("query is required")

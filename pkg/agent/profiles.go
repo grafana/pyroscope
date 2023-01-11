@@ -33,7 +33,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
+	agentv1v1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
 )
 
 const (
@@ -216,7 +216,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 					pusherClientProvider: tg.pusherClientProvider,
 					interval:             interval,
 					timeout:              timeout,
-					health:               agentv1.Health_HEALTH_UNSPECIFIED,
+					health:               agentv1v1.Health_HEALTH_UNSPECIFIED,
 					logger:               tg.logger,
 				})
 				continue
@@ -238,7 +238,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 					pusherClientProvider: tg.pusherClientProvider,
 					interval:             interval,
 					timeout:              timeout,
-					health:               agentv1.Health_HEALTH_UNSPECIFIED,
+					health:               agentv1v1.Health_HEALTH_UNSPECIFIED,
 					logger:               tg.logger,
 				})
 			}

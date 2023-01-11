@@ -22,9 +22,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
-	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/testhelper"
@@ -49,7 +49,7 @@ func Test_ConnectPush(t *testing.T) {
 	resp, err := client.Push(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*commonv1.LabelPair{
+				Labels: []*typesv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
 				Samples: []*pushv1.RawSample{
@@ -75,7 +75,7 @@ func Test_Replication(t *testing.T) {
 	req := connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []*commonv1.LabelPair{
+				Labels: []*typesv1.LabelPair{
 					{Name: "cluster", Value: "us-central1"},
 				},
 				Samples: []*pushv1.RawSample{

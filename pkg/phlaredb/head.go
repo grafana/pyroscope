@@ -27,9 +27,9 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	profilev1 "github.com/grafana/phlare/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
@@ -278,7 +278,7 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 	return out, nil
 }
 
-func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*commonv1.LabelPair) error {
+func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
@@ -357,7 +357,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	return nil
 }
 
-func labelsForProfile(p *profilev1.Profile, externalLabels ...*commonv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
+func labelsForProfile(p *profilev1.Profile, externalLabels ...*typesv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
 	// build label set per sample type before references are rewritten
 	var (
 		sb                                             strings.Builder
@@ -433,7 +433,7 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	}
 	sort.Strings(values)
 
-	profileTypes := make([]*commonv1.ProfileType, len(values))
+	profileTypes := make([]*typesv1.ProfileType, len(values))
 	for i, v := range values {
 		tp, err := phlaremodel.ParseProfileTypeSelector(v)
 		if err != nil {
@@ -533,12 +533,12 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 	}, nil
 }
 
-func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
+func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Head")
 	defer sp.Finish()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := map[string]*commonv1.Series{}
+	seriesByLabels := map[string]*typesv1.Series{}
 	labelBuf := make([]byte, 0, 1024)
 	defer rows.Close()
 
@@ -553,9 +553,9 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 			labelsByString = string(labelBuf)
 			labelsByFingerprint[p.fp] = labelsByString
 			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &commonv1.Series{
+				seriesByLabels[labelsByString] = &typesv1.Series{
 					Labels: p.Labels().WithLabels(by...),
-					Points: []*commonv1.Point{
+					Points: []*typesv1.Point{
 						{
 							Timestamp: int64(p.Timestamp()),
 							Value:     float64(p.Total()),
@@ -566,7 +566,7 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 			}
 		}
 		series := seriesByLabels[labelsByString]
-		series.Points = append(series.Points, &commonv1.Point{
+		series.Points = append(series.Points, &typesv1.Point{
 			Timestamp: int64(p.Timestamp()),
 			Value:     float64(p.Total()),
 		})
@@ -661,7 +661,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 				return nil
 			}
 			uniqu[fp] = struct{}{}
-			response.LabelsSet = append(response.LabelsSet, &commonv1.Labels{Labels: lbs})
+			response.LabelsSet = append(response.LabelsSet, &typesv1.Labels{Labels: lbs})
 			return nil
 		}); err != nil {
 			return nil, err

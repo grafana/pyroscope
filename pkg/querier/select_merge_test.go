@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
@@ -16,14 +16,14 @@ import (
 )
 
 var (
-	foobarlabels  = phlaremodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "bar"}})
-	foobuzzlabels = phlaremodel.Labels([]*commonv1.LabelPair{{Name: "foo", Value: "buzz"}})
+	foobarlabels  = phlaremodel.Labels([]*typesv1.LabelPair{{Name: "foo", Value: "bar"}})
+	foobuzzlabels = phlaremodel.Labels([]*typesv1.LabelPair{{Name: "foo", Value: "buzz"}})
 )
 
 func TestSelectMergeStacktraces(t *testing.T) {
 	resp1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 1},
 				{LabelIndex: 0, Timestamp: 2},
@@ -31,7 +31,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 			},
 		},
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 5},
 				{LabelIndex: 0, Timestamp: 6},
@@ -40,7 +40,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 	})
 	resp2 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 2},
 				{LabelIndex: 0, Timestamp: 3},
@@ -48,7 +48,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 			},
 		},
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 5},
 				{LabelIndex: 0, Timestamp: 6},
@@ -57,7 +57,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 	})
 	resp3 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 3},
 				{LabelIndex: 0, Timestamp: 5},
@@ -83,18 +83,18 @@ func TestSelectMergeStacktraces(t *testing.T) {
 	all = append(all, resp3.kept...)
 	sort.Slice(all, func(i, j int) bool { return all[i].Ts < all[j].Ts })
 	testhelper.EqualProto(t, all, []testProfile{
-		{Ts: 1, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 2, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 3, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 4, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 5, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 6, Labels: &commonv1.Labels{Labels: foobarlabels}},
+		{Ts: 1, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 2, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 3, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 4, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 5, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 6, Labels: &typesv1.Labels{Labels: foobarlabels}},
 	})
 	res, err = selectMergeStacktraces(context.Background(), []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]{
 		{
 			response: newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 				{
-					LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+					LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 					Profiles: []*ingestv1.SeriesProfile{
 						{LabelIndex: 0, Timestamp: 1},
 						{LabelIndex: 0, Timestamp: 2},
@@ -102,7 +102,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 					},
 				},
 				{
-					LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+					LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 					Profiles: []*ingestv1.SeriesProfile{
 						{LabelIndex: 0, Timestamp: 5},
 						{LabelIndex: 0, Timestamp: 6},
@@ -118,7 +118,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 func TestSelectMergeByLabels(t *testing.T) {
 	resp1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 1},
 				{LabelIndex: 0, Timestamp: 2},
@@ -126,19 +126,19 @@ func TestSelectMergeByLabels(t *testing.T) {
 			},
 		},
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 5},
 				{LabelIndex: 0, Timestamp: 6},
 			},
 		},
-	}, &commonv1.Series{
-		Labels: []*commonv1.LabelPair{{Name: "foo", Value: "bar"}},
-		Points: []*commonv1.Point{{Timestamp: 1, Value: 1.0}, {Timestamp: 2, Value: 2.0}},
+	}, &typesv1.Series{
+		Labels: []*typesv1.LabelPair{{Name: "foo", Value: "bar"}},
+		Points: []*typesv1.Point{{Timestamp: 1, Value: 1.0}, {Timestamp: 2, Value: 2.0}},
 	})
 	resp2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 2},
 				{LabelIndex: 0, Timestamp: 3},
@@ -146,27 +146,27 @@ func TestSelectMergeByLabels(t *testing.T) {
 			},
 		},
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 5},
 				{LabelIndex: 0, Timestamp: 6},
 			},
 		},
-	}, &commonv1.Series{
+	}, &typesv1.Series{
 		Labels: foobarlabels,
-		Points: []*commonv1.Point{{Timestamp: 3, Value: 3.0}, {Timestamp: 4, Value: 4.0}},
+		Points: []*typesv1.Point{{Timestamp: 3, Value: 3.0}, {Timestamp: 4, Value: 4.0}},
 	})
 	resp3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
-			LabelsSets: []*commonv1.Labels{{Labels: foobarlabels}},
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
 			Profiles: []*ingestv1.SeriesProfile{
 				{LabelIndex: 0, Timestamp: 3},
 				{LabelIndex: 0, Timestamp: 5},
 			},
 		},
-	}, &commonv1.Series{
+	}, &typesv1.Series{
 		Labels: foobarlabels,
-		Points: []*commonv1.Point{{Timestamp: 5, Value: 5.0}, {Timestamp: 6, Value: 6.0}},
+		Points: []*typesv1.Point{{Timestamp: 5, Value: 5.0}, {Timestamp: 6, Value: 6.0}},
 	})
 
 	res, err := selectMergeSeries(context.Background(), []responseFromIngesters[clientpool.BidiClientMergeProfilesLabels]{
@@ -188,12 +188,12 @@ func TestSelectMergeByLabels(t *testing.T) {
 	all = append(all, resp3.kept...)
 	sort.Slice(all, func(i, j int) bool { return all[i].Ts < all[j].Ts })
 	testhelper.EqualProto(t, all, []testProfile{
-		{Ts: 1, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 2, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 3, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 4, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 5, Labels: &commonv1.Labels{Labels: foobarlabels}},
-		{Ts: 6, Labels: &commonv1.Labels{Labels: foobarlabels}},
+		{Ts: 1, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 2, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 3, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 4, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 5, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 6, Labels: &typesv1.Labels{Labels: foobarlabels}},
 	})
 	values, err := iter.Slice(res)
 	require.NoError(t, err)

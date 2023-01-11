@@ -18,8 +18,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	ingesterv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	ingesterv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"

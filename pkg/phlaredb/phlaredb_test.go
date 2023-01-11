@@ -22,11 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	googlev1 "github.com/grafana/phlare/pkg/gen/google/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	"github.com/grafana/phlare/pkg/gen/ingester/v1/ingesterv1connect"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
@@ -57,12 +57,12 @@ var cpuProfileGenerator = func(tsNano int64, t testing.TB) (*googlev1.Profile, s
 	return p, "process_cpu"
 }
 
-func ingestProfiles(b testing.TB, db *PhlareDB, generator func(tsNano int64, t testing.TB) (*googlev1.Profile, string), from, to int64, step time.Duration, externalLabels ...*commonv1.LabelPair) {
+func ingestProfiles(b testing.TB, db *PhlareDB, generator func(tsNano int64, t testing.TB) (*googlev1.Profile, string), from, to int64, step time.Duration, externalLabels ...*typesv1.LabelPair) {
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
 		require.NoError(b, db.Head().Ingest(
-			context.Background(), p, uuid.New(), append(externalLabels, &commonv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
+			context.Background(), p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
 	}
 }
 
@@ -146,8 +146,8 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	defer require.NoError(t, db.Close())
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
-		&commonv1.LabelPair{Name: "namespace", Value: "my-namespace"},
-		&commonv1.LabelPair{Name: "pod", Value: "my-pod"},
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
 
 	// create client
@@ -278,24 +278,24 @@ func TestFilterProfiles(t *testing.T) {
 	require.Equal(t, 3, len(bidi.profilesSent))
 	testhelper.EqualProto(t, []*ingestv1.ProfileSets{
 		{
-			LabelsSets: lo.Times(5, func(i int) *commonv1.Labels {
-				return &commonv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i))}
+			LabelsSets: lo.Times(5, func(i int) *typesv1.Labels {
+				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i))}
 			}),
 			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64(i * int(time.Minute)))), LabelIndex: int32(i)}
 			}),
 		},
 		{
-			LabelsSets: lo.Times(5, func(i int) *commonv1.Labels {
-				return &commonv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+5))}
+			LabelsSets: lo.Times(5, func(i int) *typesv1.Labels {
+				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+5))}
 			}),
 			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 5) * int(time.Minute)))), LabelIndex: int32(i)}
 			}),
 		},
 		{
-			LabelsSets: lo.Times(1, func(i int) *commonv1.Labels {
-				return &commonv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+10))}
+			LabelsSets: lo.Times(1, func(i int) *typesv1.Labels {
+				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+10))}
 			}),
 			Profiles: lo.Times(1, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 10) * int(time.Minute)))), LabelIndex: int32(i)}

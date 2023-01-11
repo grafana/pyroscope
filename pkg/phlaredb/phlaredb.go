@@ -27,8 +27,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/objstore/client"
@@ -414,7 +414,7 @@ func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.Bidi
 	)
 
 	queriers := f.querierFor(model.Time(request.Start), model.Time(request.End))
-	result := make([][]*commonv1.Series, 0, len(queriers))
+	result := make([][]*typesv1.Series, 0, len(queriers))
 	g, ctx := errgroup.WithContext(ctx)
 	s := lo.Synchronize()
 	// Start streaming profiles from all stores in order.
@@ -492,7 +492,7 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 	selection := []Profile{}
 	selectProfileResult := &ingestv1.ProfileSets{
 		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
-		LabelsSets: make([]*commonv1.Labels, 0, batchProfileSize),
+		LabelsSets: make([]*typesv1.Labels, 0, batchProfileSize),
 	}
 	if err := iter.ReadBatch(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
 		sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles - Filtering batch")
@@ -516,7 +516,7 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 					index:  len(selectProfileResult.LabelsSets),
 				}
 				seriesByFP[profile.Fingerprint()] = lblsIdx
-				selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &commonv1.Labels{Labels: profile.Labels()})
+				selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &typesv1.Labels{Labels: profile.Labels()})
 			}
 			selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
 				LabelIndex: int32(lblsIdx.index),

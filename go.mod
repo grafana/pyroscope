@@ -3,7 +3,7 @@ module github.com/grafana/phlare
 go 1.18
 
 require (
-	github.com/bufbuild/connect-go v1.4.0
+	github.com/bufbuild/connect-go v1.4.1
 	github.com/bufbuild/connect-grpchealth-go v1.0.0
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/drone/envsubst v1.0.3
@@ -16,9 +16,10 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/dskit v0.0.0-20221220091350-2828420c659c
+	github.com/grafana/phlare/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.14.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.15.13
 	github.com/minio/minio-go/v7 v7.0.45
@@ -47,7 +48,7 @@ require (
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.3.0
 	golang.org/x/text v0.5.0
-	google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37
+	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
@@ -252,6 +253,7 @@ require (
 
 replace (
 	github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.2007.4
+	github.com/grafana/phlare/api => ./api
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91

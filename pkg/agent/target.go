@@ -23,9 +23,9 @@ import (
 	"github.com/prometheus/prometheus/util/pool"
 	"golang.org/x/net/context/ctxhttp"
 
-	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/tenant"
 )
 
@@ -199,13 +199,13 @@ func (t *Target) scrape(ctx context.Context) {
 	// todo retry strategy
 	req := &pushv1.PushRequest{}
 	series := &pushv1.RawProfileSeries{
-		Labels: make([]*commonv1.LabelPair, 0, len(t.labels)),
+		Labels: make([]*typesv1.LabelPair, 0, len(t.labels)),
 	}
 	for _, l := range t.labels {
 		if strings.HasPrefix(l.Name, "__") && l.Name != labels.MetricName {
 			continue
 		}
-		series.Labels = append(series.Labels, &commonv1.LabelPair{
+		series.Labels = append(series.Labels, &typesv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		})

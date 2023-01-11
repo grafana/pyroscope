@@ -22,8 +22,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	pushv1 "github.com/grafana/phlare/pkg/gen/push/v1"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/pprof"
@@ -260,7 +260,7 @@ type pushTracker struct {
 	err            chan error
 }
 
-func labelsString(ls []*commonv1.LabelPair) string {
+func labelsString(ls []*typesv1.LabelPair) string {
 	var b bytes.Buffer
 	b.WriteByte('{')
 	for i, l := range ls {

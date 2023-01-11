@@ -9,8 +9,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	query "github.com/grafana/phlare/pkg/phlaredb/query"
@@ -177,7 +177,7 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	}, nil
 }
 
-func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*commonv1.Series, error) {
+func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 
@@ -186,7 +186,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	defer it.Close()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := map[string]*commonv1.Series{}
+	seriesByLabels := map[string]*typesv1.Series{}
 	labelBuf := make([]byte, 0, 1024)
 
 	for it.Next() {
@@ -202,9 +202,9 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 			labelsByString = string(labelBuf)
 			labelsByFingerprint[p.Fingerprint()] = labelsByString
 			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &commonv1.Series{
+				seriesByLabels[labelsByString] = &typesv1.Series{
 					Labels: p.Labels().WithLabels(by...),
-					Points: []*commonv1.Point{
+					Points: []*typesv1.Point{
 						{
 							Timestamp: int64(p.Timestamp()),
 							Value:     float64(total),
@@ -215,7 +215,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 			}
 		}
 		series := seriesByLabels[labelsByString]
-		series.Points = append(series.Points, &commonv1.Point{
+		series.Points = append(series.Points, &typesv1.Point{
 			Timestamp: int64(p.Timestamp()),
 			Value:     float64(total),
 		})

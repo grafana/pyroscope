@@ -9,8 +9,8 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/prometheus/discovery"
 
-	agentv1 "github.com/grafana/phlare/pkg/gen/agent/v1"
-	"github.com/grafana/phlare/pkg/gen/push/v1/pushv1connect"
+	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
+	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
 )
 
 type Agent struct {

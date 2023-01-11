@@ -9,8 +9,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
@@ -345,7 +345,7 @@ func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktraces
 
 type ProfileValue struct {
 	Ts         int64
-	Lbs        []*commonv1.LabelPair
+	Lbs        []*typesv1.LabelPair
 	LabelsHash uint64
 	Value      float64
 }
@@ -360,10 +360,10 @@ func (p ProfileValue) Timestamp() model.Time {
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
 func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
-	mergeResults := make([]MergeResult[[]*commonv1.Series], len(responses))
+	mergeResults := make([]MergeResult[[]*typesv1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	for i, resp := range responses {
-		it := NewMergeIterator[[]*commonv1.Series](
+		it := NewMergeIterator[[]*typesv1.Series](
 			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]]{
 				addr:     resp.addr,
 				response: resp.response,
@@ -377,7 +377,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 	}
 
 	// Collects the results in parallel.
-	results := make([][]*commonv1.Series, 0, len(iters))
+	results := make([][]*typesv1.Series, 0, len(iters))
 	s := lo.Synchronize()
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
@@ -406,12 +406,12 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 }
 
 type seriesIterator struct {
-	point []*commonv1.Point
+	point []*typesv1.Point
 
 	curr ProfileValue
 }
 
-func newSeriesIterator(lbs []*commonv1.LabelPair, points []*commonv1.Point) *seriesIterator {
+func newSeriesIterator(lbs []*typesv1.LabelPair, points []*typesv1.Point) *seriesIterator {
 	return &seriesIterator{
 		point: points,
 

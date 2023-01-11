@@ -21,9 +21,9 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
-	ingestv1 "github.com/grafana/phlare/pkg/gen/ingester/v1"
-	querierv1 "github.com/grafana/phlare/pkg/gen/querier/v1"
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
@@ -100,7 +100,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*commonv1.ProfileType, error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.ProfileType, error) {
 		res, err := ic.ProfileTypes(childCtx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 		if err != nil {
 			return nil, err
@@ -111,7 +111,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 		return nil, err
 	}
 	var profileTypeIDs []string
-	profileTypes := make(map[string]*commonv1.ProfileType)
+	profileTypes := make(map[string]*typesv1.ProfileType)
 	for _, response := range responses {
 		for _, profileType := range response.response {
 			if _, ok := profileTypes[profileType.ID]; !ok {
@@ -122,7 +122,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 	}
 	sort.Strings(profileTypeIDs)
 	result := &querierv1.ProfileTypesResponse{
-		ProfileTypes: make([]*commonv1.ProfileType, 0, len(profileTypes)),
+		ProfileTypes: make([]*typesv1.ProfileType, 0, len(profileTypes)),
 	}
 	for _, id := range profileTypeIDs {
 		result.ProfileTypes = append(result.ProfileTypes, profileTypes[id])
@@ -183,7 +183,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		)
 		sp.Finish()
 	}()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*commonv1.Labels, error) {
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
 		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
 			Matchers: req.Msg.Matchers,
 		}))
@@ -197,10 +197,10 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	}
 	return connect.NewResponse(&querierv1.SeriesResponse{
 		LabelsSet: lo.UniqBy(
-			lo.FlatMap(responses, func(r responseFromIngesters[[]*commonv1.Labels], _ int) []*commonv1.Labels {
+			lo.FlatMap(responses, func(r responseFromIngesters[[]*typesv1.Labels], _ int) []*typesv1.Labels {
 				return r.response
 			}),
-			func(t *commonv1.Labels) uint64 {
+			func(t *typesv1.Labels) uint64 {
 				return phlaremodel.Labels(t.Labels).Hash()
 			}),
 	}), nil
@@ -338,9 +338,9 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 // rangeSeries aggregates profiles into series.
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
-func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*commonv1.Series {
+func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*typesv1.Series {
 	defer it.Close()
-	seriesMap := make(map[uint64]*commonv1.Series)
+	seriesMap := make(map[uint64]*typesv1.Series)
 
 	if !it.Next() {
 		return nil
@@ -355,9 +355,9 @@ Outer:
 			// find or create series
 			series, ok := seriesMap[it.At().LabelsHash]
 			if !ok {
-				seriesMap[it.At().LabelsHash] = &commonv1.Series{
+				seriesMap[it.At().LabelsHash] = &typesv1.Series{
 					Labels: it.At().Lbs,
-					Points: []*commonv1.Point{
+					Points: []*typesv1.Point{
 						{Value: it.At().Value, Timestamp: currentStep},
 					},
 				}
@@ -375,7 +375,7 @@ Outer:
 				continue
 			}
 			// Next step is missing
-			series.Points = append(series.Points, &commonv1.Point{
+			series.Points = append(series.Points, &typesv1.Point{
 				Value:     it.At().Value,
 				Timestamp: currentStep,
 			})

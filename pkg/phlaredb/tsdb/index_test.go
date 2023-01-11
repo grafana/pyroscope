@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	commonv1 "github.com/grafana/phlare/pkg/gen/common/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
 
@@ -51,7 +51,7 @@ func Test_ValidateShards(t *testing.T) {
 
 func TestDeleteAddLoopkup(t *testing.T) {
 	index := NewWithShards(DefaultIndexShards)
-	lbs := []*commonv1.LabelPair{
+	lbs := []*typesv1.LabelPair{
 		{Name: "__name__", Value: "foo"},
 		{Name: "foo", Value: "foo"},
 		{Name: "bar", Value: "bar"},
@@ -72,7 +72,7 @@ func TestDeleteAddLoopkup(t *testing.T) {
 }
 
 func Test_hash_mapping(t *testing.T) {
-	lbs := []*commonv1.LabelPair{
+	lbs := []*typesv1.LabelPair{
 		{Name: "compose_project", Value: "loki-boltdb-storage-s3"},
 		{Name: "compose_service", Value: "ingester-2"},
 		{Name: "container_name", Value: "loki-boltdb-storage-s3_ingester-2_1"},
@@ -95,7 +95,7 @@ func Test_hash_mapping(t *testing.T) {
 }
 
 func Test_NoMatcherLookup(t *testing.T) {
-	lbs := []*commonv1.LabelPair{
+	lbs := []*typesv1.LabelPair{
 		{Name: "foo", Value: "bar"},
 		{Name: "hi", Value: "hello"},
 	}
@@ -119,7 +119,7 @@ func Test_ConsistentMapping(t *testing.T) {
 	b := NewWithShards(32)
 
 	for i := 0; i < 100; i++ {
-		lbs := []*commonv1.LabelPair{
+		lbs := []*typesv1.LabelPair{
 			{Name: "foo", Value: "bar"},
 			{Name: "hi", Value: fmt.Sprint(i)},
 		}
