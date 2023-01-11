@@ -112,6 +112,8 @@ go/mod:
 	# GO111MODULE=on go mod verify
 	go work sync
 	GO111MODULE=on go mod tidy
+	cd api/ && GO111MODULE=on go mod download
+	cd api/ && GO111MODULE=on go mod tidy
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
