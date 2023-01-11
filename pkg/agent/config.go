@@ -132,8 +132,8 @@ func (c *ScrapeConfig) Validate() error {
 	}
 
 	if cfg, ok := c.ProfilingConfig.PprofConfig[pprofProcessCPU]; ok {
-		if *cfg.Enabled && c.ScrapeTimeout < model.Duration(time.Second*2) {
-			return fmt.Errorf("%v scrape_timeout must be at least 2 seconds in %v", pprofProcessCPU, c.JobName)
+		if *cfg.Enabled && c.ScrapeInterval < model.Duration(time.Second*2) {
+			return fmt.Errorf("%v scrape_interval must be at least 2 seconds in %v", pprofProcessCPU, c.JobName)
 		}
 	}
 	return nil
