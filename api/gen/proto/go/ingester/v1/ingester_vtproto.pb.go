@@ -42,6 +42,7 @@ type IngesterServiceClient interface {
 	Flush(ctx context.Context, in *FlushRequest, opts ...grpc.CallOption) (*FlushResponse, error)
 	MergeProfilesStacktraces(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeProfilesStacktracesClient, error)
 	MergeProfilesLabels(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeProfilesLabelsClient, error)
+	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeProfilesPprofClient, error)
 }
 
 type ingesterServiceClient struct {
@@ -168,6 +169,37 @@ func (x *ingesterServiceMergeProfilesLabelsClient) Recv() (*MergeProfilesLabelsR
 	return m, nil
 }
 
+func (c *ingesterServiceClient) MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeProfilesPprofClient, error) {
+	stream, err := c.cc.NewStream(ctx, &IngesterService_ServiceDesc.Streams[2], "/ingester.v1.IngesterService/MergeProfilesPprof", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &ingesterServiceMergeProfilesPprofClient{stream}
+	return x, nil
+}
+
+type IngesterService_MergeProfilesPprofClient interface {
+	Send(*MergeProfilesPprofRequest) error
+	Recv() (*MergeProfilesPprofResponse, error)
+	grpc.ClientStream
+}
+
+type ingesterServiceMergeProfilesPprofClient struct {
+	grpc.ClientStream
+}
+
+func (x *ingesterServiceMergeProfilesPprofClient) Send(m *MergeProfilesPprofRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *ingesterServiceMergeProfilesPprofClient) Recv() (*MergeProfilesPprofResponse, error) {
+	m := new(MergeProfilesPprofResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // IngesterServiceServer is the server API for IngesterService service.
 // All implementations must embed UnimplementedIngesterServiceServer
 // for forward compatibility
@@ -180,6 +212,7 @@ type IngesterServiceServer interface {
 	Flush(context.Context, *FlushRequest) (*FlushResponse, error)
 	MergeProfilesStacktraces(IngesterService_MergeProfilesStacktracesServer) error
 	MergeProfilesLabels(IngesterService_MergeProfilesLabelsServer) error
+	MergeProfilesPprof(IngesterService_MergeProfilesPprofServer) error
 	mustEmbedUnimplementedIngesterServiceServer()
 }
 
@@ -210,6 +243,9 @@ func (UnimplementedIngesterServiceServer) MergeProfilesStacktraces(IngesterServi
 }
 func (UnimplementedIngesterServiceServer) MergeProfilesLabels(IngesterService_MergeProfilesLabelsServer) error {
 	return status.Errorf(codes.Unimplemented, "method MergeProfilesLabels not implemented")
+}
+func (UnimplementedIngesterServiceServer) MergeProfilesPprof(IngesterService_MergeProfilesPprofServer) error {
+	return status.Errorf(codes.Unimplemented, "method MergeProfilesPprof not implemented")
 }
 func (UnimplementedIngesterServiceServer) mustEmbedUnimplementedIngesterServiceServer() {}
 
@@ -384,6 +420,32 @@ func (x *ingesterServiceMergeProfilesLabelsServer) Recv() (*MergeProfilesLabelsR
 	return m, nil
 }
 
+func _IngesterService_MergeProfilesPprof_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(IngesterServiceServer).MergeProfilesPprof(&ingesterServiceMergeProfilesPprofServer{stream})
+}
+
+type IngesterService_MergeProfilesPprofServer interface {
+	Send(*MergeProfilesPprofResponse) error
+	Recv() (*MergeProfilesPprofRequest, error)
+	grpc.ServerStream
+}
+
+type ingesterServiceMergeProfilesPprofServer struct {
+	grpc.ServerStream
+}
+
+func (x *ingesterServiceMergeProfilesPprofServer) Send(m *MergeProfilesPprofResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *ingesterServiceMergeProfilesPprofServer) Recv() (*MergeProfilesPprofRequest, error) {
+	m := new(MergeProfilesPprofRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // IngesterService_ServiceDesc is the grpc.ServiceDesc for IngesterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -426,6 +488,12 @@ var IngesterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "MergeProfilesLabels",
 			Handler:       _IngesterService_MergeProfilesLabels_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "MergeProfilesPprof",
+			Handler:       _IngesterService_MergeProfilesPprof_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
@@ -1486,6 +1554,112 @@ func (m *MergeProfilesLabelsResponse) MarshalToSizedBufferVT(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
+func (m *MergeProfilesPprofRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MergeProfilesPprofRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *MergeProfilesPprofRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Profiles) > 0 {
+		for iNdEx := len(m.Profiles) - 1; iNdEx >= 0; iNdEx-- {
+			i--
+			if m.Profiles[iNdEx] {
+				dAtA[i] = 1
+			} else {
+				dAtA[i] = 0
+			}
+		}
+		i = encodeVarint(dAtA, i, uint64(len(m.Profiles)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Request != nil {
+		size, err := m.Request.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MergeProfilesPprofResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MergeProfilesPprofResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *MergeProfilesPprofResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Result) > 0 {
+		i -= len(m.Result)
+		copy(dAtA[i:], m.Result)
+		i = encodeVarint(dAtA, i, uint64(len(m.Result)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.SelectedProfiles != nil {
+		size, err := m.SelectedProfiles.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarint(dAtA []byte, offset int, v uint64) int {
 	offset -= sov(v)
 	base := offset
@@ -1921,6 +2095,45 @@ func (m *MergeProfilesLabelsResponse) SizeVT() (n int) {
 			}
 			n += 1 + l + sov(uint64(l))
 		}
+	}
+	if m.unknownFields != nil {
+		n += len(m.unknownFields)
+	}
+	return n
+}
+
+func (m *MergeProfilesPprofRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Request != nil {
+		l = m.Request.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
+	if len(m.Profiles) > 0 {
+		n += 1 + sov(uint64(len(m.Profiles))) + len(m.Profiles)*1
+	}
+	if m.unknownFields != nil {
+		n += len(m.unknownFields)
+	}
+	return n
+}
+
+func (m *MergeProfilesPprofResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SelectedProfiles != nil {
+		l = m.SelectedProfiles.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.Result)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
@@ -4096,6 +4309,284 @@ func (m *MergeProfilesLabelsResponse) UnmarshalVT(dAtA []byte) error {
 				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Series[len(m.Series)-1]); err != nil {
 					return err
 				}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MergeProfilesPprofRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MergeProfilesPprofRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MergeProfilesPprofRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Request", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Request == nil {
+				m.Request = &SelectProfilesRequest{}
+			}
+			if err := m.Request.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType == 0 {
+				var v int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Profiles = append(m.Profiles, bool(v != 0))
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				elementCount = packedLen
+				if elementCount != 0 && len(m.Profiles) == 0 {
+					m.Profiles = make([]bool, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= int(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Profiles = append(m.Profiles, bool(v != 0))
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Profiles", wireType)
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MergeProfilesPprofResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MergeProfilesPprofResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MergeProfilesPprofResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectedProfiles", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SelectedProfiles == nil {
+				m.SelectedProfiles = &ProfileSets{}
+			}
+			if err := m.SelectedProfiles.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Result = append(m.Result[:0], dAtA[iNdEx:postIndex]...)
+			if m.Result == nil {
+				m.Result = []byte{}
 			}
 			iNdEx = postIndex
 		default:

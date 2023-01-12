@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
+	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
@@ -586,6 +587,128 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 		})
 	}
 	return result, nil
+}
+
+// MergePprof merges profiles from the rows iterator into a single pprof profile.
+func (h *Head) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - Head")
+	defer sp.Finish()
+
+	stacktraceSamples := map[uint64]*profile.Sample{}
+	locations := map[uint64]*profile.Location{}
+	functions := map[uint64]*profile.Function{}
+	mappings := map[uint64]*profile.Mapping{}
+
+	defer rows.Close()
+
+	h.stacktraces.lock.RLock()
+	h.locations.lock.RLock()
+	h.functions.lock.RLock()
+	h.strings.lock.RLock()
+	defer func() {
+		h.stacktraces.lock.RUnlock()
+		h.locations.lock.RUnlock()
+		h.functions.lock.RUnlock()
+		h.strings.lock.RUnlock()
+	}()
+
+	for rows.Next() {
+		p, ok := rows.At().(ProfileWithLabels)
+		if !ok {
+			return nil, errors.New("expected ProfileWithLabels")
+		}
+		for _, s := range p.Samples {
+			if s.Value == 0 {
+				continue
+			}
+			existing, ok := stacktraceSamples[s.StacktraceID]
+			if ok {
+				existing.Value[0] += s.Value
+				continue
+			}
+			locationIds := h.stacktraces.slice[s.StacktraceID].LocationIDs
+			stacktraceLocations := make([]*profile.Location, len(locationIds))
+
+			for i, locId := range locationIds {
+				loc, ok := locations[locId]
+				if !ok {
+					locFound := h.locations.slice[locId]
+					mapping, ok := mappings[locFound.MappingId]
+					if !ok {
+						mappingFound := h.mappings.slice[locFound.MappingId]
+						mapping = &profile.Mapping{
+							ID:              mappingFound.Id,
+							Start:           mappingFound.MemoryStart,
+							Limit:           mappingFound.MemoryLimit,
+							Offset:          mappingFound.FileOffset,
+							File:            h.strings.slice[mappingFound.Filename],
+							BuildID:         h.strings.slice[mappingFound.BuildId],
+							HasFunctions:    mappingFound.HasFunctions,
+							HasFilenames:    mappingFound.HasFilenames,
+							HasLineNumbers:  mappingFound.HasLineNumbers,
+							HasInlineFrames: mappingFound.HasInlineFrames,
+						}
+						mappings[locFound.MappingId] = mapping
+					}
+					loc = &profile.Location{
+						ID:       locFound.Id,
+						Address:  locFound.Address,
+						IsFolded: locFound.IsFolded,
+						Mapping:  mapping,
+						Line:     make([]profile.Line, len(locFound.Line)),
+					}
+					for i, line := range locFound.Line {
+						fn, ok := functions[line.FunctionId]
+						if !ok {
+							fnFound := h.functions.slice[line.FunctionId]
+							fn = &profile.Function{
+								ID:         fnFound.Id,
+								Name:       h.strings.slice[fnFound.Name],
+								SystemName: h.strings.slice[fnFound.SystemName],
+								Filename:   h.strings.slice[fnFound.Filename],
+								StartLine:  fnFound.StartLine,
+							}
+							functions[line.FunctionId] = fn
+						}
+						loc.Line[i] = profile.Line{
+							Line:     line.Line,
+							Function: fn,
+						}
+					}
+					locations[locId] = loc
+				}
+				stacktraceLocations[i] = loc
+			}
+			stacktraceSamples[s.StacktraceID] = &profile.Sample{
+				Location: stacktraceLocations,
+				Value:    []int64{s.Value},
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	result := &profile.Profile{
+		Sample:   lo.Values(stacktraceSamples),
+		Location: lo.Values(locations),
+		Function: lo.Values(functions),
+		Mapping:  lo.Values(mappings),
+	}
+	normalizeProfileIds(result)
+	return result, nil
+}
+
+func normalizeProfileIds(p *profile.Profile) {
+	// normalize IDs
+	for i, l := range p.Location {
+		l.ID = uint64(i) + 1
+	}
+	for i, f := range p.Function {
+		f.ID = uint64(i) + 1
+	}
+	for i, m := range p.Mapping {
+		m.ID = uint64(i) + 1
+	}
 }
 
 func (h *Head) Sort(in []Profile) []Profile {

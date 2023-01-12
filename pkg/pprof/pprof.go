@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
@@ -108,6 +109,150 @@ func FromBytes(input []byte) (*profilev1.Profile, error) {
 	bufPool.Put(p.buf)
 
 	return p.Profile, nil
+}
+
+func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
+	r := profilev1.ProfileFromVTPool()
+	strings := make(map[string]int)
+	addString(strings, "")
+	for _, st := range p.SampleType {
+		r.SampleType = append(r.SampleType, &profilev1.ValueType{
+			Type: addString(strings, st.Type),
+			Unit: addString(strings, st.Unit),
+		})
+	}
+	for _, s := range p.Sample {
+		sample := &profilev1.Sample{
+			LocationId: make([]uint64, len(s.Location)),
+			Value:      s.Value,
+		}
+		for i, loc := range s.Location {
+			sample.LocationId[i] = loc.ID
+		}
+		var keys []string
+		for k := range s.Label {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			vs := s.Label[k]
+			for _, v := range vs {
+				sample.Label = append(sample.Label,
+					&profilev1.Label{
+						Key: addString(strings, k),
+						Str: addString(strings, v),
+					},
+				)
+			}
+		}
+		var numKeys []string
+		for k := range s.NumLabel {
+			numKeys = append(numKeys, k)
+		}
+		sort.Strings(numKeys)
+		for _, k := range numKeys {
+			keyX := addString(strings, k)
+			vs := s.NumLabel[k]
+			units := s.NumUnit[k]
+			for i, v := range vs {
+				var unitX int64
+				if len(units) != 0 {
+					unitX = addString(strings, units[i])
+				}
+				sample.Label = append(sample.Label,
+					&profilev1.Label{
+						Key:     keyX,
+						Num:     v,
+						NumUnit: unitX,
+					},
+				)
+			}
+		}
+		r.Sample = append(r.Sample, sample)
+	}
+
+	for _, m := range p.Mapping {
+		r.Mapping = append(r.Mapping, &profilev1.Mapping{
+			Id:              m.ID,
+			Filename:        addString(strings, m.File),
+			MemoryStart:     (m.Start),
+			MemoryLimit:     (m.Limit),
+			FileOffset:      (m.Offset),
+			BuildId:         addString(strings, m.BuildID),
+			HasFunctions:    m.HasFunctions,
+			HasFilenames:    m.HasFilenames,
+			HasLineNumbers:  m.HasLineNumbers,
+			HasInlineFrames: m.HasInlineFrames,
+		})
+	}
+
+	for _, l := range p.Location {
+		loc := &profilev1.Location{
+			Id:       l.ID,
+			Line:     make([]*profilev1.Line, len(l.Line)),
+			IsFolded: l.IsFolded,
+			Address:  l.Address,
+		}
+		if l.Mapping != nil {
+			loc.MappingId = l.Mapping.ID
+		}
+		for i, ln := range l.Line {
+			if ln.Function != nil {
+				loc.Line[i] = &profilev1.Line{
+					FunctionId: ln.Function.ID,
+					Line:       ln.Line,
+				}
+			} else {
+				loc.Line[i] = &profilev1.Line{
+					FunctionId: 0,
+					Line:       ln.Line,
+				}
+			}
+		}
+		r.Location = append(r.Location, loc)
+	}
+	for _, f := range p.Function {
+		r.Function = append(r.Function, &profilev1.Function{
+			Id:         f.ID,
+			Name:       addString(strings, f.Name),
+			SystemName: addString(strings, f.SystemName),
+			Filename:   addString(strings, f.Filename),
+			StartLine:  f.StartLine,
+		})
+	}
+
+	r.DropFrames = addString(strings, p.DropFrames)
+	r.KeepFrames = addString(strings, p.KeepFrames)
+
+	if pt := p.PeriodType; pt != nil {
+		r.PeriodType = &profilev1.ValueType{
+			Type: addString(strings, pt.Type),
+			Unit: addString(strings, pt.Unit),
+		}
+	}
+
+	for _, c := range p.Comments {
+		r.Comment = append(r.Comment, addString(strings, c))
+	}
+
+	r.DefaultSampleType = addString(strings, p.DefaultSampleType)
+	r.DurationNanos = p.DurationNanos
+	r.TimeNanos = p.TimeNanos
+	r.Period = p.Period
+	r.StringTable = make([]string, len(strings))
+	for s, i := range strings {
+		r.StringTable[i] = s
+	}
+	return r, nil
+}
+
+func addString(strings map[string]int, s string) int64 {
+	i, ok := strings[s]
+	if !ok {
+		i = len(strings)
+		strings[s] = i
+	}
+	return int64(i)
 }
 
 func OpenFile(path string) (*Profile, error) {

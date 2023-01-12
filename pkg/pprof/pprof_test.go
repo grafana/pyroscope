@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
 	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	"github.com/grafana/phlare/pkg/pprof/testhelper"
@@ -95,6 +97,17 @@ func TestNormalizeProfile(t *testing.T) {
 	})
 }
 
+func TestFromProfile(t *testing.T) {
+	out, err := FromProfile(testhelper.FooBarProfile)
+	require.NoError(t, err)
+	data, err := proto.Marshal(out)
+	require.NoError(t, err)
+	outProfile, err := profile.ParseUncompressed(data)
+	require.NoError(t, err)
+
+	require.Equal(t, testhelper.FooBarProfile, outProfile)
+}
+
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func RandStringBytes(n int) string {
@@ -111,10 +124,10 @@ func BenchmarkNormalize(b *testing.B) {
 		builder := testhelper.NewProfileBuilder(0).CPUProfile()
 		// 10% of samples should be dropped.
 		for i := 0; i < 1000; i++ {
-			builder.ForStacktrace(RandStringBytes(3), RandStringBytes(3)).AddSamples(0)
+			builder.ForStacktraceString(RandStringBytes(3), RandStringBytes(3)).AddSamples(0)
 		}
 		for i := 0; i < 10000; i++ {
-			builder.ForStacktrace(RandStringBytes(3), RandStringBytes(3)).AddSamples(1)
+			builder.ForStacktraceString(RandStringBytes(3), RandStringBytes(3)).AddSamples(1)
 		}
 		profiles[i] = &Profile{Profile: builder.Profile}
 	}

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package querier.v1;
 
+import "google/v1/profile.proto";
 import "types/v1/types.proto";
 
 service QuerierService {
@@ -10,6 +11,7 @@ service QuerierService {
   rpc LabelNames(LabelNamesRequest) returns (LabelNamesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {}
+  rpc SelectMergeProfile(SelectMergeProfileRequest) returns (google.v1.Profile) {}
   rpc SelectSeries(SelectSeriesRequest) returns (SelectSeriesResponse) {}
 }
 
@@ -61,6 +63,13 @@ message FlameGraph {
 
 message Level {
   repeated int64 values = 1;
+}
+
+message SelectMergeProfileRequest {
+  string profile_typeID = 1;
+  string label_selector = 2;
+  int64 start = 3; // milliseconds since epoch
+  int64 end = 4; // milliseconds since epoch
 }
 
 message SelectSeriesRequest {

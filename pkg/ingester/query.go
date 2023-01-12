@@ -47,3 +47,9 @@ func (i *Ingester) MergeProfilesLabels(ctx context.Context, stream *connect.Bidi
 		return instance.MergeProfilesLabels(ctx, stream)
 	})
 }
+
+func (i *Ingester) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
+	return i.forInstance(ctx, func(instance *instance) error {
+		return instance.MergeProfilesPprof(ctx, stream)
+	})
+}

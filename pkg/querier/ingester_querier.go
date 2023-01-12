@@ -19,6 +19,7 @@ type IngesterQueryClient interface {
 	Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
 	MergeProfilesStacktraces(context.Context) clientpool.BidiClientMergeProfilesStacktraces
 	MergeProfilesLabels(ctx context.Context) clientpool.BidiClientMergeProfilesLabels
+	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
 }
 
 type responseFromIngesters[T interface{}] struct {

@@ -33,6 +33,13 @@ type BidiClientMergeProfilesLabels interface {
 	CloseResponse() error
 }
 
+type BidiClientMergeProfilesPprof interface {
+	Send(*ingestv1.MergeProfilesPprofRequest) error
+	Receive() (*ingestv1.MergeProfilesPprofResponse, error)
+	CloseRequest() error
+	CloseResponse() error
+}
+
 // PoolConfig is config for creating a Pool.
 type PoolConfig struct {
 	ClientCleanupPeriod  time.Duration `yaml:"client_cleanup_period"`
@@ -86,4 +93,8 @@ func (c *ingesterPoolClient) MergeProfilesStacktraces(ctx context.Context) BidiC
 
 func (c *ingesterPoolClient) MergeProfilesLabels(ctx context.Context) BidiClientMergeProfilesLabels {
 	return c.IngesterServiceClient.MergeProfilesLabels(ctx)
+}
+
+func (c *ingesterPoolClient) MergeProfilesPprof(ctx context.Context) BidiClientMergeProfilesPprof {
+	return c.IngesterServiceClient.MergeProfilesPprof(ctx)
 }

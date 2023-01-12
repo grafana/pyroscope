@@ -19,8 +19,8 @@ import (
 func TestComputeDelta(t *testing.T) {
 	delta := newDeltaProfiles()
 	builder := testhelper.NewProfileBuilder(1).MemoryProfile()
-	builder.ForStacktrace("a", "b", "c").AddSamples(1, 2, 3, 4)
-	builder.ForStacktrace("a", "b", "c", "d").AddSamples(1, 2, 3, 4)
+	builder.ForStacktraceString("a", "b", "c").AddSamples(1, 2, 3, 4)
+	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(1, 2, 3, 4)
 
 	profiles, labels := newProfileSchema(builder.Profile, "memory")
 

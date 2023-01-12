@@ -16,12 +16,13 @@ import (
 
 type ProfileBuilder struct {
 	*profilev1.Profile
+	strings map[string]int
 	uuid.UUID
 	Labels []*typesv1.LabelPair
 }
 
 func NewProfileBuilder(ts int64) *ProfileBuilder {
-	return &ProfileBuilder{
+	p := &ProfileBuilder{
 		Profile: &profilev1.Profile{
 			TimeNanos: ts,
 			Mapping: []*profilev1.Mapping{
@@ -35,34 +36,37 @@ func NewProfileBuilder(ts int64) *ProfileBuilder {
 				Value: "foo",
 			},
 		},
+		strings: map[string]int{},
 	}
+	p.addString("")
+	return p
 }
 
 func (m *ProfileBuilder) MemoryProfile() *ProfileBuilder {
+	m.Profile.PeriodType = &profilev1.ValueType{
+		Unit: m.addString("bytes"),
+		Type: m.addString("space"),
+	}
 	m.Profile.SampleType = []*profilev1.ValueType{
 		{
-			Unit: 4,
-			Type: 3,
+			Unit: m.addString("count"),
+			Type: m.addString("alloc_objects"),
 		},
 		{
-			Unit: 2,
-			Type: 5,
+			Unit: m.addString("bytes"),
+			Type: m.addString("alloc_space"),
 		},
 		{
-			Unit: 4,
-			Type: 6,
+			Unit: m.addString("count"),
+			Type: m.addString("inuse_objects"),
 		},
 		{
-			Unit: 2,
-			Type: 7,
+			Unit: m.addString("bytes"),
+			Type: m.addString("inuse_space"),
 		},
 	}
-	m.Profile.StringTable = []string{"", "space", "bytes", "alloc_objects", "count", "alloc_space", "inuse_objects", "inuse_space"}
-	m.Profile.DefaultSampleType = 5
-	m.Profile.PeriodType = &profilev1.ValueType{
-		Unit: 2,
-		Type: 1,
-	}
+	m.Profile.DefaultSampleType = m.addString("alloc_space")
+
 	m.Labels = append(m.Labels, &typesv1.LabelPair{
 		Name:  model.MetricNameLabel,
 		Value: "memory",
@@ -94,15 +98,14 @@ func (m *ProfileBuilder) Name() string {
 func (m *ProfileBuilder) CPUProfile() *ProfileBuilder {
 	m.Profile.SampleType = []*profilev1.ValueType{
 		{
-			Unit: 2,
-			Type: 1,
+			Unit: m.addString("nanoseconds"),
+			Type: m.addString("cpu"),
 		},
 	}
-	m.Profile.StringTable = []string{"", "cpu", "nanoseconds"}
-	m.Profile.DefaultSampleType = 1
+	m.Profile.DefaultSampleType = m.addString("cpu")
 	m.Profile.PeriodType = &profilev1.ValueType{
-		Unit: 2,
-		Type: 1,
+		Unit: m.addString("nanoseconds"),
+		Type: m.addString("cpu"),
 	}
 	m.Labels = append(m.Labels, &typesv1.LabelPair{
 		Name:  model.MetricNameLabel,
@@ -112,15 +115,9 @@ func (m *ProfileBuilder) CPUProfile() *ProfileBuilder {
 	return m
 }
 
-func (m *ProfileBuilder) ForStacktrace(stacktraces ...string) *StacktraceBuilder {
+func (m *ProfileBuilder) ForStacktraceString(stacktraces ...string) *StacktraceBuilder {
 	namePositions := lo.Map(stacktraces, func(stacktrace string, i int) int64 {
-		for i, n := range m.StringTable {
-			if n == stacktrace {
-				return int64(i)
-			}
-		}
-		m.StringTable = append(m.StringTable, stacktrace)
-		return int64(len(m.StringTable) - 1)
+		return m.addString(stacktrace)
 	})
 
 	// search functions
@@ -160,6 +157,16 @@ func (m *ProfileBuilder) ForStacktrace(stacktraces ...string) *StacktraceBuilder
 		locationID:     locationIDs,
 		ProfileBuilder: m,
 	}
+}
+
+func (m *ProfileBuilder) addString(s string) int64 {
+	i, ok := m.strings[s]
+	if !ok {
+		i = len(m.strings)
+		m.strings[s] = i
+		m.StringTable = append(m.StringTable, s)
+	}
+	return int64(i)
 }
 
 func (m *ProfileBuilder) ToModel() (*schemav1.Profile, []phlaremodel.Labels) {
