@@ -1,6 +1,6 @@
 //go:build goexperiment.arenas
 
-package util
+package arenahelper
 
 import "arena"
 
@@ -22,9 +22,9 @@ func (a *ArenaWrapper) Free() {
 	}
 }
 
-func AppendA[T any](data[]T, V T, a *ArenaWrapper) []T {
+func AppendA[T any](data []T, v T, a *ArenaWrapper) []T {
 	if a == nil {
-		return append(data, V)
+		return append(data, v)
 	}
 	if len(data) == cap(data) {
 		c := 2 * len(data)
@@ -37,6 +37,6 @@ func AppendA[T any](data[]T, V T, a *ArenaWrapper) []T {
 	} else {
 		data = data[:len(data)+1]
 	}
-	data[len(data)-1] = V
+	data[len(data)-1] = v
 	return data
 }

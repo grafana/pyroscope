@@ -2,8 +2,6 @@
 
 package tree
 
-import "github.com/pyroscope-io/pyroscope/pkg/util"
-
-func (t *Tree) InsertStackA(_ *util.ArenaWrapper, stack [][]byte, v uint64) {
+func (t *Tree) InsertStackA(stack [][]byte, v uint64) {
 	t.InsertStack(stack, v)
 }

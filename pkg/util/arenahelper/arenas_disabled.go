@@ -1,14 +1,15 @@
 //go:build !goexperiment.arenas
 
 // Package util ...
-//
-package util
+package arenahelper
 
 type ArenaWrapper struct {
 }
 
+var wrapper = &ArenaWrapper{}
+
 func NewArenaWrapper() *ArenaWrapper {
-	return &ArenaWrapper{}
+	return wrapper
 }
 func (_ *ArenaWrapper) Free() {
 

@@ -166,9 +166,9 @@ func readCorpusItemFile(fname string) *testcase {
 	return elem
 }
 
-var small_pprof = "/home/korniltsev/Downloads/testcompare_pprofs/2022-10-08T00:44:10Z-55903298-d296-4730-a28d-9dcc7c5e25d6.txt"
+var small_pprof = "../../../../../cloudstorage/pkg/pyroscope/pprof/testdata/2022-10-08T00:44:10Z-55903298-d296-4730-a28d-9dcc7c5e25d6.txt"
 
-var big_pprof = "/home/korniltsev/Downloads/testcompare_pprofs/2022-10-08T00:07:00Z-911c824f-a086-430c-99d7-315a53b58095.txt"
+var big_pprof = "../../../../../cloudstorage/pkg/pyroscope/pprof/testdata/2022-10-08T00:07:00Z-911c824f-a086-430c-99d7-315a53b58095.txt"
 
 func BenchmarkSingleSmallMolecule(b *testing.B) {
 	t := readCorpusItemFile(small_pprof)

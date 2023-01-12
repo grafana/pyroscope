@@ -39,10 +39,10 @@ type MockPutter struct {
 func (m *MockPutter) Put(ctx context.Context, input *storage.PutInput) error {
 	if m.keep {
 		m.puts = append(m.puts, PutInputCopy{
-			Val:             input.Val.String(),
-			Key:             input.Key.SegmentKey(),
-			StartTime:       input.StartTime,
-			EndTime:         input.EndTime,
+			Val:       input.Val.String(),
+			Key:       input.Key.SegmentKey(),
+			StartTime: input.StartTime,
+			EndTime:   input.EndTime,
 			//SpyName:         string(input.SpyName),
 			SpyName:         input.SpyName,
 			SampleRate:      input.SampleRate,
@@ -58,14 +58,10 @@ func (m *MockPutter) Put(ctx context.Context, input *storage.PutInput) error {
 var putter = &MockPutter{}
 
 func TestCompare(t *testing.T) {
-	//dst := "/home/korniltsev/Desktop/pprofs_dump_fresh/flamegraphcom-frontend-pr/2023-01-05" // unknown sample types
-	//dst := "/home/korniltsev/Desktop/pprofs_dump_fresh/watchdog/2023-01-05"
-	for _, c := range readCorpus("/home/korniltsev/Downloads/testcompare_pprofs") {
+	for _, c := range readCorpus("../../../../../cloudstorage/pkg/pyroscope/pprof/testdata") {
 		testOne(t, c)
 	}
-	hs := []string{
-
-	}
+	hs := []string{}
 	for _, hsi := range hs {
 		for _, c := range readCorpus(hsi) {
 			testOne(t, c)
@@ -73,8 +69,6 @@ func TestCompare(t *testing.T) {
 	}
 
 }
-
-
 
 func testOne(t *testing.T, c *testcase) {
 	err := pprof.DecodePool(bytes.NewReader(c.profile), func(profile *tree.Profile) error {
@@ -89,9 +83,7 @@ func testOne(t *testing.T, c *testcase) {
 		SampleTypeConfig:    c.config,
 		StreamingParser:     true,
 		PoolStreamingParser: false,
-	}
-	if c.prev != nil {
-		fmt.Println("foo")
+		ArenasEnabled:       true,
 	}
 
 	err2 := profile1.Parse(context.TODO(), mock1, nil, ingestion.Metadata{Key: key, SpyName: c.spyname})

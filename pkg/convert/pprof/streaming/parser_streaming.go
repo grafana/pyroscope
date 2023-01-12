@@ -9,7 +9,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/util"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 	"github.com/valyala/bytebufferpool"
 	"io"
 	"sync"
@@ -76,7 +76,7 @@ type VTStreamingParser struct {
 	finder        finder
 	previousCache LabelsCache
 	newCache      LabelsCache
-	arena         *util.ArenaWrapper
+	arena         *arenahelper.ArenaWrapper
 }
 
 func NewStreamingParser(config ParserConfig) *VTStreamingParser {
@@ -278,12 +278,12 @@ func (p *VTStreamingParser) createTrees() {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			p.newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStackA(p.arena, p.tmpSample.tmpStack, v)
+			p.newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStackA(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStackA(p.arena, p.tmpSample.tmpStack, v)
+		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStackA(p.tmpSample.tmpStack, v)
 	}
 }
 
@@ -408,7 +408,7 @@ func (p *VTStreamingParser) Reset(config ParserConfig) {
 	p.Formatter = config.Formatter
 	p.ArenasEnabled = config.ArenasEnabled
 	if config.ArenasEnabled {
-		p.arena = util.NewArenaWrapper()
+		p.arena = arenahelper.NewArenaWrapper()
 		p.previousCache.arena = p.arena
 		p.newCache.arena = p.arena
 	}

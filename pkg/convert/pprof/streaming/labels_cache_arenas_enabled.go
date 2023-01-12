@@ -4,21 +4,22 @@ package streaming
 
 import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/util"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 )
 
 func (c *LabelsCache) newCacheEntryA(l Labels) (int, *tree.Tree) {
-	if c.arena == nil {
+	a := c.arena
+	if a == nil {
 		return c.newCacheEntry(l)
 	}
 	from := len(c.labels)
-	for _, u := range l {//todo all appends to arena
-		c.labels = util.AppendA(c.labels, u, c.arena)
+	for _, u := range l {
+		c.labels = arenahelper.AppendA(c.labels, u, a)
 	}
 	to := len(c.labels)
 	res := len(c.labelRefs)
-	c.labelRefs = util.AppendA(c.labelRefs, uint64(from<<32|to), c.arena)
-	t := tree.NewA(c.arena)
-	c.trees = util.AppendA(c.trees, t, c.arena)
+	c.labelRefs = arenahelper.AppendA(c.labelRefs, uint64(from<<32|to), a)
+	t := tree.NewA(a)
+	c.trees = arenahelper.AppendA(c.trees, t, a)
 	return res, t
 }
