@@ -44,7 +44,7 @@ type LabelsCache struct {
 
 func (c *LabelsCache) Reset() {
 	if c.indices == nil {
-		c.indices = make([]map[uint64]int, 4, 4)
+		c.indices = arenahelper.MakeSlice[map[uint64]int](c.arena, 4, 4)
 	} else {
 		for i := range c.indices {
 			c.indices[i] = nil
@@ -137,8 +137,8 @@ func (c *LabelsCache) iterate(f func(sampleTypeIndex int, l Labels, lh uint64, t
 }
 
 // CutLabel creates a copy of labels without label i.
-func CutLabel(labels Labels, i int) Labels {
-	c := make(Labels, len(labels)-1)
+func CutLabel(a *arenahelper.ArenaWrapper, labels Labels, i int) Labels {
+	c := arenahelper.MakeSlice[uint64](a, len(labels)-1, len(labels)-1)
 	copy(c[:i], labels[:i])
 	copy(c[i:], labels[i+1:])
 	return c

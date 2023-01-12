@@ -278,7 +278,7 @@ func (p *VTStreamingParser) createTrees() {
 			continue
 		}
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			p.newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStackA(p.tmpSample.tmpStack, v)
+			p.newCache.GetOrCreateTree(vi, CutLabel(p.arena, p.tmpSample.tmpLabels, j)).InsertStackA(p.tmpSample.tmpStack, v)
 			if p.skipExemplars {
 				continue
 			}
