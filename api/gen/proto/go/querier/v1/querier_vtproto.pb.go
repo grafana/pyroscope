@@ -8,7 +8,8 @@ import (
 	context "context"
 	binary "encoding/binary"
 	fmt "fmt"
-	v1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	v1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
+	v11 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -40,6 +41,7 @@ type QuerierServiceClient interface {
 	LabelNames(ctx context.Context, in *LabelNamesRequest, opts ...grpc.CallOption) (*LabelNamesResponse, error)
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
 	SelectMergeStacktraces(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (*SelectMergeStacktracesResponse, error)
+	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v1.Profile, error)
 	SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error)
 }
 
@@ -96,6 +98,15 @@ func (c *querierServiceClient) SelectMergeStacktraces(ctx context.Context, in *S
 	return out, nil
 }
 
+func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v1.Profile, error) {
+	out := v1.ProfileFromVTPool()
+	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/SelectMergeProfile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *querierServiceClient) SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error) {
 	out := new(SelectSeriesResponse)
 	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/SelectSeries", in, out, opts...)
@@ -114,6 +125,7 @@ type QuerierServiceServer interface {
 	LabelNames(context.Context, *LabelNamesRequest) (*LabelNamesResponse, error)
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
 	SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error)
+	SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v1.Profile, error)
 	SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
 }
@@ -136,6 +148,9 @@ func (UnimplementedQuerierServiceServer) Series(context.Context, *SeriesRequest)
 }
 func (UnimplementedQuerierServiceServer) SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeStacktraces not implemented")
+}
+func (UnimplementedQuerierServiceServer) SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v1.Profile, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeProfile not implemented")
 }
 func (UnimplementedQuerierServiceServer) SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectSeries not implemented")
@@ -243,6 +258,24 @@ func _QuerierService_SelectMergeStacktraces_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuerierService_SelectMergeProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SelectMergeProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuerierServiceServer).SelectMergeProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/querier.v1.QuerierService/SelectMergeProfile",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuerierServiceServer).SelectMergeProfile(ctx, req.(*SelectMergeProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _QuerierService_SelectSeries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SelectSeriesRequest)
 	if err := dec(in); err != nil {
@@ -287,6 +320,10 @@ var QuerierService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SelectMergeStacktraces",
 			Handler:    _QuerierService_SelectMergeStacktraces_Handler,
+		},
+		{
+			MethodName: "SelectMergeProfile",
+			Handler:    _QuerierService_SelectMergeProfile_Handler,
 		},
 		{
 			MethodName: "SelectSeries",
@@ -861,6 +898,63 @@ func (m *Level) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *SelectMergeProfileRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SelectMergeProfileRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.End != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.End))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.Start != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Start))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.LabelSelector) > 0 {
+		i -= len(m.LabelSelector)
+		copy(dAtA[i:], m.LabelSelector)
+		i = encodeVarint(dAtA, i, uint64(len(m.LabelSelector)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ProfileTypeID) > 0 {
+		i -= len(m.ProfileTypeID)
+		copy(dAtA[i:], m.ProfileTypeID)
+		i = encodeVarint(dAtA, i, uint64(len(m.ProfileTypeID)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *SelectSeriesRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -1234,6 +1328,32 @@ func (m *Level) SizeVT() (n int) {
 	return n
 }
 
+func (m *SelectMergeProfileRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ProfileTypeID)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.LabelSelector)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	if m.Start != 0 {
+		n += 1 + sov(uint64(m.Start))
+	}
+	if m.End != 0 {
+		n += 1 + sov(uint64(m.End))
+	}
+	if m.unknownFields != nil {
+		n += len(m.unknownFields)
+	}
+	return n
+}
+
 func (m *SelectSeriesRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1408,7 +1528,7 @@ func (m *ProfileTypesResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ProfileTypes = append(m.ProfileTypes, &v1.ProfileType{})
+			m.ProfileTypes = append(m.ProfileTypes, &v11.ProfileType{})
 			if unmarshal, ok := interface{}(m.ProfileTypes[len(m.ProfileTypes)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -1884,7 +2004,7 @@ func (m *SeriesResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.LabelsSet = append(m.LabelsSet, &v1.Labels{})
+			m.LabelsSet = append(m.LabelsSet, &v11.Labels{})
 			if unmarshal, ok := interface{}(m.LabelsSet[len(m.LabelsSet)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -2441,6 +2561,159 @@ func (m *Level) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *SelectMergeProfileRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SelectMergeProfileRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SelectMergeProfileRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileTypeID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LabelSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LabelSelector = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
+			}
+			m.Start = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Start |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field End", wireType)
+			}
+			m.End = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.End |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -2695,7 +2968,7 @@ func (m *SelectSeriesResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Series = append(m.Series, &v1.Series{})
+			m.Series = append(m.Series, &v11.Series{})
 			if unmarshal, ok := interface{}(m.Series[len(m.Series)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {

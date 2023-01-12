@@ -8,13 +8,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/pprof/profile"
+	"github.com/google/uuid"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
+	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	"github.com/grafana/phlare/pkg/pprof"
 	pprofth "github.com/grafana/phlare/pkg/pprof/testhelper"
 	"github.com/grafana/phlare/pkg/testhelper"
 )
@@ -29,9 +36,9 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			name: "single profile",
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
-				p.ForStacktrace("my", "other").AddSamples(1)
-				p.ForStacktrace("my", "other").AddSamples(3)
-				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+				p.ForStacktraceString("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(3)
+				p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 				ps = append(ps, p)
 				return
 			},
@@ -55,9 +62,9 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
-					p.ForStacktrace("my", "other").AddSamples(1)
-					p.ForStacktrace("my", "other").AddSamples(3)
-					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+					p.ForStacktraceString("my", "other").AddSamples(1)
+					p.ForStacktraceString("my", "other").AddSamples(3)
+					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
 				return
@@ -82,17 +89,17 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						MemoryProfile().WithLabels("series", fmt.Sprintf("%d", i))
-					p.ForStacktrace("my", "other").AddSamples(1, 2, 3, 4)
-					p.ForStacktrace("my", "other").AddSamples(3, 2, 3, 4)
-					p.ForStacktrace("my", "other", "stack").AddSamples(3, 3, 3, 3)
+					p.ForStacktraceString("my", "other").AddSamples(1, 2, 3, 4)
+					p.ForStacktraceString("my", "other").AddSamples(3, 2, 3, 4)
+					p.ForStacktraceString("my", "other", "stack").AddSamples(3, 3, 3, 3)
 					ps = append(ps, p)
 				}
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
-					p.ForStacktrace("my", "other").AddSamples(1)
-					p.ForStacktrace("my", "other").AddSamples(3)
-					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+					p.ForStacktraceString("my", "other").AddSamples(1)
+					p.ForStacktraceString("my", "other").AddSamples(3)
+					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
 				return
@@ -172,9 +179,9 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			name: "single profile",
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
-				p.ForStacktrace("my", "other").AddSamples(1)
-				p.ForStacktrace("my", "other").AddSamples(3)
-				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+				p.ForStacktraceString("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(3)
+				p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 				ps = append(ps, p)
 				return
 			},
@@ -198,9 +205,9 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
-					p.ForStacktrace("my", "other").AddSamples(1)
-					p.ForStacktrace("my", "other").AddSamples(3)
-					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+					p.ForStacktraceString("my", "other").AddSamples(1)
+					p.ForStacktraceString("my", "other").AddSamples(3)
+					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
 				return
@@ -225,17 +232,17 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						MemoryProfile().WithLabels("series", fmt.Sprintf("%d", i))
-					p.ForStacktrace("my", "other").AddSamples(1, 2, 3, 4)
-					p.ForStacktrace("my", "other").AddSamples(3, 2, 3, 4)
-					p.ForStacktrace("my", "other", "stack").AddSamples(3, 3, 3, 3)
+					p.ForStacktraceString("my", "other").AddSamples(1, 2, 3, 4)
+					p.ForStacktraceString("my", "other").AddSamples(3, 2, 3, 4)
+					p.ForStacktraceString("my", "other", "stack").AddSamples(3, 3, 3, 3)
 					ps = append(ps, p)
 				}
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
-					p.ForStacktrace("my", "other").AddSamples(1)
-					p.ForStacktrace("my", "other").AddSamples(3)
-					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+					p.ForStacktraceString("my", "other").AddSamples(1)
+					p.ForStacktraceString("my", "other").AddSamples(3)
+					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
 				return
@@ -306,9 +313,9 @@ func TestMergeSampleByLabels(t *testing.T) {
 			name: "single profile",
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
-				p.ForStacktrace("my", "other").AddSamples(1)
-				p.ForStacktrace("my", "other").AddSamples(3)
-				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+				p.ForStacktraceString("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(3)
+				p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 				ps = append(ps, p)
 				return
 			},
@@ -324,15 +331,15 @@ func TestMergeSampleByLabels(t *testing.T) {
 			by:   []string{"foo"},
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 				return
 			},
@@ -352,15 +359,15 @@ func TestMergeSampleByLabels(t *testing.T) {
 			by:   []string{},
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 				return
 			},
@@ -431,9 +438,9 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			name: "single profile",
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
-				p.ForStacktrace("my", "other").AddSamples(1)
-				p.ForStacktrace("my", "other").AddSamples(3)
-				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+				p.ForStacktraceString("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(3)
+				p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 				ps = append(ps, p)
 				return
 			},
@@ -449,15 +456,15 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			by:   []string{"foo"},
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 				return
 			},
@@ -477,15 +484,15 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			by:   []string{},
 			in: func() (ps []*pprofth.ProfileBuilder) {
 				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().WithLabels("foo", "buzz")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 
 				p = pprofth.NewProfileBuilder(int64(30*time.Second)).CPUProfile().WithLabels("foo", "bar")
-				p.ForStacktrace("my", "other").AddSamples(1)
+				p.ForStacktraceString("my", "other").AddSamples(1)
 				ps = append(ps, p)
 				return
 			},
@@ -533,6 +540,154 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 
 			testhelper.EqualProto(t, tc.expected, series)
 		})
+	}
+}
+
+func TestMergePprof(t *testing.T) {
+	testPath := t.TempDir()
+	db, err := New(context.Background(), Config{
+		DataPath:         testPath,
+		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+	})
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		require.NoError(t, db.Head().Ingest(ctx, generateProfile(t), uuid.New(), &typesv1.LabelPair{
+			Name:  model.MetricNameLabel,
+			Value: "process_cpu",
+		}))
+	}
+
+	require.NoError(t, db.Flush(context.Background()))
+
+	b, err := filesystem.NewBucket(filepath.Join(testPath, pathLocal))
+	require.NoError(t, err)
+
+	// open resulting block
+	q := NewBlockQuerier(context.Background(), b)
+	require.NoError(t, q.Sync(context.Background()))
+
+	profileIt, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: int64(model.TimeFromUnixNano(0)),
+		End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
+	})
+	require.NoError(t, err)
+	profiles, err := iter.Slice(profileIt)
+	require.NoError(t, err)
+
+	q.queriers[0].Sort(profiles)
+	result, err := q.queriers[0].MergePprof(ctx, iter.NewSliceIterator(profiles))
+	require.NoError(t, err)
+
+	data, err := proto.Marshal(generateProfile(t))
+	require.NoError(t, err)
+	expected, err := profile.ParseUncompressed(data)
+	require.NoError(t, err)
+	for _, sample := range expected.Sample {
+		sample.Value = []int64{sample.Value[0] * 3}
+	}
+	compareProfile(t, expected, result)
+}
+
+func TestHeadMergePprof(t *testing.T) {
+	testPath := t.TempDir()
+	db, err := New(context.Background(), Config{
+		DataPath:         testPath,
+		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+	})
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		require.NoError(t, db.Head().Ingest(ctx, generateProfile(t), uuid.New(), &typesv1.LabelPair{
+			Name:  model.MetricNameLabel,
+			Value: "process_cpu",
+		}))
+	}
+
+	profileIt, err := db.Head().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: int64(model.TimeFromUnixNano(0)),
+		End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
+	})
+	require.NoError(t, err)
+	profiles, err := iter.Slice(profileIt)
+	require.NoError(t, err)
+
+	db.Head().Sort(profiles)
+	result, err := db.Head().MergePprof(ctx, iter.NewSliceIterator(profiles))
+	require.NoError(t, err)
+
+	data, err := proto.Marshal(generateProfile(t))
+	require.NoError(t, err)
+	expected, err := profile.ParseUncompressed(data)
+	require.NoError(t, err)
+	for _, sample := range expected.Sample {
+		sample.Value = []int64{sample.Value[0] * 3}
+	}
+	compareProfile(t, expected, result)
+}
+
+func generateProfile(t *testing.T) *googlev1.Profile {
+	t.Helper()
+
+	prof, err := pprof.FromProfile(pprofth.FooBarProfile)
+
+	require.NoError(t, err)
+	return prof
+}
+
+func compareProfile(t *testing.T, expected, actual *profile.Profile) {
+	t.Helper()
+	compareProfileSlice(t, expected.Sample, actual.Sample)
+	compareProfileSlice(t, expected.Mapping, actual.Mapping)
+	compareProfileSlice(t, expected.Location, actual.Location)
+	compareProfileSlice(t, expected.Function, actual.Function)
+}
+
+// compareProfileSlice compares two slices of profile data.
+// It ignores ID, un-exported fields.
+func compareProfileSlice[T any](t *testing.T, expected, actual []T) {
+	t.Helper()
+	lessMapping := func(a, b *profile.Mapping) bool { return a.BuildID < b.BuildID }
+	lessSample := func(a, b *profile.Sample) bool {
+		if len(a.Value) != len(b.Value) {
+			return len(a.Value) < len(b.Value)
+		}
+		for i := range a.Value {
+			if a.Value[i] != b.Value[i] {
+				return a.Value[i] < b.Value[i]
+			}
+		}
+		return false
+	}
+	lessLocation := func(a, b *profile.Location) bool { return a.Address < b.Address }
+	lessFunction := func(a, b *profile.Function) bool { return a.Name < b.Name }
+
+	if diff := cmp.Diff(expected, actual, cmpopts.IgnoreUnexported(
+		profile.Mapping{}, profile.Function{}, profile.Line{}, profile.Location{}, profile.Sample{}, profile.ValueType{}, profile.Profile{},
+	), cmpopts.SortSlices(lessMapping), cmpopts.SortSlices(lessSample), cmpopts.SortSlices(lessLocation), cmpopts.SortSlices(lessFunction),
+		cmpopts.IgnoreFields(profile.Mapping{}, "ID"),
+		cmpopts.IgnoreFields(profile.Location{}, "ID"),
+		cmpopts.IgnoreFields(profile.Function{}, "ID"),
+	); diff != "" {
+		t.Errorf("result mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -590,9 +745,9 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 			in: func() (ps []*pprofth.ProfileBuilder) {
 // 				p := pprofth.NewProfileBuilder(int64(15*time.Second)).CPUProfile().
 // 					WithLabels("instance", "bar")
-// 				p.ForStacktrace("my", "other").AddSamples(1)
-// 				p.ForStacktrace("my", "other").AddSamples(3)
-// 				p.ForStacktrace("my", "other", "stack").AddSamples(3)
+// 				p.ForStacktraceString("my", "other").AddSamples(1)
+// 				p.ForStacktraceString("my", "other").AddSamples(3)
+// 				p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 // 				ps = append(ps, p)
 // 				return
 // 			},
@@ -612,9 +767,9 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 				for i := 0; i < 3000; i++ {
 // 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 // 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
-// 					p.ForStacktrace("my", "other").AddSamples(1)
-// 					p.ForStacktrace("my", "other").AddSamples(3)
-// 					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+// 					p.ForStacktraceString("my", "other").AddSamples(1)
+// 					p.ForStacktraceString("my", "other").AddSamples(3)
+// 					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 // 					ps = append(ps, p)
 // 				}
 // 				return
@@ -627,17 +782,17 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 // 				for i := 0; i < 3000; i++ {
 // 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 // 						MemoryProfile().WithLabels("series", fmt.Sprintf("%d", i))
-// 					p.ForStacktrace("my", "other").AddSamples(1, 2, 3, 4)
-// 					p.ForStacktrace("my", "other").AddSamples(3, 2, 3, 4)
-// 					p.ForStacktrace("my", "other", "stack").AddSamples(3, 3, 3, 3)
+// 					p.ForStacktraceString("my", "other").AddSamples(1, 2, 3, 4)
+// 					p.ForStacktraceString("my", "other").AddSamples(3, 2, 3, 4)
+// 					p.ForStacktraceString("my", "other", "stack").AddSamples(3, 3, 3, 3)
 // 					ps = append(ps, p)
 // 				}
 // 				for i := 0; i < 3000; i++ {
 // 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 // 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
-// 					p.ForStacktrace("my", "other").AddSamples(1)
-// 					p.ForStacktrace("my", "other").AddSamples(3)
-// 					p.ForStacktrace("my", "other", "stack").AddSamples(3)
+// 					p.ForStacktraceString("my", "other").AddSamples(1)
+// 					p.ForStacktraceString("my", "other").AddSamples(3)
+// 					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 // 					ps = append(ps, p)
 // 				}
 // 				return

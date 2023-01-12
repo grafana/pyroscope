@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ingester.v1;
 
+import "google/v1/profile.proto";
 import "push/v1/push.proto";
 import "types/v1/types.proto";
 
@@ -14,6 +15,7 @@ service IngesterService {
   rpc Flush(FlushRequest) returns (FlushResponse) {}
   rpc MergeProfilesStacktraces(stream MergeProfilesStacktracesRequest) returns (stream MergeProfilesStacktracesResponse) {}
   rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
+  rpc MergeProfilesPprof(stream MergeProfilesPprofRequest) returns (stream MergeProfilesPprofResponse) {}
 }
 
 message LabelValuesRequest {
@@ -124,4 +126,20 @@ message MergeProfilesLabelsResponse {
   ProfileSets selectedProfiles = 1;
   // The list of series for the profile with their respective value
   repeated types.v1.Series series = 2;
+}
+
+message MergeProfilesPprofRequest {
+  // The client starts the stream with a request containing the profile type and the labels.
+  SelectProfilesRequest request = 1;
+
+  // On a batch of profiles, the client sends the profiles to keep for merging.
+  repeated bool profiles = 2;
+}
+
+message MergeProfilesPprofResponse {
+  // The server replies batch of profiles.
+  // A last message without profiles signals the next message will be the result of the merge.
+  ProfileSets selectedProfiles = 1;
+  // The merge result in the pprof format.
+  bytes result = 2;
 }

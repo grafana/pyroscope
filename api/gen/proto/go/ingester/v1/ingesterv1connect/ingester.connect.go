@@ -36,6 +36,7 @@ type IngesterServiceClient interface {
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
 	MergeProfilesStacktraces(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
 	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
+	MergeProfilesPprof(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -88,6 +89,11 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 			baseURL+"/ingester.v1.IngesterService/MergeProfilesLabels",
 			opts...,
 		),
+		mergeProfilesPprof: connect_go.NewClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse](
+			httpClient,
+			baseURL+"/ingester.v1.IngesterService/MergeProfilesPprof",
+			opts...,
+		),
 	}
 }
 
@@ -101,6 +107,7 @@ type ingesterServiceClient struct {
 	flush                    *connect_go.Client[v11.FlushRequest, v11.FlushResponse]
 	mergeProfilesStacktraces *connect_go.Client[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
 	mergeProfilesLabels      *connect_go.Client[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
+	mergeProfilesPprof       *connect_go.Client[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
@@ -143,6 +150,11 @@ func (c *ingesterServiceClient) MergeProfilesLabels(ctx context.Context) *connec
 	return c.mergeProfilesLabels.CallBidiStream(ctx)
 }
 
+// MergeProfilesPprof calls ingester.v1.IngesterService.MergeProfilesPprof.
+func (c *ingesterServiceClient) MergeProfilesPprof(ctx context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse] {
+	return c.mergeProfilesPprof.CallBidiStream(ctx)
+}
+
 // IngesterServiceHandler is an implementation of the ingester.v1.IngesterService service.
 type IngesterServiceHandler interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
@@ -153,6 +165,7 @@ type IngesterServiceHandler interface {
 	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
 	MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error
 	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error
+	MergeProfilesPprof(context.Context, *connect_go.BidiStream[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]) error
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -202,6 +215,11 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 		svc.MergeProfilesLabels,
 		opts...,
 	))
+	mux.Handle("/ingester.v1.IngesterService/MergeProfilesPprof", connect_go.NewBidiStreamHandler(
+		"/ingester.v1.IngesterService/MergeProfilesPprof",
+		svc.MergeProfilesPprof,
+		opts...,
+	))
 	return "/ingester.v1.IngesterService/", mux
 }
 
@@ -238,4 +256,8 @@ func (UnimplementedIngesterServiceHandler) MergeProfilesStacktraces(context.Cont
 
 func (UnimplementedIngesterServiceHandler) MergeProfilesLabels(context.Context, *connect_go.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesLabels is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) MergeProfilesPprof(context.Context, *connect_go.BidiStream[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]) error {
+	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesPprof is not implemented"))
 }

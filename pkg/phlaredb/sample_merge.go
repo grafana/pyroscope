@@ -4,11 +4,13 @@ import (
 	"context"
 	"sort"
 
+	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
+	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
@@ -46,6 +48,209 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 		}
 	}
 	return b.resolveSymbols(ctx, stacktraceAggrValues)
+}
+
+func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
+	defer sp.Finish()
+	// clone the rows to be able to iterate over them twice
+	multiRows, err := iter.CloneN(rows, 2)
+	if err != nil {
+		return nil, err
+	}
+	it := query.NewMultiRepeatedPageIterator(
+		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.StacktraceID", multiRows[0]),
+		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", multiRows[1]),
+	)
+	defer it.Close()
+
+	stacktraceAggrValues := map[int64]*profile.Sample{}
+
+	for it.Next() {
+		values := it.At().Values
+		for i := 0; i < len(values[0]); i++ {
+			sample, ok := stacktraceAggrValues[values[0][i].Int64()]
+			if ok {
+				sample.Value[0] += values[1][i].Int64()
+				continue
+			}
+			stacktraceAggrValues[values[0][i].Int64()] = &profile.Sample{
+				Value: []int64{values[1][i].Int64()},
+			}
+		}
+	}
+	return b.resolvePprofSymbols(ctx, stacktraceAggrValues)
+}
+
+func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, stacktraceAggrByID map[int64]*profile.Sample) (*profile.Profile, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "ResolvePprofSymbols - Block")
+	defer sp.Finish()
+
+	// gather stacktraces
+	stacktraceIDs := lo.Keys(stacktraceAggrByID)
+	locationsIdsByStacktraceID := map[int64][]uint64{}
+
+	sort.Slice(stacktraceIDs, func(i, j int) bool {
+		return stacktraceIDs[i] < stacktraceIDs[j]
+	})
+
+	var (
+		locationIDs = newUniqueIDs[struct{}]()
+		stacktraces = repeatedColumnIter(ctx, b.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
+	)
+
+	for stacktraces.Next() {
+		s := stacktraces.At()
+		locationsIdsByStacktraceID[s.Row] = make([]uint64, len(s.Values))
+		for i, locationID := range s.Values {
+			locID := locationID.Uint64()
+			locationIDs[int64(locID)] = struct{}{}
+			locationsIdsByStacktraceID[s.Row][i] = locID
+		}
+
+	}
+	if err := stacktraces.Err(); err != nil {
+		return nil, err
+	}
+	sp.LogFields(otlog.Int("stacktraces", len(stacktraceIDs)))
+
+	// gather locations
+	var (
+		functionIDs         = newUniqueIDs[struct{}]()
+		mappingIDs          = newUniqueIDs[lo.Tuple2[*profile.Mapping, *googlev1.Mapping]]()
+		locations           = b.locations.retrieveRows(ctx, locationIDs.iterator())
+		locationModelsByIds = map[uint64]*profile.Location{}
+		functionModelsByIds = map[uint64]*profile.Function{}
+	)
+	for locations.Next() {
+		s := locations.At()
+		m, ok := mappingIDs[int64(s.Result.MappingId)]
+		if !ok {
+			m = lo.T2(&profile.Mapping{
+				ID: s.Result.MappingId,
+			}, &googlev1.Mapping{
+				Id: s.Result.MappingId,
+			})
+			mappingIDs[int64(s.Result.MappingId)] = m
+		}
+		loc := &profile.Location{
+			ID:       s.Result.Id,
+			Address:  s.Result.Address,
+			IsFolded: s.Result.IsFolded,
+			Mapping:  m.A,
+		}
+		for _, line := range s.Result.Line {
+			functionIDs[int64(line.FunctionId)] = struct{}{}
+			fn, ok := functionModelsByIds[line.FunctionId]
+			if !ok {
+				fn = &profile.Function{
+					ID: line.FunctionId,
+				}
+				functionModelsByIds[line.FunctionId] = fn
+			}
+
+			loc.Line = append(loc.Line, profile.Line{
+				Line:     line.Line,
+				Function: fn,
+			})
+		}
+		locationModelsByIds[uint64(s.RowNum)] = loc
+	}
+	if err := locations.Err(); err != nil {
+		return nil, err
+	}
+
+	// gather functions
+	var (
+		stringsIds    = newUniqueIDs[int64]()
+		functions     = b.functions.retrieveRows(ctx, functionIDs.iterator())
+		functionsById = map[int64]*googlev1.Function{}
+	)
+	for functions.Next() {
+		s := functions.At()
+		functionsById[int64(s.Result.Id)] = &googlev1.Function{
+			Id:         s.Result.Id,
+			Name:       s.Result.Name,
+			SystemName: s.Result.SystemName,
+			Filename:   s.Result.Filename,
+			StartLine:  s.Result.StartLine,
+		}
+		stringsIds[s.Result.Name] = 0
+		stringsIds[s.Result.Filename] = 0
+		stringsIds[s.Result.SystemName] = 0
+	}
+	if err := functions.Err(); err != nil {
+		return nil, err
+	}
+	// gather mapping
+	mapping := b.mappings.retrieveRows(ctx, mappingIDs.iterator())
+	for mapping.Next() {
+		cur := mapping.At()
+		m := mappingIDs[int64(cur.Result.Id)]
+		m.B.Filename = cur.Result.Filename
+		m.B.BuildId = cur.Result.BuildId
+		m.A.Start = cur.Result.MemoryStart
+		m.A.Limit = cur.Result.MemoryLimit
+		m.A.Offset = cur.Result.FileOffset
+		m.A.HasFunctions = cur.Result.HasFunctions
+		m.A.HasFilenames = cur.Result.HasFilenames
+		m.A.HasLineNumbers = cur.Result.HasLineNumbers
+		m.A.HasInlineFrames = cur.Result.HasInlineFrames
+
+		stringsIds[cur.Result.Filename] = 0
+		stringsIds[cur.Result.BuildId] = 0
+	}
+	// gather strings
+	var (
+		names   = make([]string, len(stringsIds))
+		strings = b.strings.retrieveRows(ctx, stringsIds.iterator())
+		idx     = int64(0)
+	)
+	for strings.Next() {
+		s := strings.At()
+		names[idx] = s.Result.String
+		stringsIds[s.RowNum] = idx
+		idx++
+	}
+	if err := strings.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, model := range mappingIDs {
+		model.A.File = names[stringsIds[model.B.Filename]]
+		model.A.BuildID = names[stringsIds[model.B.BuildId]]
+	}
+
+	mappingResult := make([]*profile.Mapping, len(mappingIDs))
+	for i, model := range mappingIDs {
+		mappingResult[i] = model.A
+	}
+
+	for id, model := range stacktraceAggrByID {
+		locsId := locationsIdsByStacktraceID[id]
+		model.Location = make([]*profile.Location, len(locsId))
+		for i, locId := range locsId {
+			model.Location[i] = locationModelsByIds[locId]
+		}
+		// todo labels.
+	}
+
+	for id, model := range functionModelsByIds {
+		fn := functionsById[int64(id)]
+		model.Name = names[stringsIds[fn.Name]]
+		model.Filename = names[stringsIds[fn.Filename]]
+		model.SystemName = names[stringsIds[fn.SystemName]]
+		model.StartLine = fn.StartLine
+	}
+	result := &profile.Profile{
+		Sample:   lo.Values(stacktraceAggrByID),
+		Location: lo.Values(locationModelsByIds),
+		Function: lo.Values(functionModelsByIds),
+		Mapping:  mappingResult,
+	}
+	normalizeProfileIds(result)
+
+	return result, nil
 }
 
 func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrByID map[int64]*ingestv1.StacktraceSample) (*ingestv1.MergeProfilesStacktracesResult, error) {

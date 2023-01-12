@@ -4,16 +4,19 @@ import (
 	"container/heap"
 	"context"
 
+	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
+	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/pprof"
 )
 
 type ProfileWithLabels struct {
@@ -30,11 +33,11 @@ type BidiClientMerge[Req any, Res any] interface {
 }
 
 type Request interface {
-	*ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest
+	*ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest | *ingestv1.MergeProfilesPprofRequest
 }
 
 type Response interface {
-	*ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse
+	*ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse | *ingestv1.MergeProfilesPprofResponse
 }
 
 type MergeResult[R any] interface {
@@ -89,6 +92,10 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 				err = bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
 					Profiles: s.keep,
 				})
+			case BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]:
+				err = bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+					Profiles: s.keep,
+				})
 			}
 			if err != nil {
 				s.err = err
@@ -105,6 +112,13 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 			}
 			selectedProfiles = res.SelectedProfiles
 		case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
+			res, err := bidi.Receive()
+			if err != nil {
+				s.err = err
+				return false
+			}
+			selectedProfiles = res.SelectedProfiles
+		case BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]:
 			res, err := bidi.Receive()
 			if err != nil {
 				s.err = err
@@ -162,6 +176,13 @@ func (s *mergeIterator[R, Req, Res]) Result() (R, error) {
 			return result, err
 		}
 		result = any(res.Series).(R)
+	case BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]:
+		res, err := bidi.Receive()
+		if err != nil {
+			s.err = err
+			return result, err
+		}
+		result = any(res.Result).(R)
 	}
 	if err := s.bidi.CloseResponse(); err != nil {
 		s.err = err
@@ -324,6 +345,55 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 		return nil, err
 	}
 	return mergeProfilesStacktracesResult(results), nil
+}
+
+// selectMergePprofProfile selects the  profile from each ingester by deduping them and request merges of stacktraces in the pprof format.
+func selectMergePprofProfile(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesPprof]) (*googlev1.Profile, error) {
+	mergeResults := make([]MergeResult[[]byte], len(responses))
+	iters := make([]MergeIterator, len(responses))
+	for i, resp := range responses {
+		it := NewMergeIterator[[]byte](
+			ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]]{
+				addr:     resp.addr,
+				response: resp.response,
+			})
+		iters[i] = it
+		mergeResults[i] = it
+	}
+
+	if err := skipDuplicates(iters); err != nil {
+		return nil, err
+	}
+
+	// Collects the results in parallel.
+	results := make([]*profile.Profile, 0, len(iters))
+	s := lo.Synchronize()
+	g, _ := errgroup.WithContext(ctx)
+	for _, iter := range mergeResults {
+		iter := iter
+		g.Go(func() error {
+			result, err := iter.Result()
+			if err != nil {
+				return err
+			}
+			p, err := profile.ParseUncompressed(result)
+			if err != nil {
+				return err
+			}
+			s.Do(func() {
+				results = append(results, p)
+			})
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	p, err := profile.Merge(results)
+	if err != nil {
+		return nil, err
+	}
+	return pprof.FromProfile(p)
 }
 
 // mergeProfilesStacktracesResult merges the results of multiple MergeProfilesStacktraces into a single result.

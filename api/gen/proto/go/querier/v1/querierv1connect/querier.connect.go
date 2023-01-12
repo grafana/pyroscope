@@ -8,6 +8,7 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
+	v11 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
 	http "net/http"
 	strings "strings"
@@ -32,6 +33,7 @@ type QuerierServiceClient interface {
 	LabelNames(context.Context, *connect_go.Request[v1.LabelNamesRequest]) (*connect_go.Response[v1.LabelNamesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v11.Profile], error)
 	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
 }
 
@@ -70,6 +72,11 @@ func NewQuerierServiceClient(httpClient connect_go.HTTPClient, baseURL string, o
 			baseURL+"/querier.v1.QuerierService/SelectMergeStacktraces",
 			opts...,
 		),
+		selectMergeProfile: connect_go.NewClient[v1.SelectMergeProfileRequest, v11.Profile](
+			httpClient,
+			baseURL+"/querier.v1.QuerierService/SelectMergeProfile",
+			opts...,
+		),
 		selectSeries: connect_go.NewClient[v1.SelectSeriesRequest, v1.SelectSeriesResponse](
 			httpClient,
 			baseURL+"/querier.v1.QuerierService/SelectSeries",
@@ -85,6 +92,7 @@ type querierServiceClient struct {
 	labelNames             *connect_go.Client[v1.LabelNamesRequest, v1.LabelNamesResponse]
 	series                 *connect_go.Client[v1.SeriesRequest, v1.SeriesResponse]
 	selectMergeStacktraces *connect_go.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse]
+	selectMergeProfile     *connect_go.Client[v1.SelectMergeProfileRequest, v11.Profile]
 	selectSeries           *connect_go.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
 }
 
@@ -113,6 +121,11 @@ func (c *querierServiceClient) SelectMergeStacktraces(ctx context.Context, req *
 	return c.selectMergeStacktraces.CallUnary(ctx, req)
 }
 
+// SelectMergeProfile calls querier.v1.QuerierService.SelectMergeProfile.
+func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, req *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v11.Profile], error) {
+	return c.selectMergeProfile.CallUnary(ctx, req)
+}
+
 // SelectSeries calls querier.v1.QuerierService.SelectSeries.
 func (c *querierServiceClient) SelectSeries(ctx context.Context, req *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error) {
 	return c.selectSeries.CallUnary(ctx, req)
@@ -125,6 +138,7 @@ type QuerierServiceHandler interface {
 	LabelNames(context.Context, *connect_go.Request[v1.LabelNamesRequest]) (*connect_go.Response[v1.LabelNamesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v11.Profile], error)
 	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
 }
 
@@ -160,6 +174,11 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect_go.Hand
 		svc.SelectMergeStacktraces,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/SelectMergeProfile", connect_go.NewUnaryHandler(
+		"/querier.v1.QuerierService/SelectMergeProfile",
+		svc.SelectMergeProfile,
+		opts...,
+	))
 	mux.Handle("/querier.v1.QuerierService/SelectSeries", connect_go.NewUnaryHandler(
 		"/querier.v1.QuerierService/SelectSeries",
 		svc.SelectSeries,
@@ -189,6 +208,10 @@ func (UnimplementedQuerierServiceHandler) Series(context.Context, *connect_go.Re
 
 func (UnimplementedQuerierServiceHandler) SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeStacktraces is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v11.Profile], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeProfile is not implemented"))
 }
 
 func (UnimplementedQuerierServiceHandler) SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error) {

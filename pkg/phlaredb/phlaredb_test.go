@@ -14,6 +14,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -244,6 +245,138 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	t.Run("test close request", func(t *testing.T) {
 		bidi := client.MergeProfilesStacktraces(ctx)
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+		require.NoError(t, bidi.CloseRequest())
+	})
+}
+
+func TestMergeProfilesPprof(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	// ingest some sample data
+	var (
+		testDir = t.TempDir()
+		end     = time.Unix(0, int64(time.Hour))
+		start   = end.Add(-time.Minute)
+		step    = 15 * time.Second
+	)
+
+	db, err := New(context.Background(), Config{
+		DataPath:         testDir,
+		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+	})
+	require.NoError(t, err)
+	defer require.NoError(t, db.Close())
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+
+	// create client
+	ctx := context.Background()
+
+	client, cleanup := db.ingesterClient()
+	defer cleanup()
+
+	t.Run("request the one existing series", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(ctx)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+		require.Len(t, resp.SelectedProfiles.LabelsSets, 1)
+		require.Len(t, resp.SelectedProfiles.Profiles, 5)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Profiles: []bool{true},
+		}))
+
+		// expect empty resp to signal it is finished
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+
+		// received result
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.NotNil(t, resp.Result)
+		p, err := profile.ParseUncompressed(resp.Result)
+		require.NoError(t, err)
+		require.Len(t, p.Sample, 48)
+		require.Len(t, p.Location, 287)
+	})
+
+	t.Run("request non existing series", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(ctx)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="not-my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+
+		// expect empty resp to signal it is finished
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+		require.Nil(t, resp.SelectedProfiles)
+
+		// still receiving a result
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.NotNil(t, resp.Result)
+		p, err := profile.ParseUncompressed(resp.Result)
+		require.NoError(t, err)
+		require.Len(t, p.Sample, 0)
+		require.Len(t, p.Location, 0)
+		require.Nil(t, resp.SelectedProfiles)
+	})
+
+	t.Run("empty request fails", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(ctx)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{}))
+
+		_, err := bidi.Receive()
+		require.EqualError(t, err, "invalid_argument: missing initial select request")
+	})
+
+	t.Run("test cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		bidi := client.MergeProfilesPprof(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+		cancel()
+	})
+
+	t.Run("test close request", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
 			Request: &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{pod="my-pod"}`,
 				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),

@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
+	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid"
@@ -520,6 +521,7 @@ type Querier interface {
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
+	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
 
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile

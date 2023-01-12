@@ -21,6 +21,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
+	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
@@ -260,6 +261,62 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
 		Flamegraph: NewFlameGraph(newTree(st)),
 	}), nil
+}
+
+func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeProfile")
+	defer func() {
+		sp.LogFields(
+			otlog.String("start", model.Time(req.Msg.Start).Time().String()),
+			otlog.String("end", model.Time(req.Msg.End).Time().String()),
+			otlog.String("selector", req.Msg.LabelSelector),
+			otlog.String("profile_id", req.Msg.ProfileTypeID),
+		)
+		sp.Finish()
+	}()
+
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(_ context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
+		// we plan to use those streams to merge profiles
+		// so we use the main context here otherwise will be canceled
+		return ic.MergeProfilesPprof(ctx), nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// send the first initial request to all ingesters.
+	g, gCtx := errgroup.WithContext(ctx)
+	for _, r := range responses {
+		r := r
+		g.Go(func() error {
+			return r.response.Send(&ingestv1.MergeProfilesPprofRequest{
+				Request: &ingestv1.SelectProfilesRequest{
+					LabelSelector: req.Msg.LabelSelector,
+					Start:         req.Msg.Start,
+					End:           req.Msg.End,
+					Type:          profileType,
+				},
+			})
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// merge all profiles
+	profile, err := selectMergePprofProfile(gCtx, responses)
+	if err != nil {
+		return nil, err
+	}
+	profile.DurationNanos = model.Time(req.Msg.End).UnixNano() - model.Time(req.Msg.Start).UnixNano()
+
+	return connect.NewResponse(profile), nil
 }
 
 func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
