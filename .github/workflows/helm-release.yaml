@@ -15,5 +15,3 @@ jobs:
       ct_configfile: operations/phlare/helm/ct.yaml
     secrets:
       helm_repo_token: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
-      # See https://github.com/grafana/helm-charts/blob/main/INTERNAL.md about this key
-      gpg_key_base64: ${{ secrets.HELM_SIGN_KEY_BASE64 }}
