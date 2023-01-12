@@ -5,6 +5,7 @@ import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
+import { Annotation } from '@webapp/models/annotation';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import type { TooltipCallbackProps } from '@webapp/components/TimelineChart/Tooltip.plugin';
 import type { ITooltipWrapperProps } from './TooltipWrapper';
@@ -86,7 +87,7 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   onHoverDisplayTooltip?: React.FC<TooltipCallbackProps>;
 
   /** list of annotations timestamp, to be rendered as markings */
-  annotations?: { timestamp: number; content: string }[];
+  annotations?: Annotation[];
 
   /** What element to render when clicking */
   ContextMenu?: (props: ContextMenuProps) => React.ReactNode;
@@ -290,6 +291,7 @@ class TimelineChartWrapper extends React.Component<
       onHoverDisplayTooltip,
       ContextMenu: this.props.ContextMenu,
       xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
+      wrapperId: this.props.id,
     };
 
     const centeredTimelineGroups = timelineGroups.map(

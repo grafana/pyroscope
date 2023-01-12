@@ -54,7 +54,7 @@ function ContinuousSingleView() {
   );
 
   const { singleView } = useAppSelector((state) => state.continuous);
-  const annotations = useAppSelector(selectAnnotationsOrDefault);
+  const annotations = useAppSelector(selectAnnotationsOrDefault('singleView'));
 
   useEffect(() => {
     if (from && until && query && maxNodes) {

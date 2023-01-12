@@ -8,6 +8,7 @@ import {
   fetchTagValues,
   selectQueries,
   selectTimelineSides,
+  selectAnnotationsOrDefault,
 } from '@webapp/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
@@ -45,6 +46,7 @@ function ComparisonDiffApp() {
     rightUntil,
   } = useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
+  const annotations = useAppSelector(selectAnnotationsOrDefault('diffView'));
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags();
@@ -119,6 +121,7 @@ function ComparisonDiffApp() {
               id="timeline-chart-diff"
               format="lines"
               height="125px"
+              annotations={annotations}
               timelineA={leftTimeline}
               timelineB={rightTimeline}
               onSelect={(from, until) => {
