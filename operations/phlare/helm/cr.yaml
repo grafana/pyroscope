@@ -1,6 +1,3 @@
 git-repo: helm-charts
-# Note: This is correct like that because all charts use the gpg key once generated for Loki
-key: Grafana Loki
 owner: grafana
-sign: true
 skip-existing: true
