@@ -43,6 +43,7 @@ const initialState: ContinuousState = {
     groupsLoadingType: 'pristine',
     activeTagProfileLoadingType: 'pristine',
     groups: {},
+    annotations: [],
   },
   newAnnotation: { type: 'pristine' },
 
