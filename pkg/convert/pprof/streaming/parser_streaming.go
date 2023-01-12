@@ -151,10 +151,10 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 func (p *VTStreamingParser) countStructs() error {
 	err := p.UnmarshalVTProfile(p.profile, opFlagCountStructs)
 	if err == nil {
-		p.functions = grow(p.functions, p.nFunctions)
-		p.locations = grow(p.locations, p.nLocations)
-		p.strings = grow(p.strings, p.nStrings)
-		p.sampleTypes = grow(p.sampleTypes, p.nSampleTypes)
+		p.functions = grow(p.arena, p.functions, p.nFunctions)
+		p.locations = grow(p.arena, p.locations, p.nLocations)
+		p.strings = grow(p.arena, p.strings, p.nStrings)
+		p.sampleTypes = grow(p.arena, p.sampleTypes, p.nSampleTypes)
 		p.profileIDLabelIndex = 0
 	}
 	return err
@@ -176,16 +176,16 @@ func (p *VTStreamingParser) parseFunctionsAndLocations() error {
 }
 
 func (p *VTStreamingParser) haveKnownSampleTypes() bool {
-	p.indexes = grow(p.indexes, len(p.sampleTypes))
-	p.types = grow(p.types, len(p.sampleTypes))
+	p.indexes = grow(p.arena, p.indexes, len(p.sampleTypes))
+	p.types = grow(p.arena, p.types, len(p.sampleTypes))
 	for i, s := range p.sampleTypes {
 		ssType := p.string(s.Type)
 
 		st := string(ssType)
 		if p.sampleTypesFilter(st) {
 			if !p.cumulativeOnly || (p.cumulativeOnly && p.sampleTypesConfig[st].Cumulative) {
-				p.indexes = append(p.indexes, i)
-				p.types = append(p.types, s.Type)
+				p.indexes = arenahelper.AppendA(p.indexes, i, p.arena)
+				p.types = arenahelper.AppendA(p.types, s.Type, p.arena)
 			}
 		}
 	}
@@ -431,9 +431,9 @@ func findLabelIndex(tmpLabels []uint64, k int64) int {
 	return -1
 }
 
-func grow[T any](it []T, n int) []T {
+func grow[T any](a *arenahelper.ArenaWrapper, it []T, n int) []T {
 	if it == nil || n > cap(it) {
-		return make([]T, 0, n)
+		return arenahelper.MakeSlice[T](a, 0, n)
 	}
 	return it[:0]
 }

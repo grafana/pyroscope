@@ -22,6 +22,13 @@ func (a *ArenaWrapper) Free() {
 	}
 }
 
+func MakeSlice[T any](a *ArenaWrapper, l, c int) []T {
+	if a == nil {
+		return make([]T, l, c)
+	}
+	return arena.MakeSlice[T](a.Arena, l, c)
+}
+
 func AppendA[T any](data []T, v T, a *ArenaWrapper) []T {
 	if a == nil {
 		return append(data, v)

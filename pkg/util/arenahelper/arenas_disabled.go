@@ -14,3 +14,9 @@ func NewArenaWrapper() *ArenaWrapper {
 func (_ *ArenaWrapper) Free() {
 
 }
+func MakeSlice[T any](_ *ArenaWrapper, l, c int) []T {
+	return make([]T, l, c)
+}
+func AppendA[T any](data []T, v T, _ *ArenaWrapper) []T {
+	return append(data, v)
+}
