@@ -13,7 +13,7 @@
     height: auto;
     width: auto;
     right: unset;
-    left: -100px;
+    left: -100px; // Refers to the width of the "Application" label
     z-index: 999;
     max-width: calc(100vw - 290px);
   }

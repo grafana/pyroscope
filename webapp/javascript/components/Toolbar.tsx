@@ -1,7 +1,14 @@
 import React from 'react';
 import 'react-dom';
 
+import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { Query } from '@webapp/models/query';
+import {
+  selectAppNames,
+  reloadAppNames,
+  selectQueries,
+  selectAppNamesState,
+} from '@webapp/redux/reducers/continuous';
 import classNames from 'classnames';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';
@@ -11,14 +18,25 @@ interface ToolbarProps {
   /** callback to be called when an app is selected via the dropdown */
   onSelectedApp: (name: Query) => void;
 
-  filterApp?: React.ComponentProps<typeof AppSelector>['filterApp'];
+  filterApp?: (names: string) => boolean;
 }
-function Toolbar({ onSelectedApp: onSelectedName, filterApp }: ToolbarProps) {
+function Toolbar({ onSelectedApp, filterApp = () => true }: ToolbarProps) {
+  const dispatch = useAppDispatch();
+  const appNamesState = useAppSelector(selectAppNamesState);
+  const appNames = useAppSelector(selectAppNames).filter(filterApp);
+  const { query } = useAppSelector(selectQueries);
+
   return (
     <>
       <div className="navbar">
         <div className={classNames('labels')}>
-          <AppSelector onSelectedName={onSelectedName} filterApp={filterApp} />
+          <AppSelector
+            onSelected={onSelectedApp}
+            appNames={appNames}
+            selectedQuery={query}
+            isLoading={appNamesState.type === 'reloading'}
+            onRefresh={() => dispatch(reloadAppNames)}
+          />
         </div>
         <div className="navbar-space-filler" />
         <RefreshButton />

@@ -2,49 +2,50 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 
 import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
-import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import {
-  actions,
-  selectAppNames,
-  reloadAppNames,
-  selectQueries,
-  selectAppNamesState,
-} from '@webapp/redux/reducers/continuous';
 import Button from '@webapp/ui/Button';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
+import { AppNames } from '@webapp/models/appNames';
 import SelectButton from './SelectButton';
 import styles from './AppSelector.module.scss';
 
 interface AppSelectorProps {
-  // Comparison/Diff View pages provide {onSelectedName} func which
-  // handle propagating query to left/right flamegraphs
-  onSelectedName?: (name: Query) => void;
+  /** Triggered when an app is selected */
+  onSelected: (name: Query) => void;
 
-  filterApp?: (names: string) => boolean;
+  /** Callback when the refresh button is clicked */
+  onRefresh: (name: Query) => void;
+
+  /** Callback call to filter out certain apps that match */
+  // filterApp?: (names: string) => boolean;
+
+  /** List of all application names */
+  appNames: AppNames;
+
+  /** The current query */
+  selectedQuery: Query;
+
+  isLoading: boolean;
 }
 
 const AppSelector = ({
-  onSelectedName,
-  filterApp = () => true,
+  onSelected,
+  selectedQuery: selectedApp,
+  appNames,
+  onRefresh,
+  isLoading,
 }: AppSelectorProps) => {
-  const dispatch = useAppDispatch();
-  const appNamesState = useAppSelector(selectAppNamesState);
-  const appNames = useAppSelector(selectAppNames).filter(filterApp);
-  const { query } = useAppSelector(selectQueries);
-  const appName = queryToAppName(query).mapOr('', (q) =>
+  const appName = queryToAppName(selectedApp).mapOr('', (q) =>
     appNames.indexOf(q) !== -1 ? q : ''
   );
 
   const selectAppName = (name: string) => {
     const appNameQuery = queryFromAppName(name);
-    if (onSelectedName) {
-      onSelectedName(appNameQuery);
-    } else {
-      dispatch(actions.setQuery(appNameQuery));
-    }
+    onSelected(appNameQuery);
   };
+
+  const loading = isLoading ? <LoadingSpinner /> : null;
 
   return (
     <div className={styles.container}>
@@ -57,10 +58,10 @@ const AppSelector = ({
       <Button
         aria-label="Refresh Apps"
         icon={faSyncAlt}
-        onClick={() => dispatch(reloadAppNames())}
+        onClick={() => onRefresh}
         className={styles.refreshButton}
       />
-      {appNamesState.type === 'reloading' && <LoadingSpinner />}
+      {loading}
     </div>
   );
 };
@@ -106,7 +107,7 @@ interface SelectorModalWithTogglerProps {
   appName: string;
 }
 
-const SelectorModalWithToggler = ({
+export const SelectorModalWithToggler = ({
   appNames,
   selectAppName,
   appName,
