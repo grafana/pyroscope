@@ -55,7 +55,7 @@ var _ = Describe("server", func() {
 					})
 					c.dir = http.Dir(testDataDir)
 
-					startController(c, addr)
+					startController(c, "https", addr)
 
 					tr := &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -100,7 +100,7 @@ var _ = Describe("server", func() {
 					})
 					c.dir = http.Dir(testDataDir)
 
-					startController(c, addr)
+					startController(c, "http", addr)
 
 					tr := &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -121,7 +121,7 @@ var _ = Describe("server", func() {
 	})
 })
 
-func startController(c *Controller, addr string) {
+func startController(c *Controller, protocol string, addr string) {
 	startSync := make(chan struct{})
 	go func() {
 		defer GinkgoRecover()
@@ -134,7 +134,7 @@ func startController(c *Controller, addr string) {
 	var err error
 	var res *http.Response
 	for i := 0; i < 100; i++ {
-		res, err = httpClient.Get(fmt.Sprintf("http://localhost%s", addr))
+		res, err = httpClient.Get(fmt.Sprintf("%s://localhost%s", protocol, addr))
 		if err == nil && res.StatusCode == http.StatusOK {
 			return
 		}

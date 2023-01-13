@@ -86,7 +86,7 @@ var _ = Describe("server", func() {
 			Notifier:                mockNotifier{},
 			DB:                      sql.DB(),
 		})
-		startController(c, ":4040")
+		startController(c, "http", ":4040")
 		defer c.Stop()
 
 		k := service.NewAPIKeyService(sql.DB())
