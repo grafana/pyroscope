@@ -121,11 +121,11 @@ func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime t
 }
 
 func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
-	//defer func() {
-	//	if recover() != nil {
-	//		err = fmt.Errorf("parse panic")
-	//	}
-	//}()
+	defer func() {
+		if recover() != nil {
+			err = fmt.Errorf("parse panic")
+		}
+	}()
 
 	if err = p.countStructs(); err != nil {
 		return err
