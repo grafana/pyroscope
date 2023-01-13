@@ -86,12 +86,9 @@ var _ = Describe("server", func() {
 			Notifier:                mockNotifier{},
 			DB:                      sql.DB(),
 		})
-
-		go c.Start()
+		startController(c, ":4040")
 		defer c.Stop()
 
-		// TODO: Wait for start .There's possibly a better way of doing this
-		time.Sleep(50 * time.Millisecond)
 		k := service.NewAPIKeyService(sql.DB())
 		cb(testServices{s, k})
 	}
