@@ -115,14 +115,12 @@
       .node {
         polygon {
           // node box
-          stroke: var(--ps-fl-toolbar-btn-bg);
+          // stroke: var(--ps-fl-toolbar-btn-bg);
         }
 
         text[text-anchor='middle'] {
           // node caption
-          fill: var(--ps-toolbar-icon-color);
-          font-family: sans-serif;
-          font-size: 10px;
+          // fill: var(--ps-toolbar-icon-color);
         }
       }
 
@@ -130,22 +128,19 @@
         text[text-anchor='middle'] {
           // edge caption
           fill: var(--ps-toolbar-icon-color);
-          font-family: sans-serif;
-          font-size: 9px;
+          // fill: red;
         }
 
         a {
           path {
             // arrow body
-            stroke-width: 1;
-            stroke: var(--ps-fl-toolbar-btn-bg);
+            // stroke: var(--ps-fl-toolbar-btn-bg);
           }
 
           polygon {
             // arrow head
-            stroke-width: 1;
-            stroke: var(--ps-fl-toolbar-btn-bg);
-            fill: var(--ps-fl-toolbar-btn-bg);
+            // stroke: var(--ps-fl-toolbar-btn-bg);
+            // fill: var(--ps-fl-toolbar-btn-bg);
           }
         }
       }
