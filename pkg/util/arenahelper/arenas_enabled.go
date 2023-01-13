@@ -33,7 +33,7 @@ func AppendA[T any](data []T, v T, a *ArenaWrapper) []T {
 	if a == nil {
 		return append(data, v)
 	}
-	if len(data) == cap(data) {
+	if len(data) >= cap(data) {
 		c := 2 * len(data)
 		if c == 0 {
 			c = 1
@@ -41,9 +41,9 @@ func AppendA[T any](data []T, v T, a *ArenaWrapper) []T {
 		newData := arena.MakeSlice[T](a.Arena, len(data)+1, c)
 		copy(newData, data)
 		data = newData
+		data[len(data)-1] = v
 	} else {
-		data = data[:len(data)+1]
+		data = append(data, v)
 	}
-	data[len(data)-1] = v
 	return data
 }
