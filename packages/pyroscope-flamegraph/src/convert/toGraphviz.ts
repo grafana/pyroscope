@@ -23,7 +23,7 @@ const baseFontSize = 8;
 const maxFontGrowth = 16;
 
 function formatPercent(a: number, b: number): string {
-  return ((a * 100) / b).toFixed(2) + '%';
+  return `${((a * 100) / b).toFixed(2)}%`;
 }
 
 type sampleFormatter = (dur: number) => string;
@@ -102,8 +102,8 @@ function renderNode(
   maxSelf: number,
   maxTotal: number
 ): string {
-  const self = n.self;
-  const total = n.total;
+  const { self } = n;
+  const { total } = n;
 
   const name = n.name.replace(/"/g, '\\"');
   const dur = format(self);
@@ -117,14 +117,14 @@ function renderNode(
   // console.log(color, fillcolor);
 
   const labels = {
-    label: label,
+    label,
     id: `node${n.index}`,
-    fontsize: fontsize,
+    fontsize,
     shape: 'box',
     tooltip: `${name} (${dur})`,
-    color: color,
+    color,
     fontname: fontName,
-    fillcolor: fillcolor,
+    fillcolor,
   };
   return `N${n.index} ${renderLabels(labels)}`;
 }
@@ -138,25 +138,24 @@ function pathBasename(p) {
 }
 
 function formatNodeLabel(format: sampleFormatter, name, self, total, maxTotal) {
-  var label: string = '';
-  label = pathBasename(name) + '\n';
+  let label = '';
+  label = `${pathBasename(name)}\n`;
 
-  var selfValue = format(self);
+  const selfValue = format(self);
   if (self != 0) {
-    label = label + selfValue + ' (' + formatPercent(self, maxTotal) + ')';
+    label = `${label + selfValue} (${formatPercent(self, maxTotal)})`;
   } else {
-    label = label + '0';
+    label += '0';
   }
-  var totalValue = selfValue;
+  let totalValue = selfValue;
   if (total != self) {
     if (self != 0) {
-      label = label + '\n';
+      label += '\n';
     } else {
-      label = label + ' ';
+      label += ' ';
     }
     totalValue = format(total);
-    label =
-      label + 'of ' + totalValue + ' (' + formatPercent(total, maxTotal) + ')';
+    label = `${label}of ${totalValue} (${formatPercent(total, maxTotal)})`;
   }
 
   return label;
@@ -178,12 +177,12 @@ function renderEdge(
 
   const labels = {
     label: dur,
-    weight: weight,
-    penwidth: penwidth,
-    tooltip: tooltip,
+    weight,
+    penwidth,
+    tooltip,
     labeltooltip: tooltip,
     fontname: fontName,
-    color: color,
+    color,
     style: edge.residual ? 'dotted' : '',
   };
   return `N${edge.from.index} -> N${edge.to.index} ${renderLabels(labels)}`;
@@ -258,7 +257,7 @@ export default function toGraphviz(p: Profile): string {
 
   // we first turn tree into a graph
   let graphNodes: { [key: string]: GraphNode } = {};
-  let graphEdges: { [key: string]: GraphEdge } = {};
+  const graphEdges: { [key: string]: GraphEdge } = {};
   let nodesTotal = 0;
   function treeToGraph(n: TreeNode, seenNodes: string[]): GraphNode {
     if (seenNodes.indexOf(n.name) === -1) {
@@ -279,7 +278,7 @@ export default function toGraphviz(p: Profile): string {
 
     for (const child of n.children) {
       const childNode = treeToGraph(child, seenNodes.concat([n.name]));
-      const childKey = n.name + '/' + child.name;
+      const childKey = `${n.name}/${child.name}`;
       if (child.name !== n.name) {
         if (!graphEdges[childKey]) {
           graphEdges[childKey] = {
@@ -394,7 +393,7 @@ export default function toGraphviz(p: Profile): string {
       const isChildNodeDeleted = !keptNodes[child.name];
       trimTree(child, isNodeDeleted ? lastPresentParent : n);
       if (!isChildNodeDeleted && lastPresentParent && isNodeDeleted) {
-        const edgeKey = lastPresentParent.name + '/' + child.name;
+        const edgeKey = `${lastPresentParent.name}/${child.name}`;
         graphEdges[edgeKey] ||= {
           from: graphNodes[lastPresentParent.name],
           to: graphNodes[child.name],
@@ -445,9 +444,9 @@ export default function toGraphviz(p: Profile): string {
       }
 
       if (isRedundantEdge(parentEdge)) {
-        console.log('delete', parentEdge.from.name + '/' + parentEdge.to.name);
+        console.log('delete', `${parentEdge.from.name}/${parentEdge.to.name}`);
         edgesToDelete.push(parentEdge);
-        delete graphEdges[parentEdge.from.name + '/' + parentEdge.to.name];
+        delete graphEdges[`${parentEdge.from.name}/${parentEdge.to.name}`];
       }
     }
     for (const edge of edgesToDelete) {

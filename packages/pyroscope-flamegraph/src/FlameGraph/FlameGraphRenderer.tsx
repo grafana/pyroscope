@@ -10,12 +10,12 @@ import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import NoData from '@pyroscope/webapp/javascript/ui/NoData';
+import { Graphviz } from 'graphviz-react';
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar, { ProfileHeaderProps } from '../Toolbar';
-import { Graphviz } from 'graphviz-react';
 import {
   calleesProfile,
   callersProfile,

@@ -13,6 +13,7 @@ import { appendLabelToQuery } from '@webapp/util/query';
 import QueryInput from '@webapp/components/QueryInput/QueryInput';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import styles from './TagsBar.module.scss';
+
 interface TagsBarProps {
   /** callback for when a label is selected */
   onSelectedLabel: (label: string, query: Query) => void;
