@@ -7,7 +7,7 @@ import (
 )
 
 func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
-	p.tmpSample.reset()
+	p.tmpSample.reset(p.arena)
 	err := p.tmpSample.UnmarshalSampleVT(buffer)
 	if err != nil {
 		return err

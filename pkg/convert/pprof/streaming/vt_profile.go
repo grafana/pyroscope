@@ -199,7 +199,7 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 			}
 			if parseStructs {
 				//p.locations = append(p.locations, location{})
-				if err := p.locations[locationWriteIndex].UnmarshalVT(dAtA[iNdEx:postIndex], &p.lineRefs); err != nil {
+				if err := p.locations[locationWriteIndex].UnmarshalVT(dAtA[iNdEx:postIndex], &p.lineRefs, p.arena); err != nil {
 					return err
 				}
 				locationWriteIndex++

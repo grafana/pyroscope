@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 )
 
 const (
@@ -76,20 +77,21 @@ type sample struct {
 	tmpValues []int64
 	// k<<32|v
 	//type labelPacked uint64
-	tmpLabels   []uint64
-	tmpStack    [][]byte
+	tmpLabels []uint64
+	stack     [][]byte
+	//iStack      int
 	tmpStackLoc []uint64
 }
 
-func (s *sample) reset() {
+func (s *sample) reset(a *arenahelper.ArenaWrapper) {
 	// 64 is max pc for golang + speculative number of inlines
-	if s.tmpStack == nil {
-		s.tmpStack = make([][]byte, 0, 64+8)
-		s.tmpStackLoc = make([]uint64, 0, 64+8)
-		s.tmpValues = make([]int64, 0, 4)
-		s.tmpLabels = make([]uint64, 0, 4)
+	if s.stack == nil {
+		s.stack = arenahelper.MakeSlice[[]byte](a, 0, 64+8)
+		s.tmpStackLoc = arenahelper.MakeSlice[uint64](a, 0, 64+8)
+		s.tmpValues = arenahelper.MakeSlice[int64](a, 0, 4)
+		s.tmpLabels = arenahelper.MakeSlice[uint64](a, 0, 4)
 	} else {
-		s.tmpStack = s.tmpStack[:0]
+		s.stack = s.stack[:0]
 		s.tmpStackLoc = s.tmpStackLoc[:0]
 		s.tmpValues = s.tmpValues[:0]
 		s.tmpLabels = s.tmpLabels[:0]

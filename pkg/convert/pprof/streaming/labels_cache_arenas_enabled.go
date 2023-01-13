@@ -14,12 +14,25 @@ func (c *LabelsCache) newCacheEntryA(l Labels) (int, *tree.Tree) {
 	}
 	from := len(c.labels)
 	for _, u := range l {
-		c.labels = arenahelper.AppendA(c.labels, u, a)
+		if len(c.labels) < cap(c.labels) {
+			c.labels = append(c.labels, u)
+		} else {
+			c.labels = arenahelper.AppendA(c.labels, u, a)
+		}
 	}
 	to := len(c.labels)
 	res := len(c.labelRefs)
-	c.labelRefs = arenahelper.AppendA(c.labelRefs, uint64(from<<32|to), a)
+	r := uint64(from<<32 | to)
+	if len(c.labelRefs) < cap(c.labelRefs) {
+		c.labelRefs = append(c.labelRefs, r)
+	} else {
+		c.labelRefs = arenahelper.AppendA(c.labelRefs, r, a)
+	}
 	t := tree.NewA(a)
-	c.trees = arenahelper.AppendA(c.trees, t, a)
+	if len(c.trees) < cap(c.trees) {
+		c.trees = append(c.trees, t)
+	} else {
+		c.trees = arenahelper.AppendA(c.trees, t, a)
+	}
 	return res, t
 }

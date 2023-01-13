@@ -33,7 +33,11 @@ func (n *treeNode) insertA(a *arenahelper.ArenaWrapper, targetLabel []byte) *tre
 		l := arena.MakeSlice[byte](a.Arena, len(targetLabel), len(targetLabel))
 		copy(l, targetLabel)
 		child := newNodeA(a, l)
-		n.ChildrenNodes = arenahelper.AppendA(n.ChildrenNodes, child, a)
+		if len(n.ChildrenNodes) < cap(n.ChildrenNodes) {
+			n.ChildrenNodes = append(n.ChildrenNodes, child)
+		} else {
+			n.ChildrenNodes = arenahelper.AppendA(n.ChildrenNodes, child, a)
+		}
 		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
 		n.ChildrenNodes[i] = child
 	}
@@ -51,7 +55,4 @@ func NewA(a *arenahelper.ArenaWrapper) *Tree {
 	t.root = newNodeA(a, nil)
 	t.arena = a
 	return t
-	//return &Tree{
-	//	root: newNode([]byte{}),
-	//}
 }

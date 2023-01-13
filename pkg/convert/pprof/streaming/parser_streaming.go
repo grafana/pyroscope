@@ -161,7 +161,7 @@ func (p *VTStreamingParser) countStructs() error {
 }
 
 func (p *VTStreamingParser) parseFunctionsAndLocations() error {
-	p.lineRefs.reset()
+	p.lineRefs.reset(p.arena, p.nLocations)
 	err := p.UnmarshalVTProfile(p.profile, opFlagParseStructs)
 	if err == nil {
 		p.finder = newFinder(p.functions, p.locations)
@@ -219,20 +219,25 @@ func (p *VTStreamingParser) addStackFrame(l *line) error {
 	if !ok {
 		return nil
 	}
+	var frame []byte
 	switch p.Formatter {
 	case StackFrameFormatterRuby:
 		pFuncName := p.strings[f.name]
 		pFileName := p.strings[f.filename]
-		frame := []byte(fmt.Sprintf("%s:%d - %s",
+		frame = []byte(fmt.Sprintf("%s:%d - %s",
 			p.profile[(pFileName>>32):(pFileName&0xffffffff)],
 			l.line,
 			p.profile[(pFuncName>>32):(pFuncName&0xffffffff)]))
-		p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, frame)
 	default:
 	case StackFrameFormatterGo:
 		pFuncName := p.strings[f.name]
-		frame := p.profile[(pFuncName >> 32):(pFuncName & 0xffffffff)]
-		p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, frame)
+		frame = p.profile[(pFuncName >> 32):(pFuncName & 0xffffffff)]
+	}
+	pSample := &p.tmpSample
+	if len(pSample.stack) < cap(pSample.stack) {
+		pSample.stack = append(pSample.stack, frame)
+	} else {
+		pSample.stack = arenahelper.AppendA(pSample.stack, frame, p.arena)
 	}
 	return nil
 }
@@ -277,13 +282,14 @@ func (p *VTStreamingParser) createTrees() {
 		if v == 0 {
 			continue
 		}
+		s := p.tmpSample.stack
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			p.newCache.GetOrCreateTree(vi, CutLabel(p.arena, p.tmpSample.tmpLabels, j)).InsertStackA(p.tmpSample.tmpStack, v)
+			p.newCache.GetOrCreateTree(vi, CutLabel(p.arena, p.tmpSample.tmpLabels, j)).InsertStackA(s, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStackA(p.tmpSample.tmpStack, v)
+		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStackA(s, v)
 	}
 }
 
