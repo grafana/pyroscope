@@ -101,7 +101,7 @@ func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime t
 		if err != nil {
 			err = fmt.Errorf("failed to create pprof profile zip reader: %w", err)
 		} else {
-			buf := PPROFBufPool.Get()
+			buf := PPROFBufPool.Get() //todo consider decompression on arena
 			if _, err = io.Copy(buf, gzipr); err != nil {
 				err = fmt.Errorf("failed to decompress gzip: %w", err)
 			} else {
