@@ -125,7 +125,7 @@ func startController(c *Controller, protocol string, addr string) {
 	startSync := make(chan struct{})
 	go func() {
 		defer GinkgoRecover()
-		err := c.StartSync(startSync)
+		err := c.startSync(startSync)
 		Expect(err).ToNot(HaveOccurred())
 	}()
 	<-startSync

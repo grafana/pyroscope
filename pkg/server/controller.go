@@ -462,10 +462,10 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 }
 
 func (ctrl *Controller) Start() error {
-	return ctrl.StartSync(nil)
+	return ctrl.startSync(nil)
 }
 
-func (ctrl *Controller) StartSync(serveSync chan struct{}) error {
+func (ctrl *Controller) startSync(serveSync chan struct{}) error {
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
