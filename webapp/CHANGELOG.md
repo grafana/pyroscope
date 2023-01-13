@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.67.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.21...@pyroscope/webapp@1.67.0) (2023-01-13)
+
+
+### Features
+
+* **webapp:** add annotations rendering to all timelines ([#1807](https://github.com/pyroscope-io/pyroscope/issues/1807)) ([6144df4](https://github.com/pyroscope-io/pyroscope/commit/6144df404e649c3bdf8460baf8d6da251752c074))
+
+
+
+
+
 ## [1.66.21](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.20...@pyroscope/webapp@1.66.21) (2023-01-10)
 
 **Note:** Version bump only for package @pyroscope/webapp
