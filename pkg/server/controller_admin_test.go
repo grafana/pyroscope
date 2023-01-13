@@ -86,6 +86,7 @@ var _ = Describe("server", func() {
 			Notifier:                mockNotifier{},
 			DB:                      sql.DB(),
 		})
+		c.dir = http.Dir("testdata")
 		startController(c, "http", ":4040")
 		defer c.Stop()
 
