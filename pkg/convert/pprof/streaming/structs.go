@@ -77,21 +77,21 @@ type sample struct {
 	tmpValues []int64
 	// k<<32|v
 	//type labelPacked uint64
-	tmpLabels []uint64
-	stack     [][]byte
-	//iStack      int
+	tmpLabels   []uint64
+	tmpStack    [][]byte
 	tmpStackLoc []uint64
+	//todo rename - remove tmp prefix
 }
 
 func (s *sample) reset(a *arenahelper.ArenaWrapper) {
 	// 64 is max pc for golang + speculative number of inlines
-	if s.stack == nil {
-		s.stack = arenahelper.MakeSlice[[]byte](a, 0, 64+8)
+	if s.tmpStack == nil {
+		s.tmpStack = arenahelper.MakeSlice[[]byte](a, 0, 64+8)
 		s.tmpStackLoc = arenahelper.MakeSlice[uint64](a, 0, 64+8)
 		s.tmpValues = arenahelper.MakeSlice[int64](a, 0, 4)
 		s.tmpLabels = arenahelper.MakeSlice[uint64](a, 0, 4)
 	} else {
-		s.stack = s.stack[:0]
+		s.tmpStack = s.tmpStack[:0]
 		s.tmpStackLoc = s.tmpStackLoc[:0]
 		s.tmpValues = s.tmpValues[:0]
 		s.tmpLabels = s.tmpLabels[:0]

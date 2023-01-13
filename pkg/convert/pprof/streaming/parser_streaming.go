@@ -234,10 +234,10 @@ func (p *VTStreamingParser) addStackFrame(l *line) error {
 		frame = p.profile[(pFuncName >> 32):(pFuncName & 0xffffffff)]
 	}
 	pSample := &p.tmpSample
-	if len(pSample.stack) < cap(pSample.stack) {
-		pSample.stack = append(pSample.stack, frame)
+	if len(pSample.tmpStack) < cap(pSample.tmpStack) {
+		pSample.tmpStack = append(pSample.tmpStack, frame)
 	} else {
-		pSample.stack = arenahelper.AppendA(pSample.stack, frame, p.arena)
+		pSample.tmpStack = arenahelper.AppendA(pSample.tmpStack, frame, p.arena)
 	}
 	return nil
 }
@@ -282,7 +282,7 @@ func (p *VTStreamingParser) createTrees() {
 		if v == 0 {
 			continue
 		}
-		s := p.tmpSample.stack
+		s := p.tmpSample.tmpStack
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
 			p.newCache.GetOrCreateTree(vi, CutLabel(p.arena, p.tmpSample.tmpLabels, j)).InsertStackA(s, v)
 			if p.skipExemplars {
