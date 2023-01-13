@@ -1,4 +1,4 @@
-package pprof
+package bench
 
 import (
 	"bufio"
@@ -23,7 +23,6 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"testing"
@@ -38,6 +37,7 @@ const pprofSmall = benchmarkCorps +
 const pprofBig = benchmarkCorps +
 	"/2022-10-08T00:07:00Z-911c824f-a086-430c-99d7-315a53b58095.txt"
 
+// GOEXPERIMENT=arenas go test -v -test.count=10 -test.run=none -bench=".*Streaming.*"  ./pkg/convert/pprof/bench
 var putter = &MockPutter{}
 
 const benchWithoutGzip = true
@@ -49,66 +49,51 @@ func TestCompare(t *testing.T) {
 		t.Skip("empty corpus")
 		return
 	}
-	for _, c := range corpus {
-		testCompareOne(t, c)
+	for _, testType := range streamingTestTypes {
+		t.Run(fmt.Sprintf("TestCompare_pool_%v_arenas_%v", testType.pool, testType.arenas), func(t *testing.T) {
+			for _, c := range corpus {
+				testCompareOne(t, c, testType)
+			}
+		})
 	}
 }
 
-func BenchmarkSingleSmallStreaming(b *testing.B) {
+func BenchmarkSmallStreaming(b *testing.B) {
+	t := readCorpusItemFile(pprofSmall, benchWithoutGzip)
+	for _, testType := range streamingTestTypes {
+		b.Run(fmt.Sprintf("BenchmarkSmallStreaming_pool_%v_arenas_%v", testType.pool, testType.arenas), func(b *testing.B) {
+			benchmarkStreamingOne(b, t, testType)
+		})
+	}
+}
+
+func BenchmarkBigStreaming(b *testing.B) {
+	t := readCorpusItemFile(pprofBig, benchWithoutGzip)
+	for _, testType := range streamingTestTypes {
+		b.Run(fmt.Sprintf("BenchmarkBigStreaming_pool_%v_arenas_%v", testType.pool, testType.arenas), func(b *testing.B) {
+			benchmarkStreamingOne(b, t, testType)
+		})
+	}
+}
+
+func BenchmarkSmallUnmarshal(b *testing.B) {
 	t := readCorpusItemFile(pprofSmall, benchWithoutGzip)
 	now := time.Now()
 	for i := 0; i < b.N; i++ {
-
-		config := t.config
-		profile := t.profile
-		parser := streaming.VTStreamingParserFromPool(streaming.ParserConfig{SampleTypes: config, Putter: putter})
-		err := parser.ParsePprof(context.TODO(), now, now, profile, false)
-		if err != nil {
-			b.Fatal(err)
-		}
-		parser.ResetCache()
-		parser.ReturnToPool()
-	}
-}
-
-func BenchmarkSingleSmallUnmarshal(b *testing.B) {
-	t := readCorpusItemFile(pprofSmall, benchWithoutGzip)
-	now := time.Now()
-	for i := 0; i < b.N; i++ {
-		config := t.config
-		profile := t.profile
-		parser := pprof.NewParser(pprof.ParserConfig{SampleTypes: config, Putter: putter})
-		err := parser.ParsePprof(context.TODO(), now, now, profile, false)
+		parser := pprof.NewParser(pprof.ParserConfig{SampleTypes: t.config, Putter: putter})
+		err := parser.ParsePprof(context.TODO(), now, now, t.profile, false)
 		if err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
-func BenchmarkSingleBigStreaming(b *testing.B) {
+func BenchmarkBigUnmarshal(b *testing.B) {
 	t := readCorpusItemFile(pprofBig, benchWithoutGzip)
 	now := time.Now()
 	for i := 0; i < b.N; i++ {
-		config := t.config
-		profile := t.profile
-		parser := streaming.NewStreamingParser(streaming.ParserConfig{SampleTypes: config, Putter: putter})
-		err := parser.ParsePprof(context.TODO(), now, now, profile, false)
-		if err != nil {
-			b.Fatal(err)
-		}
-		parser.ResetCache()
-		parser.ReturnToPool()
-	}
-}
-
-func BenchmarkSingleBigUnmarshal(b *testing.B) {
-	t := readCorpusItemFile(pprofBig, benchWithoutGzip)
-	now := time.Now()
-	for i := 0; i < b.N; i++ {
-		config := t.config
-		profile := t.profile
-		parser := pprof.NewParser(pprof.ParserConfig{SampleTypes: config, Putter: putter})
-		err := parser.ParsePprof(context.TODO(), now, now, profile, false)
+		parser := pprof.NewParser(pprof.ParserConfig{SampleTypes: t.config, Putter: putter})
+		err := parser.ParsePprof(context.TODO(), now, now, t.profile, false)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -117,35 +102,53 @@ func BenchmarkSingleBigUnmarshal(b *testing.B) {
 
 func BenchmarkCorpus(b *testing.B) {
 	corpus := readCorpus(benchmarkCorps, benchWithoutGzip)
-	now := time.Now()
-	var p pprof.ParserInterface
-	useNew := true
 	n := benchmarkCorpusSize
-	for i := 0; i < n; i++ {
-		j := i
-		b.Run(fmt.Sprintf("BenchmarkCorpus_%d", j), func(b *testing.B) {
-			t := corpus[j]
-			config := t.config
-			profile := t.profile
-			for k := 0; k < b.N; k++ {
-				var parser *streaming.VTStreamingParser
-				if useNew {
-					parser = streaming.VTStreamingParserFromPool(streaming.ParserConfig{SampleTypes: config, Putter: putter})
-					p = parser
-				} else {
-					p = pprof.NewParser(pprof.ParserConfig{SampleTypes: config, Putter: putter})
-				}
-				err := p.ParsePprof(context.TODO(), now, now, profile, false)
-				if err != nil {
-					b.Fatal(err)
-				}
-				if parser != nil {
-					parser.ResetCache()
-					parser.ReturnToPool()
-				}
-			}
-		})
+	for _, testType := range streamingTestTypes {
+		for i := 0; i < n; i++ {
+			j := i
+			b.Run(fmt.Sprintf("BenchmarkCorpus_%d_pool_%v_arena_%v", j, testType.pool, testType.arenas),
+				func(b *testing.B) {
+					t := corpus[j]
+					benchmarkStreamingOne(b, t, testType)
+				})
+		}
 	}
+}
+
+func benchmarkStreamingOne(b *testing.B, t *testcase, testType streamingTestType) {
+	now := time.Now()
+	for i := 0; i < b.N; i++ {
+		config := t.config
+		pConfig := streaming.ParserConfig{SampleTypes: config, Putter: putter, ArenasEnabled: testType.arenas}
+		var parser *streaming.VTStreamingParser
+		if testType.pool {
+			parser = streaming.VTStreamingParserFromPool(pConfig)
+		} else {
+			parser = streaming.NewStreamingParser(pConfig)
+		}
+		err := parser.ParsePprof(context.TODO(), now, now, t.profile, false)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if testType.pool {
+			parser.ResetCache()
+			parser.ReturnToPool()
+		}
+		if testType.arenas {
+			parser.FreeArena()
+		}
+	}
+}
+
+var streamingTestTypes = []streamingTestType{
+	{pool: false, arenas: false},
+	{pool: true, arenas: false},
+	{pool: false, arenas: true},
+}
+
+type streamingTestType struct {
+	pool   bool
+	arenas bool
 }
 
 type testcase struct {
@@ -158,7 +161,8 @@ type testcase struct {
 func readCorpus(dir string, doDecompress bool) []*testcase {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		log.Fatal(err)
+		print(err)
+		return nil
 	}
 	var res []*testcase
 	for _, file := range files {
@@ -183,13 +187,9 @@ func readCorpusItemFile(fname string, doDecompress bool) *testcase {
 	if err != nil {
 		panic(err)
 	}
-	_ = r
-	//fmt.Printf("%s %d\n", file.Name(), len(bs))
 	contentType := r.Header.Get("Content-Type")
-
 	rawData, _ := ioutil.ReadAll(r.Body)
-
-	decompres := func(b []byte) []byte {
+	decompress := func(b []byte) []byte {
 		if len(b) < 2 {
 			return b
 		}
@@ -200,9 +200,6 @@ func readCorpusItemFile(fname string, doDecompress bool) *testcase {
 			}
 			defer gzipr.Close()
 			var buf bytes.Buffer
-
-			//defer bytebufferpool.Put(buf)
-
 			if _, err = io.Copy(&buf, gzipr); err != nil {
 				panic(err)
 			}
@@ -213,7 +210,7 @@ func readCorpusItemFile(fname string, doDecompress bool) *testcase {
 
 	if contentType == "binary/octet-stream" {
 		return &testcase{
-			profile: decompres(rawData),
+			profile: decompress(rawData),
 			config:  tree.DefaultSampleTypeMapping,
 			fname:   fname,
 		}
@@ -258,15 +255,14 @@ func readCorpusItemFile(fname string, doDecompress bool) *testcase {
 	_ = PreviousProfile
 
 	if doDecompress {
-		Profile = decompres(Profile)
-		PreviousProfile = decompres(PreviousProfile)
+		Profile = decompress(Profile)
+		PreviousProfile = decompress(PreviousProfile)
 	}
-	//fmt.Println(config)
 	elem := &testcase{Profile, PreviousProfile, config, fname, "gospy"}
 	return elem
 }
 
-func testCompareOne(t *testing.T, c *testcase) {
+func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 	err := pprof.DecodePool(bytes.NewReader(c.profile), func(profile *tree.Profile) error {
 		return nil
 	})
@@ -278,7 +274,8 @@ func testCompareOne(t *testing.T, c *testcase) {
 		PreviousProfile:     c.prev,
 		SampleTypeConfig:    c.config,
 		StreamingParser:     true,
-		PoolStreamingParser: false,
+		PoolStreamingParser: typ.pool,
+		ArenasEnabled:       typ.arenas,
 	}
 
 	err2 := profile1.Parse(context.TODO(), mock1, nil, ingestion.Metadata{Key: key, SpyName: c.spyname})
@@ -351,7 +348,7 @@ func testCompareOne(t *testing.T, c *testcase) {
 		if p1.StartTime != p2.StartTime {
 			t.Fatal()
 		}
-		if p2.EndTime != p2.EndTime {
+		if p1.EndTime != p2.EndTime {
 			t.Fatal()
 		}
 		if p1.Units != p2.Units {
@@ -375,13 +372,11 @@ func testCompareOne(t *testing.T, c *testcase) {
 		if err != nil {
 			panic(err)
 		}
-
 		err = os.WriteFile(gold, marshal, 0666)
 		if err != nil {
 			panic(err)
 		}
 	}
-
 }
 
 type PutInputCopy struct {
@@ -395,19 +390,19 @@ type PutInputCopy struct {
 	Units           metadata.Units
 	AggregationType metadata.AggregationType
 }
+
 type MockPutter struct {
 	keep bool
 	puts []PutInputCopy
 }
 
-func (m *MockPutter) Put(ctx context.Context, input *storage.PutInput) error {
+func (m *MockPutter) Put(_ context.Context, input *storage.PutInput) error {
 	if m.keep {
 		m.puts = append(m.puts, PutInputCopy{
-			Val:       input.Val.String(),
-			Key:       input.Key.SegmentKey(),
-			StartTime: input.StartTime,
-			EndTime:   input.EndTime,
-			//SpyName:         string(input.SpyName),
+			Val:             input.Val.String(),
+			Key:             input.Key.SegmentKey(),
+			StartTime:       input.StartTime,
+			EndTime:         input.EndTime,
 			SpyName:         input.SpyName,
 			SampleRate:      input.SampleRate,
 			Units:           input.Units,
