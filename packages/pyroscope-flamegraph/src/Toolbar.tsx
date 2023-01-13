@@ -194,7 +194,7 @@ const Toolbar = memo(
             />
           ),
           // sandwich view is hidden in diff view
-          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 5 : 4), // 1px is to display divider
+          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 5 : 3), // 1px is to display divider
         }
       : null;
     const exportDataItem = isValidElement(ExportData)

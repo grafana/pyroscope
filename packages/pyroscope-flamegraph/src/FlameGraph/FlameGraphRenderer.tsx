@@ -147,7 +147,7 @@ class FlameGraphRenderer extends Component<
 
     this.state = {
       isFlamegraphDirty: false,
-      view: this.props.onlyDisplay ? this.props.onlyDisplay : 'graphviz',
+      view: this.props.onlyDisplay ? this.props.onlyDisplay : 'both',
       fitMode: 'HEAD',
       flamebearer: mountFlamebearer(props),
 
@@ -515,7 +515,6 @@ class FlameGraphRenderer extends Component<
 
     const graphvizPane = (() => {
       const { flamebearer } = this.state;
-      // TODO: prevent crashing comparison view
       const dot =
         // @ts-ignore
         flamebearer.metadata?.format && flamebearer.flamebearer?.levels
@@ -530,8 +529,6 @@ class FlameGraphRenderer extends Component<
         // @ts-ignore
         flamebearer?.appName || String(new Date().valueOf())
       }`;
-
-      // console.log(dot);
 
       return (
         <div className={styles.graphVizPane} key={key}>

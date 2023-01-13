@@ -206,6 +206,10 @@ type GraphEdge = {
 };
 
 export default function toGraphviz(p: Profile): string {
+  if (p.metadata.format === 'double') {
+    return 'diff flamegraphs are not supported';
+  }
+
   const tree = flamebearersToTree(p.flamebearer);
 
   const nodes: string[] = [];
