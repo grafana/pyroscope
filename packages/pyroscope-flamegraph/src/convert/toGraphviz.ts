@@ -13,9 +13,10 @@ const fontName = '';
 
 function renderLabels(obj) {
   const labels: string[] = [];
-  for (const key in obj) {
+  // for (const key of ) {
+  Object.keys(obj).forEach((key) => {
     labels.push(`${key}="${escapeForDot(String(obj[key] || ''))}"`);
-  }
+  });
   return `[${labels.join(' ')}]`;
 }
 
@@ -70,15 +71,14 @@ function dotColor(score: number, isBackground: boolean): string {
 
   // Apply 'shift' to move scores away from 0.0 (grey).
   if (score > 0.0) {
-    score = Math.pow(score, 1.0 - shift);
+    score **= 1.0 - shift;
   }
   if (score < 0.0) {
-    score = -Math.pow(-score, 1.0 - shift);
+    score = -((-score) ** (1.0 - shift));
   }
 
   let r: number;
-  let g: number;
-  let b: number; // red, green, blue
+  let g: number; // red, green, blue
   if (score < 0.0) {
     g = value;
     r = value * (1 + saturation * score);
@@ -86,7 +86,7 @@ function dotColor(score: number, isBackground: boolean): string {
     r = value;
     g = value * (1 - saturation * score);
   }
-  b = value * (1 - saturation);
+  const b: number = value * (1 - saturation);
   return `#${Math.floor(r * 255.0)
     .toString(16)
     .padStart(2, '0')}${Math.floor(g * 255.0)
@@ -114,8 +114,6 @@ function renderNode(
 
   const label = formatNodeLabel(format, name, self, total, maxTotal);
 
-  // console.log(color, fillcolor);
-
   const labels = {
     label,
     id: `node${n.index}`,
@@ -142,14 +140,14 @@ function formatNodeLabel(format: sampleFormatter, name, self, total, maxTotal) {
   label = `${pathBasename(name)}\n`;
 
   const selfValue = format(self);
-  if (self != 0) {
+  if (self !== 0) {
     label = `${label + selfValue} (${formatPercent(self, maxTotal)})`;
   } else {
     label += '0';
   }
   let totalValue = selfValue;
-  if (total != self) {
-    if (self != 0) {
+  if (total !== self) {
+    if (self !== 0) {
       label += '\n';
     } else {
       label += ' ';
@@ -221,7 +219,7 @@ export default function toGraphviz(p: Profile): string {
     sumSelf: number,
     sumTotal: number
   ): [number, number, number, number] {
-    for (const child of n.children) {
+    n.children.forEach((child) => {
       const [newMaxSelf, newMaxTotal] = calcMaxAndSumValues(
         child,
         maxSelf,
@@ -231,7 +229,7 @@ export default function toGraphviz(p: Profile): string {
       );
       maxSelf = Math.max(maxSelf, newMaxSelf);
       maxTotal = Math.max(maxTotal, newMaxTotal);
-    }
+    });
 
     maxSelf = Math.max(maxSelf, n.self[0]);
     maxTotal = Math.max(maxTotal, n.total[0]);
@@ -241,13 +239,7 @@ export default function toGraphviz(p: Profile): string {
     return [maxSelf, maxTotal, sumSelf, sumTotal];
   }
 
-  const [maxSelf, maxTotal, sumSelf, sumTotal] = calcMaxAndSumValues(
-    tree,
-    0,
-    0,
-    0,
-    0
-  );
+  const [maxSelf, maxTotal, , sumTotal] = calcMaxAndSumValues(tree, 0, 0, 0, 0);
   const { sampleRate, units } = p.metadata;
   const formatter = getFormatter(maxTotal, sampleRate, units);
 
@@ -262,8 +254,9 @@ export default function toGraphviz(p: Profile): string {
   function treeToGraph(n: TreeNode, seenNodes: string[]): GraphNode {
     if (seenNodes.indexOf(n.name) === -1) {
       if (!graphNodes[n.name]) {
+        nodesTotal += 1;
         graphNodes[n.name] = {
-          index: nodesTotal++,
+          index: nodesTotal,
           name: n.name,
           self: n.self[0],
           total: n.total[0],
@@ -276,7 +269,7 @@ export default function toGraphviz(p: Profile): string {
       }
     }
 
-    for (const child of n.children) {
+    n.children.forEach((child) => {
       const childNode = treeToGraph(child, seenNodes.concat([n.name]));
       const childKey = `${n.name}/${child.name}`;
       if (child.name !== n.name) {
@@ -293,40 +286,37 @@ export default function toGraphviz(p: Profile): string {
         childNode.parents.push(graphEdges[childKey]);
         graphNodes[n.name].children.push(graphEdges[childKey]);
       }
-    }
+    });
     return graphNodes[n.name];
   }
 
   // skip "total" node
-  for (const child of tree.children) {
+  tree.children.forEach((child) => {
     treeToGraph(child, []);
-  }
+  });
 
   // next is we need to trim graph to remove small nodes
   const nodeCutoff = sumTotal * nodeFraction;
   const edgeCutoff = sumTotal * edgeFraction;
 
-  console.log('nodeCutoff ', nodeCutoff);
-  console.log('edgeCutoff ', edgeCutoff);
-
-  for (const key in graphNodes) {
+  Object.keys(graphNodes).forEach((key) => {
     if (graphNodes[key].total < nodeCutoff) {
       delete graphNodes[key];
     }
-  }
+  });
 
   // next is we limit total number of nodes
 
   function entropyScore(n: GraphNode): number {
     let score = 0;
 
-    if (n.parents.length == 0) {
+    if (n.parents.length === 0) {
       score += 1;
     } else {
       score += edgeEntropyScore(n.parents, 0);
     }
 
-    if (n.children.length == 0) {
+    if (n.children.length === 0) {
       score += 1;
     } else {
       score += edgeEntropyScore(n.children, n.self);
@@ -337,17 +327,17 @@ export default function toGraphviz(p: Profile): string {
   function edgeEntropyScore(edges: GraphEdge[], self: number) {
     let score = 0;
     let total = self;
-    for (const e of edges) {
+    edges.forEach((e) => {
       if (e.weight > 0) {
         total += Math.abs(e.weight);
       }
-    }
+    });
 
-    if (total != 0) {
-      for (const e of edges) {
+    if (total !== 0) {
+      edges.forEach((e) => {
         const frac = Math.abs(e.weight) / total;
         score += -frac * Math.log2(frac);
-      }
+      });
       if (self > 0) {
         const frac = Math.abs(self) / total;
         score += -frac * Math.log2(frac);
@@ -357,9 +347,9 @@ export default function toGraphviz(p: Profile): string {
   }
 
   const cachedScores = {};
-  for (const key in graphNodes) {
+  Object.keys(graphNodes).forEach((key) => {
     cachedScores[graphNodes[key].name] = entropyScore(graphNodes[key]);
-  }
+  });
 
   const sortedNodes = Object.values(graphNodes).sort((a, b) => {
     const sa = cachedScores[a.name];
@@ -378,9 +368,9 @@ export default function toGraphviz(p: Profile): string {
   });
 
   const keptNodes = {};
-  for (const n of sortedNodes) {
+  sortedNodes.forEach((n) => {
     keptNodes[n.name] = n;
-  }
+  });
 
   sortedNodes.slice(maxNodes).forEach((n) => {
     delete keptNodes[n.name];
@@ -389,7 +379,7 @@ export default function toGraphviz(p: Profile): string {
   // now that we removed nodes we need to create residual edges
   function trimTree(n: TreeNode, lastPresentParent: TreeNode | null) {
     const isNodeDeleted = !keptNodes[n.name];
-    for (const child of n.children) {
+    n.children.forEach((child) => {
       const isChildNodeDeleted = !keptNodes[child.name];
       trimTree(child, isNodeDeleted ? lastPresentParent : n);
       if (!isChildNodeDeleted && lastPresentParent && isNodeDeleted) {
@@ -404,7 +394,7 @@ export default function toGraphviz(p: Profile): string {
         graphEdges[edgeKey].weight += child.total[0];
         graphEdges[edgeKey].residual = true;
       }
-    }
+    });
   }
 
   trimTree(tree, null);
@@ -418,59 +408,44 @@ export default function toGraphviz(p: Profile): string {
 
     while (queue.length > 0) {
       const n = queue.shift() as GraphNode;
-      for (const ie of n.parents) {
-        if (e == ie || seen[ie.from.name]) {
-          continue;
+
+      for(let i = 0; i < n.parents.length; i += 1) {
+        const ie = n.parents[i];
+        if (!(e === ie || seen[ie.from.name])) {
+          if (ie.from === src) {
+            return true;
+          }
+          seen[ie.from.name] = true;
+          queue.push(ie.from);
         }
-        if (ie.from == src) {
-          return true;
-        }
-        seen[ie.from.name] = true;
-        queue.push(ie.from);
       }
     }
     return false;
   }
 
   // remove redundant edges
-  console.log('remove redundant edges');
-  for (const node of sortedNodes.reverse()) {
-    // node.children
+  sortedNodes.reverse().forEach((node) => {
     const sortedParentEdges = node.parents.sort((a, b) => b.weight - a.weight);
     const edgesToDelete: GraphEdge[] = [];
-    for (const parentEdge of sortedParentEdges) {
+    for (let i = 0; i < sortedParentEdges.length; i += 1) {
+      const parentEdge = sortedParentEdges[i];
       if (!parentEdge.residual) {
         break;
       }
 
       if (isRedundantEdge(parentEdge)) {
-        console.log('delete', `${parentEdge.from.name}/${parentEdge.to.name}`);
         edgesToDelete.push(parentEdge);
         delete graphEdges[`${parentEdge.from.name}/${parentEdge.to.name}`];
       }
     }
-    for (const edge of edgesToDelete) {
-      edge.from.children = edge.from.children.filter((e) => e.to != edge.to);
-      edge.to.parents = edge.to.parents.filter((e) => e.from != edge.from);
-    }
-
-    // in := n.In.Sort()
-    // for j := len(in); j > 0; j-- {
-    //   e := in[j-1]
-    //   if !e.Residual {
-    //     // Do not remove edges heavier than a non-residual edge, to
-    //     // avoid potential confusion.
-    //     break
-    //   }
-    //   if isRedundantEdge(e) {
-    //     delete(e.Src.Out, e.Dest)
-    //     delete(e.Dest.In, e.Src)
-    //   }
-    // }
-  }
+    edgesToDelete.forEach((edge) => {
+      edge.from.children = edge.from.children.filter((e) => e.to !== edge.to);
+      edge.to.parents = edge.to.parents.filter((e) => e.from !== edge.from);
+    });
+  });
 
   // now we clean up edges
-  for (const key in graphEdges) {
+  Object.keys(graphEdges).forEach((key) => {
     const e = graphEdges[key];
     // first delete the ones that no longer have nodes
     if (!graphNodes[e.from.name]) {
@@ -483,15 +458,15 @@ export default function toGraphviz(p: Profile): string {
     if (e.weight < edgeCutoff) {
       delete graphEdges[key];
     }
-  }
+  });
 
-  for (const key in graphNodes) {
+  Object.keys(graphNodes).forEach((key) => {
     nodes.push(renderNode(formatFunc, graphNodes[key], maxSelf, maxTotal));
-  }
+  });
 
-  for (const key in graphEdges) {
+  Object.keys(graphEdges).forEach((key) => {
     edges.push(renderEdge(formatFunc, graphEdges[key], maxTotal));
-  }
+  });
 
   return `digraph "unnamed" {
     fontname= "${fontName}"

@@ -513,20 +513,49 @@ class FlameGraphRenderer extends Component<
       );
     })();
 
+    // export type Flamebearer = {
+    //   /**
+    //    * List of names
+    //    */
+    //   names: string[];
+    //   /**
+    //    * List of level
+    //    *
+    //    * This is NOT the same as in the flamebearer
+    //    * that we receive from the server.
+    //    * As in there are some transformations required
+    //    * (see deltaDiffWrapper)
+    //    */
+    //   levels: number[][];
+    //   numTicks: number;
+    //   maxSelf: number;
+
+    //   /**
+    //    * Sample Rate, used in text information
+    //    */
+    //   sampleRate: number;
+    //   units: Units;
+
+    //   spyName: SpyName;
+    //   // format: 'double' | 'single';
+    //   //  leftTicks?: number;
+    //   //  rightTicks?: number;
+    // } & addTicks;
+
     const graphvizPane = (() => {
-      const { flamebearer } = this.state;
+      // TODO(@petethepig): I don't understand what's going on with types here
+      //   need to fix at some point
+      const flamebearer = this.state.flamebearer as ShamefulAny;
+      // flamebearer
       const dot =
-        // @ts-ignore
         flamebearer.metadata?.format && flamebearer.flamebearer?.levels
-          ? // @ts-ignore
-            toGraphviz(flamebearer)
+          ? toGraphviz(flamebearer)
           : null;
 
       // Graphviz doesn't update position and scale value on rerender
       // so image sometimes moves out of the screen
       // to fix it we remounting graphViz component by updating key
       const key = `graphviz-pane-${
-        // @ts-ignore
         flamebearer?.appName || String(new Date().valueOf())
       }`;
 
