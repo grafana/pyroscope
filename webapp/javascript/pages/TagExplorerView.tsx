@@ -32,6 +32,7 @@ import {
   fetchTagExplorerViewProfile,
   ALL_TAGS,
   setQuery,
+  selectAnnotationsOrDefault,
 } from '@webapp/redux/reducers/continuous';
 import { queryToAppName } from '@webapp/models/query';
 import PageTitle from '@webapp/components/PageTitle';
@@ -172,6 +173,10 @@ function TagExplorerView() {
   const { query } = useAppSelector(selectQueries);
   const tags = useAppSelector(selectAppTags(query));
   const appName = queryToAppName(query);
+
+  const annotations = useAppSelector(
+    selectAnnotationsOrDefault('tagExplorerView')
+  );
 
   useEffect(() => {
     if (query) {
@@ -352,6 +357,7 @@ function TagExplorerView() {
                 timezone={offset === 0 ? 'utc' : 'browser'}
                 data-testid="timeline-explore-page"
                 id="timeline-chart-explore-page"
+                annotations={annotations}
                 timelineGroups={groups}
                 // to not "dim" timelines when "All" option is selected
                 activeGroup={
