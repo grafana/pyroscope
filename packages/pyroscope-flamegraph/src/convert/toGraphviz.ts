@@ -409,7 +409,7 @@ export default function toGraphviz(p: Profile): string {
     while (queue.length > 0) {
       const n = queue.shift() as GraphNode;
 
-      for(let i = 0; i < n.parents.length; i += 1) {
+      for (let i = 0; i < n.parents.length; i += 1) {
         const ie = n.parents[i];
         if (!(e === ie || seen[ie.from.name])) {
           if (ie.from === src) {
