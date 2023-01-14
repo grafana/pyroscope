@@ -39,7 +39,7 @@ type LabelsCache struct {
 	labels    []uint64 // Packed label Key and Value indices
 	trees     []*tree.Tree
 
-	arena *arenahelper.ArenaWrapper
+	arena arenahelper.ArenaWrapper
 }
 
 func (c *LabelsCache) Reset() {
@@ -137,7 +137,7 @@ func (c *LabelsCache) iterate(f func(sampleTypeIndex int, l Labels, lh uint64, t
 }
 
 // CutLabel creates a copy of labels without label i.
-func CutLabel(a *arenahelper.ArenaWrapper, labels Labels, i int) Labels {
+func CutLabel(a arenahelper.ArenaWrapper, labels Labels, i int) Labels {
 	c := arenahelper.MakeSlice[uint64](a, len(labels)-1, len(labels)-1)
 	copy(c[:i], labels[:i])
 	copy(c[i:], labels[i+1:])

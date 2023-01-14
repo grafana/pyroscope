@@ -49,7 +49,7 @@ const semicolon = byte(';')
 type Tree struct {
 	sync.RWMutex
 	root  *treeNode
-	arena *arenahelper.ArenaWrapper
+	arena arenahelper.ArenaWrapper
 }
 
 func New() *Tree {

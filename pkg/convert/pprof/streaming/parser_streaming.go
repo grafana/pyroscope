@@ -76,7 +76,7 @@ type VTStreamingParser struct {
 	finder        finder
 	previousCache LabelsCache
 	newCache      LabelsCache
-	arena         *arenahelper.ArenaWrapper
+	arena         arenahelper.ArenaWrapper
 }
 
 func NewStreamingParser(config ParserConfig) *VTStreamingParser {
@@ -85,7 +85,7 @@ func NewStreamingParser(config ParserConfig) *VTStreamingParser {
 	return res
 }
 func (p *VTStreamingParser) FreeArena() {
-	p.arena.Free()
+	arenahelper.Free(p.arena)
 }
 func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulativeOnly bool) (err error) {
 	p.startTime = startTime
@@ -437,7 +437,7 @@ func findLabelIndex(tmpLabels []uint64, k int64) int {
 	return -1
 }
 
-func grow[T any](a *arenahelper.ArenaWrapper, it []T, n int) []T {
+func grow[T any](a arenahelper.ArenaWrapper, it []T, n int) []T {
 	if it == nil || n > cap(it) {
 		return arenahelper.MakeSlice[T](a, 0, n)
 	}

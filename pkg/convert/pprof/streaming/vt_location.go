@@ -11,7 +11,7 @@ type locationFunctions struct {
 	lines []line
 }
 
-func (l *locationFunctions) reset(a *arenahelper.ArenaWrapper, nLocations int) {
+func (l *locationFunctions) reset(a arenahelper.ArenaWrapper, nLocations int) {
 	if l.lines == nil {
 		l.lines = arenahelper.MakeSlice[line](a, 0, nLocations*2)
 	}
@@ -19,7 +19,7 @@ func (l *locationFunctions) reset(a *arenahelper.ArenaWrapper, nLocations int) {
 }
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *location) UnmarshalVT(dAtA []byte, functions *locationFunctions, a *arenahelper.ArenaWrapper) error {
+func (m *location) UnmarshalVT(dAtA []byte, functions *locationFunctions, a arenahelper.ArenaWrapper) error {
 	var tmpLine line
 	m.id = 0
 	m.linesRef = 0

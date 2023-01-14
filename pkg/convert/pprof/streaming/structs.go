@@ -83,7 +83,7 @@ type sample struct {
 	//todo rename - remove tmp prefix
 }
 
-func (s *sample) reset(a *arenahelper.ArenaWrapper) {
+func (s *sample) reset(a arenahelper.ArenaWrapper) {
 	// 64 is max pc for golang + speculative number of inlines
 	if s.tmpStack == nil {
 		s.tmpStack = arenahelper.MakeSlice[[]byte](a, 0, 64+8)
