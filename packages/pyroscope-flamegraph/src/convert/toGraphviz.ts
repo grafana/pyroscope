@@ -11,7 +11,7 @@ const maxNodes = 80;
 // const fontName = "SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace";
 const fontName = '';
 
-function renderLabels(obj) {
+function renderLabels(obj: { [key: string]: string | number }): string {
   const labels: string[] = [];
   // for (const key of ) {
   Object.keys(obj).forEach((key) => {
@@ -131,11 +131,17 @@ function escapeForDot(str: string) {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-function pathBasename(p) {
+function pathBasename(p: string): string {
   return p.replace(/.*\//, '');
 }
 
-function formatNodeLabel(format: sampleFormatter, name, self, total, maxTotal) {
+function formatNodeLabel(
+  format: sampleFormatter,
+  name: string,
+  self: number,
+  total: number,
+  maxTotal: number
+): string {
   let label = '';
   label = `${pathBasename(name)}\n`;
 
@@ -346,14 +352,14 @@ export default function toGraphviz(p: Profile): string {
     return score;
   }
 
-  const cachedScores = {};
+  const cachedScores: { [key: string]: number } = {};
   Object.keys(graphNodes).forEach((key) => {
     cachedScores[graphNodes[key].name] = entropyScore(graphNodes[key]);
   });
 
   const sortedNodes = Object.values(graphNodes).sort((a, b) => {
-    const sa = cachedScores[a.name];
-    const sb = cachedScores[b.name];
+    const sa: number = cachedScores[a.name];
+    const sb: number = cachedScores[b.name];
     if (sa !== sb) {
       return sb - sa;
     }
@@ -367,7 +373,7 @@ export default function toGraphviz(p: Profile): string {
     return a.name < b.name ? -1 : 1;
   });
 
-  const keptNodes = {};
+  const keptNodes: { [key: string]: GraphNode } = {};
   sortedNodes.forEach((n) => {
     keptNodes[n.name] = n;
   });
@@ -403,7 +409,7 @@ export default function toGraphviz(p: Profile): string {
 
   function isRedundantEdge(e: GraphEdge) {
     const [src, n] = [e.from, e.to];
-    const seen = {};
+    const seen: { [key: string]: boolean } = {};
     const queue = [n];
 
     while (queue.length > 0) {
