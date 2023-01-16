@@ -9,10 +9,13 @@ import {
   selectQueries,
   selectAppNamesState,
 } from '@webapp/redux/reducers/continuous';
-import classNames from 'classnames';
+import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
+import Button from '@webapp/ui/Button';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';
 import AppSelector from './AppSelector';
+import styles from './Toolbar.module.css';
 
 interface ToolbarProps {
   /** callback to be called when an app is selected via the dropdown */
@@ -35,17 +38,27 @@ function Toolbar({ onSelectedApp, filterApp = () => true }: ToolbarProps) {
     onSelectedApp(query);
   };
 
+  const appNamesLoading =
+    appNamesState.type === 'reloading' ? (
+      <LoadingSpinner className={styles.appNamesLoading} />
+    ) : null;
+
   return (
     <>
       <div className="navbar">
-        <div className={classNames('labels')}>
+        <div className={styles.leftSide}>
           <AppSelector
             onSelected={onSelected}
             apps={apps}
             selectedAppName={selectedAppName}
-            isLoading={appNamesState.type === 'reloading'}
-            onRefresh={() => dispatch(reloadAppNames)}
           />
+          <Button
+            aria-label="Refresh Apps"
+            icon={faSyncAlt}
+            onClick={() => dispatch(reloadAppNames())}
+            className={styles.refreshAppsButton}
+          />
+          {appNamesLoading}
         </div>
         <div className="navbar-space-filler" />
         <RefreshButton />

@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import Button from '@webapp/ui/Button';
-import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
 import { App } from '@webapp/models/app';
@@ -12,30 +9,22 @@ interface AppSelectorProps {
   /** Triggered when an app is selected */
   onSelected: (name: string) => void;
 
-  /** Callback when the refresh button is clicked */
-  onRefresh: () => void;
-
   /** List of all applications */
   apps: App[];
 
   selectedAppName: string;
-
-  isLoading: boolean;
 }
 
 const AppSelector = ({
   onSelected,
   selectedAppName,
   apps,
-  onRefresh,
-  isLoading,
 }: AppSelectorProps) => {
   const selectAppName = (name: string) => {
     onSelected(name);
   };
 
   const appNames = apps.map((a) => a.name);
-  const loading = isLoading ? <LoadingSpinner /> : null;
 
   return (
     <div className={styles.container}>
@@ -45,13 +34,6 @@ const AppSelector = ({
         appNames={appNames}
         appName={selectedAppName}
       />
-      <Button
-        aria-label="Refresh Apps"
-        icon={faSyncAlt}
-        onClick={() => onRefresh()}
-        className={styles.refreshButton}
-      />
-      {loading}
     </div>
   );
 };
