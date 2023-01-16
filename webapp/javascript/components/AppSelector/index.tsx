@@ -10,7 +10,7 @@ interface AppSelectorProps {
   onSelected: (name: string) => void;
 
   /** List of all applications */
-  apps: App[];
+  apps: Pick<App, 'name'>[];
 
   selectedAppName: string;
 }
