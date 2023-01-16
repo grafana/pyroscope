@@ -6,7 +6,7 @@ import { MENU_ITEM_ROLE } from './SelectButton';
 
 jest.mock('@webapp/services/apps');
 
-const { getByTestId, queryByRole, getByRole, findByRole } = screen;
+const { getByTestId, queryByRole } = screen;
 const mockApps: App[] = [
   { name: 'single', units: 'unknown', spyName: 'unknown' },
   { name: 'double.cpu', units: 'unknown', spyName: 'unknown' },
@@ -17,14 +17,11 @@ const mockApps: App[] = [
 
 describe('AppSelector', () => {
   it('gets the list of apps, iterracts with it', async () => {
-    const onRefresh = jest.fn();
     const onSelected = jest.fn();
 
     render(
       <AppSelector
         apps={mockApps}
-        isLoading={false}
-        onRefresh={onRefresh}
         onSelected={onSelected}
         selectedAppName={''}
       />
@@ -69,14 +66,11 @@ describe('AppSelector', () => {
 
 describe('AppSelector', () => {
   it('filters apps by query input', async () => {
-    const onRefresh = jest.fn();
     const onSelected = jest.fn();
 
     render(
       <AppSelector
         apps={mockApps}
-        isLoading={false}
-        onRefresh={onRefresh}
         onSelected={onSelected}
         selectedAppName={''}
       />
