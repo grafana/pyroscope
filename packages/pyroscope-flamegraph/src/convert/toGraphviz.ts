@@ -1,4 +1,4 @@
-import { Profile } from 'packages/pyroscope-models/src';
+import type { Profile } from '@pyroscope/models/src';
 
 import { flamebearersToTree, TreeNode } from './flamebearersToTree';
 import { getFormatter } from '../format/format';
