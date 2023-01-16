@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-
-import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import Button from '@webapp/ui/Button';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
-import { AppNames } from '@webapp/models/appNames';
+import { App } from '@webapp/models/app';
 import SelectButton from './SelectButton';
 import styles from './AppSelector.module.scss';
-import { App } from '@webapp/models/app';
 
 interface AppSelectorProps {
   /** Triggered when an app is selected */
@@ -35,8 +32,6 @@ const AppSelector = ({
 }: AppSelectorProps) => {
   const selectAppName = (name: string) => {
     onSelected(name);
-    //    const appNameQuery = queryFromAppName(name);
-    // onSelected(appNameQuery);
   };
 
   const appNames = apps.map((a) => a.name);
