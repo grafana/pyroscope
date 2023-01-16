@@ -2,9 +2,9 @@ import React from 'react';
 import 'react-dom';
 
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import { Query } from '@webapp/models/query';
+import { Query, queryToAppName, queryFromAppName } from '@webapp/models/query';
 import {
-  selectAppNames,
+  selectApps,
   reloadAppNames,
   selectQueries,
   selectAppNamesState,
@@ -23,17 +23,26 @@ interface ToolbarProps {
 function Toolbar({ onSelectedApp, filterApp = () => true }: ToolbarProps) {
   const dispatch = useAppDispatch();
   const appNamesState = useAppSelector(selectAppNamesState);
-  const appNames = useAppSelector(selectAppNames).filter(filterApp);
+  const apps = useAppSelector(selectApps).filter((a) => filterApp(a.name));
+  const appNames = apps.map((a) => a.name);
   const { query } = useAppSelector(selectQueries);
+  const selectedAppName = queryToAppName(query).mapOr('', (q) =>
+    appNames.indexOf(q) !== -1 ? q : ''
+  );
+
+  const onSelected = (appName: string) => {
+    const query = queryFromAppName(appName);
+    onSelectedApp(query);
+  };
 
   return (
     <>
       <div className="navbar">
         <div className={classNames('labels')}>
           <AppSelector
-            onSelected={onSelectedApp}
-            appNames={appNames}
-            selectedQuery={query}
+            onSelected={onSelected}
+            apps={apps}
+            selectedAppName={selectedAppName}
             isLoading={appNamesState.type === 'reloading'}
             onRefresh={() => dispatch(reloadAppNames)}
           />

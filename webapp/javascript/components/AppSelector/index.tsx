@@ -9,42 +9,37 @@ import Input from '@webapp/ui/Input';
 import { AppNames } from '@webapp/models/appNames';
 import SelectButton from './SelectButton';
 import styles from './AppSelector.module.scss';
+import { App } from '@webapp/models/app';
 
 interface AppSelectorProps {
   /** Triggered when an app is selected */
-  onSelected: (name: Query) => void;
+  onSelected: (name: string) => void;
 
   /** Callback when the refresh button is clicked */
-  onRefresh: (name: Query) => void;
+  onRefresh: () => void;
 
-  /** Callback call to filter out certain apps that match */
-  // filterApp?: (names: string) => boolean;
+  /** List of all applications */
+  apps: App[];
 
-  /** List of all application names */
-  appNames: AppNames;
-
-  /** The current query */
-  selectedQuery: Query;
+  selectedAppName: string;
 
   isLoading: boolean;
 }
 
 const AppSelector = ({
   onSelected,
-  selectedQuery: selectedApp,
-  appNames,
+  selectedAppName,
+  apps,
   onRefresh,
   isLoading,
 }: AppSelectorProps) => {
-  const appName = queryToAppName(selectedApp).mapOr('', (q) =>
-    appNames.indexOf(q) !== -1 ? q : ''
-  );
-
   const selectAppName = (name: string) => {
-    const appNameQuery = queryFromAppName(name);
-    onSelected(appNameQuery);
+    onSelected(name);
+    //    const appNameQuery = queryFromAppName(name);
+    // onSelected(appNameQuery);
   };
 
+  const appNames = apps.map((a) => a.name);
   const loading = isLoading ? <LoadingSpinner /> : null;
 
   return (
@@ -53,12 +48,12 @@ const AppSelector = ({
       <SelectorModalWithToggler
         selectAppName={selectAppName}
         appNames={appNames}
-        appName={appName}
+        appName={selectedAppName}
       />
       <Button
         aria-label="Refresh Apps"
         icon={faSyncAlt}
-        onClick={() => onRefresh}
+        onClick={() => onRefresh()}
         className={styles.refreshButton}
       />
       {loading}
