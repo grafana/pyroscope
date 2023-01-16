@@ -12,8 +12,17 @@ export const selectApplicationName = (state: RootState) => {
 };
 
 export const selectAppNamesState = (state: RootState) => state.continuous.apps;
+
+/** Selected all applications and sort alphabetically by name */
+export const selectApps = (state: RootState) => {
+  // Shallow copy, since sort is in place
+  return state.continuous.apps.data
+    .slice(0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
 export const selectAppNames = (state: RootState) => {
-  return state.continuous.apps.data.map((a) => a.name).sort();
+  return selectApps(state).map((a) => a.name);
 };
 
 export const selectComparisonState = (state: RootState) =>
