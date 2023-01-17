@@ -221,9 +221,9 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, stacktrace
 		model.A.BuildID = names[stringsIds[model.B.BuildId]]
 	}
 
-	mappingResult := make([]*profile.Mapping, len(mappingIDs))
-	for i, model := range mappingIDs {
-		mappingResult[i] = model.A
+	mappingResult := make([]*profile.Mapping, 0, len(mappingIDs))
+	for _, model := range mappingIDs {
+		mappingResult = append(mappingResult, model.A)
 	}
 
 	for id, model := range stacktraceAggrByID {
