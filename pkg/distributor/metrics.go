@@ -35,7 +35,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Namespace: "phlare",
 				Name:      "distributor_received_samples",
 				Help:      "The number of samples per profile name received by the distributor.",
-				Buckets:   prometheus.ExponentialBucketsRange(10^2, 10^5, 30),
+				Buckets:   prometheus.ExponentialBucketsRange(100, 100000, 30),
 			},
 			[]string{"type"},
 		),
