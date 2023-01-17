@@ -164,6 +164,23 @@ changelog:
       - "^test:"
 release:
   draft: true
+  footer: |
+    As always, feedbacks are more than welcome, feel free to open issues/discussions.
+    You can reach out to the team using:
+
+    - [Slack](https://grafana.slack.com/archives/C047CCW6YM8)
+    - [Github Discussions](https://github.com/grafana/phlare/discussions)
+    - [Github Issues](https://github.com/grafana/phlare/issues)
+    - [Mailing List](https://groups.google.com/g/phlare-team)
+
+    ## Docker Images
+
+    - [grafana/phlare](https://hub.docker.com/r/grafana/phlare/tags)
+
+    ```bash
+      docker pull docker.io/grafana/phlare:{{ trimprefix .Tag "v" }}
+    ```
+
   ids:
     - phlare
     - profilecli
