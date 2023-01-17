@@ -10,7 +10,19 @@ import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import NoData from '@pyroscope/webapp/javascript/ui/NoData';
-import { Graphviz } from 'graphviz-react';
+
+interface IGraphvizProps {
+  dot: string;
+  options?: object;
+  className?: string;
+}
+
+// this is to make sure that graphviz-react is not used in node.js
+let Graphviz = ({ dot, className, options = {} }: IGraphvizProps) => null;
+if (typeof process === 'undefined') {
+  Graphviz = require('graphviz-react').Graphviz;
+}
+
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
