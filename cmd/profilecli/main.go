@@ -48,8 +48,15 @@ func main() {
 	parquetInspectCmd := parquetCmd.Command("inspect", "Inspect a parquet file's structure.")
 	parquetInspectFiles := parquetInspectCmd.Arg("file", "parquet file path").Required().ExistingFiles()
 
+	queryCmd := app.Command("query", "Query profile store.")
+	queryParams := addQueryParams(queryCmd)
+	queryOutput := queryCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
+	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.")
+
+	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
+	// enable verbose logging if requested
 	if !cfg.verbose {
 		logger = level.NewFilter(logger, level.AllowWarn())
 	}
@@ -63,7 +70,14 @@ func main() {
 				os.Exit(checkError(err))
 			}
 		}
+	case queryMergeCmd.FullCommand():
+		if err := queryMerge(ctx, queryParams, *queryOutput); err != nil {
+			os.Exit(checkError(err))
+		}
+	default:
+		level.Error(logger).Log("msg", "unknown command", "cmd", parsedCmd)
 	}
+
 }
 
 func checkError(err error) int {

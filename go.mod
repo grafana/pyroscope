@@ -23,7 +23,9 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0
 	github.com/json-iterator/go v1.1.12
+	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/klauspost/compress v1.15.13
+	github.com/mattn/go-isatty v0.0.16
 	github.com/minio/minio-go/v7 v7.0.45
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/oklog/ulid v1.3.1
@@ -177,7 +179,6 @@ require (
 	github.com/linode/linodego v1.9.3 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
