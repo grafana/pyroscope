@@ -66,7 +66,7 @@ build: go/bin
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 	# remove local git tags coming from helm chart release
-	git tag -d $(shell git tag -l "phlare-*")
+	git tag -d $(shell git tag -l "phlare-*" "api/*")
 	# ensure there is a docker cli command
 	@which docker || { apt-get update && apt-get install -y docker.io; }
 	@docker info > /dev/null
@@ -251,7 +251,7 @@ $(BIN)/updater: Makefile
 
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.11.5
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.14.1
 
 $(BIN)/trunk: Makefile
 	@mkdir -p $(@D)
