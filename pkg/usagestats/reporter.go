@@ -222,9 +222,6 @@ func (rep *Reporter) readSeedFile(ctx context.Context) (ClusterSeed, error) {
 	if err != nil {
 		return ClusterSeed{}, err
 	}
-	if err != nil {
-		return ClusterSeed{}, err
-	}
 	defer func() {
 		if err := reader.Close(); err != nil {
 			level.Error(rep.logger).Log("msg", "failed to close reader", "err", err)
