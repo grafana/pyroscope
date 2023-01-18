@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.68.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.67.1...@pyroscope/webapp@1.68.0) (2023-01-18)
+
+
+### Features
+
+* **webapp:** sync crosshair in different timelines ([#1813](https://github.com/pyroscope-io/pyroscope/issues/1813)) ([e8f14bd](https://github.com/pyroscope-io/pyroscope/commit/e8f14bd79df15b099c4d45589ea22ed4e7297f95))
+
+
+
+
+
 ## [1.67.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.67.0...@pyroscope/webapp@1.67.1) (2023-01-16)
 
 **Note:** Version bump only for package @pyroscope/webapp
