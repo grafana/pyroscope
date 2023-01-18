@@ -91,6 +91,9 @@ type TimelineChartWrapperProps = TimelineDataProps & {
 
   /** What element to render when clicking */
   ContextMenu?: (props: ContextMenuProps) => React.ReactNode;
+
+  /** The list of timeline IDs (flotjs component) to sync the crosshair with */
+  syncCrosshairsWith?: string[];
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -150,6 +153,7 @@ class TimelineChartWrapper extends React.Component<
         clickable: true,
       },
       annotations: [],
+      syncCrosshairsWith: [],
       yaxis: {
         show: false,
         min: 0,
@@ -210,14 +214,18 @@ class TimelineChartWrapper extends React.Component<
     this.state.flotOptions.annotations = this.composeAnnotationsList();
   }
 
+  // TODO: this only seems to sync props back into the state, which seems unnecessary
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
     if (
       prevProps.selection !== this.props.selection ||
-      prevProps.annotations !== this.props.annotations
+      prevProps.annotations !== this.props.annotations ||
+      prevProps.syncCrosshairsWith !== this.props.syncCrosshairsWith
     ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
       newFlotOptions.annotations = this.composeAnnotationsList();
+      newFlotOptions.syncCrosshairsWith = this.props.syncCrosshairsWith;
+
       this.setState({ flotOptions: newFlotOptions });
     }
   }
