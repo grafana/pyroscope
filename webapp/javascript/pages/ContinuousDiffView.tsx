@@ -127,6 +127,10 @@ function ComparisonDiffApp() {
               onSelect={(from, until) => {
                 dispatch(actions.setFromAndUntil({ from, until }));
               }}
+              syncCrosshairsWith={[
+                'timeline-chart-left',
+                'timeline-chart-right',
+              ]}
               selection={{
                 left: {
                   from: leftFrom,
@@ -174,6 +178,10 @@ function ComparisonDiffApp() {
                 key="timeline-chart-left"
                 id="timeline-chart-left"
                 timelineA={leftTimeline}
+                syncCrosshairsWith={[
+                  'timeline-chart-diff',
+                  'timeline-chart-right',
+                ]}
                 selectionWithHandler
                 onSelect={(from, until) => {
                   dispatch(actions.setLeft({ from, until }));
@@ -209,6 +217,10 @@ function ComparisonDiffApp() {
                 id="timeline-chart-right"
                 selectionWithHandler
                 timelineA={rightTimeline}
+                syncCrosshairsWith={[
+                  'timeline-chart-diff',
+                  'timeline-chart-left',
+                ]}
                 onSelect={(from, until) => {
                   dispatch(actions.setRight({ from, until }));
                 }}

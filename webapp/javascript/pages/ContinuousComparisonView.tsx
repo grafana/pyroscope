@@ -190,6 +190,10 @@ function ComparisonApp() {
               timelineA={leftTimeline}
               timelineB={rightTimeline}
               onSelect={handleSelectMain}
+              syncCrosshairsWith={[
+                'timeline-chart-left',
+                'timeline-chart-right',
+              ]}
               selection={{
                 left: {
                   from: leftFrom,
@@ -292,6 +296,10 @@ function ComparisonApp() {
                   id="timeline-chart-left"
                   data-testid="timeline-left"
                   selectionWithHandler
+                  syncCrosshairsWith={[
+                    'timeline-chart-double',
+                    'timeline-chart-right',
+                  ]}
                   timelineA={leftTimeline}
                   selection={{
                     left: {
@@ -349,6 +357,10 @@ function ComparisonApp() {
                   id="timeline-chart-right"
                   data-testid="timeline-right"
                   timelineA={rightTimeline}
+                  syncCrosshairsWith={[
+                    'timeline-chart-double',
+                    'timeline-chart-left',
+                  ]}
                   selectionWithHandler
                   selection={{
                     right: {
