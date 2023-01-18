@@ -4,24 +4,13 @@
 /* eslint-disable react/jsx-props-no-spreading */
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
+/* eslint-disable global-require */
 
 import React, { Dispatch, SetStateAction, ReactNode, Component } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import NoData from '@pyroscope/webapp/javascript/ui/NoData';
-
-interface IGraphvizProps {
-  dot: string;
-  options?: object;
-  className?: string;
-}
-
-// this is to make sure that graphviz-react is not used in node.js
-let Graphviz = ({ dot, className, options = {} }: IGraphvizProps) => null;
-if (typeof process === 'undefined') {
-  Graphviz = require('graphviz-react').Graphviz;
-}
 
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -39,6 +28,23 @@ import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
+
+interface IGraphvizProps {
+  dot: string;
+  options?: object;
+  className?: string;
+}
+
+// this is to make sure that graphviz-react is not used in node.js
+let Graphviz = (obj: IGraphvizProps) => {
+  if (obj) {
+    return null;
+  }
+  return null;
+};
+if (typeof process === 'undefined') {
+  Graphviz = require('graphviz-react').Graphviz;
+}
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
