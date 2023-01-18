@@ -17,10 +17,9 @@ export interface EnhancedAppSelector {
   /** Triggered when an app is selected */
   onSelected: (name: string) => void;
 
-  /** List of all applications */
   apps: App[];
 
-  selectedApp: App;
+  selectedAppName: string;
 }
 
 // TODO: this file has a lot of repetition with AppSelector
@@ -28,7 +27,7 @@ export interface EnhancedAppSelector {
 // When this one actually gets used
 function EnhancedAppSelector({
   onSelected,
-  selectedApp: selectedAppName,
+  selectedAppName,
   apps,
 }: EnhancedAppSelector) {
   return (
@@ -37,7 +36,7 @@ function EnhancedAppSelector({
       <SelectorModalWithToggler
         selectAppName={onSelected}
         apps={apps}
-        app={selectedAppName}
+        appName={selectedAppName}
       />
     </div>
   );
@@ -94,13 +93,13 @@ const getSelectedApp = (
 };
 
 interface SelectorModalWithTogglerProps {
-  app: App;
+  appName: string;
   apps: App[];
   selectAppName: (name: string) => void;
 }
 
 const SelectorModalWithToggler = ({
-  app,
+  appName,
   apps,
   selectAppName,
 }: SelectorModalWithTogglerProps) => {
@@ -120,7 +119,7 @@ const SelectorModalWithToggler = ({
   const [selected, setSelected] = useState<string[]>([]);
 
   const groups = useMemo(() => getGroups(filteredAppNames), [filteredAppNames]);
-  const selectedApp = getSelectedApp(app.name, groups, selected);
+  const selectedApp = getSelectedApp(appName, groups, selected);
 
   const profilesNames = useMemo(() => {
     if (!selectedApp?.[0]) {
@@ -182,7 +181,7 @@ const SelectorModalWithToggler = ({
           </div>
         ) : null
       }
-      toggleText={app.name || 'Select application'}
+      toggleText={appName || 'Select application'}
       headerEl={
         <div className={styles.header}>
           <div>
