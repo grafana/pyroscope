@@ -75,6 +75,26 @@ func DefaultConfig() *Config {
 					},
 				},
 			},
+			"pyroscope_mem": {
+				Path:   "/debug/pprof/pyroscope_heap",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"inuse_objects": {
+						Units:       metadata.ObjectsUnits,
+						Aggregation: metadata.AverageAggregationType,
+					},
+					"alloc_objects": {
+						Units: metadata.ObjectsUnits,
+					},
+					"inuse_space": {
+						Units:       metadata.BytesUnits,
+						Aggregation: metadata.AverageAggregationType,
+					},
+					"alloc_space": {
+						Units: metadata.BytesUnits,
+					},
+				},
+			},
 			"goroutines": {
 				Path:   "/debug/pprof/goroutine",
 				Params: nil,
@@ -102,6 +122,20 @@ func DefaultConfig() *Config {
 					},
 				},
 			},
+			"pyroscope_mutex": {
+				Path:   "/debug/pprof/pyroscope_mutex",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "mutex_count",
+						Units:       metadata.LockSamplesUnits,
+					},
+					"delay": {
+						DisplayName: "mutex_duration",
+						Units:       metadata.LockNanosecondsUnits,
+					},
+				},
+			},
 			"block": {
 				Path:   "/debug/pprof/block",
 				Params: nil,
@@ -115,6 +149,20 @@ func DefaultConfig() *Config {
 						DisplayName: "block_duration",
 						Units:       metadata.LockNanosecondsUnits,
 						Cumulative:  true,
+					},
+				},
+			},
+			"pyroscope_block": {
+				Path:   "/debug/pprof/pyroscope_block",
+				Params: nil,
+				SampleTypes: map[string]*profile.SampleTypeConfig{
+					"contentions": {
+						DisplayName: "block_count",
+						Units:       metadata.LockSamplesUnits,
+					},
+					"delay": {
+						DisplayName: "block_duration",
+						Units:       metadata.LockNanosecondsUnits,
 					},
 				},
 			},
