@@ -36,7 +36,7 @@ func newPush(_ *config.Adhoc, args []string, st *storage.Storage, logger *logrus
 	p := parser.New(logger, st, e)
 	return push{
 		args:    args,
-		handler: server.NewIngestHandler(logger, p, func(*ingestion.IngestInput) {}, httputils.NewDefaultHelper(logger), true),
+		handler: server.NewIngestHandler(logger, p, func(*ingestion.IngestInput) {}, httputils.NewDefaultHelper(logger)),
 		logger:  logger,
 	}, nil
 }

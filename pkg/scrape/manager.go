@@ -45,22 +45,19 @@ type Manager struct {
 	targetSets    map[string][]*targetgroup.Group
 
 	reloadC chan struct{}
-
-	disableCumulativeMerge bool
 }
 
 // NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, p ingestion.Ingester, r prometheus.Registerer, disableCumulativeMerge bool) *Manager {
+func NewManager(logger logrus.FieldLogger, p ingestion.Ingester, r prometheus.Registerer) *Manager {
 	c := make(map[string]*config.Config)
 	return &Manager{
-		ingester:               p,
-		logger:                 logger,
-		scrapeConfigs:          c,
-		scrapePools:            make(map[string]*scrapePool),
-		stop:                   make(chan struct{}),
-		reloadC:                make(chan struct{}, 1),
-		metrics:                newMetrics(r),
-		disableCumulativeMerge: disableCumulativeMerge,
+		ingester:      p,
+		logger:        logger,
+		scrapeConfigs: c,
+		scrapePools:   make(map[string]*scrapePool),
+		stop:          make(chan struct{}),
+		reloadC:       make(chan struct{}, 1),
+		metrics:       newMetrics(r),
 	}
 }
 
@@ -93,7 +90,7 @@ func (m *Manager) reload() {
 					Errorf("reloading target set")
 				continue
 			}
-			sp, err := newScrapePool(scrapeConfig, m.ingester, m.logger, m.metrics, m.disableCumulativeMerge)
+			sp, err := newScrapePool(scrapeConfig, m.ingester, m.logger, m.metrics)
 			if err != nil {
 				m.logger.WithError(err).
 					WithField("scrape_pool", setName).
