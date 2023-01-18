@@ -88,33 +88,33 @@ func DefaultConfig() *Config {
 			},
 			"mutex": {
 				Path:   "/debug/pprof/mutex",
-				Params: url.Values{
-					"seconds": []string{"10"},
-				},
+				Params: nil,
 				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"contentions": {
 						DisplayName: "mutex_count",
 						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
 					},
 					"delay": {
 						DisplayName: "mutex_duration",
 						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
 					},
 				},
 			},
 			"block": {
 				Path:   "/debug/pprof/block",
-				Params: url.Values{
-					"seconds": []string{"10"},
-				},
+				Params: nil,
 				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"contentions": {
 						DisplayName: "block_count",
 						Units:       metadata.LockSamplesUnits,
+						Cumulative:  true,
 					},
 					"delay": {
 						DisplayName: "block_duration",
 						Units:       metadata.LockNanosecondsUnits,
+						Cumulative:  true,
 					},
 				},
 			},

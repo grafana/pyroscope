@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof/streaming"
-	"github.com/pyroscope-io/pyroscope/pkg/util/cumulativepprof"
 	"io"
 	"mime/multipart"
 	"sync"
@@ -24,8 +22,6 @@ type RawProfile struct {
 	parser ParserInterface
 	// References the next profile in the sequence (cumulative type only).
 	next *RawProfile
-
-	mergers *cumulativepprof.Mergers
 
 	m sync.Mutex
 	// Initializes lazily on Bytes, if not present.
@@ -57,73 +53,27 @@ func (p *RawProfile) ContentType() string {
 // two consecutive samples to calculate the diff. If parser is not
 // present due to a failure, or sequence violation, the profiles will
 // be re-parsed.
-func (p *RawProfile) Push(profile []byte, cumulative, mergeCumulative bool) *RawProfile {
+func (p *RawProfile) Push(profile []byte, cumulative bool) *RawProfile {
 	p.m.Lock()
 	p.Profile = profile
 	p.RawData = nil
+	n := &RawProfile{
+		SampleTypeConfig: p.SampleTypeConfig,
+	}
 	if cumulative {
-		n := &RawProfile{
-			SampleTypeConfig: p.SampleTypeConfig,
-		}
 		// N.B the parser state is only propagated
 		// after successful Parse call.
 		n.PreviousProfile = p.Profile
 		p.next = n
-		if mergeCumulative {
-			mergers := p.mergers
-			if mergers == nil {
-				mergers = cumulativepprof.NewMergers()
-			}
-			err := p.mergeCumulativeLocked(mergers)
-			if err == nil {
-				n.mergers = mergers
-			}
-		}
 	}
 	p.m.Unlock()
 	return p.next
-}
-
-func (p *RawProfile) MergeCumulative(ms *cumulativepprof.Mergers) error {
-	p.m.Lock()
-	defer p.m.Unlock()
-	return p.mergeCumulativeLocked(ms)
-}
-
-func (p *RawProfile) mergeCumulativeLocked(ms *cumulativepprof.Mergers) error {
-	if p.Profile == nil && p.PreviousProfile == nil && p.RawData != nil && p.FormDataContentType != "" {
-		err := p.loadPprofFromForm()
-		if err != nil {
-			return err
-		}
-	}
-	if p.PreviousProfile == nil {
-		return ErrCumulativeMergeNoPreviousProfile
-	}
-	merged, stConfig, err := ms.Merge(p.PreviousProfile, p.Profile, p.SampleTypeConfig)
-	if err != nil {
-		return err
-	}
-	var mergedProfileBytes bytes.Buffer
-	err = merged.Write(&mergedProfileBytes)
-	if err != nil {
-		return err
-	}
-	p.Profile = mergedProfileBytes.Bytes()
-	p.PreviousProfile = nil
-	p.SampleTypeConfig = stConfig
-	p.RawData = nil
-	return nil
 }
 
 const (
 	formFieldProfile, formFileProfile                   = "profile", "profile.pprof"
 	formFieldPreviousProfile, formFilePreviousProfile   = "prev_profile", "profile.pprof"
 	formFieldSampleTypeConfig, formFileSampleTypeConfig = "sample_type_config", "sample_type_config.json"
-)
-
-var (
-	ErrCumulativeMergeNoPreviousProfile = errors.New("no previous profile for cumulative merge")
 )
 
 func (p *RawProfile) Bytes() ([]byte, error) {
