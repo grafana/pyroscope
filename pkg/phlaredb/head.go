@@ -77,10 +77,7 @@ type rewriter struct {
 	stacktraces idConversionTable
 }
 
-type Helper[M Models, K comparable] interface {
-	key(M) K
-	addToRewriter(*rewriter, idConversionTable)
-	rewrite(*rewriter, M) error
+type storeHelper[M Models] interface {
 	// some Models contain their own IDs within the struct, this allows to set them and keep track of the preexisting ID. It should return the oldID that is supposed to be rewritten.
 	setID(existingSliceID uint64, newID uint64, element M) uint64
 
@@ -89,6 +86,14 @@ type Helper[M Models, K comparable] interface {
 
 	// clone copies parts that are not optimally sized from protobuf parsing
 	clone(M) M
+
+	rewrite(*rewriter, M) error
+}
+
+type Helper[M Models, K comparable] interface {
+	storeHelper[M]
+	key(M) K
+	addToRewriter(*rewriter, idConversionTable)
 }
 
 type Table interface {

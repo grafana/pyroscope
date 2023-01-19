@@ -130,3 +130,21 @@ func (it *TimeRangedIterator[T]) Next() bool {
 	}
 	return false
 }
+
+type GetterIterator[M any] struct {
+	Iterator[Getter[M]]
+}
+
+type Getter[T any] interface {
+	Get() T
+}
+
+func NewGetterIterator[M any](it Iterator[Getter[M]]) Iterator[M] {
+	return &GetterIterator[M]{
+		Iterator: it,
+	}
+}
+
+func (it *GetterIterator[M]) At() M {
+	return it.Iterator.At().Get()
+}
