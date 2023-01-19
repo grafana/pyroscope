@@ -22,7 +22,7 @@ import (
 type profileLabels struct {
 	lbs      phlaremodel.Labels
 	fp       model.Fingerprint
-	profiles []*schemav1.Profile
+	profiles []iter.Getter[*schemav1.Profile]
 }
 
 type profilesIndex struct {
@@ -53,8 +53,13 @@ func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, 
 // Add a new set of profile to the index.
 // The seriesRef are expected to match the profile labels passed in.
 func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profileName string) {
+	pi.addWithGetter(&profileGetter{p: ps}, lbs, profileName)
+}
+
+func (pi *profilesIndex) addWithGetter(pg *profileGetter, lbs phlaremodel.Labels, profileName string) {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
+	ps := pg.Get()
 	profiles, ok := pi.profilesPerFP[ps.SeriesFingerprint]
 	if !ok {
 		lbs := pi.ix.Add(lbs, ps.SeriesFingerprint)
@@ -66,7 +71,7 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profi
 		pi.totalSeries.Inc()
 		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
-	profiles.profiles = append(profiles.profiles, ps)
+	profiles.profiles = append(profiles.profiles, pg)
 	pi.totalProfiles.Inc()
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
@@ -100,7 +105,8 @@ outer:
 				continue outer
 			}
 		}
-		for _, p := range profile.profiles {
+		for _, pg := range profile.profiles {
+			p := pg.Get()
 			if p.SeriesFingerprint == fp {
 				if err := fn(profile.lbs, profile.fp, p); err != nil {
 					return err
@@ -140,7 +146,8 @@ outer:
 			NewSeriesIterator(
 				profile.lbs,
 				profile.fp,
-				iter.NewTimeRangedIterator(iter.NewSliceIterator(profile.profiles), start, end),
+				iter.NewTimeRangedIterator(
+					iter.NewGetterIterator[*schemav1.Profile](iter.NewSliceIterator(profile.profiles)), start, end),
 			),
 		)
 	}
@@ -238,7 +245,8 @@ func (pi *profilesIndex) allProfiles() []*schemav1.Profile {
 	defer pi.mutex.RUnlock()
 
 	for _, profile := range pi.profilesPerFP {
-		for _, p := range profile.profiles {
+		for _, pg := range profile.profiles {
+			p := pg.Get()
 			if _, ok := uniq[p.ID]; !ok {
 				uniq[p.ID] = struct{}{}
 				result = append(result, p)
@@ -302,7 +310,9 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 			return err
 		}
 		// also rewrite the SeriesIndex
-		for _, p := range s.profiles {
+		for _, pg := range s.profiles {
+			// TODO: This won't work
+			p := pg.Get()
 			if p.SeriesFingerprint == s.fp {
 				p.SeriesIndex = uint32(i)
 			}
@@ -312,17 +322,20 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 	return writer.Close()
 }
 
-func minmax(profiles []*schemav1.Profile) (int64, int64) {
+func minmax(profiles []iter.Getter[*schemav1.Profile]) (int64, int64) {
 	var min, max int64
 	switch len(profiles) {
 	case 0:
 		return 0, 0
 	case 1:
-		return profiles[0].TimeNanos, profiles[0].TimeNanos
+		p := profiles[0].Get()
+		return p.TimeNanos, p.TimeNanos
 	default:
-		min = profiles[0].TimeNanos
-		max = profiles[0].TimeNanos
-		for _, p := range profiles[1:] {
+		p := profiles[0].Get()
+		min = p.TimeNanos
+		max = p.TimeNanos
+		for _, pg := range profiles[1:] {
+			p := pg.Get()
 			if p.TimeNanos < min {
 				min = p.TimeNanos
 			}
