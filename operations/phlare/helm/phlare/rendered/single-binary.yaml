@@ -5,10 +5,10 @@ kind: ServiceAccount
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: phlare/templates/configmap.yaml
@@ -17,10 +17,10 @@ kind: ConfigMap
 metadata:
   name: phlare-dev-config
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -62,10 +62,10 @@ kind: ClusterRole
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -88,10 +88,10 @@ kind: ClusterRoleBinding
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -108,10 +108,10 @@ kind: Service
 metadata:
   name: phlare-dev-memberlist
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -134,10 +134,10 @@ kind: Service
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -158,10 +158,10 @@ kind: Service
 metadata:
   name: phlare-dev-headless
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -182,10 +182,10 @@ kind: StatefulSet
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.1.2
+    helm.sh/chart: phlare-0.1.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -200,7 +200,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 151ca6c735203eb2f041ec5420140e6beb9b691f20daa6da728bf8e89810dca3
+        checksum/config: 822e78696be7f5e8d81bd59961864293b666236f41a6db4261a554504de0da20
         phlare.grafana.com/port: "4100"
         phlare.grafana.com/scrape: "true"
       labels:
