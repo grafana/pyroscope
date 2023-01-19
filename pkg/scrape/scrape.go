@@ -464,7 +464,6 @@ func (s *scraper) scrape(ctx context.Context, dst *bytes.Buffer) error {
 		if err != nil {
 			return err
 		}
-		req.Header.Add("Accept-Encoding", "gzip")
 		req.Header.Set("User-Agent", UserAgent)
 		s.req = req
 	}
