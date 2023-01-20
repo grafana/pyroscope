@@ -68,6 +68,12 @@ type Models interface {
 	*schemav1.Profile | *schemav1.Stacktrace | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string | *schemav1.StoredString
 }
 
+func emptyRewriter() *rewriter {
+	return &rewriter{
+		strings: []int64{0},
+	}
+}
+
 // rewriter contains slices to rewrite the per profile reference into per head references.
 type rewriter struct {
 	strings     stringConversionTable
@@ -127,7 +133,7 @@ type Head struct {
 	functions       deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
 	locations       deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper, *schemav1.LocationPersister]
 	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper, *schemav1.StacktracePersister] // a stacktrace is a slice of location ids
-	profiles        deduplicatingSlice[*schemav1.Profile, noKey, *profilesHelper, *schemav1.ProfilePersister]
+	profiles        *profileStore
 	totalSamples    *atomic.Uint64
 	tables          []Table
 	delta           *deltaProfiles
@@ -163,6 +169,15 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 		h.parquetConfig = cfg.Parquet
 	}
 
+	// create index
+	index, err := newProfileIndex(32, h.metrics)
+	if err != nil {
+		return nil, err
+	}
+
+	// create profile store
+	h.profiles = newProfileStore(phlarectx, h.parquetConfig, index)
+
 	if err := os.MkdirAll(h.headPath, defaultFolderMode); err != nil {
 		return nil, err
 	}
@@ -173,7 +188,7 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 		&h.functions,
 		&h.locations,
 		&h.stacktraces,
-		&h.profiles,
+		h.profiles,
 	}
 	for _, t := range h.tables {
 		if err := t.Init(h.headPath, h.parquetConfig); err != nil {
@@ -181,10 +196,6 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 		}
 	}
 
-	index, err := newProfileIndex(32, h.metrics)
-	if err != nil {
-		return nil, err
-	}
 	h.index = index
 	h.delta = newDeltaProfiles()
 
@@ -332,11 +343,9 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			continue
 		}
 
-		if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, rewrites); err != nil {
+		if err := h.profiles.ingest(ctx, []*schemav1.Profile{profile}, labels[idxType], metricName, rewrites); err != nil {
 			return err
 		}
-
-		h.index.Add(profile, labels[idxType], metricName)
 
 		profileIngested = true
 	}
