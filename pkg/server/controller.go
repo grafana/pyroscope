@@ -462,6 +462,10 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 }
 
 func (ctrl *Controller) Start() error {
+	return ctrl.startSync(nil)
+}
+
+func (ctrl *Controller) startSync(serveSync chan struct{}) error {
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
@@ -481,6 +485,10 @@ func (ctrl *Controller) Start() error {
 	}
 
 	updates.StartVersionUpdateLoop()
+
+	if serveSync != nil {
+		serveSync <- struct{}{}
+	}
 
 	if ctrl.config.TLSCertificateFile != "" && ctrl.config.TLSKeyFile != "" {
 		err = ctrl.httpServer.ListenAndServeTLS(ctrl.config.TLSCertificateFile, ctrl.config.TLSKeyFile)
