@@ -33,6 +33,57 @@ import (
 
 // revive:disable:max-public-structs complex domain
 
+var (
+	profileDeltaMem = &Profile{
+		Path:   "/debug/pprof/delta_heap",
+		Params: nil,
+		SampleTypes: map[string]*profile.SampleTypeConfig{
+			"inuse_objects": {
+				Units:       metadata.ObjectsUnits,
+				Aggregation: metadata.AverageAggregationType,
+			},
+			"alloc_objects": {
+				Units: metadata.ObjectsUnits,
+			},
+			"inuse_space": {
+				Units:       metadata.BytesUnits,
+				Aggregation: metadata.AverageAggregationType,
+			},
+			"alloc_space": {
+				Units: metadata.BytesUnits,
+			},
+		},
+	}
+	profileDeltaMutex = &Profile{
+		Path:   "/debug/pprof/delta_mutex",
+		Params: nil,
+		SampleTypes: map[string]*profile.SampleTypeConfig{
+			"contentions": {
+				DisplayName: "mutex_count",
+				Units:       metadata.LockSamplesUnits,
+			},
+			"delay": {
+				DisplayName: "mutex_duration",
+				Units:       metadata.LockNanosecondsUnits,
+			},
+		},
+	}
+	profileDeltaBlock = &Profile{
+		Path:   "/debug/pprof/delta_block",
+		Params: nil,
+		SampleTypes: map[string]*profile.SampleTypeConfig{
+			"contentions": {
+				DisplayName: "block_count",
+				Units:       metadata.LockSamplesUnits,
+			},
+			"delay": {
+				DisplayName: "block_duration",
+				Units:       metadata.LockNanosecondsUnits,
+			},
+		},
+	}
+)
+
 // DefaultConfig returns the default scrape configuration.
 func DefaultConfig() *Config {
 	return &Config{
@@ -153,6 +204,7 @@ type Config struct {
 	// Profiles parameters.
 	Profiles map[string]*Profile `yaml:"profiles,omitempty"`
 
+	UseDeltaProfiles bool `yaml:"use-delta-profiles,omitempty"`
 	// TODO(kolesnikovae): Implement.
 	// List of profiles relabel configurations.
 	// ProfilesRelabelConfigs []*relabel.Config `yaml:"profiles-relabel-configs,omitempty"`
@@ -218,7 +270,27 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 
+	if c.UseDeltaProfiles {
+		enableDeltaProfiles(c.Profiles)
+	}
+
 	return nil
+}
+
+func enableDeltaProfiles(profiles map[string]*Profile) {
+	var ok bool
+	_, ok = profiles["mem"]
+	if ok {
+		profiles["mem"] = profileDeltaMem
+	}
+	_, ok = profiles["block"]
+	if ok {
+		profiles["block"] = profileDeltaBlock
+	}
+	_, ok = profiles["mutex"]
+	if ok {
+		profiles["mutex"] = profileDeltaMutex
+	}
 }
 
 func checkStaticTargets(configs discovery.Configs) error {
