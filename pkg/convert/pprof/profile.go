@@ -167,9 +167,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 				parser := streaming.NewStreamingParser(config)
 				p.parser = parser
 				if p.ArenasEnabled {
-					defer func() {
-						parser.FreeArena()
-					}()
+					defer parser.FreeArena()
 				}
 			}
 		} else {
