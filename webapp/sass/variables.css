@@ -43,6 +43,7 @@
 
   --ps-selected-app: #df8b53; /* active selected app color in dropdown */
   --ps-select-modal-title: #888; /* selected modal title */
+  --ps-app-selector-filter: #9d9d9f; /* profile type filter in app selector */
 
   --ps-blue-primary: #3b78e7; /* Standard blue for button, instructions text (right) */
   --ps-blue-highlight: #578ae9; /* highlight (hover) blue */
@@ -139,4 +140,5 @@
   --ps-toolbar-icon-color: #5f6367;
 
   --ps-mui-tooltip-background: #5f6367;
+  --ps-app-selector-filter: #9d9d9f;
 }

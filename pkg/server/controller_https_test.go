@@ -55,9 +55,8 @@ var _ = Describe("server", func() {
 					})
 					c.dir = http.Dir(testDataDir)
 
-					go c.Start()
-					// TODO: Wait for start .There's possibly a better way of doing this
-					time.Sleep(50 * time.Millisecond)
+					startController(c, "https", addr)
+
 					tr := &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 					}
@@ -101,8 +100,8 @@ var _ = Describe("server", func() {
 					})
 					c.dir = http.Dir(testDataDir)
 
-					go c.Start()
-					time.Sleep(50 * time.Millisecond)
+					startController(c, "http", addr)
+
 					tr := &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 					}
@@ -121,3 +120,26 @@ var _ = Describe("server", func() {
 		})
 	})
 })
+
+func startController(c *Controller, protocol string, addr string) {
+	startSync := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		err := c.startSync(startSync)
+		Expect(err).ToNot(HaveOccurred())
+	}()
+	<-startSync
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	httpClient := &http.Client{Transport: tr}
+	var err error
+	var res *http.Response
+	for i := 0; i < 100; i++ {
+		res, err = httpClient.Get(fmt.Sprintf("%s://localhost%s", protocol, addr))
+		if err == nil && res.StatusCode == http.StatusOK {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	err = fmt.Errorf("failed to wait for server startup %v %v", err, res)
+	Expect(err).ToNot(HaveOccurred())
+}

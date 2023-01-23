@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.68.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.1...@pyroscope/webapp@1.68.2) (2023-01-23)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.0...@pyroscope/webapp@1.68.1) (2023-01-19)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.68.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.67.1...@pyroscope/webapp@1.68.0) (2023-01-18)
+
+
+### Features
+
+* **webapp:** sync crosshair in different timelines ([#1813](https://github.com/pyroscope-io/pyroscope/issues/1813)) ([e8f14bd](https://github.com/pyroscope-io/pyroscope/commit/e8f14bd79df15b099c4d45589ea22ed4e7297f95))
+
+
+
+
+
+## [1.67.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.67.0...@pyroscope/webapp@1.67.1) (2023-01-16)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.67.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.21...@pyroscope/webapp@1.67.0) (2023-01-13)
+
+
+### Features
+
+* **webapp:** add annotations rendering to all timelines ([#1807](https://github.com/pyroscope-io/pyroscope/issues/1807)) ([6144df4](https://github.com/pyroscope-io/pyroscope/commit/6144df404e649c3bdf8460baf8d6da251752c074))
+
+
+
+
+
+## [1.66.21](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.20...@pyroscope/webapp@1.66.21) (2023-01-10)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.66.20](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.66.19...@pyroscope/webapp@1.66.20) (2023-01-04)
 
 

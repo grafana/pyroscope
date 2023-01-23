@@ -25,7 +25,11 @@ type SingleView =
       annotations: Annotation[];
     };
 
-type TagExplorerView = GroupByType & GroupsLoadingType & ActiveProfileType;
+type TagExplorerView = GroupByType &
+  GroupsLoadingType &
+  ActiveProfileType & {
+    annotations: Annotation[];
+  };
 
 type GroupByType = {
   groupByTag: string;
@@ -98,7 +102,7 @@ type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
   | { type: 'reloading'; timeline: Timeline }
-  | { type: 'loaded'; timeline: Timeline };
+  | { type: 'loaded'; timeline: Timeline; annotations: Annotation[] };
 
 type TagsData =
   | { type: 'pristine' }

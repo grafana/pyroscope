@@ -23,6 +23,14 @@ export interface RenderOutput {
   annotations: Annotation[];
 }
 
+// Default to empty array if not present
+const defaultAnnotationsSchema = z.preprocess((a) => {
+  if (!a) {
+    return [];
+  }
+  return a;
+}, z.array(AnnotationSchema));
+
 interface renderSingleProps {
   from: string;
   until: string;
@@ -49,14 +57,7 @@ export async function renderSingle(
   const parsed = FlamebearerProfileSchema.merge(
     z.object({
       timeline: TimelineSchema,
-
-      // Default to empty array if not present
-      annotations: z.preprocess((a) => {
-        if (!a) {
-          return [];
-        }
-        return a;
-      }, z.array(AnnotationSchema)),
+      annotations: defaultAnnotationsSchema,
     })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
@@ -338,7 +339,12 @@ export async function renderExplore(
   const parsed = FlamebearerProfileSchema.merge(
     z.object({ timeline: TimelineSchema })
   )
-    .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
+    .merge(
+      z.object({
+        telemetry: z.object({}).passthrough().optional(),
+        annotations: defaultAnnotationsSchema,
+      })
+    )
     .merge(
       z.object({
         groups: z.preprocess((groups) => {
@@ -362,11 +368,12 @@ export async function renderExplore(
 
   if (parsed.success) {
     const profile = parsed.data;
-    const { groups } = parsed.data;
+    const { groups, annotations } = parsed.data;
 
     return Result.ok({
       profile,
       groups,
+      annotations,
     });
   }
 

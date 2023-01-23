@@ -12,6 +12,7 @@ import {
   fetchTagValues,
   selectQueries,
   selectTimelineSides,
+  selectAnnotationsOrDefault,
 } from '@webapp/redux/reducers/continuous';
 import SideTimelineComparator from '@webapp/components/SideTimelineComparator';
 import TimelineChartWrapper from '@webapp/components/TimelineChart/TimelineChartWrapper';
@@ -62,6 +63,9 @@ function ComparisonApp() {
   const { leftTags, rightTags } = useTags();
   const { leftTimeline, rightTimeline } = useTimelines();
   const sharedQuery = useFlamegraphSharedQuery();
+  const annotations = useAppSelector(
+    selectAnnotationsOrDefault('comparisonView')
+  );
 
   const timelines = useAppSelector(selectTimelineSides);
   const isLoading = isLoadingOrReloading([
@@ -182,9 +186,14 @@ function ComparisonApp() {
               id="timeline-chart-double"
               format="lines"
               height="125px"
+              annotations={annotations}
               timelineA={leftTimeline}
               timelineB={rightTimeline}
               onSelect={handleSelectMain}
+              syncCrosshairsWith={[
+                'timeline-chart-left',
+                'timeline-chart-right',
+              ]}
               selection={{
                 left: {
                   from: leftFrom,
@@ -287,6 +296,10 @@ function ComparisonApp() {
                   id="timeline-chart-left"
                   data-testid="timeline-left"
                   selectionWithHandler
+                  syncCrosshairsWith={[
+                    'timeline-chart-double',
+                    'timeline-chart-right',
+                  ]}
                   timelineA={leftTimeline}
                   selection={{
                     left: {
@@ -344,6 +357,10 @@ function ComparisonApp() {
                   id="timeline-chart-right"
                   data-testid="timeline-right"
                   timelineA={rightTimeline}
+                  syncCrosshairsWith={[
+                    'timeline-chart-double',
+                    'timeline-chart-left',
+                  ]}
                   selectionWithHandler
                   selection={{
                     right: {

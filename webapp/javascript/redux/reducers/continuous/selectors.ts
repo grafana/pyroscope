@@ -1,6 +1,6 @@
 import { brandQuery, Query, queryToAppName } from '@webapp/models/query';
 import type { RootState } from '@webapp/redux/store';
-import { TagsState } from './state';
+import { ContinuousState, TagsState } from './state';
 
 export const selectContinuousState = (state: RootState) => state.continuous;
 export const selectApplicationName = (state: RootState) => {
@@ -12,8 +12,17 @@ export const selectApplicationName = (state: RootState) => {
 };
 
 export const selectAppNamesState = (state: RootState) => state.continuous.apps;
+
+/** Selected all applications and sort alphabetically by name */
+export const selectApps = (state: RootState) => {
+  // Shallow copy, since sort is in place
+  return state.continuous.apps.data
+    .slice(0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
 export const selectAppNames = (state: RootState) => {
-  return state.continuous.apps.data.map((a) => a.name).sort();
+  return selectApps(state).map((a) => a.name);
 };
 
 export const selectComparisonState = (state: RootState) =>
@@ -57,13 +66,42 @@ export const selectQueries = (state: RootState) => {
   };
 };
 
-// TODO: accept a side (continuous / leftside)
-export const selectAnnotationsOrDefault = (state: RootState) => {
-  if ('annotations' in state.continuous.singleView) {
-    return state.continuous.singleView.annotations;
-  }
-  return [];
-};
+type ViewStates = Extract<keyof ContinuousState, `${string}View`>;
+export const selectAnnotationsOrDefault =
+  (view: ViewStates) => (state: RootState) => {
+    switch (view) {
+      case 'singleView': {
+        if ('annotations' in state.continuous.singleView) {
+          return state.continuous.singleView.annotations;
+        }
+        return [];
+      }
+
+      case 'tagExplorerView': {
+        return state.continuous.tagExplorerView.annotations;
+      }
+
+      // Merge data from both sides into a single annotation
+      // Which is fine, since this extra data won't be used if outside the time range
+      // NOTE: this assumes the left and right timelines belong to the same application
+      case 'diffView':
+      case 'comparisonView': {
+        const left =
+          'annotations' in state.continuous.leftTimeline
+            ? state.continuous.leftTimeline.annotations
+            : [];
+        const right =
+          'annotations' in state.continuous.rightTimeline
+            ? state.continuous.rightTimeline.annotations
+            : [];
+        return [...left, ...right];
+      }
+
+      default:
+        const exhaustiveCheck: never = view;
+        throw new Error(`Unhandled case: ${exhaustiveCheck}`);
+    }
+  };
 
 export const selectRanges = (rootState: RootState) => {
   const state = rootState.continuous;

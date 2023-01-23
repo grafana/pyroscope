@@ -1,5 +1,4 @@
-import { renderSingle } from '@webapp/services/render';
-import type { Timeline } from '@webapp/models/timeline';
+import { RenderOutput, renderSingle } from '@webapp/services/render';
 import { RequestAbortedError } from '@webapp/services/base';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
@@ -8,7 +7,7 @@ import { ContinuousState } from './state';
 let sideTimelinesAbortController: AbortController | undefined;
 
 export const fetchSideTimelines = createAsyncThunk<
-  { left: Timeline; right: Timeline },
+  { left: RenderOutput; right: RenderOutput },
   null,
   { state: { continuous: ContinuousState } }
 >('continuous/fetchSideTimelines', async (_, thunkAPI) => {
@@ -54,8 +53,8 @@ export const fetchSideTimelines = createAsyncThunk<
 
   if (res?.[0].isOk && res?.[1].isOk) {
     return Promise.resolve({
-      left: res[0].value.timeline,
-      right: res[1].value.timeline,
+      left: res[0].value,
+      right: res[1].value,
     });
   }
 

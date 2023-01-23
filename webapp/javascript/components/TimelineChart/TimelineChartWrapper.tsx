@@ -5,6 +5,7 @@ import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/models/src';
 import type { Timeline } from '@webapp/models/timeline';
+import { Annotation } from '@webapp/models/annotation';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import type { TooltipCallbackProps } from '@webapp/components/TimelineChart/Tooltip.plugin';
 import type { ITooltipWrapperProps } from './TooltipWrapper';
@@ -86,10 +87,13 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   onHoverDisplayTooltip?: React.FC<TooltipCallbackProps>;
 
   /** list of annotations timestamp, to be rendered as markings */
-  annotations?: { timestamp: number; content: string }[];
+  annotations?: Annotation[];
 
   /** What element to render when clicking */
   ContextMenu?: (props: ContextMenuProps) => React.ReactNode;
+
+  /** The list of timeline IDs (flotjs component) to sync the crosshair with */
+  syncCrosshairsWith?: string[];
 };
 
 class TimelineChartWrapper extends React.Component<
@@ -149,6 +153,7 @@ class TimelineChartWrapper extends React.Component<
         clickable: true,
       },
       annotations: [],
+      syncCrosshairsWith: [],
       yaxis: {
         show: false,
         min: 0,
@@ -209,14 +214,18 @@ class TimelineChartWrapper extends React.Component<
     this.state.flotOptions.annotations = this.composeAnnotationsList();
   }
 
+  // TODO: this only seems to sync props back into the state, which seems unnecessary
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
     if (
       prevProps.selection !== this.props.selection ||
-      prevProps.annotations !== this.props.annotations
+      prevProps.annotations !== this.props.annotations ||
+      prevProps.syncCrosshairsWith !== this.props.syncCrosshairsWith
     ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
       newFlotOptions.annotations = this.composeAnnotationsList();
+      newFlotOptions.syncCrosshairsWith = this.props.syncCrosshairsWith;
+
       this.setState({ flotOptions: newFlotOptions });
     }
   }
@@ -290,6 +299,7 @@ class TimelineChartWrapper extends React.Component<
       onHoverDisplayTooltip,
       ContextMenu: this.props.ContextMenu,
       xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
+      wrapperId: this.props.id,
     };
 
     const centeredTimelineGroups = timelineGroups.map(

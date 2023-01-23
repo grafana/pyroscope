@@ -1,50 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-
-import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
-import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import {
-  actions,
-  selectAppNames,
-  reloadAppNames,
-  selectQueries,
-  selectAppNamesState,
-} from '@webapp/redux/reducers/continuous';
-import Button from '@webapp/ui/Button';
-import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
+import { App } from '@webapp/models/app';
 import SelectButton from './SelectButton';
 import styles from './AppSelector.module.scss';
 
 interface AppSelectorProps {
-  // Comparison/Diff View pages provide {onSelectedName} func which
-  // handle propagating query to left/right flamegraphs
-  onSelectedName?: (name: Query) => void;
+  /** Triggered when an app is selected */
+  onSelected: (name: string) => void;
 
-  filterApp?: (names: string) => boolean;
+  /** List of all applications */
+  apps: Pick<App, 'name'>[];
+
+  selectedAppName: string;
 }
 
 const AppSelector = ({
-  onSelectedName,
-  filterApp = () => true,
+  onSelected,
+  selectedAppName,
+  apps,
 }: AppSelectorProps) => {
-  const dispatch = useAppDispatch();
-  const appNamesState = useAppSelector(selectAppNamesState);
-  const appNames = useAppSelector(selectAppNames).filter(filterApp);
-  const { query } = useAppSelector(selectQueries);
-  const appName = queryToAppName(query).mapOr('', (q) =>
-    appNames.indexOf(q) !== -1 ? q : ''
-  );
-
   const selectAppName = (name: string) => {
-    const appNameQuery = queryFromAppName(name);
-    if (onSelectedName) {
-      onSelectedName(appNameQuery);
-    } else {
-      dispatch(actions.setQuery(appNameQuery));
-    }
+    onSelected(name);
   };
+
+  const appNames = apps.map((a) => a.name);
 
   return (
     <div className={styles.container}>
@@ -52,15 +32,8 @@ const AppSelector = ({
       <SelectorModalWithToggler
         selectAppName={selectAppName}
         appNames={appNames}
-        appName={appName}
+        appName={selectedAppName}
       />
-      <Button
-        aria-label="Refresh Apps"
-        icon={faSyncAlt}
-        onClick={() => dispatch(reloadAppNames())}
-        className={styles.refreshButton}
-      />
-      {appNamesState.type === 'reloading' && <LoadingSpinner />}
     </div>
   );
 };
@@ -106,7 +79,7 @@ interface SelectorModalWithTogglerProps {
   appName: string;
 }
 
-const SelectorModalWithToggler = ({
+export const SelectorModalWithToggler = ({
   appNames,
   selectAppName,
   appName,

@@ -4,12 +4,14 @@
 /* eslint-disable react/jsx-props-no-spreading */
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
+/* eslint-disable global-require */
 
 import React, { Dispatch, SetStateAction, ReactNode, Component } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { createFF, Flamebearer, Profile } from '@pyroscope/models/src';
 import NoData from '@pyroscope/webapp/javascript/ui/NoData';
+
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: let's move this to typescript some time in the future
@@ -19,12 +21,30 @@ import {
   calleesProfile,
   callersProfile,
 } from '../convert/sandwichViewProfiles';
+import toGraphviz from '../convert/toGraphviz';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
+
+interface IGraphvizProps {
+  dot: string;
+  options?: object;
+  className?: string;
+}
+
+// this is to make sure that graphviz-react is not used in node.js
+let Graphviz = (obj: IGraphvizProps) => {
+  if (obj) {
+    return null;
+  }
+  return null;
+};
+if (typeof process === 'undefined') {
+  Graphviz = require('graphviz-react').Graphviz;
+}
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
@@ -511,13 +531,83 @@ class FlameGraphRenderer extends Component<
       );
     })();
 
+    // export type Flamebearer = {
+    //   /**
+    //    * List of names
+    //    */
+    //   names: string[];
+    //   /**
+    //    * List of level
+    //    *
+    //    * This is NOT the same as in the flamebearer
+    //    * that we receive from the server.
+    //    * As in there are some transformations required
+    //    * (see deltaDiffWrapper)
+    //    */
+    //   levels: number[][];
+    //   numTicks: number;
+    //   maxSelf: number;
+
+    //   /**
+    //    * Sample Rate, used in text information
+    //    */
+    //   sampleRate: number;
+    //   units: Units;
+
+    //   spyName: SpyName;
+    //   // format: 'double' | 'single';
+    //   //  leftTicks?: number;
+    //   //  rightTicks?: number;
+    // } & addTicks;
+
+    const graphvizPane = (() => {
+      // TODO(@petethepig): I don't understand what's going on with types here
+      //   need to fix at some point
+      const flamebearer = this.state.flamebearer as ShamefulAny;
+      // flamebearer
+      const dot =
+        flamebearer.metadata?.format && flamebearer.flamebearer?.levels
+          ? toGraphviz(flamebearer)
+          : null;
+
+      // Graphviz doesn't update position and scale value on rerender
+      // so image sometimes moves out of the screen
+      // to fix it we remounting graphViz component by updating key
+      const key = `graphviz-pane-${
+        flamebearer?.appName || String(new Date().valueOf())
+      }`;
+
+      return (
+        <div className={styles.graphVizPane} key={key}>
+          {dot ? (
+            <Graphviz
+              // options https://github.com/magjac/d3-graphviz#supported-options
+              options={{
+                zoom: true,
+                width: '150%',
+                height: '100%',
+                scale: 1,
+                // 'true' by default, but causes warning
+                // https://github.com/magjac/d3-graphviz/blob/master/README.md#defining-the-hpcc-jswasm-script-tag
+                useWorker: false,
+              }}
+              dot={dot}
+            />
+          ) : (
+            <div>NO DATA</div>
+          )}
+        </div>
+      );
+    })();
+
     const dataUnavailable =
       !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
     const panes = decidePanesOrder(
       this.state.view,
       flameGraphPane,
       tablePane,
-      sandwichPane
+      sandwichPane,
+      graphvizPane
     );
 
     return (
@@ -577,7 +667,8 @@ function decidePanesOrder(
   view: FlamegraphRendererState['view'],
   flamegraphPane: JSX.Element | null,
   tablePane: JSX.Element,
-  sandwichPane: JSX.Element
+  sandwichPane: JSX.Element,
+  graphvizPane: JSX.Element
 ) {
   switch (view) {
     case 'table': {
@@ -592,6 +683,10 @@ function decidePanesOrder(
 
     case 'both': {
       return [tablePane, flamegraphPane];
+    }
+
+    case 'graphviz': {
+      return [graphvizPane];
     }
     default: {
       throw new Error(`Invalid view '${view}'`);

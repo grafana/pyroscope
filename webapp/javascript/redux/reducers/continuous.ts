@@ -43,6 +43,7 @@ const initialState: ContinuousState = {
     groupsLoadingType: 'pristine',
     activeTagProfileLoadingType: 'pristine',
     groups: {},
+    annotations: [],
   },
   newAnnotation: { type: 'pristine' },
 
@@ -281,11 +282,13 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchSideTimelines.fulfilled, (state, action) => {
       state.leftTimeline = {
         type: 'loaded',
-        timeline: action.payload.left,
+        timeline: action.payload.left.timeline,
+        annotations: action.payload.left.annotations,
       };
       state.rightTimeline = {
         type: 'loaded',
-        timeline: action.payload.right,
+        timeline: action.payload.right.timeline,
+        annotations: action.payload.right.annotations,
       };
     });
 

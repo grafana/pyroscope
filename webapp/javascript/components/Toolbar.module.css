@@ -1,0 +1,11 @@
+.leftSide {
+  display: flex;
+}
+
+.refreshAppsButton {
+  margin-left: 5px;
+}
+
+.appNamesLoading {
+  margin-left: 5px;
+}

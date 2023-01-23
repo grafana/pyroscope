@@ -8,6 +8,7 @@ import {
   fetchTagValues,
   selectQueries,
   selectTimelineSides,
+  selectAnnotationsOrDefault,
 } from '@webapp/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
@@ -45,6 +46,7 @@ function ComparisonDiffApp() {
     rightUntil,
   } = useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
+  const annotations = useAppSelector(selectAnnotationsOrDefault('diffView'));
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags();
@@ -119,11 +121,16 @@ function ComparisonDiffApp() {
               id="timeline-chart-diff"
               format="lines"
               height="125px"
+              annotations={annotations}
               timelineA={leftTimeline}
               timelineB={rightTimeline}
               onSelect={(from, until) => {
                 dispatch(actions.setFromAndUntil({ from, until }));
               }}
+              syncCrosshairsWith={[
+                'timeline-chart-left',
+                'timeline-chart-right',
+              ]}
               selection={{
                 left: {
                   from: leftFrom,
@@ -171,6 +178,10 @@ function ComparisonDiffApp() {
                 key="timeline-chart-left"
                 id="timeline-chart-left"
                 timelineA={leftTimeline}
+                syncCrosshairsWith={[
+                  'timeline-chart-diff',
+                  'timeline-chart-right',
+                ]}
                 selectionWithHandler
                 onSelect={(from, until) => {
                   dispatch(actions.setLeft({ from, until }));
@@ -206,6 +217,10 @@ function ComparisonDiffApp() {
                 id="timeline-chart-right"
                 selectionWithHandler
                 timelineA={rightTimeline}
+                syncCrosshairsWith={[
+                  'timeline-chart-diff',
+                  'timeline-chart-left',
+                ]}
                 onSelect={(from, until) => {
                   dispatch(actions.setRight({ from, until }));
                 }}
