@@ -1,6 +1,6 @@
 {
   "name": "@pyroscope/flamegraph",
-  "version": "0.34.3",
+  "version": "0.35.0",
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "_types": "since we are importing stuff from webapp (ui components), tsc ends up generating a weird file tree",
@@ -25,9 +25,9 @@
     "lint": "eslint ./ --cache --fix"
   },
   "peerDependencies": {
+    "graphviz-react": "^1.2.5",
     "react": ">=16.14.0",
     "react-dom": ">=16.14.0",
-    "graphviz-react": "^1.2.5",
     "true-myth": "^5.1.2"
   },
   "devDependencies": {

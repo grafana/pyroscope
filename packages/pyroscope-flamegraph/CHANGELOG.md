@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.35.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.3...@pyroscope/flamegraph@0.35.0) (2023-01-23)
+
+
+### Features
+
+* graphviz visualization support ([#1759](https://github.com/pyroscope-io/pyroscope/issues/1759)) ([ca855d2](https://github.com/pyroscope-io/pyroscope/commit/ca855d2eb424590393d8c0086a1ffcd00f2bc88c))
+
+
+
+
+
 ## [0.34.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.2...@pyroscope/flamegraph@0.34.3) (2022-12-02)
 
 
