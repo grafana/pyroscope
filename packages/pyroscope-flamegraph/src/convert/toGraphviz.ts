@@ -8,7 +8,7 @@ const edgeFraction = 0.001;
 const maxNodes = 80;
 
 // have to specify font name here, otherwise renderer won't size boxes properly
-// const fontName = "SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace";
+// const fontName = "SFMono-Regular, Consolas, Liberation Mono, Menlo, Courier,monospace";
 const fontName = '';
 
 function renderLabels(obj: { [key: string]: string | number }): string {
@@ -121,7 +121,10 @@ function renderNode(
     shape: 'box',
     tooltip: `${name} (${dur})`,
     color,
+    fontcolor: '#000000',
+    style: 'filled',
     fontname: fontName,
+    // margin: "0.7,0.055",
     fillcolor,
   };
   return `N${n.index} ${renderLabels(labels)}`;
@@ -476,7 +479,6 @@ export default function toGraphviz(p: Profile): string {
 
   return `digraph "unnamed" {
     fontname= "${fontName}"
-    node [style=filled fillcolor="#f8f8f8"]
     ${nodes.join('\n')}
     ${edges.join('\n')}
   }`;
