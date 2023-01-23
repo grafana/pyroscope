@@ -161,6 +161,7 @@
     "webpack-plugin-hash-output": "^3.2.1"
   },
   "dependencies": {
+    "graphviz-react": "^1.2.5",
     "@babel/plugin-transform-runtime": "^7.16.4",
     "@babel/preset-env": "^7.10.4",
     "@babel/preset-react": "^7.12.10",
@@ -277,6 +278,8 @@
   "resolutions": {
     "react": "16.14.0",
     "react-dom": "16.14.0",
-    "jquery": "3.6.0"
+    "jquery": "3.6.0",
+    "d3-graphviz": "5.0.2",
+    "d3-selection": "3.0.0"
   }
 }

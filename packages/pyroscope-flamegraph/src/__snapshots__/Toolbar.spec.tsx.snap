@@ -169,7 +169,7 @@ exports[`ProfileHeader should render toolbar correctly 1`] = `
           </div>
           <div
             class="item"
-            style="width: 176px;"
+            style="width: 220px;"
           >
             <div
               class="viewType"
@@ -262,6 +262,29 @@ exports[`ProfileHeader should render toolbar correctly 1`] = `
                       d="M58.06,41h-18.64c-1.58,0-3.14,.42-4.5,1.22l-6.88,4.02c-1.87,1.09-4.19,1.09-6.06,0l-6.88-4.02c-1.37-.8-2.92-1.22-4.5-1.22H5.94c-2.18,0-3.94,1.76-3.94,3.94v7.12c0,2.18,1.76,3.94,3.94,3.94H58.06c2.18,0,3.94-1.76,3.94-3.94v-7.12c0-2.18-1.76-3.94-3.94-3.94Z"
                     />
                   </g>
+                </svg>
+              </button>
+              <button
+                aria-label="GraphViz"
+                class="button default toggleViewButton noIcon"
+                data-mui-internal-clone-element="true"
+                data-testid="graphviz"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="svg-inline--fa fa-project-diagram fa-w-20 "
+                  data-icon="project-diagram"
+                  data-prefix="fas"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 640 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M384 320H256c-17.67 0-32 14.33-32 32v128c0 17.67 14.33 32 32 32h128c17.67 0 32-14.33 32-32V352c0-17.67-14.33-32-32-32zM192 32c0-17.67-14.33-32-32-32H32C14.33 0 0 14.33 0 32v128c0 17.67 14.33 32 32 32h95.72l73.16 128.04C211.98 300.98 232.4 288 256 288h.28L192 175.51V128h224V64H192V32zM608 0H480c-17.67 0-32 14.33-32 32v128c0 17.67 14.33 32 32 32h128c17.67 0 32-14.33 32-32V32c0-17.67-14.33-32-32-32z"
+                    fill="currentColor"
+                  />
                 </svg>
               </button>
             </div>

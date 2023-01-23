@@ -46,7 +46,7 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
 
 // this is a class and not a function because we can save some time by
 //   precalculating divider and suffix and not doing it on each iteration
-class DurationFormatter {
+export class DurationFormatter {
   divider = 1;
 
   enableSubsecondPrecision = false;
@@ -132,7 +132,7 @@ class DurationFormatter {
 
 // this is a class and not a function because we can save some time by
 //   precalculating divider and suffix and not doing it on each iteration
-class NanosecondsFormatter {
+export class NanosecondsFormatter {
   divider = 1;
 
   multiplier = 1;
