@@ -50,7 +50,9 @@ func sameProfileStream(i int) *testProfile {
 func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 	f, err := os.Open(path)
 	require.NoError(t, err)
-	defer require.NoError(t, f.Close())
+	defer func() {
+		require.NoError(t, f.Close())
+	}()
 	stat, err := f.Stat()
 	require.NoError(t, err)
 
