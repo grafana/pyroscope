@@ -14,8 +14,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/form"
+	"golang.org/x/exp/slices"
 	"io"
 	"io/fs"
+	"math/big"
 	"mime/multipart"
 	"os"
 	"sort"
@@ -55,6 +57,69 @@ func TestCompare(t *testing.T) {
 				testCompareOne(t, c, testType)
 			}
 		})
+	}
+}
+
+func TestIterateWithStackBuilder(t *testing.T) {
+	sb := &mockStackBuilder{stackID2Stack: make(map[uint64]string), stackID2Val: make(map[uint64]uint64)}
+	tree := tree.New()
+	tree.Insert([]byte(""), uint64(43))
+	tree.Insert([]byte("a"), uint64(42))
+	tree.Insert([]byte("a;b"), uint64(1))
+	tree.Insert([]byte("a;c"), uint64(2))
+	tree.Insert([]byte("a;d;e"), uint64(3))
+	tree.Insert([]byte("a;d;f"), uint64(4))
+
+	tree.IterateWithStackBuilder(sb, func(stackID uint64, v uint64) {
+		sb.stackID2Val[stackID] = v
+	})
+	sb.expectValue(t, 0, 43)
+	sb.expectValue(t, 1, 42)
+	sb.expectValue(t, 2, 1)
+	sb.expectValue(t, 3, 2)
+	sb.expectValue(t, 4, 3)
+	sb.expectValue(t, 5, 4)
+	sb.expectStack(t, 0, "")
+	sb.expectStack(t, 1, "a")
+	sb.expectStack(t, 2, "a;b")
+	sb.expectStack(t, 3, "a;c")
+	sb.expectStack(t, 4, "a;d;e")
+	sb.expectStack(t, 5, "a;d;f")
+}
+
+func TestIterateWithStackBuilderEmpty(t *testing.T) {
+	tree := tree.New()
+	sb := &mockStackBuilder{stackID2Stack: make(map[uint64]string), stackID2Val: make(map[uint64]uint64)}
+	tree.IterateWithStackBuilder(sb, func(stackID uint64, v uint64) {
+		t.Fatal()
+	})
+}
+
+func TestTreeIterationCorpus(t *testing.T) {
+	corpus := readCorpus(compareCorpus, benchWithoutGzip)
+	if len(corpus) == 0 {
+		t.Skip("empty corpus")
+		return
+	}
+	for _, c := range corpus {
+		key, _ := segment.ParseKey("foo.bar")
+		mock1 := &MockPutter{keep: true}
+		profile1 := pprof.RawProfile{
+			Profile:             c.profile,
+			PreviousProfile:     c.prev,
+			SampleTypeConfig:    c.config,
+			StreamingParser:     true,
+			PoolStreamingParser: true,
+			ArenasEnabled:       false,
+		}
+
+		err2 := profile1.Parse(context.TODO(), mock1, nil, ingestion.Metadata{Key: key, SpyName: c.spyname})
+		if err2 != nil {
+			t.Fatal(err2)
+		}
+		for _, put := range mock1.puts {
+			testIterateOne(t, put.ValTree)
+		}
 	}
 }
 
@@ -379,6 +444,27 @@ func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 	}
 }
 
+func testIterateOne(t *testing.T, pt *tree.Tree) {
+	sb := &mockStackBuilder{stackID2Stack: make(map[uint64]string), stackID2Val: make(map[uint64]uint64)}
+	var lines []string
+	pt.IterateWithStackBuilder(sb, func(stackID uint64, val uint64) {
+		lines = append(lines, fmt.Sprintf("%s %d", sb.stackID2Stack[stackID], val))
+	})
+	s := pt.String()
+	s = pt.String()
+	var expectedLines []string
+	if s != "" {
+		expectedLines = strings.Split(strings.Trim(s, "\n"), "\n")
+	}
+	slices.Sort(lines)
+	slices.Sort(expectedLines)
+	if !slices.Equal(lines, expectedLines) {
+		expected := strings.Join(expectedLines, "\n")
+		got := strings.Join(lines, "\n")
+		t.Fatalf("expected %v got\n%v", expected, got)
+	}
+}
+
 type PutInputCopy struct {
 	Val string
 	Key string
@@ -389,6 +475,7 @@ type PutInputCopy struct {
 	SampleRate      uint32
 	Units           metadata.Units
 	AggregationType metadata.AggregationType
+	ValTree         *tree.Tree
 }
 
 type MockPutter struct {
@@ -400,6 +487,7 @@ func (m *MockPutter) Put(_ context.Context, input *storage.PutInput) error {
 	if m.keep {
 		m.puts = append(m.puts, PutInputCopy{
 			Val:             input.Val.String(),
+			ValTree:         input.Val.Clone(big.NewRat(1, 1)),
 			Key:             input.Key.SegmentKey(),
 			StartTime:       input.StartTime,
 			EndTime:         input.EndTime,
@@ -410,4 +498,47 @@ func (m *MockPutter) Put(_ context.Context, input *storage.PutInput) error {
 		})
 	}
 	return nil
+}
+
+type mockStackBuilder struct {
+	ss [][]byte
+
+	stackID2Stack map[uint64]string
+	stackID2Val   map[uint64]uint64
+}
+
+func (s *mockStackBuilder) Push(frame []byte) {
+	s.ss = append(s.ss, frame)
+}
+
+func (s *mockStackBuilder) Pop() {
+	s.ss = s.ss[0 : len(s.ss)-1]
+}
+
+func (s *mockStackBuilder) Build() (stackID uint64) {
+	res := ""
+	for _, bs := range s.ss {
+		if len(res) != 0 {
+			res += ";"
+		}
+		res += string(bs)
+	}
+	id := uint64(len(s.stackID2Stack))
+	s.stackID2Stack[id] = res
+	return id
+}
+
+func (s *mockStackBuilder) Reset() {
+	s.ss = s.ss[:0]
+}
+
+func (s *mockStackBuilder) expectValue(t *testing.T, stackId, expected uint64) {
+	if s.stackID2Val[stackId] != expected {
+		t.Fatalf("expected at %d %d got %d", stackId, expected, s.stackID2Val[stackId])
+	}
+}
+func (s *mockStackBuilder) expectStack(t *testing.T, stackId uint64, expected string) {
+	if s.stackID2Stack[stackId] != expected {
+		t.Fatalf("expected at %d %s got %s", stackId, expected, s.stackID2Stack[stackId])
+	}
 }
