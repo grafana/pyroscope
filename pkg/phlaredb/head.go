@@ -175,7 +175,7 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 	}
 
 	// create profile store
-	h.profiles = newProfileStore(phlarectx, h.parquetConfig)
+	h.profiles = newProfileStore(phlarectx)
 
 	h.tables = []Table{
 		&h.strings,

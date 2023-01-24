@@ -82,11 +82,10 @@ type profileStore struct {
 	rowGroups []*rowGroupOnDisk
 }
 
-func newProfileStore(phlarectx context.Context, cfg *ParquetConfig) *profileStore {
+func newProfileStore(phlarectx context.Context) *profileStore {
 	var s = &profileStore{
 		logger:    phlarecontext.Logger(phlarectx),
 		metrics:   contextHeadMetrics(phlarectx),
-		cfg:       cfg,
 		persister: &schemav1.ProfilePersister{},
 		helper:    &profilesHelper{},
 	}
