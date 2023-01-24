@@ -102,7 +102,7 @@ func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 func TestProfileStore_Ingestion(t *testing.T) {
 	var (
 		ctx   = testContext(t)
-		store = newProfileStore(ctx, defaultParquetConfig)
+		store = newProfileStore(ctx)
 	)
 
 	for _, tc := range []struct {
