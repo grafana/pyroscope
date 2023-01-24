@@ -9,6 +9,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 	"github.com/valyala/bytebufferpool"
 	"io"
 	"sync"
@@ -33,6 +34,7 @@ type ParserConfig struct {
 	SkipExemplars bool
 	SampleTypes   map[string]*tree.SampleTypeConfig
 	Formatter     StackFormatter
+	ArenasEnabled bool
 }
 
 type VTStreamingParser struct {
@@ -42,6 +44,7 @@ type VTStreamingParser struct {
 	skipExemplars     bool
 	sampleTypesConfig map[string]*tree.SampleTypeConfig
 	Formatter         StackFormatter
+	ArenasEnabled     bool
 
 	sampleTypesFilter func(string) bool
 
@@ -73,6 +76,7 @@ type VTStreamingParser struct {
 	finder        finder
 	previousCache LabelsCache
 	newCache      LabelsCache
+	arena         arenahelper.ArenaWrapper
 }
 
 func NewStreamingParser(config ParserConfig) *VTStreamingParser {
@@ -80,7 +84,9 @@ func NewStreamingParser(config ParserConfig) *VTStreamingParser {
 	res.Reset(config)
 	return res
 }
-
+func (p *VTStreamingParser) FreeArena() {
+	arenahelper.Free(p.arena)
+}
 func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulativeOnly bool) (err error) {
 	p.startTime = startTime
 	p.endTime = endTime
@@ -145,17 +151,17 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 func (p *VTStreamingParser) countStructs() error {
 	err := p.UnmarshalVTProfile(p.profile, opFlagCountStructs)
 	if err == nil {
-		p.functions = grow(p.functions, p.nFunctions)
-		p.locations = grow(p.locations, p.nLocations)
-		p.strings = grow(p.strings, p.nStrings)
-		p.sampleTypes = grow(p.sampleTypes, p.nSampleTypes)
+		p.functions = grow(p.arena, p.functions, p.nFunctions)
+		p.locations = grow(p.arena, p.locations, p.nLocations)
+		p.strings = grow(p.arena, p.strings, p.nStrings)
+		p.sampleTypes = grow(p.arena, p.sampleTypes, p.nSampleTypes)
 		p.profileIDLabelIndex = 0
 	}
 	return err
 }
 
 func (p *VTStreamingParser) parseFunctionsAndLocations() error {
-	p.lineRefs.reset()
+	p.lineRefs.reset(p.arena, p.nLocations)
 	err := p.UnmarshalVTProfile(p.profile, opFlagParseStructs)
 	if err == nil {
 		p.finder = newFinder(p.functions, p.locations)
@@ -170,16 +176,16 @@ func (p *VTStreamingParser) parseFunctionsAndLocations() error {
 }
 
 func (p *VTStreamingParser) haveKnownSampleTypes() bool {
-	p.indexes = grow(p.indexes, len(p.sampleTypes))
-	p.types = grow(p.types, len(p.sampleTypes))
+	p.indexes = grow(p.arena, p.indexes, len(p.sampleTypes))
+	p.types = grow(p.arena, p.types, len(p.sampleTypes))
 	for i, s := range p.sampleTypes {
 		ssType := p.string(s.Type)
 
 		st := string(ssType)
 		if p.sampleTypesFilter(st) {
 			if !p.cumulativeOnly || (p.cumulativeOnly && p.sampleTypesConfig[st].Cumulative) {
-				p.indexes = append(p.indexes, i)
-				p.types = append(p.types, s.Type)
+				p.indexes = arenahelper.AppendA(p.indexes, i, p.arena)
+				p.types = arenahelper.AppendA(p.types, s.Type, p.arena)
 			}
 		}
 	}
@@ -213,20 +219,25 @@ func (p *VTStreamingParser) addStackFrame(l *line) error {
 	if !ok {
 		return nil
 	}
+	var frame []byte
 	switch p.Formatter {
 	case StackFrameFormatterRuby:
 		pFuncName := p.strings[f.name]
 		pFileName := p.strings[f.filename]
-		frame := []byte(fmt.Sprintf("%s:%d - %s",
+		frame = []byte(fmt.Sprintf("%s:%d - %s",
 			p.profile[(pFileName>>32):(pFileName&0xffffffff)],
 			l.line,
 			p.profile[(pFuncName>>32):(pFuncName&0xffffffff)]))
-		p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, frame)
 	default:
 	case StackFrameFormatterGo:
 		pFuncName := p.strings[f.name]
-		frame := p.profile[(pFuncName >> 32):(pFuncName & 0xffffffff)]
-		p.tmpSample.tmpStack = append(p.tmpSample.tmpStack, frame)
+		frame = p.profile[(pFuncName >> 32):(pFuncName & 0xffffffff)]
+	}
+	pSample := &p.tmpSample
+	if len(pSample.tmpStack) < cap(pSample.tmpStack) {
+		pSample.tmpStack = append(pSample.tmpStack, frame)
+	} else {
+		pSample.tmpStack = arenahelper.AppendA(pSample.tmpStack, frame, p.arena)
 	}
 	return nil
 }
@@ -271,13 +282,14 @@ func (p *VTStreamingParser) createTrees() {
 		if v == 0 {
 			continue
 		}
+		s := p.tmpSample.tmpStack
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
-			p.newCache.GetOrCreateTree(vi, CutLabel(p.tmpSample.tmpLabels, j)).InsertStack(p.tmpSample.tmpStack, v)
+			p.newCache.GetOrCreateTree(vi, CutLabel(p.arena, p.tmpSample.tmpLabels, j)).InsertStackA(s, v)
 			if p.skipExemplars {
 				continue
 			}
 		}
-		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStack(p.tmpSample.tmpStack, v)
+		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStackA(s, v)
 	}
 }
 
@@ -400,6 +412,12 @@ func (p *VTStreamingParser) Reset(config ParserConfig) {
 	p.newCache.Reset()
 	p.sampleTypesFilter = filterKnownSamples(config.SampleTypes)
 	p.Formatter = config.Formatter
+	p.ArenasEnabled = config.ArenasEnabled
+	if config.ArenasEnabled {
+		p.arena = arenahelper.NewArenaWrapper()
+		p.previousCache.arena = p.arena
+		p.newCache.arena = p.arena
+	}
 }
 
 func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(string) bool {
@@ -419,9 +437,9 @@ func findLabelIndex(tmpLabels []uint64, k int64) int {
 	return -1
 }
 
-func grow[T any](it []T, n int) []T {
+func grow[T any](a arenahelper.ArenaWrapper, it []T, n int) []T {
 	if it == nil || n > cap(it) {
-		return make([]T, 0, n)
+		return arenahelper.MakeSlice[T](a, 0, n)
 	}
 	return it[:0]
 }

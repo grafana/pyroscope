@@ -3,6 +3,7 @@ package streaming
 import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 	"golang.org/x/exp/slices"
 	"reflect"
 	"unsafe"
@@ -37,11 +38,13 @@ type LabelsCache struct {
 	labelRefs []uint64
 	labels    []uint64 // Packed label Key and Value indices
 	trees     []*tree.Tree
+
+	arena arenahelper.ArenaWrapper
 }
 
 func (c *LabelsCache) Reset() {
 	if c.indices == nil {
-		c.indices = make([]map[uint64]int, 4, 4)
+		c.indices = arenahelper.MakeSlice[map[uint64]int](c.arena, 4, 4)
 	} else {
 		for i := range c.indices {
 			c.indices[i] = nil
@@ -63,7 +66,7 @@ func (c *LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *tree.Tree 
 	}
 	p := c.indices[sampleTypeIndex]
 	if p == nil {
-		e, t := c.newCacheEntry(l)
+		e, t := c.newCacheEntryA(l)
 		c.indices[sampleTypeIndex] = map[uint64]int{l.Hash(): e}
 		return t
 	}
@@ -72,7 +75,7 @@ func (c *LabelsCache) GetOrCreateTree(sampleTypeIndex int, l Labels) *tree.Tree 
 	if found {
 		return c.trees[e]
 	}
-	e, t := c.newCacheEntry(l)
+	e, t := c.newCacheEntryA(l)
 	p[h] = e
 	return t
 }
@@ -134,8 +137,8 @@ func (c *LabelsCache) iterate(f func(sampleTypeIndex int, l Labels, lh uint64, t
 }
 
 // CutLabel creates a copy of labels without label i.
-func CutLabel(labels Labels, i int) Labels {
-	c := make(Labels, len(labels)-1)
+func CutLabel(a arenahelper.ArenaWrapper, labels Labels, i int) Labels {
+	c := arenahelper.MakeSlice[uint64](a, len(labels)-1, len(labels)-1)
 	copy(c[:i], labels[:i])
 	copy(c[i:], labels[i+1:])
 	return c

@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 	"io"
 )
 
@@ -10,12 +11,12 @@ type locationFunctions struct {
 	lines []line
 }
 
-func (l *locationFunctions) reset() {
-	l.lines = l.lines[:0]
+func (l *locationFunctions) reset(a arenahelper.ArenaWrapper, nLocations int) {
+	l.lines = grow(a, l.lines, nLocations*2)
 }
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (m *location) UnmarshalVT(dAtA []byte, functions *locationFunctions) error {
+func (m *location) UnmarshalVT(dAtA []byte, functions *locationFunctions, a arenahelper.ArenaWrapper) error {
 	var tmpLine line
 	m.id = 0
 	m.linesRef = 0
@@ -138,7 +139,11 @@ func (m *location) UnmarshalVT(dAtA []byte, functions *locationFunctions) error 
 			if err := tmpLine.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			functions.lines = append(functions.lines, tmpLine)
+			if len(functions.lines) < cap(functions.lines) {
+				functions.lines = append(functions.lines, tmpLine)
+			} else {
+				functions.lines = arenahelper.AppendA(functions.lines, tmpLine, a)
+			}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {

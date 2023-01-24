@@ -2,13 +2,14 @@ package streaming
 
 import (
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 
 	"io"
 )
 
 func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
-	p.tmpSample.reset()
-	err := p.tmpSample.UnmarshalSampleVT(buffer)
+	p.tmpSample.reset(p.arena)
+	err := p.tmpSample.UnmarshalSampleVT(buffer, p.arena)
 	if err != nil {
 		return err
 	}
@@ -26,7 +27,7 @@ func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 }
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
-func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
+func (s *sample) UnmarshalSampleVT(dAtA []byte, a arenahelper.ArenaWrapper) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -77,7 +78,11 @@ func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
 				//	return err
 				//}
 				//m.LocationId = append(m.LocationId, v)
-				s.tmpStackLoc = append(s.tmpStackLoc, v)
+				if len(s.tmpStackLoc) < cap(s.tmpStackLoc) {
+					s.tmpStackLoc = append(s.tmpStackLoc, v)
+				} else {
+					s.tmpStackLoc = arenahelper.AppendA(s.tmpStackLoc, v, a)
+				}
 			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
@@ -136,7 +141,11 @@ func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
 					//if err != nil {
 					//	return err
 					//}
-					s.tmpStackLoc = append(s.tmpStackLoc, v)
+					if len(s.tmpStackLoc) < cap(s.tmpStackLoc) {
+						s.tmpStackLoc = append(s.tmpStackLoc, v)
+					} else {
+						s.tmpStackLoc = arenahelper.AppendA(s.tmpStackLoc, v, a)
+					}
 				}
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field LocationId", wireType)
@@ -159,7 +168,11 @@ func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
 					}
 				}
 				//m.Value = append(m.Value, v)
-				s.tmpValues = append(s.tmpValues, v)
+				if len(s.tmpValues) < cap(s.tmpValues) {
+					s.tmpValues = append(s.tmpValues, v)
+				} else {
+					s.tmpValues = arenahelper.AppendA(s.tmpValues, v, a)
+				}
 			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
@@ -214,7 +227,11 @@ func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
 						}
 					}
 					//m.Value = append(m.Value, v)
-					s.tmpValues = append(s.tmpValues, v)
+					if len(s.tmpValues) < cap(s.tmpValues) {
+						s.tmpValues = append(s.tmpValues, v)
+					} else {
+						s.tmpValues = arenahelper.AppendA(s.tmpValues, v, a)
+					}
 				}
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
@@ -258,7 +275,11 @@ func (s *sample) UnmarshalSampleVT(dAtA []byte) error {
 			}
 			v := tmpLabel & 0xffffffff
 			if v != 0 {
-				s.tmpLabels = append(s.tmpLabels, tmpLabel)
+				if len(s.tmpLabels) < cap(s.tmpLabels) {
+					s.tmpLabels = append(s.tmpLabels, tmpLabel)
+				} else {
+					s.tmpLabels = arenahelper.AppendA(s.tmpLabels, tmpLabel, a)
+				}
 			}
 			iNdEx = postIndex
 		default:

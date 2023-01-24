@@ -19,6 +19,14 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 	countStructs := opFlag&opFlagCountStructs == opFlagCountStructs
 	parseStructs := opFlag&opFlagParseStructs == opFlagParseStructs
 	parseSamples := opFlag&opFlagParseSamples == opFlagParseSamples
+	strWriteIndex := 0
+	locationWriteIndex := 0
+	functionWriteIndex := 0
+	sampelTypeWriteIndex := 0
+	p.strings = p.strings[:cap(p.strings)]
+	p.locations = p.locations[:cap(p.locations)]
+	p.functions = p.functions[:cap(p.functions)]
+	p.sampleTypes = p.sampleTypes[:cap(p.sampleTypes)]
 	if countStructs {
 		p.period = 0
 		p.nStrings = 0
@@ -85,10 +93,11 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 				p.nSampleTypes++
 			}
 			if parseStructs {
-				p.sampleTypes = append(p.sampleTypes, valueType{})
-				if err := p.sampleTypes[len(p.sampleTypes)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				//p.sampleTypes = append(p.sampleTypes, valueType{})
+				if err := p.sampleTypes[sampelTypeWriteIndex].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
+				sampelTypeWriteIndex++
 			}
 			iNdEx = postIndex
 		case 2:
@@ -189,10 +198,11 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 				p.nLocations++
 			}
 			if parseStructs {
-				p.locations = append(p.locations, location{})
-				if err := p.locations[len(p.locations)-1].UnmarshalVT(dAtA[iNdEx:postIndex], &p.lineRefs); err != nil {
+				//p.locations = append(p.locations, location{})
+				if err := p.locations[locationWriteIndex].UnmarshalVT(dAtA[iNdEx:postIndex], &p.lineRefs, p.arena); err != nil {
 					return err
 				}
+				locationWriteIndex++
 			}
 			iNdEx = postIndex
 		case 5:
@@ -228,10 +238,11 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 				p.nFunctions++
 			}
 			if parseStructs {
-				p.functions = append(p.functions, function{})
-				if err := p.functions[len(p.functions)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				//p.functions = append(p.functions, function{})
+				if err := p.functions[functionWriteIndex].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
+				functionWriteIndex++
 			}
 			iNdEx = postIndex
 		case 6:
@@ -270,10 +281,11 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 			if parseStructs {
 				s := dAtA[iNdEx:postIndex]
 				if bytes.Equal(s, profileIDLabel) {
-					p.profileIDLabelIndex = int64(len(p.strings))
+					p.profileIDLabelIndex = int64(strWriteIndex)
 				}
 				ps := istr(iNdEx<<32 | postIndex)
-				p.strings = append(p.strings, ps)
+				p.strings[strWriteIndex] = ps
+				strWriteIndex++
 			}
 			iNdEx = postIndex
 		case 7:

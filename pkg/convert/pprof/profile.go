@@ -33,6 +33,7 @@ type RawProfile struct {
 	SkipExemplars       bool
 	StreamingParser     bool
 	PoolStreamingParser bool
+	ArenasEnabled       bool
 	SampleTypeConfig    map[string]*tree.SampleTypeConfig
 }
 
@@ -160,7 +161,14 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 					p.parser = nil
 				}()
 			} else {
-				p.parser = streaming.NewStreamingParser(config)
+				if p.ArenasEnabled {
+					config.ArenasEnabled = true
+				}
+				parser := streaming.NewStreamingParser(config)
+				p.parser = parser
+				if p.ArenasEnabled {
+					defer parser.FreeArena()
+				}
 			}
 		} else {
 			p.parser = NewParser(ParserConfig{

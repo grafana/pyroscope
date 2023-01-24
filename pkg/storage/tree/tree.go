@@ -3,6 +3,7 @@ package tree
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 	"math/big"
 	"sort"
 	"sync"
@@ -47,7 +48,8 @@ const semicolon = byte(';')
 
 type Tree struct {
 	sync.RWMutex
-	root *treeNode
+	root  *treeNode
+	arena arenahelper.ArenaWrapper
 }
 
 func New() *Tree {
