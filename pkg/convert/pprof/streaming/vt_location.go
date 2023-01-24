@@ -12,10 +12,7 @@ type locationFunctions struct {
 }
 
 func (l *locationFunctions) reset(a arenahelper.ArenaWrapper, nLocations int) {
-	if l.lines == nil {
-		l.lines = arenahelper.MakeSlice[line](a, 0, nLocations*2)
-	}
-	l.lines = l.lines[:0]
+	l.lines = grow(a, l.lines, nLocations*2)
 }
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
