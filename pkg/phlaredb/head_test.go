@@ -240,9 +240,9 @@ func TestHeadIngestStacktraces(t *testing.T) {
 	ctx := context.Background()
 	head := newTestHead(t)
 
-	require.NoError(t, head.Ingest(ctx, newProfileFoo(), uuid.New()))
-	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.New()))
-	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.New()))
+	require.NoError(t, head.Ingest(ctx, newProfileFoo(), uuid.MustParse("00000000-0000-0000-0000-00000000000a")))
+	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.MustParse("00000000-0000-0000-0000-00000000000b")))
+	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.MustParse("00000000-0000-0000-0000-00000000000c")))
 
 	// expect 2 mappings
 	require.Equal(t, 2, len(head.mappings.slice))
