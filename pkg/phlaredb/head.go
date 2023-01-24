@@ -126,7 +126,6 @@ type Head struct {
 	metaLock sync.RWMutex
 	meta     *block.Meta
 
-	index           *profilesIndex
 	parquetConfig   *ParquetConfig
 	strings         deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
 	mappings        deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
@@ -169,18 +168,14 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 		h.parquetConfig = cfg.Parquet
 	}
 
-	// create index
-	index, err := newProfileIndex(32, h.metrics)
+	// ensure folder is writable
+	err := os.MkdirAll(h.headPath, defaultFolderMode)
 	if err != nil {
 		return nil, err
 	}
 
 	// create profile store
-	h.profiles = newProfileStore(phlarectx, h.parquetConfig, index)
-
-	if err := os.MkdirAll(h.headPath, defaultFolderMode); err != nil {
-		return nil, err
-	}
+	h.profiles = newProfileStore(phlarectx, h.parquetConfig)
 
 	h.tables = []Table{
 		&h.strings,
@@ -196,7 +191,6 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 		}
 	}
 
-	h.index = index
 	h.delta = newDeltaProfiles()
 
 	h.pprofLabelCache.init()
@@ -419,7 +413,7 @@ func labelsForProfile(p *profilev1.Profile, externalLabels ...*typesv1.LabelPair
 
 // LabelValues returns the possible label values for a given label name.
 func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
-	values, err := h.index.ix.LabelValues(req.Msg.Name, nil)
+	values, err := h.profiles.index.ix.LabelValues(req.Msg.Name, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +424,7 @@ func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.La
 
 // LabelValues returns the possible label values for a given label name.
 func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
-	values, err := h.index.ix.LabelNames(nil)
+	values, err := h.profiles.index.ix.LabelNames(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +436,7 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1.Lab
 
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	values, err := h.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
+	values, err := h.profiles.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +474,7 @@ func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.Sele
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
 	selectors = append(selectors, phlaremodel.SelectorFromProfileType(params.Type))
-	return h.index.SelectProfiles(selectors, model.Time(params.Start), model.Time(params.End))
+	return h.profiles.index.SelectProfiles(selectors, model.Time(params.Start), model.Time(params.End))
 }
 
 func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
@@ -793,7 +787,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	response := &ingestv1.SeriesResponse{}
 	uniqu := map[model.Fingerprint]struct{}{}
 	for _, selector := range selectors {
-		if err := h.index.forMatchingLabels(selector, func(lbs phlaremodel.Labels, fp model.Fingerprint) error {
+		if err := h.profiles.index.forMatchingLabels(selector, func(lbs phlaremodel.Labels, fp model.Fingerprint) error {
 			if _, ok := uniqu[fp]; ok {
 				return nil
 			}
@@ -833,12 +827,13 @@ func (h *Head) Flush(ctx context.Context) error {
 	files := make([]block.File, len(h.tables)+1)
 
 	// write index
+	// TODO: This should be part of the profiles flush()
 	indexPath := filepath.Join(h.headPath, block.IndexFilename)
-	if err := h.index.WriteTo(ctx, indexPath); err != nil {
+	if err := h.profiles.index.WriteTo(ctx, indexPath); err != nil {
 		return errors.Wrap(err, "flushing of index")
 	}
 	files[0].RelPath = block.IndexFilename
-	h.meta.Stats.NumSeries = uint64(h.index.totalSeries.Load())
+	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
 	files[0].TSDB = &block.TSDBFile{
 		NumSeries: h.meta.Stats.NumSeries,
 	}
@@ -876,7 +871,7 @@ func (h *Head) Flush(ctx context.Context) error {
 		return files[i].RelPath < files[j].RelPath
 	})
 	h.meta.Files = files
-	h.meta.Stats.NumProfiles = uint64(h.index.totalProfiles.Load())
+	h.meta.Stats.NumProfiles = uint64(h.profiles.index.totalProfiles.Load())
 	h.meta.Stats.NumSamples = h.totalSamples.Load()
 
 	if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {

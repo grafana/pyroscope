@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/model"
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
@@ -29,7 +30,7 @@ type profileGetter struct {
 	p *schemav1.Profile
 
 	// second try read from row group
-	rowGroup parquet.RowGroup
+	rowGroup *rowGroupOnDisk
 	rowNum   int64
 }
 
@@ -43,15 +44,15 @@ func (pg *profileGetter) Get() *schemav1.Profile {
 	}
 
 	reader := parquet.NewGenericRowGroupReader[*schemav1.Profile](pg.rowGroup)
-	if err := reader.SeekToRow(pg.rowNum); err != nil {
+	if err := reader.SeekToRow(pg.rowNum - 1); err != nil {
 		// TODO: Log error here
-		panic(err)
+		panic(fmt.Errorf("unable to seek row_num=%d from %s: %w", pg.rowNum, pg.rowGroup.file.Name(), err))
 	}
 
 	profiles := make([]*schemav1.Profile, 1)
 	if _, err := reader.Read(profiles); err != nil {
 		// TODO: Log error here
-		panic(err)
+		panic(fmt.Errorf("unable to get row_num=%d from %s: %w", pg.rowNum, pg.rowGroup.file.Name(), err))
 	}
 
 	return profiles[0]
@@ -62,6 +63,8 @@ type profileStore struct {
 	getters []*profileGetter
 	size    atomic.Uint64
 	lock    sync.RWMutex
+
+	metrics *headMetrics
 
 	index *profilesIndex
 
@@ -79,13 +82,13 @@ type profileStore struct {
 	rowGroups []*rowGroupOnDisk
 }
 
-func newProfileStore(phlarectx context.Context, cfg *ParquetConfig, index *profilesIndex) *profileStore {
+func newProfileStore(phlarectx context.Context, cfg *ParquetConfig) *profileStore {
 	var s = &profileStore{
 		logger:    phlarecontext.Logger(phlarectx),
+		metrics:   contextHeadMetrics(phlarectx),
 		cfg:       cfg,
 		persister: &schemav1.ProfilePersister{},
 		helper:    &profilesHelper{},
-		index:     index,
 	}
 
 	// Initialize writer on /dev/null
@@ -107,7 +110,7 @@ func (s *profileStore) Size() uint64 {
 }
 
 // resets the store
-func (s *profileStore) Init(path string, cfg *ParquetConfig) error {
+func (s *profileStore) Init(path string, cfg *ParquetConfig) (err error) {
 	// close previous iteration
 	if err := s.Close(); err != nil {
 		return err
@@ -115,6 +118,12 @@ func (s *profileStore) Init(path string, cfg *ParquetConfig) error {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	// create index
+	s.index, err = newProfileIndex(32, s.metrics)
+	if err != nil {
+		return err
+	}
 
 	s.path = path
 	s.cfg = cfg
@@ -154,7 +163,34 @@ func (s *profileStore) Flush() (numRows uint64, numRowGroups uint64, err error) 
 		s.persister.Name()+block.ParquetSuffix,
 	)
 
-	// TODO: Somewhere here we need to make sure the SeriesID gets set
+	// TODO: Somewhere here we need to make sure the SeriesIndex gets set
+	// prepare series id rewritter
+	colSeriesIndex, found := s.persister.Schema().Lookup("SeriesIndex")
+	if !found {
+		return 0, 0, errors.New("SeriesIndex column not found")
+	}
+	colSeriesFingerprint, found := s.persister.Schema().Lookup("SeriesFingerprint")
+	if !found {
+		return 0, 0, errors.New("SeriesFingerprint column not found")
+	}
+
+	seriesIDRowRewritter := func(rows []parquet.Row) error {
+		for _, r := range rows {
+			fp := model.Fingerprint(r[colSeriesFingerprint.ColumnIndex].Uint64())
+			seriesIndex, found := s.index.seriesIndexes[fp]
+			if !found {
+				return errors.Errorf("series with fingerprint %d not found in the index, make sure index has already been written", fp)
+			}
+
+			// update series index column for each row
+			r[colSeriesIndex.ColumnIndex] = parquet.ValueOf(seriesIndex).Level(0, 0, colSeriesIndex.ColumnIndex)
+
+		}
+		return nil
+	}
+	for _, rowGroup := range s.rowGroups {
+		rowGroup.seriesIDRowRewriter = seriesIDRowRewritter
+	}
 
 	numRows, numRowGroups, err = s.writeRowGroups(path, s.RowGroups())
 	if err != nil {
@@ -342,7 +378,8 @@ func (s *profileStore) NumRows() int64 {
 
 type rowGroupOnDisk struct {
 	parquet.RowGroup
-	file *os.File
+	file                *os.File
+	seriesIDRowRewriter func([]parquet.Row) error
 }
 
 func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
@@ -376,6 +413,31 @@ func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
 
 	return r, nil
 
+}
+
+func (r *rowGroupOnDisk) Rows() parquet.Rows {
+	return seriesIDRowsRewriter{
+		Rows:             r.RowGroup.Rows(),
+		seriesIDRewriter: r.seriesIDRowRewriter,
+	}
+}
+
+type seriesIDRowsRewriter struct {
+	parquet.Rows
+	seriesIDRewriter func([]parquet.Row) error
+}
+
+func (r seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
+	n, err := r.Rows.ReadRows(rows)
+	if r.seriesIDRewriter == nil || err != nil {
+		return n, err
+	}
+
+	if err := r.seriesIDRewriter(rows[:n]); err != nil {
+		return 0, err
+	}
+
+	return n, nil
 }
 
 func (r *rowGroupOnDisk) Close() error {

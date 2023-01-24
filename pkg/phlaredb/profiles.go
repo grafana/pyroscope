@@ -29,6 +29,7 @@ type profilesIndex struct {
 	ix *tsdb.BitPrefixInvertedIndex
 	// todo: like the inverted index we might want to shard fingerprint to avoid contentions.
 	profilesPerFP map[model.Fingerprint]*profileLabels
+	seriesIndexes map[model.Fingerprint]uint32
 	mutex         sync.RWMutex
 	totalProfiles *atomic.Int64
 	totalSeries   *atomic.Int64
@@ -72,6 +73,7 @@ func (pi *profilesIndex) addWithGetter(pg *profileGetter, lbs phlaremodel.Labels
 		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
 	profiles.profiles = append(profiles.profiles, pg)
+
 	pi.totalProfiles.Inc()
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
@@ -298,8 +300,11 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 			return err
 		}
 	}
+
 	// Add series
+	pi.seriesIndexes = make(map[model.Fingerprint]uint32, len(pfs))
 	for i, s := range pfs {
+		// TODO: With profile getter this is quite inefficient, we should do this at ingest time and store per label fingerprint
 		min, max := minmax(s.profiles)
 		if err := writer.AddSeries(storage.SeriesRef(i), s.lbs, s.fp, index.ChunkMeta{
 			MinTime: min,
@@ -309,14 +314,8 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 		}); err != nil {
 			return err
 		}
-		// also rewrite the SeriesIndex
-		for _, pg := range s.profiles {
-			// TODO: This won't work
-			p := pg.Get()
-			if p.SeriesFingerprint == s.fp {
-				p.SeriesIndex = uint32(i)
-			}
-		}
+		// store series index
+		pi.seriesIndexes[s.fp] = uint32(i)
 	}
 
 	return writer.Close()
