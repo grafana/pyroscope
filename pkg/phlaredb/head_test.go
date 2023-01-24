@@ -23,11 +23,10 @@ import (
 
 func newTestHead(t testing.TB) *testHead {
 	dataPath := t.TempDir()
-	reg := prometheus.NewPedanticRegistry()
-	ctx := phlarecontext.WithRegistry(context.Background(), reg)
+	ctx := testContext(t)
 	head, err := NewHead(ctx, Config{DataPath: dataPath})
 	require.NoError(t, err)
-	return &testHead{Head: head, t: t, reg: reg}
+	return &testHead{Head: head, t: t, reg: phlarecontext.Registry(ctx).(*prometheus.Registry)}
 }
 
 type testHead struct {

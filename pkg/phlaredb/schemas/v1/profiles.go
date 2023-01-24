@@ -25,6 +25,7 @@ var (
 	profilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField("SeriesFingerprint", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Samples", parquet.List(sampleField)),
 		phlareparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
 		phlareparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
@@ -54,7 +55,7 @@ type Profile struct {
 	// SeriesFingerprint references the underlying series and is purely based
 	// on the label values. The value is consistent for the same label set (so
 	// also between different blocks).
-	SeriesFingerprint model.Fingerprint `parquet:"-"`
+	SeriesFingerprint model.Fingerprint `parquet:",delta"`
 
 	// The set of samples recorded in this profile.
 	Samples []*Sample `parquet:",list"`
