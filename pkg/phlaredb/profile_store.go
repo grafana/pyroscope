@@ -14,7 +14,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
@@ -25,44 +24,10 @@ import (
 	"github.com/grafana/phlare/pkg/util/build"
 )
 
-type profileGetter struct {
-	// first preference a direct profile reference
-	p *schemav1.Profile
-
-	// second try read from row group
-	rowGroup *rowGroupOnDisk
-	rowNum   int64
-}
-
-func (pg *profileGetter) Get() *schemav1.Profile {
-	if pg.p != nil {
-		return pg.p
-	}
-
-	if pg.rowGroup == nil {
-		return nil
-	}
-
-	reader := parquet.NewGenericRowGroupReader[*schemav1.Profile](pg.rowGroup)
-	if err := reader.SeekToRow(pg.rowNum - 1); err != nil {
-		// TODO: Log error here
-		panic(fmt.Errorf("unable to seek row_num=%d from %s: %w", pg.rowNum, pg.rowGroup.file.Name(), err))
-	}
-
-	profiles := make([]*schemav1.Profile, 1)
-	if _, err := reader.Read(profiles); err != nil {
-		// TODO: Log error here
-		panic(fmt.Errorf("unable to get row_num=%d from %s: %w", pg.rowNum, pg.rowGroup.file.Name(), err))
-	}
-
-	return profiles[0]
-}
-
 type profileStore struct {
-	slice   []*schemav1.Profile
-	getters []*profileGetter
-	size    atomic.Uint64
-	lock    sync.RWMutex
+	slice []*schemav1.Profile
+	size  atomic.Uint64
+	lock  sync.RWMutex
 
 	metrics *headMetrics
 
@@ -127,7 +92,6 @@ func (s *profileStore) Init(path string, cfg *ParquetConfig) (err error) {
 	s.path = path
 	s.cfg = cfg
 
-	s.getters = s.getters[:0]
 	s.slice = s.slice[:0]
 
 	s.rowsFlushed = 0
@@ -140,6 +104,7 @@ func (s *profileStore) Close() error {
 }
 
 func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
+
 	rowGroups = make([]parquet.RowGroup, len(s.rowGroups))
 	for pos := range rowGroups {
 		rowGroups[pos] = s.rowGroups[pos]
@@ -147,8 +112,31 @@ func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
 	return rowGroups
 }
 
-func (s *profileStore) Flush() (numRows uint64, numRowGroups uint64, err error) {
-	// close ingest loop
+func (s *profileStore) profileSort(i, j int) bool {
+	// first compare the labels, if they don't match return
+	var (
+		pI   = s.slice[i]
+		pJ   = s.slice[j]
+		lbsI = s.index.profilesPerFP[pI.SeriesFingerprint].lbs
+		lbsJ = s.index.profilesPerFP[pJ.SeriesFingerprint].lbs
+	)
+	if cmp := phlaremodel.CompareLabelPairs(lbsI, lbsJ); cmp != 0 {
+		return cmp < 0
+	}
+
+	// then compare timenanos, if they don't match return
+	if pI.TimeNanos < pJ.TimeNanos {
+		return true
+	} else if pI.TimeNanos > pJ.TimeNanos {
+		return false
+	}
+
+	// finally use ID as tie breaker
+	return bytes.Compare(pI.ID[:], pJ.ID[:]) < 0
+
+}
+
+func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups uint64, err error) {
 	if err := s.Close(); err != nil {
 		return 0, 0, err
 	}
@@ -157,41 +145,21 @@ func (s *profileStore) Flush() (numRows uint64, numRowGroups uint64, err error) 
 		return 0, 0, err
 	}
 
-	path := filepath.Join(
+	indexPath := filepath.Join(
+		s.path,
+		block.IndexFilename,
+	)
+
+	if err := s.index.writeTo(ctx, indexPath); err != nil {
+		return 0, 0, err
+	}
+
+	parquetPath := filepath.Join(
 		s.path,
 		s.persister.Name()+block.ParquetSuffix,
 	)
 
-	// TODO: Somewhere here we need to make sure the SeriesIndex gets set
-	// prepare series id rewritter
-	colSeriesIndex, found := s.persister.Schema().Lookup("SeriesIndex")
-	if !found {
-		return 0, 0, errors.New("SeriesIndex column not found")
-	}
-	colSeriesFingerprint, found := s.persister.Schema().Lookup("SeriesFingerprint")
-	if !found {
-		return 0, 0, errors.New("SeriesFingerprint column not found")
-	}
-
-	seriesIDRowRewritter := func(rows []parquet.Row) error {
-		for _, r := range rows {
-			fp := model.Fingerprint(r[colSeriesFingerprint.ColumnIndex].Uint64())
-			seriesIndex, found := s.index.seriesIndexes[fp]
-			if !found {
-				return errors.Errorf("series with fingerprint %d not found in the index, make sure index has already been written", fp)
-			}
-
-			// update series index column for each row
-			r[colSeriesIndex.ColumnIndex] = parquet.ValueOf(seriesIndex).Level(0, 0, colSeriesIndex.ColumnIndex)
-
-		}
-		return nil
-	}
-	for _, rowGroup := range s.rowGroups {
-		rowGroup.seriesIDRowRewriter = seriesIDRowRewritter
-	}
-
-	numRows, numRowGroups, err = s.writeRowGroups(path, s.RowGroups())
+	numRows, numRowGroups, err = s.writeRowGroups(parquetPath, s.RowGroups())
 	if err != nil {
 		return 0, 0, err
 	}
@@ -237,7 +205,8 @@ func (s *profileStore) cutRowGroup() (err error) {
 	}
 	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing row group segment file")
 
-	// note: the slice is already in the right order because it is getting sorted during ingest
+	// order profiles properly
+	sort.Slice(s.slice, s.profileSort)
 
 	n, err := s.writer.Write(s.slice)
 	if err != nil {
@@ -256,17 +225,13 @@ func (s *profileStore) cutRowGroup() (err error) {
 	}
 	s.rowGroups = append(s.rowGroups, rowGroup)
 
-	// Upgrade profile getters to point to correct location
-	for pos, pg := range s.getters {
-		// TODO: Reuse the profile struct eventually by using a pool
-		pg.p = nil
-
-		pg.rowNum = int64(pos) + 1
-		pg.rowGroup = rowGroup
+	// let index know about row group
+	if err := s.index.cutRowGroup(s.slice, rowGroup); err != nil {
+		return err
 	}
 
+	// reset slice and metrics
 	s.slice = s.slice[:0]
-	s.getters = s.getters[:0]
 	s.size.Store(0)
 
 	return nil
@@ -300,19 +265,11 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 }
 
 func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, lbs phlaremodel.Labels, profileName string, rewriter *rewriter) error {
-
-	var (
-		getters = make([]*profileGetter, len(profiles))
-	)
-
+	// rewrite elements
 	for pos := range profiles {
-		// rewrite elements
 		if err := s.helper.rewrite(rewriter, profiles[pos]); err != nil {
 			return err
 		}
-
-		// prepare getters
-		getters[pos] = &profileGetter{p: profiles[pos]}
 	}
 
 	s.lock.Lock()
@@ -329,42 +286,13 @@ func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, l
 		}
 
 		// add profile to the index
-		s.index.addWithGetter(getters[pos], lbs, profileName)
+		s.index.Add(p, lbs, profileName)
 
 		// increase size of stored data
 		s.size.Add(s.helper.size(profiles[pos]))
 
-		// find correct position in the slice using binary search. The order needs to match the one from the schema
-		posProfile, _ := sort.Find(len(s.slice), func(i int) int {
-			// first compare the labels, if they don't match return
-			if cmp := phlaremodel.CompareLabelPairs(lbs, s.index.profilesPerFP[s.slice[i].SeriesFingerprint].lbs); cmp != 0 {
-				return cmp
-			}
-
-			// then compare timenanos, if they don't match return
-			if s.slice[i].TimeNanos < p.TimeNanos {
-				return 1
-			} else if s.slice[i].TimeNanos > p.TimeNanos {
-				return -1
-			}
-
-			// finally use ID as tie breaker
-			return bytes.Compare(p.ID[:], s.slice[i].ID[:])
-		})
-
-		// insert at the end of the slices
-		if len(s.slice) == posProfile {
-			s.slice = append(s.slice, p)
-			s.getters = append(s.getters, getters[pos])
-			continue
-		}
-
-		// make room at the correct position
-		s.slice = append(s.slice[:posProfile+1], s.slice[posProfile:]...)
-		s.getters = append(s.getters[:posProfile+1], s.getters[posProfile:]...)
-
-		s.slice[posProfile] = p
-		s.getters[posProfile] = getters[pos]
+		// add to slice
+		s.slice = append(s.slice, p)
 
 	}
 
@@ -377,8 +305,8 @@ func (s *profileStore) NumRows() int64 {
 
 type rowGroupOnDisk struct {
 	parquet.RowGroup
-	file                *os.File
-	seriesIDRowRewriter func([]parquet.Row) error
+	file          *os.File
+	seriesIndexes rowRangesWithSeriesIndex
 }
 
 func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
@@ -415,28 +343,15 @@ func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
 }
 
 func (r *rowGroupOnDisk) Rows() parquet.Rows {
-	return seriesIDRowsRewriter{
-		Rows:             r.RowGroup.Rows(),
-		seriesIDRewriter: r.seriesIDRowRewriter,
-	}
-}
-
-type seriesIDRowsRewriter struct {
-	parquet.Rows
-	seriesIDRewriter func([]parquet.Row) error
-}
-
-func (r seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
-	n, err := r.Rows.ReadRows(rows)
-	if r.seriesIDRewriter == nil || err != nil {
-		return n, err
+	rows := r.RowGroup.Rows()
+	if len(r.seriesIndexes) == 0 {
+		return rows
 	}
 
-	if err := r.seriesIDRewriter(rows[:n]); err != nil {
-		return 0, err
+	return &seriesIDRowsRewriter{
+		Rows:          rows,
+		seriesIndexes: r.seriesIndexes,
 	}
-
-	return n, nil
 }
 
 func (r *rowGroupOnDisk) Close() error {
@@ -449,4 +364,44 @@ func (r *rowGroupOnDisk) Close() error {
 	}
 
 	return nil
+}
+
+type seriesIDRowsRewriter struct {
+	parquet.Rows
+	pos           int64
+	seriesIndexes rowRangesWithSeriesIndex
+}
+
+func (r seriesIDRowsRewriter) SeekToRow(pos int64) error {
+	if err := r.Rows.SeekToRow(pos); err != nil {
+		return err
+	}
+	r.pos += pos
+	return nil
+}
+
+var colIdxSeriesIndex = func() int {
+	p := &schemav1.ProfilePersister{}
+	colIdx, found := p.Schema().Lookup("SeriesIndex")
+	if !found {
+		panic("column SeriesIndex not found")
+	}
+	return colIdx.ColumnIndex
+}()
+
+func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
+	n, err := r.Rows.ReadRows(rows)
+	if err != nil {
+		return n, err
+	}
+
+	for pos, row := range rows[:n] {
+		// actual row num
+		rowNum := r.pos + int64(pos)
+		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum)).Level(0, 0, colIdxSeriesIndex)
+	}
+
+	r.pos += int64(n)
+
+	return n, nil
 }
