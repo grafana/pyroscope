@@ -19,5 +19,5 @@ group = "com.example"
 version = "0.1.0"
 
 dependencies {
-    implementation 'com.grafana:jpprof:0.1.4'
+    implementation 'com.grafana:jpprof:0.1.6'
 }

@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-	implementation 'com.grafana:jpprof:0.1.4'
+	implementation 'com.grafana:jpprof:0.1.6'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
