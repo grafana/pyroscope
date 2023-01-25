@@ -641,7 +641,7 @@ type mockWriteBatchFactory struct {
 	wbs map[string]*mockWriteBatch
 }
 
-func (m *mockWriteBatchFactory) NewWriteBatch(appName string) stackbuilder.WriteBatch {
+func (m *mockWriteBatchFactory) NewWriteBatch(appName string) (stackbuilder.WriteBatch, error) {
 	if m.wbs == nil {
 		m.wbs = make(map[string]*mockWriteBatch)
 	}
@@ -654,7 +654,7 @@ func (m *mockWriteBatchFactory) NewWriteBatch(appName string) stackbuilder.Write
 		appenders: make(map[string]*mockSamplesAppender),
 	}
 	m.wbs[appName] = wb
-	return wb
+	return wb, nil
 }
 
 type mockWriteBatch struct {
