@@ -44,5 +44,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: install
         run: pyro-ci go install --applicationName=pyroscope-oss pkg/
+      - name: uninstall from gospy since profiler is already running
+        run: rm pkg/agent/gospy/pyroscope_test.go
       - name: Run Go tests and upload
         run: pyro-ci exec --apiKey=${{ secrets.PYROSCOPE_CLOUD_TOKEN }} make test
