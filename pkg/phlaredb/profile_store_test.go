@@ -68,15 +68,6 @@ func sameProfileStream(i int) *testProfile {
 	return tp
 }
 
-func threeProfileStreams(i int) *testProfile {
-	tp := sameProfileStream(i)
-	streams := []string{"stream-a", "stream-b", "stream-c"}
-
-	tp.lbls = phlaremodel.LabelsFromStrings("job", "test", "stream", streams[i%3])
-	tp.populateFingerprint()
-	return tp
-}
-
 func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 	f, err := os.Open(path)
 	require.NoError(t, err)
@@ -99,7 +90,10 @@ func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 	return slice, numRGs
 }
 
-func TestProfileStore_Ingestion(t *testing.T) {
+// TestProfileStore_RowGroupSplitting tests that the profile store splits row
+// groups when certain limits are reached. It also checks that on flushing the
+// block is aggregated correctly. All ingestion is done using the same profile series.
+func TestProfileStore_RowGroupSplitting(t *testing.T) {
 	var (
 		ctx   = testContext(t)
 		store = newProfileStore(ctx)
@@ -167,5 +161,53 @@ func TestProfileStore_Ingestion(t *testing.T) {
 			assert.Equal(t, "00000000-0000-0000-0000-000000000002", rows[2].ID.String())
 
 		})
+	}
+}
+
+func threeProfileStreams(i int) *testProfile {
+	tp := sameProfileStream(i)
+	streams := []string{"stream-a", "stream-b", "stream-c"}
+
+	tp.lbls = phlaremodel.LabelsFromStrings("job", "test", "stream", streams[i%3])
+	tp.populateFingerprint()
+	return tp
+}
+
+// TestProfileStore_Ingestion_SeriesIndexes during ingestion, the profile store
+// writes out row groups to disk temporarily. Later when finishing up the block
+// it will have to combine those files on disk and update the seriesIndex,
+// which is only known when the TSDB index is written to disk.
+func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
+	var (
+		ctx   = testContext(t)
+		store = newProfileStore(ctx)
+	)
+	path := t.TempDir()
+	require.NoError(t, store.Init(path, defaultParquetConfig))
+
+	for i := 0; i < 9; i++ {
+		p := threeProfileStreams(i)
+		require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
+	}
+
+	// flush index
+	indexPath := path + "/" + block.IndexFilename
+	require.NoError(t, store.index.WriteTo(ctx, indexPath))
+
+	// flush profiles and ensure the correct number of files are created
+	numRows, numRGs, err := store.Flush()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(9), numRows)
+	assert.Equal(t, uint64(1), numRGs)
+
+	// now compare the written parquet files
+	rows, numRGs := readFullParquetFile[*schemav1.Profile](t, path+"/profiles.parquet")
+	require.Equal(t, 9, len(rows))
+	assert.Equal(t, uint64(1), numRGs)
+	// expected in series ID order and then by timeNanos
+	for i := 0; i < 9; i++ {
+		id := i%3*3 + i/3 // generates 0,3,6,1,4,7,2,5,8
+		assert.Equal(t, fmt.Sprintf("00000000-0000-0000-0000-%012d", id), rows[i].ID.String())
+		assert.Equal(t, uint32(i/3), rows[i].SeriesIndex)
 	}
 }
