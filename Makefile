@@ -57,8 +57,8 @@ buf/lint: $(BIN)/buf
 	$(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
 .PHONY: go/test
-go/test:
-	$(GO) test $(GO_TEST_FLAGS) ./...
+go/test: $(BIN)/gotestsum
+	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
 
 .PHONY: build
 build: go/bin
@@ -252,6 +252,10 @@ $(BIN)/updater: Makefile
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.14.1
+
+$(BIN)/gotestsum: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
 
 $(BIN)/trunk: Makefile
 	@mkdir -p $(@D)
