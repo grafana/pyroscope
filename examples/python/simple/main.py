@@ -19,7 +19,7 @@ def fast_function():
 		work(20000)
 
 def slow_function():
-	with pyroscope.tag_wrapper({ "function": "fast" }):
+	with pyroscope.tag_wrapper({ "function": "slow" }):
 	    work(80000)
 
 if __name__ == "__main__":
