@@ -10,6 +10,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof/streaming"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
+	"github.com/pyroscope-io/pyroscope/pkg/stackbuilder"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -45,18 +46,33 @@ var putter = &MockPutter{}
 const benchWithoutGzip = true
 const benchmarkCorpusSize = 5
 
+var compareCorpusData = readCorpus(compareCorpus, benchWithoutGzip)
+
 func TestCompare(t *testing.T) {
-	corpus := readCorpus(compareCorpus, benchWithoutGzip)
-	if len(corpus) == 0 {
+	if len(compareCorpusData) == 0 {
 		t.Skip("empty corpus")
 		return
 	}
 	for _, testType := range streamingTestTypes {
 		t.Run(fmt.Sprintf("TestCompare_pool_%v_arenas_%v", testType.pool, testType.arenas), func(t *testing.T) {
-			for _, c := range corpus {
+			for _, c := range compareCorpusData {
 				testCompareOne(t, c, testType)
 			}
 		})
+	}
+}
+
+func TestCompareWriteBatch(t *testing.T) {
+
+	if len(compareCorpusData) == 0 {
+		t.Skip("empty corpus")
+		return
+	}
+	for _, c := range compareCorpusData {
+		//if len(c.prev) != 0 { // todo
+		//	continue
+		//}
+		testCompareWriteBatchOne(t, c)
 	}
 }
 
@@ -89,10 +105,18 @@ func TestIterateWithStackBuilder(t *testing.T) {
 
 func TestIterateWithStackBuilderEmpty(t *testing.T) {
 	tree := tree.New()
-	sb := &mockStackBuilder{stackID2Stack: make(map[uint64]string), stackID2Val: make(map[uint64]uint64)}
+	sb := newStackBuilder()
 	tree.IterateWithStackBuilder(sb, func(stackID uint64, v uint64) {
 		t.Fatal()
 	})
+}
+
+func newStackBuilder() *mockStackBuilder {
+	return &mockStackBuilder{
+		stackID2Stack:      make(map[uint64]string),
+		stackID2Val:        make(map[uint64]uint64),
+		stackID2StackBytes: make(map[uint64][][]byte),
+	}
 }
 
 func TestTreeIterationCorpus(t *testing.T) {
@@ -444,8 +468,71 @@ func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 	}
 }
 
+func testCompareWriteBatchOne(t *testing.T, c *testcase) {
+	fmt.Println(c.fname)
+	key, _ := segment.ParseKey("foo.bar")
+	mock1 := &MockPutter{keep: true}
+	profile1 := pprof.RawProfile{
+		Profile:          c.profile,
+		PreviousProfile:  c.prev,
+		SampleTypeConfig: c.config,
+	}
+	md := ingestion.Metadata{Key: key, SpyName: c.spyname}
+	wbf := &mockWriteBatchFactory{}
+	err := profile1.ParseWithWriteBatch(context.TODO(), wbf, mock1, md)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mock2 := &MockPutter{keep: true}
+	profile2 := pprof.RawProfile{
+		Profile:          c.profile,
+		PreviousProfile:  c.prev,
+		SampleTypeConfig: c.config,
+	}
+	err = profile2.Parse(context.TODO(), mock2, nil, md)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, put := range mock2.puts {
+		expectedCollapsed := put.Val
+		appenderCollapsed := ""
+		if c.prev != nil {
+			for _, put1 := range mock1.puts {
+				if put1.Key == put.Key {
+					appenderCollapsed = put1.Val
+					break
+				}
+			}
+		} else {
+			var found []*mockSamplesAppender
+			for _, batch := range wbf.wbs {
+				for _, appender := range batch.appenders {
+					labels := make(map[string]string)
+					labels["__name__"] = batch.appName
+					for _, label := range appender.labels {
+						labels[label.Key] = label.Value
+					}
+					k := segment.NewKey(labels)
+					if k.SegmentKey() == put.Key {
+						found = append(found, appender)
+					}
+				}
+			}
+			if len(found) != 1 {
+				t.Fatal()
+			}
+			appenderCollapsed = found[0].tree.String()
+		}
+		if appenderCollapsed != expectedCollapsed {
+			t.Fatalf("expected\n%s\ngot\n%s\n", expectedCollapsed, appenderCollapsed)
+		}
+	}
+}
+
 func testIterateOne(t *testing.T, pt *tree.Tree) {
-	sb := &mockStackBuilder{stackID2Stack: make(map[uint64]string), stackID2Val: make(map[uint64]uint64)}
+	sb := newStackBuilder()
 	var lines []string
 	pt.IterateWithStackBuilder(sb, func(stackID uint64, val uint64) {
 		lines = append(lines, fmt.Sprintf("%s %d", sb.stackID2Stack[stackID], val))
@@ -503,8 +590,9 @@ func (m *MockPutter) Put(_ context.Context, input *storage.PutInput) error {
 type mockStackBuilder struct {
 	ss [][]byte
 
-	stackID2Stack map[uint64]string
-	stackID2Val   map[uint64]uint64
+	stackID2Stack      map[uint64]string
+	stackID2StackBytes map[uint64][][]byte
+	stackID2Val        map[uint64]uint64
 }
 
 func (s *mockStackBuilder) Push(frame []byte) {
@@ -525,6 +613,12 @@ func (s *mockStackBuilder) Build() (stackID uint64) {
 	}
 	id := uint64(len(s.stackID2Stack))
 	s.stackID2Stack[id] = res
+
+	bs := make([][]byte, 0, len(s.ss))
+	for _, frame := range s.ss {
+		bs = append(bs, bytes.Clone(frame))
+	}
+	s.stackID2StackBytes[id] = bs
 	return id
 }
 
@@ -541,4 +635,80 @@ func (s *mockStackBuilder) expectStack(t *testing.T, stackId uint64, expected st
 	if s.stackID2Stack[stackId] != expected {
 		t.Fatalf("expected at %d %s got %s", stackId, expected, s.stackID2Stack[stackId])
 	}
+}
+
+type mockWriteBatchFactory struct {
+	wbs map[string]*mockWriteBatch
+}
+
+func (m *mockWriteBatchFactory) NewWriteBatch(appName string) stackbuilder.WriteBatch {
+	if m.wbs == nil {
+		m.wbs = make(map[string]*mockWriteBatch)
+	}
+	if m.wbs[appName] != nil {
+		panic("already exists")
+	}
+	wb := &mockWriteBatch{
+		appName:   appName,
+		sb:        newStackBuilder(),
+		appenders: make(map[string]*mockSamplesAppender),
+	}
+	m.wbs[appName] = wb
+	return wb
+}
+
+type mockWriteBatch struct {
+	appName   string
+	sb        *mockStackBuilder
+	appenders map[string]*mockSamplesAppender
+}
+
+func (m *mockWriteBatch) StackBuilder() tree.StackBuilder {
+	return m.sb
+}
+
+func (m *mockWriteBatch) SamplesAppender(startTime, endTime int64, labels stackbuilder.Labels) stackbuilder.SamplesAppender {
+	sLabels, _ := json.Marshal(labels)
+	k := fmt.Sprintf("%d-%d-%s", startTime, endTime, sLabels)
+	a := m.appenders[k]
+	if a != nil {
+		return a
+	}
+	a = &mockSamplesAppender{
+		startTime: startTime,
+		endTime:   endTime,
+		labels:    labels,
+		sb:        m.sb,
+	}
+	m.appenders[k] = a
+	return a
+}
+
+func (m *mockWriteBatch) Flush() {
+
+}
+
+type mockSamplesAppender struct {
+	startTime, endTime int64
+	labels             stackbuilder.Labels
+	stacks             []stackIdToVal
+	tree               *tree.Tree
+	sb                 *mockStackBuilder
+}
+
+type stackIdToVal struct {
+	stackId uint64
+	val     uint64
+}
+
+func (m *mockSamplesAppender) Append(stackID, value uint64) {
+	m.stacks = append(m.stacks, stackIdToVal{stackID, value})
+	stack := m.sb.stackID2StackBytes[stackID]
+	if stack == nil {
+		panic("not found")
+	}
+	if m.tree == nil {
+		m.tree = tree.New()
+	}
+	m.tree.InsertStack(stack, value)
 }

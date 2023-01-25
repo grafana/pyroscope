@@ -10,6 +10,7 @@ const (
 	opFlagCountStructs = 1 << 0
 	opFlagParseStructs = 1 << 1
 	opFlagParseSamples = 1 << 2
+	opFlagParseSamplesWriteBatch = 1 << 3
 )
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
@@ -19,6 +20,7 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 	countStructs := opFlag&opFlagCountStructs == opFlagCountStructs
 	parseStructs := opFlag&opFlagParseStructs == opFlagParseStructs
 	parseSamples := opFlag&opFlagParseSamples == opFlagParseSamples
+	parseSamplesWriteBatch := opFlag&opFlagParseSamplesWriteBatch == opFlagParseSamplesWriteBatch
 	strWriteIndex := 0
 	locationWriteIndex := 0
 	functionWriteIndex := 0
@@ -131,6 +133,11 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 			}
 			if parseSamples {
 				if err := p.parseSampleVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			}
+			if parseSamplesWriteBatch {
+				if err := p.parseSampleWB(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			}

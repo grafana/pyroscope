@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof/streaming"
+	"github.com/pyroscope-io/pyroscope/pkg/stackbuilder"
 	"io"
 	"mime/multipart"
 	"sync"
@@ -117,32 +118,13 @@ func (p *RawProfile) Bytes() ([]byte, error) {
 func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
 	p.m.Lock()
 	defer p.m.Unlock()
-	if len(p.Profile) == 0 && len(p.PreviousProfile) == 0 {
-		// Check if RawProfile was initialized with RawData.
-		if p.RawData == nil {
-			// Zero profile, nothing to parse.
-			return nil
-		}
-		if p.FormDataContentType != "" {
-			// The profile was ingested as a multipart form. Load parts to
-			// Profile, PreviousProfile, and SampleTypeConfig.
-			if err := p.loadPprofFromForm(); err != nil {
-				return err
-			}
-		} else {
-			p.Profile = p.RawData
-		}
-	}
-	if len(p.Profile) == 0 {
-		return nil
+	cont, err := p.handleRawData()
+	if err != nil || !cont {
+		return err
 	}
 
 	if p.parser == nil {
-		sampleTypes := tree.DefaultSampleTypeMapping
-		if p.SampleTypeConfig != nil {
-			sampleTypes = p.SampleTypeConfig
-		}
-
+		sampleTypes := p.getSampleTypes()
 		if p.StreamingParser {
 			config := streaming.ParserConfig{
 				SpyName:       md.SpyName,
@@ -205,6 +187,59 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 	}
 
 	return nil
+}
+
+func (p *RawProfile) ParseWithWriteBatch(c context.Context, wb stackbuilder.WriteBatchFactory, fallback storage.Putter, md ingestion.Metadata) error {
+	cont, err := p.handleRawData()
+	if err != nil || !cont {
+		return err
+	}
+	if p.PreviousProfile != nil {
+		return p.Parse(c, fallback, nil, md)
+	}
+	parser := streaming.NewStreamingParser(streaming.ParserConfig{
+		SpyName:       md.SpyName,
+		Labels:        md.Key.Labels(),
+		Putter:        fallback,
+		SampleTypes:   p.getSampleTypes(),
+		SkipExemplars: p.SkipExemplars,
+		Formatter:     streaming.StackFrameFormatterForSpyName(md.SpyName),
+		ArenasEnabled: true,
+	})
+	defer parser.FreeArena()
+	return parser.ParseWithWriteBatch(c, md.StartTime, md.EndTime, p.Profile, wb)
+
+}
+
+func (p *RawProfile) getSampleTypes() map[string]*tree.SampleTypeConfig {
+	sampleTypes := tree.DefaultSampleTypeMapping
+	if p.SampleTypeConfig != nil {
+		sampleTypes = p.SampleTypeConfig
+	}
+	return sampleTypes
+}
+
+func (p *RawProfile) handleRawData() (cont bool, err error) {
+	if len(p.Profile) == 0 && len(p.PreviousProfile) == 0 {
+		// Check if RawProfile was initialized with RawData.
+		if p.RawData == nil {
+			// Zero profile, nothing to parse.
+			return false, nil
+		}
+		if p.FormDataContentType != "" {
+			// The profile was ingested as a multipart form. Load parts to
+			// Profile, PreviousProfile, and SampleTypeConfig.
+			if err := p.loadPprofFromForm(); err != nil {
+				return false, err
+			}
+		} else {
+			p.Profile = p.RawData
+		}
+	}
+	if len(p.Profile) == 0 {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (p *RawProfile) loadPprofFromForm() error {

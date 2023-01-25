@@ -26,6 +26,8 @@ func (p *VTStreamingParser) parseSampleVT(buffer []byte) error {
 	return nil
 }
 
+
+
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (s *sample) UnmarshalSampleVT(dAtA []byte, a arenahelper.ArenaWrapper) error {
 	l := len(dAtA)

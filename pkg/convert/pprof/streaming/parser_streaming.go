@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/stackbuilder"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -12,6 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 	"github.com/valyala/bytebufferpool"
 	"io"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -39,6 +41,7 @@ type ParserConfig struct {
 
 type VTStreamingParser struct {
 	putter            storage.Putter
+	wbf               stackbuilder.WriteBatchFactory
 	spyName           string
 	labels            map[string]string
 	skipExemplars     bool
@@ -76,6 +79,7 @@ type VTStreamingParser struct {
 	finder        finder
 	previousCache LabelsCache
 	newCache      LabelsCache
+	wbCache       writeBatchCache
 	arena         arenahelper.ArenaWrapper
 }
 
@@ -93,37 +97,20 @@ func (p *VTStreamingParser) ParsePprof(ctx context.Context, startTime, endTime t
 	p.ctx = ctx
 	p.cumulativeOnly = cumulativeOnly
 
-	if len(bs) < 2 {
-		err = fmt.Errorf("failed to read pprof profile header")
-	} else if bs[0] == 0x1f && bs[1] == 0x8b {
-		var gzipr *gzip.Reader
-		gzipr, err = gzip.NewReader(bytes.NewReader(bs))
-		if err != nil {
-			err = fmt.Errorf("failed to create pprof profile zip reader: %w", err)
-		} else {
-			buf := PPROFBufPool.Get()
-			if _, err = io.Copy(buf, gzipr); err != nil {
-				err = fmt.Errorf("failed to decompress gzip: %w", err)
-			} else {
-				p.profile = buf.Bytes()
-				err = p.parsePprofDecompressed()
-			}
-			PPROFBufPool.Put(buf)
-			_ = gzipr.Close()
-		}
-	} else {
-		p.profile = bs
-		err = p.parsePprofDecompressed()
-	}
+	err = decompress(bs, func(profile []byte) error {
+		p.profile = profile
+		err := p.parsePprofDecompressed()
+		p.profile = nil
+		return err
+	})
 	p.ctx = nil
-	p.profile = nil
 	return err
 }
 
 func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 	defer func() {
 		if recover() != nil {
-			err = fmt.Errorf("parse panic")
+			err = fmt.Errorf(fmt.Sprintf("parse panic %s", debug.Stack()))
 		}
 	}()
 
@@ -134,7 +121,7 @@ func (p *VTStreamingParser) parsePprofDecompressed() (err error) {
 		return err
 	}
 	if !p.haveKnownSampleTypes() {
-		return nil //todo return error
+		return nil
 	}
 
 	p.newCache.Reset()
@@ -410,6 +397,8 @@ func (p *VTStreamingParser) Reset(config ParserConfig) {
 	p.skipExemplars = config.SkipExemplars
 	p.previousCache.Reset()
 	p.newCache.Reset()
+	p.wbCache.reset()
+	p.wbCache.appName = config.Labels["__name__"]
 	p.sampleTypesFilter = filterKnownSamples(config.SampleTypes)
 	p.Formatter = config.Formatter
 	p.ArenasEnabled = config.ArenasEnabled
@@ -449,4 +438,30 @@ func StackFrameFormatterForSpyName(spyName string) StackFormatter {
 		return StackFrameFormatterRuby
 	}
 	return StackFrameFormatterGo
+}
+
+func decompress(bs []byte, f func([]byte) error) error {
+	var err error
+	if len(bs) < 2 {
+		err = fmt.Errorf("failed to read pprof profile header")
+	} else if bs[0] == 0x1f && bs[1] == 0x8b {
+		var gzipr *gzip.Reader
+		gzipr, err = gzip.NewReader(bytes.NewReader(bs))
+		if err != nil {
+			err = fmt.Errorf("failed to create pprof profile zip reader: %w", err)
+		} else {
+			buf := PPROFBufPool.Get()
+			if _, err = io.Copy(buf, gzipr); err != nil {
+				err = fmt.Errorf("failed to decompress gzip: %w", err)
+			} else {
+
+				err = f(buf.Bytes())
+			}
+			PPROFBufPool.Put(buf)
+			_ = gzipr.Close()
+		}
+	} else {
+		err = f(bs)
+	}
+	return err
 }
