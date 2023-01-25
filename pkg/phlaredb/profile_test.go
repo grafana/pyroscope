@@ -71,7 +71,9 @@ func TestIndex(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 2*10*10*10, total)
-	require.Equal(t, 10*10*10, len(a.allProfiles()))
+	allProfiles, err := a.allProfiles()
+	require.NoError(t, err)
+	require.Equal(t, 10*10*10, allProfiles)
 
 	names, err := a.ix.LabelNames(nil)
 	require.NoError(t, err)
@@ -119,7 +121,7 @@ func TestWriteRead(t *testing.T) {
 	}
 
 	tmpFile := t.TempDir() + "/test.db"
-	err = a.WriteTo(context.Background(), tmpFile)
+	err = a.writeTo(context.Background(), tmpFile)
 	require.NoError(t, err)
 
 	r, err := index.NewFileReader(tmpFile)

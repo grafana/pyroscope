@@ -103,7 +103,7 @@ func (s *deduplicatingSlice[M, K, H, P]) maxRowsPerRowGroup() int {
 	return int(maxRows)
 }
 
-func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups uint64, err error) {
+func (s *deduplicatingSlice[M, K, H, P]) Flush(ctx context.Context) (numRows uint64, numRowGroups uint64, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

@@ -106,7 +106,7 @@ type Table interface {
 	Name() string
 	Size() uint64
 	Init(path string, cfg *ParquetConfig) error
-	Flush() (numRows uint64, numRowGroups uint64, err error)
+	Flush(context.Context) (numRows uint64, numRowGroups uint64, err error)
 	Close() error
 }
 
@@ -826,12 +826,20 @@ func (h *Head) Flush(ctx context.Context) error {
 
 	files := make([]block.File, len(h.tables)+1)
 
-	// write index
-	// TODO: This should be part of the profiles flush()
-	indexPath := filepath.Join(h.headPath, block.IndexFilename)
-	if err := h.profiles.index.WriteTo(ctx, indexPath); err != nil {
-		return errors.Wrap(err, "flushing of index")
+	for idx, t := range h.tables {
+		numRows, numRowGroups, err := t.Flush(ctx)
+		if err != nil {
+			return errors.Wrapf(err, "flushing of table %s", t.Name())
+		}
+		h.metrics.rowsWritten.WithLabelValues(t.Name()).Add(float64(numRows))
+		files[idx+1].Parquet = &block.ParquetFile{
+			NumRowGroups: numRowGroups,
+			NumRows:      numRows,
+		}
 	}
+
+	// get stats of index
+	indexPath := filepath.Join(h.headPath, block.IndexFilename)
 	files[0].RelPath = block.IndexFilename
 	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
 	files[0].TSDB = &block.TSDBFile{
@@ -841,18 +849,6 @@ func (h *Head) Flush(ctx context.Context) error {
 	// add index file size
 	if stat, err := os.Stat(indexPath); err == nil {
 		files[0].SizeBytes = uint64(stat.Size())
-	}
-
-	for idx, t := range h.tables {
-		numRows, numRowGroups, err := t.Flush()
-		if err != nil {
-			return errors.Wrapf(err, "flushing of table %s", t.Name())
-		}
-		h.metrics.rowsWritten.WithLabelValues(t.Name()).Add(float64(numRows))
-		files[idx+1].Parquet = &block.ParquetFile{
-			NumRowGroups: numRowGroups,
-			NumRows:      numRows,
-		}
 	}
 
 	for idx, t := range h.tables {

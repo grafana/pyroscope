@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"unsafe"
@@ -10,6 +11,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/phlare/pkg/iter"
@@ -19,17 +21,92 @@ import (
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
 )
 
+// delta encoding for ranges
+type rowRange struct {
+	rowNum int64
+	length int
+}
+
+type rowRangeWithSeriesIndex struct {
+	*rowRange
+	seriesIndex uint32
+}
+
+// those need to be strictly ordered
+type rowRangesWithSeriesIndex []rowRangeWithSeriesIndex
+
+func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64) uint32 {
+	// todo: binary search
+	for _, rg := range s {
+		if rg.rowNum <= rowNum && rg.rowNum+int64(rg.length) > rowNum {
+			return rg.seriesIndex
+		}
+	}
+	panic("series index not found")
+}
+
+type profileRowGroup struct {
+	rowGroup *rowGroupOnDisk
+	rowRange *rowRange
+}
+
 type profileLabels struct {
-	lbs      phlaremodel.Labels
-	fp       model.Fingerprint
-	profiles []iter.Getter[*schemav1.Profile]
+	lbs phlaremodel.Labels
+	fp  model.Fingerprint
+
+	minTime, maxTime int64
+
+	// profiles in memory
+	profiles []*schemav1.Profile
+
+	// profiles temporary stored on disk in row group segements
+	// TODO: this information is crucial to recover segements to a full block later
+	profilesOnDisk []*profileRowGroup
+}
+
+func (pi *profileLabels) allProfilesFunc(rows []*schemav1.Profile, fn func(lbs phlaremodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error) error {
+	// read profiles in memory first
+	for _, p := range pi.profiles {
+		if p.SeriesFingerprint == pi.fp {
+			if err := fn(pi.lbs, pi.fp, p); err != nil {
+				return err
+			}
+		}
+	}
+
+	// read profiles on disk
+	for _, rg := range pi.profilesOnDisk {
+		reader := parquet.NewGenericRowGroupReader[*schemav1.Profile](rg.rowGroup)
+
+		if cap(rows) < rg.rowRange.length {
+			rows = make([]*schemav1.Profile, rg.rowRange.length)
+		} else {
+			rows = rows[:rg.rowRange.length]
+		}
+
+		if err := reader.SeekToRow(rg.rowRange.rowNum); err != nil {
+			return err
+		}
+
+		if _, err := reader.Read(rows); err != nil {
+			return err
+		}
+		for _, p := range rows {
+			if err := fn(pi.lbs, pi.fp, p); err != nil {
+				return err
+			}
+		}
+		if err := reader.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type profilesIndex struct {
 	ix *tsdb.BitPrefixInvertedIndex
 	// todo: like the inverted index we might want to shard fingerprint to avoid contentions.
 	profilesPerFP map[model.Fingerprint]*profileLabels
-	seriesIndexes map[model.Fingerprint]uint32
 	mutex         sync.RWMutex
 	totalProfiles *atomic.Int64
 	totalSeries   *atomic.Int64
@@ -54,25 +131,28 @@ func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, 
 // Add a new set of profile to the index.
 // The seriesRef are expected to match the profile labels passed in.
 func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profileName string) {
-	pi.addWithGetter(&profileGetter{p: ps}, lbs, profileName)
-}
-
-func (pi *profilesIndex) addWithGetter(pg *profileGetter, lbs phlaremodel.Labels, profileName string) {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
-	ps := pg.Get()
 	profiles, ok := pi.profilesPerFP[ps.SeriesFingerprint]
 	if !ok {
 		lbs := pi.ix.Add(lbs, ps.SeriesFingerprint)
 		profiles = &profileLabels{
-			lbs: lbs,
-			fp:  ps.SeriesFingerprint,
+			lbs:     lbs,
+			fp:      ps.SeriesFingerprint,
+			minTime: ps.TimeNanos,
+			maxTime: ps.TimeNanos,
 		}
 		pi.profilesPerFP[ps.SeriesFingerprint] = profiles
 		pi.totalSeries.Inc()
 		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
-	profiles.profiles = append(profiles.profiles, pg)
+	profiles.profiles = append(profiles.profiles, ps)
+	if ps.TimeNanos < profiles.minTime {
+		profiles.minTime = ps.TimeNanos
+	}
+	if ps.TimeNanos > profiles.maxTime {
+		profiles.maxTime = ps.TimeNanos
+	}
 
 	pi.totalProfiles.Inc()
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
@@ -94,6 +174,7 @@ func (pi *profilesIndex) forMatchingProfiles(matchers []*labels.Matcher,
 	pi.mutex.RLock()
 	defer pi.mutex.RUnlock()
 
+	rows := make([]*schemav1.Profile, 0, 100)
 outer:
 	for _, fp := range ids {
 		profile, ok := pi.profilesPerFP[fp]
@@ -107,15 +188,10 @@ outer:
 				continue outer
 			}
 		}
-		for _, pg := range profile.profiles {
-			p := pg.Get()
-			if p.SeriesFingerprint == fp {
-				if err := fn(profile.lbs, profile.fp, p); err != nil {
-					return err
-				}
-			}
-		}
 
+		if err := profile.allProfilesFunc(rows, fn); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -148,8 +224,7 @@ outer:
 			NewSeriesIterator(
 				profile.lbs,
 				profile.fp,
-				iter.NewTimeRangedIterator(
-					iter.NewGetterIterator[*schemav1.Profile](iter.NewSliceIterator(profile.profiles)), start, end),
+				iter.NewTimeRangedIterator(iter.NewSliceIterator(profile.profiles), start, end),
 			),
 		)
 	}
@@ -238,29 +313,41 @@ outer:
 	return nil
 }
 
-func (pi *profilesIndex) allProfiles() []*schemav1.Profile {
-	total := pi.totalProfiles.Load()
-	result := make([]*schemav1.Profile, 0, total)
-	uniq := make(map[uuid.UUID]struct{}, total)
-
+func (pi *profilesIndex) allProfilesFunc(rows []*schemav1.Profile, fn func(lbs phlaremodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error) error {
 	pi.mutex.RLock()
 	defer pi.mutex.RUnlock()
 
 	for _, profile := range pi.profilesPerFP {
-		for _, pg := range profile.profiles {
-			p := pg.Get()
-			if _, ok := uniq[p.ID]; !ok {
-				uniq[p.ID] = struct{}{}
-				result = append(result, p)
-			}
+		if err := profile.allProfilesFunc(rows, fn); err != nil {
+			return err
 		}
 	}
 
-	return result
+	return nil
+
+}
+
+func (pi *profilesIndex) allProfiles() ([]*schemav1.Profile, error) {
+	total := pi.totalProfiles.Load()
+	result := make([]*schemav1.Profile, 0, total)
+	uniq := make(map[uuid.UUID]struct{}, total)
+
+	rows := make([]*schemav1.Profile, 0, 100)
+	if err := pi.allProfilesFunc(rows, func(_ phlaremodel.Labels, _ model.Fingerprint, profile *schemav1.Profile) error {
+		if _, ok := uniq[profile.ID]; !ok {
+			uniq[profile.ID] = struct{}{}
+			result = append(result, profile)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // WriteTo writes the profiles tsdb index to the specified filepath.
-func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
+func (pi *profilesIndex) writeTo(ctx context.Context, path string) error {
 	writer, err := index.NewWriter(ctx, path)
 	if err != nil {
 		return err
@@ -301,49 +388,77 @@ func (pi *profilesIndex) WriteTo(ctx context.Context, path string) error {
 		}
 	}
 
+	// ranges per row group
+	rangesPerRG := make(map[*rowGroupOnDisk][]rowRangeWithSeriesIndex)
+
 	// Add series
-	pi.seriesIndexes = make(map[model.Fingerprint]uint32, len(pfs))
+	//pi.seriesIndexes = make(map[model.Fingerprint]uint32, len(pfs))
 	for i, s := range pfs {
-		// TODO: With profile getter this is quite inefficient, we should do this at ingest time and store per label fingerprint
-		min, max := minmax(s.profiles)
 		if err := writer.AddSeries(storage.SeriesRef(i), s.lbs, s.fp, index.ChunkMeta{
-			MinTime: min,
-			MaxTime: max,
+			MinTime: s.minTime,
+			MaxTime: s.maxTime,
 			// We store the series Index from the head with the series to use when retrieving data from parquet.
 			SeriesIndex: uint32(i),
 		}); err != nil {
 			return err
 		}
 		// store series index
-		pi.seriesIndexes[s.fp] = uint32(i)
+		for _, rg := range s.profilesOnDisk {
+			rangesPerRG[rg.rowGroup] = append(rangesPerRG[rg.rowGroup], rowRangeWithSeriesIndex{rowRange: rg.rowRange, seriesIndex: uint32(i)})
+		}
+	}
+
+	// store information into the row groups
+	for rg, rowRanges := range rangesPerRG {
+		rg.seriesIndexes = rowRanges
 	}
 
 	return writer.Close()
 }
 
-func minmax(profiles []iter.Getter[*schemav1.Profile]) (int64, int64) {
-	var min, max int64
-	switch len(profiles) {
-	case 0:
-		return 0, 0
-	case 1:
-		p := profiles[0].Get()
-		return p.TimeNanos, p.TimeNanos
-	default:
-		p := profiles[0].Get()
-		min = p.TimeNanos
-		max = p.TimeNanos
-		for _, pg := range profiles[1:] {
-			p := pg.Get()
-			if p.TimeNanos < min {
-				min = p.TimeNanos
-			}
-			if p.TimeNanos > max {
-				max = p.TimeNanos
+func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile, rowGroup *rowGroupOnDisk) error {
+	// adding rowGroup and rowNum information per fingerprint
+	var rowRangePerFP = make(map[model.Fingerprint]*rowRange, len(pl.profilesPerFP))
+	for rowNum, p := range rgProfiles {
+		if _, ok := rowRangePerFP[p.SeriesFingerprint]; !ok {
+			rowRangePerFP[p.SeriesFingerprint] = &rowRange{
+				rowNum: int64(rowNum),
 			}
 		}
-		return min, max
+
+		rowRange := rowRangePerFP[p.SeriesFingerprint]
+		rowRange.length++
+
+		// sanity check
+		if (int(rowRange.rowNum) + rowRange.length - 1) != rowNum {
+			return fmt.Errorf("rowRange is not matching up, ensure that the ordering of the profile row group is ordered correctly, current row_num=%d, expect range %d-%d", rowNum, rowRange.rowNum, int(rowRange.rowNum)+rowRange.length)
+		}
 	}
+
+	pl.mutex.Lock()
+	defer pl.mutex.Unlock()
+
+	for _, ps := range pl.profilesPerFP {
+		// empty all in memory profiles
+		ps.profiles = ps.profiles[:0]
+
+		// attach rowGroup and rowNum information
+		rowRange, ok := rowRangePerFP[ps.fp]
+		if !ok {
+			continue
+		}
+
+		ps.profilesOnDisk = append(
+			ps.profilesOnDisk,
+			&profileRowGroup{
+				rowGroup: rowGroup,
+				rowRange: rowRange,
+			},
+		)
+	}
+
+	return nil
+
 }
 
 // SplitFiltersAndMatchers splits empty matchers off, which are treated as filters, see #220

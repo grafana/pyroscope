@@ -18,7 +18,6 @@ import (
 
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
@@ -137,11 +136,8 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 				require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
 			}
 
-			// flush index
-			require.NoError(t, store.index.WriteTo(ctx, path+"/"+block.IndexFilename))
-
 			// ensure the correct number of files are created
-			numRows, numRGs, err := store.Flush()
+			numRows, numRGs, err := store.Flush(context.Background())
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedNumRows, numRows)
 			assert.Equal(t, tc.expectedNumRGs, numRGs)
@@ -190,12 +186,8 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 		require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
 	}
 
-	// flush index
-	indexPath := path + "/" + block.IndexFilename
-	require.NoError(t, store.index.WriteTo(ctx, indexPath))
-
 	// flush profiles and ensure the correct number of files are created
-	numRows, numRGs, err := store.Flush()
+	numRows, numRGs, err := store.Flush(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, uint64(9), numRows)
 	assert.Equal(t, uint64(1), numRGs)

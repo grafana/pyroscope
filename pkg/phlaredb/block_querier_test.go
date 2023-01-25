@@ -26,7 +26,7 @@ func TestInMemoryReader(t *testing.T) {
 	for i := 0; i < rgCount*st.cfg.MaxBufferRowCount; i++ {
 		require.NoError(t, st.ingest(context.Background(), []string{fmt.Sprintf("foobar %d", i)}, rewrites))
 	}
-	numRows, numRg, err := st.Flush()
+	numRows, numRg, err := st.Flush(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, uint64(rgCount*st.cfg.MaxBufferRowCount), numRows)
 	require.Equal(t, uint64(rgCount), numRg)
