@@ -468,7 +468,6 @@ func decompress(bs []byte, f func([]byte) error) error {
 			if _, err = io.Copy(buf, gzipr); err != nil {
 				err = fmt.Errorf("failed to decompress gzip: %w", err)
 			} else {
-
 				err = f(buf.Bytes())
 			}
 			PPROFBufPool.Put(buf)

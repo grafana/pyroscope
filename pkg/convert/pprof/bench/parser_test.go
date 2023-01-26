@@ -64,7 +64,6 @@ func TestCompare(t *testing.T) {
 }
 
 func TestCompareWriteBatch(t *testing.T) {
-
 	if len(compareCorpusData) == 0 {
 		t.Skip("empty corpus")
 		return
@@ -113,15 +112,15 @@ func dumpPProfStack(sample *profile.Sample, v bool) string {
 
 func TestIterateWithStackBuilder(t *testing.T) {
 	sb := &mockStackBuilder{stackID2Stack: make(map[uint64]string), stackID2Val: make(map[uint64]uint64)}
-	tree := tree.New()
-	tree.Insert([]byte(""), uint64(43))
-	tree.Insert([]byte("a"), uint64(42))
-	tree.Insert([]byte("a;b"), uint64(1))
-	tree.Insert([]byte("a;c"), uint64(2))
-	tree.Insert([]byte("a;d;e"), uint64(3))
-	tree.Insert([]byte("a;d;f"), uint64(4))
+	it := tree.New()
+	it.Insert([]byte(""), uint64(43))
+	it.Insert([]byte("a"), uint64(42))
+	it.Insert([]byte("a;b"), uint64(1))
+	it.Insert([]byte("a;c"), uint64(2))
+	it.Insert([]byte("a;d;e"), uint64(3))
+	it.Insert([]byte("a;d;f"), uint64(4))
 
-	tree.IterateWithStackBuilder(sb, func(stackID uint64, v uint64) {
+	it.IterateWithStackBuilder(sb, func(stackID uint64, v uint64) {
 		sb.stackID2Val[stackID] = v
 	})
 	sb.expectValue(t, 0, 43)
@@ -139,9 +138,9 @@ func TestIterateWithStackBuilder(t *testing.T) {
 }
 
 func TestIterateWithStackBuilderEmpty(t *testing.T) {
-	tree := tree.New()
+	it := tree.New()
 	sb := newStackBuilder()
-	tree.IterateWithStackBuilder(sb, func(stackID uint64, v uint64) {
+	it.IterateWithStackBuilder(sb, func(stackID uint64, v uint64) {
 		t.Fatal()
 	})
 }
@@ -707,14 +706,14 @@ func (s *mockStackBuilder) Reset() {
 	s.ss = s.ss[:0]
 }
 
-func (s *mockStackBuilder) expectValue(t *testing.T, stackId, expected uint64) {
-	if s.stackID2Val[stackId] != expected {
-		t.Fatalf("expected at %d %d got %d", stackId, expected, s.stackID2Val[stackId])
+func (s *mockStackBuilder) expectValue(t *testing.T, stackID, expected uint64) {
+	if s.stackID2Val[stackID] != expected {
+		t.Fatalf("expected at %d %d got %d", stackID, expected, s.stackID2Val[stackID])
 	}
 }
-func (s *mockStackBuilder) expectStack(t *testing.T, stackId uint64, expected string) {
-	if s.stackID2Stack[stackId] != expected {
-		t.Fatalf("expected at %d %s got %s", stackId, expected, s.stackID2Stack[stackId])
+func (s *mockStackBuilder) expectStack(t *testing.T, stackID uint64, expected string) {
+	if s.stackID2Stack[stackID] != expected {
+		t.Fatalf("expected at %d %s got %s", stackID, expected, s.stackID2Stack[stackID])
 	}
 }
 
@@ -765,25 +764,25 @@ func (m *mockWriteBatch) SamplesAppender(startTime, endTime int64, labels stackb
 	return a
 }
 
-func (m *mockWriteBatch) Flush() {
+func (*mockWriteBatch) Flush() {
 
 }
 
 type mockSamplesAppender struct {
 	startTime, endTime int64
 	labels             stackbuilder.Labels
-	stacks             []stackIdToVal
+	stacks             []stackIDToVal
 	tree               *tree.Tree
 	sb                 *mockStackBuilder
 }
 
-type stackIdToVal struct {
-	stackId uint64
+type stackIDToVal struct {
+	stackID uint64
 	val     uint64
 }
 
 func (m *mockSamplesAppender) Append(stackID, value uint64) {
-	m.stacks = append(m.stacks, stackIdToVal{stackID, value})
+	m.stacks = append(m.stacks, stackIDToVal{stackID, value})
 	stack := m.sb.stackID2StackBytes[stackID]
 	if stack == nil {
 		panic("not found")

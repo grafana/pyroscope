@@ -12,25 +12,32 @@ import (
 	"unsafe"
 )
 
-func (p *VTStreamingParser) ParseWithWriteBatch(ctx context.Context, startTime, endTime time.Time, profile, previous []byte, wbf stackbuilder.WriteBatchFactory) (err error) {
+type ParseWriteBatchInput struct {
+	Context            context.Context
+	StartTime, EndTime time.Time
+	Profile, Previous  []byte
+	WriteBatchFactory  stackbuilder.WriteBatchFactory
+}
+
+func (p *VTStreamingParser) ParseWithWriteBatch(input ParseWriteBatchInput) (err error) {
 	defer func() {
 		if recover() != nil {
 			err = fmt.Errorf(fmt.Sprintf("parse panic %s", debug.Stack()))
 		}
 	}()
-	p.startTime = startTime
-	p.endTime = endTime
-	p.ctx = ctx
-	p.wbf = wbf
-	p.cumulative = previous != nil
-	p.cumulativeOnly = previous != nil
+	p.startTime = input.StartTime
+	p.endTime = input.EndTime
+	p.ctx = input.Context
+	p.wbf = input.WriteBatchFactory
+	p.cumulative = input.Previous != nil
+	p.cumulativeOnly = input.Previous != nil
 	p.wbCache.cumulative = p.cumulative
-	if previous != nil {
-		err = p.parseWB(previous, true)
+	if input.Previous != nil {
+		err = p.parseWB(input.Previous, true)
 	}
 	if err == nil {
 		p.cumulativeOnly = false
-		err = p.parseWB(profile, false)
+		err = p.parseWB(input.Profile, false)
 	}
 	p.ctx = nil
 	p.wbf = nil

@@ -202,8 +202,12 @@ func (p *RawProfile) ParseWithWriteBatch(c context.Context, wb stackbuilder.Writ
 		ArenasEnabled: true,
 	})
 	defer parser.FreeArena()
-	return parser.ParseWithWriteBatch(c, md.StartTime, md.EndTime, p.Profile, p.PreviousProfile, wb)
-
+	return parser.ParseWithWriteBatch(streaming.ParseWriteBatchInput{
+		Context:   c,
+		StartTime: md.StartTime, EndTime: md.EndTime,
+		Profile: p.Profile, Previous: p.PreviousProfile,
+		WriteBatchFactory: wb,
+	})
 }
 
 func (p *RawProfile) getSampleTypes() map[string]*tree.SampleTypeConfig {
