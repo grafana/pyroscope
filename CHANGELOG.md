@@ -1,3 +1,26 @@
+# [0.37.0](https://github.com/pyroscope-io/pyroscope/compare/v0.36.0...v0.37.0) (2023-01-24)
+
+
+### Bug Fixes
+
+* **webapp:** make API table header match the actual content ([#1802](https://github.com/pyroscope-io/pyroscope/issues/1802)) ([3aac1df](https://github.com/pyroscope-io/pyroscope/commit/3aac1df0bb3dfdec0b38067923f2a4624e1eb11c))
+
+
+### Features
+
+* graphviz visualization support ([#1759](https://github.com/pyroscope-io/pyroscope/issues/1759)) ([ca855d2](https://github.com/pyroscope-io/pyroscope/commit/ca855d2eb424590393d8c0086a1ffcd00f2bc88c))
+* pprof streaming parsing ([#1799](https://github.com/pyroscope-io/pyroscope/issues/1799)) ([7ea85f7](https://github.com/pyroscope-io/pyroscope/commit/7ea85f74c8be0dbf288c20f1e0c08967d1a36ad9))
+* **pprof:** parsing arenas ([#1804](https://github.com/pyroscope-io/pyroscope/issues/1804)) ([4bc7fca](https://github.com/pyroscope-io/pyroscope/commit/4bc7fca364feb998cdb638ca4d3c326050b41f32))
+* **webapp:** add annotations rendering to all timelines ([#1807](https://github.com/pyroscope-io/pyroscope/issues/1807)) ([6144df4](https://github.com/pyroscope-io/pyroscope/commit/6144df404e649c3bdf8460baf8d6da251752c074))
+* **webapp:** sync crosshair in different timelines ([#1813](https://github.com/pyroscope-io/pyroscope/issues/1813)) ([e8f14bd](https://github.com/pyroscope-io/pyroscope/commit/e8f14bd79df15b099c4d45589ea22ed4e7297f95))
+
+
+### Reverts
+
+* Revert "feat: cumulative pprof merge for pull mode (#1794)" (#1811) ([086d3b2](https://github.com/pyroscope-io/pyroscope/commit/086d3b2ac8d3be26d7c36188221560a2ae7bd1ce)), closes [#1794](https://github.com/pyroscope-io/pyroscope/issues/1794) [#1811](https://github.com/pyroscope-io/pyroscope/issues/1811)
+
+
+
 # [0.36.0](https://github.com/pyroscope-io/pyroscope/compare/v0.35.1...v0.36.0) (2022-12-16)
 
 
