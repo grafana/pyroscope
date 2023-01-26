@@ -697,7 +697,7 @@ func (s *mockStackBuilder) Build() (stackID uint64) {
 
 	bs := make([][]byte, 0, len(s.ss))
 	for _, frame := range s.ss {
-		bs = append(bs, bytes.Clone(frame))
+		bs = append(bs, append([]byte{}, frame...))
 	}
 	s.stackID2StackBytes[id] = bs
 	return id
