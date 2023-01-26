@@ -74,12 +74,12 @@ func TestCompareWriteBatch(t *testing.T) {
 		//	continue
 		//}
 
-		//cur, _ := profile.Parse(bytes.NewReader(c.profile))
-		//if c.prev != nil {
-		//	prev, _ := profile.Parse(bytes.NewReader(c.prev))
-		//	os.WriteFile("p1", []byte(dumpPProfProfile(prev)), 0666)
-		//}
-		//os.WriteFile("p2", []byte(dumpPProfProfile(cur)), 0666)
+		cur, _ := profile.Parse(bytes.NewReader(c.profile))
+		if c.prev != nil {
+			prev, _ := profile.Parse(bytes.NewReader(c.prev))
+			os.WriteFile("p1", []byte(dumpPProfProfile(prev)), 0666)
+		}
+		os.WriteFile("p2", []byte(dumpPProfProfile(cur)), 0666)
 		testCompareWriteBatchOne(t, c)
 	}
 }
@@ -613,7 +613,7 @@ func cumulativeMerge(profile2 *pprof.RawProfile) {
 			sampleTypeConfig[k] = &vv
 		}
 		profile2.SampleTypeConfig = sampleTypeConfig
-		os.WriteFile("merged", []byte(dumpPProfProfile(merged)), 0666)
+		//os.WriteFile("merged", []byte(dumpPProfProfile(merged)), 0666)
 	}
 }
 

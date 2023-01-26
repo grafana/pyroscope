@@ -14,6 +14,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"io"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 )
@@ -477,4 +478,15 @@ func decompress(bs []byte, f func([]byte) error) error {
 		err = f(bs)
 	}
 	return err
+}
+
+func stack2string(stack [][]byte, sep string) string {
+	sb := strings.Builder{}
+	for i, frame := range stack {
+		if i != 0 {
+			sb.WriteString(sep)
+		}
+		sb.Write(frame)
+	}
+	return sb.String()
 }

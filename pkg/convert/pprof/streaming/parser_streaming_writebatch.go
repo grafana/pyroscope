@@ -3,10 +3,13 @@ package streaming
 import (
 	"context"
 	"fmt"
+	"github.com/cespare/xxhash/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/stackbuilder"
 	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
+	"reflect"
 	"runtime/debug"
 	"time"
+	"unsafe"
 )
 
 func (p *VTStreamingParser) ParseWithWriteBatch(ctx context.Context, startTime, endTime time.Time, profile, previous []byte, wbf stackbuilder.WriteBatchFactory) (err error) {
@@ -38,13 +41,13 @@ func (p *VTStreamingParser) parseWB(profile []byte, prev bool) (err error) {
 	return decompress(profile, func(profile []byte) error {
 		p.profile = profile
 		p.prev = prev
-		err := p.parseWBDecompressed()
+		err := p.parseDecompressedWB()
 		p.profile = nil
 		return err
 	})
 }
 
-func (p *VTStreamingParser) parseWBDecompressed() (err error) {
+func (p *VTStreamingParser) parseDecompressedWB() (err error) {
 	if err = p.countStructs(); err != nil {
 		return err
 	}
@@ -61,6 +64,95 @@ func (p *VTStreamingParser) parseWBDecompressed() (err error) {
 	return err
 }
 
+func (p *VTStreamingParser) parseSampleWB(buffer []byte) error {
+	p.tmpSample.reset(p.arena)
+	err := p.tmpSample.UnmarshalSampleVT(buffer, p.arena)
+	if err != nil {
+		return err
+	}
+
+	for i := len(p.tmpSample.tmpStackLoc) - 1; i >= 0; i-- {
+		err = p.addStackLocation(p.tmpSample.tmpStackLoc[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	cont := p.mergeCumulativeWB()
+	if !cont {
+		return nil
+	}
+	p.appendWB()
+	return nil
+}
+
+func (p *VTStreamingParser) appendWB() {
+	for _, vi := range p.indexes {
+		v := uint64(p.tmpSample.tmpValues[vi])
+		if v == 0 {
+			continue
+		}
+		wb := p.wbCache.getWriteBatch(p, vi)
+		if wb == nil {
+			continue
+		}
+
+		sb := wb.wb.StackBuilder()
+		sb.Reset()
+		for _, frame := range p.tmpSample.tmpStack {
+			sb.Push(frame)
+		}
+		stackID := sb.Build()
+
+		wb.getAppender(p, p.tmpSample.tmpLabels).Append(stackID, v)
+
+		if !p.cumulative {
+			if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
+				copy(p.tmpSample.tmpLabels[j:], p.tmpSample.tmpLabels[j+1:])
+				p.tmpSample.tmpLabels = p.tmpSample.tmpLabels[:len(p.tmpSample.tmpLabels)-1]
+				wb.getAppender(p, p.tmpSample.tmpLabels).Append(stackID, v)
+			}
+		}
+	}
+}
+
+func (p *VTStreamingParser) mergeCumulativeWB() (cont bool) {
+	if !p.cumulative {
+		return true
+	}
+
+	h := hashStack(p.tmpSample.tmpStack)
+	for _, vi := range p.indexes {
+		v := p.tmpSample.tmpValues[vi]
+		if v == 0 {
+			continue
+		}
+		wb := p.wbCache.getWriteBatch(p, vi)
+		if wb == nil {
+			continue
+		}
+		if p.prev {
+			wb.prev[h] += v
+		} else {
+			prevV, ok := wb.prev[h]
+			if ok {
+				if v > prevV {
+					wb.prev[h] = 0
+					v -= prevV
+				} else {
+					wb.prev[h] = prevV - v
+					v = 0
+				}
+				p.tmpSample.tmpValues[vi] = v
+			}
+		}
+	}
+	if p.prev {
+		return false
+	}
+	return true
+}
+
 type writeBatchCache struct {
 	// sample type -> write batch
 	wbs []wbw
@@ -73,7 +165,7 @@ type wbw struct {
 	appenders map[uint64]stackbuilder.SamplesAppender
 
 	// stackHash -> value for cumulative prev
-	prev map[uint64]uint64
+	prev map[uint64]int64
 }
 
 func (c *writeBatchCache) reset() {
@@ -106,7 +198,7 @@ func (c *writeBatchCache) getWriteBatch(parser *VTStreamingParser, sampleTypeInd
 		p.wb = wb
 		p.appenders = make(map[uint64]stackbuilder.SamplesAppender)
 		if c.cumulative {
-			p.prev = make(map[uint64]uint64)
+			p.prev = make(map[uint64]int64)
 		}
 	}
 	return p
@@ -165,4 +257,25 @@ func resolveLabels(parser *VTStreamingParser, labels Labels) []stackbuilder.Labe
 		}
 	}
 	return allLabels
+}
+
+func hashStack(stack [][]byte) uint64 {
+	if len(stack) == 0 {
+		return zeroHash
+	}
+	var hashes [64 + 32]uint64
+	s := hashes[:]
+
+	for _, frame := range stack {
+		h := xxhash.Sum64(frame)
+		s = append(s, h)
+	}
+
+	var raw []byte
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&raw))
+	sh.Data = uintptr(unsafe.Pointer(&s[0]))
+	sh.Len = len(s) * 8
+	sh.Cap = len(s) * 8
+	res := xxhash.Sum64(raw)
+	return res
 }
