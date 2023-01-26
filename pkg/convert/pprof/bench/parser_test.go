@@ -111,7 +111,7 @@ func dumpPProfStack(sample *profile.Sample, v bool) string {
 }
 
 func TestIterateWithStackBuilder(t *testing.T) {
-	sb := &mockStackBuilder{stackID2Stack: make(map[uint64]string), stackID2Val: make(map[uint64]uint64)}
+	sb := newStackBuilder()
 	it := tree.New()
 	it.Insert([]byte(""), uint64(43))
 	it.Insert([]byte("a"), uint64(42))
