@@ -73,7 +73,7 @@ func TestIndex(t *testing.T) {
 	require.Equal(t, 2*10*10*10, total)
 	allProfiles, err := a.allProfiles()
 	require.NoError(t, err)
-	require.Equal(t, 10*10*10, allProfiles)
+	require.Equal(t, 10*10*10, len(allProfiles))
 
 	names, err := a.ix.LabelNames(nil)
 	require.NoError(t, err)
