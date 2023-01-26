@@ -7,19 +7,31 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/gogo/status"
 	"github.com/google/uuid"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
+	"google.golang.org/grpc/codes"
 
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	query "github.com/grafana/phlare/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
 )
+
+type rowNum int64
+
+func (r rowNum) RowNumber() int64 {
+	return int64(r)
+}
 
 // delta encoding for ranges
 type rowRange struct {
@@ -45,9 +57,58 @@ func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64) uint32 {
 	panic("series index not found")
 }
 
+type rowRangeIter struct {
+	*rowRange
+	pos rowNum
+}
+
+func (i *rowRangeIter) At() query.RowGetter {
+	return i.pos
+}
+
+func (i *rowRangeIter) Next() bool {
+	if i.pos < rowNum(i.rowRange.rowNum) {
+		i.pos = rowNum(i.rowRange.rowNum)
+	} else {
+		i.pos++
+	}
+
+	if i.pos > rowNum(i.rowRange.rowNum)+rowNum(i.rowRange.length) {
+		return false
+	}
+	return true
+}
+
+func (i *rowRangeIter) Close() error { return nil }
+
+func (i *rowRangeIter) Err() error { return nil }
+
 type profileRowGroup struct {
 	rowGroup *rowGroupOnDisk
 	rowRange *rowRange
+}
+
+func (prg *profileRowGroup) rowNums() query.Iterator {
+	return query.NewRowNumberIterator[query.RowGetter](&rowRangeIter{prg.rowRange, 0})
+}
+
+func (prg *profileRowGroup) iter(ctx context.Context, start, end model.Time) query.Iterator {
+	return nil
+	pIt := query.NewJoinIterator(
+		0,
+		[]query.Iterator{
+			prg.rowNums(),
+			prg.rowGroup.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
+		},
+		nil,
+	)
+
+	return pIt
+}
+
+type profileOnDisk struct {
+	BlockProfile
+	rowGroup *profileRowGroup
 }
 
 type profileLabels struct {
@@ -62,6 +123,48 @@ type profileLabels struct {
 	// profiles temporary stored on disk in row group segements
 	// TODO: this information is crucial to recover segements to a full block later
 	profilesOnDisk []*profileRowGroup
+}
+
+func (pi *profileLabels) selectProfilesWithin(ctx context.Context, start, end model.Time) iter.Iterator[Profile] {
+	var (
+		profiles []Profile
+		buf      = make([][]parquet.Value, 1)
+		iters    = make([]iter.Iterator[Profile], 0, len(pi.profilesOnDisk)+1)
+	)
+
+	// get profiles from memory first
+	iters = append(iters,
+		NewSeriesIterator(
+			pi.lbs,
+			pi.fp,
+			iter.NewTimeRangedIterator(iter.NewSliceIterator(pi.profiles), start, end),
+		),
+	)
+
+	// now add profiles from disk row groups
+	for _, rg := range pi.profilesOnDisk {
+		pIt := rg.iter(ctx, start, end)
+		for pIt.Next() {
+			res := pIt.At()
+			buf = res.Columns(buf, "TimeNanos")
+			profiles = append(profiles, profileOnDisk{
+				BlockProfile: BlockProfile{
+					labels: pi.lbs,
+					fp:     pi.fp,
+					ts:     model.TimeFromUnixNano(buf[0][0].Int64()),
+					RowNum: res.RowNumber[0],
+				},
+				rowGroup: rg,
+			})
+		}
+		if err := pIt.Err(); err != nil {
+			return iter.NewErrIterator[Profile](err)
+		}
+		iters = append(iters, iter.NewSliceIterator(profiles))
+	}
+
+	return iter.NewSortProfileIterator(iters)
+
 }
 
 func (pi *profileLabels) allProfilesFunc(rows []*schemav1.Profile, fn func(lbs phlaremodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error) error {
@@ -196,17 +299,29 @@ outer:
 	return nil
 }
 
-func (pi *profilesIndex) SelectProfiles(matchers []*labels.Matcher, start, end model.Time) (iter.Iterator[Profile], error) {
-	filters, matchers := SplitFiltersAndMatchers(matchers)
+func (pi *profilesIndex) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Index")
+	defer sp.Finish()
+	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
+	}
+	selectors = append(selectors, phlaremodel.SelectorFromProfileType(params.Type))
+
+	filters, matchers := SplitFiltersAndMatchers(selectors)
 	ids, err := pi.ix.Lookup(matchers, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	start := model.Time(params.Start)
+	end := model.Time(params.End)
+
 	pi.mutex.RLock()
 	defer pi.mutex.RUnlock()
 
 	iters := make([]iter.Iterator[Profile], 0, len(ids))
+
 outer:
 	for _, fp := range ids {
 		profile, ok := pi.profilesPerFP[fp]
@@ -220,14 +335,11 @@ outer:
 				continue outer
 			}
 		}
-		iters = append(iters,
-			NewSeriesIterator(
-				profile.lbs,
-				profile.fp,
-				iter.NewTimeRangedIterator(iter.NewSliceIterator(profile.profiles), start, end),
-			),
-		)
+
+		// first add the profiles we keep in memory
+		iters = append(iters, profile.selectProfilesWithin(ctx, start, end))
 	}
+
 	return iter.NewSortProfileIterator(iters), nil
 }
 

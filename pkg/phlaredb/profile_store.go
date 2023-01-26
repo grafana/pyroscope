@@ -20,6 +20,7 @@ import (
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
+	query "github.com/grafana/phlare/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/util/build"
 )
@@ -364,6 +365,15 @@ func (r *rowGroupOnDisk) Close() error {
 	}
 
 	return nil
+}
+
+func (r *rowGroupOnDisk) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
+	column, found := r.RowGroup.Schema().Lookup(columnName)
+	if !found {
+		return query.NewErrIterator(fmt.Errorf("column '%s' not found in head row group segment '%s'", columnName, r.file.Name()))
+	}
+	return query.NewColumnIterator(ctx, []parquet.RowGroup{r.RowGroup}, column.ColumnIndex, columnName, 1000, predicate, alias)
+
 }
 
 type seriesIDRowsRewriter struct {

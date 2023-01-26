@@ -467,14 +467,7 @@ func (h *Head) InRange(start, end model.Time) bool {
 }
 
 func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Head")
-	defer sp.Finish()
-	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
-	}
-	selectors = append(selectors, phlaremodel.SelectorFromProfileType(params.Type))
-	return h.profiles.index.SelectProfiles(selectors, model.Time(params.Start), model.Time(params.End))
+	return h.profiles.index.SelectMatchingProfiles(ctx, params)
 }
 
 func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
