@@ -2,33 +2,49 @@ package streaming
 
 import (
 	"context"
+	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/stackbuilder"
 	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
+	"runtime/debug"
 	"time"
 )
 
-func (p *VTStreamingParser) ParseWithWriteBatch(ctx context.Context, startTime, endTime time.Time, compressedProfile []byte, wbf stackbuilder.WriteBatchFactory) (err error) {
-	//defer func() {
-	//	if recover() != nil {
-	//		err = fmt.Errorf(fmt.Sprintf("parse panic %s", debug.Stack()))
-	//	}
-	//}()
+func (p *VTStreamingParser) ParseWithWriteBatch(ctx context.Context, startTime, endTime time.Time, profile, previous []byte, wbf stackbuilder.WriteBatchFactory) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = fmt.Errorf(fmt.Sprintf("parse panic %s", debug.Stack()))
+		}
+	}()
 	p.startTime = startTime
 	p.endTime = endTime
 	p.ctx = ctx
 	p.wbf = wbf
-	err = decompress(compressedProfile, func(profile []byte) error {
-		p.profile = profile
-		err := p.parseWB()
-		p.profile = nil
-		return err
-	})
+	p.cumulative = previous != nil
+	p.cumulativeOnly = previous != nil
+	p.wbCache.cumulative = p.cumulative
+	if previous != nil {
+		err = p.parseWB(previous, true)
+	}
+	if err == nil {
+		p.cumulativeOnly = false
+		err = p.parseWB(profile, false)
+	}
 	p.ctx = nil
 	p.wbf = nil
 	return nil
 }
 
-func (p *VTStreamingParser) parseWB() (err error) {
+func (p *VTStreamingParser) parseWB(profile []byte, prev bool) (err error) {
+	return decompress(profile, func(profile []byte) error {
+		p.profile = profile
+		p.prev = prev
+		err := p.parseWBDecompressed()
+		p.profile = nil
+		return err
+	})
+}
+
+func (p *VTStreamingParser) parseWBDecompressed() (err error) {
 	if err = p.countStructs(); err != nil {
 		return err
 	}
@@ -38,12 +54,10 @@ func (p *VTStreamingParser) parseWB() (err error) {
 	if !p.haveKnownSampleTypes() {
 		return nil
 	}
-	return p.parseSamplesWB()
-}
-
-func (p *VTStreamingParser) parseSamplesWB() error {
-	err := p.UnmarshalVTProfile(p.profile, opFlagParseSamplesWriteBatch)
-	p.wbCache.flush()
+	err = p.UnmarshalVTProfile(p.profile, opFlagParseSamplesWriteBatch)
+	if !p.prev {
+		p.wbCache.flush()
+	}
 	return err
 }
 
@@ -51,12 +65,15 @@ type writeBatchCache struct {
 	// sample type -> write batch
 	wbs []wbw
 
-	appName string //todo keep it in parser
+	cumulative bool
 }
 
 type wbw struct {
 	wb        stackbuilder.WriteBatch
 	appenders map[uint64]stackbuilder.SamplesAppender
+
+	// stackHash -> value for cumulative prev
+	prev map[uint64]uint64
 }
 
 func (c *writeBatchCache) reset() {
@@ -78,21 +95,19 @@ func (c *writeBatchCache) getWriteBatch(parser *VTStreamingParser, sampleTypeInd
 	}
 	p := &c.wbs[sampleTypeIndex]
 	if p.wb == nil {
-		sampleType := parser.sampleTypes[sampleTypeIndex].resolvedType
-		sampleTypeConfig, ok := parser.sampleTypesConfig[sampleType]
-		if !ok {
+		appName := parser.getAppName(sampleTypeIndex)
+		if appName == "" {
 			return nil
 		}
-		if sampleTypeConfig.DisplayName != "" {
-			sampleType = sampleTypeConfig.DisplayName
-		}
-		appName := c.appName + "." + sampleType
 		wb, err := parser.wbf.NewWriteBatch(appName)
 		if err != nil || wb == nil {
 			return nil
 		}
 		p.wb = wb
 		p.appenders = make(map[uint64]stackbuilder.SamplesAppender)
+		if c.cumulative {
+			p.prev = make(map[uint64]uint64)
+		}
 	}
 	return p
 }
@@ -109,7 +124,7 @@ func (c *writeBatchCache) flush() {
 }
 
 func (w *wbw) getAppender(parser *VTStreamingParser, labels Labels) stackbuilder.SamplesAppender {
-	h := labels.Hash() //todo collisions?
+	h := labels.Hash()
 	e, found := w.appenders[h]
 	if found {
 		return e

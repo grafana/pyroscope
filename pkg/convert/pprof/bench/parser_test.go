@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/pprof/profile"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof/streaming"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
@@ -69,11 +70,49 @@ func TestCompareWriteBatch(t *testing.T) {
 		return
 	}
 	for _, c := range compareCorpusData {
-		//if len(c.prev) != 0 { // todo
+		//if !strings.Contains(c.fname, "2022-10-08T00:38:10Z-463f5927-baac-4053-8b69-6160410a58cd.txt") {
 		//	continue
 		//}
+
+		//cur, _ := profile.Parse(bytes.NewReader(c.profile))
+		//if c.prev != nil {
+		//	prev, _ := profile.Parse(bytes.NewReader(c.prev))
+		//	os.WriteFile("p1", []byte(dumpPProfProfile(prev)), 0666)
+		//}
+		//os.WriteFile("p2", []byte(dumpPProfProfile(cur)), 0666)
 		testCompareWriteBatchOne(t, c)
 	}
+}
+
+func dumpPProfProfile(p *profile.Profile) string {
+	var ls []string
+	for _, sample := range p.Sample {
+		s := dumpPProfStack(sample, true)
+		ls = append(ls, s)
+	}
+	slices.Sort(ls)
+	return strings.Join(ls, "\n")
+}
+
+func dumpPProfStack(sample *profile.Sample, v bool) string {
+	sb := strings.Builder{}
+	for i := len(sample.Location) - 1; i >= 0; i-- {
+		location := sample.Location[i]
+		for j := len(location.Line) - 1; j >= 0; j-- {
+			line := location.Line[j]
+
+			sb.WriteString(";")
+			//sb.WriteString(fmt.Sprintf("[%x %x] ", location.ID, location.Address))
+
+			sb.WriteString(line.Function.Name)
+		}
+	}
+	if v {
+		sb.WriteString(" ")
+		sb.WriteString(fmt.Sprintf("%d", sample.Value[0]))
+	}
+	s := sb.String()
+	return s
 }
 
 func TestIterateWithStackBuilder(t *testing.T) {
@@ -485,11 +524,13 @@ func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 	}
 
 	mock2 := &MockPutter{keep: true}
-	profile2 := pprof.RawProfile{
+	profile2 := &pprof.RawProfile{
 		Profile:          c.profile,
 		PreviousProfile:  c.prev,
 		SampleTypeConfig: c.config,
 	}
+	cumulativeMerge(profile2)
+
 	err = profile2.Parse(context.TODO(), mock2, nil, md)
 	if err != nil {
 		t.Fatal(err)
@@ -498,36 +539,81 @@ func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 	for _, put := range mock2.puts {
 		expectedCollapsed := put.Val
 		appenderCollapsed := ""
-		if c.prev != nil {
-			for _, put1 := range mock1.puts {
-				if put1.Key == put.Key {
-					appenderCollapsed = put1.Val
-					break
+		var found []*mockSamplesAppender
+		for _, batch := range wbf.wbs {
+			for _, appender := range batch.appenders {
+				labels := make(map[string]string)
+				labels["__name__"] = batch.appName
+				for _, label := range appender.labels {
+					labels[label.Key] = label.Value
+				}
+				k := segment.NewKey(labels)
+				if k.SegmentKey() == put.Key {
+					found = append(found, appender)
 				}
 			}
-		} else {
-			var found []*mockSamplesAppender
-			for _, batch := range wbf.wbs {
-				for _, appender := range batch.appenders {
-					labels := make(map[string]string)
-					labels["__name__"] = batch.appName
-					for _, label := range appender.labels {
-						labels[label.Key] = label.Value
-					}
-					k := segment.NewKey(labels)
-					if k.SegmentKey() == put.Key {
-						found = append(found, appender)
-					}
-				}
-			}
-			if len(found) != 1 {
-				t.Fatal()
-			}
-			appenderCollapsed = found[0].tree.String()
 		}
+		if len(found) != 1 {
+			if expectedCollapsed == "" {
+				continue
+			}
+			t.Fatalf("not found %s", put.Key)
+		}
+		appenderCollapsed = found[0].tree.String()
+
 		if appenderCollapsed != expectedCollapsed {
-			t.Fatalf("expected\n%s\ngot\n%s\n", expectedCollapsed, appenderCollapsed)
+			os.WriteFile("p3", []byte(expectedCollapsed), 0666)
+			os.WriteFile("p4", []byte(appenderCollapsed), 0666)
+			t.Fatalf("%s: expected\n%s\ngot\n%s\n failed file:%s\n", put.Key, expectedCollapsed, appenderCollapsed, c.fname)
 		}
+	}
+}
+
+func cumulativeMerge(profile2 *pprof.RawProfile) {
+	if profile2.PreviousProfile != nil {
+
+		p1, _ := profile.Parse(bytes.NewReader(profile2.PreviousProfile))
+		p2, _ := profile.Parse(bytes.NewReader(profile2.Profile))
+		prev := []map[string]int64{
+			make(map[string]int64),
+			make(map[string]int64),
+		}
+		for _, sample := range p1.Sample {
+			s := dumpPProfStack(sample, false)
+			prev[0][s] += sample.Value[0]
+			prev[1][s] += sample.Value[1]
+		}
+		dec := func(s string, i int, v int64) int64 {
+			prevV := prev[i][s]
+			if v > prevV {
+				prev[i][s] = 0
+				return v - prevV
+			}
+			prev[i][s] = prevV - v
+			return 0
+		}
+		for _, sample := range p2.Sample {
+			s := dumpPProfStack(sample, false)
+			sample.Value[0] = dec(s, 0, sample.Value[0])
+			sample.Value[1] = dec(s, 1, sample.Value[1])
+		}
+
+		merged := p2.Compact()
+
+		bs := bytes.NewBuffer(nil)
+		merged.Write(bs)
+
+		profile2.PreviousProfile = nil
+		profile2.Profile = bs.Bytes()
+
+		sampleTypeConfig := make(map[string]*tree.SampleTypeConfig)
+		for k, v := range profile2.SampleTypeConfig {
+			vv := *v
+			vv.Cumulative = false
+			sampleTypeConfig[k] = &vv
+		}
+		profile2.SampleTypeConfig = sampleTypeConfig
+		os.WriteFile("merged", []byte(dumpPProfProfile(merged)), 0666)
 	}
 }
 

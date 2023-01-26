@@ -33,18 +33,17 @@ type ParserConfig struct {
 	Putter        storage.Putter
 	SpyName       string
 	Labels        map[string]string
-	SkipExemplars bool
 	SampleTypes   map[string]*tree.SampleTypeConfig
 	Formatter     StackFormatter
 	ArenasEnabled bool
 }
 
 type VTStreamingParser struct {
-	putter            storage.Putter
-	wbf               stackbuilder.WriteBatchFactory
-	spyName           string
-	labels            map[string]string
-	skipExemplars     bool
+	putter  storage.Putter
+	wbf     stackbuilder.WriteBatchFactory
+	spyName string
+	labels  map[string]string
+
 	sampleTypesConfig map[string]*tree.SampleTypeConfig
 	Formatter         StackFormatter
 	ArenasEnabled     bool
@@ -55,6 +54,8 @@ type VTStreamingParser struct {
 	endTime        time.Time
 	ctx            context.Context
 	profile        []byte
+	prev           bool
+	cumulative     bool
 	cumulativeOnly bool
 
 	nStrings            int
@@ -272,9 +273,6 @@ func (p *VTStreamingParser) createTrees() {
 		s := p.tmpSample.tmpStack
 		if j := findLabelIndex(p.tmpSample.tmpLabels, p.profileIDLabelIndex); j >= 0 {
 			p.newCache.GetOrCreateTree(vi, CutLabel(p.arena, p.tmpSample.tmpLabels, j)).InsertStackA(s, v)
-			if p.skipExemplars {
-				continue
-			}
 		}
 		p.newCache.GetOrCreateTree(vi, p.tmpSample.tmpLabels).InsertStackA(s, v)
 	}
@@ -370,6 +368,22 @@ func (p *VTStreamingParser) buildName(sampleTypeName string, labels map[string]s
 	return segment.NewKey(labels)
 }
 
+func (p *VTStreamingParser) getAppName(sampleTypeIndex int) string {
+	sampleType := p.sampleTypes[sampleTypeIndex].resolvedType
+	sampleTypeConfig, ok := p.sampleTypesConfig[sampleType]
+	if !ok {
+		return ""
+	}
+	if sampleTypeConfig.DisplayName != "" {
+		sampleType = sampleTypeConfig.DisplayName
+	}
+	name := p.labels["__name__"]
+	if name == "" {
+		return ""
+	}
+	return name + "." + sampleType
+}
+
 func (p *VTStreamingParser) sampleRate() uint32 {
 	if p.period <= 0 || p.periodType.unit <= 0 {
 		return 0
@@ -394,11 +408,10 @@ func (p *VTStreamingParser) Reset(config ParserConfig) {
 	p.spyName = config.SpyName
 	p.labels = config.Labels
 	p.sampleTypesConfig = config.SampleTypes
-	p.skipExemplars = config.SkipExemplars
 	p.previousCache.Reset()
 	p.newCache.Reset()
 	p.wbCache.reset()
-	p.wbCache.appName = config.Labels["__name__"]
+
 	p.sampleTypesFilter = filterKnownSamples(config.SampleTypes)
 	p.Formatter = config.Formatter
 	p.ArenasEnabled = config.ArenasEnabled

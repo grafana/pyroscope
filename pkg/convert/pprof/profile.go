@@ -127,12 +127,11 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 		sampleTypes := p.getSampleTypes()
 		if p.StreamingParser {
 			config := streaming.ParserConfig{
-				SpyName:       md.SpyName,
-				Labels:        md.Key.Labels(),
-				Putter:        putter,
-				SampleTypes:   sampleTypes,
-				SkipExemplars: p.SkipExemplars,
-				Formatter:     streaming.StackFrameFormatterForSpyName(md.SpyName),
+				SpyName:     md.SpyName,
+				Labels:      md.Key.Labels(),
+				Putter:      putter,
+				SampleTypes: sampleTypes,
+				Formatter:   streaming.StackFrameFormatterForSpyName(md.SpyName),
 			}
 			if p.PoolStreamingParser {
 				parser := streaming.VTStreamingParserFromPool(config)
@@ -194,20 +193,16 @@ func (p *RawProfile) ParseWithWriteBatch(c context.Context, wb stackbuilder.Writ
 	if err != nil || !cont {
 		return err
 	}
-	if p.PreviousProfile != nil {
-		return p.Parse(c, fallback, nil, md)
-	}
 	parser := streaming.NewStreamingParser(streaming.ParserConfig{
 		SpyName:       md.SpyName,
 		Labels:        md.Key.Labels(),
 		Putter:        fallback,
 		SampleTypes:   p.getSampleTypes(),
-		SkipExemplars: p.SkipExemplars,
 		Formatter:     streaming.StackFrameFormatterForSpyName(md.SpyName),
 		ArenasEnabled: true,
 	})
 	defer parser.FreeArena()
-	return parser.ParseWithWriteBatch(c, md.StartTime, md.EndTime, p.Profile, wb)
+	return parser.ParseWithWriteBatch(c, md.StartTime, md.EndTime, p.Profile, p.PreviousProfile, wb)
 
 }
 
