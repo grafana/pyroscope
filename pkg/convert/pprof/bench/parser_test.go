@@ -70,16 +70,12 @@ func TestCompareWriteBatch(t *testing.T) {
 		return
 	}
 	for _, c := range compareCorpusData {
-		//if !strings.Contains(c.fname, "2022-10-08T00:38:10Z-463f5927-baac-4053-8b69-6160410a58cd.txt") {
-		//	continue
+		//cur, _ := profile.Parse(bytes.NewReader(c.profile))
+		//if c.prev != nil {
+		//	prev, _ := profile.Parse(bytes.NewReader(c.prev))
+		//	os.WriteFile("p1", []byte(dumpPProfProfile(prev)), 0666)
 		//}
-
-		cur, _ := profile.Parse(bytes.NewReader(c.profile))
-		if c.prev != nil {
-			prev, _ := profile.Parse(bytes.NewReader(c.prev))
-			os.WriteFile("p1", []byte(dumpPProfProfile(prev)), 0666)
-		}
-		os.WriteFile("p2", []byte(dumpPProfProfile(cur)), 0666)
+		//os.WriteFile("p2", []byte(dumpPProfProfile(cur)), 0666)
 		testCompareWriteBatchOne(t, c)
 	}
 }
@@ -529,7 +525,7 @@ func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 		PreviousProfile:  c.prev,
 		SampleTypeConfig: c.config,
 	}
-	cumulativeMerge(profile2)
+	mergeCumulative(profile2)
 
 	err = profile2.Parse(context.TODO(), mock2, nil, md)
 	if err != nil {
@@ -569,9 +565,8 @@ func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 	}
 }
 
-func cumulativeMerge(profile2 *pprof.RawProfile) {
+func mergeCumulative(profile2 *pprof.RawProfile) {
 	if profile2.PreviousProfile != nil {
-
 		p1, _ := profile.Parse(bytes.NewReader(profile2.PreviousProfile))
 		p2, _ := profile.Parse(bytes.NewReader(profile2.Profile))
 		prev := []map[string]int64{
