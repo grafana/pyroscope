@@ -367,7 +367,7 @@ type sampleMerge struct {
 type profileSampleMap map[int64]*profile.Sample
 
 func (m profileSampleMap) add(key, value int64) {
-	if _, ok := m[key]; !ok {
+	if _, ok := m[key]; ok {
 		m[key].Value[0] += value
 		return
 	}
@@ -379,7 +379,7 @@ func (m profileSampleMap) add(key, value int64) {
 type stacktraceSampleMap map[int64]*ingestv1.StacktraceSample
 
 func (m stacktraceSampleMap) add(key, value int64) {
-	if _, ok := m[key]; !ok {
+	if _, ok := m[key]; ok {
 		m[key].Value += value
 		return
 	}
