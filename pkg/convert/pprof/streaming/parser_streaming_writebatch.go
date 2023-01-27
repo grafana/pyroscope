@@ -94,7 +94,6 @@ func (p *VTStreamingParser) parseSampleWB(buffer []byte) error {
 }
 
 func (p *VTStreamingParser) appendWB() {
-	fmt.Printf("[debugwtf] appendWB %v\n", p.indexes)
 	for _, vi := range p.indexes {
 		v := uint64(p.tmpSample.tmpValues[vi])
 		if v == 0 {

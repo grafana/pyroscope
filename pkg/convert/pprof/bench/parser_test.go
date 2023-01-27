@@ -505,7 +505,6 @@ func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 	fmt.Println(c.fname)
 	key, _ := segment.ParseKey("foo.bar")
-	mock1 := &MockPutter{keep: true}
 	profile1 := pprof.RawProfile{
 		Profile:          c.profile,
 		PreviousProfile:  c.prev,
@@ -513,7 +512,7 @@ func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 	}
 	md := ingestion.Metadata{Key: key, SpyName: c.spyname}
 	wbf := &mockWriteBatchFactory{}
-	err := profile1.ParseWithWriteBatch(context.TODO(), wbf, mock1, md)
+	err := profile1.ParseWithWriteBatch(context.TODO(), wbf, md)
 	if err != nil {
 		t.Fatal(err)
 	}
