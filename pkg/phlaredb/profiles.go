@@ -39,6 +39,13 @@ type rowRange struct {
 	length int
 }
 
+func (r *rowRange) iter() iter.Iterator[query.RowGetter] {
+	return &rowRangeIter{
+		rowRange: r,
+		pos:      0,
+	}
+}
+
 type rowRangeWithSeriesIndex struct {
 	*rowRange
 	seriesIndex uint32
@@ -63,19 +70,18 @@ type rowRangeIter struct {
 }
 
 func (i *rowRangeIter) At() query.RowGetter {
-	return i.pos
+	return i.pos - 1
 }
 
 func (i *rowRangeIter) Next() bool {
 	if i.pos < rowNum(i.rowRange.rowNum) {
 		i.pos = rowNum(i.rowRange.rowNum)
-	} else {
-		i.pos++
 	}
 
-	if i.pos > rowNum(i.rowRange.rowNum)+rowNum(i.rowRange.length) {
+	if i.pos >= rowNum(i.rowRange.rowNum)+rowNum(i.rowRange.length) {
 		return false
 	}
+	i.pos++
 	return true
 }
 
@@ -89,7 +95,7 @@ type profileRowGroup struct {
 }
 
 func (prg *profileRowGroup) rowNums() query.Iterator {
-	return query.NewRowNumberIterator[query.RowGetter](&rowRangeIter{prg.rowRange, 0})
+	return query.NewRowNumberIterator[query.RowGetter](prg.rowRange.iter())
 }
 
 func (prg *profileRowGroup) iter(ctx context.Context, start, end model.Time) query.Iterator {
@@ -128,7 +134,7 @@ func (pi *profileLabels) selectProfilesWithin(ctx context.Context, start, end mo
 	var (
 		profiles []Profile
 		buf      = make([][]parquet.Value, 1)
-		iters    = make([]iter.Iterator[Profile], 0, len(pi.profilesOnDisk)+1)
+		iters    = make([]iter.Iterator[Profile], 0, 2)
 	)
 
 	// get profiles from memory first
@@ -159,8 +165,8 @@ func (pi *profileLabels) selectProfilesWithin(ctx context.Context, start, end mo
 		if err := pIt.Err(); err != nil {
 			return iter.NewErrIterator[Profile](err)
 		}
-		iters = append(iters, iter.NewSliceIterator(profiles))
 	}
+	iters = append(iters, iter.NewSliceIterator(profiles))
 
 	return iter.NewSortProfileIterator(iters)
 
@@ -335,7 +341,6 @@ outer:
 			}
 		}
 
-		// first add the profiles we keep in memory
 		iters = append(iters, profile.selectProfilesWithin(ctx, start, end))
 	}
 
