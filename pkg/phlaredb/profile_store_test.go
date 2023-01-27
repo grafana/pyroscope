@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
@@ -55,14 +57,21 @@ func (tp *testProfile) populateFingerprint() {
 func sameProfileStream(i int) *testProfile {
 	tp := &testProfile{}
 
-	tp.lbls = phlaremodel.LabelsFromStrings("job", "test")
-	tp.profileName = "test"
+	tp.profileName = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+	tp.lbls = phlaremodel.LabelsFromStrings(
+		phlaremodel.LabelNameProfileType, tp.profileName,
+		"job", "test",
+	)
 
 	tp.p.ID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
 	tp.p.TimeNanos = time.Second.Nanoseconds() * int64(i)
+	tp.p.Samples = []*schemav1.Sample{
+		{
+			StacktraceID: 0x1,
+			Value:        10.0,
+		},
+	}
 	tp.populateFingerprint()
-
-	tp.profileName = "test"
 
 	return tp
 }
@@ -114,7 +123,7 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 		},
 		{
 			name:            "multiple row groups because of maximum size",
-			cfg:             &ParquetConfig{MaxRowGroupBytes: 1280, MaxBufferRowCount: 100000},
+			cfg:             &ParquetConfig{MaxRowGroupBytes: 1828, MaxBufferRowCount: 100000},
 			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          sameProfileStream,
@@ -164,7 +173,9 @@ func threeProfileStreams(i int) *testProfile {
 	tp := sameProfileStream(i)
 	streams := []string{"stream-a", "stream-b", "stream-c"}
 
-	tp.lbls = phlaremodel.LabelsFromStrings("job", "test", "stream", streams[i%3])
+	lbls := phlaremodel.NewLabelsBuilder(tp.lbls)
+	lbls.Set("stream", streams[i%3])
+	tp.lbls = lbls.Labels()
 	tp.populateFingerprint()
 	return tp
 }
@@ -202,4 +213,56 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("00000000-0000-0000-0000-%012d", id), rows[i].ID.String())
 		assert.Equal(t, uint32(i/3), rows[i].SeriesIndex)
 	}
+}
+
+// TestProfileStore_Querying
+func TestProfileStore_Querying(t *testing.T) {
+	var (
+		ctx   = testContext(t)
+		store = newProfileStore(ctx)
+	)
+	path := t.TempDir()
+
+	// force different row group segements
+	cfg := &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 3}
+
+	require.NoError(t, store.Init(path, cfg))
+
+	for i := 0; i < 9; i++ {
+		p := threeProfileStreams(i)
+		require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
+	}
+
+	// now query the store
+	params := &ingestv1.SelectProfilesRequest{
+		Start:         0,
+		End:           1000000000000,
+		LabelSelector: "{}",
+		Type: &typesv1.ProfileType{
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+	}
+
+	// select profiles
+	pIt, err := store.index.SelectMatchingProfiles(ctx, params)
+	require.NoError(t, err)
+
+	// ensure we see the profiles we expect
+	var profileTS []int64
+	for pIt.Next() {
+		profileTS = append(profileTS, pIt.At().Timestamp().Unix())
+	}
+	assert.Equal(t, []int64{0, 1, 2, 3, 4, 5, 6, 7, 8}, profileTS)
+
+	// TODO: merge their samples
+
+	// flush profiles and ensure the correct number of files are created
+	numRows, numRGs, err := store.Flush(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, uint64(9), numRows)
+	assert.Equal(t, uint64(3), numRGs)
 }

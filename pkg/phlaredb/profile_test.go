@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
@@ -152,4 +153,29 @@ func TestWriteRead(t *testing.T) {
 		require.Equal(t, int64(0), chks[0].MinTime)
 		require.Equal(t, int64(9), chks[0].MaxTime)
 	}
+}
+
+func Test_rowRangeIter(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		r        *rowRange
+		expected []int64
+	}{
+		{"emtpy", &rowRange{}, []int64{}},
+		{"first-element", &rowRange{0, 1}, []int64{0}},
+		{"first-3-elements", &rowRange{0, 3}, []int64{0, 1, 2}},
+		{"emtpy-offset", &rowRange{10, 0}, []int64{}},
+		{"one-element-offset", &rowRange{10, 1}, []int64{10}},
+		{"two elements-offset", &rowRange{10, 2}, []int64{10, 11}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			it := tc.r.iter()
+			var result = []int64{}
+			for it.Next() {
+				result = append(result, it.At().RowNumber())
+			}
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+
 }
