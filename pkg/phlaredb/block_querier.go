@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -857,13 +858,14 @@ func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string,
 	return query.NewColumnIterator(ctx, r.file.RowGroups(), index, columnName, 1000, predicate, alias)
 }
 
-func repeatedColumnIter[T any](ctx context.Context, f *parquet.File, columnName string, rows iter.Iterator[T]) iter.Iterator[*query.RepeatedRow[T]] {
-	index, _ := query.GetColumnIndexByPath(f, columnName)
-	if index == -1 {
+func repeatedColumnIter[T any](ctx context.Context, source Source, columnName string, rows iter.Iterator[T]) iter.Iterator[*query.RepeatedRow[T]] {
+	column, found := source.Schema().Lookup(strings.Split(columnName, ".")...)
+	if !found {
 		return iter.NewErrIterator[*query.RepeatedRow[T]](fmt.Errorf("column '%s' not found in parquet file", columnName))
 	}
+
 	opentracing.SpanFromContext(ctx).SetTag("columnName", columnName)
-	return query.NewRepeatedPageIterator(ctx, rows, f.RowGroups(), index, 1e4)
+	return query.NewRepeatedPageIterator(ctx, rows, source.RowGroups(), column.ColumnIndex, 1e4)
 }
 
 type retrieveRowIterator[M any] struct {

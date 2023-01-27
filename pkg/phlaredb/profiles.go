@@ -93,7 +93,6 @@ func (prg *profileRowGroup) rowNums() query.Iterator {
 }
 
 func (prg *profileRowGroup) iter(ctx context.Context, start, end model.Time) query.Iterator {
-	return nil
 	pIt := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
