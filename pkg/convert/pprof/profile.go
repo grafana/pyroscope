@@ -188,7 +188,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 	return nil
 }
 
-func (p *RawProfile) ParseWithWriteBatch(c context.Context, wb stackbuilder.WriteBatchFactory, fallback storage.Putter, md ingestion.Metadata) error {
+func (p *RawProfile) ParseWithWriteBatch(c context.Context, wb stackbuilder.WriteBatchFactory, md ingestion.Metadata) error {
 	cont, err := p.handleRawData()
 	if err != nil || !cont {
 		return err
@@ -196,7 +196,6 @@ func (p *RawProfile) ParseWithWriteBatch(c context.Context, wb stackbuilder.Writ
 	parser := streaming.NewStreamingParser(streaming.ParserConfig{
 		SpyName:       md.SpyName,
 		Labels:        md.Key.Labels(),
-		Putter:        fallback,
 		SampleTypes:   p.getSampleTypes(),
 		Formatter:     streaming.StackFrameFormatterForSpyName(md.SpyName),
 		ArenasEnabled: true,

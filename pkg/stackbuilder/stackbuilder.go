@@ -3,11 +3,8 @@ package stackbuilder
 import (
 	"context"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
-
-
 
 type SamplesAppender interface {
 	Append(stackID, value uint64)
@@ -29,6 +26,5 @@ type WriteBatchFactory interface {
 type WriteBatchParser interface {
 	ParseWithWriteBatch(c context.Context,
 		wbf WriteBatchFactory,
-		fallback storage.Putter,
 		md ingestion.Metadata) error
 }
