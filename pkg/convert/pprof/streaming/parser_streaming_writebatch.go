@@ -94,6 +94,7 @@ func (p *VTStreamingParser) parseSampleWB(buffer []byte) error {
 }
 
 func (p *VTStreamingParser) appendWB() {
+	fmt.Printf("[debugwtf] appendWB %v\n", p.indexes)
 	for _, vi := range p.indexes {
 		v := uint64(p.tmpSample.tmpValues[vi])
 		if v == 0 {
@@ -169,6 +170,7 @@ type writeBatchCache struct {
 
 type wbw struct {
 	wb        stackbuilder.WriteBatch
+	appName   string
 	appenders map[uint64]stackbuilder.SamplesAppender
 
 	// stackHash -> value for cumulative prev
@@ -203,6 +205,7 @@ func (c *writeBatchCache) getWriteBatch(parser *VTStreamingParser, sampleTypeInd
 			return nil
 		}
 		p.wb = wb
+		p.appName = appName
 		p.appenders = make(map[uint64]stackbuilder.SamplesAppender)
 		if c.cumulative {
 			p.prev = make(map[uint64]int64)
@@ -228,18 +231,18 @@ func (w *wbw) getAppender(parser *VTStreamingParser, labels Labels) stackbuilder
 	if found {
 		return e
 	}
-	allLabels := resolveLabels(parser, labels)
+	allLabels := w.resolveLabels(parser, labels)
 	e = w.wb.SamplesAppender(parser.startTime.Unix(), parser.endTime.Unix(), allLabels)
 	w.appenders[h] = e
 	return e
 }
 
-func resolveLabels(parser *VTStreamingParser, labels Labels) []stackbuilder.Label {
-	labelsSize := len(parser.labels) + len(labels) - 1
+func (w *wbw) resolveLabels(parser *VTStreamingParser, labels Labels) []stackbuilder.Label {
+	labelsSize := len(parser.labels) + len(labels)
 	allLabels := arenahelper.MakeSlice[stackbuilder.Label](parser.arena, 0, labelsSize)
 	for k, v := range parser.labels {
 		if k == "__name__" {
-			continue
+			v = w.appName
 		}
 		allLabels = append(allLabels, stackbuilder.Label{Key: k, Value: v})
 	}
