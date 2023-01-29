@@ -21,7 +21,7 @@ type WriteBatch interface {
 }
 
 type WriteBatchFactory interface {
-	NewWriteBatch(appName string, metadata metadata.Metadata) (WriteBatch, error)
+	NewWriteBatch(appName string, md metadata.Metadata) (WriteBatch, error)
 }
 
 type WriteBatchParser interface {
