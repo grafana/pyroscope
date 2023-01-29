@@ -231,7 +231,7 @@ func (w *wbw) getAppender(parser *VTStreamingParser, labels Labels) stackbuilder
 		return e
 	}
 	allLabels := w.resolveLabels(parser, labels)
-	e = w.wb.SamplesAppender(parser.startTime.Unix(), parser.endTime.Unix(), allLabels)
+	e = w.wb.SamplesAppender(parser.startTime.UnixNano(), parser.endTime.UnixNano(), allLabels)
 	w.appenders[h] = e
 	return e
 }
