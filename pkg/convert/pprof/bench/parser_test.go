@@ -720,7 +720,7 @@ type mockWriteBatchFactory struct {
 	wbs map[string]*mockWriteBatch
 }
 
-func (m *mockWriteBatchFactory) NewWriteBatch(appName string, metadata metadata.Metadata) (stackbuilder.WriteBatch, error) {
+func (m *mockWriteBatchFactory) NewWriteBatch(appName string, _ metadata.Metadata) (stackbuilder.WriteBatch, error) {
 	if m.wbs == nil {
 		m.wbs = make(map[string]*mockWriteBatch)
 	}
