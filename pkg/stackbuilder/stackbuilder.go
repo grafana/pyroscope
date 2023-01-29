@@ -25,7 +25,5 @@ type WriteBatchFactory interface {
 }
 
 type WriteBatchParser interface {
-	ParseWithWriteBatch(c context.Context,
-		wbf WriteBatchFactory,
-		md ingestion.Metadata) error
+	ParseWithWriteBatch(c context.Context, wbf WriteBatchFactory, md ingestion.Metadata) error
 }
