@@ -5,40 +5,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 )
 
-const (
-	profSampleType        = 1
-	profSample            = 2
-	profMapping           = 3
-	profLocation          = 4
-	profFunction          = 5
-	profStringTable       = 6
-	profDropFrames        = 7
-	profKeepFrames        = 8
-	profTimeNanos         = 9
-	profDurationNanos     = 10
-	profPeriodType        = 11
-	profPeriod            = 12
-	profComment           = 13
-	profDefaultSampleType = 14
-
-	stType = 1
-	stUnit = 2
-
-	locID   = 1
-	locLine = 4
-
-	lineFunctionID = 1
-
-	funcID   = 1
-	funcName = 2
-
-	sampleLocationID = 1
-	sampleValue      = 2
-	sampleLabel      = 3
-
-	labelKey = 1
-	labelStr = 2
-)
 
 var (
 	profileIDLabel = []byte(segment.ProfileIDLabelName)
@@ -56,8 +22,6 @@ type function struct {
 	name     int32
 	filename int32
 }
-
-//const noFunction = 0xffffffffffffffff
 
 type location struct {
 	id uint64

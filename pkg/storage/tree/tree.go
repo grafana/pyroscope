@@ -275,6 +275,58 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
+type StackBuilder interface {
+	Push(frame []byte)
+	Pop() // bool
+	Build() (stackID uint64)
+	Reset()
+}
+
+func (t *Tree) IterateWithStackBuilder(sb StackBuilder, cb func(stackID uint64, val uint64)) {
+	type indexNode struct {
+		index int
+		node  *treeNode
+	}
+	var ss [128]indexNode
+	s := ss[:0]
+	sb.Reset()
+	if t.root.Self != 0 {
+		stackID := sb.Build()
+		cb(stackID, t.root.Self)
+	}
+	for i := 0; i < len(t.root.ChildrenNodes); i++ {
+		{
+			c := t.root.ChildrenNodes[i]
+			s = append(s, indexNode{0, c})
+			sb.Push(c.Name)
+			if c.Self != 0 {
+				stackID := sb.Build()
+				cb(stackID, c.Self)
+			}
+		}
+		for {
+			if len(s) == 0 {
+				break
+			}
+			h := &s[len(s)-1]
+			nc := len(h.node.ChildrenNodes)
+			if h.index >= nc {
+				s = s[0 : len(s)-1]
+				sb.Pop()
+				continue
+			}
+			c := h.node.ChildrenNodes[h.index]
+			s = append(s, indexNode{0, c})
+			sb.Push(c.Name)
+			if c.Self != 0 {
+				stackID := sb.Build()
+				cb(stackID, c.Self)
+			}
+			h.index++
+		}
+	}
+}
+
 func (t *Tree) IterateStacks(cb func(name string, self uint64, stack []string)) {
 	nodes := []*treeNode{t.root}
 	parents := make(map[*treeNode]*treeNode)
