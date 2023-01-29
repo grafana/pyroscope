@@ -195,11 +195,11 @@ func (c *writeBatchCache) getWriteBatch(parser *VTStreamingParser, sampleTypeInd
 	}
 	p := &c.wbs[sampleTypeIndex]
 	if p.wb == nil {
-		appName := parser.getAppName(sampleTypeIndex)
+		appName, metadata := parser.getAppMetadata(sampleTypeIndex)
 		if appName == "" {
 			return nil
 		}
-		wb, err := parser.wbf.NewWriteBatch(appName)
+		wb, err := parser.wbf.NewWriteBatch(appName, metadata)
 		if err != nil || wb == nil {
 			return nil
 		}

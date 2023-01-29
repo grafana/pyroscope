@@ -3,6 +3,7 @@ package stackbuilder
 import (
 	"context"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -20,7 +21,7 @@ type WriteBatch interface {
 }
 
 type WriteBatchFactory interface {
-	NewWriteBatch(appName string) (WriteBatch, error)
+	NewWriteBatch(appName string, metadata metadata.Metadata) (WriteBatch, error)
 }
 
 type WriteBatchParser interface {

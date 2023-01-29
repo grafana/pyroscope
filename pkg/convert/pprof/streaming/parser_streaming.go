@@ -369,20 +369,35 @@ func (p *VTStreamingParser) buildName(sampleTypeName string, labels map[string]s
 	return segment.NewKey(labels)
 }
 
-func (p *VTStreamingParser) getAppName(sampleTypeIndex int) string {
-	sampleType := p.sampleTypes[sampleTypeIndex].resolvedType
+func (p *VTStreamingParser) getAppMetadata(sampleTypeIndex int) (string, metadata.Metadata) {
+	st := &p.sampleTypes[sampleTypeIndex]
+	sampleType := st.resolvedType
 	sampleTypeConfig, ok := p.sampleTypesConfig[sampleType]
 	if !ok {
-		return ""
+		return "", metadata.Metadata{}
 	}
 	if sampleTypeConfig.DisplayName != "" {
 		sampleType = sampleTypeConfig.DisplayName
 	}
 	name := p.labels["__name__"]
 	if name == "" {
-		return ""
+		return "", metadata.Metadata{}
 	}
-	return name + "." + sampleType
+	md := metadata.Metadata{SpyName: p.spyName}
+	if sampleTypeConfig.Sampled {
+		md.SampleRate = p.sampleRate()
+	}
+	if sampleTypeConfig.DisplayName != "" {
+		sampleType = sampleTypeConfig.DisplayName
+	}
+	if sampleTypeConfig.Units != "" {
+		md.Units = sampleTypeConfig.Units
+	} else {
+		// TODO(petethepig): this conversion is questionable
+		unitsBytes := st.resolvedUnit
+		md.Units = metadata.Units(unitsBytes)
+	}
+	return name + "." + sampleType, md
 }
 
 func (p *VTStreamingParser) sampleRate() uint32 {
