@@ -532,11 +532,10 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 			if s.Value == 0 {
 				continue
 			}
-			existing, ok := stacktraceSamples[int64(s.StacktraceID)]
-			if !ok {
+			if _, exists := stacktraceSamples[int64(s.StacktraceID)]; !exists {
 				stacktraceSamples[int64(s.StacktraceID)] = &ingestv1.StacktraceSample{}
 			}
-			existing.Value += s.Value
+			stacktraceSamples[int64(s.StacktraceID)].Value += s.Value
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -683,11 +682,10 @@ func (h *Head) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*pr
 			if s.Value == 0 {
 				continue
 			}
-			existing, ok := stacktraceSamples[int64(s.StacktraceID)]
-			if !ok {
-				stacktraceSamples[int64(s.StacktraceID)] = &profile.Sample{}
+			if _, exists := stacktraceSamples[int64(s.StacktraceID)]; !exists {
+				stacktraceSamples[int64(s.StacktraceID)] = &profile.Sample{Value: []int64{0}}
 			}
-			existing.Value[0] += s.Value
+			stacktraceSamples[int64(s.StacktraceID)].Value[0] += s.Value
 		}
 
 		// now add locationIDs and stacktraces
