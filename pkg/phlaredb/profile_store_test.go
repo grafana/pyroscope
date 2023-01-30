@@ -16,11 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/pprof/testhelper"
 )
 
 func testContext(t testing.TB) context.Context {
@@ -169,9 +171,10 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 	}
 }
 
+var streams = []string{"stream-a", "stream-b", "stream-c"}
+
 func threeProfileStreams(i int) *testProfile {
 	tp := sameProfileStream(i)
-	streams := []string{"stream-a", "stream-b", "stream-c"}
 
 	lbls := phlaremodel.NewLabelsBuilder(tp.lbls)
 	lbls.Set("stream", streams[i%3])
@@ -215,22 +218,37 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 	}
 }
 
+func ingestThreeProfileStreams(ctx context.Context, i int, ingest func(context.Context, *profilev1.Profile, uuid.UUID, ...*typesv1.LabelPair) error) error {
+	p := testhelper.NewProfileBuilder(time.Second.Nanoseconds() * int64(i))
+	p.CPUProfile()
+	p.WithLabels(
+		"job", "foo",
+		"stream", streams[i%3],
+	)
+	p.UUID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
+	p.ForStacktraceString("func1", "func2").AddSamples(10)
+	p.ForStacktraceString("func1").AddSamples(20)
+
+	return ingest(ctx, p.Profile, p.UUID, p.Labels...)
+}
+
 // TestProfileStore_Querying
 func TestProfileStore_Querying(t *testing.T) {
+
 	var (
-		ctx   = testContext(t)
-		store = newProfileStore(ctx)
+		ctx = testContext(t)
+		cfg = Config{
+			DataPath: t.TempDir(),
+		}
+		head, err = NewHead(ctx, cfg)
 	)
-	path := t.TempDir()
+	require.NoError(t, err)
 
-	// force different row group segements
-	cfg := &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 3}
-
-	require.NoError(t, store.Init(path, cfg))
+	// force different row group segements for profiles
+	head.profiles.cfg = &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 3}
 
 	for i := 0; i < 9; i++ {
-		p := threeProfileStreams(i)
-		require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
+		require.NoError(t, ingestThreeProfileStreams(ctx, i, head.Ingest))
 	}
 
 	// now query the store
@@ -247,22 +265,60 @@ func TestProfileStore_Querying(t *testing.T) {
 		},
 	}
 
-	// select profiles
-	pIt, err := store.index.SelectMatchingProfiles(ctx, params)
-	require.NoError(t, err)
+	t.Run("select matching profiles", func(t *testing.T) {
+		pIt, err := head.SelectMatchingProfiles(ctx, params)
+		require.NoError(t, err)
 
-	// ensure we see the profiles we expect
-	var profileTS []int64
-	for pIt.Next() {
-		profileTS = append(profileTS, pIt.At().Timestamp().Unix())
-	}
-	assert.Equal(t, []int64{0, 1, 2, 3, 4, 5, 6, 7, 8}, profileTS)
+		// ensure we see the profiles we expect
+		var profileTS []int64
+		for pIt.Next() {
+			profileTS = append(profileTS, pIt.At().Timestamp().Unix())
+		}
+		assert.Equal(t, []int64{0, 1, 2, 3, 4, 5, 6, 7, 8}, profileTS)
+	})
 
-	// TODO: merge their samples
+	t.Run("merge by labels", func(t *testing.T) {
+		pIt, err := head.SelectMatchingProfiles(ctx, params)
+		require.NoError(t, err)
+		result, err := head.MergeByLabels(ctx, pIt, "stream")
+		require.NoError(t, err)
+		// expect 3 series
+		require.Len(t, result, 3)
 
-	// flush profiles and ensure the correct number of files are created
-	numRows, numRGs, err := store.Flush(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, uint64(9), numRows)
-	assert.Equal(t, uint64(3), numRGs)
+		// expect all ts to be there
+		var profileTS []int64
+		for _, s := range result {
+			for _, p := range s.Points {
+				profileTS = append(profileTS, model.Time(p.Timestamp).Unix())
+			}
+		}
+		assert.ElementsMatch(t, []int64{0, 1, 2, 3, 4, 5, 6, 7, 8}, profileTS)
+	})
+
+	t.Run("merge by stacktraces", func(t *testing.T) {
+		pIt, err := head.SelectMatchingProfiles(ctx, params)
+		require.NoError(t, err)
+		result, err := head.MergeByStacktraces(ctx, pIt)
+		require.NoError(t, err)
+
+		var values []int64
+		for _, s := range result.Stacktraces {
+			values = append(values, s.Value)
+		}
+		assert.ElementsMatch(t, []int64{90, 180}, values)
+	})
+
+	t.Run("merge by pprof", func(t *testing.T) {
+		pIt, err := head.SelectMatchingProfiles(ctx, params)
+		require.NoError(t, err)
+		result, err := head.MergePprof(ctx, pIt)
+		require.NoError(t, err)
+
+		var values []int64
+		for _, s := range result.Sample {
+			values = append(values, s.Value...)
+		}
+		assert.ElementsMatch(t, []int64{90, 180}, values)
+	})
+
 }

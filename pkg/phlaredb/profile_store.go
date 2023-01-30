@@ -428,6 +428,10 @@ func mergeOnDiskByStacktraces(ctx context.Context, rows iter.Iterator[Profile], 
 	)
 
 	merge := func() error {
+		if currentRG == nil {
+			return nil
+		}
+
 		if err := mergeByStacktraces(ctx, currentRG.rowGroup, iter.NewSliceIterator(profiles), m); err != nil {
 			return err
 		}
@@ -438,7 +442,7 @@ func mergeOnDiskByStacktraces(ctx context.Context, rows iter.Iterator[Profile], 
 	}
 
 	for rows.Next() {
-		p, ok := rows.At().(*profileOnDisk)
+		p, ok := rows.At().(profileOnDisk)
 		// if not a on disk profile, skip
 		if !ok {
 			continue
@@ -449,12 +453,9 @@ func mergeOnDiskByStacktraces(ctx context.Context, rows iter.Iterator[Profile], 
 			if err := merge(); err != nil {
 				return err
 			}
-		} else if currentRG == nil {
-			currentRG = p.rowGroup
 		}
-
+		currentRG = p.rowGroup
 		profiles = append(profiles, p)
-
 	}
 	if err := rows.Err(); err != nil {
 		return err
@@ -474,6 +475,9 @@ func mergeOnDiskByLabels(ctx context.Context, rows iter.Iterator[Profile], m ser
 	)
 
 	merge := func() error {
+		if currentRG == nil {
+			return nil
+		}
 		if err := mergeByLabels(ctx, currentRG.rowGroup, iter.NewSliceIterator(profiles), m, by...); err != nil {
 			return err
 		}
@@ -484,7 +488,7 @@ func mergeOnDiskByLabels(ctx context.Context, rows iter.Iterator[Profile], m ser
 	}
 
 	for rows.Next() {
-		p, ok := rows.At().(*profileOnDisk)
+		p, ok := rows.At().(profileOnDisk)
 		// if not a on disk profile, skip
 		if !ok {
 			continue
@@ -495,12 +499,9 @@ func mergeOnDiskByLabels(ctx context.Context, rows iter.Iterator[Profile], m ser
 			if err := merge(); err != nil {
 				return err
 			}
-		} else if currentRG == nil {
-			currentRG = p.rowGroup
 		}
-
+		currentRG = p.rowGroup
 		profiles = append(profiles, p)
-
 	}
 	if err := rows.Err(); err != nil {
 		return err
