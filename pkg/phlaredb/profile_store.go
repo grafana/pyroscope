@@ -17,6 +17,7 @@ import (
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
@@ -343,6 +344,10 @@ func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
 
 }
 
+func (r *rowGroupOnDisk) RowGroups() []parquet.RowGroup {
+	return []parquet.RowGroup{r.RowGroup}
+}
+
 func (r *rowGroupOnDisk) Rows() parquet.Rows {
 	rows := r.RowGroup.Rows()
 	if len(r.seriesIndexes) == 0 {
@@ -414,4 +419,96 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	r.pos += int64(n)
 
 	return n, nil
+}
+
+func mergeOnDiskByStacktraces(ctx context.Context, rows iter.Iterator[Profile], m mapAdder) error {
+	var (
+		currentRG *profileRowGroup
+		profiles  []Profile
+	)
+
+	merge := func() error {
+		if err := mergeByStacktraces(ctx, currentRG.rowGroup, iter.NewSliceIterator(profiles), m); err != nil {
+			return err
+		}
+
+		profiles = profiles[:0]
+		currentRG = nil
+		return nil
+	}
+
+	for rows.Next() {
+		p, ok := rows.At().(*profileOnDisk)
+		// if not a on disk profile, skip
+		if !ok {
+			continue
+		}
+
+		// check if we are talking about the same row group as before, if not run the merge
+		if currentRG != nil && currentRG != p.rowGroup {
+			if err := merge(); err != nil {
+				return err
+			}
+		} else if currentRG == nil {
+			currentRG = p.rowGroup
+		}
+
+		profiles = append(profiles, p)
+
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if len(profiles) > 0 {
+		return merge()
+	}
+
+	return nil
+}
+
+func mergeOnDiskByLabels(ctx context.Context, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
+	var (
+		currentRG *profileRowGroup
+		profiles  []Profile
+	)
+
+	merge := func() error {
+		if err := mergeByLabels(ctx, currentRG.rowGroup, iter.NewSliceIterator(profiles), m, by...); err != nil {
+			return err
+		}
+
+		profiles = profiles[:0]
+		currentRG = nil
+		return nil
+	}
+
+	for rows.Next() {
+		p, ok := rows.At().(*profileOnDisk)
+		// if not a on disk profile, skip
+		if !ok {
+			continue
+		}
+
+		// check if we are talking about the same row group as before, if not run the merge
+		if currentRG != nil && currentRG != p.rowGroup {
+			if err := merge(); err != nil {
+				return err
+			}
+		} else if currentRG == nil {
+			currentRG = p.rowGroup
+		}
+
+		profiles = append(profiles, p)
+
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if len(profiles) > 0 {
+		return merge()
+	}
+
+	return nil
 }
