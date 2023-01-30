@@ -5,7 +5,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/arenahelper"
 )
 
-
 var (
 	profileIDLabel = []byte(segment.ProfileIDLabelName)
 )
@@ -43,6 +42,7 @@ type sample struct {
 	//type labelPacked uint64
 	tmpLabels   []uint64
 	tmpStack    [][]byte
+	stackHashes []uint64
 	tmpStackLoc []uint64
 	//todo rename - remove tmp prefix
 }

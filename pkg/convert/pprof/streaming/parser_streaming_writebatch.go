@@ -128,7 +128,7 @@ func (p *VTStreamingParser) mergeCumulativeWB() (cont bool) {
 		return true
 	}
 
-	h := hashStack(p.tmpSample.tmpStack)
+	h := p.tmpSample.hashStack(p.arena)
 	for _, vi := range p.indexes {
 		v := p.tmpSample.tmpValues[vi]
 		if v == 0 {
@@ -268,23 +268,21 @@ func (w *wbw) resolveLabels(parser *VTStreamingParser, labels Labels) []stackbui
 	return allLabels
 }
 
-func hashStack(stack [][]byte) uint64 {
-	if len(stack) == 0 {
+func (s *sample) hashStack(a arenahelper.ArenaWrapper) uint64 {
+	if len(s.tmpStack) == 0 {
 		return zeroHash
 	}
-	var hashes [64 + 32]uint64
-	s := hashes[:]
-
-	for _, frame := range stack {
+	s.stackHashes = grow(a, s.stackHashes, len(s.tmpStack))
+	for _, frame := range s.tmpStack {
 		h := xxhash.Sum64(frame)
-		s = append(s, h)
+		s.stackHashes = append(s.stackHashes, h)
 	}
 
 	var raw []byte
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&raw))
-	sh.Data = uintptr(unsafe.Pointer(&s[0]))
-	sh.Len = len(s) * 8
-	sh.Cap = len(s) * 8
+	sh.Data = uintptr(unsafe.Pointer(&s.stackHashes[0]))
+	sh.Len = len(s.stackHashes) * 8
+	sh.Cap = len(s.stackHashes) * 8
 	res := xxhash.Sum64(raw)
 	return res
 }
