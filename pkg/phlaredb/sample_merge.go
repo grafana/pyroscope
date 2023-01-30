@@ -352,7 +352,12 @@ func (b *singleBlockQuerier) sampleMerge() *sampleMerge {
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
-	return mergeByLabels(ctx, b.profiles.file, rows, by...)
+
+	m := make(seriesByLabels)
+	if err := mergeByLabels(ctx, b.profiles.file, rows, m, by...); err != nil {
+		return nil, err
+	}
+	return m.normalize(), nil
 }
 
 type Source interface {
@@ -415,14 +420,28 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 	return nil
 }
 
-func mergeByLabels(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
+type seriesByLabels map[string]*typesv1.Series
 
+func (m seriesByLabels) normalize() []*typesv1.Series {
+	result := lo.Values(m)
+	sort.Slice(result, func(i, j int) bool {
+		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+	})
+	// we have to sort the points in each series because labels reduction may have changed the order
+	for _, s := range result {
+		sort.Slice(s.Points, func(i, j int) bool {
+			return s.Points[i].Timestamp < s.Points[j].Timestamp
+		})
+	}
+	return result
+}
+
+func mergeByLabels(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
 	it := repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", rows)
 
 	defer it.Close()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := map[string]*typesv1.Series{}
 	labelBuf := make([]byte, 0, 1024)
 
 	for it.Next() {
@@ -437,8 +456,8 @@ func mergeByLabels(ctx context.Context, profileSource Source, rows iter.Iterator
 			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
 			labelsByString = string(labelBuf)
 			labelsByFingerprint[p.Fingerprint()] = labelsByString
-			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &typesv1.Series{
+			if _, ok := m[labelsByString]; !ok {
+				m[labelsByString] = &typesv1.Series{
 					Labels: p.Labels().WithLabels(by...),
 					Points: []*typesv1.Point{
 						{
@@ -450,22 +469,12 @@ func mergeByLabels(ctx context.Context, profileSource Source, rows iter.Iterator
 				continue
 			}
 		}
-		series := seriesByLabels[labelsByString]
+		series := m[labelsByString]
 		series.Points = append(series.Points, &typesv1.Point{
 			Timestamp: int64(p.Timestamp()),
 			Value:     float64(total),
 		})
 	}
 
-	result := lo.Values(seriesByLabels)
-	sort.Slice(result, func(i, j int) bool {
-		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
-	})
-	// we have to sort the points in each series because labels reduction may have changed the order
-	for _, s := range result {
-		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].Timestamp < s.Points[j].Timestamp
-		})
-	}
-	return result, nil
+	return nil
 }

@@ -365,6 +365,10 @@ func (p ProfileWithLabels) Labels() phlaremodel.Labels {
 	return p.lbs
 }
 
+func (p ProfileWithLabels) Samples() []*schemav1.Sample {
+	return p.Profile.Samples
+}
+
 type SeriesIterator struct {
 	iter.Iterator[*schemav1.Profile]
 	curr ProfileWithLabels
