@@ -94,6 +94,6 @@ func (u *Upstream) Upload(j *upstream.UploadJob) {
 	}
 }
 
-func (u *Upstream) Flush() {
+func (*Upstream) Flush() {
 
 }
