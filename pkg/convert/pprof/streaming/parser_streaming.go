@@ -397,6 +397,7 @@ func (p *VTStreamingParser) getAppMetadata(sampleTypeIndex int) (string, metadat
 		unitsBytes := st.resolvedUnit
 		md.Units = metadata.Units(unitsBytes)
 	}
+	md.AggregationType = sampleTypeConfig.Aggregation
 	return name + "." + sampleType, md
 }
 
