@@ -470,8 +470,22 @@ func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.Sele
 	return h.profiles.index.SelectMatchingProfiles(ctx, params)
 }
 
+func checkProfileWithLabels(in interface{}) (*ProfileWithLabels, error) {
+	p, ok := in.(ProfileWithLabels)
+	if ok {
+		return &p, nil
+	}
+
+	switch in.(type) {
+	case profileOnDisk:
+		return nil, nil
+	}
+
+	return nil, fmt.Errorf("unsupported profile type: %T", in)
+}
+
 func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Head")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Head")
 	defer sp.Finish()
 
 	stacktraceSamples := stacktraceSampleMap{}
@@ -506,43 +520,49 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 
 	rows = multiRows[1]
 	for rows.Next() {
-		p, ok := rows.At().(ProfileWithLabels)
-		if !ok {
-			return nil, errors.New("expected ProfileWithLabels")
+		p, err := checkProfileWithLabels(rows.At())
+		if err != nil {
+			return nil, err
 		}
+		if p == nil {
+			continue
+		}
+
 		for _, s := range p.Samples() {
 			if s.Value == 0 {
 				continue
 			}
 			existing, ok := stacktraceSamples[int64(s.StacktraceID)]
-			if ok {
-				existing.Value += s.Value
-				continue
+			if !ok {
+				stacktraceSamples[int64(s.StacktraceID)] = &ingestv1.StacktraceSample{}
 			}
-			locs := h.stacktraces.slice[s.StacktraceID].LocationIDs
-			fnIds := make([]int32, 0, 2*len(locs))
-			for _, loc := range locs {
-				for _, line := range h.locations.slice[loc].Line {
-					fnNameID := h.functions.slice[line.FunctionId].Name
-					pos, ok := functions[fnNameID]
-					if !ok {
-						functions[fnNameID] = len(names)
-						fnIds = append(fnIds, int32(len(names)))
-						names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
-						continue
-					}
-					fnIds = append(fnIds, int32(pos))
-				}
-			}
-			stacktraceSamples[int64(s.StacktraceID)] = &ingestv1.StacktraceSample{
-				FunctionIds: fnIds,
-				Value:       s.Value,
-			}
+			existing.Value += s.Value
 		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
+	// add the location IDs to the stacktraces
+	for stacktraceID := range stacktraceSamples {
+		locs := h.stacktraces.slice[stacktraceID].LocationIDs
+		fnIds := make([]int32, 0, 2*len(locs))
+		for _, loc := range locs {
+			for _, line := range h.locations.slice[loc].Line {
+				fnNameID := h.functions.slice[line.FunctionId].Name
+				pos, ok := functions[fnNameID]
+				if !ok {
+					functions[fnNameID] = len(names)
+					fnIds = append(fnIds, int32(len(names)))
+					names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
+					continue
+				}
+				fnIds = append(fnIds, int32(pos))
+			}
+		}
+		stacktraceSamples[stacktraceID].FunctionIds = fnIds
+	}
+
 	return &ingestv1.MergeProfilesStacktracesResult{
 		Stacktraces:   lo.Values(stacktraceSamples),
 		FunctionNames: names,
@@ -550,7 +570,7 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 }
 
 func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Head")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Head")
 	defer sp.Finish()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
@@ -574,10 +594,14 @@ func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], b
 
 	rows = multiRows[1]
 	for rows.Next() {
-		p, ok := rows.At().(ProfileWithLabels)
-		if !ok {
-			return nil, errors.New("expected ProfileWithLabels")
+		p, err := checkProfileWithLabels(rows.At())
+		if err != nil {
+			return nil, err
 		}
+		if p == nil {
+			continue
+		}
+
 		labelsByString, ok := labelsByFingerprint[p.fp]
 		if !ok {
 			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
@@ -647,20 +671,28 @@ func (h *Head) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*pr
 
 	rows = multiRows[1]
 	for rows.Next() {
-		p, ok := rows.At().(ProfileWithLabels)
-		if !ok {
-			return nil, errors.New("expected ProfileWithLabels")
+		p, err := checkProfileWithLabels(rows.At())
+		if err != nil {
+			return nil, err
 		}
+		if p == nil {
+			continue
+		}
+
 		for _, s := range p.Samples() {
 			if s.Value == 0 {
 				continue
 			}
 			existing, ok := stacktraceSamples[int64(s.StacktraceID)]
-			if ok {
-				existing.Value[0] += s.Value
-				continue
+			if !ok {
+				stacktraceSamples[int64(s.StacktraceID)] = &profile.Sample{}
 			}
-			locationIds := h.stacktraces.slice[s.StacktraceID].LocationIDs
+			existing.Value[0] += s.Value
+		}
+
+		// now add locationIDs and stacktraces
+		for stacktraceID := range stacktraceSamples {
+			locationIds := h.stacktraces.slice[stacktraceID].LocationIDs
 			stacktraceLocations := make([]*profile.Location, len(locationIds))
 
 			for i, locId := range locationIds {
@@ -713,10 +745,7 @@ func (h *Head) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*pr
 				}
 				stacktraceLocations[i] = loc
 			}
-			stacktraceSamples[int64(s.StacktraceID)] = &profile.Sample{
-				Location: stacktraceLocations,
-				Value:    []int64{s.Value},
-			}
+			stacktraceSamples[stacktraceID].Location = stacktraceLocations
 		}
 	}
 	if err := rows.Err(); err != nil {
