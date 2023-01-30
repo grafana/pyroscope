@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
   // TypeScript files (.ts, .tsx) will be transformed by ts-jest to CommonJS syntax, and JavaScript files (.js, jsx) will be transformed by babel-jest.
-  preset: 'ts-jest/presets/js-with-babel',
+  //preset: 'ts-jest/presets/js-with-babel',
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: [path.join(__dirname, 'setupAfterEnv.ts')],
   testMatch: [
@@ -15,12 +15,22 @@ module.exports = {
   transform: {
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.(css|scss)$': 'jest-css-modules-transform',
-    '\\.svg$': path.join(__dirname, 'svg-transform.js'),
+    //    '\\.svg$': path.join(__dirname, 'svg-transform.js'),
+    '^.+\\.svg$': 'jest-transformer-svg',
+    '^.+\\.(t|j)sx?$': ['@swc/jest'],
+    // '^.+\\.[tj]sx?$' to process js/ts with `ts-jest`
+    // '^.+\\.m?[tj]sx?$' to process js/ts/mjs/mts with `ts-jest`
+    //    '^.+\\.tsx?$': [
+    //      'ts-jest',
+    //      {
+    //        isolatedModules: true,
+    //      },
+    //    ],
   },
   transformIgnorePatterns: [
     // force us to not transpile these dependencies
     // https://stackoverflow.com/a/69150188
-    'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|graphviz-react))',
+    'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|graphviz-react|@react-hook))',
   ],
   globals: {
     'ts-jest': {
