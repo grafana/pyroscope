@@ -1,3 +1,18 @@
+## [0.37.1](https://github.com/pyroscope-io/pyroscope/compare/v0.37.0...v0.37.1) (2023-01-31)
+
+
+### Bug Fixes
+
+* **pprof parsing:** decrease number of allocations during stack hash ([#1822](https://github.com/pyroscope-io/pyroscope/issues/1822)) ([f474c2d](https://github.com/pyroscope-io/pyroscope/commit/f474c2dbc7fed1dad9a2392257ae6fc80fdb4010))
+* self profiling sample type config ([#1827](https://github.com/pyroscope-io/pyroscope/issues/1827)) ([f78fdc0](https://github.com/pyroscope-io/pyroscope/commit/f78fdc0867100259b49b790c6e5ee64ac887f8df))
+
+
+### Features
+
+* pprof write batch parsing ([#1816](https://github.com/pyroscope-io/pyroscope/issues/1816)) ([32593be](https://github.com/pyroscope-io/pyroscope/commit/32593be8efc5b8457889ab78a5bc3d8aa2eb1a04))
+
+
+
 # [0.37.0](https://github.com/pyroscope-io/pyroscope/compare/v0.36.0...v0.37.0) (2023-01-24)
 
 
