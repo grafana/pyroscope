@@ -2,6 +2,7 @@ package selfprofiling
 
 import (
 	"context"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"runtime"
 	"runtime/debug"
 	"time"
@@ -75,6 +76,9 @@ func (u *Upstream) Upload(j *upstream.UploadJob) {
 		Profile:          j.Profile,
 		SampleTypeConfig: tree.DefaultSampleTypeMapping,
 	}
+	if j.SampleTypeConfig != nil {
+		profile.SampleTypeConfig = sampleTypeConfigFromUpstream(j.SampleTypeConfig)
+	}
 	if len(j.PrevProfile) > 0 {
 		profile.PreviousProfile = j.PrevProfile
 	}
@@ -92,6 +96,21 @@ func (u *Upstream) Upload(j *upstream.UploadJob) {
 	if err != nil {
 		u.logger.Errorf("failed to store a local profile: %v", err)
 	}
+}
+
+func sampleTypeConfigFromUpstream(config map[string]*upstream.SampleType) map[string]*tree.SampleTypeConfig {
+	res := make(map[string]*tree.SampleTypeConfig)
+	for k, v := range config {
+		vv := &tree.SampleTypeConfig{
+			Units:       metadata.Units(v.Units),
+			DisplayName: v.DisplayName,
+			Aggregation: metadata.AggregationType(v.Aggregation),
+			Cumulative:  v.Cumulative,
+			Sampled:     v.Sampled,
+		}
+		res[k] = vv
+	}
+	return res
 }
 
 func (*Upstream) Flush() {
