@@ -93,3 +93,7 @@ func (u *Upstream) Upload(j *upstream.UploadJob) {
 		u.logger.Errorf("failed to store a local profile: %v", err)
 	}
 }
+
+func (*Upstream) Flush() {
+
+}
