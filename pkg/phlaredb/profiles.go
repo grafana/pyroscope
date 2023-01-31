@@ -305,7 +305,7 @@ outer:
 }
 
 func (pi *profilesIndex) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Index")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Index")
 	defer sp.Finish()
 	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {

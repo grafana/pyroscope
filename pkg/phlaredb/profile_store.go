@@ -13,6 +13,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
@@ -422,6 +423,9 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 }
 
 func mergeOnDiskByStacktraces(ctx context.Context, rows iter.Iterator[Profile], m mapAdder) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeOnDiskByStacktraces - Head")
+	defer sp.Finish()
+
 	var (
 		currentRG *profileRowGroup
 		profiles  []Profile
@@ -469,6 +473,9 @@ func mergeOnDiskByStacktraces(ctx context.Context, rows iter.Iterator[Profile], 
 }
 
 func mergeOnDiskByLabels(ctx context.Context, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeOnDiskByLabels - Head")
+	defer sp.Finish()
+
 	var (
 		currentRG *profileRowGroup
 		profiles  []Profile
