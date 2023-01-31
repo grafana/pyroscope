@@ -62,8 +62,9 @@ type Config struct {
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
 
-	ConfigFile  string `yaml:"-"`
-	ShowVersion bool   `yaml:"-"`
+	ConfigFile      string `yaml:"-"`
+	ShowVersion     bool   `yaml:"-"`
+	ConfigExpandEnv bool   `yaml:"-"`
 }
 
 func newDefaultConfig() *Config {
@@ -94,6 +95,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
 	f.BoolVar(&c.ShowVersion, "version", false, "Show the version of phlare and exit")
+	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.AgentConfig.RegisterFlags(f)
