@@ -58,6 +58,8 @@ phlare:
         requests:
           memory: 6Gi
           cpu: 1
+  extraArgs:
+    phlaredb.row-group-target-size: "1000000"
 
 minio:
   enabled: true

@@ -146,6 +146,7 @@ const (
 )
 
 func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
+	parquetConfig := *defaultParquetConfig
 	h := &Head{
 		logger:  phlarecontext.Logger(phlarectx),
 		metrics: contextHeadMetrics(phlarectx),
@@ -158,7 +159,7 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 		flushCh:          make(chan struct{}),
 		flushForcedTimer: time.NewTimer(cfg.MaxBlockDuration),
 
-		parquetConfig: defaultParquetConfig,
+		parquetConfig: &parquetConfig,
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
 	h.localPath = filepath.Join(cfg.DataPath, pathLocal, h.meta.ULID.String())
@@ -167,6 +168,8 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 	if cfg.Parquet != nil {
 		h.parquetConfig = cfg.Parquet
 	}
+
+	h.parquetConfig.MaxRowGroupBytes = cfg.RowGroupTargetSize
 
 	// ensure folder is writable
 	err := os.MkdirAll(h.headPath, defaultFolderMode)

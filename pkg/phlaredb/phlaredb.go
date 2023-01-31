@@ -50,6 +50,9 @@ type Config struct {
 	// Blocks are generally cut once they reach 1000M of memory size, this will setup an upper limit to the duration of data that a block has that is cut by the ingester.
 	MaxBlockDuration time.Duration `yaml:"max_block_duration,omitempty"`
 
+	// TODO: docs
+	RowGroupTargetSize uint64 `yaml:"row_group_target_size"`
+
 	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determiend by phlare itself. Currently they are solely used for test cases
 }
 
@@ -62,6 +65,7 @@ type ParquetConfig struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataPath, "phlaredb.data-path", "./data", "Directory used for local storage.")
 	f.DurationVar(&cfg.MaxBlockDuration, "phlaredb.max-block-duration", 3*time.Hour, "Upper limit to the duration of a Phlare block.")
+	f.Uint64Var(&cfg.RowGroupTargetSize, "phlaredb.row-group-target-size", 100*1024*1024, "How big should a single row group be")
 }
 
 type fileSystem interface {
