@@ -1,10 +1,9 @@
 import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
-import timezoneMock from 'timezone-mock';
 import { configureToMatchImageSnapshot } from 'jest-image-snapshot';
 import type { MatchImageSnapshotOptions } from 'jest-image-snapshot';
 import nodeFetch from 'node-fetch';
-import 'regenerator-runtime/runtime';
+globalThis.fetch = nodeFetch as unknown as typeof fetch;
 
 expect.extend({
   toMatchImageSnapshot(received: string, options: MatchImageSnapshotOptions) {
@@ -31,13 +30,3 @@ expect.extend({
     };
   },
 });
-
-timezoneMock.register('UTC');
-
-globalThis.fetch = nodeFetch as unknown as typeof fetch;
-
-// When testing redux we can assume this will be populated
-// Which will be used for setting up the initialState
-(globalThis.window as any).initialState = {
-  appNames: [],
-};
