@@ -98,6 +98,10 @@ func (u *Upstream) Upload(j *upstream.UploadJob) {
 	}
 }
 
+func (*Upstream) Flush() {
+
+}
+
 func sampleTypeConfigFromUpstream(config map[string]*upstream.SampleType) map[string]*tree.SampleTypeConfig {
 	res := make(map[string]*tree.SampleTypeConfig)
 	for k, v := range config {
@@ -111,8 +115,4 @@ func sampleTypeConfigFromUpstream(config map[string]*upstream.SampleType) map[st
 		res[k] = vv
 	}
 	return res
-}
-
-func (*Upstream) Flush() {
-
 }
