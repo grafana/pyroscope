@@ -28,7 +28,6 @@ import (
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
 	wwtracing "github.com/weaveworks/common/tracing"
-	"google.golang.org/grpc/health/grpc_health_v1"
 
 	pushv1connect "github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/agent"
@@ -306,7 +305,7 @@ func (f *Phlare) Run() error {
 	}
 	f.Server.HTTP.Path("/ready").Methods("GET").Handler(f.readyHandler(sm))
 
-	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, grpcutil.NewHealthCheck(sm))
+	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
 	healthy := func() { level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info()) }
 
 	serviceFailed := func(service services.Service) {
