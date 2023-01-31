@@ -4,6 +4,7 @@ import { shareWithFlamegraphDotcom } from './share';
 import { setupServer, rest } from './testUtils';
 // TODO move this testData to somewhere else
 import TestData from './TestData';
+import nodeFetch from 'node-fetch';
 
 describe('Share', () => {
   let server: ReturnType<typeof setupServer> | null;
@@ -13,6 +14,10 @@ describe('Share', () => {
       server.close();
     }
     server = null;
+  });
+
+  beforeAll(() => {
+    globalThis.fetch = nodeFetch as unknown as typeof fetch;
   });
 
   describe('shareWithFlamegraphDotcom', () => {

@@ -12,11 +12,16 @@ import {
 } from './base';
 import { setupServer, rest } from './testUtils';
 import basename from '../util/baseurl';
+import nodeFetch from 'node-fetch';
 
 jest.mock('../util/baseurl', () => jest.fn());
 
 describe('Base HTTP', () => {
   let server: ReturnType<typeof setupServer> | null;
+
+  beforeAll(() => {
+    globalThis.fetch = nodeFetch as unknown as typeof fetch;
+  });
 
   afterEach(() => {
     if (server) {

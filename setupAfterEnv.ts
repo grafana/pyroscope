@@ -1,16 +1,16 @@
 import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
 import type { MatchImageSnapshotOptions } from 'jest-image-snapshot';
-import nodeFetch from 'node-fetch';
-globalThis.fetch = nodeFetch as unknown as typeof fetch;
 
 async function getToMatchImageSnapshot() {
   if (!process.env.RUN_SNAPSHOTS) {
-    return () => ({
-      pass: true,
-      message: () =>
-        `Skipping 'toMatchImageSnapshot' assertion since env var 'RUN_SNAPSHOTS' is not set.`,
-    });
+    return function skipImageSnapshotTest() {
+      return {
+        pass: true,
+        message: () =>
+          `Skipping 'toMatchImageSnapshot' assertion since env var 'RUN_SNAPSHOTS' is not set.`,
+      };
+    };
   }
 
   return (await import('jest-image-snapshot')).configureToMatchImageSnapshot({
