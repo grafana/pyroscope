@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	grpchealth "github.com/bufbuild/connect-grpchealth-go"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -206,8 +205,6 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 	if err != nil {
 		return nil, err
 	}
-	prefix, handler := grpchealth.NewHandler(grpchealth.NewStaticChecker(ingesterv1connect.IngesterServiceName))
-	f.Server.HTTP.NewRoute().PathPrefix(prefix).Handler(handler)
 	ingesterv1connect.RegisterIngesterServiceHandler(f.Server.HTTP, ingester, f.auth)
 	return ingester, nil
 }
