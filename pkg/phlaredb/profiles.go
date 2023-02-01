@@ -9,7 +9,6 @@ import (
 
 	"github.com/gogo/status"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -123,46 +122,6 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profi
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
 
-/*
-// forMatchingProfiles iterates through all matching profiles and calls f for each profiles.
-// The profile contains multiple samples not all of them are matching the matchers.
-// You can use sampleIdx to filter the samples by his position in the returned profile.
-// The returned profile is not sorted.
-func (pi *profilesIndex) forMatchingProfiles(matchers []*labels.Matcher,
-	fn func(lbs phlaremodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error,
-) error {
-	filters, matchers := SplitFiltersAndMatchers(matchers)
-	ids, err := pi.ix.Lookup(matchers, nil)
-	if err != nil {
-		return err
-	}
-
-	pi.mutex.RLock()
-	defer pi.mutex.RUnlock()
-
-	rows := make([]*schemav1.Profile, 0, 100)
-outer:
-	for _, fp := range ids {
-		profile, ok := pi.profilesPerFP[fp]
-		if !ok {
-			// If a profile labels is missing here, it has already been flushed
-			// and is supposed to be picked up from storage by querier
-			continue
-		}
-		for _, filter := range filters {
-			if !filter.Matches(profile.lbs.Get(filter.Name)) {
-				continue outer
-			}
-		}
-
-		if err := profile.allProfilesFunc(rows, fn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-*/
-
 func (pi *profilesIndex) selectMatchingFPs(ctx context.Context, params *ingestv1.SelectProfilesRequest) ([]model.Fingerprint, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "selectMatchingFPs - Index")
 	defer sp.Finish()
@@ -203,16 +162,6 @@ outer:
 	}
 
 	return ids[:idx], nil
-}
-
-func (pi *profilesIndex) allProfiles() ([]*schemav1.Profile, error) {
-	return nil, errors.New("reimplement me using iterators")
-}
-
-func (pi *profilesIndex) forMatchingProfiles(matchers []*labels.Matcher,
-	fn func(lbs phlaremodel.Labels, fp model.Fingerprint, profile *schemav1.Profile) error,
-) error {
-	return errors.New("reimplement me using iterators")
 }
 
 type ProfileWithLabels struct {
@@ -344,7 +293,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	}
 
 	// ranges per row group
-	rangesPerRG := make([][]rowRangeWithSeriesIndex, 0, len(pfs[0].profilesOnDisk))
+	rangesPerRG := make([][]rowRangeWithSeriesIndex, len(pfs[0].profilesOnDisk))
 
 	// Add series
 	//pi.seriesIndexes = make(map[model.Fingerprint]uint32, len(pfs))

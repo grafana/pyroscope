@@ -10,10 +10,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	v1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
@@ -32,12 +32,14 @@ func TestIndex(t *testing.T) {
 				lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "__sample__type__", Value: "bytes"},
+					{Name: "__profile_type__", Value: "::::"},
 					{Name: "bar", Value: fmt.Sprint(j)},
 				})
 				sort.Sort(lb1)
 				lb2 := phlaremodel.Labels([]*typesv1.LabelPair{
 					{Name: "__name__", Value: "memory"},
 					{Name: "__sample__type__", Value: "count"},
+					{Name: "__profile_type__", Value: "::::"},
 					{Name: "bar", Value: fmt.Sprint(j)},
 				})
 				sort.Sort(lb2)
@@ -61,24 +63,17 @@ func TestIndex(t *testing.T) {
 	wg.Wait()
 
 	// Testing Matching
-	total := 0
-	err = a.forMatchingProfiles([]*labels.Matcher{
-		labels.MustNewMatcher(labels.MatchEqual, "__name__", "memory"),
-		labels.MustNewMatcher(labels.MatchRegexp, "bar", "[0-9]"),
-		labels.MustNewMatcher(labels.MatchNotEqual, "buzz", "bar"),
-	}, func(_ phlaremodel.Labels, _ model.Fingerprint, _ *v1.Profile) error {
-		total++
-		return nil
+	ctx := testContext(t)
+	fps, err := a.selectMatchingFPs(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: `memory{bar=~"[0-9]", buzz!="bar"}`,
+		Type:          &typesv1.ProfileType{},
 	})
 	require.NoError(t, err)
-	require.Equal(t, 2*10*10*10, total)
-	allProfiles, err := a.allProfiles()
-	require.NoError(t, err)
-	require.Equal(t, 10*10*10, len(allProfiles))
+	require.Len(t, fps, 20)
 
 	names, err := a.ix.LabelNames(nil)
 	require.NoError(t, err)
-	require.Equal(t, []string{"__name__", "__sample__type__", "bar"}, names)
+	require.Equal(t, []string{"__name__", "__profile_type__", "__sample__type__", "bar"}, names)
 
 	values, err := a.ix.LabelValues("__sample__type__", nil)
 	require.NoError(t, err)
